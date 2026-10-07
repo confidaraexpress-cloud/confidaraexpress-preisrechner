@@ -20,6 +20,7 @@ import {
   billingSaveMessage,
   billingStatusMeta,
   billingStatusText,
+  billingSubmitLabel,
   buildBillingDetailsPayload,
   changedFieldsText,
   emptyBillingForm,
@@ -263,4 +264,26 @@ test("14 — die Kontofläche spricht nur den Partnerendpunkt an; Steuer- und Ba
   // Im Konto steht die Fläche zwischen Kontodaten und Sicherheit.
   const konto = ohneKommentare(read("components/partner/PartnerAccountPanel.jsx"));
   assert.match(konto, /<PartnerBillingDetailsSection \/>[\s\S]*<PartnerAgreementSection \/>[\s\S]*title="Sicherheit"/);
+});
+
+test("15 — nach einer Ablehnung: unverändert erneut einreichen, Begründung bis dahin sichtbar", () => {
+  // Vertragsstand: im Status „rejected“ ist auch das unveränderte Absenden eine
+  // ausdrückliche erneute Einreichung (200 { status: "submitted", unchanged: false,
+  // changedFields: [], billingDetails: { … reviewNote: null } }).
+  assert.equal(billingSubmitLabel("rejected"), "Erneut zur Prüfung einreichen");
+  for (const s of ["incomplete", "submitted", "confirmed", null, "weird"]) {
+    assert.equal(billingSubmitLabel(s), "Zur Prüfung einreichen");
+  }
+  assert.equal(billingSaveMessage({ status: "submitted", unchanged: false, changedFields: [] }), BILLING_TEXTS.submitted);
+  const nachher = normalizeBillingResponse({ status: "submitted", unchanged: false, changedFields: [],
+    billingDetails: { ...DETAILS, reviewNote: null } });
+  assert.equal(nachher.billingDetails.reviewNote, null, "die Begründung verschwindet erst mit der erneuten Einreichung");
+  assert.match(billingStatusText("rejected"), /erneut zur Prüfung ein\.$/);
+
+  // Das Formular erlaubt das Absenden ohne Änderung (kein „unverändert“-Sperrriegel)
+  // und zeigt die Begründung, solange der Status „abgelehnt“ ist.
+  const flaeche = ohneKommentare(read("components/partner/PartnerBillingDetailsSection.jsx"));
+  assert.match(flaeche, /billingSubmitLabel\(data\.status\)/);
+  assert.match(flaeche, /data\.status === "rejected" && \([\s\S]{0,200}id="spp-billing-form-review"/);
+  assert.match(flaeche, /disabled=\{saving\} id="spp-billing-submit"/, "gesperrt nur während des Sendens");
 });

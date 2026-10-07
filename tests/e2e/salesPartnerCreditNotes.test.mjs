@@ -329,15 +329,43 @@ test("5 — Bearbeiten mit hinterlegter IBAN: Feld leer, ohne Eingabe bleibt sie
   await page.close();
 });
 
-test("6 — abgelehnte Abrechnungsdaten: Status und Begründung", async () => {
+test("6 — abgelehnt: Begründung bis zur erneuten Einreichung, unverändert erneut einreichbar", async () => {
   const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
-  await setup(page, { billing: { status: "rejected", accountEmail: PARTNER.email,
-    billingDetails: { ...DETAILS, reviewedAt: "2026-10-07T10:00:00.000Z", reviewNote: "Die Steuernummer passt nicht zum Namen." } } });
+  const abgelehnt = { ...DETAILS, reviewedAt: "2026-10-07T10:00:00.000Z", reviewNote: "Die Steuernummer passt nicht zum Namen." };
+  // Vertragsstand: nach einer Ablehnung ist unverändertes Absenden eine
+  // ausdrückliche erneute Einreichung — der Server antwortet „submitted“, ohne
+  // geänderte Felder, und die Begründung entfällt.
+  const state = await setup(page, {
+    billing: { status: "rejected", accountEmail: PARTNER.email, billingDetails: abgelehnt },
+    put: [[200, { status: "submitted", unchanged: false, changedFields: [],
+      billingDetails: { ...DETAILS, submittedAt: "2026-10-07T11:00:00.000Z", reviewedAt: null, reviewNote: null } }]],
+  });
   await zumBereich(page, "account");
   await page.locator("#spp-billing-review-note").waitFor({ state: "visible" });
   assert.equal(await page.locator("#spp-billing-status-badge").innerText(), "Abgelehnt");
   assert.equal(await page.locator("#spp-billing-review-note").innerText(), "Begründung: Die Steuernummer passt nicht zum Namen.");
-  assert.match(await page.locator("#spp-billing-status").innerText(), /Bitte prüfen und korrigieren Sie Ihre Angaben\./);
+  assert.match(await page.locator("#spp-billing-status").innerText(),
+    /Bitte prüfen Sie Ihre Angaben und reichen Sie sie über „Bearbeiten“ erneut zur Prüfung ein\./);
+
+  // Im Formular bleibt die Begründung sichtbar; das Absenden heißt „Erneut zur Prüfung einreichen“.
+  await page.locator("#spp-billing-edit").click();
+  await page.locator("#spp-billing-form").waitFor({ state: "visible" });
+  assert.match(await page.locator("#spp-billing-form-review").innerText(), /Begründung: Die Steuernummer passt nicht zum Namen\./);
+  assert.equal(await page.locator("#spp-billing-submit").innerText(), "Erneut zur Prüfung einreichen");
+  assert.equal(await page.locator("#spp-billing-submit").isDisabled(), false, "ohne Änderung absendbar");
+
+  // Unverändert absenden: genau die hinterlegten Angaben, die IBAN bleibt hinterlegt.
+  await page.locator("#spp-billing-submit").click();
+  await page.locator("#spp-billing-message").waitFor({ state: "visible" });
+  assert.equal(state.put.length, 1);
+  assert.deepEqual(state.put[0], {
+    billingName: "Vertrieb Süd GmbH", street: "Musterweg 1", postalCode: "10115", city: "Berlin", country: "DE",
+    taxStatus: "with_vat", accountHolder: "Vertrieb Süd GmbH", taxNumber: "12/345/67890", vatId: "DE123456789",
+    bic: "COBADEFFXXX",
+  });
+  assert.equal(await page.locator("#spp-billing-message").innerText(), "Ihre Abrechnungsdaten wurden zur Prüfung eingereicht.");
+  assert.equal(await page.locator("#spp-billing-status-badge").innerText(), "In Prüfung");
+  assert.equal(await page.locator("#spp-billing-review-note").count(), 0, "die Begründung entfällt mit der erneuten Einreichung");
   await page.close();
 });
 

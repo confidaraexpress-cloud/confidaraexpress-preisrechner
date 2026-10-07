@@ -4,7 +4,10 @@
 // Angaben, mit denen ConfidaraExpress ihm Gutschriften ausstellt: Name bzw.
 // Firma, Anschrift, Steuerstatus mit Steuernummer und/oder USt-IdNr. und die
 // Bankverbindung für die Überweisung. Jede echte Änderung geht in die Prüfung
-// („In Prüfung") und gilt nur für künftige Gutschriften.
+// („In Prüfung") und gilt nur für künftige Gutschriften. Nach einer Ablehnung
+// ist auch das unveränderte Absenden eine ausdrückliche erneute Einreichung
+// (Server: status "submitted", unchanged false, reviewNote null) — in jedem
+// anderen Status bleiben unveränderte Angaben „unverändert".
 //
 //   GET /api/sales-partner/me/billing-details → { status, billingDetails | null, accountEmail }
 //   PUT /api/sales-partner/me/billing-details → { status, billingDetails, changedFields, unchanged }
@@ -55,7 +58,14 @@ export const BILLING_TEXTS = Object.freeze({
   bicInvalid: "Bitte prüfen Sie die BIC.",
   rateLimited: "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut.",
   notProvided: "Nicht angegeben",
+  submit: "Zur Prüfung einreichen",
+  resubmit: "Erneut zur Prüfung einreichen",
+  rejectedFormHint: "Ihre Abrechnungsdaten wurden nicht bestätigt. Sie können die Angaben korrigieren oder unverändert erneut zur Prüfung einreichen.",
 });
+
+/** Beschriftung des Absendens: nach einer Ablehnung ist es ausdrücklich die
+ *  erneute Einreichung (auch ohne Änderung), sonst die Einreichung. */
+export const billingSubmitLabel = (status) => (status === "rejected" ? BILLING_TEXTS.resubmit : BILLING_TEXTS.submit);
 
 // ── Status ──────────────────────────────────────────────────────────────────
 export const BILLING_STATUS_VALUES = Object.freeze(["incomplete", "submitted", "confirmed", "rejected"]);
@@ -72,7 +82,7 @@ const BILLING_STATUS_TEXT = Object.freeze({
   incomplete: "Bitte hinterlegen Sie Ihre Abrechnungsdaten. Sie werden vor der ersten Gutschrift geprüft.",
   submitted: "Ihre Angaben werden geprüft. Gutschriften werden erst nach der Bestätigung ausgestellt.",
   confirmed: "Ihre Abrechnungsdaten sind geprüft und bestätigt.",
-  rejected: "Ihre Abrechnungsdaten wurden nicht bestätigt. Bitte prüfen und korrigieren Sie Ihre Angaben.",
+  rejected: "Ihre Abrechnungsdaten wurden nicht bestätigt. Bitte prüfen Sie Ihre Angaben und reichen Sie sie über „Bearbeiten“ erneut zur Prüfung ein.",
 });
 /** Erklärung zum Status — nur für bekannte Werte, sonst null (kein geratener Satz). */
 export const billingStatusText = (status) => (own(BILLING_STATUS_TEXT, status) ? BILLING_STATUS_TEXT[status] : null);

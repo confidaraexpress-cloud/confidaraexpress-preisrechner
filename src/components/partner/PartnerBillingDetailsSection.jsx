@@ -15,6 +15,7 @@ import {
   billingSaveMessage,
   billingStatusMeta,
   billingStatusText,
+  billingSubmitLabel,
   buildBillingDetailsPayload,
   hasStoredIban,
   mapBillingDetailsSaveError,
@@ -165,6 +166,16 @@ export function PartnerBillingDetailsSection() {
     inhalt = (
       <form className="profile-form-body profile-inline-form spp-billing-form" id="spp-billing-form" noValidate onSubmit={speichern}>
         {generalError && <div className="alert alert-error" role="alert" id="spp-billing-error">{generalError}</div>}
+        {/* Nach einer Ablehnung bleibt die Begründung beim Bearbeiten sichtbar;
+            auch unverändert abgesendet ist es eine erneute Einreichung. */}
+        {data.status === "rejected" && (
+          <div className="alert alert-info" role="note" id="spp-billing-form-review">
+            <span>
+              {BILLING_TEXTS.rejectedFormHint}
+              {details?.reviewNote ? ` Begründung: ${details.reviewNote}` : ""}
+            </span>
+          </div>
+        )}
         <p className="profile-required-hint">{BILLING_TEXTS.futureOnly}</p>
 
         <Field id="spp-billing-name" label={BILLING_FIELD_LABELS.billingName} required autoComplete="organization"
@@ -220,7 +231,7 @@ export function PartnerBillingDetailsSection() {
         <div className="profile-form-actions">
           <button type="button" className="btn btn-outline" onClick={schliessen} disabled={saving} id="spp-billing-cancel">Abbrechen</button>
           <button type="submit" className="btn btn-primary" disabled={saving} id="spp-billing-submit">
-            {saving ? <><span className="spinner" /> Wird gesendet…</> : "Zur Prüfung einreichen"}
+            {saving ? <><span className="spinner" /> Wird gesendet…</> : billingSubmitLabel(data.status)}
           </button>
         </div>
       </form>

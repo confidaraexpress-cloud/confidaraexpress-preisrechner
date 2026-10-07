@@ -4,11 +4,15 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { DateField } from "./DateField";
 import {
   getAdminUserSalesPartnerAttribution,
+  listAdminPreliveAccounts,
   listAdminSalesPartners,
   setAdminUserSalesPartnerAttribution,
 } from "../../api/adminApi";
+import { usePreliveStatus } from "../../hooks/usePreliveStatus";
+import { isTestCustomer, isTestPartner, normalizePreliveAccounts, preliveEnabled } from "../../utils/salesPartnerPrelive.mjs";
 import {
-  adminActionErrorText,
+  ATTRIBUTION_TEXTS,
+  attributionErrorText,
   attributionSourceLabel,
   buildAttributionBody,
   formatTimestamp,
@@ -34,7 +38,12 @@ const partnerLink = (id, name) => (id != null
    Kundendetailseite nie. Zeigt die aktuelle Zuordnung und ihre Historie und
    erlaubt Ändern oder Entfernen — Partner aus der Liste AKTIVER Partner,
    Wirksamkeit ab heute oder später, Begründung Pflicht, Bestätigung per
-   Dialog. Ob der Wechsel zulässig ist, entscheidet der Server. */
+   Dialog. Ob der Wechsel zulässig ist, entscheidet der Server.
+
+   Pre-Live-Testmodus: Sind Kunde UND gewählter Partner Testkonten (laut
+   Kontenliste des Servers, nur bei `enabled: true`), darf das Datum
+   zurückliegen. Eine Mischung aus Test- und echtem Konto weist der Server
+   mit 409 PRELIVE_TEST_MISMATCH zurück (fester Satz). */
 export function SalesPartnerAttributionSection({ userId }) {
   const [state, setState] = useState({ loading: true, error: "", data: null });
   const [modus, setModus] = useState(null);           // null | "change" | "remove"
@@ -48,6 +57,28 @@ export function SalesPartnerAttributionSection({ userId }) {
   const mounted = useRef(true);
   useEffect(() => () => { mounted.current = false; }, []);
   const heute = localIsoDate();
+  // Testkonten nur bei aktivem Pre-Live-Testmodus; ohne Antwort gilt
+  // fail-closed „kein Testkonto" (keine zurückliegenden Daten).
+  const prelive = usePreliveStatus();
+  const testmodus = preliveEnabled(prelive.status);
+  const [testKonten, setTestKonten] = useState(null);
+  useEffect(() => {
+    if (!testmodus) { setTestKonten(null); return undefined; }
+    let aktiv = true;
+    (async () => {
+      try {
+        const r = await listAdminPreliveAccounts();
+        if (!aktiv) return;
+        if (!r.ok) { setTestKonten(null); return; }
+        let d = null;
+        try { d = await r.json(); } catch { d = null; }
+        if (aktiv) setTestKonten(normalizePreliveAccounts(d));
+      } catch {
+        if (aktiv) setTestKonten(null);
+      }
+    })();
+    return () => { aktiv = false; };
+  }, [testmodus]);
 
   const load = useCallback(async () => {
     if (userId == null || String(userId).trim() === "") { setState({ loading: false, error: "", data: null }); return; }
@@ -101,7 +132,7 @@ export function SalesPartnerAttributionSection({ userId }) {
 
   const pruefen = (e) => {
     e.preventDefault();
-    const gebaut = buildAttributionBody({ ...form, remove: modus === "remove" }, { today: heute });
+    const gebaut = buildAttributionBody({ ...form, remove: modus === "remove" }, { today: heute, allowPast: rueckwirkend });
     if (!gebaut.ok) { setErrors(gebaut.errors); return; }
     setErrors({});
     setConfirm(gebaut.body);
@@ -117,7 +148,7 @@ export function SalesPartnerAttributionSection({ userId }) {
         if (r.status === 401 || r.status === 403) return;
         let body = null;
         try { body = await r.json(); } catch { body = null; }
-        setMessage({ type: "error", text: adminActionErrorText(r.status, body) });
+        setMessage({ type: "error", text: attributionErrorText(r.status, body) });
         setConfirm(null);
         return;
       }
@@ -137,6 +168,13 @@ export function SalesPartnerAttributionSection({ userId }) {
 
   const fehler = (k) => (errors[k] ? <span className="field-error">{errors[k]}</span> : null);
   const aktuell = state.data?.current || null;
+  // Zurückliegend nur, wenn Kunde und Partner (gewählt bzw. bisheriger) Testkonten sind.
+  const testKunde = testmodus && isTestCustomer(testKonten, userId);
+  const gewaehlt = partner.rows.find((p) => String(p.id) === String(form.partnerUserId)) || null;
+  const partnerIstTest = modus === "remove"
+    ? isTestPartner(testKonten, aktuell?.partnerId)
+    : (gewaehlt?.preliveTest === true || isTestPartner(testKonten, form.partnerUserId));
+  const rueckwirkend = testKunde && partnerIstTest;
   const gewaehlterName = partnerDisplayName(partner.rows.find((p) => String(p.id) === String(confirm?.partnerUserId)) || null);
 
   return (
@@ -224,15 +262,16 @@ export function SalesPartnerAttributionSection({ userId }) {
                       onChange={(e) => { setForm((f) => ({ ...f, partnerUserId: e.target.value })); setErrors((x) => ({ ...x, partnerUserId: undefined })); }}
                       aria-invalid={errors.partnerUserId ? "true" : undefined}>
                       <option value="">{partner.loading ? "Wird geladen…" : "Bitte wählen"}</option>
-                      {partner.rows.map((p) => <option key={p.id} value={String(p.id)}>{partnerDisplayName(p)}</option>)}
+                      {partner.rows.map((p) => <option key={p.id} value={String(p.id)}>{partnerDisplayName(p)}{p.preliveTest ? " – Test" : ""}</option>)}
                     </select>
                     {partner.error && <span className="field-error">{partner.error}</span>}
                     {fehler("partnerUserId")}
                   </div>
                 )}
                 <div className="adm-sp-datefield">
-                  <DateField id="adm-sp-attribution-date" label="Wirksam ab" value={form.effectiveDate} min={heute}
+                  <DateField id="adm-sp-attribution-date" label="Wirksam ab" value={form.effectiveDate} min={rueckwirkend ? undefined : heute}
                     invalid={!!errors.effectiveDate} onChange={(v) => { setForm((f) => ({ ...f, effectiveDate: v })); setErrors((x) => ({ ...x, effectiveDate: undefined })); }} />
+                  {rueckwirkend && <span className="adm-edit-hint" id="adm-sp-attribution-backdating">{ATTRIBUTION_TEXTS.pastAllowed}</span>}
                   {fehler("effectiveDate")}
                 </div>
                 <div className="adm-edit-field adm-sp-form-wide">

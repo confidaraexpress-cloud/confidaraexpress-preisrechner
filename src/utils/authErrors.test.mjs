@@ -116,3 +116,12 @@ test("11 — ProtectedRoute: erklärter Zustand mit Retry statt stillem Redirect
   assert.match(route, /Erneut versuchen/);
   assert.match(route, /Zur Anmeldung/);
 });
+
+test("Pre-Live — Login eines Testkontos bei abgeschaltetem Testmodus: Text des Servers", () => {
+  const text = "Dieses Testkonto ist derzeit nicht aktiv.";
+  assert.equal(mapLoginError(403, { code: "ACCOUNT_PRELIVE_TEST_INACTIVE", error: text }), text,
+    "403 mit unbekanntem Code zeigt den kuratierten Text des Servers");
+  assert.equal(mapLoginError(403, { code: "ACCOUNT_PRELIVE_TEST_INACTIVE", error: "  " }), AUTH_CODE_TEXTE.ACCOUNT_PENDING_APPROVAL,
+    "ohne Servertext der bestehende Auffangtext — nie ein leerer Banner");
+  assert.doesNotMatch(mapLoginError(403, { code: "ACCOUNT_PRELIVE_TEST_INACTIVE", error: text }), /ACCOUNT_PRELIVE/);
+});

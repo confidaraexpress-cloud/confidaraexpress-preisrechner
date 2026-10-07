@@ -5,11 +5,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import * as modul from "./adminSalesPartnerView.mjs";
 import {
-  DEFAULT_LEVEL_BONUSES,
-  DEFAULT_MIN_PACKAGES,
+  ATTRIBUTION_TEXTS,
+  CAP_TEXTS,
   INPUT_TEXTS,
   adminActionErrorText,
+  approveFormFromDefaults,
+  attributionErrorText,
   attributionSourceLabel,
   buildAdjustmentBody,
   buildApproveBody,
@@ -21,9 +24,11 @@ import {
   buildLoginBody,
   buildPartnerLevelRulesBody,
   buildRatesBody,
+  buildReactivateBody,
   buildRejectBody,
   buildReverseBody,
   canReverseEntry,
+  capLimitText,
   deactivationReasonLabel,
   emptyLevelRulesForm,
   evidenceSourceLabel,
@@ -31,6 +36,8 @@ import {
   evidenceTypeLabel,
   currentLocalMonth,
   isIsoDate,
+  levelRulesComplete,
+  levelRulesFormFrom,
   localIsoDate,
   loginActionErrorText,
   loginEnabledState,
@@ -39,10 +46,15 @@ import {
   normalizeAdminCommissions,
   normalizeAdminPartnerDetail,
   normalizeAttribution,
+  normalizeCapsResponse,
+  normalizeLevelRulesResponse,
   normalizeQueueItem,
+  normalizeStartDefaults,
   parseEuroToCents,
   parsePercentInput,
   partnerDisplayName,
+  percentInputValue,
+  prefillGlobalLevelRulesForm,
   reversedDecisionIds,
   selectPartnerRows,
   toSalesPartnerApiFilters,
@@ -50,8 +62,16 @@ import {
 
 const TODAY = "2026-10-06";
 
+// Startwerte genau in der Form des Backendvertrags (GET …/level-rules, GET …/:id).
+const BONI = ["2.50", "5.00", "7.50", "10.00", "12.50"];
+const START = Object.freeze({
+  basePercent: "10.00", level1Percent: "5.00", level2Percent: "2.50", minPackagesForActiveCustomer: 3,
+  customerLevels: [3, 6, 10, 15, 25].map((threshold, i) => ({ level: i + 1, threshold, bonusPercent: BONI[i] })),
+  packageLevels: [100, 250, 500, 1000, 2000].map((threshold, i) => ({ level: i + 1, threshold, bonusPercent: BONI[i] })),
+});
+
 function gefuellteRegeln(extra = {}) {
-  const f = emptyLevelRulesForm();
+  const f = levelRulesFormFrom(normalizeStartDefaults(START).rules);
   f.validFrom = "2026-11-01";
   f.customerLevels = f.customerLevels.map((s, i) => ({ ...s, threshold: String((i + 1) * 5) }));
   f.packageLevels = f.packageLevels.map((s, i) => ({ ...s, threshold: String((i + 1) * 100) }));
@@ -121,20 +141,101 @@ test("6 — Satzversion: alle drei Sätze Pflicht, gültig ab heute oder später
 
 /* ══════════ Level-Regeln ════════════════════════════════════════════════ */
 
-test("7 — das leere Formular belegt Schwellen NICHT vor, Boni und Mindestpakete schon", () => {
+test("7 — das leere Formular belegt NICHTS vor; die Oberfläche kennt keine eigenen Standardwerte", () => {
   const f = emptyLevelRulesForm();
-  assert.deepEqual(DEFAULT_LEVEL_BONUSES, ["2.50", "5.00", "7.50", "10.00", "12.50"]);
-  assert.equal(f.minPackagesForActiveCustomer, String(DEFAULT_MIN_PACKAGES));
-  assert.equal(f.minPackagesForActiveCustomer, "3");
+  assert.equal(f.minPackagesForActiveCustomer, "");
   for (const dim of ["customerLevels", "packageLevels"]) {
     assert.equal(f[dim].length, 5);
-    assert.ok(f[dim].every((s) => s.threshold === ""), `${dim}: Schwelle vorbelegt`);
-    assert.deepEqual(f[dim].map((s) => s.bonusPercent), DEFAULT_LEVEL_BONUSES.map((b) => b.replace(".", ",")),
-      "Boni im deutschen Zahlformat vorbelegt");
+    assert.ok(f[dim].every((s) => s.threshold === "" && s.bonusPercent === ""), `${dim}: vorbelegt ohne Serverwert`);
   }
   const leer = buildGlobalLevelRulesBody({ ...f, validFrom: "2026-11-01" }, { today: TODAY });
   assert.equal(leer.ok, false, "leere Schwellen sind Pflicht");
   assert.equal(leer.errors["customerLevels.0.threshold"], INPUT_TEXTS.thresholdRequired);
+  assert.equal(leer.errors["customerLevels.0.bonusPercent"], INPUT_TEXTS.percentRequired);
+  assert.equal(leer.errors.minPackagesForActiveCustomer, INPUT_TEXTS.minPackagesInvalid);
+  // Die früheren Frontendkonstanten der Boni/Mindestpakete gibt es nicht mehr.
+  assert.equal("DEFAULT_LEVEL_BONUSES" in modul, false);
+  assert.equal("DEFAULT_MIN_PACKAGES" in modul, false);
+});
+
+test("7a — Startwerte des Servers: vollständig gelesen, ein unbrauchbarer Teil wird verworfen", () => {
+  const sd = normalizeStartDefaults(START);
+  assert.deepEqual([sd.basePercent, sd.level1Percent, sd.level2Percent], ["10.00", "5.00", "2.50"]);
+  assert.equal(sd.rules.minPackagesForActiveCustomer, 3);
+  assert.deepEqual(sd.rules.customerLevels.map((s) => s.threshold), [3, 6, 10, 15, 25]);
+  assert.deepEqual(sd.rules.packageLevels.map((s) => s.threshold), [100, 250, 500, 1000, 2000]);
+  assert.deepEqual(sd.rules.packageLevels.map((s) => s.bonusPercent), BONI);
+
+  // Kaputte Regeln (Schwelle nicht steigend, vier Level, fehlende Ebene) → nur der Regelteil fällt weg.
+  const fallend = { ...START, customerLevels: START.customerLevels.map((s, i) => (i === 2 ? { ...s, threshold: 6 } : s)) };
+  assert.equal(normalizeStartDefaults(fallend).rules, null);
+  assert.equal(normalizeStartDefaults(fallend).basePercent, "10.00", "die Sätze bleiben brauchbar");
+  assert.equal(normalizeStartDefaults({ ...START, packageLevels: START.packageLevels.slice(0, 4) }).rules, null);
+  assert.equal(normalizeStartDefaults({ ...START, minPackagesForActiveCustomer: 0 }).rules, null);
+  assert.equal(normalizeStartDefaults({ ...START, customerLevels: START.customerLevels.map((s) => ({ ...s, level: undefined })) }).rules, null);
+  assert.equal(normalizeStartDefaults({ ...START, basePercent: "101" }).basePercent, null);
+  assert.equal(normalizeStartDefaults({ ...START, level1Percent: "x" }).level1Percent, null);
+  assert.equal(normalizeStartDefaults({ ...START, level2Percent: "2.5" }).level2Percent, "2.50", "Zahlformat normalisiert");
+  // Ohne jeden brauchbaren Teil: keine Startwerte.
+  for (const roh of [null, undefined, [], "x", {}, { basePercent: "abc" }]) {
+    assert.equal(normalizeStartDefaults(roh), null, JSON.stringify(roh));
+  }
+});
+
+test("7b — Vorbelegung: Freigabe 10,00/5,00/2,50 und Regeln nur aus Serverwerten", () => {
+  assert.deepEqual(approveFormFromDefaults(normalizeStartDefaults(START)),
+    { basePercent: "10,00", level1Percent: "5,00", level2Percent: "2,50" });
+  assert.deepEqual(approveFormFromDefaults(null), { basePercent: "", level1Percent: "", level2Percent: "" });
+  assert.deepEqual(approveFormFromDefaults(normalizeStartDefaults({ basePercent: "12.5" })),
+    { basePercent: "12,50", level1Percent: "", level2Percent: "" });
+  // Was vorbelegt wurde, geht unverändert als Vertragsformat hinaus.
+  assert.deepEqual(buildApproveBody(approveFormFromDefaults(normalizeStartDefaults(START))).body,
+    { basePercent: "10.00", level1Percent: "5.00", level2Percent: "2.50" });
+
+  assert.equal(percentInputValue("12.50"), "12,50");
+  assert.equal(percentInputValue("abc"), "");
+  assert.equal(percentInputValue(null), "");
+
+  const f = levelRulesFormFrom(normalizeStartDefaults(START).rules);
+  assert.equal(f.minPackagesForActiveCustomer, "3");
+  assert.deepEqual(f.customerLevels.map((s) => s.threshold), ["3", "6", "10", "15", "25"]);
+  assert.deepEqual(f.packageLevels.map((s) => s.bonusPercent), ["2,50", "5,00", "7,50", "10,00", "12,50"]);
+  assert.equal(f.validFrom, "");
+  const gesendet = buildGlobalLevelRulesBody({ ...f, validFrom: "2026-10-06" }, { today: TODAY });
+  assert.equal(gesendet.ok, true, JSON.stringify(gesendet.errors));
+  assert.deepEqual(gesendet.body.customerLevels, START.customerLevels, "genau die Startwerte im Vertragsformat");
+  assert.deepEqual(gesendet.body.packageLevels, START.packageLevels);
+  assert.equal(gesendet.body.minPackagesForActiveCustomer, 3);
+  assert.deepEqual(levelRulesFormFrom(null), emptyLevelRulesForm());
+  assert.equal(levelRulesComplete(START), true);
+  assert.equal(levelRulesComplete({ ...START, customerLevels: [] }), false);
+});
+
+test("7c — globale Regeln: aktuelle Version vor Startwerten; Startwerte mit „gültig ab heute“", () => {
+  const sd = normalizeStartDefaults(START);
+  const ohne = prefillGlobalLevelRulesForm({ current: null, startDefaults: sd, today: TODAY });
+  assert.equal(ohne.source, "startDefaults");
+  assert.equal(ohne.form.validFrom, TODAY, "nur noch speichern");
+  assert.deepEqual(ohne.form.customerLevels.map((s) => s.threshold), ["3", "6", "10", "15", "25"]);
+
+  const aktuell = normalizeLevelRulesResponse({ current: { id: 4, scope: "global", validFrom: "2026-09-01", minPackagesForActiveCustomer: 4,
+    customerLevels: [2, 4, 8, 16, 32].map((threshold, i) => ({ level: i + 1, threshold, bonusPercent: BONI[i] })),
+    packageLevels: [50, 100, 200, 400, 800].map((threshold, i) => ({ level: i + 1, threshold, bonusPercent: BONI[i] })) },
+  history: [], startDefaults: START }).current;
+  const mit = prefillGlobalLevelRulesForm({ current: aktuell, startDefaults: sd, today: TODAY });
+  assert.equal(mit.source, "current");
+  assert.equal(mit.form.validFrom, "", "ein neuer Gültigkeitsbeginn wird bewusst gewählt");
+  assert.equal(mit.form.minPackagesForActiveCustomer, "4");
+  assert.deepEqual(mit.form.customerLevels.map((s) => s.threshold), ["2", "4", "8", "16", "32"]);
+
+  const nichts = prefillGlobalLevelRulesForm({ current: null, startDefaults: null, today: TODAY });
+  assert.equal(nichts.source, null);
+  assert.deepEqual(nichts.form, emptyLevelRulesForm());
+
+  const antwort = normalizeLevelRulesResponse({ current: null, history: [], startDefaults: START });
+  assert.equal(antwort.current, null);
+  assert.equal(antwort.startDefaults.rules.minPackagesForActiveCustomer, 3);
+  assert.equal(normalizeLevelRulesResponse({ current: null, history: [] }).startDefaults, null, "ohne Startwerte keine Vorbelegung");
 });
 
 test("8 — Schwellen streng steigend, Boni 0–100, genau fünf Level", () => {
@@ -173,6 +274,25 @@ test("10 — Obergrenzen: leer heißt keine Grenze (null)", () => {
   assert.deepEqual(buildCapBody({ validFrom: "2026-10-07", maxOwnRatePercent: "35", maxTotalRatePercent: "40,5", reason: "Q4" }, { today: TODAY }).body,
     { validFrom: "2026-10-07", maxOwnRatePercent: "35.00", maxTotalRatePercent: "40.50", reason: "Q4" });
   assert.equal(buildCapBody({ validFrom: "2026-01-01" }, { today: TODAY }).ok, false);
+});
+
+test("10a — individuelle Obergrenze: partnerUserId als Zahl, beide Sätze optional", () => {
+  assert.deepEqual(buildCapBody({ validFrom: "2026-10-06", maxTotalRatePercent: "30" }, { today: TODAY, partnerUserId: "5" }).body,
+    { validFrom: "2026-10-06", maxOwnRatePercent: null, maxTotalRatePercent: "30.00", partnerUserId: 5 });
+  assert.deepEqual(buildCapBody({ validFrom: "2026-10-06" }, { today: TODAY, partnerUserId: 9 }).body,
+    { validFrom: "2026-10-06", maxOwnRatePercent: null, maxTotalRatePercent: null, partnerUserId: 9 });
+  assert.equal(buildCapBody({ validFrom: "2026-10-06" }, { today: TODAY, partnerUserId: "abc" }).errors.partnerUserId,
+    CAP_TEXTS.partnerInvalid);
+  assert.equal("partnerUserId" in buildCapBody({ validFrom: "2026-10-06" }, { today: TODAY }).body, false, "global ohne Partner");
+  assert.equal(capLimitText("35.00"), "35,00 %");
+  assert.equal(capLimitText(null), "Keine Grenze");
+  assert.equal(CAP_TEXTS.partnerNone, "Keine individuelle Obergrenze – es gilt die globale Einstellung (standardmäßig keine Obergrenze).");
+  assert.doesNotMatch(CAP_TEXTS.globalNote, /keine Provision/, "eine fehlende Obergrenze stoppt keine Provision mehr");
+  const caps = normalizeCapsResponse({ current: { id: 3, validFrom: "2026-10-06", maxOwnRatePercent: null, maxTotalRatePercent: "30.00" },
+    history: [{ id: 2, validFrom: "2026-09-01" }, null] });
+  assert.equal(caps.current.maxTotalRatePercent, "30.00");
+  assert.equal(caps.history.length, 1);
+  assert.deepEqual(normalizeCapsResponse(null), { current: null, history: [], backdatingAllowed: false });
 });
 
 /* ══════════ Provisionen, Zuordnung, Versandnachweis ═════════════════════ */
@@ -275,6 +395,8 @@ test("17 — Liste und Detail werden defensiv gelesen", () => {
   assert.equal(d.levelRules.current.customerLevels[0].threshold, 5);
   assert.deepEqual(d.team, { level1: [], level2: [] });
   assert.equal(normalizeAdminPartnerDetail(null).rates.current, null);
+  assert.equal(d.startDefaults, null, "ohne Startwerte keine Vorbelegung");
+  assert.equal(normalizeAdminPartnerDetail({ partner: { id: 5 }, startDefaults: START }).startDefaults.basePercent, "10.00");
 });
 
 test("17b — akzeptierte Vereinbarung: nur ein Dokumentpfad auf diese API wird verlinkt", () => {
@@ -317,4 +439,72 @@ test("20 — Fehlertexte: Servertext nur bei Eingabe-/Konfliktfehlern", () => {
   assert.match(adminActionErrorText(404, { error: "intern" }), /nicht gefunden/);
   assert.match(adminActionErrorText(500, { error: "TypeError" }), /nicht ausgeführt/);
   assert.match(adminActionErrorText(400, {}), /nicht ausgeführt/);
+});
+
+/* ══════════ Pre-Live: Testkennzeichnung und Rückdatierung ═══════════════ */
+
+test("21 — zurückliegende Daten nur mit allowPast === true (Sätze, Regeln, Obergrenze, Zuordnung)", () => {
+  const frueh = "2026-03-01";
+  const rates = { validFrom: frueh, basePercent: "10", level1Percent: "5", level2Percent: "2,5" };
+  assert.equal(buildRatesBody(rates, { today: TODAY }).errors.validFrom, INPUT_TEXTS.dateNotBeforeToday);
+  assert.equal(buildRatesBody(rates, { today: TODAY, allowPast: "true" }).errors.validFrom, INPUT_TEXTS.dateNotBeforeToday,
+    "kein truthy-String");
+  assert.deepEqual(buildRatesBody(rates, { today: TODAY, allowPast: true }).body,
+    { validFrom: frueh, basePercent: "10.00", level1Percent: "5.00", level2Percent: "2.50" });
+  assert.equal(buildGlobalLevelRulesBody(gefuellteRegeln({ validFrom: frueh }), { today: TODAY }).ok, false);
+  assert.equal(buildGlobalLevelRulesBody(gefuellteRegeln({ validFrom: frueh }), { today: TODAY, allowPast: true }).ok, true);
+  assert.equal(buildPartnerLevelRulesBody({ mode: "inherit", validFrom: frueh }, { today: TODAY }).ok, false);
+  assert.deepEqual(buildPartnerLevelRulesBody({ mode: "inherit", validFrom: frueh }, { today: TODAY, allowPast: true }).body,
+    { mode: "inherit", validFrom: frueh });
+  assert.equal(buildCapBody({ validFrom: frueh }, { today: TODAY, partnerUserId: 5 }).ok, false);
+  assert.deepEqual(buildCapBody({ validFrom: frueh }, { today: TODAY, partnerUserId: 5, allowPast: true }).body,
+    { validFrom: frueh, maxOwnRatePercent: null, maxTotalRatePercent: null, partnerUserId: 5 });
+  const zuordnung = { partnerUserId: "41", effectiveDate: frueh, reason: "Testkette" };
+  assert.equal(buildAttributionBody(zuordnung, { today: TODAY }).errors.effectiveDate, INPUT_TEXTS.dateNotBeforeToday);
+  assert.deepEqual(buildAttributionBody(zuordnung, { today: TODAY, allowPast: true }).body,
+    { partnerUserId: 41, effectiveDate: frueh, reason: "Testkette" });
+  // Auch mit Freigabe bleibt ein ungültiges Datum ungültig.
+  assert.equal(buildRatesBody({ ...rates, validFrom: "2026-02-30" }, { today: TODAY, allowPast: true }).errors.validFrom, INPUT_TEXTS.dateInvalid);
+});
+
+test("22 — Freigabe, Deaktivieren, Reaktivieren: effectiveDate nur mit Serverfreigabe und nur mit Wert", () => {
+  const form = { basePercent: "10", effectiveDate: "2026-03-01" };
+  assert.deepEqual(buildApproveBody(form).body, { basePercent: "10.00" }, "ohne Freigabe nie ein Datum");
+  assert.deepEqual(buildApproveBody(form, { allowEffectiveDate: "true" }).body, { basePercent: "10.00" });
+  assert.deepEqual(buildApproveBody(form, { allowEffectiveDate: true }).body, { basePercent: "10.00", effectiveDate: "2026-03-01" });
+  assert.deepEqual(buildApproveBody({ basePercent: "10", effectiveDate: "" }, { allowEffectiveDate: true }).body,
+    { basePercent: "10.00" }, "leer heißt Serverstandard heute");
+  assert.equal(buildApproveBody({ basePercent: "10", effectiveDate: "01.03.2026" }, { allowEffectiveDate: true }).errors.effectiveDate,
+    INPUT_TEXTS.dateInvalid);
+  assert.deepEqual(buildDeactivateBody({ reason: "other", effectiveDate: "2026-04-01" }).body, { reason: "other" });
+  assert.deepEqual(buildDeactivateBody({ reason: "other", effectiveDate: "2026-04-01" }, { allowEffectiveDate: true }).body,
+    { reason: "other", effectiveDate: "2026-04-01" });
+  assert.deepEqual(buildReactivateBody({ effectiveDate: "2026-05-01" }).body, {});
+  assert.deepEqual(buildReactivateBody({ effectiveDate: "2026-05-01" }, { allowEffectiveDate: true }).body, { effectiveDate: "2026-05-01" });
+  assert.deepEqual(buildReactivateBody({}, { allowEffectiveDate: true }).body, {});
+  assert.equal(buildReactivateBody({ effectiveDate: "x" }, { allowEffectiveDate: true }).ok, false);
+});
+
+test("23 — Testkennzeichnung und Freigaben des Servers nur bei exakt true", () => {
+  const [test, echt, string] = selectPartnerRows({ partners: [
+    { id: 41, name: "Pia", preliveTest: true }, { id: 6, name: "Sam" }, { id: 7, name: "Tim", preliveTest: "true" },
+  ] });
+  assert.equal(test.preliveTest, true);
+  assert.equal(echt.preliveTest, false);
+  assert.equal(string.preliveTest, false, "kein truthy-String");
+  const d = normalizeAdminPartnerDetail({ partner: { id: 41, preliveTest: true }, datesBeforeTodayAllowed: true });
+  assert.equal(d.partner.preliveTest, true);
+  assert.equal(d.datesBeforeTodayAllowed, true);
+  assert.equal(normalizeAdminPartnerDetail({ partner: { id: 41 }, datesBeforeTodayAllowed: 1 }).datesBeforeTodayAllowed, false);
+  assert.equal(normalizeLevelRulesResponse({ current: null, history: [], backdatingAllowed: true }).backdatingAllowed, true);
+  assert.equal(normalizeLevelRulesResponse({ backdatingAllowed: "yes" }).backdatingAllowed, false);
+  assert.equal(normalizeCapsResponse({ current: null, history: [], backdatingAllowed: true }).backdatingAllowed, true);
+});
+
+test("24 — Zuordnung: PRELIVE_TEST_MISMATCH mit festem Satz", () => {
+  assert.equal(attributionErrorText(409, { code: "PRELIVE_TEST_MISMATCH", error: "mismatch" }), ATTRIBUTION_TEXTS.testMismatch);
+  assert.match(ATTRIBUTION_TEXTS.testMismatch, /Es wurde nichts geändert\.$/);
+  assert.equal(attributionErrorText(409, { code: "PARTNER_NOT_ACTIVE", error: "Nur aktive Vertriebspartner können zugeordnet werden." }),
+    "Nur aktive Vertriebspartner können zugeordnet werden.");
+  assert.match(attributionErrorText(500, { code: "PRELIVE_TEST_MISMATCH" }), /nicht ausgeführt/, "Code nur bei 409");
 });

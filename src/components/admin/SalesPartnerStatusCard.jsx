@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { DateField } from "./DateField";
 import {
   approveAdminSalesPartner,
   deactivateAdminSalesPartner,
@@ -11,9 +12,11 @@ import {
   DEACTIVATION_REASON_OPTIONS,
   adminActionErrorText,
   adminPartnerStatusMeta,
+  approveFormFromDefaults,
   buildApproveBody,
   buildDeactivateBody,
   buildLoginBody,
+  buildReactivateBody,
   buildRejectBody,
   deactivationReasonLabel,
   formatTimestamp,
@@ -80,18 +83,25 @@ const AKTIONEN = Object.freeze({
 });
 
 const LEERE_FORMULARE = Object.freeze({
-  approve: { basePercent: "", level1Percent: "", level2Percent: "" },
   reject: { reason: "" },
-  deactivate: { reason: "", note: "" },
+  deactivate: { reason: "", note: "", effectiveDate: "" },
+  reactivate: { effectiveDate: "" },
 });
+// Aktionen, die bei einem Testpartner im Pre-Live-Testmodus ein
+// (zurückliegendes) Wirksamkeitsdatum tragen dürfen.
+const MIT_DATUM = Object.freeze(["approve", "deactivate", "reactivate"]);
 
 /* ── Status und Zugang eines Vertriebspartners ───────────────────────────────
-   Freigeben (Pflichtfeld Grundprovision), Ablehnen, Deaktivieren mit Grund,
-   Reaktivieren, Login sperren/entsperren — jede Aktion über den zentralen
-   Bestätigungsdialog, jeder Body über utils/adminSalesPartnerView.mjs. Welche
-   Aktion angeboten wird, folgt dem Status des Servers; ein unbekannter
-   Loginzustand bietet bewusst keine Login-Aktion an (fail-closed). */
-export function SalesPartnerStatusCard({ partner, statusHistory = [], onChanged }) {
+   Freigeben (Pflichtfeld Grundprovision, vorbelegt mit den Startsätzen des
+   Servers), Ablehnen, Deaktivieren mit Grund, Reaktivieren, Login
+   sperren/entsperren — jede Aktion über den zentralen Bestätigungsdialog,
+   jeder Body über utils/adminSalesPartnerView.mjs. Welche Aktion angeboten
+   wird, folgt dem Status des Servers; ein unbekannter Loginzustand bietet
+   bewusst keine Login-Aktion an (fail-closed). Ein Wirksamkeitsdatum (auch
+   zurückliegend) gibt es bei Freigabe, Deaktivierung und Reaktivierung NUR,
+   wenn der Server `datesBeforeTodayAllowed` meldet (Testpartner im
+   Pre-Live-Testmodus); sonst gilt sein Standard „heute". */
+export function SalesPartnerStatusCard({ partner, statusHistory = [], startDefaults = null, datesBeforeTodayAllowed = false, onChanged }) {
   const [dialog, setDialog] = useState(null);       // { kind, form, errors, error }
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);     // { type, text }
@@ -99,20 +109,27 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], onChanged 
 
   const status = partner.status;
   const login = loginEnabledState(partner.loginStatus);
+  // Vorbelegt wird nur mit den Startsätzen des Servers — ohne sie bleibt das
+  // Formular leer (Grundprovision Pflicht, Ebenen optional).
+  const vorbelegt = !!(startDefaults && (startDefaults.basePercent || startDefaults.level1Percent || startDefaults.level2Percent));
   const oeffnen = (kind) => {
     setMessage(null);
-    setDialog({ kind, form: { ...(LEERE_FORMULARE[kind] || {}) }, errors: {}, error: "" });
+    const form = kind === "approve" ? { ...approveFormFromDefaults(startDefaults), effectiveDate: "" } : { ...(LEERE_FORMULARE[kind] || {}) };
+    setDialog({ kind, form, errors: {}, error: "" });
   };
   const schliessen = () => { if (!busy) setDialog(null); };
   const setFeld = (k, v) => setDialog((d) => (d ? { ...d, form: { ...d.form, [k]: v }, errors: { ...d.errors, [k]: undefined } } : d));
 
+  const mitDatum = datesBeforeTodayAllowed === true;
   const bestaetigen = async () => {
     if (!dialog || inFlight.current) return;
     const { kind, form } = dialog;
+    const datum = { allowEffectiveDate: mitDatum };
     let gebaut = { ok: true, body: {} };
-    if (kind === "approve") gebaut = buildApproveBody(form);
+    if (kind === "approve") gebaut = buildApproveBody(form, datum);
     else if (kind === "reject") gebaut = buildRejectBody(form);
-    else if (kind === "deactivate") gebaut = buildDeactivateBody(form);
+    else if (kind === "deactivate") gebaut = buildDeactivateBody(form, datum);
+    else if (kind === "reactivate") gebaut = buildReactivateBody(form, datum);
     else if (kind === "loginOff" || kind === "loginOn") gebaut = buildLoginBody(kind === "loginOn");
     if (!gebaut.ok) { setDialog((d) => ({ ...d, errors: gebaut.errors })); return; }
 
@@ -123,7 +140,7 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], onChanged 
       const r = kind === "approve" ? await approveAdminSalesPartner(id, gebaut.body)
         : kind === "reject" ? await rejectAdminSalesPartner(id, gebaut.body)
           : kind === "deactivate" ? await deactivateAdminSalesPartner(id, gebaut.body)
-            : kind === "reactivate" ? await reactivateAdminSalesPartner(id)
+            : kind === "reactivate" ? await reactivateAdminSalesPartner(id, gebaut.body)
               : await setAdminSalesPartnerLogin(id, gebaut.body);
       if (!r.ok) {
         if (r.status === 401 || r.status === 403) return;     // zentraler Logout
@@ -148,6 +165,15 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], onChanged 
 
   const fehler = (k) => (dialog?.errors?.[k] ? <span className="field-error">{dialog.errors[k]}</span> : null);
   const def = dialog ? AKTIONEN[dialog.kind] : null;
+  // Wirksamkeitsdatum: nur mit Freigabe des Servers, ohne min (zurückliegend erlaubt).
+  const datumsFeld = dialog && mitDatum && MIT_DATUM.includes(dialog.kind) ? (
+    <div className="adm-sp-datefield">
+      <DateField id={`adm-sp-${dialog.kind}-date`} label="Wirksam ab (optional, darf zurückliegen)" value={dialog.form.effectiveDate || ""}
+        invalid={!!dialog.errors.effectiveDate} disabled={busy} onChange={(v) => setFeld("effectiveDate", v)} />
+      <span className="adm-edit-hint">Ohne Angabe gilt heute. Nur für Testpartner im Pre-Live-Testmodus.</span>
+      {fehler("effectiveDate")}
+    </div>
+  ) : null;
 
   return (
     <div className="adm-card" id="adm-sp-status-card">
@@ -245,7 +271,11 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], onChanged 
                   aria-invalid={dialog.errors.level2Percent ? "true" : undefined} disabled={busy} />
                 {fehler("level2Percent")}
               </div>
-              <p className="adm-edit-hint">Ohne Angabe gelten für die Teamebenen die Standardsätze des Servers.</p>
+              <p className="adm-edit-hint" id="adm-sp-approve-hint">
+                {vorbelegt
+                  ? "Vorbelegt mit den Startsätzen. Sie können die Werte vor der Freigabe ändern; ohne Angabe gelten für die Teamebenen die Standardsätze des Servers."
+                  : "Ohne Angabe gelten für die Teamebenen die Standardsätze des Servers."}
+              </p>
             </>
           )}
           {dialog.kind === "reject" && (
@@ -276,6 +306,7 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], onChanged 
               </div>
             </>
           )}
+          {datumsFeld}
         </ConfirmDialog>
       )}
     </div>

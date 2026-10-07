@@ -77,6 +77,10 @@ async function setup(page, {
     if (p.endsWith("/kundenbereich")) return json({ user: ADMIN });
     if (p.endsWith("/admin/sales-partners/5") && !post) return json(DETAIL);
     if (p.endsWith("/admin/sales-partners/5/commissions")) return json({ month: "2026-10", totals: { accruedCents: 0, payableCents: 0 }, entries: [] });
+    // Karte „Individuelle Obergrenze“ des Partnerdetails (eigener Abruf je Partner).
+    if (p.endsWith("/admin/sales-partner-caps") && !post && new URL(req.url()).searchParams.get("partnerUserId") === "5") {
+      return json({ current: null, history: [] });
+    }
     if (p.endsWith("/admin/sales-partners/5/billing-details") && !post) { state.billingGets += 1; return json(state.billing); }
     if (p.endsWith("/billing-details/confirm") && post) {
       state.confirm.push(req.postDataJSON());
@@ -364,5 +368,33 @@ test("9 — Dokument erneut erzeugen: nur solange nicht bereit oder nicht benach
     "GS-2026-0003: Ergebnis: Dokument bereit. Der Vertriebspartner wurde benachrichtigt.");
   await page.waitForFunction(() => !document.querySelector("#adm-sp-cn-regenerate-13"));
   assert.match(await page.locator('#adm-sp-cn-table tr[data-credit-note="13"]').innerText(), /Dokument bereit/);
+  await page.close();
+});
+
+test("10 — Pre-Live: Testgutschrift gekennzeichnet; Auszahlung „Test – …“; Modus aus → fester Satz", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const state = await setup(page, {
+    creditNotes: [gutschrift({ id: 21, number: "CE-TEST-PG26-0001", isTest: true }),
+      gutschrift({ id: 22, number: "CE-TEST-PG26-0002", isTest: true, payoutStatus: "paid", paidOn: "2026-10-04" })],
+    antworten: { payout: [[409, { error: "Pre-Live-Testmodus ist nicht aktiv.", code: "PRELIVE_TEST_MODE_DISABLED" }]] },
+  });
+  await zumDetail(page);
+  await page.locator("#adm-sp-cn-table").waitFor({ state: "visible" });
+  const offen = await page.locator('#adm-sp-cn-table tr[data-credit-note="21"]').innerText();
+  assert.match(offen, /TESTDOKUMENT – nicht steuerlich gültig/);
+  assert.match(offen, /Test – nicht ausgezahlt/);
+  assert.doesNotMatch(offen, /Noch nicht ausgezahlt/);
+  assert.match(await page.locator('#adm-sp-cn-table tr[data-credit-note="22"]').innerText(), /Test – ausgezahlt/);
+  assert.equal(await page.locator("#adm-sp-cn-cancel-21").innerText(), "Stornieren", "Stornoknopf unverändert");
+
+  await page.locator("#adm-sp-cn-payout-21").click();
+  await page.locator('[role="dialog"]').waitFor({ state: "visible" });
+  assert.match(await page.locator('[role="dialog"]').innerText(), /es fließt kein Geld/);
+  await page.fill("#adm-sp-cn-paid-on", "2026-10-06");
+  await page.locator("#adm-sp-cn-payout-confirm").click();
+  await page.locator('[role="dialog"] .alert-error').waitFor({ state: "visible" });
+  assert.deepEqual(state.payout, [{ paidOn: "2026-10-06" }]);
+  assert.equal(await page.locator('[role="dialog"] .alert-error').innerText(),
+    "Der Pre-Live-Testmodus ist nicht aktiv – Testgutschriften lassen sich derzeit nicht bearbeiten. Es wurde nichts geändert.");
   await page.close();
 });

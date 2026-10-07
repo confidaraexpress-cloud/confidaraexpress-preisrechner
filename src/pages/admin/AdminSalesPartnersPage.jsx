@@ -3,6 +3,9 @@ import { Link } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { listAdminSalesPartners } from "../../api/adminApi";
+import { usePreliveStatus } from "../../hooks/usePreliveStatus";
+import { PreliveTestBadge } from "../../components/admin/PreliveTestBadge";
+import { preliveEnabled } from "../../utils/salesPartnerPrelive.mjs";
 import { selectListHasMore, selectListTotal } from "../../utils/adminOverview.mjs";
 import { formatCount, formatIsoDate, formatPercent } from "../../utils/salesPartnerView.mjs";
 import {
@@ -29,7 +32,8 @@ function Badge({ meta }) {
   return <span className={`badge ${cls}`}>{label}</span>;
 }
 
-// Partner: Firma bzw. Name als Link ins Detail, darunter Name und E-Mail.
+// Partner: Firma bzw. Name als Link ins Detail, darunter Name und E-Mail; ein
+// Testpartner (Testkennzeichnung des Servers) trägt „TEST / PRE-LIVE".
 function PartnerCell({ row }) {
   const titel = partnerDisplayName(row);
   return (
@@ -37,6 +41,7 @@ function PartnerCell({ row }) {
       {row.id != null
         ? <Link className="adm-sp-name" to={detailPath(row.id)}>{titel}</Link>
         : <span className="adm-sp-name">{titel}</span>}
+      {row.preliveTest && <PreliveTestBadge />}
       {row.companyName && row.name && <span className="adm-sp-sub">{row.name}</span>}
       {row.email && <span className="adm-sp-sub adm-sp-mail">{row.email}</span>}
     </div>
@@ -49,6 +54,7 @@ const team = (row) => `${formatCount(row.teamLevel1Count)} / ${formatCount(row.t
    Statusfilter und Suche laufen serverseitig (GET /admin/sales-partners mit
    eigener Parameter-Allowlist). Kein Rohstatus im sichtbaren Text. */
 export default function AdminSalesPartnersPage() {
+  const prelive = usePreliveStatus();
   const [draft, setDraft] = useState({ status: "", q: "" });
   const [applied, setApplied] = useState({ status: "", q: "" });
   const [page, setPage] = useState(1);
@@ -103,6 +109,10 @@ export default function AdminSalesPartnersPage() {
             <Link className="btn btn-outline btn-sm" to="/admin/partners/settings" id="adm-sp-settings-link">Einstellungen</Link>
             <Link className="btn btn-outline btn-sm" to="/admin/partners/dispatch-evidence" id="adm-sp-evidence-link">Versandnachweise</Link>
             <Link className="btn btn-outline btn-sm" to="/admin/partners/credit-notes" id="adm-sp-credit-notes-link">Abrechnungslauf</Link>
+            {/* Nur wenn der Server den Pre-Live-Testmodus meldet (enabled: true). */}
+            {preliveEnabled(prelive.status) && (
+              <Link className="btn btn-outline btn-sm" to="/admin/partners/prelive" id="adm-sp-prelive-link">Pre-Live-Test</Link>
+            )}
             <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>Aktualisieren</button>
           </>
         )}
@@ -191,7 +201,7 @@ export default function AdminSalesPartnersPage() {
               </thead>
               <tbody>
                 {rows.map((row, i) => (
-                  <tr key={row.id ?? `row-${i}`} data-partner-id={row.id ?? undefined}>
+                  <tr key={row.id ?? `row-${i}`} data-partner-id={row.id ?? undefined} data-prelive={row.preliveTest ? "true" : undefined}>
                     <td><PartnerCell row={row} /></td>
                     <td><Badge meta={adminPartnerStatusMeta(row.status)} /></td>
                     <td><Badge meta={loginStatusMeta(row.loginStatus)} /></td>

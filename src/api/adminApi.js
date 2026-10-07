@@ -692,7 +692,9 @@ export function getAdminSalesPartner(id) {
 export const approveAdminSalesPartner = (id, body) => jsonPost(`${partnerPath(id)}/approve`, body);
 export const rejectAdminSalesPartner = (id, body) => jsonPost(`${partnerPath(id)}/reject`, body);
 export const deactivateAdminSalesPartner = (id, body) => jsonPost(`${partnerPath(id)}/deactivate`, body);
-export const reactivateAdminSalesPartner = (id) => jsonPost(`${partnerPath(id)}/reactivate`, {});
+// Body über buildReactivateBody: leer, nur bei Testpartnern im Pre-Live-Testmodus
+// optional mit effectiveDate.
+export const reactivateAdminSalesPartner = (id, body = {}) => jsonPost(`${partnerPath(id)}/reactivate`, body);
 export const setAdminSalesPartnerLogin = (id, body) => jsonPost(`${partnerPath(id)}/login`, body, "PUT");
 export const createAdminSalesPartnerRates = (id, body) => jsonPost(`${partnerPath(id)}/rates`, body);
 export const createAdminSalesPartnerLevelRules = (id, body) => jsonPost(`${partnerPath(id)}/level-rules`, body);
@@ -703,10 +705,18 @@ export function listAdminSalesPartnerCommissions(id, month) {
   return apiFetch(`${partnerPath(id)}/commissions${buildQuery(query, SALES_PARTNER_COMMISSION_PARAMS)}`, { auth: true });
 }
 
-// Globale Level-Regeln und Obergrenzen (je aktuelle Version + Historie).
+// Globale Level-Regeln (samt Startwerten des Servers) und Obergrenzen (je
+// aktuelle Version + Historie). Mit `partnerUserId` liefert der Server die
+// individuellen Obergrenzen genau dieses Partners; der Body einer neuen
+// Version entsteht über buildCapBody (mit partnerUserId: individuell).
+const CAP_PARAMS = ["partnerUserId"];
 export const getAdminSalesPartnerLevelRules = () => apiFetch("/admin/sales-partner-level-rules", { auth: true });
 export const createAdminSalesPartnerGlobalLevelRules = (body) => jsonPost("/admin/sales-partner-level-rules", body);
-export const getAdminSalesPartnerCaps = () => apiFetch("/admin/sales-partner-caps", { auth: true });
+export function getAdminSalesPartnerCaps(partnerUserId) {
+  const query = partnerUserId !== undefined && partnerUserId !== null && /^[1-9][0-9]{0,15}$/.test(String(partnerUserId))
+    ? { partnerUserId } : {};
+  return apiFetch(`/admin/sales-partner-caps${buildQuery(query, CAP_PARAMS)}`, { auth: true });
+}
 export const createAdminSalesPartnerCap = (body) => jsonPost("/admin/sales-partner-caps", body);
 
 // Provisionen: Rücknahme einer Entscheidung und manuelle Korrekturbuchung.
@@ -767,9 +777,11 @@ export function generateAdminCreditNoteDocument(id) {
 
 // Abrechnungslauf: Vorschau eines abgeschlossenen Monats (nur ein gültiger
 // Monat geht hinaus) und das Ausstellen je Partner mit dessen Fingerabdruck.
-const CREDIT_NOTE_PREVIEW_PARAMS = ["month"];
-export function previewAdminCreditNotes(month) {
+// Pre-Live-Testlauf: `scope: "test"` hängt scope=test an — kein anderer Wert.
+const CREDIT_NOTE_PREVIEW_PARAMS = ["month", "scope"];
+export function previewAdminCreditNotes(month, { scope } = {}) {
   const query = typeof month === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(month) ? { month } : {};
+  if (scope === "test") query.scope = "test";
   return apiFetch(`/admin/sales-partner-credit-notes/preview${buildQuery(query, CREDIT_NOTE_PREVIEW_PARAMS)}`, { auth: true });
 }
 export function issueAdminCreditNote(body) {
@@ -777,3 +789,39 @@ export function issueAdminCreditNote(body) {
     method: "POST", auth: true, body: JSON.stringify(body), timeoutMs: DOCUMENT_ACTION_TIMEOUT_MS,
   });
 }
+
+// ── Vertriebspartner: Pre-Live-Testmodus ─────────────────────────────────────
+// Server-Schalter SALES_PARTNER_PRELIVE_TEST_MODE (Standard aus). Bis auf den
+// Stand antwortet jeder Endpunkt bei abgeschaltetem Modus mit 404
+// PRELIVE_TEST_MODE_DISABLED. Jeder Body entsteht über
+// utils/salesPartnerPrelive.mjs; hier wird nur transportiert. Läufe, die viele
+// Testdaten anlegen oder löschen, bekommen eine längere Frist — ein Abbruch im
+// Browser ließe den Ausgang offen.
+const PRELIVE_PATH = "/admin/sales-partner-prelive";
+const PRELIVE_LONG_TIMEOUT_MS = 60000;
+const PRELIVE_SHIPMENT_PARAMS = ["customerUserId", "partnerUserId", "limit", "offset"];
+const PRELIVE_MAIL_PREVIEW_PARAMS = ["kind", "partnerUserId", "creditNoteId"];
+const preliveLongPost = (path, body) => apiFetch(path, {
+  method: "POST", auth: true, body: JSON.stringify(body), timeoutMs: PRELIVE_LONG_TIMEOUT_MS,
+});
+
+export const getAdminPreliveStatus = ({ signal } = {}) => apiFetch(`${PRELIVE_PATH}/status`, { auth: true, signal });
+export const listAdminPreliveAccounts = ({ signal } = {}) => apiFetch(`${PRELIVE_PATH}/accounts`, { auth: true, signal });
+export const createAdminPrelivePartner = (body) => jsonPost(`${PRELIVE_PATH}/partners`, body);
+export const createAdminPreliveCustomer = (body) => jsonPost(`${PRELIVE_PATH}/customers`, body);
+// Der Link lebt nur im Zustand der Seite — nie localStorage, nie ein Log.
+export const createAdminPrelivePasswordLink = (accountId) =>
+  jsonPost(`${PRELIVE_PATH}/accounts/${encodeURIComponent(accountId)}/password-link`, {});
+// Query über shipmentListQuery (utils/salesPartnerPrelive.mjs).
+export const listAdminPreliveShipments = (query = {}) =>
+  apiFetch(`${PRELIVE_PATH}/shipments${buildQuery(query, PRELIVE_SHIPMENT_PARAMS)}`, { auth: true });
+export const createAdminPreliveShipment = (body) => jsonPost(`${PRELIVE_PATH}/shipments`, body);
+export const markAdminPreliveShipmentPaid = (shipmentId, body) =>
+  jsonPost(`${PRELIVE_PATH}/shipments/${encodeURIComponent(shipmentId)}/paid`, body);
+export const runAdminPreliveScenario = (body) => preliveLongPost(`${PRELIVE_PATH}/scenarios`, body);
+export const runAdminPreliveCommissionRun = () => preliveLongPost(`${PRELIVE_PATH}/commission-run`, {});
+// Query über buildMailPreviewQuery; das HTML zeigt die Seite nur im Sandbox-iframe.
+export const getAdminPreliveMailPreview = (query = {}) =>
+  apiFetch(`${PRELIVE_PATH}/mail-preview${buildQuery(query, PRELIVE_MAIL_PREVIEW_PARAMS)}`, { auth: true });
+export const getAdminPreliveCleanup = () => apiFetch(`${PRELIVE_PATH}/cleanup`, { auth: true });
+export const runAdminPreliveCleanup = (body) => preliveLongPost(`${PRELIVE_PATH}/cleanup`, body);

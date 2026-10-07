@@ -13,8 +13,11 @@ import React from "react";
 
    Aufklappende Inhalte gehören NICHT in dieses Label — sonst schaltete ein
    Klick ins Detailfeld den Schalter wieder um. Sie stehen als Geschwister
-   direkt danach. */
-export function Switch({ checked, onChange, label, hint, id }) {
+   direkt danach.
+
+   `disabled` ist additiv (z. B. solange ein Abrechnungslauf läuft): die
+   native Sperre der Eingabe — ohne sie ist der Schalter unverändert. */
+export function Switch({ checked, onChange, label, hint, id, disabled = false }) {
   return (
     <label className="ce-switch">
       <input
@@ -23,6 +26,7 @@ export function Switch({ checked, onChange, label, hint, id }) {
         role="switch"
         className="ce-switch-input"
         checked={checked}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
       />
       <span className="ce-switch-track" aria-hidden="true">

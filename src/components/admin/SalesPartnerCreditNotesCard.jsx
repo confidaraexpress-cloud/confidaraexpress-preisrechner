@@ -12,6 +12,7 @@ import { downloadDocument } from "../../utils/downloadDocument";
 import { formatCents } from "../../utils/salesPartnerView.mjs";
 import {
   CREDIT_NOTE_DOWNLOAD_TEXT,
+  CREDIT_NOTE_TEXTS,
   correctionHints,
   creditNoteDownloadMessage,
   creditNoteFallbackFilename,
@@ -54,6 +55,11 @@ function NumberCell({ cn }) {
     <div className="adm-sp-partner">
       <span className="adm-sp-name adm-sp-cn-number">{cn.number || "—"}</span>
       <span className="adm-sp-sub">{creditNoteTitle(cn)}</span>
+      {cn.isTest && (
+        <span className="badge badge--warning adm-sp-test-badge" id={cn.id != null ? `adm-sp-cn-test-${cn.id}` : undefined}>
+          {CREDIT_NOTE_TEXTS.testDocument}
+        </span>
+      )}
       {cn.kind === "cancellation" && <Badge meta={creditNoteKindMeta(cn.kind)} />}
       {correctionHints(cn).map((h) => <span key={h} className="adm-sp-sub">{h}</span>)}
       {cn.cancellationReason && <span className="adm-sp-sub">Grund: {cn.cancellationReason}</span>}
@@ -77,7 +83,11 @@ const LEER_STORNO = { reason: "", acknowledgePaid: false };
        abgerechnet werden,
      • „Dokument erneut erzeugen" — solange das Dokument nicht bereit oder der
        Partner nicht benachrichtigt ist.
-   Nach jeder Aktion wird der Stand des Servers neu geladen. */
+   Nach jeder Aktion wird der Stand des Servers neu geladen. Eine
+   Testgutschrift (Pre-Live-Testmodus, `isTest`) heißt „TESTDOKUMENT – nicht
+   steuerlich gültig“; ihre Auszahlung „Test – ausgezahlt“ bzw. „Test – nicht
+   ausgezahlt“. Ist der Modus aus, lehnt der Server Aktionen an ihr mit 409
+   PRELIVE_TEST_MODE_DISABLED ab (fester Satz). */
 export function SalesPartnerCreditNotesCard({ partnerId }) {
   const [state, setState] = useState({ loading: true, error: "", data: null });
   const [dialog, setDialog] = useState(null);        // { kind, cn, form, errors, error, needsAck }
@@ -319,7 +329,9 @@ export function SalesPartnerCreditNotesCard({ partnerId }) {
           text={dialog.kind === "payout"
             ? "Halten Sie fest, an welchem Tag der Betrag überwiesen wurde."
             : "Zu dieser Gutschrift wird ein Stornobeleg angelegt."}
-          note={dialog.kind === "cancel" ? SETTLEMENT_TEXTS.cancelHint : undefined}
+          note={dialog.kind === "cancel"
+            ? SETTLEMENT_TEXTS.cancelHint
+            : (dialog.cn.isTest ? `${CREDIT_NOTE_TEXTS.testDocument}: vermerkt wird nur „${CREDIT_NOTE_TEXTS.testPaid}“, es fließt kein Geld.` : undefined)}
           confirmLabel={dialog.kind === "payout" ? "Als ausgezahlt markieren" : "Storno anlegen"}
           irreversible={dialog.kind === "payout"}
           danger={dialog.kind === "cancel"}

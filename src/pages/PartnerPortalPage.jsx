@@ -31,7 +31,9 @@ const FEHLER_TEAM = "Ihr Team konnte nicht geladen werden.";
 
    Übersicht und Team werden beim Start geladen: die Übersicht ist der erste
    Bereich, und ob „Mein Team" überhaupt erscheint, entscheiden die Einträge
-   der Teamantwort. Kunden, Provisionen und Abrechnungen laden erst beim Öffnen. */
+   der Teamantwort. Kunden, Provisionen und Abrechnungen laden erst beim Öffnen.
+   Meldet die Übersicht ein Pre-Live-Testkonto (`preliveTest: true`), steht
+   über allen Bereichen dauerhaft der Testhinweis. */
 export default function PartnerPortalPage() {
   const { user } = useAuth();
   const [tab, setTab] = useState("overview");
@@ -52,6 +54,11 @@ export default function PartnerPortalPage() {
         subtitle="Ihre Kunden, Provisionen, Abrechnungen und Ihr Team im Überblick."
         meta={status ? <span className={`badge ${statusCls}`} id="spp-status">{statusLabel}</span> : null}
       />
+
+      {/* Pre-Live-Testkonto: dauerhaft über allen Bereichen (nur bei exakt true). */}
+      {overview.data?.preliveTest === true && (
+        <div className="spp-prelive spp-notice" role="note" id="spp-prelive-banner">{PARTNER_TEXTS.preliveBanner}</div>
+      )}
 
       {status === "inactive" && (
         <div className="alert alert-info spp-notice" role="status">{PARTNER_TEXTS.inactive}</div>

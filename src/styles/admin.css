@@ -1314,6 +1314,8 @@ a.adm-sp-name:hover { text-decoration: underline; }
 a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
 .adm-sp-sub { font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); overflow-wrap: break-word; }
 .adm-sp-mail { word-break: break-word; }
+/* Testkennzeichnung (Pre-Live): in der Spaltenzelle nur so breit wie ihr Text. */
+.adm-sp-test-badge { align-self: flex-start; }
 .adm-sp-block { display: block; margin-top: 2px; }
 
 /* Detail: Aktionen, Unterüberschriften, Verläufe. */
@@ -1384,3 +1386,48 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
 }
 .adm-cn-result--success { color: var(--ce-color-status-success-fg); }
 .adm-cn-result--error { color: var(--ce-color-status-error-fg); }
+/* Pre-Live-Testlauf: Schalter in der Filterleiste, Hinweis deutlich darunter. */
+.adm-cn-scope-switch { display: flex; align-items: center; align-self: center; }
+.adm-cn-test-note { margin-bottom: var(--ce-space-4); font-weight: 600; }
+
+/* ── Pre-Live-Testmodus (adm-pl-) ────────────────────────────────────────────
+   /admin/partners/prelive: Testkonten, Testsendungen, Schnellszenarien,
+   Provisionslauf, E-Mail-Vorschau und Bereinigung. Reine Anordnung auf den
+   gemeinsamen Mustern (Karten, Hinweise, Tabellen, Formulare); die
+   E-Mail-Vorschau steht in einem iframe mit leerem sandbox auf einer
+   neutralen Fläche. */
+.adm-pl-toolbar { justify-content: flex-start; margin-top: var(--ce-space-4); }
+.adm-pl-linkbox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ce-space-2);
+  margin-bottom: var(--ce-space-4);
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border: 1px solid var(--ce-color-status-info-border);
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-status-info-surface);
+  min-width: 0;
+}
+.adm-pl-linkbox:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+.adm-pl-linkbox .adm-support-hint { margin-top: 0; }
+.adm-pl-linkbox-title { margin: 0; font-size: var(--ce-text-body-s-size); font-weight: 600; line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-primary); }
+.adm-pl-presets { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2) var(--ce-space-4); }
+.adm-pl-result { display: flex; flex-direction: column; gap: var(--ce-space-1); min-width: 0; }
+.adm-pl-links { display: flex; flex-wrap: wrap; gap: var(--ce-space-1) var(--ce-space-4); margin: 0; padding: 0; list-style: none; }
+.adm-pl-basis {
+  font-size: var(--ce-text-body-size);
+  font-weight: 600;
+  line-height: var(--ce-text-body-line);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  color: var(--ce-color-text-primary);
+}
+.adm-pl-mail { display: flex; flex-direction: column; gap: var(--ce-space-3); margin-top: var(--ce-space-4); min-width: 0; }
+.adm-pl-frame {
+  display: block;
+  width: 100%;
+  min-height: 480px;
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-surface);
+}

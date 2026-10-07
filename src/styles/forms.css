@@ -247,6 +247,13 @@ input[type="radio"]:focus-visible {
   outline: var(--ce-focus-ring);
   outline-offset: var(--ce-focus-ring-offset);
 }
+/* Gesperrt (additiv): gedämpfte Spur, kein Bedienzeiger — der Text bleibt lesbar. */
+.ce-switch-input:disabled ~ .ce-switch-track {
+  background: var(--ce-color-surface-muted);
+  border-color: var(--ce-color-border-default);
+}
+.ce-switch-input:disabled ~ .ce-switch-track .ce-switch-knob { background: var(--ce-color-text-disabled); }
+.ce-switch:has(.ce-switch-input:disabled) { cursor: not-allowed; }
 .ce-switch-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ce-switch-label {
   font-size: var(--ce-text-body-size);

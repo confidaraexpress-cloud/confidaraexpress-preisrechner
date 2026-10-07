@@ -279,3 +279,16 @@ test("12 — „Konto“ nutzt nur die für Partner freigegebenen Kontobausteine
   const konto = ohneKommentare(read("components/partner/PartnerAccountPanel.jsx"));
   assert.doesNotMatch(konto, /kunde\/profil|Bearbeiten|<input/);
 });
+
+test("Pre-Live — Übersicht: Testkonto nur bei exakt true; Hinweistext", () => {
+  assert.equal(normalizeOverview({ preliveTest: true }).preliveTest, true);
+  assert.equal(normalizeOverview({ preliveTest: "true" }).preliveTest, false, "kein truthy-String");
+  assert.equal(normalizeOverview({}).preliveTest, false);
+  assert.equal(normalizeOverview(null).preliveTest, false);
+  assert.equal(PARTNER_TEXTS.preliveBanner, "Pre-Live-Testkonto – keine echten Provisionen, Gutschriften oder Auszahlungen.");
+  // Der Hinweis steht dauerhaft über den Bereichen der Portalseite, nicht in einem Bereich.
+  const seite = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "pages", "PartnerPortalPage.jsx"), "utf8");
+  const hinweis = seite.indexOf('id="spp-prelive-banner"');
+  assert.ok(hinweis > 0 && hinweis < seite.indexOf('role="tablist"'), "Hinweis vor den Bereichen");
+  assert.match(seite, /overview\.data\?\.preliveTest === true/);
+});

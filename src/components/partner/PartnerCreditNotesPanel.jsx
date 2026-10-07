@@ -29,6 +29,7 @@ function NumberCell({ cn }) {
     <div className="spp-cell-main">
       <span className="spp-cn-number">{cn.number || "—"}</span>
       <span className="spp-cell-sub">{creditNoteTitle(cn)}</span>
+      {cn.isTest && <span className="badge badge--warning">{CREDIT_NOTE_TEXTS.testDocument}</span>}
       {cn.kind === "cancellation" && <span className={`badge ${cls}`}>{art}</span>}
       {correctionHints(cn).map((h) => <span key={h} className="spp-cell-sub spp-cn-hint">{h}</span>)}
     </div>
@@ -52,7 +53,9 @@ function TaxCell({ cn }) {
    Adresse); solange das Dokument entsteht, steht „Wird erstellt". Über der
    Liste der Hinweis zum offenen, abrechnungsreifen Saldo des Servers. Alle
    Werte kommen aus der Antwort; die Oberfläche rechnet nichts und sieht nur
-   die eigenen Gutschriften (der Server bindet die Abfrage an das Konto). */
+   die eigenen Gutschriften (der Server bindet die Abfrage an das Konto).
+   Testgutschriften (Pre-Live-Testkonto, `isTest`) tragen „TESTDOKUMENT –
+   nicht steuerlich gültig“ und „Test – ausgezahlt“/„Test – nicht ausgezahlt“. */
 export function PartnerCreditNotesPanel() {
   const { loading, error, data, reload } = usePartnerData(
     (opts) => getPartnerCreditNotes(opts), normalisieren, [], CREDIT_NOTE_TEXTS.loadError,

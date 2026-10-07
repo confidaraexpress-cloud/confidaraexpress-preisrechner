@@ -18,6 +18,8 @@
 //   5. Bearbeiten mit hinterlegter IBAN: Feld leer, ohne Eingabe kein `iban`.
 //   6. Abgelehnt: Begründung sichtbar.
 //   7. Vertrag: Fassung, Zeitpunkt, Dokumentlink; ohne Dokument der Hinweis.
+//   8. Pre-Live: Testgutschriften als TESTDOKUMENT mit Testauszahlung.
+//   9. Pre-Live: Vertrag eines Testkontos — keine rechtsverbindliche Vereinbarung.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -392,4 +394,43 @@ test("7 — Vertrag: akzeptierte Fassung, Zeitpunkt und Dokument; ohne Dokument 
     "Für diese Fassung ist kein registriertes Dokument hinterlegt.");
   assert.equal(await ohne.locator("#spp-agreement-document").count(), 0);
   await ohne.close();
+});
+
+test("8 — Pre-Live: Testgutschriften im Portal als TESTDOKUMENT mit Testauszahlung", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const state = await setup(page, { creditNotes: { creditNotes: [
+    { id: 31, number: "CE-TEST-PG26-0002", kind: "regular", title: "Gutschrift", periodMonth: "2026-09",
+      issuedAt: "2026-10-06T08:00:00.000Z", issuedOn: "2026-10-06", netCents: 1000, taxCents: 0, grossCents: 1000,
+      currency: "EUR", documentReady: true, payoutStatus: "open", paidOn: null, cancelled: false, isTest: true },
+    { id: 30, number: "CE-TEST-PG26-0001", kind: "regular", title: "Gutschrift", periodMonth: "2026-08",
+      issuedAt: "2026-09-02T08:00:00.000Z", issuedOn: "2026-09-02", netCents: 500, taxCents: 0, grossCents: 500,
+      currency: "EUR", documentReady: true, payoutStatus: "paid", paidOn: "2026-09-10", cancelled: false, isTest: true },
+  ], openSettlement: null } });
+  await zumBereich(page, "credit-notes");
+  await page.locator("#spp-cn-table").waitFor({ state: "visible" });
+  const neu = await page.locator('#spp-cn-table tr[data-credit-note="31"]').innerText();
+  assert.match(neu, /TESTDOKUMENT – nicht steuerlich gültig/);
+  assert.match(neu, /Test – nicht ausgezahlt/);
+  const alt = await page.locator('#spp-cn-table tr[data-credit-note="30"]').innerText();
+  assert.match(alt, /Test – ausgezahlt/);
+  assert.doesNotMatch(alt, /Ausgezahlt am/);
+  // Auch die Kartenansicht (schmale Breite) trägt die Kennzeichnung.
+  await page.setViewportSize({ width: 390, height: 900 });
+  assert.match(await page.locator(".ce-list-cards").innerText(), /TESTDOKUMENT – nicht steuerlich gültig[\s\S]*Test – nicht ausgezahlt/);
+  assert.deepEqual(state.kunde, []);
+  await page.close();
+});
+
+test("9 — Pre-Live: Vertrag eines Testkontos ohne rechtsverbindliche Vereinbarung", async () => {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+  const state = await setup(page, { agreement: { acceptedVersion: null, acceptedAt: null, document: null, preliveTest: true } });
+  await zumBereich(page, "account");
+  await page.locator("#spp-agreement-prelive").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#spp-agreement-prelive").innerText(),
+    "Pre-Live-Testkonto – keine rechtsverbindliche Partnervereinbarung hinterlegt.");
+  assert.equal(await page.locator("#spp-agreement-no-document").count(), 0, "statt des Hinweises „kein Dokument“");
+  assert.equal(await page.locator("#spp-agreement-document").count(), 0);
+  assert.equal(await page.locator("#spp-agreement-version .profile-row-val").innerText(), "Nicht hinterlegt");
+  assert.deepEqual(state.kunde, []);
+  await page.close();
 });

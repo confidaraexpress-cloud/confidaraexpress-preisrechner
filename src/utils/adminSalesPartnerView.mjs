@@ -9,17 +9,23 @@
 // unvollständige Requests.
 //
 // Ausdrücklich keine Erfindungen:
-//   • Level-Schwellen werden NIE vorbelegt (keine Betreiberentscheidung) —
-//     leer und Pflicht. Vorbelegt sind nur die vorgegebenen Boni
-//     2,50/5,00/7,50/10,00/12,50 % und die Mindestpakete 3.
+//   • Vorbelegt wird ausschließlich mit Werten des SERVERS: den Startwerten
+//     (`startDefaults` — Sätze, Mindestpakete, Schwellen und Boni) bzw. der
+//     aktuellen Regelversion. Die Oberfläche kennt keine eigenen
+//     Standardwerte; fehlen die Serverwerte oder sind sie unvollständig,
+//     bleiben die Felder leer und Pflicht.
 //   • Ohne Ebenen-Sätze in der Freigabe gelten die Server-Defaults.
 //   • „Heute" kommt aus der Browseruhr des Admins nur als Vorabprüfung
 //     (min-Attribut, „nicht vor heute"); entscheidend ist der Server.
+//   • Zurückliegende Daten nur, wenn der Server es ausdrücklich erlaubt
+//     (Pre-Live-Testmodus: `datesBeforeTodayAllowed` eines Testpartners bzw.
+//     `backdatingAllowed` der globalen Regeln und Obergrenzen). Die Builder
+//     lesen dafür `allowPast === true` — nie eine truthy-Angabe.
 //
 // Framework-frei (.mjs), damit `node --test` es ohne DOM prüfen kann.
 
 import { customerText } from "./apiError.mjs";
-import { partnerStatusMeta, statusMetaFrom } from "./salesPartnerView.mjs";
+import { formatPercent, partnerStatusMeta, statusMetaFrom } from "./salesPartnerView.mjs";
 import { agreementDocumentPath } from "./salesPartnerAgreement.mjs";
 
 const obj = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
@@ -220,6 +226,18 @@ function pruefeDatum(value, today, { notBefore = false, notAfter = false } = {})
   return null;
 }
 
+/** Ein optionales Datum (leer = Serverstandard „heute"); zurückliegend erlaubt. */
+function optionalesDatum(value) {
+  const v = trimmed(value);
+  if (v === "") return { error: null, value: null };
+  return isIsoDate(v) ? { error: null, value: v } : { error: INPUT_TEXTS.dateInvalid, value: null };
+}
+
+/** Darf ein Wirksamkeitsdatum mitgesendet werden? Nur bei ausdrücklichem true. */
+const mitDatum = (opts) => !!opts && opts.allowEffectiveDate === true;
+/** Prüfung „nicht vor heute" — außer der Server erlaubt zurückliegende Daten. */
+const nichtVorHeute = (opts) => !(opts && opts.allowPast === true);
+
 function pruefeText(value, { required, max, requiredText, tooLongText }) {
   const v = trimmed(value);
   if (required && v === "") return { error: requiredText, value: null };
@@ -234,8 +252,10 @@ const ergebnis = (errors, body) => (Object.keys(errors).length ? { ok: false, er
 
 // ── Bodies der Partneraktionen ──────────────────────────────────────────────
 
-/** POST …/approve — Grundprovision Pflicht; Ebenen nur, wenn angegeben. */
-export function buildApproveBody(form = {}) {
+/** POST …/approve — Grundprovision Pflicht; Ebenen nur, wenn angegeben.
+ *  `effectiveDate` nur mit `allowEffectiveDate: true` (Testpartner im
+ *  Pre-Live-Testmodus) und nur mit Wert — sonst gilt der Serverstandard „heute". */
+export function buildApproveBody(form = {}, opts = {}) {
   const errors = {};
   const base = parsePercentInput(form.basePercent);
   const l1 = parsePercentInput(form.level1Percent, { allowEmpty: true });
@@ -246,6 +266,11 @@ export function buildApproveBody(form = {}) {
   const body = { basePercent: base.value };
   if (l1.ok && l1.value !== null) body.level1Percent = l1.value;
   if (l2.ok && l2.value !== null) body.level2Percent = l2.value;
+  if (mitDatum(opts)) {
+    const d = optionalesDatum(form.effectiveDate);
+    if (d.error) errors.effectiveDate = d.error;
+    else if (d.value) body.effectiveDate = d.value;
+  }
   return ergebnis(errors, body);
 }
 
@@ -255,8 +280,9 @@ export function buildRejectBody(form = {}) {
   return ergebnis(r.error ? { reason: r.error } : {}, r.value ? { reason: r.value } : {});
 }
 
-/** POST …/deactivate — Grund aus der festen Liste, Notiz optional. */
-export function buildDeactivateBody(form = {}) {
+/** POST …/deactivate — Grund aus der festen Liste, Notiz optional;
+ *  `effectiveDate` wie bei der Freigabe nur mit `allowEffectiveDate: true`. */
+export function buildDeactivateBody(form = {}, opts = {}) {
   const errors = {};
   const reason = DEACTIVATION_REASON_OPTIONS.some((o) => o.value === form.reason) ? form.reason : null;
   if (!reason) errors.reason = INPUT_TEXTS.reasonRequired;
@@ -264,7 +290,19 @@ export function buildDeactivateBody(form = {}) {
   if (note.error) errors.note = note.error;
   const body = { reason };
   if (note.value) body.note = note.value;
+  if (mitDatum(opts)) {
+    const d = optionalesDatum(form.effectiveDate);
+    if (d.error) errors.effectiveDate = d.error;
+    else if (d.value) body.effectiveDate = d.value;
+  }
   return ergebnis(errors, body);
+}
+
+/** POST …/reactivate — ohne Angaben; `effectiveDate` nur mit `allowEffectiveDate: true`. */
+export function buildReactivateBody(form = {}, opts = {}) {
+  if (!mitDatum(opts)) return ergebnis({}, {});
+  const d = optionalesDatum(form.effectiveDate);
+  return ergebnis(d.error ? { effectiveDate: d.error } : {}, d.value ? { effectiveDate: d.value } : {});
 }
 
 /** PUT …/login — ausschließlich { enabled: boolean }. */
@@ -272,10 +310,12 @@ export function buildLoginBody(enabled) {
   return typeof enabled === "boolean" ? { ok: true, body: { enabled }, errors: {} } : { ok: false, errors: { enabled: "invalid" } };
 }
 
-/** POST …/rates — neue Satzversion, gültig ab heute oder später. */
-export function buildRatesBody(form = {}, { today } = {}) {
+/** POST …/rates — neue Satzversion, gültig ab heute oder später (mit
+ *  `allowPast: true` auch zurückliegend). */
+export function buildRatesBody(form = {}, opts = {}) {
+  const { today } = opts || {};
   const errors = {};
-  const dateError = pruefeDatum(form.validFrom, today, { notBefore: true });
+  const dateError = pruefeDatum(form.validFrom, today, { notBefore: nichtVorHeute(opts) });
   if (dateError) errors.validFrom = dateError;
   const werte = {};
   for (const k of ["basePercent", "level1Percent", "level2Percent"]) {
@@ -291,21 +331,122 @@ export function buildRatesBody(form = {}, { today } = {}) {
 
 // ── Level-Regeln ────────────────────────────────────────────────────────────
 export const LEVEL_COUNT = 5;
-export const DEFAULT_LEVEL_BONUSES = Object.freeze(["2.50", "5.00", "7.50", "10.00", "12.50"]);
-export const DEFAULT_MIN_PACKAGES = 3;
 
-/** Leeres Formular: Schwellen NICHT vorbelegt, Boni und Mindestpakete schon. */
+// ── Startwerte des Servers (startDefaults) ──────────────────────────────────
+// GET /admin/sales-partner-level-rules und GET /admin/sales-partners/:id
+// liefern die Startwerte des Programms: Grundprovision, Team Ebene 1 und 2,
+// Mindestpakete und je fünf Kunden- und Paketlevel. Sie sind die EINZIGE
+// Quelle jeder Vorbelegung; ein ungültiger Teil wird verworfen (null) und
+// nie aus eigenen Annahmen ergänzt.
+
+/** Prozentwert des Servers („10.00", auch „2.5") → „10.00"; sonst null. */
+const satzOderNull = (v) => {
+  if (typeof v !== "string" && typeof v !== "number") return null;
+  const p = parsePercentInput(String(v));
+  return p.ok ? p.value : null;
+};
+
+/** Fünf Level mit Level 1 … 5, streng steigenden Schwellen ab 1 und gültigem
+ *  Bonus — sonst null (der ganze Satz, kein Teilergebnis). */
+function vollstaendigeStufen(raw) {
+  const liste = arr(raw);
+  if (liste.length !== LEVEL_COUNT) return null;
+  const out = [];
+  let vorher = 0;
+  for (let i = 0; i < LEVEL_COUNT; i += 1) {
+    const x = obj(liste[i]);
+    const threshold = Number.isInteger(x.threshold) && x.threshold >= 1 ? x.threshold : null;
+    const bonusPercent = satzOderNull(x.bonusPercent);
+    if (x.level !== i + 1 || threshold === null || threshold <= vorher || bonusPercent === null) return null;
+    vorher = threshold;
+    out.push({ level: i + 1, threshold, bonusPercent });
+  }
+  return out;
+}
+
+/** Vollständiger Regelteil { minPackagesForActiveCustomer, customerLevels,
+ *  packageLevels } — oder null. */
+function vollstaendigeRegeln(raw) {
+  const r = obj(raw);
+  const min = Number.isInteger(r.minPackagesForActiveCustomer) && r.minPackagesForActiveCustomer >= 1
+    ? r.minPackagesForActiveCustomer : null;
+  const customerLevels = vollstaendigeStufen(r.customerLevels);
+  const packageLevels = vollstaendigeStufen(r.packageLevels);
+  return min !== null && customerLevels && packageLevels
+    ? { minPackagesForActiveCustomer: min, customerLevels, packageLevels }
+    : null;
+}
+
+/** startDefaults → { basePercent, level1Percent, level2Percent, rules } mit
+ *  null für jeden unbrauchbaren Teil; ganz ohne brauchbaren Teil null. */
+export function normalizeStartDefaults(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const out = {
+    basePercent: satzOderNull(raw.basePercent),
+    level1Percent: satzOderNull(raw.level1Percent),
+    level2Percent: satzOderNull(raw.level2Percent),
+    rules: vollstaendigeRegeln(raw),
+  };
+  return out.basePercent || out.level1Percent || out.level2Percent || out.rules ? out : null;
+}
+
+/** Prozentwert für ein Eingabefeld im deutschen Zahlformat: „10.00" → „10,00";
+ *  ohne gültigen Wert "". Gesendet wird über parsePercentInput wieder „10.00". */
+export function percentInputValue(value) {
+  const p = satzOderNull(value);
+  return p ? p.replace(".", ",") : "";
+}
+
+/** Freigabeformular, vorbelegt mit den Startsätzen des Servers (sonst leer). */
+export function approveFormFromDefaults(startDefaults) {
+  const sd = startDefaults && typeof startDefaults === "object" ? startDefaults : {};
+  return {
+    basePercent: percentInputValue(sd.basePercent),
+    level1Percent: percentInputValue(sd.level1Percent),
+    level2Percent: percentInputValue(sd.level2Percent),
+  };
+}
+
+const leereStufen = () => Array.from({ length: LEVEL_COUNT }, (_, i) => ({ level: i + 1, threshold: "", bonusPercent: "" }));
+
+/** Leeres Formular: nichts vorbelegt — weder Schwellen noch Boni noch Mindestpakete. */
 export function emptyLevelRulesForm() {
-  // Die Boni stehen im deutschen Zahlformat im Feld; gesendet wird über
-  // parsePercentInput wieder „2.50".
-  const stufen = () => DEFAULT_LEVEL_BONUSES.map((bonus, i) => ({ level: i + 1, threshold: "", bonusPercent: bonus.replace(".", ",") }));
   return {
     validFrom: "",
-    minPackagesForActiveCustomer: String(DEFAULT_MIN_PACKAGES),
-    customerLevels: stufen(),
-    packageLevels: stufen(),
+    minPackagesForActiveCustomer: "",
+    customerLevels: leereStufen(),
+    packageLevels: leereStufen(),
     reason: "",
   };
+}
+
+/** Formular aus einer vollständigen Regelquelle (aktuelle Version des Servers
+ *  oder `startDefaults.rules`); eine unvollständige Quelle ergibt das leere
+ *  Formular. Boni stehen im deutschen Zahlformat im Feld. */
+export function levelRulesFormFrom(rules) {
+  const r = vollstaendigeRegeln(rules);
+  if (!r) return emptyLevelRulesForm();
+  const stufen = (liste) => liste.map((s) => ({ level: s.level, threshold: String(s.threshold), bonusPercent: percentInputValue(s.bonusPercent) }));
+  return {
+    ...emptyLevelRulesForm(),
+    minPackagesForActiveCustomer: String(r.minPackagesForActiveCustomer),
+    customerLevels: stufen(r.customerLevels),
+    packageLevels: stufen(r.packageLevels),
+  };
+}
+
+/** Ist diese Regelquelle vollständig genug für eine Vorbelegung? */
+export const levelRulesComplete = (rules) => vollstaendigeRegeln(rules) !== null;
+
+/** Vorbelegung der globalen Regeln: die aktuelle Version, ohne sie die
+ *  Startwerte — dann mit „gültig ab heute", damit nur noch gespeichert werden
+ *  muss. Ohne beides das leere Formular. */
+export function prefillGlobalLevelRulesForm({ current = null, startDefaults = null, today = "" } = {}) {
+  if (levelRulesComplete(current)) return { form: levelRulesFormFrom(current), source: "current" };
+  if (levelRulesComplete(startDefaults?.rules)) {
+    return { form: { ...levelRulesFormFrom(startDefaults.rules), validFrom: isIsoDate(today) ? today : "" }, source: "startDefaults" };
+  }
+  return { form: emptyLevelRulesForm(), source: null };
 }
 
 function pruefeStufen(stufen, prefix, errors) {
@@ -343,9 +484,10 @@ function regelTeil(form, errors) {
 }
 
 /** POST /admin/sales-partner-level-rules — globale Version. */
-export function buildGlobalLevelRulesBody(form = {}, { today } = {}) {
+export function buildGlobalLevelRulesBody(form = {}, opts = {}) {
+  const { today } = opts || {};
   const errors = {};
-  const dateError = pruefeDatum(form.validFrom, today, { notBefore: true });
+  const dateError = pruefeDatum(form.validFrom, today, { notBefore: nichtVorHeute(opts) });
   if (dateError) errors.validFrom = dateError;
   const teil = regelTeil(form, errors);
   const r = grund(form.reason, false);
@@ -356,11 +498,12 @@ export function buildGlobalLevelRulesBody(form = {}, { today } = {}) {
 }
 
 /** POST …/:id/level-rules — „inherit" (globale Regeln) oder eigene Regeln. */
-export function buildPartnerLevelRulesBody(form = {}, { today } = {}) {
+export function buildPartnerLevelRulesBody(form = {}, opts = {}) {
+  const { today } = opts || {};
   const errors = {};
   const mode = form.mode === "inherit" || form.mode === "custom" ? form.mode : null;
   if (!mode) errors.mode = INPUT_TEXTS.modeRequired;
-  const dateError = pruefeDatum(form.validFrom, today, { notBefore: true });
+  const dateError = pruefeDatum(form.validFrom, today, { notBefore: nichtVorHeute(opts) });
   if (dateError) errors.validFrom = dateError;
   const r = grund(form.reason, false);
   if (r.error) errors.reason = r.error;
@@ -371,10 +514,24 @@ export function buildPartnerLevelRulesBody(form = {}, { today } = {}) {
 }
 
 // ── Obergrenzen ─────────────────────────────────────────────────────────────
-/** POST /admin/sales-partner-caps — leer heißt „keine Grenze" (null). */
-export function buildCapBody(form = {}, { today } = {}) {
+// Eine Obergrenze ist optional: ohne Version gilt keine Grenze. Global gilt
+// eine Version für alle Partner; mit `partnerUserId` ist sie die individuelle
+// Obergrenze genau dieses Partners.
+export const CAP_TEXTS = Object.freeze({
+  globalNote: "Obergrenzen sind optional. Ohne konfigurierte Version gilt keine Obergrenze – Provisionen werden normal berechnet. Ein leeres Feld bedeutet „keine Grenze“.",
+  globalNone: "Keine Obergrenze konfiguriert – es gilt keine Grenze.",
+  partnerNone: "Keine individuelle Obergrenze – es gilt die globale Einstellung (standardmäßig keine Obergrenze).",
+  partnerHint: "Ein leeres Feld bedeutet „keine Grenze“. Die individuelle Obergrenze gilt nur für diesen Vertriebspartner.",
+  noLimit: "Keine Grenze",
+  partnerInvalid: "Der Vertriebspartner ist ungültig.",
+});
+
+/** POST /admin/sales-partner-caps — leer heißt „keine Grenze" (null); mit
+ *  `partnerUserId` die individuelle Obergrenze dieses Partners. */
+export function buildCapBody(form = {}, opts = {}) {
+  const { today, partnerUserId } = opts || {};
   const errors = {};
-  const dateError = pruefeDatum(form.validFrom, today, { notBefore: true });
+  const dateError = pruefeDatum(form.validFrom, today, { notBefore: nichtVorHeute(opts) });
   if (dateError) errors.validFrom = dateError;
   const own = parsePercentInput(form.maxOwnRatePercent, { allowEmpty: true });
   const total = parsePercentInput(form.maxTotalRatePercent, { allowEmpty: true });
@@ -388,8 +545,16 @@ export function buildCapBody(form = {}, { today } = {}) {
     maxTotalRatePercent: total.ok ? total.value : null,
   };
   if (r.value) body.reason = r.value;
+  if (partnerUserId !== undefined && partnerUserId !== null) {
+    const pid = positiveInt(partnerUserId);
+    if (pid === null) errors.partnerUserId = CAP_TEXTS.partnerInvalid;
+    else body.partnerUserId = pid;
+  }
   return ergebnis(errors, body);
 }
+
+/** Anzeige eines Höchstsatzes: „35,00 %" oder „Keine Grenze". */
+export const capLimitText = (value) => (satzOderNull(value) ? formatPercent(satzOderNull(value)) : CAP_TEXTS.noLimit);
 
 // ── Provisionen: Rücknahme und Korrektur ────────────────────────────────────
 /** POST /admin/sales-partner-commissions/decisions/:decisionId/reverse */
@@ -420,14 +585,15 @@ export function buildAdjustmentBody(form = {}) {
 
 // ── Kundenzuordnung ─────────────────────────────────────────────────────────
 /** PUT /admin/users/:id/sales-partner-attribution — partnerUserId null entfernt. */
-export function buildAttributionBody(form = {}, { today } = {}) {
+export function buildAttributionBody(form = {}, opts = {}) {
+  const { today } = opts || {};
   const errors = {};
   let partnerUserId = null;
   if (form.remove !== true) {
     partnerUserId = positiveInt(form.partnerUserId);
     if (partnerUserId === null) errors.partnerUserId = INPUT_TEXTS.partnerRequired;
   }
-  const dateError = pruefeDatum(form.effectiveDate, today, { notBefore: true });
+  const dateError = pruefeDatum(form.effectiveDate, today, { notBefore: nichtVorHeute(opts) });
   if (dateError) errors.effectiveDate = dateError;
   const r = grund(form.reason, true);
   if (r.error) errors.reason = r.error;
@@ -474,6 +640,8 @@ export function normalizeAdminPartnerRow(raw) {
     teamLevel2Count: int(p.teamLevel2Count),
     ownRatePercent: str(p.ownRatePercent),
     createdAt: str(p.createdAt),
+    // Unveränderliche Testkennzeichnung des Servers (Pre-Live-Testmodus).
+    preliveTest: p.preliveTest === true,
   };
 }
 
@@ -521,6 +689,21 @@ export function normalizeCap(raw) {
 export function normalizeVersioned(raw, normalize) {
   const d = obj(raw);
   return { current: d.current ? normalize(d.current) : null, history: arr(d.history).map(normalize).filter(Boolean) };
+}
+
+/** GET /admin/sales-partner-level-rules → { current, history, startDefaults, backdatingAllowed }. */
+export function normalizeLevelRulesResponse(raw) {
+  return {
+    ...normalizeVersioned(raw, normalizeRuleSet),
+    startDefaults: normalizeStartDefaults(obj(raw).startDefaults),
+    backdatingAllowed: obj(raw).backdatingAllowed === true,
+  };
+}
+
+/** GET /admin/sales-partner-caps (global oder ?partnerUserId=) → { current,
+ *  history, backdatingAllowed } — die Freigabe trägt nur die globale Antwort. */
+export function normalizeCapsResponse(raw) {
+  return { ...normalizeVersioned(raw, normalizeCap), backdatingAllowed: obj(raw).backdatingAllowed === true };
 }
 
 function normalizeRateVersion(raw) {
@@ -578,7 +761,11 @@ export function normalizeAdminPartnerDetail(raw) {
       approvedAt: str(p.approvedAt),
       contractEndedOn: str(p.contractEndedOn),
       deactivationReason: str(p.deactivationReason),
+      preliveTest: p.preliveTest === true,
     },
+    // Nur für Testpartner im Pre-Live-Testmodus true: dann dürfen Freigabe,
+    // Status, Sätze, Regeln und Obergrenze zurückliegende Daten tragen.
+    datesBeforeTodayAllowed: d.datesBeforeTodayAllowed === true,
     rates: {
       current: rates.current ? normalizeRateVersion(rates.current) : null,
       history: arr(rates.history).map(normalizeRateVersion).filter(Boolean),
@@ -592,6 +779,8 @@ export function normalizeAdminPartnerDetail(raw) {
       current: lr.current ? normalizeRuleSet(lr.current) : null,
       history: arr(lr.history).map(normalizeRuleSet).filter(Boolean),
     },
+    // Startwerte des Servers — einzige Quelle der Vorbelegung (Freigabe, Regeln).
+    startDefaults: normalizeStartDefaults(d.startDefaults),
     team: { level1: arr(team.level1).map(normalizeTeamMember), level2: arr(team.level2).map(normalizeTeamMember) },
     customers: arr(d.customers).map((c) => {
       const x = obj(c);
@@ -753,6 +942,18 @@ const STATUS_TEXTE = Object.freeze({
 export function adminActionErrorText(status, body, fallback = "Die Aktion wurde nicht ausgeführt. Es wurden keine Änderungen gespeichert.") {
   if (status === 400 || status === 409 || status === 422) return customerText(body) || fallback;
   return STATUS_TEXTE[status] || fallback;
+}
+
+/** PUT …/sales-partner-attribution: 409 PRELIVE_TEST_MISMATCH bekommt einen
+ *  festen Satz (Testkunde ↔ echter Partner oder umgekehrt), sonst wie üblich. */
+export const ATTRIBUTION_TEXTS = Object.freeze({
+  testMismatch: "Testkunden lassen sich nur Testpartnern zuordnen und echte Kunden nur echten Vertriebspartnern. Es wurde nichts geändert.",
+  pastAllowed: "Testkunde und Testpartner: Im Pre-Live-Testmodus darf das Datum zurückliegen.",
+});
+export function attributionErrorText(status, body) {
+  const code = body && typeof body === "object" && typeof body.code === "string" ? body.code.trim() : "";
+  if (status === 409 && code === "PRELIVE_TEST_MISMATCH") return ATTRIBUTION_TEXTS.testMismatch;
+  return adminActionErrorText(status, body);
 }
 
 // ── Zeitpunkte (Adminanzeige) ───────────────────────────────────────────────

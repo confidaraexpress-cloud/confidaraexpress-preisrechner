@@ -27,6 +27,8 @@ export const PARTNER_TEXTS = Object.freeze({
   noLink: "Noch kein Link verfügbar",
   inactive: "Ihr Partnerkonto ist derzeit inaktiv.",
   capApplied: "Obergrenze angewendet",
+  // Pre-Live-Testkonto (unveränderliche Testkennzeichnung des Servers).
+  preliveBanner: "Pre-Live-Testkonto – keine echten Provisionen, Gutschriften oder Auszahlungen.",
 });
 
 // ── Grundformen ─────────────────────────────────────────────────────────────
@@ -171,6 +173,8 @@ export function normalizeOverview(raw) {
       packages: int(cm.packages),
     },
     customersAssigned: int(obj(d.customers).assigned),
+    // Nur exakt true: ein Testkonto des Pre-Live-Testmodus.
+    preliveTest: d.preliveTest === true,
   };
 }
 

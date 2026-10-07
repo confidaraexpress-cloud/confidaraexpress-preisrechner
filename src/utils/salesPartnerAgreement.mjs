@@ -10,7 +10,8 @@
 //   • GET /api/sales-partner/public-config  → … agreement: { version, effectiveFrom,
 //                                               effectiveTo|null, documentPath } | null
 //   • GET /api/sales-partner/me/agreement   → { acceptedVersion, acceptedAt,
-//                                               document: { version, effectiveFrom, documentPath } | null }
+//                                               document: { version, effectiveFrom, documentPath } | null,
+//                                               preliveTest }
 //
 // `documentPath` ist ein API-Pfad („/api/legal/…"); das Dokument liefert der
 // API-Host öffentlich aus, mit `X-Frame-Options: DENY` — es wird deshalb nie
@@ -37,6 +38,7 @@ export const AGREEMENT_TEXTS = Object.freeze({
   retryHint: "Bitte versuchen Sie es erneut.",
   accountLoadError: "Ihre Vertragsangaben konnten nicht geladen werden.",
   notRecorded: "Nicht hinterlegt",
+  preliveNoAgreement: "Pre-Live-Testkonto – keine rechtsverbindliche Partnervereinbarung hinterlegt.",
 });
 
 const objOrNull = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : null);
@@ -104,11 +106,14 @@ export function formatDateTime(value) {
 
 // ── Partnerportal · Konto · Vertrag ─────────────────────────────────────────
 
-/** GET /api/sales-partner/me/agreement → { acceptedVersion, acceptedAt, document }. */
+/** GET /api/sales-partner/me/agreement → { acceptedVersion, acceptedAt, document,
+ *  preliveTest }. `preliveTest` (nur exakt true): ein Testkonto ohne
+ *  rechtsverbindliche Vereinbarung — die Fläche sagt das statt „kein Dokument". */
 export function normalizePartnerAgreement(raw) {
   const d = objOrNull(raw) || {};
   const doc = objOrNull(d.document);
   return {
+    preliveTest: d.preliveTest === true,
     acceptedVersion: str(d.acceptedVersion),
     acceptedAt: str(d.acceptedAt),
     document: doc ? {
@@ -134,4 +139,10 @@ export function partnerAgreementRows(agreement) {
 /** Der Dokumentpfad der akzeptierten Fassung — oder null („kein registriertes Dokument"). */
 export function partnerAgreementDocumentPath(agreement) {
   return agreement && agreement.document ? agreement.document.documentPath : null;
+}
+
+/** Hinweis, wenn kein Dokument verlinkt werden kann: beim Pre-Live-Testkonto
+ *  der Testsatz, sonst „kein registriertes Dokument". */
+export function partnerAgreementMissingText(agreement) {
+  return agreement && agreement.preliveTest === true ? AGREEMENT_TEXTS.preliveNoAgreement : AGREEMENT_TEXTS.noDocument;
 }

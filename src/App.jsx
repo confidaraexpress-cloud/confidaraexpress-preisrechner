@@ -59,13 +59,15 @@ const AdminSupportRequestsPage = React.lazy(() => import("./pages/admin/AdminSup
 const AdminSupportRequestDetailPage = React.lazy(() => import("./pages/admin/AdminSupportRequestDetailPage"));
 const AdminReconciliationPage = React.lazy(() => import("./pages/admin/AdminReconciliationPage"));
 const AdminReconciliationDetailPage = React.lazy(() => import("./pages/admin/AdminReconciliationDetailPage"));
-// Vertriebspartnerverwaltung: Liste, Detail, globale Einstellungen, Versandnachweise
-// und der Abrechnungslauf (Gutschriften je abgeschlossenem Monat).
+// Vertriebspartnerverwaltung: Liste, Detail, globale Einstellungen, Versandnachweise,
+// der Abrechnungslauf (Gutschriften je abgeschlossenem Monat) und der
+// Pre-Live-Testmodus (interne Tests; Inhalte nur bei aktivem Serverschalter).
 const AdminSalesPartnersPage        = React.lazy(() => import("./pages/admin/AdminSalesPartnersPage"));
 const AdminSalesPartnerDetailPage   = React.lazy(() => import("./pages/admin/AdminSalesPartnerDetailPage"));
 const AdminSalesPartnerSettingsPage = React.lazy(() => import("./pages/admin/AdminSalesPartnerSettingsPage"));
 const AdminDispatchEvidencePage     = React.lazy(() => import("./pages/admin/AdminDispatchEvidencePage"));
 const AdminSalesPartnerCreditNotesPage = React.lazy(() => import("./pages/admin/AdminSalesPartnerCreditNotesPage"));
+const AdminSalesPartnerPrelivePage  = React.lazy(() => import("./pages/admin/AdminSalesPartnerPrelivePage"));
 
 /* Der Auth-Bereich hat als einziger Bereich KEIN Layout — Login, Registrierung
    und die E-Mail-Bestätigung hängen direkt an <Routes>. Damit auch dort ein
@@ -185,6 +187,7 @@ export default function App() {
           <Route path="/admin/partners/settings"          element={<AdminSalesPartnerSettingsPage />} />
           <Route path="/admin/partners/dispatch-evidence" element={<AdminDispatchEvidencePage />} />
           <Route path="/admin/partners/credit-notes"      element={<AdminSalesPartnerCreditNotesPage />} />
+          <Route path="/admin/partners/prelive"           element={<AdminSalesPartnerPrelivePage />} />
           <Route path="/admin/partners/:id"               element={<AdminSalesPartnerDetailPage />} />
           <Route path="/admin/audit-logs"   element={<AuditLogPage />} />
         </Route>

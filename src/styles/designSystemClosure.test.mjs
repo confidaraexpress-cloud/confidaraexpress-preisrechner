@@ -319,6 +319,10 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
                   // +1): dritte statische Adminunterseite neben Einstellungen und
                   // Versandnachweisen, vor '/:id' registriert.
                   "/admin/partners/credit-notes",
+                  // Pre-Live-Testmodus der Vertriebspartner (bewusste
+                  // Ankeränderung, +1): vierte statische Adminunterseite, vor
+                  // '/:id' registriert; Inhalte nur bei aktivem Serverschalter.
+                  "/admin/partners/prelive",
                   "*"];
   const gefunden = [...app.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(gefunden.sort(), [...ROUTEN].sort(), "der Routenbestand hat sich verändert");

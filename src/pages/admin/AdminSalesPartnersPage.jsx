@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { listAdminSalesPartners } from "../../api/adminApi";
+import { usePreliveStatus } from "../../hooks/usePreliveStatus";
+import { preliveEnabled } from "../../utils/salesPartnerPrelive.mjs";
 import { selectListHasMore, selectListTotal } from "../../utils/adminOverview.mjs";
 import { formatCount, formatIsoDate, formatPercent } from "../../utils/salesPartnerView.mjs";
 import {
@@ -49,6 +51,7 @@ const team = (row) => `${formatCount(row.teamLevel1Count)} / ${formatCount(row.t
    Statusfilter und Suche laufen serverseitig (GET /admin/sales-partners mit
    eigener Parameter-Allowlist). Kein Rohstatus im sichtbaren Text. */
 export default function AdminSalesPartnersPage() {
+  const prelive = usePreliveStatus();
   const [draft, setDraft] = useState({ status: "", q: "" });
   const [applied, setApplied] = useState({ status: "", q: "" });
   const [page, setPage] = useState(1);
@@ -103,6 +106,10 @@ export default function AdminSalesPartnersPage() {
             <Link className="btn btn-outline btn-sm" to="/admin/partners/settings" id="adm-sp-settings-link">Einstellungen</Link>
             <Link className="btn btn-outline btn-sm" to="/admin/partners/dispatch-evidence" id="adm-sp-evidence-link">Versandnachweise</Link>
             <Link className="btn btn-outline btn-sm" to="/admin/partners/credit-notes" id="adm-sp-credit-notes-link">Abrechnungslauf</Link>
+            {/* Nur wenn der Server den Pre-Live-Testmodus meldet (enabled: true). */}
+            {preliveEnabled(prelive.status) && (
+              <Link className="btn btn-outline btn-sm" to="/admin/partners/prelive" id="adm-sp-prelive-link">Pre-Live-Test</Link>
+            )}
             <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>Aktualisieren</button>
           </>
         )}

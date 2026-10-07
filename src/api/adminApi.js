@@ -785,3 +785,39 @@ export function issueAdminCreditNote(body) {
     method: "POST", auth: true, body: JSON.stringify(body), timeoutMs: DOCUMENT_ACTION_TIMEOUT_MS,
   });
 }
+
+// ── Vertriebspartner: Pre-Live-Testmodus ─────────────────────────────────────
+// Server-Schalter SALES_PARTNER_PRELIVE_TEST_MODE (Standard aus). Bis auf den
+// Stand antwortet jeder Endpunkt bei abgeschaltetem Modus mit 404
+// PRELIVE_TEST_MODE_DISABLED. Jeder Body entsteht über
+// utils/salesPartnerPrelive.mjs; hier wird nur transportiert. Läufe, die viele
+// Testdaten anlegen oder löschen, bekommen eine längere Frist — ein Abbruch im
+// Browser ließe den Ausgang offen.
+const PRELIVE_PATH = "/admin/sales-partner-prelive";
+const PRELIVE_LONG_TIMEOUT_MS = 60000;
+const PRELIVE_SHIPMENT_PARAMS = ["customerUserId", "partnerUserId", "limit", "offset"];
+const PRELIVE_MAIL_PREVIEW_PARAMS = ["kind", "partnerUserId", "creditNoteId"];
+const preliveLongPost = (path, body) => apiFetch(path, {
+  method: "POST", auth: true, body: JSON.stringify(body), timeoutMs: PRELIVE_LONG_TIMEOUT_MS,
+});
+
+export const getAdminPreliveStatus = ({ signal } = {}) => apiFetch(`${PRELIVE_PATH}/status`, { auth: true, signal });
+export const listAdminPreliveAccounts = ({ signal } = {}) => apiFetch(`${PRELIVE_PATH}/accounts`, { auth: true, signal });
+export const createAdminPrelivePartner = (body) => jsonPost(`${PRELIVE_PATH}/partners`, body);
+export const createAdminPreliveCustomer = (body) => jsonPost(`${PRELIVE_PATH}/customers`, body);
+// Der Link lebt nur im Zustand der Seite — nie localStorage, nie ein Log.
+export const createAdminPrelivePasswordLink = (accountId) =>
+  jsonPost(`${PRELIVE_PATH}/accounts/${encodeURIComponent(accountId)}/password-link`, {});
+// Query über shipmentListQuery (utils/salesPartnerPrelive.mjs).
+export const listAdminPreliveShipments = (query = {}) =>
+  apiFetch(`${PRELIVE_PATH}/shipments${buildQuery(query, PRELIVE_SHIPMENT_PARAMS)}`, { auth: true });
+export const createAdminPreliveShipment = (body) => jsonPost(`${PRELIVE_PATH}/shipments`, body);
+export const markAdminPreliveShipmentPaid = (shipmentId, body) =>
+  jsonPost(`${PRELIVE_PATH}/shipments/${encodeURIComponent(shipmentId)}/paid`, body);
+export const runAdminPreliveScenario = (body) => preliveLongPost(`${PRELIVE_PATH}/scenarios`, body);
+export const runAdminPreliveCommissionRun = () => preliveLongPost(`${PRELIVE_PATH}/commission-run`, {});
+// Query über buildMailPreviewQuery; das HTML zeigt die Seite nur im Sandbox-iframe.
+export const getAdminPreliveMailPreview = (query = {}) =>
+  apiFetch(`${PRELIVE_PATH}/mail-preview${buildQuery(query, PRELIVE_MAIL_PREVIEW_PARAMS)}`, { auth: true });
+export const getAdminPreliveCleanup = () => apiFetch(`${PRELIVE_PATH}/cleanup`, { auth: true });
+export const runAdminPreliveCleanup = (body) => preliveLongPost(`${PRELIVE_PATH}/cleanup`, body);

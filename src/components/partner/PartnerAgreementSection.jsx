@@ -9,6 +9,7 @@ import {
   AGREEMENT_TEXTS,
   normalizePartnerAgreement,
   partnerAgreementDocumentPath,
+  partnerAgreementMissingText,
   partnerAgreementRows,
 } from "../../utils/salesPartnerAgreement.mjs";
 
@@ -16,7 +17,9 @@ import {
    Die Vertriebspartnervereinbarung, der der Partner zugestimmt hat: Fassung,
    Zeitpunkt der Zustimmung und das registrierte Dokument dieser Fassung —
    genau der Dokumentpfad des Servers, geöffnet in einem neuen Tab. Fehlt das
-   Dokument, sagt die Fläche das, statt einen Ort zu raten. */
+   Dokument, sagt die Fläche das, statt einen Ort zu raten — beim
+   Pre-Live-Testkonto mit dem Satz, dass keine rechtsverbindliche
+   Vereinbarung hinterlegt ist. */
 export function PartnerAgreementSection() {
   const { loading, error, data, reload } = usePartnerData(
     (opts) => getPartnerAgreement(opts), normalizePartnerAgreement, [], AGREEMENT_TEXTS.accountLoadError,
@@ -46,7 +49,9 @@ export function PartnerAgreementSection() {
             </a>
           </div>
         ) : (
-          <p className="spp-hint" id="spp-agreement-no-document">{AGREEMENT_TEXTS.noDocument}</p>
+          <p className="spp-hint" id={data.preliveTest ? "spp-agreement-prelive" : "spp-agreement-no-document"}>
+            {partnerAgreementMissingText(data)}
+          </p>
         )}
       </>
     );

@@ -17,6 +17,7 @@ import {
   normalizeAgreement,
   normalizePartnerAgreement,
   partnerAgreementDocumentPath,
+  partnerAgreementMissingText,
   partnerAgreementRows,
   readAgreementResponse,
 } from "./salesPartnerAgreement.mjs";
@@ -150,4 +151,15 @@ test("7 — /partnervereinbarung: öffentliche Route im Rechtslayout, Dokument n
   assert.match(abruf.slice(0, abruf.indexOf("\n}")), /apiFetch\("\/api\/sales-partner\/agreement", \{ timeoutMs: 15000, signal \}\)/,
     "öffentlich: ohne auth, damit ein 401 nie abmeldet");
   assert.match(api, /const pfad = agreementDocumentPath\(documentPath\);\s*return pfad \? `\$\{API\}\$\{pfad\}` : null;/);
+});
+
+test("Pre-Live — Vertrag: Testkonto ohne rechtsverbindliche Vereinbarung", () => {
+  const test = normalizePartnerAgreement({ acceptedVersion: null, acceptedAt: null, document: null, preliveTest: true });
+  assert.equal(test.preliveTest, true);
+  assert.equal(partnerAgreementMissingText(test), "Pre-Live-Testkonto – keine rechtsverbindliche Partnervereinbarung hinterlegt.");
+  assert.equal(partnerAgreementMissingText(normalizePartnerAgreement({ document: null })), AGREEMENT_TEXTS.noDocument);
+  assert.equal(normalizePartnerAgreement({ preliveTest: "true" }).preliveTest, false, "kein truthy-String");
+  assert.equal(partnerAgreementDocumentPath(test), null);
+  // Kein Vertragstext im Frontend: der Satz nennt nur, dass keine Vereinbarung hinterlegt ist.
+  assert.doesNotMatch(AGREEMENT_TEXTS.preliveNoAgreement, /§|vereinbaren|verpflichtet/);
 });

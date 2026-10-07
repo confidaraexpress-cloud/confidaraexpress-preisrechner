@@ -18,6 +18,8 @@
 //   5. Bearbeiten mit hinterlegter IBAN: Feld leer, ohne Eingabe kein `iban`.
 //   6. Abgelehnt: Begründung sichtbar.
 //   7. Vertrag: Fassung, Zeitpunkt, Dokumentlink; ohne Dokument der Hinweis.
+//   8. Pre-Live: Testgutschriften als TESTDOKUMENT mit Testauszahlung.
+//   9. Pre-Live: Vertrag eines Testkontos — keine rechtsverbindliche Vereinbarung.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -415,6 +417,20 @@ test("8 — Pre-Live: Testgutschriften im Portal als TESTDOKUMENT mit Testauszah
   // Auch die Kartenansicht (schmale Breite) trägt die Kennzeichnung.
   await page.setViewportSize({ width: 390, height: 900 });
   assert.match(await page.locator(".ce-list-cards").innerText(), /TESTDOKUMENT – nicht steuerlich gültig[\s\S]*Test – nicht ausgezahlt/);
+  assert.deepEqual(state.kunde, []);
+  await page.close();
+});
+
+test("9 — Pre-Live: Vertrag eines Testkontos ohne rechtsverbindliche Vereinbarung", async () => {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+  const state = await setup(page, { agreement: { acceptedVersion: null, acceptedAt: null, document: null, preliveTest: true } });
+  await zumBereich(page, "account");
+  await page.locator("#spp-agreement-prelive").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#spp-agreement-prelive").innerText(),
+    "Pre-Live-Testkonto – keine rechtsverbindliche Partnervereinbarung hinterlegt.");
+  assert.equal(await page.locator("#spp-agreement-no-document").count(), 0, "statt des Hinweises „kein Dokument“");
+  assert.equal(await page.locator("#spp-agreement-document").count(), 0);
+  assert.equal(await page.locator("#spp-agreement-version .profile-row-val").innerText(), "Nicht hinterlegt");
   assert.deepEqual(state.kunde, []);
   await page.close();
 });

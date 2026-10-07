@@ -67,6 +67,18 @@
 .spp-tabs { margin-bottom: var(--ce-space-6); }
 .spp-panel { display: flex; flex-direction: column; gap: var(--ce-space-5); min-width: 0; }
 .spp-notice { margin-bottom: var(--ce-space-5); }
+/* Pre-Live-Testkonto: dauerhafter Hinweis in der Warnrolle — die Aussage
+   trägt der Text, nicht die Farbe. */
+.spp-prelive {
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border: 1px solid var(--ce-color-status-warning-border);
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-status-warning-surface);
+  color: var(--ce-color-status-warning-fg);
+  font-size: var(--ce-text-body-s-size);
+  font-weight: 600;
+  line-height: var(--ce-text-body-s-line);
+}
 
 /* Kennzahlen der Übersicht — flache Kacheln aus dem Kartenmaterial. Bewusst
    NICHT die --ce-kpi-*-Familie: die gehört ausschließlich dem Kennzahlenband

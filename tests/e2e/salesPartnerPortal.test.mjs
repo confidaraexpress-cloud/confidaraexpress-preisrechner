@@ -15,6 +15,9 @@
 //   5. Ein Kunde auf /partner landet im Kundenbereich.
 //   7. Konto: Passwortänderung (PATCH /kunde/password); ein 401 mit falschem
 //      Passwort meldet nicht ab; kein anderer /kunde/*-Aufruf.
+//   8. Pre-Live-Testkonto: dauerhafter Hinweis über allen Bereichen.
+//   9. Login eines Testkontos bei abgeschaltetem Testmodus (403
+//      ACCOUNT_PRELIVE_TEST_INACTIVE): der Text des Servers, kein Portal.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -68,7 +71,7 @@ const TEAM_LEER = { limits: { level1: 10, level2: 10 }, level1: [], level2: [] }
 let server, browser;
 
 // Antworten des Passwortendpunkts in Aufrufreihenfolge (Standard: Erfolg).
-async function setup(page, { user = PARTNER, team = TEAM, token = true, passwordResponses = [] } = {}) {
+async function setup(page, { user = PARTNER, team = TEAM, token = true, passwordResponses = [], overview = OVERVIEW, login = null } = {}) {
   const state = { kunde: [], commissionMonths: [], partnerCalls: [], other: [], password: [], emailChange: [] };
   const pwAntworten = [...passwordResponses];
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
@@ -93,13 +96,13 @@ async function setup(page, { user = PARTNER, team = TEAM, token = true, password
       if (user.role === "sales_partner") return json({ error: "Nicht erlaubt", code: "ROLE_NOT_PERMITTED" }, 403);
       return json({});
     }
-    if (p.endsWith("/login") && req.method() === "POST") return json({ token: "e2e-partner-token" });
+    if (p.endsWith("/login") && req.method() === "POST") return login ? json(login[1], login[0]) : json({ token: "e2e-partner-token" });
     if (p.endsWith("/kundenbereich")) {
       return json({ message: "OK", user, pendingEmailChange: null, companyLogo: null, billingCapabilities: null,
         ...(user.role === "sales_partner" ? { salesPartner: { status: "active" } } : {}) });
     }
     if (p.startsWith("/api/sales-partner/me/")) state.partnerCalls.push(p + url.search);
-    if (p.endsWith("/api/sales-partner/me/overview")) return json(OVERVIEW);
+    if (p.endsWith("/api/sales-partner/me/overview")) return json(overview);
     if (p.endsWith("/api/sales-partner/me/team")) return json(team);
     if (p.endsWith("/api/sales-partner/me/customers")) return json(CUSTOMERS);
     if (p.endsWith("/api/sales-partner/me/commissions")) {
@@ -149,6 +152,7 @@ test("1 — Login als Vertriebspartner führt ins Partnerportal, nie in den Kund
   assert.match(await page.locator("#spp-payable-note").innerText(), /Provision wird nach Zahlungseingang des Kunden auszahlbar\./);
   assert.match(await page.locator("#spp-link-customer").innerText(), /register\?ref=ABCD2345/);
   assert.equal(await page.locator("#spp-link-partner button", { hasText: "Kopieren" }).count(), 1);
+  assert.equal(await page.locator("#spp-prelive-banner").count(), 0, "kein Testhinweis für ein echtes Konto");
   assert.deepEqual(state.kunde, [], `Kundenendpunkte aufgerufen: ${state.kunde.join(", ")}`);
   await page.close();
 });
@@ -266,5 +270,43 @@ test("7 — Konto: Passwortänderung, ein falsches Passwort meldet nicht ab, kei
   assert.deepEqual(state.kunde, [], `andere Kundenendpunkte aufgerufen: ${state.kunde.join(", ")}`);
   assert.deepEqual(state.emailChange, [], "ohne Nutzeraktion darf keine E-Mail-Änderung angestoßen werden");
   assert.equal(await page.evaluate(() => localStorage.getItem("ce_token")), "e2e-partner-token");
+  await page.close();
+});
+
+test("8 — Pre-Live-Testkonto: dauerhafter Hinweis über allen Bereichen", async () => {
+  const page = await browser.newPage();
+  const state = await setup(page, { overview: { ...OVERVIEW, preliveTest: true } });
+  await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
+  await page.locator("#spp-prelive-banner").waitFor({ state: "visible" });
+  const text = "Pre-Live-Testkonto – keine echten Provisionen, Gutschriften oder Auszahlungen.";
+  assert.equal(await page.locator("#spp-prelive-banner").innerText(), text);
+  // Der Hinweis steht über den Bereichen und bleibt beim Wechsel stehen.
+  const reihenfolge = await page.evaluate(() => {
+    const hinweis = document.querySelector("#spp-prelive-banner");
+    const tabs = document.querySelector('[role="tablist"]');
+    return !!(hinweis.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+  assert.equal(reihenfolge, true, "Hinweis vor den Bereichen");
+  for (const bereich of ["customers", "commissions", "account"]) {
+    await page.locator(`#spp-tab-${bereich}`).click();
+    await page.locator(`#spp-tab-${bereich}[aria-selected="true"]`).waitFor();
+    assert.equal(await page.locator("#spp-prelive-banner").innerText(), text, `Hinweis fehlt im Bereich ${bereich}`);
+  }
+  assert.deepEqual(state.kunde, []);
+  await page.close();
+});
+
+test("9 — Login eines Testkontos bei abgeschaltetem Testmodus: Text des Servers, kein Portal", async () => {
+  const page = await browser.newPage();
+  await setup(page, { token: false,
+    login: [403, { error: "Dieses Testkonto ist derzeit nicht aktiv.", code: "ACCOUNT_PRELIVE_TEST_INACTIVE" }] });
+  await page.goto(`${BASE}/login`, { waitUntil: "networkidle" });
+  await page.fill("#auth-email", "pia@test.example");
+  await page.fill("#auth-password", "EinSicheresPasswort2026");
+  await page.locator("button.auth-cta").click();
+  await page.locator(".auth-alert-error").waitFor({ state: "visible" });
+  assert.equal(await page.locator(".auth-alert-error").innerText(), "Dieses Testkonto ist derzeit nicht aktiv.");
+  assert.equal(pfad(page), "/login");
+  assert.equal(await page.evaluate(() => localStorage.getItem("ce_token")), null);
   await page.close();
 });

@@ -91,3 +91,35 @@ export function getPartnerCommissions(month, { signal } = {}) {
 export function getPartnerTeam({ signal } = {}) {
   return apiFetch("/api/sales-partner/me/team", { auth: true, signal });
 }
+
+/** GET /api/sales-partner/me/agreement — akzeptierte Fassung und ihr Dokument. */
+export function getPartnerAgreement({ signal } = {}) {
+  return apiFetch("/api/sales-partner/me/agreement", { auth: true, signal });
+}
+
+/** GET /api/sales-partner/me/billing-details — Status und Abrechnungsdaten
+ *  (die IBAN nur maskiert). */
+export function getPartnerBillingDetails({ signal } = {}) {
+  return apiFetch("/api/sales-partner/me/billing-details", { auth: true, signal });
+}
+
+/** PUT /api/sales-partner/me/billing-details — Body ausschließlich aus
+ *  buildBillingDetailsPayload (utils/salesPartnerBilling.mjs). */
+export function savePartnerBillingDetails(body) {
+  return apiFetch("/api/sales-partner/me/billing-details", {
+    method: "PUT",
+    auth: true,
+    body: JSON.stringify(body),
+  });
+}
+
+/** GET /api/sales-partner/me/credit-notes — Gutschriften und offener Saldo. */
+export function getPartnerCreditNotes({ signal } = {}) {
+  return apiFetch("/api/sales-partner/me/credit-notes", { auth: true, signal });
+}
+
+/** Pfad des PDF einer eigenen Gutschrift — abgerufen wird er authentifiziert
+ *  als Blob (utils/downloadDocument.js), nie als Link mit Token. */
+export function partnerCreditNotePdfPath(creditNoteId) {
+  return `/api/sales-partner/me/credit-notes/${encodeURIComponent(String(creditNoteId))}/pdf`;
+}

@@ -306,9 +306,13 @@ export const PARTNER_TABS = Object.freeze([
   Object.freeze({ id: "overview", label: "Übersicht" }),
   Object.freeze({ id: "customers", label: "Meine Kunden" }),
   Object.freeze({ id: "commissions", label: "Provisionen" }),
+  // Gutschriften (Selbstabrechnung) direkt nach den Provisionen, aus denen sie
+  // entstehen; Steuer- und Bankdaten stehen nur im Konto, nicht hier.
+  Object.freeze({ id: "credit-notes", label: "Abrechnungen" }),
   Object.freeze({ id: "team", label: "Mein Team" }),
   // Login-E-Mail und Passwort: dieselben Bausteine wie in den
-  // Kontoeinstellungen der Kunden (Backendvertrag: für Partner freigegeben).
+  // Kontoeinstellungen der Kunden (Backendvertrag: für Partner freigegeben);
+  // dazu Abrechnungsdaten und Vertrag über eigene Partnerendpunkte.
   Object.freeze({ id: "account", label: "Konto" }),
 ]);
 

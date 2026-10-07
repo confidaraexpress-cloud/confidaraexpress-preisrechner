@@ -6,20 +6,22 @@ import { createAdminSalesPartnerLevelRules } from "../../api/adminApi";
 import {
   adminActionErrorText,
   buildPartnerLevelRulesBody,
-  emptyLevelRulesForm,
   formatTimestamp,
+  levelRulesComplete,
+  levelRulesFormFrom,
   localIsoDate,
 } from "../../utils/adminSalesPartnerView.mjs";
 
-const neuesFormular = () => ({ ...emptyLevelRulesForm(), mode: "" });
+// Eigene Regeln starten mit den Startwerten des Servers (sonst leer).
+const neuesFormular = (startDefaults) => ({ ...levelRulesFormFrom(startDefaults?.rules), mode: "" });
 
 /* ── Level-Regeln eines Partners: global oder eigene ─────────────────────────
    Ohne eigene Version gelten die globalen Regeln. Eine Änderung ist eine neue
    Version mit Gültigkeitsbeginn — entweder „inherit" (zurück zu den globalen
-   Regeln) oder eigene Regeln mit 5 + 5 Level und Mindestpaketen. Schwellen
-   werden nie vorbelegt. */
-export function SalesPartnerLevelRulesCard({ partnerId, levelRules, onChanged }) {
-  const [form, setForm] = useState(neuesFormular);
+   Regeln) oder eigene Regeln mit 5 + 5 Level und Mindestpaketen, vorbelegt
+   mit den Startwerten des Servers (ohne sie leer und Pflicht). */
+export function SalesPartnerLevelRulesCard({ partnerId, levelRules, startDefaults = null, onChanged }) {
+  const [form, setForm] = useState(() => neuesFormular(startDefaults));
   const [errors, setErrors] = useState({});
   const [confirm, setConfirm] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -53,7 +55,7 @@ export function SalesPartnerLevelRulesCard({ partnerId, levelRules, onChanged })
         return;
       }
       setConfirm(null);
-      setForm(neuesFormular());
+      setForm(neuesFormular(startDefaults));
       setMessage({ type: "success", text: "Die neue Regelversion wurde angelegt." });
       onChanged?.();
     } catch {
@@ -114,7 +116,8 @@ export function SalesPartnerLevelRulesCard({ partnerId, levelRules, onChanged })
             </div>
           </div>
           {form.mode === "custom" && (
-            <LevelRulesEditor value={form} onChange={(next) => setForm(next)} errors={errors} idPrefix="adm-sp-levels" />
+            <LevelRulesEditor value={form} onChange={(next) => setForm(next)} errors={errors} idPrefix="adm-sp-levels"
+              prefillNote={levelRulesComplete(startDefaults?.rules) ? "Vorbelegt mit den Startwerten des Programms. Passen Sie die Werte für diesen Partner an." : null} />
           )}
           <div className="adm-sp-form-actions">
             <button type="submit" className="btn btn-primary btn-sm" id="adm-sp-levels-submit">Neue Version anlegen</button>

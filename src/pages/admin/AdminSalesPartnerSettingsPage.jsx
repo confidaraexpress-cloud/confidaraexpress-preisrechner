@@ -10,23 +10,25 @@ import {
   getAdminSalesPartnerCaps,
   getAdminSalesPartnerLevelRules,
 } from "../../api/adminApi";
-import { formatPercent } from "../../utils/salesPartnerView.mjs";
 import {
+  CAP_TEXTS,
   adminActionErrorText,
   buildCapBody,
   buildGlobalLevelRulesBody,
+  capLimitText,
   emptyLevelRulesForm,
   formatTimestamp,
   localIsoDate,
-  normalizeCap,
-  normalizeRuleSet,
-  normalizeVersioned,
+  normalizeCapsResponse,
+  normalizeLevelRulesResponse,
+  prefillGlobalLevelRulesForm,
 } from "../../utils/adminSalesPartnerView.mjs";
 
 const LEERE_GRENZE = { validFrom: "", maxOwnRatePercent: "", maxTotalRatePercent: "", reason: "" };
-const grenzeText = (v) => (v ? formatPercent(v) : "Keine Grenze");
+const grenzeText = capLimitText;
 
-// Lädt eine versionierte Konfiguration ({ current, history }) selbständig.
+// Lädt eine versionierte Konfiguration ({ current, history, …}) selbständig;
+// `normalize` liest die ganze Antwort.
 function useVersioned(request, normalize, errorText) {
   const [state, setState] = useState({ loading: true, error: "", data: null });
   const load = useCallback(async () => {
@@ -40,7 +42,7 @@ function useVersioned(request, normalize, errorText) {
       }
       let d = {};
       try { d = await r.json(); } catch { d = {}; }
-      setState({ loading: false, error: "", data: normalizeVersioned(d, normalize) });
+      setState({ loading: false, error: "", data: normalize(d) });
     } catch {
       setState({ loading: false, error: errorText, data: null });
     }
@@ -67,15 +69,30 @@ function Lade({ state, children }) {
 
 /* ── Admin · Vertriebspartner · Einstellungen ────────────────────────────────
    Globale Level-Regeln und Obergrenzen — jeweils aktuelle Version, Historie
-   und das Formular für eine neue Version (gültig ab heute oder später). Die
-   Schwellen der Level-Regeln werden NICHT vorbelegt; eine Obergrenze ohne
-   Wert heißt „keine Grenze". */
+   und das Formular für eine neue Version (gültig ab heute oder später). Das
+   Regelformular ist mit der aktuellen Version vorbelegt; gibt es noch keine,
+   mit den Startwerten des Servers samt „gültig ab heute" — dann muss nur noch
+   gespeichert werden. Ohne beides bleibt es leer (nichts wird erfunden).
+   Obergrenzen sind optional; ein Feld ohne Wert heißt „keine Grenze". */
 export default function AdminSalesPartnerSettingsPage() {
-  const regeln = useVersioned(getAdminSalesPartnerLevelRules, normalizeRuleSet, "Die Level-Regeln konnten nicht geladen werden.");
-  const grenzen = useVersioned(getAdminSalesPartnerCaps, normalizeCap, "Die Obergrenzen konnten nicht geladen werden.");
+  const regeln = useVersioned(getAdminSalesPartnerLevelRules, normalizeLevelRulesResponse, "Die Level-Regeln konnten nicht geladen werden.");
+  const grenzen = useVersioned(getAdminSalesPartnerCaps, normalizeCapsResponse, "Die Obergrenzen konnten nicht geladen werden.");
   const heute = localIsoDate();
 
-  const [regelForm, setRegelForm] = useState(emptyLevelRulesForm);
+  const [regelForm, setRegelFormRoh] = useState(emptyLevelRulesForm);
+  const [vorbelegung, setVorbelegung] = useState(null);   // "current" | "startDefaults" | null
+  // Die Vorbelegung folgt dem geladenen Stand, solange niemand das Formular
+  // angefasst hat — eine Eingabe wird nie durch ein Nachladen überschrieben.
+  const regelFormBeruehrt = useRef(false);
+  const setRegelForm = (next) => { regelFormBeruehrt.current = true; setRegelFormRoh(next); };
+  useEffect(() => {
+    if (!regeln.data || regelFormBeruehrt.current) return;
+    const { form, source } = prefillGlobalLevelRulesForm({
+      current: regeln.data.current, startDefaults: regeln.data.startDefaults, today: localIsoDate(),
+    });
+    setRegelFormRoh(form);
+    setVorbelegung(source);
+  }, [regeln.data]);
   const [regelErrors, setRegelErrors] = useState({});
   const [grenzForm, setGrenzForm] = useState(LEERE_GRENZE);
   const [grenzErrors, setGrenzErrors] = useState({});
@@ -118,8 +135,12 @@ export default function AdminSalesPartnerSettingsPage() {
         return;
       }
       setConfirm(null);
-      if (kind === "rules") { setRegelForm(emptyLevelRulesForm()); regeln.reload(); }
-      else { setGrenzForm(LEERE_GRENZE); grenzen.reload(); }
+      if (kind === "rules") {
+        // Nach dem Speichern belegt der neu geladene Stand das Formular wieder vor.
+        regelFormBeruehrt.current = false;
+        setRegelFormRoh(emptyLevelRulesForm());
+        regeln.reload();
+      } else { setGrenzForm(LEERE_GRENZE); grenzen.reload(); }
       setMessage({ kind, type: "success", text: kind === "rules" ? "Die neue Version der Level-Regeln wurde angelegt." : "Die neue Version der Obergrenzen wurde angelegt." });
     } catch {
       setMessage({ kind, type: "error", text: "Die Version wurde nicht angelegt. Bitte versuchen Sie es erneut." });
@@ -173,7 +194,10 @@ export default function AdminSalesPartnerSettingsPage() {
                   {rFehler("reason")}
                 </div>
               </div>
-              <LevelRulesEditor value={regelForm} onChange={setRegelForm} errors={regelErrors} idPrefix="adm-sp-global" />
+              <LevelRulesEditor value={regelForm} onChange={setRegelForm} errors={regelErrors} idPrefix="adm-sp-global"
+                prefillNote={vorbelegung === "startDefaults"
+                  ? "Noch keine globalen Level-Regeln: das Formular ist mit den Startwerten des Programms und „gültig ab heute“ vorbelegt – prüfen und speichern."
+                  : vorbelegung === "current" ? "Vorbelegt mit der aktuellen Version. Ändern Sie nur, was ab dem gewählten Tag anders gelten soll." : null} />
               <div className="adm-sp-form-actions">
                 <button type="submit" className="btn btn-primary btn-sm" id="adm-sp-global-submit">Neue Version anlegen</button>
               </div>
@@ -184,8 +208,8 @@ export default function AdminSalesPartnerSettingsPage() {
         <div className="adm-card" id="adm-sp-caps-card">
           <div className="adm-card-head">Obergrenzen</div>
           <div className="adm-card-body">
-            <div className="adm-note adm-note--info" role="note">
-              <span>Ohne konfigurierte Version läuft keine Provision. Ein leeres Feld bedeutet „keine Grenze"; eine gespeicherte Version gilt als bewusste Konfiguration.</span>
+            <div className="adm-note adm-note--info" role="note" id="adm-sp-caps-note">
+              <span>{CAP_TEXTS.globalNote}</span>
             </div>
             <Lade state={grenzen}>
               {grenzen.data?.current ? (
@@ -196,7 +220,7 @@ export default function AdminSalesPartnerSettingsPage() {
                   <div className="adm-kv-item"><dt>Begründung</dt><dd>{grenzen.data.current.reason || "—"}</dd></div>
                 </dl>
               ) : (
-                <p className="adm-support-hint" id="adm-sp-caps-none">Noch keine Version konfiguriert.</p>
+                <p className="adm-support-hint" id="adm-sp-caps-none">{CAP_TEXTS.globalNone}</p>
               )}
               {(grenzen.data?.history || []).length > 0 && (
                 <>

@@ -9,9 +9,11 @@
 // unvollständige Requests.
 //
 // Ausdrücklich keine Erfindungen:
-//   • Level-Schwellen werden NIE vorbelegt (keine Betreiberentscheidung) —
-//     leer und Pflicht. Vorbelegt sind nur die vorgegebenen Boni
-//     2,50/5,00/7,50/10,00/12,50 % und die Mindestpakete 3.
+//   • Vorbelegt wird ausschließlich mit Werten des SERVERS: den Startwerten
+//     (`startDefaults` — Sätze, Mindestpakete, Schwellen und Boni) bzw. der
+//     aktuellen Regelversion. Die Oberfläche kennt keine eigenen
+//     Standardwerte; fehlen die Serverwerte oder sind sie unvollständig,
+//     bleiben die Felder leer und Pflicht.
 //   • Ohne Ebenen-Sätze in der Freigabe gelten die Server-Defaults.
 //   • „Heute" kommt aus der Browseruhr des Admins nur als Vorabprüfung
 //     (min-Attribut, „nicht vor heute"); entscheidend ist der Server.
@@ -19,7 +21,7 @@
 // Framework-frei (.mjs), damit `node --test` es ohne DOM prüfen kann.
 
 import { customerText } from "./apiError.mjs";
-import { partnerStatusMeta, statusMetaFrom } from "./salesPartnerView.mjs";
+import { formatPercent, partnerStatusMeta, statusMetaFrom } from "./salesPartnerView.mjs";
 import { agreementDocumentPath } from "./salesPartnerAgreement.mjs";
 
 const obj = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
@@ -291,21 +293,122 @@ export function buildRatesBody(form = {}, { today } = {}) {
 
 // ── Level-Regeln ────────────────────────────────────────────────────────────
 export const LEVEL_COUNT = 5;
-export const DEFAULT_LEVEL_BONUSES = Object.freeze(["2.50", "5.00", "7.50", "10.00", "12.50"]);
-export const DEFAULT_MIN_PACKAGES = 3;
 
-/** Leeres Formular: Schwellen NICHT vorbelegt, Boni und Mindestpakete schon. */
+// ── Startwerte des Servers (startDefaults) ──────────────────────────────────
+// GET /admin/sales-partner-level-rules und GET /admin/sales-partners/:id
+// liefern die Startwerte des Programms: Grundprovision, Team Ebene 1 und 2,
+// Mindestpakete und je fünf Kunden- und Paketlevel. Sie sind die EINZIGE
+// Quelle jeder Vorbelegung; ein ungültiger Teil wird verworfen (null) und
+// nie aus eigenen Annahmen ergänzt.
+
+/** Prozentwert des Servers („10.00", auch „2.5") → „10.00"; sonst null. */
+const satzOderNull = (v) => {
+  if (typeof v !== "string" && typeof v !== "number") return null;
+  const p = parsePercentInput(String(v));
+  return p.ok ? p.value : null;
+};
+
+/** Fünf Level mit Level 1 … 5, streng steigenden Schwellen ab 1 und gültigem
+ *  Bonus — sonst null (der ganze Satz, kein Teilergebnis). */
+function vollstaendigeStufen(raw) {
+  const liste = arr(raw);
+  if (liste.length !== LEVEL_COUNT) return null;
+  const out = [];
+  let vorher = 0;
+  for (let i = 0; i < LEVEL_COUNT; i += 1) {
+    const x = obj(liste[i]);
+    const threshold = Number.isInteger(x.threshold) && x.threshold >= 1 ? x.threshold : null;
+    const bonusPercent = satzOderNull(x.bonusPercent);
+    if (x.level !== i + 1 || threshold === null || threshold <= vorher || bonusPercent === null) return null;
+    vorher = threshold;
+    out.push({ level: i + 1, threshold, bonusPercent });
+  }
+  return out;
+}
+
+/** Vollständiger Regelteil { minPackagesForActiveCustomer, customerLevels,
+ *  packageLevels } — oder null. */
+function vollstaendigeRegeln(raw) {
+  const r = obj(raw);
+  const min = Number.isInteger(r.minPackagesForActiveCustomer) && r.minPackagesForActiveCustomer >= 1
+    ? r.minPackagesForActiveCustomer : null;
+  const customerLevels = vollstaendigeStufen(r.customerLevels);
+  const packageLevels = vollstaendigeStufen(r.packageLevels);
+  return min !== null && customerLevels && packageLevels
+    ? { minPackagesForActiveCustomer: min, customerLevels, packageLevels }
+    : null;
+}
+
+/** startDefaults → { basePercent, level1Percent, level2Percent, rules } mit
+ *  null für jeden unbrauchbaren Teil; ganz ohne brauchbaren Teil null. */
+export function normalizeStartDefaults(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const out = {
+    basePercent: satzOderNull(raw.basePercent),
+    level1Percent: satzOderNull(raw.level1Percent),
+    level2Percent: satzOderNull(raw.level2Percent),
+    rules: vollstaendigeRegeln(raw),
+  };
+  return out.basePercent || out.level1Percent || out.level2Percent || out.rules ? out : null;
+}
+
+/** Prozentwert für ein Eingabefeld im deutschen Zahlformat: „10.00" → „10,00";
+ *  ohne gültigen Wert "". Gesendet wird über parsePercentInput wieder „10.00". */
+export function percentInputValue(value) {
+  const p = satzOderNull(value);
+  return p ? p.replace(".", ",") : "";
+}
+
+/** Freigabeformular, vorbelegt mit den Startsätzen des Servers (sonst leer). */
+export function approveFormFromDefaults(startDefaults) {
+  const sd = startDefaults && typeof startDefaults === "object" ? startDefaults : {};
+  return {
+    basePercent: percentInputValue(sd.basePercent),
+    level1Percent: percentInputValue(sd.level1Percent),
+    level2Percent: percentInputValue(sd.level2Percent),
+  };
+}
+
+const leereStufen = () => Array.from({ length: LEVEL_COUNT }, (_, i) => ({ level: i + 1, threshold: "", bonusPercent: "" }));
+
+/** Leeres Formular: nichts vorbelegt — weder Schwellen noch Boni noch Mindestpakete. */
 export function emptyLevelRulesForm() {
-  // Die Boni stehen im deutschen Zahlformat im Feld; gesendet wird über
-  // parsePercentInput wieder „2.50".
-  const stufen = () => DEFAULT_LEVEL_BONUSES.map((bonus, i) => ({ level: i + 1, threshold: "", bonusPercent: bonus.replace(".", ",") }));
   return {
     validFrom: "",
-    minPackagesForActiveCustomer: String(DEFAULT_MIN_PACKAGES),
-    customerLevels: stufen(),
-    packageLevels: stufen(),
+    minPackagesForActiveCustomer: "",
+    customerLevels: leereStufen(),
+    packageLevels: leereStufen(),
     reason: "",
   };
+}
+
+/** Formular aus einer vollständigen Regelquelle (aktuelle Version des Servers
+ *  oder `startDefaults.rules`); eine unvollständige Quelle ergibt das leere
+ *  Formular. Boni stehen im deutschen Zahlformat im Feld. */
+export function levelRulesFormFrom(rules) {
+  const r = vollstaendigeRegeln(rules);
+  if (!r) return emptyLevelRulesForm();
+  const stufen = (liste) => liste.map((s) => ({ level: s.level, threshold: String(s.threshold), bonusPercent: percentInputValue(s.bonusPercent) }));
+  return {
+    ...emptyLevelRulesForm(),
+    minPackagesForActiveCustomer: String(r.minPackagesForActiveCustomer),
+    customerLevels: stufen(r.customerLevels),
+    packageLevels: stufen(r.packageLevels),
+  };
+}
+
+/** Ist diese Regelquelle vollständig genug für eine Vorbelegung? */
+export const levelRulesComplete = (rules) => vollstaendigeRegeln(rules) !== null;
+
+/** Vorbelegung der globalen Regeln: die aktuelle Version, ohne sie die
+ *  Startwerte — dann mit „gültig ab heute", damit nur noch gespeichert werden
+ *  muss. Ohne beides das leere Formular. */
+export function prefillGlobalLevelRulesForm({ current = null, startDefaults = null, today = "" } = {}) {
+  if (levelRulesComplete(current)) return { form: levelRulesFormFrom(current), source: "current" };
+  if (levelRulesComplete(startDefaults?.rules)) {
+    return { form: { ...levelRulesFormFrom(startDefaults.rules), validFrom: isIsoDate(today) ? today : "" }, source: "startDefaults" };
+  }
+  return { form: emptyLevelRulesForm(), source: null };
 }
 
 function pruefeStufen(stufen, prefix, errors) {
@@ -371,8 +474,21 @@ export function buildPartnerLevelRulesBody(form = {}, { today } = {}) {
 }
 
 // ── Obergrenzen ─────────────────────────────────────────────────────────────
-/** POST /admin/sales-partner-caps — leer heißt „keine Grenze" (null). */
-export function buildCapBody(form = {}, { today } = {}) {
+// Eine Obergrenze ist optional: ohne Version gilt keine Grenze. Global gilt
+// eine Version für alle Partner; mit `partnerUserId` ist sie die individuelle
+// Obergrenze genau dieses Partners.
+export const CAP_TEXTS = Object.freeze({
+  globalNote: "Obergrenzen sind optional. Ohne konfigurierte Version gilt keine Obergrenze – Provisionen werden normal berechnet. Ein leeres Feld bedeutet „keine Grenze“.",
+  globalNone: "Keine Obergrenze konfiguriert – es gilt keine Grenze.",
+  partnerNone: "Keine individuelle Obergrenze – es gilt die globale Einstellung (standardmäßig keine Obergrenze).",
+  partnerHint: "Ein leeres Feld bedeutet „keine Grenze“. Die individuelle Obergrenze gilt nur für diesen Vertriebspartner.",
+  noLimit: "Keine Grenze",
+  partnerInvalid: "Der Vertriebspartner ist ungültig.",
+});
+
+/** POST /admin/sales-partner-caps — leer heißt „keine Grenze" (null); mit
+ *  `partnerUserId` die individuelle Obergrenze dieses Partners. */
+export function buildCapBody(form = {}, { today, partnerUserId } = {}) {
   const errors = {};
   const dateError = pruefeDatum(form.validFrom, today, { notBefore: true });
   if (dateError) errors.validFrom = dateError;
@@ -388,8 +504,16 @@ export function buildCapBody(form = {}, { today } = {}) {
     maxTotalRatePercent: total.ok ? total.value : null,
   };
   if (r.value) body.reason = r.value;
+  if (partnerUserId !== undefined && partnerUserId !== null) {
+    const pid = positiveInt(partnerUserId);
+    if (pid === null) errors.partnerUserId = CAP_TEXTS.partnerInvalid;
+    else body.partnerUserId = pid;
+  }
   return ergebnis(errors, body);
 }
+
+/** Anzeige eines Höchstsatzes: „35,00 %" oder „Keine Grenze". */
+export const capLimitText = (value) => (satzOderNull(value) ? formatPercent(satzOderNull(value)) : CAP_TEXTS.noLimit);
 
 // ── Provisionen: Rücknahme und Korrektur ────────────────────────────────────
 /** POST /admin/sales-partner-commissions/decisions/:decisionId/reverse */
@@ -523,6 +647,16 @@ export function normalizeVersioned(raw, normalize) {
   return { current: d.current ? normalize(d.current) : null, history: arr(d.history).map(normalize).filter(Boolean) };
 }
 
+/** GET /admin/sales-partner-level-rules → { current, history, startDefaults }. */
+export function normalizeLevelRulesResponse(raw) {
+  return { ...normalizeVersioned(raw, normalizeRuleSet), startDefaults: normalizeStartDefaults(obj(raw).startDefaults) };
+}
+
+/** GET /admin/sales-partner-caps (global oder ?partnerUserId=) → { current, history }. */
+export function normalizeCapsResponse(raw) {
+  return normalizeVersioned(raw, normalizeCap);
+}
+
 function normalizeRateVersion(raw) {
   const r = obj(raw);
   if (Object.keys(r).length === 0) return null;
@@ -592,6 +726,8 @@ export function normalizeAdminPartnerDetail(raw) {
       current: lr.current ? normalizeRuleSet(lr.current) : null,
       history: arr(lr.history).map(normalizeRuleSet).filter(Boolean),
     },
+    // Startwerte des Servers — einzige Quelle der Vorbelegung (Freigabe, Regeln).
+    startDefaults: normalizeStartDefaults(d.startDefaults),
     team: { level1: arr(team.level1).map(normalizeTeamMember), level2: arr(team.level2).map(normalizeTeamMember) },
     customers: arr(d.customers).map((c) => {
       const x = obj(c);

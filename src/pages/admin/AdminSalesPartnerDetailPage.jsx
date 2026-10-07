@@ -5,6 +5,7 @@ import { CopyableNumber } from "../../components/ui/CopyableNumber";
 import { SalesPartnerStatusCard } from "../../components/admin/SalesPartnerStatusCard";
 import { SalesPartnerRatesCard } from "../../components/admin/SalesPartnerRatesCard";
 import { SalesPartnerLevelRulesCard } from "../../components/admin/SalesPartnerLevelRulesCard";
+import { SalesPartnerCapCard } from "../../components/admin/SalesPartnerCapCard";
 import { SalesPartnerCommissionsCard } from "../../components/admin/SalesPartnerCommissionsCard";
 import { SalesPartnerBillingDetailsCard } from "../../components/admin/SalesPartnerBillingDetailsCard";
 import { SalesPartnerCreditNotesCard } from "../../components/admin/SalesPartnerCreditNotesCard";
@@ -94,8 +95,10 @@ function TeamTable({ level, members }) {
 
 /* ── Admin · Vertriebspartner (Detail) ───────────────────────────────────────
    Stammdaten, Codes und Links, Abrechnungsdaten (Prüfung), Status und Zugang
-   (Aktionen), Sätze, Level-Regeln, Team, Kunden, Monatsbewertungen,
-   Provisionen und Gutschriften. Jede Aktion läuft über den zentralen
+   (Aktionen), Sätze, Level-Regeln, individuelle Obergrenze, Team, Kunden,
+   Monatsbewertungen, Provisionen und Gutschriften. Vorbelegungen (Freigabe,
+   eigene Regeln) stammen aus den Startwerten des Servers (`startDefaults`).
+   Jede Aktion läuft über den zentralen
    Bestätigungsdialog (das erneute Erzeugen eines Dokuments direkt); nach jeder
    Änderung wird der Stand des Servers neu geladen (kein optimistisches Raten). */
 export default function AdminSalesPartnerDetailPage() {
@@ -189,7 +192,8 @@ export default function AdminSalesPartnerDetailPage() {
       />
 
       <div className="adm-cards">
-        <SalesPartnerStatusCard partner={{ ...p, id: partnerId }} statusHistory={detail.statusHistory} onChanged={load} />
+        <SalesPartnerStatusCard partner={{ ...p, id: partnerId }} statusHistory={detail.statusHistory}
+          startDefaults={detail.startDefaults} onChanged={load} />
 
         <div className="adm-card" id="adm-sp-master-card">
           <div className="adm-card-head">Stammdaten</div>
@@ -238,7 +242,9 @@ export default function AdminSalesPartnerDetailPage() {
         <SalesPartnerBillingDetailsCard partnerId={partnerId} partnerName={partnerDisplayName(p)} />
 
         <SalesPartnerRatesCard partnerId={partnerId} rates={detail.rates} onChanged={load} />
-        <SalesPartnerLevelRulesCard partnerId={partnerId} levelRules={detail.levelRules} onChanged={load} />
+        <SalesPartnerLevelRulesCard partnerId={partnerId} levelRules={detail.levelRules}
+          startDefaults={detail.startDefaults} onChanged={load} />
+        <SalesPartnerCapCard partnerId={partnerId} />
 
         <div className="adm-card" id="adm-sp-team-card">
           <div className="adm-card-head">Team</div>

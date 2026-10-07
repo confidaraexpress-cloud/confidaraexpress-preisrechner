@@ -11,6 +11,7 @@ import {
   DEACTIVATION_REASON_OPTIONS,
   adminActionErrorText,
   adminPartnerStatusMeta,
+  approveFormFromDefaults,
   buildApproveBody,
   buildDeactivateBody,
   buildLoginBody,
@@ -80,18 +81,18 @@ const AKTIONEN = Object.freeze({
 });
 
 const LEERE_FORMULARE = Object.freeze({
-  approve: { basePercent: "", level1Percent: "", level2Percent: "" },
   reject: { reason: "" },
   deactivate: { reason: "", note: "" },
 });
 
 /* ── Status und Zugang eines Vertriebspartners ───────────────────────────────
-   Freigeben (Pflichtfeld Grundprovision), Ablehnen, Deaktivieren mit Grund,
-   Reaktivieren, Login sperren/entsperren — jede Aktion über den zentralen
-   Bestätigungsdialog, jeder Body über utils/adminSalesPartnerView.mjs. Welche
-   Aktion angeboten wird, folgt dem Status des Servers; ein unbekannter
-   Loginzustand bietet bewusst keine Login-Aktion an (fail-closed). */
-export function SalesPartnerStatusCard({ partner, statusHistory = [], onChanged }) {
+   Freigeben (Pflichtfeld Grundprovision, vorbelegt mit den Startsätzen des
+   Servers), Ablehnen, Deaktivieren mit Grund, Reaktivieren, Login
+   sperren/entsperren — jede Aktion über den zentralen Bestätigungsdialog,
+   jeder Body über utils/adminSalesPartnerView.mjs. Welche Aktion angeboten
+   wird, folgt dem Status des Servers; ein unbekannter Loginzustand bietet
+   bewusst keine Login-Aktion an (fail-closed). */
+export function SalesPartnerStatusCard({ partner, statusHistory = [], startDefaults = null, onChanged }) {
   const [dialog, setDialog] = useState(null);       // { kind, form, errors, error }
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);     // { type, text }
@@ -99,9 +100,13 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], onChanged 
 
   const status = partner.status;
   const login = loginEnabledState(partner.loginStatus);
+  // Vorbelegt wird nur mit den Startsätzen des Servers — ohne sie bleibt das
+  // Formular leer (Grundprovision Pflicht, Ebenen optional).
+  const vorbelegt = !!(startDefaults && (startDefaults.basePercent || startDefaults.level1Percent || startDefaults.level2Percent));
   const oeffnen = (kind) => {
     setMessage(null);
-    setDialog({ kind, form: { ...(LEERE_FORMULARE[kind] || {}) }, errors: {}, error: "" });
+    const form = kind === "approve" ? approveFormFromDefaults(startDefaults) : { ...(LEERE_FORMULARE[kind] || {}) };
+    setDialog({ kind, form, errors: {}, error: "" });
   };
   const schliessen = () => { if (!busy) setDialog(null); };
   const setFeld = (k, v) => setDialog((d) => (d ? { ...d, form: { ...d.form, [k]: v }, errors: { ...d.errors, [k]: undefined } } : d));
@@ -245,7 +250,11 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], onChanged 
                   aria-invalid={dialog.errors.level2Percent ? "true" : undefined} disabled={busy} />
                 {fehler("level2Percent")}
               </div>
-              <p className="adm-edit-hint">Ohne Angabe gelten für die Teamebenen die Standardsätze des Servers.</p>
+              <p className="adm-edit-hint" id="adm-sp-approve-hint">
+                {vorbelegt
+                  ? "Vorbelegt mit den Startsätzen. Sie können die Werte vor der Freigabe ändern; ohne Angabe gelten für die Teamebenen die Standardsätze des Servers."
+                  : "Ohne Angabe gelten für die Teamebenen die Standardsätze des Servers."}
+              </p>
             </>
           )}
           {dialog.kind === "reject" && (

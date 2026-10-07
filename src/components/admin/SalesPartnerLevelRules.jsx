@@ -86,12 +86,13 @@ export function RuleSetHistory({ history, caption }) {
 }
 
 /* ── Eingabe einer Regelversion: Mindestpakete und 5 + 5 Level ───────────────
-   Die Schwellen sind NICHT vorbelegt (keine Betreiberentscheidung) — die
-   Felder bleiben leer und Pflicht; vorbelegt sind nur die vorgegebenen Boni
-   und die Mindestpakete (utils/adminSalesPartnerView.mjs: emptyLevelRulesForm).
-   Geprüft wird beim Absenden über build…LevelRulesBody; hier steht nur die
-   Darstellung samt Feldfehlern. */
-export function LevelRulesEditor({ value, onChange, errors = {}, idPrefix, disabled = false }) {
+   Vorbelegt wird ausschließlich vom Aufrufer mit Werten des Servers
+   (Startwerte oder aktuelle Version — utils/adminSalesPartnerView.mjs:
+   levelRulesFormFrom); ohne sie bleiben alle Felder leer und Pflicht.
+   `prefillNote` sagt, woher eine Vorbelegung stammt. Geprüft wird beim
+   Absenden über build…LevelRulesBody; hier steht nur die Darstellung samt
+   Feldfehlern. */
+export function LevelRulesEditor({ value, onChange, errors = {}, idPrefix, disabled = false, prefillNote = null }) {
   const setStufe = (dim, i, feld, wert) => {
     const liste = value[dim].map((s, k) => (k === i ? { ...s, [feld]: wert } : s));
     onChange({ ...value, [dim]: liste });
@@ -165,8 +166,9 @@ export function LevelRulesEditor({ value, onChange, errors = {}, idPrefix, disab
         </table>
       </div>
       <p className="adm-edit-hint">
-        Schwellen steigen von Level zu Level streng an; Boni liegen zwischen 0 und 100 %. Die Schwellen sind bewusst nicht vorbelegt.
+        Schwellen steigen von Level zu Level streng an; Boni liegen zwischen 0 und 100 %.
       </p>
+      {prefillNote && <p className="adm-edit-hint" id={`${idPrefix}-prefill-note`}>{prefillNote}</p>}
     </div>
   );
 }

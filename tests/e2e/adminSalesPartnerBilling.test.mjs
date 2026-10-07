@@ -77,6 +77,10 @@ async function setup(page, {
     if (p.endsWith("/kundenbereich")) return json({ user: ADMIN });
     if (p.endsWith("/admin/sales-partners/5") && !post) return json(DETAIL);
     if (p.endsWith("/admin/sales-partners/5/commissions")) return json({ month: "2026-10", totals: { accruedCents: 0, payableCents: 0 }, entries: [] });
+    // Karte „Individuelle Obergrenze“ des Partnerdetails (eigener Abruf je Partner).
+    if (p.endsWith("/admin/sales-partner-caps") && !post && new URL(req.url()).searchParams.get("partnerUserId") === "5") {
+      return json({ current: null, history: [] });
+    }
     if (p.endsWith("/admin/sales-partners/5/billing-details") && !post) { state.billingGets += 1; return json(state.billing); }
     if (p.endsWith("/billing-details/confirm") && post) {
       state.confirm.push(req.postDataJSON());

@@ -703,10 +703,18 @@ export function listAdminSalesPartnerCommissions(id, month) {
   return apiFetch(`${partnerPath(id)}/commissions${buildQuery(query, SALES_PARTNER_COMMISSION_PARAMS)}`, { auth: true });
 }
 
-// Globale Level-Regeln und Obergrenzen (je aktuelle Version + Historie).
+// Globale Level-Regeln (samt Startwerten des Servers) und Obergrenzen (je
+// aktuelle Version + Historie). Mit `partnerUserId` liefert der Server die
+// individuellen Obergrenzen genau dieses Partners; der Body einer neuen
+// Version entsteht über buildCapBody (mit partnerUserId: individuell).
+const CAP_PARAMS = ["partnerUserId"];
 export const getAdminSalesPartnerLevelRules = () => apiFetch("/admin/sales-partner-level-rules", { auth: true });
 export const createAdminSalesPartnerGlobalLevelRules = (body) => jsonPost("/admin/sales-partner-level-rules", body);
-export const getAdminSalesPartnerCaps = () => apiFetch("/admin/sales-partner-caps", { auth: true });
+export function getAdminSalesPartnerCaps(partnerUserId) {
+  const query = partnerUserId !== undefined && partnerUserId !== null && /^[1-9][0-9]{0,15}$/.test(String(partnerUserId))
+    ? { partnerUserId } : {};
+  return apiFetch(`/admin/sales-partner-caps${buildQuery(query, CAP_PARAMS)}`, { auth: true });
+}
 export const createAdminSalesPartnerCap = (body) => jsonPost("/admin/sales-partner-caps", body);
 
 // Provisionen: Rücknahme einer Entscheidung und manuelle Korrekturbuchung.

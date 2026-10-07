@@ -8,11 +8,14 @@
 //      Bestätigungsdialog — exakt der Vertragsbody, danach der neue Stand.
 //   3. Queue „Versandnachweis fehlt": Entscheidung „Versendet" verlangt Datum
 //      und Nachweisart; der Body trägt genau die Vertragsfelder.
-//   4. Einstellungen: Schwellen der Level-Regeln sind NICHT vorbelegt, die
-//      Boni und Mindestpakete schon; Obergrenzen-Hinweis sichtbar.
+//   4. Einstellungen: ohne globale Regeln ist das Formular mit den Startwerten
+//      des Servers und „gültig ab heute“ vorbelegt (nur speichern); ohne
+//      Startwerte bleibt es leer. Obergrenzen sind optional.
 //   5. Kundendetail: Karte „Vertriebspartner-Zuordnung" lädt selbständig.
 //   6. Login sperren/entsperren nach dem exakten Backendvertrag (loginStatus =
 //      users.status: approved → sperren, blocked → entsperren, pending keine Aktion).
+//   7. Freigabe mit Startwerten: 10,00 / 5,00 / 2,50 vorbelegt, genau dieser Body.
+//   8. Individuelle Obergrenze: Standardtext, neue Version mit partnerUserId.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -56,10 +59,21 @@ function detail(status) {
   };
 }
 
+// Startwerte genau in der Form des Backendvertrags.
+const BONI = ["2.50", "5.00", "7.50", "10.00", "12.50"];
+const START = {
+  basePercent: "10.00", level1Percent: "5.00", level2Percent: "2.50", minPackagesForActiveCustomer: 3,
+  customerLevels: [3, 6, 10, 15, 25].map((threshold, i) => ({ level: i + 1, threshold, bonusPercent: BONI[i] })),
+  packageLevels: [100, 250, 500, 1000, 2000].map((threshold, i) => ({ level: i + 1, threshold, bonusPercent: BONI[i] })),
+};
+
 let server, browser;
 
-async function setup(page) {
-  const state = { list: [], approve: [], evidence: [], partnerStatus: "pending", other: [], login: [], login6: "approved" };
+// `startDefaults`: Startwerte in Detail- und Regelantwort (null = älterer Server ohne Feld).
+async function setup(page, { startDefaults = null } = {}) {
+  const state = { list: [], approve: [], evidence: [], partnerStatus: "pending", other: [], login: [], login6: "approved",
+    rules: [], caps: [], capQueries: [], partnerCap: null };
+  const mitStart = (d) => (startDefaults ? { ...d, startDefaults } : d);
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -74,7 +88,7 @@ async function setup(page) {
       const partners = ZEILEN.filter((z) => (!status || z.status === status) && (!q || z.name.toLowerCase().includes(q)));
       return json({ partners, total: partners.length, limit: 25, offset: 0 });
     }
-    if (p.endsWith("/admin/sales-partners/5") && req.method() === "GET") return json(detail(state.partnerStatus));
+    if (p.endsWith("/admin/sales-partners/5") && req.method() === "GET") return json(mitStart(detail(state.partnerStatus)));
     if (p.endsWith("/admin/sales-partners/5/approve") && req.method() === "POST") {
       state.approve.push(req.postDataJSON());
       state.partnerStatus = "active";
@@ -105,8 +119,22 @@ async function setup(page) {
       if (req.method() === "POST") { state.evidence.push(req.postDataJSON()); return json({ ok: true }); }
       return json({ current: null, history: [] });
     }
-    if (p.endsWith("/admin/sales-partner-level-rules")) return json({ current: null, history: [] });
-    if (p.endsWith("/admin/sales-partner-caps")) return json({ current: null, history: [] });
+    if (p.endsWith("/admin/sales-partner-level-rules")) {
+      if (req.method() === "POST") { state.rules.push(req.postDataJSON()); return json({ ok: true }, 201); }
+      return json(mitStart({ current: null, history: [] }));
+    }
+    if (p.endsWith("/admin/sales-partner-caps")) {
+      if (req.method() === "POST") {
+        const body = req.postDataJSON();
+        state.caps.push(body);
+        if (body.partnerUserId === 5) state.partnerCap = { id: 31, validFrom: body.validFrom, maxOwnRatePercent: body.maxOwnRatePercent,
+          maxTotalRatePercent: body.maxTotalRatePercent, reason: body.reason || null, createdAt: "2026-10-07T10:00:00Z" };
+        return json({ ok: true }, 201);
+      }
+      state.capQueries.push(url.search);
+      if (url.searchParams.get("partnerUserId") === "5") return json({ current: state.partnerCap, history: [] });
+      return json({ current: null, history: [] });
+    }
     if (p.endsWith("/admin/users/7")) {
       return json({ user: { id: 7, name: "Max Mustermann", email: "einkauf@muster-logistik.de", company_name: "Muster Logistik GmbH",
         role: "customer", status: "approved", country: "DE" }, summary: {} });
@@ -218,20 +246,47 @@ test("3 — Versandnachweis: „Versendet“ verlangt Datum und Nachweisart; Ver
   await page.close();
 });
 
-test("4 — Einstellungen: Schwellen leer, Boni und Mindestpakete vorbelegt, Obergrenzen-Hinweis", async () => {
+test("4 — Einstellungen: Startwerte des Servers vorbelegt (nur speichern); ohne Startwerte leer; Obergrenze optional", async () => {
   const page = await browser.newPage();
-  await setup(page);
+  const state = await setup(page, { startDefaults: START });
+  await page.clock.setFixedTime(new Date("2026-10-07T10:00:00"));
   await page.goto(`${BASE}/admin/partners/settings`, { waitUntil: "networkidle" });
-  await page.locator("#adm-sp-global-min-packages").waitFor({ state: "visible" });
-  assert.equal(await page.inputValue("#adm-sp-global-min-packages"), "3");
-  for (let i = 1; i <= 5; i += 1) {
-    assert.equal(await page.inputValue(`#adm-sp-global-customer-${i}-threshold`), "", `Kundenschwelle ${i} vorbelegt`);
-    assert.equal(await page.inputValue(`#adm-sp-global-package-${i}-threshold`), "", `Paketschwelle ${i} vorbelegt`);
-  }
-  assert.equal(await page.inputValue("#adm-sp-global-customer-1-bonus"), "2,50");
-  assert.equal(await page.inputValue("#adm-sp-global-package-5-bonus"), "12,50");
-  assert.match(await page.locator("#adm-sp-caps-card").innerText(), /Ohne konfigurierte Version läuft keine Provision\./);
+  await page.waitForFunction(() => document.querySelector("#adm-sp-global-min-packages")?.value === "3");
+  const schwellen = async (art) => Promise.all([1, 2, 3, 4, 5].map((i) => page.inputValue(`#adm-sp-global-${art}-${i}-threshold`)));
+  const boni = async (art) => Promise.all([1, 2, 3, 4, 5].map((i) => page.inputValue(`#adm-sp-global-${art}-${i}-bonus`)));
+  assert.deepEqual(await schwellen("customer"), ["3", "6", "10", "15", "25"]);
+  assert.deepEqual(await schwellen("package"), ["100", "250", "500", "1000", "2000"]);
+  assert.deepEqual(await boni("customer"), ["2,50", "5,00", "7,50", "10,00", "12,50"]);
+  assert.deepEqual(await boni("package"), ["2,50", "5,00", "7,50", "10,00", "12,50"]);
+  assert.equal(await page.inputValue("#adm-sp-global-from"), "2026-10-07", "gültig ab heute vorbelegt");
+  assert.match(await page.locator("#adm-sp-global-prefill-note").innerText(), /Startwerten des Programms/);
+
+  // Nur speichern: genau die Startwerte im Vertragsformat.
+  await page.locator("#adm-sp-global-submit").click();
+  await page.locator("#adm-sp-settings-confirm").click();
+  await page.locator('[role="dialog"]').waitFor({ state: "detached" });
+  assert.deepEqual(state.rules, [{ validFrom: "2026-10-07", minPackagesForActiveCustomer: 3,
+    customerLevels: START.customerLevels, packageLevels: START.packageLevels }]);
+
+  const caps = await page.locator("#adm-sp-caps-card").innerText();
+  assert.match(caps, /Obergrenzen sind optional\. Ohne konfigurierte Version gilt keine Obergrenze/);
+  assert.doesNotMatch(caps, /läuft keine Provision/);
+  assert.equal(await page.locator("#adm-sp-caps-none").innerText(), "Keine Obergrenze konfiguriert – es gilt keine Grenze.");
   await page.close();
+
+  // Älterer Server ohne Startwerte: nichts wird erfunden — alle Felder leer.
+  const ohne = await browser.newPage();
+  await setup(ohne);
+  await ohne.goto(`${BASE}/admin/partners/settings`, { waitUntil: "networkidle" });
+  await ohne.locator("#adm-sp-global-min-packages").waitFor({ state: "visible" });
+  assert.equal(await ohne.inputValue("#adm-sp-global-min-packages"), "");
+  for (let i = 1; i <= 5; i += 1) {
+    assert.equal(await ohne.inputValue(`#adm-sp-global-customer-${i}-threshold`), "", `Kundenschwelle ${i} vorbelegt`);
+    assert.equal(await ohne.inputValue(`#adm-sp-global-package-${i}-bonus`), "", `Paketbonus ${i} vorbelegt`);
+  }
+  assert.equal(await ohne.inputValue("#adm-sp-global-from"), "");
+  assert.equal(await ohne.locator("#adm-sp-global-prefill-note").count(), 0);
+  await ohne.close();
 });
 
 test("5 — Kundendetail: die Zuordnungskarte lädt selbständig", async () => {
@@ -268,5 +323,61 @@ test("6 — Login sperren und entsperren nach dem exakten Backendvertrag", async
   await page.locator("#adm-sp-dialog-confirm").click();
   await page.waitForFunction(() => document.querySelector("#adm-sp-login")?.textContent === "Login aktiv");
   assert.deepEqual(state.login, [{ enabled: false }, { enabled: true }]);
+  await page.close();
+});
+
+test("7 — Freigabe mit Startwerten: 10,00 / 5,00 / 2,50 vorbelegt und genau so gesendet", async () => {
+  const page = await browser.newPage();
+  const state = await setup(page, { startDefaults: START });
+  await page.goto(`${BASE}/admin/partners/5`, { waitUntil: "networkidle" });
+  await page.locator("#adm-sp-approve").click();
+  await page.locator('[role="dialog"]').waitFor({ state: "visible" });
+  assert.equal(await page.inputValue("#adm-sp-base"), "10,00");
+  assert.equal(await page.inputValue("#adm-sp-l1"), "5,00");
+  assert.equal(await page.inputValue("#adm-sp-l2"), "2,50");
+  assert.match(await page.locator("#adm-sp-approve-hint").innerText(), /Vorbelegt mit den Startsätzen/);
+  // Ohne Freigabe für Rückdatierung gibt es kein Datumsfeld.
+  assert.equal(await page.locator("#adm-sp-approve-date").count(), 0);
+  await page.locator("#adm-sp-dialog-confirm").click();
+  await page.locator('[role="dialog"]').waitFor({ state: "detached" });
+  assert.deepEqual(state.approve, [{ basePercent: "10.00", level1Percent: "5.00", level2Percent: "2.50" }]);
+  await page.waitForFunction(() => document.querySelector("#adm-sp-status")?.textContent === "Aktiv");
+
+  // Eigene Level-Regeln des Partners starten ebenfalls mit den Startwerten.
+  await page.locator("#adm-sp-levels-custom").check();
+  assert.equal(await page.inputValue("#adm-sp-levels-customer-1-threshold"), "3");
+  assert.equal(await page.inputValue("#adm-sp-levels-package-5-threshold"), "2000");
+  assert.equal(await page.inputValue("#adm-sp-levels-min-packages"), "3");
+  await page.close();
+});
+
+test("8 — individuelle Obergrenze: Standardtext, neue Version mit partnerUserId, danach der neue Stand", async () => {
+  const page = await browser.newPage();
+  const state = await setup(page);
+  await page.clock.setFixedTime(new Date("2026-10-07T10:00:00"));
+  await page.goto(`${BASE}/admin/partners/5`, { waitUntil: "networkidle" });
+  await page.locator("#adm-sp-pcap-none").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#adm-sp-pcap-none").innerText(),
+    "Keine individuelle Obergrenze – es gilt die globale Einstellung (standardmäßig keine Obergrenze).");
+  assert.ok(state.capQueries.includes("?partnerUserId=5"), `Abfrage ohne Partner: ${JSON.stringify(state.capQueries)}`);
+
+  // Ohne Datum kein Request.
+  await page.locator("#adm-sp-pcap-submit").click();
+  await page.locator("#adm-sp-partner-cap-card .field-error").first().waitFor({ state: "visible" });
+  assert.equal(state.caps.length, 0);
+
+  await page.fill("#adm-sp-pcap-from", "2026-10-08");
+  await page.fill("#adm-sp-pcap-total", "30");
+  await page.locator("#adm-sp-pcap-submit").click();
+  await page.locator('[role="dialog"]').waitFor({ state: "visible" });
+  assert.match(await page.locator('[role="dialog"]').innerText(), /Eigenprovision höchstens Keine Grenze, gesamt höchstens 30,00 %/);
+  await page.locator("#adm-sp-pcap-confirm").click();
+  await page.locator('[role="dialog"]').waitFor({ state: "detached" });
+  assert.deepEqual(state.caps, [{ validFrom: "2026-10-08", maxOwnRatePercent: null, maxTotalRatePercent: "30.00", partnerUserId: 5 }]);
+  await page.locator("#adm-sp-pcap-current").waitFor({ state: "visible" });
+  const karte = await page.locator("#adm-sp-pcap-current").innerText();
+  assert.match(karte, /30,00 %/);
+  assert.match(karte, /08\.10\.2026/);
+  assert.match(karte, /Keine Grenze/);
   await page.close();
 });

@@ -196,8 +196,10 @@ test("9 — Provisionen: Rücknahmen und Korrekturen erkennbar, Gegenüber je Eb
 test("10 — „Mein Team“ erscheint nur mit Einträgen; Relevanz mit Rang", () => {
   const leer = normalizeTeam({ limits: { level1: 10, level2: 10 }, level1: [], level2: [] });
   assert.equal(teamVisible(leer), false);
-  assert.deepEqual(visiblePartnerTabs(leer).map((t) => t.id), ["overview", "customers", "commissions", "account"],
-    "ohne Teameinträge kein Teambereich; „Konto“ steht immer da");
+  // Bewusste Ankeränderung: „Abrechnungen“ (Gutschriften) steht immer da —
+  // zwischen Provisionen und Team (salesPartnerCreditNotes.test.mjs, Test 7).
+  assert.deepEqual(visiblePartnerTabs(leer).map((t) => t.id), ["overview", "customers", "commissions", "credit-notes", "account"],
+    "ohne Teameinträge kein Teambereich; „Abrechnungen“ und „Konto“ stehen immer da");
   const team = normalizeTeam({ limits: { level1: 10, level2: 10 },
     level1: [{ name: "Tom Team", status: "active", relevant: true, rank: 2, commissionCurrentMonthCents: 500, commissionTotalCents: 9000 }],
     level2: [] });

@@ -198,7 +198,9 @@ test("4 — ohne Teameinträge gibt es keinen Bereich „Mein Team“", async ()
   await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
   await page.locator("#spp-tab-overview").waitFor({ state: "visible" });
   assert.equal(await page.locator("#spp-tab-team").count(), 0);
-  assert.equal(await page.locator('[role="tab"]').count(), 4, "Übersicht, Kunden, Provisionen, Konto");
+  // Bewusste Ankeränderung: „Abrechnungen“ (Gutschriften) steht immer da.
+  assert.equal(await page.locator('[role="tab"]').count(), 5, "Übersicht, Kunden, Provisionen, Abrechnungen, Konto");
+  assert.equal(await page.locator("#spp-tab-credit-notes").count(), 1);
   assert.equal(await page.locator("#spp-tab-account").count(), 1);
   await page.close();
 });

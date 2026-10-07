@@ -25,9 +25,15 @@ function chromiumExecutablePath() {
   return root && existsSync(path.join(root, "chromium")) ? path.join(root, "chromium") : undefined;
 }
 
+// Vertragsstand der öffentlichen Konfiguration: `agreementUrl` ist entfallen,
+// die registrierte Fassung kommt als `agreement`. Geöffnet ist die
+// Registrierung nur, wenn genau diese Fassung zugestimmt wird (die Seite
+// /partnervereinbarung prüft salesPartnerAgreement.test.mjs).
 const CONFIG_OFFEN = {
   registrationEnabled: true, referralsEnabled: true, referralRetentionDays: 30,
-  agreementVersion: "2026-10", agreementUrl: null,
+  agreementVersion: "2026-10",
+  agreement: { version: "2026-10", effectiveFrom: "2026-10-01", effectiveTo: null,
+    documentPath: "/api/legal/sales_partner_agreement/2026-10" },
 };
 
 let server, browser;

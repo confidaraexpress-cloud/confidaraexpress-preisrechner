@@ -3,7 +3,11 @@
 // GET /api/sales-partner/public-config (ohne Anmeldung) sagt, ob die
 // Partnerregistrierung geöffnet ist, ob Empfehlungslinks gelten, wie lange ein
 // Empfehlungscode im Browser gehalten werden darf und welche Fassung der
-// Partnervereinbarung gilt.
+// Partnervereinbarung gilt — als Version (`agreementVersion`) und als
+// registrierte Fassung (`agreement`: Version, Gültigkeit, Dokumentpfad). Eine
+// Adresse der Vereinbarung nennt die Konfiguration nicht mehr: gelesen wird sie
+// auf der eigenen Seite /partnervereinbarung, die ausschließlich das
+// registrierte Dokument verlinkt (utils/salesPartnerAgreement.mjs).
 //
 // Fail-closed in jede Richtung: ein fehlendes Feld, ein falscher Typ oder ein
 // gescheiterter Aufruf ergibt „geschlossen" bzw. „keine Speicherung". Es wird
@@ -12,6 +16,8 @@
 // ohne Freigabe keine browserseitige Speicherung).
 //
 // Framework-frei (.mjs), damit `node --test` es ohne DOM prüfen kann.
+
+import { normalizeAgreement } from "./salesPartnerAgreement.mjs";
 
 // Obergrenze der Aufbewahrung, die der Browser überhaupt akzeptiert. Der
 // Vertrag nennt 30 Tage; ein Wert jenseits eines Jahres wäre kein Versehen
@@ -33,7 +39,7 @@ export function parseSalesPartnerPublicConfig(raw) {
     referralsEnabled: d.referralsEnabled === true,
     referralRetentionDays: retentionDaysOf(d.referralRetentionDays),
     agreementVersion: text(d.agreementVersion),
-    agreementUrl: text(d.agreementUrl),
+    agreement: normalizeAgreement(d.agreement),
   });
 }
 
@@ -46,8 +52,14 @@ export function referralPersistenceAllowed(config) {
   return !!config && config.referralsEnabled === true && retentionDaysOf(config.referralRetentionDays) !== null;
 }
 
-/** Ist die Partnerregistrierung tatsächlich nutzbar? Ohne Vereinbarungsfassung
- *  kann niemand zustimmen — dann bleibt das Formular geschlossen. */
+/** Ist die Partnerregistrierung tatsächlich nutzbar? Der Server öffnet sie nur
+ *  mit einer veröffentlichten, gültigen Vereinbarung. Die Oberfläche verlangt
+ *  zusätzlich, dass die zuzustimmende Fassung genau die registrierte ist und
+ *  ihr Dokument verlinkt werden kann — niemand stimmt einer Fassung zu, die er
+ *  nicht öffnen kann. Jede Abweichung lässt das Formular geschlossen. */
 export function partnerRegistrationOpen(config) {
-  return !!config && config.registrationEnabled === true && text(config.agreementVersion) !== null;
+  if (!config || config.registrationEnabled !== true) return false;
+  const fassung = text(config.agreementVersion);
+  const vereinbarung = config.agreement;
+  return fassung !== null && !!vereinbarung && vereinbarung.version === fassung && vereinbarung.documentPath !== null;
 }

@@ -6,8 +6,13 @@ import { SalesPartnerStatusCard } from "../../components/admin/SalesPartnerStatu
 import { SalesPartnerRatesCard } from "../../components/admin/SalesPartnerRatesCard";
 import { SalesPartnerLevelRulesCard } from "../../components/admin/SalesPartnerLevelRulesCard";
 import { SalesPartnerCommissionsCard } from "../../components/admin/SalesPartnerCommissionsCard";
+import { SalesPartnerBillingDetailsCard } from "../../components/admin/SalesPartnerBillingDetailsCard";
+import { SalesPartnerCreditNotesCard } from "../../components/admin/SalesPartnerCreditNotesCard";
 import { getAdminSalesPartner } from "../../api/adminApi";
+import { agreementDocumentUrl } from "../../api/partnerApi";
 import { referralLinkPath } from "../../utils/referralCapture.mjs";
+import { AGREEMENT_TEXTS } from "../../utils/salesPartnerAgreement.mjs";
+import { EXTERNAL_LINK_REL, EXTERNAL_LINK_TARGET } from "../../utils/externalLink.mjs";
 import {
   formatBonusPercent,
   formatCents,
@@ -88,10 +93,11 @@ function TeamTable({ level, members }) {
 }
 
 /* ── Admin · Vertriebspartner (Detail) ───────────────────────────────────────
-   Stammdaten, Codes und Links, Status und Zugang (Aktionen), Sätze, Level-
-   Regeln, Team, Kunden, Monatsbewertungen und Provisionen. Jede Aktion läuft
-   über den zentralen Bestätigungsdialog; nach jeder Änderung wird der Stand
-   des Servers neu geladen (kein optimistisches Raten). */
+   Stammdaten, Codes und Links, Abrechnungsdaten (Prüfung), Status und Zugang
+   (Aktionen), Sätze, Level-Regeln, Team, Kunden, Monatsbewertungen,
+   Provisionen und Gutschriften. Jede Aktion läuft über den zentralen
+   Bestätigungsdialog (das erneute Erzeugen eines Dokuments direkt); nach jeder
+   Änderung wird der Stand des Servers neu geladen (kein optimistisches Raten). */
 export default function AdminSalesPartnerDetailPage() {
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
@@ -194,7 +200,21 @@ export default function AdminSalesPartnerDetailPage() {
               ["E-Mail", p.email || "—"],
               ["Telefon", p.phone || "—"],
               ["Registriert am", formatTimestamp(p.createdAt, { withTime: true })],
-              ["Partnervereinbarung", p.agreementVersion ? `Fassung ${p.agreementVersion}` : "—"],
+              ["Partnervereinbarung", p.agreementVersion ? (
+                <>
+                  {`Fassung ${p.agreementVersion}`}
+                  {agreementDocumentUrl(p.agreementDocumentPath) && (
+                    <>
+                      {" · "}
+                      <a id="adm-sp-agreement-document" href={agreementDocumentUrl(p.agreementDocumentPath)}
+                        target={EXTERNAL_LINK_TARGET} rel={EXTERNAL_LINK_REL}>
+                        {AGREEMENT_TEXTS.open}
+                        <span className="sr-only"> {AGREEMENT_TEXTS.opensInNewTab}</span>
+                      </a>
+                    </>
+                  )}
+                </>
+              ) : "—"],
               ["Zugestimmt am", formatTimestamp(p.agreementAcceptedAt, { withTime: true })],
               ["Sponsor", p.sponsor?.id != null
                 ? <Link to={`/admin/partners/${encodeURIComponent(p.sponsor.id)}`}>{p.sponsor.name || `Partner #${p.sponsor.id}`}</Link>
@@ -214,6 +234,8 @@ export default function AdminSalesPartnerDetailPage() {
             ]} />
           </div>
         </div>
+
+        <SalesPartnerBillingDetailsCard partnerId={partnerId} partnerName={partnerDisplayName(p)} />
 
         <SalesPartnerRatesCard partnerId={partnerId} rates={detail.rates} onChanged={load} />
         <SalesPartnerLevelRulesCard partnerId={partnerId} levelRules={detail.levelRules} onChanged={load} />
@@ -305,6 +327,7 @@ export default function AdminSalesPartnerDetailPage() {
         </div>
 
         <SalesPartnerCommissionsCard partnerId={partnerId} />
+        <SalesPartnerCreditNotesCard partnerId={partnerId} />
       </div>
     </div>
   );

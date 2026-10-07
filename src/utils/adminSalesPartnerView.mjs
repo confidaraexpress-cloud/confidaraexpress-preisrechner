@@ -20,6 +20,7 @@
 
 import { customerText } from "./apiError.mjs";
 import { partnerStatusMeta, statusMetaFrom } from "./salesPartnerView.mjs";
+import { agreementDocumentPath } from "./salesPartnerAgreement.mjs";
 
 const obj = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
 const arr = (v) => (Array.isArray(v) ? v : []);
@@ -571,6 +572,8 @@ export function normalizeAdminPartnerDetail(raw) {
       sponsorCodeUsed: str(p.sponsorCodeUsed),
       agreementVersion: str(p.agreementVersion),
       agreementAcceptedAt: str(p.agreementAcceptedAt),
+      // Genau die registrierte Fassung, der zugestimmt wurde — nur ein Pfad auf DIESE API, sonst null.
+      agreementDocumentPath: agreementDocumentPath(p.agreementDocumentPath),
       createdAt: str(p.createdAt),
       approvedAt: str(p.approvedAt),
       contractEndedOn: str(p.contractEndedOn),

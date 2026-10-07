@@ -4,6 +4,7 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { PartnerOverviewPanel } from "../components/partner/PartnerOverviewPanel";
 import { PartnerCustomersPanel } from "../components/partner/PartnerCustomersPanel";
 import { PartnerCommissionsPanel } from "../components/partner/PartnerCommissionsPanel";
+import { PartnerCreditNotesPanel } from "../components/partner/PartnerCreditNotesPanel";
 import { PartnerTeamPanel } from "../components/partner/PartnerTeamPanel";
 import { PartnerAccountPanel } from "../components/partner/PartnerAccountPanel";
 import { useAuth } from "../context/AuthContext";
@@ -21,16 +22,16 @@ const FEHLER_UEBERSICHT = "Die Übersicht konnte nicht geladen werden.";
 const FEHLER_TEAM = "Ihr Team konnte nicht geladen werden.";
 
 /* ── Partnerportal (/partner) ────────────────────────────────────────────────
-   Nur hinter PartnerRoute erreichbar (Rolle sales_partner). Vier Bereiche als
-   page-State — Übersicht, Meine Kunden, Provisionen, (nur mit Einträgen)
-   Mein Team und Konto. Die Bereiche rufen /api/sales-partner/me/* auf; „Konto"
-   nutzt zusätzlich genau die für Partner freigegebenen Kontoendpunkte
-   (Passwort, Login-E-Mail) über die Bausteine der Kontoeinstellungen. Kein
-   Kundenlayout, keine andere Kundenroute.
+   Nur hinter PartnerRoute erreichbar (Rolle sales_partner). Die Bereiche als
+   page-State — Übersicht, Meine Kunden, Provisionen, Abrechnungen
+   (Gutschriften), (nur mit Einträgen) Mein Team und Konto. Die Bereiche rufen
+   /api/sales-partner/me/* auf; „Konto" nutzt zusätzlich genau die für Partner
+   freigegebenen Kontoendpunkte (Passwort, Login-E-Mail) über die Bausteine der
+   Kontoeinstellungen. Kein Kundenlayout, keine andere Kundenroute.
 
    Übersicht und Team werden beim Start geladen: die Übersicht ist der erste
    Bereich, und ob „Mein Team" überhaupt erscheint, entscheiden die Einträge
-   der Teamantwort. Kunden und Provisionen laden erst beim Öffnen. */
+   der Teamantwort. Kunden, Provisionen und Abrechnungen laden erst beim Öffnen. */
 export default function PartnerPortalPage() {
   const { user } = useAuth();
   const [tab, setTab] = useState("overview");
@@ -48,7 +49,7 @@ export default function PartnerPortalPage() {
     <PartnerLayout>
       <PageHeader
         title="Partnerportal"
-        subtitle="Ihre Kunden, Provisionen und Ihr Team im Überblick."
+        subtitle="Ihre Kunden, Provisionen, Abrechnungen und Ihr Team im Überblick."
         meta={status ? <span className={`badge ${statusCls}`} id="spp-status">{statusLabel}</span> : null}
       />
 
@@ -79,6 +80,7 @@ export default function PartnerPortalPage() {
         {aktiv === "commissions" && (
           <PartnerCommissionsPanel currentMonth={overview.data?.currentMonth.month || null} />
         )}
+        {aktiv === "credit-notes" && <PartnerCreditNotesPanel />}
         {aktiv === "team" && <PartnerTeamPanel state={team} onRetry={team.reload} />}
         {aktiv === "account" && <PartnerAccountPanel user={user} />}
       </div>

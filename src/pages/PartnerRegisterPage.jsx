@@ -7,7 +7,6 @@ import { PasswordField } from "../components/ui/PasswordField";
 import { loadSalesPartnerPublicConfig, registerSalesPartner } from "../api/partnerApi";
 import { FAIL_CLOSED_PUBLIC_CONFIG, partnerRegistrationOpen } from "../utils/salesPartnerPublicConfig.mjs";
 import { clearReferral, referralCodeFor } from "../utils/referralCapture.mjs";
-import { httpUrlOrNull, EXTERNAL_LINK_REL, EXTERNAL_LINK_TARGET } from "../utils/externalLink.mjs";
 import { mapAuthThrownError } from "../utils/authErrors.mjs";
 import { PASSWORD_MIN_LEN } from "../utils/passwordPolicy.mjs";
 import {
@@ -23,14 +22,13 @@ const Req = () => <span className="auth-req" aria-hidden="true">*</span>;
 
 const LEER = { name: "", email: "", password: "", companyName: "", phone: "", agreementAccepted: false };
 
-/* Link zur Partnervereinbarung NUR, wenn der Server eine Adresse nennt — ein
-   absoluter http(s)-Link oder ein interner Pfad. Kein erfundener Rechtstext,
-   kein geratener Ort. */
-function agreementHrefOf(url) {
-  const absolut = httpUrlOrNull(url);
-  if (absolut) return absolut;
-  return typeof url === "string" && /^\/[^/\\]/.test(url.trim()) ? url.trim() : null;
-}
+/* Die Leselinks unter dem Formular nehmen dem Feld beim Drücken nicht den
+   Fokus. Sonst meldete das (automatisch fokussierte, noch leere) Namensfeld
+   beim Verlassen seinen Fehler, die neue Zeile schöbe den Link zwischen
+   Drücken und Loslassen nach unten, und der erste Klick auf „Vertriebspartner-
+   vereinbarung lesen" ginge ins Leere (im Browser gemessen). Tastatur und
+   Screenreader sind davon unberührt; der Link öffnet unverändert im neuen Tab. */
+const fokusBehalten = (e) => e.preventDefault();
 
 /* ── Öffentliche Registrierung für Vertriebspartner (/partner-registrieren) ──
    Ein EIGENER Flow, nicht die Kundenregistrierung: eigene Felder, eigener
@@ -38,8 +36,12 @@ function agreementHrefOf(url) {
    wird erst geprüft.
 
    Fail-closed: das Formular erscheint nur, wenn die öffentliche Konfiguration
-   geladen ist, die Registrierung ausdrücklich geöffnet ist und eine
-   Vereinbarungsfassung nennt. Ein Partnercode aus /partner-registrieren?ref=…
+   geladen ist, die Registrierung ausdrücklich geöffnet ist und genau die
+   registrierte Fassung der Vereinbarung nennt (partnerRegistrationOpen). Der
+   Link „Vertriebspartnervereinbarung lesen" führt auf die eigene Seite
+   /partnervereinbarung (neuer Tab), die ausschließlich das registrierte
+   Dokument verlinkt — kein erfundener Rechtstext, kein geratener Ort; die
+   Zustimmung nennt die Fassung. Ein Partnercode aus /partner-registrieren?ref=…
    geht als sponsorCode mit (nur die Art „partner"); die Antwort verrät nie, ob
    er gültig war. Darstellung in der bestehenden Auth-Welt, ohne neue Regeln. */
 export default function PartnerRegisterPage() {
@@ -65,7 +67,6 @@ export default function PartnerRegisterPage() {
   useEffect(() => { ladeKonfiguration(); }, [ladeKonfiguration]);
 
   const offen = config.ok && partnerRegistrationOpen(config.data) && !serverClosed;
-  const agreementHref = agreementHrefOf(config.data.agreementUrl);
   const liveErrors = getPartnerRegErrors(form, passwordRepeat);
   const valid = Object.keys(liveErrors).length === 0;
   // Sichtbar: ein Serverfehler bzw. Fehler des letzten Absendens, sonst der
@@ -309,15 +310,12 @@ export default function PartnerRegisterPage() {
           </button>
 
           <p className="auth-form-legal">
-            {agreementHref ? (
-              <>
-                <a href={agreementHref} target={EXTERNAL_LINK_TARGET} rel={EXTERNAL_LINK_REL} id="sp-agreement-link">
-                  Vertriebspartnervereinbarung lesen
-                </a>
-                {" · "}
-              </>
-            ) : null}
-            <Link to="/datenschutz" target="_blank" rel="noopener noreferrer">Datenschutzerklärung</Link>
+            <Link to="/partnervereinbarung" target="_blank" rel="noopener noreferrer" id="sp-agreement-link"
+              onMouseDown={fokusBehalten}>
+              Vertriebspartnervereinbarung lesen
+            </Link>
+            {" · "}
+            <Link to="/datenschutz" target="_blank" rel="noopener noreferrer" onMouseDown={fokusBehalten}>Datenschutzerklärung</Link>
           </p>
         </form>
       </div>

@@ -310,6 +310,15 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
                   "/partner-registrieren", "/registrieren", "/partner",
                   "/admin/partners", "/admin/partners/settings",
                   "/admin/partners/dispatch-evidence", "/admin/partners/:id",
+                  // Vertriebspartnervereinbarung (bewusste Ankeränderung, +1):
+                  // öffentliche Leseseite im Rechtslayout, verlinkt aus der
+                  // Partnerregistrierung. Sie zeigt Fassung und Gültigkeit und
+                  // verlinkt das registrierte Dokument — kein Vertragstext.
+                  "/partnervereinbarung",
+                  // Abrechnungslauf der Vertriebspartner (bewusste Ankeränderung,
+                  // +1): dritte statische Adminunterseite neben Einstellungen und
+                  // Versandnachweisen, vor '/:id' registriert.
+                  "/admin/partners/credit-notes",
                   "*"];
   const gefunden = [...app.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(gefunden.sort(), [...ROUTEN].sort(), "der Routenbestand hat sich verändert");

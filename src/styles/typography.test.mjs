@@ -459,8 +459,13 @@ test("12 — Phase 2.5 fasst nur Typografie an", () => {
   // /admin/partners, /admin/partners/settings, /admin/partners/dispatch-evidence
   // und /admin/partners/:id. Keine neue Layoutroute: das Partnerportal bringt
   // seine Hülle in der Seite mit, die übrigen hängen an bestehenden Rahmen.
-  assert.equal(mitPfad + indexRt, 38,
-    "die Zahl der ansteuerbaren Routen ist unverändert (38 seit dem Vertriebspartnerprogramm)");
+  // Vertriebspartnervereinbarung (dokumentierte Ankeränderung): +1 —
+  // /partnervereinbarung, eine öffentliche Leseseite am bestehenden Rahmen
+  // der Rechtsseiten (NavbarLayout); keine neue Layoutroute.
+  // Abrechnungslauf (dokumentierte Ankeränderung): +1 —
+  // /admin/partners/credit-notes am bestehenden Adminrahmen.
+  assert.equal(mitPfad + indexRt, 40,
+    "die Zahl der ansteuerbaren Routen ist unverändert (40 seit dem Abrechnungslauf)");
   assert.equal(pfadlos, 4,
     "die Zahl der pfadlosen Layoutrouten ist unverändert (4: Dashboard, öffentlich, Admin, Auth)");
 });

@@ -94,6 +94,10 @@ export default function AdminSalesPartnerSettingsPage() {
     setVorbelegung(source);
   }, [regeln.data]);
   const [regelErrors, setRegelErrors] = useState({});
+  // Zurückliegende Daten nur, wenn die jeweilige Serverantwort es erlaubt
+  // (Pre-Live-Testmodus: backdatingAllowed).
+  const regelnRueckwirkend = regeln.data?.backdatingAllowed === true;
+  const grenzenRueckwirkend = grenzen.data?.backdatingAllowed === true;
   const [grenzForm, setGrenzForm] = useState(LEERE_GRENZE);
   const [grenzErrors, setGrenzErrors] = useState({});
   const [confirm, setConfirm] = useState(null);        // { kind: "rules"|"cap", body }
@@ -104,7 +108,7 @@ export default function AdminSalesPartnerSettingsPage() {
   const regelPruefen = (e) => {
     e.preventDefault();
     setMessage(null);
-    const gebaut = buildGlobalLevelRulesBody(regelForm, { today: heute });
+    const gebaut = buildGlobalLevelRulesBody(regelForm, { today: heute, allowPast: regelnRueckwirkend });
     if (!gebaut.ok) { setRegelErrors(gebaut.errors); return; }
     setRegelErrors({});
     setConfirm({ kind: "rules", body: gebaut.body });
@@ -113,7 +117,7 @@ export default function AdminSalesPartnerSettingsPage() {
   const grenzePruefen = (e) => {
     e.preventDefault();
     setMessage(null);
-    const gebaut = buildCapBody(grenzForm, { today: heute });
+    const gebaut = buildCapBody(grenzForm, { today: heute, allowPast: grenzenRueckwirkend });
     if (!gebaut.ok) { setGrenzErrors(gebaut.errors); return; }
     setGrenzErrors({});
     setConfirm({ kind: "cap", body: gebaut.body });
@@ -183,8 +187,9 @@ export default function AdminSalesPartnerSettingsPage() {
             <form onSubmit={regelPruefen} noValidate className="adm-sp-stack">
               <div className="adm-sp-form">
                 <div className="adm-sp-datefield">
-                  <DateField id="adm-sp-global-from" label="Gültig ab" value={regelForm.validFrom} min={heute}
+                  <DateField id="adm-sp-global-from" label="Gültig ab" value={regelForm.validFrom} min={regelnRueckwirkend ? undefined : heute}
                     invalid={!!regelErrors.validFrom} onChange={(v) => setRegelForm((f) => ({ ...f, validFrom: v }))} />
+                  {regelnRueckwirkend && <span className="adm-edit-hint" id="adm-sp-global-backdating">Pre-Live-Testmodus: Das Datum darf zurückliegen.</span>}
                   {rFehler("validFrom")}
                 </div>
                 <div className="adm-edit-field adm-sp-form-wide">
@@ -258,8 +263,9 @@ export default function AdminSalesPartnerSettingsPage() {
             {meldung("cap")}
             <form className="adm-sp-form" onSubmit={grenzePruefen} noValidate>
               <div className="adm-sp-datefield">
-                <DateField id="adm-sp-cap-from" label="Gültig ab" value={grenzForm.validFrom} min={heute}
+                <DateField id="adm-sp-cap-from" label="Gültig ab" value={grenzForm.validFrom} min={grenzenRueckwirkend ? undefined : heute}
                   invalid={!!grenzErrors.validFrom} onChange={(v) => setGrenzForm((f) => ({ ...f, validFrom: v }))} />
+                {grenzenRueckwirkend && <span className="adm-edit-hint" id="adm-sp-cap-backdating">Pre-Live-Testmodus: Das Datum darf zurückliegen.</span>}
                 {gFehler("validFrom")}
               </div>
               <div className="adm-edit-field">

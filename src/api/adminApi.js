@@ -692,7 +692,9 @@ export function getAdminSalesPartner(id) {
 export const approveAdminSalesPartner = (id, body) => jsonPost(`${partnerPath(id)}/approve`, body);
 export const rejectAdminSalesPartner = (id, body) => jsonPost(`${partnerPath(id)}/reject`, body);
 export const deactivateAdminSalesPartner = (id, body) => jsonPost(`${partnerPath(id)}/deactivate`, body);
-export const reactivateAdminSalesPartner = (id) => jsonPost(`${partnerPath(id)}/reactivate`, {});
+// Body über buildReactivateBody: leer, nur bei Testpartnern im Pre-Live-Testmodus
+// optional mit effectiveDate.
+export const reactivateAdminSalesPartner = (id, body = {}) => jsonPost(`${partnerPath(id)}/reactivate`, body);
 export const setAdminSalesPartnerLogin = (id, body) => jsonPost(`${partnerPath(id)}/login`, body, "PUT");
 export const createAdminSalesPartnerRates = (id, body) => jsonPost(`${partnerPath(id)}/rates`, body);
 export const createAdminSalesPartnerLevelRules = (id, body) => jsonPost(`${partnerPath(id)}/level-rules`, body);

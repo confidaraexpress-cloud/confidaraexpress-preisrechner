@@ -22,8 +22,9 @@ const LEER = { validFrom: "", maxOwnRatePercent: "", maxTotalRatePercent: "", re
    Einstellung (standardmäßig keine Obergrenze). Eine Änderung ist eine NEUE
    Version mit Gültigkeitsbeginn; beide Höchstsätze sind optional (leer heißt
    „keine Grenze"). Der Body entsteht über buildCapBody mit partnerUserId;
-   verbindlich ist der Server. */
-export function SalesPartnerCapCard({ partnerId }) {
+   verbindlich ist der Server. Zurückliegende Daten nur mit `allowPastDates`
+   (Testpartner im Pre-Live-Testmodus, `datesBeforeTodayAllowed`). */
+export function SalesPartnerCapCard({ partnerId, allowPastDates = false }) {
   const [state, setState] = useState({ loading: true, error: "", data: null });
   const [form, setForm] = useState(LEER);
   const [errors, setErrors] = useState({});
@@ -61,7 +62,7 @@ export function SalesPartnerCapCard({ partnerId }) {
   const pruefen = (e) => {
     e.preventDefault();
     setMessage(null);
-    const gebaut = buildCapBody(form, { today: heute, partnerUserId: partnerId });
+    const gebaut = buildCapBody(form, { today: heute, partnerUserId: partnerId, allowPast: allowPastDates === true });
     if (!gebaut.ok) { setErrors(gebaut.errors); return; }
     setErrors({});
     setConfirm(gebaut.body);
@@ -170,8 +171,9 @@ export function SalesPartnerCapCard({ partnerId }) {
         )}
         <form className="adm-sp-form" onSubmit={pruefen} noValidate>
           <div className="adm-sp-datefield">
-            <DateField id="adm-sp-pcap-from" label="Gültig ab" value={form.validFrom} min={heute}
+            <DateField id="adm-sp-pcap-from" label="Gültig ab" value={form.validFrom} min={allowPastDates === true ? undefined : heute}
               invalid={!!errors.validFrom} onChange={(v) => setFeld("validFrom", v)} />
+            {allowPastDates === true && <span className="adm-edit-hint">Testpartner im Pre-Live-Testmodus: Das Datum darf zurückliegen.</span>}
             {fehler("validFrom")}
           </div>
           <div className="adm-edit-field">

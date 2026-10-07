@@ -7,10 +7,12 @@ import assert from "node:assert/strict";
 
 import * as modul from "./adminSalesPartnerView.mjs";
 import {
+  ATTRIBUTION_TEXTS,
   CAP_TEXTS,
   INPUT_TEXTS,
   adminActionErrorText,
   approveFormFromDefaults,
+  attributionErrorText,
   attributionSourceLabel,
   buildAdjustmentBody,
   buildApproveBody,
@@ -22,6 +24,7 @@ import {
   buildLoginBody,
   buildPartnerLevelRulesBody,
   buildRatesBody,
+  buildReactivateBody,
   buildRejectBody,
   buildReverseBody,
   canReverseEntry,
@@ -289,7 +292,7 @@ test("10a — individuelle Obergrenze: partnerUserId als Zahl, beide Sätze opti
     history: [{ id: 2, validFrom: "2026-09-01" }, null] });
   assert.equal(caps.current.maxTotalRatePercent, "30.00");
   assert.equal(caps.history.length, 1);
-  assert.deepEqual(normalizeCapsResponse(null), { current: null, history: [] });
+  assert.deepEqual(normalizeCapsResponse(null), { current: null, history: [], backdatingAllowed: false });
 });
 
 /* ══════════ Provisionen, Zuordnung, Versandnachweis ═════════════════════ */
@@ -436,4 +439,72 @@ test("20 — Fehlertexte: Servertext nur bei Eingabe-/Konfliktfehlern", () => {
   assert.match(adminActionErrorText(404, { error: "intern" }), /nicht gefunden/);
   assert.match(adminActionErrorText(500, { error: "TypeError" }), /nicht ausgeführt/);
   assert.match(adminActionErrorText(400, {}), /nicht ausgeführt/);
+});
+
+/* ══════════ Pre-Live: Testkennzeichnung und Rückdatierung ═══════════════ */
+
+test("21 — zurückliegende Daten nur mit allowPast === true (Sätze, Regeln, Obergrenze, Zuordnung)", () => {
+  const frueh = "2026-03-01";
+  const rates = { validFrom: frueh, basePercent: "10", level1Percent: "5", level2Percent: "2,5" };
+  assert.equal(buildRatesBody(rates, { today: TODAY }).errors.validFrom, INPUT_TEXTS.dateNotBeforeToday);
+  assert.equal(buildRatesBody(rates, { today: TODAY, allowPast: "true" }).errors.validFrom, INPUT_TEXTS.dateNotBeforeToday,
+    "kein truthy-String");
+  assert.deepEqual(buildRatesBody(rates, { today: TODAY, allowPast: true }).body,
+    { validFrom: frueh, basePercent: "10.00", level1Percent: "5.00", level2Percent: "2.50" });
+  assert.equal(buildGlobalLevelRulesBody(gefuellteRegeln({ validFrom: frueh }), { today: TODAY }).ok, false);
+  assert.equal(buildGlobalLevelRulesBody(gefuellteRegeln({ validFrom: frueh }), { today: TODAY, allowPast: true }).ok, true);
+  assert.equal(buildPartnerLevelRulesBody({ mode: "inherit", validFrom: frueh }, { today: TODAY }).ok, false);
+  assert.deepEqual(buildPartnerLevelRulesBody({ mode: "inherit", validFrom: frueh }, { today: TODAY, allowPast: true }).body,
+    { mode: "inherit", validFrom: frueh });
+  assert.equal(buildCapBody({ validFrom: frueh }, { today: TODAY, partnerUserId: 5 }).ok, false);
+  assert.deepEqual(buildCapBody({ validFrom: frueh }, { today: TODAY, partnerUserId: 5, allowPast: true }).body,
+    { validFrom: frueh, maxOwnRatePercent: null, maxTotalRatePercent: null, partnerUserId: 5 });
+  const zuordnung = { partnerUserId: "41", effectiveDate: frueh, reason: "Testkette" };
+  assert.equal(buildAttributionBody(zuordnung, { today: TODAY }).errors.effectiveDate, INPUT_TEXTS.dateNotBeforeToday);
+  assert.deepEqual(buildAttributionBody(zuordnung, { today: TODAY, allowPast: true }).body,
+    { partnerUserId: 41, effectiveDate: frueh, reason: "Testkette" });
+  // Auch mit Freigabe bleibt ein ungültiges Datum ungültig.
+  assert.equal(buildRatesBody({ ...rates, validFrom: "2026-02-30" }, { today: TODAY, allowPast: true }).errors.validFrom, INPUT_TEXTS.dateInvalid);
+});
+
+test("22 — Freigabe, Deaktivieren, Reaktivieren: effectiveDate nur mit Serverfreigabe und nur mit Wert", () => {
+  const form = { basePercent: "10", effectiveDate: "2026-03-01" };
+  assert.deepEqual(buildApproveBody(form).body, { basePercent: "10.00" }, "ohne Freigabe nie ein Datum");
+  assert.deepEqual(buildApproveBody(form, { allowEffectiveDate: "true" }).body, { basePercent: "10.00" });
+  assert.deepEqual(buildApproveBody(form, { allowEffectiveDate: true }).body, { basePercent: "10.00", effectiveDate: "2026-03-01" });
+  assert.deepEqual(buildApproveBody({ basePercent: "10", effectiveDate: "" }, { allowEffectiveDate: true }).body,
+    { basePercent: "10.00" }, "leer heißt Serverstandard heute");
+  assert.equal(buildApproveBody({ basePercent: "10", effectiveDate: "01.03.2026" }, { allowEffectiveDate: true }).errors.effectiveDate,
+    INPUT_TEXTS.dateInvalid);
+  assert.deepEqual(buildDeactivateBody({ reason: "other", effectiveDate: "2026-04-01" }).body, { reason: "other" });
+  assert.deepEqual(buildDeactivateBody({ reason: "other", effectiveDate: "2026-04-01" }, { allowEffectiveDate: true }).body,
+    { reason: "other", effectiveDate: "2026-04-01" });
+  assert.deepEqual(buildReactivateBody({ effectiveDate: "2026-05-01" }).body, {});
+  assert.deepEqual(buildReactivateBody({ effectiveDate: "2026-05-01" }, { allowEffectiveDate: true }).body, { effectiveDate: "2026-05-01" });
+  assert.deepEqual(buildReactivateBody({}, { allowEffectiveDate: true }).body, {});
+  assert.equal(buildReactivateBody({ effectiveDate: "x" }, { allowEffectiveDate: true }).ok, false);
+});
+
+test("23 — Testkennzeichnung und Freigaben des Servers nur bei exakt true", () => {
+  const [test, echt, string] = selectPartnerRows({ partners: [
+    { id: 41, name: "Pia", preliveTest: true }, { id: 6, name: "Sam" }, { id: 7, name: "Tim", preliveTest: "true" },
+  ] });
+  assert.equal(test.preliveTest, true);
+  assert.equal(echt.preliveTest, false);
+  assert.equal(string.preliveTest, false, "kein truthy-String");
+  const d = normalizeAdminPartnerDetail({ partner: { id: 41, preliveTest: true }, datesBeforeTodayAllowed: true });
+  assert.equal(d.partner.preliveTest, true);
+  assert.equal(d.datesBeforeTodayAllowed, true);
+  assert.equal(normalizeAdminPartnerDetail({ partner: { id: 41 }, datesBeforeTodayAllowed: 1 }).datesBeforeTodayAllowed, false);
+  assert.equal(normalizeLevelRulesResponse({ current: null, history: [], backdatingAllowed: true }).backdatingAllowed, true);
+  assert.equal(normalizeLevelRulesResponse({ backdatingAllowed: "yes" }).backdatingAllowed, false);
+  assert.equal(normalizeCapsResponse({ current: null, history: [], backdatingAllowed: true }).backdatingAllowed, true);
+});
+
+test("24 — Zuordnung: PRELIVE_TEST_MISMATCH mit festem Satz", () => {
+  assert.equal(attributionErrorText(409, { code: "PRELIVE_TEST_MISMATCH", error: "mismatch" }), ATTRIBUTION_TEXTS.testMismatch);
+  assert.match(ATTRIBUTION_TEXTS.testMismatch, /Es wurde nichts geändert\.$/);
+  assert.equal(attributionErrorText(409, { code: "PARTNER_NOT_ACTIVE", error: "Nur aktive Vertriebspartner können zugeordnet werden." }),
+    "Nur aktive Vertriebspartner können zugeordnet werden.");
+  assert.match(attributionErrorText(500, { code: "PRELIVE_TEST_MISMATCH" }), /nicht ausgeführt/, "Code nur bei 409");
 });

@@ -14,9 +14,10 @@ const LEER = { validFrom: "", basePercent: "", level1Percent: "", level2Percent:
 
 /* ── Provisionssätze: aktuelle Version, Historie, neue Version ───────────────
    Eine Änderung ist immer eine NEUE Version mit Gültigkeitsbeginn (heute oder
-   später) — keine Version wird überschrieben. Die Prüfung vor dem Senden
-   übernimmt buildRatesBody; verbindlich ist der Server. */
-export function SalesPartnerRatesCard({ partnerId, rates, onChanged }) {
+   später; mit `allowPastDates` — Testpartner im Pre-Live-Testmodus — auch
+   zurückliegend) — keine Version wird überschrieben. Die Prüfung vor dem
+   Senden übernimmt buildRatesBody; verbindlich ist der Server. */
+export function SalesPartnerRatesCard({ partnerId, rates, allowPastDates = false, onChanged }) {
   const [form, setForm] = useState(LEER);
   const [errors, setErrors] = useState({});
   const [confirm, setConfirm] = useState(null);     // gebauter Body
@@ -30,7 +31,7 @@ export function SalesPartnerRatesCard({ partnerId, rates, onChanged }) {
   const pruefen = (e) => {
     e.preventDefault();
     setMessage(null);
-    const gebaut = buildRatesBody(form, { today: heute });
+    const gebaut = buildRatesBody(form, { today: heute, allowPast: allowPastDates === true });
     if (!gebaut.ok) { setErrors(gebaut.errors); return; }
     setErrors({});
     setConfirm(gebaut.body);
@@ -124,8 +125,9 @@ export function SalesPartnerRatesCard({ partnerId, rates, onChanged }) {
         )}
         <form className="adm-sp-form" onSubmit={pruefen} noValidate>
           <div className="adm-sp-datefield">
-            <DateField id="adm-sp-rates-from" label="Gültig ab" value={form.validFrom} min={heute}
+            <DateField id="adm-sp-rates-from" label="Gültig ab" value={form.validFrom} min={allowPastDates === true ? undefined : heute}
               invalid={!!errors.validFrom} onChange={(v) => setFeld("validFrom", v)} />
+            {allowPastDates === true && <span className="adm-edit-hint">Testpartner im Pre-Live-Testmodus: Das Datum darf zurückliegen.</span>}
             {fehler("validFrom")}
           </div>
           {[["basePercent", "Grundprovision in %", "adm-sp-rates-base"],

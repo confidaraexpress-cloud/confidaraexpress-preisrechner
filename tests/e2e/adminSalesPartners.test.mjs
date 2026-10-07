@@ -16,6 +16,10 @@
 //      users.status: approved → sperren, blocked → entsperren, pending keine Aktion).
 //   7. Freigabe mit Startwerten: 10,00 / 5,00 / 2,50 vorbelegt, genau dieser Body.
 //   8. Individuelle Obergrenze: Standardtext, neue Version mit partnerUserId.
+//   9. Pre-Live: „TEST / PRE-LIVE“ in Liste und Detail; zurückliegende Daten
+//      (Freigabe, Sätze, globale Regeln) nur mit Freigabe des Servers.
+//  10. Pre-Live: Zuordnung Testkunde ↔ Testpartner mit zurückliegendem Datum;
+//      eine Mischung mit einem echten Partner → fester Satz (409).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -67,13 +71,20 @@ const START = {
   packageLevels: [100, 250, 500, 1000, 2000].map((threshold, i) => ({ level: i + 1, threshold, bonusPercent: BONI[i] })),
 };
 
+// Pre-Live: ein aktiver Testpartner (Liste, Auswahl) und ein Testantrag (Detail).
+const TESTZEILE = { id: 41, name: "Pia Test", email: "pia@test.example", companyName: "Test Vertrieb A", status: "active",
+  loginStatus: "approved", activeSince: "2026-03-01", customersCount: 1, packagesLastMonth: 3, teamLevel1Count: 0,
+  teamLevel2Count: 0, ownRatePercent: "10.00", createdAt: "2026-10-05T09:30:00Z", preliveTest: true };
+
 let server, browser;
 
 // `startDefaults`: Startwerte in Detail- und Regelantwort (null = älterer Server ohne Feld).
-async function setup(page, { startDefaults = null } = {}) {
+// `prelive`: Pre-Live-Testmodus an (Status, Testkonten, Testpartner, Rückdatierung).
+async function setup(page, { startDefaults = null, prelive = false } = {}) {
   const state = { list: [], approve: [], evidence: [], partnerStatus: "pending", other: [], login: [], login6: "approved",
-    rules: [], caps: [], capQueries: [], partnerCap: null };
+    rules: [], caps: [], capQueries: [], partnerCap: null, approve42: [], attribution: [], status42: "pending" };
   const mitStart = (d) => (startDefaults ? { ...d, startDefaults } : d);
+  const zeilen = prelive ? [...ZEILEN, TESTZEILE] : ZEILEN;
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -81,11 +92,38 @@ async function setup(page, { startDefaults = null } = {}) {
     const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
 
     if (p.endsWith("/kundenbereich")) return json({ user: ADMIN });
+    if (p.endsWith("/admin/sales-partner-prelive/status")) {
+      return json(prelive ? { enabled: true, mailAllowlistConfigured: false, backdatingGlobalAllowed: true,
+        counts: { partners: 2, customers: 1, shipments: 0, ledgerEntries: 0, creditNotes: 0 } } : { enabled: false, counts: null });
+    }
+    if (p.endsWith("/admin/sales-partner-prelive/accounts")) {
+      if (!prelive) return json({ error: "nicht aktiv", code: "PRELIVE_TEST_MODE_DISABLED" }, 404);
+      return json({ partners: [{ id: 41, name: "Pia Test", email: "pia@test.example", companyName: "Test Vertrieb A", status: "active",
+        loginStatus: "approved", sponsorUserId: null, referralCode: "TESTAB23" }, { id: 42, name: "Tom Test", email: "tom@test.example",
+        companyName: null, status: state.status42, loginStatus: "pending", sponsorUserId: 41, referralCode: null }],
+      customers: [{ id: 7, name: "Max Mustermann", companyName: "Muster Logistik GmbH", email: "einkauf@muster-logistik.de", partnerUserId: null }] });
+    }
+    // Testantrag 42: nur im Pre-Live-Testmodus, mit Freigabe für zurückliegende Daten.
+    if (p.endsWith("/admin/sales-partners/42") && req.method() === "GET") {
+      const d = detail(state.status42);
+      return json(mitStart({ ...d, partner: { ...d.partner, id: 42, name: "Tom Test", companyName: null, email: "tom@test.example",
+        sponsor: { id: 41, name: "Pia Test" }, agreementVersion: null, agreementAcceptedAt: null, preliveTest: true }, datesBeforeTodayAllowed: true }));
+    }
+    if (p.endsWith("/admin/sales-partners/42/approve") && req.method() === "POST") {
+      state.approve42.push(req.postDataJSON());
+      state.status42 = "active";
+      return json({ ok: true });
+    }
+    if (/\/admin\/sales-partners\/42\/(commissions|credit-notes|billing-details)$/.test(p)) {
+      if (p.endsWith("/commissions")) return json({ month: "2026-10", totals: { accruedCents: 0, payableCents: 0 }, entries: [] });
+      if (p.endsWith("/credit-notes")) return json({ creditNotes: [] });
+      return json({ status: "incomplete", billingDetails: null, missingFields: [], accountEmail: "tom@test.example" });
+    }
     if (p.endsWith("/admin/sales-partners") && req.method() === "GET") {
       state.list.push(url.search);
       const status = url.searchParams.get("status");
       const q = (url.searchParams.get("q") || "").toLowerCase();
-      const partners = ZEILEN.filter((z) => (!status || z.status === status) && (!q || z.name.toLowerCase().includes(q)));
+      const partners = zeilen.filter((z) => (!status || z.status === status) && (!q || z.name.toLowerCase().includes(q)));
       return json({ partners, total: partners.length, limit: 25, offset: 0 });
     }
     if (p.endsWith("/admin/sales-partners/5") && req.method() === "GET") return json(mitStart(detail(state.partnerStatus)));
@@ -121,7 +159,7 @@ async function setup(page, { startDefaults = null } = {}) {
     }
     if (p.endsWith("/admin/sales-partner-level-rules")) {
       if (req.method() === "POST") { state.rules.push(req.postDataJSON()); return json({ ok: true }, 201); }
-      return json(mitStart({ current: null, history: [] }));
+      return json(mitStart({ current: null, history: [], ...(prelive ? { backdatingAllowed: true } : {}) }));
     }
     if (p.endsWith("/admin/sales-partner-caps")) {
       if (req.method() === "POST") {
@@ -140,6 +178,15 @@ async function setup(page, { startDefaults = null } = {}) {
         role: "customer", status: "approved", country: "DE" }, summary: {} });
     }
     if (p.endsWith("/admin/users/7/sales-partner-attribution")) {
+      if (req.method() === "PUT") {
+        const body = req.postDataJSON();
+        state.attribution.push(body);
+        // Testkunde 7 mit einem echten Partner: der Server weist die Mischung zurück.
+        if (prelive && body.partnerUserId === 6) {
+          return json({ error: "Testkonten und echte Konten lassen sich nicht mischen.", code: "PRELIVE_TEST_MISMATCH" }, 409);
+        }
+        return json({ ok: true });
+      }
       return json({ current: { partnerId: 6, partnerName: "Sam Sponsor", validFrom: "2026-05-01", source: "referral_link",
         referralCodeUsed: "WXYZ6789" }, history: [] });
     }
@@ -379,5 +426,85 @@ test("8 — individuelle Obergrenze: Standardtext, neue Version mit partnerUserI
   assert.match(karte, /30,00 %/);
   assert.match(karte, /08\.10\.2026/);
   assert.match(karte, /Keine Grenze/);
+  await page.close();
+});
+
+test("9 — Pre-Live: Kennzeichnung in Liste und Detail; zurückliegende Daten nur mit Freigabe des Servers", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await page.clock.setFixedTime(new Date("2026-10-07T10:00:00"));
+  const state = await setup(page, { prelive: true, startDefaults: START });
+  await page.goto(`${BASE}/admin/partners`, { waitUntil: "networkidle" });
+  const testzeile = page.locator('.adm-sp-table tr[data-partner-id="41"]');
+  await testzeile.waitFor({ state: "visible" });
+  assert.equal(await testzeile.getAttribute("data-prelive"), "true");
+  assert.match(await testzeile.innerText(), /TEST \/ PRE-LIVE/);
+  assert.doesNotMatch(await page.locator('.adm-sp-table tr[data-partner-id="5"]').innerText(), /TEST/, "echte Partner ohne Kennzeichnung");
+  assert.equal(await page.locator("#adm-sp-prelive-link").count(), 1);
+
+  // Testantrag: Kennzeichnung, Freigabe mit zurückliegendem Wirksamkeitsdatum.
+  await page.goto(`${BASE}/admin/partners/42`, { waitUntil: "networkidle" });
+  await page.locator("#adm-sp-prelive-badge").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#adm-sp-prelive-badge").innerText(), "TEST / PRE-LIVE");
+  assert.equal(await page.getAttribute("#adm-sp-rates-from", "min"), null, "Sätze: zurückliegend erlaubt");
+  assert.equal(await page.getAttribute("#adm-sp-pcap-from", "min"), null, "Obergrenze: zurückliegend erlaubt");
+  await page.locator("#adm-sp-approve").click();
+  await page.locator('[role="dialog"]').waitFor({ state: "visible" });
+  assert.equal(await page.inputValue("#adm-sp-base"), "10,00");
+  assert.equal(await page.getAttribute("#adm-sp-approve-date", "min"), null);
+  await page.fill("#adm-sp-approve-date", "2026-03-01");
+  await page.locator("#adm-sp-dialog-confirm").click();
+  await page.locator('[role="dialog"]').waitFor({ state: "detached" });
+  assert.deepEqual(state.approve42, [{ basePercent: "10.00", level1Percent: "5.00", level2Percent: "2.50", effectiveDate: "2026-03-01" }]);
+
+  // Echter Partner: weiterhin „nicht vor heute“, kein Datumsfeld bei der Freigabe.
+  await page.goto(`${BASE}/admin/partners/5`, { waitUntil: "networkidle" });
+  await page.locator("#adm-sp-rates-from").waitFor({ state: "visible" });
+  assert.equal(await page.getAttribute("#adm-sp-rates-from", "min"), "2026-10-07");
+  assert.equal(await page.locator("#adm-sp-prelive-badge").count(), 0);
+  await page.locator("#adm-sp-approve").click();
+  assert.equal(await page.locator("#adm-sp-approve-date").count(), 0);
+  await page.locator('[role="dialog"] button', { hasText: "Abbrechen" }).click();
+
+  // Globale Regeln: der Server erlaubt die Rückdatierung (backdatingAllowed).
+  await page.goto(`${BASE}/admin/partners/settings`, { waitUntil: "networkidle" });
+  await page.locator("#adm-sp-global-backdating").waitFor({ state: "visible" });
+  assert.equal(await page.getAttribute("#adm-sp-global-from", "min"), null);
+  assert.equal(await page.getAttribute("#adm-sp-cap-from", "min"), "2026-10-07", "Obergrenzen ohne eigene Freigabe bleiben ab heute");
+  await page.close();
+});
+
+test("10 — Pre-Live: Zuordnung Testkunde ↔ Testpartner zurückliegend; Mischung mit echtem Partner → fester Satz", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await page.clock.setFixedTime(new Date("2026-10-07T10:00:00"));
+  const state = await setup(page, { prelive: true });
+  await page.goto(`${BASE}/admin/users/7`, { waitUntil: "networkidle" });
+  await page.locator("#adm-sp-attribution-change").click();
+  await page.locator('#adm-sp-attribution-partner option[value="41"]').waitFor({ state: "attached" });
+  assert.match(await page.locator('#adm-sp-attribution-partner option[value="41"]').innerText(), /Test Vertrieb A – Test/);
+  assert.equal(await page.getAttribute("#adm-sp-attribution-date", "min"), "2026-10-07", "ohne Auswahl gilt ab heute");
+  await page.selectOption("#adm-sp-attribution-partner", "41");
+  await page.locator("#adm-sp-attribution-backdating").waitFor({ state: "visible" });
+  assert.equal(await page.getAttribute("#adm-sp-attribution-date", "min"), null);
+  await page.fill("#adm-sp-attribution-date", "2026-03-01");
+  await page.fill("#adm-sp-attribution-reason", "Pre-Live-Test");
+  await page.locator("#adm-sp-attribution-submit").click();
+  await page.locator("#adm-sp-attribution-confirm").click();
+  await page.locator('#adm-sp-attribution [role="status"]').waitFor({ state: "visible" });
+  assert.deepEqual(state.attribution, [{ partnerUserId: 41, effectiveDate: "2026-03-01", reason: "Pre-Live-Test" }]);
+
+  // Testkunde mit echtem Partner: ab heute, und der Server weist die Mischung zurück.
+  await page.locator("#adm-sp-attribution-change").click();
+  await page.locator('#adm-sp-attribution-partner option[value="6"]').waitFor({ state: "attached" });
+  await page.selectOption("#adm-sp-attribution-partner", "6");
+  assert.equal(await page.locator("#adm-sp-attribution-backdating").count(), 0);
+  assert.equal(await page.getAttribute("#adm-sp-attribution-date", "min"), "2026-10-07");
+  await page.fill("#adm-sp-attribution-date", "2026-10-07");
+  await page.fill("#adm-sp-attribution-reason", "Wechsel");
+  await page.locator("#adm-sp-attribution-submit").click();
+  await page.locator("#adm-sp-attribution-confirm").click();
+  await page.locator('#adm-sp-attribution [role="alert"]').waitFor({ state: "visible" });
+  assert.equal(await page.locator('#adm-sp-attribution [role="alert"]').innerText(),
+    "Testkunden lassen sich nur Testpartnern zuordnen und echte Kunden nur echten Vertriebspartnern. Es wurde nichts geändert.");
+  assert.doesNotMatch(await page.locator("#adm-sp-attribution").innerText(), /PRELIVE_TEST_MISMATCH/);
   await page.close();
 });

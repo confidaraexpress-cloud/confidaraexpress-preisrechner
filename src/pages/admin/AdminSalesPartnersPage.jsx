@@ -4,6 +4,7 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { listAdminSalesPartners } from "../../api/adminApi";
 import { usePreliveStatus } from "../../hooks/usePreliveStatus";
+import { PreliveTestBadge } from "../../components/admin/PreliveTestBadge";
 import { preliveEnabled } from "../../utils/salesPartnerPrelive.mjs";
 import { selectListHasMore, selectListTotal } from "../../utils/adminOverview.mjs";
 import { formatCount, formatIsoDate, formatPercent } from "../../utils/salesPartnerView.mjs";
@@ -31,7 +32,8 @@ function Badge({ meta }) {
   return <span className={`badge ${cls}`}>{label}</span>;
 }
 
-// Partner: Firma bzw. Name als Link ins Detail, darunter Name und E-Mail.
+// Partner: Firma bzw. Name als Link ins Detail, darunter Name und E-Mail; ein
+// Testpartner (Testkennzeichnung des Servers) trägt „TEST / PRE-LIVE".
 function PartnerCell({ row }) {
   const titel = partnerDisplayName(row);
   return (
@@ -39,6 +41,7 @@ function PartnerCell({ row }) {
       {row.id != null
         ? <Link className="adm-sp-name" to={detailPath(row.id)}>{titel}</Link>
         : <span className="adm-sp-name">{titel}</span>}
+      {row.preliveTest && <PreliveTestBadge />}
       {row.companyName && row.name && <span className="adm-sp-sub">{row.name}</span>}
       {row.email && <span className="adm-sp-sub adm-sp-mail">{row.email}</span>}
     </div>
@@ -198,7 +201,7 @@ export default function AdminSalesPartnersPage() {
               </thead>
               <tbody>
                 {rows.map((row, i) => (
-                  <tr key={row.id ?? `row-${i}`} data-partner-id={row.id ?? undefined}>
+                  <tr key={row.id ?? `row-${i}`} data-partner-id={row.id ?? undefined} data-prelive={row.preliveTest ? "true" : undefined}>
                     <td><PartnerCell row={row} /></td>
                     <td><Badge meta={adminPartnerStatusMeta(row.status)} /></td>
                     <td><Badge meta={loginStatusMeta(row.loginStatus)} /></td>

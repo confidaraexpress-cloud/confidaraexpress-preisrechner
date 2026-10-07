@@ -1314,6 +1314,8 @@ a.adm-sp-name:hover { text-decoration: underline; }
 a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
 .adm-sp-sub { font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); overflow-wrap: break-word; }
 .adm-sp-mail { word-break: break-word; }
+/* Testkennzeichnung (Pre-Live): in der Spaltenzelle nur so breit wie ihr Text. */
+.adm-sp-test-badge { align-self: flex-start; }
 .adm-sp-block { display: block; margin-top: 2px; }
 
 /* Detail: Aktionen, Unterüberschriften, Verläufe. */

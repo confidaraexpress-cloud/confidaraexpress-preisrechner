@@ -20,7 +20,7 @@ const neuesFormular = (startDefaults) => ({ ...levelRulesFormFrom(startDefaults?
    Version mit Gültigkeitsbeginn — entweder „inherit" (zurück zu den globalen
    Regeln) oder eigene Regeln mit 5 + 5 Level und Mindestpaketen, vorbelegt
    mit den Startwerten des Servers (ohne sie leer und Pflicht). */
-export function SalesPartnerLevelRulesCard({ partnerId, levelRules, startDefaults = null, onChanged }) {
+export function SalesPartnerLevelRulesCard({ partnerId, levelRules, startDefaults = null, allowPastDates = false, onChanged }) {
   const [form, setForm] = useState(() => neuesFormular(startDefaults));
   const [errors, setErrors] = useState({});
   const [confirm, setConfirm] = useState(null);
@@ -34,7 +34,7 @@ export function SalesPartnerLevelRulesCard({ partnerId, levelRules, startDefault
   const pruefen = (e) => {
     e.preventDefault();
     setMessage(null);
-    const gebaut = buildPartnerLevelRulesBody(form, { today: heute });
+    const gebaut = buildPartnerLevelRulesBody(form, { today: heute, allowPast: allowPastDates === true });
     if (!gebaut.ok) { setErrors(gebaut.errors); return; }
     setErrors({});
     setConfirm(gebaut.body);
@@ -104,8 +104,9 @@ export function SalesPartnerLevelRulesCard({ partnerId, levelRules, startDefault
           </fieldset>
           <div className="adm-sp-form">
             <div className="adm-sp-datefield">
-              <DateField id="adm-sp-levels-from" label="Gültig ab" value={form.validFrom} min={heute}
+              <DateField id="adm-sp-levels-from" label="Gültig ab" value={form.validFrom} min={allowPastDates === true ? undefined : heute}
                 invalid={!!errors.validFrom} onChange={(v) => setForm((f) => ({ ...f, validFrom: v }))} />
+              {allowPastDates === true && <span className="adm-edit-hint">Testpartner im Pre-Live-Testmodus: Das Datum darf zurückliegen.</span>}
               {fehler("validFrom")}
             </div>
             <div className="adm-edit-field adm-sp-form-wide">

@@ -6,6 +6,7 @@ import { SalesPartnerStatusCard } from "../../components/admin/SalesPartnerStatu
 import { SalesPartnerRatesCard } from "../../components/admin/SalesPartnerRatesCard";
 import { SalesPartnerLevelRulesCard } from "../../components/admin/SalesPartnerLevelRulesCard";
 import { SalesPartnerCapCard } from "../../components/admin/SalesPartnerCapCard";
+import { PreliveTestBadge } from "../../components/admin/PreliveTestBadge";
 import { SalesPartnerCommissionsCard } from "../../components/admin/SalesPartnerCommissionsCard";
 import { SalesPartnerBillingDetailsCard } from "../../components/admin/SalesPartnerBillingDetailsCard";
 import { SalesPartnerCreditNotesCard } from "../../components/admin/SalesPartnerCreditNotesCard";
@@ -183,6 +184,7 @@ export default function AdminSalesPartnerDetailPage() {
         )}
         meta={(
           <>
+            {p.preliveTest && <PreliveTestBadge id="adm-sp-prelive-badge" />}
             <Badge meta={adminPartnerStatusMeta(p.status)} />
             <Badge meta={loginStatusMeta(p.loginStatus)} />
             <span className="adm-chip">Registriert {formatTimestamp(p.createdAt)}</span>
@@ -193,7 +195,7 @@ export default function AdminSalesPartnerDetailPage() {
 
       <div className="adm-cards">
         <SalesPartnerStatusCard partner={{ ...p, id: partnerId }} statusHistory={detail.statusHistory}
-          startDefaults={detail.startDefaults} onChanged={load} />
+          startDefaults={detail.startDefaults} datesBeforeTodayAllowed={detail.datesBeforeTodayAllowed} onChanged={load} />
 
         <div className="adm-card" id="adm-sp-master-card">
           <div className="adm-card-head">Stammdaten</div>
@@ -241,10 +243,13 @@ export default function AdminSalesPartnerDetailPage() {
 
         <SalesPartnerBillingDetailsCard partnerId={partnerId} partnerName={partnerDisplayName(p)} />
 
-        <SalesPartnerRatesCard partnerId={partnerId} rates={detail.rates} onChanged={load} />
+        {/* Zurückliegende Daten nur, wenn der Server sie für diesen Partner
+            erlaubt (Testpartner im Pre-Live-Testmodus). */}
+        <SalesPartnerRatesCard partnerId={partnerId} rates={detail.rates}
+          allowPastDates={detail.datesBeforeTodayAllowed} onChanged={load} />
         <SalesPartnerLevelRulesCard partnerId={partnerId} levelRules={detail.levelRules}
-          startDefaults={detail.startDefaults} onChanged={load} />
-        <SalesPartnerCapCard partnerId={partnerId} />
+          startDefaults={detail.startDefaults} allowPastDates={detail.datesBeforeTodayAllowed} onChanged={load} />
+        <SalesPartnerCapCard partnerId={partnerId} allowPastDates={detail.datesBeforeTodayAllowed} />
 
         <div className="adm-card" id="adm-sp-team-card">
           <div className="adm-card-head">Team</div>

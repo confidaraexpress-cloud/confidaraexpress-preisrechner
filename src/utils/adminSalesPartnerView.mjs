@@ -17,6 +17,10 @@
 //   • Ohne Ebenen-Sätze in der Freigabe gelten die Server-Defaults.
 //   • „Heute" kommt aus der Browseruhr des Admins nur als Vorabprüfung
 //     (min-Attribut, „nicht vor heute"); entscheidend ist der Server.
+//   • Zurückliegende Daten nur, wenn der Server es ausdrücklich erlaubt
+//     (Pre-Live-Testmodus: `datesBeforeTodayAllowed` eines Testpartners bzw.
+//     `backdatingAllowed` der globalen Regeln und Obergrenzen). Die Builder
+//     lesen dafür `allowPast === true` — nie eine truthy-Angabe.
 //
 // Framework-frei (.mjs), damit `node --test` es ohne DOM prüfen kann.
 
@@ -222,6 +226,18 @@ function pruefeDatum(value, today, { notBefore = false, notAfter = false } = {})
   return null;
 }
 
+/** Ein optionales Datum (leer = Serverstandard „heute"); zurückliegend erlaubt. */
+function optionalesDatum(value) {
+  const v = trimmed(value);
+  if (v === "") return { error: null, value: null };
+  return isIsoDate(v) ? { error: null, value: v } : { error: INPUT_TEXTS.dateInvalid, value: null };
+}
+
+/** Darf ein Wirksamkeitsdatum mitgesendet werden? Nur bei ausdrücklichem true. */
+const mitDatum = (opts) => !!opts && opts.allowEffectiveDate === true;
+/** Prüfung „nicht vor heute" — außer der Server erlaubt zurückliegende Daten. */
+const nichtVorHeute = (opts) => !(opts && opts.allowPast === true);
+
 function pruefeText(value, { required, max, requiredText, tooLongText }) {
   const v = trimmed(value);
   if (required && v === "") return { error: requiredText, value: null };
@@ -236,8 +252,10 @@ const ergebnis = (errors, body) => (Object.keys(errors).length ? { ok: false, er
 
 // ── Bodies der Partneraktionen ──────────────────────────────────────────────
 
-/** POST …/approve — Grundprovision Pflicht; Ebenen nur, wenn angegeben. */
-export function buildApproveBody(form = {}) {
+/** POST …/approve — Grundprovision Pflicht; Ebenen nur, wenn angegeben.
+ *  `effectiveDate` nur mit `allowEffectiveDate: true` (Testpartner im
+ *  Pre-Live-Testmodus) und nur mit Wert — sonst gilt der Serverstandard „heute". */
+export function buildApproveBody(form = {}, opts = {}) {
   const errors = {};
   const base = parsePercentInput(form.basePercent);
   const l1 = parsePercentInput(form.level1Percent, { allowEmpty: true });
@@ -248,6 +266,11 @@ export function buildApproveBody(form = {}) {
   const body = { basePercent: base.value };
   if (l1.ok && l1.value !== null) body.level1Percent = l1.value;
   if (l2.ok && l2.value !== null) body.level2Percent = l2.value;
+  if (mitDatum(opts)) {
+    const d = optionalesDatum(form.effectiveDate);
+    if (d.error) errors.effectiveDate = d.error;
+    else if (d.value) body.effectiveDate = d.value;
+  }
   return ergebnis(errors, body);
 }
 
@@ -257,8 +280,9 @@ export function buildRejectBody(form = {}) {
   return ergebnis(r.error ? { reason: r.error } : {}, r.value ? { reason: r.value } : {});
 }
 
-/** POST …/deactivate — Grund aus der festen Liste, Notiz optional. */
-export function buildDeactivateBody(form = {}) {
+/** POST …/deactivate — Grund aus der festen Liste, Notiz optional;
+ *  `effectiveDate` wie bei der Freigabe nur mit `allowEffectiveDate: true`. */
+export function buildDeactivateBody(form = {}, opts = {}) {
   const errors = {};
   const reason = DEACTIVATION_REASON_OPTIONS.some((o) => o.value === form.reason) ? form.reason : null;
   if (!reason) errors.reason = INPUT_TEXTS.reasonRequired;
@@ -266,7 +290,19 @@ export function buildDeactivateBody(form = {}) {
   if (note.error) errors.note = note.error;
   const body = { reason };
   if (note.value) body.note = note.value;
+  if (mitDatum(opts)) {
+    const d = optionalesDatum(form.effectiveDate);
+    if (d.error) errors.effectiveDate = d.error;
+    else if (d.value) body.effectiveDate = d.value;
+  }
   return ergebnis(errors, body);
+}
+
+/** POST …/reactivate — ohne Angaben; `effectiveDate` nur mit `allowEffectiveDate: true`. */
+export function buildReactivateBody(form = {}, opts = {}) {
+  if (!mitDatum(opts)) return ergebnis({}, {});
+  const d = optionalesDatum(form.effectiveDate);
+  return ergebnis(d.error ? { effectiveDate: d.error } : {}, d.value ? { effectiveDate: d.value } : {});
 }
 
 /** PUT …/login — ausschließlich { enabled: boolean }. */
@@ -274,10 +310,12 @@ export function buildLoginBody(enabled) {
   return typeof enabled === "boolean" ? { ok: true, body: { enabled }, errors: {} } : { ok: false, errors: { enabled: "invalid" } };
 }
 
-/** POST …/rates — neue Satzversion, gültig ab heute oder später. */
-export function buildRatesBody(form = {}, { today } = {}) {
+/** POST …/rates — neue Satzversion, gültig ab heute oder später (mit
+ *  `allowPast: true` auch zurückliegend). */
+export function buildRatesBody(form = {}, opts = {}) {
+  const { today } = opts || {};
   const errors = {};
-  const dateError = pruefeDatum(form.validFrom, today, { notBefore: true });
+  const dateError = pruefeDatum(form.validFrom, today, { notBefore: nichtVorHeute(opts) });
   if (dateError) errors.validFrom = dateError;
   const werte = {};
   for (const k of ["basePercent", "level1Percent", "level2Percent"]) {
@@ -446,9 +484,10 @@ function regelTeil(form, errors) {
 }
 
 /** POST /admin/sales-partner-level-rules — globale Version. */
-export function buildGlobalLevelRulesBody(form = {}, { today } = {}) {
+export function buildGlobalLevelRulesBody(form = {}, opts = {}) {
+  const { today } = opts || {};
   const errors = {};
-  const dateError = pruefeDatum(form.validFrom, today, { notBefore: true });
+  const dateError = pruefeDatum(form.validFrom, today, { notBefore: nichtVorHeute(opts) });
   if (dateError) errors.validFrom = dateError;
   const teil = regelTeil(form, errors);
   const r = grund(form.reason, false);
@@ -459,11 +498,12 @@ export function buildGlobalLevelRulesBody(form = {}, { today } = {}) {
 }
 
 /** POST …/:id/level-rules — „inherit" (globale Regeln) oder eigene Regeln. */
-export function buildPartnerLevelRulesBody(form = {}, { today } = {}) {
+export function buildPartnerLevelRulesBody(form = {}, opts = {}) {
+  const { today } = opts || {};
   const errors = {};
   const mode = form.mode === "inherit" || form.mode === "custom" ? form.mode : null;
   if (!mode) errors.mode = INPUT_TEXTS.modeRequired;
-  const dateError = pruefeDatum(form.validFrom, today, { notBefore: true });
+  const dateError = pruefeDatum(form.validFrom, today, { notBefore: nichtVorHeute(opts) });
   if (dateError) errors.validFrom = dateError;
   const r = grund(form.reason, false);
   if (r.error) errors.reason = r.error;
@@ -488,9 +528,10 @@ export const CAP_TEXTS = Object.freeze({
 
 /** POST /admin/sales-partner-caps — leer heißt „keine Grenze" (null); mit
  *  `partnerUserId` die individuelle Obergrenze dieses Partners. */
-export function buildCapBody(form = {}, { today, partnerUserId } = {}) {
+export function buildCapBody(form = {}, opts = {}) {
+  const { today, partnerUserId } = opts || {};
   const errors = {};
-  const dateError = pruefeDatum(form.validFrom, today, { notBefore: true });
+  const dateError = pruefeDatum(form.validFrom, today, { notBefore: nichtVorHeute(opts) });
   if (dateError) errors.validFrom = dateError;
   const own = parsePercentInput(form.maxOwnRatePercent, { allowEmpty: true });
   const total = parsePercentInput(form.maxTotalRatePercent, { allowEmpty: true });
@@ -544,14 +585,15 @@ export function buildAdjustmentBody(form = {}) {
 
 // ── Kundenzuordnung ─────────────────────────────────────────────────────────
 /** PUT /admin/users/:id/sales-partner-attribution — partnerUserId null entfernt. */
-export function buildAttributionBody(form = {}, { today } = {}) {
+export function buildAttributionBody(form = {}, opts = {}) {
+  const { today } = opts || {};
   const errors = {};
   let partnerUserId = null;
   if (form.remove !== true) {
     partnerUserId = positiveInt(form.partnerUserId);
     if (partnerUserId === null) errors.partnerUserId = INPUT_TEXTS.partnerRequired;
   }
-  const dateError = pruefeDatum(form.effectiveDate, today, { notBefore: true });
+  const dateError = pruefeDatum(form.effectiveDate, today, { notBefore: nichtVorHeute(opts) });
   if (dateError) errors.effectiveDate = dateError;
   const r = grund(form.reason, true);
   if (r.error) errors.reason = r.error;
@@ -598,6 +640,8 @@ export function normalizeAdminPartnerRow(raw) {
     teamLevel2Count: int(p.teamLevel2Count),
     ownRatePercent: str(p.ownRatePercent),
     createdAt: str(p.createdAt),
+    // Unveränderliche Testkennzeichnung des Servers (Pre-Live-Testmodus).
+    preliveTest: p.preliveTest === true,
   };
 }
 
@@ -647,14 +691,19 @@ export function normalizeVersioned(raw, normalize) {
   return { current: d.current ? normalize(d.current) : null, history: arr(d.history).map(normalize).filter(Boolean) };
 }
 
-/** GET /admin/sales-partner-level-rules → { current, history, startDefaults }. */
+/** GET /admin/sales-partner-level-rules → { current, history, startDefaults, backdatingAllowed }. */
 export function normalizeLevelRulesResponse(raw) {
-  return { ...normalizeVersioned(raw, normalizeRuleSet), startDefaults: normalizeStartDefaults(obj(raw).startDefaults) };
+  return {
+    ...normalizeVersioned(raw, normalizeRuleSet),
+    startDefaults: normalizeStartDefaults(obj(raw).startDefaults),
+    backdatingAllowed: obj(raw).backdatingAllowed === true,
+  };
 }
 
-/** GET /admin/sales-partner-caps (global oder ?partnerUserId=) → { current, history }. */
+/** GET /admin/sales-partner-caps (global oder ?partnerUserId=) → { current,
+ *  history, backdatingAllowed } — die Freigabe trägt nur die globale Antwort. */
 export function normalizeCapsResponse(raw) {
-  return normalizeVersioned(raw, normalizeCap);
+  return { ...normalizeVersioned(raw, normalizeCap), backdatingAllowed: obj(raw).backdatingAllowed === true };
 }
 
 function normalizeRateVersion(raw) {
@@ -712,7 +761,11 @@ export function normalizeAdminPartnerDetail(raw) {
       approvedAt: str(p.approvedAt),
       contractEndedOn: str(p.contractEndedOn),
       deactivationReason: str(p.deactivationReason),
+      preliveTest: p.preliveTest === true,
     },
+    // Nur für Testpartner im Pre-Live-Testmodus true: dann dürfen Freigabe,
+    // Status, Sätze, Regeln und Obergrenze zurückliegende Daten tragen.
+    datesBeforeTodayAllowed: d.datesBeforeTodayAllowed === true,
     rates: {
       current: rates.current ? normalizeRateVersion(rates.current) : null,
       history: arr(rates.history).map(normalizeRateVersion).filter(Boolean),
@@ -889,6 +942,18 @@ const STATUS_TEXTE = Object.freeze({
 export function adminActionErrorText(status, body, fallback = "Die Aktion wurde nicht ausgeführt. Es wurden keine Änderungen gespeichert.") {
   if (status === 400 || status === 409 || status === 422) return customerText(body) || fallback;
   return STATUS_TEXTE[status] || fallback;
+}
+
+/** PUT …/sales-partner-attribution: 409 PRELIVE_TEST_MISMATCH bekommt einen
+ *  festen Satz (Testkunde ↔ echter Partner oder umgekehrt), sonst wie üblich. */
+export const ATTRIBUTION_TEXTS = Object.freeze({
+  testMismatch: "Testkunden lassen sich nur Testpartnern zuordnen und echte Kunden nur echten Vertriebspartnern. Es wurde nichts geändert.",
+  pastAllowed: "Testkunde und Testpartner: Im Pre-Live-Testmodus darf das Datum zurückliegen.",
+});
+export function attributionErrorText(status, body) {
+  const code = body && typeof body === "object" && typeof body.code === "string" ? body.code.trim() : "";
+  if (status === 409 && code === "PRELIVE_TEST_MISMATCH") return ATTRIBUTION_TEXTS.testMismatch;
+  return adminActionErrorText(status, body);
 }
 
 // ── Zeitpunkte (Adminanzeige) ───────────────────────────────────────────────

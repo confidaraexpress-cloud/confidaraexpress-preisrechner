@@ -462,8 +462,10 @@ test("12 — Phase 2.5 fasst nur Typografie an", () => {
   // Vertriebspartnervereinbarung (dokumentierte Ankeränderung): +1 —
   // /partnervereinbarung, eine öffentliche Leseseite am bestehenden Rahmen
   // der Rechtsseiten (NavbarLayout); keine neue Layoutroute.
-  assert.equal(mitPfad + indexRt, 39,
-    "die Zahl der ansteuerbaren Routen ist unverändert (39 seit der Vertriebspartnervereinbarung)");
+  // Abrechnungslauf (dokumentierte Ankeränderung): +1 —
+  // /admin/partners/credit-notes am bestehenden Adminrahmen.
+  assert.equal(mitPfad + indexRt, 40,
+    "die Zahl der ansteuerbaren Routen ist unverändert (40 seit dem Abrechnungslauf)");
   assert.equal(pfadlos, 4,
     "die Zahl der pfadlosen Layoutrouten ist unverändert (4: Dashboard, öffentlich, Admin, Auth)");
 });

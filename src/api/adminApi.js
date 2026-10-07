@@ -764,3 +764,16 @@ export function generateAdminCreditNoteDocument(id) {
     method: "POST", auth: true, body: JSON.stringify({}), timeoutMs: DOCUMENT_ACTION_TIMEOUT_MS,
   });
 }
+
+// Abrechnungslauf: Vorschau eines abgeschlossenen Monats (nur ein gültiger
+// Monat geht hinaus) und das Ausstellen je Partner mit dessen Fingerabdruck.
+const CREDIT_NOTE_PREVIEW_PARAMS = ["month"];
+export function previewAdminCreditNotes(month) {
+  const query = typeof month === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(month) ? { month } : {};
+  return apiFetch(`/admin/sales-partner-credit-notes/preview${buildQuery(query, CREDIT_NOTE_PREVIEW_PARAMS)}`, { auth: true });
+}
+export function issueAdminCreditNote(body) {
+  return apiFetch("/admin/sales-partner-credit-notes", {
+    method: "POST", auth: true, body: JSON.stringify(body), timeoutMs: DOCUMENT_ACTION_TIMEOUT_MS,
+  });
+}

@@ -1,7 +1,9 @@
-// ── Admin: Abrechnung der Vertriebspartner — Abrechnungsdaten und Gutschriften ──
+// ── Admin: Abrechnung der Vertriebspartner — Abrechnungsdaten, Gutschriften
+//    und Abrechnungslauf ────────────────────────────────────────────────────
 //
 // Reine Lese-, Format- und Body-Logik für die Karten „Abrechnungsdaten“ und
-// „Gutschriften“ im Partnerdetail (/admin/partners/:id). Wie in
+// „Gutschriften“ im Partnerdetail (/admin/partners/:id) und für den
+// Abrechnungslauf (/admin/partners/credit-notes). Wie in
 // adminSalesPartnerView.mjs entsteht jeder Request-Body AUSSCHLIESSLICH über
 // die build…Body-Funktionen dieser Datei (Allowlist, Prüfung vor dem Senden);
 // verbindlich bleibt die Prüfung des Servers.
@@ -22,6 +24,15 @@
 //        400 REASON_REQUIRED; 409 CREDIT_NOTES_DISABLED | CREDIT_NOTE_NOT_CANCELLABLE |
 //        CREDIT_NOTE_ALREADY_CANCELLED | CREDIT_NOTE_PAID_ACK_REQUIRED; 422 CREDIT_NOTE_BLOCKED
 //   POST …/:id/generate-document → 200 { documentStatus, notified }
+//   GET  /admin/sales-partner-credit-notes/preview?month=YYYY-MM → { month, cutoffAt,
+//        issuanceEnabled, globalBlockers, partners: [ { partnerUserId, name, companyName,
+//        entryCount, netCents, taxCents, grossCents, taxStatus, taxRatePercent, status,
+//        blockers, fingerprint, existingCreditNote } ] }; 400 PERIOD_INVALID | PERIOD_NOT_CLOSED
+//   POST /admin/sales-partner-credit-notes { partnerUserId, month, fingerprint } → 201
+//        { creditNote, documentReady, notified }; 409 CREDIT_NOTES_DISABLED |
+//        CREDIT_NOTE_ALREADY_ISSUED { existing } | CREDIT_NOTE_NOTHING_TO_ISSUE |
+//        CREDIT_NOTE_PREVIEW_STALE; 422 CREDIT_NOTE_BLOCKED { blockers };
+//        400 PERIOD_INVALID | PERIOD_NOT_CLOSED | PARTNER_INVALID; 404 PARTNER_NOT_FOUND
 //
 // Die vollständige IBAN erscheint ausschließlich in der Adminkarte
 // „Abrechnungsdaten“ (manuelle Überweisung). Kein Blockier-, Status- oder
@@ -38,7 +49,7 @@ import {
   taxStatusLabel,
 } from "./salesPartnerBilling.mjs";
 import { normalizeCreditNotes } from "./salesPartnerCreditNotes.mjs";
-import { statusMetaFrom } from "./salesPartnerView.mjs";
+import { monthOptions, statusMetaFrom } from "./salesPartnerView.mjs";
 import { adminActionErrorText, formatTimestamp, isIsoDate } from "./adminSalesPartnerView.mjs";
 
 const objOrNull = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : null);
@@ -289,4 +300,167 @@ export function cancelResultText(body) {
   if (d.documentReady === false) teile.push("Das Dokument wird erstellt.");
   teile.push(SETTLEMENT_TEXTS.cancelHint);
   return teile.join(" ");
+}
+
+// ── Abrechnungslauf (/admin/partners/credit-notes) ──────────────────────────
+const MONAT = /^(\d{4})-(0[1-9]|1[0-2])$/;
+const int = (v) => (Number.isInteger(v) ? v : null);
+const PROZENT = /^\d{1,3}(\.\d{1,4})?$/;
+const pct = (v) => (typeof v === "string" && PROZENT.test(v.trim()) ? v.trim() : null);
+const kennung = (v) => {
+  if (Number.isInteger(v) && v > 0) return v;
+  if (typeof v === "string" && /^[1-9][0-9]{0,15}$/.test(v.trim())) {
+    const n = Number(v.trim());
+    return Number.isSafeInteger(n) ? n : null;
+  }
+  return null;
+};
+const codes = (v) => [...new Set((Array.isArray(v) ? v : []).filter((c) => typeof c === "string" && c.trim() !== "")
+  .map((c) => c.trim()))];
+
+export const RUN_TEXTS = Object.freeze({
+  issuanceDisabled: "Ausstellung ist deaktiviert (SALES_PARTNER_CREDIT_NOTES_ENABLED).",
+  globalBlocked: "Die Ausstellung ist derzeit blockiert:",
+  previewError: "Die Vorschau konnte nicht geladen werden.",
+  empty: "Für diesen Monat gibt es keine abzurechnenden Vertriebspartner.",
+  stale: "Die Vorschau war nicht mehr aktuell und wurde neu geladen. Weitere Gutschriften wurden nicht ausgestellt – bitte prüfen Sie die Vorschau erneut.",
+  aborted: "Nicht ausgestellt – der Lauf wurde abgebrochen.",
+  connection: "Die Verbindung wurde unterbrochen. Ob die Gutschrift ausgestellt wurde, zeigt die neu geladene Vorschau.",
+});
+
+/** Der Monat vor „YYYY-MM“ (reine Kalenderarithmetik) — oder null. */
+export function previousMonth(month) {
+  const m = typeof month === "string" ? month.trim().match(MONAT) : null;
+  if (!m) return null;
+  const jahr = Number(m[1]);
+  const monat = Number(m[2]);
+  return monat === 1 ? `${jahr - 1}-12` : `${jahr}-${String(monat - 1).padStart(2, "0")}`;
+}
+
+/** Auswahl der abgeschlossenen Monate: der Vormonat zuerst, dann rückwärts.
+ *  „Heute“ kommt aus der Uhr des Admins — eine Vorabprüfung; ob ein Monat
+ *  abgeschlossen ist, entscheidet der Server (PERIOD_NOT_CLOSED). */
+export function closedMonthOptions(today, count = 24) {
+  if (!isIsoDate(today)) return [];
+  return monthOptions(previousMonth(today.slice(0, 7)), count);
+}
+
+const RUN_STATUS_META = Object.freeze({
+  issuable: Object.freeze(["badge-green", "Ausstellbar"]),
+  blocked: Object.freeze(["badge-red", "Blockiert"]),
+  carried_forward: Object.freeze(["badge-gray", "Wird vorgetragen"]),
+  already_issued: Object.freeze(["badge-blue", "Bereits ausgestellt"]),
+});
+export const runStatusMeta = (status) => statusMetaFrom(RUN_STATUS_META, status);
+
+function normalizePreviewRow(raw) {
+  const r = objOrNull(raw);
+  if (!r) return null;
+  const vorhanden = objOrNull(r.existingCreditNote);
+  return {
+    partnerUserId: kennung(r.partnerUserId),
+    name: str(r.name),
+    companyName: str(r.companyName),
+    entryCount: int(r.entryCount),
+    netCents: int(r.netCents),
+    taxCents: int(r.taxCents),
+    grossCents: int(r.grossCents),
+    taxStatus: str(r.taxStatus),
+    taxRatePercent: pct(r.taxRatePercent),
+    status: str(r.status),
+    blockers: codes(r.blockers),
+    fingerprint: str(r.fingerprint),
+    existingCreditNote: vorhanden ? { id: kennung(vorhanden.id), number: str(vorhanden.number) } : null,
+  };
+}
+
+/** GET …/preview → { month, cutoffAt, issuanceEnabled, globalBlockers, partners }. */
+export function normalizePreview(raw) {
+  const d = objOrNull(raw) || {};
+  const monat = str(d.month);
+  return {
+    month: monat && MONAT.test(monat) ? monat : null,
+    cutoffAt: str(d.cutoffAt),
+    issuanceEnabled: d.issuanceEnabled === true,
+    globalBlockers: codes(d.globalBlockers),
+    partners: (Array.isArray(d.partners) ? d.partners : []).map(normalizePreviewRow).filter(Boolean),
+  };
+}
+
+/** Anzeigename eines Partners der Vorschau: Firma vor Name vor Kennung. */
+export function previewPartnerName(row) {
+  if (!row) return "Vertriebspartner";
+  return row.companyName || row.name || (row.partnerUserId !== null ? `Partner #${row.partnerUserId}` : "Vertriebspartner");
+}
+
+/** Kann im Lauf überhaupt ausgestellt werden (Schalter an, keine globalen Blockiergründe)? */
+export const issuanceOpen = (preview) => !!preview && preview.issuanceEnabled === true
+  && preview.globalBlockers.length === 0 && preview.month !== null;
+
+/** Darf für diese Zeile ausgestellt werden? Nur „ausstellbar“, ohne
+ *  Blockiergründe, mit Fingerabdruck und Kennung — sonst fail-closed nicht. */
+export const canIssueRow = (preview, row) => issuanceOpen(preview) && !!row && row.status === "issuable"
+  && row.blockers.length === 0 && row.fingerprint !== null && row.partnerUserId !== null;
+
+/** Die Zeilen, die „Alle zulässigen ausstellen“ nacheinander ausstellt. */
+export const issuableRows = (preview) => (preview ? preview.partners.filter((r) => canIssueRow(preview, r)) : []);
+
+/** POST /admin/sales-partner-credit-notes — genau die drei Vertragsfelder. */
+export function buildIssueBody(preview, row) {
+  if (!canIssueRow(preview, row)) return { ok: false, errors: { row: "nicht ausstellbar" } };
+  return { ok: true, body: { partnerUserId: row.partnerUserId, month: preview.month, fingerprint: row.fingerprint }, errors: {} };
+}
+
+/** Rückmeldung zu einer ausgestellten Gutschrift. */
+export function issueSuccessText(body) {
+  const d = objOrNull(body) || {};
+  const nummer = str(objOrNull(d.creditNote)?.number);
+  const teile = [nummer ? `Gutschrift ${nummer} ausgestellt.` : "Gutschrift ausgestellt."];
+  if (d.documentReady === false) teile.push("Das Dokument wird erstellt.");
+  if (d.notified === true) teile.push("Der Vertriebspartner wurde benachrichtigt.");
+  else if (d.notified === false) teile.push("Der Vertriebspartner wurde noch nicht benachrichtigt.");
+  return teile.join(" ");
+}
+
+/** Fehlerantwort der Vorschau → verständlicher Satz. */
+export function previewErrorText(status, body) {
+  const code = codeOf(body);
+  if (status === 400 && code === "PERIOD_NOT_CLOSED") return "Dieser Monat ist noch nicht abgeschlossen. Abgerechnet werden nur abgeschlossene Monate.";
+  if (status === 400 && code === "PERIOD_INVALID") return "Bitte wählen Sie einen gültigen, abgeschlossenen Monat.";
+  if (status === 429) return "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut.";
+  return RUN_TEXTS.previewError;
+}
+
+/** Fehlerantwort des Ausstellens → { kind, text, abort, reload }.
+ *  `abort`: der Lauf hält an (Vorschau veraltet, Schalter aus, Zeitraum oder
+ *  Ausgang unklar); `reload`: die Vorschau wird neu geladen. */
+export function issueOutcome(status, body) {
+  const code = codeOf(body);
+  const d = objOrNull(body) || {};
+  if (status === 409 && code === "CREDIT_NOTE_PREVIEW_STALE") return { kind: "stale", text: RUN_TEXTS.stale, abort: true, reload: true };
+  if (status === 409 && code === "CREDIT_NOTES_DISABLED") return { kind: "disabled", text: RUN_TEXTS.issuanceDisabled, abort: true, reload: true };
+  if (status === 409 && code === "CREDIT_NOTE_ALREADY_ISSUED") {
+    const nummer = str(objOrNull(d.existing)?.number);
+    return { kind: "already", text: nummer ? `Für diesen Monat besteht bereits die Gutschrift ${nummer}.` : "Für diesen Monat wurde bereits eine Gutschrift ausgestellt.",
+      abort: false, reload: true };
+  }
+  if (status === 409 && code === "CREDIT_NOTE_NOTHING_TO_ISSUE") {
+    return { kind: "nothing", text: "Für diesen Monat gibt es nichts mehr abzurechnen.", abort: false, reload: true };
+  }
+  if (status === 422 && code === "CREDIT_NOTE_BLOCKED") {
+    const gruende = blockerLabels(d.blockers);
+    return { kind: "blocked", text: `Blockiert${gruende.length ? `: ${gruende.join(", ")}` : ""}.`, abort: false, reload: true };
+  }
+  if (status === 400 && (code === "PERIOD_INVALID" || code === "PERIOD_NOT_CLOSED")) {
+    return { kind: "period", text: previewErrorText(status, body), abort: true, reload: false };
+  }
+  if (status === 400 && code === "PARTNER_INVALID") return { kind: "partner", text: "Der Vertriebspartner ist ungültig.", abort: false, reload: false };
+  if (status === 404 && code === "PARTNER_NOT_FOUND") return { kind: "partner", text: "Der Vertriebspartner wurde nicht gefunden.", abort: false, reload: true };
+  // Ein Serverfehler lässt den Ausgang offen: anhalten, den Stand neu laden und
+  // nichts behaupten, was der Server nicht gesagt hat.
+  if (!Number.isInteger(status) || status >= 500) {
+    return { kind: "error", text: "Der Server hat einen Fehler gemeldet. Ob die Gutschrift ausgestellt wurde, zeigt die neu geladene Vorschau.",
+      abort: true, reload: true };
+  }
+  return { kind: "error", text: adminActionErrorText(status, body, "Die Gutschrift wurde nicht ausgestellt."), abort: false, reload: false };
 }

@@ -37,6 +37,19 @@ import {
   normalizeAdminCreditNotes,
   notificationText,
   regenerateResultText,
+  RUN_TEXTS,
+  buildIssueBody,
+  canIssueRow,
+  closedMonthOptions,
+  issuableRows,
+  issuanceOpen,
+  issueOutcome,
+  issueSuccessText,
+  normalizePreview,
+  previewErrorText,
+  previewPartnerName,
+  previousMonth,
+  runStatusMeta,
 } from "./adminSalesPartnerSettlementView.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -263,4 +276,128 @@ test("11 — Partnerdetail: beide Karten, Bodies nur aus den Bausteinen, PDF als
   assert.match(api, /export const adminCreditNotePdfPath = \(id\) => `\$\{creditNotePath\(id\)\}\/pdf`;/);
   assert.match(api, /`\$\{partnerPath\(id\)\}\/billing-details\/confirm`/);
   assert.match(api, /`\$\{partnerPath\(id\)\}\/billing-details\/reject`/);
+});
+
+/* ══════════ Abrechnungslauf ═════════════════════════════════════════════ */
+
+const VORSCHAU = {
+  month: "2026-09", cutoffAt: "2026-10-03T22:00:00.000Z", issuanceEnabled: true, globalBlockers: [],
+  partners: [
+    { partnerUserId: 5, name: "Petra Partner", companyName: "Vertrieb Süd GmbH", entryCount: 12, netCents: 45000,
+      taxCents: 8550, grossCents: 53550, taxStatus: "with_vat", taxRatePercent: "19.00", status: "issuable",
+      blockers: [], fingerprint: "fp-5", existingCreditNote: null },
+    { partnerUserId: "6", name: "Sam Sponsor", companyName: null, entryCount: 3, netCents: 9000, taxCents: null,
+      grossCents: null, taxStatus: null, taxRatePercent: null, status: "blocked",
+      blockers: ["billing_details_unconfirmed", "agreement_missing", "agreement_missing"], fingerprint: null, existingCreditNote: null },
+    { partnerUserId: 7, name: "Tom Team", companyName: null, entryCount: 2, netCents: -1200, taxCents: null,
+      grossCents: null, taxStatus: "with_vat", taxRatePercent: null, status: "carried_forward", blockers: [],
+      fingerprint: null, existingCreditNote: null },
+    { partnerUserId: 8, name: "Ida Issued", companyName: null, entryCount: 4, netCents: 2000, taxCents: 380,
+      grossCents: 2380, taxStatus: "with_vat", taxRatePercent: "19.00", status: "already_issued", blockers: [],
+      fingerprint: null, existingCreditNote: { id: 41, number: "GS-2026-0041" } },
+  ],
+};
+
+test("12 — Monate: nur abgeschlossene, der Vormonat zuerst (reine Kalenderarithmetik)", () => {
+  assert.equal(previousMonth("2026-01"), "2025-12");
+  assert.equal(previousMonth("2026-10"), "2026-09");
+  assert.equal(previousMonth("2026-13"), null);
+  assert.deepEqual(closedMonthOptions("2026-01-15", 3).map((o) => o.value), ["2025-12", "2025-11", "2025-10"]);
+  assert.equal(closedMonthOptions("2026-10-07", 1)[0].label, "September 2026");
+  assert.equal(closedMonthOptions("2026-10-07").length, 24);
+  assert.deepEqual(closedMonthOptions("kaputt"), []);
+});
+
+test("13 — Vorschau: Felder des Vertrags, Kennungen als Zahl, Blockiergründe ohne Wiederholung", () => {
+  const v = normalizePreview(VORSCHAU);
+  assert.equal(v.month, "2026-09");
+  assert.equal(v.issuanceEnabled, true);
+  assert.equal(v.partners.length, 4);
+  assert.equal(v.partners[1].partnerUserId, 6);
+  assert.deepEqual(v.partners[1].blockers, ["billing_details_unconfirmed", "agreement_missing"]);
+  assert.deepEqual(v.partners[3].existingCreditNote, { id: 41, number: "GS-2026-0041" });
+  assert.equal(previewPartnerName(v.partners[0]), "Vertrieb Süd GmbH");
+  assert.equal(previewPartnerName(v.partners[1]), "Sam Sponsor");
+  assert.equal(normalizePreview({ ...VORSCHAU, issuanceEnabled: "true" }).issuanceEnabled, false, "nur true schaltet frei");
+  assert.equal(normalizePreview({ ...VORSCHAU, month: "2026-9" }).month, null);
+  assert.deepEqual(normalizePreview(null).partners, []);
+  assert.deepEqual(runStatusMeta("carried_forward"), ["badge-gray", "Wird vorgetragen"]);
+  assert.equal(runStatusMeta("issuable")[1], "Ausstellbar");
+  assert.equal(runStatusMeta("pending")[1], "Unbekannter Status");
+});
+
+test("14 — ausgestellt wird nur, was der Server freigibt — sonst fail-closed nicht", () => {
+  const v = normalizePreview(VORSCHAU);
+  assert.equal(issuanceOpen(v), true);
+  assert.deepEqual(issuableRows(v).map((r) => r.partnerUserId), [5]);
+  assert.deepEqual(buildIssueBody(v, v.partners[0]), { ok: true, body: { partnerUserId: 5, month: "2026-09", fingerprint: "fp-5" }, errors: {} });
+  for (const row of v.partners.slice(1)) assert.equal(buildIssueBody(v, row).ok, false, `${row.status} ist nicht ausstellbar`);
+  const aus = normalizePreview({ ...VORSCHAU, issuanceEnabled: false });
+  assert.equal(issuanceOpen(aus), false);
+  assert.deepEqual(issuableRows(aus), [], "abgeschaltet: nichts ausstellbar");
+  const global = normalizePreview({ ...VORSCHAU, globalBlockers: ["issuer_config_incomplete"] });
+  assert.deepEqual(issuableRows(global), [], "globaler Blockiergrund: nichts ausstellbar");
+  const ohneFingerabdruck = normalizePreview({ ...VORSCHAU, partners: [{ ...VORSCHAU.partners[0], fingerprint: null }] });
+  assert.equal(canIssueRow(ohneFingerabdruck, ohneFingerabdruck.partners[0]), false);
+  const mitBlocker = normalizePreview({ ...VORSCHAU, partners: [{ ...VORSCHAU.partners[0], blockers: ["tax_rate_missing"] }] });
+  assert.equal(canIssueRow(mitBlocker, mitBlocker.partners[0]), false);
+});
+
+test("15 — Ausstellen: veraltet hält an und lädt neu; ein offener Ausgang behauptet nichts", () => {
+  const veraltet = issueOutcome(409, { code: "CREDIT_NOTE_PREVIEW_STALE", error: "x" });
+  assert.deepEqual([veraltet.kind, veraltet.abort, veraltet.reload], ["stale", true, true]);
+  assert.equal(veraltet.text, RUN_TEXTS.stale);
+  assert.deepEqual([issueOutcome(409, { code: "CREDIT_NOTES_DISABLED" }).abort, issueOutcome(409, { code: "CREDIT_NOTES_DISABLED" }).reload], [true, true]);
+  const schon = issueOutcome(409, { code: "CREDIT_NOTE_ALREADY_ISSUED", existing: { id: 41, number: "GS-2026-0041" } });
+  assert.equal(schon.text, "Für diesen Monat besteht bereits die Gutschrift GS-2026-0041.");
+  assert.equal(schon.abort, false, "die übrigen Partner laufen weiter");
+  assert.equal(issueOutcome(409, { code: "CREDIT_NOTE_NOTHING_TO_ISSUE" }).abort, false);
+  const blockiert = issueOutcome(422, { code: "CREDIT_NOTE_BLOCKED", blockers: ["billing_details_unconfirmed"] });
+  assert.equal(blockiert.text, "Blockiert: Abrechnungsdaten nicht bestätigt.");
+  assert.equal(issueOutcome(400, { code: "PERIOD_NOT_CLOSED" }).abort, true);
+  assert.equal(issueOutcome(400, { code: "PARTNER_INVALID" }).abort, false);
+  assert.equal(issueOutcome(404, { code: "PARTNER_NOT_FOUND" }).text, "Der Vertriebspartner wurde nicht gefunden.");
+  const fuenf = issueOutcome(502, { error: "Bad Gateway" });
+  assert.deepEqual([fuenf.abort, fuenf.reload], [true, true]);
+  assert.doesNotMatch(fuenf.text, /nicht ausgestellt|Bad Gateway/, "ein offener Ausgang wird nicht als „nicht ausgestellt“ behauptet");
+  for (const code of ["CREDIT_NOTE_PREVIEW_STALE", "CREDIT_NOTE_BLOCKED", "PERIOD_NOT_CLOSED"]) {
+    assert.doesNotMatch(issueOutcome(code === "CREDIT_NOTE_BLOCKED" ? 422 : code === "PERIOD_NOT_CLOSED" ? 400 : 409, { code }).text,
+      new RegExp(code), "kein Rohcode");
+  }
+});
+
+test("16 — Rückmeldungen der Vorschau und des Ausstellens", () => {
+  assert.equal(previewErrorText(400, { code: "PERIOD_NOT_CLOSED" }),
+    "Dieser Monat ist noch nicht abgeschlossen. Abgerechnet werden nur abgeschlossene Monate.");
+  assert.equal(previewErrorText(400, { code: "PERIOD_INVALID" }), "Bitte wählen Sie einen gültigen, abgeschlossenen Monat.");
+  assert.equal(previewErrorText(500, {}), RUN_TEXTS.previewError);
+  assert.equal(issueSuccessText({ creditNote: { number: "GS-2026-0042" }, documentReady: true, notified: true }),
+    "Gutschrift GS-2026-0042 ausgestellt. Der Vertriebspartner wurde benachrichtigt.");
+  assert.equal(issueSuccessText({ creditNote: {}, documentReady: false, notified: false }),
+    "Gutschrift ausgestellt. Das Dokument wird erstellt. Der Vertriebspartner wurde noch nicht benachrichtigt.");
+});
+
+test("17 — Abrechnungslauf: Route vor '/:id', Link aus der Liste, nacheinander statt parallel", () => {
+  const app = ohneKommentare(read("App.jsx"));
+  const statisch = app.indexOf('path="/admin/partners/credit-notes"');
+  assert.ok(statisch > 0 && statisch < app.indexOf('path="/admin/partners/:id"'), "statische Unterseite vor '/:id'");
+  assert.match(app, /const AdminSalesPartnerCreditNotesPage = React\.lazy\(\(\) => import\("\.\/pages\/admin\/AdminSalesPartnerCreditNotesPage"\)\);/);
+  const liste = ohneKommentare(read("pages/admin/AdminSalesPartnersPage.jsx"));
+  assert.match(liste, /to="\/admin\/partners\/credit-notes" id="adm-sp-credit-notes-link">Abrechnungslauf<\/Link>/);
+
+  const seite = ohneKommentare(read("pages/admin/AdminSalesPartnerCreditNotesPage.jsx"));
+  assert.match(seite, /for \(let i = 0; i < zeilen\.length; i \+= 1\) \{\s*const folge = await ausstellenZeile\(preview, zeilen\[i\]\);/,
+    "je Partner einzeln und nacheinander");
+  assert.doesNotMatch(seite, /Promise\.all|Promise\.allSettled/, "nie parallel");
+  assert.match(seite, /const gebaut = buildIssueBody\(preview, row\);/);
+  assert.match(seite, /if \(folge\.abort\) \{\s*abbruch = folge;/);
+  assert.match(seite, /await laden\(preview\.month\);/);
+  assert.match(seite, /closedMonthOptions\(localIsoDate\(\), 24\)/);
+  assert.doesNotMatch(seite, /\bfetch\(|apiFetch|dangerouslySetInnerHTML/);
+  // Genau EIN Dialog: die Bestätigung des Sammellaufs (keine unnötigen Modals).
+  assert.equal((seite.match(/<ConfirmDialog/g) || []).length, 1);
+
+  const api = ohneKommentare(read("api/adminApi.js"));
+  assert.match(api, /apiFetch\(`\/admin\/sales-partner-credit-notes\/preview\$\{buildQuery\(query, CREDIT_NOTE_PREVIEW_PARAMS\)\}`, \{ auth: true \}\)/);
+  assert.match(api, /apiFetch\("\/admin\/sales-partner-credit-notes", \{\s*method: "POST", auth: true, body: JSON\.stringify\(body\)/);
 });

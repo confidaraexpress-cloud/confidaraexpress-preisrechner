@@ -102,6 +102,7 @@ export default function AdminSalesPartnersPage() {
           <>
             <Link className="btn btn-outline btn-sm" to="/admin/partners/settings" id="adm-sp-settings-link">Einstellungen</Link>
             <Link className="btn btn-outline btn-sm" to="/admin/partners/dispatch-evidence" id="adm-sp-evidence-link">Versandnachweise</Link>
+            <Link className="btn btn-outline btn-sm" to="/admin/partners/credit-notes" id="adm-sp-credit-notes-link">Abrechnungslauf</Link>
             <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>Aktualisieren</button>
           </>
         )}

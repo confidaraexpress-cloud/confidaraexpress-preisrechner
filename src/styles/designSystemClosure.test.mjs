@@ -315,6 +315,10 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
                   // Partnerregistrierung. Sie zeigt Fassung und Gültigkeit und
                   // verlinkt das registrierte Dokument — kein Vertragstext.
                   "/partnervereinbarung",
+                  // Abrechnungslauf der Vertriebspartner (bewusste Ankeränderung,
+                  // +1): dritte statische Adminunterseite neben Einstellungen und
+                  // Versandnachweisen, vor '/:id' registriert.
+                  "/admin/partners/credit-notes",
                   "*"];
   const gefunden = [...app.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(gefunden.sort(), [...ROUTEN].sort(), "der Routenbestand hat sich verändert");

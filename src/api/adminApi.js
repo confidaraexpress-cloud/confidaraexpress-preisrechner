@@ -732,3 +732,35 @@ export const getAdminShipmentDispatchEvidence = (shipmentId) =>
   apiFetch(`/admin/shipments/${encodeURIComponent(shipmentId)}/dispatch-evidence`, { auth: true });
 export const createAdminShipmentDispatchEvidence = (shipmentId, body) =>
   jsonPost(`/admin/shipments/${encodeURIComponent(shipmentId)}/dispatch-evidence`, body);
+
+// ── Vertriebspartner: Abrechnungsdaten und Gutschriften ──────────────────────
+// Jeder Body entsteht über utils/adminSalesPartnerSettlementView.mjs. Was ein
+// Dokument erzeugt (Storno, Dokument erneut erzeugen), bekommt eine längere
+// Frist als der Standard: ein Abbruch im Browser ließe den Ausgang offen.
+const DOCUMENT_ACTION_TIMEOUT_MS = 60000;
+const creditNotePath = (id) => `/admin/sales-partner-credit-notes/${encodeURIComponent(id)}`;
+
+// Abrechnungsdaten eines Partners — mit vollständiger IBAN (manuelle Überweisung).
+export const getAdminSalesPartnerBillingDetails = (id) =>
+  apiFetch(`${partnerPath(id)}/billing-details`, { auth: true });
+export const confirmAdminSalesPartnerBillingDetails = (id, body) =>
+  jsonPost(`${partnerPath(id)}/billing-details/confirm`, body);
+export const rejectAdminSalesPartnerBillingDetails = (id, body) =>
+  jsonPost(`${partnerPath(id)}/billing-details/reject`, body);
+
+// Gutschriften eines Partners; das PDF lädt der authentifizierte Blob-Abruf
+// (utils/downloadDocument.js) über diesen Pfad — nie als Link mit Token.
+export const listAdminSalesPartnerCreditNotes = (id) =>
+  apiFetch(`${partnerPath(id)}/credit-notes`, { auth: true });
+export const adminCreditNotePdfPath = (id) => `${creditNotePath(id)}/pdf`;
+export const markAdminCreditNotePaid = (id, body) => jsonPost(`${creditNotePath(id)}/payout`, body);
+export function cancelAdminCreditNote(id, body) {
+  return apiFetch(`${creditNotePath(id)}/cancel`, {
+    method: "POST", auth: true, body: JSON.stringify(body), timeoutMs: DOCUMENT_ACTION_TIMEOUT_MS,
+  });
+}
+export function generateAdminCreditNoteDocument(id) {
+  return apiFetch(`${creditNotePath(id)}/generate-document`, {
+    method: "POST", auth: true, body: JSON.stringify({}), timeoutMs: DOCUMENT_ACTION_TIMEOUT_MS,
+  });
+}

@@ -1352,3 +1352,9 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
 .adm-sp-row-correction td { background: var(--ce-color-surface-subtle); }
 .adm-sp-decision-row td { background: var(--ce-color-surface-subtle); }
 .adm-sp-decision { gap: var(--ce-space-3) var(--ce-space-5); }
+
+/* Abrechnungsdaten und Gutschriften: fehlende Angaben in der Warnrolle (Text,
+   nicht nur Farbe), Hinweise mit Abstand zum Raster, Belegnummer tabellarisch. */
+.adm-sp-missing { font-weight: 600; color: var(--ce-color-status-warning-fg); }
+.adm-sp-note { margin-top: var(--ce-space-3); }
+.adm-sp-cn-number { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }

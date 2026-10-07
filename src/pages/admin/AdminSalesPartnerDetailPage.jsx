@@ -9,7 +9,10 @@ import { SalesPartnerCommissionsCard } from "../../components/admin/SalesPartner
 import { SalesPartnerBillingDetailsCard } from "../../components/admin/SalesPartnerBillingDetailsCard";
 import { SalesPartnerCreditNotesCard } from "../../components/admin/SalesPartnerCreditNotesCard";
 import { getAdminSalesPartner } from "../../api/adminApi";
+import { agreementDocumentUrl } from "../../api/partnerApi";
 import { referralLinkPath } from "../../utils/referralCapture.mjs";
+import { AGREEMENT_TEXTS } from "../../utils/salesPartnerAgreement.mjs";
+import { EXTERNAL_LINK_REL, EXTERNAL_LINK_TARGET } from "../../utils/externalLink.mjs";
 import {
   formatBonusPercent,
   formatCents,
@@ -197,7 +200,21 @@ export default function AdminSalesPartnerDetailPage() {
               ["E-Mail", p.email || "—"],
               ["Telefon", p.phone || "—"],
               ["Registriert am", formatTimestamp(p.createdAt, { withTime: true })],
-              ["Partnervereinbarung", p.agreementVersion ? `Fassung ${p.agreementVersion}` : "—"],
+              ["Partnervereinbarung", p.agreementVersion ? (
+                <>
+                  {`Fassung ${p.agreementVersion}`}
+                  {agreementDocumentUrl(p.agreementDocumentPath) && (
+                    <>
+                      {" · "}
+                      <a id="adm-sp-agreement-document" href={agreementDocumentUrl(p.agreementDocumentPath)}
+                        target={EXTERNAL_LINK_TARGET} rel={EXTERNAL_LINK_REL}>
+                        {AGREEMENT_TEXTS.open}
+                        <span className="sr-only"> {AGREEMENT_TEXTS.opensInNewTab}</span>
+                      </a>
+                    </>
+                  )}
+                </>
+              ) : "—"],
               ["Zugestimmt am", formatTimestamp(p.agreementAcceptedAt, { withTime: true })],
               ["Sponsor", p.sponsor?.id != null
                 ? <Link to={`/admin/partners/${encodeURIComponent(p.sponsor.id)}`}>{p.sponsor.name || `Partner #${p.sponsor.id}`}</Link>

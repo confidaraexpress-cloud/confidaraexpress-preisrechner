@@ -277,6 +277,17 @@ test("17 — Liste und Detail werden defensiv gelesen", () => {
   assert.equal(normalizeAdminPartnerDetail(null).rates.current, null);
 });
 
+test("17b — akzeptierte Vereinbarung: nur ein Dokumentpfad auf diese API wird verlinkt", () => {
+  const mit = normalizeAdminPartnerDetail({ partner: { id: 5, agreementVersion: "1.0",
+    agreementDocumentPath: "/api/legal/sales_partner_agreement/1.0" } });
+  assert.equal(mit.partner.agreementDocumentPath, "/api/legal/sales_partner_agreement/1.0");
+  for (const fremd of ["https://example.com/x.pdf", "//example.com/x.pdf", "javascript:alert(1)", "", null, 7]) {
+    const d = normalizeAdminPartnerDetail({ partner: { id: 5, agreementVersion: "1.0", agreementDocumentPath: fremd } });
+    assert.equal(d.partner.agreementDocumentPath, null, `${JSON.stringify(fremd)} durchgelassen`);
+  }
+  assert.equal(normalizeAdminPartnerDetail({ partner: { id: 5 } }).partner.agreementDocumentPath, null);
+});
+
 test("18 — Rücknahme nur für Provisionsbuchungen mit offener Entscheidung", () => {
   const c = normalizeAdminCommissions({ month: "2026-10", entries: [
     { id: 1, decisionId: 11, type: "accrual", amountCents: 100 },

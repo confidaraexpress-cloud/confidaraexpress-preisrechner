@@ -94,6 +94,24 @@ test("6 — Zustimmung zur Partnervereinbarung ist Pflicht (nur ein echtes true)
   }
 });
 
+test("6b — Pre-Live-Testweg: keine Vertragsannahme verlangt, alle übrigen Regeln unverändert; Hinweis wörtlich", () => {
+  const ohne = { ...VALID, agreementAccepted: false };
+  assert.deepEqual(getPartnerRegErrors(ohne, REPEAT, { requireAgreement: false }), {});
+  assert.equal(getPartnerRegErrors(ohne, REPEAT).agreement, PARTNER_REG_TEXTS.agreementRequired, "Standard bleibt: Zustimmung Pflicht");
+  // Dieselben Feldregeln wie im produktiven Weg.
+  const kaputt = { ...ohne, name: "A", email: "x", phone: "030<script>" };
+  const test = getPartnerRegErrors(kaputt, "anders", { requireAgreement: false });
+  const echt = getPartnerRegErrors({ ...kaputt, agreementAccepted: true }, "anders");
+  assert.deepEqual(test, echt);
+  assert.equal(PARTNER_REG_TEXTS.preliveNotice,
+    "Pre-Live-Testbetrieb – diese Registrierung dient ausschließlich dem internen Funktionstest und begründet noch keine rechtsverbindliche Vertriebspartnervereinbarung.");
+  // Ohne Fassung geht keine Zustimmung mit — auch nicht bei einem zufällig gesetzten Formularwert.
+  const p = buildPartnerRegistrationPayload({ ...VALID, agreementAccepted: true }, { sponsorCode: "testab23", agreementVersion: null });
+  assert.equal("acceptedAgreementVersion" in p, false);
+  assert.equal(p.sponsorCode, "TESTAB23");
+  for (const k of ["isTest", "preliveTest", "prelive_test", "registrationMode"]) assert.equal(k in p, false, `${k} wird nie gesendet`);
+});
+
 test("7 — Längen- und Zeichengrenzen der optionalen Felder", () => {
   assert.equal(getPartnerRegErrors({ ...VALID, companyName: "F".repeat(201) }, REPEAT).companyName, PARTNER_REG_TEXTS.companyTooLong);
   assert.equal(getPartnerRegErrors({ ...VALID, phone: "1".repeat(41) }, REPEAT).phone, PARTNER_REG_TEXTS.phoneTooLong);
@@ -165,7 +183,13 @@ test("12 — 409, 429 und Serverfehler: verständliche Texte, kein Rohwert bei 5
 test("13 — die Partnerseite nutzt die zentrale Validierung, keine eigene Fassung", () => {
   const seite = ohneKommentare(read("pages/PartnerRegisterPage.jsx"));
   assert.match(seite, /from "\.\.\/utils\/registrationValidation\.mjs"/);
-  assert.match(seite, /getPartnerRegErrors\(form, passwordRepeat\)/);
+  // Bewusste Ankeränderung (Pre-Live-Registrierungsweg): die Regeln bekommen nur
+  // die Option, im Testweg keine Vertragsannahme zu verlangen.
+  assert.match(seite, /getPartnerRegErrors\(form, passwordRepeat, regelOptionen\)/);
+  assert.match(seite, /const regelOptionen = \{ requireAgreement: !testweg \};/);
+  assert.match(seite, /const modus = config\.ok && !serverClosed \? partnerRegistrationMode\(config\.data\) : "closed";/);
+  assert.match(seite, /agreementVersion: testweg \? null : config\.data\.agreementVersion,/);
+  assert.match(seite, /\{PARTNER_REG_TEXTS\.preliveNotice\}/);
   assert.match(seite, /buildPartnerRegistrationPayload\(form, \{/);
   assert.match(seite, /mapPartnerRegistrationError\(/);
   assert.doesNotMatch(seite, /function getPartnerRegErrors|EMAIL_RE\s*=/, "zweite Validierungsfassung in der Seite");

@@ -534,8 +534,11 @@ export function scenarioResult(kind, raw) {
 }
 
 // ── Provisionslauf (nur Testdaten) ──────────────────────────────────────────
+// Eine fehlende Obergrenze stellt nichts mehr zurück (optional, Canonical Context 12A) — nur eine
+// unbrauchbare Version (individuell oder global) ist ein Zurückstellungsgrund des Servers.
 const SKIP_LABELS = Object.freeze({
-  cap_missing: "Keine Obergrenzen-Version",
+  partner_cap_invalid: "Individuelle Obergrenze unbrauchbar",
+  global_cap_invalid: "Globale Obergrenze unbrauchbar",
   assessment_not_due: "Monatsbewertung noch nicht fällig",
   global_rules_missing: "Keine globalen Level-Regeln",
   global_rules_invalid: "Globale Level-Regeln ungültig",

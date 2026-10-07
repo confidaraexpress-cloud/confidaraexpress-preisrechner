@@ -254,6 +254,10 @@ test("13 — Provisionslauf: skippedTick ist „gerade aktiv“; Gründe nie roh
   assert.equal(normalizeCommissionRun({ stats: { skippedTick: true } }).busy, true);
   assert.equal(PRELIVE_TEXTS.commissionRunBusy, "Ein Lauf ist gerade aktiv – bitte erneut versuchen");
   assert.equal(skipReasonLabel("constructor"), "Sonstiger Grund");
+  // Obergrenze optional: nur eine unbrauchbare Version stellt zurück; „cap_missing“ gibt es nicht mehr.
+  assert.equal(skipReasonLabel("partner_cap_invalid"), "Individuelle Obergrenze unbrauchbar");
+  assert.equal(skipReasonLabel("global_cap_invalid"), "Globale Obergrenze unbrauchbar");
+  assert.equal(skipReasonLabel("cap_missing"), "Sonstiger Grund");
   assert.deepEqual(normalizeCommissionRun(null).skipped, []);
 });
 

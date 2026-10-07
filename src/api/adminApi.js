@@ -777,9 +777,11 @@ export function generateAdminCreditNoteDocument(id) {
 
 // Abrechnungslauf: Vorschau eines abgeschlossenen Monats (nur ein gültiger
 // Monat geht hinaus) und das Ausstellen je Partner mit dessen Fingerabdruck.
-const CREDIT_NOTE_PREVIEW_PARAMS = ["month"];
-export function previewAdminCreditNotes(month) {
+// Pre-Live-Testlauf: `scope: "test"` hängt scope=test an — kein anderer Wert.
+const CREDIT_NOTE_PREVIEW_PARAMS = ["month", "scope"];
+export function previewAdminCreditNotes(month, { scope } = {}) {
   const query = typeof month === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(month) ? { month } : {};
+  if (scope === "test") query.scope = "test";
   return apiFetch(`/admin/sales-partner-credit-notes/preview${buildQuery(query, CREDIT_NOTE_PREVIEW_PARAMS)}`, { auth: true });
 }
 export function issueAdminCreditNote(body) {

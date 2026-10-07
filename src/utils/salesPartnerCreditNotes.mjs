@@ -18,6 +18,9 @@
 //     Unbekanntes über statusFallback).
 //   • Die Adminfelder (wer ausgestellt hat, Benachrichtigung, Zahlungsreferenz,
 //     Stornogrund, Dokumentstatus) übernimmt die Partneransicht nicht.
+//   • Eine Testgutschrift des Pre-Live-Testmodus (`isTest: true`, nur exakt
+//     true) heißt sichtbar „TESTDOKUMENT – nicht steuerlich gültig“ und ihre
+//     Auszahlung „Test – ausgezahlt“ / „Test – nicht ausgezahlt“.
 //
 // Framework-frei (.mjs), damit `node --test` es ohne DOM prüfen kann.
 
@@ -43,6 +46,9 @@ export const CREDIT_NOTE_TEXTS = Object.freeze({
   loadError: "Ihre Gutschriften konnten nicht geladen werden.",
   download: "PDF herunterladen",
   downloading: "Wird geladen…",
+  testDocument: "TESTDOKUMENT – nicht steuerlich gültig",
+  testPaid: "Test – ausgezahlt",
+  testOpen: "Test – nicht ausgezahlt",
 });
 
 /** Hinweis zum offenen, abrechnungsreifen Saldo — oder null. */
@@ -69,9 +75,15 @@ export function creditNoteTitle(cn) {
 }
 
 /** „Noch nicht ausgezahlt" / „Ausgezahlt am 15.10.2026"; ein Storno und eine
- *  stornierte, nie ausgezahlte Gutschrift haben keine Auszahlung („—"). */
+ *  stornierte, nie ausgezahlte Gutschrift haben keine Auszahlung („—").
+ *  Testgutschrift: „Test – ausgezahlt" / „Test – nicht ausgezahlt" — es
+ *  fließt kein Geld, vermerkt wird nur der Teststand. */
 export function payoutText(cn) {
   if (!cn || cn.kind === "cancellation") return "—";
+  if (cn.isTest === true) {
+    if (cn.payoutStatus === "paid") return CREDIT_NOTE_TEXTS.testPaid;
+    if (cn.payoutStatus === "open") return cn.cancelled ? "—" : CREDIT_NOTE_TEXTS.testOpen;
+  }
   if (cn.payoutStatus === "paid") {
     const am = formatIsoDate(cn.paidOn);
     return am !== "—" ? `Ausgezahlt am ${am}` : "Ausgezahlt";
@@ -130,6 +142,8 @@ export function normalizeCreditNote(raw, { admin = false } = {}) {
     payoutStatus: str(c.payoutStatus),
     paidOn: str(c.paidOn),
     cancelled: c.cancelled === true,
+    // Unveränderliche Testkennzeichnung des Servers (Pre-Live-Testmodus).
+    isTest: c.isTest === true,
     cancelledByNumber: str(c.cancelledByNumber),
     correctsNumber: str(c.correctsNumber),
     replacesNumber: str(c.replacesNumber),

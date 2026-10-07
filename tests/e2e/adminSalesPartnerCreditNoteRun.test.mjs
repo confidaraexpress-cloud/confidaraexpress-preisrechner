@@ -12,6 +12,9 @@
 //   4. Ein Fehler eines Partners hält den Lauf nicht an (Ergebnis je Partner).
 //   5. Ausstellung abgeschaltet: Erklärung, Ausstellen gesperrt, kein Request.
 //   6. Globaler Blockiergrund sperrt; nicht abgeschlossener Monat: Hinweis.
+//   7. Pre-Live-Testlauf: Schalter nur bei aktivem Testmodus; scope=test an
+//      Vorschau und Ausstellen, deutlicher Hinweis, Wechsel verwirft die
+//      Vorschau; PARTNER_NOT_TEST bleibt in der Zeile.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -51,8 +54,8 @@ let server, browser;
 /** Backend-Mock. `previews`: Antworten der Vorschau in Aufrufreihenfolge (der
  *  letzte Eintrag bleibt stehen); `issue`: [status, body] je partnerUserId;
  *  `delayMs`: Verzögerung jeder Ausstellung (prüft „nacheinander“). */
-async function setup(page, { previews = [[200, STANDARD]], issue = {}, delayMs = 0, list = [] } = {}) {
-  const state = { previewQueries: [], posts: [], log: [], other: [] };
+async function setup(page, { previews = [[200, STANDARD]], issue = {}, delayMs = 0, list = [], prelive = false } = {}) {
+  const state = { previewQueries: [], posts: [], log: [], other: [], statusCalls: 0 };
   const liste = [...previews];
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const req = route.request();
@@ -60,6 +63,11 @@ async function setup(page, { previews = [[200, STANDARD]], issue = {}, delayMs =
     const p = url.pathname;
     const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
     if (p.endsWith("/kundenbereich")) return json({ user: ADMIN });
+    if (p.endsWith("/admin/sales-partner-prelive/status")) {
+      state.statusCalls += 1;
+      return json(prelive ? { enabled: true, mailAllowlistConfigured: false, backdatingGlobalAllowed: false,
+        counts: { partners: 1, customers: 1, shipments: 3, ledgerEntries: 2, creditNotes: 0 } } : { enabled: false, counts: null });
+    }
     if (p.endsWith("/admin/sales-partners") && req.method() === "GET") return json({ partners: list, total: list.length, limit: 25, offset: 0 });
     if (p.endsWith("/admin/sales-partner-credit-notes/preview")) {
       state.previewQueries.push(url.search);
@@ -122,6 +130,8 @@ test("1 — aus der Partnerliste erreichbar; nur abgeschlossene Monate; Vorschau
   assert.equal(monate[0], "2026-09");
   assert.ok(!monate.includes("2026-10"), "der laufende Monat ist nicht wählbar");
   assert.equal(state.previewQueries.length, 0, "die Vorschau lädt erst auf Anforderung");
+  assert.equal(await page.locator("#adm-cn-scope-test").count(), 0, "ohne Testmodus kein Testlauf");
+  assert.equal(await page.locator("#adm-cn-test-note").count(), 0);
 
   await page.locator("#adm-cn-preview").click();
   await page.locator("#adm-cn-summary").waitFor({ state: "visible" });
@@ -255,5 +265,51 @@ test("6 — globaler Blockiergrund sperrt; ein nicht abgeschlossener Monat erkl�
     /Dieser Monat ist noch nicht abgeschlossen\. Abgerechnet werden nur abgeschlossene Monate\./);
   assert.equal(state.previewQueries[1], "?month=2026-08");
   assert.deepEqual(state.posts, []);
+  await page.close();
+});
+
+test("7 — Pre-Live-Testlauf: Schalter nur bei aktivem Testmodus; scope=test an Vorschau und Ausstellen", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const testVorschau = vorschau([zeile(41, { name: "Pia Test", companyName: "Test Vertrieb A", taxStatus: null, taxRatePercent: null,
+    taxCents: 0, grossCents: 10000 }), zeile(6)]);
+  const state = await setup(page, {
+    prelive: true,
+    previews: [[200, testVorschau]],
+    issue: { 6: [409, { error: "Kein Testpartner.", code: "PARTNER_NOT_TEST" }],
+      41: [201, { creditNote: { id: 141, number: "CE-TEST-PG26-0001" }, documentReady: true, notified: false }] },
+  });
+  await page.goto(`${BASE}/admin/partners/credit-notes`, { waitUntil: "networkidle" });
+  await page.locator("#adm-cn-scope-test").waitFor({ state: "attached" });
+  assert.equal(await page.locator("#adm-cn-scope-test").getAttribute("role"), "switch");
+  assert.equal(await page.locator("#adm-cn-scope-test").isChecked(), false, "regulär ist der Standard");
+  assert.equal(await page.locator("#adm-cn-test-note").count(), 0);
+
+  // Regulär geladen, dann umgeschaltet: die Vorschau gilt nicht mehr.
+  await page.locator("#adm-cn-preview").click();
+  await page.locator("#adm-cn-summary").waitFor({ state: "visible" });
+  assert.equal(state.previewQueries[0], "?month=2026-09");
+  await page.locator("label.ce-switch", { hasText: "Pre-Live-Testlauf" }).click();
+  assert.equal(await page.locator("#adm-cn-scope-test").isChecked(), true);
+  assert.equal(await page.locator("#adm-cn-summary").count(), 0, "ein Wechsel verwirft die Vorschau");
+  assert.equal(await page.locator("#adm-cn-test-note").innerText(),
+    "Testgutschriften (CE-TEST-PG …) – nicht steuerlich gültig, keine E-Mail, keine Auszahlung");
+
+  await page.locator("#adm-cn-preview").click();
+  await page.locator("#adm-cn-summary").waitFor({ state: "visible" });
+  assert.equal(state.previewQueries[1], "?month=2026-09&scope=test");
+  assert.equal(await page.locator("#adm-cn-scope").innerText(), "Pre-Live-Testlauf");
+
+  await page.locator("#adm-cn-issue-41").click();
+  await page.locator("#adm-cn-result-41").waitFor({ state: "visible" });
+  assert.deepEqual(state.posts[0], { partnerUserId: 41, month: "2026-09", fingerprint: "fp-41", scope: "test" });
+  assert.match(await page.locator("#adm-cn-result-41").innerText(), /Gutschrift CE-TEST-PG26-0001 ausgestellt./);
+  assert.equal(state.previewQueries.at(-1), "?month=2026-09&scope=test", "neu geladen im selben Bereich");
+
+  await page.locator("#adm-cn-issue-6").click();
+  await page.locator("#adm-cn-result-6").waitFor({ state: "visible" });
+  assert.deepEqual(state.posts[1], { partnerUserId: 6, month: "2026-09", fingerprint: "fp-6", scope: "test" });
+  assert.equal(await page.locator("#adm-cn-result-6").innerText(),
+    "Dieser Vertriebspartner ist kein Testpartner – im Pre-Live-Testlauf werden nur Testpartner abgerechnet.");
+  assert.doesNotMatch(await page.locator("#adm-cn-table").innerText(), /PARTNER_NOT_TEST/);
   await page.close();
 });

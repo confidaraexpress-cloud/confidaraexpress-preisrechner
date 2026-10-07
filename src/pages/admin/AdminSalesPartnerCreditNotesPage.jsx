@@ -3,7 +3,10 @@ import { Link } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
+import { Switch } from "../../components/ui/Switch";
 import { issueAdminCreditNote, previewAdminCreditNotes } from "../../api/adminApi";
+import { usePreliveStatus } from "../../hooks/usePreliveStatus";
+import { preliveEnabled } from "../../utils/salesPartnerPrelive.mjs";
 import { formatCents, formatCount, formatMonth, formatPercent } from "../../utils/salesPartnerView.mjs";
 import { taxStatusLabel } from "../../utils/salesPartnerBilling.mjs";
 import { formatTimestamp, localIsoDate } from "../../utils/adminSalesPartnerView.mjs";
@@ -20,6 +23,7 @@ import {
   normalizePreview,
   previewErrorText,
   previewPartnerName,
+  runScope,
   runStatusMeta,
 } from "../../utils/adminSalesPartnerSettlementView.mjs";
 
@@ -72,7 +76,14 @@ function Blocker({ codes }) {
    wird sie neu geladen und der Lauf angehalten; ein offener Ausgang
    (Netzabbruch, Serverfehler) hält ebenfalls an. Ist die Ausstellung
    abgeschaltet, bleibt die Vorschau sichtbar, ausgestellt wird nichts.
-   Das Ergebnis steht je Partner in seiner Zeile. */
+   Das Ergebnis steht je Partner in seiner Zeile.
+
+   Pre-Live-Testlauf: nur wenn der Server den Testmodus meldet (`enabled:
+   true`), erscheint der Schalter „Pre-Live-Testlauf"; er hängt scope=test an
+   die Vorschau und `scope: "test"` an jedes Ausstellen — und zwar mit dem
+   Bereich, mit dem die Vorschau geladen wurde. Ein Wechsel verwirft die
+   Vorschau. Im Testlauf steht deutlich: Testgutschriften (CE-TEST-PG …),
+   nicht steuerlich gültig, keine E-Mail, keine Auszahlung. */
 export default function AdminSalesPartnerCreditNotesPage() {
   const [optionen] = useState(() => closedMonthOptions(localIsoDate(), 24));
   const [monat, setMonat] = useState(() => optionen[0]?.value || "");
@@ -84,42 +95,58 @@ export default function AdminSalesPartnerCreditNotesPage() {
   const [message, setMessage] = useState(null);           // { type, text }
   const inFlight = useRef(false);
   const ladeLauf = useRef(0);
+  // Pre-Live-Testlauf: der Schalter erscheint nur bei aktivem Testmodus.
+  const prelive = usePreliveStatus();
+  const testmodus = preliveEnabled(prelive.status);
+  const [testlauf, setTestlauf] = useState(false);
+  const scope = testmodus && testlauf ? "test" : null;
+  const statusNeu = prelive.reload;
 
-  const laden = useCallback(async (m) => {
+  const laden = useCallback(async (m, bereich) => {
     const meinLauf = ++ladeLauf.current;
     setVorschau((v) => ({ ...v, loading: true, error: "" }));
     try {
-      const r = await previewAdminCreditNotes(m);
+      const r = await previewAdminCreditNotes(m, { scope: runScope(bereich) });
       if (meinLauf !== ladeLauf.current) return;
       let d = null;
       try { d = await r.json(); } catch { d = null; }
       if (meinLauf !== ladeLauf.current) return;
       if (!r.ok) {
         if (r.status === 401 || r.status === 403) return;   // zentraler Logout
+        if (d && d.code === "PRELIVE_TEST_MODE_DISABLED") statusNeu();
         setVorschau({ loading: false, error: previewErrorText(r.status, d), data: null });
         return;
       }
-      setVorschau({ loading: false, error: "", data: normalizePreview(d) });
+      setVorschau({ loading: false, error: "", data: normalizePreview(d, { scope: bereich }) });
     } catch {
       if (meinLauf === ladeLauf.current) setVorschau({ loading: false, error: RUN_TEXTS.previewError, data: null });
     }
-  }, []);
+  }, [statusNeu]);
 
   const vorschauLaden = (e) => {
     e.preventDefault();
     if (!monat || inFlight.current) return;
     setErgebnisse({});
     setMessage(null);
-    laden(monat);
+    laden(monat, scope);
   };
 
-  const monatWaehlen = (v) => {
-    if (inFlight.current) return;
-    setMonat(v);
+  // Monat oder Bereich gewechselt: die alte Vorschau gilt nicht mehr.
+  const verwerfen = () => {
     ladeLauf.current += 1;
     setVorschau({ loading: false, error: "", data: null });
     setErgebnisse({});
     setMessage(null);
+  };
+  const monatWaehlen = (v) => {
+    if (inFlight.current) return;
+    setMonat(v);
+    verwerfen();
+  };
+  const testlaufSchalten = (an) => {
+    if (inFlight.current) return;
+    setTestlauf(an === true);
+    verwerfen();
   };
 
   const ergebnis = (id, type, text) => setErgebnisse((e) => ({ ...e, [id]: { type, text } }));
@@ -158,7 +185,8 @@ export default function AdminSalesPartnerCreditNotesPage() {
       const folge = await ausstellenZeile(preview, row);
       if (folge.auth) return;
       if (folge.abort) setMessage({ type: "error", text: folge.text });
-      if (folge.reload) await laden(preview.month);
+      if (folge.kind === "testModeDisabled") statusNeu();
+      if (folge.reload) await laden(preview.month, preview.scope);
     } finally {
       inFlight.current = false;
     }
@@ -190,7 +218,8 @@ export default function AdminSalesPartnerCreditNotesPage() {
       setMessage(abbruch
         ? { type: "error", text: `${abbruch.text} ${summe}` }
         : { type: ausgestellt === zeilen.length ? "success" : "error", text: summe });
-      await laden(preview.month);
+      if (abbruch && abbruch.kind === "testModeDisabled") statusNeu();
+      await laden(preview.month, preview.scope);
     } finally {
       inFlight.current = false;
       setLauf(false);
@@ -235,7 +264,7 @@ export default function AdminSalesPartnerCreditNotesPage() {
     inhalt = (
       <div className="ce-card" id="adm-cn-error">
         <ErrorState title={vorschau.error}
-          action={<button type="button" className="btn btn-primary btn-sm" onClick={() => laden(monat)}>Erneut versuchen</button>} />
+          action={<button type="button" className="btn btn-primary btn-sm" onClick={() => laden(monat, scope)}>Erneut versuchen</button>} />
       </div>
     );
   } else if (!data) {
@@ -248,6 +277,9 @@ export default function AdminSalesPartnerCreditNotesPage() {
           <div className="adm-card-body">
             <dl className="adm-kv">
               <div className="adm-kv-item"><dt>Monat</dt><dd>{formatMonth(data.month)}</dd></div>
+              {data.scope === "test" && (
+                <div className="adm-kv-item"><dt>Bereich</dt><dd id="adm-cn-scope">{RUN_TEXTS.testScopeLabel}</dd></div>
+              )}
               <div className="adm-kv-item"><dt>Stichtag</dt><dd>{formatTimestamp(data.cutoffAt, { withTime: true })}</dd></div>
               <div className="adm-kv-item"><dt>Ausstellung</dt><dd id="adm-cn-issuance">{data.issuanceEnabled ? "Aktiviert" : "Deaktiviert"}</dd></div>
               <div className="adm-kv-item"><dt>Zulässig</dt><dd>{formatCount(zulaessig.length)} von {formatCount(data.partners.length)}</dd></div>
@@ -272,7 +304,7 @@ export default function AdminSalesPartnerCreditNotesPage() {
                 onClick={() => { setMessage(null); setBestaetigen(true); }}>
                 {lauf ? "Gutschriften werden ausgestellt…" : `Alle zulässigen ausstellen (${zulaessig.length})`}
               </button>
-              <button type="button" className="btn btn-outline btn-sm" onClick={() => laden(data.month)}
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => laden(data.month, data.scope)}
                 disabled={beschaeftigt || vorschau.loading} id="adm-cn-reload">
                 Vorschau aktualisieren
               </button>
@@ -363,6 +395,12 @@ export default function AdminSalesPartnerCreditNotesPage() {
             {optionen.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
+        {testmodus && (
+          <div className="adm-cn-scope-switch">
+            <Switch id="adm-cn-scope-test" checked={testlauf} onChange={testlaufSchalten} disabled={beschaeftigt}
+              label={RUN_TEXTS.testScopeLabel} hint={RUN_TEXTS.testScopeHint} />
+          </div>
+        )}
         <div className="adm-filter-actions">
           <button type="submit" className="btn btn-primary btn-sm" id="adm-cn-preview"
             disabled={!monat || beschaeftigt || vorschau.loading}>
@@ -370,6 +408,12 @@ export default function AdminSalesPartnerCreditNotesPage() {
           </button>
         </div>
       </form>
+
+      {scope === "test" && (
+        <div className="adm-note adm-note--warning adm-cn-test-note" role="note" id="adm-cn-test-note">
+          <span>{RUN_TEXTS.testScopeNote}</span>
+        </div>
+      )}
 
       {message && (
         <div className={`alert ${message.type === "success" ? "alert-success" : "alert-error"}`}
@@ -382,9 +426,11 @@ export default function AdminSalesPartnerCreditNotesPage() {
 
       {bestaetigen && data && (
         <ConfirmDialog
-          title="Alle zulässigen Gutschriften ausstellen"
+          title={data.scope === "test" ? "Alle zulässigen Testgutschriften ausstellen" : "Alle zulässigen Gutschriften ausstellen"}
           subline={`${formatMonth(data.month)} · ${zulaessig.length} Vertriebspartner`}
-          text="Für jeden zulässigen Vertriebspartner wird nacheinander eine Gutschrift ausgestellt. Ausgestellte Gutschriften lassen sich nur durch ein Storno korrigieren."
+          text={data.scope === "test"
+            ? `Für jeden zulässigen Testpartner wird nacheinander eine Testgutschrift ausgestellt. ${RUN_TEXTS.testScopeNote}.`
+            : "Für jeden zulässigen Vertriebspartner wird nacheinander eine Gutschrift ausgestellt. Ausgestellte Gutschriften lassen sich nur durch ein Storno korrigieren."}
           confirmLabel="Ausstellen"
           irreversible
           confirmId="adm-cn-issue-all-confirm"

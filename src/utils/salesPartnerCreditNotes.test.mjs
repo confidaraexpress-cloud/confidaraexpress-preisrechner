@@ -153,3 +153,24 @@ test("8 — PDF nur als authentifizierter Blob-Abruf über den Partnerpfad, nie 
   assert.match(abruf, /if \(!isSafeApiPath\(downloadPath\)\) throw new Error\(texte\.allgemein\);/);
   assert.match(abruf, /apiFetch\(downloadPath\.trim\(\), \{ auth: true \}\)/);
 });
+
+/* ══════════ Pre-Live: Testgutschriften ═══════════════════════════════════ */
+
+test("Pre-Live — Testgutschrift: Kennzeichnung nur bei exakt true, eigene Auszahlungstexte", () => {
+  const basis = { id: 21, number: "CE-TEST-PG26-0001", kind: "regular", periodMonth: "2026-09", currency: "EUR",
+    netCents: 1000, taxCents: 0, grossCents: 1000, documentReady: true, payoutStatus: "open", cancelled: false };
+  const test = normalizeCreditNote({ ...basis, isTest: true });
+  assert.equal(test.isTest, true);
+  assert.equal(normalizeCreditNote({ ...basis, isTest: "true" }).isTest, false, "kein truthy-String");
+  assert.equal(normalizeCreditNote(basis).isTest, false);
+  assert.equal(CREDIT_NOTE_TEXTS.testDocument, "TESTDOKUMENT – nicht steuerlich gültig");
+  assert.equal(payoutText(test), "Test – nicht ausgezahlt");
+  assert.equal(payoutText({ ...test, payoutStatus: "paid", paidOn: "2026-10-04" }), "Test – ausgezahlt");
+  assert.equal(payoutText({ ...test, cancelled: true }), "—", "stornierte, nie ausgezahlte Testgutschrift");
+  assert.equal(payoutText({ ...test, kind: "cancellation", payoutStatus: null }), "—");
+  // Echte Gutschriften bleiben unverändert.
+  assert.equal(payoutText(normalizeCreditNote(basis)), "Noch nicht ausgezahlt");
+  assert.equal(payoutText(normalizeCreditNote({ ...basis, payoutStatus: "paid", paidOn: "2026-10-04" })), "Ausgezahlt am 04.10.2026");
+  // Auch die Adminform trägt die Kennzeichnung.
+  assert.equal(normalizeCreditNotes({ creditNotes: [{ ...basis, isTest: true }] }, { admin: true }).creditNotes[0].isTest, true);
+});

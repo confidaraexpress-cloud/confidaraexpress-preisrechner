@@ -253,6 +253,7 @@ const AKTION_TEXTE = Object.freeze({
   CREDIT_NOTE_NOT_CANCELLABLE: "Diese Gutschrift kann nicht storniert werden. Es wurde nichts angelegt.",
   CREDIT_NOTE_ALREADY_CANCELLED: "Die Gutschrift ist bereits storniert. Es wurde nichts angelegt.",
   CREDIT_NOTE_PAID_ACK_REQUIRED: "Die Gutschrift ist bereits ausgezahlt. Bitte bestätigen Sie ausdrücklich, dass das Storno trotzdem angelegt werden soll.",
+  PRELIVE_TEST_MODE_DISABLED: "Der Pre-Live-Testmodus ist nicht aktiv – Testgutschriften lassen sich derzeit nicht bearbeiten. Es wurde nichts geändert.",
 });
 const FELD_FEHLER = Object.freeze({
   PAID_ON_INVALID: ["paidOn", "Das Auszahlungsdatum ist ungültig oder liegt in der Zukunft."],
@@ -277,7 +278,9 @@ export function creditNoteActionOutcome(status, body) {
   }
   if ((status === 409 || status === 404) && own(AKTION_TEXTE, code)) {
     // Der Stand hat sich bewegt (bezahlt, storniert, nicht mehr vorhanden) — neu laden.
-    return { text: AKTION_TEXTE[code], fieldErrors: {}, needsAck: false, reload: code !== "CREDIT_NOTES_DISABLED" };
+    // Ein abgeschalteter Schalter bewegt keinen Stand: nichts neu laden.
+    const stand = code !== "CREDIT_NOTES_DISABLED" && code !== "PRELIVE_TEST_MODE_DISABLED";
+    return { text: AKTION_TEXTE[code], fieldErrors: {}, needsAck: false, reload: stand };
   }
   return { text: adminActionErrorText(status, body), fieldErrors: {}, needsAck: false, reload: false };
 }
@@ -319,6 +322,12 @@ const codes = (v) => [...new Set((Array.isArray(v) ? v : []).filter((c) => typeo
   .map((c) => c.trim()))];
 
 export const RUN_TEXTS = Object.freeze({
+  testScopeLabel: "Pre-Live-Testlauf",
+  testScopeHint: "Nur Testpartner; ausgestellt werden Testgutschriften.",
+  testScopeNote: "Testgutschriften (CE-TEST-PG …) – nicht steuerlich gültig, keine E-Mail, keine Auszahlung",
+  testModeDisabled: "Der Pre-Live-Testmodus ist nicht aktiv – ein Testlauf ist nicht möglich.",
+  partnerNotTest: "Dieser Vertriebspartner ist kein Testpartner – im Pre-Live-Testlauf werden nur Testpartner abgerechnet.",
+  partnerIsTest: "Dieser Vertriebspartner ist ein Testpartner – er wird nur im Pre-Live-Testlauf abgerechnet.",
   issuanceDisabled: "Ausstellung ist deaktiviert (SALES_PARTNER_CREDIT_NOTES_ENABLED).",
   globalBlocked: "Die Ausstellung ist derzeit blockiert:",
   previewError: "Die Vorschau konnte nicht geladen werden.",
@@ -374,11 +383,17 @@ function normalizePreviewRow(raw) {
   };
 }
 
-/** GET …/preview → { month, cutoffAt, issuanceEnabled, globalBlockers, partners }. */
-export function normalizePreview(raw) {
+/** Geltungsbereich des Laufs: „test" (Pre-Live-Testlauf) oder null (regulär). */
+export const runScope = (scope) => (scope === "test" ? "test" : null);
+
+/** GET …/preview → { month, cutoffAt, issuanceEnabled, globalBlockers, partners,
+ *  scope }. `scope` ist der Bereich, mit dem die Vorschau geladen wurde — das
+ *  Ausstellen folgt ihm, nie dem inzwischen umgestellten Schalter. */
+export function normalizePreview(raw, { scope = null } = {}) {
   const d = objOrNull(raw) || {};
   const monat = str(d.month);
   return {
+    scope: runScope(scope),
     month: monat && MONAT.test(monat) ? monat : null,
     cutoffAt: str(d.cutoffAt),
     issuanceEnabled: d.issuanceEnabled === true,
@@ -405,10 +420,13 @@ export const canIssueRow = (preview, row) => issuanceOpen(preview) && !!row && r
 /** Die Zeilen, die „Alle zulässigen ausstellen“ nacheinander ausstellt. */
 export const issuableRows = (preview) => (preview ? preview.partners.filter((r) => canIssueRow(preview, r)) : []);
 
-/** POST /admin/sales-partner-credit-notes — genau die drei Vertragsfelder. */
+/** POST /admin/sales-partner-credit-notes — genau die drei Vertragsfelder,
+ *  im Pre-Live-Testlauf zusätzlich `scope: "test"`. */
 export function buildIssueBody(preview, row) {
   if (!canIssueRow(preview, row)) return { ok: false, errors: { row: "nicht ausstellbar" } };
-  return { ok: true, body: { partnerUserId: row.partnerUserId, month: preview.month, fingerprint: row.fingerprint }, errors: {} };
+  const body = { partnerUserId: row.partnerUserId, month: preview.month, fingerprint: row.fingerprint };
+  if (preview.scope === "test") body.scope = "test";
+  return { ok: true, body, errors: {} };
 }
 
 /** Rückmeldung zu einer ausgestellten Gutschrift. */
@@ -425,6 +443,7 @@ export function issueSuccessText(body) {
 /** Fehlerantwort der Vorschau → verständlicher Satz. */
 export function previewErrorText(status, body) {
   const code = codeOf(body);
+  if (code === "PRELIVE_TEST_MODE_DISABLED") return RUN_TEXTS.testModeDisabled;
   if (status === 400 && code === "PERIOD_NOT_CLOSED") return "Dieser Monat ist noch nicht abgeschlossen. Abgerechnet werden nur abgeschlossene Monate.";
   if (status === 400 && code === "PERIOD_INVALID") return "Bitte wählen Sie einen gültigen, abgeschlossenen Monat.";
   if (status === 429) return "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut.";
@@ -439,6 +458,10 @@ export function issueOutcome(status, body) {
   const d = objOrNull(body) || {};
   if (status === 409 && code === "CREDIT_NOTE_PREVIEW_STALE") return { kind: "stale", text: RUN_TEXTS.stale, abort: true, reload: true };
   if (status === 409 && code === "CREDIT_NOTES_DISABLED") return { kind: "disabled", text: RUN_TEXTS.issuanceDisabled, abort: true, reload: true };
+  // Pre-Live-Testlauf: Modus aus → anhalten; ein Partner im falschen Bereich → nur diese Zeile.
+  if (code === "PRELIVE_TEST_MODE_DISABLED") return { kind: "testModeDisabled", text: RUN_TEXTS.testModeDisabled, abort: true, reload: false };
+  if (status === 409 && code === "PARTNER_NOT_TEST") return { kind: "partner", text: RUN_TEXTS.partnerNotTest, abort: false, reload: true };
+  if (status === 409 && code === "PARTNER_IS_TEST") return { kind: "partner", text: RUN_TEXTS.partnerIsTest, abort: false, reload: true };
   if (status === 409 && code === "CREDIT_NOTE_ALREADY_ISSUED") {
     const nummer = str(objOrNull(d.existing)?.number);
     return { kind: "already", text: nummer ? `Für diesen Monat besteht bereits die Gutschrift ${nummer}.` : "Für diesen Monat wurde bereits eine Gutschrift ausgestellt.",

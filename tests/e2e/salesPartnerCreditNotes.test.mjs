@@ -393,3 +393,28 @@ test("7 — Vertrag: akzeptierte Fassung, Zeitpunkt und Dokument; ohne Dokument 
   assert.equal(await ohne.locator("#spp-agreement-document").count(), 0);
   await ohne.close();
 });
+
+test("8 — Pre-Live: Testgutschriften im Portal als TESTDOKUMENT mit Testauszahlung", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const state = await setup(page, { creditNotes: { creditNotes: [
+    { id: 31, number: "CE-TEST-PG26-0002", kind: "regular", title: "Gutschrift", periodMonth: "2026-09",
+      issuedAt: "2026-10-06T08:00:00.000Z", issuedOn: "2026-10-06", netCents: 1000, taxCents: 0, grossCents: 1000,
+      currency: "EUR", documentReady: true, payoutStatus: "open", paidOn: null, cancelled: false, isTest: true },
+    { id: 30, number: "CE-TEST-PG26-0001", kind: "regular", title: "Gutschrift", periodMonth: "2026-08",
+      issuedAt: "2026-09-02T08:00:00.000Z", issuedOn: "2026-09-02", netCents: 500, taxCents: 0, grossCents: 500,
+      currency: "EUR", documentReady: true, payoutStatus: "paid", paidOn: "2026-09-10", cancelled: false, isTest: true },
+  ], openSettlement: null } });
+  await zumBereich(page, "credit-notes");
+  await page.locator("#spp-cn-table").waitFor({ state: "visible" });
+  const neu = await page.locator('#spp-cn-table tr[data-credit-note="31"]').innerText();
+  assert.match(neu, /TESTDOKUMENT – nicht steuerlich gültig/);
+  assert.match(neu, /Test – nicht ausgezahlt/);
+  const alt = await page.locator('#spp-cn-table tr[data-credit-note="30"]').innerText();
+  assert.match(alt, /Test – ausgezahlt/);
+  assert.doesNotMatch(alt, /Ausgezahlt am/);
+  // Auch die Kartenansicht (schmale Breite) trägt die Kennzeichnung.
+  await page.setViewportSize({ width: 390, height: 900 });
+  assert.match(await page.locator(".ce-list-cards").innerText(), /TESTDOKUMENT – nicht steuerlich gültig[\s\S]*Test – nicht ausgezahlt/);
+  assert.deepEqual(state.kunde, []);
+  await page.close();
+});

@@ -1386,6 +1386,9 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
 }
 .adm-cn-result--success { color: var(--ce-color-status-success-fg); }
 .adm-cn-result--error { color: var(--ce-color-status-error-fg); }
+/* Pre-Live-Testlauf: Schalter in der Filterleiste, Hinweis deutlich darunter. */
+.adm-cn-scope-switch { display: flex; align-items: center; align-self: center; }
+.adm-cn-test-note { margin-bottom: var(--ce-space-4); font-weight: 600; }
 
 /* ── Pre-Live-Testmodus (adm-pl-) ────────────────────────────────────────────
    /admin/partners/prelive: Testkonten, Testsendungen, Schnellszenarien,

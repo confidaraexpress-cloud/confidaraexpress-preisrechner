@@ -391,7 +391,9 @@ test("17 — Abrechnungslauf: Route vor '/:id', Link aus der Liste, nacheinander
   assert.doesNotMatch(seite, /Promise\.all|Promise\.allSettled/, "nie parallel");
   assert.match(seite, /const gebaut = buildIssueBody\(preview, row\);/);
   assert.match(seite, /if \(folge\.abort\) \{\s*abbruch = folge;/);
-  assert.match(seite, /await laden\(preview\.month\);/);
+  // Pre-Live-Testlauf (bewusste Ankeränderung): neu geladen wird im Bereich,
+  // mit dem die Vorschau geladen wurde — nie im inzwischen umgestellten.
+  assert.match(seite, /await laden\(preview\.month, preview\.scope\);/);
   assert.match(seite, /closedMonthOptions\(localIsoDate\(\), 24\)/);
   assert.doesNotMatch(seite, /\bfetch\(|apiFetch|dangerouslySetInnerHTML/);
   // Genau EIN Dialog: die Bestätigung des Sammellaufs (keine unnötigen Modals).
@@ -400,4 +402,36 @@ test("17 — Abrechnungslauf: Route vor '/:id', Link aus der Liste, nacheinander
   const api = ohneKommentare(read("api/adminApi.js"));
   assert.match(api, /apiFetch\(`\/admin\/sales-partner-credit-notes\/preview\$\{buildQuery\(query, CREDIT_NOTE_PREVIEW_PARAMS\)\}`, \{ auth: true \}\)/);
   assert.match(api, /apiFetch\("\/admin\/sales-partner-credit-notes", \{\s*method: "POST", auth: true, body: JSON\.stringify\(body\)/);
+});
+
+/* ══════════ Pre-Live: Testlauf ═══════════════════════════════════════════ */
+
+test("Pre-Live — Testlauf: scope der geladenen Vorschau, scope im Body nur im Testlauf", () => {
+  const roh = { month: "2026-09", issuanceEnabled: true, globalBlockers: [], partners: [
+    { partnerUserId: 41, name: "Pia Test", status: "issuable", blockers: [], fingerprint: "fp-41", netCents: 1000 }] };
+  const test = normalizePreview(roh, { scope: "test" });
+  const regulaer = normalizePreview(roh);
+  assert.equal(test.scope, "test");
+  assert.equal(regulaer.scope, null);
+  assert.equal(normalizePreview(roh, { scope: "TEST" }).scope, null, "nur genau „test“");
+  assert.deepEqual(buildIssueBody(test, test.partners[0]).body, { partnerUserId: 41, month: "2026-09", fingerprint: "fp-41", scope: "test" });
+  assert.deepEqual(buildIssueBody(regulaer, regulaer.partners[0]).body, { partnerUserId: 41, month: "2026-09", fingerprint: "fp-41" });
+  assert.equal(RUN_TEXTS.testScopeNote, "Testgutschriften (CE-TEST-PG …) – nicht steuerlich gültig, keine E-Mail, keine Auszahlung");
+});
+
+test("Pre-Live — neue Fehlercodes des Laufs und der Belegaktionen", () => {
+  assert.equal(previewErrorText(409, { code: "PRELIVE_TEST_MODE_DISABLED" }), RUN_TEXTS.testModeDisabled);
+  assert.equal(previewErrorText(404, { code: "PRELIVE_TEST_MODE_DISABLED" }), RUN_TEXTS.testModeDisabled);
+  const aus = issueOutcome(409, { code: "PRELIVE_TEST_MODE_DISABLED", error: "x" });
+  assert.deepEqual([aus.kind, aus.abort, aus.reload], ["testModeDisabled", true, false], "Modus aus: Lauf anhalten");
+  const nichtTest = issueOutcome(409, { code: "PARTNER_NOT_TEST", error: "x" });
+  assert.deepEqual([nichtTest.text, nichtTest.abort, nichtTest.reload], [RUN_TEXTS.partnerNotTest, false, true]);
+  const istTest = issueOutcome(409, { code: "PARTNER_IS_TEST", error: "x" });
+  assert.deepEqual([istTest.text, istTest.abort], [RUN_TEXTS.partnerIsTest, false]);
+  const aktion = creditNoteActionOutcome(409, { code: "PRELIVE_TEST_MODE_DISABLED", error: "x" });
+  assert.match(aktion.text, /Pre-Live-Testmodus ist nicht aktiv/);
+  assert.equal(aktion.reload, false, "ein Schalter bewegt keinen Stand");
+  for (const t of [RUN_TEXTS.partnerNotTest, RUN_TEXTS.partnerIsTest, aktion.text]) {
+    assert.doesNotMatch(t, /PARTNER_|PRELIVE_/, "kein Rohcode im Text");
+  }
 });

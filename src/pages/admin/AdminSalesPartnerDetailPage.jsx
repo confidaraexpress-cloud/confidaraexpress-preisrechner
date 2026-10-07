@@ -245,7 +245,7 @@ export default function AdminSalesPartnerDetailPage() {
 
         {/* Zurückliegende Daten nur, wenn der Server sie für diesen Partner
             erlaubt (Testpartner im Pre-Live-Testmodus). */}
-        <SalesPartnerRatesCard partnerId={partnerId} rates={detail.rates}
+        <SalesPartnerRatesCard partnerId={partnerId} rates={detail.rates} partnerStatus={p.status}
           allowPastDates={detail.datesBeforeTodayAllowed} onChanged={load} />
         <SalesPartnerLevelRulesCard partnerId={partnerId} levelRules={detail.levelRules}
           startDefaults={detail.startDefaults} allowPastDates={detail.datesBeforeTodayAllowed} onChanged={load} />

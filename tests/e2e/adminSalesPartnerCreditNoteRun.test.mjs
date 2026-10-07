@@ -5,8 +5,9 @@
 // echte Gutschrift ausgestellt. Geprüft wird:
 //   1. Erreichbar aus der Partnerliste; nur abgeschlossene Monate, Standard
 //      Vormonat; Vorschau mit Status, Beträgen und deutschen Blockiergründen.
-//   2. Ausstellen je Partner: genau der Vertragsbody mit dem Fingerabdruck,
-//      Ergebnis in der Zeile, Vorschau neu geladen.
+//   2. Ausstellen je Partner (UX-Paket 1: erst nach Bestätigung mit Partner,
+//      Monat und Betrag; Abbrechen sendet nichts): genau der Vertragsbody mit
+//      dem Fingerabdruck, Ergebnis in der Zeile, Vorschau neu geladen.
 //   3. „Alle zulässigen ausstellen“: nacheinander je Partner; 409
 //      CREDIT_NOTE_PREVIEW_STALE lädt die Vorschau neu und bricht ab.
 //   4. Ein Fehler eines Partners hält den Lauf nicht an (Ergebnis je Partner).
@@ -167,7 +168,22 @@ test("2 — Ausstellen je Partner: Vertragsbody mit Fingerabdruck, Ergebnis in d
     issue: { 5: [201, { creditNote: { id: 105, number: "GS-2026-0105" }, documentReady: false, notified: true }] },
   });
   await vorschauLaden(page);
+  // Bewusste Ankeränderung (UX-Paket 1, Betreiberentscheidung): auch EINE Gutschrift
+  // wird erst nach Bestätigung ausgestellt — Abbrechen sendet nichts.
   await page.locator("#adm-cn-issue-5").click();
+  const dialog = page.locator('[role="dialog"]');
+  await dialog.waitFor({ state: "visible" });
+  const dialogText = await dialog.innerText();
+  assert.match(dialogText, /Gutschrift ausstellen/);
+  assert.match(dialogText, /Vertrieb 5 GmbH · September 2026/);
+  assert.match(dialogText, /Betrag: 119,00\s€ \(100,00\s€ netto \+ 19,00\s€ Steuer\)\./);
+  assert.match(dialogText, /nur durch ein Storno korrigieren/);
+  await dialog.getByRole("button", { name: "Abbrechen" }).click();
+  await dialog.waitFor({ state: "detached" });
+  assert.deepEqual(state.posts, [], "ohne Bestätigung wird nichts ausgestellt");
+
+  await page.locator("#adm-cn-issue-5").click();
+  await page.locator("#adm-cn-issue-confirm").click();
   await page.locator("#adm-cn-result-5").waitFor({ state: "visible" });
   assert.deepEqual(state.posts, [{ partnerUserId: 5, month: "2026-09", fingerprint: "fp-5" }]);
   assert.equal(await page.locator("#adm-cn-result-5").innerText(),
@@ -233,7 +249,9 @@ test("5 — Ausstellung abgeschaltet: Erklärung, Ausstellen gesperrt, kein Requ
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const state = await setup(page, { previews: [[200, vorschau([zeile(5)], { issuanceEnabled: false, globalBlockers: ["issuance_disabled"] })]] });
   await vorschauLaden(page);
-  assert.match(await page.locator("#adm-cn-disabled").innerText(), /Ausstellung ist deaktiviert \(SALES_PARTNER_CREDIT_NOTES_ENABLED\)\./);
+  // Bewusste Ankeränderung (UX-Paket 1): verständlich, ohne technischen Schalternamen.
+  assert.match(await page.locator("#adm-cn-disabled").innerText(), /Das Ausstellen von Gutschriften ist derzeit abgeschaltet\./);
+  assert.doesNotMatch(await page.locator("#adm-cn-disabled").innerText(), /SALES_PARTNER|_ENABLED/);
   assert.equal(await page.locator("#adm-cn-issuance").innerText(), "Deaktiviert");
   assert.equal(await page.locator("#adm-cn-global-blockers").count(), 0, "derselbe Grund steht nicht doppelt");
   assert.equal(await page.locator("#adm-cn-issue-5").isDisabled(), true);
@@ -300,12 +318,19 @@ test("7 — Pre-Live-Testlauf: Schalter nur bei aktivem Testmodus; scope=test an
   assert.equal(await page.locator("#adm-cn-scope").innerText(), "Pre-Live-Testlauf");
 
   await page.locator("#adm-cn-issue-41").click();
+  // Einzelausstellung im Testlauf: Bestätigung als Testgutschrift (UX-Paket 1).
+  await page.locator('[role="dialog"]').waitFor({ state: "visible" });
+  const testDialog = await page.locator('[role="dialog"]').innerText();
+  assert.match(testDialog, /Testgutschrift ausstellen/);
+  assert.match(testDialog, /nicht steuerlich gültig, keine E-Mail, keine Auszahlung/);
+  await page.locator("#adm-cn-issue-confirm").click();
   await page.locator("#adm-cn-result-41").waitFor({ state: "visible" });
   assert.deepEqual(state.posts[0], { partnerUserId: 41, month: "2026-09", fingerprint: "fp-41", scope: "test" });
   assert.match(await page.locator("#adm-cn-result-41").innerText(), /Gutschrift CE-TEST-PG26-0001 ausgestellt./);
   assert.equal(state.previewQueries.at(-1), "?month=2026-09&scope=test", "neu geladen im selben Bereich");
 
   await page.locator("#adm-cn-issue-6").click();
+  await page.locator("#adm-cn-issue-confirm").click();
   await page.locator("#adm-cn-result-6").waitFor({ state: "visible" });
   assert.deepEqual(state.posts[1], { partnerUserId: 6, month: "2026-09", fingerprint: "fp-6", scope: "test" });
   assert.equal(await page.locator("#adm-cn-result-6").innerText(),

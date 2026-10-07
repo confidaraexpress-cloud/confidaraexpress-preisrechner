@@ -49,7 +49,7 @@ import {
   taxStatusLabel,
 } from "./salesPartnerBilling.mjs";
 import { normalizeCreditNotes } from "./salesPartnerCreditNotes.mjs";
-import { monthOptions, statusMetaFrom } from "./salesPartnerView.mjs";
+import { formatCents, monthOptions, statusMetaFrom } from "./salesPartnerView.mjs";
 import { adminActionErrorText, formatTimestamp, isIsoDate } from "./adminSalesPartnerView.mjs";
 
 const objOrNull = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : null);
@@ -82,7 +82,7 @@ export const SETTLEMENT_TEXTS = Object.freeze({
 
 // ── Blockiergründe (Ausstellung, Storno, Abrechnungslauf) ───────────────────
 const BLOCKER_LABELS = Object.freeze({
-  issuance_disabled: "Ausstellung ist deaktiviert (SALES_PARTNER_CREDIT_NOTES_ENABLED)",
+  issuance_disabled: "Ausstellen ist derzeit abgeschaltet",
   issuer_config_incomplete: "Ausstellerangaben unvollständig",
   credit_note_title_missing: "Belegtitel der Gutschrift nicht hinterlegt",
   billing_details_missing: "Abrechnungsdaten fehlen",
@@ -249,7 +249,7 @@ const AKTION_TEXTE = Object.freeze({
   CREDIT_NOTE_NOT_PAYABLE: "Diese Gutschrift kann nicht als ausgezahlt markiert werden. Es wurde nichts geändert.",
   CREDIT_NOTE_CANCELLED: "Die Gutschrift ist storniert. Es wurde nichts geändert.",
   CREDIT_NOTE_ALREADY_PAID: "Die Gutschrift ist bereits als ausgezahlt markiert. Es wurde nichts geändert.",
-  CREDIT_NOTES_DISABLED: "Die Ausstellung von Gutschriften ist deaktiviert (SALES_PARTNER_CREDIT_NOTES_ENABLED). Es wurde nichts angelegt.",
+  CREDIT_NOTES_DISABLED: "Das Ausstellen von Gutschriften ist derzeit abgeschaltet. Es wurde nichts angelegt.",
   CREDIT_NOTE_NOT_CANCELLABLE: "Diese Gutschrift kann nicht storniert werden. Es wurde nichts angelegt.",
   CREDIT_NOTE_ALREADY_CANCELLED: "Die Gutschrift ist bereits storniert. Es wurde nichts angelegt.",
   CREDIT_NOTE_PAID_ACK_REQUIRED: "Die Gutschrift ist bereits ausgezahlt. Bitte bestätigen Sie ausdrücklich, dass das Storno trotzdem angelegt werden soll.",
@@ -328,7 +328,13 @@ export const RUN_TEXTS = Object.freeze({
   testModeDisabled: "Der Pre-Live-Testmodus ist nicht aktiv – ein Testlauf ist nicht möglich.",
   partnerNotTest: "Dieser Vertriebspartner ist kein Testpartner – im Pre-Live-Testlauf werden nur Testpartner abgerechnet.",
   partnerIsTest: "Dieser Vertriebspartner ist ein Testpartner – er wird nur im Pre-Live-Testlauf abgerechnet.",
-  issuanceDisabled: "Ausstellung ist deaktiviert (SALES_PARTNER_CREDIT_NOTES_ENABLED).",
+  issuanceDisabled: "Das Ausstellen von Gutschriften ist derzeit abgeschaltet.",
+  // Bestätigung vor dem Ausstellen EINER Gutschrift (UX-Paket 1, Betreiberentscheidung).
+  singleTitle: "Gutschrift ausstellen",
+  singleTitleTest: "Testgutschrift ausstellen",
+  singleText: "Die Gutschrift wird ausgestellt und lässt sich danach nur durch ein Storno korrigieren.",
+  singleConfirm: "Gutschrift ausstellen",
+  singleConfirmTest: "Testgutschrift ausstellen",
   globalBlocked: "Die Ausstellung ist derzeit blockiert:",
   previewError: "Die Vorschau konnte nicht geladen werden.",
   empty: "Für diesen Monat gibt es keine abzurechnenden Vertriebspartner.",
@@ -420,6 +426,19 @@ export const canIssueRow = (preview, row) => issuanceOpen(preview) && !!row && r
 /** Die Zeilen, die „Alle zulässigen ausstellen“ nacheinander ausstellt. */
 export const issuableRows = (preview) => (preview ? preview.partners.filter((r) => canIssueRow(preview, r)) : []);
 
+/** Betrag einer Vorschauzeile für die Bestätigung der Einzelausstellung —
+ *  ausschließlich Serverwerte, nichts gerechnet: „119,00 € (100,00 € netto +
+ *  19,00 € Steuer)“; ohne Steuerangaben nur der Nettobetrag; ohne Beträge null. */
+export function issueAmountText(row) {
+  if (!row) return null;
+  const { netCents, taxCents, grossCents } = row;
+  if (Number.isInteger(grossCents) && Number.isInteger(netCents) && Number.isInteger(taxCents)) {
+    return `${formatCents(grossCents)} (${formatCents(netCents)} netto + ${formatCents(taxCents)} Steuer)`;
+  }
+  if (Number.isInteger(netCents)) return `${formatCents(netCents)} netto`;
+  return null;
+}
+
 /** POST /admin/sales-partner-credit-notes — genau die drei Vertragsfelder,
  *  im Pre-Live-Testlauf zusätzlich `scope: "test"`. */
 export function buildIssueBody(preview, row) {
@@ -482,7 +501,7 @@ export function issueOutcome(status, body) {
   // Ein Serverfehler lässt den Ausgang offen: anhalten, den Stand neu laden und
   // nichts behaupten, was der Server nicht gesagt hat.
   if (!Number.isInteger(status) || status >= 500) {
-    return { kind: "error", text: "Der Server hat einen Fehler gemeldet. Ob die Gutschrift ausgestellt wurde, zeigt die neu geladene Vorschau.",
+    return { kind: "error", text: "Beim Ausstellen ist ein Fehler aufgetreten. Ob die Gutschrift ausgestellt wurde, zeigt die neu geladene Vorschau.",
       abort: true, reload: true };
   }
   return { kind: "error", text: adminActionErrorText(status, body, "Die Gutschrift wurde nicht ausgestellt."), abort: false, reload: false };

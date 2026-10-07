@@ -18,6 +18,7 @@ import {
   closedMonthOptions,
   issuableRows,
   issuanceOpen,
+  issueAmountText,
   issueOutcome,
   issueSuccessText,
   normalizePreview,
@@ -91,7 +92,9 @@ export default function AdminSalesPartnerCreditNotesPage() {
   const [ergebnisse, setErgebnisse] = useState({});       // partnerUserId → { type, text }
   const [aktiv, setAktiv] = useState(null);               // partnerUserId während des Ausstellens
   const [lauf, setLauf] = useState(false);                // „Alle zulässigen ausstellen“ läuft
-  const [bestaetigen, setBestaetigen] = useState(false);
+  // Offene Bestätigung: { art: "alle" } (Sammellauf) oder { art: "einzeln", row } —
+  // auch EINE Gutschrift wird erst nach bewusster Bestätigung ausgestellt.
+  const [bestaetigen, setBestaetigen] = useState(null);
   const [message, setMessage] = useState(null);           // { type, text }
   const inFlight = useRef(false);
   const ladeLauf = useRef(0);
@@ -177,6 +180,7 @@ export default function AdminSalesPartnerCreditNotesPage() {
   }
 
   const einzeln = async (row) => {
+    setBestaetigen(null);
     const preview = vorschau.data;
     if (!preview || inFlight.current) return;
     inFlight.current = true;
@@ -193,7 +197,7 @@ export default function AdminSalesPartnerCreditNotesPage() {
   };
 
   const alle = async () => {
-    setBestaetigen(false);
+    setBestaetigen(null);
     const preview = vorschau.data;
     if (!preview || inFlight.current) return;
     const zeilen = issuableRows(preview);
@@ -232,6 +236,10 @@ export default function AdminSalesPartnerCreditNotesPage() {
   const beschaeftigt = lauf || aktiv !== null;
   // „issuance_disabled“ steht bereits im Hinweis zur abgeschalteten Ausstellung.
   const globale = data ? data.globalBlockers.filter((c) => !(c === "issuance_disabled" && !data.issuanceEnabled)) : [];
+  // Der eine Bestätigungsdialog: Einzelausstellung (Partner, Monat, Betrag) oder Sammellauf.
+  const einzelZeile = bestaetigen && bestaetigen.art === "einzeln" ? bestaetigen.row : null;
+  const testlaufAktiv = data ? data.scope === "test" : false;
+  const einzelBetrag = einzelZeile ? issueAmountText(einzelZeile) : null;
 
   const aktion = (row, { mitId }) => {
     const id = row.partnerUserId;
@@ -243,7 +251,7 @@ export default function AdminSalesPartnerCreditNotesPage() {
           <button type="button" className="btn btn-primary btn-sm" id={mitId && id !== null ? `adm-cn-issue-${id}` : undefined}
             disabled={!canIssueRow(data, row) || beschaeftigt || vorschau.loading}
             aria-describedby={!offen ? "adm-cn-closed" : undefined}
-            onClick={() => einzeln(row)}>
+            onClick={() => { setMessage(null); setBestaetigen({ art: "einzeln", row }); }}>
             {aktiv !== null && aktiv === id ? "Wird ausgestellt…" : "Ausstellen"}
           </button>
         )}
@@ -301,7 +309,7 @@ export default function AdminSalesPartnerCreditNotesPage() {
             <div className="adm-cn-run-actions">
               <button type="button" className="btn btn-primary btn-sm" id="adm-cn-issue-all"
                 disabled={!offen || zulaessig.length === 0 || beschaeftigt || vorschau.loading}
-                onClick={() => { setMessage(null); setBestaetigen(true); }}>
+                onClick={() => { setMessage(null); setBestaetigen({ art: "alle" }); }}>
                 {lauf ? "Gutschriften werden ausgestellt…" : `Alle zulässigen ausstellen (${zulaessig.length})`}
               </button>
               <button type="button" className="btn btn-outline btn-sm" onClick={() => laden(data.month, data.scope)}
@@ -426,16 +434,22 @@ export default function AdminSalesPartnerCreditNotesPage() {
 
       {bestaetigen && data && (
         <ConfirmDialog
-          title={data.scope === "test" ? "Alle zulässigen Testgutschriften ausstellen" : "Alle zulässigen Gutschriften ausstellen"}
-          subline={`${formatMonth(data.month)} · ${zulaessig.length} Vertriebspartner`}
-          text={data.scope === "test"
-            ? `Für jeden zulässigen Testpartner wird nacheinander eine Testgutschrift ausgestellt. ${RUN_TEXTS.testScopeNote}.`
-            : "Für jeden zulässigen Vertriebspartner wird nacheinander eine Gutschrift ausgestellt. Ausgestellte Gutschriften lassen sich nur durch ein Storno korrigieren."}
-          confirmLabel="Ausstellen"
+          title={einzelZeile
+            ? (testlaufAktiv ? RUN_TEXTS.singleTitleTest : RUN_TEXTS.singleTitle)
+            : (testlaufAktiv ? "Alle zulässigen Testgutschriften ausstellen" : "Alle zulässigen Gutschriften ausstellen")}
+          subline={einzelZeile
+            ? `${previewPartnerName(einzelZeile)} · ${formatMonth(data.month)}`
+            : `${formatMonth(data.month)} · ${zulaessig.length} Vertriebspartner`}
+          text={einzelZeile
+            ? `${einzelBetrag ? `Betrag: ${einzelBetrag}. ` : ""}${testlaufAktiv ? `${RUN_TEXTS.testScopeNote}.` : RUN_TEXTS.singleText}`
+            : (testlaufAktiv
+              ? `Für jeden zulässigen Testpartner wird nacheinander eine Testgutschrift ausgestellt. ${RUN_TEXTS.testScopeNote}.`
+              : "Für jeden zulässigen Vertriebspartner wird nacheinander eine Gutschrift ausgestellt. Ausgestellte Gutschriften lassen sich nur durch ein Storno korrigieren.")}
+          confirmLabel={einzelZeile ? (testlaufAktiv ? RUN_TEXTS.singleConfirmTest : RUN_TEXTS.singleConfirm) : "Ausstellen"}
           irreversible
-          confirmId="adm-cn-issue-all-confirm"
-          onCancel={() => setBestaetigen(false)}
-          onConfirm={alle}
+          confirmId={einzelZeile ? "adm-cn-issue-confirm" : "adm-cn-issue-all-confirm"}
+          onCancel={() => setBestaetigen(null)}
+          onConfirm={einzelZeile ? () => einzeln(einzelZeile) : alle}
         />
       )}
     </div>

@@ -73,7 +73,7 @@ export const PRELIVE_TEXTS = Object.freeze({
   statusError: "Der Stand des Pre-Live-Testmodus konnte nicht geladen werden.",
   accountsError: "Die Testkonten konnten nicht geladen werden.",
   shipmentsError: "Die Testsendungen konnten nicht geladen werden.",
-  shipmentNote: "Testsendung: keine Buchung, kein Provider, kein Label.",
+  shipmentNote: "Testsendung: keine Buchung beim Versanddienstleister, kein Label.",
   mailPreviewNote: "Vorschau – es wird keine E-Mail versendet.",
   passwordLinkHint: "Link gilt 15 Minuten, einmalig. Öffnen Sie ihn in einem privaten Fenster, um das Passwort des Testkontos zu setzen.",
   passwordLinkError: "Der Passwort-Link konnte nicht erzeugt werden.",

@@ -15,6 +15,7 @@ import {
   adminActionErrorText,
   buildCapBody,
   buildGlobalLevelRulesBody,
+  capConfirmText,
   capLimitText,
   emptyLevelRulesForm,
   formatTimestamp,
@@ -219,8 +220,8 @@ export default function AdminSalesPartnerSettingsPage() {
             <Lade state={grenzen}>
               {grenzen.data?.current ? (
                 <dl className="adm-kv">
-                  <div className="adm-kv-item"><dt>Höchstsatz Eigenprovision</dt><dd>{grenzeText(grenzen.data.current.maxOwnRatePercent)}</dd></div>
-                  <div className="adm-kv-item"><dt>Höchstsatz gesamt</dt><dd>{grenzeText(grenzen.data.current.maxTotalRatePercent)}</dd></div>
+                  <div className="adm-kv-item"><dt>{CAP_TEXTS.ownShort}</dt><dd>{grenzeText(grenzen.data.current.maxOwnRatePercent)}</dd></div>
+                  <div className="adm-kv-item"><dt>{CAP_TEXTS.totalShort}</dt><dd>{grenzeText(grenzen.data.current.maxTotalRatePercent)}</dd></div>
                   <div className="adm-kv-item"><dt>Gültig ab</dt><dd>{formatTimestamp(grenzen.data.current.validFrom)}</dd></div>
                   <div className="adm-kv-item"><dt>Begründung</dt><dd>{grenzen.data.current.reason || "—"}</dd></div>
                 </dl>
@@ -232,12 +233,12 @@ export default function AdminSalesPartnerSettingsPage() {
                   <h3 className="adm-sp-subtitle">Historie</h3>
                   <div className="table-scroll adm-sp-mini-table">
                     <table>
-                      <caption className="sr-only">Historie der Obergrenzen: gültig ab, Höchstsatz Eigenprovision, Höchstsatz gesamt, Begründung, angelegt.</caption>
+                      <caption className="sr-only">Historie der Obergrenzen: gültig ab, Höchstsatz Eigenprovision, Höchstsatz aller Ebenen, Begründung, angelegt.</caption>
                       <thead>
                         <tr>
                           <th scope="col">Gültig ab</th>
                           <th scope="col" className="adm-num">Eigenprovision</th>
-                          <th scope="col" className="adm-num">Gesamt</th>
+                          <th scope="col" className="adm-num">Alle Ebenen</th>
                           <th scope="col">Begründung</th>
                           <th scope="col">Angelegt</th>
                         </tr>
@@ -269,17 +270,21 @@ export default function AdminSalesPartnerSettingsPage() {
                 {gFehler("validFrom")}
               </div>
               <div className="adm-edit-field">
-                <label className="adm-edit-label" htmlFor="adm-sp-cap-own">Höchstsatz Eigenprovision in % (optional)</label>
+                <label className="adm-edit-label" htmlFor="adm-sp-cap-own">{CAP_TEXTS.ownLabel}</label>
                 <input id="adm-sp-cap-own" className="field-input" type="text" inputMode="decimal" autoComplete="off"
                   value={grenzForm.maxOwnRatePercent} onChange={(e) => setGrenzForm((f) => ({ ...f, maxOwnRatePercent: e.target.value }))}
+                  aria-describedby="adm-sp-cap-own-hint"
                   aria-invalid={grenzErrors.maxOwnRatePercent ? "true" : undefined} />
+                <span className="adm-edit-hint" id="adm-sp-cap-own-hint">{CAP_TEXTS.ownEffect}</span>
                 {gFehler("maxOwnRatePercent")}
               </div>
               <div className="adm-edit-field">
-                <label className="adm-edit-label" htmlFor="adm-sp-cap-total">Höchstsatz gesamt in % (optional)</label>
+                <label className="adm-edit-label" htmlFor="adm-sp-cap-total">{CAP_TEXTS.totalLabel}</label>
                 <input id="adm-sp-cap-total" className="field-input" type="text" inputMode="decimal" autoComplete="off"
                   value={grenzForm.maxTotalRatePercent} onChange={(e) => setGrenzForm((f) => ({ ...f, maxTotalRatePercent: e.target.value }))}
+                  aria-describedby="adm-sp-cap-total-hint"
                   aria-invalid={grenzErrors.maxTotalRatePercent ? "true" : undefined} />
+                <span className="adm-edit-hint" id="adm-sp-cap-total-hint">{CAP_TEXTS.totalEffect}</span>
                 {gFehler("maxTotalRatePercent")}
               </div>
               <div className="adm-edit-field adm-sp-form-wide">
@@ -301,7 +306,7 @@ export default function AdminSalesPartnerSettingsPage() {
           title={confirm.kind === "rules" ? "Neue Version der Level-Regeln" : "Neue Version der Obergrenzen"}
           text={confirm.kind === "rules"
             ? `Ab ${formatTimestamp(confirm.body.validFrom)} gelten die neuen globalen Level-Regeln für alle Partner ohne eigene Regeln.`
-            : `Ab ${formatTimestamp(confirm.body.validFrom)} gelten: Eigenprovision höchstens ${grenzeText(confirm.body.maxOwnRatePercent)}, gesamt höchstens ${grenzeText(confirm.body.maxTotalRatePercent)}.`}
+            : capConfirmText(confirm.body, "für alle Vertriebspartner ohne eigene Obergrenze")}
           note="Bestehende Versionen bleiben unverändert. Die Aktion wird protokolliert."
           confirmLabel="Version anlegen"
           busy={busy}

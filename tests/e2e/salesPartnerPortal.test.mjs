@@ -11,13 +11,16 @@
 //   2. Partner öffnet /dashboard, /booking, /calculator, / und eine unbekannte
 //      Adresse → jeweils /partner, ohne Abmeldung.
 //   3. Bereiche: Kunden, Provisionen (Monatswechsel sendet den Monat), Team.
-//   4. Ohne Teameinträge gibt es keinen Teambereich.
+//   4. „Mein Team“ ist immer da (UX-Paket 1): ohne Einträge mit Leerzustand,
+//      bei einem Ladefehler mit Fehlermeldung — nie unbemerkt verschwunden.
 //   5. Ein Kunde auf /partner landet im Kundenbereich.
 //   7. Konto: Passwortänderung (PATCH /kunde/password); ein 401 mit falschem
 //      Passwort meldet nicht ab; kein anderer /kunde/*-Aufruf.
 //   8. Pre-Live-Testkonto: dauerhafter Hinweis über allen Bereichen.
 //   9. Login eines Testkontos bei abgeschaltetem Testmodus (403
 //      ACCOUNT_PRELIVE_TEST_INACTIVE): der Text des Servers, kein Portal.
+//  10. Link kopieren (UX-Paket 1): „Kopiert“ erst nach echtem Kopieren; scheitert
+//      das Kopieren, steht eine verständliche Meldung da und der Link ist markiert.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -103,7 +106,7 @@ async function setup(page, { user = PARTNER, team = TEAM, token = true, password
     }
     if (p.startsWith("/api/sales-partner/me/")) state.partnerCalls.push(p + url.search);
     if (p.endsWith("/api/sales-partner/me/overview")) return json(overview);
-    if (p.endsWith("/api/sales-partner/me/team")) return json(team);
+    if (p.endsWith("/api/sales-partner/me/team")) return team === "fehler" ? json({ error: "Fehler" }, 500) : json(team);
     if (p.endsWith("/api/sales-partner/me/customers")) return json(CUSTOMERS);
     if (p.endsWith("/api/sales-partner/me/commissions")) {
       const month = url.searchParams.get("month");
@@ -196,17 +199,30 @@ test("3 — Bereiche: Kunden, Provisionen mit Monatswechsel, Team; Rücknahme er
   await page.close();
 });
 
-test("4 — ohne Teameinträge gibt es keinen Bereich „Mein Team“", async () => {
+test("4 — „Mein Team“ ist immer da: ohne Einträge mit Leerzustand, bei einem Ladefehler mit Fehlermeldung", async () => {
+  // Bewusste Ankeränderung (UX-Paket 1, Betreiberentscheidung): früher gab es ohne
+  // Teameinträge keinen Teambereich, und ein Ladefehler ließ ihn still verschwinden.
   const page = await browser.newPage();
   await setup(page, { team: TEAM_LEER });
   await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
   await page.locator("#spp-tab-overview").waitFor({ state: "visible" });
-  assert.equal(await page.locator("#spp-tab-team").count(), 0);
-  // Bewusste Ankeränderung: „Abrechnungen“ (Gutschriften) steht immer da.
-  assert.equal(await page.locator('[role="tab"]').count(), 5, "Übersicht, Kunden, Provisionen, Abrechnungen, Konto");
+  assert.equal(await page.locator('[role="tab"]').count(), 6, "Übersicht, Kunden, Provisionen, Abrechnungen, Team, Konto");
   assert.equal(await page.locator("#spp-tab-credit-notes").count(), 1);
   assert.equal(await page.locator("#spp-tab-account").count(), 1);
+  await page.locator("#spp-tab-team").click();
+  await page.locator("#spp-team-1").waitFor({ state: "visible" });
+  assert.match(await page.locator("#spp-tabpanel").innerText(), /Auf dieser Ebene gibt es noch keine Vertriebspartner\./);
   await page.close();
+
+  const fehler = await browser.newPage();
+  await setup(fehler, { team: "fehler" });
+  await fehler.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
+  await fehler.locator("#spp-tab-team").waitFor({ state: "visible" });
+  await fehler.locator("#spp-tab-team").click();
+  await fehler.locator("#spp-tabpanel [role=\"alert\"]").waitFor({ state: "visible" });
+  assert.match(await fehler.locator("#spp-tabpanel").innerText(), /Ihr Team konnte nicht geladen werden\./);
+  assert.equal(await fehler.locator("#spp-tabpanel button", { hasText: "Erneut versuchen" }).count(), 1);
+  await fehler.close();
 });
 
 test("5 — Abmelden aus dem Portal führt zur Anmeldung und entfernt das Token", async () => {
@@ -309,4 +325,35 @@ test("9 — Login eines Testkontos bei abgeschaltetem Testmodus: Text des Server
   assert.equal(pfad(page), "/login");
   assert.equal(await page.evaluate(() => localStorage.getItem("ce_token")), null);
   await page.close();
+});
+
+test("10 — Link kopieren: „Kopiert“ erst nach echtem Kopieren; Fehlschlag mit Meldung und markiertem Link", async () => {
+  // Erfolg: mit Schreibrecht auf die Zwischenablage landet genau der Link dort.
+  const ctx = await browser.newContext({ permissions: ["clipboard-read", "clipboard-write"] });
+  const page = await ctx.newPage();
+  await setup(page);
+  await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
+  await page.locator("#spp-link-customer button", { hasText: "Kopieren" }).click();
+  await page.waitForFunction(() => document.querySelector('#spp-link-customer [role="status"]')?.textContent === "Kopiert");
+  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), OVERVIEW.links.customer);
+  await ctx.close();
+
+  // Fehlschlag: Clipboard-API lehnt ab, der ältere Weg kopiert nicht — keine falsche Erfolgsmeldung.
+  const fehler = await browser.newPage();
+  await setup(fehler);
+  await fehler.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new Error("NotAllowedError")) },
+    });
+    document.execCommand = () => false;
+  });
+  await fehler.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
+  await fehler.locator("#spp-link-partner button", { hasText: "Kopieren" }).click();
+  const status = fehler.locator('#spp-link-partner [role="status"]');
+  await fehler.waitForFunction(() => /Kopieren nicht möglich/.test(document.querySelector('#spp-link-partner [role="status"]')?.textContent || ""));
+  assert.equal(await status.innerText(), "Kopieren nicht möglich – der Text ist markiert. Bitte manuell kopieren.");
+  assert.doesNotMatch(await status.innerText(), /^Kopiert$/);
+  assert.equal(await fehler.evaluate(() => String(window.getSelection())), OVERVIEW.links.partner, "der Link ist zum manuellen Kopieren markiert");
+  await fehler.close();
 });

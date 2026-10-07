@@ -334,7 +334,8 @@ test("5 — Testsendung: Euro → Cent, Basisvorschau; bezahlt markieren; Versan
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const state = await setup(page);
   await zurSeite(page);
-  assert.equal(await page.locator("#adm-pl-shipment-note").innerText(), "Testsendung: keine Buchung, kein Provider, kein Label.");
+  // Bewusste Ankeränderung (UX-Paket 1): „Versanddienstleister“ statt „Provider“.
+  assert.equal(await page.locator("#adm-pl-shipment-note").innerText(), "Testsendung: keine Buchung beim Versanddienstleister, kein Label.");
   await page.locator("#adm-pl-shipments").waitFor({ state: "visible" });
   assert.match(await page.locator('#adm-pl-shipments tr[data-shipment-id="9001"]').innerText(), /CE-TEST-9001[\s\S]*6,60\s€[\s\S]*Nachweis fehlt[\s\S]*Offen/);
 

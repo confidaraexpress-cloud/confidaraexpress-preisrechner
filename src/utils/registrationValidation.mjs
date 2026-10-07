@@ -146,6 +146,9 @@ const PARTNER_PHONE_RE = /^[0-9+()/. -]*$/;
 
 export const PARTNER_REG_TEXTS = Object.freeze({
   agreementRequired: "Bitte bestätigen Sie die Vertriebspartnervereinbarung.",
+  // Pre-Live-Testweg: statt der Vertragsannahme (wörtlich laut Betreiber). Kein Vertragstext, keine
+  // Zustimmung — der Hinweis wird nicht gespeichert und nicht gesendet.
+  preliveNotice: "Pre-Live-Testbetrieb – diese Registrierung dient ausschließlich dem internen Funktionstest und begründet noch keine rechtsverbindliche Vertriebspartnervereinbarung.",
   companyTooLong: `Firma darf maximal ${PARTNER_COMPANY_MAX} Zeichen enthalten.`,
   phoneTooLong: `Telefon darf maximal ${PARTNER_PHONE_MAX} Zeichen enthalten.`,
   phoneInvalid: "Bitte eine gültige Telefonnummer eingeben.",
@@ -158,7 +161,9 @@ export const PARTNER_REG_TEXTS = Object.freeze({
 
 // Rückgabe wie getRegErrors: { <feld>: "<Text>" } — leer = absendbar.
 // Feldschlüssel: name, email, password, passwordRepeat, companyName, phone, agreement.
-export function getPartnerRegErrors(form = {}, passwordRepeat = "") {
+// requireAgreement: false NUR im Pre-Live-Testweg (dort gibt es keine Vertragsannahme); alle übrigen
+// Felder und Regeln bleiben exakt dieselben.
+export function getPartnerRegErrors(form = {}, passwordRepeat = "", { requireAgreement = true } = {}) {
   const e = {};
   const nameError = b2bFieldError(PARTNER_NAME_RULE, form.name);
   if (nameError) e.name = nameError;
@@ -171,7 +176,7 @@ export function getPartnerRegErrors(form = {}, passwordRepeat = "") {
   const phone = trimmed(form.phone);
   if (phone.length > PARTNER_PHONE_MAX) e.phone = PARTNER_REG_TEXTS.phoneTooLong;
   else if (!PARTNER_PHONE_RE.test(phone)) e.phone = PARTNER_REG_TEXTS.phoneInvalid;
-  if (form.agreementAccepted !== true) e.agreement = PARTNER_REG_TEXTS.agreementRequired;
+  if (requireAgreement && form.agreementAccepted !== true) e.agreement = PARTNER_REG_TEXTS.agreementRequired;
   return e;
 }
 

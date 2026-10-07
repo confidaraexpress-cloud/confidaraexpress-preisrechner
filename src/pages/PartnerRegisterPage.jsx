@@ -5,7 +5,7 @@ import { BrandLogo } from "../components/ui/BrandLogo";
 import { Icon } from "../components/ui/Icon";
 import { PasswordField } from "../components/ui/PasswordField";
 import { loadSalesPartnerPublicConfig, registerSalesPartner } from "../api/partnerApi";
-import { FAIL_CLOSED_PUBLIC_CONFIG, partnerRegistrationOpen } from "../utils/salesPartnerPublicConfig.mjs";
+import { FAIL_CLOSED_PUBLIC_CONFIG, partnerRegistrationMode } from "../utils/salesPartnerPublicConfig.mjs";
 import { clearReferral, referralCodeFor } from "../utils/referralCapture.mjs";
 import { mapAuthThrownError } from "../utils/authErrors.mjs";
 import { PASSWORD_MIN_LEN } from "../utils/passwordPolicy.mjs";
@@ -43,7 +43,14 @@ const fokusBehalten = (e) => e.preventDefault();
    Dokument verlinkt — kein erfundener Rechtstext, kein geratener Ort; die
    Zustimmung nennt die Fassung. Ein Partnercode aus /partner-registrieren?ref=…
    geht als sponsorCode mit (nur die Art „partner"); die Antwort verrät nie, ob
-   er gültig war. Darstellung in der bestehenden Auth-Welt, ohne neue Regeln. */
+   er gültig war. Darstellung in der bestehenden Auth-Welt, ohne neue Regeln.
+
+   Pre-Live-Testweg (registrationMode "prelive_test", nur solange die
+   produktive Registrierung aus ist): DASSELBE Formular mit denselben Feldern
+   und Regeln; einziger sichtbarer Unterschied ist der Testhinweis an der
+   Stelle der Vertragsannahme. Es wird keine Fassung gesendet und keine
+   Zustimmung vorgetäuscht — Testantrag ist der Antrag allein nach dem Urteil
+   des Servers. */
 export default function PartnerRegisterPage() {
   const navigate = useNavigate();
   const [config, setConfig] = useState({ loading: true, ok: false, data: FAIL_CLOSED_PUBLIC_CONFIG });
@@ -66,8 +73,11 @@ export default function PartnerRegisterPage() {
 
   useEffect(() => { ladeKonfiguration(); }, [ladeKonfiguration]);
 
-  const offen = config.ok && partnerRegistrationOpen(config.data) && !serverClosed;
-  const liveErrors = getPartnerRegErrors(form, passwordRepeat);
+  const modus = config.ok && !serverClosed ? partnerRegistrationMode(config.data) : "closed";
+  const offen = modus !== "closed";
+  const testweg = modus === "prelive_test";
+  const regelOptionen = { requireAgreement: !testweg };
+  const liveErrors = getPartnerRegErrors(form, passwordRepeat, regelOptionen);
   const valid = Object.keys(liveErrors).length === 0;
   // Sichtbar: ein Serverfehler bzw. Fehler des letzten Absendens, sonst der
   // Prüfbefund eines bereits verlassenen Feldes.
@@ -88,7 +98,7 @@ export default function PartnerRegisterPage() {
 
   const submit = async () => {
     if (submitting) return;
-    const errs = getPartnerRegErrors(form, passwordRepeat);
+    const errs = getPartnerRegErrors(form, passwordRepeat, regelOptionen);
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setErrors({});
     setGeneralError("");
@@ -96,7 +106,7 @@ export default function PartnerRegisterPage() {
     try {
       const r = await registerSalesPartner(buildPartnerRegistrationPayload(form, {
         sponsorCode: referralCodeFor("partner"),
-        agreementVersion: config.data.agreementVersion,
+        agreementVersion: testweg ? null : config.data.agreementVersion,
       }));
       let d = null;
       try { d = await r.json(); } catch { d = null; }
@@ -284,25 +294,31 @@ export default function PartnerRegisterPage() {
             {fehlerVon("phone") && <span className="auth-field-error">{fehlerVon("phone")}</span>}
           </div>
 
-          <div className="auth-row">
-            <div
-              id="sp-agreement"
-              className={`auth-check ${form.agreementAccepted ? "checked" : ""}`}
-              onClick={() => { verlassen("agreement"); toggleAgreement(); }}
-              role="checkbox"
-              aria-checked={form.agreementAccepted === true}
-              aria-required="true"
-              aria-invalid={fehlerVon("agreement") ? "true" : undefined}
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); verlassen("agreement"); toggleAgreement(); } }}
-            >
-              <span className="auth-checkbox" />
-              <span>
-                Ich akzeptiere die Vertriebspartnervereinbarung in der Fassung {config.data.agreementVersion}. <Req />
-              </span>
+          {testweg ? (
+            <div className="auth-alert auth-alert-info" id="sp-prelive-notice" role="note">
+              {PARTNER_REG_TEXTS.preliveNotice}
             </div>
-          </div>
-          {fehlerVon("agreement") && <span className="auth-field-error" id="sp-agreement-error">{fehlerVon("agreement")}</span>}
+          ) : (<>
+            <div className="auth-row">
+              <div
+                id="sp-agreement"
+                className={`auth-check ${form.agreementAccepted ? "checked" : ""}`}
+                onClick={() => { verlassen("agreement"); toggleAgreement(); }}
+                role="checkbox"
+                aria-checked={form.agreementAccepted === true}
+                aria-required="true"
+                aria-invalid={fehlerVon("agreement") ? "true" : undefined}
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); verlassen("agreement"); toggleAgreement(); } }}
+              >
+                <span className="auth-checkbox" />
+                <span>
+                  Ich akzeptiere die Vertriebspartnervereinbarung in der Fassung {config.data.agreementVersion}. <Req />
+                </span>
+              </div>
+            </div>
+            {fehlerVon("agreement") && <span className="auth-field-error" id="sp-agreement-error">{fehlerVon("agreement")}</span>}
+          </>)}
 
           <button type="submit" id="sp-submit" className="auth-cta" disabled={submitting || !valid}>
             <span>{submitting ? "Wird gesendet…" : "Antrag stellen"}</span>
@@ -310,11 +326,13 @@ export default function PartnerRegisterPage() {
           </button>
 
           <p className="auth-form-legal">
-            <Link to="/partnervereinbarung" target="_blank" rel="noopener noreferrer" id="sp-agreement-link"
-              onMouseDown={fokusBehalten}>
-              Vertriebspartnervereinbarung lesen
-            </Link>
-            {" · "}
+            {!testweg && (<>
+              <Link to="/partnervereinbarung" target="_blank" rel="noopener noreferrer" id="sp-agreement-link"
+                onMouseDown={fokusBehalten}>
+                Vertriebspartnervereinbarung lesen
+              </Link>
+              {" · "}
+            </>)}
             <Link to="/datenschutz" target="_blank" rel="noopener noreferrer" onMouseDown={fokusBehalten}>Datenschutzerklärung</Link>
           </p>
         </form>

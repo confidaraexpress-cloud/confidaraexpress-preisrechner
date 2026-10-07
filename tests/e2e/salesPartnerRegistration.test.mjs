@@ -11,6 +11,11 @@
 //   5. /partner-registrieren geöffnet → Absenden mit sponsorCode und
 //      Vereinbarungsfassung, Erfolgshinweis, keine Anmeldung, Code gelöscht.
 //   6. Keine Vermischung: ein Kundencode wird nie zum Sponsorcode.
+//   7. Ein Serverabschluss während des Absendens schließt das Formular.
+//   8. Pre-Live-Testweg: dasselbe Formular, Testhinweis statt Vertragsannahme,
+//      Antrag ohne Fassung, Sponsorcode des Partnerlinks geht mit.
+//   9. Testweg nur auf ausdrückliche Nennung: ein produktiver Modus ohne
+//      prüfbare Fassung bleibt geschlossen (nie stattdessen der Testweg).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -30,11 +35,18 @@ function chromiumExecutablePath() {
 // Registrierung nur, wenn genau diese Fassung zugestimmt wird (die Seite
 // /partnervereinbarung prüft salesPartnerAgreement.test.mjs).
 const CONFIG_OFFEN = {
-  registrationEnabled: true, referralsEnabled: true, referralRetentionDays: 30,
+  registrationEnabled: true, registrationMode: "production", referralsEnabled: true, referralRetentionDays: 30,
   agreementVersion: "2026-10",
   agreement: { version: "2026-10", effectiveFrom: "2026-10-01", effectiveTo: null,
     documentPath: "/api/legal/sales_partner_agreement/2026-10" },
 };
+
+// Pre-Live-Testweg laut Backendvertrag: produktive Registrierung aus, Testweg offen, keine Fassung.
+const CONFIG_PRELIVE = {
+  registrationEnabled: false, registrationMode: "prelive_test", referralsEnabled: false, referralRetentionDays: 30,
+  agreementVersion: null, agreement: null,
+};
+const PRELIVE_HINWEIS = "Pre-Live-Testbetrieb – diese Registrierung dient ausschließlich dem internen Funktionstest und begründet noch keine rechtsverbindliche Vertriebspartnervereinbarung.";
 
 let server, browser;
 
@@ -232,5 +244,52 @@ test("7 — ein Serverabschluss während des Absendens schließt das Formular (f
   await page.waitForSelector("#sp-state");
   assert.match(await page.locator("#sp-state").innerText(), /nicht geöffnet/);
   assert.equal(await page.locator("#sp-form").count(), 0);
+  await page.close();
+});
+
+test("8 — Pre-Live-Testweg: dasselbe Formular, Testhinweis statt Vertragsannahme, Antrag ohne Fassung", async () => {
+  const page = await browser.newPage();
+  const calls = await setup(page, { config: CONFIG_PRELIVE });
+  await page.goto(`${BASE}/partner-registrieren?ref=testab23`, { waitUntil: "networkidle" });
+  await page.waitForSelector("#sp-form");
+  for (const id of ["#sp-name", "#sp-email", "#sp-password", "#sp-password-repeat", "#sp-company", "#sp-phone", "#sp-submit"]) {
+    assert.equal(await page.locator(id).count(), 1, `Feld ${id} wie im produktiven Formular`);
+  }
+  assert.equal(await page.locator("#sp-prelive-notice").innerText(), PRELIVE_HINWEIS);
+  assert.equal(await page.locator("#sp-agreement").count(), 0, "keine (vorgetäuschte) Vertrags-Checkbox");
+  assert.equal(await page.locator("#sp-agreement-link").count(), 0, "kein Link auf eine nicht existierende Vereinbarung");
+
+  await page.fill("#sp-name", "Tina Test");
+  await page.fill("#sp-email", "tina@intern.example");
+  await page.fill("#sp-password", "EinSicheresPasswort2026");
+  await page.fill("#sp-password-repeat", "EinSicheresPasswort2026");
+  await page.fill("#sp-phone", "+49 30 123456");
+  assert.equal(await page.locator("#sp-submit").isDisabled(), false, "ohne Vertragsannahme absendbar");
+  await page.locator("#sp-submit").click();
+
+  await page.waitForSelector("#sp-state");
+  const erfolg = await page.locator("#sp-state").innerText();
+  assert.match(erfolg, /Antrag eingegangen/);
+  assert.match(erfolg, /wird geprüft/);
+  assert.equal(calls.partnerRegister.length, 1);
+  const body = calls.partnerRegister[0];
+  assert.equal("acceptedAgreementVersion" in body, false, "keine Zustimmung zu einer Fassung");
+  assert.equal(body.sponsorCode, "TESTAB23", "der Code des Partnerlinks geht mit");
+  assert.equal(body.phone, "+49 30 123456");
+  for (const k of ["isTest", "preliveTest", "prelive_test", "registrationMode"]) assert.equal(k in body, false, `${k} bestimmt nie der Client`);
+  const st = await speicher(page);
+  assert.equal(st.token, null, "kein Login nach dem Antrag");
+  assert.equal(st.partner, null, "ohne Freigabe der Empfehlungslinks nichts im localStorage");
+  await page.close();
+});
+
+test("9 — Testweg nur auf ausdrückliche Nennung: produktiver Modus ohne prüfbare Fassung bleibt geschlossen", async () => {
+  const page = await browser.newPage();
+  await setup(page, { config: { ...CONFIG_OFFEN, agreementVersion: null, agreement: null } });
+  await page.goto(`${BASE}/partner-registrieren`, { waitUntil: "networkidle" });
+  await page.waitForSelector("#sp-state");
+  assert.match(await page.locator("#sp-state").innerText(), /Die Registrierung für Vertriebspartner ist derzeit nicht geöffnet./);
+  assert.equal(await page.locator("#sp-form").count(), 0);
+  assert.equal(await page.locator("#sp-prelive-notice").count(), 0);
   await page.close();
 });

@@ -24,6 +24,7 @@ import {
 import {
   FAIL_CLOSED_PUBLIC_CONFIG,
   parseSalesPartnerPublicConfig,
+  partnerRegistrationMode,
   partnerRegistrationOpen,
   referralPersistenceAllowed,
 } from "./salesPartnerPublicConfig.mjs";
@@ -108,8 +109,10 @@ test("5 — fehlende oder falsche Felder ergeben den geschlossenen Zustand", () 
   // Vertragsänderung (Vertriebspartnervereinbarung): `agreementUrl` entfällt,
   // die registrierte Fassung kommt als `agreement` (Version, Gültigkeit,
   // Dokumentpfad). Geschlossen heißt weiterhin: keine Fassung.
+  // Seit dem Pre-Live-Registrierungsweg nennt die Konfiguration zusätzlich den
+  // offenen Weg — geschlossen ist auch dort der Ausgangszustand.
   assert.deepEqual({ ...FAIL_CLOSED_PUBLIC_CONFIG }, {
-    registrationEnabled: false, referralsEnabled: false, referralRetentionDays: null,
+    registrationEnabled: false, registrationMode: "closed", referralsEnabled: false, referralRetentionDays: null,
     agreementVersion: null, agreement: null,
   });
   assert.equal("agreementUrl" in parseSalesPartnerPublicConfig({ agreementUrl: "https://example.org/v.pdf" }), false,
@@ -133,6 +136,24 @@ test("5 — fehlende oder falsche Felder ergeben den geschlossenen Zustand", () 
   assert.equal(partnerRegistrationOpen(parseSalesPartnerPublicConfig({
     registrationEnabled: true, agreementVersion: "2026-10", agreement: fassung,
   })), true);
+});
+
+test("5b — Registrierungsweg: produktiv nur mit Vertragsprüfung, Pre-Live-Test nur auf ausdrückliche Nennung, sonst geschlossen", () => {
+  const fassung = { version: "1.0", effectiveFrom: "2026-11-01", effectiveTo: null,
+    documentPath: "/api/legal/sales_partner_agreement/1.0" };
+  const weg = (raw) => partnerRegistrationMode(parseSalesPartnerPublicConfig(raw));
+  assert.equal(weg(null), "closed");
+  assert.equal(weg({ registrationMode: "closed" }), "closed");
+  assert.equal(weg({ registrationMode: "prelive_test" }), "prelive_test");
+  assert.equal(weg({ registrationMode: "PRELIVE_TEST" }), "closed", "nur der exakte Wert");
+  assert.equal(weg({ registrationMode: "prelive" }), "closed");
+  assert.equal(weg({ registrationEnabled: true, registrationMode: "production", agreementVersion: "1.0", agreement: fassung }), "production");
+  // „production" ohne prüfbare Fassung bleibt zu — nie stattdessen der Testweg.
+  assert.equal(weg({ registrationEnabled: true, registrationMode: "production" }), "closed");
+  // Widersprüchliche Antwort (produktiv offen UND Testweg): produktiv gewinnt; ohne Fassung geschlossen.
+  assert.equal(weg({ registrationEnabled: true, registrationMode: "prelive_test", agreementVersion: "1.0", agreement: fassung }), "production");
+  assert.equal(weg({ registrationEnabled: true, registrationMode: "prelive_test" }), "closed");
+  assert.equal(partnerRegistrationMode(null), "closed");
 });
 
 /* ══════════ Speicherung nur mit Freigabe ════════════════════════════════ */

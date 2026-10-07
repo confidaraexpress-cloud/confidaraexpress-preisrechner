@@ -171,6 +171,17 @@ test("13 — die Partnerseite nutzt die zentrale Validierung, keine eigene Fassu
   assert.doesNotMatch(seite, /function getPartnerRegErrors|EMAIL_RE\s*=/, "zweite Validierungsfassung in der Seite");
   // Kein Login nach der Registrierung — der Antrag wird erst geprüft.
   assert.doesNotMatch(seite, /ce_token|login\(/);
-  // Kein erfundener Rechtstext: der Link erscheint nur mit agreementUrl.
-  assert.match(seite, /agreementHref \?/);
+  // Kein erfundener Rechtstext, kein geratener Ort. Bewusste Ankeränderung
+  // (Vertriebspartnervereinbarung): die Konfiguration nennt keine Adresse
+  // (`agreementUrl`) mehr — der Link führt immer auf die eigene Seite
+  // /partnervereinbarung (neuer Tab), die ausschließlich das registrierte
+  // Dokument verlinkt; die Zustimmung nennt weiterhin die Fassung.
+  assert.match(seite,
+    /<Link to="\/partnervereinbarung" target="_blank" rel="noopener noreferrer" id="sp-agreement-link"\s+onMouseDown=\{fokusBehalten\}>/);
+  // Der Leselink nimmt dem fokussierten Feld beim Drücken nicht den Fokus —
+  // sonst verschiebt der Fehler des verlassenen Felds den Link, und der erste
+  // Klick geht ins Leere (Browserprüfung: salesPartnerAgreement.test.mjs, Test 5).
+  assert.match(seite, /const fokusBehalten = \(e\) => e\.preventDefault\(\);/);
+  assert.match(seite, /Vertriebspartnervereinbarung in der Fassung \{config\.data\.agreementVersion\}/);
+  assert.doesNotMatch(seite, /agreementUrl|agreementHref/, "eine Adresse der Konfiguration wird nicht mehr gelesen");
 });

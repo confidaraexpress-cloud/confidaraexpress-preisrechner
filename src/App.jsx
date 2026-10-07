@@ -31,6 +31,9 @@ const InsuranceInfoPage = React.lazy(() => import("./pages/InsuranceInfoPage"));
 // sales_partner, eigene schlanke Hülle statt DashboardLayout).
 const PartnerRegisterPage = React.lazy(() => import("./pages/PartnerRegisterPage"));
 const PartnerPortalPage   = React.lazy(() => import("./pages/PartnerPortalPage"));
+// Vertriebspartnervereinbarung: öffentliche Leseseite im Rechtslayout. Die
+// Vereinbarung selbst ist ausschließlich das registrierte Dokument des Servers.
+const PartnerAgreementPage = React.lazy(() => import("./pages/PartnerAgreementPage"));
 
 // Lager & Aufträge: DETAILseiten mit echter Route. Die fünf Listenbereiche
 // laufen als page-State in DashboardPage (unverändertes Navigationsmodell);
@@ -145,6 +148,9 @@ export default function App() {
           {/* Informationen zur Transportversicherung — Leseseite neben den
               Rechtsseiten; verlinkt aus dem Versicherungsdetails-Dialog. */}
           <Route path="/versicherungsinformationen" element={<InsuranceInfoPage />} />
+          {/* Vertriebspartnervereinbarung — Fassung, Gültigkeit und der Link
+              auf das registrierte Dokument (verlinkt aus der Partnerregistrierung). */}
+          <Route path="/partnervereinbarung" element={<PartnerAgreementPage />} />
         </Route>
 
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />

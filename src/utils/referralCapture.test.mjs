@@ -105,10 +105,15 @@ test("4 — Teilen-Links je Art", () => {
 /* ══════════ Öffentliche Konfiguration: fail-closed ══════════════════════ */
 
 test("5 — fehlende oder falsche Felder ergeben den geschlossenen Zustand", () => {
+  // Vertragsänderung (Vertriebspartnervereinbarung): `agreementUrl` entfällt,
+  // die registrierte Fassung kommt als `agreement` (Version, Gültigkeit,
+  // Dokumentpfad). Geschlossen heißt weiterhin: keine Fassung.
   assert.deepEqual({ ...FAIL_CLOSED_PUBLIC_CONFIG }, {
     registrationEnabled: false, referralsEnabled: false, referralRetentionDays: null,
-    agreementVersion: null, agreementUrl: null,
+    agreementVersion: null, agreement: null,
   });
+  assert.equal("agreementUrl" in parseSalesPartnerPublicConfig({ agreementUrl: "https://example.org/v.pdf" }), false,
+    "eine Adresse aus einer älteren Antwort wird nicht mehr übernommen");
   const c = parseSalesPartnerPublicConfig({ registrationEnabled: "true", referralsEnabled: 1, referralRetentionDays: "30" });
   assert.equal(c.registrationEnabled, false, "String \"true\" ist keine Freigabe");
   assert.equal(c.referralsEnabled, false);
@@ -119,7 +124,15 @@ test("5 — fehlende oder falsche Felder ergeben den geschlossenen Zustand", () 
   assert.equal(referralPersistenceAllowed(parseSalesPartnerPublicConfig({ referralsEnabled: true, referralRetentionDays: 9999 })), false);
   assert.equal(partnerRegistrationOpen(parseSalesPartnerPublicConfig({ registrationEnabled: true })), false,
     "ohne Vereinbarungsfassung bleibt die Registrierung zu");
-  assert.equal(partnerRegistrationOpen(parseSalesPartnerPublicConfig({ registrationEnabled: true, agreementVersion: "2026-10" })), true);
+  // Die Fassung allein genügt nicht mehr: zugestimmt wird nur der registrierten
+  // Fassung mit verlinkbarem Dokument (Einzelfälle: salesPartnerAgreement.test.mjs).
+  const fassung = { version: "2026-10", effectiveFrom: "2026-10-01", effectiveTo: null,
+    documentPath: "/api/legal/sales_partner_agreement/2026-10" };
+  assert.equal(partnerRegistrationOpen(parseSalesPartnerPublicConfig({ registrationEnabled: true, agreementVersion: "2026-10" })), false,
+    "ohne registrierte Fassung bleibt die Registrierung zu");
+  assert.equal(partnerRegistrationOpen(parseSalesPartnerPublicConfig({
+    registrationEnabled: true, agreementVersion: "2026-10", agreement: fassung,
+  })), true);
 });
 
 /* ══════════ Speicherung nur mit Freigabe ════════════════════════════════ */

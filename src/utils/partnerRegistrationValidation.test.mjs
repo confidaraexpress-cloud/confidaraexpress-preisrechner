@@ -209,3 +209,54 @@ test("13 — die Partnerseite nutzt die zentrale Validierung, keine eigene Fassu
   assert.match(seite, /Vertriebspartnervereinbarung in der Fassung \{config\.data\.agreementVersion\}/);
   assert.doesNotMatch(seite, /agreementUrl|agreementHref/, "eine Adresse der Konfiguration wird nicht mehr gelesen");
 });
+
+test("14 — Registrierung (UX-Paket 6): Pflichtfelder erklärt, nie grundlos gesperrt, Fehler am Feld, Erfolg ohne Anmeldung", () => {
+  const seite = ohneKommentare(read("pages/PartnerRegisterPage.jsx"));
+  // Bewusste Ankeränderung: der Knopf ist nur während des Sendens gesperrt. Früher
+  // blieb er bis zur vollständigen Eingabe grau — ohne Grund für noch nicht
+  // verlassene Felder (etwa die Vertragsannahme).
+  // Der Knopf nimmt dem Feld beim Drücken nicht den Fokus — sonst verschöbe die
+  // Meldung des verlassenen Felds ihn, und der erste Klick ginge verloren.
+  assert.match(seite, /<button type="submit" id="sp-submit" className="auth-cta" disabled=\{submitting\} onMouseDown=\{fokusBehalten\}>/);
+  assert.doesNotMatch(seite, /disabled=\{submitting \|\| !valid\}/);
+  // Abgewiesenes Absenden: Fehler an jedem Feld, Sammelhinweis, Fokus ins erste Feld — kein Request.
+  const absenden = seite.slice(seite.indexOf("const submit = async"), seite.indexOf("const zurAnmeldung"));
+  assert.match(absenden,
+    /if \(Object\.keys\(errs\)\.length > 0\) \{\s*setErrors\(errs\);[\s\S]*?setPruefHinweis\(true\);\s*fokussiereErstenFehler\(errs\);\s*return;\s*\}/);
+  assert.ok(absenden.indexOf("fokussiereErstenFehler(errs)") < absenden.indexOf("registerSalesPartner("), "erst prüfen, dann senden");
+  assert.match(absenden, /fokussiereErstenFehler\(fehler\.fieldErrors\);/);
+  assert.match(seite, /\{!generalError && pruefHinweis && !valid && \(/, "der Sammelhinweis verschwindet, sobald alles passt");
+  // Jede Meldung hängt an ihrem Feld.
+  for (const [schluessel, id] of [["name", "sp-name"], ["email", "sp-email"], ["companyName", "sp-company"],
+    ["phone", "sp-phone"], ["agreement", "sp-agreement"]]) {
+    assert.match(seite, new RegExp(`aria-describedby=\\{fehlerVerweis\\("${schluessel}", "${id}"\\)\\}`), `${schluessel}: kein Verweis`);
+    assert.match(seite, new RegExp(`id="${id}-error"`), `${schluessel}: Meldung ohne Kennung`);
+  }
+  for (const [schluessel, id] of [["password", "sp-password"], ["passwordRepeat", "sp-password-repeat"]]) {
+    assert.match(seite, new RegExp(`describedBy=\\{fehlerVerweis\\("${schluessel}", "${id}"\\)\\}`), `${schluessel}: kein Verweis`);
+    assert.match(seite, new RegExp(`invalid=\\{!!fehlerVon\\("${schluessel}"\\)\\}`));
+    assert.match(seite, new RegExp(`id="${id}-error"`));
+  }
+  // Fokusreihenfolge = Formularreihenfolge, jede Kennung existiert.
+  const felder = [...seite.matchAll(/\["(\w+)", "(sp-[a-z-]+)"\]/g)].map((m) => m[2]);
+  assert.deepEqual(felder, ["sp-name", "sp-email", "sp-password", "sp-password-repeat", "sp-company", "sp-phone", "sp-agreement"]);
+  for (const id of felder) assert.match(seite, new RegExp(`id="${id}"`), `${id} fehlt im Formular`);
+  assert.match(seite, /\{PARTNER_REG_TEXTS\.requiredHint\}/);
+  assert.equal(PARTNER_REG_TEXTS.requiredHint, "Pflichtfelder sind mit * markiert.");
+  assert.equal(PARTNER_REG_TEXTS.checkMarked, "Bitte prüfen Sie die markierten Angaben.");
+  // Erfolg: eindeutig, mit dem nächsten Schritt — ohne Anmeldeknopf vor der Freigabe.
+  const erfolg = seite.slice(seite.indexOf("} else if (done) {"), seite.indexOf("} else if (!offen) {"));
+  assert.match(erfolg, /PARTNER_REG_TEXTS\.success,/);
+  assert.match(erfolg, /\{PARTNER_REG_TEXTS\.successNext\}/);
+  assert.match(erfolg, /\{!testweg && <p>\{PARTNER_REG_TEXTS\.successMail\}<\/p>\}/, "die Freigabemail nur im produktiven Weg");
+  assert.doesNotMatch(erfolg, /anmeldeKnopf|zurAnmeldung|navigate\(/, "kein Anmeldeweg vor der Freigabe");
+  assert.equal(PARTNER_REG_TEXTS.success, "Ihr Antrag ist eingegangen und wird geprüft.");
+  assert.match(PARTNER_REG_TEXTS.successNext, /Vorher ist keine Anmeldung möglich\.$/);
+  // Die Passwortkomponente reicht die neuen Angaben durch (nur slim-Modus, ohne Props unverändert).
+  const pw = read("components/ui/PasswordField.jsx");
+  assert.match(pw, /className=\{`auth-input\$\{invalid \? " auth-input-error" : ""\}`\}/);
+  assert.match(pw, /aria-invalid=\{invalid \? "true" : undefined\}/);
+  assert.match(pw, /aria-describedby=\{describedBy \|\| undefined\}/);
+  // Die Regeln selbst bleiben die zentralen — ein leerer Antrag nennt jede Pflichtangabe.
+  assert.deepEqual(Object.keys(getPartnerRegErrors({}, "")).sort(), ["agreement", "email", "name", "password"].sort());
+});

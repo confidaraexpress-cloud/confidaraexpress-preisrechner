@@ -460,6 +460,16 @@
 .auth-form-legal a { color: var(--auth-ink-3); text-decoration: none; transition: color 0.15s; }
 .auth-form-legal a:hover { color: var(--auth-blue-soft); text-decoration: underline; }
 
+/* ── Partnerregistrierung (UX-Paket 6) ──────────────────────────────────────
+   Der Pflichtfeldhinweis über dem Formular und der nächste Schritt nach dem
+   Antrag — beide in der leisen Textfarbe der Auth-Welt. */
+.auth-required-hint { margin: 0 0 16px; font-size: 12px; line-height: 1.5; color: var(--auth-ink-3); }
+/* Die Zustimmung ist ein Pflichtfeld des Antrags: ihre ganze Zeile ist die
+   Trefferfläche — mindestens 44 px hoch (WCAG 2.5.5), Text und Kästchen mittig. */
+#sp-form .auth-check { min-height: var(--ce-size-touch-target); }
+.auth-card-next { display: flex; flex-direction: column; gap: 8px; text-align: center; }
+.auth-card-next p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--auth-ink-2); }
+
 /* ── Animations ─────────────────────────────────────────────────────────── */
 
 @keyframes auth-fade-up {

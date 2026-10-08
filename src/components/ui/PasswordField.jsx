@@ -7,7 +7,11 @@ import { Icon } from "./Icon";
 // `inputRef` (Paket D) reicht eine Ref an das Eingabefeld durch — der
 // Sicherheitsbereich des Profils setzt damit den Fokus in das erste Feld,
 // sobald der Nutzer das Formular öffnet. Ohne die Prop ändert sich nichts.
-export function PasswordField({ label, value, onChange, onKeyDown, onBlur, placeholder, dark = true, slim = false, id, autoComplete, required = false, inputRef }) {
+//
+// `invalid` und `describedBy` (UX-Paket 6) gelten nur im slim-Modus: das Feld
+// trägt dann die Fehlerdarstellung, aria-invalid und den Verweis auf seine
+// Fehlermeldung. Ohne die Props ändert sich nichts.
+export function PasswordField({ label, value, onChange, onKeyDown, onBlur, placeholder, dark = true, slim = false, id, autoComplete, required = false, inputRef, invalid = false, describedBy }) {
   const [show, setShow] = useState(false);
   const toggleLabel = show ? "Passwort verbergen" : "Passwort anzeigen";
 
@@ -19,7 +23,7 @@ export function PasswordField({ label, value, onChange, onKeyDown, onBlur, place
         <input
           id={id}
           type={show ? "text" : "password"}
-          className="auth-input"
+          className={`auth-input${invalid ? " auth-input-error" : ""}`}
           style={{ paddingRight: "44px" }}
           value={value}
           onChange={onChange}
@@ -29,6 +33,8 @@ export function PasswordField({ label, value, onChange, onKeyDown, onBlur, place
           autoComplete={autoComplete}
           required={required || undefined}
           aria-required={required ? "true" : undefined}
+          aria-invalid={invalid ? "true" : undefined}
+          aria-describedby={describedBy || undefined}
         />
         <button
           type="button"

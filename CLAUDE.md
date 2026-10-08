@@ -78,6 +78,8 @@ Lokal die für die Änderung **relevanten** Tests plus `npm run build`. Die voll
 
 **Keine Testanzahlen** in dieser Datei oder im Canonical Context festschreiben; sie altern sofort.
 
+Bekannte sporadische E2E-Prüfungen und ihre Einordnung stehen im Canonical Context §17.4. Ein grüner Wiederholungslauf gilt nie als Behebung.
+
 ---
 
 ## Frontend-Architektur

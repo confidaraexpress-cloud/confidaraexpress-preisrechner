@@ -27,6 +27,7 @@
 import { customerText } from "./apiError.mjs";
 import { formatPercent, partnerStatusMeta, statusMetaFrom } from "./salesPartnerView.mjs";
 import { agreementDocumentPath } from "./salesPartnerAgreement.mjs";
+import { trackingStatusLabel } from "./trackingLegsView.mjs";
 
 const obj = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
 const arr = (v) => (Array.isArray(v) ? v : []);
@@ -329,6 +330,20 @@ export function buildRatesBody(form = {}, opts = {}) {
   return ergebnis(errors, body);
 }
 
+// Texte zu Provisionssätzen (Freigabe und Satzkarte). Die Teamprovision ist der
+// eigene Satz des Begünstigten auf dieselbe Basis (lib/salesPartner/commission.js).
+// Sätze legt der Server nur für freigegebene Partner an (aktiv oder inaktiv).
+export const RATE_TEXTS = Object.freeze({
+  teamExplain: "Teamprovision Ebene 1 gilt für Sendungen der Kunden direkt geworbener Partner, Ebene 2 für die der von ihnen geworbenen Partner – jeweils auf dieselbe Basis wie die eigene Provision.",
+  teamDefault: "Ohne Angabe gelten für die Teamebenen die Standard-Teamsätze des Programms.",
+  teamDefaultInline: "ohne Angabe gelten für die Teamebenen die Standard-Teamsätze des Programms.",
+  noneYet: "Noch keine Provisionssätze – sie werden bei der Freigabe festgelegt.",
+  rejected: "Für einen abgelehnten Antrag gibt es keine Provisionssätze.",
+});
+
+/** Dürfen neue Provisionssätze angelegt werden? Nur für freigegebene Partner. */
+export const ratesEditable = (status) => status === "active" || status === "inactive";
+
 // ── Level-Regeln ────────────────────────────────────────────────────────────
 export const LEVEL_COUNT = 5;
 
@@ -524,7 +539,25 @@ export const CAP_TEXTS = Object.freeze({
   partnerHint: "Ein leeres Feld bedeutet „keine Grenze“. Die individuelle Obergrenze gilt nur für diesen Vertriebspartner.",
   noLimit: "Keine Grenze",
   partnerInvalid: "Der Vertriebspartner ist ungültig.",
+  // Wirkung je Grenze — so, wie der Server rechnet (lib/salesPartner/commission.js):
+  // die Eigenprovision wird gekappt, eine überschrittene Gesamtgrenze verhindert
+  // die automatische Provision der Sendung.
+  ownLabel: "Höchstsatz Eigenprovision in % (optional)",
+  totalLabel: "Höchstsatz aller Ebenen zusammen in % (optional)",
+  ownShort: "Höchstsatz Eigenprovision",
+  totalShort: "Höchstsatz aller Ebenen",
+  ownEffect: "Begrenzt den Provisionssatz für eigene Kunden (Grundprovision plus Boni) auf diesen Wert.",
+  totalEffect: "Gilt für Eigen- und Teamprovisionen einer Sendung zusammen. Wird der Wert überschritten, entsteht für diese Sendung keine automatische Provision.",
 });
+
+/** Bestätigungstext einer neuen Obergrenzen-Version; `wem` z. B. „für alle
+ *  Vertriebspartner". Eine gesetzte Gesamtgrenze nennt ihre Wirkung. */
+export function capConfirmText(body, wem) {
+  const b = body || {};
+  const grenze = (v) => (satzOderNull(v) ? `höchstens ${formatPercent(satzOderNull(v))}` : "ohne Grenze");
+  const satz = `Ab ${formatTimestamp(b.validFrom)} gelten ${wem}: Eigenprovision ${grenze(b.maxOwnRatePercent)}, alle Ebenen zusammen ${grenze(b.maxTotalRatePercent)}.`;
+  return satzOderNull(b.maxTotalRatePercent) ? `${satz} ${CAP_TEXTS.totalEffect}` : satz;
+}
 
 /** POST /admin/sales-partner-caps — leer heißt „keine Grenze" (null); mit
  *  `partnerUserId` die individuelle Obergrenze dieses Partners. */
@@ -903,6 +936,16 @@ export function normalizeQueueItem(raw) {
     cancellationStatus: str(q.cancellationStatus),
     evidenceStatus: str(q.evidenceStatus),
   };
+}
+
+/** Letzter Trackingstand einer Queue-Zeile: der Text der Sendungsverfolgung,
+ *  sonst das Label des normalisierten Stands — nie der Rohwert. */
+export function evidenceTrackingText(item) {
+  const q = obj(item);
+  if (str(q.lastTrackingText)) return str(q.lastTrackingText);
+  const label = trackingStatusLabel(q.lastTrackingStatus);
+  if (label) return label;
+  return str(q.lastTrackingStatus) ? "Unbekannter Trackingstand" : "Kein Trackingstand";
 }
 
 export function normalizeAttribution(raw) {

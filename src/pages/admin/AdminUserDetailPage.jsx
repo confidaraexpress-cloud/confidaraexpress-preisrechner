@@ -38,6 +38,7 @@ import { CustomerApprovalCard } from "../../components/admin/CustomerApprovalCar
 import { CustomerSupportSection } from "../../components/admin/CustomerSupportSection";
 import { SalesPartnerAttributionSection } from "../../components/admin/SalesPartnerAttributionSection";
 import { BillingModeSection } from "../../components/admin/BillingModeSection";
+import { PreliveTestBadge } from "../../components/admin/PreliveTestBadge";
 import { setAdminUserBillingMode } from "../../api/adminApi";
 import { billingMode as readBillingMode } from "../../utils/billingModeView.mjs";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
@@ -194,8 +195,9 @@ export default function AdminUserDetailPage() {
       // Serverwahrheit übernehmen, nicht der lokal gewählte Wert.
       setUser((prev) => (prev ? { ...prev, billing_mode: d.billingMode } : prev));
       setBmSuccess("Abrechnungsart geändert.");
-    } catch (e) {
-      setBmError(e?.message || "Die Abrechnungsart konnte nicht geändert werden.");
+    } catch {
+      // Netzfehler: nie den technischen Rohtext („Failed to fetch") zeigen.
+      setBmError("Die Abrechnungsart konnte nicht geändert werden. Bitte prüfen Sie die Verbindung und versuchen Sie es erneut.");
     }
     setBmBusy(false);
   };
@@ -576,6 +578,8 @@ export default function AdminUserDetailPage() {
         )}
         meta={(
           <>
+            {/* Pre-Live-Testkonto: nur aus der unveränderlichen Kennzeichnung des Servers. */}
+            {u?.prelive_test === true && <PreliveTestBadge id="adm-user-test-badge" />}
             <span className={`badge ${statusCls}`}>{statusLabel}</span>
             {customerNumber
               ? <span className="adm-chip adm-mono">{customerNumber}</span>

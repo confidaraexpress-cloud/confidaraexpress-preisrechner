@@ -289,9 +289,6 @@ export function normalizeTeam(raw) {
   };
 }
 
-/** „Mein Team" erscheint nur, wenn Ebene 1 oder 2 Einträge hat. */
-export const teamVisible = (team) => !!team && (arr(team.level1).length > 0 || arr(team.level2).length > 0);
-
 /** „Ja (Rang 2)" / „Ja" / „Nein". */
 export function relevanceLabel(member) {
   if (!member || member.relevant !== true) return "Nein";
@@ -320,7 +317,11 @@ export const PARTNER_TABS = Object.freeze([
   Object.freeze({ id: "account", label: "Konto" }),
 ]);
 
-export const visiblePartnerTabs = (team) => PARTNER_TABS.filter((t) => t.id !== "team" || teamVisible(team));
+// Betreiberentscheidung (UX-Paket 1, 2026-10-08): „Mein Team" ist IMMER da —
+// auch ohne Teammitglieder, beim Laden und bei einem Ladefehler. Früher hing der
+// Bereich an den Einträgen und verschwand bei einem Fehler unbemerkt; Lade-,
+// Fehler- und Leerzustand zeigt jetzt PartnerTeamPanel.
+export const visiblePartnerTabs = () => PARTNER_TABS;
 
 // ── Konto ───────────────────────────────────────────────────────────────────
 // Nur lesend: Stammdaten ändert ein Partner hier nicht (PATCH /kunde/profil ist

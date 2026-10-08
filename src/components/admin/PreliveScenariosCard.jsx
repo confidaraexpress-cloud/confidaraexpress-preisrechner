@@ -181,7 +181,7 @@ export function PreliveScenariosCard({ accounts, presets = null, onChanged, onDi
               </span>
             </fieldset>
           ) : (
-            <p className="adm-edit-hint adm-sp-form-wide" id="adm-pl-presets-none">Ohne Level-Regeln des Servers gibt es keine Vorgaben – bitte Werte frei eintragen.</p>
+            <p className="adm-edit-hint adm-sp-form-wide" id="adm-pl-presets-none">Ohne hinterlegte Level-Regeln gibt es keine Vorgaben – bitte Werte frei eintragen.</p>
           )}
           <div className="adm-sp-form-actions">
             <button type="submit" className="btn btn-primary btn-sm" id="adm-pl-levels-submit" disabled={busy !== null}>
@@ -191,7 +191,7 @@ export function PreliveScenariosCard({ accounts, presets = null, onChanged, onDi
         </form>
 
         <h3 className="adm-sp-subtitle">A/B/C-Kette</h3>
-        <p className="adm-support-hint">Legt die Testpartner A, B und C als Kette für die Teamebenen an; den Aufbau bestimmt der Server.</p>
+        <p className="adm-support-hint">Legt die Testpartner A, B und C als Kette für die Teamebenen an; der Aufbau ist fest vorgegeben.</p>
         {ergebnis("abc")}
         <form className="adm-sp-form" onSubmit={(e) => ausfuehren("abc", e)} noValidate id="adm-pl-abc-form">
           <div className="adm-sp-datefield">

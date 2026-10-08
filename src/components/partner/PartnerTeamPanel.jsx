@@ -87,8 +87,9 @@ function TeamLevel({ level, team }) {
 }
 
 /* ── Partnerportal · Mein Team ───────────────────────────────────────────────
-   Sichtbar nur, wenn Ebene 1 oder 2 Einträge hat (die Seite entscheidet über
-   visiblePartnerTabs). Beide Ebenen getrennt. */
+   Immer erreichbar (Betreiberentscheidung, visiblePartnerTabs): Laden, Fehler
+   mit „Erneut versuchen" und ein noch leeres Team zeigt dieser Bereich selbst.
+   Beide Ebenen getrennt. */
 export function PartnerTeamPanel({ state, onRetry }) {
   if (state.loading && !state.data) {
     return <div className="ce-card"><LoadingState text="Team wird geladen …" /></div>;

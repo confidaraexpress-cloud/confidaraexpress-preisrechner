@@ -54,7 +54,8 @@ function DecisionDetails({ entry }) {
           ? <Link to={`/admin/shipments/${encodeURIComponent(entry.shipmentId)}`}>Sendung #{entry.shipmentId}</Link>
           : "—"}
       </dd></div>
-      <div className="adm-kv-item"><dt>Technischer Grund</dt><dd>{entry.reasonCode ? <span className="adm-mono">{entry.reasonCode}</span> : "—"}</dd></div>
+      {/* Keine Zeile „Technischer Grund": der Rohwert (accrual/reversal/adjustment)
+          steht bereits verständlich als Badge in der Spalte „Art". */}
     </dl>
   );
 }
@@ -252,7 +253,7 @@ export function SalesPartnerCommissionsCard({ partnerId }) {
                         <td>{payableLabel(e)}</td>
                         <td>
                           <div className="adm-sp-row-actions">
-                            {(e.decision || e.reasonCode || e.shipmentId != null) && (
+                            {(e.decision || e.shipmentId != null) && (
                               <button type="button" className="btn btn-ghost btn-sm" aria-expanded={offen.has(key)}
                                 onClick={() => umschalten(key)}>
                                 {offen.has(key) ? "Grundlage ausblenden" : "Grundlage"}
@@ -314,7 +315,7 @@ export function SalesPartnerCommissionsCard({ partnerId }) {
         <ConfirmDialog
           title="Entscheidung zurücknehmen"
           subline={`Buchung vom ${formatTimestamp(reverse.entry.entryDate)} · ${formatCents(reverse.entry.amountCents)}`}
-          text="Die Provisionsentscheidung zu dieser Buchung wird zurückgenommen. Optional berechnet der Server sie anschließend neu."
+          text="Die Provisionsentscheidung zu dieser Buchung wird zurückgenommen. Auf Wunsch wird sie anschließend neu berechnet."
           note="Die Aktion wird protokolliert."
           confirmLabel="Zurücknehmen"
           irreversible

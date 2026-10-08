@@ -24,14 +24,14 @@ const FEHLER_TEAM = "Ihr Team konnte nicht geladen werden.";
 /* ── Partnerportal (/partner) ────────────────────────────────────────────────
    Nur hinter PartnerRoute erreichbar (Rolle sales_partner). Die Bereiche als
    page-State — Übersicht, Meine Kunden, Provisionen, Abrechnungen
-   (Gutschriften), (nur mit Einträgen) Mein Team und Konto. Die Bereiche rufen
+   (Gutschriften), Mein Team und Konto. Die Bereiche rufen
    /api/sales-partner/me/* auf; „Konto" nutzt zusätzlich genau die für Partner
    freigegebenen Kontoendpunkte (Passwort, Login-E-Mail) über die Bausteine der
    Kontoeinstellungen. Kein Kundenlayout, keine andere Kundenroute.
 
-   Übersicht und Team werden beim Start geladen: die Übersicht ist der erste
-   Bereich, und ob „Mein Team" überhaupt erscheint, entscheiden die Einträge
-   der Teamantwort. Kunden, Provisionen und Abrechnungen laden erst beim Öffnen.
+   Übersicht und Team werden beim Start geladen. „Mein Team" steht immer da
+   (Betreiberentscheidung) — Laden, Fehler und ein noch leeres Team zeigt der
+   Bereich selbst. Kunden, Provisionen und Abrechnungen laden erst beim Öffnen.
    Meldet die Übersicht ein Pre-Live-Testkonto (`preliveTest: true`), steht
    über allen Bereichen dauerhaft der Testhinweis. */
 export default function PartnerPortalPage() {
@@ -40,7 +40,7 @@ export default function PartnerPortalPage() {
   const overview = usePartnerData((opts) => getPartnerOverview(opts), normalizeOverview, [], FEHLER_UEBERSICHT);
   const team = usePartnerData((opts) => getPartnerTeam(opts), normalizeTeam, [], FEHLER_TEAM);
 
-  const tabs = visiblePartnerTabs(team.data);
+  const tabs = visiblePartnerTabs();
   const aktiv = tabs.some((t) => t.id === tab) ? tab : "overview";
 
   // Partnerstatus: aus der Übersicht, sonst aus der Sitzung (/kundenbereich).

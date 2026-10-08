@@ -6,6 +6,7 @@ import {
   CAP_TEXTS,
   adminActionErrorText,
   buildCapBody,
+  capConfirmText,
   capLimitText,
   formatTimestamp,
   localIsoDate,
@@ -114,8 +115,8 @@ export function SalesPartnerCapCard({ partnerId, allowPastDates = false }) {
       <>
         {aktuell ? (
           <dl className="adm-kv" id="adm-sp-pcap-current">
-            <div className="adm-kv-item"><dt>Höchstsatz Eigenprovision</dt><dd>{capLimitText(aktuell.maxOwnRatePercent)}</dd></div>
-            <div className="adm-kv-item"><dt>Höchstsatz gesamt</dt><dd>{capLimitText(aktuell.maxTotalRatePercent)}</dd></div>
+            <div className="adm-kv-item"><dt>{CAP_TEXTS.ownShort}</dt><dd>{capLimitText(aktuell.maxOwnRatePercent)}</dd></div>
+            <div className="adm-kv-item"><dt>{CAP_TEXTS.totalShort}</dt><dd>{capLimitText(aktuell.maxTotalRatePercent)}</dd></div>
             <div className="adm-kv-item"><dt>Gültig ab</dt><dd>{formatTimestamp(aktuell.validFrom)}</dd></div>
             <div className="adm-kv-item"><dt>Begründung</dt><dd>{aktuell.reason || "—"}</dd></div>
           </dl>
@@ -127,12 +128,12 @@ export function SalesPartnerCapCard({ partnerId, allowPastDates = false }) {
             <h3 className="adm-sp-subtitle">Historie</h3>
             <div className="table-scroll adm-sp-mini-table">
               <table>
-                <caption className="sr-only">Historie der individuellen Obergrenze: gültig ab, Höchstsatz Eigenprovision, Höchstsatz gesamt, Begründung, angelegt.</caption>
+                <caption className="sr-only">Historie der individuellen Obergrenze: gültig ab, Höchstsatz Eigenprovision, Höchstsatz aller Ebenen, Begründung, angelegt.</caption>
                 <thead>
                   <tr>
                     <th scope="col">Gültig ab</th>
                     <th scope="col" className="adm-num">Eigenprovision</th>
-                    <th scope="col" className="adm-num">Gesamt</th>
+                    <th scope="col" className="adm-num">Alle Ebenen</th>
                     <th scope="col">Begründung</th>
                     <th scope="col">Angelegt</th>
                   </tr>
@@ -177,17 +178,21 @@ export function SalesPartnerCapCard({ partnerId, allowPastDates = false }) {
             {fehler("validFrom")}
           </div>
           <div className="adm-edit-field">
-            <label className="adm-edit-label" htmlFor="adm-sp-pcap-own">Höchstsatz Eigenprovision in % (optional)</label>
+            <label className="adm-edit-label" htmlFor="adm-sp-pcap-own">{CAP_TEXTS.ownLabel}</label>
             <input id="adm-sp-pcap-own" className="field-input" type="text" inputMode="decimal" autoComplete="off"
               value={form.maxOwnRatePercent} onChange={(e) => setFeld("maxOwnRatePercent", e.target.value)}
+              aria-describedby="adm-sp-pcap-own-hint"
               aria-invalid={errors.maxOwnRatePercent ? "true" : undefined} />
+            <span className="adm-edit-hint" id="adm-sp-pcap-own-hint">{CAP_TEXTS.ownEffect}</span>
             {fehler("maxOwnRatePercent")}
           </div>
           <div className="adm-edit-field">
-            <label className="adm-edit-label" htmlFor="adm-sp-pcap-total">Höchstsatz gesamt in % (optional)</label>
+            <label className="adm-edit-label" htmlFor="adm-sp-pcap-total">{CAP_TEXTS.totalLabel}</label>
             <input id="adm-sp-pcap-total" className="field-input" type="text" inputMode="decimal" autoComplete="off"
               value={form.maxTotalRatePercent} onChange={(e) => setFeld("maxTotalRatePercent", e.target.value)}
+              aria-describedby="adm-sp-pcap-total-hint"
               aria-invalid={errors.maxTotalRatePercent ? "true" : undefined} />
+            <span className="adm-edit-hint" id="adm-sp-pcap-total-hint">{CAP_TEXTS.totalEffect}</span>
             {fehler("maxTotalRatePercent")}
           </div>
           <div className="adm-edit-field adm-sp-form-wide">
@@ -207,7 +212,7 @@ export function SalesPartnerCapCard({ partnerId, allowPastDates = false }) {
       {confirm && (
         <ConfirmDialog
           title="Individuelle Obergrenze anlegen"
-          text={`Ab ${formatTimestamp(confirm.validFrom)} gelten für diesen Vertriebspartner: Eigenprovision höchstens ${capLimitText(confirm.maxOwnRatePercent)}, gesamt höchstens ${capLimitText(confirm.maxTotalRatePercent)}.`}
+          text={capConfirmText(confirm, "für diesen Vertriebspartner")}
           note="Bestehende Versionen bleiben unverändert. Die Aktion wird protokolliert."
           confirmLabel="Version anlegen"
           busy={busy}

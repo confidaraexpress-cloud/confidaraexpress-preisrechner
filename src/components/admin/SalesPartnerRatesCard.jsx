@@ -4,10 +4,12 @@ import { DateField } from "./DateField";
 import { createAdminSalesPartnerRates } from "../../api/adminApi";
 import { formatPercent } from "../../utils/salesPartnerView.mjs";
 import {
+  RATE_TEXTS,
   adminActionErrorText,
   buildRatesBody,
   formatTimestamp,
   localIsoDate,
+  ratesEditable,
 } from "../../utils/adminSalesPartnerView.mjs";
 
 const LEER = { validFrom: "", basePercent: "", level1Percent: "", level2Percent: "", reason: "" };
@@ -16,8 +18,11 @@ const LEER = { validFrom: "", basePercent: "", level1Percent: "", level2Percent:
    Eine Änderung ist immer eine NEUE Version mit Gültigkeitsbeginn (heute oder
    später; mit `allowPastDates` — Testpartner im Pre-Live-Testmodus — auch
    zurückliegend) — keine Version wird überschrieben. Die Prüfung vor dem
-   Senden übernimmt buildRatesBody; verbindlich ist der Server. */
-export function SalesPartnerRatesCard({ partnerId, rates, allowPastDates = false, onChanged }) {
+   Senden übernimmt buildRatesBody; verbindlich ist der Server. Eine neue
+   Version gibt es nur für freigegebene Partner (`partnerStatus` aktiv oder
+   inaktiv) — vorher lehnte der Server ab, deshalb erscheint das Formular erst
+   dann (UX-Paket 1). */
+export function SalesPartnerRatesCard({ partnerId, rates, partnerStatus = null, allowPastDates = false, onChanged }) {
   const [form, setForm] = useState(LEER);
   const [errors, setErrors] = useState({});
   const [confirm, setConfirm] = useState(null);     // gebauter Body
@@ -81,7 +86,9 @@ export function SalesPartnerRatesCard({ partnerId, rates, allowPastDates = false
             <div className="adm-kv-item"><dt>Begründung</dt><dd>{aktuell.reason || "—"}</dd></div>
           </dl>
         ) : (
-          <p className="adm-support-hint">Noch keine Satzversion — Sätze entstehen mit der Freigabe.</p>
+          <p className="adm-support-hint" id="adm-sp-rates-none">
+            {partnerStatus === "rejected" ? RATE_TEXTS.rejected : RATE_TEXTS.noneYet}
+          </p>
         )}
 
         {historie.length > 0 && (
@@ -93,7 +100,7 @@ export function SalesPartnerRatesCard({ partnerId, rates, allowPastDates = false
                 <thead>
                   <tr>
                     <th scope="col">Gültig ab</th>
-                    <th scope="col" className="adm-num">Grund</th>
+                    <th scope="col" className="adm-num">Grundprovision</th>
                     <th scope="col" className="adm-num">Ebene 1</th>
                     <th scope="col" className="adm-num">Ebene 2</th>
                     <th scope="col">Begründung</th>
@@ -117,40 +124,45 @@ export function SalesPartnerRatesCard({ partnerId, rates, allowPastDates = false
           </>
         )}
 
-        <h3 className="adm-sp-subtitle">Neue Version gültig ab</h3>
-        {message && (
-          <div className={`alert ${message.type === "success" ? "alert-success" : "alert-error"}`} role={message.type === "success" ? "status" : "alert"}>
-            {message.text}
-          </div>
+        {ratesEditable(partnerStatus) && (
+          <>
+            <h3 className="adm-sp-subtitle">Neue Version gültig ab</h3>
+            {message && (
+              <div className={`alert ${message.type === "success" ? "alert-success" : "alert-error"}`} role={message.type === "success" ? "status" : "alert"}>
+                {message.text}
+              </div>
+            )}
+            <form className="adm-sp-form" onSubmit={pruefen} noValidate>
+              <div className="adm-sp-datefield">
+                <DateField id="adm-sp-rates-from" label="Gültig ab (Pflicht)" value={form.validFrom} min={allowPastDates === true ? undefined : heute}
+                  invalid={!!errors.validFrom} onChange={(v) => setFeld("validFrom", v)} />
+                {allowPastDates === true && <span className="adm-edit-hint">Testpartner im Pre-Live-Testmodus: Das Datum darf zurückliegen.</span>}
+                {fehler("validFrom")}
+              </div>
+              {[["basePercent", "Grundprovision in % (Pflicht)", "adm-sp-rates-base"],
+                ["level1Percent", "Teamprovision Ebene 1 in % (Pflicht)", "adm-sp-rates-l1"],
+                ["level2Percent", "Teamprovision Ebene 2 in % (Pflicht)", "adm-sp-rates-l2"]].map(([k, label, id]) => (
+                <div className="adm-edit-field" key={k}>
+                  <label className="adm-edit-label" htmlFor={id}>{label}</label>
+                  <input id={id} className="field-input" type="text" inputMode="decimal" autoComplete="off"
+                    value={form[k]} onChange={(e) => setFeld(k, e.target.value)}
+                    aria-required="true" aria-invalid={errors[k] ? "true" : undefined} />
+                  {fehler(k)}
+                </div>
+              ))}
+              <p className="adm-edit-hint adm-sp-form-wide" id="adm-sp-rates-team-hint">{RATE_TEXTS.teamExplain}</p>
+              <div className="adm-edit-field adm-sp-form-wide">
+                <label className="adm-edit-label" htmlFor="adm-sp-rates-reason">Begründung (optional)</label>
+                <input id="adm-sp-rates-reason" className="field-input" type="text" maxLength={500}
+                  value={form.reason} onChange={(e) => setFeld("reason", e.target.value)} />
+                {fehler("reason")}
+              </div>
+              <div className="adm-sp-form-actions">
+                <button type="submit" className="btn btn-primary btn-sm" id="adm-sp-rates-submit">Neue Version anlegen</button>
+              </div>
+            </form>
+          </>
         )}
-        <form className="adm-sp-form" onSubmit={pruefen} noValidate>
-          <div className="adm-sp-datefield">
-            <DateField id="adm-sp-rates-from" label="Gültig ab" value={form.validFrom} min={allowPastDates === true ? undefined : heute}
-              invalid={!!errors.validFrom} onChange={(v) => setFeld("validFrom", v)} />
-            {allowPastDates === true && <span className="adm-edit-hint">Testpartner im Pre-Live-Testmodus: Das Datum darf zurückliegen.</span>}
-            {fehler("validFrom")}
-          </div>
-          {[["basePercent", "Grundprovision in %", "adm-sp-rates-base"],
-            ["level1Percent", "Team Ebene 1 in %", "adm-sp-rates-l1"],
-            ["level2Percent", "Team Ebene 2 in %", "adm-sp-rates-l2"]].map(([k, label, id]) => (
-            <div className="adm-edit-field" key={k}>
-              <label className="adm-edit-label" htmlFor={id}>{label}</label>
-              <input id={id} className="field-input" type="text" inputMode="decimal" autoComplete="off"
-                value={form[k]} onChange={(e) => setFeld(k, e.target.value)}
-                aria-invalid={errors[k] ? "true" : undefined} />
-              {fehler(k)}
-            </div>
-          ))}
-          <div className="adm-edit-field adm-sp-form-wide">
-            <label className="adm-edit-label" htmlFor="adm-sp-rates-reason">Begründung (optional)</label>
-            <input id="adm-sp-rates-reason" className="field-input" type="text" maxLength={500}
-              value={form.reason} onChange={(e) => setFeld("reason", e.target.value)} />
-            {fehler("reason")}
-          </div>
-          <div className="adm-sp-form-actions">
-            <button type="submit" className="btn btn-primary btn-sm" id="adm-sp-rates-submit">Neue Version anlegen</button>
-          </div>
-        </form>
       </div>
 
       {confirm && (

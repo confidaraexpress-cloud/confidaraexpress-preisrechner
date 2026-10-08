@@ -10,6 +10,7 @@ import {
 } from "../../api/adminApi";
 import {
   DEACTIVATION_REASON_OPTIONS,
+  RATE_TEXTS,
   adminActionErrorText,
   adminPartnerStatusMeta,
   approveFormFromDefaults,
@@ -54,33 +55,44 @@ const AKTIONEN = Object.freeze({
     danger: true,
     success: "Der Antrag wurde abgelehnt.",
   },
+  // Deaktivieren und Login sperren sind zwei getrennte Funktionen (Server:
+  // routes/admin/salesPartners.js) — der Text nennt die tatsächlichen Folgen.
+  // „{ab}“ ist der Wirksamkeitstag: heute, oder das gewählte Datum eines Testpartners.
   deactivate: {
     title: "Vertriebspartner deaktivieren",
-    text: "Der Partner wird deaktiviert. Eine spätere Reaktivierung bleibt möglich.",
+    text: "{ab} entstehen für diesen Partner keine neuen Provisionen, und er zählt nicht mehr im Team seines Sponsors. Bisherige Provisionen und Kundenzuordnungen bleiben erhalten. Der Login bleibt aktiv – zum Aussperren zusätzlich „Login sperren“ verwenden. Eine Reaktivierung bleibt möglich.",
     confirm: "Deaktivieren",
     danger: true,
-    success: "Der Vertriebspartner wurde deaktiviert.",
+    success: "Der Vertriebspartner wurde deaktiviert. Sein Login ist unverändert.",
   },
   reactivate: {
     title: "Vertriebspartner reaktivieren",
-    text: "Der Partner wird wieder aktiv geschaltet.",
+    text: "{ab} entstehen wieder Provisionen. In der Platzreihenfolge im Team seines Sponsors zählt er als neu aktiviert. Der Login wird dadurch nicht verändert.",
     confirm: "Reaktivieren",
     success: "Der Vertriebspartner wurde reaktiviert.",
   },
   loginOff: {
     title: "Login sperren",
-    text: "Der Partner kann sich nicht mehr anmelden, bis der Login wieder entsperrt wird.",
+    text: "Der Partner kann sich nicht mehr anmelden, bis der Login wieder entsperrt wird. Status und Provisionen bleiben unverändert.",
     confirm: "Login sperren",
     danger: true,
     success: "Der Login wurde gesperrt.",
   },
   loginOn: {
     title: "Login entsperren",
-    text: "Der Partner kann sich wieder anmelden.",
+    text: "Der Partner kann sich wieder anmelden. Status und Provisionen bleiben unverändert.",
     confirm: "Login entsperren",
     success: "Der Login wurde entsperrt.",
   },
 });
+
+// Wirksamkeitstag im Dialogtext: ohne Datumsfeld gilt heute.
+const dialogText = (def, mitDatum) =>
+  def.text.replace("{ab}", mitDatum ? "Ab dem gewählten Tag (ohne Angabe ab heute)" : "Ab heute");
+
+// Den Login steuert der Server nur für freigegebene Partner (aktiv oder inaktiv);
+// bei einem abgelehnten oder offenen Antrag gibt es keine Login-Aktion.
+const LOGIN_STEUERBAR = Object.freeze(["active", "inactive"]);
 
 const LEERE_FORMULARE = Object.freeze({
   reject: { reason: "" },
@@ -203,10 +215,10 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], startDefau
           {status === "inactive" && (
             <button type="button" id="adm-sp-reactivate" className="btn btn-primary btn-sm" onClick={() => oeffnen("reactivate")}>Reaktivieren</button>
           )}
-          {login === true && (
+          {login === true && LOGIN_STEUERBAR.includes(status) && (
             <button type="button" id="adm-sp-login-off" className="btn btn-outline btn-sm" onClick={() => oeffnen("loginOff")}>Login sperren</button>
           )}
-          {login === false && (
+          {login === false && LOGIN_STEUERBAR.includes(status) && (
             <button type="button" id="adm-sp-login-on" className="btn btn-outline btn-sm" onClick={() => oeffnen("loginOn")}>Login entsperren</button>
           )}
         </div>
@@ -238,7 +250,7 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], startDefau
         <ConfirmDialog
           title={def.title}
           subline={partnerDisplayName(partner)}
-          text={def.text}
+          text={dialogText(def, mitDatum)}
           note="Die Aktion wird protokolliert."
           confirmLabel={def.confirm}
           danger={def.danger === true}
@@ -258,14 +270,14 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], startDefau
                 {fehler("basePercent")}
               </div>
               <div className="adm-edit-field">
-                <label className="adm-edit-label" htmlFor="adm-sp-l1">Team Ebene 1 in % (optional)</label>
+                <label className="adm-edit-label" htmlFor="adm-sp-l1">Teamprovision Ebene 1 in % (optional)</label>
                 <input id="adm-sp-l1" className="field-input" type="text" inputMode="decimal" autoComplete="off"
                   value={dialog.form.level1Percent} onChange={(e) => setFeld("level1Percent", e.target.value)}
                   aria-invalid={dialog.errors.level1Percent ? "true" : undefined} disabled={busy} />
                 {fehler("level1Percent")}
               </div>
               <div className="adm-edit-field">
-                <label className="adm-edit-label" htmlFor="adm-sp-l2">Team Ebene 2 in % (optional)</label>
+                <label className="adm-edit-label" htmlFor="adm-sp-l2">Teamprovision Ebene 2 in % (optional)</label>
                 <input id="adm-sp-l2" className="field-input" type="text" inputMode="decimal" autoComplete="off"
                   value={dialog.form.level2Percent} onChange={(e) => setFeld("level2Percent", e.target.value)}
                   aria-invalid={dialog.errors.level2Percent ? "true" : undefined} disabled={busy} />
@@ -273,9 +285,10 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], startDefau
               </div>
               <p className="adm-edit-hint" id="adm-sp-approve-hint">
                 {vorbelegt
-                  ? "Vorbelegt mit den Startsätzen. Sie können die Werte vor der Freigabe ändern; ohne Angabe gelten für die Teamebenen die Standardsätze des Servers."
-                  : "Ohne Angabe gelten für die Teamebenen die Standardsätze des Servers."}
+                  ? `Vorbelegt mit den Startsätzen. Sie können die Werte vor der Freigabe ändern; ${RATE_TEXTS.teamDefaultInline}`
+                  : RATE_TEXTS.teamDefault}
               </p>
+              <p className="adm-edit-hint" id="adm-sp-approve-team-hint">{RATE_TEXTS.teamExplain}</p>
             </>
           )}
           {dialog.kind === "reject" && (

@@ -21,6 +21,7 @@ import {
   buildDispatchEvidenceBody,
   evidenceSourceLabel,
   evidenceStatusMeta,
+  evidenceTrackingText,
   evidenceTypeLabel,
   formatTimestamp,
   localIsoDate,
@@ -43,7 +44,7 @@ const shipmentPath = (id) => `/admin/shipments/${encodeURIComponent(id)}`;
 function TrackingCell({ item }) {
   return (
     <div className="adm-sp-partner">
-      <span>{item.lastTrackingText || item.lastTrackingStatus || "Kein Trackingstand"}</span>
+      <span>{evidenceTrackingText(item)}</span>
       {item.lastTrackedAt && <span className="adm-sp-sub">{formatTimestamp(item.lastTrackedAt, { withTime: true })}</span>}
       {item.trackingReferences.length > 0 && <span className="adm-sp-sub adm-mono">{item.trackingReferences.join(", ")}</span>}
     </div>

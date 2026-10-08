@@ -5,6 +5,7 @@ import { EmptyState, ErrorState, ListSkeleton } from "../../components/ui/StateV
 import { DateField, DATE_FORMAT_HINT } from "../../components/admin/DateField";
 import { selectListTotal, selectListHasMore, selectListRows } from "../../utils/adminOverview.mjs";
 import { listAuditLogs } from "../../api/adminApi";
+import { auditParty, auditTargets } from "../../utils/auditLogView.mjs";
 
 const PAGE_SIZE = 25;
 
@@ -39,8 +40,47 @@ const ACTION_LABELS = {
   "sales_partner.attribution_change": "Vertriebspartner-Zuordnung geändert",
   "sales_partner.commission_reversal": "Provisionsentscheidung zurückgenommen",
   "sales_partner.commission_adjustment": "Provisionskorrektur gebucht",
+  // … Abrechnungsdaten und Gutschriften …
+  "sales_partner.billing_details_submitted": "Abrechnungsdaten eingereicht",
+  "sales_partner.billing_details_confirmed": "Abrechnungsdaten bestätigt",
+  "sales_partner.billing_details_rejected": "Abrechnungsdaten abgelehnt",
+  "sales_partner.credit_note_issued": "Gutschrift ausgestellt",
+  "sales_partner.credit_note_paid": "Gutschrift als ausgezahlt vermerkt",
+  "sales_partner.credit_note_cancelled": "Gutschrift storniert",
+  "sales_partner.credit_note_pdf_downloaded": "Gutschrift-PDF heruntergeladen",
+  // … Pre-Live-Testmodus …
+  "sales_partner.prelive_partner_created": "Pre-Live: Testpartner angelegt",
+  "sales_partner.prelive_customer_created": "Pre-Live: Testkunde angelegt",
+  "sales_partner.prelive_shipment_created": "Pre-Live: Testsendung angelegt",
+  "sales_partner.prelive_shipment_paid": "Pre-Live: Testsendung als bezahlt markiert",
+  "sales_partner.prelive_scenario": "Pre-Live: Testszenario angelegt",
+  "sales_partner.prelive_commission_run": "Pre-Live: Provisionslauf gestartet",
+  "sales_partner.prelive_password_link": "Pre-Live: Passwort-Link erzeugt",
+  "sales_partner.prelive_cleanup": "Pre-Live: Testdaten gelöscht",
   // … und Versand.
   "shipment.dispatch_evidence_decision": "Versandnachweis entschieden",
+  // Weitere Adminaktionen (vorher ohne Label und deshalb als Rohwert sichtbar).
+  "admin.shipment.draft_delete": "Entwurf gelöscht",
+  "admin.shipment.draft_bulk_delete": "Entwürfe gesammelt gelöscht",
+  "shipment.email_delivery_retry": "E-Mail zur Sendung erneut versucht",
+  "order_confirmation.email_send": "Auftragsbestätigung per E-Mail gesendet",
+  "order_confirmation.email_retry": "Auftragsbestätigung: E-Mail erneut versucht",
+  "order_confirmation.email_resend": "Auftragsbestätigung erneut gesendet",
+  "invoice.pdf_download": "Rechnungs-PDF heruntergeladen",
+  "invoice.email_send": "Rechnung per E-Mail gesendet",
+  "invoice.email_retry": "Rechnung: E-Mail erneut versucht",
+  "invoice.email_resend": "Rechnung erneut gesendet",
+  "invoice.backfill_document": "Interne Rechnungsvorschau erzeugt",
+  "invoice.consolidated_run_triggered": "Sammelrechnungslauf gestartet",
+  "user.billing_mode_changed": "Abrechnungsart geändert",
+  "user.price_markup_confirm": "Preisaufschlag bestätigt",
+  "admin.cancellation.view": "Stornierungsanfrage eingesehen",
+  "admin.cancellation.status_change": "Stornierungsanfrage: Status geändert",
+  "admin.cancellation.note_update": "Stornierungsanfrage: Vermerk geändert",
+  "admin.support.view": "Supportanfrage eingesehen",
+  "admin.support.reply": "Supportanfrage beantwortet",
+  "admin.support.status_change": "Supportanfrage: Status geändert",
+  "admin.support.note_update": "Supportanfrage: Vermerk geändert",
 };
 
 // [badge-Klasse, Label]. Unbekannte Werte → grau + Rohwert (harmlos).
@@ -81,14 +121,9 @@ const selectRows = (d) => selectListRows(d, ["logs", "audit_logs"]);
 // ── Feld-Extraktion (PII-sicher) ─────────────────────────────────────────────
 // Es werden AUSSCHLIESSLICH id/name/type gelesen — niemals wird ein ganzes
 // actor-/target-Objekt gerendert. Selbst wenn das Objekt E-Mail/IP enthielte,
-// landet nichts davon im UI.
-function partyOf(row, kind) {
-  const o = row && typeof row[kind] === "object" && row[kind] ? row[kind] : null;
-  const id = firstDefined(o?.id, o?.user_id, row?.[`${kind}_user_id`], row?.[`${kind}_id`]);
-  const name = firstDefined(o?.name, o?.company_name, row?.[`${kind}_name`]);
-  const type = firstDefined(row?.[`${kind}_type`], o?.type);
-  return { id: id ?? null, name: name ?? null, type: type ?? null };
-}
+// landet nichts davon im UI. Die Zuordnung (auch `target_user`, Sendung,
+// Rechnung) steht in utils/auditLogView.mjs.
+const partyOf = auditParty;
 
 const timeOf = (row) => firstDefined(row?.created_at, row?.timestamp, row?.time, row?.ts, row?.occurred_at) ?? null;
 const actionOf = (row) => firstDefined(row?.action, row?.action_type, row?.event) ?? null;
@@ -172,6 +207,17 @@ function sanitizeMetadata(meta) {
 
 // Aktive Filter → für die Anzeige „N aktiv" zählen.
 const countActive = (f) => Object.values(f).filter((v) => String(v).trim() !== "").length;
+
+// Betroffene eines Eintrags: Konto, Sendung, Rechnung — untereinander.
+function Targets({ row }) {
+  const liste = auditTargets(row);
+  if (liste.length === 0) return <span className="adm-muted">—</span>;
+  return (
+    <span className="adm-party-stack">
+      {liste.map((p, i) => <Party key={`${p.name ?? "k"}-${p.id ?? i}`} party={p} />)}
+    </span>
+  );
+}
 
 function Party({ party }) {
   if (!party || (party.id == null && !party.name)) return <span className="adm-muted">—</span>;
@@ -351,7 +397,7 @@ export default function AuditLogPage() {
                             <span className="adm-action">{knownAction || action || "—"}</span>
                             {knownAction && <span className="adm-action-raw">{action}</span>}
                           </td>
-                          <td><Party party={partyOf(row, "target")} /></td>
+                          <td><Targets row={row} /></td>
                           <td><span className={`badge ${resCls}`}>{resLabel}</span></td>
                           <td className="adm-col-action">
                             {meta.length > 0 ? (
@@ -411,7 +457,7 @@ export default function AuditLogPage() {
                   <dl className="adm-scard-kv">
                     <div><dt>Zeit</dt><dd className="adm-td-time">{fmtTime(timeOf(row))}</dd></div>
                     <div><dt>Actor</dt><dd><Party party={partyOf(row, "actor")} /></dd></div>
-                    <div><dt>Target</dt><dd><Party party={partyOf(row, "target")} /></dd></div>
+                    <div><dt>Target</dt><dd><Targets row={row} /></dd></div>
                   </dl>
                   {meta.length > 0 && (
                     <>

@@ -43,6 +43,7 @@ import {
   closedMonthOptions,
   issuableRows,
   issuanceOpen,
+  issueAmountText,
   issueOutcome,
   issueSuccessText,
   normalizePreview,
@@ -88,10 +89,11 @@ test("1 — jeder Blockiergrund hat ein deutsches Label; Unbekanntes erscheint n
   ]);
   for (const code of BLOCKER_CODES) {
     const label = blockerLabel(code);
-    assert.ok(label && !label.includes(code) && !/_[a-z]/.test(label.replace("SALES_PARTNER_CREDIT_NOTES_ENABLED", "")),
+    // Bewusste Ankeränderung (UX-Paket 1): auch kein technischer Schaltername mehr im Label.
+    assert.ok(label && !label.includes(code) && !/_[a-z]|[A-Z]{2,}_[A-Z]/.test(label),
       `${code}: kein deutsches Label (${label})`);
   }
-  assert.equal(blockerLabel("issuance_disabled"), "Ausstellung ist deaktiviert (SALES_PARTNER_CREDIT_NOTES_ENABLED)");
+  assert.equal(blockerLabel("issuance_disabled"), "Ausstellen ist derzeit abgeschaltet");
   for (const roh of ["vat_magic", "constructor", "__proto__", "", null]) {
     assert.equal(blockerLabel(roh), "Unbekannter Blockiergrund");
   }
@@ -230,7 +232,9 @@ test("9 — Fehler der Aktionen: Feld, Blockiergründe, Bestätigung oder Neulad
   assert.equal(creditNoteActionOutcome(404, { code: "CREDIT_NOTE_NOT_FOUND" }).reload, true);
   const aus = creditNoteActionOutcome(409, { code: "CREDIT_NOTES_DISABLED" });
   assert.equal(aus.reload, false);
-  assert.match(aus.text, /deaktiviert/);
+  // Bewusste Ankeränderung (UX-Paket 1): verständlich, ohne technischen Schalternamen.
+  assert.equal(aus.text, "Das Ausstellen von Gutschriften ist derzeit abgeschaltet. Es wurde nichts angelegt.");
+  assert.doesNotMatch(aus.text, /SALES_PARTNER|_ENABLED/);
   assert.doesNotMatch(creditNoteActionOutcome(500, { error: "TypeError" }).text, /TypeError/);
 });
 
@@ -360,6 +364,7 @@ test("15 — Ausstellen: veraltet hält an und lädt neu; ein offener Ausgang be
   const fuenf = issueOutcome(502, { error: "Bad Gateway" });
   assert.deepEqual([fuenf.abort, fuenf.reload], [true, true]);
   assert.doesNotMatch(fuenf.text, /nicht ausgestellt|Bad Gateway/, "ein offener Ausgang wird nicht als „nicht ausgestellt“ behauptet");
+  assert.doesNotMatch(fuenf.text, /Server/, "kein Technikbegriff im sichtbaren Text (UX-Paket 1)");
   for (const code of ["CREDIT_NOTE_PREVIEW_STALE", "CREDIT_NOTE_BLOCKED", "PERIOD_NOT_CLOSED"]) {
     assert.doesNotMatch(issueOutcome(code === "CREDIT_NOTE_BLOCKED" ? 422 : code === "PERIOD_NOT_CLOSED" ? 400 : 409, { code }).text,
       new RegExp(code), "kein Rohcode");
@@ -396,12 +401,40 @@ test("17 — Abrechnungslauf: Route vor '/:id', Link aus der Liste, nacheinander
   assert.match(seite, /await laden\(preview\.month, preview\.scope\);/);
   assert.match(seite, /closedMonthOptions\(localIsoDate\(\), 24\)/);
   assert.doesNotMatch(seite, /\bfetch\(|apiFetch|dangerouslySetInnerHTML/);
-  // Genau EIN Dialog: die Bestätigung des Sammellaufs (keine unnötigen Modals).
+  // Genau EIN Dialog (keine unnötigen Modals) — er bestätigt seit UX-Paket 1
+  // (Betreiberentscheidung) den Sammellauf UND jede Einzelausstellung: auch EINE
+  // Gutschrift wird erst nach bewusster Bestätigung ausgestellt.
   assert.equal((seite.match(/<ConfirmDialog/g) || []).length, 1);
+  assert.match(seite, /onClick=\{\(\) => \{ setMessage\(null\); setBestaetigen\(\{ art: "einzeln", row \}\); \}\}/,
+    "der Zeilenknopf öffnet die Bestätigung, er stellt nicht selbst aus");
+  assert.doesNotMatch(seite, /onClick=\{\(\) => einzeln\(row\)\}/, "Einzelausstellen ohne Bestätigung ist zurück");
+  assert.match(seite, /onConfirm=\{einzelZeile \? \(\) => einzeln\(einzelZeile\) : alle\}/);
+  assert.match(seite, /confirmId=\{einzelZeile \? "adm-cn-issue-confirm" : "adm-cn-issue-all-confirm"\}/);
+  assert.match(seite, /const einzeln = async \(row\) => \{\s*setBestaetigen\(null\);\s*const preview = vorschau\.data;\s*if \(!preview \|\| inFlight\.current\) return;/,
+    "Doppelausstellung: der Dialog schließt, ein laufender Vorgang sperrt jeden weiteren");
 
   const api = ohneKommentare(read("api/adminApi.js"));
   assert.match(api, /apiFetch\(`\/admin\/sales-partner-credit-notes\/preview\$\{buildQuery\(query, CREDIT_NOTE_PREVIEW_PARAMS\)\}`, \{ auth: true \}\)/);
   assert.match(api, /apiFetch\("\/admin\/sales-partner-credit-notes", \{\s*method: "POST", auth: true, body: JSON\.stringify\(body\)/);
+});
+
+test("17b — Bestätigung der Einzelausstellung: Betrag nur aus Serverwerten, klare Texte (UX-Paket 1)", () => {
+  const vorschau = normalizePreview({ month: "2026-09", issuanceEnabled: true, globalBlockers: [], partners: [
+    { partnerUserId: 5, name: "Petra", companyName: "Vertrieb 5 GmbH", status: "issuable", blockers: [], fingerprint: "fp-5",
+      netCents: 10000, taxCents: 1900, grossCents: 11900 },
+    { partnerUserId: 6, status: "issuable", blockers: [], fingerprint: "fp-6", netCents: 2500, taxCents: null, grossCents: null },
+    { partnerUserId: 7, status: "issuable", blockers: [], fingerprint: "fp-7" },
+  ] });
+  assert.match(issueAmountText(vorschau.partners[0]), /^119,00\s€ \(100,00\s€ netto \+ 19,00\s€ Steuer\)$/);
+  assert.match(issueAmountText(vorschau.partners[1]), /^25,00\s€ netto$/);
+  assert.equal(issueAmountText(vorschau.partners[2]), null, "ohne Beträge kein erfundener Betrag");
+  assert.equal(issueAmountText(null), null);
+  assert.equal(RUN_TEXTS.singleTitle, "Gutschrift ausstellen");
+  assert.equal(RUN_TEXTS.singleConfirm, "Gutschrift ausstellen");
+  assert.equal(RUN_TEXTS.singleTitleTest, "Testgutschrift ausstellen");
+  assert.match(RUN_TEXTS.singleText, /nur durch ein Storno korrigieren/);
+  assert.equal(RUN_TEXTS.issuanceDisabled, "Das Ausstellen von Gutschriften ist derzeit abgeschaltet.");
+  for (const t of Object.values(RUN_TEXTS)) assert.doesNotMatch(t, /SALES_PARTNER|_ENABLED|Server/, `Technik im Text: ${t}`);
 });
 
 /* ══════════ Pre-Live: Testlauf ═══════════════════════════════════════════ */

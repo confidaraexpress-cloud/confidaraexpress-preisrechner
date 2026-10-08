@@ -13,13 +13,17 @@
 //      Startwerte bleibt es leer. Obergrenzen sind optional.
 //   5. Kundendetail: Karte „Vertriebspartner-Zuordnung" lädt selbständig.
 //   6. Login sperren/entsperren nach dem exakten Backendvertrag (loginStatus =
-//      users.status: approved → sperren, blocked → entsperren, pending keine Aktion).
+//      users.status: approved → sperren, blocked → entsperren, pending keine Aktion);
+//      abgelehnter Antrag ohne Login-Aktion; Deaktivieren nennt die Folgen (UX-Paket 1).
 //   7. Freigabe mit Startwerten: 10,00 / 5,00 / 2,50 vorbelegt, genau dieser Body.
-//   8. Individuelle Obergrenze: Standardtext, neue Version mit partnerUserId.
+//   8. Individuelle Obergrenze: Standardtext, neue Version mit partnerUserId;
+//      die Bestätigung nennt die Wirkung der Grenze „aller Ebenen zusammen“.
 //   9. Pre-Live: „TEST / PRE-LIVE“ in Liste und Detail; zurückliegende Daten
-//      (Freigabe, Sätze, globale Regeln) nur mit Freigabe des Servers.
-//  10. Pre-Live: Zuordnung Testkunde ↔ Testpartner mit zurückliegendem Datum;
-//      eine Mischung mit einem echten Partner → fester Satz (409).
+//      (Freigabe, Sätze, globale Regeln) nur mit Freigabe des Servers; Sätze erst
+//      nach der Freigabe.
+//  10. Pre-Live: Testkunde im Kundendetail als TEST gekennzeichnet; Zuordnung
+//      Testkunde ↔ Testpartner mit zurückliegendem Datum; eine Mischung mit einem
+//      echten Partner → fester Satz (409).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -143,7 +147,12 @@ async function setup(page, { startDefaults = null, prelive = false } = {}) {
       state.login6 = body.enabled === true ? "approved" : "blocked";
       return json({ ok: true, loginStatus: state.login6 });
     }
-    if (/\/admin\/sales-partners\/[56]\/commissions$/.test(p)) {
+    // Partner 12: abgelehnter Antrag — der Server hat den Login dabei gesperrt.
+    if (p.endsWith("/admin/sales-partners/12") && req.method() === "GET") {
+      const d = detail("pending");
+      return json({ ...d, partner: { ...d.partner, id: 12, name: "Rita Abgelehnt", status: "rejected", loginStatus: "blocked" } });
+    }
+    if (/\/admin\/sales-partners\/(5|6|12)\/commissions$/.test(p)) {
       return json({ month: "2026-10", totals: { accruedCents: 0, payableCents: 0 }, entries: [] });
     }
     if (p.endsWith("/admin/dispatch-evidence/queue")) {
@@ -174,8 +183,9 @@ async function setup(page, { startDefaults = null, prelive = false } = {}) {
       return json({ current: null, history: [] });
     }
     if (p.endsWith("/admin/users/7")) {
+      // Im Pre-Live-Szenario ist Kunde 7 ein Testkunde — gekennzeichnet allein vom Server.
       return json({ user: { id: 7, name: "Max Mustermann", email: "einkauf@muster-logistik.de", company_name: "Muster Logistik GmbH",
-        role: "customer", status: "approved", country: "DE" }, summary: {} });
+        role: "customer", status: "approved", country: "DE", prelive_test: prelive === true }, summary: {} });
     }
     if (p.endsWith("/admin/users/7/sales-partner-attribution")) {
       if (req.method() === "PUT") {
@@ -343,6 +353,7 @@ test("5 — Kundendetail: die Zuordnungskarte lädt selbständig", async () => {
   await page.locator("#adm-sp-attribution-current").waitFor({ state: "visible" });
   assert.match(await page.locator("#adm-sp-attribution").innerText(), /Sam Sponsor/);
   assert.match(await page.locator("#adm-sp-attribution").innerText(), /Empfehlungslink/);
+  assert.equal(await page.locator("#adm-user-test-badge").count(), 0, "ein echter Kunde trägt kein Testkennzeichen");
   await page.close();
 });
 
@@ -356,10 +367,27 @@ test("6 — Login sperren und entsperren nach dem exakten Backendvertrag", async
   assert.equal(await page.locator("#adm-sp-login-off, #adm-sp-login-on").count(), 0);
   assert.equal(await page.locator("#adm-sp-login-unknown").count(), 0);
 
+  // Abgelehnter Antrag (UX-Paket 1): der Login ist gesperrt, aber „Login entsperren“
+  // gibt es nicht — der Server steuert den Login nur für freigegebene Partner.
+  await page.goto(`${BASE}/admin/partners/12`, { waitUntil: "networkidle" });
+  await page.locator("#adm-sp-login").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#adm-sp-login").innerText(), "Login gesperrt");
+  assert.equal(await page.locator("#adm-sp-login-off, #adm-sp-login-on").count(), 0);
+  assert.equal(await page.locator("#adm-sp-rates-none").innerText(), "Für einen abgelehnten Antrag gibt es keine Provisionssätze.");
+  assert.equal(await page.locator("#adm-sp-rates-from").count(), 0);
+
   // Aktiver Partner (approved): sperren → PUT { enabled:false } → „Login gesperrt“.
   await page.goto(`${BASE}/admin/partners/6`, { waitUntil: "networkidle" });
   await page.locator("#adm-sp-login").waitFor({ state: "visible" });
   assert.equal(await page.locator("#adm-sp-login").innerText(), "Login aktiv");
+  // Deaktivieren nennt die echten Folgen — es sperrt den Login nicht (UX-Paket 1).
+  await page.locator("#adm-sp-deactivate").click();
+  await page.locator('[role="dialog"]').waitFor({ state: "visible" });
+  const deaktivieren = await page.locator('[role="dialog"]').innerText();
+  assert.match(deaktivieren, /Ab heute entstehen für diesen Partner keine neuen Provisionen/);
+  assert.match(deaktivieren, /Der Login bleibt aktiv – zum Aussperren zusätzlich „Login sperren“ verwenden\./);
+  await page.locator('[role="dialog"] button', { hasText: "Abbrechen" }).click();
+  await page.locator('[role="dialog"]').waitFor({ state: "detached" });
   await page.locator("#adm-sp-login-off").click();
   await page.locator("#adm-sp-dialog-confirm").click();
   await page.waitForFunction(() => document.querySelector("#adm-sp-login")?.textContent === "Login gesperrt");
@@ -417,7 +445,11 @@ test("8 — individuelle Obergrenze: Standardtext, neue Version mit partnerUserI
   await page.fill("#adm-sp-pcap-total", "30");
   await page.locator("#adm-sp-pcap-submit").click();
   await page.locator('[role="dialog"]').waitFor({ state: "visible" });
-  assert.match(await page.locator('[role="dialog"]').innerText(), /Eigenprovision höchstens Keine Grenze, gesamt höchstens 30,00 %/);
+  // Bewusste Ankeränderung (UX-Paket 1): „aller Ebenen zusammen“ statt „gesamt“, und die
+  // Bestätigung nennt die Wirkung einer überschrittenen Gesamtgrenze.
+  const capDialog = await page.locator('[role="dialog"]').innerText();
+  assert.match(capDialog, /Eigenprovision ohne Grenze, alle Ebenen zusammen höchstens 30,00 %\./);
+  assert.match(capDialog, /Wird der Wert überschritten, entsteht für diese Sendung keine automatische Provision\./);
   await page.locator("#adm-sp-pcap-confirm").click();
   await page.locator('[role="dialog"]').waitFor({ state: "detached" });
   assert.deepEqual(state.caps, [{ validFrom: "2026-10-08", maxOwnRatePercent: null, maxTotalRatePercent: "30.00", partnerUserId: 5 }]);
@@ -445,7 +477,10 @@ test("9 — Pre-Live: Kennzeichnung in Liste und Detail; zurückliegende Daten n
   await page.goto(`${BASE}/admin/partners/42`, { waitUntil: "networkidle" });
   await page.locator("#adm-sp-prelive-badge").waitFor({ state: "visible" });
   assert.equal(await page.locator("#adm-sp-prelive-badge").innerText(), "TEST / PRE-LIVE");
-  assert.equal(await page.getAttribute("#adm-sp-rates-from", "min"), null, "Sätze: zurückliegend erlaubt");
+  // Bewusste Ankeränderung (UX-Paket 1): vor der Freigabe gibt es kein Satzformular —
+  // der Server lehnt neue Sätze für einen Antrag ohnehin ab.
+  assert.equal(await page.locator("#adm-sp-rates-from").count(), 0);
+  assert.equal(await page.locator("#adm-sp-rates-none").innerText(), "Noch keine Provisionssätze – sie werden bei der Freigabe festgelegt.");
   assert.equal(await page.getAttribute("#adm-sp-pcap-from", "min"), null, "Obergrenze: zurückliegend erlaubt");
   await page.locator("#adm-sp-approve").click();
   await page.locator('[role="dialog"]').waitFor({ state: "visible" });
@@ -455,11 +490,17 @@ test("9 — Pre-Live: Kennzeichnung in Liste und Detail; zurückliegende Daten n
   await page.locator("#adm-sp-dialog-confirm").click();
   await page.locator('[role="dialog"]').waitFor({ state: "detached" });
   assert.deepEqual(state.approve42, [{ basePercent: "10.00", level1Percent: "5.00", level2Percent: "2.50", effectiveDate: "2026-03-01" }]);
+  // Nach der Freigabe: Satzformular da, für den Testpartner zurückliegend erlaubt.
+  await page.locator("#adm-sp-rates-from").waitFor({ state: "visible" });
+  assert.equal(await page.getAttribute("#adm-sp-rates-from", "min"), null, "Sätze: zurückliegend erlaubt");
 
-  // Echter Partner: weiterhin „nicht vor heute“, kein Datumsfeld bei der Freigabe.
-  await page.goto(`${BASE}/admin/partners/5`, { waitUntil: "networkidle" });
+  // Echter freigegebener Partner: Sätze weiterhin „nicht vor heute“.
+  await page.goto(`${BASE}/admin/partners/6`, { waitUntil: "networkidle" });
   await page.locator("#adm-sp-rates-from").waitFor({ state: "visible" });
   assert.equal(await page.getAttribute("#adm-sp-rates-from", "min"), "2026-10-07");
+  // Echter Antrag: kein Testkennzeichen, kein Datumsfeld bei der Freigabe.
+  await page.goto(`${BASE}/admin/partners/5`, { waitUntil: "networkidle" });
+  await page.locator("#adm-sp-approve").waitFor({ state: "visible" });
   assert.equal(await page.locator("#adm-sp-prelive-badge").count(), 0);
   await page.locator("#adm-sp-approve").click();
   assert.equal(await page.locator("#adm-sp-approve-date").count(), 0);
@@ -478,6 +519,9 @@ test("10 — Pre-Live: Zuordnung Testkunde ↔ Testpartner zurückliegend; Misch
   await page.clock.setFixedTime(new Date("2026-10-07T10:00:00"));
   const state = await setup(page, { prelive: true });
   await page.goto(`${BASE}/admin/users/7`, { waitUntil: "networkidle" });
+  // Testkunde (UX-Paket 1): das Kundendetail wirkt nicht wie ein echtes Konto.
+  await page.locator("#adm-user-test-badge").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#adm-user-test-badge").innerText(), "TEST / PRE-LIVE");
   await page.locator("#adm-sp-attribution-change").click();
   await page.locator('#adm-sp-attribution-partner option[value="41"]').waitFor({ state: "attached" });
   assert.match(await page.locator('#adm-sp-attribution-partner option[value="41"]').innerText(), /Test Vertrieb A – Test/);

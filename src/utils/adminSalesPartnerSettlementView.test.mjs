@@ -252,8 +252,10 @@ test("10 — Rückmeldungen: Storno mit Hinweis auf erneute Abrechnung, Dokument
 
 test("11 — Partnerdetail: beide Karten, Bodies nur aus den Bausteinen, PDF als Blob-Abruf", () => {
   const seite = ohneKommentare(read("pages/admin/AdminSalesPartnerDetailPage.jsx"));
-  assert.match(seite, /<SalesPartnerBillingDetailsCard partnerId=\{partnerId\} partnerName=\{partnerDisplayName\(p\)\} \/>/);
-  assert.match(seite, /<SalesPartnerCreditNotesCard partnerId=\{partnerId\} \/>/);
+  // UX-Paket 4: „Aktualisieren" lädt beide Karten neu (refreshKey); ihr Zustand
+  // speist den Überblick (onState) — ohne zweiten Abruf, die IBAN bleibt in der Karte.
+  assert.match(seite, /<SalesPartnerBillingDetailsCard partnerId=\{partnerId\} partnerName=\{partnerDisplayName\(p\)\} refreshKey=\{refreshKey\} onState=\{setBilling\} \/>/);
+  assert.match(seite, /<SalesPartnerCreditNotesCard partnerId=\{partnerId\} refreshKey=\{refreshKey\} onState=\{setCreditNotes\} \/>/);
 
   const daten = ohneKommentare(read("components/admin/SalesPartnerBillingDetailsCard.jsx"));
   assert.match(daten, /buildBillingConfirmBody\(data\)/);

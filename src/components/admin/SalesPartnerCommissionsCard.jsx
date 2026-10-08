@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { AdminDisclosureCard, AdminSubDisclosure } from "./AdminDisclosureCard";
 import { returnState } from "../../utils/adminBackLink.mjs";
+import { DETAIL_TEXTS, commissionsSummary, sectionSummary } from "../../utils/adminPartnerDetailView.mjs";
 import {
   createAdminSalesPartnerAdjustment,
   listAdminSalesPartnerCommissions,
@@ -67,8 +69,13 @@ const LEERE_KORREKTUR = { amount: "", reason: "", shipmentId: "" };
    Monatsfilter (der Monat kommt vom Server, keine Uhr), Summen, alle Buchungen
    mit Berechnungsgrundlage, Rücknahme einer Entscheidung (Begründung Pflicht,
    optional neu berechnen) und eine manuelle Korrekturbuchung. Beträge sind die
-   des Servers; die Oberfläche addiert nichts. */
-export function SalesPartnerCommissionsCard({ partnerId }) {
+   des Servers; die Oberfläche addiert nichts.
+
+   UX-Paket 4: eingeklappt, der Kopf nennt die Summen des gewählten Monats; die
+   Korrekturbuchung ist ein eigener eingeklappter Teil. Mobil wird die Tabelle
+   zu Karten (jede Zelle mit ihrer Spaltenbeschriftung). `refreshKey` lädt neu
+   („Aktualisieren" der Seite). */
+export function SalesPartnerCommissionsCard({ partnerId, refreshKey = 0 }) {
   // „Zurück" im Sendungsdetail führt wieder zum Partner (UX-Paket 2).
   const from = returnState(useLocation());
   // Startwert: der laufende Monat aus Sicht des Admins — die Detailantwort
@@ -81,6 +88,7 @@ export function SalesPartnerCommissionsCard({ partnerId }) {
   const [korrektur, setKorrektur] = useState(LEERE_KORREKTUR);
   const [korrekturErrors, setKorrekturErrors] = useState({});
   const [korrekturConfirm, setKorrekturConfirm] = useState(null);
+  const [korrekturOffen, setKorrekturOffen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
   const inFlight = useRef(false);
@@ -107,7 +115,7 @@ export function SalesPartnerCommissionsCard({ partnerId }) {
     }
   }, [partnerId, month]);
 
-  useEffect(() => { load(); return () => { lauf.current += 1; }; }, [load]);
+  useEffect(() => { load(); return () => { lauf.current += 1; }; }, [load, refreshKey]);
 
   const data = state.data;
   const zurueck = reversedDecisionIds(data?.entries || []);
@@ -171,6 +179,7 @@ export function SalesPartnerCommissionsCard({ partnerId }) {
       }
       setKorrekturConfirm(null);
       setKorrektur(LEERE_KORREKTUR);
+      setKorrekturOffen(false);
       setMessage({ type: "success", text: "Die Korrekturbuchung wurde angelegt." });
       load();
     } catch {
@@ -185,9 +194,8 @@ export function SalesPartnerCommissionsCard({ partnerId }) {
   const kFehler = (k) => (korrekturErrors[k] ? <span className="field-error">{korrekturErrors[k]}</span> : null);
 
   return (
-    <div className="adm-card" id="adm-sp-commissions-card">
-      <div className="adm-card-head">Provisionen</div>
-      <div className="adm-card-body">
+    <>
+      <AdminDisclosureCard id="adm-sp-commissions-card" title="Provisionen" summary={sectionSummary(state, commissionsSummary)}>
         {message && (
           <div className={`alert ${message.type === "success" ? "alert-success" : "alert-error"}`} role={message.type === "success" ? "status" : "alert"}>
             {message.text}
@@ -222,7 +230,7 @@ export function SalesPartnerCommissionsCard({ partnerId }) {
         ) : data.entries.length === 0 ? (
           <p className="adm-support-hint">Für {formatMonth(data.month)} liegen keine Buchungen vor.</p>
         ) : (
-          <div className="table-scroll adm-sp-mini-table">
+          <div className="table-scroll adm-sp-mini-table adm-sp-cardtable">
             <table>
               <caption className="sr-only">
                 Provisionsbuchungen {formatMonth(data.month)}: Datum, Ebene, Art, Kunde bzw. Teammitglied, {PARTNER_TEXTS.basisLabel}, Satz, Betrag, auszahlbar, Aktion.
@@ -246,15 +254,15 @@ export function SalesPartnerCommissionsCard({ partnerId }) {
                   return (
                     <React.Fragment key={key}>
                       <tr className={e.type === "accrual" ? undefined : "adm-sp-row-correction"}>
-                        <td>{formatTimestamp(e.entryDate)}</td>
-                        <td>{commissionLevelLabel(e.level)}</td>
-                        <td><TypeBadge type={e.type} />{e.note && <span className="adm-sp-sub adm-sp-block">{e.note}</span>}</td>
-                        <td>{commissionCounterpart(e)}</td>
-                        <td className="adm-num">{formatCents(e.basisCents)}</td>
-                        <td className="adm-num">{formatPercent(e.ratePercent)}</td>
-                        <td className="adm-num">{formatCents(e.amountCents)}</td>
-                        <td>{payableLabel(e)}</td>
-                        <td>
+                        <td data-label="Datum">{formatTimestamp(e.entryDate)}</td>
+                        <td data-label="Ebene">{commissionLevelLabel(e.level)}</td>
+                        <td data-label="Art"><TypeBadge type={e.type} />{e.note && <span className="adm-sp-sub adm-sp-block">{e.note}</span>}</td>
+                        <td data-label="Kunde bzw. Teammitglied">{commissionCounterpart(e)}</td>
+                        <td data-label={PARTNER_TEXTS.basisLabel} className="adm-num">{formatCents(e.basisCents)}</td>
+                        <td data-label="Satz" className="adm-num">{formatPercent(e.ratePercent)}</td>
+                        <td data-label="Betrag" className="adm-num">{formatCents(e.amountCents)}</td>
+                        <td data-label="Auszahlbar">{payableLabel(e)}</td>
+                        <td data-label="Aktion">
                           <div className="adm-sp-row-actions">
                             {(e.decision || e.shipmentId != null) && (
                               <button type="button" className="btn btn-ghost btn-sm" aria-expanded={offen.has(key)}
@@ -284,35 +292,40 @@ export function SalesPartnerCommissionsCard({ partnerId }) {
           </div>
         )}
 
-        <h3 className="adm-sp-subtitle">Korrekturbuchung</h3>
-        <form className="adm-sp-form" onSubmit={korrekturPruefen} noValidate>
-          <div className="adm-edit-field">
-            <label className="adm-edit-label" htmlFor="adm-sp-adjust-amount">Betrag in € (negativ für Abzug)</label>
-            <input id="adm-sp-adjust-amount" className="field-input" type="text" inputMode="decimal" autoComplete="off"
-              value={korrektur.amount} onChange={(e) => setKorrektur((k) => ({ ...k, amount: e.target.value }))}
-              aria-invalid={korrekturErrors.amount ? "true" : undefined} />
-            {kFehler("amount")}
-          </div>
-          <div className="adm-edit-field">
-            <label className="adm-edit-label" htmlFor="adm-sp-adjust-shipment">Sendung (optional)</label>
-            <input id="adm-sp-adjust-shipment" className="field-input" type="text" inputMode="numeric" autoComplete="off"
-              value={korrektur.shipmentId} onChange={(e) => setKorrektur((k) => ({ ...k, shipmentId: e.target.value }))}
-              aria-invalid={korrekturErrors.shipmentId ? "true" : undefined} />
-            {kFehler("shipmentId")}
-          </div>
-          <div className="adm-edit-field adm-sp-form-wide">
-            <label className="adm-edit-label" htmlFor="adm-sp-adjust-reason">Begründung (Pflicht)</label>
-            <input id="adm-sp-adjust-reason" className="field-input" type="text" maxLength={500}
-              value={korrektur.reason} onChange={(e) => setKorrektur((k) => ({ ...k, reason: e.target.value }))}
-              aria-invalid={korrekturErrors.reason ? "true" : undefined} />
-            {kFehler("reason")}
-          </div>
-          {kFehler("partnerUserId")}
-          <div className="adm-sp-form-actions">
-            <button type="submit" className="btn btn-outline btn-sm" id="adm-sp-adjust-submit">Korrektur buchen</button>
-          </div>
-        </form>
-      </div>
+        <div className="adm-sp-folds">
+          <AdminSubDisclosure id="adm-sp-adjust-section" title={DETAIL_TEXTS.adjustmentTitle} open={korrekturOffen}
+            onOpenChange={(offen) => { if (offen) setMessage(null); setKorrekturOffen(offen); }}>
+            <form className="adm-sp-form" onSubmit={korrekturPruefen} noValidate>
+              <div className="adm-edit-field">
+                <label className="adm-edit-label" htmlFor="adm-sp-adjust-amount">Betrag in € (Pflicht, negativ für Abzug)</label>
+                <input id="adm-sp-adjust-amount" className="field-input" type="text" inputMode="decimal" autoComplete="off"
+                  value={korrektur.amount} onChange={(e) => setKorrektur((k) => ({ ...k, amount: e.target.value }))}
+                  aria-required="true" aria-invalid={korrekturErrors.amount ? "true" : undefined} />
+                {kFehler("amount")}
+              </div>
+              <div className="adm-edit-field">
+                <label className="adm-edit-label" htmlFor="adm-sp-adjust-shipment">Sendung (optional)</label>
+                <input id="adm-sp-adjust-shipment" className="field-input" type="text" inputMode="numeric" autoComplete="off"
+                  value={korrektur.shipmentId} onChange={(e) => setKorrektur((k) => ({ ...k, shipmentId: e.target.value }))}
+                  aria-invalid={korrekturErrors.shipmentId ? "true" : undefined} />
+                {kFehler("shipmentId")}
+              </div>
+              <div className="adm-edit-field adm-sp-form-wide">
+                <label className="adm-edit-label" htmlFor="adm-sp-adjust-reason">Begründung (Pflicht)</label>
+                <input id="adm-sp-adjust-reason" className="field-input" type="text" maxLength={500}
+                  value={korrektur.reason} onChange={(e) => setKorrektur((k) => ({ ...k, reason: e.target.value }))}
+                  aria-required="true" aria-invalid={korrekturErrors.reason ? "true" : undefined} />
+                {kFehler("reason")}
+              </div>
+              {kFehler("partnerUserId")}
+              <p className="adm-edit-hint adm-sp-form-wide" id="adm-sp-adjust-effect">{DETAIL_TEXTS.adjustmentEffect}</p>
+              <div className="adm-sp-form-actions">
+                <button type="submit" className="btn btn-outline btn-sm" id="adm-sp-adjust-submit">Korrektur buchen</button>
+              </div>
+            </form>
+          </AdminSubDisclosure>
+        </div>
+      </AdminDisclosureCard>
 
       {reverse && (
         <ConfirmDialog
@@ -357,7 +370,7 @@ export function SalesPartnerCommissionsCard({ partnerId }) {
           onConfirm={korrekturSenden}
         />
       )}
-    </div>
+    </>
   );
 }
 

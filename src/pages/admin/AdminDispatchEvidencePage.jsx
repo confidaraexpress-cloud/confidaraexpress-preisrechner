@@ -20,8 +20,11 @@ import { formatCount } from "../../utils/salesPartnerView.mjs";
 import {
   EVIDENCE_DECISION_OPTIONS,
   EVIDENCE_TYPE_OPTIONS,
-  adminActionErrorText,
+  MAX_EVIDENCE_NOTE_LENGTH,
   buildDispatchEvidenceBody,
+  dispatchEvidenceErrorOutcome,
+  evidenceDecisionEffect,
+  evidenceDecisionSummary,
   evidenceSourceLabel,
   evidenceStatusMeta,
   evidenceTrackingText,
@@ -43,6 +46,7 @@ function Badge({ meta }) {
 }
 
 const shipmentPath = (id) => `/admin/shipments/${encodeURIComponent(id)}`;
+const anbieterText = (item) => `${providerLabel(item.provider)} · ${item.carrier ? resolveCarrierName(item.carrier) : "—"}`;
 
 function TrackingCell({ item }) {
   return (
@@ -54,20 +58,22 @@ function TrackingCell({ item }) {
   );
 }
 
-// Bisherige Entscheidungen zu einer Sendung — read-only im Dialog.
+// Bisherige Entscheidungen zu einer Sendung — read-only im Dialog, die geltende zuerst.
 function EvidenceHistory({ state }) {
   if (state.loading) return <p className="adm-support-hint" role="status">Bisherige Nachweise werden geladen …</p>;
   if (state.error) return <p className="adm-support-hint">{state.error}</p>;
-  const liste = [state.data?.current, ...(state.data?.history || [])].filter(Boolean);
-  if (liste.length === 0) return <p className="adm-support-hint">Bisher kein Nachweis erfasst.</p>;
+  const aktuell = state.data?.current || null;
+  const liste = [aktuell, ...(state.data?.history || []).filter((e) => !aktuell || e.id !== aktuell.id)].filter(Boolean);
+  if (liste.length === 0) return <p className="adm-support-hint" id="adm-sp-evidence-none">Bisher kein Nachweis erfasst.</p>;
   return (
-    <ul className="adm-sp-history">
+    <ul className="adm-sp-history" id="adm-sp-evidence-history">
       {liste.map((e, i) => (
         <li key={e.id ?? i} className="adm-sp-history-line">
           <Badge meta={evidenceStatusMeta(e.status)} />
+          {e === aktuell && <span className="adm-sp-sub">gilt derzeit</span>}
           {e.dispatchDate && <span>Versanddatum {formatTimestamp(e.dispatchDate)}</span>}
           <span className="adm-sp-sub">{evidenceSourceLabel(e.source)}</span>
-          {e.evidenceType && <span className="adm-sp-sub">{evidenceTypeLabel(e.evidenceType)}</span>}
+          {e.evidenceType && e.evidenceType !== "admin_decision" && <span className="adm-sp-sub">{evidenceTypeLabel(e.evidenceType)}</span>}
           {e.note && <span className="adm-sp-sub">{e.note}</span>}
           <span className="adm-sp-sub">{formatTimestamp(e.createdAt, { withTime: true })}</span>
         </li>
@@ -77,11 +83,18 @@ function EvidenceHistory({ state }) {
 }
 
 /* ── Admin · Versandnachweise ────────────────────────────────────────────────
-   Queue „Versandnachweis fehlt": gebuchte Sendungen ohne belegten Versand.
-   Je Sendung eine Entscheidung per Dialog — „Versendet" (Pflicht: Datum, nicht
-   in der Zukunft, und Nachweisart), „Nicht versendet" oder „Ungeklärt", jeweils
-   mit Begründung. Kein Anbieterkontakt; die Seite hält nur fest, was ein
-   Mensch festgestellt hat. */
+   Queue „Versandnachweis fehlt": gebuchte Sendungen von Kunden mit
+   Partnerzuordnung ohne belegten Versand. Je Sendung eine Entscheidung per
+   Dialog — „Versendet" (Pflicht: Datum, nicht in der Zukunft, und
+   Nachweisart), „Nicht versendet" oder „Ungeklärt", jeweils mit Begründung.
+   Kein Anbieterkontakt; die Seite hält nur fest, was ein Mensch festgestellt
+   hat.
+
+   Der Dialog folgt dem Ablauf (UX-Paket 5): betroffene Sendung, vorhandene
+   Nachweise, Versandstatus, Entscheidung mit ihrer Wirkung, Begründung und vor dem
+   Speichern die Zusammenfassung dessen, was festgehalten wird. Fehler des
+   Servers stehen am betroffenen Feld; hat sich der Stand bewegt (Sendung nicht
+   mehr gebucht, Provisionsentscheidung vorhanden), lädt die Liste neu. */
 export default function AdminDispatchEvidencePage() {
   // Nur für den Eintrag „Pre-Live-Test" der Teilnavigation (fail-closed).
   const prelive = usePreliveStatus();
@@ -96,7 +109,7 @@ export default function AdminDispatchEvidencePage() {
   const [dialog, setDialog] = useState(null);      // { item, form, errors, error }
   const [historie, setHistorie] = useState({ loading: false, error: "", data: null });
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState(null);
+  const [message, setMessage] = useState(null);    // { type, text }
   const inFlight = useRef(false);
   const heute = localIsoDate();
 
@@ -160,7 +173,14 @@ export default function AdminDispatchEvidencePage() {
         if (r.status === 401 || r.status === 403) return;
         let body = null;
         try { body = await r.json(); } catch { body = null; }
-        setDialog((d) => (d ? { ...d, error: adminActionErrorText(r.status, body) } : d));
+        const folge = dispatchEvidenceErrorOutcome(r.status, body);
+        if (folge.reload) {
+          setDialog(null);
+          setMessage({ type: "error", text: folge.text });
+          load();
+          return;
+        }
+        setDialog((d) => (d ? { ...d, error: folge.text, errors: folge.field ? { ...d.errors, [folge.field]: folge.text } : d.errors } : d));
         return;
       }
       const sendung = dialog.item.shipmentId;
@@ -175,20 +195,28 @@ export default function AdminDispatchEvidencePage() {
     }
   };
 
-  const fehler = (k) => (dialog?.errors?.[k] ? <span className="field-error">{dialog.errors[k]}</span> : null);
+  const fehlerId = (k) => `adm-sp-evidence-${k}-error`;
+  const fehler = (k) => (dialog?.errors?.[k] ? <span className="field-error" id={fehlerId(k)}>{dialog.errors[k]}</span> : null);
+  const beschrieben = (k, hinweis) => [dialog?.errors?.[k] ? fehlerId(k) : null, hinweis].filter(Boolean).join(" ") || undefined;
   const showPagination = !error && (rows.length > 0 || page > 1);
+  const zusammenfassung = dialog ? evidenceDecisionSummary(dialog.form) : null;
 
   return (
     <div className="adm-page">
       <PageHeader
         variant="admin"
         title={<>Versandnachweise</>}
-        subtitle={<>Gebuchte Sendungen ohne belegten Versand. Jede Entscheidung wird protokolliert; ein Anbieter wird dabei nicht kontaktiert.</>}
+        subtitle={<>Gebuchte Sendungen von Kunden mit Partnerzuordnung, deren Versand noch nicht belegt ist. Ohne den Nachweis „Versendet“ entsteht keine Provision.</>}
         actions={<button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>Aktualisieren</button>}
       />
       <SalesPartnerAdminNav prelive={prelive} />
 
-      {message && <div className="alert alert-success" role="status">{message.text}</div>}
+      {message && (
+        <div className={`alert ${message.type === "success" ? "alert-success" : "alert-error"}`}
+          role={message.type === "success" ? "status" : "alert"} id="adm-sp-evidence-message">
+          {message.text}
+        </div>
+      )}
 
       {loading ? (
         <div className="table-card"><ListSkeleton rows={6} label="Versandnachweise werden geladen …" /></div>
@@ -226,14 +254,15 @@ export default function AdminDispatchEvidencePage() {
                 {rows.map((item) => (
                   <tr key={item.shipmentId} data-shipment-id={item.shipmentId}>
                     <td><Link className="adm-sp-name" to={shipmentPath(item.shipmentId)} state={from}>Sendung #{item.shipmentId}</Link></td>
-                    <td>{providerLabel(item.provider)} · {item.carrier ? resolveCarrierName(item.carrier) : "—"}</td>
+                    <td>{anbieterText(item)}</td>
                     <td>{formatTimestamp(item.bookedAt, { withTime: true })}</td>
                     <td className="adm-num">{formatCount(item.packageCount)}</td>
                     <td><TrackingCell item={item} /></td>
                     <td>{item.cancellationStatus ? <Badge meta={cancellationStatusMeta(item.cancellationStatus)} /> : "—"}</td>
                     <td><Badge meta={evidenceStatusMeta(item.evidenceStatus)} /></td>
                     <td className="adm-col-action">
-                      <button type="button" className="btn btn-outline btn-sm" id={`adm-sp-evidence-${item.shipmentId}`} onClick={() => oeffnen(item)}>
+                      <button type="button" className="btn btn-outline btn-sm" id={`adm-sp-evidence-${item.shipmentId}`} onClick={() => oeffnen(item)}
+                        aria-label={`Versand entscheiden: Sendung #${item.shipmentId}`}>
                         Entscheiden
                       </button>
                     </td>
@@ -251,14 +280,15 @@ export default function AdminDispatchEvidencePage() {
                   <Badge meta={evidenceStatusMeta(item.evidenceStatus)} />
                 </div>
                 <dl className="adm-scard-kv">
-                  <div><dt>Anbieter · Carrier</dt><dd>{providerLabel(item.provider)} · {item.carrier ? resolveCarrierName(item.carrier) : "—"}</dd></div>
+                  <div><dt>Anbieter · Carrier</dt><dd>{anbieterText(item)}</dd></div>
                   <div><dt>Gebucht</dt><dd>{formatTimestamp(item.bookedAt, { withTime: true })}</dd></div>
                   <div><dt>Pakete</dt><dd>{formatCount(item.packageCount)}</dd></div>
                   <div><dt>Letzter Trackingstand</dt><dd><TrackingCell item={item} /></dd></div>
                   <div><dt>Storno</dt><dd>{item.cancellationStatus ? <Badge meta={cancellationStatusMeta(item.cancellationStatus)} /> : "—"}</dd></div>
                 </dl>
                 <div className="adm-scard-actions">
-                  <button type="button" className="btn btn-outline btn-sm" onClick={() => oeffnen(item)}>Entscheiden</button>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => oeffnen(item)}
+                    aria-label={`Versand entscheiden: Sendung #${item.shipmentId}`}>Entscheiden</button>
                 </div>
               </li>
             ))}
@@ -278,23 +308,60 @@ export default function AdminDispatchEvidencePage() {
         <ConfirmDialog
           title="Versand entscheiden"
           subline={`Sendung #${dialog.item.shipmentId}`}
-          text="Halten Sie fest, was Sie zum Versand dieser Sendung festgestellt haben. Die Begründung ist Pflicht."
-          note="Die Entscheidung wird protokolliert."
+          text="Prüfen Sie Sendung und vorhandene Nachweise und halten Sie dann fest, was Sie zum Versand festgestellt haben."
           confirmLabel="Entscheidung speichern"
           busy={busy}
           confirmId="adm-sp-evidence-confirm"
           onCancel={() => { if (!busy) setDialog(null); }}
           onConfirm={senden}
         >
-          {dialog.error && <div className="alert alert-error" role="alert">{dialog.error}</div>}
-          <fieldset className="adm-sp-fieldset">
-            <legend className="adm-edit-label">Entscheidung</legend>
+          {dialog.error && <div className="alert alert-error" role="alert" id="adm-sp-evidence-error">{dialog.error}</div>}
+
+          <section className="adm-ev-section" aria-labelledby="adm-sp-evidence-shipment-title">
+            <h3 className="adm-ev-title" id="adm-sp-evidence-shipment-title">Sendung</h3>
+            <dl className="adm-kv adm-ev-kv" id="adm-sp-evidence-shipment">
+              <div className="adm-kv-item"><dt>Anbieter · Carrier</dt><dd>{anbieterText(dialog.item)}</dd></div>
+              <div className="adm-kv-item"><dt>Gebucht</dt><dd>{formatTimestamp(dialog.item.bookedAt, { withTime: true })}</dd></div>
+              <div className="adm-kv-item"><dt>Pakete</dt><dd>{formatCount(dialog.item.packageCount)}</dd></div>
+              {dialog.item.trackingReferences.length > 0 && (
+                <div className="adm-kv-item"><dt>Sendungsnummern</dt><dd className="adm-mono">{dialog.item.trackingReferences.join(", ")}</dd></div>
+              )}
+            </dl>
+          </section>
+
+          <section className="adm-ev-section" aria-labelledby="adm-sp-evidence-history-title">
+            <h3 className="adm-ev-title" id="adm-sp-evidence-history-title">Vorhandene Nachweise</h3>
+            <EvidenceHistory state={historie} />
+          </section>
+
+          <section className="adm-ev-section" aria-labelledby="adm-sp-evidence-status-title">
+            <h3 className="adm-ev-title" id="adm-sp-evidence-status-title">Versandstatus</h3>
+            <dl className="adm-kv adm-ev-kv" id="adm-sp-evidence-tracking">
+              <div className="adm-kv-item">
+                <dt>Letzter Trackingstand</dt>
+                <dd>
+                  {evidenceTrackingText(dialog.item)}
+                  {dialog.item.lastTrackedAt && <span className="adm-sp-sub adm-sp-block">{formatTimestamp(dialog.item.lastTrackedAt, { withTime: true })}</span>}
+                </dd>
+              </div>
+              {dialog.item.cancellationStatus && (
+                <div className="adm-kv-item"><dt>Storno</dt><dd><Badge meta={cancellationStatusMeta(dialog.item.cancellationStatus)} /></dd></div>
+              )}
+            </dl>
+          </section>
+
+          <fieldset className="adm-sp-fieldset" aria-describedby={dialog.errors.status ? fehlerId("status") : undefined}>
+            <legend className="adm-edit-label">Entscheidung (Pflicht)</legend>
             {EVIDENCE_DECISION_OPTIONS.map((o) => (
-              <label className="adm-sp-choice" key={o.value}>
+              <label className="adm-sp-choice adm-ev-choice" key={o.value}>
                 <input type="radio" name="adm-sp-evidence-status" id={`adm-sp-evidence-status-${o.value}`}
                   checked={dialog.form.status === o.value} disabled={busy}
+                  aria-describedby={`adm-sp-evidence-effect-${o.value}`}
                   onChange={() => setFeld("status", o.value)} />
-                {o.label}
+                <span className="adm-ev-choice-text">
+                  <span>{o.label}</span>
+                  <span className="adm-edit-hint" id={`adm-sp-evidence-effect-${o.value}`}>{evidenceDecisionEffect(o.value)}</span>
+                </span>
               </label>
             ))}
             {fehler("status")}
@@ -302,15 +369,15 @@ export default function AdminDispatchEvidencePage() {
           {dialog.form.status === "dispatched" && (
             <>
               <div className="adm-sp-datefield">
-                <DateField id="adm-sp-evidence-date" label="Versanddatum (Pflicht)" value={dialog.form.dispatchDate} max={heute}
+                <DateField id="adm-sp-evidence-date" label="Versanddatum (Pflicht)" value={dialog.form.dispatchDate} max={heute} required
                   invalid={!!dialog.errors.dispatchDate} disabled={busy} onChange={(v) => setFeld("dispatchDate", v)} />
                 {fehler("dispatchDate")}
               </div>
               <div className="adm-edit-field">
                 <label className="adm-edit-label" htmlFor="adm-sp-evidence-type">Nachweisart (Pflicht)</label>
                 <select id="adm-sp-evidence-type" className="field-select adm-edit-select" value={dialog.form.evidenceType}
-                  disabled={busy} onChange={(e) => setFeld("evidenceType", e.target.value)}
-                  aria-invalid={dialog.errors.evidenceType ? "true" : undefined}>
+                  disabled={busy} onChange={(e) => setFeld("evidenceType", e.target.value)} aria-required="true"
+                  aria-invalid={dialog.errors.evidenceType ? "true" : undefined} aria-describedby={beschrieben("evidenceType")}>
                   <option value="">Bitte wählen</option>
                   {EVIDENCE_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
@@ -320,13 +387,15 @@ export default function AdminDispatchEvidencePage() {
           )}
           <div className="adm-edit-field">
             <label className="adm-edit-label" htmlFor="adm-sp-evidence-note">Begründung (Pflicht)</label>
-            <textarea id="adm-sp-evidence-note" className="adm-note-input" maxLength={1000} disabled={busy}
-              value={dialog.form.note} onChange={(e) => setFeld("note", e.target.value)}
-              aria-invalid={dialog.errors.note ? "true" : undefined} />
+            <textarea id="adm-sp-evidence-note" className="adm-note-input" maxLength={MAX_EVIDENCE_NOTE_LENGTH} disabled={busy}
+              value={dialog.form.note} onChange={(e) => setFeld("note", e.target.value)} aria-required="true"
+              aria-invalid={dialog.errors.note ? "true" : undefined} aria-describedby={beschrieben("note", "adm-sp-evidence-note-hint")} />
+            <span className="adm-edit-hint" id="adm-sp-evidence-note-hint">{`Höchstens ${MAX_EVIDENCE_NOTE_LENGTH} Zeichen.`}</span>
             {fehler("note")}
           </div>
-          <h3 className="adm-sp-subtitle">Bisherige Nachweise</h3>
-          <EvidenceHistory state={historie} />
+
+          {zusammenfassung && <p className="adm-ev-summary" id="adm-sp-evidence-summary" aria-live="polite">{zusammenfassung}</p>}
+          <p className="adm-support-hint adm-ev-note">Die Entscheidung wird protokolliert. Ein Versanddienstleister wird nicht kontaktiert.</p>
         </ConfirmDialog>
       )}
     </div>

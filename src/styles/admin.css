@@ -1643,3 +1643,102 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
   border-radius: var(--ce-radius-sm);
   background: var(--ce-color-surface);
 }
+
+/* ── Gutschriften, Versandnachweise, Pre-Live (UX-Paket 5) ───────────────────
+   Gutschriften: Zählung je Status und nächster Schritt (Hinweisfläche wie im
+   Partnerdetail), je Zeile was fehlt und wohin es führt. Versandnachweis:
+   der Dialog in Abschnitten — Sendung, vorhandene Nachweise, Versandstatus,
+   Entscheidung mit Wirkung, Begründung, Zusammenfassung. Pre-Live: der
+   Testablauf als nummerierte Schrittfolge; die Nummer ist reine Gestaltung
+   (die <ol> trägt die Reihenfolge für Hilfstechnik). */
+.adm-cn-counts { margin-top: var(--ce-space-4); }
+.adm-cn-counts + .adm-kv { margin-top: var(--ce-space-3); }
+.adm-cn-step { display: block; margin-top: 2px; }
+.adm-cn-note-hint { margin: var(--ce-space-1) 0 0; }
+
+.adm-ev-section { display: flex; flex-direction: column; gap: var(--ce-space-2); min-width: 0; }
+.adm-ev-title {
+  margin: 0;
+  font-size: var(--ce-text-label-size);
+  font-weight: 600;
+  line-height: var(--ce-text-label-line);
+  color: var(--ce-color-text-secondary);
+}
+.adm-ev-kv { margin: 0; }
+.adm-ev-choice { align-items: flex-start; }
+.adm-ev-choice > input { margin-top: 3px; flex: none; }
+.adm-ev-choice-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adm-ev-summary {
+  margin: 0;
+  padding: var(--ce-space-2) var(--ce-space-3);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-surface-subtle);
+  font-size: var(--ce-text-body-s-size);
+  font-weight: 600;
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-primary);
+}
+.adm-ev-note { margin: 0; }
+
+.adm-pl-warning-text { display: flex; flex-direction: column; gap: var(--ce-space-1); min-width: 0; }
+.adm-pl-warning-text > :first-child { font-weight: 600; }
+.adm-pl-flow-intro { margin-top: 0; }
+.adm-pl-steps { list-style: none; margin: var(--ce-space-4) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--ce-space-4); }
+.adm-pl-step { display: flex; align-items: flex-start; gap: var(--ce-space-3); min-width: 0; }
+.adm-pl-step + .adm-pl-step { padding-top: var(--ce-space-4); border-top: 1px solid var(--ce-color-border-subtle); }
+.adm-pl-step-no {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-brand-soft);
+  color: var(--ce-color-brand-ink);
+  font-size: var(--ce-text-label-size);
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+.adm-pl-step-body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--ce-space-1); flex: 1 1 auto; min-width: 0; }
+.adm-pl-step-title {
+  margin: 0;
+  font-size: var(--ce-text-body-size);
+  font-weight: 600;
+  line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-primary);
+}
+.adm-pl-step-text { margin: 0; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); }
+.adm-pl-step-link { max-width: 100%; min-width: 0; }
+.adm-pl-step-note { align-self: stretch; }
+.adm-pl-step-list { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ce-space-1) var(--ce-space-3); }
+/* Namen in der Schrittfolge in der Größe des Schritttexts, nicht größer als er. */
+.adm-pl-step-list a { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); }
+.adm-pl-step-action { align-self: flex-start; }
+.adm-pl-tools-note { margin: 0; }
+.adm-pl-fold-note { margin: 0 0 var(--ce-space-3); }
+.adm-pl-table-label { display: block; }
+.adm-pl-table-key { display: block; }
+/* Testsendungen: Nummer in einer Zeile, Aktionen untereinander — so passt die
+   Tabelle auch auf Tabletbreite in die Karte, kein Knopf liegt außerhalb. */
+.adm-pl-ref { white-space: nowrap; }
+.adm-pl-shipments-table .adm-sp-row-actions { flex-direction: column; align-items: stretch; }
+/* „Stand" einer Testsendung: Versand, Zahlung, Provision untereinander, je mit Beschriftung. */
+.adm-pl-progress { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--ce-space-1) var(--ce-space-3); margin: 0; }
+.adm-pl-progress > div { display: contents; }
+.adm-pl-progress dt { font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
+.adm-pl-progress dd { margin: 0; min-width: 0; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-primary); }
+
+@media (max-width: 900px) {
+  /* Eigenständige Sprunglinks (nicht im Fließtext) bekommen die volle Trefferfläche. */
+  a.adm-cn-step,
+  .adm-pl-links a { display: inline-flex; align-items: center; min-height: var(--ce-size-touch-target); }
+}
+@media (max-width: 640px) {
+  /* Zählungen zweispaltig statt untereinander. */
+  .adm-cn-counts,
+  .adm-pl-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ce-space-3) var(--ce-space-4); }
+}

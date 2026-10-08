@@ -38,6 +38,7 @@
 
 import { EMAIL_RE } from "./registrationValidation.mjs";
 import { normalizeReferralCode } from "./referralCapture.mjs";
+import { partnerRegistrationMode } from "./salesPartnerPublicConfig.mjs";
 import { adminActionErrorText, formatTimestamp, isIsoDate } from "./adminSalesPartnerView.mjs";
 import { formatCents, formatCount, statusMetaFrom } from "./salesPartnerView.mjs";
 
@@ -68,16 +69,22 @@ export const MAX_PACKAGES = 9999;
 export const PRELIVE_TEXTS = Object.freeze({
   title: "Pre-Live-Testmodus",
   pageWarning: "Pre-Live-Testmodus aktiv – nur für interne Tests. Testdaten sind gekennzeichnet und werden vor dem Livegang bereinigt.",
+  // Was im Testbetrieb nie entsteht (UX-Paket 5) — Zusagen aus dem Vertrag des
+  // Servers: Testsendung ohne Provider, Testzahlung ohne Geld, Testgutschrift
+  // mit Wasserzeichen, Versandschutz für Mails an Testkonten (lib/mailGuard.js).
+  pageSafety: "Es entsteht keine echte Buchung, Zahlung, Auszahlung oder steuerlich gültige Gutschrift. E-Mails an Testkonten werden zurückgehalten – außer an Adressen der internen Ausnahmeliste.",
   disabled: "Der Pre-Live-Testmodus ist nicht aktiv. Testkonten, Testsendungen und Testläufe stehen nur bei aktivem Modus zur Verfügung.",
   disabledAction: "Der Pre-Live-Testmodus ist nicht aktiv. Es wurde nichts angelegt oder geändert.",
   statusError: "Der Stand des Pre-Live-Testmodus konnte nicht geladen werden.",
   accountsError: "Die Testkonten konnten nicht geladen werden.",
   shipmentsError: "Die Testsendungen konnten nicht geladen werden.",
   shipmentNote: "Testsendung: keine Buchung beim Versanddienstleister, kein Label.",
+  customerCodeNote: "Mit dem Empfehlungscode eines aktiven Testpartners entsteht die Zuordnung wie über seinen Kundenlink.",
+  customerNoLogin: "Testkunden melden sich nicht an; sie dienen der Zuordnung und den Testsendungen.",
   mailPreviewNote: "Vorschau – es wird keine E-Mail versendet.",
   passwordLinkHint: "Link gilt 15 Minuten, einmalig. Öffnen Sie ihn in einem privaten Fenster, um das Passwort des Testkontos zu setzen.",
   passwordLinkError: "Der Passwort-Link konnte nicht erzeugt werden.",
-  commissionRunLabel: "Provisionslauf jetzt (nur Testdaten)",
+  commissionRunLabel: "Provisionen jetzt berechnen (nur Testdaten)",
   commissionRunBusy: "Ein Lauf ist gerade aktiv – bitte erneut versuchen",
   commissionRunConnection: "Die Verbindung wurde unterbrochen. Ob der Lauf ausgeführt wurde, zeigt der neu geladene Stand.",
   cleanupConfirmTitle: "Alle Pre-Live-Testdaten endgültig löschen?",
@@ -174,6 +181,78 @@ export function testPartnerNameById(partners, id) {
 export const isTestCustomer = (accounts, userId) => !!accounts && arr(accounts.customers).some((c) => sameId(c.id, userId));
 /** Ist dieses Partnerkonto ein Testpartner (laut Kontenliste des Servers)? */
 export const isTestPartner = (accounts, userId) => !!accounts && arr(accounts.partners).some((p) => sameId(p.id, userId));
+
+// ── Testablauf (UX-Paket 5) ─────────────────────────────────────────────────
+// Der Pre-Live-Bereich zeigt den echten Ende-zu-Ende-Ablauf als Schrittfolge.
+// Hauptweg ist die öffentliche Registrierung: im Pre-Live-Testweg legt der
+// Server jeden Antrag als Testpartner an (config registrationPath). Ob dieser
+// Weg gerade offen ist, sagt allein die öffentliche Konfiguration des Servers
+// (`registrationMode`) — dieselbe Entscheidung, die das Formular selbst trifft
+// (partnerRegistrationMode). Ein echter Bewerber wird nie als Test eingestuft,
+// und die Oberfläche leitet einen Test nie aus E-Mail oder Name ab.
+//
+// „Kundenlink benutzen": der öffentliche Kundenlink ordnet einem Testpartner
+// bewusst keinen Kunden zu (die öffentliche Registrierung legt ein echtes Konto
+// an; lib/salesPartner/referralRegistration.js). Im Test entsteht dieselbe
+// Zuordnung über einen Testkunden mit dem Empfehlungscode des Testpartners
+// (Quelle „Empfehlungslink", lib/salesPartner/prelive.js createTestCustomer).
+
+/** Öffentliche Route der Partnerregistrierung (App.jsx). */
+export const PRELIVE_REGISTRATION_PATH = "/partner-registrieren";
+
+export const PRELIVE_FLOW_STEPS = Object.freeze([
+  Object.freeze({ key: "register", title: "Partner öffentlich registrieren" }),
+  Object.freeze({ key: "approve", title: "Im Admin freigeben" }),
+  Object.freeze({ key: "login", title: "Als Partner anmelden" }),
+  Object.freeze({ key: "customerLink", title: "Kundenlink benutzen" }),
+  Object.freeze({ key: "assign", title: "Testkunden zuordnen" }),
+  Object.freeze({ key: "shipment", title: "Testsendung und Versandnachweis erzeugen" }),
+  Object.freeze({ key: "commissions", title: "Provisionen prüfen" }),
+  Object.freeze({ key: "creditNote", title: "Testgutschrift prüfen" }),
+  Object.freeze({ key: "cleanup", title: "Testdaten kontrolliert bereinigen" }),
+]);
+
+export const PRELIVE_FLOW_TEXTS = Object.freeze({
+  title: "Testablauf",
+  intro: "Der Hauptweg führt durch die echten Abläufe – von der öffentlichen Registrierung bis zur Testgutschrift. Alles, was dabei entsteht, ist als Test gekennzeichnet.",
+  registerTest: "Die öffentliche Registrierung legt derzeit Testanträge an. Öffnen Sie den Link in einem privaten Fenster und registrieren Sie sich wie ein echter Bewerber.",
+  registerTeam: "Für einen Teamtest den Partnerlink eines aktiven Testpartners verwenden – der neue Testpartner gehört nach der Freigabe zu dessen Team.",
+  registerProduction: "Achtung: Die öffentliche Registrierung ist für echte Bewerber geöffnet. Ein Antrag darüber wäre echt, kein Test. Legen Sie Testpartner stattdessen unter „Testkonten“ an.",
+  registerClosed: "Die öffentliche Registrierung ist derzeit geschlossen; Testanträge entstehen darüber nicht. Legen Sie Testpartner stattdessen unter „Testkonten“ an.",
+  registerUnknown: "Ob die öffentliche Registrierung Testanträge anlegt, ließ sich nicht prüfen. Bitte laden Sie die Seite neu.",
+  registerLoading: "Der Registrierungsweg wird geprüft …",
+  registerLinkLabel: "Registrierungslink",
+  approve: "Testanträge stehen mit dem Kennzeichen TEST / PRE-LIVE als „In Prüfung“ in der Partnerliste. Freigegeben wird über die normale Partnerseite; bei Testpartnern darf das Datum der Freigabe zurückliegen.",
+  approvePending: "Offene Testanträge:",
+  approveNone: "Derzeit wartet kein Testantrag auf die Freigabe.",
+  login: "In einem privaten Fenster mit E-Mail-Adresse und eigenem Passwort anmelden. Für einen hier angelegten Testpartner erzeugt „Passwort-Link“ unter „Testkonten“ einen einmaligen Link.",
+  customerLink: "Der öffentliche Kundenlink ordnet einem Testpartner keinen Kunden zu, denn die öffentliche Registrierung legt immer ein echtes Kundenkonto an. Legen Sie stattdessen einen Testkunden mit dem Empfehlungscode des Testpartners an – die Zuordnung entsteht wie über den Link.",
+  assign: "Die Zuordnung entsteht beim Anlegen des Testkunden – über den Empfehlungscode oder die Auswahl des Testpartners; „Zugeordnet seit“ darf zurückliegen. Sie steht in der Liste der Testkunden.",
+  shipment: "Testsendung anlegen (keine Buchung beim Versanddienstleister, kein Label), dann „Versand belegen“ und „Als bezahlt markieren“. Versandtag und Zahlung dürfen zurückliegen.",
+  commissions: "„Provisionen jetzt berechnen“ entscheidet die Provisionen der Testsendungen sofort. Das Ergebnis steht beim Testpartner unter „Provisionen“.",
+  commissionsPartners: "Provisionen ansehen:",
+  creditNote: "Unter „Gutschriften“ mit eingeschaltetem „Pre-Live-Testlauf“ einen abgeschlossenen Monat abrechnen. Testgutschriften sind nicht steuerlich gültig; es wird nichts ausgezahlt und keine E-Mail versendet. Voraussetzung: bestätigte Abrechnungsdaten des Testpartners.",
+  cleanup: "Erst der Probelauf zeigt, was gelöscht würde; gelöscht wird nur nach Ihrer Bestätigung.",
+  toolsTitle: "Zusätzliche Testwerkzeuge",
+  toolsNote: "Sie ergänzen den Hauptweg, ersetzen aber nicht den öffentlichen Ablauf.",
+  partnerToolTitle: "Testpartner anlegen (zusätzliches Testwerkzeug)",
+  partnerToolNote: "Ersetzt nicht die öffentliche Registrierung. Geeignet für Tests ohne den öffentlichen Ablauf, etwa für Sponsorketten.",
+});
+
+/** Registrierungsweg laut öffentlicher Konfiguration des Servers.
+ *  `result`: Ergebnis von loadSalesPartnerPublicConfig() ({ ok, config }) oder
+ *  null, solange es lädt. → "loading" | "unknown" | "prelive_test" | "production" | "closed".
+ *  Fail-closed: ohne lesbare Antwort ist der Weg unbekannt — nie ein Testweg. */
+export function preliveRegistrationState(result) {
+  if (!result || typeof result !== "object") return "loading";
+  if (result.ok !== true || !result.config) return "unknown";
+  return partnerRegistrationMode(result.config);
+}
+
+/** Testanträge, die auf die Freigabe warten (laut Kontenliste des Servers). */
+export const pendingTestPartners = (accounts) => arr(accounts && accounts.partners).filter((p) => p.status === "pending");
+/** Freigegebene, aktive Testpartner (laut Kontenliste des Servers). */
+export const activeTestPartners = (accounts) => arr(accounts && accounts.partners).filter((p) => p.status === "active");
 
 export const INPUT = Object.freeze({
   nameRequired: "Bitte einen Namen angeben.",
@@ -623,6 +702,34 @@ export function normalizeCleanupDryRun(raw) {
     nothingToDelete: d.nothingToDelete === true,
   };
 }
+
+// Lesbare Namen der Datensätze, die die Bereinigung zählt (feste Löschfolge des
+// Servers, lib/salesPartner/prelive.js CLEANUP_STEPS). Der technische Name
+// bleibt daneben sichtbar; ein unbekannter erscheint nur technisch.
+const CLEANUP_TABLE_LABELS = Object.freeze({
+  sales_partner_credit_note_documents: "Gutschriftdokumente",
+  sales_partner_credit_note_items: "Gutschriftpositionen",
+  sales_partner_credit_notes: "Testgutschriften",
+  sales_partner_commission_entries: "Provisionsbuchungen",
+  sales_partner_commission_decisions: "Provisionsentscheidungen",
+  sales_partner_level_assessment_items: "Positionen der Monatsbewertungen",
+  sales_partner_level_assessments: "Monatsbewertungen",
+  shipment_dispatch_evidence: "Versandnachweise",
+  shipments: "Testsendungen",
+  sales_partner_customer_attributions: "Kundenzuordnungen",
+  sales_partner_billing_details: "Abrechnungsdaten",
+  sales_partner_cap_versions: "Obergrenzen",
+  sales_partner_level_rules: "Level-Regeln",
+  sales_partner_level_rule_sets: "Regelsätze",
+  sales_partner_rate_versions: "Provisionssätze",
+  sales_partner_status_events: "Statusereignisse",
+  sales_partner_profiles: "Partnerprofile",
+  password_resets: "Passwort-Links",
+  users: "Testkonten",
+  sales_partner_test_credit_note_counters: "Nummernkreis der Testgutschriften",
+});
+/** Lesbarer Name einer gezählten Tabelle — oder null (unbekannt). */
+export const cleanupTableLabel = (table) => (own(CLEANUP_TABLE_LABELS, table) ? CLEANUP_TABLE_LABELS[table] : null);
 
 /** Löschen nur mit Probelauf, Token, ohne Blockade und mit etwas zu löschen. */
 export const cleanupDeletable = (dry) => !!dry && dry.blockers.length === 0 && dry.nothingToDelete !== true && !!dry.confirmToken;

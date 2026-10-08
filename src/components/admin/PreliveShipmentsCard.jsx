@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DateField } from "./DateField";
+import { AdminSubDisclosure } from "./AdminDisclosureCard";
 import {
   createAdminPreliveShipment,
   createAdminShipmentDispatchEvidence,
@@ -45,7 +46,9 @@ function Badge({ meta }) {
    Servers in der Liste. Je Sendung: Versand belegen (bestehender
    Versandnachweis, Nachweisart „Sonstiger Nachweis", Notiz „Pre-Live-Test")
    und „als bezahlt markieren". `refreshKey` lädt die Liste nach Änderungen
-   an anderer Stelle (Szenarien, Provisionslauf, Bereinigung) neu. */
+   an anderer Stelle (Szenarien, Provisionslauf, Bereinigung) neu. Das
+   Formular „Testsendung anlegen" ist eingeklappt (UX-Paket 5); die
+   Schrittfolge der Seite öffnet es. */
 export function PreliveShipmentsCard({ accounts, refreshKey = 0, onChanged, onDisabled }) {
   const kunden = accounts?.customers || [];
   const partner = accounts?.partners || [];
@@ -188,43 +191,53 @@ export function PreliveShipmentsCard({ accounts, refreshKey = 0, onChanged, onDi
     tabelle = <p className="adm-support-hint" id="adm-pl-shipments-empty">Keine Testsendungen für diese Auswahl.</p>;
   } else {
     tabelle = (
-      <div className="table-scroll adm-sp-mini-table" id="adm-pl-shipments" aria-busy={liste.loading ? "true" : undefined}>
+      // Vier Spalten statt elf (UX-Paket 5): Kunde, Versandtag und Pakete stehen
+      // unter der Sendung, Kunden- und Einkaufsnetto unter der Basis, Versand,
+      // Zahlung und Provision als „Stand" in der Reihenfolge des Testablaufs — alle
+      // Werte bleiben sichtbar, die Aktionen rutschen nicht mehr aus der Karte.
+      // Mobil werden die Zeilen zu Karten mit Spaltenbeschriftung (Muster aus UX-Paket 4).
+      <div className="table-scroll adm-sp-mini-table adm-sp-cardtable adm-pl-shipments-table" id="adm-pl-shipments" aria-busy={liste.loading ? "true" : undefined}>
         <table>
           <caption className="sr-only">
-            Testsendungen: Sendung, Kunde, Versandtag, Pakete, Kundenversand netto, Einkauf netto, provisionsfähige Basis, Versand, Zahlung, Provision, Aktionen.
+            Testsendungen: Sendung mit Testkunde, Versandtag und Paketen; provisionsfähige Basis mit Kundenversand und Einkauf netto; Stand mit Versand, Zahlung und Provision; Aktionen.
           </caption>
           <thead>
             <tr>
               <th scope="col">Sendung</th>
-              <th scope="col">Testkunde</th>
-              <th scope="col">Versandtag</th>
-              <th scope="col" className="adm-num">Pakete</th>
-              <th scope="col" className="adm-num">Kunde netto</th>
-              <th scope="col" className="adm-num">Einkauf netto</th>
               <th scope="col" className="adm-num">Basis</th>
-              <th scope="col">Versand</th>
-              <th scope="col">Zahlung</th>
-              <th scope="col">Provision</th>
+              <th scope="col">Stand</th>
               <th scope="col">Aktionen</th>
             </tr>
           </thead>
           <tbody>
             {liste.items.map((s) => (
               <tr key={s.id} data-shipment-id={s.id}>
-                <td><span className="adm-mono">{s.reference || `#${s.id}`}</span></td>
-                <td>{s.customerCompanyName || (s.customerUserId !== null ? `Testkunde #${s.customerUserId}` : "—")}</td>
-                <td>{formatTimestamp(s.shipDate)}</td>
-                <td className="adm-num">{formatCount(s.packageCount)}</td>
-                <td className="adm-num">{formatCents(s.customerNetCents)}</td>
-                <td className="adm-num">{formatCents(s.purchaseNetCents)}</td>
-                <td className="adm-num">{formatCents(s.basisCents)}</td>
-                <td>
-                  <Badge meta={evidenceStatusMeta(s.evidence ? s.evidence.status : null)} />
-                  {s.evidence?.dispatchDate && <span className="adm-sp-sub adm-sp-block">{formatTimestamp(s.evidence.dispatchDate)}</span>}
+                <td data-label="Sendung">
+                  <div className="adm-sp-partner">
+                    <span className="adm-mono adm-sp-name adm-pl-ref">{s.reference || `#${s.id}`}</span>
+                    <span className="adm-sp-sub">{s.customerCompanyName || (s.customerUserId !== null ? `Testkunde #${s.customerUserId}` : "—")}</span>
+                    <span className="adm-sp-sub">{`Versandtag ${formatTimestamp(s.shipDate)} · ${formatCount(s.packageCount)} ${s.packageCount === 1 ? "Paket" : "Pakete"}`}</span>
+                  </div>
                 </td>
-                <td>{paidText(s)}</td>
-                <td><Badge meta={decisionOutcomeMeta(s.decision)} /></td>
-                <td>
+                <td data-label="Basis" className="adm-num">
+                  {formatCents(s.basisCents)}
+                  <span className="adm-sp-sub adm-sp-block">{`Kunde ${formatCents(s.customerNetCents)}`}</span>
+                  <span className="adm-sp-sub adm-sp-block">{`Einkauf ${formatCents(s.purchaseNetCents)}`}</span>
+                </td>
+                <td data-label="Stand">
+                  <dl className="adm-pl-progress">
+                    <div>
+                      <dt>Versand</dt>
+                      <dd>
+                        <Badge meta={evidenceStatusMeta(s.evidence ? s.evidence.status : null)} />
+                        {s.evidence?.dispatchDate && <span className="adm-sp-sub"> {formatTimestamp(s.evidence.dispatchDate)}</span>}
+                      </dd>
+                    </div>
+                    <div><dt>Zahlung</dt><dd>{paidText(s)}</dd></div>
+                    <div><dt>Provision</dt><dd><Badge meta={decisionOutcomeMeta(s.decision)} /></dd></div>
+                  </dl>
+                </td>
+                <td data-label="Aktionen">
                   <div className="adm-sp-row-actions">
                     {canRecordDispatch(s) && (
                       <button type="button" className="btn btn-outline btn-sm" id={`adm-pl-dispatch-${s.id}`}
@@ -289,66 +302,69 @@ export function PreliveShipmentsCard({ accounts, refreshKey = 0, onChanged, onDi
           </div>
         )}
 
-        <h3 className="adm-sp-subtitle">Testsendung anlegen</h3>
-        <form className="adm-sp-form" onSubmit={anlegen} noValidate id="adm-pl-shipment-form">
-          <div className="adm-edit-field">
-            <label className="adm-edit-label" htmlFor="adm-pl-shipment-customer">Testkunde (Pflicht)</label>
-            <select id="adm-pl-shipment-customer" className="field-select adm-edit-select" value={form.customerUserId}
-              onChange={(e) => setFeld("customerUserId", e.target.value)} disabled={busy}
-              aria-required="true" aria-invalid={errors.customerUserId ? "true" : undefined}>
-              <option value="">Bitte wählen</option>
-              {kunden.map((k) => <option key={k.id} value={String(k.id)}>{testAccountName(k, "Testkunde")}</option>)}
-            </select>
-            {fehler("customerUserId")}
-          </div>
-          <div className="adm-sp-datefield">
-            <DateField id="adm-pl-shipment-date" label="Versandtag (Pflicht, darf zurückliegen)" value={form.shipDate}
-              invalid={!!errors.shipDate} disabled={busy} onChange={(v) => setFeld("shipDate", v)} />
-            {fehler("shipDate")}
-          </div>
-          <div className="adm-edit-field">
-            <label className="adm-edit-label" htmlFor="adm-pl-shipment-packages">Pakete</label>
-            <input id="adm-pl-shipment-packages" className="field-input" type="text" inputMode="numeric" autoComplete="off"
-              value={form.packageCount} onChange={(e) => setFeld("packageCount", e.target.value)} disabled={busy}
-              aria-describedby="adm-pl-shipment-packages-hint" aria-invalid={errors.packageCount ? "true" : undefined} />
-            <span className="adm-edit-hint" id="adm-pl-shipment-packages-hint">{`1 bis ${MAX_PACKAGES}`}</span>
-            {fehler("packageCount")}
-          </div>
-          <div className="adm-edit-field">
-            <label className="adm-edit-label" htmlFor="adm-pl-shipment-customer-net">Kundenversand netto in €</label>
-            <input id="adm-pl-shipment-customer-net" className="field-input" type="text" inputMode="decimal" autoComplete="off"
-              value={form.customerNet} onChange={(e) => setFeld("customerNet", e.target.value)} disabled={busy}
-              aria-invalid={errors.customerNet ? "true" : undefined} />
-            {fehler("customerNet")}
-          </div>
-          <div className="adm-edit-field">
-            <label className="adm-edit-label" htmlFor="adm-pl-shipment-purchase-net">Einkaufsversand netto in €</label>
-            <input id="adm-pl-shipment-purchase-net" className="field-input" type="text" inputMode="decimal" autoComplete="off"
-              value={form.purchaseNet} onChange={(e) => setFeld("purchaseNet", e.target.value)} disabled={busy}
-              aria-invalid={errors.purchaseNet ? "true" : undefined} />
-            {fehler("purchaseNet")}
-          </div>
-          <div className="adm-edit-field">
-            <span className="adm-edit-label">Provisionsfähige Basis</span>
-            <span className="adm-pl-basis" id="adm-pl-shipment-basis" aria-live="polite">{basis || "—"}</span>
-            <span className="adm-edit-hint">Kundenversand netto − Einkaufsversand netto</span>
-          </div>
-          <div className="adm-sp-datefield">
-            <DateField id="adm-pl-shipment-paid-on" label="Bezahlt am (optional)" value={form.paidOn}
-              invalid={!!errors.paidOn} disabled={busy} onChange={(v) => setFeld("paidOn", v)} />
-            {fehler("paidOn")}
-          </div>
-          <label className="adm-sp-choice adm-sp-form-wide">
-            <input type="checkbox" id="adm-pl-shipment-dispatched" checked={form.dispatched === true} disabled={busy}
-              onChange={(e) => setFeld("dispatched", e.target.checked)} />
-            Versand gleich belegen
-          </label>
-          <div className="adm-sp-form-actions">
-            <button type="submit" className="btn btn-primary btn-sm" id="adm-pl-shipment-submit" disabled={busy}>
-              {busy ? "Wird angelegt…" : "Testsendung anlegen"}
-            </button>
-          </div>
-        </form>
+        <div className="adm-sp-folds">
+          <AdminSubDisclosure id="adm-pl-shipment-fold" title="Testsendung anlegen">
+            <form className="adm-sp-form" onSubmit={anlegen} noValidate id="adm-pl-shipment-form">
+              <div className="adm-edit-field">
+                <label className="adm-edit-label" htmlFor="adm-pl-shipment-customer">Testkunde (Pflicht)</label>
+                <select id="adm-pl-shipment-customer" className="field-select adm-edit-select" value={form.customerUserId}
+                  onChange={(e) => setFeld("customerUserId", e.target.value)} disabled={busy}
+                  aria-required="true" aria-invalid={errors.customerUserId ? "true" : undefined}>
+                  <option value="">Bitte wählen</option>
+                  {kunden.map((k) => <option key={k.id} value={String(k.id)}>{testAccountName(k, "Testkunde")}</option>)}
+                </select>
+                {fehler("customerUserId")}
+              </div>
+              <div className="adm-sp-datefield">
+                <DateField id="adm-pl-shipment-date" label="Versandtag (Pflicht, darf zurückliegen)" value={form.shipDate}
+                  invalid={!!errors.shipDate} disabled={busy} onChange={(v) => setFeld("shipDate", v)} />
+                {fehler("shipDate")}
+              </div>
+              <div className="adm-edit-field">
+                <label className="adm-edit-label" htmlFor="adm-pl-shipment-packages">Pakete</label>
+                <input id="adm-pl-shipment-packages" className="field-input" type="text" inputMode="numeric" autoComplete="off"
+                  value={form.packageCount} onChange={(e) => setFeld("packageCount", e.target.value)} disabled={busy}
+                  aria-describedby="adm-pl-shipment-packages-hint" aria-invalid={errors.packageCount ? "true" : undefined} />
+                <span className="adm-edit-hint" id="adm-pl-shipment-packages-hint">{`1 bis ${MAX_PACKAGES}`}</span>
+                {fehler("packageCount")}
+              </div>
+              <div className="adm-edit-field">
+                <label className="adm-edit-label" htmlFor="adm-pl-shipment-customer-net">Kundenversand netto in €</label>
+                <input id="adm-pl-shipment-customer-net" className="field-input" type="text" inputMode="decimal" autoComplete="off"
+                  value={form.customerNet} onChange={(e) => setFeld("customerNet", e.target.value)} disabled={busy}
+                  aria-invalid={errors.customerNet ? "true" : undefined} />
+                {fehler("customerNet")}
+              </div>
+              <div className="adm-edit-field">
+                <label className="adm-edit-label" htmlFor="adm-pl-shipment-purchase-net">Einkaufsversand netto in €</label>
+                <input id="adm-pl-shipment-purchase-net" className="field-input" type="text" inputMode="decimal" autoComplete="off"
+                  value={form.purchaseNet} onChange={(e) => setFeld("purchaseNet", e.target.value)} disabled={busy}
+                  aria-invalid={errors.purchaseNet ? "true" : undefined} />
+                {fehler("purchaseNet")}
+              </div>
+              <div className="adm-edit-field">
+                <span className="adm-edit-label">Provisionsfähige Basis</span>
+                <span className="adm-pl-basis" id="adm-pl-shipment-basis" aria-live="polite">{basis || "—"}</span>
+                <span className="adm-edit-hint">Kundenversand netto − Einkaufsversand netto</span>
+              </div>
+              <div className="adm-sp-datefield">
+                <DateField id="adm-pl-shipment-paid-on" label="Bezahlt am (optional)" value={form.paidOn}
+                  invalid={!!errors.paidOn} disabled={busy} onChange={(v) => setFeld("paidOn", v)} />
+                {fehler("paidOn")}
+              </div>
+              <label className="adm-sp-choice adm-sp-form-wide">
+                <input type="checkbox" id="adm-pl-shipment-dispatched" checked={form.dispatched === true} disabled={busy}
+                  onChange={(e) => setFeld("dispatched", e.target.checked)} />
+                Versand gleich belegen
+              </label>
+              <div className="adm-sp-form-actions">
+                <button type="submit" className="btn btn-primary btn-sm" id="adm-pl-shipment-submit" disabled={busy}>
+                  {busy ? "Wird angelegt…" : "Testsendung anlegen"}
+                </button>
+              </div>
+            </form>
+          </AdminSubDisclosure>
+        </div>
       </div>
 
       {dialog && (

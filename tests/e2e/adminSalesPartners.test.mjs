@@ -7,7 +7,10 @@
 //   2. Detail eines Antrags: Freigabe mit Pflichtfeld Grundprovision über den
 //      Bestätigungsdialog — exakt der Vertragsbody, danach der neue Stand.
 //   3. Queue „Versandnachweis fehlt": Entscheidung „Versendet" verlangt Datum
-//      und Nachweisart; der Body trägt genau die Vertragsfelder.
+//      und Nachweisart; der Body trägt genau die Vertragsfelder. UX-Paket 5: der
+//      Dialog zeigt Sendung, vorhandene Nachweise (die geltende einmal, zuerst),
+//      Versandstatus, die Wirkung jeder Entscheidung und vor dem Speichern die
+//      Zusammenfassung; ein Fehler des Servers steht am betroffenen Feld.
 //   4. Einstellungen: ohne globale Regeln ist das Formular mit den Startwerten
 //      des Servers und „gültig ab heute“ vorbelegt (nur speichern); ohne
 //      Startwerte bleibt es leer. Obergrenzen sind optional.
@@ -138,7 +141,7 @@ async function bereich(page, id) {
 // `prelive`: Pre-Live-Testmodus an (Status, Testkonten, Testpartner, Rückdatierung).
 // `voll`: Partner 6 voll belegt (UX-Paket 4); `zugriffe` zählt die Abrufe seiner Bereiche.
 async function setup(page, { startDefaults = null, prelive = false, voll = false } = {}) {
-  const state = { list: [], approve: [], evidence: [], partnerStatus: "pending", other: [], login: [], login6: "approved",
+  const state = { list: [], approve: [], evidence: [], evidenceRejected: [], partnerStatus: "pending", other: [], login: [], login6: "approved",
     rules: [], caps: [], capQueries: [], partnerCap: null, approve42: [], attribution: [], status42: "pending",
     zugriffe: { detail6: 0, billing6: 0, credit6: 0, caps6: 0, commissions6: 0 }, rates6: null,
     billing6: structuredClone(ABRECHNUNG6), credit6: [structuredClone(GUTSCHRIFT6)] };
@@ -231,8 +234,22 @@ async function setup(page, { startDefaults = null, prelive = false, voll = false
       ], total: state.evidence.length ? 0 : 1, limit: 25, offset: 0 });
     }
     if (p.endsWith("/admin/shipments/77/dispatch-evidence")) {
-      if (req.method() === "POST") { state.evidence.push(req.postDataJSON()); return json({ ok: true }); }
-      return json({ current: null, history: [] });
+      if (req.method() === "POST") {
+        const body = req.postDataJSON();
+        // Vertrag der Adminentscheidung: das Versanddatum liegt nicht vor der Buchung (01.10.2026).
+        if (body.dispatchDate && body.dispatchDate < "2026-10-01") {
+          state.evidenceRejected.push(body);
+          return json({ error: "Das Versanddatum liegt vor der Buchung", code: "DISPATCH_DATE_BEFORE_BOOKING" }, 400);
+        }
+        state.evidence.push(body);
+        return json({ ok: true });
+      }
+      // Bisherige Nachweise wie vom Server: die geltende Entscheidung steht auch in `history`.
+      const geltend = { id: 12, status: "unclear", dispatchDate: null, source: "admin", evidenceType: "admin_decision",
+        note: "Kunde meldet sich noch.", createdAt: "2026-10-03T09:00:00Z", superseded: false };
+      const frueher = { id: 11, status: "unclear", dispatchDate: null, source: "carrier_tracking", evidenceType: "carrier_in_transit",
+        note: null, createdAt: "2026-10-02T09:00:00Z", superseded: true };
+      return json({ current: geltend, history: [geltend, frueher] });
     }
     if (p.endsWith("/admin/sales-partner-level-rules")) {
       if (req.method() === "POST") { state.rules.push(req.postDataJSON()); return json({ ok: true }, 201); }
@@ -383,17 +400,48 @@ test("3 — Versandnachweis: „Versendet“ verlangt Datum und Nachweisart; Ver
   const state = await setup(page);
   await page.goto(`${BASE}/admin/partners/dispatch-evidence`, { waitUntil: "networkidle" });
   await page.locator("#adm-sp-evidence-77").click();
-  await page.locator('[role="dialog"]').waitFor({ state: "visible" });
+  const dialog = page.locator('[role="dialog"]');
+  await dialog.waitFor({ state: "visible" });
+  // UX-Paket 5: der Dialog folgt dem Ablauf — Sendung, vorhandene Nachweise, Versandstatus, Entscheidung.
+  await page.locator("#adm-sp-evidence-history").waitFor({ state: "visible" });
+  const text = await dialog.innerText();
+  const stelle = (t) => text.indexOf(t);
+  for (const [vor, nach] of [["Sendung", "Vorhandene Nachweise"], ["Vorhandene Nachweise", "Versandstatus"],
+    ["Versandstatus", "Entscheidung (Pflicht)"], ["Entscheidung (Pflicht)", "Begründung (Pflicht)"]]) {
+    assert.ok(stelle(vor) >= 0 && stelle(vor) < stelle(nach), `„${vor}“ steht nicht vor „${nach}“`);
+  }
+  assert.match(await page.locator("#adm-sp-evidence-shipment").innerText(), /1Z999AA10123456784/);
+  assert.match(await page.locator("#adm-sp-evidence-tracking").innerText(), /Unterwegs/);
+  // Die geltende Entscheidung steht genau einmal und zuerst; automatische Arten sind lesbar.
+  const nachweise = await page.locator("#adm-sp-evidence-history li").allInnerTexts();
+  assert.equal(nachweise.length, 2, `doppelt geführt: ${nachweise.join(" | ")}`);
+  assert.match(nachweise[0], /gilt derzeit[\s\S]*Kunde meldet sich noch\./);
+  assert.match(nachweise[1], /Carrier meldet: unterwegs/);
+  assert.doesNotMatch(nachweise.join(" "), /Unbekannte Nachweisart|carrier_in_transit|admin_decision/);
+  // Jede Entscheidung nennt ihre Wirkung.
+  assert.match(await page.locator("#adm-sp-evidence-effect-not_dispatched").innerText(), /keine Provision/);
+
   await page.locator("#adm-sp-evidence-status-dispatched").check();
   await page.fill("#adm-sp-evidence-note", "Im Carrier-Portal als übergeben ausgewiesen.");
+  assert.equal(await page.getAttribute("#adm-sp-evidence-note", "maxlength"), "500", "wie der Vertrag: höchstens 500 Zeichen");
   await page.locator("#adm-sp-evidence-confirm").click();
   await page.locator('[role="dialog"] .field-error').first().waitFor({ state: "visible" });
-  assert.equal(state.evidence.length, 0, "ohne Datum und Nachweisart kein Request");
+  assert.equal(state.evidence.length + state.evidenceRejected.length, 0, "ohne Datum und Nachweisart kein Request");
 
-  await page.fill("#adm-sp-evidence-date", "2026-10-02");
+  // Ein Fehler des Servers steht am Feld; der Dialog bleibt offen.
+  await page.fill("#adm-sp-evidence-date", "2026-09-30");
   await page.selectOption("#adm-sp-evidence-type", "carrier_portal");
   await page.locator("#adm-sp-evidence-confirm").click();
-  await page.locator('[role="dialog"]').waitFor({ state: "detached" });
+  await page.locator("#adm-sp-evidence-dispatchDate-error").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#adm-sp-evidence-dispatchDate-error").innerText(),
+    "Das Versanddatum darf nicht vor der Buchung der Sendung liegen.");
+  assert.doesNotMatch(await dialog.innerText(), /DISPATCH_DATE_BEFORE_BOOKING/);
+  assert.equal(state.evidenceRejected.length, 1);
+
+  await page.fill("#adm-sp-evidence-date", "2026-10-02");
+  assert.equal(await page.locator("#adm-sp-evidence-summary").innerText(), "Gespeichert wird: Versendet am 02.10.2026 · Carrier-Portal.");
+  await page.locator("#adm-sp-evidence-confirm").click();
+  await dialog.waitFor({ state: "detached" });
   assert.deepEqual(state.evidence, [{
     status: "dispatched", note: "Im Carrier-Portal als übergeben ausgewiesen.",
     dispatchDate: "2026-10-02", evidenceType: "carrier_portal",

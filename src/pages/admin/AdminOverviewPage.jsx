@@ -1,81 +1,76 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { ErrorState } from "../../components/ui/StateView";
-import {
-  ADMIN_METRICS, adminMetricViews, allMetricsUnavailable, selectListTotal,
-  metricsFailureKind,
-} from "../../utils/adminOverview.mjs";
+import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
+import { metricsFailureKind, selectListTotal } from "../../utils/adminOverview.mjs";
 import {
   listAdminUsers, listAdminInvoices, listAdminCancellationRequests,
   listAdminSupportRequests, getAdminOperationsQueues,
+  listAdminSalesPartners, listAdminDispatchEvidenceQueue,
 } from "../../api/adminApi";
 import {
-  OPERATIONS_LOAD_ERROR, OPERATIONS_START_UNKNOWN, OPERATIONS_UNAVAILABLE,
-  oldestDescription, operationsViews,
+  OPERATIONS_START_UNKNOWN, OPERATIONS_UNAVAILABLE, oldestDescription,
 } from "../../utils/adminOperations.mjs";
+import {
+  ADMIN_COUNTS, TODO_TEXTS, adminDiagnosticViews, adminFigureViews, adminTodoViews,
+  diagnosticsSummary, groupAdminTodo, overviewWithoutValues,
+} from "../../utils/adminTodo.mjs";
 
 // ── Adminübersicht ───────────────────────────────────────────────────────────
-// Eine Arbeitsfläche, keine reine Linkliste mehr: oben die offenen Vorgänge,
-// darunter der Schnellzugriff auf die Bereiche.
+// Oben „Zu erledigen" (UX-Paket 2): EINE Liste aller offenen Vorgänge, jeder mit
+// dem direkten Weg zur Bearbeitung. Darunter die ruhigen Kennzahlen (Bestand),
+// die Bereiche und — eingeklappt — die technischen Diagnosen.
 //
-// Datenherkunft (Paket E, Teil 2): AUSSCHLIESSLICH die bereits vorhandenen
-// Listen-Endpunkte, abgefragt mit pageSize 1. Gelesen wird nur der Gesamtzähler
-// aus der Pagination — die Zeilen selbst werden verworfen. Es gibt keinen neuen
-// Endpunkt, keine neue Query und keine hochgerechnete Zahl: liefert das Backend
-// keinen Zähler, sagt die Karte das ausdrücklich.
-//
-// Nicht enthalten und bewusst zurückgestellt: „offene Freischaltungen".
-// GET /admin/users kennt keinen Statusfilter (siehe adminOverview.mjs).
+// Datenherkunft: AUSSCHLIESSLICH vorhandene Endpunkte. Listenzähler über die
+// Listen-Endpunkte mit pageSize 1 (nur der Gesamtzähler zählt, die Zeilen
+// werden verworfen) und die Betriebs-Queues. Es gibt keinen neuen Endpunkt,
+// keine neue Query und keine hochgerechnete Zahl; ohne Zähler steht „nicht
+// verfügbar" da, nie eine 0. Was bewusst fehlt (keine Serverquelle): offene
+// Freischaltungen von Kunden, Abrechnungsdaten zur Prüfung, offene Auszahlungen.
 
-// Ein Endpunkt je Kennzahl — dieselben Wrapper, die auch die Listenseiten nutzen.
+// Ein Endpunkt je Zähler — dieselben Wrapper, die auch die Listenseiten nutzen.
 const LOADERS = {
   customers: (p) => listAdminUsers(p),
   invoicesOpen: (p) => listAdminInvoices(p),
   invoicesOverdue: (p) => listAdminInvoices(p),
   cancellations: (p) => listAdminCancellationRequests(p),
   support: (p) => listAdminSupportRequests(p),
+  partnerApplications: (p) => listAdminSalesPartners(p),
+  dispatchEvidence: (p) => listAdminDispatchEvidenceQueue(p),
 };
-
-const METRICS_ERROR_FULL = "Die Kennzahlen konnten nicht geladen werden.";
-const METRICS_ERROR_PARTIAL = "Einige Kennzahlen konnten nicht geladen werden.";
 
 const BEREICHE = [
   { to: "/admin/users", title: "Kunden",
     desc: "Konten prüfen, freischalten, sperren und Aufschläge pflegen." },
+  { to: "/admin/partners", title: "Vertriebspartner",
+    desc: "Anträge prüfen, Partner, Versandnachweise und Gutschriften verwalten." },
   { to: "/admin/shipments", title: "Sendungen",
     desc: "Sendungen einsehen, Label und Tracking prüfen." },
-  { to: "/admin/reconciliation", title: "Buchungsklärung",
-    desc: "Ungeklärte Buchungsvorgänge prüfen und entscheiden." },
   { to: "/admin/invoices", title: "Rechnungen",
     desc: "Forderungen, Zahlungsstatus und Rechnungsdokumente." },
-  { to: "/admin/invoices/backfill", title: "Produktion & Backfill",
-    desc: "Produktionsbereitschaft prüfen und fehlende Dokumente erzeugen." },
+  { to: "/admin/support-requests", title: "Supportanfragen",
+    desc: "Anfragen beantworten, Status und interne Vermerke pflegen." },
   { to: "/admin/cancellation-requests", title: "Stornierungsanfragen",
     desc: "Kundenwünsche prüfen und intern bearbeiten." },
-  { to: "/admin/support-requests", title: "Supportanfragen",
-    desc: "Vorgänge beantworten, Status und interne Vermerke pflegen." },
-  { to: "/admin/audit-logs", title: "Audit-Logs",
-    desc: "Protokollierte Administrationsvorgänge einsehen und filtern." },
+  { to: "/admin/reconciliation", title: "Buchungsklärung",
+    desc: "Ungeklärte Buchungsvorgänge prüfen und entscheiden." },
+  { to: "/admin/invoices/backfill", title: "Interne Vorschau-PDFs",
+    desc: "Produktionsbereitschaft prüfen und fehlende Rechnungs-PDFs als Vorschau erzeugen." },
+  { to: "/admin/audit-logs", title: "Protokoll",
+    desc: "Protokollierte Adminvorgänge einsehen und filtern." },
 ];
 
-// Eine Zelle des Kennzahlenbands (Redesign 2026-10): Beschriftung, Zahl,
-// Kontextzeile — kein Symbol, keine eigene Karte. Handlungsbedarf steht als
-// WORT in der Zelle („Handlungsbedarf"), nie allein als Farbe.
+// Herkunft für die Detailseiten: „Zurück" führt wieder hierher.
+const VON_HIER = { from: "/admin" };
+
+// Eine ruhige Kennzahl (Bestand) — Beschriftung, Zahl, Kontextzeile.
 function MetricCard({ view }) {
-  const klassen = ["adm-metric", view.actionable ? "adm-metric--actionable" : ""]
-    .filter(Boolean).join(" ");
   return (
     <li>
-      <Link
-        to={view.to}
-        className={klassen}
-        aria-label={`${view.label}${view.actionable ? " — Handlungsbedarf" : ""} — ${view.linkLabel}`}
-      >
+      <Link to={view.to} className="adm-metric" aria-label={`${view.label} — ${view.linkLabel}`}>
         <span className="adm-metric-label">{view.label}</span>
         <span className="adm-metric-row">
           <span className="adm-metric-value" aria-live="off">{view.display}</span>
-          {view.actionable && <span className="badge badge--warning adm-metric-flag">Handlungsbedarf</span>}
         </span>
         <span className="adm-metric-hint">
           {view.state === "unavailable" ? view.unavailableText : view.hint}
@@ -93,51 +88,70 @@ function fmtDateTime(v) {
     : d.toLocaleString("de-DE", { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-// Eine Betriebs-Queue (Package C). Bewusst NICHT die Kennzahlenkarte: die Queues sind
-// Zählungen mit Einstieg zum ältesten Fall, keine Kennzahlen — und die Kennzahlenreihe
-// bleibt genau so, wie sie ist. Eine Diagnose ist nie eine Handlungsaufforderung.
-function OpsCard({ view, loading }) {
-  const oldest = oldestDescription(view);
-  const klassen = ["ce-card", "adm-ops-item",
-    view.actionable ? "adm-ops-item--actionable" : "",
-    view.tone === "diagnostic" ? "adm-ops-item--diagnostic" : ""].filter(Boolean).join(" ");
+// Eine Aufgabe bzw. Diagnose. Queues tragen ihren Schlüssel als `data-queue`
+// und — wie bisher — den ältesten Fall; Listenzähler (`data-task`) führen zur
+// gefilterten Liste. Eine Diagnose ist nie eine Handlungsaufforderung.
+function TaskCard({ view, loading }) {
+  const queue = view.source === "queue";
+  // Ein Listenzähler kann den ältesten Fall aus der Queue derselben Menge tragen.
+  const oldest = queue ? oldestDescription(view)
+    : view.oldestTo && view.oldestAt ? { kind: "date", at: view.oldestAt } : { kind: "none" };
+  const klassen = ["ce-card", "adm-ops-item", view.tone === "diagnostic" ? "adm-ops-item--diagnostic" : ""]
+    .filter(Boolean).join(" ");
+  const daten = queue ? { "data-queue": view.key } : { "data-task": view.key };
   return (
-    <li className={klassen} data-queue={view.key}>
+    <li className={klassen} {...daten}>
       <span className="adm-ops-label">{view.label}</span>
       <span className="adm-ops-row">
         <span className="adm-ops-count" aria-live="off">{loading ? "…" : view.display}</span>
-        {!loading && view.actionable && <span className="badge badge--warning adm-ops-flag">Handlungsbedarf</span>}
       </span>
       <span className="adm-ops-hint">{!loading && view.state === "unavailable" ? OPERATIONS_UNAVAILABLE : view.hint}</span>
       {oldest.kind === "date" && <span className="adm-ops-oldest">Ältester Fall: {fmtDateTime(oldest.at)}</span>}
       {oldest.kind === "unknown_start" && <span className="adm-ops-oldest">{OPERATIONS_START_UNKNOWN}</span>}
-      {(view.oldestTo || view.listTo) && (
+      {queue ? (
+        (view.oldestTo || view.listTo) && (
+          <span className="adm-ops-links">
+            {view.oldestTo && <Link to={view.oldestTo} state={VON_HIER}>Ältesten Fall öffnen</Link>}
+            {view.listTo && <Link to={view.listTo}>Zur Liste</Link>}
+          </span>
+        )
+      ) : (
         <span className="adm-ops-links">
-          {view.oldestTo && <Link to={view.oldestTo}>Ältesten Fall öffnen</Link>}
-          {view.listTo && <Link to={view.listTo}>Zur Liste</Link>}
+          <Link to={view.to}>{view.linkLabel}</Link>
+          {view.oldestTo && <Link to={view.oldestTo} state={VON_HIER}>Ältesten Fall öffnen</Link>}
         </span>
       )}
     </li>
   );
 }
 
+// Eine Zeile „Name · Name …" — mit Weg zur Liste, wo es einen gibt.
+function TaskNames({ views, withLinks = false }) {
+  return views.map((v, i) => (
+    <React.Fragment key={v.key}>
+      {i > 0 && " · "}
+      {withLinks && v.to ? <Link to={v.to}>{v.label}</Link> : v.label}
+    </React.Fragment>
+  ));
+}
+
 export default function AdminOverviewPage() {
   // key → { total, loading }. Ein bereits geladener Wert bleibt bei einem
   // späteren Fehler stehen (dieselbe Regel wie im Benachrichtigungspanel).
   const [entries, setEntries] = useState(() =>
-    Object.fromEntries(ADMIN_METRICS.map((m) => [m.key, { total: null, loading: true }])));
-  const [error, setError] = useState("");
+    Object.fromEntries(ADMIN_COUNTS.map((m) => [m.key, { total: null, loading: true }])));
+  const [counts, setCounts] = useState({ succeeded: 0, failed: 0 });
+  const [ops, setOps] = useState({ loading: true, failed: false, data: null });
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
 
-  const load = useCallback(async () => {
-    setError("");
+  const loadCounts = useCallback(async () => {
     setEntries((prev) => Object.fromEntries(
-      ADMIN_METRICS.map((m) => [m.key, { total: prev[m.key]?.total ?? null, loading: true }])));
+      ADMIN_COUNTS.map((m) => [m.key, { total: prev[m.key]?.total ?? null, loading: true }])));
 
     let erfolgreich = 0;
     let gescheitert = 0;
-    await Promise.all(ADMIN_METRICS.map(async (m) => {
+    await Promise.all(ADMIN_COUNTS.map(async (m) => {
       let total = null;
       try {
         // pageSize 1: die Zeilen interessieren hier nicht, nur der Zähler.
@@ -160,113 +174,131 @@ export default function AdminOverviewPage() {
         [m.key]: { total: total !== null ? total : prev[m.key]?.total ?? null, loading: false },
       }));
     }));
-
-    if (mountedRef.current) {
-      const kind = metricsFailureKind(erfolgreich, gescheitert);
-      setError(kind === "partial" ? METRICS_ERROR_PARTIAL : kind === "full" ? METRICS_ERROR_FULL : "");
-    }
+    if (mountedRef.current) setCounts({ succeeded: erfolgreich, failed: gescheitert });
   }, []);
 
-  useEffect(() => { load(); }, [load]);
-
-  // ── Betriebs-Queues (Package C) ───────────────────────────────────────────
-  // Ein eigener, unabhängiger Abruf: ein Ausfall hier nimmt den Kennzahlen nichts
-  // weg und umgekehrt. Ein bereits geladener Stand bleibt bei einem Fehler stehen.
-  const [ops, setOps] = useState({ loading: true, error: "", data: null });
+  // Betriebs-Queues (Package C): ein eigener Abruf. Ein bereits geladener Stand
+  // bleibt bei einem Fehler stehen.
   const loadOps = useCallback(async () => {
-    setOps((prev) => ({ ...prev, loading: true, error: "" }));
+    setOps((prev) => ({ ...prev, loading: true }));
     try {
       const r = await getAdminOperationsQueues();
       if (!mountedRef.current) return;
       if (!r.ok) {
         if (r.status === 401 || r.status === 403) return; // zentraler Redirect via apiFetch
-        setOps((prev) => ({ loading: false, error: OPERATIONS_LOAD_ERROR, data: prev.data }));
+        setOps((prev) => ({ loading: false, failed: true, data: prev.data }));
         return;
       }
       const d = await r.json().catch(() => null);
       if (!mountedRef.current) return;
-      setOps({ loading: false, error: "", data: d });
+      setOps({ loading: false, failed: false, data: d });
     } catch {
-      if (mountedRef.current) setOps((prev) => ({ loading: false, error: OPERATIONS_LOAD_ERROR, data: prev.data }));
+      if (mountedRef.current) setOps((prev) => ({ loading: false, failed: true, data: prev.data }));
     }
   }, []);
-  useEffect(() => { loadOps(); }, [loadOps]);
-  const opsView = operationsViews(ops.data);
-  const opsLaedt = ops.loading && !ops.data;
 
-  const views = adminMetricViews(entries);
-  const laedt = views.some((v) => v.state === "loading");
-  const allesLeer = allMetricsUnavailable(views);
+  const loadAll = useCallback(() => { loadCounts(); loadOps(); }, [loadCounts, loadOps]);
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  const opsErstesLaden = ops.loading && !ops.data;
+  const todo = adminTodoViews({ entries, ops: ops.data, opsLoading: opsErstesLaden });
+  const gruppen = groupAdminTodo(todo);
+  const figures = adminFigureViews(entries);
+  const diagnosen = adminDiagnosticViews({ ops: ops.data, opsLoading: opsErstesLaden });
+
+  const laedt = ops.loading || Object.values(entries).some((e) => e.loading);
+  const erstesLaden = gruppen.loading.length === todo.length;
+  // Fehlerart über alle Abrufe: Listenzähler und Queues zusammen.
+  const fehlerart = metricsFailureKind(
+    counts.succeeded + (!ops.loading && !ops.failed ? 1 : 0),
+    counts.failed + (ops.failed ? 1 : 0),
+  );
+  const ohneWerte = !laedt && overviewWithoutValues(todo, figures);
 
   return (
     <div className="adm-page">
       <PageHeader
         variant="admin"
-        title="Adminbereich"
-        subtitle="Offene Vorgänge auf einen Blick. Alle Bereiche sind zusätzlich serverseitig geschützt."
+        title="Übersicht"
         actions={(
-          <button type="button" className="btn btn-outline btn-sm" onClick={() => { load(); loadOps(); }} disabled={laedt}>
+          <button type="button" className="btn btn-outline btn-sm" onClick={loadAll} disabled={laedt}>
             Aktualisieren
           </button>
         )}
       />
 
-      <section className="adm-section" aria-labelledby="adm-ov-vorgaenge">
-        <h2 className="adm-section-title" id="adm-ov-vorgaenge">Offene Vorgänge</h2>
+      {/* Der Fehler ersetzt die Zahlen nicht — er steht als schmale Zeile darüber.
+          Nur wenn gar kein Wert vorliegt, füllt er die Fläche. */}
+      {fehlerart !== "none" && !ohneWerte && (
+        <div className="adm-note adm-note--warning adm-inline-error" role="alert">
+          <span>{TODO_TEXTS.partialError}</span>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={loadAll} disabled={laedt}>
+            Erneut versuchen
+          </button>
+        </div>
+      )}
 
-        {/* Der Fehler ersetzt die Zahlen nicht — er steht als schmale Zeile
-            darüber. Nur wenn gar kein Wert vorliegt, füllt er die Fläche. */}
-        {error && !allesLeer && (
-          <div className="adm-note adm-note--warning adm-inline-error" role="alert">
-            <span>{error}</span>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={load} disabled={laedt}>
-              Erneut versuchen
-            </button>
-          </div>
-        )}
+      {fehlerart !== "none" && ohneWerte ? (
+        <div className="ce-card">
+          <ErrorState
+            title={TODO_TEXTS.fullError}
+            text={TODO_TEXTS.fullErrorText}
+            action={(
+              <button type="button" className="btn btn-outline btn-sm" onClick={loadAll} disabled={laedt}>
+                Erneut versuchen
+              </button>
+            )}
+          />
+        </div>
+      ) : (
+        <>
+          <section className="adm-section" aria-labelledby="adm-ov-todo" id="adm-todo">
+            <h2 className="adm-section-title" id="adm-ov-todo">{TODO_TEXTS.title}</h2>
+            {erstesLaden ? (
+              <div className="ce-card"><ListSkeleton rows={3} label="Offene Vorgänge werden geladen …" /></div>
+            ) : (
+              <>
+                {gruppen.open.length > 0 && (
+                  <ul className="adm-ops adm-todo" aria-label="Offene Vorgänge">
+                    {gruppen.open.map((v) => <TaskCard key={v.key} view={v} />)}
+                  </ul>
+                )}
+                {gruppen.open.length === 0 && gruppen.unavailable.length === 0 && gruppen.loading.length === 0 && (
+                  <p className="ce-card adm-todo-empty" id="adm-todo-empty">{TODO_TEXTS.empty}</p>
+                )}
+                {gruppen.unavailable.length > 0 && (
+                  <p className="adm-todo-line adm-todo-unavailable" id="adm-todo-unavailable">
+                    <span className="adm-todo-line-label">{TODO_TEXTS.unavailable}</span>{" "}
+                    <TaskNames views={gruppen.unavailable} withLinks />
+                  </p>
+                )}
+                {gruppen.loading.length > 0 && (
+                  <p className="adm-todo-line" id="adm-todo-loading">
+                    <span className="adm-todo-line-label">{TODO_TEXTS.loading}</span>{" "}
+                    <TaskNames views={gruppen.loading} />
+                  </p>
+                )}
+                {gruppen.done.length > 0 && (
+                  <p className="adm-todo-line adm-todo-done" id="adm-todo-done">
+                    <span className="adm-todo-line-label">{TODO_TEXTS.done}</span>{" "}
+                    <TaskNames views={gruppen.done} />
+                  </p>
+                )}
+              </>
+            )}
+          </section>
 
-        {error && allesLeer ? (
-          <div className="ce-card">
-            <ErrorState
-              title={METRICS_ERROR_FULL}
-              text="Die Bereiche unten sind davon unabhängig erreichbar."
-              action={(
-                <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={laedt}>
-                  Erneut versuchen
-                </button>
-              )}
-            />
-          </div>
-        ) : (
-          <ul className="adm-metrics">
-            {views.map((v) => <MetricCard key={v.key} view={v} />)}
-          </ul>
-        )}
-      </section>
+          <section className="adm-section" aria-labelledby="adm-ov-kennzahlen">
+            <h2 className="adm-section-title" id="adm-ov-kennzahlen">Kennzahlen</h2>
+            <ul className="adm-metrics">
+              {figures.map((v) => <MetricCard key={v.key} view={v} />)}
+            </ul>
+          </section>
+        </>
+      )}
 
-      <section className="adm-section" aria-labelledby="adm-ov-betrieb" id="adm-ops">
-        <h2 className="adm-section-title" id="adm-ov-betrieb">Betrieb</h2>
-        {/* Eigene Fehlerzeile — nicht die der Kennzahlen: beide Abrufe sind unabhängig. */}
-        {ops.error && (
-          <div className="adm-note adm-note--warning adm-ops-error" role="alert">
-            <span>{ops.error}</span>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={loadOps} disabled={ops.loading}>
-              Erneut versuchen
-            </button>
-          </div>
-        )}
-        <ul className="adm-ops" aria-label="Betriebs-Queues">
-          {opsView.queues.map((v) => <OpsCard key={v.key} view={v} loading={opsLaedt} />)}
-        </ul>
-        <h3 className="adm-ops-sub">Diagnosen — nie automatisch aktionsfähig</h3>
-        <ul className="adm-ops" aria-label="Diagnosen">
-          {opsView.diagnostics.map((v) => <OpsCard key={v.key} view={v} loading={opsLaedt} />)}
-        </ul>
-      </section>
-
-      {/* Sekundäre Bereichslinks (Redesign 2026-10): eine ruhige Textliste statt
-          gleichgewichtiger Iconkacheln — dieselben Ziele stehen ohnehin in der
-          Navigation; hier ergänzen sie nur die kurze Beschreibung. */}
+      {/* Sekundäre Bereichslinks: eine ruhige Textliste — dieselben Ziele stehen
+          in der Navigation; hier ergänzen sie nur die kurze Beschreibung. */}
       <section className="adm-section" aria-labelledby="adm-ov-bereiche">
         <h2 className="adm-section-title" id="adm-ov-bereiche">Bereiche</h2>
         <ul className="adm-tiles">
@@ -280,6 +312,18 @@ export default function AdminOverviewPage() {
           ))}
         </ul>
       </section>
+
+      {/* Diagnosen (Package C): nie automatisch aktionsfähig — eingeklappt, die
+          Kurzfassung nennt trotzdem, ob es Fälle gibt. */}
+      <details className="adm-section adm-diag" id="adm-diag">
+        <summary className="adm-diag-summary">
+          Technische Hinweise <span className="adm-diag-count">· {diagnosticsSummary(diagnosen)}</span>
+        </summary>
+        <p className="adm-diag-note">{TODO_TEXTS.diagnosticsNote}</p>
+        <ul className="adm-ops" aria-label="Diagnosen">
+          {diagnosen.map((v) => <TaskCard key={v.key} view={v} loading={v.state === "loading"} />)}
+        </ul>
+      </details>
     </div>
   );
 }

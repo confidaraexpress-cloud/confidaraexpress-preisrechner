@@ -122,6 +122,52 @@ test("1 — der aktive Navigationseintrag ist mehrfach codiert", async () => {
   await page.close();
 });
 
+test("1b — die Navigation ist nach Aufgaben gruppiert; jedes bisherige Ziel bleibt genau einmal erreichbar (UX-Paket 2)", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await setupRoutes(page);
+  await page.goto(`${BASE}/admin/invoices/backfill`, { waitUntil: "networkidle" });
+  const nav = page.locator(".adm-nav");
+  await nav.waitFor({ state: "visible" });
+
+  // Vier benannte Gruppen (für Screenreader über aria-labelledby), Übersicht davor.
+  const gruppen = await nav.locator('[role="group"]').evaluateAll((els) => els.map((g) => ({
+    name: document.getElementById(g.getAttribute("aria-labelledby"))?.textContent.trim(),
+    links: [...g.querySelectorAll("a")].map((a) => [a.textContent.trim(), a.getAttribute("href")]),
+  })));
+  assert.deepEqual(gruppen, [
+    { name: "Kunden und Partner", links: [["Kunden", "/admin/users"], ["Vertriebspartner", "/admin/partners"]] },
+    { name: "Versand und Rechnungen", links: [["Sendungen", "/admin/shipments"], ["Rechnungen", "/admin/invoices"]] },
+    { name: "Support und Bearbeitung", links: [["Supportanfragen", "/admin/support-requests"],
+      ["Stornierungsanfragen", "/admin/cancellation-requests"], ["Buchungsklärung", "/admin/reconciliation"]] },
+    { name: "Verwaltung und Protokoll", links: [["Interne Vorschau-PDFs", "/admin/invoices/backfill"], ["Protokoll", "/admin/audit-logs"]] },
+  ]);
+  const alle = await nav.locator("a").evaluateAll((els) => els.map((a) => a.getAttribute("href")));
+  assert.deepEqual([...alle].sort(), ["/admin", "/admin/audit-logs", "/admin/cancellation-requests", "/admin/invoices",
+    "/admin/invoices/backfill", "/admin/partners", "/admin/reconciliation", "/admin/shipments",
+    "/admin/support-requests", "/admin/users"], "ein Ziel fehlt oder ist doppelt");
+  // Auf der Vorschau-PDF-Seite ist genau ihr Eintrag aktiv — nicht zusätzlich „Rechnungen".
+  assert.deepEqual(await page.locator(".adm-nitem-on").allInnerTexts(), ["Interne Vorschau-PDFs"]);
+  await page.close();
+});
+
+test("1c — keine versteckte Navigation: alle Einträge ohne inneres Scrollen sichtbar (1440 × 900, 1366 × 768)", async () => {
+  for (const [breite, hoehe] of [[1440, 900], [1366, 768]]) {
+    const page = await browser.newPage({ viewport: { width: breite, height: hoehe } });
+    await setupRoutes(page);
+    await page.goto(`${BASE}/admin`, { waitUntil: "networkidle" });
+    await page.locator(".adm-nav").waitFor({ state: "visible" });
+    const m = await page.locator(".adm-nav").evaluate((nav) => {
+      const letzter = [...nav.querySelectorAll("a")].pop();
+      return { scroll: nav.scrollHeight, client: nav.clientHeight, text: letzter.textContent.trim(),
+        unten: letzter.getBoundingClientRect().bottom, navUnten: nav.getBoundingClientRect().bottom };
+    });
+    assert.ok(m.scroll <= m.client, `${breite}×${hoehe}: die Navigation scrollt (${m.scroll} > ${m.client})`);
+    assert.equal(m.text, "Protokoll");
+    assert.ok(m.unten <= m.navUnten, `${breite}×${hoehe}: „Protokoll“ ist abgeschnitten`);
+    await page.close();
+  }
+});
+
 test("2 — der Bestätigungsdialog hat Fokusfalle, Fokusrückgabe und Escape", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await setupRoutes(page);
@@ -218,25 +264,25 @@ test("4 — Adminlisten laufen bei 390 px nicht über und zeigen Karten", async 
   await page.close();
 });
 
-test("5 — die Kennzahlen der Übersicht kommen aus dem Serverzähler", async () => {
+test("5 — Kennzahlen und Aufgaben der Übersicht kommen aus dem Serverzähler", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await setupRoutes(page);
   await page.goto(`${BASE}/admin`, { waitUntil: "networkidle" });
-  await page.locator(".adm-metric").first().waitFor({ state: "visible" });
+  await page.locator('#adm-todo [data-task="support"] .adm-ops-count').filter({ hasText: "5" }).waitFor({ state: "visible" });
 
+  // UX-Paket 2: Kunden 3 und offene Rechnungen 2 sind Bestand (Kennzahlen) …
   const werte = await page.locator(".adm-metric-value").allTextContents();
-  // Kunden 3, offene Rechnungen 2, überfällige 2, Stornierungen 4, Support 5 —
+  assert.deepEqual(werte.map((w) => w.trim()), ["3", "2"]);
+  // … überfällige Rechnungen 2, Stornierungen 4 und Support 5 sind Aufgaben —
   // exakt die Zähler aus der Pagination, nichts Hochgerechnetes.
-  assert.deepEqual(werte.map((w) => w.trim()), ["3", "2", "2", "4", "5"]);
+  const aufgabe = async (key) => (await page.locator(`#adm-todo [data-task="${key}"] .adm-ops-count`).textContent()).trim();
+  assert.deepEqual([await aufgabe("invoicesOverdue"), await aufgabe("cancellations"), await aufgabe("support")], ["2", "4", "5"]);
 
-  // Handlungsbedarf wird nicht allein über die Farbe vermittelt — er steht
-  // als WORT in der Zelle (Redesign 2026-10: kein Symbol mehr). Überfällige
-  // Rechnungen (2), Stornierungen (4) und Support (5) haben Bedarf, Kunden
-  // und offene Rechnungen nicht.
-  const flags = await page.locator(".adm-metric").evaluateAll((els) =>
-    els.map((e) => e.querySelector(".adm-metric-flag")?.textContent.trim() || ""));
-  assert.deepEqual(flags, ["", "", "Handlungsbedarf", "Handlungsbedarf", "Handlungsbedarf"],
-    "Handlungsbedarf steht nicht als Text an den betroffenen Kennzahlen");
+  // Handlungsbedarf wird nicht allein über die Farbe vermittelt: die Aufgaben
+  // stehen unter der Überschrift „Zu erledigen" (Wort statt Farbe), die
+  // Kennzahlen tragen keinen Handlungsbedarf.
+  assert.equal((await page.locator("#adm-ov-todo").textContent()).trim(), "Zu erledigen");
+  assert.equal(await page.locator(".adm-metric-flag").count(), 0);
   await page.close();
 });
 
@@ -245,6 +291,7 @@ test("6 — ohne Serverzähler wird keine Zahl erfunden", async () => {
   await setupRoutes(page, { zaehler: false });
   await page.goto(`${BASE}/admin`, { waitUntil: "networkidle" });
   await page.locator(".adm-metric").first().waitFor({ state: "visible" });
+  await page.locator("#adm-todo-unavailable").waitFor({ state: "visible" });
 
   const werte = await page.locator(".adm-metric-value").allTextContents();
   for (const w of werte) {
@@ -253,6 +300,11 @@ test("6 — ohne Serverzähler wird keine Zahl erfunden", async () => {
   const hinweise = await page.locator(".adm-metric-hint").allTextContents();
   assert.ok(hinweise.every((h) => h.includes("Anzahl nicht verfügbar")),
     "der fehlende Zähler wird nicht ehrlich benannt");
+  // Unter „Zu erledigen" weder eine Zahl noch eine 0 noch „Nichts zu erledigen".
+  assert.equal(await page.locator("#adm-todo .adm-ops-count").count(), 0, "es wurde eine Aufgabenzahl erfunden");
+  assert.equal(await page.locator("#adm-todo-done").count(), 0, "eine unbekannte Zahl wird als 0 ausgegeben");
+  assert.equal(await page.locator("#adm-todo-empty").count(), 0, "ohne Zahlen wird „nichts zu erledigen“ behauptet");
+  assert.match(await page.locator("#adm-todo-unavailable").textContent(), /Anzahl nicht verfügbar:[\s\S]*Supportanfragen/);
   // Die Bereiche bleiben trotzdem erreichbar.
   assert.ok(await page.locator(".adm-tile").count() >= 6);
   await page.close();
@@ -281,6 +333,32 @@ test("7 — der mobile Drawer öffnet, schließt und hat 44-px-Ziele", async () 
   assert.equal(await drawer.evaluate((el) => el.classList.contains("adm-side-open")), false,
     "der Drawer schließt nicht über das Overlay");
   await page.close();
+});
+
+test("7b — mobil versteckt die gruppierte Navigation nichts hinter dem Fuß: die ganze Spalte scrollt (UX-Paket 2)", async () => {
+  for (const [breite, hoehe] of [[390, 844], [375, 667]]) {
+    const page = await browser.newPage({ viewport: { width: breite, height: hoehe } });
+    await setupRoutes(page);
+    await page.goto(`${BASE}/admin/users`, { waitUntil: "networkidle" });
+    await page.locator(".adm-topbar-burger").click();
+    await page.waitForTimeout(350);
+    const drawer = page.locator(".adm-side");
+    // Kein innerer Scrollbereich in der Navigation, der Einträge unsichtbar abschneidet.
+    const nav = await page.locator(".adm-nav").evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight }));
+    assert.ok(nav.scroll <= nav.client + 1, `${breite}×${hoehe}: die Navigation scrollt innen (${nav.scroll} > ${nav.client})`);
+    // Ans Ende der Spalte gescrollt, sind der letzte Eintrag und „Abmelden" sichtbar.
+    await drawer.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+    await page.waitForTimeout(100);
+    for (const name of ["Protokoll", "Abmelden"]) {
+      const sichtbar = await page.locator(".adm-side a, .adm-side button", { hasText: name }).first().evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const s = el.closest(".adm-side").getBoundingClientRect();
+        return r.top >= s.top - 1 && r.bottom <= s.bottom + 1 && r.height > 0;
+      });
+      assert.ok(sichtbar, `${breite}×${hoehe}: „${name}“ bleibt auch nach dem Scrollen unsichtbar`);
+    }
+    await page.close();
+  }
 });
 
 test("8 — die Kundensuche filtert nur die geladene Seite und sagt das", async () => {

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { AdminBackLink } from "../../components/admin/AdminBackLink";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import {
   getAdminShipment, downloadAdminShipmentLabel, getAdminShipmentTracking,
@@ -182,11 +183,8 @@ export default function AdminShipmentDetailPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const back = (
-    <Link to="/admin/shipments" className="adm-back">
-      Zurück zur Liste
-    </Link>
-  );
+  // Rückweg zur Herkunft (UX-Paket 2), sonst zur Liste.
+  const back = <AdminBackLink to="/admin/shipments" label="Zurück zu den Sendungen" />;
 
   if (loading) {
     return (

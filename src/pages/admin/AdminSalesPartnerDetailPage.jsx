@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { AdminBackLink } from "../../components/admin/AdminBackLink";
+import { returnState } from "../../utils/adminBackLink.mjs";
 import { CopyableNumber } from "../../components/ui/CopyableNumber";
 import { SalesPartnerStatusCard } from "../../components/admin/SalesPartnerStatusCard";
 import { SalesPartnerRatesCard } from "../../components/admin/SalesPartnerRatesCard";
@@ -61,7 +63,7 @@ function linkFuer(kind, code) {
   return typeof window !== "undefined" && window.location ? `${window.location.origin}${pfad}` : pfad;
 }
 
-function TeamTable({ level, members }) {
+function TeamTable({ level, members, from }) {
   if (members.length === 0) return <p className="adm-support-hint">Ebene {level}: keine Partner.</p>;
   return (
     <div className="table-scroll adm-sp-mini-table">
@@ -80,7 +82,7 @@ function TeamTable({ level, members }) {
         <tbody>
           {members.map((m, i) => (
             <tr key={m.id ?? i}>
-              <td>{m.id != null ? <Link to={`/admin/partners/${encodeURIComponent(m.id)}`}>{m.name || `Partner #${m.id}`}</Link> : (m.name || "—")}</td>
+              <td>{m.id != null ? <Link to={`/admin/partners/${encodeURIComponent(m.id)}`} state={from}>{m.name || `Partner #${m.id}`}</Link> : (m.name || "—")}</td>
               <td><Badge meta={partnerStatusMeta(m.status)} /></td>
               <td>{formatTimestamp(m.activeSince)}</td>
               <td>{relevanceLabel(m)}</td>
@@ -104,6 +106,8 @@ function TeamTable({ level, members }) {
    Änderung wird der Stand des Servers neu geladen (kein optimistisches Raten). */
 export default function AdminSalesPartnerDetailPage() {
   const { id } = useParams();
+  // Herkunft für Links in andere Detailseiten: „Zurück" führt wieder hierher.
+  const from = returnState(useLocation());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notFound, setNotFound] = useState(false);
@@ -135,9 +139,8 @@ export default function AdminSalesPartnerDetailPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const back = (
-    <Link to="/admin/partners" className="adm-back">Zurück zu den Vertriebspartnern</Link>
-  );
+  // Rückweg zur Herkunft (UX-Paket 2), sonst zur Liste.
+  const back = <AdminBackLink to="/admin/partners" label="Zurück zu den Vertriebspartnern" />;
 
   if (loading && !detail) {
     return (
@@ -223,7 +226,7 @@ export default function AdminSalesPartnerDetailPage() {
               ) : "—"],
               ["Zugestimmt am", formatTimestamp(p.agreementAcceptedAt, { withTime: true })],
               ["Sponsor", p.sponsor?.id != null
-                ? <Link to={`/admin/partners/${encodeURIComponent(p.sponsor.id)}`}>{p.sponsor.name || `Partner #${p.sponsor.id}`}</Link>
+                ? <Link to={`/admin/partners/${encodeURIComponent(p.sponsor.id)}`} state={from}>{p.sponsor.name || `Partner #${p.sponsor.id}`}</Link>
                 : (p.sponsor?.name || "—")],
             ]} />
           </div>
@@ -254,8 +257,8 @@ export default function AdminSalesPartnerDetailPage() {
         <div className="adm-card" id="adm-sp-team-card">
           <div className="adm-card-head">Team</div>
           <div className="adm-card-body adm-sp-stack">
-            <TeamTable level={1} members={detail.team.level1} />
-            <TeamTable level={2} members={detail.team.level2} />
+            <TeamTable level={1} members={detail.team.level1} from={from} />
+            <TeamTable level={2} members={detail.team.level2} from={from} />
           </div>
         </div>
 
@@ -281,7 +284,7 @@ export default function AdminSalesPartnerDetailPage() {
                     {detail.customers.map((c, i) => (
                       <tr key={`${c.customerId ?? "k"}-${i}`}>
                         <td>{c.customerId != null
-                          ? <Link to={`/admin/users/${encodeURIComponent(c.customerId)}`}>{c.companyName || `Kunde #${c.customerId}`}</Link>
+                          ? <Link to={`/admin/users/${encodeURIComponent(c.customerId)}`} state={from}>{c.companyName || `Kunde #${c.customerId}`}</Link>
                           : (c.companyName || "—")}</td>
                         <td>{formatTimestamp(c.assignedSince)}</td>
                         <td>{formatTimestamp(c.assignedUntil)}</td>

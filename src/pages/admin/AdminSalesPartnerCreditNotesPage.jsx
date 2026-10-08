@@ -1,9 +1,11 @@
 import React, { useCallback, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
+import { SalesPartnerAdminNav } from "../../components/admin/SalesPartnerAdminNav";
 import { Switch } from "../../components/ui/Switch";
+import { returnState } from "../../utils/adminBackLink.mjs";
 import { issueAdminCreditNote, previewAdminCreditNotes } from "../../api/adminApi";
 import { usePreliveStatus } from "../../hooks/usePreliveStatus";
 import { preliveEnabled } from "../../utils/salesPartnerPrelive.mjs";
@@ -37,12 +39,13 @@ function Badge({ meta }) {
 }
 
 // Partner: Firma bzw. Name als Link ins Detail, darunter Name und Steuerstatus.
-function PartnerCell({ row }) {
+// `from`: „Zurück" im Partnerdetail führt wieder zu den Gutschriften.
+function PartnerCell({ row, from }) {
   const titel = previewPartnerName(row);
   return (
     <div className="adm-sp-partner">
       {row.partnerUserId !== null
-        ? <Link className="adm-sp-name" to={partnerPath(row.partnerUserId)}>{titel}</Link>
+        ? <Link className="adm-sp-name" to={partnerPath(row.partnerUserId)} state={from}>{titel}</Link>
         : <span className="adm-sp-name">{titel}</span>}
       {row.companyName && row.name && <span className="adm-sp-sub">{row.name}</span>}
       {row.taxStatus && (
@@ -100,6 +103,7 @@ export default function AdminSalesPartnerCreditNotesPage() {
   const ladeLauf = useRef(0);
   // Pre-Live-Testlauf: der Schalter erscheint nur bei aktivem Testmodus.
   const prelive = usePreliveStatus();
+  const from = returnState(useLocation());
   const testmodus = preliveEnabled(prelive.status);
   const [testlauf, setTestlauf] = useState(false);
   const scope = testmodus && testlauf ? "test" : null;
@@ -344,7 +348,7 @@ export default function AdminSalesPartnerCreditNotesPage() {
                 <tbody>
                   {data.partners.map((row, i) => (
                     <tr key={row.partnerUserId ?? `p-${i}`} data-partner-id={row.partnerUserId ?? undefined}>
-                      <td><PartnerCell row={row} /></td>
+                      <td><PartnerCell row={row} from={from} /></td>
                       <td className="adm-num">{formatCount(row.entryCount)}</td>
                       <td className="adm-num">{formatCents(row.netCents)}</td>
                       <td className="adm-num">{formatCents(row.taxCents)}</td>
@@ -365,7 +369,7 @@ export default function AdminSalesPartnerCreditNotesPage() {
               {data.partners.map((row, i) => (
                 <li className="adm-scard" key={`c-${row.partnerUserId ?? i}`}>
                   <div className="adm-scard-head">
-                    <PartnerCell row={row} />
+                    <PartnerCell row={row} from={from} />
                     <Badge meta={runStatusMeta(row.status)} />
                   </div>
                   <dl className="adm-scard-kv">
@@ -390,10 +394,10 @@ export default function AdminSalesPartnerCreditNotesPage() {
     <div className="adm-page">
       <PageHeader
         variant="admin"
-        backLink={<Link to="/admin/partners" className="adm-back">Zurück zu den Vertriebspartnern</Link>}
-        title={<>Abrechnungslauf</>}
+        title={<>Gutschriften</>}
         subtitle={<>Gutschriften für einen abgeschlossenen Monat prüfen und je Vertriebspartner ausstellen.</>}
       />
+      <SalesPartnerAdminNav prelive={prelive} />
 
       <form className="adm-filters" onSubmit={vorschauLaden}>
         <div className="adm-filter-field">

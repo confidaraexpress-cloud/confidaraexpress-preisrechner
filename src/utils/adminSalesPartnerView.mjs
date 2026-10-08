@@ -88,6 +88,23 @@ export function loginEnabledState(status) {
 /** Ist der Loginzustand einer der drei zugeordneten Werte? */
 export const loginStatusKnown = (status) => Object.prototype.hasOwnProperty.call(LOGIN_STATUS_META, status);
 
+/** Partnerliste (UX-Paket 2): der Login erscheint nur als Abweichung — ein
+ *  freigegebener Partner (aktiv/inaktiv), dessen Login gesperrt ist. Bei einem
+ *  Antrag oder einer Ablehnung ist der Loginzustand die Regel, kein Hinweis. */
+export function listLoginNotice(row) {
+  const r = obj(row);
+  if ((r.status === "active" || r.status === "inactive") && r.loginStatus === "blocked") {
+    return loginStatusMeta("blocked");
+  }
+  return null;
+}
+
+/** Hinweis auf offene Anträge — nur mit einem echten Serverzähler > 0. */
+export function pendingApplicationsText(count) {
+  if (!Number.isSafeInteger(count) || count <= 0) return null;
+  return count === 1 ? "1 Antrag wartet auf Prüfung." : `${count} Anträge warten auf Prüfung.`;
+}
+
 // PUT …/login antwortet bei einem Konflikt mit einem dieser Codes. Der Text
 // sagt, warum nichts geändert wurde; ein unbekannter Code fällt auf den
 // allgemeinen Admintext zurück.

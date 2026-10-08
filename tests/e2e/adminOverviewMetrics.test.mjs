@@ -5,6 +5,14 @@
 // einzelner Ausfall nicht mehr fälschlich "alle Kennzahlen" behauptet, und
 // dass "Aktualisieren"/"Erneut versuchen" wirklich alle fünf neu laden.
 //
+// UX-Paket 2 (bewusste Ankeränderung): dieselben fünf Requests, aber die Werte
+// stehen an zwei Stellen — Kunden und offene Rechnungen als ruhige Kennzahlen
+// (`.adm-metric-value`), überfällige Rechnungen, Stornierungen und Support als
+// Aufgaben unter „Zu erledigen" (`[data-task] .adm-ops-count`; eine 0 steht in
+// der Zeile „Keine offenen Fälle", ein unbekannter Wert in „Anzahl nicht
+// verfügbar"). `fuenfWerte` liest sie in der bisherigen Reihenfolge. Neu: die
+// zwei Zähler des Partnerprogramms (offene Anträge, Versandnachweise).
+//
 // Die Mocks bilden den echten Backend-Vertrag nach (siehe routes/admin.js):
 //   • GET /admin/cancellation-requests: status ∈ {pending,in_review,accepted,
 //     rejected} oder — seit Package C — der Filterwert "open" (pending UND
@@ -45,7 +53,10 @@ const CANCELLATION_VALID_STATUSES = new Set(["open", "pending", "in_review", "ac
 // eine Kennzahl tatsächlich den zu IHREM Filter gehörenden Wert zeigt und
 // nicht zufällig einen benachbarten (z. B. den ungefilterten Rechnungsbestand).
 const TOTALS = { users: 11, invoicesUnpaid: 6, invoicesOverdue: 2, invoicesUnfiltered: 19,
-  cancellationsPending: 4, cancellationsOpen: 7, support: 5 };
+  cancellationsPending: 4, cancellationsOpen: 7, support: 5,
+  // UX-Paket 2: offene Partneranträge und die Versandnachweis-Queue; der
+  // ungefilterte Partnerbestand ist bewusst eine andere Zahl.
+  partnersPending: 3, partnersUnfiltered: 23, dispatchEvidence: 8 };
 
 let server, browser;
 
@@ -55,7 +66,7 @@ async function setupRoutes(page, initial = {}) {
   const state = {
     cancellationsStatus: initial.cancellationsStatus ?? 200,
     invoicesStatus: initial.invoicesStatus ?? 200,
-    calls: { users: [], invoices: [], cancellations: [], support: [] },
+    calls: { users: [], invoices: [], cancellations: [], support: [], partners: [], evidence: [] },
   };
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const url = new URL(route.request().url());
@@ -101,19 +112,58 @@ async function setupRoutes(page, initial = {}) {
       return json({ supportRequests: [], pagination: { total: TOTALS.support } });
     }
 
+    // Wie das echte Backend: Statusfilter nur für bekannte Werte, `total` am Wurzelobjekt.
+    if (p.endsWith("/admin/sales-partners")) {
+      state.calls.partners.push(url.search);
+      const status = url.searchParams.get("status");
+      return json({ partners: [], total: status === "pending" ? TOTALS.partnersPending : TOTALS.partnersUnfiltered,
+        limit: Number(url.searchParams.get("limit")), offset: 0 });
+    }
+    if (p.endsWith("/admin/dispatch-evidence/queue")) {
+      state.calls.evidence.push(url.search);
+      return json({ items: [], total: TOTALS.dispatchEvidence, limit: Number(url.searchParams.get("limit")), offset: 0 });
+    }
+
     return json({});
   });
   await page.addInitScript(() => localStorage.setItem("ce_token", "e2e-token"));
   return state;
 }
 
+// Wartet, bis alle Zahlen stehen: kein Ladegerüst, keine „…" und keine Zeile „Wird noch geladen".
+async function warteAufZahlen(page) {
+  await page.waitForFunction(() => !document.querySelector("#adm-todo-loading")
+    && !document.querySelector("#adm-todo .ce-skeleton, #adm-todo [aria-busy='true']")
+    && ![...document.querySelectorAll(".adm-metric-value, #adm-todo .adm-ops-count")]
+      .some((e) => e.textContent.trim() === "…"));
+}
+
 async function openOverview(page) {
   await page.goto(`${BASE}/admin`, { waitUntil: "networkidle" });
   await page.locator(".adm-metric").first().waitFor({ state: "visible" });
+  await warteAufZahlen(page);
 }
 
-const metricValues = (page) => page.locator(".adm-metric-value").allTextContents();
-const metricHints = (page) => page.locator(".adm-metric-hint").allTextContents();
+// Wert einer Aufgabe unter „Zu erledigen": Karte (> 0), „Keine offenen Fälle" (0)
+// oder „Anzahl nicht verfügbar" (—). Ein fehlender Eintrag wäre ein Fehler („?").
+async function aufgabenWert(page, key, label) {
+  const karte = page.locator(`#adm-todo [data-task="${key}"] .adm-ops-count`);
+  if (await karte.count()) return (await karte.textContent()).trim();
+  if (await page.locator("#adm-todo-done", { hasText: label }).count()) return "0";
+  if (await page.locator("#adm-todo-unavailable", { hasText: label }).count()) return "—";
+  return "?";
+}
+
+// Die fünf Kennzahlen-Requests in der bisherigen Reihenfolge: Kunden, offene
+// Rechnungen (Kennzahlen), überfällige Rechnungen, Stornierungen, Support (Aufgaben).
+async function fuenfWerte(page) {
+  const kennzahlen = (await page.locator(".adm-metric-value").allTextContents()).map((w) => w.trim());
+  return [...kennzahlen,
+    await aufgabenWert(page, "invoicesOverdue", "Überfällige Rechnungen"),
+    await aufgabenWert(page, "cancellations", "Stornierungsanfragen"),
+    await aufgabenWert(page, "support", "Supportanfragen")];
+}
+
 
 test.before(async () => {
   server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"],
@@ -142,10 +192,12 @@ test("alle fünf Requests treffen den realen Vertrag; die Werte stammen aus der 
   const state = await setupRoutes(page);
   await openOverview(page);
 
-  const werte = (await metricValues(page)).map((w) => w.trim());
+  const werte = await fuenfWerte(page);
   // Reihenfolge laut ADMIN_METRICS: Kunden, offene Rechnungen, überfällige
   // Rechnungen, Stornierungen, Support.
   assert.deepEqual(werte, ["11", "6", "2", "7", "5"]);
+  // Kunden und offene Rechnungen sind Bestand (Kennzahlen), der Rest Aufgaben.
+  assert.equal(await page.locator(".adm-metric-value").count(), 2);
 
   // Offene Rechnungen zeigt den GEFILTERTEN Bestand (6), nicht den
   // ungefilterten (19) — das beweist, dass status=unpaid tatsächlich ankam.
@@ -182,7 +234,7 @@ test("„Offene Stornierungen“ zeigt den Zähler von status=open, nicht den vo
   const state = await setupRoutes(page);
   await openOverview(page);
 
-  const werte = (await metricValues(page)).map((w) => w.trim());
+  const werte = await fuenfWerte(page);
   assert.equal(werte[3], String(TOTALS.cancellationsOpen), "Stornierungen zeigt nicht den Zähler von status=open");
   assert.notEqual(werte[3], String(TOTALS.cancellationsPending));
   assert.equal(state.calls.cancellations.length, 1);
@@ -197,7 +249,7 @@ test("„Offene Rechnungen“ zeigt den mit status=unpaid gefilterten Zähler, n
   const state = await setupRoutes(page);
   await openOverview(page);
 
-  const werte = (await metricValues(page)).map((w) => w.trim());
+  const werte = await fuenfWerte(page);
   assert.equal(werte[1], String(TOTALS.invoicesUnpaid));
   assert.notEqual(werte[1], String(TOTALS.invoicesUnfiltered));
   // Zwei Requests an /admin/invoices (offene + überfällige), keiner mit "open".
@@ -208,31 +260,40 @@ test("„Offene Rechnungen“ zeigt den mit status=unpaid gefilterten Zähler, n
 
 console.log("\nPartial-Failure — nur die betroffene Kennzahl fehlt\n");
 
-test("Stornierungen scheitert (500), die anderen vier bleiben real sichtbar — Banner exakt „Einige Kennzahlen konnten nicht geladen werden.“", async () => {
+test("Stornierungen scheitert (500), die anderen vier bleiben real sichtbar — Banner exakt „Einige Zahlen konnten nicht geladen werden.“", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await setupRoutes(page, { cancellationsStatus: 500 });
   await openOverview(page);
 
-  const werte = (await metricValues(page)).map((w) => w.trim());
+  const werte = await fuenfWerte(page);
   assert.deepEqual(werte, ["11", "6", "2", "—", "5"]);
 
-  const hinweise = await metricHints(page);
-  assert.ok(hinweise[3].includes("Anzahl nicht verfügbar"), `Stornierungen zeigt keinen Unavailable-Hinweis: ${hinweise[3]}`);
+  // Die unbekannte Zahl steht ausdrücklich als „Anzahl nicht verfügbar" da — nie als 0.
+  const unbekannt = await page.locator("#adm-todo-unavailable").textContent();
+  assert.match(unbekannt, /Anzahl nicht verfügbar:/);
+  assert.match(unbekannt, /Stornierungsanfragen/);
+  const erledigt = page.locator("#adm-todo-done");
+  if (await erledigt.count()) {
+    assert.doesNotMatch(await erledigt.textContent(), /Stornierungsanfragen/, "die gescheiterte Zahl wird als erledigt (0) ausgegeben");
+  }
+  // Der Weg zur Liste bleibt: der Admin kann selbst nachsehen.
+  assert.equal(await page.locator("#adm-todo-unavailable a", { hasText: "Stornierungsanfragen" }).getAttribute("href"),
+    "/admin/cancellation-requests");
 
-  // Die Kennzahlenliste bleibt vollständig sichtbar — keine volle Fehlerkarte.
+  // Die Kennzahlen bleiben vollständig sichtbar — keine volle Fehlerkarte.
   assert.equal(await page.locator(".adm-metrics").count(), 1);
-  assert.equal(await page.locator(".ce-state--error").count(), 0, "die volle Fehlerkarte ersetzt fälschlich die Kennzahlenliste");
+  assert.equal(await page.locator(".ce-state--error").count(), 0, "die volle Fehlerkarte ersetzt fälschlich die Übersicht");
 
   const banner = page.locator(".adm-inline-error");
   await banner.waitFor({ state: "visible" });
   assert.equal((await banner.locator("span").first().textContent()).trim(),
-    "Einige Kennzahlen konnten nicht geladen werden.");
+    "Einige Zahlen konnten nicht geladen werden.");
   await page.close();
 });
 
-console.log("\nVollständiger Fehlerfall — unverändertes Verhalten\n");
+console.log("\nVollständiger Fehlerfall — eine Fehlerkarte statt lauter „—“\n");
 
-test("scheitern alle fünf, zeigt die volle Fehlerkarte exakt „Die Kennzahlen konnten nicht geladen werden.“", async () => {
+test("scheitern alle Abrufe, zeigt die volle Fehlerkarte exakt „Die Übersicht konnte nicht geladen werden.“", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   // Vollständiger Ausfall: ALLE Kennzahlen-Endpunkte antworten 500 (nur die
   // Identitätsprüfung bleibt erreichbar, sonst käme man gar nicht auf die Seite).
@@ -249,9 +310,10 @@ test("scheitern alle fünf, zeigt die volle Fehlerkarte exakt „Die Kennzahlen 
   const fehlerkarte = page.locator(".ce-state--error");
   await fehlerkarte.waitFor({ state: "visible" });
   assert.equal((await page.locator(".ce-state--error .ce-state-title").textContent()).trim(),
-    "Die Kennzahlen konnten nicht geladen werden.");
-  // Bei voll ausgefallener Kennzahlenreihe ersetzt die Fehlerkarte die Liste.
+    "Die Übersicht konnte nicht geladen werden.");
+  // Ohne jeden Wert ersetzt die Fehlerkarte Aufgaben und Kennzahlen — keine Zahl wird behauptet.
   assert.equal(await page.locator(".adm-metrics").count(), 0);
+  assert.equal(await page.locator("#adm-todo").count(), 0);
   // Die Bereiche darunter bleiben trotzdem erreichbar.
   assert.ok(await page.locator(".adm-tile").count() >= 6);
   await page.close();
@@ -287,7 +349,8 @@ test("„Erneut versuchen“ lädt alle fünf Kennzahlen neu; nach Erfolg versch
   assert.equal(await page.locator(".adm-inline-error").count(), 0, "der Banner blieb nach vollständigem Erfolg stehen");
   assert.equal(await page.locator(".ce-state--error").count(), 0);
 
-  const werte = (await metricValues(page)).map((w) => w.trim());
+  await warteAufZahlen(page);
+  const werte = await fuenfWerte(page);
   assert.deepEqual(werte, ["11", "6", "2", "7", "5"]);
   await page.close();
 });
@@ -302,5 +365,34 @@ test("„Aktualisieren“ im Seitenkopf löst denselben vollständigen Ladevorga
   await page.waitForTimeout(400);
   assert.equal(state.calls.users.length, 2, "Aktualisieren lud die Kunden-Kennzahl nicht neu");
   assert.equal(state.calls.cancellations.length, 2, "Aktualisieren lud die Stornierungen nicht neu");
+  assert.equal(state.calls.partners.length, 2, "Aktualisieren lud die Partneranträge nicht neu");
+  assert.equal(state.calls.evidence.length, 2, "Aktualisieren lud die Versandnachweise nicht neu");
+  await page.close();
+});
+
+console.log("\nZu erledigen — die zwei Zähler des Partnerprogramms (UX-Paket 2)\n");
+
+test("Partneranträge und Versandnachweise: Zähler der vorhandenen Listen mit pageSize 1, direkter Weg zur Bearbeitung", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const state = await setupRoutes(page);
+  await openOverview(page);
+
+  // Genau ein Abruf je Zähler, nur mit Vertragsparametern und nur dem Zähler (limit=1).
+  assert.equal(state.calls.partners.length, 1);
+  const antraege = new URLSearchParams(state.calls.partners[0]);
+  assert.deepEqual([antraege.get("status"), antraege.get("limit"), antraege.get("offset")], ["pending", "1", "0"]);
+  assert.equal(state.calls.evidence.length, 1);
+  const nachweise = new URLSearchParams(state.calls.evidence[0]);
+  assert.deepEqual([nachweise.get("limit"), nachweise.get("offset")], ["1", "0"]);
+
+  // Der Wert ist der gefilterte Zähler (3), nicht der Partnerbestand (23).
+  assert.equal(await aufgabenWert(page, "partnerApplications", "Partneranträge"), String(TOTALS.partnersPending));
+  assert.equal(await aufgabenWert(page, "dispatchEvidence", "Versandnachweise"), String(TOTALS.dispatchEvidence));
+  assert.equal(await page.locator('[data-task="partnerApplications"] a').getAttribute("href"), "/admin/partners?status=pending");
+  assert.equal(await page.locator('[data-task="dispatchEvidence"] a').getAttribute("href"), "/admin/partners/dispatch-evidence");
+
+  // Der Weg führt direkt in die gefilterte Liste der offenen Anträge.
+  await page.locator('[data-task="partnerApplications"] a', { hasText: "Anträge prüfen" }).click();
+  await page.waitForURL(`${BASE}/admin/partners?status=pending`);
   await page.close();
 });

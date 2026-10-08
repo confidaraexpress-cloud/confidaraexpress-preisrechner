@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { EmptyState, ErrorState, ListSkeleton, LoadingState } from "../../components/ui/StateView";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { AdminBackLink } from "../../components/admin/AdminBackLink";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import { selectListTotal } from "../../utils/adminOverview.mjs";
 import {
@@ -225,11 +226,8 @@ export default function AdminBackfillPage() {
     }
   };
 
-  const back = (
-    <Link to="/admin/invoices" className="adm-back">
-      Zurück zur Rechnungsliste
-    </Link>
-  );
+  // Rückweg zur Herkunft (UX-Paket 2), sonst zur Liste.
+  const back = <AdminBackLink to="/admin/invoices" label="Zurück zu den Rechnungen" />;
 
   return (
     <div className="adm-page">

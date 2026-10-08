@@ -379,25 +379,45 @@ test("Rechnungsabweichung: Dialog, Vermerk, neu geladen — danach nicht erneut 
   await page.close();
 });
 
-console.log("\nÜbersicht — Betriebs-Queues als echte Serverzähler\n");
+console.log("\nÜbersicht — Betriebs-Queues als echte Serverzähler (unter „Zu erledigen“)\n");
 
+// UX-Paket 2 (bewusste Ankeränderung): die Queues stehen als Aufgaben unter
+// „Zu erledigen" (nur Werte > 0, dieselbe Karte mit `data-queue`), die Diagnosen
+// eingeklappt unter „Technische Hinweise". Offene Stornierungen erscheinen genau
+// EINMAL — als Listenzähler (`data-task="cancellations"`), nicht zusätzlich als
+// gleichnamige Queue. Die Kennzahlen sind nur noch der Bestand (Kunden, offene
+// Rechnungen); Fehler aller Abrufe stehen in EINER Zeile.
 for (const [breite, hoehe] of [[1440, 900], [390, 844]]) {
-  test(`${breite}px: die Queues zeigen die Serverzähler, verlinken den ältesten Fall — Kennzahlen unverändert`, async () => {
+  test(`${breite}px: die Queues zeigen die Serverzähler, verlinken den ältesten Fall — Diagnosen eingeklappt`, async () => {
     const page = await browser.newPage({ viewport: { width: breite, height: hoehe } });
     const state = await setupRoutes(page);
     await page.goto(`${BASE}/admin`, { waitUntil: "networkidle" });
-    const offen = page.locator('.adm-ops-item[data-queue="reconciliation_open"]');
+    const offen = page.locator('#adm-todo .adm-ops-item[data-queue="reconciliation_open"]');
     await offen.locator(".adm-ops-count").filter({ hasText: "3" }).waitFor({ state: "visible" });
     assert.equal(await offen.getByRole("link", { name: "Ältesten Fall öffnen" }).getAttribute("href"), "/admin/reconciliation/41");
-    assert.equal((await page.locator('.adm-ops-item[data-queue="awb_missing"] .adm-ops-count').textContent()).trim(), "4");
-    assert.equal((await page.locator('.adm-ops-item[data-queue="cancellations_open"] .adm-ops-count').textContent()).trim(), "5");
-    const ohneVersuch = page.locator('.adm-ops-item[data-queue="booking_without_open_attempt"]');
+    assert.equal((await page.locator('#adm-todo .adm-ops-item[data-queue="awb_missing"] .adm-ops-count').textContent()).trim(), "4");
+    // Stornierungen genau einmal: als Listenzähler, nicht doppelt als Queue.
+    assert.equal((await page.locator('#adm-todo [data-task="cancellations"] .adm-ops-count').textContent()).trim(), "5");
+    assert.equal(await page.locator('[data-queue="cancellations_open"]').count(), 0, "Stornierungen stehen doppelt da");
+    // Der Weg zum ältesten Fall bleibt — aus der Queue derselben Menge.
+    const storno = page.locator('#adm-todo [data-task="cancellations"]');
+    assert.equal(await storno.getByRole("link", { name: "Ältesten Fall öffnen" }).getAttribute("href"), "/admin/cancellation-requests/12");
+    assert.equal(await storno.getByRole("link", { name: "Anfragen öffnen" }).getAttribute("href"), "/admin/cancellation-requests");
+    assert.match(await storno.textContent(), /Ältester Fall:/);
+    // Queues mit 0 sind keine Karte, sondern stehen in „Keine offenen Fälle".
+    assert.equal(await page.locator('#adm-todo [data-queue="label_missing"]').count(), 0);
+    assert.match(await page.locator("#adm-todo-done").textContent(), /Versandlabel nicht in CE/);
+    // Diagnosen: eingeklappt, aber mit Kurzfassung — und weiterhin ohne behaupteten Beginn.
+    const diag = page.locator("#adm-diag");
+    assert.equal(await diag.evaluate((el) => el.open), false, "die Diagnosen sind nicht eingeklappt");
+    assert.match(await diag.locator("summary").textContent(), /Technische Hinweise · 5 Fälle/);
+    const ohneVersuch = page.locator('#adm-diag .adm-ops-item[data-queue="booking_without_open_attempt"]');
     assert.match(await ohneVersuch.textContent(), /Beginn unbekannt/);
     assert.doesNotMatch(await ohneVersuch.textContent(), /Ältester Fall:/);
-    assert.match(await page.locator('.adm-ops-item[data-queue="contradictory_evidence"]').textContent(), /Ältester Fall:/);
-    // Die Kennzahlenreihe bleibt genau fünf Werte — die Queues sind keine Kennzahlen.
-    assert.equal(await page.locator(".adm-metric-value").count(), 5);
-    assert.equal(await page.locator(".adm-ops-error").count(), 0);
+    assert.match(await page.locator('#adm-diag .adm-ops-item[data-queue="contradictory_evidence"]').textContent(), /Ältester Fall:/);
+    // Die Kennzahlen sind nur der Bestand — die Queues sind keine Kennzahlen.
+    assert.equal(await page.locator(".adm-metric-value").count(), 2);
+    assert.equal(await page.locator(".adm-inline-error").count(), 0);
     assert.equal(state.calls.queues, 1);
     await keinUeberlauf(page, `Übersicht ${breite}px`);
 
@@ -407,26 +427,56 @@ for (const [breite, hoehe] of [[1440, 900], [390, 844]]) {
   });
 }
 
-test("scheitern die Queues, zeigt die Übersicht eine eigene Fehlerzeile — die Kennzahlen bleiben vollständig", async () => {
+test("Rückweg (UX-Paket 2): „Ältesten Fall öffnen“ → Detail → „Zurück zur Übersicht“; direkt geöffnet → zur Liste", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await setupRoutes(page);
+  await page.goto(`${BASE}/admin`, { waitUntil: "networkidle" });
+  const offen = page.locator('#adm-todo .adm-ops-item[data-queue="reconciliation_open"]');
+  await offen.getByRole("link", { name: "Ältesten Fall öffnen" }).click();
+  await page.waitForURL(`${BASE}/admin/reconciliation/41`);
+  const zurueck = page.locator(".adm-back");
+  await zurueck.waitFor({ state: "visible" });
+  assert.equal((await zurueck.innerText()).trim(), "Zurück zur Übersicht");
+  assert.equal(await zurueck.getAttribute("href"), "/admin");
+  await zurueck.click();
+  await page.waitForURL(`${BASE}/admin`);
+
+  // Ohne Herkunft (Lesezeichen, neuer Tab) gilt der feste Rückweg — eindeutig benannt.
+  await page.goto(`${BASE}/admin/reconciliation/41`, { waitUntil: "networkidle" });
+  await zurueck.waitFor({ state: "visible" });
+  assert.equal((await zurueck.innerText()).trim(), "Zurück zur Buchungsklärung");
+  assert.equal(await zurueck.getAttribute("href"), "/admin/reconciliation");
+  await page.close();
+});
+
+test("scheitern die Queues, nennt die Übersicht das in einer Zeile — keine Zahl wird behauptet, die übrigen bleiben", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const state = await setupRoutes(page, { queuesStatus: 500 });
   await page.goto(`${BASE}/admin`, { waitUntil: "networkidle" });
-  const fehler = page.locator(".adm-ops-error");
+  const fehler = page.locator(".adm-inline-error");
   await fehler.waitFor({ state: "visible" });
-  assert.match(await fehler.textContent(), /Die Betriebs-Queues konnten nicht geladen werden\./);
-  assert.equal(await page.locator(".adm-metric-value").count(), 5);
-  assert.equal(await page.locator(".adm-inline-error").count(), 0, "der Queuefehler färbt die Kennzahlen ein");
-  const ZAEHLER = '.adm-ops-item[data-queue="reconciliation_open"] .adm-ops-count';
-  const werte = await page.locator(ZAEHLER).textContent();
-  assert.equal(werte.trim(), "—", "ohne Serverwert wird keine Zahl behauptet");
+  assert.match(await fehler.textContent(), /Einige Zahlen konnten nicht geladen werden\./);
+  assert.equal(await page.locator(".adm-metric-value").count(), 2);
+  // Die Listenzähler bleiben sichtbar …
+  assert.equal((await page.locator('#adm-todo [data-task="cancellations"] .adm-ops-count').textContent()).trim(), "5");
+  // … die Queue hat keinen Serverwert: keine Karte und keine 0, sondern „Anzahl nicht verfügbar".
+  const ZAEHLER = '#adm-todo .adm-ops-item[data-queue="reconciliation_open"] .adm-ops-count';
+  assert.equal(await page.locator(ZAEHLER).count(), 0, "ohne Serverwert wird keine Zahl behauptet");
+  assert.match(await page.locator("#adm-todo-unavailable").textContent(), /Offene Buchungsklärungen/);
+  assert.equal(await page.locator("#adm-todo-unavailable a", { hasText: "Offene Buchungsklärungen" }).getAttribute("href"),
+    "/admin/reconciliation");
+  assert.match(await page.locator("#adm-diag summary").textContent(), /Anzahl nicht verfügbar/);
 
   state.queuesStatus = 200;
   await fehler.getByRole("button", { name: /Erneut versuchen/ }).click();
   await fehler.waitFor({ state: "detached" });
-  // Die Fehlerzeile verschwindet schon, während neu geladen wird — bis dahin steht der Ladeplatzhalter „…" da.
-  // Gewartet wird deshalb auf den Serverwert; sofortiges Lesen war ein Wettlauf und färbte die Suite zufällig rot.
+  // Gewartet wird auf den Serverwert; sofortiges Lesen wäre ein Wettlauf.
   await page.waitForFunction((s) => (document.querySelector(s)?.textContent || "").trim() === "3", ZAEHLER, { timeout: 10000 });
   assert.equal((await page.locator(ZAEHLER).textContent()).trim(), "3");
+  const nochUnbekannt = page.locator("#adm-todo-unavailable");
+  if (await nochUnbekannt.count()) {
+    assert.doesNotMatch(await nochUnbekannt.textContent(), /Buchungsklärung/, "nach dem Erfolg bleibt die Queue „nicht verfügbar“");
+  }
   await page.close();
 });
 

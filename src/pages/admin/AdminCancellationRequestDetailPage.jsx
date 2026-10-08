@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { AdminBackLink } from "../../components/admin/AdminBackLink";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import { getAdminCancellationRequest, updateAdminCancellationRequest } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
@@ -178,11 +179,8 @@ export default function AdminCancellationRequestDetailPage() {
     await load();
   }, [load]);
 
-  const back = (
-    <Link to="/admin/cancellation-requests" className="adm-back">
-      Zurück zur Übersicht
-    </Link>
-  );
+  // Rückweg zur Herkunft (UX-Paket 2), sonst zur Liste.
+  const back = <AdminBackLink to="/admin/cancellation-requests" label="Zurück zu den Stornierungsanfragen" />;
 
   if (loading) {
     return (

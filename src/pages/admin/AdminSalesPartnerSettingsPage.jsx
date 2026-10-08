@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
+import { SalesPartnerAdminNav } from "../../components/admin/SalesPartnerAdminNav";
+import { usePreliveStatus } from "../../hooks/usePreliveStatus";
 import { DateField } from "../../components/admin/DateField";
 import { LevelRulesEditor, RuleSetHistory, RuleSetView } from "../../components/admin/SalesPartnerLevelRules";
 import {
@@ -76,6 +77,8 @@ function Lade({ state, children }) {
    gespeichert werden. Ohne beides bleibt es leer (nichts wird erfunden).
    Obergrenzen sind optional; ein Feld ohne Wert heißt „keine Grenze". */
 export default function AdminSalesPartnerSettingsPage() {
+  // Nur für den Eintrag „Pre-Live-Test" der Teilnavigation (fail-closed).
+  const prelive = usePreliveStatus();
   const regeln = useVersioned(getAdminSalesPartnerLevelRules, normalizeLevelRulesResponse, "Die Level-Regeln konnten nicht geladen werden.");
   const grenzen = useVersioned(getAdminSalesPartnerCaps, normalizeCapsResponse, "Die Obergrenzen konnten nicht geladen werden.");
   const heute = localIsoDate();
@@ -168,10 +171,10 @@ export default function AdminSalesPartnerSettingsPage() {
     <div className="adm-page">
       <PageHeader
         variant="admin"
-        backLink={<Link to="/admin/partners" className="adm-back">Zurück zu den Vertriebspartnern</Link>}
         title={<>Einstellungen Vertriebspartner</>}
         subtitle={<>Globale Level-Regeln und Obergrenzen. Änderungen gelten als neue Version ab dem gewählten Tag und werden protokolliert.</>}
       />
+      <SalesPartnerAdminNav prelive={prelive} />
 
       <div className="adm-cards">
         <div className="adm-card" id="adm-sp-global-rules-card">

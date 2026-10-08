@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useDialog } from "../../hooks/useDialog";
-import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { AdminBackLink } from "../../components/admin/AdminBackLink";
 import {
   getAdminUser,
   anonymizeAdminUser,
@@ -302,11 +303,8 @@ export default function AdminUserDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, loading, pricingLoading]);
 
-  const back = (
-    <Link to="/admin/users" className="adm-back">
-      Zurück zur Kundenliste
-    </Link>
-  );
+  // Rückweg zur Herkunft (UX-Paket 2), sonst zur Liste.
+  const back = <AdminBackLink to="/admin/users" label="Zurück zu den Kunden" />;
 
   if (loading) {
     return (

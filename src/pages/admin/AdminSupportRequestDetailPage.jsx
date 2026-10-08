@@ -240,7 +240,7 @@ export default function AdminSupportRequestDetailPage() {
             <button type="button" className="btn btn-primary btn-sm" onClick={load}>
               Erneut versuchen
             </button>
-            <Link className="btn btn-outline btn-sm" to="/admin/support-requests">Zurück zur Übersicht</Link>
+            <Link className="btn btn-outline btn-sm" to="/admin/support-requests">Zurück zu den Supportanfragen</Link>
           </div>
         </div>
       </div>
@@ -343,14 +343,17 @@ export default function AdminSupportRequestDetailPage() {
         )}
       />
 
-      {/* Scope-Trennung: unmissverständlich, dass das Bearbeiten hier NICHTS an die
-          Kundschaft sendet und nichts an Sendung, Rechnung oder Zahlung ändert. */}
+      {/* Scope-Trennung: unmissverständlich, dass Status und Vermerk NICHTS an die
+          Kundschaft senden und nichts an Sendung, Rechnung oder Zahlung ändern.
+          UX-Paket 6: der Weg zur Kundenantwort ist die öffentliche Antwort unten
+          (Nachrichtenverlauf und Glocke des Kunden) — der frühere Satz „Die Antwort
+          erfolgt per E-Mail …" widersprach dem Antwortformular derselben Seite. */}
       <div className="adm-scope-note" role="note">
         <div>
           <strong>Interner Bearbeitungsstand.</strong> Status und Vermerk sind rein organisatorisch.
           Es wird <strong>keine</strong> Nachricht an den Kunden versendet und <strong>nichts</strong> an
-          Sendungen, Rechnungen oder Zahlungen verändert. Die Antwort an den Kunden erfolgt per E-Mail
-          an die unten genannte Adresse.
+          Sendungen, Rechnungen oder Zahlungen verändert. Eine Antwort an den Kunden schreiben Sie
+          unter „Öffentlich antworten“.
         </div>
       </div>
 

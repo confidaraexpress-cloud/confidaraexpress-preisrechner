@@ -363,7 +363,7 @@ export default function AdminUserDetailPage() {
       let d = {};
       try { d = await r.json(); } catch { d = {}; }
       const noOp = !!(d && (d.no_op === true || d.noop === true || d.already_anonymized === true || d.changed === false));
-      setAnonMsg({ type: "success", text: noOp ? "Account war bereits anonymisiert." : "Account wurde anonymisiert." });
+      setAnonMsg({ type: "success", text: noOp ? "Das Konto war bereits anonymisiert." : "Das Konto wurde anonymisiert." });
       load(); // Detail neu laden — Backend-Realität, kein lokales Raten
     } catch {
       setAnonMsg({ type: "error", text: ANON_ERRORS.default });
@@ -754,7 +754,7 @@ export default function AdminUserDetailPage() {
           <div className="adm-card-body">
             <div className="adm-danger-item">
               <div className="adm-danger-item-text">
-                <div className="adm-danger-item-title">Account anonymisieren</div>
+                <div className="adm-danger-item-title">Konto anonymisieren</div>
                 <p className="adm-danger-item-desc">
                   Diese Aktion entfernt personenbezogene Kontodaten dauerhaft. Sendungen und Rechnungen bleiben
                   aus Nachweis- und Abrechnungsgründen erhalten. Diese Aktion kann nicht rückgängig gemacht werden.
@@ -769,11 +769,11 @@ export default function AdminUserDetailPage() {
                   disabled={isAnonymized || selfAccount}
                   aria-describedby={selfAccount ? "adm-self-note" : undefined}
                 >
-                  Account anonymisieren
+                  Konto anonymisieren
                 </button>
               </div>
             </div>
-            {isAnonymized && <p className="adm-danger-note">Dieser Account ist bereits anonymisiert.</p>}
+            {isAnonymized && <p className="adm-danger-note">Dieses Konto ist bereits anonymisiert.</p>}
             {selfAccount && <p className="adm-danger-note" id="adm-self-note">{SELF_ACTION_REASON}</p>}
 
             {/* Harte Löschung — NUR ohne abhängige Sendungs-/Rechnungsdaten. Sind
@@ -829,12 +829,12 @@ export default function AdminUserDetailPage() {
             aria-describedby="adm-anon-desc"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="adm-anon-title" className="adm-modal-title">Account wirklich anonymisieren?</h2>
+            <h2 id="adm-anon-title" className="adm-modal-title">Konto wirklich anonymisieren?</h2>
             <p id="adm-anon-desc" className="adm-modal-text">
               Diese Aktion ist irreversibel. Der Kunde kann sich danach nicht mehr anmelden. Personenbezogene Kontodaten werden entfernt.
             </p>
             <p className="adm-modal-sub">{targetLabel}</p>
-            <label className="adm-modal-label" htmlFor="adm-anon-input">Tippe ANONYMIZE_USER ein, um fortzufahren.</label>
+            <label className="adm-modal-label" htmlFor="adm-anon-input">Geben Sie zur Bestätigung ANONYMIZE_USER ein.</label>
             <input
               id="adm-anon-input"
               className="adm-modal-input"
@@ -858,7 +858,7 @@ export default function AdminUserDetailPage() {
                 disabled={anonBusy || !confirmed}
               >
                 {anonBusy
-                  ? <><span className="spinner spinner-dark" /> Anonymisiere…</>
+                  ? <><span className="spinner spinner-dark" /> Wird anonymisiert…</>
                   : <>Anonymisierung bestätigen</>}
               </button>
             </div>
@@ -884,7 +884,7 @@ export default function AdminUserDetailPage() {
               existieren. Die Aktion wird protokolliert.
             </p>
             <p className="adm-modal-sub">{targetLabel}</p>
-            <label className="adm-modal-label" htmlFor="adm-del-input">Tippe DELETE_USER ein, um fortzufahren.</label>
+            <label className="adm-modal-label" htmlFor="adm-del-input">Geben Sie zur Bestätigung DELETE_USER ein.</label>
             <input
               id="adm-del-input"
               className="adm-modal-input"
@@ -908,7 +908,7 @@ export default function AdminUserDetailPage() {
                 disabled={delBusy || !delConfirmed}
               >
                 {delBusy
-                  ? <><span className="spinner spinner-dark" /> Lösche…</>
+                  ? <><span className="spinner spinner-dark" /> Wird gelöscht…</>
                   : <>Löschung bestätigen</>}
               </button>
             </div>

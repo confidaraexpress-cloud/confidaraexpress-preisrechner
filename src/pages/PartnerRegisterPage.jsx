@@ -22,12 +22,30 @@ const Req = () => <span className="auth-req" aria-hidden="true">*</span>;
 
 const LEER = { name: "", email: "", password: "", companyName: "", phone: "", agreementAccepted: false };
 
+// Fehlerschlüssel → Eingabe, in Formularreihenfolge (UX-Paket 6). Nach einem
+// abgewiesenen Absenden — eigene Prüfung oder Feldfehler des Servers — springt
+// der Fokus auf das erste markierte Feld; die Meldung hängt dort per
+// aria-describedby (`<id>-error`).
+const FELDER = [
+  ["name", "sp-name"], ["email", "sp-email"], ["password", "sp-password"], ["passwordRepeat", "sp-password-repeat"],
+  ["companyName", "sp-company"], ["phone", "sp-phone"], ["agreement", "sp-agreement"],
+];
+function fokussiereErstenFehler(errors) {
+  const treffer = FELDER.find(([k]) => errors && errors[k]);
+  // Nach dem nächsten Rendern: erst dann steht die Meldung am Feld.
+  if (treffer) setTimeout(() => document.getElementById(treffer[1])?.focus(), 0);
+}
+
 /* Die Leselinks unter dem Formular nehmen dem Feld beim Drücken nicht den
    Fokus. Sonst meldete das (automatisch fokussierte, noch leere) Namensfeld
    beim Verlassen seinen Fehler, die neue Zeile schöbe den Link zwischen
    Drücken und Loslassen nach unten, und der erste Klick auf „Vertriebspartner-
    vereinbarung lesen" ginge ins Leere (im Browser gemessen). Tastatur und
-   Screenreader sind davon unberührt; der Link öffnet unverändert im neuen Tab. */
+   Screenreader sind davon unberührt; der Link öffnet unverändert im neuen Tab.
+   UX-Paket 6: dasselbe gilt für „Antrag stellen" — seit der Knopf nicht mehr
+   gesperrt ist, verschob die Meldung des verlassenen Felds ihn sonst zwischen
+   Drücken und Loslassen, und der erste Klick ging verloren (bei 768 px im
+   Browser gemessen). Den Fokus setzt danach das Absenden selbst. */
 const fokusBehalten = (e) => e.preventDefault();
 
 /* ── Öffentliche Registrierung für Vertriebspartner (/partner-registrieren) ──
@@ -50,7 +68,13 @@ const fokusBehalten = (e) => e.preventDefault();
    und Regeln; einziger sichtbarer Unterschied ist der Testhinweis an der
    Stelle der Vertragsannahme. Es wird keine Fassung gesendet und keine
    Zustimmung vorgetäuscht — Testantrag ist der Antrag allein nach dem Urteil
-   des Servers. */
+   des Servers.
+
+   UX-Paket 6: Pflichtfelder sind erklärt, der Knopf „Antrag stellen" ist nie
+   ohne Begründung gesperrt — wer unvollständig absendet, sieht jeden Fehler am
+   Feld, darüber einen Sammelhinweis, und der Fokus steht im ersten markierten
+   Feld (gesendet wird dann nichts). Der Erfolg nennt den nächsten Schritt und
+   bietet keine Anmeldung an: vor der Freigabe ist keine möglich. */
 export default function PartnerRegisterPage() {
   const navigate = useNavigate();
   const [config, setConfig] = useState({ loading: true, ok: false, data: FAIL_CLOSED_PUBLIC_CONFIG });
@@ -61,6 +85,8 @@ export default function PartnerRegisterPage() {
   // zentralen Prüfung sofort — sonst bliebe ein gesperrter Knopf unerklärt.
   const [touched, setTouched] = useState({});
   const [generalError, setGeneralError] = useState("");
+  // Sammelhinweis nach einem abgewiesenen Absenden — steht, bis alles passt.
+  const [pruefHinweis, setPruefHinweis] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [serverClosed, setServerClosed] = useState(false);
   const [done, setDone] = useState(false);
@@ -82,6 +108,8 @@ export default function PartnerRegisterPage() {
   // Sichtbar: ein Serverfehler bzw. Fehler des letzten Absendens, sonst der
   // Prüfbefund eines bereits verlassenen Feldes.
   const fehlerVon = (k) => errors[k] || (touched[k] ? liveErrors[k] : undefined);
+  // Verweis eines Felds auf seine sichtbare Meldung (sonst nichts).
+  const fehlerVerweis = (k, id) => (fehlerVon(k) ? `${id}-error` : undefined);
   const verlassen = (k) => setTouched((t) => (t[k] ? t : { ...t, [k]: true }));
 
   const setFeld = (k, v) => {
@@ -94,14 +122,31 @@ export default function PartnerRegisterPage() {
     });
   };
 
-  const toggleAgreement = () => setFeld("agreementAccepted", form.agreementAccepted !== true);
+  // Der Fehler der Zustimmung heißt `agreement`, das Feld `agreementAccepted` —
+  // nach einem abgewiesenen Absenden verschwindet die Meldung mit dem Ankreuzen.
+  const toggleAgreement = () => {
+    setFeld("agreementAccepted", form.agreementAccepted !== true);
+    setErrors((e) => {
+      if (!e.agreement) return e;
+      const n = { ...e };
+      delete n.agreement;
+      return n;
+    });
+  };
 
   const submit = async () => {
     if (submitting) return;
     const errs = getPartnerRegErrors(form, passwordRepeat, regelOptionen);
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      setGeneralError("");
+      setPruefHinweis(true);
+      fokussiereErstenFehler(errs);
+      return;
+    }
     setErrors({});
     setGeneralError("");
+    setPruefHinweis(false);
     setSubmitting(true);
     try {
       const r = await registerSalesPartner(buildPartnerRegistrationPayload(form, {
@@ -115,6 +160,7 @@ export default function PartnerRegisterPage() {
         if (fehler.disabled) setServerClosed(true);
         setErrors(fehler.fieldErrors);
         setGeneralError(fehler.generalError);
+        fokussiereErstenFehler(fehler.fieldErrors);
         return;
       }
       clearReferral("partner");
@@ -129,8 +175,9 @@ export default function PartnerRegisterPage() {
   const zurAnmeldung = () => navigate("/login");
 
   // Zustandskarte (Laden, nicht erreichbar, geschlossen, Erfolg) — dieselbe
-  // Kartenform wie die übrigen Auth-Zustände.
-  const zustand = (icon, titel, text, aktion, role = "status") => (
+  // Kartenform wie die übrigen Auth-Zustände. `darunter`: eine Aktion oder
+  // (beim Erfolg) der nächste Schritt.
+  const zustand = (icon, titel, text, darunter, role = "status") => (
     <div className="auth-card auth-anim delay-3" id="sp-state">
       <div className="auth-card-top">
         <div className="auth-card-icon" aria-hidden="true">
@@ -139,7 +186,7 @@ export default function PartnerRegisterPage() {
         <h2 className="auth-card-title">{titel}</h2>
         <p className="auth-card-desc" role={role}>{text}</p>
       </div>
-      {aktion}
+      {darunter}
     </div>
   );
 
@@ -163,14 +210,24 @@ export default function PartnerRegisterPage() {
         </button>
       ), "alert");
   } else if (done) {
-    inhalt = zustand("check", "Antrag eingegangen", PARTNER_REG_TEXTS.success, anmeldeKnopf);
+    // Kein Anmeldeknopf: vor der Freigabe ist keine Anmeldung möglich.
+    inhalt = zustand("check", "Antrag eingegangen", PARTNER_REG_TEXTS.success, (
+      <div className="auth-card-next" id="sp-next">
+        <p>{PARTNER_REG_TEXTS.successNext}</p>
+        {!testweg && <p>{PARTNER_REG_TEXTS.successMail}</p>}
+      </div>
+    ));
   } else if (!offen) {
     inhalt = zustand("info", "Partnerregistrierung", PARTNER_REG_TEXTS.disabled, anmeldeKnopf);
   } else {
     inhalt = (
       <div className="auth-card auth-anim delay-3">
         {generalError && <div className="auth-alert auth-alert-error" role="alert">{generalError}</div>}
+        {!generalError && pruefHinweis && !valid && (
+          <div className="auth-alert auth-alert-error" role="alert" id="sp-check">{PARTNER_REG_TEXTS.checkMarked}</div>
+        )}
         <form noValidate id="sp-form" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+          <p className="auth-required-hint" id="sp-required-hint">{PARTNER_REG_TEXTS.requiredHint}</p>
           <div className="auth-field">
             <div className="auth-field-row">
               <label className="auth-field-label" htmlFor="sp-name">Name <Req /></label>
@@ -187,10 +244,11 @@ export default function PartnerRegisterPage() {
                 required
                 aria-required="true"
                 aria-invalid={fehlerVon("name") ? "true" : undefined}
+                aria-describedby={fehlerVerweis("name", "sp-name")}
                 autoFocus
               />
             </div>
-            {fehlerVon("name") && <span className="auth-field-error">{fehlerVon("name")}</span>}
+            {fehlerVon("name") && <span className="auth-field-error" id="sp-name-error">{fehlerVon("name")}</span>}
           </div>
 
           <div className="auth-field">
@@ -211,9 +269,10 @@ export default function PartnerRegisterPage() {
                 required
                 aria-required="true"
                 aria-invalid={fehlerVon("email") ? "true" : undefined}
+                aria-describedby={fehlerVerweis("email", "sp-email")}
               />
             </div>
-            {fehlerVon("email") && <span className="auth-field-error">{fehlerVon("email")}</span>}
+            {fehlerVon("email") && <span className="auth-field-error" id="sp-email-error">{fehlerVon("email")}</span>}
           </div>
 
           <div className="auth-field">
@@ -231,9 +290,11 @@ export default function PartnerRegisterPage() {
                 placeholder={`Mind. ${PASSWORD_MIN_LEN} Zeichen`}
                 autoComplete="new-password"
                 required
+                invalid={!!fehlerVon("password")}
+                describedBy={fehlerVerweis("password", "sp-password")}
               />
             </div>
-            {fehlerVon("password") && <span className="auth-field-error">{fehlerVon("password")}</span>}
+            {fehlerVon("password") && <span className="auth-field-error" id="sp-password-error">{fehlerVon("password")}</span>}
           </div>
 
           <div className="auth-field">
@@ -251,9 +312,13 @@ export default function PartnerRegisterPage() {
                 placeholder="Passwort erneut eingeben"
                 autoComplete="new-password"
                 required
+                invalid={!!fehlerVon("passwordRepeat")}
+                describedBy={fehlerVerweis("passwordRepeat", "sp-password-repeat")}
               />
             </div>
-            {fehlerVon("passwordRepeat") && <span className="auth-field-error">{fehlerVon("passwordRepeat")}</span>}
+            {fehlerVon("passwordRepeat") && (
+              <span className="auth-field-error" id="sp-password-repeat-error">{fehlerVon("passwordRepeat")}</span>
+            )}
           </div>
 
           <div className="auth-field">
@@ -269,9 +334,10 @@ export default function PartnerRegisterPage() {
                 onBlur={() => verlassen("companyName")}
                 autoComplete="organization"
                 aria-invalid={fehlerVon("companyName") ? "true" : undefined}
+                aria-describedby={fehlerVerweis("companyName", "sp-company")}
               />
             </div>
-            {fehlerVon("companyName") && <span className="auth-field-error">{fehlerVon("companyName")}</span>}
+            {fehlerVon("companyName") && <span className="auth-field-error" id="sp-company-error">{fehlerVon("companyName")}</span>}
           </div>
 
           <div className="auth-field">
@@ -289,9 +355,10 @@ export default function PartnerRegisterPage() {
                 onBlur={() => verlassen("phone")}
                 autoComplete="tel"
                 aria-invalid={fehlerVon("phone") ? "true" : undefined}
+                aria-describedby={fehlerVerweis("phone", "sp-phone")}
               />
             </div>
-            {fehlerVon("phone") && <span className="auth-field-error">{fehlerVon("phone")}</span>}
+            {fehlerVon("phone") && <span className="auth-field-error" id="sp-phone-error">{fehlerVon("phone")}</span>}
           </div>
 
           {testweg ? (
@@ -308,6 +375,7 @@ export default function PartnerRegisterPage() {
                 aria-checked={form.agreementAccepted === true}
                 aria-required="true"
                 aria-invalid={fehlerVon("agreement") ? "true" : undefined}
+                aria-describedby={fehlerVerweis("agreement", "sp-agreement")}
                 tabIndex={0}
                 onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); verlassen("agreement"); toggleAgreement(); } }}
               >
@@ -320,7 +388,9 @@ export default function PartnerRegisterPage() {
             {fehlerVon("agreement") && <span className="auth-field-error" id="sp-agreement-error">{fehlerVon("agreement")}</span>}
           </>)}
 
-          <button type="submit" id="sp-submit" className="auth-cta" disabled={submitting || !valid}>
+          {/* Nie ohne Begründung gesperrt: ein unvollständiger Antrag zeigt beim
+              Absenden seine Fehler (UX-Paket 6). Gesperrt nur während des Sendens. */}
+          <button type="submit" id="sp-submit" className="auth-cta" disabled={submitting} onMouseDown={fokusBehalten}>
             <span>{submitting ? "Wird gesendet…" : "Antrag stellen"}</span>
             <span className="auth-cta-arrow"><Icon n="arrowRight" s={18} /></span>
           </button>

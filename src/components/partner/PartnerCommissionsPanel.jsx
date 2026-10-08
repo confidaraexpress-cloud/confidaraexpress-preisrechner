@@ -5,8 +5,10 @@ import { getPartnerCommissions } from "../../api/partnerApi";
 import { usePartnerData } from "../../hooks/usePartnerData";
 import {
   PARTNER_TEXTS,
+  commissionBasisText,
   commissionCounterpart,
   commissionLevelLabel,
+  commissionSummary,
   commissionTypeMeta,
   formatCents,
   formatIsoDate,
@@ -26,8 +28,8 @@ function TypeBadge({ type }) {
   return <span className={`badge ${cls}`}>{label}</span>;
 }
 
-// Referenzspalte: Vorgang, Buchungsart (Rücknahme/Korrektur sichtbar) und
-// eine Notiz des Servers — als reiner Text.
+// Vorgang: Referenz, Buchungsart (Rücknahme/Korrektur sichtbar) und eine
+// Notiz des Servers — als reiner Text.
 function ReferenceCell({ entry }) {
   return (
     <div className="spp-cell-main">
@@ -38,11 +40,37 @@ function ReferenceCell({ entry }) {
   );
 }
 
+// Herkunft: Kunde bzw. Teammitglied, darunter die Ebene.
+function OriginCell({ entry }) {
+  return (
+    <div className="spp-cell-main">
+      <span>{commissionCounterpart(entry)}</span>
+      <span className="spp-cell-sub">{commissionLevelLabel(entry.level)}</span>
+    </div>
+  );
+}
+
+// Provisionsfähige Basis, darunter der Satz — beides Werte des Servers; ein
+// unbekannter Satz (etwa bei einer Korrektur) entfällt statt „Satz —".
+function BasisCell({ entry }) {
+  const satz = formatPercent(entry.ratePercent);
+  return (
+    <div className="spp-cell-main spp-cell-main--num">
+      <span>{formatCents(entry.basisCents)}</span>
+      {satz !== "—" && <span className="spp-cell-sub">Satz {satz}</span>}
+    </div>
+  );
+}
+
 /* ── Partnerprovisionen ──────────────────────────────────────────────────────
-   Monatsauswahl, Summen und alle Buchungen des Monats. Der Monat kommt vom
-   Server (aktueller Monat der Übersicht bzw. der ersten Antwort) — die
-   Oberfläche liest keine Uhr. Rücknahmen und Korrekturen sind über Badge und
-   Zeilenfläche erkennbar; Beträge sind die des Servers, nichts wird addiert. */
+   UX-Paket 6: zuerst, was zählt — der Monat, was darin verdient wurde und wie
+   viel davon auszahlbar ist (Summen des Servers), darunter die Aufteilung nach
+   eigenen Kunden und Team. Die Buchungen kompakt in fünf Spalten: Datum,
+   Herkunft (Kunde bzw. Teammitglied mit Ebene), Vorgang, Provisionsfähige
+   Basis mit Satz, Betrag mit Status. Rücknahmen und Korrekturen bleiben über
+   Badge und Zeilenfläche erkennbar. Der Monat kommt vom Server (aktueller
+   Monat der Übersicht bzw. der ersten Antwort) — die Oberfläche liest keine
+   Uhr und addiert nichts. */
 export function PartnerCommissionsPanel({ currentMonth = null }) {
   // Startmonat ist der Servermonat der Übersicht; nur ohne ihn (Übersicht noch
   // nicht da oder gescheitert) entscheidet der Server über den Monat.
@@ -58,7 +86,7 @@ export function PartnerCommissionsPanel({ currentMonth = null }) {
   const optionen = monthOptions(ankerRef.current, MONATE_ZURUECK);
   const gewaehlt = month || data?.month || ankerRef.current || "";
 
-  const kopf = optionen.length > 0 && (
+  const auswahl = optionen.length > 0 && (
     <div className="spp-toolbar">
       <Field
         as="select"
@@ -70,16 +98,22 @@ export function PartnerCommissionsPanel({ currentMonth = null }) {
       >
         {optionen.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </Field>
-      {data && (
-        <dl className="spp-totals" id="spp-commission-totals">
-          <div><dt>Provision gesamt</dt><dd>{formatCents(data.totals.accruedCents)}</dd></div>
-          <div><dt>Davon auszahlbar</dt><dd>{formatCents(data.totals.payableCents)}</dd></div>
-          <div><dt>Eigene Kunden</dt><dd>{formatCents(data.totals.byLevel[0])}</dd></div>
-          <div><dt>Team Ebene 1</dt><dd>{formatCents(data.totals.byLevel[1])}</dd></div>
-          <div><dt>Team Ebene 2</dt><dd>{formatCents(data.totals.byLevel[2])}</dd></div>
-        </dl>
-      )}
     </div>
+  );
+
+  const summe = data ? commissionSummary(data) : null;
+  const kopf = summe && (
+    <section className="ce-card spp-summary" id="spp-commission-totals" aria-labelledby="spp-commission-title"
+      aria-busy={loading ? "true" : undefined}>
+      <h2 id="spp-commission-title" className="spp-summary-label">{summe.title}</h2>
+      <p className="spp-summary-value" id="spp-commission-earned">{summe.earned}</p>
+      <p className="spp-summary-sub" id="spp-commission-payable">{summe.payable}</p>
+      <dl className="spp-totals spp-summary-split">
+        {summe.breakdown.map((b) => (
+          <div key={b.key}><dt>{b.label}</dt><dd>{b.value}</dd></div>
+        ))}
+      </dl>
+    </section>
   );
 
   let inhalt;
@@ -103,35 +137,34 @@ export function PartnerCommissionsPanel({ currentMonth = null }) {
   } else {
     inhalt = (
       <>
-        <div className="table-card ce-list-table spp-table">
+        <div className="table-card ce-list-table spp-table" id="spp-commission-table">
           <table>
             <caption className="sr-only">
-              Provisionsbuchungen {formatMonth(data.month)}. Spalten: Referenz, Datum, Ebene, Kunde bzw. Teammitglied,
-              {" "}{PARTNER_TEXTS.basisLabel}, Satz, Betrag, auszahlbar.
+              Provisionsbuchungen {formatMonth(data.month)}. Spalten: Datum, Herkunft mit Ebene, Vorgang,
+              {" "}{PARTNER_TEXTS.basisLabel} mit Satz, Betrag mit Status.
             </caption>
             <thead>
               <tr>
-                <th scope="col">Referenz</th>
                 <th scope="col">Datum</th>
-                <th scope="col">Ebene</th>
-                <th scope="col">Kunde bzw. Teammitglied</th>
+                <th scope="col">Herkunft</th>
+                <th scope="col">Vorgang</th>
                 <th scope="col" className="ce-num">{PARTNER_TEXTS.basisLabel}</th>
-                <th scope="col" className="ce-num">Satz</th>
                 <th scope="col" className="ce-num">Betrag</th>
-                <th scope="col">Auszahlbar</th>
               </tr>
             </thead>
             <tbody>
               {data.entries.map((e, i) => (
                 <tr key={e.id ?? `b-${i}`} className={isCorrectionEntry(e) ? "spp-row-correction" : undefined}>
-                  <td><ReferenceCell entry={e} /></td>
                   <td>{formatIsoDate(e.entryDate)}</td>
-                  <td>{commissionLevelLabel(e.level)}</td>
-                  <td>{commissionCounterpart(e)}</td>
-                  <td className="ce-num">{formatCents(e.basisCents)}</td>
-                  <td className="ce-num">{formatPercent(e.ratePercent)}</td>
-                  <td className="ce-num">{formatCents(e.amountCents)}</td>
-                  <td>{payableLabel(e)}</td>
+                  <td><OriginCell entry={e} /></td>
+                  <td><ReferenceCell entry={e} /></td>
+                  <td className="ce-num"><BasisCell entry={e} /></td>
+                  <td className="ce-num">
+                    <div className="spp-cell-main spp-cell-main--num">
+                      <span className="spp-commission-amount">{formatCents(e.amountCents)}</span>
+                      <span className="spp-cell-sub">{payableLabel(e)}</span>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -146,28 +179,20 @@ export function PartnerCommissionsPanel({ currentMonth = null }) {
                 <strong>{formatCents(e.amountCents)}</strong>
               </div>
               <div className="ce-list-card-row">
+                <span className="ce-list-card-key">Status</span>
+                <span className="ce-list-card-val">{payableLabel(e)}</span>
+              </div>
+              <div className="ce-list-card-row">
                 <span className="ce-list-card-key">Datum</span>
                 <span className="ce-list-card-val">{formatIsoDate(e.entryDate)}</span>
               </div>
               <div className="ce-list-card-row">
-                <span className="ce-list-card-key">Ebene</span>
-                <span className="ce-list-card-val">{commissionLevelLabel(e.level)}</span>
-              </div>
-              <div className="ce-list-card-row">
-                <span className="ce-list-card-key">Kunde bzw. Teammitglied</span>
-                <span className="ce-list-card-val">{commissionCounterpart(e)}</span>
+                <span className="ce-list-card-key">Herkunft</span>
+                <span className="ce-list-card-val">{commissionCounterpart(e)} · {commissionLevelLabel(e.level)}</span>
               </div>
               <div className="ce-list-card-row">
                 <span className="ce-list-card-key">{PARTNER_TEXTS.basisLabel}</span>
-                <span className="ce-list-card-val ce-num">{formatCents(e.basisCents)}</span>
-              </div>
-              <div className="ce-list-card-row">
-                <span className="ce-list-card-key">Satz</span>
-                <span className="ce-list-card-val ce-num">{formatPercent(e.ratePercent)}</span>
-              </div>
-              <div className="ce-list-card-row">
-                <span className="ce-list-card-key">Auszahlbar</span>
-                <span className="ce-list-card-val">{payableLabel(e)}</span>
+                <span className="ce-list-card-val ce-num">{commissionBasisText(e)}</span>
               </div>
             </li>
           ))}
@@ -178,6 +203,7 @@ export function PartnerCommissionsPanel({ currentMonth = null }) {
 
   return (
     <div className="spp-panel">
+      {auswahl}
       {kopf}
       {inhalt}
       <p className="spp-hint">{PARTNER_TEXTS.payableNote}</p>

@@ -156,7 +156,14 @@ export const PARTNER_REG_TEXTS = Object.freeze({
   emailTaken: "Diese E-Mail-Adresse ist bereits registriert.",
   rateLimited: "Zu viele Versuche. Bitte warten Sie einen Moment und versuchen Sie es anschließend erneut.",
   generic: "Die Registrierung konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut.",
-  success: "Ihr Antrag ist eingegangen und wird geprüft. Eine Anmeldung ist erst nach der Freigabe möglich.",
+  // UX-Paket 6: eindeutiger Erfolg und der nächste Schritt — ohne Anmeldeknopf,
+  // denn vor der Freigabe ist keine Anmeldung möglich. Die Freigabemail nennt
+  // nur der produktive Weg (an Testkonten hält der Versandschutz sie zurück).
+  success: "Ihr Antrag ist eingegangen und wird geprüft.",
+  successNext: "Sobald Ihr Konto freigeschaltet ist, melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an. Vorher ist keine Anmeldung möglich.",
+  successMail: "Über die Freigabe informieren wir Sie per E-Mail.",
+  requiredHint: "Pflichtfelder sind mit * markiert.",
+  checkMarked: "Bitte prüfen Sie die markierten Angaben.",
 });
 
 // Rückgabe wie getRegErrors: { <feld>: "<Text>" } — leer = absendbar.

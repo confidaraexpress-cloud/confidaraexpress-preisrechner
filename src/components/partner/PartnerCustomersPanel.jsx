@@ -1,12 +1,19 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { EmptyState, ErrorState, ListSkeleton } from "../ui/StateView";
 import { getPartnerCustomers } from "../../api/partnerApi";
 import { usePartnerData } from "../../hooks/usePartnerData";
 import {
+  CUSTOMER_TEXTS,
   customerAccountStatusMeta,
-  formatCount,
+  customerLevelText,
+  customerMonthLabels,
+  customerTerms,
   formatIsoDate,
   normalizeCustomers,
+  partnerMonths,
+  partnerTabPath,
+  shipmentsPackagesText,
 } from "../../utils/salesPartnerView.mjs";
 
 const FEHLER = "Ihre Kunden konnten nicht geladen werden.";
@@ -16,16 +23,21 @@ function StatusBadge({ status }) {
   return <span className={`badge ${cls}`}>{label}</span>;
 }
 
-const mengen = (m) => `${formatCount(m.shipments)} / ${formatCount(m.packages)}`;
-
 /* ── Partnerportal · Meine Kunden ────────────────────────────────────────────
-   Firmenname, Zuordnung seit, Status, Sendungen und Pakete — bewusst ohne
-   Adressen, Rechnungen oder Preise (der Vertrag liefert sie nicht, und die
-   Oberfläche holt sie nicht anderswo). */
-export function PartnerCustomersPanel() {
+   UX-Paket 6: zwei Aussagen, die nicht verwechselt werden dürfen, stehen
+   getrennt und erklärt über der Liste — das KUNDENKONTO (freigeschaltet, in
+   Prüfung, inaktiv) und ob der Kunde für Ihr KUNDEN-LEVEL zählt (genug Pakete
+   im Vormonat; die Schwelle prüft allein der Server, `previousMonth.active`).
+   Die Monatsnamen kommen aus der Übersicht (`overview`), nie aus der
+   Browseruhr; ohne Übersicht heißen die Spalten neutral „Laufender Monat" und
+   „Vormonat". Bewusst ohne Adressen, Rechnungen oder Preise (der Vertrag
+   liefert sie nicht, und die Oberfläche holt sie nicht anderswo). */
+export function PartnerCustomersPanel({ overview = null }) {
   const { loading, error, data, reload } = usePartnerData(
     (opts) => getPartnerCustomers(opts), normalizeCustomers, [], FEHLER,
   );
+  const monate = partnerMonths(overview);
+  const spalten = customerMonthLabels(monate);
 
   if (loading && !data) {
     return <div className="table-card"><ListSkeleton rows={4} label="Kunden werden geladen …" /></div>;
@@ -41,39 +53,59 @@ export function PartnerCustomersPanel() {
     );
   }
   if (data.length === 0) {
+    // Ein Testkonto bekommt Kunden nur über den Adminbereich — der Kundenlink
+    // ordnet Testpartnern keine Kunden zu. Ohne Übersicht kein Verweis.
+    const test = overview?.preliveTest === true;
     return (
-      <div className="ce-card">
-        <EmptyState title="Noch keine zugeordneten Kunden" text="Sobald Ihnen Kunden zugeordnet sind, erscheinen sie hier." />
+      <div className="ce-card" id="spp-customers-empty">
+        <EmptyState
+          title={CUSTOMER_TEXTS.emptyTitle}
+          text={test ? CUSTOMER_TEXTS.emptyTextTest : CUSTOMER_TEXTS.emptyText}
+          action={overview && !test ? (
+            <Link className="btn btn-outline btn-sm" id="spp-customers-link" to={partnerTabPath("overview")}>
+              {CUSTOMER_TEXTS.emptyAction}
+            </Link>
+          ) : null}
+        />
       </div>
     );
   }
 
   return (
     <div className="spp-panel">
-      <div className="table-card ce-list-table spp-table">
+      <dl className="spp-terms-list spp-explain" id="spp-customers-explain">
+        {customerTerms(monate).map(([begriff, text]) => (
+          <div key={begriff} className="spp-terms-item"><dt>{begriff}</dt><dd>{text}</dd></div>
+        ))}
+      </dl>
+
+      <div className="table-card ce-list-table spp-table" id="spp-customers-table">
         <table>
           <caption className="sr-only">
-            Meine Kunden. Spalten: Firma, Zugeordnet seit, Status, Sendungen und Pakete im laufenden Monat und im Vormonat, im Vormonat aktiv.
+            Meine Kunden. Spalten: Firma mit Zuordnung, {CUSTOMER_TEXTS.accountLabel}, Sendungen und Pakete {spalten.current} und {spalten.previous}, {CUSTOMER_TEXTS.levelLabel}.
           </caption>
           <thead>
             <tr>
               <th scope="col">Firma</th>
-              <th scope="col">Zugeordnet seit</th>
-              <th scope="col">Status</th>
-              <th scope="col" className="ce-num">Laufender Monat (Sendungen / Pakete)</th>
-              <th scope="col" className="ce-num">Vormonat (Sendungen / Pakete)</th>
-              <th scope="col">Im Vormonat aktiv</th>
+              <th scope="col">{CUSTOMER_TEXTS.accountLabel}</th>
+              <th scope="col" className="ce-num">{spalten.current}</th>
+              <th scope="col" className="ce-num">{spalten.previous}</th>
+              <th scope="col">{CUSTOMER_TEXTS.levelLabel}</th>
             </tr>
           </thead>
           <tbody>
             {data.map((c, i) => (
               <tr key={c.ref || `k-${i}`}>
-                <td>{c.companyName || "—"}</td>
-                <td>{formatIsoDate(c.assignedSince)}</td>
+                <td>
+                  <div className="spp-cell-main">
+                    <span>{c.companyName || "—"}</span>
+                    <span className="spp-cell-sub">{CUSTOMER_TEXTS.assignedSince} {formatIsoDate(c.assignedSince)}</span>
+                  </div>
+                </td>
                 <td><StatusBadge status={c.accountStatus} /></td>
-                <td className="ce-num">{mengen(c.current)}</td>
-                <td className="ce-num">{mengen(c.previous)}</td>
-                <td>{c.previous.active ? "Ja" : "Nein"}</td>
+                <td className="ce-num">{shipmentsPackagesText(c.current)}</td>
+                <td className="ce-num">{shipmentsPackagesText(c.previous)}</td>
+                <td>{customerLevelText(c)}</td>
               </tr>
             ))}
           </tbody>
@@ -88,20 +120,20 @@ export function PartnerCustomersPanel() {
               <StatusBadge status={c.accountStatus} />
             </div>
             <div className="ce-list-card-row">
-              <span className="ce-list-card-key">Zugeordnet seit</span>
+              <span className="ce-list-card-key">{CUSTOMER_TEXTS.assignedSince}</span>
               <span className="ce-list-card-val">{formatIsoDate(c.assignedSince)}</span>
             </div>
             <div className="ce-list-card-row">
-              <span className="ce-list-card-key">Laufender Monat (Sendungen / Pakete)</span>
-              <span className="ce-list-card-val ce-num">{mengen(c.current)}</span>
+              <span className="ce-list-card-key">{spalten.current}</span>
+              <span className="ce-list-card-val ce-num">{shipmentsPackagesText(c.current)}</span>
             </div>
             <div className="ce-list-card-row">
-              <span className="ce-list-card-key">Vormonat (Sendungen / Pakete)</span>
-              <span className="ce-list-card-val ce-num">{mengen(c.previous)}</span>
+              <span className="ce-list-card-key">{spalten.previous}</span>
+              <span className="ce-list-card-val ce-num">{shipmentsPackagesText(c.previous)}</span>
             </div>
             <div className="ce-list-card-row">
-              <span className="ce-list-card-key">Im Vormonat aktiv</span>
-              <span className="ce-list-card-val">{c.previous.active ? "Ja" : "Nein"}</span>
+              <span className="ce-list-card-key">{CUSTOMER_TEXTS.levelLabel}</span>
+              <span className="ce-list-card-val">{customerLevelText(c)}</span>
             </div>
           </li>
         ))}

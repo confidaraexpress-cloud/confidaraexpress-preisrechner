@@ -13,7 +13,7 @@ import {
   partnerAgreementRows,
 } from "../../utils/salesPartnerAgreement.mjs";
 
-/* ── Partnerportal · Konto · Vertrag ─────────────────────────────────────────
+/* ── Partnerportal · Konto · Vereinbarung ────────────────────────────────────
    Die Vertriebspartnervereinbarung, der der Partner zugestimmt hat: Fassung,
    Zeitpunkt der Zustimmung und das registrierte Dokument dieser Fassung —
    genau der Dokumentpfad des Servers, geöffnet in einem neuen Tab. Fehlt das
@@ -58,7 +58,7 @@ export function PartnerAgreementSection() {
   }
 
   return (
-    <SettingsSection title="Vertrag" subtitle="Ihre Vertriebspartnervereinbarung">
+    <SettingsSection title="Vereinbarung" subtitle="Ihre Vertriebspartnervereinbarung">
       <div className="profile-section-body" id="spp-agreement">{inhalt}</div>
     </SettingsSection>
   );

@@ -10,13 +10,16 @@ import { partnerAccountRows, partnerLoginEmailRow } from "../../utils/salesPartn
 
 /* ── Partnerportal · Konto ───────────────────────────────────────────────────
    Dieselben Abschnitte und dieselben Bausteine wie die Kontoeinstellungen des
-   Kundenbereichs — ohne Kundenfunktionen:
-     • Kontodaten nur lesend (Name, Firma; keine Profilbearbeitung),
+   Kundenbereichs — ohne Kundenfunktionen. UX-Paket 6: die Abrechnungsdaten
+   stehen zuerst (ohne sie entsteht keine Gutschrift; „Gutschriften" verweist
+   hierher), danach in eigenen Gruppen Vereinbarung, Kontodaten und Sicherheit:
      • Abrechnungsdaten für die Gutschriften (eigener Partnerendpunkt, eigene
-       Abschnittskomponente; Steuer- und Bankdaten stehen nur dort),
-     • Vertrag: die akzeptierte Fassung der Vertriebspartnervereinbarung,
-     • Login-E-Mail mit der unveränderten EmailChangeSection,
-     • Passwortänderung über PasswordChangeSection.
+       Abschnittskomponente; Steuer- und Bankdaten stehen nur dort, die IBAN
+       nur maskiert),
+     • Vereinbarung: die akzeptierte Fassung der Vertriebspartnervereinbarung,
+     • Kontodaten nur lesend (Name, Firma; keine Profilbearbeitung),
+     • Sicherheit: Login-E-Mail mit der unveränderten EmailChangeSection und die
+       Passwortänderung über PasswordChangeSection.
    Der Backendvertrag gibt genau diese Endpunkte für Vertriebspartner frei
    (PATCH /kunde/password, E-Mail-Änderung, GET /kundenbereich und die
    /api/sales-partner/me/*-Endpunkte); jede andere Kundenroute antwortet einem
@@ -24,15 +27,15 @@ import { partnerAccountRows, partnerLoginEmailRow } from "../../utils/salesPartn
 export function PartnerAccountPanel({ user }) {
   return (
     <div className="profile-sections" id="spp-account">
+      <PartnerBillingDetailsSection />
+
+      <PartnerAgreementSection />
+
       <SettingsSection title="Kontodaten" subtitle="Ihre Angaben als Vertriebspartner">
         <div className="profile-section-body">
           <PartnerRows items={partnerAccountRows(user)} />
         </div>
       </SettingsSection>
-
-      <PartnerBillingDetailsSection />
-
-      <PartnerAgreementSection />
 
       <SettingsSection title="Sicherheit" subtitle="Schützen Sie Ihr Konto">
         <div className="profile-section-body">

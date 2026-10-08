@@ -37,10 +37,14 @@ const pct = (v) => (typeof v === "string" && PROZENT.test(v.trim()) ? v.trim() :
 export const creditNoteIdOf = (v) => (Number.isInteger(v) && v > 0 ? v
   : (typeof v === "string" && /^[1-9][0-9]{0,15}$/.test(v.trim()) ? v.trim() : null));
 
+// UX-Paket 6: dieselben Geldbegriffe wie die Übersicht (MONEY_TERMS) — „auszahlbar"
+// und „abgerechnet" statt des Sonderworts „abrechnungsreif"; die Bedingung der
+// Gutschrift (bestätigte Abrechnungsdaten) steht dabei, statt sie zu verschweigen.
 export const CREDIT_NOTE_TEXTS = Object.freeze({
   empty: "Noch keine Gutschriften.",
-  settlementNote: "Provision wird nach Zahlungseingang des Kunden abrechnungsreif.",
-  carriedForward: "Ihr aktueller abrechnungsreifer Saldo ist nicht positiv und wird in die nächste Abrechnung übertragen.",
+  settlementNote: "Auszahlbare Provisionen werden einmal im Monat mit einer Gutschrift abgerechnet. Voraussetzung sind bestätigte Abrechnungsdaten.",
+  billingLink: "Abrechnungsdaten ansehen",
+  carriedForward: "Ihre noch nicht abgerechneten Provisionen ergeben derzeit keinen positiven Betrag. Er wird mit der nächsten Gutschrift verrechnet.",
   documentPending: "Wird erstellt",
   payoutOpen: "Noch nicht ausgezahlt",
   loadError: "Ihre Gutschriften konnten nicht geladen werden.",
@@ -51,13 +55,13 @@ export const CREDIT_NOTE_TEXTS = Object.freeze({
   testOpen: "Test – nicht ausgezahlt",
 });
 
-/** Hinweis zum offenen, abrechnungsreifen Saldo — oder null. */
+/** Hinweis zum offenen Saldo (auszahlbar, noch nicht abgerechnet) — oder null. */
 export function openSettlementHint(openSettlement) {
   const os = objOrNull(openSettlement);
   if (!os) return null;
   if (os.carriedForward === true) return CREDIT_NOTE_TEXTS.carriedForward;
   if (Number.isInteger(os.readyEntryCount) && os.readyEntryCount > 0 && Number.isInteger(os.readyNetCents)) {
-    return `Abrechnungsreife Provisionen von ${formatCents(os.readyNetCents)} werden mit der nächsten Gutschrift abgerechnet.`;
+    return `Noch nicht abgerechnet: auszahlbare Provisionen von ${formatCents(os.readyNetCents)}. Sie werden mit der nächsten Gutschrift abgerechnet.`;
   }
   return null;
 }
@@ -68,6 +72,17 @@ const KIND_META = Object.freeze({
   cancellation: Object.freeze(["badge-red", "Storno"]),
 });
 export const creditNoteKindMeta = (kind) => statusMetaFrom(KIND_META, kind);
+
+/** Status einer Gutschrift (UX-Paket 6) — ausschließlich aus Art und Stornomerkmal
+ *  des Servers: ein Stornobeleg ist „Storno", eine stornierte Gutschrift
+ *  „Storniert", jede andere Gutschrift „Ausgestellt". Eine unbekannte Art bleibt
+ *  „Unbekannter Status" (statusFallback). Über die Auszahlung sagt der Status nichts. */
+export function creditNoteStatusMeta(cn) {
+  if (!cn) return statusFallback(null);
+  if (cn.kind === "cancellation") return KIND_META.cancellation;
+  if (cn.kind !== "regular") return creditNoteKindMeta(cn.kind);
+  return cn.cancelled === true ? ["badge-gray", "Storniert"] : ["badge-blue", "Ausgestellt"];
+}
 
 /** Sichtbarer Titel: der Belegtitel des Servers, sonst die Art. */
 export function creditNoteTitle(cn) {

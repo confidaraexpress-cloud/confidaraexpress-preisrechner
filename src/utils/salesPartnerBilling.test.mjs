@@ -261,9 +261,13 @@ test("14 — die Kontofläche spricht nur den Partnerendpunkt an; Steuer- und Ba
     assert.doesNotMatch(ohneKommentare(read(datei)), /iban|taxNumber|vatId|accountHolder|getPartnerBillingDetails/i,
       `${datei}: Steuer- oder Bankdaten außerhalb der Abrechnungsfläche`);
   }
-  // Im Konto steht die Fläche zwischen Kontodaten und Sicherheit.
+  // UX-Paket 6 (bewusste Ankeränderung): im Konto stehen die Abrechnungsdaten
+  // zuerst — ohne sie entsteht keine Gutschrift —, danach Vereinbarung,
+  // Kontodaten und Sicherheit als eigene Gruppen.
   const konto = ohneKommentare(read("components/partner/PartnerAccountPanel.jsx"));
-  assert.match(konto, /<PartnerBillingDetailsSection \/>[\s\S]*<PartnerAgreementSection \/>[\s\S]*title="Sicherheit"/);
+  assert.match(konto,
+    /id="spp-account">\s*<PartnerBillingDetailsSection \/>\s*<PartnerAgreementSection \/>\s*<SettingsSection title="Kontodaten"[\s\S]*<SettingsSection title="Sicherheit"/);
+  assert.match(ohneKommentare(read("components/partner/PartnerAgreementSection.jsx")), /<SettingsSection title="Vereinbarung"/);
 });
 
 test("15 — nach einer Ablehnung: unverändert erneut einreichen, Begründung bis dahin sichtbar", () => {

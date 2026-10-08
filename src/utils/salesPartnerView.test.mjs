@@ -9,12 +9,20 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 import {
+  CUSTOMER_TEXTS,
+  PARTNER_PAGE_PARAM,
   PARTNER_TABS,
   PARTNER_TEXTS,
+  TEAM_TEXTS,
+  commissionBasisText,
   commissionCounterpart,
   commissionLevelLabel,
+  commissionSummary,
   commissionTypeMeta,
   customerAccountStatusMeta,
+  customerLevelText,
+  customerMonthLabels,
+  customerTerms,
   formatBonusPercent,
   formatCents,
   formatIsoDate,
@@ -35,10 +43,18 @@ import {
   overviewKpis,
   partnerAccountRows,
   partnerLoginEmailRow,
+  partnerMonths,
   partnerStatusMeta,
+  partnerTabFromSearch,
+  partnerTabPath,
+  partnerTabSearch,
   payableLabel,
   relevanceLabel,
-  teamLevelHeading,
+  shipmentsPackagesText,
+  teamExplanation,
+  teamLevelSummary,
+  teamLevelTitle,
+  teamMonthLabel,
   visiblePartnerTabs,
 } from "./salesPartnerView.mjs";
 import { LINK_TEXTS, partnerLinkStates } from "./salesPartnerLinks.mjs";
@@ -282,6 +298,43 @@ test("8 — Kundenzeilen: nur Vertragsfelder, keine Adressen oder Preise", () =>
   assert.equal(rows[0].previous.active, true);
 });
 
+test("8b — Kunden (UX-Paket 6): Kundenkonto und Kunden-Level getrennt, Monate aus der Übersicht", () => {
+  const monate = partnerMonths(normalizeOverview(OVERVIEW));
+  assert.deepEqual(monate, { laufend: "Oktober", vormonat: "September" });
+  assert.deepEqual(partnerMonths(null), { laufend: null, vormonat: null }, "ohne Übersicht kein Monat aus der Uhr");
+  // Ohne `levels` trägt der laufende Monat der Übersicht; der Vormonat ist reine Kalenderarithmetik.
+  assert.deepEqual(partnerMonths(normalizeOverview({ currentMonth: { month: "2026-01" } })), { laufend: "Januar", vormonat: "Dezember" });
+
+  assert.deepEqual(customerMonthLabels(monate), { current: "Oktober (bisher)", previous: "September" });
+  assert.deepEqual(customerMonthLabels(partnerMonths(null)), { current: "Laufender Monat", previous: "Vormonat" });
+
+  const begriffe = customerTerms(monate);
+  assert.deepEqual(begriffe.map(([b]) => b), [CUSTOMER_TEXTS.accountLabel, CUSTOMER_TEXTS.levelLabel]);
+  assert.deepEqual(begriffe.map(([b]) => b), ["Kundenkonto", "Zählt für Ihr Kunden-Level"]);
+  assert.match(begriffe[0][1], /freigeschaltet/);
+  assert.equal(begriffe[1][1],
+    "Der Kunde hat im September genug Pakete versendet und zählt deshalb als aktiver Kunde für Ihr Kunden-Level im Oktober.");
+  assert.match(customerTerms(partnerMonths(null))[1][1], /im Vormonat .* im laufenden Monat\.$/);
+
+  // Zwei unabhängige Aussagen: ein freigeschaltetes Konto zählt nicht automatisch fürs Level.
+  const [kunde] = normalizeCustomers({ customers: [{ ref: "K-2", companyName: "Neu GmbH", accountStatus: "active",
+    currentMonth: { shipments: 1, packages: 1 }, previousMonth: { shipments: 0, packages: 0, active: false } }] });
+  assert.equal(customerAccountStatusMeta(kunde.accountStatus)[1], "Aktiv");
+  assert.equal(customerLevelText(kunde), "Nein");
+  assert.equal(customerLevelText(normalizeCustomers({ customers: [{ ref: "K-3", previousMonth: { active: "true" } }] })[0]), "Nein",
+    "nur exakt true zählt");
+  assert.equal(customerLevelText({ previous: { active: true } }), "Ja");
+  assert.equal(customerLevelText(null), "Nein");
+
+  assert.equal(shipmentsPackagesText(kunde.current), "1 Sendung · 1 Paket");
+  assert.equal(shipmentsPackagesText({ shipments: 1234, packages: 2 }), "1.234 Sendungen · 2 Pakete");
+  assert.equal(shipmentsPackagesText({ shipments: 0, packages: 0 }), "0 Sendungen · 0 Pakete");
+  assert.equal(shipmentsPackagesText({ shipments: null, packages: 3 }), "— Sendungen · 3 Pakete");
+  assert.equal(shipmentsPackagesText({}), "—");
+  assert.equal(shipmentsPackagesText(null), "—");
+  assert.equal(CUSTOMER_TEXTS.emptyText, "Sobald Ihnen Kunden zugeordnet sind, erscheinen sie hier.");
+});
+
 test("9 — Provisionen: Rücknahmen und Korrekturen erkennbar, Gegenüber je Ebene", () => {
   const c = normalizeCommissions({ month: "2026-10", totals: { accruedCents: 5000, payableCents: 2000, byLevel: { 0: 4000, 1: 800, 2: 200 } },
     entries: [
@@ -296,25 +349,110 @@ test("9 — Provisionen: Rücknahmen und Korrekturen erkennbar, Gegenüber je Eb
   assert.equal(isCorrectionEntry(c.entries[3]), true);
   assert.equal(commissionCounterpart(c.entries[0]), "Acme GmbH");
   assert.equal(commissionCounterpart(c.entries[2]), "Tom Team", "Teambuchung nennt das Teammitglied");
+  // UX-Paket 6 (bewusste Ankeränderung, Datenschutz): eine Teambuchung nennt nie
+  // einen Kundennamen — früher fiel sie ohne Teammitglied auf `customerName` zurück.
+  assert.equal(commissionCounterpart({ ...c.entries[2], teamMemberName: null }), "—");
+  assert.equal(commissionCounterpart({ level: 2, customerName: "Kunde eines Teammitglieds" }), "—");
+  assert.equal(commissionCounterpart(c.entries[3]), "—", "unbekannte Ebene: kein Name");
+  assert.equal(commissionCounterpart(null), "—");
   assert.equal(formatCents(c.entries[1].amountCents), euro(-27.5));
-  assert.equal(payableLabel(c.entries[0]), "Ja");
-  assert.equal(payableLabel(c.entries[2]), "Nein");
+  // UX-Paket 6 (bewusste Ankeränderung): derselbe Geldbegriff wie MONEY_TERMS statt „Ja/Nein".
+  assert.equal(payableLabel(c.entries[0]), "Auszahlbar");
+  assert.equal(payableLabel(c.entries[2]), "Noch nicht auszahlbar");
+  assert.equal(payableLabel({ payable: "true" }), "Noch nicht auszahlbar", "nur exakt true");
+  assert.equal(payableLabel(null), "Noch nicht auszahlbar");
 });
 
-test("10 — „Mein Team“ ist immer da (auch ohne Einträge); Relevanz mit Rang", () => {
+test("9b — Provisionen (UX-Paket 6): Monat, verdient und auszahlbar zuerst — Summen des Servers", () => {
+  const c = normalizeCommissions({ month: "2026-10", totals: { accruedCents: 5000, payableCents: 2000, byLevel: { 0: 4000, 1: 800, 2: 200 } }, entries: [] });
+  const s = commissionSummary(c);
+  assert.equal(s.title, "Verdient im Oktober 2026");
+  assert.equal(s.earned, euro(50));
+  assert.equal(s.payable, `davon auszahlbar: ${euro(20)}`);
+  assert.deepEqual(s.breakdown.map((b) => [b.label, b.value]),
+    [["Eigene Kunden", euro(40)], ["Team Ebene 1", euro(8)], ["Team Ebene 2", euro(2)]]);
+  // Die Aufteilung nutzt dieselben Ebenennamen wie die Buchungen.
+  assert.deepEqual(s.breakdown.map((b) => b.label), [0, 1, 2].map(commissionLevelLabel));
+  // Unbekanntes bleibt „—", nichts wird addiert oder geschätzt.
+  const leer = commissionSummary(normalizeCommissions({ totals: { accruedCents: "5000" } }));
+  assert.equal(leer.title, "Verdient");
+  assert.equal(leer.earned, "—");
+  assert.equal(leer.payable, "davon auszahlbar: —");
+  assert.deepEqual(leer.breakdown.map((b) => b.value), ["—", "—", "—"]);
+  assert.equal(commissionSummary(null).earned, "—");
+  // Basis und Satz einer Buchung: ein unbekannter Teil entfällt, nichts wird geschätzt.
+  assert.equal(commissionBasisText({ basisCents: 10000, ratePercent: "27.50" }), `${euro(100)} · Satz 27,50 %`);
+  assert.equal(commissionBasisText({ basisCents: 10000, ratePercent: null }), euro(100));
+  assert.equal(commissionBasisText({ basisCents: null, ratePercent: "5.00" }), "Satz 5,00 %");
+  assert.equal(commissionBasisText({ basisCents: null, ratePercent: null }), "—");
+  assert.equal(commissionBasisText({ basisCents: "10000", ratePercent: "abc" }), "—");
+  assert.equal(commissionBasisText(null), "—");
+});
+
+test("10 — „Mein Team“ ist immer da (auch ohne Einträge); Plätze aus Rang und Kennzeichen des Servers", () => {
   // Bewusste Ankeränderung (UX-Paket 1, Betreiberentscheidung 2026-10-08): früher
   // erschien der Bereich nur mit Einträgen und verschwand bei einem Ladefehler
-  // unbemerkt. Jetzt stehen alle sechs Bereiche immer da; „Abrechnungen“
-  // (Gutschriften) zwischen Provisionen und Team (salesPartnerCreditNotes.test.mjs, Test 7).
+  // unbemerkt. Jetzt stehen alle sechs Bereiche immer da; „Gutschriften“
+  // zwischen Provisionen und Team (salesPartnerCreditNotes.test.mjs, Test 7).
   assert.deepEqual(visiblePartnerTabs().map((t) => t.id), ["overview", "customers", "commissions", "credit-notes", "team", "account"]);
   assert.deepEqual(visiblePartnerTabs().map((t) => t.id), PARTNER_TABS.map((t) => t.id));
   const team = normalizeTeam({ limits: { level1: 10, level2: 10 },
     level1: [{ name: "Tom Team", status: "active", relevant: true, rank: 2, commissionCurrentMonthCents: 500, commissionTotalCents: 9000 }],
     level2: [] });
-  assert.equal(relevanceLabel(team.level1[0]), "Ja (Rang 2)");
-  assert.equal(relevanceLabel({ relevant: false, rank: 1 }), "Nein");
-  assert.equal(teamLevelHeading(1, team), "Ebene 1 · 1 von 10");
-  assert.equal(teamLevelHeading(2, normalizeTeam({ level2: [] })), "Ebene 2");
+  // UX-Paket 6 (bewusste Ankeränderung): „Ja (Rang 2)" klang nach Leistungswertung —
+  // der Rang ist die Reihenfolge der Aktivierung (Server: teamRankingAt), also ein Platz.
+  assert.equal(relevanceLabel(team.level1[0], 10), "Ja – Platz 2 von 10");
+  assert.equal(relevanceLabel(team.level1[0]), "Ja", "ohne Grenze kein „von …“");
+  assert.equal(relevanceLabel({ status: "inactive", relevant: false, rank: null }, 10), "Nein – nur aktive Partner zählen");
+  assert.equal(relevanceLabel({ status: "active", relevant: false, rank: 11 }, 10), "Nein – Platz 11; es zählen die ersten 10");
+  // Widersprüchliche Angaben werden nicht „repariert": ohne Kennzeichen kein Ja.
+  assert.equal(relevanceLabel({ status: "active", relevant: false, rank: 1 }, 10), "Nein");
+  assert.equal(relevanceLabel({ status: "active", relevant: "true", rank: 1 }, 10), "Nein", "nur exakt true");
+  assert.equal(relevanceLabel(null, 10), "Nein");
+});
+
+test("10a — Team (UX-Paket 6): zwei Ebenen mit Namen, Belegung ohne „12 von 10“, Regel und Sätze", () => {
+  assert.equal(teamLevelTitle(1), "Direkt geworben (Ebene 1)");
+  assert.equal(teamLevelTitle(2), "Weitere Partner (Ebene 2)");
+  assert.equal(TEAM_TEXTS.level2Note, "Partner, die Ihre direkt geworbenen Partner geworben haben.");
+  const mitglied = (i, relevant, status = "active") => ({ name: `P${i}`, status, relevant, rank: relevant ? i : null });
+  const team = normalizeTeam({ limits: { level1: 10, level2: 10 },
+    level1: [mitglied(1, true)],
+    // Früher „Ebene 2 · 12 von 10": inaktive Mitglieder zählten gegen die zehn Plätze.
+    level2: [...Array.from({ length: 10 }, (_, i) => mitglied(i + 1, true)), mitglied(11, false, "inactive"), mitglied(12, false, "inactive")] });
+  assert.equal(teamLevelSummary(1, team), "1 Partner · 1 zählt für Ihre Teamprovision (höchstens 10)");
+  assert.equal(teamLevelSummary(2, team), "12 Partner · 10 zählen für Ihre Teamprovision (höchstens 10)");
+  assert.equal(teamLevelSummary(2, normalizeTeam({ level2: [] })), TEAM_TEXTS.emptyLevel);
+  assert.equal(teamLevelSummary(1, normalizeTeam({ level1: [mitglied(1, true)] })), "1 Partner · 1 zählt für Ihre Teamprovision",
+    "ohne Grenze des Servers keine erfundene Zahl");
+
+  const uebersicht = normalizeOverview(OVERVIEW);
+  assert.equal(teamExplanation(team, uebersicht),
+    "Für Ihre Teamprovision zählen je Ebene die ersten 10 aktiven Partner, in der Reihenfolge ihrer Aktivierung. Ihre Sätze: Ebene 1 5,00 % · Ebene 2 2,50 %.");
+  assert.equal(teamExplanation(normalizeTeam({ limits: { level1: 10, level2: 5 } }), null),
+    "Für Ihre Teamprovision zählen auf Ebene 1 die ersten 10 und auf Ebene 2 die ersten 5 aktiven Partner, in der Reihenfolge ihrer Aktivierung.");
+  assert.equal(teamExplanation(normalizeTeam(null), null),
+    "Für Ihre Teamprovision zählen aktive Partner, in der Reihenfolge ihrer Aktivierung.");
+  assert.equal(teamMonthLabel(partnerMonths(uebersicht)), "Teamprovision im Oktober");
+  assert.equal(teamMonthLabel(partnerMonths(null)), "Teamprovision im laufenden Monat");
+});
+
+test("10c — Direktlinks (UX-Paket 6): nur Kennungen aus PARTNER_TABS, sonst nichts", () => {
+  assert.equal(PARTNER_PAGE_PARAM, "page");
+  for (const t of PARTNER_TABS) assert.equal(partnerTabFromSearch(`?page=${t.id}`), t.id);
+  assert.equal(partnerTabFromSearch("?page=team&x=1"), "team");
+  for (const boese of ["?page=Team", "?page=admin", "?page=constructor", "?page=__proto__", "?page=", "?page=team%2F..",
+    "?tab=team", "", "?", "?page=https://evil.example"]) {
+    assert.equal(partnerTabFromSearch(boese), null, `durchgelassen: ${boese}`);
+  }
+  for (const nichtString of [null, undefined, 42, {}]) assert.equal(partnerTabFromSearch(nichtString), null);
+  assert.equal(partnerTabSearch("team"), "?page=team");
+  assert.equal(partnerTabSearch("credit-notes"), "?page=credit-notes");
+  assert.equal(partnerTabSearch("overview"), "", "die Übersicht braucht keinen Parameter");
+  for (const x of ["evil", "", null, undefined]) assert.equal(partnerTabSearch(x), "");
+  assert.equal(partnerTabPath("account"), "/partner?page=account");
+  assert.equal(partnerTabPath("overview"), "/partner");
+  assert.equal(partnerTabPath("evil"), "/partner");
 });
 
 test("10b — Konto: Name, Firma und Login-E-Mail nur lesend, fehlende Werte benannt", () => {
@@ -351,6 +489,20 @@ test("11 — das Portal ruft nur Partnerendpunkte auf und nutzt kein Kundenlayou
   assert.doesNotMatch(seite, /visiblePartnerTabs\(team/, "der Teambereich hängt nicht mehr an den Einträgen");
   assert.match(seite, /role="tablist"/);
   assert.match(seite, /\{aktiv === "account" && <PartnerAccountPanel user=\{user\} \/>\}/);
+  // UX-Paket 6: der Bereich steht in der Adresse (?page=…), gelesen nur über die
+  // Allowlist, gewechselt ersetzend — kein Bereich im eigenen Seitenzustand mehr.
+  assert.match(seite, /const gewuenscht = partnerTabFromSearch\(location\.search\) \|\| "overview";/);
+  assert.match(seite, /navigate\(\{ pathname: location\.pathname, search: partnerTabSearch\(id\) \}, \{ replace: true \}\);/);
+  assert.match(seite, /if \(location\.search !== sauber\) navigate\(\{ pathname: location\.pathname, search: sauber \}, \{ replace: true \}\);/);
+  assert.doesNotMatch(seite, /useState\("overview"\)/, "der Bereich lebt in der Adresse, nicht im Seitenzustand");
+  assert.doesNotMatch(seite, /searchParams\.get\("page"\)|location\.state\?\.page/, "kein zweiter, ungeprüfter Leseweg");
+  // Kunden und Team lesen ihre Monatsnamen aus der Übersicht, nie aus der Uhr.
+  assert.match(seite, /<PartnerCustomersPanel overview=\{overview\.data\} \/>/);
+  assert.match(seite, /<PartnerTeamPanel state=\{team\} onRetry=\{team\.reload\} overview=\{overview\.data\} \/>/);
+  for (const datei of ["components/partner/PartnerCustomersPanel.jsx", "components/partner/PartnerTeamPanel.jsx",
+    "components/partner/PartnerCommissionsPanel.jsx", "components/partner/PartnerCreditNotesPanel.jsx"]) {
+    assert.doesNotMatch(ohneKommentare(read(datei)), /new Date\(|Date\.now\(/, `${datei}: Monat aus der Browseruhr`);
+  }
 });
 
 test("12 — „Konto“ nutzt nur die für Partner freigegebenen Kontobausteine", () => {

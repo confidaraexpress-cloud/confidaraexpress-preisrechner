@@ -178,8 +178,8 @@ export default function AdminCancellationRequestsPage() {
       <PageHeader
         variant="admin"
         title={<>Stornierungsanfragen</>}
-        subtitle={<>Interne Prüfung von Kunden-Stornowünschen. Dies ist ein Verwaltungsvorgang —
-            das Bearbeiten löst KEINE Carrier-/JUMiNGO-Stornierung und keine Erstattung aus.</>}
+        subtitle={<>Stornowünsche von Kunden prüfen und entscheiden. Das Bearbeiten löst keine Stornierung
+            beim Carrier oder bei JUMiNGO und keine Erstattung aus.</>}
         actions={(
           <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
           Aktualisieren

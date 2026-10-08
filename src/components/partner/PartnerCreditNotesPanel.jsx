@@ -1,9 +1,10 @@
 import React, { useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { EmptyState, ErrorState, ListSkeleton } from "../ui/StateView";
 import { getPartnerCreditNotes, partnerCreditNotePdfPath } from "../../api/partnerApi";
 import { usePartnerData } from "../../hooks/usePartnerData";
 import { downloadDocument } from "../../utils/downloadDocument";
-import { formatCents } from "../../utils/salesPartnerView.mjs";
+import { formatCents, partnerTabPath } from "../../utils/salesPartnerView.mjs";
 import {
   CREDIT_NOTE_DOWNLOAD_TEXT,
   CREDIT_NOTE_TEXTS,
@@ -11,8 +12,8 @@ import {
   creditNoteDownloadMessage,
   creditNoteFallbackFilename,
   creditNoteIssuedOn,
-  creditNoteKindMeta,
   creditNotePeriod,
+  creditNoteStatusMeta,
   creditNoteTaxRate,
   creditNoteTitle,
   normalizeCreditNotes,
@@ -22,40 +23,55 @@ import {
 
 const normalisieren = (d) => normalizeCreditNotes(d);
 
-// Nummer, Titel bzw. Art und die Korrekturhinweise einer Gutschrift.
+// Nummer, Titel und Ausstellungstag einer Gutschrift; eine Testgutschrift trägt
+// ihre Kennzeichnung direkt an der Nummer.
 function NumberCell({ cn }) {
-  const [cls, art] = creditNoteKindMeta(cn.kind);
   return (
     <div className="spp-cell-main">
       <span className="spp-cn-number">{cn.number || "—"}</span>
-      <span className="spp-cell-sub">{creditNoteTitle(cn)}</span>
+      <span className="spp-cell-sub">{creditNoteTitle(cn)} · ausgestellt am {creditNoteIssuedOn(cn)}</span>
       {cn.isTest && <span className="badge badge--warning">{CREDIT_NOTE_TEXTS.testDocument}</span>}
-      {cn.kind === "cancellation" && <span className={`badge ${cls}`}>{art}</span>}
+    </div>
+  );
+}
+
+// Betrag: Gesamt vorn, darunter Netto und Steuer samt Satz — alle steuerlichen
+// Angaben bleiben sichtbar, nur gebündelt.
+function AmountCell({ cn }) {
+  const satz = creditNoteTaxRate(cn);
+  return (
+    <div className="spp-cell-main spp-cell-main--num">
+      <span className="spp-cn-amount">{formatCents(cn.grossCents)}</span>
+      <span className="spp-cell-sub">Netto {formatCents(cn.netCents)}</span>
+      <span className="spp-cell-sub">Steuer {formatCents(cn.taxCents)}{satz ? ` (${satz})` : ""}</span>
+    </div>
+  );
+}
+
+// Status (Ausgestellt · Storniert · Storno) mit den Korrekturhinweisen des Servers.
+function StatusCell({ cn }) {
+  const [cls, label] = creditNoteStatusMeta(cn);
+  return (
+    <div className="spp-cell-main">
+      <span className={`badge ${cls}`}>{label}</span>
       {correctionHints(cn).map((h) => <span key={h} className="spp-cell-sub spp-cn-hint">{h}</span>)}
     </div>
   );
 }
 
-function TaxCell({ cn }) {
-  const satz = creditNoteTaxRate(cn);
-  return (
-    <>
-      {formatCents(cn.taxCents)}
-      {satz && <span className="spp-cell-sub spp-cell-sub--num">{satz}</span>}
-    </>
-  );
-}
-
-/* ── Partnerportal · Abrechnungen ────────────────────────────────────────────
-   Die Gutschriften des Partners (Selbstabrechnung): Zeitraum, Nummer,
-   Ausstellung, Netto, Steuer, Gesamt, Auszahlung und die Korrekturen eines
-   Stornos. Das PDF lädt ein authentifizierter Blob-Abruf (kein Token in einer
-   Adresse); solange das Dokument entsteht, steht „Wird erstellt". Über der
-   Liste der Hinweis zum offenen, abrechnungsreifen Saldo des Servers. Alle
-   Werte kommen aus der Antwort; die Oberfläche rechnet nichts und sieht nur
-   die eigenen Gutschriften (der Server bindet die Abfrage an das Konto).
-   Testgutschriften (Pre-Live-Testkonto, `isTest`) tragen „TESTDOKUMENT –
-   nicht steuerlich gültig“ und „Test – ausgezahlt“/„Test – nicht ausgezahlt“. */
+/* ── Partnerportal · Gutschriften ────────────────────────────────────────────
+   Die Gutschriften des Partners (Selbstabrechnung). UX-Paket 6: je Beleg
+   Monat, Gutschrift (Nummer, Ausstellungstag), Betrag (Gesamt, darunter Netto
+   und Steuer mit Satz), Status samt Korrekturen eines Stornos, Auszahlung und
+   PDF — keine steuerliche Angabe entfällt, sie stehen nur gebündelt. Das PDF
+   lädt ein authentifizierter Blob-Abruf (kein Token in einer Adresse);
+   solange das Dokument entsteht, steht „Wird erstellt". Über der Liste der
+   Hinweis zum offenen Saldo des Servers, darunter der Weg zu den
+   Abrechnungsdaten im Konto. Alle Werte kommen aus der Antwort; die Oberfläche
+   rechnet nichts und sieht nur die eigenen Gutschriften (der Server bindet die
+   Abfrage an das Konto). Testgutschriften (Pre-Live-Testkonto, `isTest`) tragen
+   „TESTDOKUMENT – nicht steuerlich gültig“ und „Test – ausgezahlt“/„Test –
+   nicht ausgezahlt“. */
 export function PartnerCreditNotesPanel() {
   const { loading, error, data, reload } = usePartnerData(
     (opts) => getPartnerCreditNotes(opts), normalisieren, [], CREDIT_NOTE_TEXTS.loadError,
@@ -126,18 +142,16 @@ export function PartnerCreditNotesPanel() {
         <div className="table-card ce-list-table spp-table" id="spp-cn-table">
           <table>
             <caption className="sr-only">
-              Gutschriften. Spalten: Zeitraum, Gutschrift, ausgestellt am, Netto, Steuer, Gesamt, Auszahlung, Dokument.
+              Gutschriften. Spalten: Monat, Gutschrift mit Ausstellungstag, Betrag mit Netto und Steuer, Status, Auszahlung, PDF.
             </caption>
             <thead>
               <tr>
-                <th scope="col">Zeitraum</th>
+                <th scope="col">Monat</th>
                 <th scope="col">Gutschrift</th>
-                <th scope="col">Ausgestellt am</th>
-                <th scope="col" className="ce-num">Netto</th>
-                <th scope="col" className="ce-num">Steuer</th>
-                <th scope="col" className="ce-num">Gesamt</th>
+                <th scope="col" className="ce-num">Betrag</th>
+                <th scope="col">Status</th>
                 <th scope="col">Auszahlung</th>
-                <th scope="col">Dokument</th>
+                <th scope="col">PDF</th>
               </tr>
             </thead>
             <tbody>
@@ -146,10 +160,8 @@ export function PartnerCreditNotesPanel() {
                   className={cn.kind === "cancellation" || cn.cancelled ? "spp-row-correction" : undefined}>
                   <td>{creditNotePeriod(cn)}</td>
                   <td><NumberCell cn={cn} /></td>
-                  <td>{creditNoteIssuedOn(cn)}</td>
-                  <td className="ce-num">{formatCents(cn.netCents)}</td>
-                  <td className="ce-num"><TaxCell cn={cn} /></td>
-                  <td className="ce-num">{formatCents(cn.grossCents)}</td>
+                  <td className="ce-num"><AmountCell cn={cn} /></td>
+                  <td><StatusCell cn={cn} /></td>
                   <td>{payoutText(cn)}</td>
                   <td>{dokument(cn, { mitId: true })}</td>
                 </tr>
@@ -166,12 +178,8 @@ export function PartnerCreditNotesPanel() {
                 <strong>{formatCents(cn.grossCents)}</strong>
               </div>
               <div className="ce-list-card-row">
-                <span className="ce-list-card-key">Zeitraum</span>
+                <span className="ce-list-card-key">Monat</span>
                 <span className="ce-list-card-val">{creditNotePeriod(cn)}</span>
-              </div>
-              <div className="ce-list-card-row">
-                <span className="ce-list-card-key">Ausgestellt am</span>
-                <span className="ce-list-card-val">{creditNoteIssuedOn(cn)}</span>
               </div>
               <div className="ce-list-card-row">
                 <span className="ce-list-card-key">Netto</span>
@@ -184,11 +192,15 @@ export function PartnerCreditNotesPanel() {
                 </span>
               </div>
               <div className="ce-list-card-row">
+                <span className="ce-list-card-key">Status</span>
+                <span className="ce-list-card-val"><StatusCell cn={cn} /></span>
+              </div>
+              <div className="ce-list-card-row">
                 <span className="ce-list-card-key">Auszahlung</span>
                 <span className="ce-list-card-val">{payoutText(cn)}</span>
               </div>
               <div className="ce-list-card-row">
-                <span className="ce-list-card-key">Dokument</span>
+                <span className="ce-list-card-key">PDF</span>
                 <span className="ce-list-card-val">{dokument(cn)}</span>
               </div>
             </li>
@@ -203,7 +215,13 @@ export function PartnerCreditNotesPanel() {
       {hinweis && <div className="alert alert-info" role="status" id="spp-cn-settlement">{hinweis}</div>}
       {downloadFehler && <div className="alert alert-error" role="alert" id="spp-cn-download-error">{downloadFehler}</div>}
       {inhalt}
-      <p className="spp-hint" id="spp-cn-note">{CREDIT_NOTE_TEXTS.settlementNote}</p>
+      <div className="spp-hint-block">
+        <p className="spp-hint" id="spp-cn-note">{CREDIT_NOTE_TEXTS.settlementNote}</p>
+        {/* Abrechnungsdaten liegen im Konto — ein Weg dorthin statt eines Verweises im Text. */}
+        <Link className="btn btn-ghost btn-sm spp-hint-link" id="spp-cn-billing-link" to={partnerTabPath("account")}>
+          {CREDIT_NOTE_TEXTS.billingLink}
+        </Link>
+      </div>
     </div>
   );
 }

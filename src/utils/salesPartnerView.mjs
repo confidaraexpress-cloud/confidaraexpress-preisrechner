@@ -265,8 +265,8 @@ export const MONEY_TERMS_TITLE = "So kommt die Provision zu Ihnen";
 export const MONEY_TERMS = Object.freeze([
   Object.freeze(["Verdient", "Alle Provisionsbuchungen eines Monats – aus Sendungen Ihrer Kunden und Ihres Teams, einschließlich Korrekturen."]),
   Object.freeze(["Auszahlbar", "Sobald der Kunde seine Rechnung bezahlt hat."]),
-  Object.freeze(["Abgerechnet", "Mit Ihrer monatlichen Gutschrift unter „Abrechnungen“ – Voraussetzung sind bestätigte Abrechnungsdaten unter „Konto“."]),
-  Object.freeze(["Ausgezahlt", "Sobald die Auszahlung zu einer Gutschrift vermerkt ist; zu sehen unter „Abrechnungen“."]),
+  Object.freeze(["Abgerechnet", "Mit Ihrer monatlichen Gutschrift unter „Gutschriften“ – Voraussetzung sind bestätigte Abrechnungsdaten unter „Konto“."]),
+  Object.freeze(["Ausgezahlt", "Sobald die Auszahlung zu einer Gutschrift vermerkt ist; zu sehen unter „Gutschriften“."]),
 ]);
 
 // ── Meine Kunden ────────────────────────────────────────────────────────────
@@ -287,6 +287,60 @@ export function normalizeCustomers(raw) {
     };
   }).filter((row) => row.ref || row.companyName);
 }
+
+// ── Meine Kunden: Anzeige (UX-Paket 6) ──────────────────────────────────────
+// Zwei Dinge, die nicht verwechselt werden dürfen: das KUNDENKONTO (ob
+// ConfidaraExpress den Kunden freigeschaltet hat — Aktiv, In Prüfung, Inaktiv)
+// und die LEVEL-AKTIVITÄT (ob der Kunde im Vormonat genug Pakete versendet hat;
+// das zählt für Ihr Kunden-Level im laufenden Monat, die Schwelle prüft allein
+// der Server). Die Monatsnamen stammen aus der Übersicht, nie aus der Uhr.
+
+/** Laufender Monat und Vormonat (Messmonat) als Namen — oder null. */
+export function partnerMonths(overview) {
+  const { laufend, gemessen } = startMonate(overview || normalizeOverview(null));
+  return { laufend, vormonat: gemessen };
+}
+
+export const CUSTOMER_TEXTS = Object.freeze({
+  accountLabel: "Kundenkonto",
+  levelLabel: "Zählt für Ihr Kunden-Level",
+  assignedSince: "Zugeordnet seit",
+  emptyTitle: "Noch keine zugeordneten Kunden",
+  emptyText: "Sobald Ihnen Kunden zugeordnet sind, erscheinen sie hier.",
+  emptyTextTest: "Testkonto: Testkunden werden Ihnen über den Adminbereich zugeordnet und erscheinen dann hier.",
+  emptyAction: "Zum Kundenlink",
+});
+
+/** Die zwei Begriffe über der Kundenliste, mit den Monaten der Übersicht. */
+export function customerTerms(months) {
+  const vormonat = months && months.vormonat ? `im ${months.vormonat}` : "im Vormonat";
+  const laufend = months && months.laufend ? `im ${months.laufend}` : "im laufenden Monat";
+  return [
+    [CUSTOMER_TEXTS.accountLabel, "Ob ConfidaraExpress das Konto des Kunden freigeschaltet hat."],
+    [CUSTOMER_TEXTS.levelLabel,
+      `Der Kunde hat ${vormonat} genug Pakete versendet und zählt deshalb als aktiver Kunde für Ihr Kunden-Level ${laufend}.`],
+  ];
+}
+
+/** Spaltenköpfe der Mengen: „Oktober (bisher)" und „September" — ohne Übersicht neutral. */
+export function customerMonthLabels(months) {
+  return {
+    current: months && months.laufend ? `${months.laufend} (bisher)` : "Laufender Monat",
+    previous: months && months.vormonat ? months.vormonat : "Vormonat",
+  };
+}
+
+/** „3 Sendungen · 4 Pakete" (Einzahl richtig); ein unbekannter Wert als „—",
+ *  sind beide unbekannt, nur „—". */
+export function shipmentsPackagesText(m) {
+  const s = m && Number.isInteger(m.shipments) ? m.shipments : null;
+  const p = m && Number.isInteger(m.packages) ? m.packages : null;
+  if (s === null && p === null) return "—";
+  return `${formatCount(s)} ${s === 1 ? "Sendung" : "Sendungen"} · ${formatCount(p)} ${p === 1 ? "Paket" : "Pakete"}`;
+}
+
+/** Zählt der Kunde für das Kunden-Level? Nur der Serverwert. */
+export const customerLevelText = (c) => (c && c.previous && c.previous.active === true ? "Ja" : "Nein");
 
 // ── Provisionen ─────────────────────────────────────────────────────────────
 function normalizeCommissionEntry(raw) {
@@ -323,17 +377,44 @@ export function normalizeCommissions(raw) {
   };
 }
 
-/** Gegenüber einer Buchung: der Kunde (Ebene 0) bzw. das Teammitglied. */
+/** Gegenüber einer Buchung: der Kunde (Ebene 0) bzw. das Teammitglied (Ebene 1/2).
+ *  Eine Teambuchung nennt nie einen Kundennamen — auch dann nicht, wenn eine
+ *  Antwort ihn enthielte (Kunden des Teams sind nicht Ihre Kunden; UX-Paket 6).
+ *  Eine unbekannte Ebene ergibt „—". */
 export function commissionCounterpart(entry) {
   if (!entry) return "—";
   if (entry.level === 0) return entry.customerName || "—";
-  return entry.teamMemberName || entry.customerName || "—";
+  if (entry.level === 1 || entry.level === 2) return entry.teamMemberName || "—";
+  return "—";
 }
 
 /** Rücknahmen und Korrekturen sind sichtbar markiert. */
 export const isCorrectionEntry = (entry) => !!entry && (entry.type === "reversal" || entry.type === "adjustment");
 
-export const payableLabel = (entry) => (entry && entry.payable === true ? "Ja" : "Nein");
+// UX-Paket 6: ein Satz statt „Ja/Nein" — dieselben Geldbegriffe wie MONEY_TERMS.
+export const payableLabel = (entry) => (entry && entry.payable === true ? "Auszahlbar" : "Noch nicht auszahlbar");
+
+/** „100,00 € · Satz 27,50 %" — ein unbekannter Teil entfällt (eine Korrektur hat
+ *  oft weder Basis noch Satz), fehlt beides: „—". Nichts wird nachgerechnet. */
+export function commissionBasisText(entry) {
+  const basis = entry && Number.isInteger(entry.basisCents) ? formatCents(entry.basisCents) : null;
+  const satz = entry && pct(entry.ratePercent) ? `Satz ${formatPercent(entry.ratePercent)}` : null;
+  return [basis, satz].filter(Boolean).join(" · ") || "—";
+}
+
+/** Kopf der Provisionen (UX-Paket 6): Monat, verdient, davon auszahlbar — zuerst;
+ *  die Aufteilung nach Ebenen darunter. Alles Summen des Servers. */
+export function commissionSummary(data) {
+  const d = data || normalizeCommissions(null);
+  return {
+    title: d.month ? `Verdient im ${formatMonth(d.month)}` : "Verdient",
+    earned: formatCents(d.totals.accruedCents),
+    payable: `davon auszahlbar: ${formatCents(d.totals.payableCents)}`,
+    breakdown: [0, 1, 2].map((level) => ({
+      key: `level${level}`, label: commissionLevelLabel(level), value: formatCents(d.totals.byLevel[level]),
+    })),
+  };
+}
 
 // ── Mein Team ───────────────────────────────────────────────────────────────
 function normalizeMember(raw) {
@@ -360,18 +441,66 @@ export function normalizeTeam(raw) {
   };
 }
 
-/** „Ja (Rang 2)" / „Ja" / „Nein". */
-export function relevanceLabel(member) {
-  if (!member || member.relevant !== true) return "Nein";
-  return Number.isInteger(member.rank) ? `Ja (Rang ${member.rank})` : "Ja";
+// UX-Paket 6: die zwei Ebenen mit verständlichen Namen. Für die Teamprovision
+// zählen je Ebene die ersten `limits` AKTIVEN Partner in der Reihenfolge ihrer
+// Aktivierung (Server: lib/salesPartner/store.js teamRankingAt) — der Platz ist
+// keine Leistungswertung. Inaktive Partner haben keinen Platz.
+export const TEAM_TEXTS = Object.freeze({
+  level1Title: "Direkt geworben (Ebene 1)",
+  level2Title: "Weitere Partner (Ebene 2)",
+  level2Note: "Partner, die Ihre direkt geworbenen Partner geworben haben.",
+  emptyLevel: "Auf dieser Ebene gibt es noch keine Vertriebspartner.",
+  countsLabel: "Zählt für Ihre Teamprovision",
+});
+
+const teamLimit = (level, team) => (level === 1 ? team?.limits?.level1 : team?.limits?.level2);
+
+/** „Ja – Platz 2 von 10" / „Nein – nur aktive Partner zählen" / „Nein – Platz 11; es zählen die ersten 10". */
+export function relevanceLabel(member, limit = null) {
+  if (!member) return "Nein";
+  const mitGrenze = Number.isInteger(limit);
+  if (member.relevant === true) {
+    return Number.isInteger(member.rank) && mitGrenze ? `Ja – Platz ${member.rank} von ${limit}` : "Ja";
+  }
+  if (member.status === "inactive") return "Nein – nur aktive Partner zählen";
+  if (Number.isInteger(member.rank) && mitGrenze && member.rank > limit) return `Nein – Platz ${member.rank}; es zählen die ersten ${limit}`;
+  return "Nein";
 }
 
-/** Überschrift einer Teamebene samt Belegung: „Ebene 1 · 3 von 10". */
-export function teamLevelHeading(level, team) {
+/** Name einer Ebene: „Direkt geworben (Ebene 1)" / „Weitere Partner (Ebene 2)". */
+export const teamLevelTitle = (level) => (level === 1 ? TEAM_TEXTS.level1Title : TEAM_TEXTS.level2Title);
+
+/** Belegung einer Ebene: „3 Partner · 2 zählen für Ihre Teamprovision (höchstens 10)" — gezählt
+ *  werden nur die Kennzeichen des Servers. Früher „Ebene 1 · 12 von 10": dort zählten
+ *  auch inaktive Mitglieder gegen die zehn Plätze. */
+export function teamLevelSummary(level, team) {
   const liste = level === 1 ? arr(team?.level1) : arr(team?.level2);
-  const limit = level === 1 ? team?.limits?.level1 : team?.limits?.level2;
-  return Number.isInteger(limit) ? `Ebene ${level} · ${liste.length} von ${limit}` : `Ebene ${level}`;
+  if (liste.length === 0) return TEAM_TEXTS.emptyLevel;
+  const zaehlen = liste.filter((m) => m && m.relevant === true).length;
+  const limit = teamLimit(level, team);
+  const grenze = Number.isInteger(limit) ? ` (höchstens ${limit})` : "";
+  return `${liste.length} Partner · ${zaehlen} ${zaehlen === 1 ? "zählt" : "zählen"} für Ihre Teamprovision${grenze}`;
 }
+
+/** Erklärung über dem Team: die Regel der Plätze (Grenzen des Servers) und die Sätze der Übersicht.
+ *  Die Rangfolge selbst bestimmt allein der Server (`rank`, `relevant`). */
+export function teamExplanation(team, overview) {
+  const l1 = teamLimit(1, team);
+  const l2 = teamLimit(2, team);
+  let regel = "Für Ihre Teamprovision zählen aktive Partner, in der Reihenfolge ihrer Aktivierung.";
+  if (Number.isInteger(l1) && l1 === l2) {
+    regel = `Für Ihre Teamprovision zählen je Ebene die ersten ${l1} aktiven Partner, in der Reihenfolge ihrer Aktivierung.`;
+  } else if (Number.isInteger(l1) && Number.isInteger(l2)) {
+    regel = `Für Ihre Teamprovision zählen auf Ebene 1 die ersten ${l1} und auf Ebene 2 die ersten ${l2} aktiven Partner, in der Reihenfolge ihrer Aktivierung.`;
+  }
+  const r = overview && overview.rates ? overview.rates : null;
+  const saetze = r && r.level1Percent && r.level2Percent
+    ? ` Ihre Sätze: Ebene 1 ${formatPercent(r.level1Percent)} · Ebene 2 ${formatPercent(r.level2Percent)}.` : "";
+  return `${regel}${saetze}`;
+}
+
+/** Beschriftung der Teamprovision des laufenden Monats: „Teamprovision im Oktober". */
+export const teamMonthLabel = (months) => (months && months.laufend ? `Teamprovision im ${months.laufend}` : "Teamprovision im laufenden Monat");
 
 // ── Bereiche des Portals (page-State, keine eigenen Routen) ──────────────────
 export const PARTNER_TABS = Object.freeze([
@@ -379,8 +508,10 @@ export const PARTNER_TABS = Object.freeze([
   Object.freeze({ id: "customers", label: "Meine Kunden" }),
   Object.freeze({ id: "commissions", label: "Provisionen" }),
   // Gutschriften (Selbstabrechnung) direkt nach den Provisionen, aus denen sie
-  // entstehen; Steuer- und Bankdaten stehen nur im Konto, nicht hier.
-  Object.freeze({ id: "credit-notes", label: "Abrechnungen" }),
+  // entstehen; Steuer- und Bankdaten stehen nur im Konto, nicht hier. Seit
+  // UX-Paket 6 heißt der Bereich wie im Adminbereich „Gutschriften" — „Abrechnung…"
+  // war mit den Abrechnungsdaten im Konto verwechselbar.
+  Object.freeze({ id: "credit-notes", label: "Gutschriften" }),
   Object.freeze({ id: "team", label: "Mein Team" }),
   // Login-E-Mail und Passwort: dieselben Bausteine wie in den
   // Kontoeinstellungen der Kunden (Backendvertrag: für Partner freigegeben);
@@ -393,6 +524,25 @@ export const PARTNER_TABS = Object.freeze([
 // Bereich an den Einträgen und verschwand bei einem Fehler unbemerkt; Lade-,
 // Fehler- und Leerzustand zeigt jetzt PartnerTeamPanel.
 export const visiblePartnerTabs = () => PARTNER_TABS;
+
+// ── Direktlinks (UX-Paket 6) ────────────────────────────────────────────────
+// Der Bereich steht als `?page=<Kennung>` in der Adresse — nach dem Muster des
+// Kunden-Dashboards, ohne neue Route. Nur eine Kennung aus PARTNER_TABS gilt;
+// alles andere ergibt die Übersicht. Die Rücksprungprüfung nach dem Login nutzt
+// dieselbe Liste (utils/loginReturnTarget.mjs, Paritätstest).
+export const PARTNER_PAGE_PARAM = "page";
+
+/** Bereich aus dem Suchteil der Adresse — nur eine bekannte Kennung, sonst null. */
+export function partnerTabFromSearch(search) {
+  const wert = new URLSearchParams(typeof search === "string" ? search : "").get(PARTNER_PAGE_PARAM);
+  return PARTNER_TABS.some((t) => t.id === wert) ? wert : null;
+}
+
+/** Suchteil für einen Bereich: „?page=team"; die Übersicht ohne Parameter. */
+export const partnerTabSearch = (id) => (id && id !== "overview" && PARTNER_TABS.some((t) => t.id === id) ? `?${PARTNER_PAGE_PARAM}=${id}` : "");
+
+/** Link in einen Bereich des Portals (für Verweise zwischen den Bereichen). */
+export const partnerTabPath = (id) => `/partner${partnerTabSearch(id)}`;
 
 // ── Konto ───────────────────────────────────────────────────────────────────
 // Nur lesend: Stammdaten ändert ein Partner hier nicht (PATCH /kunde/profil ist

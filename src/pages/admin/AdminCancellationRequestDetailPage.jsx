@@ -208,7 +208,7 @@ export default function AdminCancellationRequestDetailPage() {
             <button type="button" className="btn btn-primary btn-sm" onClick={load}>
               Erneut versuchen
             </button>
-            <Link className="btn btn-outline btn-sm" to="/admin/cancellation-requests">Zurück zur Übersicht</Link>
+            <Link className="btn btn-outline btn-sm" to="/admin/cancellation-requests">Zurück zu den Stornierungsanfragen</Link>
           </div>
         </div>
       </div>
@@ -499,7 +499,7 @@ export default function AdminCancellationRequestDetailPage() {
                 </span>
               )}
             </div>
-            <p className="adm-support-hint">Änderungen werden im Admin-Audit protokolliert.</p>
+            <p className="adm-support-hint">Änderungen werden im Protokoll festgehalten.</p>
           </div>
         </div>
 
@@ -555,7 +555,7 @@ export default function AdminCancellationRequestDetailPage() {
           title={CANCELLATION_DECISION_DIALOG[decision].title}
           text={CANCELLATION_DECISION_DIALOG[decision].text}
           subline={`${cancellationLabel(req)} · ${cust.primary}`}
-          note="Die Entscheidung wird im Admin-Audit protokolliert."
+          note="Die Entscheidung wird im Protokoll festgehalten."
           confirmLabel={CANCELLATION_DECISION_DIALOG[decision].confirm}
           busy={saving}
           busyLabel="Wird gespeichert…"

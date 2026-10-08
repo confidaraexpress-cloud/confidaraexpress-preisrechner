@@ -572,7 +572,7 @@ export default function AdminInvoiceDetailPage() {
               <>
                 <p className="adm-support-hint" style={{ marginTop: 0 }}>
                   Setzt den Rechnungsstatus auf bezahlt und speichert das Zahlungsdatum.
-                  Die Aktion wird im Admin-Audit protokolliert und kann nicht rückgängig gemacht werden.
+                  Die Aktion wird im Protokoll festgehalten und kann nicht rückgängig gemacht werden.
                 </p>
                 {/* Bewusst KEINE normale Primäraktion: das Markieren einer
                     Rechnung als bezahlt ist unumkehrbar und zahlungswirksam.
@@ -614,7 +614,7 @@ export default function AdminInvoiceDetailPage() {
           title={PAY_DIALOG.title}
           text={PAY_DIALOG.text}
           subline={subline}
-          note="Die Aktion wird im Admin-Audit protokolliert."
+          note="Die Aktion wird im Protokoll festgehalten."
           confirmLabel={PAY_DIALOG.confirm}
           cancelLabel={PAY_DIALOG.cancel}
           irreversible
@@ -630,7 +630,7 @@ export default function AdminInvoiceDetailPage() {
           title={doc.failed ? "Rechnungsdokument erneut erzeugen?" : "Rechnungsdokument erzeugen?"}
           text={`Erzeugt das unveränderliche Rechnungs-PDF serverseitig${doc.failed ? " neu (Wiederholung nach Fehlschlag)" : ""}. Es entsteht keine neue Rechnung und keine neue Rechnungsnummer; ein bereits fertiges Dokument wird nicht überschrieben.`}
           subline={subline}
-          note="Die Aktion wird im Admin-Audit protokolliert. Es wird keine E-Mail versendet."
+          note="Die Aktion wird im Protokoll festgehalten. Es wird keine E-Mail versendet."
           confirmLabel={doc.failed ? "Erneut erzeugen" : "Erzeugen"}
           busy={docBusy}
           busyLabel="Wird erzeugt…"
@@ -646,7 +646,7 @@ export default function AdminInvoiceDetailPage() {
             ? "Die Rechnung wurde bereits versendet. Möchten Sie dasselbe unveränderte Rechnungsdokument erneut senden?"
             : "Sendet die Rechnung mit dem unveränderten, gespeicherten PDF-Dokument an die hinterlegte Kunden-E-Mail."}
           subline={subline}
-          note="Die Aktion wird im Admin-Audit protokolliert. Es entsteht keine neue Rechnung und keine neue Rechnungsnummer."
+          note="Die Aktion wird im Protokoll festgehalten. Es entsteht keine neue Rechnung und keine neue Rechnungsnummer."
           confirmLabel={mailKind === "resend" ? "Erneut senden" : "Senden"}
           busy={mailBusy}
           busyLabel="Wird gesendet…"

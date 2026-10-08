@@ -10,7 +10,7 @@ import { TrustBar } from "../components/auth/TrustBar";
 import { Icon } from "../components/ui/Icon";
 import { BrandLogo } from "../components/ui/BrandLogo";
 import { useAuth } from "../context/AuthContext";
-import { safeReturnTarget } from "../utils/loginReturnTarget.mjs";
+import { partnerReturnTarget, safeReturnTarget } from "../utils/loginReturnTarget.mjs";
 // Vertriebspartner landen im Partnerportal; der Empfehlungscode des
 // Kundenlinks wird bei der Kundenregistrierung mitgesendet (nur Art „customer").
 import { isSalesPartner, landingPathFor } from "../utils/roleLanding.mjs";
@@ -140,8 +140,9 @@ export default function AuthPage() {
       const ok = await login(d.token);
       if (!ok) { setError(KUNDENBEREICH_NACH_LOGIN_FEHLER); setLoading(false); return; }
       // Ein Vertriebspartner hat keinen Kundenbereich: sein Ziel ist immer das
-      // Partnerportal, nie ein (für ihn gesperrtes) Kunden-Rücksprungziel.
-      if (isSalesPartner(ok)) navigate(landingPathFor(ok));
+      // Partnerportal — auf Wunsch der zuletzt geöffnete Bereich (UX-Paket 6),
+      // nie ein (für ihn gesperrtes) Kunden-Rücksprungziel.
+      if (isSalesPartner(ok)) navigate(partnerReturnTarget(returnTarget) || landingPathFor(ok));
       else navigate(returnTarget || "/dashboard");
     } catch (e) { setError(mapAuthThrownError(e)); }
     setLoading(false);

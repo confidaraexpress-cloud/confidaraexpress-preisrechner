@@ -16,6 +16,8 @@
 //      Antrag ohne Fassung, Sponsorcode des Partnerlinks geht mit.
 //   9. Testweg nur auf ausdrückliche Nennung: ein produktiver Modus ohne
 //      prüfbare Fassung bleibt geschlossen (nie stattdessen der Testweg).
+//  10. Leeres Absenden (UX-Paket 6): jeder Fehler am Feld (aria-describedby),
+//      Sammelhinweis, Fokus im ersten Feld, kein Request.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -187,13 +189,31 @@ test("5 — /partner-registrieren geöffnet: Absenden mit Sponsorcode, Erfolg oh
   await page.fill("#sp-password", "EinSicheresPasswort2026");
   await page.fill("#sp-password-repeat", "EinSicheresPasswort2026");
   await page.fill("#sp-company", "Vertrieb Süd GmbH");
-  assert.equal(await page.locator("#sp-submit").isDisabled(), true, "ohne Zustimmung nicht absendbar");
+  // Bewusste Ankeränderung (UX-Paket 6): ohne Zustimmung ist der Knopf nicht mehr
+  // grundlos grau — das Absenden nennt den Fehler an der Zustimmung, setzt den
+  // Fokus dorthin und schickt nichts.
+  assert.equal(await page.locator("#sp-submit").isDisabled(), false);
+  await page.locator("#sp-submit").click();
+  await page.locator("#sp-agreement-error").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#sp-agreement-error").innerText(), "Bitte bestätigen Sie die Vertriebspartnervereinbarung.");
+  assert.equal(await page.locator("#sp-agreement").getAttribute("aria-describedby"), "sp-agreement-error");
+  assert.equal(await page.locator("#sp-check").innerText(), "Bitte prüfen Sie die markierten Angaben.");
+  await page.waitForFunction(() => document.activeElement?.id === "sp-agreement");
+  assert.equal(calls.partnerRegister.length, 0, "ohne Zustimmung kein Request");
   await page.locator("#sp-agreement").click();
   assert.equal(await page.locator("#sp-agreement").getAttribute("aria-checked"), "true");
+  assert.equal(await page.locator("#sp-check").count(), 0, "der Sammelhinweis verschwindet, sobald alles passt");
+  assert.equal(await page.locator("#sp-agreement-error").count(), 0, "die Meldung verschwindet mit dem Ankreuzen");
+  assert.equal(await page.locator("#sp-agreement").getAttribute("aria-invalid"), null);
   await page.locator("#sp-submit").click();
 
   await page.waitForSelector("#sp-state");
-  assert.match(await page.locator("#sp-state").innerText(), /wird geprüft/);
+  const erfolg = await page.locator("#sp-state").innerText();
+  assert.match(erfolg, /wird geprüft/);
+  // Eindeutiger Erfolg mit dem nächsten Schritt — ohne Anmeldeknopf vor der Freigabe.
+  assert.match(erfolg, /Vorher ist keine Anmeldung möglich\./);
+  assert.match(erfolg, /Über die Freigabe informieren wir Sie per E-Mail\./);
+  assert.equal(await page.locator("#sp-state button, #sp-state a").count(), 0, "kein Anmeldeweg vor der Freigabe");
   assert.equal(calls.partnerRegister.length, 1);
   const body = calls.partnerRegister[0];
   assert.equal(body.sponsorCode, "WXYZ6789");
@@ -271,6 +291,9 @@ test("8 — Pre-Live-Testweg: dasselbe Formular, Testhinweis statt Vertragsannah
   const erfolg = await page.locator("#sp-state").innerText();
   assert.match(erfolg, /Antrag eingegangen/);
   assert.match(erfolg, /wird geprüft/);
+  // Testweg: keine Zusage einer Freigabemail (der Versandschutz hält sie zurück).
+  assert.doesNotMatch(erfolg, /per E-Mail/);
+  assert.equal(await page.locator("#sp-state button, #sp-state a").count(), 0, "kein Anmeldeweg vor der Freigabe");
   assert.equal(calls.partnerRegister.length, 1);
   const body = calls.partnerRegister[0];
   assert.equal("acceptedAgreementVersion" in body, false, "keine Zustimmung zu einer Fassung");
@@ -292,4 +315,53 @@ test("9 — Testweg nur auf ausdrückliche Nennung: produktiver Modus ohne prüf
   assert.equal(await page.locator("#sp-form").count(), 0);
   assert.equal(await page.locator("#sp-prelive-notice").count(), 0);
   await page.close();
+});
+
+test("10 — leeres Absenden: jeder Fehler am Feld, Sammelhinweis, Fokus im ersten Feld, kein Request (UX-Paket 6)", async () => {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const calls = await setup(page);
+  await page.goto(`${BASE}/partner-registrieren`, { waitUntil: "networkidle" });
+  await page.waitForSelector("#sp-form");
+  assert.equal(await page.locator("#sp-required-hint").innerText(), "Pflichtfelder sind mit * markiert.");
+  // Der Hinweis steht vor dem ersten Feld.
+  const [hinweis, feld] = await page.evaluate(() => ["#sp-required-hint", "#sp-name"]
+    .map((s) => document.querySelector(s).getBoundingClientRect().top));
+  assert.ok(hinweis < feld, "der Pflichtfeldhinweis steht nicht vor den Feldern");
+
+  await page.locator("#sp-submit").click();
+  await page.locator("#sp-check").waitFor({ state: "visible" });
+  await page.waitForFunction(() => document.activeElement?.id === "sp-name");
+  for (const [feldId, fehlerId] of [["#sp-name", "sp-name-error"], ["#sp-email", "sp-email-error"],
+    ["#sp-password", "sp-password-error"], ["#sp-agreement", "sp-agreement-error"]]) {
+    assert.equal(await page.locator(feldId).getAttribute("aria-invalid"), "true", `${feldId} nicht als fehlerhaft markiert`);
+    assert.equal(await page.locator(feldId).getAttribute("aria-describedby"), fehlerId, `${feldId} verweist nicht auf seine Meldung`);
+    assert.ok((await page.locator(`#${fehlerId}`).innerText()).trim().length > 0, `${fehlerId} ist leer`);
+  }
+  // Optionale Felder bleiben ohne Fehler.
+  for (const optional of ["#sp-company", "#sp-phone"]) {
+    assert.equal(await page.locator(optional).getAttribute("aria-invalid"), null);
+  }
+  assert.equal(calls.partnerRegister.length, 0, "ein unvollständiger Antrag wird nicht gesendet");
+  // Eine Eingabe nimmt die Meldung ihres Felds zurück.
+  await page.fill("#sp-name", "Petra Partner");
+  assert.equal(await page.locator("#sp-name-error").count(), 0);
+  assert.equal(await page.locator("#sp-name").getAttribute("aria-describedby"), null);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth) <= 390, "die Seite scrollt seitlich");
+  await page.close();
+
+  // Der erste Klick geht nicht verloren: bei 768 px liegt „Antrag stellen“ am
+  // unteren Rand, das (automatisch fokussierte) Namensfeld meldet beim
+  // Verlassen seinen Fehler — der Knopf darf sich zwischen Drücken und
+  // Loslassen nicht verschieben (im Browser gemessen, UX-Paket 6).
+  const tablet = await browser.newPage({ viewport: { width: 768, height: 1024 } });
+  const anfragen = await setup(tablet);
+  await tablet.goto(`${BASE}/partner-registrieren`, { waitUntil: "networkidle" });
+  await tablet.waitForSelector("#sp-form");
+  assert.equal(await tablet.evaluate(() => document.activeElement?.id), "sp-name");
+  await tablet.locator("#sp-submit").click();
+  await tablet.locator("#sp-check").waitFor({ state: "visible", timeout: 5000 });
+  await tablet.waitForFunction(() => document.activeElement?.id === "sp-name");
+  assert.ok(await tablet.locator(".auth-field-error").count() >= 4, "nicht alle Pflichtfehler stehen am Feld");
+  assert.equal(anfragen.partnerRegister.length, 0);
+  await tablet.close();
 });

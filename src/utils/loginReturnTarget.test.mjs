@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-import { safeReturnTarget, returnTargetFromLocation } from "./loginReturnTarget.mjs";
+import { partnerReturnTarget, safeReturnTarget, returnTargetFromLocation } from "./loginReturnTarget.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const read = (rel) => readFileSync(path.join(__dirname, "..", rel), "utf8");
@@ -151,4 +151,52 @@ test("11 — der Open-Redirect-Schutz bleibt vollständig, auch mit gültigem Be
   // Fremde Werte in Parametern werden nie übernommen.
   assert.equal(safeReturnTarget("/dashboard?page=support&ticket=//evil.example"), "/dashboard?page=support");
   assert.equal(safeReturnTarget("/dashboard?page=movements&product=https://evil.example"), "/dashboard?page=movements");
+});
+
+// Die Bereiche des Partnerportals — aus dem Quelltext, nicht abgeschrieben.
+const PARTNER_TAB_IDS = [...read("utils/salesPartnerView.mjs")
+  .slice(read("utils/salesPartnerView.mjs").indexOf("export const PARTNER_TABS"))
+  .split("]);")[0]
+  .matchAll(/id: "([^"]+)"/g)].map((m) => m[1]).sort();
+
+test("12 — Partnerportal (UX-Paket 6): Bereich aus der Allowlist, Rücksprung nur für Partner ins Portal", () => {
+  assert.equal(safeReturnTarget("/partner"), "/partner");
+  assert.equal(safeReturnTarget("/partner?page=commissions"), "/partner?page=commissions");
+  assert.equal(safeReturnTarget("/partner?page=credit-notes"), "/partner?page=credit-notes");
+  assert.equal(safeReturnTarget("/partner?page=overview"), "/partner", "die Übersicht braucht keinen Parameter");
+  for (const unbekannt of ["admin", "Team", "constructor", "__proto__", "", "team/..", "https://evil.example"]) {
+    assert.equal(safeReturnTarget(`/partner?page=${encodeURIComponent(unbekannt)}`), "/partner", `durchgelassen: page=${unbekannt}`);
+  }
+  // Nur der Bereich wird übernommen, nie ein weiterer Parameter oder Fragment.
+  assert.equal(safeReturnTarget("/partner?page=team&next=https://evil.example"), "/partner?page=team");
+  assert.equal(safeReturnTarget("/partner?page=team#x"), "/partner?page=team");
+  // Unterpfade und fremde Ziele bleiben gesperrt.
+  for (const boese of ["/partner/team", "/partnerx", "//evil.example/partner?page=team", "https://evil.example/partner",
+    "/\\evil.example/partner", "/%2F%2Fevil.example/partner?page=team"]) {
+    assert.equal(safeReturnTarget(boese), null, `durchgelassen: ${boese}`);
+  }
+
+  // Ein Partner springt nur ins eigene Portal zurück — nie auf ein Kunden- oder Adminziel.
+  assert.equal(partnerReturnTarget("/partner?page=team"), "/partner?page=team");
+  assert.equal(partnerReturnTarget("/partner"), "/partner");
+  assert.equal(partnerReturnTarget("/partner?page=evil"), "/partner");
+  for (const fremd of ["/dashboard", "/dashboard?page=invoices", "/admin", "/admin/partners", "/calculator",
+    "/inventory/products/5", "https://evil.example/partner", "//evil.example/partner", null, undefined, ""]) {
+    assert.equal(partnerReturnTarget(fremd), null, `angesteuert: ${fremd}`);
+  }
+
+  // Parität: dieselben Bereiche wie PARTNER_TABS.
+  assert.deepEqual(arrayLiteral(read("utils/loginReturnTarget.mjs"), "PARTNER_BEREICHE"), PARTNER_TAB_IDS);
+  assert.equal(PARTNER_TAB_IDS.length, 6);
+  for (const id of PARTNER_TAB_IDS.filter((b) => b !== "overview")) {
+    assert.equal(safeReturnTarget(`/partner?page=${id}`), `/partner?page=${id}`, `verworfen: ${id}`);
+    assert.equal(partnerReturnTarget(`/partner?page=${id}`), `/partner?page=${id}`);
+  }
+
+  // Die Schutzroute gibt die Adresse samt Bereich mit; AuthPage prüft sie für Partner nur so.
+  const route = ohneKommentare(read("routes/PartnerRoute.jsx"));
+  assert.match(route, /<Navigate to="\/login" replace state=\{\{ from: `\$\{location\.pathname\}\$\{location\.search\}` \}\} \/>/);
+  const page = ohneKommentare(read("pages/AuthPage.jsx"));
+  assert.match(page, /navigate\(partnerReturnTarget\(returnTarget\) \|\| landingPathFor\(ok\)\)/);
+  assert.equal((page.match(/partnerReturnTarget\(/g) || []).length, 1, "genau ein Aufruf");
 });

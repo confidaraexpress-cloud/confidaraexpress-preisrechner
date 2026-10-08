@@ -15,6 +15,10 @@
 // Bewusst NICHT erlaubt: /booking — der Versandvorgang lebt nur im Speicher
 // des Tabs und ist nach einer Neuanmeldung leer; die Übersicht ist dort das
 // ehrlichere Ziel. Ebenso wenig die Anmeldeseiten selbst.
+//
+// Seit UX-Paket 6 auch das Partnerportal (/partner, Bereich als ?page=…). Ein
+// Partner springt nur dorthin zurück (partnerReturnTarget); ein Kunde mit
+// diesem Ziel landet über PartnerRoute ohnehin im Kundenbereich.
 
 const INTERNE_BASIS = "https://ce.invalid";
 const ID = /^[1-9][0-9]{0,9}$/;
@@ -27,6 +31,11 @@ const DASHBOARD_BEREICHE = new Set(["overview", "new", "drafts", "addressbook", 
 // Supportanfragen (Glockenmeldung), ein Artikelfilter zu den Bewegungen
 // („Alle Bewegungen anzeigen"). Dieselbe Zuordnung wie in DashboardPage.
 const BEREICHS_PARAMETER = new Map([["support", "ticket"], ["movements", "product"]]);
+// Die Bereiche des Partnerportals (UX-Paket 6) — exakt die Kennungen von
+// PARTNER_TABS in utils/salesPartnerView.mjs (Paritätstest). Die Übersicht
+// braucht keinen Parameter.
+const PARTNER_BEREICHE = new Set(["overview", "customers", "commissions", "credit-notes", "team", "account"]);
+const PARTNER_PORTAL = "/partner";
 const ADMIN = /^\/admin(\/[a-z-]{1,40}(\/[A-Za-z0-9-]{1,64})?)?$/;
 const INVENTAR = /^\/inventory\/(products|orders)\/[1-9][0-9]{0,9}$/;
 
@@ -60,10 +69,24 @@ export function safeReturnTarget(raw) {
     const query = out.toString();
     return query ? `/dashboard?${query}` : "/dashboard";
   }
+  if (pfad === PARTNER_PORTAL) {
+    // Nur ein bekannter Bereich des Partnerportals, sonst die Übersicht. Ob das
+    // Ziel überhaupt angesteuert wird, entscheidet die Rolle (partnerReturnTarget).
+    const page = url.searchParams.get("page");
+    return page && page !== "overview" && PARTNER_BEREICHE.has(page) ? `${PARTNER_PORTAL}?page=${page}` : PARTNER_PORTAL;
+  }
   if (pfad === "/calculator") return "/calculator";
   if (INVENTAR.test(pfad)) return pfad;
   if (ADMIN.test(pfad)) return pfad;
   return null;
+}
+
+/** Rücksprung eines Vertriebspartners: nur ein Ziel im Partnerportal, sonst
+ *  `null` (→ Startziel der Rolle). Ein Kundenziel bekommt ein Partner nie —
+ *  dort antwortete der Server mit 403 und das zentrale apiFetch meldete ab. */
+export function partnerReturnTarget(raw) {
+  const ziel = safeReturnTarget(raw);
+  return ziel === PARTNER_PORTAL || (ziel !== null && ziel.startsWith(`${PARTNER_PORTAL}?`)) ? ziel : null;
 }
 
 /** Ziel aus einem Router-/Fensterstandort (pathname + search). */

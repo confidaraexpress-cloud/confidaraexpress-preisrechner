@@ -227,9 +227,8 @@ export default function AdminSupportRequestsPage() {
       <PageHeader
         variant="admin"
         title={<>Supportanfragen</>}
-        subtitle={<>Allgemeine Kundenanfragen aus dem Kundenbereich. Die Beantwortung erfolgt per
-            E-Mail — das Bearbeiten hier verschickt keine Nachricht an den Kunden und ändert
-            weder Sendungen noch Rechnungen.</>}
+        subtitle={<>Anfragen aus dem Kundenbereich. Antworten schreiben Sie im Vorgang; das Ändern von
+            Status oder Vermerk verschickt keine Nachricht an den Kunden.</>}
         actions={(
           <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
           Aktualisieren

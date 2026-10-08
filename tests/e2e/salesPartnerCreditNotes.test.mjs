@@ -1,5 +1,5 @@
-// E2E: Partnerportal — „Abrechnungen“ (Gutschriften), Konto „Abrechnungsdaten“
-// und „Vertrag“.
+// E2E: Partnerportal — „Gutschriften“ (bis UX-Paket 6 „Abrechnungen“), Konto
+// „Abrechnungsdaten“ und „Vereinbarung“ (bis UX-Paket 6 „Vertrag“).
 //
 // Echter Dev-Server, echtes Chromium, GEMOCKTES Backend (page.route). Kein
 // Request verlässt den Browser, kein Dokument wird echt erzeugt. Kernverträge:
@@ -20,6 +20,8 @@
 //   7. Vertrag: Fassung, Zeitpunkt, Dokumentlink; ohne Dokument der Hinweis.
 //   8. Pre-Live: Testgutschriften als TESTDOKUMENT mit Testauszahlung.
 //   9. Pre-Live: Vertrag eines Testkontos — keine rechtsverbindliche Vereinbarung.
+//  10. Gutschriften (UX-Paket 6): der Weg zu den Abrechnungsdaten führt ins
+//      Konto, wo sie zuerst stehen; 390 px als Karten ohne seitliches Scrollen.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -159,11 +161,12 @@ test.after(async () => {
   }
 });
 
-test("1 — Abrechnungen: Liste mit Auszahlung, Korrekturen, „Wird erstellt“ und offenem Saldo", async () => {
+test("1 — Gutschriften: Liste mit Auszahlung, Korrekturen, „Wird erstellt“ und offenem Saldo", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const state = await setup(page);
   await zumBereich(page, "credit-notes");
-  assert.equal(await page.locator("#spp-tab-credit-notes").innerText(), "Abrechnungen");
+  // UX-Paket 6 (bewusste Ankeränderung): der Bereich heißt wie im Adminbereich.
+  assert.equal(await page.locator("#spp-tab-credit-notes").innerText(), "Gutschriften");
   await page.locator("#spp-cn-table").waitFor({ state: "visible" });
 
   const zeilen = page.locator("#spp-cn-table tbody tr");
@@ -181,16 +184,24 @@ test("1 — Abrechnungen: Liste mit Auszahlung, Korrekturen, „Wird erstellt“
   assert.match(neu, /Wird erstellt/);
   assert.equal(await page.locator("#spp-cn-pdf-13").count(), 0, "kein Download, solange das Dokument entsteht");
 
+  assert.match(neu, /Ausgestellt/, "Status der neuen Gutschrift");
   const storno = await zeilen.nth(1).innerText();
   assert.match(storno, /Storno zu GS-2026-0001/);
   assert.match(storno, /Storno/);
   const alt = await zeilen.nth(2).innerText();
   assert.match(alt, /Ausgezahlt am 04\.10\.2026/);
   assert.match(alt, /Storniert durch GS-2026-0002/);
+  assert.match(alt, /Storniert/);
+  // UX-Paket 6: sechs Spalten — Monat, Gutschrift, Betrag, Status, Auszahlung, PDF.
+  assert.deepEqual((await page.locator("#spp-cn-table th").allInnerTexts()).map((t) => t.trim()),
+    ["Monat", "Gutschrift", "Betrag", "Status", "Auszahlung", "PDF"]);
 
+  // UX-Paket 6 (bewusste Ankeränderung): dieselben Geldbegriffe wie die Übersicht.
   assert.match(await page.locator("#spp-cn-settlement").innerText(),
-    /^Abrechnungsreife Provisionen von 45,50\s€ werden mit der nächsten Gutschrift abgerechnet\.$/);
-  assert.equal(await page.locator("#spp-cn-note").innerText(), "Provision wird nach Zahlungseingang des Kunden abrechnungsreif.");
+    /^Noch nicht abgerechnet: auszahlbare Provisionen von 45,50\s€\. Sie werden mit der nächsten Gutschrift abgerechnet\.$/);
+  assert.equal(await page.locator("#spp-cn-note").innerText(),
+    "Auszahlbare Provisionen werden einmal im Monat mit einer Gutschrift abgerechnet. Voraussetzung sind bestätigte Abrechnungsdaten.");
+  assert.doesNotMatch(await page.locator("#spp-tabpanel").innerText(), /abrechnungsreif/i);
   const alles = await page.locator("#spp-tabpanel").innerText();
   assert.doesNotMatch(alles, /Anna Admin|INTERN-REF-77/, "Adminangaben gehören nicht ins Partnerportal");
   assert.doesNotMatch(alles, /\bregular\b|\bcancellation\b|\bpaid\b|\bopen\b/, "kein Rohwert im sichtbaren Text");
@@ -229,7 +240,7 @@ test("3 — Vortrag des nicht positiven Saldos und Leerzustand", async () => {
   await page.locator("#spp-cn-empty").waitFor({ state: "visible" });
   assert.match(await page.locator("#spp-cn-empty").innerText(), /Noch keine Gutschriften\./);
   assert.equal(await page.locator("#spp-cn-settlement").innerText(),
-    "Ihr aktueller abrechnungsreifer Saldo ist nicht positiv und wird in die nächste Abrechnung übertragen.");
+    "Ihre noch nicht abgerechneten Provisionen ergeben derzeit keinen positiven Betrag. Er wird mit der nächsten Gutschrift verrechnet.");
   await page.close();
 });
 
@@ -431,6 +442,34 @@ test("9 — Pre-Live: Vertrag eines Testkontos ohne rechtsverbindliche Vereinbar
   assert.equal(await page.locator("#spp-agreement-no-document").count(), 0, "statt des Hinweises „kein Dokument“");
   assert.equal(await page.locator("#spp-agreement-document").count(), 0);
   assert.equal(await page.locator("#spp-agreement-version .profile-row-val").innerText(), "Nicht hinterlegt");
+  assert.deepEqual(state.kunde, []);
+  await page.close();
+});
+
+test("10 — Gutschriften → Abrechnungsdaten im Konto; 390 px als Karten mit allen Steuerangaben (UX-Paket 6)", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const state = await setup(page);
+  await zumBereich(page, "credit-notes");
+  await page.locator("#spp-cn-billing-link").waitFor({ state: "visible" });
+  await page.locator("#spp-cn-billing-link").click();
+  await page.waitForURL(`${BASE}/partner?page=account`);
+  await page.locator('#spp-tab-account[aria-selected="true"]').waitFor();
+  await page.locator("#spp-billing-status").waitFor({ state: "visible" });
+  // Die Abrechnungsdaten stehen im Konto zuerst.
+  const erste = await page.locator("#spp-account > section").first().locator(".table-card-title").first().innerText();
+  assert.equal(erste.trim(), "Abrechnungsdaten");
+  assert.ok(state.billingGets >= 1, "die Abrechnungsdaten wurden nicht geladen");
+
+  // 390 px: Karten statt Tabelle, kein seitliches Scrollen, alle Steuerangaben je Beleg.
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.locator("#spp-tab-credit-notes").click();
+  await page.locator(".ce-list-cards li").first().waitFor({ state: "visible" });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth) <= 390, "die Seite scrollt seitlich");
+  const karte = await page.locator(".ce-list-cards li").first().innerText();
+  for (const t of ["GS-2026-0003", "ausgestellt am 06.10.2026", "September 2026", "100,00", "19,00", "19,00 %", "119,00",
+    "Ausgestellt", "Ersetzt GS-2026-0001", "Noch nicht ausgezahlt", "Wird erstellt"]) {
+    assert.ok(karte.includes(t), `Karte ohne „${t}“: ${karte}`);
+  }
   assert.deepEqual(state.kunde, []);
   await page.close();
 });

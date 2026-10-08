@@ -27,6 +27,13 @@
 //      Monatsbewertung Striche statt Nullen.
 //  13. Startseite (UX-Paket 3): 390 px — alle sechs Bereiche ohne seitliches
 //      Scrollen, Kundenlink früh erreichbar und in voller Breite.
+//  14. Direktlinks (UX-Paket 6): Bereich als ?page=… in der Adresse, Neuladen
+//      behält ihn, ein Wechsel legt keinen Verlaufseintrag an, Unbekanntes ergibt
+//      die Übersicht.
+//  15. Login-Rücksprung (UX-Paket 6): ein Gast auf /partner?page=team landet nach
+//      dem Login im Team; ein Kundenziel bringt einen Partner ins Portal.
+//  16. Konto (UX-Paket 6): Abrechnungsdaten zuerst, dann Vereinbarung,
+//      Kontodaten, Sicherheit.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -231,20 +238,50 @@ test("3 — Bereiche: Kunden, Provisionen mit Monatswechsel, Team; Rücknahme er
   await page.locator("#spp-tab-customers").click();
   await page.locator("text=Acme GmbH").first().waitFor({ state: "visible" });
   assert.equal(await page.locator("#spp-tab-customers").getAttribute("aria-selected"), "true");
+  // UX-Paket 6: Kundenkonto und Kunden-Level getrennt erklärt — mit den Monaten der Übersicht.
+  const erklaerung = await page.locator("#spp-customers-explain").innerText();
+  assert.match(erklaerung, /Kundenkonto[\s\S]*freigeschaltet/);
+  assert.match(erklaerung, /im September genug Pakete versendet und zählt deshalb als aktiver Kunde für Ihr Kunden-Level im Oktober/);
+  assert.deepEqual((await page.locator("#spp-customers-table th").allInnerTexts()).map((t) => t.trim()),
+    ["Firma", "Kundenkonto", "Oktober (bisher)", "September", "Zählt für Ihr Kunden-Level"]);
+  const kunde = await page.locator("#spp-customers-table tbody tr").first().innerText();
+  for (const t of ["Acme GmbH", "Zugeordnet seit 02.05.2026", "Aktiv", "3 Sendungen · 4 Pakete", "5 Sendungen · 6 Pakete", "Ja"]) {
+    assert.ok(kunde.includes(t), `Kundenzeile ohne „${t}“: ${kunde}`);
+  }
 
   await page.locator("#spp-tab-commissions").click();
   await page.locator("#spp-commission-totals").waitFor({ state: "visible" });
-  assert.match(await page.locator("#spp-tabpanel").innerText(), /Rücknahme/);
+  // UX-Paket 6: Monat, verdient und auszahlbar zuerst — dann die Buchungen.
+  assert.equal(await page.locator("#spp-commission-title").innerText(), "Verdient im Oktober 2026");
+  assert.match(await page.locator("#spp-commission-earned").innerText(), /^50,00\s€$/);
+  assert.match(await page.locator("#spp-commission-payable").innerText(), /^davon auszahlbar: 20,00\s€$/);
+  const [summeOben, tabelleOben] = await page.evaluate(() => ["#spp-commission-totals", "#spp-commission-table"]
+    .map((s) => document.querySelector(s).getBoundingClientRect().top));
+  assert.ok(summeOben < tabelleOben, "die Summe steht nicht vor den Buchungen");
+  const buchungen = await page.locator("#spp-commission-table tbody").innerText();
+  assert.match(buchungen, /Rücknahme/);
+  assert.match(buchungen, /Auszahlbar/);
+  assert.match(buchungen, /Noch nicht auszahlbar/);
   assert.match(await page.locator("#spp-tabpanel").innerText(), /Provisionsfähige Basis/);
   assert.doesNotMatch(await page.locator("#spp-tabpanel").innerText(), /Gewinn/);
+  assert.equal(await page.locator("#spp-commission-table tr.spp-row-correction").count(), 1, "die Rücknahme ist als Korrektur markiert");
   await page.selectOption("#spp-month", "2026-09");
   await page.waitForFunction(() => document.querySelector("#spp-tabpanel")?.innerText.includes("02.09.2026"));
   assert.ok(state.commissionMonths.includes("2026-09"), `Monat nicht gesendet: ${JSON.stringify(state.commissionMonths)}`);
+  assert.equal(await page.locator("#spp-commission-title").innerText(), "Verdient im September 2026");
 
   await page.locator("#spp-tab-team").click();
   await page.locator("#spp-team-1").waitFor({ state: "visible" });
-  assert.match(await page.locator("#spp-team-1").innerText(), /Ja \(Rang 1\)/);
-  assert.match(await page.locator("#spp-team-1").innerText(), /Ebene 1 · 1 von 10/);
+  // UX-Paket 6 (bewusste Ankeränderung): Ebenen mit Namen, Plätze statt „Rang", Belegung ohne „n von 10".
+  const ebene1 = await page.locator("#spp-team-1").innerText();
+  assert.match(ebene1, /Direkt geworben \(Ebene 1\)/);
+  assert.match(ebene1, /1 Partner · 1 zählt für Ihre Teamprovision \(höchstens 10\)/);
+  assert.match(ebene1, /Ja – Platz 1 von 10/);
+  assert.match(ebene1, /Teamprovision im Oktober/);
+  assert.doesNotMatch(ebene1, /Rang|von 10 ·|Ebene 1 · 1/);
+  assert.match(await page.locator("#spp-team-2").innerText(), /Weitere Partner \(Ebene 2\)[\s\S]*Partner, die Ihre direkt geworbenen Partner geworben haben\./);
+  assert.match(await page.locator("#spp-team-explain").innerText(),
+    /je Ebene die ersten 10 aktiven Partner, in der Reihenfolge ihrer Aktivierung\. Ihre Sätze: Ebene 1 5,00 % · Ebene 2 2,50 %\./);
   assert.deepEqual(state.kunde, []);
   await page.close();
 });
@@ -256,7 +293,7 @@ test("4 — „Mein Team“ ist immer da: ohne Einträge mit Leerzustand, bei ei
   await setup(page, { team: TEAM_LEER });
   await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
   await page.locator("#spp-tab-overview").waitFor({ state: "visible" });
-  assert.equal(await page.locator('[role="tab"]').count(), 6, "Übersicht, Kunden, Provisionen, Abrechnungen, Team, Konto");
+  assert.equal(await page.locator('[role="tab"]').count(), 6, "Übersicht, Kunden, Provisionen, Gutschriften, Team, Konto");
   assert.equal(await page.locator("#spp-tab-credit-notes").count(), 1);
   assert.equal(await page.locator("#spp-tab-account").count(), 1);
   await page.locator("#spp-tab-team").click();
@@ -510,5 +547,89 @@ test("13 — 390 px: alle sechs Bereiche ohne seitliches Scrollen, Kundenlink fr
   assert.ok(knopf.breite >= knopf.karte - 64, `der Kopierknopf ist nicht in voller Breite (${knopf.breite} von ${knopf.karte})`);
   assert.ok(knopf.hoehe >= 44, "der Kopierknopf ist kleiner als 44 px");
   assert.ok(knopf.oben < 844 * 1.5, `der Kundenlink liegt zu tief (${Math.round(knopf.oben)} px)`);
+  await page.close();
+});
+
+test("14 — Direktlinks: Bereich in der Adresse, Neuladen behält ihn, Unbekanntes ergibt die Übersicht (UX-Paket 6)", async () => {
+  const page = await browser.newPage();
+  const state = await setup(page);
+  // Direkt in einen Bereich — ohne Umweg über die Übersicht.
+  await page.goto(`${BASE}/partner?page=commissions`, { waitUntil: "networkidle" });
+  await page.locator("#spp-commission-totals").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#spp-tab-commissions").getAttribute("aria-selected"), "true");
+  assert.equal(page.url(), `${BASE}/partner?page=commissions`);
+
+  // Ein Bereichswechsel schreibt die Adresse — ersetzend, ohne neuen Verlaufseintrag.
+  const verlauf = await page.evaluate(() => history.length);
+  await page.locator("#spp-tab-team").click();
+  await page.waitForURL(`${BASE}/partner?page=team`);
+  await page.locator("#spp-tab-credit-notes").click();
+  await page.waitForURL(`${BASE}/partner?page=credit-notes`);
+  assert.equal(await page.evaluate(() => history.length), verlauf, "ein Bereichswechsel legt einen Verlaufseintrag an");
+
+  // Neuladen: derselbe Bereich.
+  await page.reload({ waitUntil: "networkidle" });
+  await page.locator('#spp-tab-credit-notes[aria-selected="true"]').waitFor();
+  assert.equal(page.url(), `${BASE}/partner?page=credit-notes`);
+
+  // Die Übersicht braucht keinen Parameter.
+  await page.locator("#spp-tab-overview").click();
+  await page.waitForURL(`${BASE}/partner`);
+
+  // Unbekannte Werte ergeben die Übersicht; die Adresse wird auf die gültige Form gebracht.
+  for (const [ziel, erwartet, tab] of [
+    ["/partner?page=evil", "/partner", "overview"],
+    ["/partner?page=Team", "/partner", "overview"],
+    ["/partner?page=__proto__", "/partner", "overview"],
+    ["/partner?page=overview", "/partner", "overview"],
+    ["/partner?page=team&next=https://evil.example", "/partner?page=team", "team"],
+  ]) {
+    await page.goto(`${BASE}${ziel}`, { waitUntil: "networkidle" });
+    await page.locator(`#spp-tab-${tab}[aria-selected="true"]`).waitFor();
+    await page.waitForURL(`${BASE}${erwartet}`);
+    assert.equal(page.url(), `${BASE}${erwartet}`, `${ziel} wurde nicht bereinigt`);
+  }
+  assert.deepEqual(state.kunde, [], `Kundenendpunkte aufgerufen: ${state.kunde.join(", ")}`);
+  assert.equal(await page.evaluate(() => localStorage.getItem("ce_token")), "e2e-partner-token");
+  await page.close();
+});
+
+test("15 — Login-Rücksprung: Gast auf /partner?page=team landet nach dem Login im Team; Kundenziele nie (UX-Paket 6)", async () => {
+  const page = await browser.newPage();
+  const state = await setup(page, { token: false });
+  await page.goto(`${BASE}/partner?page=team`, { waitUntil: "networkidle" });
+  await page.waitForURL(`${BASE}/login`);
+  await page.fill("#auth-email", "petra@partner-vertrieb.de");
+  await page.fill("#auth-password", "EinSicheresPasswort2026");
+  await page.locator("button.auth-cta").click();
+  await page.waitForURL(`${BASE}/partner?page=team`);
+  await page.locator("#spp-team-1").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#spp-tab-team").getAttribute("aria-selected"), "true");
+  assert.deepEqual(state.kunde, []);
+  await page.close();
+
+  // Ein Kundenziel (Lesezeichen aus der Kundenzeit) führt einen Partner ins Portal — nie dorthin.
+  const lesezeichen = await browser.newPage();
+  const zustand = await setup(lesezeichen, { token: false });
+  await lesezeichen.goto(`${BASE}/dashboard?page=invoices`, { waitUntil: "networkidle" });
+  await lesezeichen.waitForURL(`${BASE}/login`);
+  await lesezeichen.fill("#auth-email", "petra@partner-vertrieb.de");
+  await lesezeichen.fill("#auth-password", "EinSicheresPasswort2026");
+  await lesezeichen.locator("button.auth-cta").click();
+  await lesezeichen.waitForURL(`${BASE}/partner`);
+  await lesezeichen.locator('#spp-tab-overview[aria-selected="true"]').waitFor();
+  assert.deepEqual(zustand.kunde, [], `Kundenendpunkte aufgerufen: ${zustand.kunde.join(", ")}`);
+  await lesezeichen.close();
+});
+
+test("16 — Konto: Abrechnungsdaten zuerst, dann Vereinbarung, Kontodaten, Sicherheit (UX-Paket 6)", async () => {
+  const page = await browser.newPage();
+  const state = await setup(page);
+  await page.goto(`${BASE}/partner?page=account`, { waitUntil: "networkidle" });
+  await page.locator("#spp-account").waitFor({ state: "visible" });
+  const titel = (await page.locator("#spp-account > section > .profile-card-head > .table-card-title").allInnerTexts())
+    .map((t) => t.trim());
+  assert.deepEqual(titel, ["Abrechnungsdaten", "Vereinbarung", "Kontodaten", "Sicherheit"]);
+  assert.deepEqual(state.kunde, []);
   await page.close();
 });

@@ -77,7 +77,11 @@ test("5 — /partner hängt hinter PartnerRoute; Index und * führen rollenabhä
 
 test("6 — nach dem Login: Partner ins Portal, alle anderen über das unveränderte Rücksprungziel", () => {
   const page = ohneKommentare(read("pages/AuthPage.jsx"));
-  assert.match(page, /if \(isSalesPartner\(ok\)\) navigate\(landingPathFor\(ok\)\);\s*\n\s*else navigate\(returnTarget \|\| "\/dashboard"\);/);
+  // UX-Paket 6 (bewusste Ankeränderung): ein Partner kehrt in den gewünschten
+  // Bereich des Portals zurück — nur über partnerReturnTarget (Ziel im Portal,
+  // geprüft gegen die Bereichsliste), sonst wie bisher ins Portal.
+  assert.match(page,
+    /if \(isSalesPartner\(ok\)\) navigate\(partnerReturnTarget\(returnTarget\) \|\| landingPathFor\(ok\)\);\s*\n\s*else navigate\(returnTarget \|\| "\/dashboard"\);/);
   // login() liefert das Benutzerobjekt (truthy) statt true — die Rolle ist ohne
   // weiteren Render bekannt.
   const ctx = ohneKommentare(read("context/AuthContext.jsx"));

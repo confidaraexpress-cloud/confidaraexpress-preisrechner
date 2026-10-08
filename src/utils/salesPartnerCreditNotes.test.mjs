@@ -1,6 +1,6 @@
 // Gutschriften der Vertriebspartner — offener Saldo, Auszahlung, Korrekturen,
 // Normalisierung (Partner ohne Adminfelder), PDF-Abruf und Verdrahtung des
-// Bereichs „Abrechnungen".
+// Bereichs „Gutschriften" (bis UX-Paket 6 „Abrechnungen").
 //
 // Run: node --test src/utils/salesPartnerCreditNotes.test.mjs
 import test from "node:test";
@@ -19,6 +19,7 @@ import {
   creditNoteIssuedOn,
   creditNoteKindMeta,
   creditNotePeriod,
+  creditNoteStatusMeta,
   creditNoteTaxRate,
   creditNoteTitle,
   normalizeCreditNote,
@@ -46,17 +47,26 @@ const GS = {
 
 /* ══════════ Offener Saldo ═══════════════════════════════════════════════ */
 
-test("1 — Hinweis zum abrechnungsreifen Saldo: Vortrag, nächste Gutschrift oder nichts", () => {
+test("1 — Hinweis zum offenen Saldo: Vortrag, nächste Gutschrift oder nichts", () => {
+  // UX-Paket 6 (bewusste Ankeränderung): dieselben Geldbegriffe wie die Übersicht
+  // (MONEY_TERMS: auszahlbar → abgerechnet) statt des Sonderworts „abrechnungsreif";
+  // die Voraussetzung der Gutschrift (bestätigte Abrechnungsdaten) steht dabei.
   assert.equal(openSettlementHint({ readyNetCents: -500, readyEntryCount: 2, carriedForward: true }),
-    "Ihr aktueller abrechnungsreifer Saldo ist nicht positiv und wird in die nächste Abrechnung übertragen.");
+    "Ihre noch nicht abgerechneten Provisionen ergeben derzeit keinen positiven Betrag. Er wird mit der nächsten Gutschrift verrechnet.");
   assert.equal(openSettlementHint({ readyNetCents: 12345, readyEntryCount: 3, carriedForward: false }),
-    `Abrechnungsreife Provisionen von ${euro(123.45)} werden mit der nächsten Gutschrift abgerechnet.`);
+    `Noch nicht abgerechnet: auszahlbare Provisionen von ${euro(123.45)}. Sie werden mit der nächsten Gutschrift abgerechnet.`);
   assert.equal(openSettlementHint({ readyNetCents: 0, readyEntryCount: 0, carriedForward: false }), null);
   // Ohne lesbaren Betrag kein Satz mit erfundener Zahl.
   assert.equal(openSettlementHint({ readyNetCents: null, readyEntryCount: 3, carriedForward: false }), null);
   assert.equal(openSettlementHint(null), null);
-  assert.equal(CREDIT_NOTE_TEXTS.settlementNote, "Provision wird nach Zahlungseingang des Kunden abrechnungsreif.");
+  assert.equal(CREDIT_NOTE_TEXTS.settlementNote,
+    "Auszahlbare Provisionen werden einmal im Monat mit einer Gutschrift abgerechnet. Voraussetzung sind bestätigte Abrechnungsdaten.");
+  assert.equal(CREDIT_NOTE_TEXTS.billingLink, "Abrechnungsdaten ansehen");
   assert.equal(CREDIT_NOTE_TEXTS.empty, "Noch keine Gutschriften.");
+  // Kein Text des Bereichs nutzt mehr das Sonderwort oder setzt Gutschrift und Auszahlung gleich.
+  const texte = Object.values(CREDIT_NOTE_TEXTS).join(" ");
+  assert.doesNotMatch(texte, /abrechnungsreif/i);
+  assert.doesNotMatch(texte, /ausgezahlt wird|wird überwiesen|automatisch/i);
 });
 
 /* ══════════ Auszahlung, Art, Korrekturen ════════════════════════════════ */
@@ -86,6 +96,21 @@ test("3 — Korrekturhinweise und Art: nie ein Rohwert", () => {
   assert.equal(creditNotePeriod(normalizeCreditNote(GS)), "September 2026");
   assert.equal(creditNoteIssuedOn(normalizeCreditNote(GS)), "02.10.2026");
   assert.equal(creditNoteTaxRate(normalizeCreditNote(GS)), "19,00 %");
+});
+
+test("3b — Status (UX-Paket 6): nur aus Art und Stornomerkmal, nie aus der Auszahlung", () => {
+  assert.deepEqual(creditNoteStatusMeta(normalizeCreditNote(GS)), ["badge-blue", "Ausgestellt"]);
+  assert.deepEqual(creditNoteStatusMeta(normalizeCreditNote({ ...GS, payoutStatus: "paid", paidOn: "2026-10-15" })),
+    ["badge-blue", "Ausgestellt"], "„ausgezahlt“ ist ein eigener Vermerk, kein Status der Gutschrift");
+  assert.deepEqual(creditNoteStatusMeta(normalizeCreditNote({ ...GS, cancelled: true, cancelledByNumber: "GS-2026-0002" })),
+    ["badge-gray", "Storniert"]);
+  assert.deepEqual(creditNoteStatusMeta(normalizeCreditNote({ ...GS, cancelled: "true" })), ["badge-blue", "Ausgestellt"],
+    "nur exakt true ist storniert");
+  assert.deepEqual(creditNoteStatusMeta(normalizeCreditNote({ ...GS, kind: "cancellation", correctsNumber: "GS-2026-0001" })),
+    ["badge-red", "Storno"]);
+  assert.equal(creditNoteStatusMeta(normalizeCreditNote({ ...GS, kind: "credit_memo" }))[1], "Unbekannter Status");
+  assert.equal(creditNoteStatusMeta(normalizeCreditNote({ ...GS, kind: null }))[1], "—");
+  assert.equal(creditNoteStatusMeta(null)[1], "—");
 });
 
 /* ══════════ Normalisierung ══════════════════════════════════════════════ */
@@ -128,12 +153,27 @@ test("6 — PDF-Abruf: verständliche Sätze, sicherer Rückfallname", () => {
 
 /* ══════════ Verdrahtung ═════════════════════════════════════════════════ */
 
-test("7 — „Abrechnungen“ steht zwischen Provisionen und Team; das Portal rendert den Bereich", () => {
+test("7 — „Gutschriften“ steht zwischen Provisionen und Team; das Portal rendert den Bereich", () => {
   const ids = PARTNER_TABS.map((t) => t.id);
   assert.deepEqual(ids, ["overview", "customers", "commissions", "credit-notes", "team", "account"]);
-  assert.equal(PARTNER_TABS.find((t) => t.id === "credit-notes").label, "Abrechnungen");
+  // UX-Paket 6 (bewusste Ankeränderung): der Bereich heißt wie im Adminbereich
+  // „Gutschriften" — „Abrechnungen" war mit den Abrechnungsdaten im Konto verwechselbar.
+  assert.equal(PARTNER_TABS.find((t) => t.id === "credit-notes").label, "Gutschriften");
+  assert.doesNotMatch(PARTNER_TABS.map((t) => t.label).join(" "), /Abrechnung/);
   const seite = ohneKommentare(read("pages/PartnerPortalPage.jsx"));
   assert.match(seite, /\{aktiv === "credit-notes" && <PartnerCreditNotesPanel \/>\}/);
+  // Der Bereich zeigt Monat, Betrag, Status, Auszahlung und PDF — die steuerlichen
+  // Angaben (Netto, Steuer mit Satz, Gesamt, Nummer, Ausstellungstag) bleiben.
+  const bereich = ohneKommentare(read("components/partner/PartnerCreditNotesPanel.jsx"));
+  for (const kopf of ["Monat", "Gutschrift", "Betrag", "Status", "Auszahlung", "PDF"]) {
+    assert.match(bereich, new RegExp(`<th scope="col"(?: className="ce-num")?>${kopf}</th>`), `Spalte ${kopf} fehlt`);
+  }
+  for (const wert of ["formatCents(cn.grossCents)", "formatCents(cn.netCents)", "formatCents(cn.taxCents)",
+    "creditNoteTaxRate(cn)", "creditNoteIssuedOn(cn)", "cn.number", "creditNotePeriod(cn)", "payoutText(cn)", "correctionHints(cn)"]) {
+    assert.ok(bereich.includes(wert), `${wert} fehlt im Bereich`);
+  }
+  // Der Weg zu den Abrechnungsdaten führt über die Allowlist der Bereiche ins Konto.
+  assert.match(bereich, /to=\{partnerTabPath\("account"\)\}/);
 });
 
 test("8 — PDF nur als authentifizierter Blob-Abruf über den Partnerpfad, nie als Link mit Token", () => {

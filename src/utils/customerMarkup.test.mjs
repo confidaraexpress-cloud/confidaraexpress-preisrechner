@@ -757,7 +757,8 @@ test("46 — die bestehende Kundendetailansicht bleibt vollständig erhalten", (
     /<div className="adm-card-head">Unternehmen und Kontakt<\/div>/,
     /<div className="adm-card-head">Aktivität und Zahlung<\/div>/,
     /Technische Informationen/,
-    /Account anonymisieren/,
+    // UX-Paket 6 (bewusste Ankeränderung): „Konto" statt „Account" — dieselbe Aktion.
+    /Konto anonymisieren/,
     /Kunde löschen/,
     /ANONYMIZE_USER/,
     /DELETE_USER/,

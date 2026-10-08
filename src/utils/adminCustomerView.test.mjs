@@ -387,7 +387,12 @@ test("21 — Löschen wird bei vorhandenen Geschäftsdaten nicht als möglich da
 });
 
 test("22 — Anonymisieren bleibt irreversibel und erhöht bestätigt", () => {
-  assert.match(detailSrc, /Tippe ANONYMIZE_USER ein, um fortzufahren\./);
+  // UX-Paket 6 (bewusste Ankeränderung): Sie-Form statt „Tippe … ein" — das
+  // Bestätigungswort und seine exakte Prüfung bleiben unverändert.
+  assert.match(detailSrc, /Geben Sie zur Bestätigung ANONYMIZE_USER ein\./);
+  assert.match(detailSrc, /Geben Sie zur Bestätigung DELETE_USER ein\./);
+  assert.doesNotMatch(detailSrc, /Tippe [A-Z_]+ ein|Account (anonymisieren|wurde|war|ist|wirklich)|Dieser Account/,
+    "keine Du-Form und kein „Account“ im sichtbaren Text des Kundendetails");
   assert.match(detailSrc, /disabled=\{anonBusy \|\| !confirmed\}/, "ohne exakte Eingabe kein Request");
   assert.match(detailSrc, /if \(confirmation !== "ANONYMIZE_USER"\) return;/);
   // Der Dialog erklärt Folgen, Erhalt der Belege und die Protokollierung.

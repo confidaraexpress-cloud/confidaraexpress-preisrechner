@@ -194,7 +194,7 @@ export default function AdminReconciliationDetailPage() {
         <div className="table-card">
           <div className="empty">
             <div className="empty-title">Dieser Buchungsvorgang wurde nicht gefunden.</div>
-            <Link className="btn btn-outline btn-sm" to="/admin/reconciliation">Zurück zur Übersicht</Link>
+            <Link className="btn btn-outline btn-sm" to="/admin/reconciliation">Zurück zur Buchungsklärung</Link>
           </div>
         </div>
       </div>
@@ -328,8 +328,8 @@ export default function AdminReconciliationDetailPage() {
       <div className="adm-scope-note" role="note">
         <div>
           <strong>Hier wird nur festgehalten, was beim Anbieter festgestellt wurde.</strong> Es wird kein
-          Anbieter kontaktiert, nichts storniert und nichts erstattet. Jede Entscheidung wird im Admin-Audit
-          protokolliert.
+          Anbieter kontaktiert, nichts storniert und nichts erstattet. Jede Entscheidung wird im Protokoll
+          festgehalten.
         </div>
       </div>
 
@@ -600,7 +600,7 @@ export default function AdminReconciliationDetailPage() {
           title={RECONCILIATION_DIALOGS[dialog].title}
           text={RECONCILIATION_DIALOGS[dialog].text}
           subline={`${attemptLabel(a)} · ${providerLabel(a.provider)}${a.shipmentId != null ? ` · Sendung #${a.shipmentId}` : ""}`}
-          note="Die Entscheidung wird im Admin-Audit protokolliert."
+          note="Die Entscheidung wird im Protokoll festgehalten."
           confirmLabel={RECONCILIATION_DIALOGS[dialog].confirm}
           danger={dialog === "notBooked"}
           irreversible={dialog === "booked"}

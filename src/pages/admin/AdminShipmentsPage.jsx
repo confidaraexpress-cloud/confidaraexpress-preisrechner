@@ -360,7 +360,8 @@ export default function AdminShipmentsPage() {
           </select>
         </div>
         <div className="adm-filter-field">
-          <label htmlFor="f-carrier">Carrier</label>
+          {/* Der Server vergleicht exakt mit dem Carrier-Kürzel (UX-Paket 6: so benannt). */}
+          <label htmlFor="f-carrier">Carrier-Kürzel</label>
           <input
             id="f-carrier" type="text" placeholder="z. B. ups"
             value={draft.carrier} onChange={(e) => setField("carrier", e.target.value)}
@@ -375,7 +376,7 @@ export default function AdminShipmentsPage() {
           </select>
         </div>
         <div className="adm-filter-field">
-          <label htmlFor="f-user">Kunden-ID</label>
+          <label htmlFor="f-user">Kunden-ID (intern)</label>
           <input
             id="f-user" type="text" inputMode="numeric" placeholder="optional"
             value={draft.user_id} onChange={(e) => setField("user_id", e.target.value)}
@@ -395,7 +396,7 @@ export default function AdminShipmentsPage() {
             ehrlich benannt statt eine globale Suche vorzutäuschen. */}
         <p className="adm-support-hint adm-filter-hint">
           Es gibt keine Freitextsuche über Kunde oder Bestellnummer — filtern Sie über Status,
-          Carrier, Zeitraum, Tracking oder die Kunden-ID.
+          Carrier-Kürzel, Zeitraum, Tracking oder die interne Kunden-ID.
         </p>
         {filterError && <p id="f-error" className="field-error adm-filter-error" role="alert">{filterError}</p>}
       </form>
@@ -568,7 +569,7 @@ export default function AdminShipmentsPage() {
           title="Entwurf löschen?"
           text="Dieser Entwurf wird endgültig gelöscht. Gebuchte oder abgeschlossene Sendungen sind davon nicht betroffen."
           subline={pendingDelete.label ? `Sendung ${pendingDelete.label}` : undefined}
-          note={deleteError || "Die Aktion wird im Admin-Audit protokolliert und serverseitig erneut geprüft."}
+          note={deleteError || "Die Aktion wird im Protokoll festgehalten und serverseitig erneut geprüft."}
           confirmLabel="Entwurf löschen"
           danger
           busy={deleteBusy}
@@ -586,7 +587,7 @@ export default function AdminShipmentsPage() {
         <ConfirmDialog
           title="Entwürfe bereinigen?"
           text={draftBulkConfirmText(draftTotal)}
-          note={deleteError || "Gilt systemweit — unabhängig von den gesetzten Filtern. Die Aktion wird im Admin-Audit protokolliert."}
+          note={deleteError || "Gilt systemweit — unabhängig von den gesetzten Filtern. Die Aktion wird im Protokoll festgehalten."}
           confirmLabel={draftBulkConfirmLabel(draftTotal)}
           danger
           busy={deleteBusy}

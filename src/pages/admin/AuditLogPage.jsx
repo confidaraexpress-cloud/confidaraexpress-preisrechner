@@ -104,13 +104,23 @@ const EMPTY_FILTERS = {
 };
 
 // HTTP-Status → admin-freundliche Meldung. Keine rohen Backend-Objekte.
+// UX-Paket 6: die Seite heißt „Protokoll" — auch in ihren Meldungen.
 const ERROR_MESSAGES = {
   400: "Ungültige Filter. Bitte prüfen Sie Ihre Eingaben.",
-  404: "Audit-Logs sind derzeit nicht verfügbar.",
+  404: "Das Protokoll ist derzeit nicht verfügbar.",
   429: "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut.",
-  500: "Audit-Logs konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+  500: "Das Protokoll konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
 };
-const GENERIC_ERROR = "Audit-Logs konnten nicht geladen werden. Bitte versuchen Sie es erneut.";
+const GENERIC_ERROR = "Das Protokoll konnte nicht geladen werden. Bitte versuchen Sie es erneut.";
+
+// Spalten und Filter auf Deutsch (UX-Paket 6; vorher Actor, Target, Metadata).
+const AUDIT_LABELS = Object.freeze({
+  actor: "Ausgeführt von",
+  target: "Betroffen",
+  details: "Details",
+  actorFilter: "Ausgeführt von (Konto-ID)",
+  targetFilter: "Betroffenes Konto (ID)",
+});
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
@@ -309,14 +319,14 @@ export default function AuditLogPage() {
           </select>
         </div>
         <div className="adm-filter-field">
-          <label htmlFor="f-actor">Actor-ID</label>
+          <label htmlFor="f-actor">{AUDIT_LABELS.actorFilter}</label>
           <input
             id="f-actor" type="text" inputMode="numeric" placeholder="z. B. 42"
             value={draft.actor_user_id} onChange={(e) => setField("actor_user_id", e.target.value)}
           />
         </div>
         <div className="adm-filter-field">
-          <label htmlFor="f-target">Target-ID</label>
+          <label htmlFor="f-target">{AUDIT_LABELS.targetFilter}</label>
           <input
             id="f-target" type="text" inputMode="numeric" placeholder="z. B. 128"
             value={draft.target_user_id} onChange={(e) => setField("target_user_id", e.target.value)}
@@ -372,11 +382,11 @@ export default function AuditLogPage() {
                 <thead>
                   <tr>
                     <th scope="col">Zeit</th>
-                    <th scope="col">Actor</th>
+                    <th scope="col">{AUDIT_LABELS.actor}</th>
                     <th scope="col">Aktion</th>
-                    <th scope="col">Target</th>
+                    <th scope="col">{AUDIT_LABELS.target}</th>
                     <th scope="col">Ergebnis</th>
-                    <th scope="col" className="adm-col-action">Metadata</th>
+                    <th scope="col" className="adm-col-action">{AUDIT_LABELS.details}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -407,7 +417,7 @@ export default function AuditLogPage() {
                                 onClick={() => toggleExpand(key)}
                                 aria-expanded={isOpen}
                               >
-                                {isOpen ? "Verbergen" : "Details"}
+                                {isOpen ? "Ausblenden" : "Details"}
                               </button>
                             ) : (
                               <span className="adm-muted">—</span>
@@ -456,8 +466,8 @@ export default function AuditLogPage() {
                   {knownAction && <span className="adm-action-raw">{action}</span>}
                   <dl className="adm-scard-kv">
                     <div><dt>Zeit</dt><dd className="adm-td-time">{fmtTime(timeOf(row))}</dd></div>
-                    <div><dt>Actor</dt><dd><Party party={partyOf(row, "actor")} /></dd></div>
-                    <div><dt>Target</dt><dd><Targets row={row} /></dd></div>
+                    <div><dt>{AUDIT_LABELS.actor}</dt><dd><Party party={partyOf(row, "actor")} /></dd></div>
+                    <div><dt>{AUDIT_LABELS.target}</dt><dd><Targets row={row} /></dd></div>
                   </dl>
                   {meta.length > 0 && (
                     <>
@@ -468,7 +478,7 @@ export default function AuditLogPage() {
                           onClick={() => toggleExpand(key)}
                           aria-expanded={isOpen}
                         >
-                          {isOpen ? "Metadata verbergen" : "Metadata anzeigen"}
+                          {isOpen ? "Details ausblenden" : "Details anzeigen"}
                         </button>
                       </div>
                       {isOpen && (

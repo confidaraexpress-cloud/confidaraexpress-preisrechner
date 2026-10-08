@@ -248,7 +248,7 @@ export default function AdminBackfillPage() {
           Das Dokument bleibt dauerhaft ein Testdokument: Es wird <strong>nicht</strong> produktiv,
           verbraucht <strong>keine</strong> neue Rechnungsnummer, ändert <strong>keine</strong>
           {" "}Beträge oder Datumsangaben und löst <strong>keinen</strong> E-Mail-Versand aus.
-          Jede Aktion wird serverseitig geprüft und im Admin-Audit protokolliert.
+          Jede Aktion wird serverseitig geprüft und im Protokoll festgehalten.
         </span>
       </p>
 
@@ -324,7 +324,7 @@ export default function AdminBackfillPage() {
                   <th scope="col">Rechnung-Nr.</th>
                   <th scope="col">Status</th>
                   <th scope="col">Fehlende Felder</th>
-                  <th scope="col">Shipment-ID</th>
+                  <th scope="col">Sendungs-ID (intern)</th>
                   <th scope="col" className="adm-actions-col">Aktion</th>
                 </tr>
               </thead>
@@ -373,7 +373,7 @@ export default function AdminBackfillPage() {
                 </div>
                 <dl className="adm-scard-kv">
                   <div><dt>Fehlende Felder</dt><dd><ChipList items={c.missingFields} /></dd></div>
-                  <div><dt>Shipment-ID</dt><dd className="adm-mono">{dash(shipmentOf(c))}</dd></div>
+                  <div><dt>Sendungs-ID (intern)</dt><dd className="adm-mono">{dash(shipmentOf(c))}</dd></div>
                 </dl>
                 <div className="adm-scard-actions">
                   <button type="button" className="btn btn-outline btn-sm" disabled={!canBackfillCandidate(c)} onClick={() => openModal(c)}>
@@ -409,7 +409,7 @@ export default function AdminBackfillPage() {
           title="Interne Vorschau erzeugen?"
           text={'Erzeugt aus den gespeicherten historischen Daten dieser Rechnung eine INTERNE VORSCHAU (PDF mit Wasserzeichen „INTERNE VORSCHAU – NICHT ZAHLEN"). Das Dokument bleibt ein Testdokument und wird NICHT produktiv. Es entsteht KEINE neue Rechnungsnummer; Beträge und Rechnungs-/Leistungsdatum bleiben unverändert. Es wird KEINE E-Mail versendet.'}
           subline={`Rechnung ${dash(numberOf(modalCandidate))} · #${dash(idOf(modalCandidate))}`}
-          note="Die Aktion wird im Admin-Audit protokolliert und serverseitig erneut geprüft."
+          note="Die Aktion wird im Protokoll festgehalten und serverseitig erneut geprüft."
           confirmLabel="Vorschau erzeugen"
           busy={modalBusy}
           busyLabel="Wird erzeugt …"

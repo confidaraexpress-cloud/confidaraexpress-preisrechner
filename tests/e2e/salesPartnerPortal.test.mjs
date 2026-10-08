@@ -21,6 +21,12 @@
 //      ACCOUNT_PRELIVE_TEST_INACTIVE): der Text des Servers, kein Portal.
 //  10. Link kopieren (UX-Paket 1): „Kopiert“ erst nach echtem Kopieren; scheitert
 //      das Kopieren, steht eine verständliche Meldung da und der Link ist markiert.
+//  11. Startseite (UX-Paket 3): Empfehlungslinks nur einsatzbereit, wenn sie wirken
+//      (Kundenzuordnung aus, Registrierung geschlossen, Testkonto, inaktives Konto).
+//  12. Startseite (UX-Paket 3): erster Besuch — die Links stehen vorn; ohne
+//      Monatsbewertung Striche statt Nullen.
+//  13. Startseite (UX-Paket 3): 390 px — alle sechs Bereiche ohne seitliches
+//      Scrollen, Kundenlink früh erreichbar und in voller Breite.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -44,12 +50,22 @@ const OVERVIEW = {
   partner: { name: "Petra Partner", status: "active", activeSince: "2026-03-01" },
   links: { code: "ABCD2345", customer: "https://confidaraexpress.de/register?ref=ABCD2345",
     partner: "https://confidaraexpress.de/partner-registrieren?ref=ABCD2345" },
-  rates: { basePercent: "20.00", level1Percent: "5.00", level2Percent: "2.50" },
+  // Stimmig zur Zusammensetzung (UX-Paket 3): 15 + 5 + 7,5 = 27,5 ohne Obergrenze
+  // (vorher 20 % Grundprovision bei 27,5 % ohne Obergrenze — ein Widerspruch im Testfall).
+  rates: { basePercent: "15.00", level1Percent: "5.00", level2Percent: "2.50" },
   levels: { month: "2026-10", measuredMonth: "2026-09", activeCustomers: 12, shippedPackages: 1530,
     customerLevel: 2, customerBonusPercent: "5.00", packageLevel: 3, packageBonusPercent: "7.50",
     ownRatePercent: "27.50", capApplied: false },
   currentMonth: { month: "2026-10", commissionCents: 123456, payableCents: 45600, shipments: 80, packages: 95 },
   customers: { assigned: 14 },
+};
+// Öffentliche Konfiguration des Programms (wie salesPartnerRegistration.test.mjs):
+// Registrierung produktiv offen, Kundenzuordnung eingeschaltet.
+const CONFIG_OFFEN = {
+  registrationEnabled: true, registrationMode: "production", referralsEnabled: true, referralRetentionDays: 30,
+  agreementVersion: "2026-10",
+  agreement: { version: "2026-10", effectiveFrom: "2026-10-01", effectiveTo: null,
+    documentPath: "/api/legal/sales_partner_agreement/2026-10" },
 };
 const CUSTOMERS = { customers: [
   { ref: "K-1", companyName: "Acme GmbH", assignedSince: "2026-05-02", accountStatus: "active",
@@ -74,8 +90,9 @@ const TEAM_LEER = { limits: { level1: 10, level2: 10 }, level1: [], level2: [] }
 let server, browser;
 
 // Antworten des Passwortendpunkts in Aufrufreihenfolge (Standard: Erfolg).
-async function setup(page, { user = PARTNER, team = TEAM, token = true, passwordResponses = [], overview = OVERVIEW, login = null } = {}) {
-  const state = { kunde: [], commissionMonths: [], partnerCalls: [], other: [], password: [], emailChange: [] };
+async function setup(page, { user = PARTNER, team = TEAM, token = true, passwordResponses = [], overview = OVERVIEW, login = null,
+  config = CONFIG_OFFEN } = {}) {
+  const state = { kunde: [], commissionMonths: [], partnerCalls: [], other: [], password: [], emailChange: [], configCalls: 0 };
   const pwAntworten = [...passwordResponses];
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const req = route.request();
@@ -112,6 +129,11 @@ async function setup(page, { user = PARTNER, team = TEAM, token = true, password
       const month = url.searchParams.get("month");
       state.commissionMonths.push(month);
       return json(commissions(month || "2026-10"));
+    }
+    // Öffentliche Programmkonfiguration (UX-Paket 3: ob die Links wirken).
+    if (p.endsWith("/api/sales-partner/public-config")) {
+      state.configCalls += 1;
+      return config === "fehler" ? json({ error: "Fehler" }, 500) : json(config);
     }
     state.other.push(p);
     return json({});
@@ -157,6 +179,34 @@ test("1 — Login als Vertriebspartner führt ins Partnerportal, nie in den Kund
   assert.equal(await page.locator("#spp-link-partner button", { hasText: "Kopieren" }).count(), 1);
   assert.equal(await page.locator("#spp-prelive-banner").count(), 0, "kein Testhinweis für ein echtes Konto");
   assert.deepEqual(state.kunde, [], `Kundenendpunkte aufgerufen: ${state.kunde.join(", ")}`);
+
+  // UX-Paket 3: genau vier Kennzahlen in fester Reihenfolge, jede mit ihrem Monat.
+  assert.deepEqual(await page.locator(".spp-kpi").evaluateAll((els) => els.map((e) => e.dataset.kpi)),
+    ["customers", "packages", "ownRate", "earned"]);
+  const band = await page.locator(".spp-kpis").innerText();
+  for (const t of ["Meine Kunden", "14", "aktuell zugeordnet", "Aktiv im September: 12", "Pakete im September", "1.530",
+    "zählen für Ihr Paket-Level im Oktober", "Meine Provision", "Ihr Satz im Oktober", "Im Oktober verdient", "davon auszahlbar"]) {
+    assert.ok(band.includes(t), `Kennzahlen ohne „${t}“`);
+  }
+  // Die Hauptaktion: Kundenlink (primär) und Partnerlink — mit Zusage erst, wenn die Konfiguration sie trägt.
+  await page.locator("#spp-link-customer", { hasText: "werden Ihnen zugeordnet" }).waitFor({ state: "visible" });
+  assert.equal(await page.locator("#spp-link-customer button.btn-primary", { hasText: "Kundenlink kopieren" }).count(), 1);
+  assert.equal(await page.locator("#spp-link-partner button.btn-outline", { hasText: "Partnerlink kopieren" }).count(), 1);
+  // Der technische Empfehlungscode steht nicht in der Übersicht (Betreiberentscheidung).
+  assert.doesNotMatch(await page.locator("#spp-tabpanel").innerText(), /Empfehlungscode/);
+  // Zusammensetzung: drei Bestandteile, der Satz vom Server, ohne Obergrenze kein Grenzhinweis.
+  const teile = await page.locator("#spp-composition .spp-compose-row").evaluateAll((els) =>
+    els.map((e) => [e.querySelector("dt").textContent.trim(), e.querySelector("dd").textContent.trim()]));
+  assert.deepEqual(teile, [["Grundprovision", "15,00 %"], ["Kundenbonus · Level 2", "+5,00 %"],
+    ["Paketbonus · Level 3", "+7,50 %"], ["Ihr Satz im Oktober", "27,50 %"]]);
+  assert.equal(await page.locator("#spp-cap-note").count(), 0);
+  // Geldbegriffe aufklappbar: vier getrennte Stufen.
+  await page.locator("#spp-money-terms summary").click();
+  assert.deepEqual(await page.locator("#spp-money-terms dt").allInnerTexts(), ["Verdient", "Auszahlbar", "Abgerechnet", "Ausgezahlt"]);
+  // Reihenfolge: erst die Kennzahlen, direkt danach die Links.
+  const [kpiTop, linksTop] = await page.evaluate(() => ["#spp-kpi-section", "#spp-links"]
+    .map((s) => document.querySelector(s).getBoundingClientRect().top));
+  assert.ok(kpiTop < linksTop, "die Links stehen nicht nach den Kennzahlen");
   await page.close();
 });
 
@@ -356,4 +406,109 @@ test("10 — Link kopieren: „Kopiert“ erst nach echtem Kopieren; Fehlschlag 
   assert.doesNotMatch(await status.innerText(), /^Kopiert$/);
   assert.equal(await fehler.evaluate(() => String(window.getSelection())), OVERVIEW.links.partner, "der Link ist zum manuellen Kopieren markiert");
   await fehler.close();
+});
+
+test("11 — Empfehlungslinks nur einsatzbereit, wenn sie wirken (UX-Paket 3)", async () => {
+  // Kundenzuordnung aus: kein Kopierknopf, keine Adresse, ein klarer Satz.
+  let page = await browser.newPage();
+  let state = await setup(page, { config: { ...CONFIG_OFFEN, referralsEnabled: false } });
+  await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
+  await page.locator("#spp-link-customer", { hasText: "Die Zuordnung neuer Kunden über Empfehlungslinks ist derzeit nicht aktiv." })
+    .waitFor({ state: "visible" });
+  assert.equal(await page.locator("#spp-link-customer button").count(), 0, "Knopf für einen Link, der nicht wirkt");
+  assert.doesNotMatch(await page.locator("#spp-link-customer").innerText(), /register\?ref=/);
+  assert.equal(await page.locator("#spp-link-partner button", { hasText: "Partnerlink kopieren" }).count(), 1);
+  assert.equal(state.configCalls, 1, "die Konfiguration wird einmal je Seite geladen");
+  await page.close();
+
+  // Registrierung geschlossen: kein Partnerlink zum Kopieren.
+  page = await browser.newPage();
+  await setup(page, { config: { ...CONFIG_OFFEN, registrationEnabled: false, registrationMode: "closed", agreementVersion: null, agreement: null } });
+  await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
+  await page.locator("#spp-link-partner", { hasText: "Die Registrierung für neue Vertriebspartner ist derzeit nicht geöffnet." })
+    .waitFor({ state: "visible" });
+  assert.equal(await page.locator("#spp-link-partner button").count(), 0);
+  assert.equal(await page.locator("#spp-link-customer button", { hasText: "Kundenlink kopieren" }).count(), 1);
+  await page.close();
+
+  // Konfiguration nicht ladbar: Links bleiben nutzbar, aber ohne Zusage.
+  page = await browser.newPage();
+  await setup(page, { config: "fehler" });
+  await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
+  await page.locator("#spp-link-customer button", { hasText: "Kundenlink kopieren" }).waitFor({ state: "visible" });
+  assert.doesNotMatch(await page.locator("#spp-links").innerText(), /werden Ihnen zugeordnet|nach der Freigabe/);
+  await page.close();
+
+  // Inaktives Konto: Folgen im Hinweis, ein Satz statt der Links.
+  page = await browser.newPage();
+  await setup(page, { overview: { ...OVERVIEW, partner: { ...OVERVIEW.partner, status: "inactive" },
+    links: { code: null, customer: null, partner: null } } });
+  await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
+  await page.locator("#spp-links-notice").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#spp-links-notice").innerText(), "Ihre Empfehlungslinks gelten nur bei aktivem Partnerkonto.");
+  assert.equal(await page.locator("#spp-links button").count(), 0);
+  assert.match(await page.locator(".spp-notice", { hasText: "inaktiv" }).innerText(), /keine neuen Provisionen/);
+  await page.close();
+
+  // Testkonto: der Kundenlink ordnet nie zu; der Partnerlink wirkt nur im (hier geschlossenen) Testweg.
+  page = await browser.newPage();
+  await setup(page, { overview: { ...OVERVIEW, preliveTest: true } });
+  await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
+  await page.locator("#spp-link-customer", { hasText: "Testkonto: Über den Kundenlink werden keine Kunden zugeordnet." })
+    .waitFor({ state: "visible" });
+  assert.match(await page.locator("#spp-link-partner").innerText(), /Pre-Live-Testweg/);
+  assert.equal(await page.locator("#spp-links button").count(), 0);
+  await page.close();
+});
+
+test("12 — erster Besuch: die Links stehen vorn; ohne Monatsbewertung Striche statt Nullen (UX-Paket 3)", async () => {
+  const page = await browser.newPage();
+  await setup(page, { overview: { ...OVERVIEW, levels: null, customers: { assigned: 0 },
+    currentMonth: { month: "2026-10", commissionCents: 0, payableCents: 0, shipments: 0, packages: 0 } } });
+  await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
+  await page.locator("#spp-start-hint").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#spp-start-hint").innerText(), "So starten Sie: Teilen Sie Ihren Kundenlink mit Geschäftskunden.");
+  const [linksTop, kpiTop] = await page.evaluate(() => ["#spp-links", "#spp-kpi-section"]
+    .map((s) => document.querySelector(s).getBoundingClientRect().top));
+  assert.ok(linksTop < kpiTop, "beim ersten Besuch stehen die Links nicht vorn");
+  // Echte Nullen bleiben 0; Unbekanntes ist ein Strich mit Hinweis.
+  const wert = (k) => page.locator(`[data-kpi="${k}"] .spp-kpi-value`).innerText();
+  assert.equal(await wert("customers"), "0");
+  assert.equal(await wert("packages"), "—");
+  assert.equal(await wert("ownRate"), "—");
+  assert.match(await wert("earned"), /^0,00\s€$/);
+  assert.match(await page.locator('[data-kpi="packages"]').innerText(), /Noch keine Monatsbewertung/);
+  assert.match(await page.locator("#spp-level-basis").innerText(), /^Noch keine Monatsbewertung/);
+  await page.close();
+});
+
+test("13 — 390 px: alle sechs Bereiche ohne seitliches Scrollen, Kundenlink früh und in voller Breite (UX-Paket 3)", async () => {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await setup(page);
+  await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
+  await page.locator("#spp-link-customer button").waitFor({ state: "visible" });
+  const tabs = await page.locator('[role="tab"]').evaluateAll((els) => els.map((e) => {
+    const r = e.getBoundingClientRect();
+    return { text: e.textContent.trim(), links: r.left, rechts: r.right, hoehe: r.height };
+  }));
+  assert.equal(tabs.length, 6);
+  for (const t of tabs) {
+    assert.ok(t.links >= 0 && t.rechts <= 390, `„${t.text}“ liegt außerhalb des Bildschirms (${t.links}–${t.rechts})`);
+    assert.ok(t.hoehe >= 44, `„${t.text}“ ist kleiner als 44 px`);
+  }
+  const leiste = await page.locator('[role="tablist"]').evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
+  assert.ok(leiste.scroll <= leiste.client + 1, `die Tabzeile scrollt seitlich (${leiste.scroll} > ${leiste.client})`);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth) <= 390, "die Seite scrollt seitlich");
+  // Kennzahlen 2 × 2, die Hauptaktion in voller Breite und früh erreichbar.
+  const kpi = await page.locator(".spp-kpi").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
+  assert.equal(kpi[0], kpi[1], "die Kennzahlen stehen nicht zu zweit nebeneinander");
+  const knopf = await page.locator("#spp-link-customer button").evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const karte = el.closest(".spp-card").getBoundingClientRect();
+    return { breite: r.width, karte: karte.width, oben: r.top + window.scrollY, hoehe: r.height };
+  });
+  assert.ok(knopf.breite >= knopf.karte - 64, `der Kopierknopf ist nicht in voller Breite (${knopf.breite} von ${knopf.karte})`);
+  assert.ok(knopf.hoehe >= 44, "der Kopierknopf ist kleiner als 44 px");
+  assert.ok(knopf.oben < 844 * 1.5, `der Kundenlink liegt zu tief (${Math.round(knopf.oben)} px)`);
+  await page.close();
 });

@@ -7,19 +7,43 @@ import { BrandLogo } from "../ui/BrandLogo";
 // Aktive Adminnavigation (URL-basiert). NavLink liefert den Active-Zustand über
 // die URL — bewusst KEINE Vermischung mit dem State-basierten Kunden-Dashboard.
 // Seit dem Redesign (2026-10) reine Textnavigation: keine Symbole vor den
-// Einträgen; Ziele, Reihenfolge und `end`-Regeln sind unverändert.
-const PRIMARY_NAV = [
-  { to: "/admin", label: "Übersicht", end: true },
-  { to: "/admin/users", label: "Kunden" },
-  // Vertriebspartnerprogramm: Anträge, Partner, Einstellungen, Versandnachweise.
-  { to: "/admin/partners", label: "Vertriebspartner" },
-  { to: "/admin/shipments", label: "Sendungen" },
-  { to: "/admin/reconciliation", label: "Buchungsklärung" },
-  { to: "/admin/invoices", label: "Rechnungen", end: true },
-  { to: "/admin/invoices/backfill", label: "Produktion & Backfill" },
-  { to: "/admin/cancellation-requests", label: "Stornierungsanfragen" },
-  { to: "/admin/support-requests", label: "Supportanfragen" },
-  { to: "/admin/audit-logs", label: "Audit-Logs" },
+// Einträgen.
+//
+// UX-Paket 2: dieselben Ziele und `end`-Regeln, nach Aufgaben gruppiert. Zwei
+// Einträge heißen jetzt wie ihre Seite statt technisch („Produktion &
+// Backfill" → „Interne Vorschau-PDFs", „Audit-Logs" → „Protokoll").
+const NAV_GROUPS = [
+  { label: null, items: [{ to: "/admin", label: "Übersicht", end: true }] },
+  {
+    label: "Kunden und Partner",
+    items: [
+      { to: "/admin/users", label: "Kunden" },
+      // Vertriebspartnerprogramm: Anträge, Partner, Versandnachweise, Gutschriften, Einstellungen.
+      { to: "/admin/partners", label: "Vertriebspartner" },
+    ],
+  },
+  {
+    label: "Versand und Rechnungen",
+    items: [
+      { to: "/admin/shipments", label: "Sendungen" },
+      { to: "/admin/invoices", label: "Rechnungen", end: true },
+    ],
+  },
+  {
+    label: "Support und Bearbeitung",
+    items: [
+      { to: "/admin/support-requests", label: "Supportanfragen" },
+      { to: "/admin/cancellation-requests", label: "Stornierungsanfragen" },
+      { to: "/admin/reconciliation", label: "Buchungsklärung" },
+    ],
+  },
+  {
+    label: "Verwaltung und Protokoll",
+    items: [
+      { to: "/admin/invoices/backfill", label: "Interne Vorschau-PDFs" },
+      { to: "/admin/audit-logs", label: "Protokoll" },
+    ],
+  },
 ];
 
 // Bewusst noch NICHT verlinkt — folgen in späteren, separaten Schritten. Als
@@ -65,17 +89,28 @@ export function AdminSidebar({ open, onClose }) {
         </div>
 
         <nav className="adm-nav" aria-label="Adminnavigation">
-          {PRIMARY_NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              onClick={onClose}
-              className={({ isActive }) => `adm-nitem${isActive ? " adm-nitem-on" : ""}`}
-            >
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
+          {NAV_GROUPS.map((group, i) => {
+            const eintraege = group.items.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                onClick={onClose}
+                className={({ isActive }) => `adm-nitem${isActive ? " adm-nitem-on" : ""}`}
+              >
+                <span>{item.label}</span>
+              </NavLink>
+            ));
+            if (!group.label) return <React.Fragment key="start">{eintraege}</React.Fragment>;
+            // Gruppenüberschrift als Text; die Gruppe ist für Screenreader benannt.
+            const id = `adm-nsec-${i}`;
+            return (
+              <div key={id} className="adm-ngroup" role="group" aria-labelledby={id}>
+                <div className="adm-nsec" id={id}>{group.label}</div>
+                {eintraege}
+              </div>
+            );
+          })}
 
           {SOON_NAV.length > 0 && (
             <>

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { AdminBackLink } from "../../components/admin/AdminBackLink";
 import { getAdminSupportRequest, updateAdminSupportRequest, replyAdminSupportRequest } from "../../api/adminApi";
 import { newIdempotencyKey } from "../../utils/idempotencyKey.mjs";
 import {
@@ -179,11 +180,8 @@ export default function AdminSupportRequestDetailPage() {
     await load();
   }, [load]);
 
-  const back = (
-    <Link to="/admin/support-requests" className="adm-back">
-      Zurück zur Übersicht
-    </Link>
-  );
+  // Rückweg zur Herkunft (UX-Paket 2), sonst zur Liste.
+  const back = <AdminBackLink to="/admin/support-requests" label="Zurück zu den Supportanfragen" />;
 
   // Öffentliche Antwort senden. Doppelklickschutz über eine Ref (kein State —
   // sonst könnte ein zweiter Klick vor dem Re-Render durchrutschen). Nach Erfolg

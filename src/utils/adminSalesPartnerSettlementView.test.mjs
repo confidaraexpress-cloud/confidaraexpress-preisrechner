@@ -382,13 +382,18 @@ test("16 — Rückmeldungen der Vorschau und des Ausstellens", () => {
     "Gutschrift ausgestellt. Das Dokument wird erstellt. Der Vertriebspartner wurde noch nicht benachrichtigt.");
 });
 
-test("17 — Abrechnungslauf: Route vor '/:id', Link aus der Liste, nacheinander statt parallel", () => {
+test("17 — Abrechnungslauf: Route vor '/:id', Eintrag „Gutschriften“ in der Teilnavigation, nacheinander statt parallel", () => {
   const app = ohneKommentare(read("App.jsx"));
   const statisch = app.indexOf('path="/admin/partners/credit-notes"');
   assert.ok(statisch > 0 && statisch < app.indexOf('path="/admin/partners/:id"'), "statische Unterseite vor '/:id'");
   assert.match(app, /const AdminSalesPartnerCreditNotesPage = React\.lazy\(\(\) => import\("\.\/pages\/admin\/AdminSalesPartnerCreditNotesPage"\)\);/);
+  // UX-Paket 2 (bewusste Ankeränderung): der Weg zum Abrechnungslauf ist kein
+  // Kopfbutton der Liste mehr, sondern der Eintrag „Gutschriften" der
+  // Teilnavigation — mit derselben Id, auf der Liste und auf jeder Unterseite.
+  const navi = ohneKommentare(read("components/admin/SalesPartnerAdminNav.jsx"));
+  assert.match(navi, /\{ to: "\/admin\/partners\/credit-notes", label: "Gutschriften", id: "adm-sp-credit-notes-link" \}/);
   const liste = ohneKommentare(read("pages/admin/AdminSalesPartnersPage.jsx"));
-  assert.match(liste, /to="\/admin\/partners\/credit-notes" id="adm-sp-credit-notes-link">Abrechnungslauf<\/Link>/);
+  assert.match(liste, /<SalesPartnerAdminNav prelive=\{prelive\} \/>/);
 
   const seite = ohneKommentare(read("pages/admin/AdminSalesPartnerCreditNotesPage.jsx"));
   assert.match(seite, /for \(let i = 0; i < zeilen\.length; i \+= 1\) \{\s*const folge = await ausstellenZeile\(preview, zeilen\[i\]\);/,

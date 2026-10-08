@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { returnState } from "../../utils/adminBackLink.mjs";
 import {
   createAdminSalesPartnerAdjustment,
   listAdminSalesPartnerCommissions,
@@ -38,7 +39,7 @@ function TypeBadge({ type }) {
 }
 
 // Berechnungsgrundlage einer Entscheidung — ausschließlich Serverwerte.
-function DecisionDetails({ entry }) {
+function DecisionDetails({ entry, from }) {
   const d = entry.decision;
   return (
     <dl className="adm-kv adm-sp-decision">
@@ -51,7 +52,7 @@ function DecisionDetails({ entry }) {
       <div className="adm-kv-item"><dt>Kundenpreis netto</dt><dd>{formatCents(d?.customerNetCents)}</dd></div>
       <div className="adm-kv-item"><dt>Sendung</dt><dd>
         {entry.shipmentId != null
-          ? <Link to={`/admin/shipments/${encodeURIComponent(entry.shipmentId)}`}>Sendung #{entry.shipmentId}</Link>
+          ? <Link to={`/admin/shipments/${encodeURIComponent(entry.shipmentId)}`} state={from}>Sendung #{entry.shipmentId}</Link>
           : "—"}
       </dd></div>
       {/* Keine Zeile „Technischer Grund": der Rohwert (accrual/reversal/adjustment)
@@ -68,6 +69,8 @@ const LEERE_KORREKTUR = { amount: "", reason: "", shipmentId: "" };
    optional neu berechnen) und eine manuelle Korrekturbuchung. Beträge sind die
    des Servers; die Oberfläche addiert nichts. */
 export function SalesPartnerCommissionsCard({ partnerId }) {
+  // „Zurück" im Sendungsdetail führt wieder zum Partner (UX-Paket 2).
+  const from = returnState(useLocation());
   // Startwert: der laufende Monat aus Sicht des Admins — die Detailantwort
   // nennt keinen Servermonat. Maßgeblich bleibt der Monat der Antwort.
   const [anker] = useState(() => currentLocalMonth());
@@ -270,7 +273,7 @@ export function SalesPartnerCommissionsCard({ partnerId }) {
                       </tr>
                       {offen.has(key) && (
                         <tr className="adm-sp-decision-row">
-                          <td colSpan={9}><DecisionDetails entry={e} /></td>
+                          <td colSpan={9}><DecisionDetails entry={e} from={from} /></td>
                         </tr>
                       )}
                     </React.Fragment>

@@ -24,6 +24,10 @@
 //  10. Pre-Live: Testkunde im Kundendetail als TEST gekennzeichnet; Zuordnung
 //      Testkunde ↔ Testpartner mit zurückliegendem Datum; eine Mischung mit einem
 //      echten Partner → fester Satz (409).
+//  11. UX-Paket 2: Teilnavigation statt Kopfbuttons; „Zurück" aus dem Detail führt
+//      in dieselbe gefilterte Liste (Filter in der Adresse).
+//  12. UX-Paket 2: 390 px — Teilnavigation bricht um (44-px-Ziele, kein seitliches
+//      Scrollen); die Partnerkarte zeigt nur Status, Kunden, Pakete und die Aktion.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -236,20 +240,43 @@ test("1 — Sidebar-Eintrag und Liste mit serverseitigem Status- und Suchfilter"
   assert.equal(await page.locator(".adm-sp-table tbody tr").count(), 2);
   const text = await page.locator(".adm-sp-table").innerText();
   assert.match(text, /In Prüfung/);
-  assert.match(text, /27,50 %/);
+  assert.match(text, /Antrag vom 01\.10\.2026/);
+  assert.match(text, /1\.530/, "Pakete im Vormonat aus dem Serverwert");
   assert.doesNotMatch(text, /\bpending\b|\bactive\b/, "Rohstatus im sichtbaren Text");
+  // UX-Paket 2: sichtbar nur Partner, Status, Kunden, Pakete und die wichtigste Aktion —
+  // Login, Team, Eigenprovision und Daten stehen im Detail.
+  assert.deepEqual((await page.locator(".adm-sp-table thead th").allInnerTexts()).map((t) => t.trim()),
+    ["Partner", "Status", "Kunden", "Pakete Vormonat", "Aktion"]);
+  assert.doesNotMatch(text, /27,50 %|Eigensatz|Team E1/);
+  // Ein offener Antrag hat „Antrag prüfen" als Hauptaktion, ein aktiver Partner „Details".
+  assert.equal(await page.locator('.adm-sp-table tr[data-partner-id="5"] a.btn', { hasText: "Antrag prüfen" }).count(), 1);
+  assert.equal(await page.locator('.adm-sp-table tr[data-partner-id="6"] a.btn', { hasText: "Details" }).count(), 1);
+  // Offene Anträge sind hervorgehoben — aus dem Serverzähler der Liste mit status=pending.
+  assert.equal((await page.locator("#adm-sp-pending-note").innerText()).split("\n")[0].trim(), "1 Antrag wartet auf Prüfung.");
+  assert.ok(state.list.some((qs) => { const q = new URLSearchParams(qs); return q.get("status") === "pending" && q.get("limit") === "1"; }));
 
+  // Der Statusfilter wirkt sofort, die Suche mit „Suchen"; beide stehen in der Adresse.
   await page.selectOption("#sp-filter-status", "pending");
+  await page.waitForURL(`${BASE}/admin/partners?status=pending`);
   await page.fill("#sp-filter-q", "petra");
+  // Gewartet wird auf genau die Antwort mit der Suche — die Zeilenzahl ist schon nach dem
+  // Statusfilter 1 und taugt deshalb nicht als Signal.
+  const mitSuche = page.waitForResponse((r) => r.url().includes("/admin/sales-partners?") && r.url().includes("q=petra"));
   await page.locator("#sp-filter-apply").click();
+  await mitSuche;
+  await page.waitForURL(`${BASE}/admin/partners?status=pending&q=petra`);
   await page.waitForFunction(() => document.querySelectorAll(".adm-sp-table tbody tr").length === 1);
   const letzter = new URLSearchParams(state.list[state.list.length - 1]);
   assert.equal(letzter.get("status"), "pending");
   assert.equal(letzter.get("q"), "petra");
   assert.equal(letzter.get("limit"), "25");
   assert.equal(letzter.get("offset"), "0");
+  // Bei gefilterten Anträgen braucht es keinen Hinweis mehr.
+  assert.equal(await page.locator("#adm-sp-pending-note").count(), 0);
+  // Die Unterseiten liegen in der Teilnavigation (dieselben Ids wie früher die Kopfbuttons).
   assert.equal(await page.locator("#adm-sp-settings-link").getAttribute("href"), "/admin/partners/settings");
   assert.equal(await page.locator("#adm-sp-evidence-link").getAttribute("href"), "/admin/partners/dispatch-evidence");
+  assert.equal(await page.locator("#adm-sp-credit-notes-link").innerText(), "Gutschriften");
   await page.close();
 });
 
@@ -257,7 +284,8 @@ test("2 — Freigabe eines Antrags: Pflichtfeld Grundprovision, Vertragsbody, ne
   const page = await browser.newPage();
   const state = await setup(page);
   await page.goto(`${BASE}/admin/partners`, { waitUntil: "networkidle" });
-  await page.locator('.adm-sp-table tr[data-partner-id="5"] a', { hasText: "Details" }).click();
+  // UX-Paket 2: ein offener Antrag hat „Antrag prüfen" statt „Details" als Zeilenaktion.
+  await page.locator('.adm-sp-table tr[data-partner-id="5"] a', { hasText: "Antrag prüfen" }).click();
   await page.waitForURL(`${BASE}/admin/partners/5`);
   await page.locator("#adm-sp-approve").waitFor({ state: "visible" });
   assert.match(await page.locator("#adm-sp-codes-card").innerText(), /ABCD2345/);
@@ -550,5 +578,78 @@ test("10 — Pre-Live: Zuordnung Testkunde ↔ Testpartner zurückliegend; Misch
   assert.equal(await page.locator('#adm-sp-attribution [role="alert"]').innerText(),
     "Testkunden lassen sich nur Testpartnern zuordnen und echte Kunden nur echten Vertriebspartnern. Es wurde nichts geändert.");
   assert.doesNotMatch(await page.locator("#adm-sp-attribution").innerText(), /PRELIVE_TEST_MISMATCH/);
+  await page.close();
+});
+
+test("11 — Teilnavigation und Rückweg (UX-Paket 2): gefilterte Liste bleibt erhalten, Unterseiten ohne Kopfbuttons", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await setup(page, { prelive: true });
+
+  // Aus der gefilterten Liste ins Detail — „Zurück" führt in dieselbe gefilterte Liste.
+  await page.goto(`${BASE}/admin/partners?status=pending`, { waitUntil: "networkidle" });
+  assert.equal(await page.locator("#sp-filter-status").inputValue(), "pending", "der Filter aus der Adresse greift nicht");
+  await page.locator('.adm-sp-table tr[data-partner-id="5"] a', { hasText: "Antrag prüfen" }).click();
+  await page.waitForURL(`${BASE}/admin/partners/5`);
+  const zurueck = page.locator(".adm-back");
+  await zurueck.waitFor({ state: "visible" });
+  assert.equal((await zurueck.innerText()).trim(), "Zurück zu den Vertriebspartnern");
+  assert.equal(await zurueck.getAttribute("href"), "/admin/partners?status=pending");
+  await zurueck.click();
+  await page.waitForURL(`${BASE}/admin/partners?status=pending`);
+  assert.equal(await page.locator("#sp-filter-status").inputValue(), "pending");
+
+  // Teilnavigation: genau ein aktiver Eintrag, Pre-Live nur bei aktivem Modus, kein Kopfbutton-Block.
+  const navi = page.locator('nav[aria-label="Bereiche des Partnerprogramms"]');
+  await page.locator("#adm-sp-prelive-link").waitFor({ state: "visible" });
+  assert.deepEqual((await navi.locator("a").allInnerTexts()).map((t) => t.trim()),
+    ["Partner", "Versandnachweise", "Gutschriften", "Einstellungen", "Pre-Live-Test"]);
+  assert.equal(await navi.locator('a[aria-current="page"]').innerText(), "Partner");
+  assert.equal(await page.locator(".ce-page-header-actions a").count(), 0, "Unterseiten wieder als Kopfbuttons");
+
+  // Die Unterseiten tragen dieselbe Teilnavigation statt eines Zurück-Links.
+  for (const [id, ziel, titel] of [
+    ["#adm-sp-evidence-link", "/admin/partners/dispatch-evidence", "Versandnachweise"],
+    ["#adm-sp-settings-link", "/admin/partners/settings", "Einstellungen Vertriebspartner"],
+  ]) {
+    await page.locator(id).click();
+    await page.waitForURL(`${BASE}${ziel}`);
+    await page.locator(".ce-page-header-title", { hasText: titel }).waitFor({ state: "visible" });
+    assert.equal(await page.locator(`${id}[aria-current="page"]`).count(), 1, `${ziel}: Eintrag nicht aktiv`);
+    assert.equal(await page.locator(".adm-back").count(), 0, `${ziel}: Zurück-Link neben der Teilnavigation`);
+    // Pre-Live erscheint auch hier, sobald der Server den Modus meldet (fail-closed bis dahin).
+    await page.locator("#adm-sp-prelive-link").waitFor({ state: "visible" });
+  }
+  await page.close();
+});
+
+test("12 — 390 px: Teilnavigation bricht um statt seitlich zu scrollen, die Partnerkarten zeigen nur das Nötige", async () => {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await setup(page, { prelive: true });
+  await page.goto(`${BASE}/admin/partners`, { waitUntil: "networkidle" });
+  await page.locator('.adm-sp-cards li[data-partner-id="5"]').waitFor({ state: "visible" });
+  await page.locator("#adm-sp-prelive-link").waitFor({ state: "visible" });
+
+  const navi = page.locator('nav[aria-label="Bereiche des Partnerprogramms"]');
+  const masse = await navi.evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth,
+    links: [...el.querySelectorAll("a")].map((a) => { const r = a.getBoundingClientRect(); return { h: r.height, rechts: r.right }; }) }));
+  assert.ok(masse.scroll <= masse.client + 1, `Teilnavigation scrollt seitlich: ${masse.scroll} > ${masse.client}`);
+  assert.ok(masse.links.every((l) => l.h >= 44), `Touch-Ziel unter 44 px: ${JSON.stringify(masse.links)}`);
+  assert.ok(masse.links.every((l) => l.rechts <= 390), "ein Eintrag liegt außerhalb des Bildschirms");
+  const seite = await page.evaluate(() => document.documentElement.scrollWidth);
+  assert.ok(seite <= 390, `die Seite scrollt seitlich: ${seite}`);
+
+  const karte = await page.locator('.adm-sp-cards li[data-partner-id="5"]').innerText();
+  assert.match(karte, /In Prüfung/);
+  assert.match(karte, /Antrag vom 01\.10\.2026/);
+  assert.match(karte, /Antrag prüfen/);
+  assert.doesNotMatch(karte, /Eigensatz|Team E1|Aktiv seit|Login/);
+
+  // Einstellungen: die unsichtbaren Feldbeschriftungen der Level-Tabelle verbreiterten
+  // die Seite (gemessen 541 px); der Scrollcontainer ist jetzt ihr Bezugspunkt.
+  await page.locator("#adm-sp-settings-link").click();
+  await page.waitForURL(`${BASE}/admin/partners/settings`);
+  await page.locator(".adm-sp-levels input").first().waitFor({ state: "visible" });
+  const einstellungen = await page.evaluate(() => document.documentElement.scrollWidth);
+  assert.ok(einstellungen <= 390, `die Einstellungen scrollen seitlich: ${einstellungen}`);
   await page.close();
 });

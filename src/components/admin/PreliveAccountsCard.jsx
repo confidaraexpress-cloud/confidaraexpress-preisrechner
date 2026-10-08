@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { DateField } from "./DateField";
 import { CopyableNumber } from "../ui/CopyableNumber";
+import { returnState } from "../../utils/adminBackLink.mjs";
 import {
   createAdminPreliveCustomer,
   createAdminPrelivePartner,
@@ -42,6 +43,8 @@ function Badge({ meta }) {
 export function PreliveAccountsCard({ accounts, loading = false, error = "", onReload, onChanged, onDisabled }) {
   const partner = accounts?.partners || [];
   const kunden = accounts?.customers || [];
+  // „Zurück" im Partner- bzw. Kundendetail führt wieder hierher (UX-Paket 2).
+  const from = returnState(useLocation());
 
   const [pForm, setPForm] = useState(LEER_PARTNER);
   const [pErrors, setPErrors] = useState({});
@@ -216,7 +219,7 @@ export function PreliveAccountsCard({ accounts, loading = false, error = "", onR
                   <tr key={p.id} data-partner-id={p.id}>
                     <td>
                       <div className="adm-sp-partner">
-                        <Link className="adm-sp-name" to={`/admin/partners/${encodeURIComponent(p.id)}`}>{testAccountName(p, "Testpartner")}</Link>
+                        <Link className="adm-sp-name" to={`/admin/partners/${encodeURIComponent(p.id)}`} state={from}>{testAccountName(p, "Testpartner")}</Link>
                         {p.companyName && p.name && <span className="adm-sp-sub">{p.name}</span>}
                         {p.email && <span className="adm-sp-sub adm-sp-mail">{p.email}</span>}
                       </div>
@@ -261,7 +264,7 @@ export function PreliveAccountsCard({ accounts, loading = false, error = "", onR
                   <tr key={k.id} data-customer-id={k.id}>
                     <td>
                       <div className="adm-sp-partner">
-                        <Link className="adm-sp-name" to={`/admin/users/${encodeURIComponent(k.id)}`}>{testAccountName(k, "Testkunde")}</Link>
+                        <Link className="adm-sp-name" to={`/admin/users/${encodeURIComponent(k.id)}`} state={from}>{testAccountName(k, "Testkunde")}</Link>
                         {k.companyName && k.name && <span className="adm-sp-sub">{k.name}</span>}
                         {k.email && <span className="adm-sp-sub adm-sp-mail">{k.email}</span>}
                       </div>
@@ -311,7 +314,7 @@ export function PreliveAccountsCard({ accounts, loading = false, error = "", onR
         {meldung(pMessage, "adm-pl-partner-message")}
         {pMessage?.type === "success" && pMessage.id !== null && (
           <p className="adm-support-hint">
-            <Link to={`/admin/partners/${encodeURIComponent(pMessage.id)}`} id="adm-pl-partner-created-link">Zum Testpartner (Freigabe)</Link>
+            <Link to={`/admin/partners/${encodeURIComponent(pMessage.id)}`} state={from} id="adm-pl-partner-created-link">Zum Testpartner (Freigabe)</Link>
           </p>
         )}
         <form className="adm-sp-form" onSubmit={partnerAnlegen} noValidate id="adm-pl-partner-form">
@@ -357,7 +360,7 @@ export function PreliveAccountsCard({ accounts, loading = false, error = "", onR
         {meldung(kMessage, "adm-pl-customer-message")}
         {kMessage?.type === "success" && kMessage.id !== null && (
           <p className="adm-support-hint">
-            <Link to={`/admin/users/${encodeURIComponent(kMessage.id)}`} id="adm-pl-customer-created-link">Zum Testkunden</Link>
+            <Link to={`/admin/users/${encodeURIComponent(kMessage.id)}`} state={from} id="adm-pl-customer-created-link">Zum Testkunden</Link>
           </p>
         )}
         <form className="adm-sp-form" onSubmit={kundeAnlegen} noValidate id="adm-pl-customer-form">

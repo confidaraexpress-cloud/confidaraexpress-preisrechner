@@ -171,6 +171,20 @@
   font-size: var(--ce-text-caption-size); font-weight: 600; line-height: var(--ce-text-caption-line);
   color: var(--ce-color-text-muted);
 }
+/* Gruppen der Navigation (UX-Paket 2): dieselben Einträge, nur nach Aufgaben
+   zusammengefasst — die Überschrift ist ruhiger Text, kein Bedienelement.
+   Kompakt gesetzt, damit alle Einträge bei 1440 × 900 ohne inneres Scrollen
+   sichtbar bleiben. */
+.adm-ngroup { display: flex; flex-direction: column; gap: 2px; }
+.adm-ngroup > .adm-nsec { padding: var(--ce-space-2) var(--ce-space-3) 2px; }
+/* Niedrige Desktopfenster (z. B. 1366 × 768): Einträge in Zeigergröße und
+   ohne Namensblock, damit die ganze Navigation sichtbar bleibt. Mobil (Drawer)
+   gilt weiter das 44-px-Ziel. */
+@media (min-width: 901px) and (max-height: 860px) {
+  .adm-identity { display: none; }
+  .adm-nitem { min-height: var(--ce-size-control-sm); padding-top: 6px; padding-bottom: 6px; }
+  .adm-ngroup > .adm-nsec { padding-top: 2px; }
+}
 .adm-nitem-soon { color: var(--ce-color-text-disabled); cursor: not-allowed; }
 .adm-nitem-soon:hover { background: none; color: var(--ce-color-text-disabled); }
 .adm-soon-badge {
@@ -271,6 +285,12 @@
     transition: transform var(--ce-motion-slow) var(--ce-motion-ease-standard);
   }
   .adm-side-open { transform: translateX(0); box-shadow: var(--ce-elevation-3); }
+  /* Im Drawer scrollt die ganze Spalte (Marke, Navigation, Fuß) statt nur der
+     Navigation: mit 44-px-Zielen und Gruppen passt sie auf Telefonen nicht in
+     eine Höhe, und ein innerer Scrollbereich versteckte die letzten Einträge
+     hinter dem Fuß (UX-Paket 2, gemessen bei 390 × 844). */
+  .adm-side { overflow-y: auto; overscroll-behavior: contain; }
+  .adm-nav { flex: none; overflow: visible; }
   .adm-side-close { display: inline-flex; }
   /* Im Drawer teilt sich die Marke die Kopfzeile mit „Schließen" — der Knopf
      steht oben bündig zur Marke, nicht zur Admin-Kennzeichnung darunter. */
@@ -398,6 +418,80 @@
 /* Schmale Fehlerzeile über bereits geladenen Inhalten. */
 .adm-inline-error { align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: var(--ce-space-3); }
 .adm-inline-error > span { flex: 1; min-width: 180px; }
+
+/* ── „Zu erledigen" (Adminübersicht, UX-Paket 2) ─────────────────────────── */
+/* Offene Vorgänge als Karten (Muster der Betriebs-Queues), darunter je eine
+   ruhige Textzeile für unbekannte, ladende und erledigte Zähler — eine
+   unbekannte Zahl erscheint nie als 0. */
+.adm-todo-line {
+  margin: var(--ce-space-3) 0 0;
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+.adm-todo-line-label { font-weight: 600; color: var(--ce-color-text-primary); }
+.adm-todo-line a { color: var(--ce-color-brand-ink); font-weight: 600; text-decoration: none; }
+.adm-todo-line a:hover { text-decoration: underline; }
+.adm-todo-line a:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
+.adm-todo-empty {
+  margin: 0; padding: var(--ce-space-4) var(--ce-space-5);
+  font-size: var(--ce-text-body-size); line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-primary);
+}
+
+/* Diagnosen: eingeklappt, die Kurzfassung steht in der Zeile selbst. */
+.adm-diag-summary {
+  cursor: pointer;
+  padding: var(--ce-space-2) 0;
+  font-size: var(--ce-text-body-size); font-weight: 600; line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-secondary);
+}
+.adm-diag-summary:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
+.adm-diag-count { font-weight: 400; color: var(--ce-color-text-muted); }
+.adm-diag-note {
+  margin: var(--ce-space-2) 0 var(--ce-space-3);
+  font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line);
+  color: var(--ce-color-text-muted);
+}
+
+/* ── Teilnavigation eines Bereichs (UX-Paket 2) ──────────────────────────── */
+/* Textlinks unter dem Seitenkopf statt gleichrangiger Kopfbuttons. Derselbe
+   Zustand wie in der Sidebar — Fläche, Kante, Farbe, Schnitt und aria-current
+   (NavLink setzt es) —, nie allein über Farbe. Bricht mobil um, statt seitlich
+   zu scrollen: jeder Eintrag bleibt sichtbar. */
+.adm-subnav {
+  display: flex; flex-wrap: wrap; gap: var(--ce-space-1);
+  margin: 0 0 var(--ce-space-5);
+  padding-bottom: var(--ce-space-2);
+  border-bottom: 1px solid var(--ce-color-border-subtle);
+}
+.adm-subnav-link {
+  display: inline-flex; align-items: center;
+  min-height: var(--ce-size-control-md);
+  padding: 6px var(--ce-space-3);
+  border-radius: var(--ce-radius-sm);
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-nav-size);
+  font-weight: var(--ce-text-nav-weight);
+  line-height: var(--ce-text-nav-line);
+  color: var(--ce-color-text-secondary);
+  text-decoration: none;
+  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard),
+              color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.adm-subnav-link:hover { background: var(--ce-color-surface-muted); color: var(--ce-color-text-primary); }
+.adm-subnav-link:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+.adm-subnav-link-on, .adm-subnav-link-on:hover {
+  background: var(--ce-color-brand-soft);
+  box-shadow: inset 0 -2px 0 0 var(--ce-color-brand);
+  color: var(--ce-color-brand-ink);
+  font-weight: var(--ce-text-nav-weight-active);
+}
+/* Touch-Ziele unterhalb der Drawer-Schwelle (wie die Navigation, WCAG 2.5.5).
+   Bewusst NACH den Grundregeln: bei gleicher Spezifität gewinnt die spätere. */
+@media (max-width: 900px) {
+  .adm-subnav-link,
+  .adm-diag-summary { min-height: var(--ce-size-touch-target); }
+}
 
 /* ── Bereichslinks (Adminübersicht) ──────────────────────────────────────── */
 /* Eine ruhige Textliste in einer Fläche statt gleichgewichtiger Iconkacheln:
@@ -1250,6 +1344,12 @@ a.adm-recon-no:hover { text-decoration: underline; }
 .adm-ops-links { display: flex; flex-wrap: wrap; gap: 6px var(--ce-space-3); margin-top: auto; padding-top: var(--ce-space-1); font-size: var(--ce-text-body-s-size); font-weight: 600; }
 .adm-ops-links a { color: var(--ce-color-brand-ink); text-decoration: none; }
 .adm-ops-links a:hover { text-decoration: underline; }
+.adm-ops-links a:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
+/* Unter „Zu erledigen" sind diese Links die Hauptaktion einer Karte (UX-Paket 2):
+   unterhalb der Drawer-Schwelle bekommen sie ein 44-px-Ziel (WCAG 2.5.5). */
+@media (max-width: 900px) {
+  .adm-ops-links a { display: inline-flex; align-items: center; min-height: var(--ce-size-touch-target); }
+}
 .adm-ops-item--diagnostic { background: var(--ce-color-surface-subtle); }
 .adm-ops-sub { margin: var(--ce-space-6) 0 var(--ce-space-3); font-size: var(--ce-text-body-size); font-weight: 600; color: var(--ce-color-text-secondary); }
 .adm-ops-error { align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: var(--ce-space-3); }
@@ -1280,6 +1380,7 @@ a.adm-recon-no:hover { text-decoration: underline; }
   .adm-foot-btn,
   .adm-metric,
   .adm-tile,
+  .adm-subnav-link,
   .adm-tech-caret { transition: none; }
 }
 
@@ -1298,9 +1399,16 @@ a.adm-recon-no:hover { text-decoration: underline; }
 .adm-sp-evidence-table th, .adm-sp-evidence-table td { vertical-align: top; }
 .adm-sp-table th,
 .adm-sp-evidence-table th { white-space: normal; }
-.adm-sp-table th:nth-child(1) { width: 20%; }
-.adm-sp-table th:nth-child(2) { width: 11%; }
-.adm-sp-table th:nth-child(3) { width: 14%; }
+/* Fünf Spalten (UX-Paket 2): Partner, Status, Kunden, Pakete, Aktion. */
+.adm-sp-table th:nth-child(1) { width: 40%; }
+.adm-sp-table th:nth-child(2) { width: 22%; }
+.adm-sp-table th:nth-child(3) { width: 10%; }
+.adm-sp-table th:nth-child(4) { width: 14%; }
+/* Status mit Antragsdatum bzw. gesperrtem Login darunter. */
+.adm-sp-status { display: flex; flex-direction: column; align-items: flex-start; gap: var(--ce-space-1); min-width: 0; }
+/* Hinweis auf offene Anträge über der Liste, mit der Aktion rechts. */
+.adm-sp-pending { align-items: center; flex-wrap: wrap; margin-bottom: var(--ce-space-3); }
+.adm-sp-pending > span { flex: 1; min-width: 180px; }
 .adm-sp-cards,
 .adm-sp-evidence-cards { display: none; list-style: none; margin: 0; padding: 0; flex-direction: column; gap: var(--ce-space-3); }
 @media (max-width: 1080px) {
@@ -1345,6 +1453,10 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
 .adm-sp-editor { display: flex; flex-direction: column; gap: var(--ce-space-3); }
 .adm-sp-levels table,
 .adm-sp-mini-table table { min-width: 0; }
+/* Der Scrollcontainer ist Bezugspunkt der unsichtbaren Feldbeschriftungen
+   (.sr-only ist absolut positioniert): sonst entgingen sie dem Abschneiden und
+   verbreiterten mobil die ganze Seite (UX-Paket 2, gemessen bei 390 px). */
+.adm-sp-levels { position: relative; }
 .adm-sp-levels th[scope="row"] { font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-primary); background: none; white-space: nowrap; border-bottom: 1px solid var(--border-hairline); }
 .adm-sp-levels tr:last-child th[scope="row"] { border-bottom: none; }
 .adm-sp-level-input { width: 100%; min-width: 88px; }

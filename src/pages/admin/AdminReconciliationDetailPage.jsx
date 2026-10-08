@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { AdminBackLink } from "../../components/admin/AdminBackLink";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import {
@@ -175,11 +176,8 @@ export default function AdminReconciliationDetailPage() {
     return () => clearInterval(timer);
   }, [tooEarly]);
 
-  const back = (
-    <Link to="/admin/reconciliation" className="adm-back">
-      Zurück zur Übersicht
-    </Link>
-  );
+  // Rückweg zur Herkunft (UX-Paket 2), sonst zur Liste.
+  const back = <AdminBackLink to="/admin/reconciliation" label="Zurück zur Buchungsklärung" />;
 
   if (loading && !attempt) {
     return (

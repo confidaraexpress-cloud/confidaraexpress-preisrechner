@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { returnState } from "../../utils/adminBackLink.mjs";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DateField } from "./DateField";
 import {
@@ -29,8 +30,9 @@ const PARTNER_FEHLER = "Die aktiven Vertriebspartner konnten nicht geladen werde
 const PARTNER_SEITE = 100;
 const LEER = { partnerUserId: "", effectiveDate: "", reason: "" };
 
-const partnerLink = (id, name) => (id != null
-  ? <Link to={`/admin/partners/${encodeURIComponent(id)}`}>{name || `Partner #${id}`}</Link>
+// `from`: „Zurück" im Partnerdetail führt wieder zum Kunden (UX-Paket 2).
+const partnerLink = (id, name, from) => (id != null
+  ? <Link to={`/admin/partners/${encodeURIComponent(id)}`} state={from}>{name || `Partner #${id}`}</Link>
   : (name || "—"));
 
 /* ── Vertriebspartner-Zuordnung eines Kunden (Admin-Kundendetail) ────────────
@@ -45,6 +47,7 @@ const partnerLink = (id, name) => (id != null
    zurückliegen. Eine Mischung aus Test- und echtem Konto weist der Server
    mit 409 PRELIVE_TEST_MISMATCH zurück (fester Satz). */
 export function SalesPartnerAttributionSection({ userId }) {
+  const from = returnState(useLocation());
   const [state, setState] = useState({ loading: true, error: "", data: null });
   const [modus, setModus] = useState(null);           // null | "change" | "remove"
   const [form, setForm] = useState(LEER);
@@ -197,7 +200,7 @@ export function SalesPartnerAttributionSection({ userId }) {
           <>
             {aktuell ? (
               <dl className="adm-kv">
-                <div className="adm-kv-item"><dt>Vertriebspartner</dt><dd id="adm-sp-attribution-current">{partnerLink(aktuell.partnerId, aktuell.partnerName)}</dd></div>
+                <div className="adm-kv-item"><dt>Vertriebspartner</dt><dd id="adm-sp-attribution-current">{partnerLink(aktuell.partnerId, aktuell.partnerName, from)}</dd></div>
                 <div className="adm-kv-item"><dt>Zugeordnet seit</dt><dd>{formatTimestamp(aktuell.validFrom)}</dd></div>
                 <div className="adm-kv-item"><dt>Herkunft</dt><dd>{attributionSourceLabel(aktuell.source)}</dd></div>
                 <div className="adm-kv-item"><dt>Verwendeter Code</dt><dd>{aktuell.referralCodeUsed ? <span className="adm-mono">{aktuell.referralCodeUsed}</span> : "—"}</dd></div>
@@ -225,7 +228,7 @@ export function SalesPartnerAttributionSection({ userId }) {
                     <tbody>
                       {state.data.history.map((h, i) => (
                         <tr key={i}>
-                          <td>{partnerLink(h.partnerId, h.partnerName)}</td>
+                          <td>{partnerLink(h.partnerId, h.partnerName, from)}</td>
                           <td>{formatTimestamp(h.validFrom)}</td>
                           <td>{formatTimestamp(h.validTo)}</td>
                           <td>{attributionSourceLabel(h.source)}</td>

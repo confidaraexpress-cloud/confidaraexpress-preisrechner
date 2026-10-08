@@ -284,7 +284,7 @@ export default function AuditLogPage() {
     <div className="adm-page">
       <PageHeader
         variant="admin"
-        title={<>Audit-Logs</>}
+        title={<>Protokoll</>}
         subtitle={<>Protokollierte Administrationsvorgänge. Nur Einsicht — keine Änderungen.</>}
         actions={(
           <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
@@ -336,7 +336,7 @@ export default function AuditLogPage() {
 
       {loading ? (
         <div className="table-card">
-          <ListSkeleton rows={6} label="Audit-Logs werden geladen …" />
+          <ListSkeleton rows={6} label="Protokoll wird geladen …" />
         </div>
       ) : error ? (
         <div className="ce-card">
@@ -352,7 +352,7 @@ export default function AuditLogPage() {
       ) : rows.length === 0 ? (
         <div className="ce-card">
           <EmptyState
-            title={activeCount > 0 ? "Keine Treffer für diese Filter" : "Noch keine Audit-Logs"}
+            title={activeCount > 0 ? "Keine Treffer für diese Filter" : "Noch keine Einträge im Protokoll"}
             text={activeCount > 0
               ? "Passen Sie die Filter an oder setzen Sie sie zurück."
               : "Sobald Administrationsvorgänge stattfinden, erscheinen sie hier."}

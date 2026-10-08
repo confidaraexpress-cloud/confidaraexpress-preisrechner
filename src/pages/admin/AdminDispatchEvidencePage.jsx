@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
+import { SalesPartnerAdminNav } from "../../components/admin/SalesPartnerAdminNav";
+import { usePreliveStatus } from "../../hooks/usePreliveStatus";
+import { returnState } from "../../utils/adminBackLink.mjs";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import { DateField } from "../../components/admin/DateField";
 import {
@@ -80,6 +83,10 @@ function EvidenceHistory({ state }) {
    mit Begründung. Kein Anbieterkontakt; die Seite hält nur fest, was ein
    Mensch festgestellt hat. */
 export default function AdminDispatchEvidencePage() {
+  // Nur für den Eintrag „Pre-Live-Test" der Teilnavigation (fail-closed).
+  const prelive = usePreliveStatus();
+  // Herkunft für das Sendungsdetail: „Zurück" führt wieder hierher.
+  const from = returnState(useLocation());
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(null);
@@ -175,11 +182,11 @@ export default function AdminDispatchEvidencePage() {
     <div className="adm-page">
       <PageHeader
         variant="admin"
-        backLink={<Link to="/admin/partners" className="adm-back">Zurück zu den Vertriebspartnern</Link>}
         title={<>Versandnachweise</>}
         subtitle={<>Gebuchte Sendungen ohne belegten Versand. Jede Entscheidung wird protokolliert; ein Anbieter wird dabei nicht kontaktiert.</>}
         actions={<button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>Aktualisieren</button>}
       />
+      <SalesPartnerAdminNav prelive={prelive} />
 
       {message && <div className="alert alert-success" role="status">{message.text}</div>}
 
@@ -218,7 +225,7 @@ export default function AdminDispatchEvidencePage() {
               <tbody>
                 {rows.map((item) => (
                   <tr key={item.shipmentId} data-shipment-id={item.shipmentId}>
-                    <td><Link className="adm-sp-name" to={shipmentPath(item.shipmentId)}>Sendung #{item.shipmentId}</Link></td>
+                    <td><Link className="adm-sp-name" to={shipmentPath(item.shipmentId)} state={from}>Sendung #{item.shipmentId}</Link></td>
                     <td>{providerLabel(item.provider)} · {item.carrier ? resolveCarrierName(item.carrier) : "—"}</td>
                     <td>{formatTimestamp(item.bookedAt, { withTime: true })}</td>
                     <td className="adm-num">{formatCount(item.packageCount)}</td>
@@ -240,7 +247,7 @@ export default function AdminDispatchEvidencePage() {
             {rows.map((item) => (
               <li className="adm-scard" key={`c-${item.shipmentId}`}>
                 <div className="adm-scard-head">
-                  <Link className="adm-sp-name" to={shipmentPath(item.shipmentId)}>Sendung #{item.shipmentId}</Link>
+                  <Link className="adm-sp-name" to={shipmentPath(item.shipmentId)} state={from}>Sendung #{item.shipmentId}</Link>
                   <Badge meta={evidenceStatusMeta(item.evidenceStatus)} />
                 </div>
                 <dl className="adm-scard-kv">

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { AdminBackLink } from "../../components/admin/AdminBackLink";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/StateView";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import { getAdminInvoice, markAdminInvoicePaid, generateAdminInvoiceDocument, sendAdminInvoiceEmail, resendAdminInvoiceEmail } from "../../api/adminApi";
@@ -163,11 +164,8 @@ export default function AdminInvoiceDetailPage() {
     setPreviewOpen(false);
   }, [id]);
 
-  const back = (
-    <Link to="/admin/invoices" className="adm-back">
-      Zurück zur Rechnungsliste
-    </Link>
-  );
+  // Rückweg zur Herkunft (UX-Paket 2), sonst zur Liste.
+  const back = <AdminBackLink to="/admin/invoices" label="Zurück zu den Rechnungen" />;
 
   if (loading) {
     return (

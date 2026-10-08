@@ -1,7 +1,8 @@
 import React, { useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { DateField } from "./DateField";
 import { runAdminPreliveScenario } from "../../api/adminApi";
+import { returnState } from "../../utils/adminBackLink.mjs";
 import { monthOptions } from "../../utils/salesPartnerView.mjs";
 import { currentLocalMonth } from "../../utils/adminSalesPartnerView.mjs";
 import {
@@ -44,6 +45,8 @@ const startZustand = () => ({
    Feld, PARTNER_NOT_TEST). */
 export function PreliveScenariosCard({ accounts, presets = null, onChanged, onDisabled }) {
   const partner = accounts?.partners || [];
+  // „Zurück" im Partnerdetail führt wieder hierher (UX-Paket 2).
+  const from = returnState(useLocation());
   const [z, setZ] = useState(startZustand);
   const [offset, setOffset] = useState(0);
   const [busy, setBusy] = useState(null);           // laufende Art
@@ -99,7 +102,7 @@ export function PreliveScenariosCard({ accounts, presets = null, onChanged, onDi
           {Array.isArray(m.links) && m.links.length > 0 && (
             <ul className="adm-pl-links">
               {m.links.map((l) => (
-                <li key={l.id}><Link to={`/admin/partners/${encodeURIComponent(l.id)}`}>{l.label}</Link></li>
+                <li key={l.id}><Link to={`/admin/partners/${encodeURIComponent(l.id)}`} state={from}>{l.label}</Link></li>
               ))}
             </ul>
           )}

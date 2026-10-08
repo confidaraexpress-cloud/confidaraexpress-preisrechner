@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { SalesPartnerAdminNav } from "../../components/admin/SalesPartnerAdminNav";
 import { PreliveAccountsCard } from "../../components/admin/PreliveAccountsCard";
 import { PreliveShipmentsCard } from "../../components/admin/PreliveShipmentsCard";
 import { PreliveScenariosCard } from "../../components/admin/PreliveScenariosCard";
@@ -87,7 +87,6 @@ export default function AdminSalesPartnerPrelivePage() {
     setRefreshKey((k) => k + 1);
   }, [statusNeu, kontenLaden]);
 
-  const back = <Link to="/admin/partners" className="adm-back">Zurück zu den Vertriebspartnern</Link>;
   const status = prelive.status;
 
   let inhalt;
@@ -138,7 +137,6 @@ export default function AdminSalesPartnerPrelivePage() {
     <div className="adm-page">
       <PageHeader
         variant="admin"
-        backLink={back}
         title={<>{PRELIVE_TEXTS.title}</>}
         subtitle={<>Interne Tests des Vertriebspartnerprogramms mit gekennzeichneten Testdaten.</>}
         actions={(
@@ -148,6 +146,7 @@ export default function AdminSalesPartnerPrelivePage() {
           </button>
         )}
       />
+      <SalesPartnerAdminNav prelive={prelive} />
       {inhalt}
     </div>
   );

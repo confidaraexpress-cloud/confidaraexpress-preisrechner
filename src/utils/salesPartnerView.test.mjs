@@ -21,7 +21,11 @@ import {
   formatMonth,
   formatPercent,
   isCorrectionEntry,
+  MONEY_TERMS,
+  commissionComposition,
+  isFirstVisit,
   levelText,
+  monthName,
   monthOptions,
   monthsBack,
   normalizeCommissions,
@@ -37,6 +41,7 @@ import {
   teamLevelHeading,
   visiblePartnerTabs,
 } from "./salesPartnerView.mjs";
+import { LINK_TEXTS, partnerLinkStates } from "./salesPartnerLinks.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.join(__dirname, "..");
@@ -130,33 +135,137 @@ test("5 — die Bemessungsgrundlage heißt „Provisionsfähige Basis“, nie Ge
 
 /* ══════════ Übersicht ═══════════════════════════════════════════════════ */
 
-test("6 — Kennzahlen kommen ausschließlich aus der Antwort", () => {
+// UX-Paket 3 (bewusste Ankeränderung): statt sechs gleichrangiger Kacheln mit
+// gemischten Zeiträumen genau vier Kennzahlen, jede mit ihrem Monat. Grundprovision
+// und Level stehen in „So setzt sich Ihre Provision zusammen" (Test 6b).
+test("6 — vier Kennzahlen, jede mit ihrem Zeitraum, nur aus der Antwort", () => {
   const o = normalizeOverview(OVERVIEW);
-  const kpis = Object.fromEntries(overviewKpis(o).map((k) => [k.key, k]));
-  assert.equal(kpis.activeCustomers.value, "12");
-  assert.equal(kpis.shippedPackages.value, "1.530");
-  assert.equal(kpis.activeCustomers.hint, "Bemessungsmonat September 2026");
-  assert.equal(kpis.basePercent.value, "20,00 %");
-  assert.equal(kpis.customerLevel.value, "Level 2");
-  assert.equal(kpis.customerLevel.hint, "Bonus +5,00 %");
-  assert.equal(kpis.packageLevel.value, "Level 3");
-  assert.equal(kpis.ownRate.value, "27,50 %");
-  assert.equal(kpis.ownRate.hint, "Obergrenze angewendet");
-  assert.equal(o.currentMonth.commissionCents, 123456);
-  assert.equal(o.customersAssigned, 14);
+  const kpis = overviewKpis(o);
+  assert.deepEqual(kpis.map((k) => k.key), ["customers", "packages", "ownRate", "earned"]);
+  const k = Object.fromEntries(kpis.map((x) => [x.key, x]));
+  // Kunden: heute zugeordnet; aktive Kunden ausdrücklich im Messmonat.
+  assert.deepEqual([k.customers.label, k.customers.value, k.customers.hint, k.customers.detail],
+    ["Meine Kunden", "14", "aktuell zugeordnet", "Aktiv im September: 12"]);
+  // Pakete: der Messmonat, und wofür sie zählen.
+  assert.deepEqual([k.packages.label, k.packages.value, k.packages.hint],
+    ["Pakete im September", "1.530", "zählen für Ihr Paket-Level im Oktober"]);
+  // Satz: laufender Monat; die Obergrenze als Wort.
+  assert.deepEqual([k.ownRate.label, k.ownRate.value, k.ownRate.hint, k.ownRate.detail],
+    ["Meine Provision", "27,50 %", "Ihr Satz im Oktober", "Obergrenze angewendet"]);
+  // Verdienst: laufender Monat, mit auszahlbarem Anteil.
+  assert.deepEqual([k.earned.label, k.earned.value, k.earned.hint],
+    ["Im Oktober verdient", euro(1234.56), `davon auszahlbar: ${euro(456)}`]);
+  // Kein Vormonat im Verdienst, kein laufender Monat in den Paketen.
+  assert.doesNotMatch(`${k.earned.label} ${k.earned.hint}`, /September/);
+  assert.doesNotMatch(`${k.packages.label}`, /Oktober/);
+  assert.equal(monthName("2026-10"), "Oktober");
+  assert.equal(monthName("kaputt"), null);
 });
 
 test("7 — ohne Monatsbewertung: Striche und ein ruhiger Hinweis, keine Nullen", () => {
   const o = normalizeOverview({ ...OVERVIEW, levels: null });
-  const kpis = Object.fromEntries(overviewKpis(o).map((k) => [k.key, k]));
-  for (const k of ["activeCustomers", "shippedPackages", "customerLevel", "packageLevel", "ownRate"]) {
-    assert.equal(kpis[k].value, "—", `${k} erfindet einen Wert`);
-  }
-  assert.equal(kpis.activeCustomers.hint, PARTNER_TEXTS.noAssessment);
-  assert.equal(kpis.basePercent.value, "20,00 %");
+  const k = Object.fromEntries(overviewKpis(o).map((x) => [x.key, x]));
+  for (const key of ["packages", "ownRate"]) assert.equal(k[key].value, "—", `${key} erfindet einen Wert`);
+  assert.equal(k.packages.hint, PARTNER_TEXTS.noAssessment);
+  assert.equal(k.ownRate.hint, PARTNER_TEXTS.noAssessment);
+  // Der Messmonat bleibt benennbar (Vormonat des laufenden Monats, reine Kalenderarithmetik).
+  assert.equal(k.packages.label, "Pakete im September");
+  assert.equal(k.customers.detail, null, "ohne Bewertung keine Zahl aktiver Kunden");
+  assert.equal(k.customers.value, "14");
+  // Ein Jahreswechsel: Januar → Dezember.
+  const januar = normalizeOverview({ ...OVERVIEW, levels: null, currentMonth: { ...OVERVIEW.currentMonth, month: "2027-01" } });
+  assert.equal(overviewKpis(januar)[1].label, "Pakete im Dezember");
+  // Eine leere Antwort: Striche, nie 0.
   const leer = normalizeOverview(null);
   assert.equal(leer.links.customer, null);
   assert.equal(leer.currentMonth.commissionCents, null);
+  const kLeer = Object.fromEntries(overviewKpis(leer).map((x) => [x.key, x]));
+  assert.deepEqual([kLeer.customers.value, kLeer.packages.value, kLeer.ownRate.value, kLeer.earned.value], ["—", "—", "—", "—"]);
+  assert.equal(kLeer.earned.label, "Diesen Monat verdient");
+  assert.equal(kLeer.packages.label, "Pakete im Vormonat");
+});
+
+test("6b — „So setzt sich Ihre Provision zusammen“: drei Bestandteile und der Satz des Servers, keine Rechnung", () => {
+  const c = commissionComposition(normalizeOverview(OVERVIEW));
+  assert.deepEqual(c.rows.map((r) => [r.label, r.value]), [
+    ["Grundprovision", "20,00 %"], ["Kundenbonus · Level 2", "+5,00 %"], ["Paketbonus · Level 3", "+7,50 %"],
+  ]);
+  // Der Satz kommt vom Server — hier begrenzt (20 + 5 + 7,5 wäre mehr).
+  assert.deepEqual(c.total, { label: "Ihr Satz im Oktober", value: "27,50 %" });
+  assert.match(c.capNote, /Obergrenze/);
+  assert.equal(c.basis, "Die Level ergeben sich aus Ihren aktiven Kunden und versendeten Paketen im September und gelten im Oktober.");
+  assert.equal(c.team, "Teamprovision: Ebene 1 5,00 % · Ebene 2 2,50 %");
+  assert.equal(c.activeSince, "Aktiv seit 01.03.2026");
+  // Ein inaktives Konto ist nicht „aktiv seit“ — auch wenn ein Datum mitkäme.
+  assert.equal(commissionComposition(normalizeOverview({ ...OVERVIEW, partner: { ...OVERVIEW.partner, status: "inactive" } })).activeSince, null);
+  const ohneGrenze =commissionComposition(normalizeOverview({ ...OVERVIEW, levels: { ...OVERVIEW.levels, capApplied: false } }));
+  assert.equal(ohneGrenze.capNote, null);
+  const ohneBewertung = commissionComposition(normalizeOverview({ ...OVERVIEW, levels: null }));
+  assert.deepEqual(ohneBewertung.rows.map((r) => r.value), ["20,00 %", "—", "—"]);
+  assert.equal(ohneBewertung.total.value, "—");
+  assert.match(ohneBewertung.basis, /^Noch keine Monatsbewertung/);
+  // Keine Prozent-Arithmetik im Modul: der Satz wird gelesen, nicht addiert.
+  const src = ohneKommentare(read("utils/salesPartnerView.mjs"));
+  const zusammen = src.slice(src.indexOf("export function commissionComposition"), src.indexOf("export function isFirstVisit"));
+  assert.ok(zusammen.length > 200, "Funktionsrumpf nicht gefunden");
+  assert.doesNotMatch(zusammen, /parseFloat|Number\(|reduce\(|percentToBp/, "die Zusammensetzung rechnet selbst");
+});
+
+test("6c — Empfehlungslinks: nur einsatzbereit, wenn Server und Programm sie tragen", () => {
+  const offen = { ok: true, config: { referralsEnabled: true, registrationEnabled: true, registrationMode: "production",
+    agreementVersion: "1.0", agreement: { version: "1.0", documentPath: "/api/legal/documents/7/download" } } };
+  const o = normalizeOverview(OVERVIEW);
+  const bereit = partnerLinkStates(o, offen);
+  assert.equal(bereit.notice, null);
+  assert.deepEqual(bereit.customer, { ready: true, url: OVERVIEW.links.customer, hint: LINK_TEXTS.customerHint });
+  assert.deepEqual(bereit.partner, { ready: true, url: OVERVIEW.links.partner, hint: LINK_TEXTS.partnerHint });
+
+  // Konfiguration unbekannt (lädt oder Fehler): nutzbar, aber ohne Zusage.
+  for (const unbekannt of [null, { ok: false, config: null }]) {
+    const s = partnerLinkStates(o, unbekannt);
+    assert.equal(s.customer.ready, true);
+    assert.equal(s.customer.hint, null);
+    assert.equal(s.partner.hint, null);
+  }
+  // Kundenzuordnung aus: kein einsatzbereiter Kundenlink.
+  const ohneZuordnung = partnerLinkStates(o, { ok: true, config: { ...offen.config, referralsEnabled: false } });
+  assert.deepEqual(ohneZuordnung.customer, { ready: false, notice: LINK_TEXTS.referralsOff });
+  assert.equal(ohneZuordnung.partner.ready, true);
+  // Registrierung geschlossen: kein einsatzbereiter Partnerlink.
+  const zu = partnerLinkStates(o, { ok: true, config: { ...offen.config, registrationEnabled: false, registrationMode: "closed" } });
+  assert.deepEqual(zu.partner, { ready: false, notice: LINK_TEXTS.registrationClosed });
+  // Ein echter Partner wirbt nicht im Pre-Live-Testweg (der Server übergeht den Code).
+  const testweg = { ok: true, config: { ...offen.config, registrationEnabled: false, registrationMode: "prelive_test" } };
+  assert.equal(partnerLinkStates(o, testweg).partner.ready, false);
+  // Testkonto: der Kundenlink ordnet nie zu; der Partnerlink nur im Testweg.
+  const test = normalizeOverview({ ...OVERVIEW, preliveTest: true });
+  assert.deepEqual(partnerLinkStates(test, offen).customer, { ready: false, notice: LINK_TEXTS.preliveCustomer });
+  // Bei offener produktiver Registrierung wäre „nicht geöffnet“ falsch — der Testweg ist zu.
+  assert.deepEqual(partnerLinkStates(test, offen).partner, { ready: false, notice: LINK_TEXTS.prelivePartner });
+  assert.equal(partnerLinkStates(test, testweg).partner.ready, true);
+  // Inaktiv: ein Hinweis für beide, keine Links.
+  const inaktiv = partnerLinkStates(normalizeOverview({ ...OVERVIEW, partner: { ...OVERVIEW.partner, status: "inactive" }, links: {} }), offen);
+  assert.deepEqual(inaktiv, { notice: LINK_TEXTS.inactive, customer: null, partner: null });
+  // Ohne Adresse vom Server: nicht verfügbar statt eines leeren Knopfs.
+  assert.deepEqual(partnerLinkStates(normalizeOverview({ ...OVERVIEW, links: {} }), offen).customer,
+    { ready: false, notice: LINK_TEXTS.unavailable });
+  // Der technische Code steht nicht in den Linkzuständen der Startseite.
+  assert.doesNotMatch(JSON.stringify(bereit), /"ABCD2345"/);
+});
+
+test("6d — erster Besuch nur mit echten Nullen; Geldbegriffe getrennt und ohne Zahlungsversprechen", () => {
+  const neu = normalizeOverview({ ...OVERVIEW, customers: { assigned: 0 }, currentMonth: { ...OVERVIEW.currentMonth, commissionCents: 0, payableCents: 0 } });
+  assert.equal(isFirstVisit(neu), true);
+  assert.equal(isFirstVisit(normalizeOverview(OVERVIEW)), false);
+  assert.equal(isFirstVisit(normalizeOverview({ ...OVERVIEW, customers: {}, currentMonth: {} })), false, "unbekannt ist kein erster Besuch");
+  assert.equal(isFirstVisit(normalizeOverview({ ...OVERVIEW, partner: { status: "inactive" }, customers: { assigned: 0 },
+    currentMonth: { commissionCents: 0 } })), false);
+  // Vier getrennte Stufen; „ausgezahlt" ist ein Vermerk, keine automatische Überweisung.
+  assert.deepEqual(MONEY_TERMS.map(([b]) => b), ["Verdient", "Auszahlbar", "Abgerechnet", "Ausgezahlt"]);
+  const texte = MONEY_TERMS.map(([, t]) => t).join(" ");
+  assert.match(texte, /Gutschrift/);
+  assert.match(texte, /Abrechnungsdaten/);
+  assert.doesNotMatch(texte, /automatisch|garantiert|sofort überwiesen|Gewinn/i);
 });
 
 /* ══════════ Kunden, Provisionen, Team ═══════════════════════════════════ */

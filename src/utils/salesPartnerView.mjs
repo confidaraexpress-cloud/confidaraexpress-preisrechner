@@ -24,8 +24,9 @@ export const PARTNER_TEXTS = Object.freeze({
   payableNote: "Provision wird nach Zahlungseingang des Kunden auszahlbar.",
   basisLabel: "Provisionsfähige Basis",
   noAssessment: "Noch keine Monatsbewertung",
-  noLink: "Noch kein Link verfügbar",
-  inactive: "Ihr Partnerkonto ist derzeit inaktiv.",
+  // Die Folgen eines inaktiven Kontos (UX-Paket 3): keine neuen Provisionen, die
+  // Empfehlungslinks wirken nicht (der Server ordnet nur über aktive Partner zu).
+  inactive: "Ihr Partnerkonto ist derzeit inaktiv. Es entstehen keine neuen Provisionen, und Ihre Empfehlungslinks sind ausgeschaltet. Bisherige Provisionen und Abrechnungen bleiben sichtbar.",
   capApplied: "Obergrenze angewendet",
   // Pre-Live-Testkonto (unveränderliche Testkennzeichnung des Servers).
   preliveBanner: "Pre-Live-Testkonto – keine echten Provisionen, Gutschriften oder Auszahlungen.",
@@ -75,6 +76,12 @@ export function formatIsoDate(value) {
 export function formatMonth(value) {
   const m = typeof value === "string" ? value.trim().match(MONAT) : null;
   return m ? `${MONATSNAMEN[Number(m[2]) - 1]} ${m[1]}` : "—";
+}
+
+/** „2026-10" → „Oktober" (nur der Monatsname); alles andere null. */
+export function monthName(value) {
+  const m = typeof value === "string" ? value.trim().match(MONAT) : null;
+  return m ? MONATSNAMEN[Number(m[2]) - 1] : null;
 }
 
 /** Ganze Zahl mit Tausenderpunkt; alles andere „—". */
@@ -178,25 +185,89 @@ export function normalizeOverview(raw) {
   };
 }
 
-/** Die sechs Kennzahlen der Übersicht — Werte ausschließlich aus der Antwort. */
+// Die Monate der Startseite — ausschließlich aus der Antwort, nie aus der
+// Browseruhr: der laufende Monat (`levels.month` bzw. `currentMonth.month`) und
+// der Messmonat (`levels.measuredMonth`; per Definition der Vormonat, deshalb
+// ohne Bewertung aus dem laufenden Monat abgeleitet — reine Kalenderarithmetik).
+function startMonate(o) {
+  const lv = o.levels;
+  const laufend = (lv && lv.month) || o.currentMonth.month;
+  const gemessen = (lv && lv.measuredMonth) || (laufend ? monthsBack(laufend, 2)[1] || null : null);
+  return { laufend: monthName(laufend), gemessen: monthName(gemessen) };
+}
+
+/** Die vier Kennzahlen der Startseite (UX-Paket 3). Jede nennt ihren Zeitraum:
+ *  Kunden heute, Pakete und aktive Kunden im Messmonat, der Satz und der
+ *  Verdienst im laufenden Monat. Werte ausschließlich aus der Antwort; ein
+ *  unbekannter Wert ist „—", nie 0. */
 export function overviewKpis(overview) {
   const o = overview || normalizeOverview(null);
   const lv = o.levels;
-  const bemessen = lv && formatMonth(lv.measuredMonth) !== "—" ? `Bemessungsmonat ${formatMonth(lv.measuredMonth)}` : null;
+  const { laufend, gemessen } = startMonate(o);
   return [
-    { key: "activeCustomers", label: "Aktive Kunden", value: lv ? formatCount(lv.activeCustomers) : "—",
-      hint: lv ? bemessen : PARTNER_TEXTS.noAssessment },
-    { key: "shippedPackages", label: "Versendete Pakete", value: lv ? formatCount(lv.shippedPackages) : "—",
-      hint: lv ? bemessen : PARTNER_TEXTS.noAssessment },
-    { key: "basePercent", label: "Grundprovision", value: formatPercent(o.rates.basePercent), hint: null },
-    { key: "customerLevel", label: "Kunden-Level", value: lv ? levelText(lv.customerLevel) : "—",
-      hint: lv && pct(lv.customerBonusPercent) ? `Bonus ${formatBonusPercent(lv.customerBonusPercent)}` : null },
-    { key: "packageLevel", label: "Paket-Level", value: lv ? levelText(lv.packageLevel) : "—",
-      hint: lv && pct(lv.packageBonusPercent) ? `Bonus ${formatBonusPercent(lv.packageBonusPercent)}` : null },
-    { key: "ownRate", label: "Eigenprovision gesamt", value: lv ? formatPercent(lv.ownRatePercent) : "—",
-      hint: lv && lv.capApplied ? PARTNER_TEXTS.capApplied : null },
+    { key: "customers", label: "Meine Kunden", value: formatCount(o.customersAssigned), hint: "aktuell zugeordnet",
+      detail: lv && gemessen ? `Aktiv im ${gemessen}: ${formatCount(lv.activeCustomers)}` : null },
+    { key: "packages", label: gemessen ? `Pakete im ${gemessen}` : "Pakete im Vormonat",
+      value: lv ? formatCount(lv.shippedPackages) : "—",
+      hint: lv ? (laufend ? `zählen für Ihr Paket-Level im ${laufend}` : null) : PARTNER_TEXTS.noAssessment },
+    { key: "ownRate", label: "Meine Provision", value: lv ? formatPercent(lv.ownRatePercent) : "—",
+      hint: lv ? (laufend ? `Ihr Satz im ${laufend}` : "Ihr aktueller Satz") : PARTNER_TEXTS.noAssessment,
+      detail: lv && lv.capApplied ? PARTNER_TEXTS.capApplied : null },
+    { key: "earned", label: laufend ? `Im ${laufend} verdient` : "Diesen Monat verdient",
+      value: formatCents(o.currentMonth.commissionCents),
+      hint: `davon auszahlbar: ${formatCents(o.currentMonth.payableCents)}` },
   ];
 }
+
+/** „So setzt sich Ihre Provision zusammen" — drei Bestandteile und der Satz,
+ *  alle vom Server. Die Oberfläche addiert nichts: der Satz ist `ownRatePercent`;
+ *  greift eine Obergrenze, sagt das ein eigener Satz. */
+export function commissionComposition(overview) {
+  const o = overview || normalizeOverview(null);
+  const lv = o.levels;
+  const { laufend, gemessen } = startMonate(o);
+  return {
+    rows: [
+      { key: "base", label: "Grundprovision", value: formatPercent(o.rates.basePercent) },
+      { key: "customerBonus", label: lv ? `Kundenbonus · ${levelText(lv.customerLevel)}` : "Kundenbonus",
+        value: lv ? formatBonusPercent(lv.customerBonusPercent) : "—" },
+      { key: "packageBonus", label: lv ? `Paketbonus · ${levelText(lv.packageLevel)}` : "Paketbonus",
+        value: lv ? formatBonusPercent(lv.packageBonusPercent) : "—" },
+    ],
+    total: { label: laufend ? `Ihr Satz im ${laufend}` : "Ihr Satz", value: lv ? formatPercent(lv.ownRatePercent) : "—" },
+    capNote: lv && lv.capApplied ? "Ihr Satz ist durch eine Obergrenze begrenzt; die Summe der Bestandteile liegt darüber." : null,
+    basis: !lv ? `${PARTNER_TEXTS.noAssessment} – die Boni stehen fest, sobald der Vormonat bewertet ist.`
+      : gemessen && laufend
+        ? `Die Level ergeben sich aus Ihren aktiven Kunden und versendeten Paketen im ${gemessen} und gelten im ${laufend}.`
+        : null,
+    team: `Teamprovision: Ebene 1 ${formatPercent(o.rates.level1Percent)} · Ebene 2 ${formatPercent(o.rates.level2Percent)}`,
+    // Nur bei aktivem Konto (der Server liefert das Datum ohnehin nur dann).
+    activeSince: o.partner.status === "active" && formatIsoDate(o.partner.activeSince) !== "—"
+      ? `Aktiv seit ${formatIsoDate(o.partner.activeSince)}` : null,
+  };
+}
+
+// Empfehlungslinks der Startseite: utils/salesPartnerLinks.mjs (eigenes Modul,
+// weil es die öffentliche Konfiguration liest — die wiederum dieses Modul nutzt).
+
+/** Erster Besuch: aktives Konto, noch keine Kunden und kein Verdienst im
+ *  laufenden Monat — beides als echter Serverwert 0 (unbekannt zählt nicht). */
+export function isFirstVisit(overview) {
+  const o = overview || normalizeOverview(null);
+  return o.partner.status === "active" && o.customersAssigned === 0 && o.currentMonth.commissionCents === 0;
+}
+
+// ── Geldbegriffe (UX-Paket 3) ───────────────────────────────────────────────
+// Vier Stufen, nie zusammengelegt: verdient → auszahlbar → abgerechnet
+// (Gutschrift) → ausgezahlt. „Ausgezahlt" ist ein Vermerk zur Gutschrift, keine
+// Bankautomatik; ohne bestätigte Abrechnungsdaten entsteht keine Gutschrift.
+export const MONEY_TERMS_TITLE = "So kommt die Provision zu Ihnen";
+export const MONEY_TERMS = Object.freeze([
+  Object.freeze(["Verdient", "Alle Provisionsbuchungen eines Monats – aus Sendungen Ihrer Kunden und Ihres Teams, einschließlich Korrekturen."]),
+  Object.freeze(["Auszahlbar", "Sobald der Kunde seine Rechnung bezahlt hat."]),
+  Object.freeze(["Abgerechnet", "Mit Ihrer monatlichen Gutschrift unter „Abrechnungen“ – Voraussetzung sind bestätigte Abrechnungsdaten unter „Konto“."]),
+  Object.freeze(["Ausgezahlt", "Sobald die Auszahlung zu einer Gutschrift vermerkt ist; zu sehen unter „Abrechnungen“."]),
+]);
 
 // ── Meine Kunden ────────────────────────────────────────────────────────────
 // Bewusst nur, was der Vertrag liefert: Firma, Zuordnung, Status, Mengen. Keine

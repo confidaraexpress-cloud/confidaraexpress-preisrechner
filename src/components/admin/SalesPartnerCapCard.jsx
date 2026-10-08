@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DateField } from "./DateField";
+import { AdminDisclosureCard, AdminSubDisclosure } from "./AdminDisclosureCard";
 import { createAdminSalesPartnerCap, getAdminSalesPartnerCaps } from "../../api/adminApi";
 import {
   CAP_TEXTS,
@@ -12,9 +13,15 @@ import {
   localIsoDate,
   normalizeCapsResponse,
 } from "../../utils/adminSalesPartnerView.mjs";
+import {
+  DETAIL_TEXTS,
+  allVersionsLabel,
+  capFormFromCurrent,
+  capSummary,
+  sectionSummary,
+} from "../../utils/adminPartnerDetailView.mjs";
 
 const FEHLER = "Die individuelle Obergrenze konnte nicht geladen werden.";
-const LEER = { validFrom: "", maxOwnRatePercent: "", maxTotalRatePercent: "", reason: "" };
 
 /* ── Individuelle Obergrenze eines Vertriebspartners ─────────────────────────
    Lädt selbständig GET /admin/sales-partner-caps?partnerUserId=… (aktuelle
@@ -24,10 +31,17 @@ const LEER = { validFrom: "", maxOwnRatePercent: "", maxTotalRatePercent: "", re
    Version mit Gültigkeitsbeginn; beide Höchstsätze sind optional (leer heißt
    „keine Grenze"). Der Body entsteht über buildCapBody mit partnerUserId;
    verbindlich ist der Server. Zurückliegende Daten nur mit `allowPastDates`
-   (Testpartner im Pre-Live-Testmodus, `datesBeforeTodayAllowed`). */
-export function SalesPartnerCapCard({ partnerId, allowPastDates = false }) {
+   (Testpartner im Pre-Live-Testmodus, `datesBeforeTodayAllowed`).
+
+   UX-Paket 4: eingeklappt, der Kopf nennt die geltende Grenze. Das Formular
+   übernimmt beim Öffnen die aktuell gültige Version — so verschwindet beim
+   Ändern der einen Grenze die andere nicht unbemerkt. `refreshKey` lädt neu
+   („Aktualisieren" der Seite), `onState` meldet den Ladezustand an die
+   Übersicht (kein zweiter Abruf). */
+export function SalesPartnerCapCard({ partnerId, allowPastDates = false, refreshKey = 0, onState }) {
   const [state, setState] = useState({ loading: true, error: "", data: null });
-  const [form, setForm] = useState(LEER);
+  const [form, setForm] = useState(() => capFormFromCurrent(null));
+  const [formOffen, setFormOffen] = useState(false);
   const [errors, setErrors] = useState({});
   const [confirm, setConfirm] = useState(null);     // gebauter Body
   const [busy, setBusy] = useState(false);
@@ -56,9 +70,16 @@ export function SalesPartnerCapCard({ partnerId, allowPastDates = false }) {
     }
   }, [partnerId]);
 
-  useEffect(() => { load(); return () => { lauf.current += 1; }; }, [load]);
+  useEffect(() => { load(); return () => { lauf.current += 1; }; }, [load, refreshKey]);
+  useEffect(() => { onState?.(state); }, [state, onState]);
 
   const setFeld = (k, v) => { setForm((f) => ({ ...f, [k]: v })); setErrors((e) => ({ ...e, [k]: undefined })); };
+
+  // Jedes Öffnen beginnt mit der aktuell gültigen Version; Schließen verwirft.
+  const formular = (offen) => {
+    if (offen) { setForm(capFormFromCurrent(state.data?.current || null)); setErrors({}); setMessage(null); }
+    setFormOffen(offen);
+  };
 
   const pruefen = (e) => {
     e.preventDefault();
@@ -84,7 +105,7 @@ export function SalesPartnerCapCard({ partnerId, allowPastDates = false }) {
         return;
       }
       setConfirm(null);
-      setForm(LEER);
+      setFormOffen(false);
       setMessage({ type: "success", text: "Die neue Version der individuellen Obergrenze wurde angelegt." });
       load();
     } catch {
@@ -123,91 +144,94 @@ export function SalesPartnerCapCard({ partnerId, allowPastDates = false }) {
         ) : (
           <p className="adm-support-hint" id="adm-sp-pcap-none">{CAP_TEXTS.partnerNone}</p>
         )}
-        {historie.length > 0 && (
-          <>
-            <h3 className="adm-sp-subtitle">Historie</h3>
-            <div className="table-scroll adm-sp-mini-table">
-              <table>
-                <caption className="sr-only">Historie der individuellen Obergrenze: gültig ab, Höchstsatz Eigenprovision, Höchstsatz aller Ebenen, Begründung, angelegt.</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Gültig ab</th>
-                    <th scope="col" className="adm-num">Eigenprovision</th>
-                    <th scope="col" className="adm-num">Alle Ebenen</th>
-                    <th scope="col">Begründung</th>
-                    <th scope="col">Angelegt</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {historie.map((c, i) => (
-                    <tr key={c.id ?? i}>
-                      <td>{formatTimestamp(c.validFrom)}</td>
-                      <td className="adm-num">{capLimitText(c.maxOwnRatePercent)}</td>
-                      <td className="adm-num">{capLimitText(c.maxTotalRatePercent)}</td>
-                      <td>{c.reason || "—"}</td>
-                      <td>{formatTimestamp(c.createdAt, { withTime: true })}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
       </>
     );
   }
 
   return (
-    <div className="adm-card" id="adm-sp-partner-cap-card">
-      <div className="adm-card-head">Individuelle Obergrenze</div>
-      <div className="adm-card-body">
-        {inhalt}
-
-        <h3 className="adm-sp-subtitle">Neue Version gültig ab</h3>
+    <>
+      <AdminDisclosureCard id="adm-sp-partner-cap-card" title="Individuelle Obergrenze" summary={sectionSummary(state, capSummary)}>
         {message && (
           <div className={`alert ${message.type === "success" ? "alert-success" : "alert-error"}`}
             role={message.type === "success" ? "status" : "alert"} id="adm-sp-pcap-message">
             {message.text}
           </div>
         )}
-        <form className="adm-sp-form" onSubmit={pruefen} noValidate>
-          <div className="adm-sp-datefield">
-            <DateField id="adm-sp-pcap-from" label="Gültig ab" value={form.validFrom} min={allowPastDates === true ? undefined : heute}
-              invalid={!!errors.validFrom} onChange={(v) => setFeld("validFrom", v)} />
-            {allowPastDates === true && <span className="adm-edit-hint">Testpartner im Pre-Live-Testmodus: Das Datum darf zurückliegen.</span>}
-            {fehler("validFrom")}
-          </div>
-          <div className="adm-edit-field">
-            <label className="adm-edit-label" htmlFor="adm-sp-pcap-own">{CAP_TEXTS.ownLabel}</label>
-            <input id="adm-sp-pcap-own" className="field-input" type="text" inputMode="decimal" autoComplete="off"
-              value={form.maxOwnRatePercent} onChange={(e) => setFeld("maxOwnRatePercent", e.target.value)}
-              aria-describedby="adm-sp-pcap-own-hint"
-              aria-invalid={errors.maxOwnRatePercent ? "true" : undefined} />
-            <span className="adm-edit-hint" id="adm-sp-pcap-own-hint">{CAP_TEXTS.ownEffect}</span>
-            {fehler("maxOwnRatePercent")}
-          </div>
-          <div className="adm-edit-field">
-            <label className="adm-edit-label" htmlFor="adm-sp-pcap-total">{CAP_TEXTS.totalLabel}</label>
-            <input id="adm-sp-pcap-total" className="field-input" type="text" inputMode="decimal" autoComplete="off"
-              value={form.maxTotalRatePercent} onChange={(e) => setFeld("maxTotalRatePercent", e.target.value)}
-              aria-describedby="adm-sp-pcap-total-hint"
-              aria-invalid={errors.maxTotalRatePercent ? "true" : undefined} />
-            <span className="adm-edit-hint" id="adm-sp-pcap-total-hint">{CAP_TEXTS.totalEffect}</span>
-            {fehler("maxTotalRatePercent")}
-          </div>
-          <div className="adm-edit-field adm-sp-form-wide">
-            <label className="adm-edit-label" htmlFor="adm-sp-pcap-reason">Begründung (optional)</label>
-            <input id="adm-sp-pcap-reason" className="field-input" type="text" maxLength={500}
-              value={form.reason} onChange={(e) => setFeld("reason", e.target.value)} />
-            {fehler("reason")}
-          </div>
-          {fehler("partnerUserId")}
-          <p className="adm-edit-hint adm-sp-form-wide">{CAP_TEXTS.partnerHint}</p>
-          <div className="adm-sp-form-actions">
-            <button type="submit" className="btn btn-primary btn-sm" id="adm-sp-pcap-submit">Neue Version anlegen</button>
-          </div>
-        </form>
-      </div>
+        {inhalt}
+
+        <div className="adm-sp-folds">
+          {historie.length > 0 && (
+            <AdminSubDisclosure id="adm-sp-pcap-history" title={allVersionsLabel(historie.length)}>
+              <div className="table-scroll adm-sp-mini-table adm-sp-cardtable">
+                <table>
+                  <caption className="sr-only">Historie der individuellen Obergrenze: gültig ab, Höchstsatz Eigenprovision, Höchstsatz aller Ebenen, Begründung, angelegt.</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Gültig ab</th>
+                      <th scope="col" className="adm-num">Eigenprovision</th>
+                      <th scope="col" className="adm-num">Alle Ebenen</th>
+                      <th scope="col">Begründung</th>
+                      <th scope="col">Angelegt</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historie.map((c, i) => (
+                      <tr key={c.id ?? i}>
+                        <td data-label="Gültig ab">{formatTimestamp(c.validFrom)}</td>
+                        <td data-label="Eigenprovision" className="adm-num">{capLimitText(c.maxOwnRatePercent)}</td>
+                        <td data-label="Alle Ebenen" className="adm-num">{capLimitText(c.maxTotalRatePercent)}</td>
+                        <td data-label="Begründung">{c.reason || "—"}</td>
+                        <td data-label="Angelegt">{formatTimestamp(c.createdAt, { withTime: true })}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </AdminSubDisclosure>
+          )}
+
+          <AdminSubDisclosure id="adm-sp-pcap-new" title={DETAIL_TEXTS.newVersion} open={formOffen} onOpenChange={formular}>
+            <form className="adm-sp-form" onSubmit={pruefen} noValidate>
+              <div className="adm-sp-datefield">
+                <DateField id="adm-sp-pcap-from" label="Gültig ab (Pflicht)" value={form.validFrom} min={allowPastDates === true ? undefined : heute}
+                  invalid={!!errors.validFrom} required onChange={(v) => setFeld("validFrom", v)} />
+                {allowPastDates === true && <span className="adm-edit-hint">Testpartner im Pre-Live-Testmodus: Das Datum darf zurückliegen.</span>}
+                {fehler("validFrom")}
+              </div>
+              <div className="adm-edit-field">
+                <label className="adm-edit-label" htmlFor="adm-sp-pcap-own">{CAP_TEXTS.ownLabel}</label>
+                <input id="adm-sp-pcap-own" className="field-input" type="text" inputMode="decimal" autoComplete="off"
+                  value={form.maxOwnRatePercent} onChange={(e) => setFeld("maxOwnRatePercent", e.target.value)}
+                  aria-describedby="adm-sp-pcap-own-hint"
+                  aria-invalid={errors.maxOwnRatePercent ? "true" : undefined} />
+                <span className="adm-edit-hint" id="adm-sp-pcap-own-hint">{CAP_TEXTS.ownEffect}</span>
+                {fehler("maxOwnRatePercent")}
+              </div>
+              <div className="adm-edit-field">
+                <label className="adm-edit-label" htmlFor="adm-sp-pcap-total">{CAP_TEXTS.totalLabel}</label>
+                <input id="adm-sp-pcap-total" className="field-input" type="text" inputMode="decimal" autoComplete="off"
+                  value={form.maxTotalRatePercent} onChange={(e) => setFeld("maxTotalRatePercent", e.target.value)}
+                  aria-describedby="adm-sp-pcap-total-hint"
+                  aria-invalid={errors.maxTotalRatePercent ? "true" : undefined} />
+                <span className="adm-edit-hint" id="adm-sp-pcap-total-hint">{CAP_TEXTS.totalEffect}</span>
+                {fehler("maxTotalRatePercent")}
+              </div>
+              <div className="adm-edit-field adm-sp-form-wide">
+                <label className="adm-edit-label" htmlFor="adm-sp-pcap-reason">Begründung (optional)</label>
+                <input id="adm-sp-pcap-reason" className="field-input" type="text" maxLength={500}
+                  value={form.reason} onChange={(e) => setFeld("reason", e.target.value)} />
+                {fehler("reason")}
+              </div>
+              {fehler("partnerUserId")}
+              <p className="adm-edit-hint adm-sp-form-wide">{CAP_TEXTS.partnerHint}</p>
+              {aktuell && <p className="adm-edit-hint adm-sp-form-wide" id="adm-sp-pcap-prefill">{DETAIL_TEXTS.capPrefill}</p>}
+              <div className="adm-sp-form-actions">
+                <button type="submit" className="btn btn-primary btn-sm" id="adm-sp-pcap-submit">Neue Version anlegen</button>
+              </div>
+            </form>
+          </AdminSubDisclosure>
+        </div>
+      </AdminDisclosureCard>
 
       {confirm && (
         <ConfirmDialog
@@ -221,7 +245,7 @@ export function SalesPartnerCapCard({ partnerId, allowPastDates = false }) {
           onConfirm={senden}
         />
       )}
-    </div>
+    </>
   );
 }
 

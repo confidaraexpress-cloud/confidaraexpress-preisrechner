@@ -1,6 +1,8 @@
 import React, { useRef, useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DateField } from "./DateField";
+import { AdminSubDisclosure } from "./AdminDisclosureCard";
+import { DETAIL_TEXTS, statusHistoryLabel } from "../../utils/adminPartnerDetailView.mjs";
 import {
   approveAdminSalesPartner,
   deactivateAdminSalesPartner,
@@ -112,8 +114,14 @@ const MIT_DATUM = Object.freeze(["approve", "deactivate", "reactivate"]);
    bewusst keine Login-Aktion an (fail-closed). Ein Wirksamkeitsdatum (auch
    zurückliegend) gibt es bei Freigabe, Deaktivierung und Reaktivierung NUR,
    wenn der Server `datesBeforeTodayAllowed` meldet (Testpartner im
-   Pre-Live-Testmodus); sonst gilt sein Standard „heute". */
-export function SalesPartnerStatusCard({ partner, statusHistory = [], startDefaults = null, datesBeforeTodayAllowed = false, onChanged }) {
+   Pre-Live-Testmodus); sonst gilt sein Standard „heute".
+
+   UX-Paket 4: Bei einem offenen Antrag trägt die Karte den Titel „Antrag
+   prüfen" und die Angaben des Antrags (`intro`, von der Detailseite) vor
+   Freigeben/Ablehnen — oben auf der Seite, ohne Suchen. Kennwerte erscheinen
+   nur, wenn sie etwas sagen; der Statusverlauf ist eingeklappt. */
+export function SalesPartnerStatusCard({ partner, statusHistory = [], startDefaults = null, datesBeforeTodayAllowed = false, onChanged,
+  title = DETAIL_TEXTS.statusTitle, intro = null }) {
   const [dialog, setDialog] = useState(null);       // { kind, form, errors, error }
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);     // { type, text }
@@ -187,26 +195,30 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], startDefau
     </div>
   ) : null;
 
+  // Nur belegte Kennwerte: ein Freigabetag gibt es erst nach der Freigabe,
+  // Vertragsende und Deaktivierungsgrund nur, wenn der Server sie meldet.
+  const freigegeben = LOGIN_STEUERBAR.includes(status);
   return (
     <div className="adm-card" id="adm-sp-status-card">
-      <div className="adm-card-head">Status und Zugang</div>
+      <div className="adm-card-head">{title}</div>
       <div className="adm-card-body">
         {message && (
           <div className={`alert ${message.type === "success" ? "alert-success" : "alert-error"}`} role="status">{message.text}</div>
         )}
+        {intro}
         <dl className="adm-kv">
           <div className="adm-kv-item"><dt>Status</dt><dd><Badge meta={adminPartnerStatusMeta(status)} id="adm-sp-status" /></dd></div>
           <div className="adm-kv-item"><dt>Login</dt><dd><Badge meta={loginStatusMeta(partner.loginStatus)} id="adm-sp-login" /></dd></div>
-          <div className="adm-kv-item"><dt>Freigegeben am</dt><dd>{formatTimestamp(partner.approvedAt, { withTime: true })}</dd></div>
-          <div className="adm-kv-item"><dt>Vertrag beendet am</dt><dd>{formatTimestamp(partner.contractEndedOn)}</dd></div>
-          <div className="adm-kv-item"><dt>Grund der Deaktivierung</dt><dd>{deactivationReasonLabel(partner.deactivationReason)}</dd></div>
+          {freigegeben && <div className="adm-kv-item"><dt>Freigegeben am</dt><dd>{formatTimestamp(partner.approvedAt, { withTime: true })}</dd></div>}
+          {partner.contractEndedOn && <div className="adm-kv-item"><dt>Vertrag beendet am</dt><dd>{formatTimestamp(partner.contractEndedOn)}</dd></div>}
+          {partner.deactivationReason && <div className="adm-kv-item"><dt>Grund der Deaktivierung</dt><dd>{deactivationReasonLabel(partner.deactivationReason)}</dd></div>}
         </dl>
 
         <div className="adm-sp-actions">
           {status === "pending" && (
             <>
-              <button type="button" id="adm-sp-approve" className="btn btn-primary btn-sm" onClick={() => oeffnen("approve")}>Freigeben</button>
-              <button type="button" id="adm-sp-reject" className="btn btn-outline btn-sm" onClick={() => oeffnen("reject")}>Ablehnen</button>
+              <button type="button" id="adm-sp-approve" className="btn btn-primary" onClick={() => oeffnen("approve")}>Freigeben</button>
+              <button type="button" id="adm-sp-reject" className="btn btn-outline" onClick={() => oeffnen("reject")}>Ablehnen</button>
             </>
           )}
           {status === "active" && (
@@ -229,19 +241,20 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], startDefau
         )}
 
         {statusHistory.length > 0 && (
-          <>
-            <h3 className="adm-sp-subtitle">Statusverlauf</h3>
-            <ul className="adm-sp-history">
-              {statusHistory.map((s, i) => (
-                <li key={i} className="adm-sp-history-line">
-                  <Badge meta={adminPartnerStatusMeta(s.status)} />
-                  <span>ab {formatTimestamp(s.effectiveDate)}</span>
-                  {s.reason && <span className="adm-sp-sub">{statusReasonText(s.reason)}</span>}
-                  <span className="adm-sp-sub">erfasst {formatTimestamp(s.createdAt, { withTime: true })}</span>
-                </li>
-              ))}
-            </ul>
-          </>
+          <div className="adm-sp-folds">
+            <AdminSubDisclosure id="adm-sp-status-history" title={statusHistoryLabel(statusHistory.length)}>
+              <ul className="adm-sp-history">
+                {statusHistory.map((s, i) => (
+                  <li key={i} className="adm-sp-history-line">
+                    <Badge meta={adminPartnerStatusMeta(s.status)} />
+                    <span>ab {formatTimestamp(s.effectiveDate)}</span>
+                    {s.reason && <span className="adm-sp-sub">{statusReasonText(s.reason)}</span>}
+                    <span className="adm-sp-sub">erfasst {formatTimestamp(s.createdAt, { withTime: true })}</span>
+                  </li>
+                ))}
+              </ul>
+            </AdminSubDisclosure>
+          </div>
         )}
         <p className="adm-support-hint">Jede Änderung wird protokolliert.</p>
       </div>

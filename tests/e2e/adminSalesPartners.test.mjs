@@ -28,6 +28,15 @@
 //      in dieselbe gefilterte Liste (Filter in der Adresse).
 //  12. UX-Paket 2: 390 px — Teilnavigation bricht um (44-px-Ziele, kein seitliches
 //      Scrollen); die Partnerkarte zeigt nur Status, Kunden, Pakete und die Aktion.
+//  13. UX-Paket 4: „Antrag prüfen“ steht oben — Angaben (beim Testantrag der
+//      TEST-Hinweis), Freigeben, Ablehnen; alles Weitere eingeklappt, kein Formular
+//      sichtbar, und was der Server vor der Freigabe erlaubt, bleibt erreichbar.
+//  14. UX-Paket 4: aktiver Partner — Überblick mit nächstem Schritt, Bereiche
+//      eingeklappt mit Kurzfassung, Formular mit der aktuellen Version vorbelegt;
+//      „Aktualisieren“ lädt Detail, Abrechnungsdaten, Gutschriften, Obergrenze und
+//      Provisionen neu und zeigt den neuen Stand.
+//  15. UX-Paket 4: 390 px — kein seitliches Scrollen, Tabellen als Karten mit
+//      Spaltenbeschriftung, Bereichsköpfe und Teilbereiche mit 44-px-Ziel.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -84,13 +93,55 @@ const TESTZEILE = { id: 41, name: "Pia Test", email: "pia@test.example", company
   loginStatus: "approved", activeSince: "2026-03-01", customersCount: 1, packagesLastMonth: 3, teamLevel1Count: 0,
   teamLevel2Count: 0, ownRatePercent: "10.00", createdAt: "2026-10-05T09:30:00Z", preliveTest: true };
 
+// UX-Paket 4: ein voll belegter aktiver Partner (6) — Kunden, Team, Bewertung,
+// eingereichte Abrechnungsdaten, eine offene Gutschrift, eine Provisionsbuchung.
+const VOLL6 = {
+  statusHistory: [{ status: "active", effectiveDate: "2026-03-01", reason: null, createdAt: "2026-03-01T08:00:00Z" },
+    { status: "pending", effectiveDate: "2026-02-20", reason: null, createdAt: "2026-02-20T09:30:00Z" }],
+  customers: [
+    { customerId: 7, companyName: "Muster Logistik GmbH", assignedSince: "2026-05-01", assignedUntil: null, source: "referral_link", referralCodeUsed: "WXYZ6789" },
+    { customerId: 8, companyName: "Alt Kunde AG", assignedSince: "2026-01-01", assignedUntil: "2026-04-01", source: "admin", referralCodeUsed: null },
+  ],
+  team: { level1: [{ id: 5, name: "Petra Partner", status: "active", activeSince: "2026-10-06", relevant: true, rank: 1,
+    commissionCurrentMonthCents: 125, commissionTotalCents: 125 }], level2: [] },
+  assessments: [{ month: "2026-10", measuredMonth: "2026-09", activeCustomers: 1, shippedPackages: 120, customerLevel: 0,
+    customerBonusPercent: "0.00", packageLevel: 1, packageBonusPercent: "2.50", minPackages: 3, ruleSetId: 1, version: 1,
+    createdAt: "2026-10-01T02:00:00Z" }],
+};
+const ABRECHNUNG6 = { status: "submitted", missingFields: [], accountEmail: "sam@vertrieb-nord.de", billingDetails: {
+  billingName: "Vertrieb Nord GmbH", street: "Hafenstraße 2", postalCode: "20095", city: "Hamburg", country: "DE",
+  taxStatus: "with_vat", taxNumber: "22/123/45678", vatId: "DE987654321", accountHolder: "Vertrieb Nord GmbH",
+  ibanMasked: "DE02 **** **** **** **20 51", iban: "DE02120300000000202051", bic: "BYLADEM1001",
+  submittedAt: "2026-10-07T09:00:00.000Z", reviewedAt: null, reviewNote: null } };
+const GUTSCHRIFT6 = { id: 31, number: "GS-2026-0031", kind: "regular", title: "Gutschrift", periodMonth: "2026-09",
+  issuedAt: "2026-10-02T08:00:00.000Z", issuedOn: "2026-10-02", netCents: 10000, taxCents: 1900, grossCents: 11900,
+  taxRatePercent: "19.00", currency: "EUR", documentReady: true, payoutStatus: "open", paidOn: null, cancelled: false,
+  cancelledByNumber: null, correctsNumber: null, replacesNumber: null, documentStatus: "ready",
+  notifiedAt: "2026-10-02T08:01:00.000Z", paidReference: null, issuedByName: "Anna Admin", cancellationReason: null };
+const PROVISIONEN6 = { month: "2026-10", totals: { accruedCents: 1125, payableCents: 0 }, entries: [{
+  id: 501, decisionId: 77, shipmentId: 9001, entryDate: "2026-10-03", level: 0, type: "accrual", basisCents: 5000,
+  ratePercent: "22.50", amountCents: 1125, payable: false, customerName: "Muster Logistik GmbH", note: null,
+  decision: { dispatchDate: "2026-10-02", baseRatePercent: "20.00", customerLevel: 0, customerBonusPercent: "0.00", packageLevel: 1,
+    packageBonusPercent: "2.50", ownRatePercent: "22.50", capApplied: false, purchaseNetCents: 4000, customerNetCents: 5000 } }] };
+
 let server, browser;
+
+// UX-Paket 4: Die Bereiche des Partnerdetails sind eingeklappt. Geöffnet wird wie
+// von Hand — per Klick auf den Kopf (<summary>), nur wenn der Bereich noch zu ist.
+async function bereich(page, id) {
+  await page.locator(`#${id}`).waitFor({ state: "attached" });
+  if (!(await page.locator(`#${id}`).evaluate((d) => d.open))) await page.locator(`#${id} > summary`).click();
+  await page.waitForFunction((x) => document.getElementById(x)?.open === true, id);
+}
 
 // `startDefaults`: Startwerte in Detail- und Regelantwort (null = älterer Server ohne Feld).
 // `prelive`: Pre-Live-Testmodus an (Status, Testkonten, Testpartner, Rückdatierung).
-async function setup(page, { startDefaults = null, prelive = false } = {}) {
+// `voll`: Partner 6 voll belegt (UX-Paket 4); `zugriffe` zählt die Abrufe seiner Bereiche.
+async function setup(page, { startDefaults = null, prelive = false, voll = false } = {}) {
   const state = { list: [], approve: [], evidence: [], partnerStatus: "pending", other: [], login: [], login6: "approved",
-    rules: [], caps: [], capQueries: [], partnerCap: null, approve42: [], attribution: [], status42: "pending" };
+    rules: [], caps: [], capQueries: [], partnerCap: null, approve42: [], attribution: [], status42: "pending",
+    zugriffe: { detail6: 0, billing6: 0, credit6: 0, caps6: 0, commissions6: 0 }, rates6: null,
+    billing6: structuredClone(ABRECHNUNG6), credit6: [structuredClone(GUTSCHRIFT6)] };
   const mitStart = (d) => (startDefaults ? { ...d, startDefaults } : d);
   const zeilen = prelive ? [...ZEILEN, TESTZEILE] : ZEILEN;
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
@@ -142,8 +193,19 @@ async function setup(page, { startDefaults = null, prelive = false } = {}) {
     }
     // Partner 6: aktiv; sein Login lässt sich sperren und entsperren.
     if (p.endsWith("/admin/sales-partners/6") && req.method() === "GET") {
+      state.zugriffe.detail6 += 1;
       const d = detail("active");
-      return json({ ...d, partner: { ...d.partner, id: 6, name: "Sam Sponsor", loginStatus: state.login6 } });
+      const basis = { ...d, partner: { ...d.partner, id: 6, name: "Sam Sponsor", loginStatus: state.login6 } };
+      return json(voll ? { ...basis, ...VOLL6, rates: { current: state.rates6 || d.rates.current, history: [] } } : basis);
+    }
+    // Bereiche von Partner 6 (UX-Paket 4): Abrechnungsdaten und Gutschriften.
+    if (p.endsWith("/admin/sales-partners/6/billing-details") && req.method() === "GET") {
+      state.zugriffe.billing6 += 1;
+      return json(voll ? state.billing6 : { status: "incomplete", billingDetails: null, missingFields: [], accountEmail: "sam@vertrieb-nord.de" });
+    }
+    if (p.endsWith("/admin/sales-partners/6/credit-notes") && req.method() === "GET") {
+      state.zugriffe.credit6 += 1;
+      return json({ creditNotes: voll ? state.credit6 : [] });
     }
     if (p.endsWith("/admin/sales-partners/6/login") && req.method() === "PUT") {
       const body = req.postDataJSON();
@@ -157,6 +219,8 @@ async function setup(page, { startDefaults = null, prelive = false } = {}) {
       return json({ ...d, partner: { ...d.partner, id: 12, name: "Rita Abgelehnt", status: "rejected", loginStatus: "blocked" } });
     }
     if (/\/admin\/sales-partners\/(5|6|12)\/commissions$/.test(p)) {
+      if (p.includes("/6/")) state.zugriffe.commissions6 += 1;
+      if (voll && p.includes("/6/")) return json(PROVISIONEN6);
       return json({ month: "2026-10", totals: { accruedCents: 0, payableCents: 0 }, entries: [] });
     }
     if (p.endsWith("/admin/dispatch-evidence/queue")) {
@@ -183,6 +247,7 @@ async function setup(page, { startDefaults = null, prelive = false } = {}) {
         return json({ ok: true }, 201);
       }
       state.capQueries.push(url.search);
+      if (url.searchParams.get("partnerUserId") === "6") state.zugriffe.caps6 += 1;
       if (url.searchParams.get("partnerUserId") === "5") return json({ current: state.partnerCap, history: [] });
       return json({ current: null, history: [] });
     }
@@ -288,7 +353,10 @@ test("2 — Freigabe eines Antrags: Pflichtfeld Grundprovision, Vertragsbody, ne
   await page.locator('.adm-sp-table tr[data-partner-id="5"] a', { hasText: "Antrag prüfen" }).click();
   await page.waitForURL(`${BASE}/admin/partners/5`);
   await page.locator("#adm-sp-approve").waitFor({ state: "visible" });
-  assert.match(await page.locator("#adm-sp-codes-card").innerText(), /ABCD2345/);
+  // UX-Paket 4: „Codes und Links“ ist eingeklappt; der Code steht im Kopf, ausgeklappt mit Kopierfeld.
+  assert.match(await page.locator("#adm-sp-codes-card > summary").innerText(), /Empfehlungscode ABCD2345/);
+  await bereich(page, "adm-sp-codes-card");
+  assert.match(await page.locator("#adm-sp-codes-card .adm-kv").innerText(), /ABCD2345/);
 
   await page.locator("#adm-sp-approve").click();
   await page.locator('[role="dialog"]').waitFor({ state: "visible" });
@@ -303,7 +371,10 @@ test("2 — Freigabe eines Antrags: Pflichtfeld Grundprovision, Vertragsbody, ne
   assert.deepEqual(state.approve, [{ basePercent: "20.00" }], "Ebenen ohne Angabe: Server-Default");
   await page.waitForFunction(() => document.querySelector("#adm-sp-status")?.textContent === "Aktiv");
   assert.equal(await page.locator("#adm-sp-approve").count(), 0);
-  assert.match(await page.locator("#adm-sp-rates-card").innerText(), /20,00 %/);
+  // Die Meldung der Freigabe bleibt stehen (dieselbe Statuskarte), der Überblick nennt die Sätze.
+  assert.equal(await page.locator('#adm-sp-status-card [role="status"]').innerText(), "Der Vertriebspartner wurde freigegeben.");
+  assert.match(await page.locator("#adm-sp-rates-card > summary").innerText(), /Grundprovision 20,00\s%/);
+  assert.equal((await page.locator("#adm-sp-overview-rates").innerText()).replace(/\s+/g, " "), "Grundprovision 20,00 % · Ebene 1: 5,00 % · Ebene 2: 2,50 %");
   await page.close();
 });
 
@@ -401,6 +472,7 @@ test("6 — Login sperren und entsperren nach dem exakten Backendvertrag", async
   await page.locator("#adm-sp-login").waitFor({ state: "visible" });
   assert.equal(await page.locator("#adm-sp-login").innerText(), "Login gesperrt");
   assert.equal(await page.locator("#adm-sp-login-off, #adm-sp-login-on").count(), 0);
+  await bereich(page, "adm-sp-rates-card");   // UX-Paket 4: eingeklappt
   assert.equal(await page.locator("#adm-sp-rates-none").innerText(), "Für einen abgelehnten Antrag gibt es keine Provisionssätze.");
   assert.equal(await page.locator("#adm-sp-rates-from").count(), 0);
 
@@ -446,8 +518,13 @@ test("7 — Freigabe mit Startwerten: 10,00 / 5,00 / 2,50 vorbelegt und genau so
   assert.deepEqual(state.approve, [{ basePercent: "10.00", level1Percent: "5.00", level2Percent: "2.50" }]);
   await page.waitForFunction(() => document.querySelector("#adm-sp-status")?.textContent === "Aktiv");
 
-  // Eigene Level-Regeln des Partners starten ebenfalls mit den Startwerten.
+  // Eigene Level-Regeln des Partners starten ebenfalls mit den Startwerten — das
+  // Formular steht eingeklappt unter „Neue Version anlegen“ (UX-Paket 4).
+  await bereich(page, "adm-sp-levels-card");
+  await bereich(page, "adm-sp-levels-new");
   await page.locator("#adm-sp-levels-custom").check();
+  assert.equal(await page.locator("#adm-sp-levels-prefill-note").innerText(),
+    "Vorbelegt mit den Startwerten des Programms. Passen Sie die Werte für diesen Partner an.");
   assert.equal(await page.inputValue("#adm-sp-levels-customer-1-threshold"), "3");
   assert.equal(await page.inputValue("#adm-sp-levels-package-5-threshold"), "2000");
   assert.equal(await page.inputValue("#adm-sp-levels-min-packages"), "3");
@@ -459,12 +536,17 @@ test("8 — individuelle Obergrenze: Standardtext, neue Version mit partnerUserI
   const state = await setup(page);
   await page.clock.setFixedTime(new Date("2026-10-07T10:00:00"));
   await page.goto(`${BASE}/admin/partners/5`, { waitUntil: "networkidle" });
+  // UX-Paket 4: eingeklappt, der Kopf nennt den Stand; das Formular ist ein eigener Teil.
+  await page.waitForFunction(() => /Keine individuelle Obergrenze/.test(document.querySelector("#adm-sp-partner-cap-card > summary")?.textContent || ""));
+  await bereich(page, "adm-sp-partner-cap-card");
   await page.locator("#adm-sp-pcap-none").waitFor({ state: "visible" });
   assert.equal(await page.locator("#adm-sp-pcap-none").innerText(),
     "Keine individuelle Obergrenze – es gilt die globale Einstellung (standardmäßig keine Obergrenze).");
   assert.ok(state.capQueries.includes("?partnerUserId=5"), `Abfrage ohne Partner: ${JSON.stringify(state.capQueries)}`);
 
   // Ohne Datum kein Request.
+  await bereich(page, "adm-sp-pcap-new");
+  assert.equal(await page.inputValue("#adm-sp-pcap-total"), "", "ohne Version nichts vorbelegt");
   await page.locator("#adm-sp-pcap-submit").click();
   await page.locator("#adm-sp-partner-cap-card .field-error").first().waitFor({ state: "visible" });
   assert.equal(state.caps.length, 0);
@@ -486,6 +568,12 @@ test("8 — individuelle Obergrenze: Standardtext, neue Version mit partnerUserI
   assert.match(karte, /30,00 %/);
   assert.match(karte, /08\.10\.2026/);
   assert.match(karte, /Keine Grenze/);
+  // Nach dem Speichern schließt das Formular; geöffnet trägt es die neue Version (UX-Paket 4) —
+  // „Gültig ab“ bleibt leer, die leere Grenze bleibt leer.
+  assert.equal(await page.locator("#adm-sp-pcap-new").evaluate((d) => d.open), false);
+  assert.match(await page.locator("#adm-sp-partner-cap-card > summary").innerText(), /Eigenprovision ohne Grenze · alle Ebenen höchstens 30,00\s%/);
+  await bereich(page, "adm-sp-pcap-new");
+  assert.deepEqual(await Promise.all(["#adm-sp-pcap-from", "#adm-sp-pcap-own", "#adm-sp-pcap-total"].map((s) => page.inputValue(s))), ["", "", "30,00"]);
   await page.close();
 });
 
@@ -508,7 +596,10 @@ test("9 — Pre-Live: Kennzeichnung in Liste und Detail; zurückliegende Daten n
   // Bewusste Ankeränderung (UX-Paket 1): vor der Freigabe gibt es kein Satzformular —
   // der Server lehnt neue Sätze für einen Antrag ohnehin ab.
   assert.equal(await page.locator("#adm-sp-rates-from").count(), 0);
+  await bereich(page, "adm-sp-rates-card");   // UX-Paket 4: Bereiche eingeklappt
   assert.equal(await page.locator("#adm-sp-rates-none").innerText(), "Noch keine Provisionssätze – sie werden bei der Freigabe festgelegt.");
+  await bereich(page, "adm-sp-partner-cap-card");
+  await bereich(page, "adm-sp-pcap-new");
   assert.equal(await page.getAttribute("#adm-sp-pcap-from", "min"), null, "Obergrenze: zurückliegend erlaubt");
   await page.locator("#adm-sp-approve").click();
   await page.locator('[role="dialog"]').waitFor({ state: "visible" });
@@ -519,11 +610,14 @@ test("9 — Pre-Live: Kennzeichnung in Liste und Detail; zurückliegende Daten n
   await page.locator('[role="dialog"]').waitFor({ state: "detached" });
   assert.deepEqual(state.approve42, [{ basePercent: "10.00", level1Percent: "5.00", level2Percent: "2.50", effectiveDate: "2026-03-01" }]);
   // Nach der Freigabe: Satzformular da, für den Testpartner zurückliegend erlaubt.
+  await bereich(page, "adm-sp-rates-new");
   await page.locator("#adm-sp-rates-from").waitFor({ state: "visible" });
   assert.equal(await page.getAttribute("#adm-sp-rates-from", "min"), null, "Sätze: zurückliegend erlaubt");
 
   // Echter freigegebener Partner: Sätze weiterhin „nicht vor heute“.
   await page.goto(`${BASE}/admin/partners/6`, { waitUntil: "networkidle" });
+  await bereich(page, "adm-sp-rates-card");
+  await bereich(page, "adm-sp-rates-new");
   await page.locator("#adm-sp-rates-from").waitFor({ state: "visible" });
   assert.equal(await page.getAttribute("#adm-sp-rates-from", "min"), "2026-10-07");
   // Echter Antrag: kein Testkennzeichen, kein Datumsfeld bei der Freigabe.
@@ -651,5 +745,164 @@ test("12 — 390 px: Teilnavigation bricht um statt seitlich zu scrollen, die Pa
   await page.locator(".adm-sp-levels input").first().waitFor({ state: "visible" });
   const einstellungen = await page.evaluate(() => document.documentElement.scrollWidth);
   assert.ok(einstellungen <= 390, `die Einstellungen scrollen seitlich: ${einstellungen}`);
+  await page.close();
+});
+
+test("13 — UX-Paket 4: „Antrag prüfen“ oben — Angaben, Freigeben, Ablehnen; alles Weitere eingeklappt", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await setup(page, { prelive: true });
+  await page.goto(`${BASE}/admin/partners/5`, { waitUntil: "networkidle" });
+  const antrag = page.locator("#adm-sp-status-card");
+  await antrag.waitFor({ state: "visible" });
+  assert.equal((await antrag.locator(".adm-card-head").innerText()).trim(), "Antrag prüfen");
+  // Die Antragskarte ist die erste Karte; Freigeben und Ablehnen stehen ohne Scrollen im Bild.
+  assert.equal(await page.evaluate(() => document.querySelector(".adm-page .adm-card")?.id), "adm-sp-status-card");
+  for (const id of ["#adm-sp-approve", "#adm-sp-reject"]) {
+    const box = await page.locator(id).boundingBox();
+    assert.ok(box && box.y + box.height <= 900, `${id} liegt unterhalb des sichtbaren Bereichs: ${JSON.stringify(box)}`);
+  }
+  const angaben = await page.locator("#adm-sp-application-facts").innerText();
+  for (const t of ["Petra Partner", "Vertrieb Süd GmbH", "petra@partner-vertrieb.de", "Sam Sponsor", "Fassung 2026-10"]) {
+    assert.ok(angaben.includes(t), `Angabe fehlt: ${t}`);
+  }
+  assert.equal(await page.locator('#adm-sp-application-facts a[href="/admin/partners/6"]').count(), 1, "Sponsor verlinkt");
+  // Kein Überblick, keine zweite Stammdatenkarte; jeder Bereich eingeklappt, kein Formular sichtbar.
+  assert.equal(await page.locator("#adm-sp-overview-card, #adm-sp-master-card").count(), 0);
+  const offen = await page.$$eval("details.adm-disclosure", (ds) => ds.filter((d) => d.open).map((d) => d.id));
+  assert.deepEqual(offen, [], `offene Bereiche: ${offen.join(", ")}`);
+  assert.equal(await page.locator("form:visible").count(), 0, "ein Formular ist dauerhaft sichtbar");
+  assert.equal(await page.locator("#adm-sp-rates-from").count(), 0, "vor der Freigabe kein Satzformular");
+  assert.match(await page.locator("#adm-sp-rates-card > summary").innerText(), /Noch keine Sätze/);
+  // Was der Server vor der Freigabe erlaubt (Level-Regeln, Obergrenze, Korrekturbuchung), bleibt erreichbar.
+  for (const id of ["adm-sp-levels-new", "adm-sp-pcap-new", "adm-sp-adjust-section"]) {
+    assert.equal(await page.locator(`#${id}`).count(), 1, `${id} fehlt`);
+  }
+  assert.match(await page.locator("#adm-sp-codes-card > summary").innerText(), /Empfehlungscode ABCD2345/);
+  await bereich(page, "adm-sp-codes-card");
+  assert.equal(await page.locator("#adm-sp-links-inactive").innerText(), "Die Empfehlungslinks wirken nur bei aktivem Partnerkonto.");
+
+  // Testantrag: der Vertragsstand nennt das Testkonto — allein aus der Kennzeichnung des Servers.
+  await page.goto(`${BASE}/admin/partners/42`, { waitUntil: "networkidle" });
+  await page.locator("#adm-sp-application-facts").waitFor({ state: "visible" });
+  assert.match(await page.locator("#adm-sp-application-facts").innerText(), /Testkonto \(TEST \/ PRE-LIVE\) – ohne Partnervereinbarung/);
+  await page.close();
+});
+
+test("14 — UX-Paket 4: aktiver Partner — Überblick, eingeklappte Bereiche, Vorbelegung, „Aktualisieren“ lädt alles neu", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await page.clock.setFixedTime(new Date("2026-10-07T10:00:00"));
+  const state = await setup(page, { voll: true });
+  await page.goto(`${BASE}/admin/partners/6`, { waitUntil: "networkidle" });
+  await page.locator("#adm-sp-overview-card").waitFor({ state: "visible" });
+  assert.equal(await page.evaluate(() => document.querySelector(".adm-page .adm-card")?.id), "adm-sp-overview-card");
+  const text = async (id) => (await page.locator(`#${id}`).innerText()).replace(/\s+/g, " ").trim();
+  await page.waitForFunction(() => document.querySelector("#adm-sp-next-step")?.dataset.step === "billing");
+  assert.match(await text("adm-sp-next-step"), /Der Partner hat seine Abrechnungsdaten zur Prüfung eingereicht\./);
+  assert.equal(await text("adm-sp-overview-rates"), "Grundprovision 20,00 % · Ebene 1: 5,00 % · Ebene 2: 2,50 %");
+  assert.equal(await text("adm-sp-overview-levels"), "Globale Regeln");
+  assert.equal(await text("adm-sp-overview-cap"), "Keine individuelle Obergrenze");
+  assert.equal(await text("adm-sp-overview-customers"), "1 aktuell zugeordnet · 2 Zuordnungen insgesamt");
+  assert.equal(await text("adm-sp-overview-team"), "Ebene 1: 1 · Ebene 2: 0");
+  assert.equal(await text("adm-sp-overview-billing"), "In Prüfung");
+  assert.equal(await text("adm-sp-overview-credit-notes"), "1 Gutschrift · 1 noch nicht als ausgezahlt vermerkt");
+  assert.equal(await text("adm-sp-overview-status"), "Aktiv seit 01.03.2026");
+  // Die IBAN steht nur in der Karte „Abrechnungsdaten“, nie im Überblick.
+  assert.doesNotMatch((await text("adm-sp-overview-card")).replace(/\s/g, ""), /DE02120300000000202051|DE02\*/);
+
+  // Nur die eingereichten Abrechnungsdaten sind von selbst offen; jeder andere Bereich zeigt seine Kurzfassung.
+  const offen = await page.$$eval("details.adm-disclosure", (ds) => ds.filter((d) => d.open).map((d) => d.id));
+  assert.deepEqual(offen, ["adm-sp-billing-card"]);
+  assert.equal(await page.locator("form:visible").count(), 0, "ein Formular ist dauerhaft sichtbar");
+  const kopf = async (id) => (await page.locator(`#${id} > summary`).innerText()).replace(/\s+/g, " ").trim();
+  assert.equal(await kopf("adm-sp-rates-card"), "Provisionssätze Grundprovision 20,00 % · Ebene 1: 5,00 % · Ebene 2: 2,50 %");
+  assert.equal(await kopf("adm-sp-levels-card"), "Level-Regeln Globale Regeln");
+  assert.equal(await kopf("adm-sp-customers-card"), "Kunden 1 aktuell zugeordnet · 2 Zuordnungen insgesamt");
+  assert.equal(await kopf("adm-sp-team-card"), "Team Ebene 1: 1 · Ebene 2: 0");
+  assert.equal(await kopf("adm-sp-assessments-card"), "Monatsbewertungen Oktober 2026: Kunden-Level 0 · Paket-Level 1");
+  assert.equal(await kopf("adm-sp-commissions-card"), "Provisionen Oktober 2026: 11,25 € · davon auszahlbar 0,00 €");
+  assert.equal(await kopf("adm-sp-credit-notes-card"), "Gutschriften 1 Gutschrift · 1 noch nicht als ausgezahlt vermerkt");
+  assert.equal(await kopf("adm-sp-master-card"), "Stammdaten Partnervereinbarung Fassung 2026-10");
+  assert.equal(await kopf("adm-sp-codes-card"), "Codes und Links Empfehlungscode ABCD2345");
+  assert.equal(await page.locator("#adm-sp-links-inactive").count(), 0, "aktive Links ohne Einschränkungshinweis");
+
+  // „Nächster Schritt“ öffnet den Bereich und setzt den Fokus auf seinen Kopf.
+  await page.locator("#adm-sp-billing-card > summary").click();
+  await page.waitForFunction(() => document.getElementById("adm-sp-billing-card")?.open === false);
+  await page.locator("#adm-sp-next-action").click();
+  await page.waitForFunction(() => document.getElementById("adm-sp-billing-card")?.open === true);
+  assert.equal(await page.evaluate(() => document.activeElement?.parentElement?.id), "adm-sp-billing-card");
+
+  // Formular: eingeklappt, beim Öffnen mit der aktuell gültigen Version vorbelegt — „Gültig ab“ bewusst leer.
+  await bereich(page, "adm-sp-rates-card");
+  assert.equal(await page.locator("#adm-sp-rates-base").isVisible(), false, "Satzformular ohne Öffnen sichtbar");
+  await bereich(page, "adm-sp-rates-new");
+  assert.deepEqual(await Promise.all(["#adm-sp-rates-base", "#adm-sp-rates-l1", "#adm-sp-rates-l2", "#adm-sp-rates-from"].map((s) => page.inputValue(s))),
+    ["20,00", "5,00", "2,50", ""]);
+  assert.match(await page.locator("#adm-sp-rates-effect").innerText(), /^Vorbelegt mit den aktuell gültigen Sätzen\. Die neue Version gilt ab dem gewählten Tag\./);
+  // Ohne bewusst gewähltes Datum kein Dialog und kein Request.
+  await page.locator("#adm-sp-rates-submit").click();
+  await page.locator("#adm-sp-rates-card .field-error").first().waitFor({ state: "visible" });
+  assert.equal(await page.locator('[role="dialog"]').count(), 0);
+
+  // „Aktualisieren“: Detail und jeder selbst ladende Bereich werden neu geladen — kein veralteter Stand bleibt stehen.
+  const vorher = { ...state.zugriffe };
+  state.rates6 = { id: 2, validFrom: "2026-10-07", basePercent: "22.00", level1Percent: "5.00", level2Percent: "2.50", reason: null, createdAt: "2026-10-07T09:00:00Z" };
+  state.billing6 = { ...state.billing6, status: "confirmed", billingDetails: { ...state.billing6.billingDetails, reviewedAt: "2026-10-07T09:30:00.000Z" } };
+  state.credit6 = state.credit6.map((c) => ({ ...c, payoutStatus: "paid", paidOn: "2026-10-06" }));
+  await page.locator("#adm-sp-refresh").click();
+  await page.waitForFunction(() => document.querySelector("#adm-sp-overview-billing")?.textContent === "Bestätigt");
+  await page.waitForFunction(() => document.querySelector("#adm-sp-next-step")?.dataset.step === "none");
+  await page.waitForFunction(() => /22,00/.test(document.querySelector("#adm-sp-overview-rates")?.textContent || ""));
+  for (const k of Object.keys(vorher)) assert.ok(state.zugriffe[k] > vorher[k], `${k} wurde nicht neu geladen (${vorher[k]} → ${state.zugriffe[k]})`);
+  assert.equal(await text("adm-sp-overview-rates"), "Grundprovision 22,00 % · Ebene 1: 5,00 % · Ebene 2: 2,50 %");
+  assert.equal(await text("adm-sp-overview-credit-notes"), "1 Gutschrift");
+  assert.match(await text("adm-sp-next-step"), /Derzeit ist nichts zu erledigen\./);
+  assert.equal(await page.locator("#adm-sp-billing-status").innerText(), "Bestätigt");
+  assert.equal(await page.locator("#adm-sp-billing-confirm").count(), 0, "keine Prüfaktion für bestätigte Daten");
+  await page.close();
+});
+
+test("15 — UX-Paket 4: 390 px — kein seitliches Scrollen, Tabellen als Karten, 44-px-Ziele", async () => {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await page.clock.setFixedTime(new Date("2026-10-07T10:00:00"));
+  await setup(page, { voll: true });
+  await page.goto(`${BASE}/admin/partners/6`, { waitUntil: "networkidle" });
+  await page.locator("#adm-sp-overview-card").waitFor({ state: "visible" });
+  for (const id of ["adm-sp-customers-card", "adm-sp-team-card", "adm-sp-assessments-card", "adm-sp-commissions-card",
+    "adm-sp-credit-notes-card", "adm-sp-rates-card"]) {
+    await bereich(page, id);
+  }
+  await page.locator("#adm-sp-cn-table").waitFor({ state: "visible" });
+  const breite = await page.evaluate(() => document.documentElement.scrollWidth);
+  assert.ok(breite <= 390, `die Seite scrollt seitlich: ${breite}`);
+
+  // Sichtbar heißt checkVisibility(): der Inhalt eines geschlossenen <details> hat in
+  // Chromium Layout (offsetParent und Maße), ist aber nicht zu sehen.
+  const tabellen = await page.$$eval(".adm-sp-cardtable", (ts) => ts.filter((t) => t.checkVisibility()).map((t) => {
+    const tr = t.querySelector("tbody tr");
+    const td = tr ? tr.querySelector("td[data-label]") : null;
+    // Diagnose für den Fehlerfall: welche Elemente über den rechten Rand ragen.
+    const rand = t.getBoundingClientRect().right;
+    const zuBreit = [...t.querySelectorAll("tbody *")].filter((e) => e.getBoundingClientRect().right > rand + 1)
+      .map((e) => `${e.tagName.toLowerCase()}.${String(e.className).split(" ")[0]}+${Math.round(e.getBoundingClientRect().right - rand)}`).slice(0, 6);
+    return { id: t.closest("details")?.id, quer: t.scrollWidth - t.clientWidth, zeile: tr ? getComputedStyle(tr).display : null,
+      kopf: getComputedStyle(t.querySelector("thead")).position, zuBreit,
+      label: td ? getComputedStyle(td, "::before").content : null, erwartet: td ? JSON.stringify(td.dataset.label) : null };
+  }));
+  assert.equal(tabellen.length, 5, `sichtbare Tabellen: ${JSON.stringify(tabellen.map((t) => t.id))}`);
+  for (const t of tabellen) {
+    assert.ok(t.quer <= 1, `${t.id}: Tabelle scrollt seitlich (${t.quer} px): ${t.zuBreit.join(", ")}`);
+    assert.equal(t.zeile, "block", `${t.id}: die Zeile ist keine Karte`);
+    assert.equal(t.kopf, "absolute", `${t.id}: der Tabellenkopf steht sichtbar über den Karten`);
+    assert.equal(t.label, t.erwartet, `${t.id}: die Zelle trägt ihre Spaltenbeschriftung nicht`);
+  }
+  // Die Aktionen der Kartenzeilen bleiben erreichbar und groß genug.
+  const aktion = await page.locator("#adm-sp-cn-payout-31").boundingBox();
+  assert.ok(aktion && aktion.height >= 44 && aktion.x >= 0 && aktion.x + aktion.width <= 390, `Auszahlungsknopf: ${JSON.stringify(aktion)}`);
+  // Bereichsköpfe und eingeklappte Teile sind 44-px-Ziele.
+  const ziele = await page.$$eval("details.adm-disclosure > summary, details.adm-sp-fold > summary", (ss) =>
+    ss.filter((s) => s.checkVisibility()).map((s) => ({ text: s.textContent.trim().slice(0, 40), h: Math.round(s.getBoundingClientRect().height) })));
+  assert.ok(ziele.length >= 10, `zu wenige Ziele gemessen: ${ziele.length}`);
+  for (const z of ziele) assert.ok(z.h >= 44, `Touch-Ziel unter 44 px: ${z.text} (${z.h} px)`);
   await page.close();
 });

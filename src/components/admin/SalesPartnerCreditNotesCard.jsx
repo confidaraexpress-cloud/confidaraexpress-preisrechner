@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DateField } from "./DateField";
+import { AdminDisclosureCard } from "./AdminDisclosureCard";
+import { creditNotesSummary, sectionSummary } from "../../utils/adminPartnerDetailView.mjs";
 import {
   adminCreditNotePdfPath,
   cancelAdminCreditNote,
@@ -87,8 +89,14 @@ const LEER_STORNO = { reason: "", acknowledgePaid: false };
    Testgutschrift (Pre-Live-Testmodus, `isTest`) heißt „TESTDOKUMENT – nicht
    steuerlich gültig“; ihre Auszahlung „Test – ausgezahlt“ bzw. „Test – nicht
    ausgezahlt“. Ist der Modus aus, lehnt der Server Aktionen an ihr mit 409
-   PRELIVE_TEST_MODE_DISABLED ab (fester Satz). */
-export function SalesPartnerCreditNotesCard({ partnerId }) {
+   PRELIVE_TEST_MODE_DISABLED ab (fester Satz).
+
+   UX-Paket 4: eingeklappt, der Kopf nennt Anzahl und offene
+   Auszahlungsvermerke; ist ein Dokument fehlgeschlagen, öffnet sich der
+   Bereich von selbst. Mobil wird die Tabelle zu Karten. `refreshKey` lädt neu
+   („Aktualisieren" der Seite), `onState` meldet den Ladezustand an die
+   Übersicht (kein zweiter Abruf). */
+export function SalesPartnerCreditNotesCard({ partnerId, refreshKey = 0, onState }) {
   const [state, setState] = useState({ loading: true, error: "", data: null });
   const [dialog, setDialog] = useState(null);        // { kind, cn, form, errors, error, needsAck }
   const [busy, setBusy] = useState(false);
@@ -118,7 +126,8 @@ export function SalesPartnerCreditNotesCard({ partnerId }) {
     }
   }, [partnerId]);
 
-  useEffect(() => { load(); return () => { lauf.current += 1; }; }, [load]);
+  useEffect(() => { load(); return () => { lauf.current += 1; }; }, [load, refreshKey]);
+  useEffect(() => { onState?.(state); }, [state, onState]);
 
   const liste = state.data?.creditNotes || [];
 
@@ -231,7 +240,7 @@ export function SalesPartnerCreditNotesCard({ partnerId }) {
     inhalt = <p className="adm-support-hint" id="adm-sp-cn-empty">Für diesen Partner wurden noch keine Gutschriften ausgestellt.</p>;
   } else {
     inhalt = (
-      <div className="table-scroll adm-sp-mini-table" id="adm-sp-cn-table">
+      <div className="table-scroll adm-sp-mini-table adm-sp-cardtable" id="adm-sp-cn-table">
         <table>
           <caption className="sr-only">
             Gutschriften: Nummer und Art, Zeitraum, ausgestellt, Bruttobetrag mit Netto und Steuer, Dokument und Benachrichtigung, Auszahlung, Aktionen.
@@ -254,24 +263,24 @@ export function SalesPartnerCreditNotesCard({ partnerId }) {
               return (
                 <tr key={cn.id ?? `g-${i}`} data-credit-note={cn.id ?? undefined}
                   className={cn.kind === "cancellation" || cn.cancelled ? "adm-sp-row-correction" : undefined}>
-                  <td><NumberCell cn={cn} /></td>
-                  <td>{creditNotePeriod(cn)}</td>
-                  <td>{creditNoteIssuedOn(cn)}</td>
-                  <td className="adm-num">
+                  <td data-label="Gutschrift"><NumberCell cn={cn} /></td>
+                  <td data-label="Zeitraum">{creditNotePeriod(cn)}</td>
+                  <td data-label="Ausgestellt">{creditNoteIssuedOn(cn)}</td>
+                  <td data-label="Brutto" className="adm-num">
                     {formatCents(cn.grossCents)}
                     <span className="adm-sp-sub adm-sp-block">
                       netto {formatCents(cn.netCents)} · Steuer {formatCents(cn.taxCents)}{satz ? ` (${satz})` : ""}
                     </span>
                   </td>
-                  <td>
+                  <td data-label="Dokument">
                     <Badge meta={documentStatusMeta(cn.documentStatus)} id={cn.id != null ? `adm-sp-cn-doc-${cn.id}` : undefined} />
                     <span className="adm-sp-sub adm-sp-block">{notificationText(cn)}</span>
                   </td>
-                  <td>
+                  <td data-label="Auszahlung">
                     {payoutText(cn)}
                     {cn.paidReference && <span className="adm-sp-sub adm-sp-block">Referenz: {cn.paidReference}</span>}
                   </td>
-                  <td>
+                  <td data-label="Aktionen">
                     <div className="adm-sp-row-actions">
                       {canDownloadAdmin(cn) && (
                         <button type="button" className="btn btn-ghost btn-sm" id={`adm-sp-cn-pdf-${cn.id}`}
@@ -310,9 +319,9 @@ export function SalesPartnerCreditNotesCard({ partnerId }) {
   }
 
   return (
-    <div className="adm-card" id="adm-sp-credit-notes-card">
-      <div className="adm-card-head">Gutschriften</div>
-      <div className="adm-card-body">
+    <>
+      <AdminDisclosureCard id="adm-sp-credit-notes-card" title="Gutschriften" summary={sectionSummary(state, creditNotesSummary)}
+        attention={liste.some((cn) => cn.documentStatus === "failed")}>
         {message && (
           <div className={`alert ${message.type === "success" ? "alert-success" : "alert-error"}`}
             role={message.type === "success" ? "status" : "alert"} id="adm-sp-cn-message">
@@ -320,7 +329,7 @@ export function SalesPartnerCreditNotesCard({ partnerId }) {
           </div>
         )}
         {inhalt}
-      </div>
+      </AdminDisclosureCard>
 
       {dialog && (
         <ConfirmDialog
@@ -386,7 +395,7 @@ export function SalesPartnerCreditNotesCard({ partnerId }) {
           )}
         </ConfirmDialog>
       )}
-    </div>
+    </>
   );
 }
 

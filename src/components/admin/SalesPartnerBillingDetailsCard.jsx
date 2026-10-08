@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { AdminDisclosureCard } from "./AdminDisclosureCard";
+import { billingSummary, sectionSummary } from "../../utils/adminPartnerDetailView.mjs";
 import {
   confirmAdminSalesPartnerBillingDetails,
   getAdminSalesPartnerBillingDetails,
@@ -34,8 +36,13 @@ function Wert({ zeile }) {
    hier). Was der Server als fehlend meldet, ist markiert. Bestätigen und
    Ablehnen gibt es nur für eine eingereichte Fassung; beide senden deren
    Einreichungszeitpunkt als Token mit. Hat der Partner inzwischen neu
-   eingereicht (409), wird der neue Stand geladen statt geraten. */
-export function SalesPartnerBillingDetailsCard({ partnerId, partnerName }) {
+   eingereicht (409), wird der neue Stand geladen statt geraten.
+
+   UX-Paket 4: eingeklappt, der Kopf nennt den Status; wartet eine eingereichte
+   Fassung auf die Prüfung, öffnet sich der Bereich von selbst. `refreshKey`
+   lädt neu („Aktualisieren" der Seite), `onState` meldet den Ladezustand an
+   die Übersicht (kein zweiter Abruf, die IBAN bleibt nur hier). */
+export function SalesPartnerBillingDetailsCard({ partnerId, partnerName, refreshKey = 0, onState }) {
   const [state, setState] = useState({ loading: true, error: "", data: null });
   const [dialog, setDialog] = useState(null);          // { kind, note, errors, error }
   const [busy, setBusy] = useState(false);
@@ -63,7 +70,8 @@ export function SalesPartnerBillingDetailsCard({ partnerId, partnerName }) {
     }
   }, [partnerId]);
 
-  useEffect(() => { load(); return () => { lauf.current += 1; }; }, [load]);
+  useEffect(() => { load(); return () => { lauf.current += 1; }; }, [load, refreshKey]);
+  useEffect(() => { onState?.(state); }, [state, onState]);
 
   const data = state.data;
   const details = data?.billingDetails || null;
@@ -174,9 +182,9 @@ export function SalesPartnerBillingDetailsCard({ partnerId, partnerName }) {
   const eingereicht = formatTimestamp(details?.submittedAt, { withTime: true });
 
   return (
-    <div className="adm-card" id="adm-sp-billing-card">
-      <div className="adm-card-head">Abrechnungsdaten</div>
-      <div className="adm-card-body">
+    <>
+      <AdminDisclosureCard id="adm-sp-billing-card" title="Abrechnungsdaten" summary={sectionSummary(state, billingSummary)}
+        attention={billingReviewable(data)}>
         {message && (
           <div className={`alert ${message.type === "success" ? "alert-success" : "alert-error"}`}
             role={message.type === "success" ? "status" : "alert"} id="adm-sp-billing-message">
@@ -184,7 +192,7 @@ export function SalesPartnerBillingDetailsCard({ partnerId, partnerName }) {
           </div>
         )}
         {inhalt}
-      </div>
+      </AdminDisclosureCard>
 
       {dialog && (
         <ConfirmDialog
@@ -213,7 +221,7 @@ export function SalesPartnerBillingDetailsCard({ partnerId, partnerName }) {
           )}
         </ConfirmDialog>
       )}
-    </div>
+    </>
   );
 }
 

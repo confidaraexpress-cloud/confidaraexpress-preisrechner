@@ -1475,6 +1475,104 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
 .adm-sp-note { margin-top: var(--ce-space-3); }
 .adm-sp-cn-number { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
+/* ── Partnerdetail nach Aufgaben (UX-Paket 4) ────────────────────────────────
+   Gruppen mit Zwischenüberschrift (Abrechnung, Konditionen, Kunden und Team,
+   Partnerdaten), darin einklappbare Bereiche: natives <details> auf dem
+   Kartenmuster, die Klappmarke ist dieselbe CSS-Marke wie bei „Technische
+   Informationen" (.adm-tech-caret). Der Kopf trägt Titel und Kurzfassung;
+   eingeklappt endet die Karte am Kopf. Formulare und Versionsverläufe sind
+   innerhalb eines Bereichs noch einmal eingeklappt (.adm-sp-fold, Form der
+   Regelversionen). */
+.adm-sp-group { display: flex; flex-direction: column; gap: var(--ce-space-3); margin-top: var(--ce-space-2); }
+.adm-sp-group-title {
+  margin: 0;
+  font-size: var(--ce-text-title-section-size);
+  font-weight: var(--ce-text-title-section-weight);
+  line-height: var(--ce-text-title-section-line);
+  color: var(--ce-color-text-primary);
+}
+.adm-disclosure > .adm-disclosure-head { cursor: pointer; list-style: none; flex-wrap: nowrap; }
+.adm-disclosure > .adm-disclosure-head::-webkit-details-marker { display: none; }
+.adm-disclosure > .adm-disclosure-head:focus-visible { outline: var(--ce-focus-ring); outline-offset: -2px; }
+.adm-disclosure:not([open]) > .adm-disclosure-head { border-bottom: none; }
+.adm-disclosure[open] > .adm-disclosure-head .adm-tech-caret { transform: translateY(1px) rotate(-135deg); }
+.adm-disclosure-head .adm-tech-caret { flex: none; }
+.adm-disclosure-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--ce-space-3); flex: 1 1 auto; min-width: 0; }
+.adm-disclosure-summary {
+  min-width: 0;
+  font-size: var(--ce-text-body-s-size);
+  font-weight: 400;
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-muted);
+  overflow-wrap: break-word;
+}
+.adm-sp-folds { display: flex; flex-direction: column; gap: var(--ce-space-2); margin-top: var(--ce-space-4); }
+/* „Antrag prüfen": die Angaben des Antrags, darunter abgesetzt Status und Login. */
+.adm-sp-facts + .adm-kv {
+  margin-top: var(--ce-space-4);
+  padding-top: var(--ce-space-4);
+  border-top: 1px solid var(--ce-color-border-subtle);
+}
+
+/* Überblick: der nächste Schritt als Hinweisfläche, die Aktion rechts daneben. */
+.adm-sp-next { align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.adm-sp-next-text { margin: 0; display: flex; flex-direction: column; gap: 2px; flex: 1 1 240px; min-width: 0; }
+.adm-sp-next-label { font-size: var(--ce-text-caption-size); font-weight: 600; line-height: var(--ce-text-caption-line); }
+
+@media (max-width: 900px) {
+  .adm-sp-fold > summary { min-height: var(--ce-size-touch-target); padding-block: var(--ce-space-3); }
+  /* Radios und Checkboxen werden über ihr Label bedient — es ist die Trefferfläche. */
+  .adm-sp-choice { min-height: var(--ce-size-touch-target); }
+}
+
+/* Mobil werden die Tabellen des Partnerdetails zu Karten: jede Zeile ein
+   Block, jede Zelle mit ihrer Spaltenbeschriftung (data-label) links und dem
+   Wert rechts — dieselbe Lesart wie die Listenkarten. Die Beschriftung steht
+   als Float links, damit eine Zelle mit mehreren Teilen (Betrag mit Netto- und
+   Steuerzeile, Status mit Benachrichtigung, Aktionen) neben ihr umbricht oder
+   darunter rutscht, statt über den Rand zu ragen. Die Tabellensemantik bleibt
+   im Markup, der Kopf bleibt für Hilfstechnik erhalten. Eine Zelle ohne
+   Beschriftung (Berechnungsgrundlage) läuft über die volle Breite. */
+@media (max-width: 640px) {
+  .adm-sp-cardtable { overflow: visible; }
+  .adm-sp-cardtable table,
+  .adm-sp-cardtable tbody,
+  .adm-sp-cardtable tr,
+  .adm-sp-cardtable td { display: block; width: 100%; }
+  .adm-sp-cardtable thead {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  .adm-sp-cardtable tr {
+    padding: var(--ce-space-2) var(--ce-space-3);
+    border: 1px solid var(--ce-color-border-subtle);
+    border-radius: var(--ce-radius-sm);
+  }
+  .adm-sp-cardtable tr + tr { margin-top: var(--ce-space-2); }
+  .adm-sp-cardtable td {
+    height: auto; padding: var(--ce-space-1) 0; border: 0;
+    font-size: var(--ce-text-body-s-size); text-align: right;
+    overflow-wrap: break-word;
+  }
+  .adm-sp-cardtable td::before {
+    content: attr(data-label);
+    float: left; max-width: 45%;
+    margin-right: var(--ce-space-3);
+    text-align: left;
+    font-size: var(--ce-text-body-s-size);
+    color: var(--ce-color-text-muted);
+  }
+  .adm-sp-cardtable td::after { content: ""; display: table; clear: both; }
+  .adm-sp-cardtable td:not([data-label]) { text-align: left; }
+  .adm-sp-cardtable td:not([data-label])::before { content: none; }
+  .adm-sp-cardtable .adm-sp-row-actions { justify-content: flex-end; }
+  .adm-sp-cardtable .adm-sp-partner { align-items: flex-end; text-align: right; }
+  .adm-sp-cardtable .adm-sp-row-correction,
+  .adm-sp-cardtable .adm-sp-decision-row { background: var(--ce-color-surface-subtle); }
+  .adm-sp-cardtable .adm-sp-row-correction td,
+  .adm-sp-cardtable .adm-sp-decision-row td { background: none; }
+}
+
 /* Abrechnungslauf: Vorschau je Partner — Tabelle ↔ Karten am selben
    Umschaltpunkt wie die übrigen Partnerlisten; das Ergebnis des Ausstellens
    steht als Textzeile in der Zeile (Rolle über den Text, nicht nur die Farbe). */

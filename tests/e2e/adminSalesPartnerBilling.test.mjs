@@ -136,9 +136,19 @@ async function setup(page, {
   return state;
 }
 
+// UX-Paket 4: Die Bereiche des Partnerdetails sind eingeklappt. Eingereichte
+// Abrechnungsdaten öffnen sich von selbst (alle Fälle hier reichen ein); die
+// Gutschriften öffnet der Admin per Klick auf den Kopf — wie von Hand.
+async function bereich(page, id) {
+  await page.locator(`#${id}`).waitFor({ state: "attached" });
+  if (!(await page.locator(`#${id}`).evaluate((d) => d.open))) await page.locator(`#${id} > summary`).click();
+  await page.waitForFunction((x) => document.getElementById(x)?.open === true, id);
+}
+
 async function zumDetail(page) {
   await page.goto(`${BASE}/admin/partners/5`, { waitUntil: "networkidle" });
   await page.locator("#adm-sp-billing-card .adm-kv").first().waitFor({ state: "visible" });
+  await bereich(page, "adm-sp-credit-notes-card");
 }
 
 const feld = (page, key) => page.locator(`#adm-sp-billing-fields [data-field="${key}"] dd`);
@@ -166,6 +176,9 @@ test("1 — Abrechnungsdaten: vollständige IBAN nur hier; Bestätigen mit dem E
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const state = await setup(page);
   await zumDetail(page);
+  // UX-Paket 4: eine eingereichte Fassung öffnet den Bereich von selbst — ohne Klick.
+  assert.match(await page.locator("#adm-sp-billing-card > summary").innerText(), /Abrechnungsdaten\s+In Prüfung/);
+  assert.equal(await page.locator("#adm-sp-next-step").getAttribute("data-step"), "billing");
   assert.equal(await page.locator("#adm-sp-billing-status").innerText(), "In Prüfung");
   assert.equal(await feld(page, "iban").innerText(), "DE89 3704 0044 0532 0130 00");
   assert.equal(await feld(page, "taxStatus").innerText(), "Mit Umsatzsteuerausweis");

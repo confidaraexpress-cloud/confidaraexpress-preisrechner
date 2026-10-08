@@ -43,6 +43,9 @@ const positiveInt = (v) => {
 
 export const MAX_REASON_LENGTH = 500;
 export const MAX_NOTE_LENGTH = 1000;
+// Begründung eines Versandnachweises: höchstens 500 Zeichen (Vertrag der
+// Adminentscheidung, lib/dispatchEvidence.js normalizeAdminDecision).
+export const MAX_EVIDENCE_NOTE_LENGTH = 500;
 
 // ── Status, Login, Gründe ───────────────────────────────────────────────────
 export const adminPartnerStatusMeta = partnerStatusMeta;
@@ -158,12 +161,44 @@ export const EVIDENCE_TYPE_OPTIONS = Object.freeze([
   Object.freeze({ value: "customer_confirmation", label: "Bestätigung des Kunden" }),
   Object.freeze({ value: "other", label: "Sonstiger Nachweis" }),
 ]);
-export const evidenceTypeLabel = (v) => labelAus(EVIDENCE_TYPE_OPTIONS, v, "Unbekannte Nachweisart");
+// Bisherige Nachweise tragen auch die Arten der Sendungsverfolgung (automatischer
+// Nachweis) und „admin_decision“ (Nicht versendet / Ungeklärt) — wählbar sind sie
+// nicht, gelesen werden sie verständlich (Vertrag: shipment_dispatch_evidence_type_check).
+const EVIDENCE_TYPE_READONLY = Object.freeze([
+  Object.freeze({ value: "carrier_pickup_scan", label: "Abholscan des Carriers" }),
+  Object.freeze({ value: "carrier_in_transit", label: "Carrier meldet: unterwegs" }),
+  Object.freeze({ value: "carrier_out_for_delivery", label: "Carrier meldet: in Zustellung" }),
+  Object.freeze({ value: "carrier_delivered", label: "Carrier meldet: zugestellt" }),
+  Object.freeze({ value: "admin_decision", label: "Admin-Entscheidung" }),
+]);
+export const evidenceTypeLabel = (v) => labelAus([...EVIDENCE_TYPE_OPTIONS, ...EVIDENCE_TYPE_READONLY], v, "Unbekannte Nachweisart");
 const EVIDENCE_SOURCES = Object.freeze([
   Object.freeze({ value: "carrier_tracking", label: "Sendungsverfolgung" }),
   Object.freeze({ value: "admin", label: "Admin-Entscheidung" }),
 ]);
 export const evidenceSourceLabel = (v) => labelAus(EVIDENCE_SOURCES, v, "Unbekannte Quelle");
+
+// Wirkung je Entscheidung (Backend: lib/salesPartner/decisions.js) — nur ein
+// gültiger Nachweis „Versendet" mit Versanddatum führt zu einer
+// Provisionsentscheidung; die Liste zeigt fehlende und ungeklärte Nachweise.
+export const EVIDENCE_DECISION_EFFECTS = Object.freeze({
+  dispatched: "Die Sendung kann eine Provision auslösen; Stichtag ist das Versanddatum.",
+  not_dispatched: "Für die Sendung entsteht keine Provision. Sie verschwindet aus dieser Liste.",
+  unclear: "Die Sendung bleibt in dieser Liste; vorerst entsteht keine Provision.",
+});
+export const evidenceDecisionEffect = (status) => (typeof status === "string"
+  && Object.prototype.hasOwnProperty.call(EVIDENCE_DECISION_EFFECTS, status) ? EVIDENCE_DECISION_EFFECTS[status] : null);
+
+/** Zusammenfassung vor dem Speichern: „Gespeichert wird: Versendet am 02.10.2026 · Carrier-Portal." — oder null. */
+export function evidenceDecisionSummary(form = {}) {
+  const f = form && typeof form === "object" ? form : {};
+  const option = EVIDENCE_DECISION_OPTIONS.find((o) => o.value === f.status);
+  if (!option) return null;
+  if (option.value !== "dispatched") return `Gespeichert wird: ${option.label}.`;
+  const tag = isIsoDate(trimmed(f.dispatchDate)) ? ` am ${formatTimestamp(trimmed(f.dispatchDate))}` : "";
+  const art = EVIDENCE_TYPE_OPTIONS.find((o) => o.value === f.evidenceType);
+  return `Gespeichert wird: ${option.label}${tag}${art ? ` · ${art.label}` : ""}.`;
+}
 
 // ── Eingaben: Datum, Prozent, Betrag ─────────────────────────────────────────
 
@@ -209,6 +244,8 @@ export const INPUT_TEXTS = Object.freeze({
   thresholdOrder: "Die Schwellen müssen von Level zu Level streng steigen.",
   decisionRequired: "Bitte eine Entscheidung wählen.",
   evidenceTypeRequired: "Bitte die Nachweisart wählen.",
+  evidenceNoteTooLong: `Die Begründung darf höchstens ${MAX_EVIDENCE_NOTE_LENGTH} Zeichen lang sein.`,
+  dispatchBeforeBooking: "Das Versanddatum darf nicht vor der Buchung der Sendung liegen.",
   modeRequired: "Bitte wählen, welche Regeln gelten sollen.",
 });
 
@@ -657,7 +694,7 @@ export function buildDispatchEvidenceBody(form = {}, { today } = {}) {
   const status = EVIDENCE_DECISION_OPTIONS.some((o) => o.value === form.status) ? form.status : null;
   if (!status) errors.status = INPUT_TEXTS.decisionRequired;
   const note = pruefeText(form.note, {
-    required: true, max: MAX_NOTE_LENGTH, requiredText: INPUT_TEXTS.noteRequired, tooLongText: INPUT_TEXTS.noteTooLong,
+    required: true, max: MAX_EVIDENCE_NOTE_LENGTH, requiredText: INPUT_TEXTS.noteRequired, tooLongText: INPUT_TEXTS.evidenceNoteTooLong,
   });
   if (note.error) errors.note = note.error;
   const body = { status, note: note.value };
@@ -670,6 +707,33 @@ export function buildDispatchEvidenceBody(form = {}, { today } = {}) {
     body.evidenceType = type;
   }
   return ergebnis(errors, body);
+}
+
+// Fehlercodes der Adminentscheidung (lib/dispatchEvidence.js, routes/admin/salesPartners.js)
+// → Text am betroffenen Feld; nie ein Rohcode.
+const EVIDENCE_FIELD_ERRORS = Object.freeze({
+  DISPATCH_EVIDENCE_STATUS_INVALID: ["status", INPUT_TEXTS.decisionRequired],
+  DISPATCH_EVIDENCE_NOTE_REQUIRED: ["note", `Bitte eine Begründung mit höchstens ${MAX_EVIDENCE_NOTE_LENGTH} Zeichen angeben.`],
+  DISPATCH_DATE_REQUIRED: ["dispatchDate", INPUT_TEXTS.dateRequired],
+  DISPATCH_DATE_IN_FUTURE: ["dispatchDate", INPUT_TEXTS.dateInFuture],
+  DISPATCH_DATE_BEFORE_BOOKING: ["dispatchDate", INPUT_TEXTS.dispatchBeforeBooking],
+  DISPATCH_EVIDENCE_TYPE_REQUIRED: ["evidenceType", INPUT_TEXTS.evidenceTypeRequired],
+});
+export const EVIDENCE_TEXTS = Object.freeze({
+  decisionExists: "Für diese Sendung besteht bereits eine Provisionsentscheidung; der Versand lässt sich erst nach ihrer Rücknahme neu entscheiden. Es wurde nichts gespeichert.",
+  notBooked: "Die Sendung ist nicht mehr gebucht. Es wurde nichts gespeichert; die Liste wird neu geladen.",
+});
+
+/** Fehlerantwort einer Versandentscheidung → { text, field, reload }. */
+export function dispatchEvidenceErrorOutcome(status, body) {
+  const code = body && typeof body === "object" && typeof body.code === "string" ? body.code.trim() : "";
+  if (status === 400 && Object.prototype.hasOwnProperty.call(EVIDENCE_FIELD_ERRORS, code)) {
+    const [field, text] = EVIDENCE_FIELD_ERRORS[code];
+    return { text, field, reload: false };
+  }
+  if (status === 409 && code === "COMMISSION_DECISION_EXISTS") return { text: EVIDENCE_TEXTS.decisionExists, field: null, reload: true };
+  if (status === 409 && code === "SHIPMENT_NOT_BOOKED") return { text: EVIDENCE_TEXTS.notBooked, field: null, reload: true };
+  return { text: adminActionErrorText(status, body), field: null, reload: false };
 }
 
 // ── Normalisierung der Antworten ────────────────────────────────────────────

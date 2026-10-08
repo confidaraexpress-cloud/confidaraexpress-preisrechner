@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { DateField } from "./DateField";
+import { AdminDisclosureCard } from "./AdminDisclosureCard";
 import { runAdminPreliveScenario } from "../../api/adminApi";
 import { returnState } from "../../utils/adminBackLink.mjs";
 import { monthOptions } from "../../utils/salesPartnerView.mjs";
@@ -42,7 +43,8 @@ const startZustand = () => ({
        Aufbau bestimmt der Server).
      • Team-Szenario: mehrere Testpartner unter einem Sponsor.
    Ob ein Szenario zulässig ist, entscheidet der Server (SCENARIO_INVALID mit
-   Feld, PARTNER_NOT_TEST). */
+   Feld, PARTNER_NOT_TEST). Zusätzliches Testwerkzeug — eingeklappt
+   (UX-Paket 5); es ersetzt den öffentlichen Ablauf nicht. */
 export function PreliveScenariosCard({ accounts, presets = null, onChanged, onDisabled }) {
   const partner = accounts?.partners || [];
   // „Zurück" im Partnerdetail führt wieder hierher (UX-Paket 2).
@@ -144,90 +146,87 @@ export function PreliveScenariosCard({ accounts, presets = null, onChanged, onDi
   };
 
   return (
-    <div className="adm-card" id="adm-pl-scenarios-card">
-      <div className="adm-card-head">Schnellszenarien</div>
-      <div className="adm-card-body">
-        <h3 className="adm-sp-subtitle">Level-Szenario</h3>
-        {ergebnis("levels")}
-        <form className="adm-sp-form" onSubmit={(e) => ausfuehren("levels", e)} noValidate id="adm-pl-levels-form">
-          {partnerAuswahl("levels", "partnerUserId", "adm-pl-levels-partner", "Testpartner (Pflicht)")}
-          <div className="adm-edit-field">
-            <label className="adm-edit-label" htmlFor="adm-pl-levels-month">Monat</label>
-            <select id="adm-pl-levels-month" className="field-select adm-edit-select" value={z.levels.form.month}
-              onChange={(e) => setFeld("levels", "month", e.target.value)} disabled={busy !== null} aria-invalid={ungueltig("levels", "month")}>
-              {monate.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-            </select>
-            {fehler("levels", "month")}
-          </div>
-          {zahlFeld("levels", "activeCustomers", "adm-pl-levels-active", "Aktive Kunden")}
-          {zahlFeld("levels", "packages", "adm-pl-levels-packages", "Pakete")}
-          {zahlFeld("levels", "packagesPerShipment", "adm-pl-levels-pps", "Pakete je Sendung (optional)")}
-          {zahlFeld("levels", "inactiveCustomers", "adm-pl-levels-inactive", "Inaktive Kunden (optional)", "Kunden unter der Mindestpaketzahl")}
-          {presets ? (
-            <fieldset className="adm-sp-fieldset adm-sp-form-wide" id="adm-pl-presets">
-              <legend className="adm-edit-label">Vorgaben für Grenzfälle</legend>
-              <div className="adm-pl-presets" role="radiogroup" aria-label="Lage zur Schwelle">
-                {THRESHOLD_OFFSETS.map((o) => (
-                  <label className="adm-sp-choice" key={o.value}>
-                    <input type="radio" name="adm-pl-offset" id={`adm-pl-offset-${o.value < 0 ? "minus" : o.value > 0 ? "plus" : "exact"}`}
-                      checked={offset === o.value} onChange={() => setOffset(o.value)} disabled={busy !== null} />
-                    {o.label}
-                  </label>
-                ))}
-              </div>
-              <div className="adm-pl-presets">
-                {presets.customer.map((s) => vorgabe("customer", s))}
-                {presets.package.map((s) => vorgabe("package", s))}
-              </div>
-              <span className="adm-edit-hint">
-                {`Schwellen laut Regeln: Kunden-Level ${presets.customer.map((s) => `${s.level} ab ${s.threshold}`).join(", ")}; Paket-Level ${presets.package.map((s) => `${s.level} ab ${s.threshold}`).join(", ")}.`}
-              </span>
-            </fieldset>
-          ) : (
-            <p className="adm-edit-hint adm-sp-form-wide" id="adm-pl-presets-none">Ohne hinterlegte Level-Regeln gibt es keine Vorgaben – bitte Werte frei eintragen.</p>
-          )}
-          <div className="adm-sp-form-actions">
-            <button type="submit" className="btn btn-primary btn-sm" id="adm-pl-levels-submit" disabled={busy !== null}>
-              {busy === "levels" ? "Wird angelegt…" : "Level-Szenario anlegen"}
-            </button>
-          </div>
-        </form>
+    <AdminDisclosureCard id="adm-pl-scenarios-card" title="Schnellszenarien" summary="Level-Grenzfälle, A/B/C-Kette, Team">
+      <h3 className="adm-sp-subtitle">Level-Szenario</h3>
+      {ergebnis("levels")}
+      <form className="adm-sp-form" onSubmit={(e) => ausfuehren("levels", e)} noValidate id="adm-pl-levels-form">
+        {partnerAuswahl("levels", "partnerUserId", "adm-pl-levels-partner", "Testpartner (Pflicht)")}
+        <div className="adm-edit-field">
+          <label className="adm-edit-label" htmlFor="adm-pl-levels-month">Monat</label>
+          <select id="adm-pl-levels-month" className="field-select adm-edit-select" value={z.levels.form.month}
+            onChange={(e) => setFeld("levels", "month", e.target.value)} disabled={busy !== null} aria-invalid={ungueltig("levels", "month")}>
+            {monate.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
+          {fehler("levels", "month")}
+        </div>
+        {zahlFeld("levels", "activeCustomers", "adm-pl-levels-active", "Aktive Kunden")}
+        {zahlFeld("levels", "packages", "adm-pl-levels-packages", "Pakete")}
+        {zahlFeld("levels", "packagesPerShipment", "adm-pl-levels-pps", "Pakete je Sendung (optional)")}
+        {zahlFeld("levels", "inactiveCustomers", "adm-pl-levels-inactive", "Inaktive Kunden (optional)", "Kunden unter der Mindestpaketzahl")}
+        {presets ? (
+          <fieldset className="adm-sp-fieldset adm-sp-form-wide" id="adm-pl-presets">
+            <legend className="adm-edit-label">Vorgaben für Grenzfälle</legend>
+            <div className="adm-pl-presets" role="radiogroup" aria-label="Lage zur Schwelle">
+              {THRESHOLD_OFFSETS.map((o) => (
+                <label className="adm-sp-choice" key={o.value}>
+                  <input type="radio" name="adm-pl-offset" id={`adm-pl-offset-${o.value < 0 ? "minus" : o.value > 0 ? "plus" : "exact"}`}
+                    checked={offset === o.value} onChange={() => setOffset(o.value)} disabled={busy !== null} />
+                  {o.label}
+                </label>
+              ))}
+            </div>
+            <div className="adm-pl-presets">
+              {presets.customer.map((s) => vorgabe("customer", s))}
+              {presets.package.map((s) => vorgabe("package", s))}
+            </div>
+            <span className="adm-edit-hint">
+              {`Schwellen laut Regeln: Kunden-Level ${presets.customer.map((s) => `${s.level} ab ${s.threshold}`).join(", ")}; Paket-Level ${presets.package.map((s) => `${s.level} ab ${s.threshold}`).join(", ")}.`}
+            </span>
+          </fieldset>
+        ) : (
+          <p className="adm-edit-hint adm-sp-form-wide" id="adm-pl-presets-none">Ohne hinterlegte Level-Regeln gibt es keine Vorgaben – bitte Werte frei eintragen.</p>
+        )}
+        <div className="adm-sp-form-actions">
+          <button type="submit" className="btn btn-primary btn-sm" id="adm-pl-levels-submit" disabled={busy !== null}>
+            {busy === "levels" ? "Wird angelegt…" : "Level-Szenario anlegen"}
+          </button>
+        </div>
+      </form>
 
-        <h3 className="adm-sp-subtitle">A/B/C-Kette</h3>
-        <p className="adm-support-hint">Legt die Testpartner A, B und C als Kette für die Teamebenen an; der Aufbau ist fest vorgegeben.</p>
-        {ergebnis("abc")}
-        <form className="adm-sp-form" onSubmit={(e) => ausfuehren("abc", e)} noValidate id="adm-pl-abc-form">
-          <div className="adm-sp-datefield">
-            <DateField id="adm-pl-abc-since" label="Aktiv seit (Pflicht, darf zurückliegen)" value={z.abc.form.activeSince}
-              invalid={!!z.abc.errors.activeSince} disabled={busy !== null} onChange={(v) => setFeld("abc", "activeSince", v)} />
-            {fehler("abc", "activeSince")}
-          </div>
-          {zahlFeld("abc", "packagesPerCustomer", "adm-pl-abc-ppc", "Pakete je Kunde (optional)")}
-          <div className="adm-sp-form-actions">
-            <button type="submit" className="btn btn-primary btn-sm" id="adm-pl-abc-submit" disabled={busy !== null}>
-              {busy === "abc" ? "Wird angelegt…" : "A/B/C-Kette anlegen"}
-            </button>
-          </div>
-        </form>
+      <h3 className="adm-sp-subtitle">A/B/C-Kette</h3>
+      <p className="adm-support-hint">Legt die Testpartner A, B und C als Kette für die Teamebenen an; der Aufbau ist fest vorgegeben.</p>
+      {ergebnis("abc")}
+      <form className="adm-sp-form" onSubmit={(e) => ausfuehren("abc", e)} noValidate id="adm-pl-abc-form">
+        <div className="adm-sp-datefield">
+          <DateField id="adm-pl-abc-since" label="Aktiv seit (Pflicht, darf zurückliegen)" value={z.abc.form.activeSince}
+            invalid={!!z.abc.errors.activeSince} disabled={busy !== null} onChange={(v) => setFeld("abc", "activeSince", v)} />
+          {fehler("abc", "activeSince")}
+        </div>
+        {zahlFeld("abc", "packagesPerCustomer", "adm-pl-abc-ppc", "Pakete je Kunde (optional)")}
+        <div className="adm-sp-form-actions">
+          <button type="submit" className="btn btn-primary btn-sm" id="adm-pl-abc-submit" disabled={busy !== null}>
+            {busy === "abc" ? "Wird angelegt…" : "A/B/C-Kette anlegen"}
+          </button>
+        </div>
+      </form>
 
-        <h3 className="adm-sp-subtitle">Team-Szenario</h3>
-        {ergebnis("team")}
-        <form className="adm-sp-form" onSubmit={(e) => ausfuehren("team", e)} noValidate id="adm-pl-team-form">
-          {partnerAuswahl("team", "sponsorUserId", "adm-pl-team-sponsor", "Sponsor (Testpartner, Pflicht)")}
-          {zahlFeld("team", "count", "adm-pl-team-count", "Anzahl Teampartner (Pflicht)")}
-          <div className="adm-sp-datefield">
-            <DateField id="adm-pl-team-since" label="Aktiv seit (Pflicht, darf zurückliegen)" value={z.team.form.activeSince}
-              invalid={!!z.team.errors.activeSince} disabled={busy !== null} onChange={(v) => setFeld("team", "activeSince", v)} />
-            {fehler("team", "activeSince")}
-          </div>
-          <div className="adm-sp-form-actions">
-            <button type="submit" className="btn btn-primary btn-sm" id="adm-pl-team-submit" disabled={busy !== null}>
-              {busy === "team" ? "Wird angelegt…" : "Team-Szenario anlegen"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      <h3 className="adm-sp-subtitle">Team-Szenario</h3>
+      {ergebnis("team")}
+      <form className="adm-sp-form" onSubmit={(e) => ausfuehren("team", e)} noValidate id="adm-pl-team-form">
+        {partnerAuswahl("team", "sponsorUserId", "adm-pl-team-sponsor", "Sponsor (Testpartner, Pflicht)")}
+        {zahlFeld("team", "count", "adm-pl-team-count", "Anzahl Teampartner (Pflicht)")}
+        <div className="adm-sp-datefield">
+          <DateField id="adm-pl-team-since" label="Aktiv seit (Pflicht, darf zurückliegen)" value={z.team.form.activeSince}
+            invalid={!!z.team.errors.activeSince} disabled={busy !== null} onChange={(v) => setFeld("team", "activeSince", v)} />
+          {fehler("team", "activeSince")}
+        </div>
+        <div className="adm-sp-form-actions">
+          <button type="submit" className="btn btn-primary btn-sm" id="adm-pl-team-submit" disabled={busy !== null}>
+            {busy === "team" ? "Wird angelegt…" : "Team-Szenario anlegen"}
+          </button>
+        </div>
+      </form>
+    </AdminDisclosureCard>
   );
 }
 

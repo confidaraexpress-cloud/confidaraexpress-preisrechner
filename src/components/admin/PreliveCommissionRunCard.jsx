@@ -3,12 +3,14 @@ import { runAdminPreliveCommissionRun } from "../../api/adminApi";
 import { formatCount } from "../../utils/salesPartnerView.mjs";
 import { PRELIVE_TEXTS, SKIP_UNKNOWN, normalizeCommissionRun, preliveErrorOutcome } from "../../utils/salesPartnerPrelive.mjs";
 
-/* ── Pre-Live · Provisionslauf (nur Testdaten) ───────────────────────────────
+/* ── Pre-Live · Provisionen berechnen (nur Testdaten) ────────────────────────
    Stößt den Provisionslauf des Servers für die Testdaten sofort an, statt auf
    den Takt zu warten, und zeigt seine Zahlen: Monatsbewertungen,
    Entscheidungen, Gutschriften, Fehlschläge und zurückgestellte Fälle mit
    deutschem Grund (ein unbekannter Code erscheint nie roh). Läuft gerade ein
-   anderer Lauf (`skippedTick`), sagt die Fläche das — nie „0 verarbeitet". */
+   anderer Lauf (`skippedTick`), sagt die Fläche das — nie „0 verarbeitet".
+   UX-Paket 5: „Provisionen berechnen" statt „Provisionslauf" — „Lauf" heißt
+   im Programm auch das Ausstellen der Gutschriften. */
 export function PreliveCommissionRunCard({ onChanged, onDisabled }) {
   const [busy, setBusy] = useState(false);
   const [ergebnis, setErgebnis] = useState(null);     // normalizeCommissionRun(…)
@@ -45,9 +47,9 @@ export function PreliveCommissionRunCard({ onChanged, onDisabled }) {
 
   return (
     <div className="adm-card" id="adm-pl-commission-card">
-      <div className="adm-card-head">Provisionslauf</div>
+      <div className="adm-card-head">Provisionen berechnen</div>
       <div className="adm-card-body">
-        <p className="adm-support-hint">Bewertet die Monate und entscheidet die Provisionen der Testsendungen sofort. Echte Partner und Sendungen bleiben unberührt.</p>
+        <p className="adm-support-hint">Bewertet die Monate und entscheidet die Provisionen der Testsendungen sofort, statt auf den regelmäßigen Takt zu warten. Echte Partner und Sendungen bleiben unberührt.</p>
         <div className="adm-sp-actions">
           <button type="button" className="btn btn-primary btn-sm" id="adm-pl-commission-run" onClick={starten} disabled={busy} aria-busy={busy ? "true" : undefined}>
             {busy ? "Lauf wird ausgeführt…" : PRELIVE_TEXTS.commissionRunLabel}

@@ -8,7 +8,7 @@
 //   2. Ausstellen je Partner (UX-Paket 1: erst nach Bestätigung mit Partner,
 //      Monat und Betrag; Abbrechen sendet nichts): genau der Vertragsbody mit
 //      dem Fingerabdruck, Ergebnis in der Zeile, Vorschau neu geladen.
-//   3. „Alle zulässigen ausstellen“: nacheinander je Partner; 409
+//   3. „Alle ausstellbaren ausstellen“: nacheinander je Partner; 409
 //      CREDIT_NOTE_PREVIEW_STALE lädt die Vorschau neu und bricht ab.
 //   4. Ein Fehler eines Partners hält den Lauf nicht an (Ergebnis je Partner).
 //   5. Ausstellung abgeschaltet: Erklärung, Ausstellen gesperrt, kein Request.
@@ -16,6 +16,8 @@
 //   7. Pre-Live-Testlauf: Schalter nur bei aktivem Testmodus; scope=test an
 //      Vorschau und Ausstellen, deutlicher Hinweis, Wechsel verwirft die
 //      Vorschau; PARTNER_NOT_TEST bleibt in der Zeile.
+//   8. UX-Paket 5: „Gutschrift ansehen“ führt ins Partnerdetail und öffnet dort
+//      genau den Bereich Gutschriften; „Zurück“ führt zum Lauf.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -49,6 +51,25 @@ const STANDARD = vorschau([
   zeile(7, { status: "carried_forward", netCents: -1200, taxCents: null, grossCents: null, fingerprint: null }),
   zeile(8, { status: "already_issued", fingerprint: null, existingCreditNote: { id: 41, number: "GS-2026-0041" } }),
 ]);
+
+// Partnerdetail 8 für den Sprunglink (UX-Paket 5): aktiv, Abrechnungsdaten nicht
+// eingereicht (der Bereich öffnet sich NICHT von selbst), eine bereite Gutschrift.
+const DETAIL8 = {
+  partner: { id: 8, name: "Partner 8", email: "p8@vertrieb.example", companyName: "Vertrieb 8 GmbH", phone: null, status: "active",
+    loginStatus: "approved", referralCode: "ACHT2345", sponsor: null, sponsorCodeUsed: null, agreementVersion: "2026-10",
+    agreementAcceptedAt: "2026-03-01T09:30:00Z", createdAt: "2026-03-01T09:30:00Z", approvedAt: "2026-03-02T10:00:00Z",
+    contractEndedOn: null, deactivationReason: null },
+  rates: { current: { id: 1, validFrom: "2026-03-02", basePercent: "20.00", level1Percent: "5.00", level2Percent: "2.50",
+    reason: null, createdAt: "2026-03-02T10:00:00Z" }, history: [] },
+  statusHistory: [{ status: "active", effectiveDate: "2026-03-02", reason: null, createdAt: "2026-03-02T10:00:00Z" }],
+  levelRules: { mode: "global", current: null, history: [] },
+  team: { level1: [], level2: [] }, customers: [], assessments: [],
+};
+const GS8 = { id: 41, number: "GS-2026-0041", kind: "regular", title: "Gutschrift", periodMonth: "2026-09",
+  issuedAt: "2026-10-02T08:00:00.000Z", issuedOn: "2026-10-02", netCents: 10000, taxCents: 1900, grossCents: 11900,
+  taxRatePercent: "19.00", currency: "EUR", documentReady: true, payoutStatus: "open", paidOn: null, cancelled: false,
+  cancelledByNumber: null, correctsNumber: null, replacesNumber: null, documentStatus: "ready",
+  notifiedAt: "2026-10-02T08:01:00.000Z", paidReference: null, issuedByName: "Anna Admin", cancellationReason: null };
 
 let server, browser;
 
@@ -85,6 +106,13 @@ async function setup(page, { previews = [[200, STANDARD]], issue = {}, delayMs =
         || [201, { creditNote: { id: 100 + body.partnerUserId, number: `GS-2026-01${body.partnerUserId}` }, documentReady: true, notified: true }];
       return json(antwort, status);
     }
+    if (p.endsWith("/admin/sales-partners/8") && req.method() === "GET") return json(DETAIL8);
+    if (p.endsWith("/admin/sales-partners/8/billing-details")) {
+      return json({ status: "incomplete", billingDetails: null, missingFields: [], accountEmail: "p8@vertrieb.example" });
+    }
+    if (p.endsWith("/admin/sales-partners/8/credit-notes")) return json({ creditNotes: [GS8] });
+    if (p.endsWith("/admin/sales-partners/8/commissions")) return json({ month: "2026-10", totals: { accruedCents: 0, payableCents: 0 }, entries: [] });
+    if (p.endsWith("/admin/sales-partner-caps")) return json({ current: null, history: [], backdatingAllowed: false });
     state.other.push(`${req.method()} ${p}`);
     return json({});
   });
@@ -156,7 +184,28 @@ test("1 — aus der Partnerliste erreichbar; nur abgeschlossene Monate; Vorschau
   assert.doesNotMatch(tabelle, /billing_details_unconfirmed|agreement_missing|carried_forward|already_issued|\bissuable\b/,
     "kein Rohwert im sichtbaren Text");
   assert.equal(await page.locator("#adm-cn-issue-6").count(), 0, "keine Ausstellung für eine blockierte Zeile");
-  assert.equal(await page.locator("#adm-cn-issue-all").innerText(), "Alle zulässigen ausstellen (1)");
+  // Bewusste Ankeränderung (UX-Paket 5): ein Begriff für dieselbe Sache — „ausstellbar“ wie der Status.
+  assert.equal(await page.locator("#adm-cn-issue-all").innerText(), "Alle ausstellbaren ausstellen (1)");
+
+  // Überblick je Serverstatus und der nächste Schritt (UX-Paket 5).
+  const zaehlung = (await page.locator("#adm-cn-counts").innerText()).replace(/\s+/g, " ");
+  for (const teil of ["Ausstellbar 1", "Bereits ausgestellt 1", "Blockiert 1", "Wird vorgetragen 1"]) {
+    assert.ok(zaehlung.includes(teil), `Zählung: ${teil} fehlt in ${zaehlung}`);
+  }
+  assert.equal(await page.getAttribute("#adm-cn-next-step", "data-step"), "issue");
+  assert.match(await page.locator("#adm-cn-next-step").innerText(),
+    /1 Gutschrift kann ausgestellt werden\. 1 Vertriebspartner ist blockiert/);
+  // Je Zeile, was fehlt und wohin es führt.
+  assert.equal(await page.locator("#adm-cn-billing-6").innerText(), "Abrechnungsdaten prüfen");
+  assert.equal(await page.getAttribute("#adm-cn-billing-6", "href"), "/admin/partners/6");
+  assert.match(blockiert, /Nicht im Adminbereich behebbar\./);
+  assert.match(await zeileVon(page, 7).innerText(), /Kein positiver Betrag/);
+  assert.equal(await page.locator("#adm-cn-open-8").innerText(), "Gutschrift ansehen");
+  assert.equal(await page.getAttribute("#adm-cn-open-8", "href"), "/admin/partners/8");
+  // Eine Hauptaktion: nach dem Laden sind „Vorschau laden“ und „Ausstellen“ je Zeile zurückgenommen.
+  assert.match(await page.getAttribute("#adm-cn-issue-all", "class"), /btn-primary/);
+  assert.match(await page.getAttribute("#adm-cn-preview", "class"), /btn-outline/);
+  assert.match(await page.getAttribute("#adm-cn-issue-5", "class"), /btn-outline/);
   await page.close();
 });
 
@@ -195,7 +244,7 @@ test("2 — Ausstellen je Partner: Vertragsbody mit Fingerabdruck, Ergebnis in d
   await page.close();
 });
 
-test("3 — alle zulässigen: nacheinander; 409 CREDIT_NOTE_PREVIEW_STALE lädt neu und bricht ab", async () => {
+test("3 — alle ausstellbaren: nacheinander; 409 CREDIT_NOTE_PREVIEW_STALE lädt neu und bricht ab", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const state = await setup(page, {
     previews: [[200, vorschau([zeile(5), zeile(9), zeile(10)])], [200, vorschau([zeile(9, { fingerprint: "fp-9-neu" }), zeile(10)])]],
@@ -203,7 +252,7 @@ test("3 — alle zulässigen: nacheinander; 409 CREDIT_NOTE_PREVIEW_STALE lädt 
     delayMs: 250,
   });
   await vorschauLaden(page);
-  assert.equal(await page.locator("#adm-cn-issue-all").innerText(), "Alle zulässigen ausstellen (3)");
+  assert.equal(await page.locator("#adm-cn-issue-all").innerText(), "Alle ausstellbaren ausstellen (3)");
   await page.locator("#adm-cn-issue-all").click();
   await page.locator('[role="dialog"]').waitFor({ state: "visible" });
   assert.match(await page.locator('[role="dialog"]').innerText(), /September 2026 · 3 Vertriebspartner/);
@@ -336,5 +385,23 @@ test("7 — Pre-Live-Testlauf: Schalter nur bei aktivem Testmodus; scope=test an
   assert.equal(await page.locator("#adm-cn-result-6").innerText(),
     "Dieser Vertriebspartner ist kein Testpartner – im Pre-Live-Testlauf werden nur Testpartner abgerechnet.");
   assert.doesNotMatch(await page.locator("#adm-cn-table").innerText(), /PARTNER_NOT_TEST/);
+  await page.close();
+});
+
+test("8 — Sprunglink: „Gutschrift ansehen“ öffnet im Partnerdetail genau den Bereich Gutschriften; Zurück führt zum Lauf", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await setup(page);
+  await vorschauLaden(page);
+  await page.locator("#adm-cn-open-8").click();
+  await page.waitForURL(`${BASE}/admin/partners/8`);
+  await page.locator("#adm-sp-credit-notes-card[open]").waitFor({ state: "attached" });
+  await page.waitForFunction(() => document.activeElement === document.querySelector("#adm-sp-credit-notes-card > summary"));
+  assert.equal(await page.locator("#adm-sp-billing-card").evaluate((d) => d.open), false, "nur der genannte Bereich öffnet sich");
+  await page.waitForFunction(() => document.querySelector("#adm-sp-credit-notes-card")?.innerText.includes("GS-2026-0041"));
+  const zurueck = page.locator(".adm-back");
+  assert.equal((await zurueck.innerText()).trim(), "Zurück zu den Gutschriften");
+  await zurueck.click();
+  await page.waitForURL(`${BASE}/admin/partners/credit-notes`);
+  await page.locator("#adm-cn-month").waitFor({ state: "visible" });
   await page.close();
 });

@@ -55,4 +55,24 @@ export function AdminSubDisclosure({ id, title, open, onOpenChange, children }) 
   );
 }
 
+/* ── Einen Bereich öffnen und dorthin springen ───────────────────────────────
+   Für „Nächster Schritt", Sprunglinks (Router-State `bereich`) und die
+   Schrittfolge des Pre-Live-Testbereichs: der Bereich und jeder umgebende
+   eingeklappte Bereich gehen auf, die Seite springt hin, der Fokus steht auf
+   seinem Kopf (bzw. dem Bereich selbst, wenn er fokussierbar ist). Das
+   toggle-Ereignis der <details> hält den Klappzustand der Komponenten
+   synchron. */
+export function openAdminSection(id) {
+  const el = typeof document !== "undefined" ? document.getElementById(id) : null;
+  if (!el) return false;
+  for (let d = el.tagName === "DETAILS" ? el : el.closest("details"); d; d = d.parentElement ? d.parentElement.closest("details") : null) {
+    if (!d.open) d.open = true;
+  }
+  el.scrollIntoView({ block: "start" });
+  const kopf = el.tagName === "DETAILS" ? el.querySelector(":scope > summary") : null;
+  if (kopf) kopf.focus({ preventScroll: true });
+  else if (el.hasAttribute("tabindex")) el.focus({ preventScroll: true });
+  return true;
+}
+
 export default AdminDisclosureCard;

@@ -341,6 +341,19 @@ export const RUN_TEXTS = Object.freeze({
   stale: "Die Vorschau war nicht mehr aktuell und wurde neu geladen. Weitere Gutschriften wurden nicht ausgestellt – bitte prüfen Sie die Vorschau erneut.",
   aborted: "Nicht ausgestellt – der Lauf wurde abgebrochen.",
   connection: "Die Verbindung wurde unterbrochen. Ob die Gutschrift ausgestellt wurde, zeigt die neu geladene Vorschau.",
+  // Überblick und nächster Schritt (UX-Paket 5).
+  startHint: "So gehen Sie vor: Monat wählen, Vorschau laden, ausstellbare Gutschriften ausstellen. Auszahlung und Storno vermerken Sie danach beim Vertriebspartner unter „Gutschriften“.",
+  summaryTitle: "Abrechnung",
+  nextStepLabel: "Nächster Schritt",
+  stepClosed: "Derzeit kann nichts ausgestellt werden. Den Grund nennt der Hinweis darunter.",
+  stepDone: "Für diesen Monat ist nichts mehr auszustellen.",
+  carriedHint: "Kein positiver Betrag – die Buchungen werden mit einem späteren Monat abgerechnet.",
+  blockedGlobal: "Gesperrt, solange die Ausstellung blockiert ist (Hinweis oben).",
+  issuedLink: "Gutschrift ansehen",
+  billingLink: "Abrechnungsdaten prüfen",
+  waitPartner: "Wartet auf die Abrechnungsdaten des Vertriebspartners.",
+  notFixable: "Nicht im Adminbereich behebbar.",
+  configHint: "Betriebseinstellung – nicht im Adminbereich änderbar.",
 });
 
 /** Der Monat vor „YYYY-MM“ (reine Kalenderarithmetik) — oder null. */
@@ -367,6 +380,65 @@ const RUN_STATUS_META = Object.freeze({
   already_issued: Object.freeze(["badge-blue", "Bereits ausgestellt"]),
 });
 export const runStatusMeta = (status) => statusMetaFrom(RUN_STATUS_META, status);
+
+// ── Abrechnungslauf: Überblick und nächster Schritt (UX-Paket 5) ─────────────
+// Gezählt werden ausschließlich die Status, die der Server je Partner meldet —
+// keine Beträge, keine eigene Einstufung. Der nächste Schritt folgt denselben
+// Zuständen: abgeschaltet oder global blockiert → nichts ausstellbar; sonst
+// ausstellbare zuerst, dann blockierte, sonst erledigt.
+
+/** Anzahl der Vorschauzeilen je Serverstatus. */
+export function runCounts(preview) {
+  const zeilen = preview ? preview.partners : [];
+  const zahl = (status) => zeilen.filter((r) => r.status === status).length;
+  const bekannt = Object.keys(RUN_STATUS_META);
+  return {
+    issuable: zahl("issuable"),
+    blocked: zahl("blocked"),
+    alreadyIssued: zahl("already_issued"),
+    carriedForward: zahl("carried_forward"),
+    unknown: zeilen.filter((r) => !bekannt.includes(r.status)).length,
+  };
+}
+
+/** „Alle ausstellbaren ausstellen (3)" bzw. die Testfassung. */
+export const issueAllLabel = (n, { test = false } = {}) => `Alle ausstellbaren ${test ? "Testgutschriften " : ""}ausstellen (${n})`;
+
+const gutschriftenSatz = (n) => (n === 1 ? "1 Gutschrift kann ausgestellt werden." : `${n} Gutschriften können ausgestellt werden.`);
+const blockiertSatz = (n) => (n === 1
+  ? "1 Vertriebspartner ist blockiert – was fehlt, steht in seiner Zeile."
+  : `${n} Vertriebspartner sind blockiert – was fehlt, steht in ihrer Zeile.`);
+
+/** Nächster Schritt des Laufs → { key, text } oder null ohne Vorschau.
+ *  key: "empty" | "closed" | "issue" | "blocked" | "done". */
+export function runNextStep(preview) {
+  if (!preview) return null;
+  if (preview.partners.length === 0) return { key: "empty", text: RUN_TEXTS.empty };
+  if (!issuanceOpen(preview)) return { key: "closed", text: RUN_TEXTS.stepClosed };
+  const ausstellbar = issuableRows(preview).length;
+  const blockiert = runCounts(preview).blocked;
+  if (ausstellbar > 0) {
+    return { key: "issue", text: blockiert > 0 ? `${gutschriftenSatz(ausstellbar)} ${blockiertSatz(blockiert)}` : gutschriftenSatz(ausstellbar) };
+  }
+  if (blockiert > 0) return { key: "blocked", text: blockiertSatz(blockiert) };
+  return { key: "done", text: RUN_TEXTS.stepDone };
+}
+
+// Wer einen Blockiergrund beheben kann: der Admin (Abrechnungsdaten prüfen),
+// der Partner (Abrechnungsdaten einreichen) — oder niemand im Adminbereich
+// (Betriebseinstellungen, fehlende Vereinbarung).
+const BETRIEB = Object.freeze(["issuance_disabled", "issuer_config_incomplete", "credit_note_title_missing",
+  "tax_status_not_enabled", "tax_rate_missing", "tax_note_missing", "cancellation_title_missing"]);
+
+/** Was als Nächstes zu einem Blockiergrund zu tun ist → { kind, text } oder null (unbekannt).
+ *  kind: "billing" (Link zu den Abrechnungsdaten) | "wait" | "info". */
+export function blockerNextStep(code) {
+  if (code === "billing_details_unconfirmed") return { kind: "billing", text: RUN_TEXTS.billingLink };
+  if (code === "billing_details_missing") return { kind: "wait", text: RUN_TEXTS.waitPartner };
+  if (code === "agreement_missing") return { kind: "info", text: RUN_TEXTS.notFixable };
+  if (BETRIEB.includes(code)) return { kind: "info", text: RUN_TEXTS.configHint };
+  return null;
+}
 
 function normalizePreviewRow(raw) {
   const r = objOrNull(raw);

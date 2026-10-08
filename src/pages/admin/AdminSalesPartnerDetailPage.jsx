@@ -3,8 +3,9 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { AdminBackLink } from "../../components/admin/AdminBackLink";
 import { returnState } from "../../utils/adminBackLink.mjs";
+import { sectionFromState } from "../../utils/adminJumpState.mjs";
 import { CopyableNumber } from "../../components/ui/CopyableNumber";
-import { AdminDisclosureCard } from "../../components/admin/AdminDisclosureCard";
+import { AdminDisclosureCard, openAdminSection } from "../../components/admin/AdminDisclosureCard";
 import { SalesPartnerOverviewCard } from "../../components/admin/SalesPartnerOverviewCard";
 import { SalesPartnerStatusCard } from "../../components/admin/SalesPartnerStatusCard";
 import { SalesPartnerRatesCard } from "../../components/admin/SalesPartnerRatesCard";
@@ -74,16 +75,8 @@ function linkFuer(kind, code) {
   return typeof window !== "undefined" && window.location ? `${window.location.origin}${pfad}` : pfad;
 }
 
-// Einen Bereich öffnen und dorthin springen (Aktion „Nächster Schritt"). Das
-// toggle-Ereignis des <details> hält den Klappzustand der Karte synchron.
-function bereichOeffnen(id) {
-  const el = typeof document !== "undefined" ? document.getElementById(id) : null;
-  if (!el) return;
-  if (el.tagName === "DETAILS" && !el.open) el.open = true;
-  el.scrollIntoView({ block: "start" });
-  const kopf = el.querySelector(":scope > summary");
-  if (kopf) kopf.focus({ preventScroll: true });
-}
+// Einen Bereich öffnen und dorthin springen (Aktion „Nächster Schritt", Sprunglink).
+const bereichOeffnen = (id) => { openAdminSection(id); };
 
 /* Angaben eines Partners — im Antrag oben („Antrag prüfen"), sonst im Bereich
    „Stammdaten". Der Vertragsstand ist die zugestimmte Fassung mit dem
@@ -167,11 +160,13 @@ function Gruppe({ id, title, children }) {
    Wechsel zu einem anderen Partner beginnt mit frischen Bereichen, ohne Stände
    des vorigen. Die Zustände von Obergrenze, Abrechnungsdaten und Gutschriften
    melden ihre Bereiche für den Überblick. */
-function PartnerDetailBody({ detail, partnerId, from, refreshKey, onChanged }) {
+function PartnerDetailBody({ detail, partnerId, from, refreshKey, onChanged, zielBereich = null }) {
   const p = detail.partner;
   const [caps, setCaps] = useState(null);
   const [billing, setBilling] = useState(null);
   const [creditNotes, setCreditNotes] = useState(null);
+  // Sprunglink: den genannten Bereich einmal öffnen, sobald die Seite steht.
+  useEffect(() => { if (zielBereich) bereichOeffnen(zielBereich); }, [zielBereich]);
   const antrag = p.status === "pending";
   const freigegeben = p.status === "active" || p.status === "inactive";
   const kundenLink = linkFuer("customer", p.referralCode);
@@ -330,7 +325,10 @@ function PartnerDetailBody({ detail, partnerId, from, refreshKey, onChanged }) {
 export default function AdminSalesPartnerDetailPage() {
   const { id } = useParams();
   // Herkunft für Links in andere Detailseiten: „Zurück" führt wieder hierher.
-  const from = returnState(useLocation());
+  const location = useLocation();
+  const from = returnState(location);
+  // Sprunglink (UX-Paket 5, z. B. aus den Gutschriften): ein Bereich aus der festen Liste.
+  const zielBereich = sectionFromState(location.state);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notFound, setNotFound] = useState(false);
@@ -424,7 +422,8 @@ export default function AdminSalesPartnerDetailPage() {
         actions={<button type="button" className="btn btn-outline btn-sm" id="adm-sp-refresh" onClick={aktualisieren} disabled={loading}>Aktualisieren</button>}
       />
 
-      <PartnerDetailBody key={partnerId} detail={detail} partnerId={partnerId} from={from} refreshKey={refreshKey} onChanged={load} />
+      <PartnerDetailBody key={partnerId} detail={detail} partnerId={partnerId} from={from} refreshKey={refreshKey} onChanged={load}
+        zielBereich={zielBereich} />
     </div>
   );
 }

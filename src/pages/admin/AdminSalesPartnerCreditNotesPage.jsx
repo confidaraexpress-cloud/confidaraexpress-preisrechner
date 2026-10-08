@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
@@ -6,6 +6,7 @@ import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import { SalesPartnerAdminNav } from "../../components/admin/SalesPartnerAdminNav";
 import { Switch } from "../../components/ui/Switch";
 import { returnState } from "../../utils/adminBackLink.mjs";
+import { testRunFromState, withSection } from "../../utils/adminJumpState.mjs";
 import { issueAdminCreditNote, previewAdminCreditNotes } from "../../api/adminApi";
 import { usePreliveStatus } from "../../hooks/usePreliveStatus";
 import { preliveEnabled } from "../../utils/salesPartnerPrelive.mjs";
@@ -15,17 +16,21 @@ import { formatTimestamp, localIsoDate } from "../../utils/adminSalesPartnerView
 import {
   RUN_TEXTS,
   blockerLabel,
+  blockerNextStep,
   buildIssueBody,
   canIssueRow,
   closedMonthOptions,
   issuableRows,
   issuanceOpen,
+  issueAllLabel,
   issueAmountText,
   issueOutcome,
   issueSuccessText,
   normalizePreview,
   previewErrorText,
   previewPartnerName,
+  runCounts,
+  runNextStep,
   runScope,
   runStatusMeta,
 } from "../../utils/adminSalesPartnerSettlementView.mjs";
@@ -70,10 +75,52 @@ function Blocker({ codes }) {
   );
 }
 
-/* ── Admin · Vertriebspartner · Abrechnungslauf ──────────────────────────────
+/* Nächster Schritt einer Zeile — allein aus dem Status und den Blockiergründen
+   des Servers: was fehlt und wer es beheben kann (Abrechnungsdaten prüfen führt
+   ins Partnerdetail und öffnet dort den Bereich), eine ausgestellte Gutschrift
+   führt zu ihrem Bereich (Auszahlung, Storno, PDF), ein vorgetragener Betrag
+   sagt, was mit ihm geschieht. Ids nur in der Tabelle (die Karten zeigen
+   dieselben Inhalte ein zweites Mal). */
+function NextStep({ row, from, mitId }) {
+  const id = row.partnerUserId;
+  if (row.status === "blocked") {
+    if (!row.blockers.length) return <span className="adm-sp-sub">{RUN_TEXTS.blockedGlobal}</span>;
+    return (
+      <ul className="adm-cn-blockers">
+        {row.blockers.map((c) => {
+          const label = blockerLabel(c);
+          const schritt = blockerNextStep(c);
+          return (
+            <li key={c} title={label === UNBEKANNT ? `Serverwert: ${c}` : undefined}>
+              <span>{label}</span>
+              {schritt && schritt.kind === "billing" && id !== null && (
+                <Link className="adm-cn-step" to={partnerPath(id)} state={withSection(from, "billing")}
+                  id={mitId ? `adm-cn-billing-${id}` : undefined}>
+                  {schritt.text}
+                </Link>
+              )}
+              {schritt && schritt.kind !== "billing" && <span className="adm-cn-step adm-sp-sub">{schritt.text}</span>}
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+  if (row.status === "already_issued" && id !== null) {
+    return (
+      <Link to={partnerPath(id)} state={withSection(from, "creditNotes")} id={mitId ? `adm-cn-open-${id}` : undefined}>
+        {RUN_TEXTS.issuedLink}
+      </Link>
+    );
+  }
+  if (row.status === "carried_forward") return <span className="adm-sp-sub">{RUN_TEXTS.carriedHint}</span>;
+  return <span className="adm-muted">—</span>;
+}
+
+/* ── Admin · Vertriebspartner · Gutschriften (Abrechnungslauf) ───────────────
    Gutschriften für einen abgeschlossenen Monat: Monat wählen (Standard
    Vormonat), Vorschau laden, je Partner Positionen, Beträge, Status und
-   Blockiergründe prüfen, dann je Partner „Ausstellen“ oder „Alle zulässigen
+   Blockiergründe prüfen, dann je Partner „Ausstellen“ oder „Alle ausstellbaren
    ausstellen“. Ausgestellt wird immer einzeln je Partner mit dessen
    Fingerabdruck aus der Vorschau — nacheinander, nie parallel. Meldet der
    Server, dass die Vorschau veraltet ist (409 CREDIT_NOTE_PREVIEW_STALE),
@@ -82,19 +129,25 @@ function Blocker({ codes }) {
    abgeschaltet, bleibt die Vorschau sichtbar, ausgestellt wird nichts.
    Das Ergebnis steht je Partner in seiner Zeile.
 
+   Überblick (UX-Paket 5): je Serverstatus die Anzahl, darüber der nächste
+   Schritt; je Zeile, was fehlt und wohin es führt. Gezählt werden nur die
+   Status des Servers — kein Betrag wird hier gerechnet.
+
    Pre-Live-Testlauf: nur wenn der Server den Testmodus meldet (`enabled:
    true`), erscheint der Schalter „Pre-Live-Testlauf"; er hängt scope=test an
    die Vorschau und `scope: "test"` an jedes Ausstellen — und zwar mit dem
    Bereich, mit dem die Vorschau geladen wurde. Ein Wechsel verwirft die
-   Vorschau. Im Testlauf steht deutlich: Testgutschriften (CE-TEST-PG …),
-   nicht steuerlich gültig, keine E-Mail, keine Auszahlung. */
+   Vorschau. Kommt der Admin aus dem Pre-Live-Testbereich, ist der Schalter
+   vorbelegt (Router-State, adminJumpState.mjs). Im Testlauf steht deutlich:
+   Testgutschriften (CE-TEST-PG …), nicht steuerlich gültig, keine E-Mail,
+   keine Auszahlung. */
 export default function AdminSalesPartnerCreditNotesPage() {
   const [optionen] = useState(() => closedMonthOptions(localIsoDate(), 24));
   const [monat, setMonat] = useState(() => optionen[0]?.value || "");
   const [vorschau, setVorschau] = useState({ loading: false, error: "", data: null });
   const [ergebnisse, setErgebnisse] = useState({});       // partnerUserId → { type, text }
   const [aktiv, setAktiv] = useState(null);               // partnerUserId während des Ausstellens
-  const [lauf, setLauf] = useState(false);                // „Alle zulässigen ausstellen“ läuft
+  const [lauf, setLauf] = useState(false);                // „Alle ausstellbaren ausstellen“ läuft
   // Offene Bestätigung: { art: "alle" } (Sammellauf) oder { art: "einzeln", row } —
   // auch EINE Gutschrift wird erst nach bewusster Bestätigung ausgestellt.
   const [bestaetigen, setBestaetigen] = useState(null);
@@ -103,9 +156,10 @@ export default function AdminSalesPartnerCreditNotesPage() {
   const ladeLauf = useRef(0);
   // Pre-Live-Testlauf: der Schalter erscheint nur bei aktivem Testmodus.
   const prelive = usePreliveStatus();
-  const from = returnState(useLocation());
+  const location = useLocation();
+  const from = returnState(location);
   const testmodus = preliveEnabled(prelive.status);
-  const [testlauf, setTestlauf] = useState(false);
+  const [testlauf, setTestlauf] = useState(() => testRunFromState(location.state));
   const scope = testmodus && testlauf ? "test" : null;
   const statusNeu = prelive.reload;
 
@@ -155,6 +209,16 @@ export default function AdminSalesPartnerCreditNotesPage() {
     setTestlauf(an === true);
     verwerfen();
   };
+
+  // Wechselt der Bereich ohne Schalterklick (der Testmodus meldet sich erst nach
+  // dem Laden, oder er ist inzwischen aus), passt eine schon geladene Vorschau
+  // nicht mehr zum Schalter — sie wird verworfen, nie still weiterverwendet.
+  // Während des Ausstellens hält der Lauf selbst an und lädt neu.
+  const geladenerBereich = vorschau.data ? vorschau.data.scope : scope;
+  useEffect(() => {
+    if (geladenerBereich !== scope && !inFlight.current) verwerfen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope, geladenerBereich]);
 
   const ergebnis = (id, type, text) => setErgebnisse((e) => ({ ...e, [id]: { type, text } }));
 
@@ -236,7 +300,7 @@ export default function AdminSalesPartnerCreditNotesPage() {
 
   const data = vorschau.data;
   const offen = issuanceOpen(data);
-  const zulaessig = issuableRows(data);
+  const ausstellbar = issuableRows(data);
   const beschaeftigt = lauf || aktiv !== null;
   // „issuance_disabled“ steht bereits im Hinweis zur abgeschalteten Ausstellung.
   const globale = data ? data.globalBlockers.filter((c) => !(c === "issuance_disabled" && !data.issuanceEnabled)) : [];
@@ -244,6 +308,10 @@ export default function AdminSalesPartnerCreditNotesPage() {
   const einzelZeile = bestaetigen && bestaetigen.art === "einzeln" ? bestaetigen.row : null;
   const testlaufAktiv = data ? data.scope === "test" : false;
   const einzelBetrag = einzelZeile ? issueAmountText(einzelZeile) : null;
+  const zaehlung = runCounts(data);
+  const schritt = runNextStep(data);
+  // Hat eine Zeile etwas in „Aktion“ (Knopf oder Ergebnis)? Die Karte zeigt sonst keinen leeren Block.
+  const hatAktion = (row) => row.status === "issuable" || (row.partnerUserId !== null && !!ergebnisse[row.partnerUserId]);
 
   const aktion = (row, { mitId }) => {
     const id = row.partnerUserId;
@@ -252,7 +320,7 @@ export default function AdminSalesPartnerCreditNotesPage() {
     return (
       <>
         {zeigeKnopf && (
-          <button type="button" className="btn btn-primary btn-sm" id={mitId && id !== null ? `adm-cn-issue-${id}` : undefined}
+          <button type="button" className="btn btn-outline btn-sm" id={mitId && id !== null ? `adm-cn-issue-${id}` : undefined}
             disabled={!canIssueRow(data, row) || beschaeftigt || vorschau.loading}
             aria-describedby={!offen ? "adm-cn-closed" : undefined}
             onClick={() => { setMessage(null); setBestaetigen({ art: "einzeln", row }); }}>
@@ -280,25 +348,41 @@ export default function AdminSalesPartnerCreditNotesPage() {
       </div>
     );
   } else if (!data) {
-    inhalt = <p className="adm-support-hint" id="adm-cn-start">Wählen Sie einen abgeschlossenen Monat und laden Sie die Vorschau.</p>;
+    inhalt = <p className="adm-support-hint" id="adm-cn-start">{RUN_TEXTS.startHint}</p>;
   } else {
     inhalt = (
       <>
         <div className="adm-card" id="adm-cn-summary">
-          <div className="adm-card-head">Vorschau {formatMonth(data.month)}</div>
+          <div className="adm-card-head">{RUN_TEXTS.summaryTitle} {formatMonth(data.month)}</div>
           <div className="adm-card-body">
+            {schritt && (
+              <div className={`adm-note${schritt.key === "issue" || schritt.key === "blocked" ? " adm-note--info" : ""} adm-sp-next`}
+                id="adm-cn-next-step" data-step={schritt.key}>
+                <p className="adm-sp-next-text">
+                  <span className="adm-sp-next-label">{RUN_TEXTS.nextStepLabel}</span>
+                  <span>{schritt.text}</span>
+                </p>
+              </div>
+            )}
+            <dl className="adm-kv adm-cn-counts" id="adm-cn-counts">
+              <div className="adm-kv-item" data-count="issuable"><dt>Ausstellbar</dt><dd>{formatCount(zaehlung.issuable)}</dd></div>
+              <div className="adm-kv-item" data-count="already_issued"><dt>Bereits ausgestellt</dt><dd>{formatCount(zaehlung.alreadyIssued)}</dd></div>
+              <div className="adm-kv-item" data-count="blocked"><dt>Blockiert</dt><dd>{formatCount(zaehlung.blocked)}</dd></div>
+              <div className="adm-kv-item" data-count="carried_forward"><dt>Wird vorgetragen</dt><dd>{formatCount(zaehlung.carriedForward)}</dd></div>
+              {zaehlung.unknown > 0 && (
+                <div className="adm-kv-item" data-count="unknown"><dt>{runStatusMeta(null)[1]}</dt><dd>{formatCount(zaehlung.unknown)}</dd></div>
+              )}
+            </dl>
             <dl className="adm-kv">
-              <div className="adm-kv-item"><dt>Monat</dt><dd>{formatMonth(data.month)}</dd></div>
               {data.scope === "test" && (
                 <div className="adm-kv-item"><dt>Bereich</dt><dd id="adm-cn-scope">{RUN_TEXTS.testScopeLabel}</dd></div>
               )}
               <div className="adm-kv-item"><dt>Stichtag</dt><dd>{formatTimestamp(data.cutoffAt, { withTime: true })}</dd></div>
               <div className="adm-kv-item"><dt>Ausstellung</dt><dd id="adm-cn-issuance">{data.issuanceEnabled ? "Aktiviert" : "Deaktiviert"}</dd></div>
-              <div className="adm-kv-item"><dt>Zulässig</dt><dd>{formatCount(zulaessig.length)} von {formatCount(data.partners.length)}</dd></div>
             </dl>
             {!data.issuanceEnabled && (
               <div className="adm-note adm-note--warning adm-sp-note" role="note" id="adm-cn-disabled">
-                {RUN_TEXTS.issuanceDisabled} Die Vorschau zeigt, was ausgestellt würde; ausgestellt wird nichts.
+                {RUN_TEXTS.issuanceDisabled} Die Vorschau zeigt, was ausgestellt würde; ausgestellt wird nichts. {RUN_TEXTS.configHint}
               </div>
             )}
             {globale.length > 0 && (
@@ -306,15 +390,16 @@ export default function AdminSalesPartnerCreditNotesPage() {
                 <div>
                   <p className="adm-cn-note-title">{RUN_TEXTS.globalBlocked}</p>
                   <Blocker codes={globale} />
+                  <p className="adm-cn-note-hint">{RUN_TEXTS.configHint}</p>
                 </div>
               </div>
             )}
             {!offen && <span className="sr-only" id="adm-cn-closed">Ausstellen ist derzeit nicht möglich.</span>}
             <div className="adm-cn-run-actions">
               <button type="button" className="btn btn-primary btn-sm" id="adm-cn-issue-all"
-                disabled={!offen || zulaessig.length === 0 || beschaeftigt || vorschau.loading}
+                disabled={!offen || ausstellbar.length === 0 || beschaeftigt || vorschau.loading}
                 onClick={() => { setMessage(null); setBestaetigen({ art: "alle" }); }}>
-                {lauf ? "Gutschriften werden ausgestellt…" : `Alle zulässigen ausstellen (${zulaessig.length})`}
+                {lauf ? "Gutschriften werden ausgestellt…" : issueAllLabel(ausstellbar.length, { test: testlaufAktiv })}
               </button>
               <button type="button" className="btn btn-outline btn-sm" onClick={() => laden(data.month, data.scope)}
                 disabled={beschaeftigt || vorschau.loading} id="adm-cn-reload">
@@ -331,7 +416,7 @@ export default function AdminSalesPartnerCreditNotesPage() {
             <div className="table-card adm-cn-table" id="adm-cn-table" aria-busy={vorschau.loading ? "true" : undefined}>
               <table>
                 <caption className="sr-only">
-                  Abrechnungslauf {formatMonth(data.month)}: Partner, Positionen, Netto, Steuer, Brutto, Status, Blockiergründe, Aktion und Ergebnis.
+                  Gutschriften {formatMonth(data.month)}: Partner, Positionen, Netto, Steuer, Brutto, Status, nächster Schritt, Aktion und Ergebnis.
                 </caption>
                 <thead>
                   <tr>
@@ -341,13 +426,13 @@ export default function AdminSalesPartnerCreditNotesPage() {
                     <th scope="col" className="adm-num">Steuer</th>
                     <th scope="col" className="adm-num">Brutto</th>
                     <th scope="col">Status</th>
-                    <th scope="col">Blockiergründe</th>
+                    <th scope="col">Nächster Schritt</th>
                     <th scope="col" className="adm-col-action">Aktion</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.partners.map((row, i) => (
-                    <tr key={row.partnerUserId ?? `p-${i}`} data-partner-id={row.partnerUserId ?? undefined}>
+                    <tr key={row.partnerUserId ?? `p-${i}`} data-partner-id={row.partnerUserId ?? undefined} data-status={row.status ?? undefined}>
                       <td><PartnerCell row={row} from={from} /></td>
                       <td className="adm-num">{formatCount(row.entryCount)}</td>
                       <td className="adm-num">{formatCents(row.netCents)}</td>
@@ -357,7 +442,7 @@ export default function AdminSalesPartnerCreditNotesPage() {
                         <Badge meta={runStatusMeta(row.status)} />
                         {row.existingCreditNote?.number && <span className="adm-sp-sub adm-sp-block">{row.existingCreditNote.number}</span>}
                       </td>
-                      <td><Blocker codes={row.blockers} /></td>
+                      <td><NextStep row={row} from={from} mitId /></td>
                       <td className="adm-col-action">{aktion(row, { mitId: true })}</td>
                     </tr>
                   ))}
@@ -373,14 +458,15 @@ export default function AdminSalesPartnerCreditNotesPage() {
                     <Badge meta={runStatusMeta(row.status)} />
                   </div>
                   <dl className="adm-scard-kv">
-                    <div><dt>Positionen</dt><dd>{formatCount(row.entryCount)}</dd></div>
+                    <div><dt>Brutto</dt><dd>{formatCents(row.grossCents)}</dd></div>
                     <div><dt>Netto</dt><dd>{formatCents(row.netCents)}</dd></div>
                     <div><dt>Steuer</dt><dd>{formatCents(row.taxCents)}</dd></div>
-                    <div><dt>Brutto</dt><dd>{formatCents(row.grossCents)}</dd></div>
+                    <div><dt>Positionen</dt><dd>{formatCount(row.entryCount)}</dd></div>
                     {row.existingCreditNote?.number && <div><dt>Gutschrift</dt><dd>{row.existingCreditNote.number}</dd></div>}
-                    <div><dt>Blockiergründe</dt><dd><Blocker codes={row.blockers} /></dd></div>
+                    {/* Ausstellbar: der nächste Schritt ist der Knopf darunter. */}
+                    {row.status !== "issuable" && <div><dt>Nächster Schritt</dt><dd><NextStep row={row} from={from} mitId={false} /></dd></div>}
                   </dl>
-                  <div className="adm-scard-actions">{aktion(row, { mitId: false })}</div>
+                  {hatAktion(row) && <div className="adm-scard-actions">{aktion(row, { mitId: false })}</div>}
                 </li>
               ))}
             </ul>
@@ -414,7 +500,8 @@ export default function AdminSalesPartnerCreditNotesPage() {
           </div>
         )}
         <div className="adm-filter-actions">
-          <button type="submit" className="btn btn-primary btn-sm" id="adm-cn-preview"
+          {/* Eine Hauptaktion je Zustand: vor der Vorschau das Laden, danach das Ausstellen. */}
+          <button type="submit" className={`btn ${data ? "btn-outline" : "btn-primary"} btn-sm`} id="adm-cn-preview"
             disabled={!monat || beschaeftigt || vorschau.loading}>
             Vorschau laden
           </button>
@@ -440,15 +527,15 @@ export default function AdminSalesPartnerCreditNotesPage() {
         <ConfirmDialog
           title={einzelZeile
             ? (testlaufAktiv ? RUN_TEXTS.singleTitleTest : RUN_TEXTS.singleTitle)
-            : (testlaufAktiv ? "Alle zulässigen Testgutschriften ausstellen" : "Alle zulässigen Gutschriften ausstellen")}
+            : (testlaufAktiv ? "Alle ausstellbaren Testgutschriften ausstellen" : "Alle ausstellbaren Gutschriften ausstellen")}
           subline={einzelZeile
             ? `${previewPartnerName(einzelZeile)} · ${formatMonth(data.month)}`
-            : `${formatMonth(data.month)} · ${zulaessig.length} Vertriebspartner`}
+            : `${formatMonth(data.month)} · ${ausstellbar.length} Vertriebspartner`}
           text={einzelZeile
             ? `${einzelBetrag ? `Betrag: ${einzelBetrag}. ` : ""}${testlaufAktiv ? `${RUN_TEXTS.testScopeNote}.` : RUN_TEXTS.singleText}`
             : (testlaufAktiv
-              ? `Für jeden zulässigen Testpartner wird nacheinander eine Testgutschrift ausgestellt. ${RUN_TEXTS.testScopeNote}.`
-              : "Für jeden zulässigen Vertriebspartner wird nacheinander eine Gutschrift ausgestellt. Ausgestellte Gutschriften lassen sich nur durch ein Storno korrigieren.")}
+              ? `Für jeden Testpartner mit ausstellbarer Gutschrift wird nacheinander eine Testgutschrift ausgestellt. ${RUN_TEXTS.testScopeNote}.`
+              : "Für jeden Vertriebspartner mit ausstellbarer Gutschrift wird nacheinander eine Gutschrift ausgestellt. Ausgestellte Gutschriften lassen sich nur durch ein Storno korrigieren.")}
           confirmLabel={einzelZeile ? (testlaufAktiv ? RUN_TEXTS.singleConfirmTest : RUN_TEXTS.singleConfirm) : "Ausstellen"}
           irreversible
           confirmId={einzelZeile ? "adm-cn-issue-confirm" : "adm-cn-issue-all-confirm"}

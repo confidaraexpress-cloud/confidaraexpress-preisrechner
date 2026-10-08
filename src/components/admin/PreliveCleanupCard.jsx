@@ -8,9 +8,13 @@ import {
   buildCleanupBody,
   cleanupDeletable,
   cleanupOutcome,
+  cleanupTableLabel,
   normalizeCleanupDryRun,
   preliveErrorOutcome,
 } from "../../utils/salesPartnerPrelive.mjs";
+
+// „Testsendungen 12" — der lesbare Name zuerst, der technische daneben (nachvollziehbar).
+const zaehlText = (c) => `${cleanupTableLabel(c.key) || c.key} ${formatCount(c.count)}`;
 
 function Zaehlung({ rows, id, caption }) {
   return (
@@ -19,17 +23,23 @@ function Zaehlung({ rows, id, caption }) {
         <caption className="sr-only">{caption}</caption>
         <thead>
           <tr>
-            <th scope="col">Tabelle</th>
-            <th scope="col" className="adm-num">Datensätze</th>
+            <th scope="col">Datensätze</th>
+            <th scope="col" className="adm-num">Anzahl</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
-            <tr key={r.key} data-table={r.key}>
-              <td><span className="adm-mono">{r.key}</span></td>
-              <td className="adm-num">{formatCount(r.count)}</td>
-            </tr>
-          ))}
+          {rows.map((r) => {
+            const label = cleanupTableLabel(r.key);
+            return (
+              <tr key={r.key} data-table={r.key}>
+                <td>
+                  {label && <span className="adm-pl-table-label">{label}</span>}
+                  <span className={`adm-mono${label ? " adm-sp-sub adm-pl-table-key" : ""}`}>{r.key}</span>
+                </td>
+                <td className="adm-num">{formatCount(r.count)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -57,7 +67,9 @@ function Blockaden({ blockers, id }) {
    Token dieses Probelaufs. Mit Blockaden, ohne Token oder ohne zu löschende
    Daten bleibt „Löschen" gesperrt. Hat sich der Stand inzwischen geändert
    (409 CLEANUP_STALE) oder ist er blockiert (409 CLEANUP_BLOCKED), wird der
-   Probelauf neu geladen; ein offener Ausgang behauptet nichts. */
+   Probelauf neu geladen; ein offener Ausgang behauptet nichts. Die Zählung
+   nennt die Datensätze verständlich, der technische Name bleibt daneben
+   (UX-Paket 5); Blockaden bleiben technisch, ein Mensch muss sie ansehen. */
 export function PreliveCleanupCard({ onChanged, onDisabled }) {
   const [probe, setProbe] = useState({ loading: false, error: "", data: null });
   const [bestaetigen, setBestaetigen] = useState(false);
@@ -177,7 +189,7 @@ export function PreliveCleanupCard({ onChanged, onDisabled }) {
         <ConfirmDialog
           title={PRELIVE_TEXTS.cleanupConfirmTitle}
           text={PRELIVE_TEXTS.cleanupConfirmText}
-          note={`Laut Probelauf: ${dry.counts.map((c) => `${c.key} ${formatCount(c.count)}`).join(", ") || "keine Angaben"}.`}
+          note={`Laut Probelauf: ${dry.counts.map(zaehlText).join(", ") || "keine Angaben"}.`}
           confirmLabel="Endgültig löschen"
           danger
           busy={busy}

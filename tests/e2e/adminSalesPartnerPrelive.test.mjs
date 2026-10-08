@@ -5,7 +5,9 @@
 // keine Löschung echt ausgelöst. Geprüft wird:
 //   1. Eintrag in der Partnerverwaltung nur bei `enabled: true`; ohne Modus
 //      zeigt die Seite nur den Hinweis und ruft keinen Testendpunkt auf.
-//   2. Seite: Warnhinweis, Stand und Zählung.
+//   2. Seite: Warnhinweis mit den Zusagen des Testbetriebs, Stand und Zählung
+//      (technische Angaben eingeklappt), Testablauf in neun Schritten
+//      (UX-Paket 5) mit dem öffentlichen Registrierungsweg als Hauptweg.
 //   3. Testpartner anlegen (Vertragsbody, Link zur normalen Freigabe) und
 //      Passwort-Link (einmal sichtbar, Kopierknopf, Hinweis, nie im Speicher).
 //   4. Testkunde anlegen: Zuordnung über Testpartner mit zurückliegendem Datum,
@@ -19,6 +21,14 @@
 //      Skripte der Mail laufen nicht.
 //   9. Bereinigung: Probelauf, Blockaden sperren, Bestätigungsdialog, Token im
 //      Body; ein veralteter Stand lädt den Probelauf neu.
+//  10. Registrierungsweg (UX-Paket 5): ist die öffentliche Registrierung
+//      produktiv oder unbekannt, zeigt der erste Schritt keinen Link, sondern
+//      warnt bzw. sagt es — der Weg kommt allein aus der Konfiguration.
+//  11. „Testgutschrift prüfen“ führt zu den Gutschriften mit vorbelegtem
+//      Pre-Live-Testlauf (scope=test an der Vorschau).
+//
+// Formulare und Zusatzwerkzeuge sind eingeklappt (UX-Paket 5): die Fälle öffnen
+// sie wie ein Admin — über ihren Kopf oder über den Schritt des Testablaufs.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -53,15 +63,27 @@ const SENDUNG = { id: 9001, reference: "CE-TEST-9001", customerUserId: 77, custo
 
 let server, browser;
 
+// Öffentliche Konfiguration des Servers (UX-Paket 5): sie nennt den offenen
+// Registrierungsweg. Standard: produktiv aus, Pre-Live-Testweg offen.
+const KONFIG = {
+  prelive_test: { registrationEnabled: false, registrationMode: "prelive_test", referralsEnabled: false,
+    referralRetentionDays: 30, agreementVersion: null, agreement: null },
+  production: { registrationEnabled: true, registrationMode: "production", referralsEnabled: true, referralRetentionDays: 30,
+    agreementVersion: "1.0", agreement: { version: "1.0", title: "Vertriebspartnervereinbarung", effectiveFrom: "2026-10-01",
+      documentPath: "/api/legal/sales_partner_agreement/1.0/document" } },
+};
+
 /** Zustandsbehafteter Backend-Mock. `antworten` überschreibt einzelne
- *  Endpunkte: Schlüssel → [status, body] oder Liste davon (der letzte bleibt). */
-async function setup(page, { enabled = true, antworten = {} } = {}) {
+ *  Endpunkte: Schlüssel → [status, body] oder Liste davon (der letzte bleibt).
+ *  `registrierung`: "prelive_test" | "production" | "fehler" (500). */
+async function setup(page, { enabled = true, antworten = {}, registrierung = "prelive_test" } = {}) {
   const state = {
     status: { enabled, mailAllowlistConfigured: false, backdatingGlobalAllowed: true,
       counts: enabled ? { partners: 1, customers: 1, shipments: 1, ledgerEntries: 0, creditNotes: 0 } : null },
     partners: [structuredClone(PIA)], customers: [structuredClone(KUNDE)], shipments: [structuredClone(SENDUNG)],
     posts: { partners: [], customers: [], shipments: [], paid: [], dispatch: [], scenarios: [], commission: 0, cleanup: [], pwlink: [] },
     statusCalls: 0, preliveCalls: [], mailQueries: [], shipmentQueries: [], cleanupGets: 0, other: [],
+    configCalls: 0, previewQueries: [],
   };
   const warteschlange = Object.fromEntries(Object.entries(antworten).map(([k, v]) => [k, Array.isArray(v[0]) ? [...v] : [v]]));
   // Ein Eintrag mit Body null heißt: an dieser Stelle die Standardantwort des Mocks.
@@ -80,6 +102,15 @@ async function setup(page, { enabled = true, antworten = {} } = {}) {
     if (p.endsWith("/kundenbereich")) return json({ user: ADMIN });
     if (p.endsWith("/admin/sales-partners") && !post) return json({ partners: [], total: 0, limit: 25, offset: 0 });
     if (p.endsWith("/admin/sales-partner-level-rules")) return json({ current: null, history: [], startDefaults: START });
+    if (p.endsWith("/api/sales-partner/public-config")) {
+      state.configCalls += 1;
+      return registrierung === "fehler" ? json({ error: "Fehler" }, 500) : json(KONFIG[registrierung]);
+    }
+    // Gutschriften (Fall 11): die Vorschau des Testlaufs.
+    if (p.endsWith("/admin/sales-partner-credit-notes/preview")) {
+      state.previewQueries.push(url.search);
+      return json({ month: "2026-09", cutoffAt: "2026-09-30T22:00:00.000Z", issuanceEnabled: true, globalBlockers: [], partners: [] });
+    }
 
     if (p.includes("/admin/sales-partner-prelive/")) {
       const teil = p.split("/admin/sales-partner-prelive/")[1];
@@ -197,6 +228,13 @@ async function zurSeite(page) {
   await page.locator("#adm-pl-warning").waitFor({ state: "visible" });
 }
 
+// Einen eingeklappten Bereich über seinen Kopf öffnen, wie ein Admin.
+async function oeffnen(page, id) {
+  const bereich = page.locator(`#${id}`);
+  if (!(await bereich.evaluate((d) => d.open))) await page.locator(`#${id} > summary`).click();
+  await page.waitForFunction((x) => document.getElementById(x)?.open === true, id);
+}
+
 test.before(async () => {
   server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { detached: true, stdio: "ignore" });
   const deadline = Date.now() + 90000;
@@ -228,6 +266,7 @@ test("1 — Eintrag nur bei enabled:true; ohne Modus nur der Hinweis, kein Teste
   assert.match(await aus.locator("#adm-pl-disabled").innerText(), /nicht aktiv/);
   assert.equal(await aus.locator('[id^="adm-pl-"]:not(#adm-pl-disabled):not(#adm-pl-refresh)').count(), 0, "keine Testflächen ohne Modus");
   assert.deepEqual(sAus.preliveCalls.filter((c) => c !== "GET status"), [], "nur der Stand wird abgefragt");
+  assert.equal(sAus.configCalls, 0, "ohne Modus auch kein Blick auf den Registrierungsweg");
   await aus.close();
 
   const an = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
@@ -240,20 +279,54 @@ test("1 — Eintrag nur bei enabled:true; ohne Modus nur der Hinweis, kein Teste
   await an.close();
 });
 
-test("2 — Seite: Warnhinweis, Stand und Zählung", async () => {
+test("2 — Seite: Warnhinweis, Stand und Zählung; Testablauf mit dem öffentlichen Weg als Hauptweg", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const state = await setup(page);
   await zurSeite(page);
-  assert.equal(await page.locator("#adm-pl-warning").innerText(),
+  // Bewusste Ankeränderung (UX-Paket 5): der Hinweis nennt zusätzlich, was im Testbetrieb nie entsteht.
+  assert.equal(await page.locator("#adm-pl-warning-title").innerText(),
     "Pre-Live-Testmodus aktiv – nur für interne Tests. Testdaten sind gekennzeichnet und werden vor dem Livegang bereinigt.");
+  assert.equal(await page.locator("#adm-pl-safety").innerText(),
+    "Es entsteht keine echte Buchung, Zahlung, Auszahlung oder steuerlich gültige Gutschrift. E-Mails an Testkonten werden zurückgehalten – außer an Adressen der internen Ausnahmeliste.");
+  assert.match(await page.locator("#adm-pl-status-card").innerText(), /Testsendungen\s*1/);
+  // Technische Angaben stehen eingeklappt in der Karte.
+  assert.equal(await page.locator("#adm-pl-tech").evaluate((d) => d.open), false);
+  await oeffnen(page, "adm-pl-tech");
   const stand = await page.locator("#adm-pl-status-card").innerText();
   assert.match(stand, /Aktiv/);
   assert.match(stand, /Nicht konfiguriert/);
   assert.match(stand, /Rückdatierung \(global\)\s*Erlaubt/);
-  assert.match(stand, /Testsendungen\s*1/);
   await page.locator("#adm-pl-partners").waitFor({ state: "visible" });
   assert.match(await page.locator("#adm-pl-partners").innerText(), /Test Vertrieb A/);
   assert.match(await page.locator("#adm-pl-customers").innerText(), /Testkunde GmbH[\s\S]*Test Vertrieb A/);
+  // Bewusste Ankeränderung (UX-Paket 5): ein Testkunde meldet sich nie an — keine tote Aktion „Passwort-Link“.
+  assert.equal(await page.locator("#adm-pl-customers button").count(), 0);
+  assert.match(await page.locator("#adm-pl-customers-note").innerText(), /melden sich nicht an/);
+
+  // Testablauf: neun Schritte in der Reihenfolge des Auftrags.
+  const schritte = await page.locator("#adm-pl-flow .adm-pl-step-title").allInnerTexts();
+  assert.deepEqual(schritte, ["Partner öffentlich registrieren", "Im Admin freigeben", "Als Partner anmelden", "Kundenlink benutzen",
+    "Testkunden zuordnen", "Testsendung und Versandnachweis erzeugen", "Provisionen prüfen", "Testgutschrift prüfen",
+    "Testdaten kontrolliert bereinigen"]);
+  // Hauptweg: der Registrierungslink — nur, weil der Server den Testweg nennt.
+  await page.locator('#adm-pl-register-state[data-mode="prelive_test"]').waitFor({ state: "visible" });
+  assert.equal(state.configCalls, 1);
+  assert.ok((await page.locator("#adm-pl-flow-register").innerText()).includes(`${BASE}/partner-registrieren`));
+  assert.equal(await page.locator('#adm-pl-flow-register a[href*="partner-registrieren"]').count(), 0,
+    "kein klickbarer Link im Adminfenster — er gehört in ein privates Fenster");
+  assert.match(await page.locator("#adm-pl-flow-customerLink").innerText(), /ordnet einem Testpartner keinen Kunden zu/);
+  assert.equal(await page.locator("#adm-pl-pending-none").innerText(), "Derzeit wartet kein Testantrag auf die Freigabe.");
+  assert.equal(await page.getAttribute("#adm-pl-commission-partners a", "href"), "/admin/partners/41");
+  // Formulare und Zusatzwerkzeuge sind eingeklappt.
+  for (const id of ["adm-pl-customer-fold", "adm-pl-partner-fold", "adm-pl-shipment-fold", "adm-pl-scenarios-card", "adm-pl-mail-card"]) {
+    assert.equal(await page.locator(`#${id}`).evaluate((d) => d.open), false, `${id} ist offen`);
+  }
+  // Jede Id genau einmal (Sprungziele und Beschriftungen hängen daran).
+  const doppelt = await page.evaluate(() => {
+    const ids = [...document.querySelectorAll("[id]")].map((e) => e.id);
+    return ids.filter((x, i) => ids.indexOf(x) !== i);
+  });
+  assert.deepEqual(doppelt, [], `doppelte Ids: ${doppelt.join(", ")}`);
   assert.deepEqual(state.other, [], `unerwartete Aufrufe: ${state.other.join(", ")}`);
   await page.close();
 });
@@ -262,6 +335,9 @@ test("3 — Testpartner anlegen (Link zur normalen Freigabe) und Passwort-Link e
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const state = await setup(page);
   await zurSeite(page);
+  // Zusätzliches Testwerkzeug, eingeklappt (UX-Paket 5).
+  await oeffnen(page, "adm-pl-partner-fold");
+  assert.match(await page.locator("#adm-pl-partner-tool-note").innerText(), /Ersetzt nicht die öffentliche Registrierung/);
   // Pflichtfelder fehlen → kein Request.
   await page.locator("#adm-pl-partner-submit").click();
   await page.locator("#adm-pl-partner-form .field-error").first().waitFor({ state: "visible" });
@@ -276,6 +352,10 @@ test("3 — Testpartner anlegen (Link zur normalen Freigabe) und Passwort-Link e
   assert.match(await page.locator("#adm-pl-partner-message").innerText(), /Testpartner „Paul Test“ wurde angelegt \(In Prüfung\)/);
   assert.equal(await page.getAttribute("#adm-pl-partner-created-link", "href"), "/admin/partners/42");
   await page.waitForFunction(() => document.querySelector("#adm-pl-partners")?.innerText.includes("Paul Test"));
+  // Der neue Antrag erscheint im Schritt „Im Admin freigeben“ — mit Weg zur normalen Freigabe.
+  await page.locator("#adm-pl-pending a").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#adm-pl-pending a").innerText(), "Paul Test");
+  assert.equal(await page.getAttribute("#adm-pl-pending a", "href"), "/admin/partners/42");
 
   await page.locator("#adm-pl-pwlink-41").click();
   await page.locator("#adm-pl-pwlink-box").waitFor({ state: "visible" });
@@ -304,6 +384,11 @@ test("4 — Testkunde: Zuordnung mit zurückliegendem Datum, über Code; unbekan
     [404, { error: "Code unbekannt", code: "REFERRAL_CODE_UNKNOWN" }],
   ] } });
   await zurSeite(page);
+  // Der Schritt „Kundenlink benutzen“ öffnet das eingeklappte Formular und springt hin.
+  await page.locator("#adm-pl-step-customer").click();
+  await page.waitForFunction(() => document.getElementById("adm-pl-customer-fold")?.open === true);
+  await page.waitForFunction(() => document.activeElement === document.querySelector("#adm-pl-customer-fold > summary"));
+  assert.match(await page.locator("#adm-pl-customer-code-note").innerText(), /wie über seinen Kundenlink/);
   await page.fill("#adm-pl-customer-company", "Testkunde Zwei GmbH");
   await page.fill("#adm-pl-customer-email", "zwei@test.example");
   await page.locator("#adm-pl-customer-assign-partner").check();
@@ -339,6 +424,9 @@ test("5 — Testsendung: Euro → Cent, Basisvorschau; bezahlt markieren; Versan
   await page.locator("#adm-pl-shipments").waitFor({ state: "visible" });
   assert.match(await page.locator('#adm-pl-shipments tr[data-shipment-id="9001"]').innerText(), /CE-TEST-9001[\s\S]*6,60\s€[\s\S]*Nachweis fehlt[\s\S]*Offen/);
 
+  // Der Schritt „Testsendung und Versandnachweis erzeugen“ öffnet das Formular.
+  await page.locator("#adm-pl-step-shipment").click();
+  await page.waitForFunction(() => document.getElementById("adm-pl-shipment-fold")?.open === true);
   await page.selectOption("#adm-pl-shipment-customer", "77");
   await page.fill("#adm-pl-shipment-date", "2026-09-20");
   await page.fill("#adm-pl-shipment-packages", "4");
@@ -380,6 +468,7 @@ test("6 — Schnellszenarien: Vorgaben mit Lage zur Schwelle, Vertragsbody, Erge
     [201, null],
   ] } });
   await zurSeite(page);
+  await oeffnen(page, "adm-pl-scenarios-card");
   await page.locator("#adm-pl-presets").waitFor({ state: "visible" });
   await page.selectOption("#adm-pl-levels-partner", "41");
   await page.selectOption("#adm-pl-levels-month", "2026-09");
@@ -412,14 +501,15 @@ test("6 — Schnellszenarien: Vorgaben mit Lage zur Schwelle, Vertragsbody, Erge
   await page.close();
 });
 
-test("7 — Provisionslauf: Zahlen, deutsche Gründe; „gerade aktiv“", async () => {
+test("7 — Provisionen berechnen: Zahlen, deutsche Gründe; „gerade aktiv“", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const state = await setup(page, { antworten: { commission: [
     [200, { stats: { skippedTick: false, assessments: 2, decided: 5, accrued: 4, skipped: { assessment_not_due: 1, voellig_neu: 2 }, failed: 0 } }],
     [200, { stats: { skippedTick: true, assessments: 0, decided: 0, accrued: 0, skipped: {}, failed: 0 } }],
   ] } });
   await zurSeite(page);
-  assert.equal(await page.locator("#adm-pl-commission-run").innerText(), "Provisionslauf jetzt (nur Testdaten)");
+  // Bewusste Ankeränderung (UX-Paket 5): „Lauf“ heißt im Programm schon das Ausstellen der Gutschriften.
+  assert.equal(await page.locator("#adm-pl-commission-run").innerText(), "Provisionen jetzt berechnen (nur Testdaten)");
   await page.locator("#adm-pl-commission-run").click();
   await page.locator("#adm-pl-commission-result").waitFor({ state: "visible" });
   const text = await page.locator("#adm-pl-commission-result").innerText();
@@ -439,6 +529,7 @@ test("8 — E-Mail-Vorschau nur im iframe mit leerem sandbox; Skripte der Mail l
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const state = await setup(page);
   await zurSeite(page);
+  await oeffnen(page, "adm-pl-mail-card");
   assert.equal(await page.locator("#adm-pl-mail-note").innerText(), "Vorschau – es wird keine E-Mail versendet.");
   const titel = await page.title();
   await page.selectOption("#adm-pl-mail-kind", "partner_approved");
@@ -496,6 +587,9 @@ test("9 — Bereinigung: Probelauf, Blockade sperrt, Bestätigung, Token; veralt
   await page.locator("#adm-pl-cleanup-check").click();
   await page.waitForFunction(() => !document.querySelector("#adm-pl-cleanup-blockers") && !!document.querySelector("#adm-pl-cleanup-counts"));
   assert.match(await page.locator("#adm-pl-cleanup-counts").innerText(), /shipments\s*12/);
+  // UX-Paket 5: der verständliche Name steht vor dem technischen.
+  assert.match(await page.locator('#adm-pl-cleanup-counts tr[data-table="shipments"]').innerText(), /Testsendungen\s*shipments\s*12/);
+  assert.match(await page.locator('#adm-pl-cleanup-counts tr[data-table="users"]').innerText(), /Testkonten\s*users\s*6/);
   await page.locator("#adm-pl-cleanup-delete").click();
   await page.locator('[role="dialog"]').waitFor({ state: "visible" });
   assert.match(await page.locator('[role="dialog"]').innerText(), /Alle Pre-Live-Testdaten endgültig löschen\?/);
@@ -513,5 +607,55 @@ test("9 — Bereinigung: Probelauf, Blockade sperrt, Bestätigung, Token; veralt
   assert.match(await page.locator("#adm-pl-cleanup-deleted").innerText(), /shipments\s*13/);
   assert.equal(await page.locator("#adm-pl-cleanup-delete").isDisabled(), true, "ein neuer Löschvorgang braucht einen neuen Probelauf");
   await page.waitForFunction(() => document.querySelector("#adm-pl-status-card")?.innerText.match(/Testsendungen\s*0/));
+  await page.close();
+});
+
+test("10 — Registrierungsweg: produktiv heißt Warnung statt Link, unbekannt heißt keine Aussage", async () => {
+  // Produktiv: ein Antrag über die öffentliche Registrierung wäre echt — kein Link, sondern die Warnung.
+  const produktiv = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const sP = await setup(produktiv, { registrierung: "production" });
+  await zurSeite(produktiv);
+  await produktiv.locator('#adm-pl-register-state[data-mode="production"]').waitFor({ state: "visible" });
+  assert.match(await produktiv.locator("#adm-pl-register-state").innerText(), /echt, kein Test/);
+  assert.equal(await produktiv.locator("#adm-pl-flow-register .ce-copynum").count(), 0, "kein Registrierungslink");
+  assert.ok(!(await produktiv.locator("#adm-pl-flow").innerText()).includes("/partner-registrieren"));
+  // Der Ausweg ist das zusätzliche Werkzeug: der Schritt öffnet „Testpartner anlegen“.
+  await produktiv.locator("#adm-pl-step-partner-tool").click();
+  await produktiv.waitForFunction(() => document.getElementById("adm-pl-partner-fold")?.open === true);
+  assert.equal(sP.configCalls, 1);
+  assert.deepEqual(sP.other, [], `unerwartete Aufrufe: ${sP.other.join(", ")}`);
+  await produktiv.close();
+
+  // Konfiguration nicht lesbar: fail-closed — keine Zusage, kein Link.
+  const unklar = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await setup(unklar, { registrierung: "fehler" });
+  await zurSeite(unklar);
+  await unklar.locator('#adm-pl-register-state[data-mode="unknown"]').waitFor({ state: "visible" });
+  assert.match(await unklar.locator("#adm-pl-register-state").innerText(), /ließ sich nicht prüfen/);
+  assert.equal(await unklar.locator("#adm-pl-flow-register .ce-copynum").count(), 0);
+  await unklar.close();
+});
+
+test("11 — „Testgutschrift prüfen“ öffnet die Gutschriften mit vorbelegtem Pre-Live-Testlauf", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const state = await setup(page);
+  await zurSeite(page);
+  assert.equal(await page.getAttribute("#adm-pl-step-credit-notes", "href"), "/admin/partners/credit-notes");
+  await page.locator("#adm-pl-step-credit-notes").click();
+  await page.waitForURL(`${BASE}/admin/partners/credit-notes`);
+  await page.locator("#adm-cn-scope-test").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#adm-cn-scope-test").isChecked(), true, "der Testlauf ist vorbelegt");
+  await page.locator("#adm-cn-test-note").waitFor({ state: "visible" });
+  await page.locator("#adm-cn-preview").click();
+  await page.locator("#adm-cn-summary").waitFor({ state: "visible" });
+  assert.deepEqual(state.previewQueries, ["?month=2026-09&scope=test"]);
+  assert.equal(await page.locator("#adm-cn-scope").innerText(), "Pre-Live-Testlauf");
+  // Über die Teilnavigation (ohne Sprungziel) ist nichts vorbelegt.
+  await page.locator("#adm-sp-list-link").click();
+  await page.waitForURL(`${BASE}/admin/partners`);
+  await page.locator("#adm-sp-credit-notes-link").click();
+  await page.waitForURL(`${BASE}/admin/partners/credit-notes`);
+  await page.locator("#adm-cn-scope-test").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#adm-cn-scope-test").isChecked(), false);
   await page.close();
 });

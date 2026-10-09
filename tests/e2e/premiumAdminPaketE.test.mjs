@@ -58,6 +58,8 @@ async function setupRoutes(page, { zaehler = true } = {}) {
       json(zaehler ? { [schluessel]: zeilen, pagination: { total } } : { [schluessel]: zeilen });
 
     if (p.endsWith("/kundenbereich")) return json({ user: ADMIN });
+    // Kennzahl „Kunden“: eigener Serverzähler (nur echte Kundenkonten); ohne Zähler kein total.
+    if (p.endsWith("/admin/metrics/customer-accounts")) return json(zaehler ? { total: 3 } : {});
     if (p.endsWith("/admin/users")) return seite("users", USERS, 3);
     if (/\/admin\/users\/\d+\/price-markup$/.test(p)) return json({ userId: 10, priceMarkupPercent: 12.5, confirmed: true });
     if (/\/admin\/users\/\d+$/.test(p)) return json({ user: USERS[0], summary: {} });

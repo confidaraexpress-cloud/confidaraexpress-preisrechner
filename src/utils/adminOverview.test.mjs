@@ -7,6 +7,7 @@
 //   node --test src/utils/adminOverview.test.mjs   (bzw. `npm test`)
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import {
   ADMIN_METRICS,
   adminMetricView,
@@ -14,6 +15,7 @@ import {
   allMetricsUnavailable,
   metricsFailureKind,
   ADMIN_TOTAL_UNAVAILABLE,
+  selectListTotal,
 } from "./adminOverview.mjs";
 
 const metric = (key) => ADMIN_METRICS.find((m) => m.key === key);
@@ -25,6 +27,23 @@ const metric = (key) => ADMIN_METRICS.find((m) => m.key === key);
 // nicht erneut durch Copy/Paste zwischen den Einträgen entstehen.
 test("customers: kein Statusfilter (GET /admin/users kennt keinen)", () => {
   assert.deepEqual(metric("customers").params, {});
+});
+
+// Betreiberentscheidung 2026-10-09: „Kunden“ zählt nur echte Kundenkonten — über einen EIGENEN
+// Serverzähler, nicht über das total der Kundenliste (das enthält Admin- und Altkonten).
+test("customers: eigener Serverzähler GET /admin/metrics/customer-accounts, ehrliche Beschriftung", () => {
+  const lies = (rel) => fs.readFileSync(new URL(rel, import.meta.url), "utf8");
+  const seite = lies("../pages/admin/AdminOverviewPage.jsx");
+  assert.match(seite, /customers: \(\) => getAdminCustomerAccountCount\(\),/);
+  assert.doesNotMatch(seite, /listAdminUsers/, "die Kennzahl liest wieder das total der Kundenliste");
+  assert.match(lies("../api/adminApi.js"),
+    /export function getAdminCustomerAccountCount\(\) \{\n  return apiFetch\("\/admin\/metrics\/customer-accounts", \{ auth: true \}\);/);
+  assert.equal(metric("customers").label, "Kunden");
+  assert.equal(metric("customers").hint, "Echte Kundenkonten, jeder Status");
+  // Die Antwort { total } liest derselbe Selektor wie die Listenzähler.
+  assert.equal(selectListTotal({ total: 9 }), 9);
+  assert.equal(selectListTotal({ total: 0 }), 0);
+  assert.equal(selectListTotal({}), null);
 });
 
 test("invoicesOpen: status=unpaid, nicht „open“ (Rechnungen kennen „open“ nicht als Statuswert)", () => {

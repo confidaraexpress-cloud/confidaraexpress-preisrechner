@@ -195,6 +195,13 @@ export function listAdminUsers(params = {}) {
   return apiFetch(`/admin/users${buildQuery(query, USER_PARAMS)}`, { auth: true });
 }
 
+// GET /admin/metrics/customer-accounts — Kennzahl „Kunden" der Adminübersicht (Betreiberentscheidung
+// 2026-10-09): `{ total }` = echte Kundenkonten (role 'customer', ohne Pre-Live-Testkonten, jeder Status).
+// Ein eigener Zähler: das total von GET /admin/users enthält bewusst auch Admin- und Altkonten.
+export function getAdminCustomerAccountCount() {
+  return apiFetch("/admin/metrics/customer-accounts", { auth: true });
+}
+
 // Über die normale Statusroute setzbare Werte. „anonymized" ist bewusst NICHT
 // dabei — Anonymisierung läuft über eine eigene, separat abzusichernde Aktion.
 const SETTABLE_USER_STATUS = ["pending", "approved", "blocked"];

@@ -25,7 +25,8 @@
 //     werfen, sondern eine falsche (zu hohe) Zahl anzeigen — deshalb prüft
 //     dieser Test den KONKRETEN Wert, nicht nur den Response-Status.
 //   • GET /admin/support-requests: status=open ist der echte Initialstatus.
-//   • GET /admin/users: kennt keinen Statusfilter.
+//   • „Kunden“: eigener Zähler GET /admin/metrics/customer-accounts (nur echte
+//     Kundenkonten); das total von GET /admin/users ist bewusst eine andere Zahl.
 //
 // Alle Backendantworten sind gemockt; es wird KEIN echter Server verändert.
 import { test } from "node:test";
@@ -52,7 +53,7 @@ const CANCELLATION_VALID_STATUSES = new Set(["open", "pending", "in_review", "ac
 // Feste, voneinander verschiedene Zähler je Filter — so beweist ein Test, dass
 // eine Kennzahl tatsächlich den zu IHREM Filter gehörenden Wert zeigt und
 // nicht zufällig einen benachbarten (z. B. den ungefilterten Rechnungsbestand).
-const TOTALS = { users: 11, invoicesUnpaid: 6, invoicesOverdue: 2, invoicesUnfiltered: 19,
+const TOTALS = { users: 11, customerAccounts: 9, invoicesUnpaid: 6, invoicesOverdue: 2, invoicesUnfiltered: 19,
   cancellationsPending: 4, cancellationsOpen: 7, support: 5,
   // UX-Paket 2: offene Partneranträge und die Versandnachweis-Queue; der
   // ungefilterte Partnerbestand ist bewusst eine andere Zahl.
@@ -66,7 +67,7 @@ async function setupRoutes(page, initial = {}) {
   const state = {
     cancellationsStatus: initial.cancellationsStatus ?? 200,
     invoicesStatus: initial.invoicesStatus ?? 200,
-    calls: { users: [], invoices: [], cancellations: [], support: [], partners: [], evidence: [] },
+    calls: { users: [], customerAccounts: [], invoices: [], cancellations: [], support: [], partners: [], evidence: [] },
   };
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const url = new URL(route.request().url());
@@ -75,6 +76,11 @@ async function setupRoutes(page, initial = {}) {
       route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
 
     if (p.endsWith("/kundenbereich")) return json({ user: ADMIN });
+
+    if (p.endsWith("/admin/metrics/customer-accounts")) {
+      state.calls.customerAccounts.push(url.search);
+      return json({ total: TOTALS.customerAccounts });
+    }
 
     if (p.endsWith("/admin/users")) {
       state.calls.users.push(url.search);
@@ -195,7 +201,11 @@ test("alle fünf Requests treffen den realen Vertrag; die Werte stammen aus der 
   const werte = await fuenfWerte(page);
   // Reihenfolge laut ADMIN_METRICS: Kunden, offene Rechnungen, überfällige
   // Rechnungen, Stornierungen, Support.
-  assert.deepEqual(werte, ["11", "6", "2", "7", "5"]);
+  assert.deepEqual(werte, ["9", "6", "2", "7", "5"]);
+  // „Kunden“ zeigt den eigenen Zähler (9), nicht das total der Kundenliste (11) — und fragt die Liste
+  // dafür gar nicht erst ab.
+  assert.notEqual(werte[0], String(TOTALS.users));
+  assert.equal(state.calls.users.length, 0, "die Kennzahl liest wieder die Kundenliste");
   // Kunden und offene Rechnungen sind Bestand (Kennzahlen), der Rest Aufgaben.
   assert.equal(await page.locator(".adm-metric-value").count(), 2);
 
@@ -266,7 +276,7 @@ test("Stornierungen scheitert (500), die anderen vier bleiben real sichtbar — 
   await openOverview(page);
 
   const werte = await fuenfWerte(page);
-  assert.deepEqual(werte, ["11", "6", "2", "—", "5"]);
+  assert.deepEqual(werte, ["9", "6", "2", "—", "5"]);
 
   // Die unbekannte Zahl steht ausdrücklich als „Anzahl nicht verfügbar" da — nie als 0.
   const unbekannt = await page.locator("#adm-todo-unavailable").textContent();
@@ -328,7 +338,7 @@ test("„Erneut versuchen“ lädt alle fünf Kennzahlen neu; nach Erfolg versch
 
   const banner = page.locator(".adm-inline-error");
   await banner.waitFor({ state: "visible" });
-  assert.equal(state.calls.users.length, 1);
+  assert.equal(state.calls.customerAccounts.length, 1);
   assert.equal(state.calls.invoices.length, 2);
   assert.equal(state.calls.cancellations.length, 1);
   assert.equal(state.calls.support.length, 1);
@@ -340,7 +350,7 @@ test("„Erneut versuchen“ lädt alle fünf Kennzahlen neu; nach Erfolg versch
 
   // Alle vier übrigen Endpunkte wurden ERNEUT aufgerufen, nicht nur der
   // vorher gescheiterte — der Retry lädt bewusst die volle Kennzahlenreihe.
-  assert.equal(state.calls.users.length, 2, "Kunden wurde beim Retry nicht neu geladen");
+  assert.equal(state.calls.customerAccounts.length, 2, "Kunden wurde beim Retry nicht neu geladen");
   assert.equal(state.calls.invoices.length, 4, "Rechnungen wurden beim Retry nicht neu geladen");
   assert.equal(state.calls.cancellations.length, 2, "Stornierungen wurde beim Retry nicht neu geladen");
   assert.equal(state.calls.support.length, 2, "Support wurde beim Retry nicht neu geladen");
@@ -351,7 +361,7 @@ test("„Erneut versuchen“ lädt alle fünf Kennzahlen neu; nach Erfolg versch
 
   await warteAufZahlen(page);
   const werte = await fuenfWerte(page);
-  assert.deepEqual(werte, ["11", "6", "2", "7", "5"]);
+  assert.deepEqual(werte, ["9", "6", "2", "7", "5"]);
   await page.close();
 });
 
@@ -359,11 +369,11 @@ test("„Aktualisieren“ im Seitenkopf löst denselben vollständigen Ladevorga
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const state = await setupRoutes(page);
   await openOverview(page);
-  assert.equal(state.calls.users.length, 1);
+  assert.equal(state.calls.customerAccounts.length, 1);
 
   await page.getByRole("button", { name: /Aktualisieren/ }).click();
   await page.waitForTimeout(400);
-  assert.equal(state.calls.users.length, 2, "Aktualisieren lud die Kunden-Kennzahl nicht neu");
+  assert.equal(state.calls.customerAccounts.length, 2, "Aktualisieren lud die Kunden-Kennzahl nicht neu");
   assert.equal(state.calls.cancellations.length, 2, "Aktualisieren lud die Stornierungen nicht neu");
   assert.equal(state.calls.partners.length, 2, "Aktualisieren lud die Partneranträge nicht neu");
   assert.equal(state.calls.evidence.length, 2, "Aktualisieren lud die Versandnachweise nicht neu");

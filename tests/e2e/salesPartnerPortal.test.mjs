@@ -5,7 +5,7 @@
 // der Server antwortete dort mit 403, und das zentrale apiFetch meldete ab.
 // Freigegeben sind laut Backendvertrag nur die Kontoendpunkte: PATCH
 // /kunde/password und die E-Mail-Änderung. Abgefangen werden genau die Pfade,
-// die der Client tatsächlich aufruft (/kunde/password, /kunde/email-change …);
+// die der Client tatsächlich aufruft (/kunde/password, /api/kunde/email-change …);
 // jeder andere Request auf /kunde/* wird mitgezählt und muss 0 bleiben.
 //   1. Login als Partner → /partner, Kennzahlen sichtbar.
 //   2. Partner öffnet /dashboard, /booking, /calculator, / und eine unbekannte
@@ -113,7 +113,9 @@ async function setup(page, { user = PARTNER, team = TEAM, token = true, password
       const [status, body] = pwAntworten.shift() || [200, { message: "Passwort geändert" }];
       return json(body, status);
     }
-    if (/\/kunde\/email-change(\/resend)?$/.test(p)) {
+    // R3: vorne verankert — der frühere, fehlerhafte Pfad ohne /api fällt damit in den
+    // /kunde/-Zähler unten und ließe den Test scheitern, statt still mitzulaufen.
+    if (/^\/api\/kunde\/email-change(\/resend)?$/.test(p)) {
       state.emailChange.push(`${req.method()} ${p}`);
       return json({ ok: true });
     }

@@ -530,7 +530,8 @@ test("12 — „Konto“ nutzt nur die für Partner freigegebenen Kontobausteine
   for (const fn of ["startEmailChange", "resendEmailChange", "cancelEmailChange"]) {
     const block = client.slice(client.indexOf(`export function ${fn}`));
     const pfad = block.match(/apiFetch\(`([^`]+)`/);
-    assert.ok(pfad && /^\/kunde\/email-change(\/resend)?$/.test(pfad[1]), `${fn}: unerwarteter Pfad ${pfad && pfad[1]}`);
+    // R3: der Backendpfad trägt /api (routes/emailChange.js); der frühere Anker hielt den 404-Pfad fest.
+    assert.ok(pfad && /^\/api\/kunde\/email-change(\/resend)?$/.test(pfad[1]), `${fn}: unerwarteter Pfad ${pfad && pfad[1]}`);
   }
   // Der Abschnittsrahmen ist reine Darstellung.
   assert.doesNotMatch(read("components/dashboard/ProfileCardHead.jsx"), /apiFetch|\bfetch\(|\/kunde\//);

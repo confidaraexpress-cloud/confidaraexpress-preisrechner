@@ -765,7 +765,16 @@ export default function BookingPage() {
     if (next != null) setInsuranceValue(next);
   };
   const handleInsuranceValueChange = (v) => { setInsuranceValue(v); setInsValueManual(true); };
+  // JUM-06: Muss der Anbieterentwurf ohne Versicherung neu bepreist werden, sobald diese Auswahl
+  // gilt? Genau dann, wenn „keine“ gewählt ist und im Stufenmodell zuvor versichert bepreist
+  // wurde. Eine Quelle für den Auswahl-Handler UND den Rücksetz-Effekt darunter.
+  const entwurfRuecksetzungNoetig = (typ) => typ === "none" && !coverModel && entwurfVersichert.current;
   const handleSelectInsuranceType = (id) => {
+    // Die Buchungssperre gilt ab dem Wechsel selbst, im selben Render wie die neue Auswahl. Der
+    // Effekt startet die Rücksetzung erst nach diesem Render; ohne die Sperre hier war „Kostenpflichtig
+    // buchen“ dazwischen kurz frei. Nur bei einem echten Wechsel — ohne Wechsel läuft der Effekt
+    // nicht, und niemand löste die Sperre wieder.
+    if (id !== insuranceType && entwurfRuecksetzungNoetig(id)) setEntwurfRuecksetzung(true);
     setInsuranceType(id);
     if (isInsuredType(id) && !insValueManual) setInsuranceValue(goodsValue);
   };
@@ -892,8 +901,9 @@ export default function BookingPage() {
       setRepriceResult(null); setRepriceStale(false); setRepriceError(""); setRepriceNotice("");
       // JUM-06: der Entwurf trägt noch die Versicherung einer früheren Neubepreisung — einmal ohne
       // Versicherung neu bepreisen. Bis der Server das bestätigt, ist die Buchung gesperrt; scheitert
-      // es, bleibt alles wie bisher (die Buchung prüft den Preis ohnehin serverseitig).
-      if (!coverModel && entwurfVersichert.current) {
+      // es, bleibt alles wie bisher (die Buchung prüft den Preis ohnehin serverseitig). Gesperrt ist
+      // die Buchung schon seit dem Auswahl-Handler; hier wird die Sperre nur bestätigt.
+      if (entwurfRuecksetzungNoetig(insuranceType)) {
         const seq = repriceSeq.current;
         const ac = new AbortController(); repriceAbort.current = ac;
         setEntwurfRuecksetzung(true);

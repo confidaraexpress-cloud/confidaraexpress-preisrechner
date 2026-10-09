@@ -391,7 +391,9 @@ test("16 — die Kundensuche bleibt ehrlich beschriftet", () => {
 test("17 — die Übersicht zeigt nur belegte Werte und erfindet keine API", () => {
   const modell = stripJs(read("../utils/adminOverview.mjs"));
   const seiteSrc = seite("AdminOverviewPage.jsx");
-  // Jede Kennzahl stammt aus einem bereits vorhandenen Listen-Endpunkt.
+  // Jede Kennzahl stammt aus einem Serverzähler: die Listen-Endpunkte — und für „Kunden“ der eigene
+  // Zähler GET /admin/metrics/customer-accounts (Betreiberentscheidung 2026-10-09).
+  assert.match(seiteSrc, /customers: \(\) => getAdminCustomerAccountCount\(\)/, "„Kunden“ ohne eigenen Zähler");
   assert.match(seiteSrc, /listAdminUsers|listAdminInvoices|listAdminCancellationRequests|listAdminSupportRequests/);
   assert.match(seiteSrc, /pageSize: 1/, "die Kennzahlen laden ganze Seiten statt nur den Zähler");
   // Ohne Serverzähler wird nichts hochgerechnet.

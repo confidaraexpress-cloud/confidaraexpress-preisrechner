@@ -4,7 +4,7 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { metricsFailureKind, selectListTotal } from "../../utils/adminOverview.mjs";
 import {
-  listAdminUsers, listAdminInvoices, listAdminCancellationRequests,
+  getAdminCustomerAccountCount, listAdminInvoices, listAdminCancellationRequests,
   listAdminSupportRequests, getAdminOperationsQueues,
   listAdminSalesPartners, listAdminDispatchEvidenceQueue,
 } from "../../api/adminApi";
@@ -21,16 +21,18 @@ import {
 // dem direkten Weg zur Bearbeitung. Darunter die ruhigen Kennzahlen (Bestand),
 // die Bereiche und — eingeklappt — die technischen Diagnosen.
 //
-// Datenherkunft: AUSSCHLIESSLICH vorhandene Endpunkte. Listenzähler über die
+// Datenherkunft: AUSSCHLIESSLICH Serverzähler. Listenzähler über die
 // Listen-Endpunkte mit pageSize 1 (nur der Gesamtzähler zählt, die Zeilen
-// werden verworfen) und die Betriebs-Queues. Es gibt keinen neuen Endpunkt,
-// keine neue Query und keine hochgerechnete Zahl; ohne Zähler steht „nicht
+// werden verworfen), die Betriebs-Queues und — für „Kunden" — der eigene
+// Zähler GET /admin/metrics/customer-accounts (nur echte Kundenkonten; das
+// total der Kundenliste enthält auch Admin- und Altkonten). Keine
+// hochgerechnete Zahl; ohne Zähler steht „nicht
 // verfügbar" da, nie eine 0. Was bewusst fehlt (keine Serverquelle): offene
 // Freischaltungen von Kunden, Abrechnungsdaten zur Prüfung, offene Auszahlungen.
 
 // Ein Endpunkt je Zähler — dieselben Wrapper, die auch die Listenseiten nutzen.
 const LOADERS = {
-  customers: (p) => listAdminUsers(p),
+  customers: () => getAdminCustomerAccountCount(),
   invoicesOpen: (p) => listAdminInvoices(p),
   invoicesOverdue: (p) => listAdminInvoices(p),
   cancellations: (p) => listAdminCancellationRequests(p),

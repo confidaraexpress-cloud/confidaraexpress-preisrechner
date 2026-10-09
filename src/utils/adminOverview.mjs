@@ -76,7 +76,9 @@ export const ADMIN_METRICS = Object.freeze([
   {
     key: "customers",
     label: "Kunden",
-    hint: "Alle angelegten Konten",
+    // Betreiberentscheidung 2026-10-09: nur echte Kundenkonten (role „customer“, ohne Testkonten),
+    // jeder Status — keine Admins, Vertriebspartner, Testkonten oder Altkonten ohne Kundenrolle.
+    hint: "Echte Kundenkonten, jeder Status",
     icon: "admin",
     to: "/admin/users",
     linkLabel: "Zur Kundenliste",

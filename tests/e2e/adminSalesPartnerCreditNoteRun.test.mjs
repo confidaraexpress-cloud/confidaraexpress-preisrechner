@@ -173,7 +173,8 @@ test("1 — aus der Partnerliste erreichbar; nur abgeschlossene Monate; Vorschau
   assert.match(ausstellbar, /Vertrieb 5 GmbH/);
   assert.match(ausstellbar, /Ausstellbar/);
   assert.match(ausstellbar, /119,00\s€/);
-  assert.match(ausstellbar, /Mit Umsatzsteuerausweis · 19,00 %/);
+  // R9: zwischen Zahl und Prozentzeichen steht ein geschütztes Leerzeichen (kein Umbruch).
+  assert.match(ausstellbar, /Mit Umsatzsteuerausweis · 19,00\u00a0%/);
   const blockiert = await zeileVon(page, 6).innerText();
   assert.match(blockiert, /Blockiert/);
   assert.match(blockiert, /Abrechnungsdaten nicht bestätigt/);

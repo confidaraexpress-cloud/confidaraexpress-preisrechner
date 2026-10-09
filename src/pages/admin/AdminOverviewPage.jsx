@@ -64,10 +64,13 @@ const BEREICHE = [
 const VON_HIER = { from: "/admin" };
 
 // Eine ruhige Kennzahl (Bestand) — Beschriftung, Zahl, Kontextzeile.
+// R9 (WCAG 2.5.3): kein aria-label mehr — es ersetzte den sichtbaren WERT, ein Screenreader las
+// „Kunden — Zur Kundenliste“ ohne die Zahl. Der Name entsteht jetzt aus dem sichtbaren Inhalt;
+// das Linkziel ergänzt ein nur vorgelesener Zusatz.
 function MetricCard({ view }) {
   return (
     <li>
-      <Link to={view.to} className="adm-metric" aria-label={`${view.label} — ${view.linkLabel}`}>
+      <Link to={view.to} className="adm-metric">
         <span className="adm-metric-label">{view.label}</span>
         <span className="adm-metric-row">
           <span className="adm-metric-value" aria-live="off">{view.display}</span>
@@ -75,6 +78,7 @@ function MetricCard({ view }) {
         <span className="adm-metric-hint">
           {view.state === "unavailable" ? view.unavailableText : view.hint}
         </span>
+        <span className="sr-only"> — {view.linkLabel}</span>
       </Link>
     </li>
   );

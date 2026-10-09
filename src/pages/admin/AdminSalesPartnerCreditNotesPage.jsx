@@ -10,7 +10,7 @@ import { testRunFromState, withSection } from "../../utils/adminJumpState.mjs";
 import { issueAdminCreditNote, previewAdminCreditNotes } from "../../api/adminApi";
 import { usePreliveStatus } from "../../hooks/usePreliveStatus";
 import { preliveEnabled } from "../../utils/salesPartnerPrelive.mjs";
-import { formatCents, formatCount, formatMonth, formatPercent } from "../../utils/salesPartnerView.mjs";
+import { formatCount, formatMonth } from "../../utils/salesPartnerView.mjs";
 import { taxStatusLabel } from "../../utils/salesPartnerBilling.mjs";
 import { formatTimestamp, localIsoDate } from "../../utils/adminSalesPartnerView.mjs";
 import {
@@ -29,7 +29,9 @@ import {
   normalizePreview,
   previewErrorText,
   previewPartnerName,
+  runAmountText,
   runCounts,
+  runPercentText,
   runNextStep,
   runScope,
   runStatusMeta,
@@ -55,7 +57,7 @@ function PartnerCell({ row, from }) {
       {row.companyName && row.name && <span className="adm-sp-sub">{row.name}</span>}
       {row.taxStatus && (
         <span className="adm-sp-sub">
-          {taxStatusLabel(row.taxStatus)}{row.taxRatePercent ? ` · ${formatPercent(row.taxRatePercent)}` : ""}
+          {taxStatusLabel(row.taxStatus)}{row.taxRatePercent ? ` · ${runPercentText(row.taxRatePercent)}` : ""}
         </span>
       )}
     </div>
@@ -435,9 +437,9 @@ export default function AdminSalesPartnerCreditNotesPage() {
                     <tr key={row.partnerUserId ?? `p-${i}`} data-partner-id={row.partnerUserId ?? undefined} data-status={row.status ?? undefined}>
                       <td><PartnerCell row={row} from={from} /></td>
                       <td className="adm-num">{formatCount(row.entryCount)}</td>
-                      <td className="adm-num">{formatCents(row.netCents)}</td>
-                      <td className="adm-num">{formatCents(row.taxCents)}</td>
-                      <td className="adm-num">{formatCents(row.grossCents)}</td>
+                      <td className="adm-num">{runAmountText(row, row.netCents)}</td>
+                      <td className="adm-num">{runAmountText(row, row.taxCents)}</td>
+                      <td className="adm-num">{runAmountText(row, row.grossCents)}</td>
                       <td>
                         <Badge meta={runStatusMeta(row.status)} />
                         {row.existingCreditNote?.number && <span className="adm-sp-sub adm-sp-block">{row.existingCreditNote.number}</span>}
@@ -458,9 +460,9 @@ export default function AdminSalesPartnerCreditNotesPage() {
                     <Badge meta={runStatusMeta(row.status)} />
                   </div>
                   <dl className="adm-scard-kv">
-                    <div><dt>Brutto</dt><dd>{formatCents(row.grossCents)}</dd></div>
-                    <div><dt>Netto</dt><dd>{formatCents(row.netCents)}</dd></div>
-                    <div><dt>Steuer</dt><dd>{formatCents(row.taxCents)}</dd></div>
+                    <div><dt>Brutto</dt><dd>{runAmountText(row, row.grossCents)}</dd></div>
+                    <div><dt>Netto</dt><dd>{runAmountText(row, row.netCents)}</dd></div>
+                    <div><dt>Steuer</dt><dd>{runAmountText(row, row.taxCents)}</dd></div>
                     <div><dt>Positionen</dt><dd>{formatCount(row.entryCount)}</dd></div>
                     {row.existingCreditNote?.number && <div><dt>Gutschrift</dt><dd>{row.existingCreditNote.number}</dd></div>}
                     {/* Ausstellbar: der nächste Schritt ist der Knopf darunter. */}

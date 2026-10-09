@@ -49,7 +49,7 @@ import {
   taxStatusLabel,
 } from "./salesPartnerBilling.mjs";
 import { normalizeCreditNotes } from "./salesPartnerCreditNotes.mjs";
-import { formatCents, monthOptions, statusMetaFrom } from "./salesPartnerView.mjs";
+import { formatCents, formatPercent, monthOptions, statusMetaFrom } from "./salesPartnerView.mjs";
 import { adminActionErrorText, formatTimestamp, isIsoDate } from "./adminSalesPartnerView.mjs";
 
 const objOrNull = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : null);
@@ -380,6 +380,19 @@ const RUN_STATUS_META = Object.freeze({
   already_issued: Object.freeze(["badge-blue", "Bereits ausgestellt"]),
 });
 export const runStatusMeta = (status) => statusMetaFrom(RUN_STATUS_META, status);
+
+// R9: ein Steuersatz im Gutschriftslauf bricht nicht zwischen Zahl und Prozentzeichen um. Bewusst lokal
+// (wie adminPartnerDetailView.mjs) — formatPercent selbst bleibt unverändert.
+export const runPercentText = (value) => formatPercent(value).replace(/ %$/, "\u00a0%");
+
+// R9: Bei „Bereits ausgestellt“ tragen netCents/taxCents/grossCents nur die NOCH OFFENEN Restbeträge des
+// Monats (Backend lib/salesPartner/creditNotes.js), nicht den Betrag der ausgestellten Gutschrift. Ohne
+// offenen Rest stand dort „0,00 €“ — als wäre die Gutschrift leer. Dann „—“; der Gutschriftsbetrag steht im
+// Partnerdetail („Gutschrift ansehen“). Ein echter offener Rest bleibt sichtbar.
+export function runAmountText(row, cents) {
+  if (row && row.status === "already_issued" && !(Number.isInteger(cents) && cents > 0)) return "—";
+  return formatCents(cents);
+}
 
 // ── Abrechnungslauf: Überblick und nächster Schritt (UX-Paket 5) ─────────────
 // Gezählt werden ausschließlich die Status, die der Server je Partner meldet —

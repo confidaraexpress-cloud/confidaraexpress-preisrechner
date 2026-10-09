@@ -73,12 +73,13 @@ export function RegisterForm({ form, onChange, onRegister, loading, errors = {},
 
       <div className="auth-field">
         <div className="auth-field-row">
-          <label className="auth-field-label">Passwort (min. {PASSWORD_MIN_LEN} Zeichen) <Req /></label>
+          <label className="auth-field-label" htmlFor="reg-password">Passwort (min. {PASSWORD_MIN_LEN} Zeichen) <Req /></label>
         </div>
         <div className="auth-input-wrap">
           <span className="auth-input-ico"><Icon n="lock" s={18} /></span>
           <PasswordField
             slim
+            id="reg-password"
             value={form.password}
             onChange={(e) => upd("password", e.target.value)}
             /* Der CTA ist bei zu kurzem Passwort deaktiviert — und Chromium
@@ -99,12 +100,13 @@ export function RegisterForm({ form, onChange, onRegister, loading, errors = {},
 
       <div className="auth-field">
         <div className="auth-field-row">
-          <label className="auth-field-label">Passwort wiederholen <Req /></label>
+          <label className="auth-field-label" htmlFor="reg-password-repeat">Passwort wiederholen <Req /></label>
         </div>
         <div className="auth-input-wrap">
           <span className="auth-input-ico"><Icon n="lock" s={18} /></span>
           <PasswordField
             slim
+            id="reg-password-repeat"
             value={passwordRepeat}
             onChange={(e) => onPasswordRepeatChange(e.target.value)}
             placeholder="Passwort erneut eingeben"
@@ -160,15 +162,17 @@ export function RegisterForm({ form, onChange, onRegister, loading, errors = {},
 
       <div className="auth-field">
         <div className="auth-field-row">
-          <label className="auth-field-label">Straße &amp; Hausnummer</label>
+          <label className="auth-field-label" htmlFor="reg-street">Straße &amp; Hausnummer</label>
         </div>
         <div className="auth-input-wrap">
           <input
+            id="reg-street"
             className={`auth-input auth-input-no-icon${errors.street ? " auth-input-error" : ""}`}
             value={form.street}
             onChange={(e) => upd("street", e.target.value)}
             placeholder="Musterstraße 12"
             autoComplete="street-address"
+            aria-invalid={errors.street ? "true" : undefined}
           />
         </div>
         {errors.street && <span className="auth-field-error">{errors.street}</span>}
@@ -177,39 +181,44 @@ export function RegisterForm({ form, onChange, onRegister, loading, errors = {},
       <div className="field-row field-row-3">
         <div className="auth-field">
           <div className="auth-field-row">
-            <label className="auth-field-label">PLZ</label>
+            <label className="auth-field-label" htmlFor="reg-zip">PLZ</label>
           </div>
           <div className="auth-input-wrap">
             <input
+              id="reg-zip"
               className={`auth-input auth-input-no-icon${errors.zip ? " auth-input-error" : ""}`}
               value={form.zip}
               onChange={(e) => upd("zip", e.target.value)}
               autoComplete="postal-code"
               inputMode="numeric"
+              aria-invalid={errors.zip ? "true" : undefined}
             />
           </div>
           {errors.zip && <span className="auth-field-error">{errors.zip}</span>}
         </div>
         <div className="auth-field">
           <div className="auth-field-row">
-            <label className="auth-field-label">Stadt</label>
+            <label className="auth-field-label" htmlFor="reg-city">Stadt</label>
           </div>
           <div className="auth-input-wrap">
             <input
+              id="reg-city"
               className={`auth-input auth-input-no-icon${errors.city ? " auth-input-error" : ""}`}
               value={form.city}
               onChange={(e) => upd("city", e.target.value)}
               autoComplete="address-level2"
+              aria-invalid={errors.city ? "true" : undefined}
             />
           </div>
           {errors.city && <span className="auth-field-error">{errors.city}</span>}
         </div>
         <div className="auth-field">
           <div className="auth-field-row">
-            <label className="auth-field-label">Land</label>
+            <label className="auth-field-label" htmlFor="reg-country">Land</label>
           </div>
           <div className="auth-input-wrap">
             <select
+              id="reg-country"
               className="auth-input auth-select auth-input-no-icon"
               value={form.country}
               onChange={(e) => upd("country", e.target.value)}

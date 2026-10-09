@@ -234,7 +234,7 @@ export default function AdminSalesPartnerSettingsPage() {
               {(grenzen.data?.history || []).length > 0 && (
                 <>
                   <h3 className="adm-sp-subtitle">Historie</h3>
-                  <div className="table-scroll adm-sp-mini-table">
+                  <div className="table-scroll adm-sp-mini-table" tabIndex={0} role="region" aria-label="Historie der Obergrenzen">
                     <table>
                       <caption className="sr-only">Historie der Obergrenzen: gültig ab, Höchstsatz Eigenprovision, Höchstsatz aller Ebenen, Begründung, angelegt.</caption>
                       <thead>

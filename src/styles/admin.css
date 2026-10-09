@@ -1059,7 +1059,9 @@ a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2
 /* ── Kundendetail: Kopfbereich, technische Infos, Zahlungshinweis ───────────*/
 .adm-detail-sub { display: flex; flex-wrap: wrap; gap: var(--ce-space-1) var(--ce-space-3); font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-muted); }
 .adm-detail-mail { overflow-wrap: anywhere; }
-.adm-chip-muted { color: var(--ce-color-text-muted); font-weight: 500; }
+/* R9: gedämpfter Text erreicht auf dem Chipgrund (surface-muted) nur 4,43:1 — auf weißem Grund 4,88:1 (AA).
+   Die Variante bleibt ruhiger als der Standardchip, ohne neue Farbe. */
+.adm-chip-muted { color: var(--ce-color-text-muted); background: var(--ce-color-surface); font-weight: 500; }
 
 /* Überfällige Rechnungen: sichtbar, aber ausdrücklich ohne Automatik. */
 .adm-overdue-note { margin-top: var(--ce-space-3); }
@@ -1434,9 +1436,12 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
 .adm-sp-history { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ce-space-2); }
 .adm-sp-history-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-1) var(--ce-space-3); font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-primary); }
 .adm-sp-history-item { border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-sm); padding: var(--ce-space-2) var(--ce-space-3); background: var(--ce-color-surface-subtle); }
-.adm-sp-history-item > summary { cursor: pointer; font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-primary); }
+/* R9: die Historienzeile war 17 px hoch — als Bedienelement mindestens 44 px. */
+.adm-sp-history-item > summary { cursor: pointer; min-height: 44px; padding-block: 12px; box-sizing: border-box; font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-primary); }
 .adm-sp-history-item[open] > summary { margin-bottom: var(--ce-space-3); }
 .adm-sp-history-item > summary:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
+/* R9: die scrollbaren Tabellenbereiche sind fokussierbar — ihr Fokus muss sichtbar sein. */
+.adm-sp-levels:focus-visible, .adm-sp-mini-table:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
 .adm-sp-stack { display: flex; flex-direction: column; gap: var(--ce-space-4); }
 
 /* Formulare der Karten: Felder im Raster, Begründung über die volle Breite. */

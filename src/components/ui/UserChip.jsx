@@ -100,14 +100,17 @@ export function UserChip({ user, onClick, label = "Zu meinem Profil" }) {
   // erreichbar ist. Vollständig sichtbar bleibt sie ohnehin in Sidebar-Karte
   // und Profil.
   const fullIdentity = org ? `${name} — ${org}` : name;
-
+  // R9 (WCAG 2.5.3): KEIN aria-label. Es ersetzte Name und Firma vollständig — Sprachsteuerung und
+  // Screenreader kannten nur „Zu meinem Profil“. Der Name entsteht jetzt aus dem sichtbaren Text
+  // (die Firmenmarke ist aria-hidden); die Aktion ergänzt ein nur vorgelesener Zusatz.
   return (
-    <button type="button" className="pp-uchip" onClick={onClick} aria-label={label} title={`${label}: ${fullIdentity}`}>
+    <button type="button" className="pp-uchip" onClick={onClick} title={`${label}: ${fullIdentity}`}>
       <CompanyMark initial={initial} logoUrl={logoUrl} />
       <span className="pp-uchip-text">
         <span className="pp-uname">{name}</span>
         {org && <span className="pp-ucomp">{org}</span>}
       </span>
+      <span className="sr-only">: {label}</span>
     </button>
   );
 }

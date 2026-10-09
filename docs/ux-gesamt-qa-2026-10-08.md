@@ -327,3 +327,149 @@ Ein Rollback-Pfad wurde nicht geprüft.
   - Prüfskripte
   - `SHA256SUMS.txt`
 - CI-Läufe: A, R1, R7.
+
+---
+
+## Nachtrag 2026-10-09 — Umsetzungsstand R1–R9
+
+**Dokumentiert:** 2026-10-09 · **Geprüfte Stände:** Backend `origin/main` `4c246df6708cdf19409046d8bf918aa6f515b402` · Frontend `origin/main` `1d0f57d62906ed91c9658695f286029f4b548918`
+
+Dieser Nachtrag ergänzt den Bericht. Die Abschnitte oben beschreiben unverändert den Stand der Gesamt-QA vor der Umsetzung (Frontend `c1bc6f9`, Backend `99f8a20`). Die kanonische Zusammenfassung steht im Canonical Context 20.7 (v2.34).
+
+### Statusbegriffe
+
+- **implementiert:** Code und Tests stehen.
+- **gemergt:** im jeweiligen `main`.
+- **Main-CI:** der Push-Lauf auf dem Merge-Commit, gegen GitHub geprüft.
+- **deployt / produktiv verifiziert:** in keinem Auftrag geschehen. Der Deploymentzustand außerhalb des Repository ist nicht verifiziert.
+
+### Übersicht
+
+| Punkt | Ergebnis | PR → Merge-Commit | Main-CI | Deployt | Produktiv verifiziert |
+|---|---|---|---|---|---|
+| R1 | Angebot vor der Antwort `reconciliation_required` verbraucht | Backend #405 → `1272b8a` | grün | nein | nein |
+| R2 | Login prüft das Passwort vor dem Kontostatus | Backend #406 → `87862cc` | grün | nein | nein |
+| R3 | E-Mail-Wechsel über `/api/...` | Frontend #482 → `d217958` | grün | nein | nein |
+| R4 | `VP-<Ledger-ID>` in neuen Partnergutschriften (Betreiberentscheidung) | Backend #407 → `144ae30` | grün | nein | nein |
+| R5 | geprüft, keine Codeänderung erforderlich | — | — | — | — |
+| R6 | kein Codefix; Produktions-/Coolify-Prüfung offen | — | — | — | offen |
+| R7 | Ursachen beider sporadischer Frontend-Tests behoben | Frontend #481 → `2a0cb8c` | grün | nein | — |
+| R8 | gewollte Testgrenze; produktiver Rauchtest ausstehend | — | — | — | offen |
+| R9 | Bedienungs- und Barrierefreiheitsbefunde behoben | Frontend #483 → `dcf0ba5` | grün | nein | nein |
+| Kennzahl „Kunden“ | eigener Serverzähler (Betreiberentscheidung) | Backend #408 → `4c246df`, Frontend #484 → `1d0f57d` | grün | nein | nein |
+
+### Nachweise je Punkt
+
+- **R1** (Backend #405):
+  - Der JUMiNGO-Aufruf von `persistBooking` setzt die vorhandene Fehlernaht `onTransactionFailure`: erst `angebotVerbrauchen(CONSUMED_RECONCILE)`, dann dieselbe 502. Claim bleibt `booking`, kein Retry, kein Providerkontakt.
+  - `tests/book-outcome-safety-pg.test.js`:
+    - (N2): Markierung verzögert; die Antwort kommt erst danach.
+    - (N3): Markierung scheitert → weiterhin 502.
+    - (N4): Totalausfall der Datenbank ab der Bestellbestätigung → 502, Retry ohne Providerkontakt.
+  - Gegenprobe mit dem alten Handler: (N2) rot. Befund und Behebung: Backend `docs/booking-safety-finding-offer-reconciliation-order-2026-10.md`.
+- **R2** (Backend #406):
+  - Fail-closed-Passwortprüfung vor jeder Statusantwort. Ohne gültiges Passwort wortgleich 401 `INVALID_CREDENTIALS`; `NULL` und unbrauchbare Hashes ergeben 401 statt 500.
+  - `tests/auth-status-codes.test.js` (Antwortmatrix, Quelltextanker) und `tests/sales-partner-program-pg.test.js` Fall 3b (PostgreSQL); Gegenprobe rot.
+  - Laufzeitunterschiede zu unbekannten Adressen bewusst unverändert. Befund und Behebung: Backend `docs/security-finding-login-status-disclosure-2026-10.md`.
+- **R3** (Frontend #482):
+  - Die vier Aufrufe nutzen `/api/kunde/email-change`, `/api/kunde/email-change/resend` und `/api/auth/confirm-email-change`. Keine Alias-Routen.
+  - Dauerhafter Vertragstest `src/api/emailChangeContract.test.mjs`: Methode, Pfad, Bearer; falsches Passwort meldet nicht ab, abgelaufene Sitzung schon.
+  - Lokal integriert gegen ein Backend auf `origin/main` mit Wegwerf-PostgreSQL und Mail-Attrappe (keine E-Mail versendet). Das Backend antwortet auf den Start mit 202.
+- **R4** (Backend #407):
+  - Eine gemeinsame Funktion `commissionReference` für Portal und Gutschrift; die Abrechnungsquelle liest keine Auftragsnummer mehr.
+  - Unverändert: historische Gutschriften, gespeicherte PDFs und Stornos (der Storno kopiert die Referenz des Originals), ebenso Nummernkreise, Abrechnungsregeln, Test- und Mandantentrennung.
+  - PG-Fälle D2, F3 (Storno eines historischen Belegs behält CE-BS), F5 und P16; Gegenprobe rot außer F3.
+  - Eine steuerliche oder rechtliche Freigabe ist nicht abgeleitet.
+- **R7** (Frontend #481):
+  - Die Buchungssperre beim Versicherungswechsel greift im selben Render wie die Auswahl.
+  - Der Sortiertest wartet auf den fertig dargestellten Zustand. Gegenprobe deterministisch rot.
+- **R9** (Frontend #483, Korrektur `4293b9b`):
+  - Labels der Registrierung (auch beider Passwortfelder), Kontraste, zugängliche Namen von Nutzer-Chip und Kennzahlkarten, fokussierbare Tabellenbereiche, Touch-Ziele ≥ 44 px bei grober Zeigerführung.
+  - Gutschriftslauf: Prozent ohne Umbruch; bei „Bereits ausgestellt“ nur ein Rest von exakt 0 als „—“, negative Reste bleiben sichtbar.
+  - axe-core 4.14 lokal gegen acht Seiten: vorher 12 Verstöße und Ziele von 17–30 px, nachher 0 und 44 px.
+  - Bewusst nicht geändert (damals ohne Entscheidung): die Kennzahl „Kunden“.
+- **Kennzahl „Kunden“** (Backend #408, Frontend #484):
+  - `GET /admin/metrics/customer-accounts` → `{ total }`: `role = 'customer'` und `prelive_test = false`, jeder Status.
+  - Die Kontenliste `GET /admin/users` und ihre Pagination sind unverändert; Admin-Konten bleiben dort erreichbar.
+  - `tests/admin-customer-metric-pg.test.js` (in `test:security-pg`); Gegenprobe mit der Listenregel rot.
+  - Der erste Frontend-CI-Lauf von #484 war rot: Eine zweite E2E-Attrappe kannte den neuen Zähler nicht. Das war ein echter Fehler der Änderung, korrigiert in derselben PR.
+
+### R5 — Admin-Rate-Limit: geprüft, keine Codeänderung erforderlich
+
+- **Mechanik:** fester 15-Minuten-Zähler je Admin im Speicher des Prozesses; jede Anfrage zählt 1. Lesen und Schreiben haben getrennte Zähler (120 bzw. 60).
+- **Last aus dem Code abgeleitet (geschätzt):**
+  - Prüfung von zehn Partnern mit Rückweg zur Liste: etwa 83 Lesezugriffe; die Grenze erst bei etwa 15 Partnern in 15 Minuten.
+  - Gutschriftslauf: drei Lesezugriffe, unabhängig von der Partnerzahl. Ausstellen begrenzt der Schreibzähler: bei mehr als etwa 55–60 ausstellbaren Partnern nach 15 Minuten fortsetzen, ohne Doppelausstellung.
+- **Mehrfachanfragen:** keine StrictMode-Effekte, kein Polling, keine Retries. Nur der Pre-Live-Status wird je Unterseite neu geladen (etwa jeder achte Aufruf).
+- **Auslöser des 429:** nur die automatisierte Messreihe der Gesamt-QA.
+- **Empfehlung:** keine Änderung vor dem Go-Live. Falls je nötig, ein eigener Wert nur für diesen Zähler (240), keine pauschale Erhöhung auf 600; der Grund für das Limit (Schutz vor Abfluss von Abrechnungsdaten) bleibt bestehen.
+
+### R6 — E-Mail-Betrieb: Read-only-Preflight für Coolify (offen)
+
+Kein Codefix:
+
+- **Pflichtwerte:** In Production bricht der Start ohne `RESEND_API_KEY`, `INVOICE_EMAIL_FROM` oder `INVOICE_EMAIL_REPLY_TO` ab.
+- **`APP_BASE_URL`:** wird erst bei Benutzung geprüft:
+  - E-Mail-Wechsel: kontrollierter Fehler.
+  - Partnerlinks: entfallen.
+  - Auftrags- und Sendungsmails: Rückfall auf `https://confidaraexpress.de`.
+- **Absender:** Konto-, Partner- und Supportmails nutzen fest `noreply@confidaraexpress.de`.
+- **Reset-Link:** Der feste Link `https://confidaraexpress.de/login?reset=` ist ein bewusster, per Test festgehaltener Vertrag (der Pfad `/login` erhält das Token).
+
+Prüfschritte (Container-Terminal bzw. Coolify-Log, ohne Werte auszugeben, ohne Mail, ohne ENV-Änderung):
+
+1. `NODE_ENV` ist `production`.
+2. `test -n "$RESEND_API_KEY" && echo gesetzt`; ebenso `INVOICE_EMAIL_REPLY_TO`; von `INVOICE_EMAIL_FROM` nur die Domain ausgeben.
+3. `APP_BASE_URL` entspricht genau der öffentlichen Frontend-URL (https, ohne Pfad und Schrägstrich am Ende).
+4. `ADMIN_EMAIL` und `SUPPORT_NOTIFICATION_EMAIL` gesetzt, sonst existieren die festen Postfächer `admin@` und `support@confidaraexpress.de`.
+5. `SALES_PARTNER_PRELIVE_TEST_MODE` und `SHIPMENT_EMAIL_WORKER_ENABLED` haben die beabsichtigten Werte.
+6. Startlog ohne Pflichtvariablen-Abbruch und ohne Warnung zu `INVOICE_EMAIL_FROM`.
+7. `GET /health` liefert `ok` (belegt nur die Datenbank, nicht den Mailversand).
+8. Öffentliches DNS der Absenderdomain(s): SPF, DKIM (`resend._domainkey`) und DMARC vorhanden.
+9. Resend-Dashboard: Absenderdomain(s) „Verified“.
+
+Nebenbefunde (kein Blocker):
+
+- Die ENV-Tabelle in Backend `docs/BACKEND_ARCHITECTURE.md` nennt nicht alle Mail-Variablen.
+- `emailService.js` loggt an zwei Stellen die volle Empfängeradresse.
+- Die Linkbildung folgt drei Mustern; für ein Staging zeigen einige Links auf die Produktion.
+
+### R8 — Kundenlink: Testgrenze und Rauchtestplan (offen)
+
+Kein Defekt.
+
+- **Trennung:** Test- und Echtdaten sind in SQL, Datenbank-Fremdschlüsseln und Admin-Prüfungen getrennt; ein Testpartner-Code ordnet nie einen Kunden zu.
+- **Lücke:** Nicht automatisiert geprüft sind
+  - der durchgehende Weg mit echtem Browser gegen echtes Backend,
+  - der Code eines inaktiven Partners,
+  - die Kette Link → Registrierung → Sendung → Provision.
+- **Zusatzbefund:** Ein Testpartner sieht im Portal seinen Kundenlink. In Production erzeugt dieser Link ein echtes, nicht zugeordnetes Konto; er darf dort nicht benutzt werden.
+
+**Betreiberentscheidungen:** Referral-Schalter in Production; ein echter befreundeter Partner mit Vereinbarung 1.0 und ein echter befreundeter Kunde; Zeitpunkt nach dem Pre-Go-Live-Gate; Kundenfreischaltung; Provisionsschalter; Vorgehen bei Abbruch.
+
+Ablauf:
+
+1. Ausgangslage per Lese-SQL festhalten: Zuordnungen des Partners; die Kunden-E-Mail ist frei.
+2. Der Partner kopiert den Kundenlink. Erwartet: `https://<Produktionsdomain>/register?ref=<8 Zeichen>`, Code wie im Admin-Partnerdetail.
+3. Der Kunde öffnet ihn in einem frischen Browserprofil. Erwartet: `ref` aus der Adresse entfernt, Code lokal vorgemerkt.
+4. Der Kunde registriert sich mit echten Daten. Erwartet: „Registrierung erfolgreich“, Konto `pending`, Vormerkung gelöscht.
+5. Prüfen ohne Schreibzugriff: genau eine Zuordnung zum Partner, Quelle `referral_link`, Beginn heute, alle `prelive_test` = false; Kunde im Portal und im Admin-Partnerdetail sichtbar.
+6. Reguläre Freischaltung (Geschäftsentscheidung).
+7. Optional erst nach einer echten Sendung: Provisionsentscheidung und Ledger-Eintrag am Folgetag; auszahlbar erst nach bezahlter Rechnung.
+
+Abbruch bei falscher Domain oder falschem Code, verbliebenem `ref`, fehlender oder falscher Zuordnung, 500 oder 409. Dann nichts löschen; eine Korrektur nur per auditierter Admin-Zuordnung nach Entscheidung.
+
+Verboten: Fake-Echtkunden, Negativtests mit echten Konten, der Kundenlink eines Testpartners in Production, Datenlöschung, Schalteränderungen ohne Entscheidung.
+
+### Weitere Entscheidungen und offene Punkte
+
+- **Betreiberentscheidungen 2026-10-09:**
+  - Gutschrift-Positionsreferenz `VP-<Ledger-ID>` (R4).
+  - Kennzahl „Kunden“ nur echte Kundenkonten.
+- **Nicht erforderlich:** die Anzeige des Betrags bereits ausgestellter Gutschriften im Gutschriftslauf (Betrag und PDF stehen im Partnerdetail).
+- **Offen, kein Blocker:** eigener Text für abgelehnte Partneranträge (UX-Befund F18).
+- **Bis zum Go-Live:**
+  - Deployment (Backend vor Frontend) als eigene Freigabe;
+  - R6-Preflight;
+  - R8-Rauchtest nach Entscheidung;
+  - Produktionsprüfung der umgesetzten Punkte.

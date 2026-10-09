@@ -291,9 +291,17 @@ test("5 — Sortierung UND Empfehlung nehmen den ANGEZEIGTEN Betrag", async () =
   //     Steht er nach dem Sortieren vorn, hat die Sortierung genau den Wert genommen,
   //     den die Karte zeigt — und nicht den Kundenpreis, aus dem er entstanden ist.
   await page.locator(".offers-sort-btn", { hasText: "Günstigste" }).first().click();
-  await page.waitForFunction(
-    () => /10[,.]00/.test(document.querySelector(".offer-card")?.innerText || ""),
-    null, { timeout: 10000 });
+  // Gewartet wird auf den fertig dargestellten Zustand: die guenstigste Karte steht vorn UND jede
+  // Karte zeigt ihren Betrag. Beim Umsortieren fuegt React eine Karte neu ein; mit
+  // `content-visibility: auto` (offers.css) liefert sie ihren Text erst nach der naechsten
+  // Darstellung — bis dahin ist ihr Betrag im `innerText` leer, nicht falsch (R7b). Gemessen
+  // wird danach unveraendert der ANGEZEIGTE Betrag.
+  await page.waitForFunction(() => {
+    const karten = [...document.querySelectorAll(".offer-card")];
+    return karten.length > 0
+      && /10[,.]00/.test(karten[0].innerText || "")
+      && karten.every((k) => /(\d+)[,.](\d{2})\s*€/.test(k.innerText || ""));
+  }, null, { timeout: 10000 });
   const reihenfolge = await page.locator(".offer-card").evaluateAll((els) => els.map((el) => {
     const m = el.innerText.match(/(\d+)[,.](\d{2})\s*€/);
     return m ? Number(`${m[1]}.${m[2]}`) : null;

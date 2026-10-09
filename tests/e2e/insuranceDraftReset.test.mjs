@@ -9,7 +9,16 @@
 //   (1) nach „Standard“ → „keine“ geht GENAU EINE Neubepreisung mit `insuranceType: "none"` hinaus,
 //       und solange sie läuft, ist „Kostenpflichtig buchen“ gesperrt; danach ist es frei, und /book
 //       trägt `insuranceSelection: { type: "none" }`,
-//   (2) wer nie versichert bepreist hat, löst mit „keine“ KEINEN Aufruf aus (kein Mehraufwand).
+//   (2) wer nie versichert bepreist hat, löst mit „keine“ KEINEN Aufruf aus (kein Mehraufwand),
+//   (3) scheitert die Rücksetzung, löst sich die Sperre wieder (die Buchung prüft serverseitig) —
+//       ohne automatische zweite Rücksetzung,
+//   (4) eine neue Auswahl während der Rücksetzung bricht sie ab; „keine“ danach setzt den Entwurf
+//       erneut zurück und sperrt bis zur Bestätigung.
+//
+// Die Sperre wird im MOMENT jeder Rücksetz-Anfrage gemessen (in der Attrappe, bevor sie antwortet),
+// nicht erst, wenn der Test danach nachsieht: sie muss stehen, bevor die Rücksetzung hinausgeht.
+// Vorher setzte erst der Effekt die Sperre, nach dem Render der Auswahl — „Kostenpflichtig buchen“
+// war dazwischen kurz frei, und dieser Test schlug sporadisch fehl (R7a).
 //
 // Kein echtes Backend, keine Bestellung, keine Neubepreisung beim Anbieter.
 import { test } from "node:test";
@@ -56,8 +65,10 @@ const UNVERSICHERT = {
 
 let server, browser;
 
-async function setupRoutes(page, { noneVerzoegerungMs = 1500 } = {}) {
+async function setupRoutes(page, { noneVerzoegerungMs = 1500, noneStatus = 200 } = {}) {
   const neubepreisungen = [];
+  // Zustand von „Kostenpflichtig buchen“ im Moment jeder Rücksetz-Anfrage (true = gesperrt).
+  const sperreBeiRuecksetzung = [];
   let bookPayload = null;
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const p = new URL(route.request().url()).pathname;
@@ -79,8 +90,15 @@ async function setupRoutes(page, { noneVerzoegerungMs = 1500 } = {}) {
       const body = JSON.parse(route.request().postData() || "{}");
       neubepreisungen.push({ insuranceType: body.insuranceType, offerId: body.offerId, ceShipmentId: body.ceShipmentId });
       if (body.insuranceType === "none") {
+        sperreBeiRuecksetzung.push(await page.evaluate(() => {
+          const b = [...document.querySelectorAll("button")].find((x) => /Kostenpflichtig buchen/.test(x.textContent || ""));
+          return b ? b.disabled : null;
+        }));
         await new Promise((r) => setTimeout(r, noneVerzoegerungMs));
-        return json(UNVERSICHERT);
+        // Eine neue Auswahl bricht die Rücksetzung im Browser ab (4); die Antwort hat dann kein Ziel mehr.
+        try {
+          return await (noneStatus === 200 ? json(UNVERSICHERT) : json({ error: "Neubepreisung fehlgeschlagen" }, noneStatus));
+        } catch { return undefined; }
       }
       return json(VERSICHERT);
     }
@@ -95,8 +113,19 @@ async function setupRoutes(page, { noneVerzoegerungMs = 1500 } = {}) {
     return json({});
   });
   await page.addInitScript(() => localStorage.setItem("ce_token", "e2e-token"));
-  return { neubepreisungen, bookPayload: () => bookPayload };
+  return { neubepreisungen, sperreBeiRuecksetzung, bookPayload: () => bookPayload };
 }
+
+// Wartet auf einen Zustand der Attrappe (Node-Seite), höchstens `ms` lang.
+async function warteAuf(page, bedingung, ms = 4000) {
+  for (let i = 0; i < ms / 100 && !bedingung(); i++) await page.waitForTimeout(100);
+  return bedingung();
+}
+const anzahl = (mock, typ) => mock.neubepreisungen.filter((n) => n.insuranceType === typ).length;
+const warteBisFrei = (page) => page.waitForFunction(() => {
+  const b = [...document.querySelectorAll("button")].find((x) => /Kostenpflichtig buchen/.test(x.textContent || ""));
+  return b && !b.disabled;
+}, null, { timeout: 10000 });
 
 async function zurVersicherung(page) {
   await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
@@ -158,6 +187,10 @@ test("(1) Standard → keine: der Entwurf wird ohne Versicherung neu bepreist, b
   assert.equal(ruecksetzungen[0].offerId, TARIF.offerId, "die Rücksetzung trägt die Angebotskennung");
   assert.equal(ruecksetzungen[0].ceShipmentId, 4711, "die Rücksetzung adressiert den CE-Sendungshandle");
 
+  // Schon im Moment der Rücksetz-Anfrage gesperrt — nicht erst danach. (Die Attrappe hält den Zustand
+  // fest, bevor sie antwortet; gewartet wird nur, bis sie ihn abgelegt hat.)
+  assert.ok(await warteAuf(page, () => mock.sperreBeiRuecksetzung.length === 1), "der Zustand bei der Anfrage fehlt");
+  assert.deepEqual(mock.sperreBeiRuecksetzung, [true], "die Buchung war im Moment der Rücksetz-Anfrage frei");
   // Während die Rücksetzung läuft: gesperrt.
   assert.equal(await buchenKnopf(page).isDisabled(), true, "die Buchung ist während der Rücksetzung freigegeben");
 
@@ -184,5 +217,58 @@ test("(2) ohne vorherige versicherte Neubepreisung löst „keine“ keinen Aufr
   await page.waitForTimeout(900);
   assert.equal(mock.neubepreisungen.length, 0, `unerwartete Neubepreisung: ${JSON.stringify(mock.neubepreisungen)}`);
   assert.equal(await buchenKnopf(page).isDisabled(), false, "die Buchung muss ohne Versicherung sofort frei sein");
+  await page.close();
+});
+
+test("(3) scheitert die Rücksetzung, löst sich die Sperre — ohne automatische zweite Rücksetzung", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+  const mock = await setupRoutes(page, { noneVerzoegerungMs: 1500, noneStatus: 500 });
+  await zurVersicherung(page);
+  await bestaetigeHinweise(page);
+
+  await waehle(page, "Standardversicherung");
+  assert.ok(await warteAuf(page, () => anzahl(mock, "standard") === 1), "die versicherte Neubepreisung fehlt");
+  await waehle(page, "Keine zusätzliche Transportversicherung");
+  assert.ok(await warteAuf(page, () => anzahl(mock, "none") === 1), "die Rücksetzung fehlt");
+
+  assert.ok(await warteAuf(page, () => mock.sperreBeiRuecksetzung.length === 1), "der Zustand bei der Anfrage fehlt");
+  assert.deepEqual(mock.sperreBeiRuecksetzung, [true], "die Buchung war im Moment der Rücksetz-Anfrage frei");
+  assert.equal(await buchenKnopf(page).isDisabled(), true, "die Buchung ist während der Rücksetzung freigegeben");
+
+  // Der Fehler hält die Seite nicht fest: die Sperre löst sich, die Buchung prüft den Preis serverseitig.
+  await warteBisFrei(page);
+  assert.equal(anzahl(mock, "none"), 1, "die gescheiterte Rücksetzung wurde automatisch wiederholt");
+  await page.close();
+});
+
+test("(4) neue Auswahl während der Rücksetzung bricht sie ab; erneut „keine“ sperrt bis zur nächsten Bestätigung", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+  const mock = await setupRoutes(page, { noneVerzoegerungMs: 2500 });
+  await zurVersicherung(page);
+  await bestaetigeHinweise(page);
+
+  await waehle(page, "Standardversicherung");
+  assert.ok(await warteAuf(page, () => anzahl(mock, "standard") === 1), "die versicherte Neubepreisung fehlt");
+  await waehle(page, "Keine zusätzliche Transportversicherung");
+  assert.ok(await warteAuf(page, () => anzahl(mock, "none") === 1), "die erste Rücksetzung fehlt");
+
+  // Noch während die Rücksetzung läuft: zurück zur Standardversicherung. Die Rücksetzung ist damit
+  // abgebrochen, die versicherte Auswahl wird neu bepreist und gibt die Buchung erst danach frei.
+  await waehle(page, "Standardversicherung");
+  assert.ok(await warteAuf(page, () => anzahl(mock, "standard") === 2), "die erneute versicherte Neubepreisung fehlt");
+  await warteBisFrei(page);
+
+  // Erneut „keine“: der Entwurf trägt wieder die Versicherung — neue Rücksetzung, sofort gesperrt.
+  await waehle(page, "Keine zusätzliche Transportversicherung");
+  assert.ok(await warteAuf(page, () => anzahl(mock, "none") === 2), "die zweite Rücksetzung fehlt");
+  assert.ok(await warteAuf(page, () => mock.sperreBeiRuecksetzung.length === 2), "der Zustand bei der zweiten Anfrage fehlt");
+  assert.deepEqual(mock.sperreBeiRuecksetzung, [true, true], "die Buchung war im Moment einer Rücksetz-Anfrage frei");
+  assert.equal(await buchenKnopf(page).isDisabled(), true, "die Buchung ist während der zweiten Rücksetzung freigegeben");
+
+  await warteBisFrei(page);
+  await buchenKnopf(page).click();
+  assert.ok(await warteAuf(page, () => mock.bookPayload() !== null, 3000), "der /book-Request muss abgesetzt worden sein");
+  assert.deepEqual(mock.bookPayload().insuranceSelection, { type: "none" });
+  assert.equal(anzahl(mock, "none"), 2, "keine weitere Rücksetzung");
   await page.close();
 });

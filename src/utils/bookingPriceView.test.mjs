@@ -491,7 +491,23 @@ test("(J6d) BookingPage setzt den Entwurf zurück, sobald nach versicherter Neub
   const seite = read("../pages/BookingPage.jsx");
   // Markiert wird VOR dem Request: der PUT kann den Entwurf versichert haben, auch wenn die Antwort ausbleibt.
   assert.match(seite, /if \(!coverModel && \(type === "standard" \|\| type === "premium"\)\) entwurfVersichert\.current = true;\s*\n\s*const r = await repriceInsurance\(/);
+  // Wann eine Rücksetzung nötig ist, steht an EINER Stelle: „keine“ im Stufenmodell nach einer
+  // versicherten Neubepreisung.
+  assert.match(seite, /const entwurfRuecksetzungNoetig = \(typ\) => typ === "none" && !coverModel && entwurfVersichert\.current;/);
   // Die Rücksetzung ist eine Neubepreisung ohne Versicherung — derselbe Endpunkt, keine neue Serverlogik.
-  assert.match(seite, /if \(!coverModel && entwurfVersichert\.current\) \{[\s\S]{0,400}insuranceType:\s+"none"/);
+  assert.match(seite, /if \(entwurfRuecksetzungNoetig\(insuranceType\)\) \{[\s\S]{0,400}insuranceType:\s+"none"/);
   assert.match(seite, /draftResetPending: entwurfRuecksetzung,/);
+});
+test("(J6e) die Buchungssperre greift im Auswahl-Handler — im selben Render wie die Auswahl, vor dem Request", () => {
+  const seite = read("../pages/BookingPage.jsx");
+  const start = seite.indexOf("const handleSelectInsuranceType = (id) => {");
+  assert.ok(start > 0, "Auswahl-Handler nicht gefunden");
+  const handler = seite.slice(start, seite.indexOf("\n  };", start));
+  const ohneKommentar = handler.split("\n").filter((z) => !z.trim().startsWith("//")).join("\n");
+  const sperre = ohneKommentar.indexOf("if (id !== insuranceType && entwurfRuecksetzungNoetig(id)) setEntwurfRuecksetzung(true);");
+  const auswahl = ohneKommentar.indexOf("setInsuranceType(id);");
+  assert.ok(sperre > 0, "der Auswahl-Handler setzt die Sperre nicht selbst");
+  assert.ok(auswahl > sperre, "die Sperre muss mit der Auswahl gesetzt werden, nicht erst danach");
+  // Nur bei einem echten Wechsel: ohne Wechsel läuft der Effekt nicht und löste die Sperre nie.
+  assert.match(ohneKommentar, /id !== insuranceType && /);
 });

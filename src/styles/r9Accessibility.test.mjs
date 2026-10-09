@@ -123,8 +123,11 @@ test("Gutschriftslauf: bereits ausgestellt ohne offenen Rest zeigt „—“ sta
   const ausgestellt = { status: "already_issued" };
   assert.equal(runAmountText(ausgestellt, 0), "—");
   assert.equal(runAmountText(ausgestellt, null), "—");
-  // Ein echter offener Rest bleibt sichtbar; andere Status unverändert.
+  assert.equal(runAmountText(ausgestellt, undefined), "—");
+  // Ein echter offener Rest bleibt sichtbar — positiv wie negativ; andere Status unverändert.
   assert.match(runAmountText(ausgestellt, 1250), /^12,50\s€$/);
+  // Regression: buildPreview erlaubt negative Reste; auch bei „Bereits ausgestellt“ nie als „—“ verborgen.
+  assert.match(runAmountText(ausgestellt, -1200), /^-12,00\s€$|^−12,00\s€$/);
   assert.match(runAmountText({ status: "issuable" }, 0), /^0,00\s€$/);
   assert.match(runAmountText({ status: "carried_forward" }, -1200), /^-12,00\s€$|^−12,00\s€$/);
   const seite = lies("pages/admin/AdminSalesPartnerCreditNotesPage.jsx");

@@ -388,9 +388,10 @@ export const runPercentText = (value) => formatPercent(value).replace(/ %$/, "\u
 // R9: Bei „Bereits ausgestellt“ tragen netCents/taxCents/grossCents nur die NOCH OFFENEN Restbeträge des
 // Monats (Backend lib/salesPartner/creditNotes.js), nicht den Betrag der ausgestellten Gutschrift. Ohne
 // offenen Rest stand dort „0,00 €“ — als wäre die Gutschrift leer. Dann „—“; der Gutschriftsbetrag steht im
-// Partnerdetail („Gutschrift ansehen“). Ein echter offener Rest bleibt sichtbar.
+// Partnerdetail („Gutschrift ansehen“). Nur ein Rest von EXAKT 0 wird ausgeblendet: ein echter offener
+// Rest bleibt sichtbar, positiv wie negativ (buildPreview erlaubt negative Reste); null/fehlend ist ohnehin „—“.
 export function runAmountText(row, cents) {
-  if (row && row.status === "already_issued" && !(Number.isInteger(cents) && cents > 0)) return "—";
+  if (row && row.status === "already_issued" && cents === 0) return "—";
   return formatCents(cents);
 }
 

@@ -88,7 +88,7 @@
      disabled/aria-disabled getragen wird, und nie für Information. */
   --ce-color-text-primary: #111a33;                   /* weiß 17,22:1 · Grund 16,36:1 */
   --ce-color-text-secondary: #5f6d80;                 /* weiß 5,27:1 · Grund 5,00:1 */
-  --ce-color-text-muted: #667284;                     /* weiß 5,11:1 · Grund 4,63:1 */
+  --ce-color-text-muted: #667284;                     /* weiß 4,88:1 · Grund 4,63:1 · surface-muted 4,43:1 (dort nicht für Text) */
   --ce-color-text-placeholder: #6b7688;               /* weiß 4,59:1 */
   --ce-color-text-disabled: #97a1b0;                  /* 2,61:1 — nur inaktive Elemente */
   --ce-color-text-inverse: #ffffff;

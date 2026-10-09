@@ -450,6 +450,12 @@
 }
 .auth-legal a { color: var(--auth-ink-3); text-decoration: none; transition: color 0.15s; }
 .auth-legal a:hover { color: var(--auth-blue-soft); text-decoration: underline; }
+/* R9: auf Touchgeräten waren die Rechtslinks (18 px) und „30 Tage angemeldet bleiben“ (18 px)
+   zu kleine Ziele — dort mindestens 44 px. Mit Maus bleibt das Layout unverändert. */
+@media (pointer: coarse) {
+  .auth-legal a { display: inline-flex; align-items: center; min-height: 44px; }
+  .auth-check { min-height: 44px; }
+}
 
 /* ── Register form legal hint ───────────────────────────────────────────── */
 .auth-form-legal {

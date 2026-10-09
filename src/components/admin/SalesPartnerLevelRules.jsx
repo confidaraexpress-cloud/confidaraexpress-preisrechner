@@ -34,7 +34,9 @@ export function RuleSetView({ ruleSet, caption }) {
         <div className="adm-kv-item"><dt>Angelegt</dt><dd>{formatTimestamp(ruleSet.createdAt, { withTime: true })}</dd></div>
       </dl>
       {(ruleSet.customerLevels.length > 0 || ruleSet.packageLevels.length > 0) && (
-        <div className="table-scroll adm-sp-levels">
+        // R9: bei schmaler Ansicht scrollt die Tabelle seitlich — der Bereich muss per Tastatur
+        // erreichbar sein (axe scrollable-region-focusable) und trägt dafür einen Namen.
+        <div className="table-scroll adm-sp-levels" tabIndex={0} role="region" aria-label={caption || "Level-Regeln"}>
           <table>
             <caption className="sr-only">{caption || "Level-Regeln"}: Schwellen und Boni je Level für aktive Kunden und versendete Pakete.</caption>
             <thead>
@@ -140,7 +142,7 @@ export function LevelRulesEditor({ value, onChange, errors = {}, idPrefix, disab
       </div>
       {fehler("customerLevels")}
       {fehler("packageLevels")}
-      <div className="table-scroll adm-sp-levels">
+      <div className="table-scroll adm-sp-levels" tabIndex={0} role="region" aria-label="Neue Level-Regeln">
         <table>
           <caption className="sr-only">Neue Level-Regeln: Schwelle und Bonus je Level für aktive Kunden und versendete Pakete.</caption>
           <thead>

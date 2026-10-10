@@ -23,6 +23,16 @@
    Bindung trägt eine Zuschlagszeile. Fehlt die Liste, gilt der bisherige Vertrag. Welche Angebote
    das betrifft, entscheidet ausschließlich dieses Feld — keine Service- oder Carrierprüfung.
 
+   ─── DER ZUSCHLAG DER BESTÄTIGTEN OPTION ─────────────────────────────────────
+   Ohne `surchargeFreePriceInputs` KANN die Privatadresse einen Zuschlag tragen. Ob und wie hoch, sagt
+   der Server je Sendung in den Optionen — und das kann auch 0,00 € sein (DHL-Privatadresszuschlag,
+   2026-10-10: der Zuschlag ist, was der Anbieter für diese Sendung nennt). Maßgeblich ist deshalb die
+   Option, die der Kunde bestätigt hat: eine Bindung trägt die Zeile „Zuschlag Privatadresse" genau
+   dann, wenn diese Option einen Zuschlag nannte, und dann genau dessen Betrag; eine Privatoption mit
+   0,00 € trägt die Beträge der Geschäftsadresse und keine Zeile. Ohne bestätigte Option gilt die
+   strenge Regel — Privatadresse heißt Zuschlagszeile. Hier wird kein Zuschlag erfunden, berechnet
+   oder übergangen, und entschieden wird nie an Service oder Carrier.
+
    ─── DREIWERTIG ──────────────────────────────────────────────────────────────
    `true` (Privatadresse), `false` (Geschäftsadresse) und `null` (noch nicht gewählt) sind drei
    Zustände. `false` ist eine vollwertige Antwort.
@@ -30,7 +40,9 @@
    ─── KEIN PROVIDERNAME ───────────────────────────────────────────────────────
    Weder in Feldnamen noch in Texten. */
 import { money } from "./formatters.js";
-import { readPriceComponents, hasResidentialSurcharge, hasSameDayCollectionSurcharge } from "./priceComponentsView.mjs";
+import {
+  readPriceComponents, hasResidentialSurcharge, hasSameDayCollectionSurcharge, PRICE_COMPONENT_TYPE,
+} from "./priceComponentsView.mjs";
 import {
   readSameDayCollectionBlock, SAME_DAY_COLLECTION_UNAVAILABLE_CODE, SAME_DAY_UNAVAILABLE_KIND, sameDayUnavailableKindOf,
   SAME_DAY_TEXT,
@@ -152,6 +164,11 @@ export function offerRevisionOf(tariff) {
 /**
  * Die am Angebot gebundene Angabe — nur, wenn das Angebot die vollständige Bindung trägt
  * (buchbar, vollständig bepreist, gültige Serverbestandteile). Sonst `null`.
+ *
+ * Die Zuschlagszeile muss zur Bindung passen: die Geschäftsadresse und ein Angebot ohne belegten
+ * Zuschlag tragen nie eine; die Privatadresse eine genau dann, wenn die bei der Bindung bestätigte
+ * Option einen Zuschlag nannte (`residentialSurchargeConfirmed`, gesetzt nur von
+ * `tariffWithPriceInputBinding`). Fehlt diese Aussage, gilt die strenge Regel: privat mit Zeile.
  */
 export function residentialBoundValue(tariff) {
   const t = istObjekt(tariff) ? tariff : {};
@@ -162,8 +179,29 @@ export function residentialBoundValue(tariff) {
   const komponenten = readPriceComponents(t.priceComponents);
   if (t.bookable !== true || t.priceCompleteness !== "complete" || komponenten === null) return null;
   // Ohne belegten Zuschlag trägt keine der beiden Adressarten eine Zuschlagszeile.
-  const zuschlagErwartet = offerResidentialSurchargeFree(t) ? false : wert;
+  const bestaetigt = typeof t.residentialSurchargeConfirmed === "boolean" ? t.residentialSurchargeConfirmed : true;
+  const zuschlagErwartet = offerResidentialSurchargeFree(t) || wert !== true ? false : bestaetigt;
   return hasResidentialSurcharge(komponenten) === zuschlagErwartet ? wert : null;
+}
+
+/* Die Zuschlagszeile, die die Bindung einer Wahl tragen muss — aus der Option, die der Kunde bestätigt hat:
+   `{ zeile, betrag }`. Ohne belegten Zuschlag und an der Geschäftsadresse nie eine; an der Privatadresse
+   genau dann, wenn die bestätigte Option einen Zuschlag nannte, und dann genau dessen Betrag. Ohne
+   bestätigte Option gilt die strenge Regel (Zeile ja, Betrag offen). */
+function erwarteteZuschlagszeile(tariff, wert, options) {
+  if ((tariff !== undefined && offerResidentialSurchargeFree(tariff)) || wert !== true) return { zeile: false, betrag: null };
+  const option = optionFor(options, true);
+  if (!option) return { zeile: true, betrag: null };
+  return option.surcharge.gross > 0 ? { zeile: true, betrag: option.surcharge } : { zeile: false, betrag: null };
+}
+
+/* Passt die Zuschlagszeile der (gelesenen) Bestandteile zur Erwartung? Mit Betrag centgleich in netto, MwSt. und
+   brutto — die Zeile ist der Zuschlag, den der Kunde bestätigt hat, kein anderer. */
+function zuschlagszeilePasst(components, erwartet) {
+  const zeile = components.find((k) => k.type === PRICE_COMPONENT_TYPE.RESIDENTIAL_DELIVERY_SURCHARGE) || null;
+  if (Boolean(zeile) !== erwartet.zeile) return false;
+  if (!zeile || !erwartet.betrag) return true;
+  return zeile.net === erwartet.betrag.net && zeile.vat === erwartet.betrag.vat && zeile.gross === erwartet.betrag.gross;
 }
 
 /** Der Körper der Optionsanfrage — genau zwei Felder, kein Preis. */
@@ -225,11 +263,12 @@ export function readPriceInputOptions(body, tariff) {
   const geschaeft = options[0].surcharge;
   if (geschaeft.net !== 0 || geschaeft.vat !== 0 || geschaeft.gross !== 0) return null;
   // Ohne belegten Zuschlag trägt auch die Privatadresse keinen, und beide Optionen tragen denselben Preis.
-  if (tariff !== undefined && offerResidentialSurchargeFree(tariff)) {
-    const privat = options[1];
-    if (privat.surcharge.net !== 0 || privat.surcharge.vat !== 0 || privat.surcharge.gross !== 0) return null;
-    if (TOTALS_FELDER.some((feld) => privat.totals[feld] !== options[0].totals[feld])) return null;
-  }
+  const privat = options[1];
+  const privatOhneZuschlag = privat.surcharge.net === 0 && privat.surcharge.vat === 0 && privat.surcharge.gross === 0;
+  if (tariff !== undefined && offerResidentialSurchargeFree(tariff) && !privatOhneZuschlag) return null;
+  // Eine Privatoption ohne Zuschlag (ohne belegten Zuschlag, oder weil der Anbieter für diese Sendung keinen nennt)
+  // trägt genau den Preis der Geschäftsadresse — sonst stünde ein Preisunterschied ohne Zuschlag da.
+  if (privatOhneZuschlag && TOTALS_FELDER.some((feld) => privat.totals[feld] !== options[0].totals[feld])) return null;
   // TG22 Same-Day: eine Abholung am selben Tag nennt der Server als eigenen Block (Zuschlag, bis wann heute,
   // „bereit ab"). Ein Block in anderer Form beschreibt etwas anderes als diesen Vertrag — fail closed.
   const selberTag = readSameDayCollectionBlock(d.sameDayCollection);
@@ -273,25 +312,33 @@ export function bindRequestBody({ tariff, options, value } = {}) {
 
 /**
  * Liest die Bindungsantwort. Fail closed in jeder Richtung: fehlende Bestandteile, ein
- * Zuschlag bei der Geschäftsadresse (oder keiner bei der Privatadresse), ein nicht
- * vollständiger Preisstand oder ein Angebotsausschnitt ohne Beträge ergeben `null`.
+ * Zuschlag bei der Geschäftsadresse (oder bei der Privatadresse ein anderer als der der
+ * bestätigten Option — ohne Option: keiner), ein nicht vollständiger Preisstand oder ein
+ * Angebotsausschnitt ohne Beträge ergeben `null`.
+ *
+ * `options` (optional): der gelesene Optionsstand (`readPriceInputOptions`), aus dem der Kunde gewählt
+ * hat. Mit ihm trägt die Privatadresse genau den Zuschlag ihrer Option — auch keinen, wenn sie 0,00 €
+ * nannte.
  */
-export function readPriceInputBinding(body, { tariff, value } = {}) {
+export function readPriceInputBinding(body, { tariff, value, options } = {}) {
   const d = istObjekt(body) ? body : null;
   if (!d) return null;
   const offerId = kennung(d.offerId);
   const offerRevision = revision(d.offerRevision);
   if (!offerId || offerRevision === null) return null;
   if (tariff !== undefined && kennung(istObjekt(tariff) ? tariff.offerId : null) !== offerId) return null;
+  // Die bestätigten Optionen gehören zu genau diesem Angebot — sonst beschreiben sie eine andere Wahl.
+  if (options !== undefined && (!options || options.offerId !== offerId)) return null;
   const angaben = istObjekt(d.priceInputs) ? d.priceInputs : {};
   const wert = angaben[PRICE_INPUT_DELIVERY_RESIDENTIAL];
   if (wert !== true && wert !== false) return null;
   if (value !== undefined && value !== wert) return null;
   if (d.priceCompleteness !== "complete") return null;
   const components = readPriceComponents(d.components);
-  // Ohne belegten Zuschlag trägt auch die gebundene Privatadresse keine Zuschlagszeile.
-  const zuschlagErwartet = tariff !== undefined && offerResidentialSurchargeFree(tariff) ? false : wert;
-  if (!components || hasResidentialSurcharge(components) !== zuschlagErwartet) return null;
+  // Ohne belegten Zuschlag trägt auch die gebundene Privatadresse keine Zuschlagszeile; sonst trägt die Privatadresse
+  // genau den Zuschlag der bestätigten Option (auch keinen, wenn sie 0,00 € nannte) — ohne Option: Zeile Pflicht.
+  const erwartet = erwarteteZuschlagszeile(tariff, wert, options);
+  if (!components || !zuschlagszeilePasst(components, erwartet)) return null;
   // TG22 Same-Day: nennt die Bindung eine Abholung am selben Tag, muss der gebundene Preis ihren Zuschlag
   // tragen. Umgekehrt genügt der Bestandteil: der Block trägt die Abholzeit, nicht den Preis.
   const selberTag = readSameDayCollectionBlock(d.sameDayCollection);
@@ -322,6 +369,8 @@ export function readPriceInputBinding(body, { tariff, value } = {}) {
   overlay.insuranceDetails = istObjekt(o.insuranceDetails) ? o.insuranceDetails : null;
   return Object.freeze({
     offerId, offerRevision, value: wert, components, totals,
+    // Ob die gebundene Wahl einen Zuschlag Privatadresse trägt — geprüft gegen die bestätigte Option (siehe oben).
+    residentialSurchargeConfirmed: erwartet.zeile,
     overlay: Object.freeze(overlay),
     insuranceReset: d.insuranceReset === true,
     idempotent: d.idempotent === true,
@@ -352,6 +401,10 @@ export function tariffWithPriceInputBinding(tariff, binding) {
     offerRevision: binding.offerRevision,
     priceInputs: { [PRICE_INPUT_DELIVERY_RESIDENTIAL]: binding.value },
     priceComponents: binding.components,
+    // Die bei der Bindung bestätigte Zuschlagsaussage — sie allein erlaubt `residentialBoundValue` eine Privatadresse
+    // ohne Zuschlagszeile. Eine Bindung ohne diese Aussage ersetzt auch eine frühere: es gilt die strenge Regel.
+    residentialSurchargeConfirmed: typeof binding.residentialSurchargeConfirmed === "boolean"
+      ? binding.residentialSurchargeConfirmed : undefined,
     ...(selberTag ? { collectionReadyFrom: selberTag.collectionReadyFrom } : {}),
   };
 }

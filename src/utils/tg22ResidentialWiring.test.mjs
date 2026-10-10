@@ -121,7 +121,8 @@ test("W8 — Bindung: genau eine zur Zeit, Serverwerte ins Angebot und in die Li
   assert.match(binden, /if \(resBinding\.current\) return;/);
   assert.match(binden, /resBinding\.current = true;/);
   assert.match(binden, /const body = bindRequestBody\(\{ tariff, options: optionen, value: wert \}\);/);
-  assert.match(binden, /const bindung = readPriceInputBinding\(d, \{ tariff, value: wert \}\);/);
+  // DHL-Privatadresszuschlag: die Bindung wird gegen die Option geprüft, die der Kunde bestätigt hat.
+  assert.match(binden, /const bindung = readPriceInputBinding\(d, \{ tariff, value: wert, options: optionen \}\);/);
   assert.match(binden, /const neu = bindung \? tariffWithPriceInputBinding\(tariff, bindung\) : null;/);
   assert.match(binden, /setResOptions\(optionsAfterBinding\(optionen, bindung\)\);/);
   assert.match(binden, /if \(bindung\.insuranceReset \|\| bindung\.offerRevision !== vorherigerStand\) \{\s*setInsuranceType\("none"\);/);

@@ -68,11 +68,13 @@ export function optionsAntwort(z) {
   };
 }
 
-/** Die öffentlichen Bestandteile einer Bindung — Geschäftsadresse genau eine Zeile (ohne Abholung am selben Tag). */
+/** Die öffentlichen Bestandteile einer Bindung — Geschäftsadresse genau eine Zeile (ohne Abholung am selben Tag).
+ *  Wie der Server: eine Privatadresse ohne Zuschlag (0,00 €, etwa weil der Anbieter für diese Sendung keinen nennt)
+ *  trägt keine Zuschlagszeile — der Server speichert nie eine Nullzeile. */
 export function bestandteile(z, wert) {
   const basis = { type: "shipping_base", taxable: true, ...(z.sameDay ? z.sameDay.basis : z.geschaeft) };
   const selberTag = z.sameDay ? [{ type: "same_day_collection_surcharge", taxable: true, ...z.sameDay.zuschlag }] : [];
-  return wert
+  return wert && !!z.zuschlag && z.zuschlag.gross > 0
     ? [basis, ...selberTag, { type: "residential_delivery_surcharge", taxable: true, ...z.zuschlag }]
     : [basis, ...selberTag];
 }

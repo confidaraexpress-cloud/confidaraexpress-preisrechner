@@ -1867,7 +1867,8 @@ export default function BookingPage() {
         setzeZuschlagsfehler(r.status, d);
         return;
       }
-      const bindung = readPriceInputBinding(d, { tariff, value: wert });
+      // Die Bindung wird gegen die Option geprüft, die der Kunde bestätigt hat — auch deren Zuschlag (0,00 € oder Betrag).
+      const bindung = readPriceInputBinding(d, { tariff, value: wert, options: optionen });
       const neu = bindung ? tariffWithPriceInputBinding(tariff, bindung) : null;
       if (!neu) { setzeZuschlagsfehler(0, null); return; }
       setResOptions(optionsAfterBinding(optionen, bindung));

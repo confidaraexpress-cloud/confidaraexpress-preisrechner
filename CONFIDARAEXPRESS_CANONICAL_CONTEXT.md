@@ -183,6 +183,8 @@ Dieser Zustand erlaubt eine risikobasierte Priorisierung von Sicherheitsmaßnahm
 
 Mindestens Authentifizierung, Autorisierung, Tenant-Grenzen, Secret-Schutz, serverseitige Preis-/Buchungsvalidierung, Provider-Kill-Switches und Schutz vor unbeabsichtigten Produktivaktionen bleiben auch Pre-Live relevant.
 
+**Betreiberentscheidung 2026-10-10 — Pre-Live ohne echte Kunden/Partner, technische Abschlusspriorität:** Auf ConfidaraExpress arbeiten aktuell **keine echten Kunden und keine für den regulären Betrieb freigeschalteten echten Vertriebspartner/Freelancer**. Der echte Kunden- und Partnerbetrieb setzt die bewusste Freischaltung voraus; intern vorhandene Testkonten sind keine echten Kunden/Partner. **Zuerst die 14 bestätigten TG-Live-Tarife vollständig korrekt integrieren, danach die restliche Plattform.** Für die technische Fertigstellung **keine zusätzlichen TEST-Kennzeichnungen, künstlichen Zwischensperren für einzelne Tarife, neue Testkonstruktionen oder überflüssigen Härtungsprojekte allein wegen des Pre-Live-Zustands** einführen. Insbesondere ist eine neue TG-Tarifsperre **kein Ersatz** für die richtige Live-Service-ID-/Produktzuordnung: alle 14 Tarife bleiben Ziel des vollständigen Abschlusses; offene Beweise werden gezielt geklärt. Bereits bestehende technisch notwendige Freigaben, Isolierung von Testdaten und Sicherheitsinvarianten bleiben bestehen und werden weder pauschal entfernt noch umgangen. Falsche Produktzusagen und Preise dürfen nicht öffentlich buchbar werden; Live-Freigaben erfolgen erst nach Verifikation und Betreiberentscheidung. Authentifizierung, Berechtigungen/Mandantentrennung, Secret-Schutz, serverseitige Preis-/Buchungsprüfung, Provider-Kill-Switches und Doppelbuchungsschutz bleiben Pflicht. Rechtstexte sind derzeit **nicht Teil des technischen Fertigstellungsblocks**; ihre später notwendigen Freigaben werden dadurch nicht als erledigt behandelt. Diese Priorität gilt bis zur nächsten ausdrücklichen Betreiberentscheidung oder einer Änderung des tatsächlichen Geschäftszustands.
+
 ### Admin-Übersicht
 
 **Status: PRODUCT_DECISION** (2026-10-09)
@@ -1480,6 +1482,11 @@ Eine KI oder ein Entwickler darf aus diesem Dokument insbesondere NICHT ableiten
 ---
 
 ## 25. Changelog
+
+### v2.35 — 2026-10-10 (Betreiberentscheidung: Pre-Live-Priorisierung)
+
+- 1A Betriebsstatus: Keine echten Kunden oder freigeschalteten echten Vertriebspartner/Freelancer im regulären Betrieb; technische Fertigstellung vor zusätzlicher Testkennzeichnung, künstlichen Tarif-Zwischensperren und nicht erforderlicher Härtung. Alle 14 TG-Tarife bleiben im Abschlussumfang; Kernschutz und Freigabegrenzen bleiben erhalten.
+- Reine Dokumentation: keine Code- oder ENV-Änderung, kein Providerrequest, keine Buchung, kein Deployment.
 
 ### v2.34 — 2026-10-09 (Technischer Abschluss R1–R9)
 

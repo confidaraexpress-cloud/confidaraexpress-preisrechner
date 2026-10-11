@@ -92,6 +92,7 @@ import {
   INVOICES_DASHBOARD_TARGET, invoiceDeliveryHint, BOOKING_CONFIRMATION_LINE, INVOICE_AUTOCREATE_LINE,
   PROFILE_DASHBOARD_TARGET,
 } from "../utils/bookingSuccessView.mjs";
+import { bookingProfileNotice, bookingProfileGateText } from "../utils/bookingProfileView.mjs";
 import { shipmentEmailError, buildShipmentEmailPayload } from "../utils/shipmentEmailOptions.mjs";
 import { carrierAppliesLabel } from "../utils/labelHandling.mjs";
 import { buildDraftBookingOptions } from "../utils/draftBookingOptions.mjs";
@@ -1521,7 +1522,9 @@ export default function BookingPage() {
         //   LABEL_FORMAT_NOT_SUPPORTED  (400): nichts beauftragt, das Angebot trägt → neu berechnen.
         //   INVALID_REFERENCE_NUMBER    (400): Feldfehler an der Referenznummer, zurück zu Schritt 1.
         if (d?.code === "BUSINESS_PROFILE_INCOMPLETE") {
-          setProfileHint(normalizeApiError({ status: r.status, body: d }).message);
+          // F1: nennt die Antwort die fehlenden Felder (`missingFields`), sagt der Hinweis genau
+          // diese; sonst bleibt der Text des Fehlerkatalogs.
+          setProfileHint(bookingProfileGateText(d, normalizeApiError({ status: r.status, body: d }).message));
           setLoading(false);
           return;
         }
@@ -2430,7 +2433,10 @@ export default function BookingPage() {
                   dropoffShopBlocksBooking={dropoffShopBlocks}
                   voucherChecking={voucherChecking}
                   legalBlocksBooking={legalBlocksBooking}
-                  profileHint={profileHint}
+                  // F1: schon VOR dem Klick, wenn das Konto laut Backend noch nicht buchungsbereit
+                  // ist; nach einer 422-Antwort deren Text. Der Bestellknopf bleibt — das Backend
+                  // entscheidet, und ein im anderen Tab ergänztes Profil darf nicht gesperrt werden.
+                  profileHint={profileHint || bookingProfileNotice(user?.bookingProfile)}
                   onNavigateProfile={() => navigate(PROFILE_DASHBOARD_TARGET)}
                   onBook={doBook}
                   onNavigateShipments={() => navigate("/dashboard?page=shipments")}

@@ -14,6 +14,7 @@
 //   P    Erfolgsbetrag ausschließlich vom Server
 //   Q    offener Ausgang (Abbruch, 5xx ohne Code, unlesbarer Erfolg): kein Bestellknopf mehr
 //   R    422 Unternehmensprofil (Buchung und Preisberechnung) ohne Abmeldung
+//   R2   F1: fehlende Rechnungsanschrift — Hinweis VOR dem Buchen (Neue Sendung, Buchung, Profil)
 //   S/T  versicherter 409 ohne Code bepreist neu; Vertragscodes führen zur richtigen Handlung
 //
 // Kein echtes Backend, keine Bestellung, keine Neubepreisung beim Anbieter, kein Tracking-Abruf.
@@ -152,7 +153,21 @@ async function setupRoutes(page, protokoll, szenario = {}) {
       return fallback();
     };
     protokoll.pfade.push(p);
-    if (p.endsWith("/kundenbereich")) return json({ user: USER(szenario.email) });
+    // F1: `szenario.bookingProfile` ist der Kontostatus des Backends (TOP-LEVEL neben `user`);
+    // ohne ihn antwortet der Mock wie ein älteres Backend. Der PATCH schreibt ins Konto und
+    // meldet den Status neu — wie routes/kunde/profile.js.
+    if (p.endsWith("/kunde/profil") && req.method() === "PATCH") {
+      const body = req.postDataJSON();
+      protokoll.profil.push(body);
+      szenario.konto = { ...(szenario.konto || USER(szenario.email)), ...body };
+      const fehlend = ["street", "zip", "city", "country"].filter((k) => !String(szenario.konto[k] ?? "").trim());
+      szenario.bookingProfile = { complete: fehlend.length === 0, missingFields: fehlend };
+      return json({ message: "Profil aktualisiert", user: szenario.konto, bookingProfile: szenario.bookingProfile });
+    }
+    if (p.endsWith("/kundenbereich")) {
+      return json({ user: szenario.konto || USER(szenario.email),
+        ...(szenario.bookingProfile ? { bookingProfile: szenario.bookingProfile } : {}) });
+    }
     if (p.endsWith("/api/legal/booking-context")) return json({ enabled: false });
     if (p.endsWith("/kunde/shipments")) return json({ shipments: szenario.sendungen || [], nextCursor: null });
     if (p.includes("/kunde/invoices")) return json({ invoices: [], summary: null });
@@ -211,7 +226,7 @@ async function setupRoutes(page, protokoll, szenario = {}) {
   await page.addInitScript(() => localStorage.setItem("ce_token", "e2e-token"));
 }
 
-const neuesProtokoll = () => ({ pfade: [], reprice: [], book: [], calc: [], oeffentlich: [], lieferadresse: [] });
+const neuesProtokoll = () => ({ pfade: [], reprice: [], book: [], calc: [], oeffentlich: [], lieferadresse: [], profil: [] });
 // Beträge stehen mit geschütztem Leerzeichen vor dem Euro-Zeichen — für Vergleiche normalisiert.
 const NBSP = new RegExp(String.fromCharCode(160), "g");
 const text = async (loc) => (await loc.innerText()).replace(NBSP, " ");
@@ -687,6 +702,85 @@ test("R — 422 BUSINESS_PROFILE_INCOMPLETE bei Buchung und Preisberechnung: Pro
     assert.deepEqual(fehler, []);
     await page.close();
   }
+});
+
+/* ══════════ R2 — F1: Rechnungsanschrift fehlt ══════════ */
+
+test("R2 — F1: fehlende Rechnungsanschrift wird VOR dem Buchen genannt; ergänzt im Profil verschwindet der Hinweis", async () => {
+  // USER trägt PLZ und Land, aber weder Straße noch Ort.
+  const LUECKE = { complete: false, missingFields: ["street", "city"] };
+  const ABGELEHNT = { status: 422, json: {
+    error: "Für Buchungen ist eine vollständige Rechnungsanschrift erforderlich.",
+    code: "BUSINESS_PROFILE_INCOMPLETE", missingFields: ["street", "city"] } };
+  const FELDER = /Straße & Hausnummer, Stadt\./;
+  {
+    // Älteres Backend ohne Status: kein Hinweis, nichts geraten.
+    const { page, fehler } = await neueSeite();
+    await setupRoutes(page, neuesProtokoll());
+    await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".offers-form-section", { timeout: 20000 });
+    assert.equal(await page.locator("#ns-booking-profile-notice").count(), 0);
+    assert.deepEqual(fehler, []);
+    await page.close();
+  }
+  const { page, fehler } = await neueSeite();
+  const protokoll = neuesProtokoll();
+  const szenario = { bookingProfile: LUECKE, book: () => ABGELEHNT };
+  await setupRoutes(page, protokoll, szenario);
+
+  // Neue Sendung: der Hinweis steht, bevor irgendetwas eingegeben ist.
+  await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".offers-form-section", { timeout: 20000 });
+  const vorab = page.locator("#ns-booking-profile-notice");
+  await vorab.waitFor({ timeout: 20000 });
+  assert.match(await text(vorab), FELDER);
+  assert.equal(await vorab.getByRole("button", { name: "Unternehmensprofil vervollständigen" }).count(), 1);
+  assert.ok(!VERBOTEN.test(await text(vorab)));
+
+  // Der Preisvergleich bleibt möglich — es fehlt nur, was die Rechnung braucht.
+  await fuelleVersandformular(page, { paket: EIN_PAKET });
+  await page.locator(".offers-calc-cta button").first().click();
+  await page.waitForSelector(".offer-card", { timeout: 20000 });
+  await waehle(page, TG_A);
+  await zuSchritt2(page);
+
+  // Buchung: derselbe Hinweis steht VOR dem Klick, der Bestellknopf bleibt bedienbar.
+  const hinweis = page.locator("#booking-profile-incomplete");
+  await hinweis.waitFor({ timeout: 20000 });
+  assert.match(await text(hinweis), FELDER);
+  assert.equal(protokoll.book.length, 0, "vor dem Klick wurde gebucht");
+  await bestaetigen(page);
+  assert.equal(await buchenKnopf(page).isEnabled(), true, "der Hinweis sperrt den Bestellknopf");
+  await buchenKnopf(page).click();
+  for (let i = 0; i < 100 && protokoll.book.length === 0; i++) await kurz(100);
+  assert.equal(protokoll.book.length, 1);
+  await kurz(300);
+  assert.match(await text(hinweis), FELDER, "die 422-Antwort nennt die Felder nicht");
+  assert.equal(await page.locator(".booking-success-title").count(), 0);
+  assert.equal(await page.evaluate(() => localStorage.getItem("ce_token")), "e2e-token", "der Kunde wurde abgemeldet");
+
+  // Profil: der Hinweis steht am Ort der Pflege; nach dem Speichern ist er weg.
+  await hinweis.getByRole("button", { name: "Unternehmensprofil vervollständigen" }).click();
+  await page.waitForURL(/page=profile/, { timeout: 20000 });
+  const profilHinweis = page.locator("#profile-booking-readiness");
+  await profilHinweis.waitFor({ timeout: 20000 });
+  assert.match(await text(profilHinweis), FELDER);
+  await page.getByRole("button", { name: /Unternehmensdaten bearbeiten/ }).click();
+  await page.locator("#pf-street").fill("Hauptstrasse 1");
+  await page.locator("#pf-city").fill("Esslingen");
+  await page.getByRole("button", { name: /^Speichern$/ }).first().click();
+  await profilHinweis.waitFor({ state: "detached", timeout: 20000 });
+  assert.equal(protokoll.profil.length, 1);
+  assert.equal(protokoll.profil[0].street, "Hauptstrasse 1");
+
+  // Zurück zu „Neue Sendung": kein Hinweis mehr.
+  await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".offers-form-section", { timeout: 20000 });
+  await kurz(300);
+  assert.equal(await page.locator("#ns-booking-profile-notice").count(), 0);
+  assert.equal(protokoll.book.length, 1, "es wurde erneut gebucht");
+  assert.deepEqual(fehler, []);
+  await page.close();
 });
 
 /* ══════════ S/T — versicherter 409 ohne Code und Vertragscodes ══════════ */

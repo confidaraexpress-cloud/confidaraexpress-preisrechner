@@ -33,6 +33,7 @@ import { customerNumberOf, NOT_ASSIGNED_TEXT, NUMBER_LABELS } from "../../utils/
 // keine zweite Regel.
 import { EORI_HINT, eoriFieldError } from "../../utils/eori.mjs";
 import { accountInitials, accountDisplayName } from "../../utils/accountIdentity.mjs";
+import { bookingProfileNotice } from "../../utils/bookingProfileView.mjs";
 import { CopyableNumber } from "../ui/CopyableNumber";
 
 // Benötigt Backend: PATCH /kunde/profil — bereichsweise Teilupdates:
@@ -91,6 +92,8 @@ export function Profile({ user, utility }) {
   // Kundennummer ausschließlich aus dem API-Feld customer_number — nie aus user.id abgeleitet.
   const customerNumber = customerNumberOf(user);
   const addressLine = companyAddressLine(user);
+  // F1: was dem Konto für eine Buchung noch fehlt (Status vom Backend, null = kein Hinweis).
+  const bookingNotice = bookingProfileNotice(user?.bookingProfile);
 
   const startCompanyEdit = () => {
     setCompanyForm(companyBaseline(user));
@@ -143,7 +146,9 @@ export function Profile({ user, utility }) {
       }
       // Serverwahrheit aus der PATCH-Antwort (RETURNING-Zeile) übernehmen. updateUser
       // merged über den bestehenden State → pendingEmailChange bleibt erhalten.
-      if (d.user) updateUser(d.user);
+      // F1: die Buchungsbereitschaft steht TOP-LEVEL neben `user` und wird mit ihr neu
+      // gesetzt — sonst bliebe der Hinweis nach dem Ergänzen der Anschrift stehen.
+      if (d.user) updateUser({ ...d.user, bookingProfile: d.bookingProfile ?? null });
       refocusRef.current = which;
       setSavedCard(which);
       setCompanyForm(null); setContactForm(null);
@@ -307,6 +312,13 @@ export function Profile({ user, utility }) {
               { k: "Adresse", v: addressLine || "Keine Adresse hinterlegt", empty: !addressLine },
               { k: "Land", v: countryName || "Nicht angegeben", empty: !countryName },
             ])}
+            {/* F1: die Rechnungsanschrift bleibt im Profil optional — gebucht werden kann aber
+                erst mit ihr. Der Hinweis nennt die fehlenden Angaben dort, wo sie gepflegt werden. */}
+            {bookingNotice && (
+              <div className="profile-hint" role="note" id="profile-booking-readiness">
+                <div className="profile-hint-text"><p>{bookingNotice}</p></div>
+              </div>
+            )}
           </div>
         )}
       </SettingsSection>

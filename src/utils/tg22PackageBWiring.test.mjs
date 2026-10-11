@@ -119,7 +119,8 @@ test("8 — 400/422: Profil, Neuberechnung und Referenzfeld stehen vor den Feld-
   const referenz = zweig.indexOf('d?.code === "INVALID_REFERENCE_NUMBER"');
   const email = zweig.indexOf('d?.field === "trackingEmail"');
   assert.ok(profil >= 0 && neuberechnen > profil && referenz > neuberechnen && email > referenz);
-  assert.match(zweig, /setProfileHint\(normalizeApiError\(\{ status: r\.status, body: d \}\)\.message\);/);
+  // F1: nennt die 422 die fehlenden Felder, sagt der Hinweis genau diese — sonst der Katalogtext.
+  assert.match(zweig, /setProfileHint\(bookingProfileGateText\(d, normalizeApiError\(\{ status: r\.status, body: d \}\)\.message\)\);/);
   assert.match(zweig, /setReferenceError\(REFERENCE_INVALID_TEXT\);\s*setStep\(1\);/);
   assert.match(zweig, /setRecalcNotice\(mapBookRestError\(r\.status, d\)\.message\);/);
 });
@@ -128,7 +129,8 @@ test("9 — Profilhinweis: eigene Fläche mit Weg ins Profil, keine Abmeldung", 
   assert.match(aktion, /\{profileHint && \(/);
   assert.match(aktion, /onClick=\{onNavigateProfile\}/);
   assert.match(aktion, /Unternehmensprofil vervollständigen/);
-  assert.match(booking, /profileHint=\{profileHint\}/);
+  // F1: dieselbe Fläche trägt schon VOR dem Klick den Kontostatus des Backends.
+  assert.match(booking, /profileHint=\{profileHint \|\| bookingProfileNotice\(user\?\.bookingProfile\)\}/);
   assert.match(booking, /onNavigateProfile=\{\(\) => navigate\(PROFILE_DASHBOARD_TARGET\)\}/);
   assert.doesNotMatch(booking + aktion, /logout\(|removeItem\("ce_token"\)/);
 });

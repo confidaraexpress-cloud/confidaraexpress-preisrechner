@@ -26,13 +26,17 @@ const AuthContext = createContext(null);
 // Vertriebspartner (Rolle `sales_partner`): `salesPartner` ({ status }) kommt
 // ebenfalls TOP-LEVEL und wird gleich gefaltet; bei Kunden und Admins fehlt es
 // und steht als null im Objekt — für sie ändert sich nichts.
+// F1: die Buchungsbereitschaft des Kontos (`bookingProfile`: { complete, missingFields })
+// kommt ebenfalls TOP-LEVEL und wird gleich gefaltet. Fehlt sie (älteres Backend), steht
+// hier null — dann erscheint kein Hinweis; entschieden wird ohnehin beim Buchen.
 function userFromKundenbereich(d) {
   const u = (d && d.user) || {};
   const partner = d?.salesPartner ?? u.salesPartner ?? null;
   const pending = d?.pendingEmailChange ?? u.pendingEmailChange ?? null;
   const logo = d?.companyLogo ?? u.companyLogo ?? null;
+  const bookingProfile = d?.bookingProfile ?? u.bookingProfile ?? null;
   const billing = d?.billingCapabilities ?? u.billingCapabilities ?? null;
-  return { ...u, salesPartner: partner, pendingEmailChange: pending, companyLogo: logo, billingCapabilities: billing };
+  return { ...u, salesPartner: partner, pendingEmailChange: pending, companyLogo: logo, bookingProfile, billingCapabilities: billing };
 }
 
 export function AuthProvider({ children }) {

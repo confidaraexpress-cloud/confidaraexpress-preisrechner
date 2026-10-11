@@ -97,6 +97,7 @@ import {
   RESUME_PAST_DATE_NOTICE,
 } from "../utils/formDraftsView.mjs";
 import { PROFILE_DASHBOARD_TARGET } from "../utils/bookingSuccessView.mjs";
+import { bookingProfileNotice } from "../utils/bookingProfileView.mjs";
 import { draftBookingOptionsToFlow, hasAnyDraftBookingOption } from "../utils/draftBookingOptions.mjs";
 import { declarationErrors, declarationsPayload, DECLARED_CONTENT_MAX } from "../utils/shipmentDeclarations.mjs";
 import { getShipmentFormSnapshot, isShipmentFormDirty, hasMeaningfulShipmentInput } from "../utils/shipmentFormSnapshot.mjs";
@@ -226,6 +227,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const { countries: launchCountries, originCountries: launchOriginCountries } = useLaunchScope();
   const { authed, user } = useAuth();
   const navigate = useNavigate();
+  // F1: fehlen dem Konto Angaben für die Rechnung, sagt es die Seite VOR dem Vergleich — nicht
+  // erst beim Buchen. Status vom Backend (/kundenbereich → bookingProfile); fehlt er, kein Hinweis.
+  const bookingProfileHinweis = bookingProfileNotice(user?.bookingProfile);
 
   // ── Fortsetzen eines Formularentwurfs (mount-once) ───────────────────────────
   // Ein gültiger Resume-Payload rehydriert das Formular aus dem Snapshot und hat
@@ -1707,6 +1711,17 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
           {calculatorHinweis && (
             <div className="dft-resume-info ns-calculator-intent" role="status">
               <span>{calculatorHinweis}</span>
+            </div>
+          )}
+          {/* F1: Konto noch nicht buchungsbereit (z. B. Rechnungsanschrift fehlt). Bewusst der
+              vorhandene Warnstil mit Aktion — keine zweite Darstellung. Fehlt nur die Anschrift,
+              bleibt der Preisvergleich möglich; der Weg ins Profil steht direkt am Hinweis. */}
+          {bookingProfileHinweis && (
+            <div className="dft-resume-conflict" role="note" id="ns-booking-profile-notice">
+              <span className="dft-resume-conflict-text">{bookingProfileHinweis}</span>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => navigate(PROFILE_DASHBOARD_TARGET)}>
+                Unternehmensprofil vervollständigen
+              </button>
             </div>
           )}
 

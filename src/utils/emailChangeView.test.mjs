@@ -31,12 +31,15 @@ test("3 — zu lange Adresse (>255) wird abgewiesen", () => {
   assert.ok(e.newEmail);
 });
 
-test("4 — neue E-Mail identisch zur aktuellen (case-sensitive) wird abgewiesen", () => {
+test("4 — neue E-Mail identisch zur aktuellen wird abgewiesen — auch in anderer Schreibweise (F2)", () => {
   const same = validateEmailChangeForm({ newEmail: "alt@firma.de", currentPassword: "pw" }, CURRENT);
   assert.ok(same.newEmail);
-  // Groß-/Kleinschreibung zählt als UNTERSCHIEDLICH (keine Normalisierung):
-  const differentCase = validateEmailChangeForm({ newEmail: "Alt@firma.de", currentPassword: "pw" }, CURRENT);
-  assert.equal(differentCase.newEmail, undefined, "andere Schreibweise ist nicht identisch");
+  // F2: Groß-/Kleinschreibung zählt NICHT — das Backend behandelt beide als dieselbe Login-E-Mail
+  // (EMAIL_CHANGE_SAME_EMAIL); der Dialog sagt es schon vor dem Absenden.
+  const differentCase = validateEmailChangeForm({ newEmail: " Alt@FIRMA.de ", currentPassword: "pw" }, CURRENT);
+  assert.equal(differentCase.newEmail, same.newEmail, "andere Schreibweise ist dieselbe Adresse");
+  // Ohne bekannte aktuelle Adresse gibt es keinen Vergleich.
+  assert.deepEqual(validateEmailChangeForm({ newEmail: "alt@firma.de", currentPassword: "pw" }, null), {});
 });
 
 test("5 — nur getrimmt, niemals kleingeschrieben", () => {

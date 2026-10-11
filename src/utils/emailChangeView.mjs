@@ -5,9 +5,10 @@
 // Bestätigungsseite. Kein React, kein Netzwerk — nur mit node --test geprüfte,
 // deterministische Funktionen. Das Backend bleibt in allem autoritativ.
 //
-// WICHTIG (Backend-Semantik, siehe Aufgabenstellung): E-Mail-Adressen sind
-// case-sensitive. Es findet KEINE automatische Kleinschreibung statt — die neue
-// Adresse wird ausschließlich getrimmt (erst beim Absenden), niemals verändert.
+// WICHTIG (Backend-Semantik): seit F2 vergleicht das Backend Login-E-Mails ohne
+// Groß-/Kleinschreibung; gespeichert wird die Schreibweise der Eingabe. Es findet
+// deshalb KEINE automatische Kleinschreibung statt — die neue Adresse wird
+// ausschließlich getrimmt (erst beim Absenden), niemals verändert.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Projektweit verwendete E-Mail-Regex (identisch zu AuthPage/NewShipmentPage/
@@ -29,8 +30,10 @@ export function isSessionExpiredBody(body) {
 // ── Startdialog-Validierung ─────────────────────────────────────────────────
 // Liefert ein Fehlerobjekt (leer = gültig). Rein clientseitig für schnelles
 // Feedback; Reihenfolge: neue E-Mail (Pflicht → Länge → Format → nicht identisch
-// mit aktueller), dann Passwort (Pflicht). Vergleich mit der aktuellen Adresse
-// ist EXAKT/case-sensitive (keine Normalisierung), konsistent mit dem Backend.
+// mit aktueller), dann Passwort (Pflicht). F2: der Vergleich mit der aktuellen
+// Adresse ignoriert Groß-/Kleinschreibung — wie das Backend (lib/accountEmail.js),
+// für das „Max@Firma.de" und „max@firma.de" dieselbe Login-E-Mail sind. Gesendet
+// wird die Eingabe weiterhin nur getrimmt, nie kleingeschrieben.
 export function validateEmailChangeForm(form, currentEmail) {
   const errors = {};
   const newEmail = typeof form?.newEmail === "string" ? form.newEmail.trim() : "";
@@ -42,7 +45,7 @@ export function validateEmailChangeForm(form, currentEmail) {
     errors.newEmail = `Die E-Mail-Adresse darf höchstens ${EMAIL_MAX_LENGTH} Zeichen lang sein.`;
   } else if (!EMAIL_RE.test(newEmail)) {
     errors.newEmail = "Bitte geben Sie eine gültige E-Mail-Adresse ein.";
-  } else if (currentEmail != null && newEmail === currentEmail) {
+  } else if (typeof currentEmail === "string" && newEmail.toLowerCase() === currentEmail.trim().toLowerCase()) {
     errors.newEmail = "Die neue E-Mail-Adresse entspricht bereits Ihrer aktuellen Login-E-Mail.";
   }
 

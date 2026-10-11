@@ -11,7 +11,8 @@ import { validateEmailChangeForm, isEmailChangeFormValid, EMAIL_MAX_LENGTH } fro
 // Der Dialog hält Passwort und neue E-Mail ausschließlich in LOKALEM State und
 // wird beim Schließen ausgehängt → nichts (insb. das Passwort) bleibt danach im
 // Speicher erhalten. Getrimmt wird die E-Mail erst beim Absenden; niemals
-// kleingeschrieben (case-sensitive Backend-Semantik).
+// kleingeschrieben — das Backend speichert die Schreibweise der Eingabe und
+// vergleicht ohne Groß-/Kleinschreibung (F2).
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), select, textarea, [href], [tabindex]:not([tabindex="-1"])';
 
 export function EmailChangeDialog({ currentEmail, busy, error, onSubmit, onClose }) {

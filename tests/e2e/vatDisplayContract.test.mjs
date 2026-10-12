@@ -30,7 +30,9 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
-import { fuelleVersandformular, STANDARD_PAKET, STANDARD_SENDUNGSANGABEN } from "./helpers/newShipmentForm.mjs";
+import {
+  adressvorschlaegeAbgeschlossen, fuelleVersandformular, STANDARD_PAKET, STANDARD_SENDUNGSANGABEN,
+} from "./helpers/newShipmentForm.mjs";
 import {
   LIEFERADRESSE_ID, lieferadressZustand, mockeLieferadresse, waehleLieferadresse,
 } from "./helpers/residentialPriceInputs.mjs";
@@ -246,9 +248,14 @@ async function neueSeite(viewport = { width: 1440, height: 1000 }) {
 async function zuDenAngeboten(page) {
   await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".offers-form-section", { timeout: 20000 });
+  // Die entprellten Orts- und Straßenvorschläge der Eingabe (300 ms nach der letzten Änderung) gehören zum
+  // Formular, nicht zu einem späteren Umschalten. Erscheinen die Angebote schneller, fielen sie sonst in das
+  // Beobachtungsfenster von `schalte` (N7, b03e778). Angelegt VOR dem Ausfüllen, abgewartet nach den Karten.
+  const adressen = adressvorschlaegeAbgeschlossen(page);
   await fuelleVersandformular(page, { paket: { ...STANDARD_PAKET, packageCount: "1" } });
   await page.locator(".offers-calc-cta button").first().click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
+  await adressen;
 }
 
 async function waehle(page, tarif) {

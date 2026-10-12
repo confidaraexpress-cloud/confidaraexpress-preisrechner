@@ -35,6 +35,8 @@
  * ausdrücklich, statt es zu überspringen.
  */
 
+import { isPostalCodeQueryable, isStreetQueryable, streetSearchTerm } from "../../../src/utils/addressValidationView.mjs";
+
 /** Vollständiger, gültiger Standardvorgang. Einzelne Werte lassen sich je
  *  Suite überschreiben; die Struktur bleibt dieselbe. */
 export const STANDARD_ABSENDER = Object.freeze({
@@ -140,6 +142,89 @@ export async function fuelleVersandformular(page, {
   await fuelleAdresse(page, "r", empfaenger);
   await fuellePaket(page, paket);
   await fuelleSendungsangaben(page, sendungsangaben);
+}
+
+/* ── Die Adressvorschläge der Eingabe abwarten ─────────────────────────────
+ * „Neue Sendung" fragt je Adresse (Absender, Empfänger) ENTPRELLT Orte zur PLZ
+ * und Straßen zu PLZ, Ort und Straßenname ab (src/hooks/useAddressValidation.js,
+ * 300 ms nach der letzten Änderung). Diese Anfragen gehören zur EINGABE.
+ *
+ * Eine Suite, die Requests einer späteren Bedienung zuordnet — etwa „ein reiner
+ * Anzeigeschalter löst keinen Request aus" —, darf ihr Beobachtungsfenster erst
+ * öffnen, wenn genau diese Anfragen abgeschlossen sind. Sonst fallen sie hinein,
+ * sobald die Angebote schneller erscheinen als die Entprellzeit: so geschehen in
+ * vatDisplayContract N7 (Frontend-CI auf b03e778; lokal 2 von 8 Läufen, Angebote
+ * nach rund 70 ms statt rund 430 ms). Die Anfragen trugen genau die Werte des
+ * Formulars, kamen auch OHNE Umschalten, und nach ihrem Abschluss blieb
+ * viermaliges Umschalten ohne jeden Request.
+ *
+ * Gewartet wird auf ein EREIGNIS, nicht auf eine Zeit: je erwarteter Abfrage mit
+ * den ENDGÜLTIGEN Werten auf `requestfinished` oder `requestfailed` (das Formular
+ * bricht eine laufende Abfrage bei einer Adressänderung selbst ab). Welche
+ * Abfragen entstehen, entscheiden dieselben Regeln wie im Produkt
+ * (src/utils/addressValidationView.mjs) — hier entsteht keine zweite Fassung.
+ *
+ * VOR dem Ausfüllen anlegen, danach abwarten — sonst kann ein bereits
+ * abgeschlossenes Ereignis verpasst werden:
+ *
+ *     const adressen = adressvorschlaegeAbgeschlossen(page);
+ *     await fuelleVersandformular(page, …);
+ *     …
+ *     await adressen;
+ */
+export function erwarteteAdressvorschlaege({ absender = STANDARD_ABSENDER, empfaenger = STANDARD_EMPFAENGER } = {}) {
+  const liste = [];
+  for (const [seite, a] of [["Absender", absender], ["Empfänger", empfaenger]]) {
+    if (!a) continue;
+    if (isPostalCodeQueryable(a.country, a.zip)) {
+      liste.push({
+        name: `${seite}: Orte zu ${a.zip}`, pfad: "/api/address/localities",
+        werte: { country: String(a.country), postalCode: String(a.zip) },
+      });
+    }
+    if (isStreetQueryable(a.country, a.zip, a.city, a.street)) {
+      liste.push({
+        name: `${seite}: Straßen zu ${a.zip}`, pfad: "/api/address/streets",
+        werte: { country: String(a.country), postalCode: String(a.zip), city: String(a.city),
+                 street: streetSearchTerm(a.street) },
+      });
+    }
+  }
+  return liste;
+}
+
+const passtZu = (erwartung, url) => url.pathname.endsWith(erwartung.pfad)
+  && Object.entries(erwartung.werte).every(([schluessel, wert]) => url.searchParams.get(schluessel) === wert);
+
+export function adressvorschlaegeAbgeschlossen(page, { absender, empfaenger, timeout = 15000 } = {}) {
+  const offen = erwarteteAdressvorschlaege({ absender, empfaenger });
+  const fertig = new Promise((resolve, reject) => {
+    if (offen.length === 0) { resolve(); return; }
+    let timer = null;
+    const loesen = () => {
+      clearTimeout(timer);
+      page.off("requestfinished", erledigt);
+      page.off("requestfailed", erledigt);
+    };
+    function erledigt(request) {
+      let url;
+      try { url = new URL(request.url()); } catch { return; }
+      const i = offen.findIndex((e) => passtZu(e, url));
+      if (i < 0) return;
+      offen.splice(i, 1);
+      if (offen.length === 0) { loesen(); resolve(); }
+    }
+    page.on("requestfinished", erledigt);
+    page.on("requestfailed", erledigt);
+    timer = setTimeout(() => {
+      loesen();
+      reject(new Error(`Adressvorschläge der Eingabe nicht abgeschlossen: ${offen.map((e) => e.name).join(", ")}`));
+    }, timeout);
+  });
+  // Als behandelt markieren: der Aufrufer erhält einen Fehler erst beim `await`, nie als
+  // unbehandelte Ablehnung zwischen Anlegen und Abwarten.
+  fertig.catch(() => {});
+  return fertig;
 }
 
 /** Der Angebots-CTA. Eine Stelle, damit ein Klassenwechsel nicht wieder zehn

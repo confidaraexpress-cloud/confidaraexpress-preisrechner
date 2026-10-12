@@ -15,7 +15,7 @@ import {
   BILLING_MODES, DEFAULT_BILLING_MODE, BILLING_MODE_TEXT,
   billingMode, isConsolidatedBilling, buildBillingModePatch,
   bookingBillingNotice, formatCalendarDayDe, periodRangeLabel, consolidatedPeriodView,
-  consolidatedBillingAvailable, billingModeOptionSelectable,
+  consolidatedBillingAvailable, billingModeOptionSelectable, BILLING_MODE_UNAVAILABLE_CODE,
 } from "./billingModeView.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -351,6 +351,27 @@ test("(H6) die Fähigkeit kommt aus /kundenbereich — eine Quelle, in das User-
   assert.ok(/const billing = d\?\.billingCapabilities \?\? u\.billingCapabilities \?\? null;/.test(authSrc));
   assert.ok(/billingCapabilities: billing \}/.test(authSrc));
   assert.ok(!/CONSOLIDATED_INVOICING/.test(viewSrc + bmKarteSrc + authSrc), "das Frontend kennt keinen Serverschalter");
+});
+
+test("(H7) BEL-4: die 422 BILLING_MODE_UNAVAILABLE der Buchung führt ins Profil — nicht in den Adresszweig", () => {
+  assert.equal(BILLING_MODE_UNAVAILABLE_CODE, "BILLING_MODE_UNAVAILABLE");
+  const zweig = schnitt(bookingSrc, "if (r.status === 400 || r.status === 422) {", "setAddressError(", "(H7) Buchungszweig");
+  const profil = zweig.indexOf('d?.code === "BUSINESS_PROFILE_INCOMPLETE"');
+  const abrechnung = zweig.indexOf("d?.code === BILLING_MODE_UNAVAILABLE_CODE");
+  const neuberechnen = zweig.indexOf("fordertNeuberechnung(d)");
+  assert.ok(profil >= 0 && abrechnung > profil && neuberechnen > abrechnung,
+    "der Abrechnungszweig steht nicht vor den Feld-, Zoll- und Adresszweigen");
+  // Der Text des Servers nennt den Weg; ohne lesbaren Text der eigene Ersatztext — nie der Adressfehler.
+  assert.ok(/setBillingModeHint\(asStr\(customerText\(d\)\) \|\| BILLING_MODE_TEXT\.bookingUnavailable\);/.test(zweig));
+  assert.ok(/setBillingModeHint\(""\);/.test(bookingSrc), "ein neuer Buchungsversuch setzt den Hinweis nicht zurück");
+  assert.ok(/billingModeHint=\{billingModeHint\}/.test(bookingSrc));
+  const flaeche = schnitt(bookingSrc, "{billingModeHint && (", "</button>", "(H7) Hinweisfläche");
+  assert.ok(/id="booking-billing-mode-unavailable"/.test(flaeche));
+  assert.ok(/onClick=\{onNavigateProfile\}/.test(flaeche), "der Weg ins Profil fehlt am Hinweis");
+  assert.ok(/Abrechnung im Profil ändern/.test(flaeche));
+  assert.ok(/Einzelrechnung/.test(BILLING_MODE_TEXT.bookingUnavailable));
+  // Die Profilkarte sagt dem Bestandskonto dieselbe Folge, bevor es bucht.
+  assert.ok(/erst nach einem Wechsel zur Einzelrechnung buchen/.test(BILLING_MODE_TEXT.consolidatedKeptNote));
 });
 
 console.log(`\n${"═".repeat(50)}`);

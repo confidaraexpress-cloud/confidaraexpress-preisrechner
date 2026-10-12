@@ -1413,7 +1413,7 @@ Folgende Punkte dürfen ohne aktuelle Runtime-/Produktbestätigung nicht als Fak
   - der fremde Auftrag `QT-1366859` im Warenkorb des Portalkontos (zuletzt 11.10.): bis zur Entfernung durch den Betreiber endet jede 110/124-Buchung vor der Zahlung als „nicht gebucht“ (`portal_cart_not_empty`); CE entfernt ihn nie;
   - das Live-Format der Auftragsreferenz (der Portalkern liest `DE` + sieben Ziffern, belegt nur in Staging) — die erste V2-Buchung (29) zeigt es; Prepaid-Guthaben des Portalkontos; Zahlungsweg und Gebührenordnung des Transglobal-Kontos (nicht im Repository);
   - ob das Portalkonto parallele Sitzungen trägt (Buchung, Paketshopsuche und Etikett-Nachlauf melden sich je eigen an; nur die Buchung trägt die Kontosperre) — Prüfwerkzeug außerhalb des Repositorys vorbereitet, nicht ausgeführt;
-  - `TG_PORTAL_BOOKING_DEADLINE_MS` (höchstens 100000, Startprüfung), Proxyfristen ≥ 150 s, Stop-Grace ≥ `SHUTDOWN_GRACE_MS`; Rechnungsaussteller ohne Platzhalter (`GET /admin/invoices/production-readiness`);
+  - `TG_PORTAL_BOOKING_DEADLINE_MS` (Soll 90000: mit der Vorbestellfrist 55 s unter der Browserfrist von `/book`, 150 s; die Startprüfung allein erlaubt bis 100000), Proxyfristen ≥ 150 s, Stop-Grace ≥ `SHUTDOWN_GRACE_MS`; Rechnungsaussteller ohne Platzhalter (`GET /admin/invoices/production-readiness`);
   - die Collection-Position der 29 und ein Privatadresszuschlag auf Live-Rechnungen — nur durch die jeweilige echte Buchung belegbar; die Gebühr der 29 wird erst nach einer Live-Rechnung angepasst, der Referenzparser erst nach einem belegt abweichenden Live-Format.
 
 Wenn eine Aufgabe davon abhängt: prüfen statt raten.

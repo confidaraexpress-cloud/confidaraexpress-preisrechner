@@ -18,11 +18,14 @@ import {
 
 const def = (key) => [...OPERATIONS_QUEUES, ...OPERATIONS_DIAGNOSTICS].find((d) => d.key === key);
 
-test("genau die zehn Queues und vier Diagnosen des Backendvertrags — mit demselben Ziel je ältestem Fall", () => {
+test("genau die sechzehn Queues und vier Diagnosen des Backendvertrags — mit demselben Ziel je ältestem Fall", () => {
   assert.deepEqual(OPERATIONS_QUEUES.map((q) => q.key), [
     "reconciliation_open", "booking_overdue", "booking_without_open_attempt", "invoice_drift_unreviewed",
     "awb_missing", "label_missing", "cancellations_open", "additional_emails_failed", "invoice_mail_failed",
     "order_confirmation_mail_failed",
+    // JOB-1/JOB-2 (Go-Live-Stabilisierung): liegen gebliebene Nacharbeiten und unklare Mailausgänge.
+    "invoice_document_open", "invoice_mail_unclear", "invoice_mail_open", "order_confirmation_mail_unclear",
+    "order_confirmation_mail_open", "additional_emails_unclear",
   ]);
   assert.deepEqual(OPERATIONS_DIAGNOSTICS.map((q) => q.key), [
     "superseded_unresolved", "orphaned_unresolved", "contradictory_evidence", "booking_without_attempt",
@@ -34,6 +37,9 @@ test("genau die zehn Queues und vier Diagnosen des Backendvertrags — mit demse
     cancellations_open: "cancellation", additional_emails_failed: "shipment", invoice_mail_failed: "invoice",
     order_confirmation_mail_failed: "shipment", superseded_unresolved: "attempt", orphaned_unresolved: "attempt",
     contradictory_evidence: "attempt", booking_without_attempt: "shipment",
+    invoice_document_open: "invoice", invoice_mail_unclear: "invoice", invoice_mail_open: "invoice",
+    order_confirmation_mail_unclear: "shipment", order_confirmation_mail_open: "shipment",
+    additional_emails_unclear: "shipment",
   });
   // Kein Text nennt einen Einkaufsanbieter — die Übersicht ist providerneutral beschriftet.
   for (const q of [...OPERATIONS_QUEUES, ...OPERATIONS_DIAGNOSTICS]) {
@@ -90,7 +96,7 @@ test("operationsViews liest nur queues und diagnostics — ein Backend ohne Endp
     diagnostics: { booking_without_attempt: { count: 4, oldestAt: null, oldestId: 3, startUnknown: true } },
   });
   assert.equal(r.generatedAt, "2026-09-12T10:00:00Z");
-  assert.equal(r.queues.length, 10);
+  assert.equal(r.queues.length, 16);
   assert.equal(r.diagnostics.length, 4);
   assert.equal(r.queues.find((v) => v.key === "reconciliation_open").display, "1");
   assert.equal(r.queues.find((v) => v.key === "awb_missing").state, "unavailable");

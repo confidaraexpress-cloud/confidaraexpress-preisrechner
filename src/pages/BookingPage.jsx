@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useDialog } from "../hooks/useDialog";
 import { useShippingFlow } from "../context/ShippingFlowContext";
 import { packageSummaryLine, buildPartyPayload } from "../utils/newShipmentForm.mjs";
-import { bookingBillingNotice } from "../utils/billingModeView.mjs";
+import { bookingBillingNotice, BILLING_MODE_TEXT, BILLING_MODE_UNAVAILABLE_CODE } from "../utils/billingModeView.mjs";
 import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher, loadPriceInputOptions, bindPriceInputs } from "../api/client";
 import { FormAlert } from "../components/ui/FormAlert";
 import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess, istOffenerAusgang,
@@ -235,6 +235,10 @@ export default function BookingPage() {
   // TG22 Paket B: 422 BUSINESS_PROFILE_INCOMPLETE — Profilangaben fehlen. Eigener Zustand, weil die
   // Handlung eine andere ist (Profil ergänzen) und der Bestellknopf danach wieder gilt.
   const [profileHint, setProfileHint] = useState("");
+  // BEL-4: 422 BILLING_MODE_UNAVAILABLE — das Konto führt die Sammelrechnung, die derzeit nicht
+  // läuft. Eigener Zustand, weil die Handlung eine andere ist (Abrechnung im Profil umstellen,
+  // nicht Angaben ergänzen); beauftragt wurde nichts.
+  const [billingModeHint, setBillingModeHint] = useState("");
   const [addressError, setAddressError] = useState("");
   // Download-Zustände und -Handler der Erfolgsdokumente (Label, Auftragsbestätigung,
   // Lieferschein, Proforma) leben wortgleich in components/booking/BookingSuccessDocuments.
@@ -1199,7 +1203,7 @@ export default function BookingPage() {
       );
       return;
     }
-    setError(""); setConflict(""); setAddressError(""); setRecalcNotice(""); setPriceAcceptNotice(""); setProfileHint(""); setLoading(true);
+    setError(""); setConflict(""); setAddressError(""); setRecalcNotice(""); setPriceAcceptNotice(""); setProfileHint(""); setBillingModeHint(""); setLoading(true);
     try {
       // /book erwartet insuranceSelection VERSCHACHTELT (nicht wie /reprice flach).
       // confirmedTotalGross ist reines Drift-Gate (nie Preisquelle) — nur bei
@@ -1517,14 +1521,21 @@ export default function BookingPage() {
       }
       if (r.status === 401 || r.status === 403) { setLoading(false); return; } // globaler Auth-Redirect übernimmt
       if (r.status === 400 || r.status === 422) {
-        // TG22 Paket B — drei Codes mit eigener Handlung, VOR den Feld-, Zoll- und Adresszweigen:
+        // TG22 Paket B — Codes mit eigener Handlung, VOR den Feld-, Zoll- und Adresszweigen:
         //   BUSINESS_PROFILE_INCOMPLETE (422): Profil vervollständigen — keine Abmeldung.
+        //   BILLING_MODE_UNAVAILABLE    (422): BEL-4, Abrechnung im Profil umstellen — keine Abmeldung.
         //   LABEL_FORMAT_NOT_SUPPORTED  (400): nichts beauftragt, das Angebot trägt → neu berechnen.
         //   INVALID_REFERENCE_NUMBER    (400): Feldfehler an der Referenznummer, zurück zu Schritt 1.
         if (d?.code === "BUSINESS_PROFILE_INCOMPLETE") {
           // F1: nennt die Antwort die fehlenden Felder (`missingFields`), sagt der Hinweis genau
           // diese; sonst bleibt der Text des Fehlerkatalogs.
           setProfileHint(bookingProfileGateText(d, normalizeApiError({ status: r.status, body: d }).message));
+          setLoading(false);
+          return;
+        }
+        // Ohne diesen Zweig liefe die Antwort in den Adresszweig unten — falsche Ursache, falsche Handlung.
+        if (d?.code === BILLING_MODE_UNAVAILABLE_CODE) {
+          setBillingModeHint(asStr(customerText(d)) || BILLING_MODE_TEXT.bookingUnavailable);
           setLoading(false);
           return;
         }
@@ -2437,6 +2448,7 @@ export default function BookingPage() {
                   // ist; nach einer 422-Antwort deren Text. Der Bestellknopf bleibt — das Backend
                   // entscheidet, und ein im anderen Tab ergänztes Profil darf nicht gesperrt werden.
                   profileHint={profileHint || bookingProfileNotice(user?.bookingProfile)}
+                  billingModeHint={billingModeHint}
                   onNavigateProfile={() => navigate(PROFILE_DASHBOARD_TARGET)}
                   onBook={doBook}
                   onNavigateShipments={() => navigate("/dashboard?page=shipments")}

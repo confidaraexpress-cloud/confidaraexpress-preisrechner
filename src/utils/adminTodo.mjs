@@ -61,8 +61,16 @@ export const ADMIN_TODO = Object.freeze([
   Object.freeze({ key: "invoice_drift_unreviewed", source: "queue" }),
   Object.freeze({ key: "awb_missing", source: "queue" }),
   Object.freeze({ key: "label_missing", source: "queue" }),
+  // JOB-1/JOB-2: je Belegart erst der unklare Ausgang (vor erneutem Senden prüfen), dann der
+  // gescheiterte, dann der nie versuchte Versand.
+  Object.freeze({ key: "invoice_document_open", source: "queue" }),
+  Object.freeze({ key: "invoice_mail_unclear", source: "queue" }),
   Object.freeze({ key: "invoice_mail_failed", source: "queue" }),
+  Object.freeze({ key: "invoice_mail_open", source: "queue" }),
+  Object.freeze({ key: "order_confirmation_mail_unclear", source: "queue" }),
   Object.freeze({ key: "order_confirmation_mail_failed", source: "queue" }),
+  Object.freeze({ key: "order_confirmation_mail_open", source: "queue" }),
+  Object.freeze({ key: "additional_emails_unclear", source: "queue" }),
   Object.freeze({ key: "additional_emails_failed", source: "queue" }),
 ]);
 

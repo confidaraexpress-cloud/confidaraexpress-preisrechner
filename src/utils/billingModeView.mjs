@@ -14,6 +14,9 @@ import { PAYMENT_TERM_DAYS, paymentTermSentence } from "./paymentTerm.mjs";
 
 export const BILLING_MODES = ["single", "consolidated_7d"];
 export const DEFAULT_BILLING_MODE = "single";
+// BEL-4: Fehlercode der Buchung (422), wenn das Konto die Sammelrechnung führt und sie nicht läuft —
+// derselbe Code wie bei der gesperrten Umstellung im Profil (Backend: lib/billingMode.js).
+export const BILLING_MODE_UNAVAILABLE_CODE = "BILLING_MODE_UNAVAILABLE";
 
 // Fail-safe: ein unbekannter oder fehlender Wert gilt als Einzelrechnung. Ein Konto,
 // dessen Antwort das Feld noch nicht trägt (Backend vor diesem Paket), verhält sich
@@ -80,8 +83,12 @@ export const BILLING_MODE_TEXT = {
   // Steht unter der Sammelrechnung, solange sie nicht neu gewählt werden kann.
   consolidatedUnavailable: "Die Sammelrechnung ist derzeit nicht verfügbar.",
   // Ein Konto, das die Sammelrechnung bereits nutzt, behält sie. Es erfährt aber vorher,
-  // dass ein Wechsel zur Einzelrechnung vorerst nicht rückgängig zu machen ist.
-  consolidatedKeptNote: "Ihr Konto nutzt weiterhin die Sammelrechnung. Wenn Sie zur Einzelrechnung wechseln, ist eine Rückkehr zur Sammelrechnung derzeit nicht möglich.",
+  // dass ein Wechsel zur Einzelrechnung vorerst nicht rückgängig zu machen ist — und (BEL-4),
+  // dass es bis zu diesem Wechsel nicht buchen kann: ohne laufende Sammelrechnung entstünde
+  // eine Buchung ohne Rechnung, deshalb lehnt der Server sie ab.
+  consolidatedKeptNote: "Ihr Konto nutzt weiterhin die Sammelrechnung. Solange sie nicht verfügbar ist, können Sie erst nach einem Wechsel zur Einzelrechnung buchen. Wenn Sie zur Einzelrechnung wechseln, ist eine Rückkehr zur Sammelrechnung derzeit nicht möglich.",
+  // BEL-4: Ersatztext der Buchungsseite, falls die 422-Antwort keinen lesbaren Text trägt.
+  bookingUnavailable: "Die Sammelrechnung ist derzeit nicht verfügbar. Bitte wählen Sie in Ihrem Profil unter „Abrechnung & Rechnungen“ die Einzelrechnung je Sendung, um zu buchen.",
   periodTitle: "Laufender Sammelzeitraum",
   periodEmpty: "In Ihrem laufenden Zeitraum ist noch keine Sendung gebucht.",
   // „Voraussichtlich": der Zeitraum läuft noch, es können Sendungen hinzukommen. Ein

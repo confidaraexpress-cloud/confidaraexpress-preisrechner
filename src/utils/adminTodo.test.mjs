@@ -28,6 +28,9 @@ const OPS = {
     invoice_drift_unreviewed: { count: 0 }, awb_missing: { count: 4, oldestAt: "2026-10-01T08:00:00Z", oldestId: 77 },
     label_missing: { count: 0 }, cancellations_open: { count: 5, oldestId: 3 },
     additional_emails_failed: { count: 0 }, invoice_mail_failed: { count: 0 }, order_confirmation_mail_failed: { count: 0 },
+    invoice_document_open: { count: 0 }, invoice_mail_unclear: { count: 0 }, invoice_mail_open: { count: 0 },
+    order_confirmation_mail_unclear: { count: 0 }, order_confirmation_mail_open: { count: 0 },
+    additional_emails_unclear: { count: 0 },
   },
   diagnostics: {
     superseded_unresolved: { count: 0 }, orphaned_unresolved: { count: 1, oldestAt: "2026-10-02T08:00:00Z", oldestId: 5 },
@@ -106,6 +109,35 @@ test("4 — Gruppen: offen > 0, erledigt = 0, unbekannt nie als 0", () => {
   const laedt = groupAdminTodo(adminTodoViews({ entries: ENTRIES, ops: null, opsLoading: true }));
   assert.ok(laedt.loading.some((x) => x.key === "reconciliation_open"));
   assert.equal(laedt.unavailable.some((x) => x.key === "reconciliation_open"), false);
+});
+
+test("4b — Nacharbeiten (JOB-1/JOB-2): je Belegart unklar vor gescheitert vor nie versucht, jeweils zum ältesten Fall", () => {
+  const reihenfolge = ADMIN_TODO.map((t) => t.key);
+  const nachLabel = reihenfolge.indexOf("label_missing");
+  assert.deepEqual(reihenfolge.slice(nachLabel + 1), [
+    "invoice_document_open", "invoice_mail_unclear", "invoice_mail_failed", "invoice_mail_open",
+    "order_confirmation_mail_unclear", "order_confirmation_mail_failed", "order_confirmation_mail_open",
+    "additional_emails_unclear", "additional_emails_failed",
+  ]);
+  const ops = { ...OPS, queues: { ...OPS.queues,
+    invoice_mail_unclear: { count: 1, oldestAt: "2026-10-12T08:00:00Z", oldestId: 31 },
+    order_confirmation_mail_open: { count: 2, oldestAt: "2026-10-12T07:00:00Z", oldestId: 64 },
+    // Ein unklarer Zusatzmailfall zählt in beiden Queues — die unklare nennt die Handlung.
+    additional_emails_unclear: { count: 1, oldestAt: "2026-10-12T06:00:00Z", oldestId: 90 },
+    additional_emails_failed: { count: 1, oldestAt: "2026-10-12T06:00:00Z", oldestId: 90 },
+  } };
+  const nach = Object.fromEntries(adminTodoViews({ entries: ENTRIES, ops }).map((v) => [v.key, v]));
+  assert.deepEqual([nach.invoice_mail_unclear.count, nach.invoice_mail_unclear.to], [1, "/admin/invoices/31"]);
+  assert.deepEqual([nach.order_confirmation_mail_open.count, nach.order_confirmation_mail_open.to], [2, "/admin/shipments/64"]);
+  assert.deepEqual([nach.additional_emails_unclear.count, nach.additional_emails_unclear.to], [1, "/admin/shipments/90"]);
+  assert.match(nach.additional_emails_unclear.hint, /Zusatzmails fehlgeschlagen/);
+  for (const key of ["invoice_mail_unclear", "order_confirmation_mail_unclear", "additional_emails_unclear"]) {
+    assert.match(nach[key].hint, /vor erneutem Senden prüfen/, key);
+  }
+  // Kein Serverwert für eine neue Queue (älteres Backend): „nicht verfügbar", nie 0.
+  const alt = groupAdminTodo(adminTodoViews({ entries: ENTRIES, ops: { queues: { ...OPS.queues, invoice_mail_open: undefined } } }));
+  assert.ok(alt.unavailable.some((v) => v.key === "invoice_mail_open"));
+  assert.equal(alt.done.some((v) => v.key === "invoice_mail_open"), false);
 });
 
 test("5 — Kennzahlen und Diagnosen: nur Bestand bzw. nie aktionsfähig", () => {

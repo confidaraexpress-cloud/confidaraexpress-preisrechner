@@ -28,12 +28,37 @@ const TYPE_LABELS = {
   not_booked_notice: "Hinweis: Buchung nicht abgeschlossen",
 };
 
+/* JOB-2: Fehlercode eines Versuchs mit UNKLAREM Ausgang (Backend: ERROR_SEND_OUTCOME_UNKNOWN in
+   lib/shipmentEmailDelivery.js). Der Versand hat begonnen, ob die Mail angekommen ist, steht nicht
+   fest. Der Server nimmt einen solchen Versuch, solange es geht, mit demselben Idempotency-Key
+   wieder auf; danach wäre ein erneuter Versuch eine neue Mail — deshalb steht der Prüfhinweis an
+   der Zeile, und der Zustand heißt nicht „Fehlgeschlagen". */
+export const DELIVERY_ERROR_OUTCOME_UNKNOWN = "send_outcome_unknown";
+export const DELIVERY_UNCLEAR_HINT =
+  "Ausgang unbekannt – vor einem erneuten Versuch prüfen, ob die Mail angekommen ist.";
+export const RETRY_STARTED_TEXT = "Der Versand wurde erneut angestoßen.";
+export const RETRY_UNCLEAR_TEXT =
+  "Der Versand wurde angestoßen, sein Ausgang ist aber unklar. Bitte prüfen Sie, ob die Mail angekommen ist, bevor Sie es erneut versuchen.";
+
+export function deliveryOutcomeUnclear(row) {
+  return !!row && row.status === "failed" && row.error_code === DELIVERY_ERROR_OUTCOME_UNKNOWN;
+}
+
 /* [Badgeklasse, Anzeigetext, Rohwert] — dieselbe Form wie statusFallback(). */
-export function deliveryStatusMeta(value) {
+export function deliveryStatusMeta(value, errorCode) {
   const key = typeof value === "string" ? value : "";
+  if (deliveryOutcomeUnclear({ status: key, error_code: errorCode })) return ["badge--warning", "Ergebnis unklar", key];
   const hit = STATUS_LABELS[key];
   if (hit) return [hit[0], hit[1], key];
   return ["badge--neutral", "Unbekannter Status", key];
+}
+
+/* Rückmeldung nach „Erneut versuchen" aus dem `outcome` der Serverantwort. Nur der unklare
+   Ausgang hat einen eigenen Text; jede andere Antwort behält die bisherige Meldung, und der
+   maßgebliche Zustand steht nach dem Neuladen an der Zeile. */
+export function retryOutcomeMessage(outcome) {
+  if (outcome === "unclear") return { type: "error", text: RETRY_UNCLEAR_TEXT };
+  return { type: "success", text: RETRY_STARTED_TEXT };
 }
 
 /* Kundenfähige Bezeichnung der Zustellart. Der technische Bezeichner erscheint

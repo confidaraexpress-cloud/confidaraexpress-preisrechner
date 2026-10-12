@@ -9,7 +9,7 @@ import { PREISAENDERUNG_ANSEHEN, PREISAENDERUNG_NEU_BERECHNEN } from "../../util
 // (AGB + Ausschlussgüter-Bestätigung + bestehende Gates).
 export function BookingActionModule({
   error, conflict, addressError, recalcNotice, loading, agbAccepted, prohibitedGoodsAccepted, insuranceBlocksBooking, pickupBlocksBooking, voucherChecking,
-  legalBlocksBooking, profileHint, dropoffShopBlocksBooking,
+  legalBlocksBooking, profileHint, billingModeHint, dropoffShopBlocksBooking,
   priceChangeNotice, onReviewPriceChange, priceChangeActionRef,
   onBook, onNavigateShipments, onNavigateNew, onRecalculate, onNavigateProfile, userEmail,
 }) {
@@ -49,6 +49,18 @@ export function BookingActionModule({
           <p className="booking-conflict-text">{profileHint}</p>
           <button type="button" className="btn btn-outline btn-full" onClick={onNavigateProfile}>
             Unternehmensprofil vervollständigen
+          </button>
+        </div>
+      )}
+      {/* ─── BEL-4: Sammelrechnung derzeit nicht verfügbar (422) ─────────────────────────
+          Dieselbe Fläche wie oben, eine andere Handlung: das Konto führt die Sammelrechnung,
+          und der Sammellauf läuft nicht. Beauftragt wurde nichts; nach dem Wechsel auf die
+          Einzelrechnung im Profil ist dieselbe Buchung erneut auslösbar. */}
+      {billingModeHint && (
+        <div className="booking-conflict-box" role="alert" id="booking-billing-mode-unavailable">
+          <p className="booking-conflict-text">{billingModeHint}</p>
+          <button type="button" className="btn btn-outline btn-full" onClick={onNavigateProfile}>
+            Abrechnung im Profil ändern
           </button>
         </div>
       )}

@@ -61,6 +61,12 @@ const QUEUES = {
     additional_emails_failed: { count: 0, oldestAt: null, oldestId: null, target: "shipment" },
     invoice_mail_failed: { count: 1, oldestAt: "2026-09-12T09:00:00Z", oldestId: 3, target: "invoice" },
     order_confirmation_mail_failed: { count: 0, oldestAt: null, oldestId: null, target: "shipment" },
+    invoice_document_open: { count: 0, oldestAt: null, oldestId: null, target: "invoice" },
+    invoice_mail_unclear: { count: 0, oldestAt: null, oldestId: null, target: "invoice" },
+    invoice_mail_open: { count: 0, oldestAt: null, oldestId: null, target: "invoice" },
+    order_confirmation_mail_unclear: { count: 0, oldestAt: null, oldestId: null, target: "shipment" },
+    order_confirmation_mail_open: { count: 0, oldestAt: null, oldestId: null, target: "shipment" },
+    additional_emails_unclear: { count: 0, oldestAt: null, oldestId: null, target: "shipment" },
   },
   diagnostics: {
     superseded_unresolved: { count: 0, oldestAt: null, oldestId: null, target: "attempt" },

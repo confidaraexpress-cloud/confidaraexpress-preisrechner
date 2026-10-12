@@ -38,6 +38,24 @@ export const OPERATIONS_QUEUES = Object.freeze([
     hint: "Versand der Rechnung gescheitert", target: "invoice", listTo: "/admin/invoices", tone: "warning" },
   { key: "order_confirmation_mail_failed", label: "Auftragsbestätigungen fehlgeschlagen", icon: "mail",
     hint: "Versand der Auftragsbestätigung gescheitert", target: "shipment", listTo: null, tone: "warning" },
+  // JOB-1/JOB-2: Nacharbeiten einer Buchung, die liegen geblieben sind. „Unklar" heißt: der Versand
+  // hat begonnen, ob die Mail angekommen ist, steht nicht fest — vor einem erneuten Senden prüfen.
+  { key: "invoice_document_open", label: "Rechnungsdokument nicht erstellt", icon: "invoice",
+    hint: "Erstellung gescheitert oder nach einer Stunde nicht fertig", target: "invoice", listTo: null, tone: "warning" },
+  { key: "invoice_mail_unclear", label: "Rechnungsmails mit unklarem Ausgang", icon: "invoice",
+    hint: "Versand begonnen, Ausgang unbekannt — vor erneutem Senden prüfen", target: "invoice", listTo: null,
+    tone: "warning" },
+  { key: "invoice_mail_open", label: "Rechnungsmails nicht versendet", icon: "invoice",
+    hint: "Rechnung fertig, nach einer Stunde noch kein Versand", target: "invoice", listTo: null, tone: "warning" },
+  { key: "order_confirmation_mail_unclear", label: "Auftragsbestätigungen mit unklarem Ausgang", icon: "mail",
+    hint: "Versand begonnen, Ausgang unbekannt — vor erneutem Senden prüfen", target: "shipment", listTo: null,
+    tone: "warning" },
+  { key: "order_confirmation_mail_open", label: "Auftragsbestätigungen nicht versendet", icon: "mail",
+    hint: "Nach einer Stunde noch kein Versand", target: "shipment", listTo: null, tone: "warning" },
+  // Teilmenge von `additional_emails_failed`: dort weiter mitgezählt, hier mit der Handlung, die sie braucht.
+  { key: "additional_emails_unclear", label: "Zusatzmails mit unklarem Ausgang", icon: "mail",
+    hint: "Auch unter „Zusatzmails fehlgeschlagen“ gezählt — vor erneutem Senden prüfen, ob die Mail ankam",
+    target: "shipment", listTo: null, tone: "warning" },
 ]);
 
 export const OPERATIONS_DIAGNOSTICS = Object.freeze([

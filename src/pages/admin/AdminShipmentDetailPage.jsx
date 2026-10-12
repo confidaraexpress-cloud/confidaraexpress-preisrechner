@@ -30,6 +30,7 @@ import {
 } from "../../utils/adminShipmentView.mjs";
 import {
   canRetryDelivery, deliveryStatusMeta, deliveryTypeLabel, sortDeliveries,
+  deliveryOutcomeUnclear, DELIVERY_UNCLEAR_HINT, retryOutcomeMessage,
 } from "../../utils/shipmentEmailDeliveryView.mjs";
 import { documentsSummary, labelDownloadHint, reconciliationNotices, selectOperations } from "../../utils/adminShipmentOperations.mjs";
 import { attemptLabel } from "../../utils/adminReconciliation.mjs";
@@ -312,7 +313,10 @@ export default function AdminShipmentDetailPage() {
         }
         return;
       }
-      setRetryMsg({ type: "success", text: "Der Versand wurde erneut angestoßen." });
+      // JOB-2: ein unklarer Ausgang ist kein Erfolg — die Meldung sagt, was vor dem nächsten Versuch zu prüfen ist.
+      let d;
+      try { d = await r.json(); } catch { d = {}; }
+      setRetryMsg(retryOutcomeMessage(d?.outcome));
       await load();
     } catch {
       setRetryMsg({ type: "error", text: RETRY_ERRORS.default });
@@ -598,7 +602,7 @@ export default function AdminShipmentDetailPage() {
                 </div>
               )}
               {emailDeliveries.map((row) => {
-                const [cls, text, roh] = deliveryStatusMeta(row.status);
+                const [cls, text, roh] = deliveryStatusMeta(row.status, row.error_code);
                 return (
                   <div className="adm-maildel" key={row.id}>
                     <div className="adm-maildel-main">
@@ -611,7 +615,9 @@ export default function AdminShipmentDetailPage() {
                           ? `Gesendet am ${fmtDateTime(row.sent_at)}`
                           : row.status === "pending" && row.next_attempt_at
                             ? `Nächster Versuch: ${fmtDateTime(row.next_attempt_at)}`
-                            : null}
+                            : deliveryOutcomeUnclear(row)
+                              ? DELIVERY_UNCLEAR_HINT
+                              : null}
                       </div>
                     </div>
                     <div className="adm-maildel-side">

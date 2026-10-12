@@ -8,7 +8,7 @@ import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher, loadPr
 import { FormAlert } from "../components/ui/FormAlert";
 import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess, istOffenerAusgang,
   fordertNeuberechnung, erlaubtSpaeterenVersuch, istUnklarerAusgang, BOOK_FEHLER, OFFER_ALREADY_USED_TEXT,
-  REFERENCE_INVALID_TEXT } from "../utils/bookingErrors.mjs";
+  REFERENCE_INVALID_TEXT, lagerkonfliktBeimBuchen, preisangabenFehlenHandlung } from "../utils/bookingErrors.mjs";
 import { customerText, normalizeApiError } from "../utils/apiError.mjs";
 import {
   labelFormatOptionsOf, restoredLabelFormat, labelFormatBookPayload, labelDeliveryInfo,
@@ -232,6 +232,8 @@ export default function BookingPage() {
      Eigener Zustand neben `conflict`, weil die HANDLUNG eine andere ist —
      neu berechnen statt in die Sendungsliste sehen. */
   const [recalcNotice, setRecalcNotice] = useState("");
+  // Lagerkonflikt der Buchung (409 vor der Bestellung): `{ text, ziel }` aus `lagerkonfliktBeimBuchen`.
+  const [inventoryNotice, setInventoryNotice] = useState(null);
   // TG22 Paket B: 422 BUSINESS_PROFILE_INCOMPLETE — Profilangaben fehlen. Eigener Zustand, weil die
   // Handlung eine andere ist (Profil ergänzen) und der Bestellknopf danach wieder gilt.
   const [profileHint, setProfileHint] = useState("");
@@ -858,6 +860,20 @@ export default function BookingPage() {
           setRepriceLoading(false);
           return;
         }
+        // 400 PRICE_INPUTS_MISSING: dieselbe Handlung wie bei der Buchung (utils/bookingErrors.mjs) — fehlt allein
+        // die Art der Lieferadresse, neu wählen; sonst neu berechnen. Nie „Angaben zur Versicherung ungültig".
+        const fehlendePreisangaben = preisangabenFehlenHandlung(d, { lieferadressartAbfragbar: residentialRequired });
+        if (fehlendePreisangaben) {
+          if (fehlendePreisangaben.aktion === "neubindung") {
+            setRepriceError("");
+            forderNeubindung(RESIDENTIAL_TEXT.required);
+          } else {
+            setRepriceError(fehlendePreisangaben.text);
+            setRecalcNotice(fehlendePreisangaben.text);
+          }
+          setRepriceLoading(false);
+          return;
+        }
         // TG22 Paket A: eine versicherte Preisänderung mit beiden Serverbeträgen ist keine
         // Fehlermeldung, sondern eine Entscheidung des Kunden — derselbe Dialog wie bei der Buchung.
         const versicherteAenderung = coverModel && d?.code === "PRICE_CHANGED" ? insuredPriceChangeView(d, undefined) : null;
@@ -1203,7 +1219,7 @@ export default function BookingPage() {
       );
       return;
     }
-    setError(""); setConflict(""); setAddressError(""); setRecalcNotice(""); setPriceAcceptNotice(""); setProfileHint(""); setBillingModeHint(""); setLoading(true);
+    setError(""); setConflict(""); setAddressError(""); setRecalcNotice(""); setInventoryNotice(null); setPriceAcceptNotice(""); setProfileHint(""); setBillingModeHint(""); setLoading(true);
     try {
       // /book erwartet insuranceSelection VERSCHACHTELT (nicht wie /reprice flach).
       // confirmedTotalGross ist reines Drift-Gate (nie Preisquelle) — nur bei
@@ -1472,6 +1488,16 @@ export default function BookingPage() {
           setLoading(false);
           return;
         }
+        // Lagerkonflikt: die Bestandsreservierung läuft VOR der Bestellung und ist gescheitert — nichts
+        // beauftragt (utils/bookingErrors.mjs). Bis hierher lief dieser 409 in den Sammelzweig unten („bereits
+        // verarbeitet", „Zu meinen Sendungen") oder bei versicherter Buchung in eine Neubepreisung, die nichts
+        // löst. Deshalb VOR den Absicherungszweigen: Bestand bzw. Auftrag prüfen, danach neu berechnen.
+        const lagerkonflikt = lagerkonfliktBeimBuchen(r.status, d);
+        if (lagerkonflikt) {
+          setInventoryNotice(lagerkonflikt);
+          setLoading(false);
+          return;
+        }
         // Final Bookability Closure: nichts beauftragt, dieselbe Buchung trägt später wieder (die Sendung
         // ist nach dem Hinterlegen der Handelsrechnung noch nicht versandbereit). Bis hierher lief dieser
         // 409 in den Sammelzweig ganz unten — „bereits verarbeitet" samt „Zu meinen Sendungen", wo nichts
@@ -1536,6 +1562,17 @@ export default function BookingPage() {
         // Ohne diesen Zweig liefe die Antwort in den Adresszweig unten — falsche Ursache, falsche Handlung.
         if (d?.code === BILLING_MODE_UNAVAILABLE_CODE) {
           setBillingModeHint(asStr(customerText(d)) || BILLING_MODE_TEXT.bookingUnavailable);
+          setLoading(false);
+          return;
+        }
+        // 400 PRICE_INPUTS_MISSING (Transglobal, Revalidierung vor dem Claim): es fehlen preisrelevante Angaben,
+        // nicht die Anschrift. Fehlt allein die Art der Lieferadresse und fragt diese Seite sie ab, zurück an genau
+        // diese Auswahl (Optionen neu laden, neu binden, neu bestätigen); sonst neu berechnen. Ohne diesen Zweig
+        // liefe die Antwort in den Adresszweig unten — falsche Ursache, falsche Handlung.
+        const fehlendePreisangaben = preisangabenFehlenHandlung(d, { lieferadressartAbfragbar: residentialRequired });
+        if (fehlendePreisangaben) {
+          if (fehlendePreisangaben.aktion === "neubindung") forderNeubindung(RESIDENTIAL_TEXT.required);
+          else setRecalcNotice(fehlendePreisangaben.text);
           setLoading(false);
           return;
         }
@@ -1729,6 +1766,14 @@ export default function BookingPage() {
       if (residentialRequired && (isRebindRequired(d) || isPriceInputsRequired(d))) {
         setPriceChange(null);
         forderNeubindung(isRebindRequired(d) ? RESIDENTIAL_TEXT.rebind : RESIDENTIAL_TEXT.required);
+        return;
+      }
+      // 400 PRICE_INPUTS_MISSING: der Dialog schließt; dieselbe Handlung wie bei Buchung und Neubepreisung.
+      const fehlendePreisangaben = preisangabenFehlenHandlung(d, { lieferadressartAbfragbar: residentialRequired });
+      if (fehlendePreisangaben) {
+        setPriceChange(null);
+        if (fehlendePreisangaben.aktion === "neubindung") forderNeubindung(RESIDENTIAL_TEXT.required);
+        else setRecalcNotice(fehlendePreisangaben.text);
         return;
       }
       const erneut = d?.code === "PRICE_CHANGED" ? insuredPriceChangeView(d, undefined) : null;
@@ -2436,6 +2481,8 @@ export default function BookingPage() {
                   conflict={conflict}
                   addressError={addressError}
                   recalcNotice={recalcNotice}
+                  inventoryNotice={inventoryNotice}
+                  onNavigateInventory={(ziel) => navigate(`/dashboard?page=${ziel}`)}
                   loading={loading}
                   agbAccepted={agbAccepted}
                   prohibitedGoodsAccepted={prohibitedGoodsAccepted}

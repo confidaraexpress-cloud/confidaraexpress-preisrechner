@@ -1,6 +1,7 @@
 import React from "react";
 import { canSubmitBooking } from "../../utils/bookingGate";
 import { PREISAENDERUNG_ANSEHEN, PREISAENDERUNG_NEU_BERECHNEN } from "../../utils/priceChangeView.mjs";
+import { LAGERKONFLIKT_ZIEL_TEXT } from "../../utils/bookingErrors.mjs";
 
 // Buchungsaktion — Fehlermeldung, Konflikt-/Adressfehler-Zweige und der
 // verbindliche Buchen-Button. REINE DARSTELLUNG; alle Zustände/Handler kommen
@@ -8,10 +9,10 @@ import { PREISAENDERUNG_ANSEHEN, PREISAENDERUNG_NEU_BERECHNEN } from "../../util
 // deaktiviert — dieselbe Freigabe-Bedingung, die auch der Guard in doBook nutzt
 // (AGB + Ausschlussgüter-Bestätigung + bestehende Gates).
 export function BookingActionModule({
-  error, conflict, addressError, recalcNotice, loading, agbAccepted, prohibitedGoodsAccepted, insuranceBlocksBooking, pickupBlocksBooking, voucherChecking,
+  error, conflict, addressError, recalcNotice, inventoryNotice, loading, agbAccepted, prohibitedGoodsAccepted, insuranceBlocksBooking, pickupBlocksBooking, voucherChecking,
   legalBlocksBooking, profileHint, billingModeHint, dropoffShopBlocksBooking,
   priceChangeNotice, onReviewPriceChange, priceChangeActionRef,
-  onBook, onNavigateShipments, onNavigateNew, onRecalculate, onNavigateProfile, userEmail,
+  onBook, onNavigateShipments, onNavigateNew, onRecalculate, onNavigateProfile, onNavigateInventory, userEmail,
 }) {
   // Während einer laufenden Gutscheinprüfung ist der anzuzeigende Endbetrag nicht bestimmt —
   // solange darf nicht bestellt werden. Die bestehende Gate-Funktion bleibt unverändert;
@@ -100,6 +101,33 @@ export function BookingActionModule({
               onClick={onRecalculate}
             >
               {PREISAENDERUNG_NEU_BERECHNEN}
+            </button>
+          </div>
+        </div>
+      ) : inventoryNotice ? (
+        /* ─── Lagerkonflikt der Buchung: nichts beauftragt ────────────────────────────
+           Die Bestandsreservierung läuft VOR der Bestellung und ist gescheitert. Der Korrekturweg führt in
+           das Lagermodul (Bestand bzw. Auftrag), danach berechnet der Kunde die Angebote neu. Wie die
+           Neuberechnungsfläche darunter ERSETZT diese Fläche den Bestellknopf: dieselbe Buchung scheiterte
+           erneut. Eine laufende Prüfung wird nicht behauptet, und „Zu meinen Sendungen" führte ins Leere. */
+        <div className="booking-conflict-box" role="alert" id="booking-inventory-conflict">
+          <p className="booking-conflict-text">{inventoryNotice.text}</p>
+          <div className="booking-conflict-actions">
+            {inventoryNotice.ziel && LAGERKONFLIKT_ZIEL_TEXT[inventoryNotice.ziel] && (
+              <button
+                type="button"
+                className="btn btn-primary btn-full"
+                onClick={() => onNavigateInventory(inventoryNotice.ziel)}
+              >
+                {LAGERKONFLIKT_ZIEL_TEXT[inventoryNotice.ziel]}
+              </button>
+            )}
+            <button
+              type="button"
+              className={`btn ${inventoryNotice.ziel ? "btn-outline" : "btn-primary"} btn-full`}
+              onClick={onRecalculate}
+            >
+              Angebote neu berechnen
             </button>
           </div>
         </div>

@@ -14,6 +14,7 @@
 // Framework-frei und damit ohne DOM mit `node --test` prüfbar.
 // ─────────────────────────────────────────────────────────────────────────────
 import { normalizeApiError } from "./apiError.mjs";
+import { inventoryErrorText } from "./inventoryErrors.mjs";
 import {
   SAME_DAY_TEXT, SAME_DAY_COLLECTION_UNAVAILABLE_CODE, SAME_DAY_UNAVAILABLE_KIND, sameDayUnavailableKindOf,
 } from "./sameDayCollectionView.mjs";
@@ -158,6 +159,27 @@ export const BOOK_FEHLER = {
     message: "Der früheste Abholtag hat sich geändert. Bitte Angebot neu berechnen.",
     retryable: false,
   },
+  // ─── 400 PRICE_INPUTS_MISSING (Transglobal) ───────────────────────────────────────
+  // Die Revalidierung VOR dem Claim stellt fest, dass preisrelevante Angaben fehlen, die der Kunde auf dieser
+  // Seite nicht nachtragen kann (siehe `preisangabenFehlenHandlung`). Nichts beauftragt; die Handlung ist
+  // eine Neuberechnung — nie die Adressfläche: an der Anschrift fehlt nichts.
+  PREISANGABEN_UNVOLLSTAENDIG: {
+    title: "Preisangaben unvollständig",
+    message: "Für dieses Angebot fehlen preisrelevante Angaben. Es wurde nichts beauftragt und nichts berechnet. Bitte berechnen Sie die Angebote neu.",
+    retryable: false,
+  },
+  // ─── 503 LEGAL_DOCUMENTS_NOT_CONFIGURED ───────────────────────────────────────────
+  // Die Vertragsunterlagen der Buchung sind serverseitig gerade nicht abrufbar (lib/legalBookingGate.js). Beide
+  // Buchungswege prüfen das VOR jedem Providerkontakt — es wurde also nichts beauftragt. Weder ein offener
+  // Ausgang („wird geprüft") noch ein Adressfehler: es ist ein Konfigurationszustand des Systems. Eine
+  // Neuberechnung repariert ihn nicht, ein späterer Versuch derselben Buchung schon; der Bestellknopf bleibt,
+  // und nichts wird automatisch wiederholt. Gilt ausschließlich für DIESEN Code — ein 503 ohne Code bleibt ein
+  // offener Ausgang.
+  BUCHUNG_DERZEIT_NICHT_MOEGLICH: {
+    title: "Buchung derzeit nicht möglich",
+    message: "Die Vertragsunterlagen sind derzeit nicht abrufbar, deshalb ist die Buchung gerade nicht möglich. Es wurde nichts beauftragt und nichts berechnet. Bitte versuchen Sie es später erneut.",
+    retryable: true,
+  },
 };
 
 const WOCHENTAGE = Object.freeze(["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"]);
@@ -237,6 +259,15 @@ const SAME_DAY_FEHLER_JE_ART = Object.freeze({
 //     Warenkorbprüfung VOR der Bestellung; ein Server vor diesem Stand sendet sie noch.
 // Bis hierher liefen die 5xx dieser Liste als offener Ausgang („wird geprüft", „Zu meinen Sendungen")
 // und die 409 als „bereits verarbeitet" — für einen Vorgang, bei dem nichts bestellt wurde.
+//
+// ─── TG-Abschluss (2026-10-12): drei weitere „nichts beauftragt"-Antworten ───────────
+//   LEGAL_DOCUMENTS_NOT_CONFIGURED  503     nichts beauftragt          später erneut (diese Tabelle)
+//   INSUFFICIENT_STOCK u. a.        409     nichts beauftragt (Lager)  Bestand/Auftrag prüfen, neu berechnen
+//                                                                      (`lagerkonfliktBeimBuchen`)
+//   PRICE_INPUTS_MISSING            400     nichts beauftragt          Art der Lieferadresse neu wählen oder
+//                                                                      neu berechnen (`preisangabenFehlenHandlung`)
+// Die beiden letzten brauchen den Kontext der Seite (Status bzw. abgefragte Angaben) und stehen deshalb nicht
+// in dieser Tabelle; ein 503 ohne Code bleibt unverändert ein offener Ausgang.
 const BOOK_CODE_FEHLER = {
   BOOKING_OUTCOME_UNKNOWN: "PRUEFUNG_LAEUFT",
   BOOKING_PENDING:         "PRUEFUNG_LAEUFT",
@@ -268,6 +299,8 @@ const BOOK_CODE_FEHLER = {
   // TG22/TG23 Same-Day — 409, nichts beauftragt, ein späterer Abholtag ist die Handlung. Die Klasse hängt an
   // der Art der Antwort (`fehlerKlasse`).
   [SAME_DAY_COLLECTION_UNAVAILABLE_CODE]: "ABHOLUNG_HEUTE_NICHT_PRUEFBAR",
+  // 503, nichts beauftragt (Legal-Prüfung vor jedem Providerkontakt) — später erneut, kein offener Ausgang.
+  LEGAL_DOCUMENTS_NOT_CONFIGURED: "BUCHUNG_DERZEIT_NICHT_MOEGLICH",
 };
 
 // Die Fehlerklasse einer Antwort: über den Code — bei einer nicht verfügbaren Abholung heute über deren Art.
@@ -285,7 +318,9 @@ const NEUBERECHNUNG_KLASSEN = Object.freeze([
 
 // Die Handlungsklassen „nichts beauftragt, dieselbe Buchung trägt später wieder" — kein Konflikt, keine
 // Neuberechnung: der Bestellknopf bleibt.
-const SPAETER_KLASSEN = Object.freeze(["ZOLL_DERZEIT_NICHT_BUCHBAR", "ZOLL_NOCH_NICHT_BEREIT"]);
+const SPAETER_KLASSEN = Object.freeze([
+  "ZOLL_DERZEIT_NICHT_BUCHBAR", "ZOLL_NOCH_NICHT_BEREIT", "BUCHUNG_DERZEIT_NICHT_MOEGLICH",
+]);
 
 // Trägt diese Antwort einen Ausgang, bei dem NICHTS beauftragt wurde und dieselbe
 // Angebotskennung nicht mehr trägt? Eigener Export, weil die Buchungsseite ihre
@@ -302,6 +337,87 @@ export function fordertNeuberechnung(body) {
 export function erlaubtSpaeterenVersuch(body) {
   const code = body && typeof body === "object" ? body.code : null;
   return typeof code === "string" && SPAETER_KLASSEN.includes(fehlerKlasse(code, body));
+}
+
+// ─── Lagerkonflikt beim Buchen ─────────────────────────────────────────────────────
+// Eine Sendung mit Lagerbezug reserviert ihren Bestand VOR der Bestellung in einer eigenen Transaktion
+// (Backend lib/booking/inventoryReservation.js — JUMiNGO und Transglobal gleich). Scheitert das, gibt der
+// Server den Sendungs-Claim zurück und antwortet 409 mit dem Code der Bestandslogik; bestellt wurde NICHTS.
+// Erreichbar sind dort genau diese Codes (lib/inventoryShipment.js `reserveShipmentInventory` →
+// lib/inventory.js `claimReservation`/`reserve`): zu wenig Bestand, eine von einer anderen Sendung gehaltene
+// Auftragsmenge, ein nicht mehr vorhandener Artikel oder Lagerplatz, eine unbrauchbare Menge.
+//
+// Bis hierher lief dieser 409 in den Sammelzweig der Buchungsseite („bereits verarbeitet", „Zu meinen
+// Sendungen") — bei versicherter Buchung sogar in eine Neubepreisung, die nichts löst. Der Weg ist: Bestand
+// bzw. Auftrag prüfen, danach neu berechnen. Wohin der Korrekturweg führt, sagt `ziel` (Seite des Lagermoduls);
+// ohne Ziel bleibt allein die Neuberechnung.
+const LAGERKONFLIKT_ZIEL = Object.freeze({
+  INSUFFICIENT_STOCK: "stock",
+  PRODUCT_NOT_FOUND: "stock",
+  RESERVATION_CLAIMED: "orders",
+  INVALID_QUANTITY: null,
+});
+
+const LAGERKONFLIKT_HANDLUNG = Object.freeze({
+  stock: "Bitte prüfen Sie den Bestand und berechnen Sie die Angebote danach neu.",
+  orders: "Bitte prüfen Sie den Auftrag und berechnen Sie die Angebote danach neu.",
+  ohne: "Bitte berechnen Sie die Angebote neu.",
+});
+
+/** Die Beschriftung des Korrekturwegs je Ziel — eine Stelle für Fläche und Tests. */
+export const LAGERKONFLIKT_ZIEL_TEXT = Object.freeze({
+  stock: "Bestand prüfen",
+  orders: "Aufträge prüfen",
+});
+
+// Der Bestandssatz: derselbe Text wie im Lagermodul (inventoryErrors.mjs). Nennt der Server den Artikel, nennt
+// ihn der Satz auch — der Name ist ein Artikel des Kunden selbst. Die gehaltene Auftragsmenge ist kein
+// Bestandsmangel und bekommt ihren eigenen Satz.
+function lagerkonfliktSatz(body) {
+  if (body.code === "INSUFFICIENT_STOCK") {
+    const d = body.details && typeof body.details === "object" ? body.details : {};
+    const name = [d.name, d.sku].find((w) => typeof w === "string" && w.trim() !== "");
+    if (name) return `Für „${name.trim()}“ ist nicht genügend Bestand verfügbar.`;
+  }
+  if (body.code === "RESERVATION_CLAIMED") return "Diese Auftragsmenge wird bereits für eine andere Sendung verwendet.";
+  return inventoryErrorText(body);
+}
+
+/**
+ * Ein Lagerkonflikt der Buchung — `{ text, ziel }` — oder `null` für jede andere Antwort. Nur ein 409 mit einem
+ * der Codes oben: ein anderer Status oder Code ist keine Aussage über den Bestand.
+ */
+export function lagerkonfliktBeimBuchen(status, body) {
+  if (status !== 409 || !body || typeof body !== "object" || typeof body.code !== "string") return null;
+  if (!Object.prototype.hasOwnProperty.call(LAGERKONFLIKT_ZIEL, body.code)) return null;
+  const ziel = LAGERKONFLIKT_ZIEL[body.code];
+  return {
+    text: `${lagerkonfliktSatz(body)} Es wurde nichts beauftragt und nichts berechnet. ${LAGERKONFLIKT_HANDLUNG[ziel || "ohne"]}`,
+    ziel,
+  };
+}
+
+// ─── 400 PRICE_INPUTS_MISSING (Transglobal) ────────────────────────────────────────
+// Die Revalidierung VOR dem Claim (Backend lib/booking/transglobalBookingEntry.js, für `/book` und die
+// Neubepreisung der Absicherung) meldet fehlende preisrelevante Angaben und nennt sie in `fields`. Nichts
+// beauftragt. Ist es AUSSCHLIESSLICH die Art der Lieferadresse und fragt die Seite sie für dieses Angebot ab,
+// führt der Weg an genau diese Auswahl zurück — dieselbe Neubindung wie bei `PRICE_INPUTS_REQUIRED`, danach der
+// bestehende Bindungs- und Bestätigungsablauf. Jede andere Angabe (etwa die Art der Abholadresse) kann der
+// Kunde auf dieser Seite nicht nachtragen: dann neu berechnen. Es wird keine Auswahl erfunden.
+export const PRICE_INPUTS_MISSING_CODE = "PRICE_INPUTS_MISSING";
+
+/**
+ * `{ aktion: "neubindung" }`, `{ aktion: "neu_berechnen", text }` oder `null`, wenn die Antwort nicht
+ * `PRICE_INPUTS_MISSING` ist. `lieferadressartAbfragbar`: fragt die Buchungsseite für dieses Angebot die Art der
+ * Lieferadresse ab?
+ */
+export function preisangabenFehlenHandlung(body, { lieferadressartAbfragbar = false } = {}) {
+  if (!body || typeof body !== "object" || body.code !== PRICE_INPUTS_MISSING_CODE) return null;
+  const felder = Array.isArray(body.fields) ? body.fields : [];
+  if (lieferadressartAbfragbar === true && felder.length > 0 && felder.every((f) => f === "deliveryIsResidential")) {
+    return { aktion: "neubindung" };
+  }
+  return { aktion: "neu_berechnen", text: BOOK_FEHLER.PREISANGABEN_UNVOLLSTAENDIG.message };
 }
 
 // Trägt diese Antwort einen Ausgang, bei dem der Provider bereits gebucht haben KANN?

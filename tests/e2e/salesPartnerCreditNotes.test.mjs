@@ -50,7 +50,7 @@ const OVERVIEW = {
   currentMonth: { month: "2026-10", commissionCents: 0, payableCents: 0, shipments: 0, packages: 0 },
   customers: { assigned: 0 },
 };
-const TEAM_LEER = { limits: { level1: 10, level2: 10 }, level1: [], level2: [] };
+const TEAM_LEER = { level1: [], level2: [] };
 
 // Drei Belege: eine ausgezahlte, stornierte Gutschrift, ihr Storno und eine
 // neue, noch nicht ausgezahlte Gutschrift, deren Dokument noch entsteht. Die

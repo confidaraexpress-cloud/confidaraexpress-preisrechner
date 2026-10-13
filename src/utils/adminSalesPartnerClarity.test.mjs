@@ -33,6 +33,9 @@ test("1 — Deaktivieren nennt die echten Folgen: keine neuen Provisionen, Login
   assert.doesNotMatch(deaktivieren, /gesperrt\b/, "Deaktivieren behauptet keine Login-Sperre");
   const reaktivieren = karte.match(/reactivate: \{[\s\S]*?\n {2}\},/)[0];
   assert.match(reaktivieren, /Der Login wird dadurch nicht verändert\./);
+  // Keine Platzgrenze je Ebene (2026-10-13): Reaktivierte zählen wieder, ohne Platzreihenfolge.
+  assert.match(reaktivieren, /er zählt wieder im Team seines Sponsors/);
+  assert.doesNotMatch(reaktivieren, /Platz|Reihenfolge|neu aktiviert/);
   assert.match(karte, /text=\{dialogText\(def, mitDatum\)\}/, "Wirksamkeitstag im Text: heute bzw. das gewählte Datum");
   assert.match(karte, /"Ab dem gewählten Tag \(ohne Angabe ab heute\)" : "Ab heute"/);
 });

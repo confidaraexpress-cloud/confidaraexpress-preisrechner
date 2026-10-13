@@ -34,6 +34,8 @@
 //      dem Login im Team; ein Kundenziel bringt einen Partner ins Portal.
 //  16. Konto (UX-Paket 6): Abrechnungsdaten zuerst, dann Vereinbarung,
 //      Kontodaten, Sicherheit.
+//  17. Team ohne Platzgrenze (2026-10-13): 1.000 Partner auf Ebene 2 bei 390 px —
+//      alle als Karten, kein seitliches Scrollen, keine Platztexte.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -88,11 +90,15 @@ const commissions = (month) => ({
       ratePercent: "27.50", amountCents: -2750, payable: false, customerName: "Acme GmbH", teamMemberName: null, note: "Storniert" },
   ],
 });
-const TEAM = { limits: { level1: 10, level2: 10 },
-  level1: [{ name: "Tom Team", status: "active", activeSince: "2026-06-01", relevant: true, rank: 1,
-    commissionCurrentMonthCents: 500, commissionTotalCents: 9000 }],
+// Betreiberentscheidung 2026-10-13: keine Platzgrenze je Ebene — der Server sendet weder `limits`
+// noch `rank`. Ebene 1 mit 13 Partnern: der 11. und 12. zählen wie der 1., der 13. ist inaktiv.
+const teamMitglied = (i, extra = {}) => ({ name: `Team ${i}`, status: "active", activeSince: "2026-06-01", relevant: true,
+  commissionCurrentMonthCents: 500, commissionTotalCents: 9000, ...extra });
+const TEAM = {
+  level1: [teamMitglied(1, { name: "Tom Team" }), ...Array.from({ length: 11 }, (_, i) => teamMitglied(i + 2)),
+    teamMitglied(13, { status: "inactive", activeSince: null, relevant: false, commissionCurrentMonthCents: 0 })],
   level2: [] };
-const TEAM_LEER = { limits: { level1: 10, level2: 10 }, level1: [], level2: [] };
+const TEAM_LEER = { level1: [], level2: [] };
 
 let server, browser;
 
@@ -274,16 +280,21 @@ test("3 — Bereiche: Kunden, Provisionen mit Monatswechsel, Team; Rücknahme er
 
   await page.locator("#spp-tab-team").click();
   await page.locator("#spp-team-1").waitFor({ state: "visible" });
-  // UX-Paket 6 (bewusste Ankeränderung): Ebenen mit Namen, Plätze statt „Rang", Belegung ohne „n von 10".
+  // Bewusste Ankeränderung (Betreiberentscheidung 2026-10-13): keine Platzgrenze — alle aktiven Partner
+  // zählen, auch der 11. und 12.; vorher „Ja – Platz 1 von 10“ und „(höchstens 10)“.
   const ebene1 = await page.locator("#spp-team-1").innerText();
   assert.match(ebene1, /Direkt geworben \(Ebene 1\)/);
-  assert.match(ebene1, /1 Partner · 1 zählt für Ihre Teamprovision \(höchstens 10\)/);
-  assert.match(ebene1, /Ja – Platz 1 von 10/);
+  assert.match(ebene1, /13 Partner · 12 zählen für Ihre Teamprovision/);
+  assert.equal(await page.locator("#spp-team-1 tbody tr").count(), 13, "alle Partner der Ebene");
+  const zeile = (n) => page.locator(`#spp-team-1 tbody tr:nth-child(${n})`).innerText();
+  assert.match(await zeile(11), /Team 11[\s\S]*Ja/);
+  assert.match(await zeile(12), /Team 12[\s\S]*Ja/);
+  assert.match(await zeile(13), /Team 13[\s\S]*Nein – nur aktive Partner zählen/);
   assert.match(ebene1, /Teamprovision im Oktober/);
-  assert.doesNotMatch(ebene1, /Rang|von 10 ·|Ebene 1 · 1/);
+  assert.doesNotMatch(ebene1, /Rang|Platz|höchstens|von 10|die ersten/);
   assert.match(await page.locator("#spp-team-2").innerText(), /Weitere Partner \(Ebene 2\)[\s\S]*Partner, die Ihre direkt geworbenen Partner geworben haben\./);
   assert.match(await page.locator("#spp-team-explain").innerText(),
-    /je Ebene die ersten 10 aktiven Partner, in der Reihenfolge ihrer Aktivierung\. Ihre Sätze: Ebene 1 5,00 % · Ebene 2 2,50 %\./);
+    /^Für Ihre Teamprovision zählen alle berechtigten aktiven Partner auf Ebene 1 und Ebene 2\. Ihre Sätze: Ebene 1 5,00 % · Ebene 2 2,50 %\.$/);
   assert.deepEqual(state.kunde, []);
   await page.close();
 });
@@ -632,6 +643,26 @@ test("16 — Konto: Abrechnungsdaten zuerst, dann Vereinbarung, Kontodaten, Sich
   const titel = (await page.locator("#spp-account > section > .profile-card-head > .table-card-title").allInnerTexts())
     .map((t) => t.trim());
   assert.deepEqual(titel, ["Abrechnungsdaten", "Vereinbarung", "Kontodaten", "Sicherheit"]);
+  assert.deepEqual(state.kunde, []);
+  await page.close();
+});
+
+test("17 — Team ohne Platzgrenze (2026-10-13): 1.000 Partner auf Ebene 2 bei 390 px — alle als Karten, kein seitliches Scrollen", async () => {
+  const gross = {
+    level1: [TEAM.level1[0]],
+    level2: Array.from({ length: 1000 }, (_, i) => teamMitglied(i + 1, { name: `Partner ${i + 1}`, activeSince: "2026-07-01" })),
+  };
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const state = await setup(page, { team: gross });
+  await page.goto(`${BASE}/partner?page=team`, { waitUntil: "networkidle" });
+  await page.locator("#spp-team-2").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#spp-team-2 .ce-list-card").count(), 1000, "alle 1.000 Partner, keine Anzeigegrenze");
+  assert.match(await page.locator("#spp-team-2-summary").innerText(), /^1000 Partner · 1000 zählen für Ihre Teamprovision$/);
+  const letzter = page.locator("#spp-team-2 .ce-list-card").nth(999);
+  await letzter.scrollIntoViewIfNeeded();
+  assert.match(await letzter.innerText(), /Partner 1000[\s\S]*Zählt für Ihre Teamprovision\s*Ja/);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth) <= 390, "die Seite scrollt seitlich");
+  assert.doesNotMatch(await page.locator("#spp-tabpanel").innerText(), /Platz|höchstens|die ersten|Reihenfolge/);
   assert.deepEqual(state.kunde, []);
   await page.close();
 });

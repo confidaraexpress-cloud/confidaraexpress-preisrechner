@@ -19,11 +19,10 @@ function StatusBadge({ status }) {
 }
 
 // Eine Teamebene: wer dazugehört, ob aktiv, ob der Partner für die
-// Teamprovision zählt (Platz aus `rank`/`relevant` des Servers) und die
-// Teamprovision — alles aus der Serverantwort, nichts nachgerechnet.
+// Teamprovision zählt (`relevant` des Servers) und die Teamprovision — alles
+// aus der Serverantwort, nichts nachgerechnet, keine Obergrenze.
 function TeamLevel({ level, team, monatSpalte }) {
   const liste = level === 1 ? team.level1 : team.level2;
-  const grenze = level === 1 ? team.limits.level1 : team.limits.level2;
   const titelId = `spp-team-${level}-title`;
   return (
     <section aria-labelledby={titelId} id={`spp-team-${level}`} className="spp-team-level">
@@ -58,7 +57,7 @@ function TeamLevel({ level, team, monatSpalte }) {
                       </div>
                     </td>
                     <td><StatusBadge status={m.status} /></td>
-                    <td>{relevanceLabel(m, grenze)}</td>
+                    <td>{relevanceLabel(m)}</td>
                     <td className="ce-num">{formatCents(m.commissionCurrentMonthCents)}</td>
                     <td className="ce-num">{formatCents(m.commissionTotalCents)}</td>
                   </tr>
@@ -79,7 +78,7 @@ function TeamLevel({ level, team, monatSpalte }) {
                 </div>
                 <div className="ce-list-card-row">
                   <span className="ce-list-card-key">{TEAM_TEXTS.countsLabel}</span>
-                  <span className="ce-list-card-val">{relevanceLabel(m, grenze)}</span>
+                  <span className="ce-list-card-val">{relevanceLabel(m)}</span>
                 </div>
                 <div className="ce-list-card-row">
                   <span className="ce-list-card-key">{monatSpalte}</span>
@@ -102,10 +101,10 @@ function TeamLevel({ level, team, monatSpalte }) {
    Immer erreichbar (Betreiberentscheidung, visiblePartnerTabs): Laden, Fehler
    mit „Erneut versuchen" und ein noch leeres Team zeigt dieser Bereich selbst.
    UX-Paket 6: die zwei Ebenen heißen „Direkt geworben (Ebene 1)" und „Weitere
-   Partner (Ebene 2)"; oben steht die Regel der Teamprovision (je Ebene die
-   ersten `limits` aktiven Partner in der Reihenfolge ihrer Aktivierung) mit
-   den Sätzen der Übersicht. Grenzen und Teamlogik bleiben beim Server — die
-   Oberfläche zählt nur seine Kennzeichen. */
+   Partner (Ebene 2)"; oben steht die Regel der Teamprovision (alle aktiven
+   Partner beider Ebenen, ohne Platzgrenze — 2026-10-13) mit den Sätzen der
+   Übersicht. Die Teamlogik bleibt beim Server — die Oberfläche zählt nur seine
+   Kennzeichen. */
 export function PartnerTeamPanel({ state, onRetry, overview = null }) {
   if (state.loading && !state.data) {
     return <div className="ce-card"><LoadingState text="Team wird geladen …" /></div>;

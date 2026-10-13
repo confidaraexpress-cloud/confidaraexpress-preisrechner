@@ -842,7 +842,6 @@ function normalizeTeamMember(raw) {
     status: str(m.status),
     activeSince: str(m.activeSince),
     relevant: m.relevant === true,
-    rank: int(m.rank),
     commissionCurrentMonthCents: int(m.commissionCurrentMonthCents),
     commissionTotalCents: int(m.commissionTotalCents),
   };

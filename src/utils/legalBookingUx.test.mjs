@@ -18,7 +18,7 @@ import { buchungsFlaeche } from "../testing/quelltext.mjs";
 import {
   LEGAL_REQUIRED_DOCUMENT_TYPES, LEGAL_SUPPORTED_DOCUMENT_TYPES, LEGAL_LOADING, LEGAL_DISABLED, LEGAL_READY, LEGAL_ERROR,
   LEGAL_ERROR_TEXT, LEGAL_SET_CHANGED_TEXT,
-  parseBookingContext, legalLoadingContext, legalTermsDocument,
+  parseBookingContext, legalLoadingContext, legalTermsDocument, legalTermsNotices,
   legalGateBlocks, legalGateError, legalBookingPayload,
   isLegalSetChanged, legalSetChangedBetween,
 } from "./legalBookingView.mjs";
@@ -318,4 +318,50 @@ test("(22) legalTermsDocument liefert nur bei vollständigem Kontext", () => {
   assert.equal(legalTermsDocument(ctxAus), null);
   assert.equal(legalTermsDocument(legalLoadingContext()), null);
   assert.equal(legalTermsDocument(null), null);
+});
+
+// ─── Buchungshinweise der AGB-Fassung (ADSp-Anlage, Hinweis nach § 449 HGB) ───────────────
+
+const antwortMitHinweis = {
+  ...antwortAn,
+  documents: antwortAn.documents.map((d) => (d.type !== "terms" ? d : {
+    ...d,
+    labelSuffix: "  einschließlich der ADSp 2017 (Anlage 1) ",
+    notices: [
+      { title: "Hinweis nach § 449 Abs. 2 HGB", text: "Erste Zeile\nZweite Zeile" },
+      { title: "", text: "ohne Titel" },
+      { title: "ohne Text" },
+      null,
+    ],
+  })),
+};
+
+test("(23) Hinweise kommen nur aus der aktiven AGB-Fassung — ohne Hinweise bleibt alles wie bisher", () => {
+  assert.deepEqual(legalTermsNotices(ctxAn), { labelSuffix: null, notices: [] });
+  const mit = parseBookingContext(200, antwortMitHinweis);
+  assert.equal(mit.state, LEGAL_READY);
+  assert.deepEqual(legalTermsNotices(mit), {
+    labelSuffix: "einschließlich der ADSp 2017 (Anlage 1)",
+    notices: [{ title: "Hinweis nach § 449 Abs. 2 HGB", text: "Erste Zeile\nZweite Zeile" }],
+  });
+  // Ohne aktive Schranke, beim Laden und im Fehlerfall gibt es keine Hinweise.
+  for (const ctx of [ctxAus, legalLoadingContext(), parseBookingContext(503, {}), null]) {
+    assert.deepEqual(legalTermsNotices(ctx), { labelSuffix: null, notices: [] });
+  }
+});
+
+test("(24) der Checkout zeigt die Hinweise VOR den Bestätigungen, aus dem Server und barrierearm", () => {
+  assert.match(termsCode, /legalTermsNotices\(legalContext\)/, "die Hinweise werden nicht aus dem Kontext gelesen");
+  // Kein Hinweistext im Frontend: er gehört zur registrierten Fassung.
+  for (const [name, src] of [["TermsModule", termsCode], ["View", viewCode]]) {
+    assert.ok(!/ADSp|§\s*449|Sonderziehungsrecht/.test(src), `${name} trägt einen Hinweistext als Literal`);
+  }
+  const hinweis = termsCode.indexOf("booking-legal-notice");
+  const ersteCheckbox = termsCode.indexOf('type="checkbox"');
+  assert.ok(hinweis > -1 && hinweis < ersteCheckbox, "die Hinweise stehen nicht vor den Bestätigungen");
+  assert.match(termsCode, /role="note"/, "der Hinweis ist für Hilfstechnik nicht als Hinweis gekennzeichnet");
+  assert.match(termsCode, /aria-describedby=\{aktiv && hinweisIds\.length/, "die AGB-Bestätigung verweist nicht auf die Hinweise");
+  assert.match(termsCode, /labelSuffix \? <> \{labelSuffix\}<\/> : null/, "der AGB-Zusatz fehlt im Text der Bestätigung");
+  // Weiterhin genau zwei Checkboxen (siehe 12) — die Hinweise sind keine dritte Zustimmung.
+  assert.equal((termsCode.match(/type="checkbox"/g) || []).length, 2);
 });

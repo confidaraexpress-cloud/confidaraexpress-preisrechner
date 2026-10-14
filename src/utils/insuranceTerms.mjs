@@ -30,8 +30,12 @@ export const INSURANCE_TEXT = Object.freeze({
   // Gilt bei „Keine zusätzliche Transportversicherung" — und identisch als
   // Fallback, wenn der Tarif keinen Bedingungslink mitliefert. Es wird KEINE
   // Haftungssumme genannt: eine tarifabhängige, belegte Zahl gibt es nicht.
+  // Go-Live (Paket E): Der frühere Satz „Es gelten die Haftungs- und
+  // Beförderungsbedingungen des gewählten Versanddienstleisters." legte nahe, es
+  // hafte allein der Paketdienst — der Kunde hat aber keinen Vertrag mit ihm.
+  // Der Satz sagt jetzt nur, was in jedem Fall stimmt; WER haftet, regeln die AGB.
   carrierLiability:
-    "Es gelten die Haftungs- und Beförderungsbedingungen des gewählten Versanddienstleisters.",
+    "Ohne Zusatzversicherung gilt die gesetzliche und vertragliche Haftung für Verlust und Beschädigung; sie ist in der Regel der Höhe nach begrenzt.",
 });
 
 // Kartentexte. Bewusst OHNE absolute Zusagen: keine „100 %"-Aussage, keine

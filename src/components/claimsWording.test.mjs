@@ -38,3 +38,14 @@ test("2 — die Ersatzaussagen beschreiben vorhandene Funktionen", () => {
   // Vier Einträge je Leiste bleiben (das Raster ist auf vier ausgelegt).
   assert.equal((offers.match(/\{ title: "/g) || []).length, 4);
 });
+
+test("3 — keine Aussage, nach der allein der Paketdienst haftet (Checkout und Versicherungsinformationen)", () => {
+  // Der Kunde hat keinen Vertrag mit dem Paketdienst. Die Texte nennen die begrenzte gesetzliche und
+  // vertragliche Haftung, ohne den Haftenden zu benennen — das regeln die AGB.
+  for (const datei of ["../utils/insuranceTerms.mjs", "../utils/insuranceInfo.mjs"]) {
+    const s = quelle(datei);
+    assert.ok(!/allein die Haftungs- und Beförderungsbedingungen|Es gelten die Haftungs- und Beförderungsbedingungen des gewählten/.test(s), `${datei}: Paketdienst als allein Haftender`);
+    assert.ok(!/gesetzliche Haftung des Versanddienstleisters/.test(s), `${datei}: Haftung dem Paketdienst zugeschrieben`);
+  }
+  assert.match(quelle("../utils/insuranceInfo.mjs"), /bleibt es bei der gesetzlichen und vertraglichen Haftung, die in der Regel der Höhe nach begrenzt ist/);
+});

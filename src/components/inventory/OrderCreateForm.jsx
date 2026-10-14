@@ -10,7 +10,7 @@ import { mapAddressToOrderRecipient, TAB_RECIPIENT } from "../../utils/addressBo
 import { AddressSuggestInput } from "../address/AddressSuggestInput";
 import { AddressStatusLine } from "../address/AddressStatusLine";
 import { useAddressValidation } from "../../hooks/useAddressValidation";
-import { applyStreetSuggestion } from "../../utils/addressValidationView.mjs";
+import { applyAddressSuggestion, cityFromSuggestion } from "../../utils/addressValidationView.mjs";
 import {
   ORDER_RECIPIENT_LIMITS, emptyOrderRecipient, postalCodeRequirement,
   validateOrderRecipient, normalizeOrderRecipient, reservationPreview,
@@ -265,8 +265,18 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
             id="o-street" label="Straße und Hausnummer" required
             value={recipient.streetAndNumber}
             onChange={(v) => set("streetAndNumber")(v)}
-            onSelect={(item) => set("streetAndNumber")(
-              applyStreetSuggestion(recipient.streetAndNumber, typeof item === "string" ? item : item.street))}
+            onSelect={(item) => {
+              // Nur Straße/Hausnummer, PLZ und Ort — Firma, Name, Zusatz und Kontakt bleiben.
+              const patch = applyAddressSuggestion({ country: recipient.country, street: recipient.streetAndNumber }, item);
+              if (!patch.street) return;
+              addressCheck.markSelected(patch.street);
+              setRecipient((cur) => ({
+                ...cur,
+                streetAndNumber: patch.street,
+                ...(patch.postalCode ? { postalCode: patch.postalCode } : {}),
+                ...(patch.city ? { city: patch.city } : {}),
+              }));
+            }}
             suggestions={addressCheck.streetOptions}
             error={errs.streetAndNumber}
             maxLength={ORDER_RECIPIENT_LIMITS.streetAndNumber}
@@ -287,7 +297,7 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
             id="o-city" label="Ort" required
             value={recipient.city}
             onChange={(v) => set("city")(v)}
-            onSelect={(item) => set("city")(typeof item === "string" ? item : item.city)}
+            onSelect={(item) => set("city")(cityFromSuggestion(item))}
             suggestions={addressCheck.cityOptions}
             error={errs.city}
             maxLength={ORDER_RECIPIENT_LIMITS.city}
@@ -308,6 +318,7 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
         {/* Ergebnis der Adressprüfung — erscheint nur, wenn es etwas zu sagen gibt. */}
         <AddressStatusLine
           status={addressCheck.status}
+          reason={addressCheck.reason}
           acknowledged={addressCheck.acknowledged}
           onAcknowledge={addressCheck.acknowledge}
           citySuggestions={addressCheck.cityOptions}

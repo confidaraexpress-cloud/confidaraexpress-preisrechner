@@ -11,15 +11,22 @@
    auf `.calc-panel` gemessen platziert werden muss). */
 .addr-suggest-wrap { position: relative; }
 
-.addr-suggest-list {
+/* Die schwebende Fläche: Liste plus Quellenangabe. Sie trägt nur Position und Breite; die
+   Liste darin bleibt bündig am oberen Rand, also 4 px unter dem Feld und so breit wie das Feld. */
+.addr-suggest-pop {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
   /* An der Feldbreite ausgerichtet und nie breiter als der verfügbare Platz — damit kann
-     die Liste auf keinem Viewport aus dem Bild laufen. */
+     die Fläche auf keinem Viewport aus dem Bild laufen. */
   width: 100%;
   max-width: 100%;
   z-index: 30;
+}
+
+.addr-suggest-list {
+  width: 100%;
+  max-width: 100%;
   margin: 0;
   padding: 4px;
   list-style: none;
@@ -34,6 +41,25 @@
   /* Schwebende Liste = Dropdown-Tiefe (Redesign 2026-10), nicht die Dialogstufe. */
   box-shadow: var(--ce-elevation-dropdown);
 }
+
+/* Pflicht-Quellenangabe der Vorschläge (OpenStreetMap, Geoapify) — eine schmale Fußzeile
+   direkt unter der Liste, gleiche Breite, gleiche Fläche. */
+.addr-suggest-attr {
+  margin: 2px 0 0;
+  padding: 4px 10px;
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-md);
+  box-shadow: var(--ce-elevation-dropdown);
+  font-size: var(--ce-text-caption-size);
+  line-height: 1.5;
+  color: var(--ce-color-text-secondary);
+}
+.addr-suggest-attr a { color: inherit; }
+
+/* Eine Vorschlagsliste darf aus einer Karte mit `overflow: hidden` (Preisrechner, Neue
+   Sendung) herausragen, solange sie offen ist — sonst schnitte die Kartenkante sie ab. */
+.calc-panel:has(.addr-suggest-pop) { overflow: visible; }
 
 .addr-suggest-opt {
   display: flex;
@@ -80,10 +106,17 @@
 
 .addr-status--checking { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 
-/* Die Aktionen erben die Statusfarbe, damit „trotzdem verwenden" sichtbar zum Hinweis
+/* Die Aktionen erben die Statusfarbe, damit „Adresse so verwenden" sichtbar zum Hinweis
    gehört und nicht wie ein fremder Link daneben steht. */
 .addr-status-ack,
 .addr-status-city { color: inherit; text-decoration: underline; flex: 0 0 auto; }
+
+/* Touch: jede Option und jede Aktion der Statuszeile mindestens 44 px hoch. */
+@media (pointer: coarse) {
+  .addr-suggest-opt { min-height: var(--ce-size-touch-target); }
+  .addr-status-ack,
+  .addr-status-city { min-height: var(--ce-size-touch-target); }
+}
 
 @media (max-width: 480px) {
   /* Auf schmalen Geräten steht die Aktion in einer eigenen Zeile, statt den Text zu

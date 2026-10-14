@@ -1,11 +1,12 @@
-// Adressvalidierung im Formular — Quelltext- und Verhaltenstests.
+// Adressvorschläge und Adressprüfung im Formular — Quelltext- und Verhaltenstests.
 //
 // Die wichtigsten Zusicherungen dieser Datei:
-//   • Ein nicht bestätigter Zustand blockiert NIE (nur der eindeutige Widerspruch tut das).
-//   • Ein nicht unterstütztes Land verhält sich exakt wie bisher.
-//   • Die Hausnummer wird nie als bestätigt dargestellt.
-//   • Jede Änderung an Land/PLZ/Ort/Straße verwirft eine frühere Bestätigung.
-//   • Das Frontend führt keine eigene Orts-/Straßenliste und entscheidet nichts selbst.
+//   • Die Prüfung sperrt NIE — weder die Preisberechnung noch das Speichern.
+//   • Ein Vorschlag wird nur nach Auswahl übernommen und füllt ausschließlich Straße/Hausnummer,
+//     PLZ und Ort; Firma, Namen, Zusatz und Kontakt bleiben unberührt.
+//   • „Adresse gefunden“ nur mit bestätigter Hausnummer; nirgends eine Zusage der Zustellbarkeit.
+//   • Jede Änderung an Land/PLZ/Ort/Straße/Hausnummer verwirft eine frühere Prüfung.
+//   • Das Frontend kennt weder den Anbieter noch eine fremde URL — außer der Quellenangabe.
 //
 // Ausführen: node --test src/utils/addressValidationUx.test.mjs
 import { test } from "node:test";
@@ -14,12 +15,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import * as view from "./addressValidationView.mjs";
 import {
-  ADDRESS_STATUS, ADDRESS_MESSAGES, SUPPORTED_COUNTRIES,
-  isAddressCheckSupported, isPostalCodeQueryable, isStreetQueryable, STREET_MIN_CHARS,
-  streetSearchTerm, applyStreetSuggestion, addressFingerprint, shouldInvalidateAddress,
-  readAddressResponse, addressBlocksSubmit, addressNeedsAcknowledgement,
-  addressStatusTone, showsAddressStatus,
+  ADDRESS_STATUS, ADDRESS_MESSAGES, ADDRESS_REASON_MESSAGES, addressStatusMessage,
+  isAddressCheckSupported, isPostalCodeQueryable, isStreetQueryable, isValidationReady, STREET_MIN_CHARS,
+  streetQueryText, streetSearchTerm, splitStreetAndNumber, formatStreetLine, suggestionLabel,
+  applyAddressSuggestion, cityFromSuggestion, addressFingerprint, shouldInvalidateAddress,
+  readAddressResponse, readStreetSuggestions, addressNeedsAcknowledgement,
+  addressStatusTone, showsAddressStatus, shippingLengthHint, SHIPPING_LINE_HINT_LIMITS,
 } from "./addressValidationView.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -28,183 +31,211 @@ const viewSrc    = read("./addressValidationView.mjs");
 const hookSrc    = read("../hooks/useAddressValidation.js");
 const inputSrc   = read("../components/address/AddressSuggestInput.jsx");
 const statusSrc  = read("../components/address/AddressStatusLine.jsx");
+const attrSrc    = read("../components/address/AddressAttribution.jsx");
 const apiSrc     = read("../api/addressValidationApi.js");
 const newShipSrc = read("../pages/NewShipmentPage.jsx");
 const drawerSrc  = read("../components/addressbook/AddressFormDrawer.jsx");
 const orderSrc   = read("../components/inventory/OrderCreateForm.jsx");
+const profileSrc = read("../components/dashboard/Profile.jsx");
+const registerSrc = read("../components/auth/RegisterForm.jsx");
+const partnerSrc = read("../components/partner/PartnerBillingDetailsSection.jsx");
+const calcSrc    = read("../pages/CalculatorPage.jsx");
 const cssSrc     = read("../styles/address-validation.css");
 
 const strip = (s) =>
   s.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").map((l) => l.replace(/(^|\s)\/\/.*$/, "$1")).join("\n");
 
-// ── 1. Länderabdeckung ───────────────────────────────────────────────────────
+// ── 1. Wann gefragt wird ─────────────────────────────────────────────────────
 
-test("1 genau DE/AT/CH/LI werden geprüft", () => {
-  assert.deepEqual([...SUPPORTED_COUNTRIES].sort(), ["AT", "CH", "DE", "LI"]);
-  for (const cc of ["DE", "at", " CH ", "li"]) assert.equal(isAddressCheckSupported(cc), true, cc);
+test("1 Länder: das Frontend führt keine Länderliste — der Server entscheidet", () => {
+  for (const cc of ["DE", "at", " FR ", "pl", "MT"]) assert.equal(isAddressCheckSupported(cc), true, cc);
+  for (const cc of ["", null, undefined, "D", "DEU", "1A"]) assert.equal(isAddressCheckSupported(cc), false, String(cc));
+  assert.ok(!("SUPPORTED_COUNTRIES" in view), "keine eigene Länderliste im Client");
+  assert.ok(!/["']DE["'],\s*["']AT["']/.test(strip(viewSrc)));
 });
 
-test("2 KRITISCH: ein nicht unterstütztes Land verhält sich wie bisher", () => {
-  // Kein Anbieter, keine Anfrage, keine Anzeige — und vor allem nie „ungültig".
-  for (const cc of ["FR", "IE", "AE", "HK", "US", "", null, undefined]) {
-    assert.equal(isAddressCheckSupported(cc), false, `${cc}`);
-    assert.equal(isPostalCodeQueryable(cc, "63743"), false, `${cc} darf keine Abfrage auslösen`);
-    assert.equal(isStreetQueryable(cc, "63743", "Dublin", "Main Street"), false, `${cc}`);
-  }
-  assert.equal(addressBlocksSubmit(ADDRESS_STATUS.UNSUPPORTED), false);
+test("2 KRITISCH: ein nicht abgedecktes Land zeigt nichts und sperrt nichts", () => {
   assert.equal(showsAddressStatus(ADDRESS_STATUS.UNSUPPORTED), false, "es wird nichts angezeigt");
+  assert.equal(addressNeedsAcknowledgement(ADDRESS_STATUS.UNSUPPORTED), false);
+  assert.ok(!("addressBlocksSubmit" in view), "es gibt keine Sperrfunktion mehr");
 });
 
-test("3 gefragt wird erst ab plausibel vollständiger PLZ", () => {
+test("3 Orte werden erst bei formal gültiger PLZ des Landes abgefragt", () => {
   assert.equal(isPostalCodeQueryable("DE", "637"), false);
   assert.equal(isPostalCodeQueryable("DE", "6374"), false, "DE braucht fünf Stellen");
   assert.equal(isPostalCodeQueryable("DE", "63743"), true);
-  assert.equal(isPostalCodeQueryable("AT", "1010"), true, "AT/CH/LI haben vier Stellen");
-  assert.equal(isPostalCodeQueryable("CH", "8001"), true);
-  assert.equal(isPostalCodeQueryable("LI", "9490"), true);
+  assert.equal(isPostalCodeQueryable("DE", "01067"), true, "führende Null");
+  assert.equal(isPostalCodeQueryable("AT", "1010"), true);
+  assert.equal(isPostalCodeQueryable("NL", "1012 AB"), true, "alphanumerisch");
+  assert.equal(isPostalCodeQueryable("PL", "00-950"), true, "mit Bindestrich");
+  assert.equal(isPostalCodeQueryable("DE", ""), false);
+  assert.equal(isPostalCodeQueryable("", "63743"), false);
 });
 
-test("4 Straßensuche erst ab Mindestlänge und nur mit PLZ und Ort", () => {
-  assert.equal(STREET_MIN_CHARS, 2);
-  assert.equal(isStreetQueryable("DE", "63743", "Aschaffenburg", "S"), false, "ein Zeichen genügt nicht");
-  assert.equal(isStreetQueryable("DE", "63743", "Aschaffenburg", "Sc"), true);
-  assert.equal(isStreetQueryable("DE", "63743", "", "Schweinheimer"), false, "ohne Ort keine Suche");
-  assert.equal(isStreetQueryable("DE", "637", "Aschaffenburg", "Schweinheimer"), false, "ohne PLZ keine Suche");
+test("4 Vorschläge ab drei Zeichen — PLZ und Ort sind keine Voraussetzung", () => {
+  assert.equal(STREET_MIN_CHARS, 3);
+  assert.equal(isStreetQueryable("DE", "", "", "Ha"), false);
+  assert.equal(isStreetQueryable("DE", "", "", "Hau"), true, "man kann mit der Straße beginnen");
+  assert.equal(isStreetQueryable("FR", "75002", "Paris", "12 rue"), true);
+  assert.equal(isStreetQueryable("", "63743", "Aschaffenburg", "Hauptstraße"), false);
+  assert.equal(streetQueryText("  Hauptstr   12a "), "Hauptstr 12a", "mit Hausnummer, nur Leerraum vereinheitlicht");
+});
+
+test("5 die Gesamtprüfung braucht Straße, Ort und eine gültige PLZ", () => {
+  const voll = { country: "DE", postalCode: "63743", city: "Aschaffenburg", street: "Schweinheimer Straße 187" };
+  assert.equal(isValidationReady(voll), true);
+  assert.equal(isValidationReady({ ...voll, city: " " }), false);
+  assert.equal(isValidationReady({ ...voll, postalCode: "6374" }), false);
+  assert.equal(isValidationReady({ ...voll, street: "Sc" }), false);
 });
 
 // ── 2. Straße und Hausnummer ────────────────────────────────────────────────
 
-test("5 für die Suche zählt nur der Straßenname", () => {
-  assert.equal(streetSearchTerm("Schweinheimer Straße 187"), "Schweinheimer Straße");
+test("6 Straße und Hausnummer je Land getrennt und zusammengesetzt", () => {
+  assert.deepEqual(splitStreetAndNumber("Schweinheimer Straße 187", "DE"), { street: "Schweinheimer Straße", houseNumber: "187" });
+  assert.deepEqual(splitStreetAndNumber("Hauptstr. 12a", "DE"), { street: "Hauptstr.", houseNumber: "12a" });
+  assert.deepEqual(splitStreetAndNumber("Bahnhofstraße 1-3", "DE"), { street: "Bahnhofstraße", houseNumber: "1-3" });
+  assert.deepEqual(splitStreetAndNumber("Straße des 17. Juni", "DE"), { street: "Straße des 17. Juni", houseNumber: "" });
+  assert.deepEqual(splitStreetAndNumber("Via Roma 1/B", "IT"), { street: "Via Roma", houseNumber: "1/B" });
+  assert.deepEqual(splitStreetAndNumber("12 rue de la Paix", "FR"), { street: "rue de la Paix", houseNumber: "12" });
+  assert.equal(formatStreetLine("FR", "Rue de la Paix", "12"), "12 Rue de la Paix");
+  assert.equal(formatStreetLine("DE", "Hauptstraße", "12a"), "Hauptstraße 12a");
   assert.equal(streetSearchTerm("Hauptstr. 12a"), "Hauptstr.");
-  assert.equal(streetSearchTerm("Bahnhofstraße 1-3"), "Bahnhofstraße");
-  assert.equal(streetSearchTerm("Musterweg"), "Musterweg");
-  assert.equal(streetSearchTerm("Straße des 17. Juni"), "Straße des 17. Juni");
-  assert.equal(streetSearchTerm(""), "");
+  assert.equal(suggestionLabel({ street: "Main Street", houseNumber: "5" }, "IE"), "5 Main Street");
 });
 
-test("6 KRITISCH: ein Vorschlag behält die Hausnummer des Kunden", () => {
-  assert.equal(applyStreetSuggestion("schweinheimer str 187", "Schweinheimer Straße"), "Schweinheimer Straße 187");
-  assert.equal(applyStreetSuggestion("hauptstr 12a", "Hauptstraße"), "Hauptstraße 12a");
-  // Ohne eingegebene Hausnummer wird auch keine erfunden.
-  assert.equal(applyStreetSuggestion("schweinheimer", "Schweinheimer Straße"), "Schweinheimer Straße");
+test("7 KRITISCH: ein Vorschlag füllt Straße/Hausnummer, PLZ und Ort — sonst nichts", () => {
+  const vorschlag = { street: "Schweinheimer Straße", houseNumber: "187", postalCode: "63743", city: "Aschaffenburg",
+    region: "Bayern", company: "X", firstName: "Y", phone: "1", email: "a@b" };
+  const patch = applyAddressSuggestion({ country: "DE", street: "schweinh" }, vorschlag);
+  assert.deepEqual(patch, { street: "Schweinheimer Straße 187", postalCode: "63743", city: "Aschaffenburg" });
+  assert.deepEqual(Object.keys(patch).sort(), ["city", "postalCode", "street"], "keine Region, kein Name, kein Kontakt");
 });
 
-test("7 KRITISCH: die Hausnummer gilt nie als bestätigt", () => {
-  const r = readAddressResponse({ status: "confirmed", houseNumberVerified: true });
-  assert.equal(r.houseNumberVerified, false, "auch eine manipulierte Antwort darf das nicht behaupten");
-  // Der bestätigte Text nennt ausdrücklich nur PLZ, Ort und Straße.
-  assert.equal(ADDRESS_MESSAGES[ADDRESS_STATUS.CONFIRMED], "PLZ, Ort und Straße bestätigt");
-  assert.ok(!/Hausnummer/i.test(ADDRESS_MESSAGES[ADDRESS_STATUS.CONFIRMED]));
-  // Kommentare zuerst entfernen: ein erklärender Satz („sagt nie ‚Hausnummer bestätigt‘")
-  // ist keine Zusicherung des ausgeführten Codes — geprüft wird der SICHTBARE Text.
-  for (const src of [statusSrc, viewSrc]) {
-    assert.ok(!/Hausnummer\s+(bestätigt|geprüft|verifiziert)/i.test(strip(src)),
-      "nirgends darf eine bestätigte Hausnummer behauptet werden");
+test("8 KRITISCH: die getippte Hausnummer bleibt, wenn der Vorschlag keine nennt — erfunden wird keine", () => {
+  assert.equal(applyAddressSuggestion({ country: "DE", street: "schweinheimer str 187" },
+    { street: "Schweinheimer Straße", houseNumber: "" }).street, "Schweinheimer Straße 187");
+  assert.equal(applyAddressSuggestion({ country: "DE", street: "schweinheimer" },
+    { street: "Schweinheimer Straße" }).street, "Schweinheimer Straße");
+  assert.equal(applyAddressSuggestion({ country: "FR", street: "12 rue de la p" },
+    { street: "Rue de la Paix", postalCode: "75002", city: "Paris" }).street, "12 Rue de la Paix");
+  // Leere Werte des Vorschlags überschreiben nie vorhandene Eingaben.
+  assert.deepEqual(applyAddressSuggestion({ country: "DE", street: "Haupt" }, { street: "Hauptstraße", postalCode: "", city: "" }),
+    { street: "Hauptstraße" });
+  assert.deepEqual(applyAddressSuggestion({ country: "DE", street: "x" }, null), {});
+  assert.equal(cityFromSuggestion("Aschaffenburg"), "Aschaffenburg");
+  assert.equal(cityFromSuggestion({ city: "Paris" }), "Paris");
+});
+
+// ── 3. Aussagen und Töne ────────────────────────────────────────────────────
+
+test("9 KRITISCH: keine Zusage der Zustellbarkeit, „gefunden“ nur mit bestätigter Hausnummer", () => {
+  const texte = [...Object.values(ADDRESS_MESSAGES), ...Object.values(ADDRESS_REASON_MESSAGES)];
+  for (const t of texte) {
+    assert.ok(!/zustell|garant|sicher ankommt/i.test(t), `„${t}“ verspricht Zustellbarkeit`);
   }
+  assert.equal(ADDRESS_MESSAGES[ADDRESS_STATUS.CONFIRMED], "Adresse gefunden (Straße, Hausnummer, PLZ und Ort).");
+  // Die Hausnummer gilt nur zusammen mit „confirmed“ als gefunden — auch eine manipulierte Antwort
+  // kann das nicht anders behaupten.
+  assert.equal(readAddressResponse({ status: "unverified", houseNumberVerified: true }).houseNumberVerified, false);
+  assert.equal(readAddressResponse({ status: "confirmed", houseNumberVerified: true }).houseNumberVerified, true);
+  assert.equal(readAddressResponse({ status: "confirmed" }).houseNumberVerified, false);
 });
 
-// ── 3. Blockieren nur bei echtem Widerspruch ────────────────────────────────
-
-test("8 KRITISCH: nur 'invalid' blockiert — nie unverified/unavailable/unsupported", () => {
-  assert.equal(addressBlocksSubmit(ADDRESS_STATUS.INVALID), true);
-  for (const s of [ADDRESS_STATUS.UNVERIFIED, ADDRESS_STATUS.UNAVAILABLE, ADDRESS_STATUS.UNSUPPORTED,
-                   ADDRESS_STATUS.CONFIRMED, ADDRESS_STATUS.IDLE, ADDRESS_STATUS.CHECKING]) {
-    assert.equal(addressBlocksSubmit(s), false, `${s} darf NICHT blockieren`);
-  }
+test("10 Hinweise je Grund, sonst der allgemeine Text", () => {
+  assert.equal(addressStatusMessage("unverified", "house_number_unconfirmed"),
+    "Straße gefunden – die Hausnummer konnte nicht bestätigt werden. Bitte prüfen.");
+  assert.equal(addressStatusMessage("unverified", "postal_code_city_mismatch"),
+    "PLZ und Ort passen möglicherweise nicht zusammen.");
+  assert.equal(addressStatusMessage("unverified", "house_number_missing"),
+    "Straße gefunden. Bitte ergänzen Sie die Hausnummer, falls vorhanden.");
+  assert.equal(addressStatusMessage("unverified", "address_not_found"), ADDRESS_MESSAGES.unverified);
+  assert.equal(addressStatusMessage("unavailable", "budget_exhausted"), ADDRESS_MESSAGES.unavailable);
+  assert.equal(addressStatusMessage("unsupported", "not_configured"), "");
 });
 
-test("9 unverified und unavailable lassen eine bewusste Übernahme zu", () => {
+test("11 Hinweise lassen sich bewusst übergehen; es gibt keinen Fehlerton", () => {
   assert.equal(addressNeedsAcknowledgement(ADDRESS_STATUS.UNVERIFIED), true);
   assert.equal(addressNeedsAcknowledgement(ADDRESS_STATUS.UNAVAILABLE), true);
-  // Ein eindeutiger Widerspruch bekommt diesen Ausweg bewusst NICHT.
-  assert.equal(addressNeedsAcknowledgement(ADDRESS_STATUS.INVALID), false);
   assert.equal(addressNeedsAcknowledgement(ADDRESS_STATUS.CONFIRMED), false);
-});
-
-test("10 die Statusfarbe passt zur Aussage", () => {
   assert.equal(addressStatusTone(ADDRESS_STATUS.CONFIRMED), "success");
-  assert.equal(addressStatusTone(ADDRESS_STATUS.INVALID), "error");
   assert.equal(addressStatusTone(ADDRESS_STATUS.UNVERIFIED), "warning");
   assert.equal(addressStatusTone(ADDRESS_STATUS.UNAVAILABLE), "warning");
+  assert.ok(!Object.values(ADDRESS_STATUS).includes("invalid"), "den Zustand „invalid“ gibt es nicht mehr");
+  assert.ok(!/addr-status--error/.test(statusSrc));
 });
 
 // ── 4. Auswertung der Serverantwort ─────────────────────────────────────────
 
-test("11 bekannte Status werden übernommen", () => {
-  for (const s of ["confirmed", "invalid", "unverified", "unavailable", "unsupported"]) {
+test("12 bekannte Status werden übernommen, „invalid“ und Kaputtes werden 'unverified'", () => {
+  for (const s of ["confirmed", "unverified", "unavailable", "unsupported"]) {
     assert.equal(readAddressResponse({ status: s }).status, s);
   }
-});
-
-test("12 KRITISCH: eine unbekannte/kaputte Antwort wird 'unverified', nie 'invalid'", () => {
-  for (const body of [null, undefined, {}, "text", 42, { status: "kaputt" }, { status: 123 }]) {
-    const r = readAddressResponse(body);
-    assert.equal(r.status, ADDRESS_STATUS.UNVERIFIED, `${JSON.stringify(body)}`);
-    assert.notEqual(r.status, ADDRESS_STATUS.INVALID);
+  for (const body of [null, undefined, {}, "text", 42, { status: "kaputt" }, { status: 123 }, { status: "invalid" }]) {
+    assert.equal(readAddressResponse(body).status, ADDRESS_STATUS.UNVERIFIED, `${JSON.stringify(body)}`);
   }
 });
 
 test("13 Vorschläge werden defensiv gelesen", () => {
-  const r = readAddressResponse({
-    status: "invalid",
-    citySuggestions: ["Aschaffenburg", 42, null],
-    streetSuggestions: [{ street: "Hauptstraße" }, { nope: 1 }, null],
-  });
+  const r = readAddressResponse({ status: "unverified", citySuggestions: ["Aschaffenburg", 42, null],
+    streetSuggestions: [{ street: "Hauptstraße" }, { nope: 1 }, null] });
   assert.deepEqual(r.citySuggestions, ["Aschaffenburg"]);
   assert.equal(r.streetSuggestions.length, 1);
+  assert.deepEqual(readStreetSuggestions({ streets: [
+    { street: " Hauptstraße ", houseNumber: "1", postalCode: "63743", city: "AB", confidence: 1, lat: 3 },
+    { street: "" }, null, { street: 5 }] }),
+  [{ street: "Hauptstraße", houseNumber: "1", postalCode: "63743", city: "AB" }]);
+  assert.deepEqual(readStreetSuggestions(null), []);
 });
 
 // ── 5. Invalidierung ────────────────────────────────────────────────────────
 
 const BASIS = { country: "DE", postalCode: "63743", city: "Aschaffenburg", street: "Schweinheimer Straße 187" };
 
-test("14 jede Änderung an Land, PLZ, Ort oder Straße verwirft die Bestätigung", () => {
+test("14 jede Änderung an Land, PLZ, Ort oder Straße verwirft die Prüfung", () => {
   const a = addressFingerprint(BASIS);
-  for (const [key, val] of [["country", "AT"], ["postalCode", "63744"],
-                            ["city", "München"], ["street", "Hauptstraße 1"]]) {
-    const b = addressFingerprint({ ...BASIS, [key]: val });
-    assert.equal(shouldInvalidateAddress(a, b), true, `${key} muss invalidieren`);
+  for (const [key, val] of [["country", "AT"], ["postalCode", "63744"], ["city", "München"], ["street", "Hauptstraße 187"]]) {
+    assert.equal(shouldInvalidateAddress(a, addressFingerprint({ ...BASIS, [key]: val })), true, `${key} muss invalidieren`);
   }
 });
 
-test("15 eine geänderte Hausnummer invalidiert NICHT", () => {
-  // Sie wird ohnehin nie geprüft — ein Verfall bei jedem Tippen wäre reine Schikane.
+test("15 KRITISCH: eine geänderte Hausnummer verwirft die Prüfung ebenfalls", () => {
   const a = addressFingerprint(BASIS);
   const b = addressFingerprint({ ...BASIS, street: "Schweinheimer Straße 42" });
-  assert.equal(shouldInvalidateAddress(a, b), false);
+  assert.equal(shouldInvalidateAddress(a, b), true, "die Hausnummer ist Teil der Bestätigung");
 });
 
 test("16 Groß-/Kleinschreibung und Leerzeichen invalidieren nicht", () => {
   const a = addressFingerprint(BASIS);
-  const b = addressFingerprint({ ...BASIS, city: "  ASCHAFFENBURG  " });
-  assert.equal(shouldInvalidateAddress(a, b), false);
+  assert.equal(shouldInvalidateAddress(a, addressFingerprint({ ...BASIS, city: "  ASCHAFFENBURG  " })), false);
 });
 
 // ── 6. Sicherheit und Datenschutz ───────────────────────────────────────────
 
 test("17 SICHERHEIT: das Frontend führt keine eigene Orts-/Straßenliste", () => {
   for (const [name, src] of [["view", viewSrc], ["hook", hookSrc], ["input", inputSrc], ["status", statusSrc]]) {
-    assert.ok(!/Aschaffenburg|Musterstadt|63743/.test(strip(src)),
-      `${name} darf keine Ortsdaten enthalten`);
+    assert.ok(!/Aschaffenburg|Musterstadt|63743/.test(strip(src)), `${name} darf keine Ortsdaten enthalten`);
   }
 });
 
-test("18 SICHERHEIT: der externe Dienst wird nie direkt aufgerufen", () => {
+test("18 SICHERHEIT: kein Adressdienst im Browser — nur die Quellenangabe verlinkt ihn", () => {
   for (const [name, src] of [["api", apiSrc], ["hook", hookSrc], ["view", viewSrc],
-                             ["input", inputSrc], ["NewShipmentPage", newShipSrc]]) {
-    assert.ok(!/openplz/i.test(src), `${name} darf den Anbieter nicht kennen`);
+                             ["input", inputSrc], ["status", statusSrc], ["NewShipmentPage", newShipSrc]]) {
+    assert.ok(!/openplz|geoapify/i.test(strip(src)), `${name} darf den Anbieter nicht kennen`);
     assert.ok(!/https?:\/\/(?!127|localhost)/.test(strip(src).replace(/claude\.ai|confidaraexpress\.de/g, "")),
       `${name} darf keine fremde URL aufrufen`);
   }
-  assert.ok(apiSrc.includes("/api/address/"), "es wird ausschließlich die CE-API angesprochen");
+  assert.ok(apiSrc.includes("/api/address"), "es wird ausschließlich die CE-API angesprochen");
+  // Die Quellenangabe ist reine Anzeige: zwei Links, kein Aufruf, kein Schlüssel.
+  assert.ok(attrSrc.includes("https://www.openstreetmap.org/copyright"));
+  assert.ok(attrSrc.includes("https://www.geoapify.com/"));
+  assert.ok(!/fetch|apiFetch|apiKey|XMLHttpRequest/.test(strip(attrSrc)));
 });
 
 test("19 DATENSCHUTZ: es werden nur Adressbestandteile übertragen", () => {
-  const body = apiSrc.slice(apiSrc.indexOf("validateAddress"));
-  assert.ok(/JSON\.stringify\(\{ country, postalCode, city, street \}\)/.test(body),
-    "der Payload trägt genau vier Felder");
-  for (const feld of ["fullName", "company", "phone", "email", "userId", "contactName"]) {
+  const body = apiSrc.slice(apiSrc.indexOf("export function validateAddress"));
+  assert.ok(/JSON\.stringify\(\{ country, postalCode, city, street \}\)/.test(body), "der Payload trägt genau vier Felder");
+  for (const feld of ["fullName", "company", "phone", "email", "userId", "contactName", "firstName"]) {
     assert.ok(!apiSrc.includes(feld), `${feld} darf nicht übertragen werden`);
   }
 });
@@ -215,147 +246,159 @@ test("20 keine Adressen in Konsolenausgaben", () => {
   }
 });
 
+test("21 öffentliche Registrierung: eigene Routen ohne Anmeldung, keine Gesamtprüfung", () => {
+  assert.ok(/publicAccess \? "\/api\/address\/public" : "\/api\/address"/.test(apiSrc));
+  assert.equal((apiSrc.match(/auth: !publicAccess/g) || []).length, 2, "Orte und Vorschläge ohne auth im öffentlichen Fall");
+  assert.ok(/if \(publicAccess\) return \{ status: ADDRESS_STATUS\.IDLE \};/.test(hookSrc), "keine Prüfung ohne Anmeldung");
+  assert.ok(/publicAccess: true/.test(registerSrc), "die Registrierung nutzt die öffentlichen Routen");
+  assert.ok(!/<AddressStatusLine\b/.test(registerSrc), "die Registrierung zeigt keine Prüfung");
+});
+
 // ── 7. Anfragehygiene ───────────────────────────────────────────────────────
 
-test("21 entprellt, abgebrochen und reihenfolgesicher", () => {
+test("22 entprellt, abgebrochen und reihenfolgesicher", () => {
   assert.ok(/const DEBOUNCE_MS = \d{3}/.test(hookSrc), "Entprellung fehlt");
   assert.ok(/setTimeout\(/.test(hookSrc) && /clearTimeout\(/.test(hookSrc), "Timer wird aufgeräumt");
   assert.ok((hookSrc.match(/new AbortController\(\)/g) || []).length >= 3, "jede Anfrageart braucht einen Abbruch");
-  // Zwei Schichten: Abbruch UND Sequenznummer — eine bereits unterwegs befindliche
-  // Antwort darf ein neueres Ergebnis nie überschreiben.
   assert.ok(/locSeq|strSeq|valSeq/.test(hookSrc), "Sequenzzähler fehlen");
-  assert.ok(/if \(e && e\.name === "AbortError"\) return;/.test(hookSrc),
-    "ein Abbruch darf keine Fehlermeldung erzeugen");
+  assert.ok(/if \(e && e\.name === "AbortError"\) return;/.test(hookSrc), "ein Abbruch darf keine Fehlermeldung erzeugen");
+  assert.ok(/useEffect\(\(\) => \(\) => abortAll\(\), \[abortAll\]\)/.test(hookSrc), "Abbruch beim Verlassen");
 });
 
-test("22 laufende Anfragen werden beim Verlassen abgebrochen", () => {
-  assert.ok(/useEffect\(\(\) => \(\) => abortAll\(\), \[abortAll\]\)/.test(hookSrc));
+test("23 Kostenbewusst: Prüfung automatisch nach einer Ruhesekunde, nicht je Tastendruck", () => {
+  assert.ok(/const AUTO_VALIDATE_MS = 1000;/.test(hookSrc));
+  assert.ok(/isValidationReady\(\{ country, postalCode, city, street \}\)/.test(hookSrc));
+  // Eine PLZ- oder Ortsänderung löst keine neue Vorschlagssuche aus (nur Kontext).
+  assert.ok(/\}, \[enabled, supported, country, street, publicAccess, markUnsupported\]\);/.test(hookSrc));
+  // Nach einer Auswahl wird für genau diesen Wert nicht erneut gesucht.
+  assert.ok(/skipStreetRef\.current === text/.test(hookSrc));
+  // „nicht eingerichtet“ beendet die Abfragen der Sitzung für eine Weile.
+  assert.ok(/body\.reason === "not_configured"/.test(hookSrc));
+  // Ein mitgebrachter Wert (Entwurf, Rückkehr aus der Buchung) ist keine Eingabe: keine Suche.
+  assert.ok(/if \(text === initialStreetRef\.current\) return undefined;/.test(hookSrc));
+  // Ein bereits geprüfter Stand steht sofort wieder da — keine zweite Anfrage, keine verspätete
+  // Statuszeile, die eine wiederhergestellte Seite verschiebt.
+  assert.ok(/rememberValidation\(addressFingerprint\(\{ country, postalCode, city, street \}\), parsed\)/.test(hookSrc));
+  assert.ok(/recallValidation\(fingerprint\)/.test(hookSrc));
+  assert.ok(/parsed\.status !== ADDRESS_STATUS\.CONFIRMED && parsed\.status !== ADDRESS_STATUS\.UNVERIFIED\) return;/.test(hookSrc),
+    "ein Ausfall wird nicht gemerkt");
 });
 
 // ── 8. Bedienung und Barrierefreiheit ───────────────────────────────────────
 
-test("23 das Vorschlagsfeld folgt dem Combobox-Muster", () => {
+test("24 das Vorschlagsfeld folgt dem Combobox-Muster und kündigt Treffer an", () => {
   for (const attr of ['role="combobox"', "aria-expanded=", "aria-controls=", "aria-activedescendant=",
                       'role="listbox"', 'role="option"', "aria-selected="]) {
     assert.ok(inputSrc.includes(attr), `${attr} fehlt`);
   }
+  assert.ok(/className="sr-only" role="status" aria-live="polite"/.test(inputSrc), "Trefferzahl für Screenreader");
 });
 
-test("24 Tastaturbedienung vollständig", () => {
+test("25 Tastaturbedienung vollständig", () => {
   for (const key of ["ArrowDown", "ArrowUp", "Enter", "Escape", "Tab"]) {
     assert.ok(inputSrc.includes(`"${key}"`), `${key} muss behandelt werden`);
   }
-  // Enter wählt nur bei hervorgehobenem Eintrag — sonst bleibt es das normale Enter
-  // des Formulars und darf kein Absenden abfangen.
   assert.ok(/if \(open && active >= 0 && active < items\.length\)/.test(inputSrc));
-});
-
-test("25 ein Klick außerhalb schließt die Liste", () => {
-  assert.ok(/addEventListener\("mousedown"/.test(inputSrc));
-  assert.ok(/removeEventListener\("mousedown"/.test(inputSrc), "der Listener wird aufgeräumt");
-});
-
-test("26 die Auswahl überlebt den Blur des Feldes", () => {
-  // mousedown statt click: bei click wäre das Feld bereits verlassen und die Liste zu.
+  assert.ok(/addEventListener\("mousedown"/.test(inputSrc) && /removeEventListener\("mousedown"/.test(inputSrc));
   assert.ok(/onMouseDown=\{\(e\) => \{ e\.preventDefault\(\); choose\(item\); \}\}/.test(inputSrc));
 });
 
-test("27 die Liste ist begrenzt und läuft nicht aus dem Bild", () => {
+test("26 die Liste ist begrenzt, läuft nicht aus dem Bild und trägt die Quellenangabe", () => {
   assert.ok(/suggestions\.slice\(0, 8\)/.test(inputSrc), "höchstens acht Vorschläge");
   assert.ok(/max-width: 100%/.test(cssSrc), "die Liste darf nie breiter als das Feld sein");
-  assert.ok(/max-height:/.test(cssSrc), "die Höhe muss begrenzt sein");
-  assert.ok(/overflow-y: auto/.test(cssSrc));
+  assert.ok(/max-height:/.test(cssSrc) && /overflow-y: auto/.test(cssSrc));
+  assert.ok(/<AddressAttribution \/>/.test(inputSrc), "Quellenangabe an jeder Liste");
+  assert.ok(/text = typeof item === "string" \? item : \(item\.label \|\| item\.street\)/.test(inputSrc));
 });
 
-test("28 die Styles nutzen nur Foundation-Tokens", () => {
+test("27 Touch: Optionen und Aktionen mindestens 44 px; nur Foundation-Tokens", () => {
+  assert.ok(/@media \(pointer: coarse\) \{[\s\S]*?\.addr-suggest-opt \{ min-height: var\(--ce-size-touch-target\); \}/.test(cssSrc));
   assert.ok(!/#[0-9a-fA-F]{3,8}\b/.test(cssSrc), "kein Hexwert");
   assert.ok(!/rgba?\(/.test(cssSrc), "kein rgb/rgba");
 });
 
 // ── 9. Anbindung der Formulare ──────────────────────────────────────────────
 
-test("29 alle drei Adressformulare nutzen dieselbe zentrale Logik", () => {
-  for (const [name, src] of [["NewShipmentPage", newShipSrc], ["AddressFormDrawer", drawerSrc],
-                             ["OrderCreateForm", orderSrc]]) {
-    // Wichtig: NICHT nur auf das Vorkommen des Namens pruefen — der steht schon in der
-    // Importzeile. Geprueft wird, dass die Komponenten auch WIRKLICH GERENDERT werden.
+const FORMULARE = [
+  ["NewShipmentPage", newShipSrc, true], ["AddressFormDrawer", drawerSrc, true], ["OrderCreateForm", orderSrc, true],
+  ["Profile", profileSrc, true], ["PartnerBillingDetailsSection", partnerSrc, true],
+  ["RegisterForm", registerSrc, false], ["CalculatorPage", calcSrc, false],
+];
+
+test("28 alle Adressformulare nutzen dieselbe zentrale Logik", () => {
+  for (const [name, src, mitStatus] of FORMULARE) {
     assert.ok(/useAddressValidation\(\{/.test(src), `${name} muss den zentralen Hook aufrufen`);
     assert.ok(/<AddressSuggestInput\b/.test(src), `${name} muss das zentrale Feld rendern`);
-    assert.ok(/<AddressStatusLine\b/.test(src), `${name} muss die zentrale Statuszeile rendern`);
+    if (mitStatus) assert.ok(/<AddressStatusLine\b/.test(src), `${name} muss die zentrale Statuszeile rendern`);
+    assert.ok(!/fetchStreets|fetchLocalities|validateAddress\(/.test(src), `${name} darf die Adress-API nicht selbst aufrufen`);
   }
 });
 
-test("30 es gibt keine zweite Autocomplete-Implementierung", () => {
-  for (const [name, src] of [["NewShipmentPage", newShipSrc], ["AddressFormDrawer", drawerSrc],
-                             ["OrderCreateForm", orderSrc]]) {
-    assert.ok(!/fetchStreets|fetchLocalities/.test(src),
-      `${name} darf die Adress-API nicht selbst aufrufen`);
+test("29 jede Übernahme läuft über applyAddressSuggestion und meldet die Auswahl", () => {
+  for (const [name, src] of FORMULARE.filter(([n]) => n !== "CalculatorPage")) {
+    assert.ok(/applyAddressSuggestion\(/.test(src), `${name} übernimmt Vorschläge nicht zentral`);
+    assert.ok(/\.markSelected\(patch\.street\)/.test(src), `${name} meldet die Auswahl nicht`);
   }
+  assert.ok(!/applyStreetSuggestion/.test(newShipSrc + drawerSrc + orderSrc), "die alte Teilübernahme ist ersetzt");
 });
 
-test("31 die Preisberechnung blockiert nur bei eindeutigem Widerspruch", () => {
+test("30 KRITISCH: die Preisberechnung hängt nicht an der Adressprüfung", () => {
   const code = strip(newShipSrc);
-  assert.ok(/const addressBlocksCalculation =\s*\n?\s*addressBlocksSubmit\(senderCheck\.status\) \|\| addressBlocksSubmit\(recipientCheck\.status\)/.test(code),
-    "das Gate muss über addressBlocksSubmit laufen");
-  // TG22 Paket B: additiv ein eigener Grund — ohne Versanddatum (vergangenes Entwurfsdatum)
-  // wird ebenfalls nicht gerechnet. Die Adressregel selbst bleibt unverändert.
-  assert.ok(/disabled=\{loading \|\| !calcValid \|\| saving \|\| addressBlocksCalculation \|\| datumFehlt\}/.test(code));
-  // Und ausdrücklich NICHT bei unverified/unavailable.
-  assert.ok(!/status === ADDRESS_STATUS\.UNVERIFIED[^\n]*disabled/.test(code));
+  assert.ok(!/addressBlocksCalculation|addressBlocksSubmit/.test(code));
+  assert.ok(/disabled=\{loading \|\| !calcValid \|\| saving \|\| datumFehlt\}/.test(code));
+  assert.ok(!/senderCheck\.status|recipientCheck\.status[^\n]*disabled/.test(code.replace(/status=\{(sender|recipient)Check\.status\}/g, "")));
 });
 
-test("32 KRITISCH: Entwürfe bleiben unvollständig speicherbar", () => {
+test("31 KRITISCH: Entwürfe bleiben unvollständig speicherbar", () => {
   const code = strip(newShipSrc);
-  // Der Speicherknopf des Formularentwurfs darf die Adressprüfung NICHT abfragen —
-  // ein Entwurf existiert vor Tarif und Checkout und muss lückenhaft bleiben dürfen.
-  // Genau das <button>-Element des Entwurfsknopfes betrachten — ein Zeichenfenster
-  // erwischt sonst den unmittelbar davor stehenden Berechnen-Knopf.
   const idx = code.indexOf("dft-savedraft-cta");
   const start = code.lastIndexOf("<button", idx);
   const draftBtn = code.slice(start, code.indexOf("</button>", idx));
   assert.ok(draftBtn.includes("dft-savedraft-cta"), "der Entwurfsknopf muss gefunden werden");
-  assert.ok(!/addressBlocksCalculation|senderCheck|recipientCheck/.test(draftBtn),
-    `der Entwurfs-Speicherknopf darf nicht an der Adressprüfung hängen: ${draftBtn.slice(0, 200)}`);
-  assert.ok(/disabled=\{!canExplicitSave\}/.test(draftBtn),
-    "der Entwurfsknopf hängt unverändert allein an canExplicitSave");
+  assert.ok(!/senderCheck|recipientCheck/.test(draftBtn), "der Entwurfs-Speicherknopf hängt nicht an der Adressprüfung");
+  assert.ok(/disabled=\{!canExplicitSave\}/.test(draftBtn));
 });
 
-test("33 das Adressbuch blockiert das Speichern nicht", () => {
-  const code = strip(drawerSrc);
-  assert.ok(!/addressCheck\.status\s*===\s*"invalid"/.test(code),
-    "die Prüfung ist im Adressbuch reine Hilfestellung");
-  assert.ok(!/disabled=\{[^}]*addressCheck/.test(code), "kein Speicherknopf hängt an der Prüfung");
+test("32 Adressbuch, Profil und Partnerabrechnung sperren das Speichern nicht", () => {
+  for (const [name, src, check] of [["AddressFormDrawer", drawerSrc, "addressCheck"], ["Profile", profileSrc, "companyAddressCheck"],
+                                    ["PartnerBillingDetailsSection", partnerSrc, "adresse"]]) {
+    const code = strip(src);
+    assert.ok(!new RegExp(`disabled=\\{[^}]*${check}`).test(code), `${name}: kein Knopf hängt an der Prüfung`);
+  }
 });
 
-test("34 die bestehende PLZ-Formatprüfung bleibt unangetastet", () => {
-  // Beide Systeme laufen nebeneinander; das neue liest die generierten Regeln nicht.
-  assert.ok(!/postalCodeRules|isPostalCodeRequired/.test(viewSrc),
-    "die Formatprüfung ist ein eigenes System");
-  assert.ok(newShipSrc.includes("isPostalCodeRequired"), "die alte Formatprüfung ist noch verdrahtet");
+test("33 die bestehende PLZ-Formatprüfung bleibt unangetastet", () => {
+  assert.ok(!/postalCodeRules|isPostalCodeRequired/.test(viewSrc), "die Formatregeln werden nicht direkt gelesen");
+  assert.ok(newShipSrc.includes("isPostalCodeRequired"), "die Formatprüfung ist noch verdrahtet");
   assert.ok(drawerSrc.includes("postalCodeExample"), "die Beispielanzeige bleibt erhalten");
 });
 
-test("35 keine technischen Begriffe in Kundentexten", () => {
-  for (const text of Object.values(ADDRESS_MESSAGES)) {
-    for (const wort of ["OpenPLZ", "Provider", "API", "HTTP", "500", "Timeout", "null", "Endpoint"]) {
+test("34 keine technischen Begriffe in Kundentexten", () => {
+  for (const text of [...Object.values(ADDRESS_MESSAGES), ...Object.values(ADDRESS_REASON_MESSAGES)]) {
+    for (const wort of ["OpenPLZ", "Geoapify", "Provider", "API", "HTTP", "500", "Timeout", "null", "Endpoint", "Credit"]) {
       assert.ok(!text.includes(wort), `„${text}“ darf „${wort}“ nicht nennen`);
     }
   }
-  assert.equal(ADDRESS_MESSAGES[ADDRESS_STATUS.INVALID], "PLZ und Ort passen nicht zusammen.");
-  assert.equal(ADDRESS_MESSAGES[ADDRESS_STATUS.UNAVAILABLE],
-    "Automatische Adressprüfung ist momentan nicht verfügbar.");
+  assert.equal(ADDRESS_MESSAGES[ADDRESS_STATUS.UNAVAILABLE], "Automatische Adressprüfung ist momentan nicht verfügbar.");
 });
 
-test("36 in Neue Sendung tragen Absender UND Empfänger je Straße und Ort das Vorschlagsfeld", () => {
-  // Diese Prüfung existiert, weil ein früherer Teilumbau genau hier unbemerkt blieb: die
-  // Importzeile war vorhanden, gerendert wurde aber noch das alte Eingabefeld.
+test("35 in Neue Sendung tragen Absender UND Empfänger je Straße und Ort das Vorschlagsfeld", () => {
   for (const id of ["ns-s-street", "ns-s-city", "ns-r-street", "ns-r-city"]) {
     assert.ok(newShipSrc.includes(`id="${id}"`), `${id} fehlt — das Feld ist nicht umgestellt`);
   }
-  assert.equal((newShipSrc.match(/<AddressSuggestInput\b/g) || []).length, 4,
-    "genau vier Adressfelder mit Vorschlägen");
-  assert.equal((newShipSrc.match(/<AddressStatusLine\b/g) || []).length, 2,
-    "je eine Statuszeile für Absender und Empfänger");
-  // Und die alten einfachen Felder dürfen für diese vier nicht mehr existieren.
+  assert.equal((newShipSrc.match(/<AddressSuggestInput\b/g) || []).length, 4, "genau vier Adressfelder mit Vorschlägen");
+  assert.equal((newShipSrc.match(/<AddressStatusLine\b/g) || []).length, 2, "je eine Statuszeile");
   assert.ok(!/addrField\("[sr]", "street"/.test(newShipSrc), "kein altes Straßenfeld mehr");
+});
+
+test("36 Längenhinweis: Hinweis statt Sperre, an den Grenzen des Buchungsvertrags", () => {
+  assert.deepEqual({ ...SHIPPING_LINE_HINT_LIMITS }, { street: 35, city: 30, company: 35 });
+  assert.equal(shippingLengthHint("street", "x".repeat(35)), null);
+  assert.match(shippingLengthHint("street", "x".repeat(36)), /36 Zeichen – einige Versandoptionen übernehmen höchstens 35/);
+  assert.equal(shippingLengthHint("city", "x".repeat(30)), null);
+  assert.ok(shippingLengthHint("company", "x".repeat(40)));
+  assert.equal(shippingLengthHint("phone", "x".repeat(99)), null);
+  // Als Hinweis verdrahtet — nicht im Fehlerobjekt, das die Berechnung sperren würde.
+  assert.equal((newShipSrc.match(/hint=\{shippingLengthHint\("(street|city)"/g) || []).length, 4);
+  assert.ok(!/e\.[sr]_street\s*=\s*shippingLengthHint/.test(newShipSrc));
 });

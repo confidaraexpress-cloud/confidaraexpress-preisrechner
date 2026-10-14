@@ -160,7 +160,9 @@ test("12 — ein fortgesetzter Entwurf bekommt kein Ersatzdatum; ohne Datum kein
   assert.doesNotMatch(neu, /buildResumeInitialState\([^)]*todayISO\(\)/);
   assert.doesNotMatch(neu, /init\.shippingDate \|\| todayISO\(\)/);
   assert.match(neu, /resumeInit \? \(resumeInit\.shippingDate \|\| null\)/);
-  assert.match(neu, /disabled=\{loading \|\| !calcValid \|\| saving \|\| addressBlocksCalculation \|\| datumFehlt\}/);
+  // Seit der Geoapify-Umstellung (2026-10-14) sperrt die Adressprüfung die Berechnung nicht mehr;
+  // das fehlende Versanddatum sperrt unverändert.
+  assert.match(neu, /disabled=\{loading \|\| !calcValid \|\| saving \|\| datumFehlt\}/);
   const berechnen = abschnitt(neu, "const calculate = async", "const reloadFormDraft");
   assert.ok(berechnen.indexOf("if (!shippingDate) {") < berechnen.indexOf("setHasResults(false); setTariffs([]);"));
   assert.match(neu, /resumeInit && resumeInit\.shippingDateExpired \? RESUME_PAST_DATE_NOTICE : ""/);

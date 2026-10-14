@@ -1,22 +1,22 @@
 import React from "react";
 import {
-  ADDRESS_STATUS, ADDRESS_MESSAGES, addressStatusTone, showsAddressStatus,
+  ADDRESS_STATUS, addressStatusMessage, addressStatusTone, showsAddressStatus,
   addressNeedsAcknowledgement,
 } from "../../utils/addressValidationView.mjs";
 
 // AddressStatusLine — die einzige Anzeige des Prüfergebnisses. REINE DARSTELLUNG.
 //
-// Sie sagt nie „Hausnummer bestätigt": der Datendienst führt keine vollständige
-// Hausnummerndatenbank, und eine solche Aussage wäre schlicht falsch. Der bestätigte Text
-// nennt deshalb ausdrücklich nur PLZ, Ort und Straße.
+// „Adresse gefunden“ erscheint nur, wenn der Adressdienst die Anschrift bis zur Hausnummer
+// gefunden hat; eine Zusage, dass dort zugestellt werden kann, ist das nicht und wird nirgends
+// behauptet. Alle übrigen Ergebnisse sind Hinweise — die Statuszeile sperrt nie etwas.
 //
-// Bei `unverified` und `unavailable` steht eine Möglichkeit zum Weitermachen daneben — eine
-// Datenlücke oder ein Ausfall des Prüfdienstes darf einen realen Kunden nicht am Versand
-// hindern. Nur der eindeutige Widerspruch (`invalid`) bietet diesen Ausweg NICHT.
+// Bei `unverified` und `unavailable` steht „Adresse so verwenden“ daneben: der Kunde bestätigt,
+// dass seine Eingabe stimmt, und der Hinweis tritt zurück. Passt die PLZ möglicherweise nicht
+// zum Ort, bietet die Zeile die Orte an, die der Dienst zu dieser PLZ kennt.
 //
 // Seit dem Redesign (2026-10) ohne Symbol: der Ton steckt in Fläche und Text
-// (addr-status--success/-warning/-error), die Aussage im Satz selbst.
-export function AddressStatusLine({ status, onAcknowledge, acknowledged, citySuggestions = [], onPickCity }) {
+// (addr-status--success/-warning), die Aussage im Satz selbst.
+export function AddressStatusLine({ status, reason = null, onAcknowledge, acknowledged, citySuggestions = [], onPickCity }) {
   if (!showsAddressStatus(status)) return null;
 
   if (status === ADDRESS_STATUS.CHECKING) {
@@ -29,8 +29,10 @@ export function AddressStatusLine({ status, onAcknowledge, acknowledged, citySug
   }
 
   const tone = addressStatusTone(status);
-  const message = ADDRESS_MESSAGES[status] || "";
+  const message = addressStatusMessage(status, reason);
   const canAcknowledge = addressNeedsAcknowledgement(status) && !acknowledged && typeof onAcknowledge === "function";
+  const zeigeOrte = status === ADDRESS_STATUS.UNVERIFIED && reason === "postal_code_city_mismatch"
+    && citySuggestions.length > 0 && typeof onPickCity === "function";
 
   return (
     <div className={`addr-status addr-status--${tone}`} role="status" aria-live="polite">
@@ -38,15 +40,15 @@ export function AddressStatusLine({ status, onAcknowledge, acknowledged, citySug
         {acknowledged && addressNeedsAcknowledgement(status)
           ? "Adresse wird wie eingegeben übernommen."
           : message}
-        {/* Bei einem Widerspruch werden die tatsächlich zur PLZ gehörenden Orte angeboten —
-            das ist die schnellste Korrektur und verlangt kein Nachschlagen. */}
-        {status === ADDRESS_STATUS.INVALID && citySuggestions.length > 0 && (
+        {/* Die Orte, die der Dienst zu dieser PLZ kennt — die schnellste Korrektur, falls
+            der Ort tatsächlich vertippt war. Eine Auswahl ist nie Pflicht. */}
+        {zeigeOrte && !acknowledged && (
           <span className="addr-status-suggest">
             {" "}Passend wäre:{" "}
             {citySuggestions.slice(0, 3).map((c, i) => (
               <React.Fragment key={c}>
                 {i > 0 && ", "}
-                <button type="button" className="btn btn-link btn-sm addr-status-city" onClick={() => onPickCity?.(c)}>
+                <button type="button" className="btn btn-link btn-sm addr-status-city" onClick={() => onPickCity(c)}>
                   {c}
                 </button>
               </React.Fragment>
@@ -56,7 +58,7 @@ export function AddressStatusLine({ status, onAcknowledge, acknowledged, citySug
       </span>
       {canAcknowledge && (
         <button type="button" className="btn btn-link btn-sm addr-status-ack" onClick={onAcknowledge}>
-          Adresse trotzdem verwenden
+          Adresse so verwenden
         </button>
       )}
     </div>

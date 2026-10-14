@@ -274,6 +274,14 @@ test("23 Kostenbewusst: Prüfung automatisch nach einer Ruhesekunde, nicht je Ta
   assert.ok(/skipStreetRef\.current === text/.test(hookSrc));
   // „nicht eingerichtet“ beendet die Abfragen der Sitzung für eine Weile.
   assert.ok(/body\.reason === "not_configured"/.test(hookSrc));
+  // Ein mitgebrachter Wert (Entwurf, Rückkehr aus der Buchung) ist keine Eingabe: keine Suche.
+  assert.ok(/if \(text === initialStreetRef\.current\) return undefined;/.test(hookSrc));
+  // Ein bereits geprüfter Stand steht sofort wieder da — keine zweite Anfrage, keine verspätete
+  // Statuszeile, die eine wiederhergestellte Seite verschiebt.
+  assert.ok(/rememberValidation\(addressFingerprint\(\{ country, postalCode, city, street \}\), parsed\)/.test(hookSrc));
+  assert.ok(/recallValidation\(fingerprint\)/.test(hookSrc));
+  assert.ok(/parsed\.status !== ADDRESS_STATUS\.CONFIRMED && parsed\.status !== ADDRESS_STATUS\.UNVERIFIED\) return;/.test(hookSrc),
+    "ein Ausfall wird nicht gemerkt");
 });
 
 // ── 8. Bedienung und Barrierefreiheit ───────────────────────────────────────

@@ -130,6 +130,15 @@ export async function fuellePaket(page, paket = STANDARD_PAKET) {
 /**
  * Bringt „Neue Sendung" in einen vollständig gültigen Zustand.
  * Wartet vorher darauf, dass das Formular wirklich steht.
+ *
+ * Und danach darauf, dass die Adresshilfe der Eingabe zur Ruhe gekommen ist: seit 2026-10-14
+ * prüft das Formular eine vollständige Anschrift nach einer Ruhesekunde automatisch und zeigt
+ * das Ergebnis über den Angeboten an. Ein Kunde füllt danach noch die Paketangaben aus; ein Test
+ * klickt sofort — die Statuszeile käme dann erst NACH den Angebotskarten und verschöbe die Seite
+ * mitten in einer Messung. Abgewartet wird bestmöglich (Zeitlimit ohne Fehler): eine Suite, deren
+ * Attrappe die Adressrouten als „nicht abgedeckt“ beantwortet, löst weniger Anfragen aus — für
+ * sie gibt es nichts abzuwarten. Wer ein exaktes Beobachtungsfenster braucht, nutzt weiterhin
+ * `adressvorschlaegeAbgeschlossen` (dort mit Fehler bei Zeitüberschreitung).
  */
 export async function fuelleVersandformular(page, {
   absender = STANDARD_ABSENDER,
@@ -138,10 +147,12 @@ export async function fuelleVersandformular(page, {
   sendungsangaben = STANDARD_SENDUNGSANGABEN,
 } = {}) {
   await page.waitForSelector("#ns-weight", { timeout: 20000 });
+  const adresshilfe = adressvorschlaegeAbgeschlossen(page, { absender, empfaenger, timeout: 4000 });
   await fuelleAdresse(page, "s", absender);
   await fuelleAdresse(page, "r", empfaenger);
   await fuellePaket(page, paket);
   await fuelleSendungsangaben(page, sendungsangaben);
+  await adresshilfe.catch(() => {});
 }
 
 /* ── Die Adressvorschläge der Eingabe abwarten ─────────────────────────────

@@ -44,15 +44,36 @@ function serviceAvailableFor(country) {
     && !unsupportedCountries.has(String(country || "").trim().toUpperCase());
 }
 
+// Prüfergebnisse je Anschrift (Fingerabdruck) für die Dauer der Sitzung im Speicher. Kehrt
+// der Kunde z. B. aus der Buchung ins Formular zurück, steht das Ergebnis sofort wieder da —
+// ohne erneute Anfrage und ohne dass eine verspätete Statuszeile die wiederhergestellte
+// Seite verschiebt. Nur echte Ergebnisse (gefunden / Hinweis), nie ein Ausfall. Klein gehalten
+// und nur im Arbeitsspeicher: ein Neuladen leert ihn.
+const VALIDATION_MEMORY_MAX = 30;
+const validationMemory = new Map();
+
+function rememberValidation(fingerprint, parsed) {
+  if (parsed.status !== ADDRESS_STATUS.CONFIRMED && parsed.status !== ADDRESS_STATUS.UNVERIFIED) return;
+  if (validationMemory.size >= VALIDATION_MEMORY_MAX) validationMemory.delete(validationMemory.keys().next().value);
+  validationMemory.set(fingerprint, parsed);
+}
+
+function recallValidation(fingerprint) {
+  return validationMemory.get(fingerprint) || null;
+}
+
 export function useAddressValidation({
   country, postalCode, city, street, enabled = true, publicAccess = false,
 }) {
-  const [status, setStatus] = useState(ADDRESS_STATUS.IDLE);
-  const [reason, setReason] = useState(null);
+  // Ein bereits geprüfter Stand dieser Anschrift steht ab dem ersten Rendern da.
+  const [gemerkt] = useState(() => (publicAccess ? null
+    : recallValidation(addressFingerprint({ country, postalCode, city, street }))));
+  const [status, setStatus] = useState(gemerkt ? gemerkt.status : ADDRESS_STATUS.IDLE);
+  const [reason, setReason] = useState(gemerkt ? gemerkt.reason : null);
   const [cityOptions, setCityOptions] = useState([]);
   const [streetOptions, setStreetOptions] = useState([]);
-  const [normalized, setNormalized] = useState(null);
-  const [houseNumberVerified, setHouseNumberVerified] = useState(false);
+  const [normalized, setNormalized] = useState(gemerkt ? gemerkt.normalized : null);
+  const [houseNumberVerified, setHouseNumberVerified] = useState(gemerkt ? gemerkt.houseNumberVerified : false);
   // Der Kunde kann einen nicht bestätigten Zustand bewusst übernehmen („Adresse so verwenden“).
   // Das ist eine Entscheidung, kein Prüfergebnis — deshalb ein eigener Wert.
   const [acknowledged, setAcknowledged] = useState(false);
@@ -83,6 +104,10 @@ export function useAddressValidation({
   // Nach der Auswahl eines Vorschlags steht dessen Text im Feld. Für genau diesen Wert wird
   // nicht erneut gesucht — die Liste ginge sonst sofort wieder auf und kostete eine Anfrage.
   const skipStreetRef = useRef(null);
+  // Der Wert, mit dem das Formular ankommt (fortgesetzter Entwurf, Rückkehr aus der Buchung),
+  // ist keine Eingabe: für ihn wird nicht gesucht. Erst eine Änderung löst Vorschläge aus.
+  const initialStreetRef = useRef(streetQueryText(street));
+  const streetEditedRef = useRef(false);
 
   const abortAll = useCallback(() => {
     localitiesAbort.current?.abort();
@@ -103,15 +128,17 @@ export function useAddressValidation({
       lastFingerprint.current = fingerprint;
       validateAbort.current?.abort();
       valSeq.current += 1;
-      setStatus(ADDRESS_STATUS.IDLE);
-      setReason(null);
-      setNormalized(null);
-      setHouseNumberVerified(false);
+      // Eine bereits geprüfte Anschrift (z. B. zurückgetippt) braucht keine neue Anfrage.
+      const frueher = publicAccess ? null : recallValidation(fingerprint);
+      setStatus(frueher ? frueher.status : ADDRESS_STATUS.IDLE);
+      setReason(frueher ? frueher.reason : null);
+      setNormalized(frueher ? frueher.normalized : null);
+      setHouseNumberVerified(frueher ? frueher.houseNumberVerified : false);
       setAcknowledged(false);
     } else {
       lastFingerprint.current = fingerprint;
     }
-  }, [fingerprint]);
+  }, [fingerprint, publicAccess]);
 
   // Laufende Anfragen beim Verlassen abbrechen.
   useEffect(() => () => abortAll(), [abortAll]);
@@ -151,11 +178,22 @@ export function useAddressValidation({
   // ── Adressvorschläge ───────────────────────────────────────────────────────
   // Ab drei Zeichen im Feld „Straße und Hausnummer“; PLZ und Ort grenzen die Suche ein, wenn
   // sie schon bekannt sind.
+  // Wird der Hook erst später aktiv (Profil: Bearbeiten öffnen), gilt der Wert in diesem Moment
+  // als Ausgangswert — er wurde nicht eingegeben.
+  useEffect(() => {
+    if (!enabled) return;
+    initialStreetRef.current = streetQueryText(street);
+    streetEditedRef.current = false;
+  }, [enabled]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const text = streetQueryText(street);
     if (!enabled || !supported || !isStreetQueryable(country, postalCode, city, street)) {
       setStreetOptions([]);
       return undefined;
+    }
+    if (!streetEditedRef.current) {
+      if (text === initialStreetRef.current) return undefined;
+      streetEditedRef.current = true;
     }
     if (skipStreetRef.current !== null && skipStreetRef.current === text) {
       return undefined;
@@ -220,6 +258,7 @@ export function useAddressValidation({
       if (valSeq.current !== mine) return null;
       markUnsupported(body);
       const parsed = readAddressResponse(body);
+      rememberValidation(addressFingerprint({ country, postalCode, city, street }), parsed);
       setStatus(parsed.status);
       setReason(parsed.reason);
       setNormalized(parsed.normalized);

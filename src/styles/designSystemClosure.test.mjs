@@ -291,7 +291,7 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
                   "/versicherungsinformationen", "/dashboard",
                   "/admin", "/admin/users", "/admin/users/:id",
                   "/admin/shipments", "/admin/shipments/:id",
-                  "/admin/invoices", "/admin/invoices/backfill", "/admin/invoices/:id",
+                  "/admin/invoices", "/admin/invoices/backfill", "/admin/legal-drafts", "/admin/invoices/:id",
                   "/admin/cancellation-requests", "/admin/cancellation-requests/:id",
                   // Package C: die Buchungsklärung (Liste + ein Vorgang).
                   "/admin/reconciliation", "/admin/reconciliation/:attemptId",

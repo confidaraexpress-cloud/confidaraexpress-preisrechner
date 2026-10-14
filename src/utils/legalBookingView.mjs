@@ -82,6 +82,22 @@ export function legalTermsDocument(ctx) {
   return ctx.documents.find((d) => d.type === LEGAL_TERMS_TYPE) || null;
 }
 
+// ─── Buchungshinweise der AGB-Fassung (ADSp-Anlage, Hinweis nach § 449 HGB) ───────────────
+// Kommen AUSSCHLIESSLICH aus der Serverantwort, und nur, wenn die aktive AGB-Fassung sie trägt
+// (`labelSuffix`, `notices` am terms-Dokument). Das Frontend kennt keinen Hinweistext — sonst
+// könnte er vor der Aktivierung oder neben einer älteren Fassung erscheinen. Ohne Hinweise
+// bleibt der Checkout exakt wie bisher. Nur Klartext: React escaped ihn beim Rendern.
+export function legalTermsNotices(ctx) {
+  const leer = { labelSuffix: null, notices: [] };
+  const doc = legalTermsDocument(ctx);
+  if (!doc) return leer;
+  const text = (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : null);
+  const notices = (Array.isArray(doc.notices) ? doc.notices : [])
+    .map((n) => ({ title: text(n && n.title), text: text(n && n.text) }))
+    .filter((n) => n.title && n.text);
+  return { labelSuffix: text(doc.labelSuffix), notices };
+}
+
 // Blockiert die Schranke die Bestellung? Ausschließlich bei `loading` und `error` — bei
 // `disabled` und `ready` entscheidet allein der bestehende Buchungs-Gate-Vertrag weiter.
 export function legalGateBlocks(ctx) {

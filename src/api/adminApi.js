@@ -840,3 +840,15 @@ export function listAdminLegalDrafts() {
 export function getAdminLegalDraft(id) {
   return apiFetch("/admin/legal-drafts/" + encodeURIComponent(id), { auth: true });
 }
+
+// Nur Admin: Seitenvorschau der künftigen Rechtsseiten (abgeleitete Veröffentlichungsfassung
+// der Entwürfe, offene Punkte, PDF mit Wasserzeichen) — nichts wird registriert oder veröffentlicht.
+export function listAdminLegalPublications() {
+  return apiFetch("/admin/legal-publications", { auth: true });
+}
+export function getAdminLegalPublication(id) {
+  return apiFetch("/admin/legal-publications/" + encodeURIComponent(id), { auth: true });
+}
+export function getAdminLegalPublicationPdf(id) {
+  return apiFetch("/admin/legal-publications/" + encodeURIComponent(id) + "/pdf", { auth: true, timeoutMs: 60000 });
+}

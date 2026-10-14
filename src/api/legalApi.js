@@ -13,11 +13,30 @@
 // Der Endpunkt ist bewusst OHNE Auth (`auth: false`): Rechtsdokumente sind öffentlich, und die
 // Antwort enthält weder Konto- noch Sendungsdaten. Damit läuft der Abruf auch dann sauber,
 // wenn das Token gerade abgelaufen ist — der zentrale 401/403-Handler bleibt unberührt.
-import { apiFetch } from "./client";
+import { API, apiFetch } from "./client";
 
 // Gibt die rohe Response zurück; der Aufrufer wertet Status und Body selbst aus (konsistent mit
 // den übrigen Callern dieses Projekts). 200 → `{ enabled:false }` oder `{ enabled:true, setKey,
 // documents }`; 503 → `LEGAL_DOCUMENTS_NOT_CONFIGURED` (Schranke an, Tresor nicht auslieferbar).
 export function getLegalBookingContext({ signal } = {}) {
   return apiFetch(`/api/legal/booking-context`, { signal });
+}
+
+// ── Öffentliche Rechtsseiten (/agb, /datenschutz) ───────────────────────────────
+// GET /api/legal/current — welche Fassungen gelten gerade; trägt eine Fassung eine
+// Webfassung, steht ihr Abrufpfad in `contentPath` (utils/legalPageState.mjs).
+// Öffentlich, ohne Auth: Rechtsdokumente sind für jeden lesbar.
+export function getLegalCurrent({ signal } = {}) {
+  return apiFetch(`/api/legal/current`, { signal });
+}
+
+// GET …/inhalt — die Webfassung genau dieser Fassung. Der Pfad kommt aus der
+// Serverantwort und ist vorher geprüft (safeContentPath).
+export function getLegalContent(contentPath, { signal } = {}) {
+  return apiFetch(contentPath, { signal });
+}
+
+/** Adresse einer registrierten Fassung (PDF) am API-Host — oder null. */
+export function legalDocumentUrl(documentPath) {
+  return typeof documentPath === "string" && documentPath.startsWith("/api/legal/") ? `${API}${documentPath}` : null;
 }

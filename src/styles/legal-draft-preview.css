@@ -1,0 +1,30 @@
+/* Geschuetzte Rechtsentwurfsvorschau im Adminbereich (G1-G9).
+   Nur Darstellung, keine Aenderung der oeffentlichen Legal-Registry. */
+.adm-ld-warning { display: flex; flex-direction: column; gap: var(--ce-space-2); margin-bottom: var(--ce-space-5); }
+.adm-ld-layout { display: grid; grid-template-columns: minmax(185px, 240px) minmax(0, 1fr); gap: var(--ce-space-5); align-items: start; }
+.adm-ld-menu, .adm-ld-content { background: var(--ce-color-surface); border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-lg); min-width: 0; }
+.adm-ld-menu { padding: var(--ce-space-3); position: sticky; top: var(--ce-space-4); max-height: 85vh; overflow-y: auto; }
+.adm-ld-menu h2 { font-size: var(--ce-text-caption-size); font-weight: 600; color: var(--ce-color-text-secondary); margin: var(--ce-space-4) var(--ce-space-2) var(--ce-space-2); }
+.adm-ld-navitem { display: block; width: 100%; border: 0; border-radius: var(--ce-radius-sm); background: transparent; color: var(--ce-color-text-primary); padding: var(--ce-space-2); text-align: left; font: inherit; font-size: var(--ce-text-caption-size); cursor: pointer; }
+.adm-ld-navitem:hover, .adm-ld-navitem--selected { background: var(--ce-color-brand-soft); color: var(--ce-color-brand-ink); }
+.adm-ld-navitem:focus-visible { outline: 2px solid var(--ce-color-brand-ink); outline-offset: 2px; }
+.adm-ld-content { padding: var(--ce-space-6); min-height: 300px; }
+.adm-ld-document-heading { display: flex; justify-content: space-between; align-items: start; gap: var(--ce-space-3); border-bottom: 1px solid var(--ce-color-border-subtle); padding-bottom: var(--ce-space-4); margin-bottom: var(--ce-space-5); }
+/* Der Rechtstext selbst steht im gemeinsamen Leselayout (.legal-sheet); in der Adminfläche
+   ohne eigene Kante, damit keine Karte in der Karte entsteht. */
+.adm-ld-content .adm-ld-sheet { padding: 0; border: 0; box-shadow: none; background: transparent; max-width: 900px; }
+.adm-ld-document-heading h2 { margin: var(--ce-space-2) 0 0; font-size: 1.25rem; }
+.adm-ld-draft-label { font-size: var(--ce-text-caption-size); font-weight: 600; color: var(--ce-color-text-secondary); }
+@media (max-width: 820px) {
+ .adm-ld-layout { grid-template-columns: minmax(0, 1fr); }
+ .adm-ld-menu { position: static; max-height: 270px; }
+ .adm-ld-content { padding: var(--ce-space-4); }
+}
+@media print {
+ .adm-side, .adm-topbar, .adm-ld-menu, .adm-ld-warning, .adm-ld-document-heading button { display: none !important; }
+ .adm-ld-layout { display: block; }
+ .adm-ld-content { border: 0; padding: 0; }
+}
+/* Einstieg auf der Seite „Interne Vorschau-PDFs“ (statt eines Sidebar-Eintrags). */
+#adm-legal-texts { margin-top: var(--ce-space-5); }
+.adm-legal-texts-links { display: flex; flex-wrap: wrap; gap: var(--ce-space-2); margin-top: var(--ce-space-3); }

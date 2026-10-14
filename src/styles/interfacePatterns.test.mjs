@@ -412,8 +412,9 @@ test("12 — Phase 3 fasst weder Routing noch API noch Businesslogik an", () => 
   // /admin/partners/credit-notes am bestehenden Adminrahmen.
   // Pre-Live-Testmodus (dokumentierte Ankeränderung): +1 —
   // /admin/partners/prelive am bestehenden Adminrahmen.
-  assert.equal(mitPfad + indexRt, 41,
-    "die Zahl der ansteuerbaren Routen ist unverändert (41 seit dem Pre-Live-Testmodus)");
+  // Neue Admin-Lesevorschau der G1–G9-Dokumente: +1 ansteuerbare Route.
+  assert.equal(mitPfad + indexRt, 42,
+    "42 Routen einschliesslich der neuen Admin-Rechtstextvorschau");
   assert.equal(pfadlos, 4,
     "die Zahl der pfadlosen Layoutrouten ist unverändert (4: Dashboard, öffentlich, Admin, Auth)");
 

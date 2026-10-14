@@ -22,6 +22,12 @@ import {
   getRegErrors,
   mapApiRegistrationError,
   buildRegistrationPayload,
+  REG_DECLARATION_TEXTS,
+  emptyRegistrationDeclarations,
+  getRegDeclarationErrors,
+  parseRegistrationLegalContext,
+  withRegistrationDeclarations,
+  isRegistrationSetChanged,
 } from "./registrationValidation.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -189,10 +195,23 @@ test("16 — Browser-Autocomplete ist sinnvoll gesetzt", () => {
   assert.equal(newPw.length >= 2, true, "beide Passwortfelder nutzen new-password");
 });
 
-test("17 — kein Kontotyp-Schalter und keine Unternehmer-Checkbox im Formular", () => {
-  for (const forbidden of [/Privatkunde/i, /Privatperson/i, /Geschäftskunde\s*\//i, /Ich bin Unternehmer/i, /auth-checkbox/]) {
+// Geändert mit Paket C (Go-Live, Rechtsanalyse vom 14.10.2026, P1-1): Die Unternehmer-
+// eigenschaft wird jetzt AUSDRÜCKLICH erklärt und mit dem Konto gespeichert — eine Pflicht-
+// Checkbox statt eines Satzes nach dem Absendeknopf. Was weiterhin verboten bleibt, ist der
+// eigentliche Zweck dieses Falls: ein Kontotyp-Schalter privat/geschäftlich. Die Erklärung ist
+// kein Schalter — ohne sie gibt es kein Konto, und es gibt keine Privatvariante.
+test("17 — kein Kontotyp-Schalter; genau zwei Pflichterklärungen (Unternehmer, AGB)", () => {
+  for (const forbidden of [/Privatkunde/i, /Privatperson/i, /Geschäftskunde\s*\//i, /Ich bin Unternehmer/i]) {
     assert.equal(forbidden.test(registerFormSrc), false, `unerwünscht: ${forbidden}`);
   }
+  const boxen = registerFormSrc.match(/<Erklaerung\b/g) || [];
+  assert.equal(boxen.length, 2, `${boxen.length} Erklärungen statt 2`);
+  assert.match(registerFormSrc, /id="reg-business"/);
+  assert.match(registerFormSrc, /id="reg-terms"/);
+  // Keine Einwilligungsbox für den Datenschutz — die Erklärung wird nur verlinkt.
+  assert.equal(/akzeptiere die Datenschutz|Datenschutzerklärung zu\b/i.test(registerFormSrc), false);
+  // Der frühere Satz NACH dem Absendeknopf behauptete eine Zustimmung, die nie erfasst wurde.
+  assert.equal(/Mit der Registrierung akzeptieren Sie/.test(registerFormSrc), false);
 });
 
 test("18 — mobile Struktur bleibt erhalten (bestehende Grid-Klassen unverändert)", () => {
@@ -228,4 +247,59 @@ test("21 — Registrierungserfolg bleibt korrekt und ohne B2C-Wording", () => {
   assert.match(message, /E-Mail/, "Hinweis auf die Benachrichtigung bleibt erhalten");
   assert.equal(/Privat|Verbraucher|B2C/i.test(message), false, "kein Privatkunden-Wording");
   assert.match(authPageSrc, /setTab\("login"\)/, "nach Erfolg zurück auf den Login-Tab");
+});
+
+// ─── Paket C: Erklärungen bei der Registrierung ───────────────────────────────
+
+test("22 — beide Erklärungen sind Pflicht, nur der Wert true zählt", () => {
+  assert.deepEqual(Object.keys(getRegDeclarationErrors(emptyRegistrationDeclarations())),
+    ["businessCustomerConfirmed", "termsAcknowledged"]);
+  assert.deepEqual(getRegDeclarationErrors({ businessCustomerConfirmed: true, termsAcknowledged: true }), {});
+  for (const halb of [{ businessCustomerConfirmed: true }, { termsAcknowledged: true },
+    { businessCustomerConfirmed: "true", termsAcknowledged: true }, { businessCustomerConfirmed: 1, termsAcknowledged: 1 }]) {
+    assert.ok(Object.keys(getRegDeclarationErrors(halb)).length > 0, JSON.stringify(halb));
+  }
+  assert.match(REG_DECLARATION_TEXTS.business, /§ 14 BGB/);
+});
+
+test("23 — angezeigte AGB-Fassung nur aus einer vollständigen Serverantwort", () => {
+  const antwort = { setId: 2, setKey: "SET-2026-08", documents: [
+    { type: "terms", version: "2026-08", url: "/api/legal/terms/2026-08", labelSuffix: " einschließlich der ADSp 2017 (Anlage 1) " },
+    { type: "privacy", version: "2026-07", url: "/api/legal/privacy/2026-07" },
+  ] };
+  assert.deepEqual(parseRegistrationLegalContext(200, antwort), {
+    setKey: "SET-2026-08",
+    terms: { version: "2026-08", url: "/api/legal/terms/2026-08", labelSuffix: "einschließlich der ADSp 2017 (Anlage 1)" },
+    privacy: { version: "2026-07", url: "/api/legal/privacy/2026-07", labelSuffix: null },
+  });
+  assert.equal(parseRegistrationLegalContext(503, antwort), null);
+  assert.equal(parseRegistrationLegalContext(200, { ...antwort, setKey: "" }), null);
+  assert.equal(parseRegistrationLegalContext(200, { ...antwort, documents: [antwort.documents[1]] }), null);
+  assert.equal(parseRegistrationLegalContext(200, null), null);
+});
+
+test("24 — Payload: Erklärungen nur bei beiden Häkchen, Setschlüssel nur bei angezeigter Fassung", () => {
+  const basis = { email: "a@b.de", name: "Max" };
+  assert.deepEqual(withRegistrationDeclarations(basis, { businessCustomerConfirmed: true }), basis);
+  const ctx = { setKey: "SET-2026-08", terms: { version: "2026-08", url: "/x" } };
+  assert.deepEqual(withRegistrationDeclarations(basis, { businessCustomerConfirmed: true, termsAcknowledged: true }, ctx),
+    { ...basis, businessCustomerConfirmed: true, termsAcknowledged: true, legalSetKey: "SET-2026-08" });
+  assert.deepEqual(withRegistrationDeclarations(basis, { businessCustomerConfirmed: true, termsAcknowledged: true }, null),
+    { ...basis, businessCustomerConfirmed: true, termsAcknowledged: true });
+  assert.equal(isRegistrationSetChanged(409, { code: "LEGAL_SET_CHANGED" }), true);
+  assert.equal(isRegistrationSetChanged(409, { code: "EMAIL_TAKEN" }), false);
+  // Ein Feldfehler des Servers landet an der jeweiligen Checkbox.
+  assert.deepEqual(mapApiRegistrationError({ error: "x", field: "termsAcknowledged" }).fieldErrors, { termsAcknowledged: "x" });
+});
+
+test("25 — AuthPage: Erklärungen gehören zur Gültigkeit, Fassungswechsel setzt nur die AGB-Bestätigung zurück", () => {
+  assert.match(authPageSrc, /&& Object\.keys\(getRegDeclarationErrors\(regDeclarations\)\)\.length === 0/);
+  assert.match(authPageSrc, /withRegistrationDeclarations\(\s*withReferralCode\(buildRegistrationPayload\(regForm\)/);
+  const idx = authPageSrc.indexOf("isRegistrationSetChanged(r.status, d)");
+  assert.ok(idx > -1, "der Fassungswechsel wird nicht behandelt");
+  const zweig = authPageSrc.slice(idx, idx + 600);
+  assert.match(zweig, /termsAcknowledged: false/);
+  assert.match(zweig, /setRegLegalLoad/);
+  assert.ok(!/businessCustomerConfirmed: false/.test(zweig), "die Unternehmererklärung wird unnötig zurückgesetzt");
+  assert.match(authPageSrc, /getCurrentLegalSet\(\{ signal: ac\.signal \}\)/);
 });

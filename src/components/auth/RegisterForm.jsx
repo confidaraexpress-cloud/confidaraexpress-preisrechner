@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { Icon } from "../ui/Icon";
 import { PasswordField } from "../ui/PasswordField";
 import { useLaunchScope } from "../../hooks/useLaunchScope";
-import { B2B_NOTICE, B2B_ACTIVATION_NOTE } from "../../utils/registrationValidation.mjs";
+import { API } from "../../api/client";
+import { B2B_NOTICE, B2B_ACTIVATION_NOTE, REG_DECLARATION_TEXTS } from "../../utils/registrationValidation.mjs";
 // Die sichtbare Zusage „min. 8 Zeichen" kommt aus derselben Konstante wie die
 // Prüfung — Text und Regel können damit nicht auseinanderlaufen.
 import { PASSWORD_MIN_LEN } from "../../utils/passwordPolicy.mjs";
@@ -12,11 +13,49 @@ import { PASSWORD_MIN_LEN } from "../../utils/passwordPolicy.mjs";
 // Screenreader trägt das jeweilige Eingabefeld required/aria-required.
 const Req = () => <span className="auth-req" aria-hidden="true">*</span>;
 
-export function RegisterForm({ form, onChange, onRegister, loading, errors = {}, regValid = true, passwordRepeat = "", onPasswordRepeatChange, onPasswordBlur }) {
+// Eine Pflicht-Checkbox im Stil der übrigen Auth-Checkboxen (role="checkbox", Tastatur).
+// Ein Link im Text schaltet die Checkbox NICHT um — Lesen ist keine Zustimmung.
+function Erklaerung({ id, checked, onToggle, error, children }) {
+  const toggle = () => onToggle(!checked);
+  return (
+    <>
+      <div
+        id={id}
+        className={`auth-check auth-declaration ${checked ? "checked" : ""}`}
+        onClick={toggle}
+        role="checkbox"
+        aria-checked={checked === true}
+        aria-required="true"
+        aria-invalid={error ? "true" : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); } }}
+      >
+        <span className="auth-checkbox" />
+        <span>{children} <Req /></span>
+      </div>
+      {error && <span className="auth-field-error" id={`${id}-error`}>{error}</span>}
+    </>
+  );
+}
+
+export function RegisterForm({
+  form, onChange, onRegister, loading, errors = {}, regValid = true, passwordRepeat = "", onPasswordRepeatChange, onPasswordBlur,
+  // Paket C: Erklärungen (Unternehmer, AGB) und die angezeigte AGB-Fassung (oder null).
+  declarations = {}, onDeclarationChange = () => {}, legalContext = null,
+  // Nur noch die Erklärungen fehlen: der Knopf ist gesperrt, der Grund steht unter den Erklärungen.
+  declarationsMissingOnly = false,
+}) {
   // Nur die Länder, die ConfidaraExpress heute anbietet — die Liste kommt vom Server
   // (GET /api/shipping/launch-scope), nicht aus einer zweiten Aufzählung im Client.
   const { countries: launchCountries } = useLaunchScope();
   const upd = (k, v) => onChange(k, v);
+  // AGB-Link: die angezeigte, versionierte Fassung (PDF auf der API) — sonst die Webseite.
+  const agb = legalContext && legalContext.terms ? legalContext.terms : null;
+  const ohneUmschalten = (e) => e.stopPropagation();
+  const agbLink = agb
+    ? <a href={`${API}${agb.url}`} target="_blank" rel="noopener noreferrer" onClick={ohneUmschalten}>Allgemeinen Geschäftsbedingungen</a>
+    : <Link to="/agb" target="_blank" rel="noopener noreferrer" onClick={ohneUmschalten}>Allgemeinen Geschäftsbedingungen</Link>;
   return (
     <form noValidate onSubmit={(e) => { e.preventDefault(); onRegister(); }}>
       {/* Kein Kontotyp-Schalter: ConfidaraExpress kennt ausschließlich Firmenkonten. */}
@@ -232,14 +271,39 @@ export function RegisterForm({ form, onChange, onRegister, loading, errors = {},
         </div>
       </div>
 
+      {/* Paket C: die Erklärungen stehen VOR dem Absenden und werden mit dem Konto
+          gespeichert. Die Datenschutzerklärung wird nur verlinkt — keine Einwilligungsbox. */}
+      <div className="auth-declarations">
+        <Erklaerung
+          id="reg-business"
+          checked={declarations.businessCustomerConfirmed === true}
+          onToggle={(v) => onDeclarationChange("businessCustomerConfirmed", v)}
+          error={errors.businessCustomerConfirmed}
+        >
+          {REG_DECLARATION_TEXTS.business}
+        </Erklaerung>
+        <Erklaerung
+          id="reg-terms"
+          checked={declarations.termsAcknowledged === true}
+          onToggle={(v) => onDeclarationChange("termsAcknowledged", v)}
+          error={errors.termsAcknowledged}
+        >
+          Ich stimme der Geltung der {agbLink}
+          {/* Die Fassung bricht nie im Datum um („2026-“ / „08"). */}
+          {agb ? <> <span className="auth-nowrap">(Stand {agb.version})</span>{agb.labelSuffix ? <> {agb.labelSuffix}</> : null}</> : null} zu.
+        </Erklaerung>
+        {declarationsMissingOnly && (
+          <p className="auth-declaration-hint" role="status">{REG_DECLARATION_TEXTS.missingHint}</p>
+        )}
+      </div>
+
       <button type="submit" className="auth-cta" disabled={loading || !regValid}>
         <span>{loading ? "Wird erstellt…" : "Konto beantragen"}</span>
         <span className="auth-cta-arrow"><Icon n="arrowRight" s={18} /></span>
       </button>
 
       <p className="auth-form-legal">
-        Mit der Registrierung akzeptieren Sie die{" "}
-        <Link to="/agb" target="_blank" rel="noopener noreferrer">AGB</Link> und{" "}
+        Wie wir Ihre Daten verarbeiten, erklärt unsere{" "}
         <Link to="/datenschutz" target="_blank" rel="noopener noreferrer">Datenschutzerklärung</Link>.
       </p>
     </form>

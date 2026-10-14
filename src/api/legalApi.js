@@ -21,3 +21,10 @@ import { apiFetch } from "./client";
 export function getLegalBookingContext({ signal } = {}) {
   return apiFetch(`/api/legal/booking-context`, { signal });
 }
+
+// Die heute gültigen Fassungen (Paket C): die Registrierung zeigt die AGB-Fassung an, der
+// zugestimmt wird, und meldet ihren Setschlüssel als „gesehen" zurück. Öffentlich, ohne Auth.
+// 200 → `{ setId, setKey, documents }`; 503 → keine auslieferbare Fassung.
+export function getCurrentLegalSet({ signal } = {}) {
+  return apiFetch(`/api/legal/current`, { signal });
+}

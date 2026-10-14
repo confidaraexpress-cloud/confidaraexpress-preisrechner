@@ -832,3 +832,11 @@ export const getAdminPreliveMailPreview = (query = {}) =>
   apiFetch(`${PRELIVE_PATH}/mail-preview${buildQuery(query, PRELIVE_MAIL_PREVIEW_PARAMS)}`, { auth: true });
 export const getAdminPreliveCleanup = () => apiFetch(`${PRELIVE_PATH}/cleanup`, { auth: true });
 export const runAdminPreliveCleanup = (body) => preliveLongPost(`${PRELIVE_PATH}/cleanup`, body);
+
+// Paket C (Go-Live): Unternehmerprüfung eines Kundenkontos — die Erklärungen der
+// Registrierung (Unternehmer, AGB-Fassung) und die Prüfvermerke der Admins. Eigene
+// Ressource neben dem Kundendetail; die Freischaltung hängt nicht daran.
+export const getAdminUserBusinessEvidence = (userId) =>
+  apiFetch(`/admin/users/${encodeURIComponent(userId)}/business-evidence`, { auth: true });
+export const addAdminUserBusinessVerification = (userId, body) =>
+  jsonPost(`/admin/users/${encodeURIComponent(userId)}/business-verifications`, body);

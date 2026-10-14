@@ -12,6 +12,7 @@ import {
 } from "../../api/adminApi";
 import {
   readinessMeta, fieldLabel, candidateStatusMeta, canBackfillCandidate, backfillOutcomeMessage,
+  businessLetterView,
 } from "../../utils/invoiceBackfillView.mjs";
 
 const PAGE_SIZE = 25;
@@ -55,6 +56,7 @@ function StatusCell({ c }) {
 // ── Produktionsbereitschaft-Karte — rein informativ, blockiert NICHTS mehr ──
 function ReadinessCard({ readiness, loading, error, onReload }) {
   const [cls, label] = readinessMeta(readiness);
+  const briefangaben = businessLetterView(readiness);
   const yesNo = (b) => (b === true ? "ja" : b === false ? "nein" : "—");
   const num = (n) => (Number.isFinite(Number(n)) ? String(Number(n)) : "—");
   return (
@@ -99,6 +101,18 @@ function ReadinessCard({ readiness, loading, error, onReload }) {
               <div className="adm-readiness-block">
                 <span className="adm-readiness-label adm-readiness-label-warn">Platzhalter-/Testwerte (vor dem ersten echten Kunden ersetzen)</span>
                 <ChipList items={readiness.placeholderFields} />
+              </div>
+            )}
+            {briefangaben && (
+              <div className="adm-readiness-block" id="adm-business-letter">
+                <span className={`adm-readiness-label${briefangaben.ready ? "" : " adm-readiness-label-warn"}`}>
+                  Geschäftsbriefangaben (§ 35a GmbHG) in Mails, Auftragsbestätigungen und Rechnungen
+                </span>
+                {briefangaben.ready ? (
+                  <span className="adm-muted">vollständig</span>
+                ) : (
+                  <ChipList items={briefangaben.missing} />
+                )}
               </div>
             )}
             <p className="adm-support-hint">

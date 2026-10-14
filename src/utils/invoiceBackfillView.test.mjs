@@ -5,6 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   readinessMeta, fieldLabel, candidateStatusMeta, canBackfillCandidate, backfillOutcomeMessage,
+  businessLetterView,
 } from "./invoiceBackfillView.mjs";
 
 // ── readinessMeta ────────────────────────────────────────────────────────────
@@ -77,4 +78,30 @@ test("backfillOutcomeMessage: outcome → type", () => {
 });
 test("backfillOutcomeMessage: incomplete erklärt fehlende historische Daten (keine erfundenen Zahlen)", () => {
   assert.match(backfillOutcomeMessage("incomplete").text, /historische Daten|rekonstruieren/);
+});
+
+// ── Geschäftsbriefangaben (§ 35a GmbHG, Go-Live Paket D) ────────────────────────
+test("businessLetterView: fehlende Angaben als Liste, vollständig als ready — rein informativ", () => {
+  const offen = businessLetterView({ ready: true, businessLetter: { ready: false, registerRequired: true, missingFields: ["issuer.seat", "issuer.registerNumber"] } });
+  assert.deepEqual(offen, { ready: false, registerRequired: true, missing: ["issuer.seat", "issuer.registerNumber"] });
+  assert.equal(fieldLabel("issuer.seat"), "Sitz der Gesellschaft");
+  assert.deepEqual(businessLetterView({ businessLetter: { ready: true, registerRequired: true, missingFields: [] } }),
+    { ready: true, registerRequired: true, missing: [] });
+  // Die Gesamtbewertung bleibt unberührt: der Block ändert readinessMeta nicht.
+  assert.deepEqual(readinessMeta({ ready: true, businessLetter: { ready: false, missingFields: ["issuer.seat"] } }), ["badge-green", "Produktivbereit"]);
+});
+test("businessLetterView: älteres Backend ohne Block oder kaputte Form → null (kein Block, kein Raten)", () => {
+  assert.equal(businessLetterView({ ready: false }), null);
+  assert.equal(businessLetterView(null), null);
+  assert.equal(businessLetterView({ businessLetter: { missingFields: ["issuer.seat"] } }), null);
+  // „ready:true" mit gemeldeten Lücken gilt nicht als vollständig.
+  assert.equal(businessLetterView({ businessLetter: { ready: true, missingFields: ["issuer.seat"] } }).ready, false);
+});
+test("Readiness-Karte: Block nur mit Serverdaten, ohne Werte, unter den bestehenden Blöcken", async () => {
+  const fs = await import("node:fs");
+  const src = fs.readFileSync(new URL("../pages/admin/AdminBackfillPage.jsx", import.meta.url), "utf8");
+  assert.match(src, /const briefangaben = businessLetterView\(readiness\);/);
+  assert.match(src, /\{briefangaben && \(\s*<div className="adm-readiness-block" id="adm-business-letter">/);
+  assert.match(src, /<ChipList items=\{briefangaben\.missing\} \/>/);
+  assert.ok(src.indexOf('id="adm-business-letter"') > src.indexOf("readiness.placeholderFields.length > 0"), "Block steht vor den Platzhaltern");
 });

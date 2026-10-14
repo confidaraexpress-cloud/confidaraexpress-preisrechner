@@ -832,3 +832,11 @@ export const getAdminPreliveMailPreview = (query = {}) =>
   apiFetch(`${PRELIVE_PATH}/mail-preview${buildQuery(query, PRELIVE_MAIL_PREVIEW_PARAMS)}`, { auth: true });
 export const getAdminPreliveCleanup = () => apiFetch(`${PRELIVE_PATH}/cleanup`, { auth: true });
 export const runAdminPreliveCleanup = (body) => preliveLongPost(`${PRELIVE_PATH}/cleanup`, body);
+
+// Nur Admin: vorbereitete Rechtsentwuerfe lesen, keine Freigabe oder Aenderung.
+export function listAdminLegalDrafts() {
+  return apiFetch("/admin/legal-drafts", { auth: true });
+}
+export function getAdminLegalDraft(id) {
+  return apiFetch("/admin/legal-drafts/" + encodeURIComponent(id), { auth: true });
+}

@@ -107,7 +107,7 @@ export function TermsModule({
         <span className="booking-agb-text">
           Ich bestätige die oben genannten Sendungsdaten und stimme den{" "}
           {agbLink}
-          {termsDoc ? <> (Stand {termsDoc.version}){labelSuffix ? <> {labelSuffix}</> : null}</> : null}{" "}
+          {termsDoc ? <> <span className="booking-nowrap">(Stand {termsDoc.version})</span>{labelSuffix ? <> {labelSuffix}</> : null}</> : null}{" "}
           zu. Mir ist bewusst, dass diese Bestellung verbindlich ist und eine Zahlungsverpflichtung auslöst.
         </span>
       </label>

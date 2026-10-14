@@ -365,3 +365,11 @@ test("(24) der Checkout zeigt die Hinweise VOR den Bestätigungen, aus dem Serve
   // Weiterhin genau zwei Checkboxen (siehe 12) — die Hinweise sind keine dritte Zustimmung.
   assert.equal((termsCode.match(/type="checkbox"/g) || []).length, 2);
 });
+
+test("25 — „(Stand …)“ bricht nicht mitten im Datum um (Checkbox und Dokumentliste)", () => {
+  assert.match(termsCode, /<span className="booking-nowrap">\(Stand \{termsDoc\.version\}\)<\/span>/,
+    "die Fassung in der AGB-Bestätigung ist nicht gegen Umbruch geschützt");
+  const css = read("../styles/calculator.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.match(css, /\.booking-nowrap \{ white-space: nowrap; \}/);
+  assert.match(css, /\.booking-legal-docs-version \{[^}]*white-space: nowrap;/);
+});

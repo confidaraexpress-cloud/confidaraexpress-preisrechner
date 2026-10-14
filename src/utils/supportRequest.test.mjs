@@ -29,6 +29,9 @@ import {
   supportMessageState,
   supportSubjectState,
   supportSuccessMessage,
+  SUPPORT_DAMAGE_CATEGORY,
+  SUPPORT_DAMAGE_TEXTS,
+  supportShipmentOptions,
 } from "./supportRequest.mjs";
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
@@ -45,10 +48,11 @@ const ok = (over = {}) => ({
 
 /* ── Kategorien ──────────────────────────────────────────────────────────── */
 
-test("1 — genau sieben Kategorien mit den festgelegten technischen Werten", () => {
+test("1 — genau acht Kategorien mit den festgelegten technischen Werten (Paket G: damage)", () => {
   assert.deepEqual([...SUPPORT_CATEGORY_VALUES],
-    ["booking", "tracking", "invoice", "cancellation", "account", "technical", "other"]);
-  assert.equal(SUPPORT_CATEGORIES.length, 7);
+    ["booking", "tracking", "damage", "invoice", "cancellation", "account", "technical", "other"]);
+  assert.equal(SUPPORT_CATEGORIES.length, 8);
+  assert.equal(supportCategoryLabel("damage"), "Schaden oder Verlust");
 });
 
 test("2 — deutsche Kategorielabels exakt wie festgelegt", () => {
@@ -120,6 +124,44 @@ test("9 — Mass Assignment ist ausgeschlossen (kein status, keine ID, keine Tic
     adminNote: "x", revision: 9, id: 7,
   }));
   assert.deepEqual(Object.keys(body).sort(), ["category", "message", "subject"]);
+});
+
+test("9b — Schaden oder Verlust: gewählte eigene Sendung Pflicht (interne ID), AB-Nummer nur Beschriftung", () => {
+  assert.equal(SUPPORT_DAMAGE_CATEGORY, "damage");
+  const ohne = supportFormState(ok({ category: "damage" }));
+  assert.equal(ohne.reference.required, true);
+  assert.equal(ohne.canSubmit, false, "ohne Sendung absendbar");
+  for (const bad of ["", "0", "1.5", "7abc", "CE-AB26-00001"]) {
+    assert.equal(supportFormState(ok({ category: "damage", shipmentId: bad })).canSubmit, false, bad);
+  }
+  assert.equal(supportFormState(ok({ category: "damage", shipmentId: "42" })).canSubmit, true);
+  // Andere Kategorien verlangen keine Sendung und senden keine.
+  assert.equal(supportFormState(ok()).reference.required, false);
+  assert.deepEqual(Object.keys(buildSupportRequestBody(ok({ shipmentId: "42" }))).sort(), ["category", "message", "subject"]);
+  const body = buildSupportRequestBody(ok({ category: "damage", shipmentId: "42", shipment_id: 9, orderConfirmationNumber: "CE-AB26-00001" }));
+  assert.deepEqual(body, { category: "damage", subject: "Frage zur Rechnung", message: "Ich habe eine Frage zu meiner letzten Rechnung.", shipmentId: 42 });
+  assert.throws(() => buildSupportRequestBody(ok({ category: "damage", shipmentId: "x" })), /invalid_shipment/);
+  // Auswahl aus der eigenen Liste: AB-Nummer, Datum, Carrier — Zeilen ohne gültige ID entfallen.
+  const optionen = supportShipmentOptions([
+    { id: 42, order_confirmation_number: "CE-AB26-00042", created_at: "2026-10-14T08:00:00Z", selected_carrier: "dhl" },
+    { id: 7, order_confirmation_number: null, created_at: "2026-10-01T08:00:00Z", selected_carrier: "ups" },
+    { id: "kaputt" }, null,
+  ]);
+  assert.deepEqual(optionen, [
+    { value: "42", label: "CE-AB26-00042 · 14.10.2026 · DHL" },
+    { value: "7", label: "Sendung ohne Vorgangsnummer · 01.10.2026 · UPS" },
+  ]);
+  assert.deepEqual(supportShipmentOptions(undefined), []);
+  // Fehlercodes des Servers werden übersetzt — unbekannt und fremd mit derselben Meldung.
+  assert.match(mapSupportError(400, { code: "SUPPORT_SHIPMENT_NOT_FOUND" }), /in Ihrem Konto nicht/);
+  assert.equal(mapSupportError(400, { code: "SUPPORT_SHIPMENT_REFERENCE_INVALID" }), "Bitte wählen Sie die betroffene Sendung aus.");
+  // Kein Fristversprechen, keine Rechtsauskunft im Hinweis.
+  assert.ok(!/\d+\s*(Tage|Stunden)|§|HGB|garantier/i.test(SUPPORT_DAMAGE_TEXTS.hint), SUPPORT_DAMAGE_TEXTS.hint);
+  // Der Dialog zeigt Auswahl und Hinweis nur bei dieser Kategorie und reicht die ID weiter.
+  assert.match(dialogJsx, /\{isDamage && \(/);
+  assert.match(dialogJsx, /createSupportRequest\(\{ category, subject, message, shipmentId \}\)/);
+  assert.match(apiJs, /buildSupportRequestBody\(\{ category, subject, message, shipmentId \}\)/);
+  assert.match(apiJs, /apiFetch\(`\/kunde\/shipments\?limit=50`, \{ auth: true, signal \}\)/);
 });
 
 test("10 — eine ungültige Kategorie wird fail-closed abgelehnt (kein Fallback)", () => {
@@ -278,16 +320,19 @@ test("28 — der Kundendialog sendet weiterhin GENAU einen POST je Absenden", ()
   assert.ok(!/retry|erneut senden/i.test(dialogJsx.replace(/\{\/\*[\s\S]*?\*\/\}/g, "")), "automatischer Retry im Dialog");
 });
 
-test("29 — der Kundenpfad kennt weiterhin nur category/subject/message", () => {
-  // Die Nachbesserung hat shipment_id/invoice_id im Schema ergänzt — im Kundenformular
-  // dürfen sie NICHT auftauchen und nicht sendbar sein.
-  for (const forbidden of ["shipmentId", "invoiceId", "shipment_id", "invoice_id", "adminNote", "status"]) {
+test("29 — der Kundenpfad kennt category/subject/message — eine Sendung nur bei „Schaden oder Verlust“", () => {
+  // Die Nachbesserung hat shipment_id/invoice_id im Schema ergänzt. invoice_id taucht im
+  // Kundenformular nie auf. Seit Go-Live Paket G sendet „Schaden oder Verlust" die gewählte
+  // eigene Sendung (interne ID, serverseitig auf Eigentum geprüft) — jede andere Kategorie nicht.
+  for (const forbidden of ["invoiceId", "shipment_id", "invoice_id", "adminNote", "status"]) {
     assert.ok(!new RegExp(`\\b${forbidden}\\b`).test(apiJs), `die API-Schicht kennt ${forbidden}`);
   }
   const body = buildSupportRequestBody({
     ...ok(), shipmentId: 7, invoiceId: 9, shipment_id: 7, invoice_id: 9,
   });
   assert.deepEqual(Object.keys(body).sort(), ["category", "message", "subject"]);
+  const schaden = buildSupportRequestBody({ ...ok({ category: "damage" }), shipmentId: 7, invoiceId: 9, invoice_id: 9 });
+  assert.deepEqual(Object.keys(schaden).sort(), ["category", "message", "shipmentId", "subject"]);
 });
 
 test("30 — der Support-Einstieg der Sidebar bleibt eine Textaktion ohne Postfach", () => {

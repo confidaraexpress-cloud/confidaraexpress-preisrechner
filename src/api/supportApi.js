@@ -10,19 +10,26 @@ import { idempotencyHeader } from "../utils/idempotencyKey.mjs";
 //
 // Pfadbasis wie die übrigen Kundenendpunkte des Bereichs (/kunde/..., ohne /api) —
 // dieselbe Konvention wie /kunde/shipments und die Stornierungsanfrage. Der Body
-// enthält ausschließlich category/subject/message (zentral über
-// buildSupportRequestBody, einzige Quelle der Wahrheit) — keine user_id, kein Status,
-// keine Ticketnummer. Auth und das 401/403-Handling laufen zentral über apiFetch.
+// enthält ausschließlich category/subject/message, bei „Schaden oder Verlust" zusätzlich
+// die gewählte Sendung (zentral über buildSupportRequestBody, einzige Quelle der Wahrheit)
+// — keine user_id, kein Status, keine Ticketnummer. Auth und das 401/403-Handling laufen
+// zentral über apiFetch.
 //
 // Gibt die rohe Response zurück; der Aufrufer wertet Status/JSON selbst aus
 // (konsistent mit den übrigen Callern) — u. a. 400 Validierung, 429 Rate-Limit.
 // Kein Cache, kein Logging von Eingaben oder Antwortdaten.
-export function createSupportRequest({ category, subject, message }) {
+export function createSupportRequest({ category, subject, message, shipmentId }) {
   return apiFetch(`/kunde/support-requests`, {
     method: "POST",
     auth: true,
-    body: JSON.stringify(buildSupportRequestBody({ category, subject, message })),
+    body: JSON.stringify(buildSupportRequestBody({ category, subject, message, shipmentId })),
   });
+}
+
+// Auswahlliste für „Schaden oder Verlust": die letzten Sendungen des eigenen Kontos über
+// denselben Listenendpunkt wie die Sendungsübersicht (mandantengebunden, keine neue Route).
+export function listOwnShipmentsForSupport({ signal } = {}) {
+  return apiFetch(`/kunde/shipments?limit=50`, { auth: true, signal });
 }
 
 // ── Nachrichtenverlauf (Kunde) ───────────────────────────────────────────────

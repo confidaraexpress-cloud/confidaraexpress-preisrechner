@@ -648,6 +648,16 @@ export function backfillInvoiceDocument(id) {
   });
 }
 
+// ── Rechtstexte (nur Admin, nur lesend) ─────────────────────────────────────
+// Die vorbereiteten Entwürfe G1–G9 lesen — keine Freigabe, keine Änderung. Steht neben
+// dem Backfill, weil der Einstieg auf derselben Seite liegt („Interne Vorschau-PDFs").
+export function listAdminLegalDrafts() {
+  return apiFetch("/admin/legal-drafts", { auth: true });
+}
+export function getAdminLegalDraft(id) {
+  return apiFetch("/admin/legal-drafts/" + encodeURIComponent(id), { auth: true });
+}
+
 // ── Öffentliche Adminantwort im Supportverlauf ───────────────────────────────
 // POST /admin/support-requests/:id/messages — speichert eine für den Kunden
 // SICHTBARE Antwort und erzeugt (serverseitig, in derselben Transaktion) dessen
@@ -832,11 +842,3 @@ export const getAdminPreliveMailPreview = (query = {}) =>
   apiFetch(`${PRELIVE_PATH}/mail-preview${buildQuery(query, PRELIVE_MAIL_PREVIEW_PARAMS)}`, { auth: true });
 export const getAdminPreliveCleanup = () => apiFetch(`${PRELIVE_PATH}/cleanup`, { auth: true });
 export const runAdminPreliveCleanup = (body) => preliveLongPost(`${PRELIVE_PATH}/cleanup`, body);
-
-// Nur Admin: vorbereitete Rechtsentwuerfe lesen, keine Freigabe oder Aenderung.
-export function listAdminLegalDrafts() {
-  return apiFetch("/admin/legal-drafts", { auth: true });
-}
-export function getAdminLegalDraft(id) {
-  return apiFetch("/admin/legal-drafts/" + encodeURIComponent(id), { auth: true });
-}

@@ -41,7 +41,6 @@ const NAV_GROUPS = [
     label: "Verwaltung und Protokoll",
     items: [
       { to: "/admin/invoices/backfill", label: "Interne Vorschau-PDFs" },
-      { to: "/admin/legal-drafts", label: "Rechtstexte – Vorschau" },
       { to: "/admin/audit-logs", label: "Protokoll" },
     ],
   },

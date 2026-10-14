@@ -14,7 +14,7 @@ const seite = (f) => ohneKommentare(read(`../pages/admin/${f}`));
 
 const ZIELE = ["/admin", "/admin/users", "/admin/partners", "/admin/shipments", "/admin/invoices",
   "/admin/support-requests", "/admin/cancellation-requests", "/admin/reconciliation",
-  "/admin/invoices/backfill", "/admin/legal-drafts", "/admin/audit-logs"];
+  "/admin/invoices/backfill", "/admin/audit-logs"];
 
 test("1 — Sidebar: vier benannte Gruppen, jedes bisherige Ziel genau einmal, `end`-Regeln unverändert", () => {
   const src = ohneKommentare(read("../components/layout/AdminSidebar.jsx"));

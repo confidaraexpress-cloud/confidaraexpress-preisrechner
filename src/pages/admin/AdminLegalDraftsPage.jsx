@@ -1,82 +1,21 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { AdminBackLink } from "../../components/admin/AdminBackLink";
+import { LegalBlocks } from "../../components/legal/LegalMarkdown";
+import { headingIds, parseLegalMarkdown } from "../../utils/legalMarkdown.mjs";
 import { listAdminLegalDrafts, getAdminLegalDraft } from "../../api/adminApi";
 
-// Nur lesende Entwurfsvorschau. Geltende AGB kommen weiterhin aus /api/legal/current.
-// Markdown wird als React-Text gerendert (kein innerHTML, keine Script-Ausfuehrung).
-function Inline({ value }) {
-  const pieces = String(value || "").split(/(\*\*[^*]+\*\*|\x60[^\x60]+\x60|\[[^\]]+\]\(https?:\/\/[^)]+\))/g);
-  return pieces.filter(Boolean).map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**")) return <strong key={i}>{part.slice(2, -2)}</strong>;
-    const tick = String.fromCharCode(96);
-    if (part.startsWith(tick) && part.endsWith(tick)) return <code key={i}>{part.slice(1, -1)}</code>;
-    const link = /^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/.exec(part);
-    if (link) return <a key={i} href={link[2]} target="_blank" rel="noopener noreferrer">{link[1]}</a>;
-    return <React.Fragment key={i}>{part}</React.Fragment>;
-  });
-}
+// Nur lesende Ansicht der ARBEITSFASSUNGEN G1–G9 (mit allen Vermerken und offenen
+// Punkten). Geltende Fassungen kommen weiterhin aus der Legal-Registry.
+// Gesetzt mit demselben Renderer wie die Rechtsseiten (components/legal/LegalMarkdown):
+// kein innerHTML, keine Script-Ausführung, offene Punkte ⟦…⟧ ausgezeichnet.
 
-function MarkdownPreview({ markdown }) {
-  const lines = String(markdown || "").replace(/\r\n/g, "\n").split("\n");
-  const blocks = [];
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
-    const key = i;
-    if (!line.trim()) { i += 1; continue; }
-    if (line.startsWith(String.fromCharCode(96).repeat(3))) {
-      const code = [];
-      i += 1;
-      while (i < lines.length && !lines[i].startsWith(String.fromCharCode(96).repeat(3))) code.push(lines[i++]);
-      if (i < lines.length) i += 1;
-      blocks.push(<pre key={key}><code>{code.join("\n")}</code></pre>);
-      continue;
-    }
-    const heading = /^(#{1,6})\s+(.+)$/.exec(line);
-    if (heading) {
-      const H = "h" + Math.min(heading[1].length + 1, 6);
-      blocks.push(<H key={key}><Inline value={heading[2]} /></H>);
-      i += 1;
-      continue;
-    }
-    if (/^---+\s*$/.test(line)) { blocks.push(<hr key={key} />); i += 1; continue; }
-    if (line.trimStart().startsWith("|")) {
-      const rows = [];
-      while (i < lines.length && lines[i].trimStart().startsWith("|")) {
-        const row = lines[i].trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
-        if (!row.every((cell) => /^:?-{3,}:?$/.test(cell))) rows.push(row);
-        i += 1;
-      }
-      if (rows.length) {
-        blocks.push(
-          <div className="adm-ld-table-scroll" key={key}>
-            <table>
-              <caption className="sr-only">Tabelle des Rechtsentwurfs</caption>
-              <thead><tr>{rows[0].map((cell, j) => <th key={j}><Inline value={cell} /></th>)}</tr></thead>
-              <tbody>{rows.slice(1).map((row, r) =>
-                <tr key={r}>{row.map((cell, j) => <td key={j}><Inline value={cell} /></td>)}</tr>
-              )}</tbody>
-            </table>
-          </div>
-        );
-      }
-      continue;
-    }
-    if (/^\s*>/.test(line)) {
-      blocks.push(<blockquote key={key}><Inline value={line.replace(/^\s*>\s?/, "")} /></blockquote>);
-      i += 1; continue;
-    }
-    const item = /^(\s*)([-*]|\d+[.)])\s+(.+)$/.exec(line);
-    if (item) {
-      blocks.push(<p key={key} className="adm-ld-list-line">
-        <span aria-hidden="true">{item[2]}</span> <Inline value={item[3]} />
-      </p>);
-      i += 1; continue;
-    }
-    blocks.push(<p key={key}><Inline value={line} /></p>);
-    i += 1;
-  }
-  return <article className="adm-ld-markdown">{blocks}</article>;
+function DraftDocument({ markdown }) {
+  const { blocks, ids } = useMemo(() => {
+    const b = parseLegalMarkdown(markdown);
+    return { blocks: b, ids: headingIds(b) };
+  }, [markdown]);
+  return <article className="legal-sheet adm-ld-sheet"><LegalBlocks blocks={blocks} ids={ids} /></article>;
 }
 
 const GROUPS = ["Kunden", "Partner", "Intern"];
@@ -109,7 +48,7 @@ export default function AdminLegalDraftsPage() {
         const data = await response.json().catch(() => null);
         if (!active) return;
         if (!response.ok || typeof data?.markdown !== "string") {
-          setDetail({ loading: false, error: "Dieser Entwurf ist noch nicht abrufbar. Bitte prüfen Sie Backend-PR #427.", markdown: "", title: "" });
+          setDetail({ loading: false, error: "Dieser Entwurf ist in diesem Backend noch nicht abrufbar.", markdown: "", title: "" });
         } else {
           setDetail({ loading: false, error: "", markdown: data.markdown, title: data.title || "Rechtsentwurf" });
         }
@@ -120,8 +59,9 @@ export default function AdminLegalDraftsPage() {
 
   return (
     <div className="adm-page">
-      <PageHeader variant="admin" title="Rechtstexte – Vorschau"
-        subtitle="Die vorhandenen Entwürfe G1–G9 lesen und prüfen, ohne die gültigen Vertragsfassungen zu verändern." />
+      <PageHeader variant="admin" title="Rechtstexte – Arbeitsfassungen"
+        backLink={<AdminBackLink to="/admin/invoices/backfill" label="Zurück zu den internen Vorschauen" />}
+        subtitle="Die vorbereiteten Entwürfe G1–G9 mit allen Vermerken und offenen Punkten lesen, ohne die gültigen Vertragsfassungen zu verändern." />
       <div className="adm-note adm-note--warning adm-ld-warning" role="note">
         <strong>ENTWURF – nicht veröffentlicht und rechtlich noch nicht freigegeben.</strong>
         <span>Die öffentlichen Seiten /agb und /datenschutz sowie die aktive Buchungsfassung bleiben unverändert.</span>
@@ -156,7 +96,7 @@ export default function AdminLegalDraftsPage() {
                   <div><span className="adm-ld-draft-label">ENTWURF v0.1</span><h2>{detail.title}</h2></div>
                   <button type="button" className="btn btn-outline btn-sm" onClick={() => window.print()}>Drucken</button>
                 </div>
-                <MarkdownPreview markdown={detail.markdown} />
+                <DraftDocument markdown={detail.markdown} />
               </>
             )}
           </div>

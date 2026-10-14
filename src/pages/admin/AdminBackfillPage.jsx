@@ -110,8 +110,21 @@ function ReadinessCard({ readiness, loading, error, onReload }) {
                 </span>
                 {briefangaben.ready ? (
                   <span className="adm-muted">vollständig</span>
-                ) : (
+                ) : briefangaben.placeholders.length === 0 ? (
                   <ChipList items={briefangaben.missing} />
+                ) : (
+                  <>
+                    {briefangaben.missing.length > 0 && (
+                      <div className="adm-readiness-sub">
+                        <span className="adm-readiness-sub-label">Fehlt:</span>
+                        <ChipList items={briefangaben.missing} />
+                      </div>
+                    )}
+                    <div className="adm-readiness-sub">
+                      <span className="adm-readiness-sub-label">Platzhalter (in Mail-Fußzeilen ausgeblendet):</span>
+                      <ChipList items={briefangaben.placeholders} />
+                    </div>
+                  </>
                 )}
               </div>
             )}

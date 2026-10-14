@@ -83,12 +83,19 @@ test("backfillOutcomeMessage: incomplete erklärt fehlende historische Daten (ke
 // ── Geschäftsbriefangaben (§ 35a GmbHG, Go-Live Paket D) ────────────────────────
 test("businessLetterView: fehlende Angaben als Liste, vollständig als ready — rein informativ", () => {
   const offen = businessLetterView({ ready: true, businessLetter: { ready: false, registerRequired: true, missingFields: ["issuer.seat", "issuer.registerNumber"] } });
-  assert.deepEqual(offen, { ready: false, registerRequired: true, missing: ["issuer.seat", "issuer.registerNumber"] });
+  assert.deepEqual(offen, { ready: false, registerRequired: true, missing: ["issuer.seat", "issuer.registerNumber"], placeholders: [] });
   assert.equal(fieldLabel("issuer.seat"), "Sitz der Gesellschaft");
-  assert.deepEqual(businessLetterView({ businessLetter: { ready: true, registerRequired: true, missingFields: [] } }),
-    { ready: true, registerRequired: true, missing: [] });
+  assert.deepEqual(businessLetterView({ businessLetter: { ready: true, registerRequired: true, missingFields: [], placeholderFields: [] } }),
+    { ready: true, registerRequired: true, missing: [], placeholders: [] });
   // Die Gesamtbewertung bleibt unberührt: der Block ändert readinessMeta nicht.
   assert.deepEqual(readinessMeta({ ready: true, businessLetter: { ready: false, missingFields: ["issuer.seat"] } }), ["badge-green", "Produktivbereit"]);
+});
+test("businessLetterView: Platzhalterwerte als eigene Liste — nur Feldnamen, nie vollständig", () => {
+  const v = businessLetterView({ businessLetter: { ready: false, registerRequired: true, missingFields: [],
+    placeholderFields: ["issuer.registerCourt", "issuer.registerNumber", 7, ""] } });
+  assert.deepEqual(v, { ready: false, registerRequired: true, missing: [], placeholders: ["issuer.registerCourt", "issuer.registerNumber"] });
+  // „ready:true" mit gemeldeten Platzhaltern gilt nicht als vollständig.
+  assert.equal(businessLetterView({ businessLetter: { ready: true, missingFields: [], placeholderFields: ["issuer.name"] } }).ready, false);
 });
 test("businessLetterView: älteres Backend ohne Block oder kaputte Form → null (kein Block, kein Raten)", () => {
   assert.equal(businessLetterView({ ready: false }), null);
@@ -96,6 +103,8 @@ test("businessLetterView: älteres Backend ohne Block oder kaputte Form → null
   assert.equal(businessLetterView({ businessLetter: { missingFields: ["issuer.seat"] } }), null);
   // „ready:true" mit gemeldeten Lücken gilt nicht als vollständig.
   assert.equal(businessLetterView({ businessLetter: { ready: true, missingFields: ["issuer.seat"] } }).ready, false);
+  // Backend ohne `placeholderFields` (Stand vor dem Nachtrag): leere Liste, kein Absturz.
+  assert.deepEqual(businessLetterView({ businessLetter: { ready: true, missingFields: [] } }).placeholders, []);
 });
 test("Readiness-Karte: Block nur mit Serverdaten, ohne Werte, unter den bestehenden Blöcken", async () => {
   const fs = await import("node:fs");
@@ -103,5 +112,6 @@ test("Readiness-Karte: Block nur mit Serverdaten, ohne Werte, unter den bestehen
   assert.match(src, /const briefangaben = businessLetterView\(readiness\);/);
   assert.match(src, /\{briefangaben && \(\s*<div className="adm-readiness-block" id="adm-business-letter">/);
   assert.match(src, /<ChipList items=\{briefangaben\.missing\} \/>/);
-  assert.ok(src.indexOf('id="adm-business-letter"') > src.indexOf("readiness.placeholderFields.length > 0"), "Block steht vor den Platzhaltern");
+  assert.match(src, /<ChipList items=\{briefangaben\.placeholders\} \/>/);
+  assert.ok(src.indexOf('id="adm-business-letter"') > src.indexOf("readiness.placeholderFields.length > 0"), "Block steht nach den Platzhaltern der Rechnungsbereitschaft");
 });

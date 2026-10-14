@@ -872,6 +872,10 @@
 .adm-readiness-block { margin-top: var(--ce-space-3); }
 .adm-readiness-label { display: block; font-size: var(--ce-text-label-size); font-weight: 600; line-height: var(--ce-text-label-line); color: var(--ce-color-text-secondary); margin-bottom: 6px; }
 .adm-readiness-label-warn { color: var(--ce-color-status-error-fg); }
+/* Geschäftsbriefangaben: „Fehlt" und „Platzhalter" je in einer eigenen Zeile. */
+.adm-readiness-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.adm-readiness-sub + .adm-readiness-sub { margin-top: 6px; }
+.adm-readiness-sub-label { font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-secondary); }
 .adm-chip-wrap { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 /* Die Aktionsspalte ist so breit wie ihr Knopf — der Rest gehört den Daten. */
 .adm-actions-col { width: 1%; }

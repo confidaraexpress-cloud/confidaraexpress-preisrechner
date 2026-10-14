@@ -308,8 +308,11 @@ h1, h2, h3, h4 { font-family: var(--ce-font-sans); font-weight: 600; }
 .legal-ident { overflow-wrap: break-word; }
 .legal-table-wrap { margin: 0 0 var(--ce-space-4); max-width: 100%; overflow-x: auto; }
 .legal-table-wrap:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+/* Die globale Regel `table { min-width: 480px }` (dashboard.css) gilt hier nicht: Rechtstabellen
+   brechen um bzw. werden auf dem Smartphone zu Karten. */
 .legal-table {
   width: 100%;
+  min-width: 0;
   border-collapse: collapse;
   font-size: var(--ce-text-body-size);
   line-height: var(--ce-text-body-line);
@@ -322,7 +325,17 @@ h1, h2, h3, h4 { font-family: var(--ce-font-sans); font-weight: 600; }
   vertical-align: top;
   overflow-wrap: break-word;
 }
-.legal-table th { background: var(--ce-color-surface-muted); font-weight: 600; }
+/* Auch die globalen Zellregeln (dashboard.css: feste Höhe 40/56 px, Kopf ohne Umbruch) gelten
+   hier nicht — Rechtstext bestimmt seine Höhe selbst. */
+.legal-table th, .legal-table td { height: auto; }
+.legal-table th {
+  background: var(--ce-color-surface-muted);
+  font-size: var(--ce-text-body-size);
+  font-weight: 600;
+  line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-primary);
+  white-space: normal;
+}
 /* Entwurfsmarken — nur in der geschützten Vorschau sichtbar; eine veröffentlichte
    Fassung enthält keine (der Server lehnt sie bei der Eintragung ab). */
 .legal-mark {
@@ -343,7 +356,8 @@ h1, h2, h3, h4 { font-family: var(--ce-font-sans); font-weight: 600; }
    jede Zelle trägt ihre Spaltenbezeichnung. */
 @media (max-width: 600px) {
   .legal-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .legal-table, .legal-table tbody, .legal-table tr, .legal-table td { display: block; width: 100%; }
+  .legal-table, .legal-table tbody, .legal-table tr, .legal-table td { display: block; width: auto; box-sizing: border-box; }
+  .legal-table { width: 100%; }
   .legal-table tr { margin-bottom: var(--ce-space-3); border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-sm); }
   .legal-table td { border: 0; border-bottom: 1px solid var(--border-hairline); }
   .legal-table td:last-child { border-bottom: 0; }
@@ -440,3 +454,6 @@ h1, h2, h3, h4 { font-family: var(--ce-font-sans); font-weight: 600; }
    nicht am Container: die Assetdatei bringt width/height="256" mit. */
 .loading-screen-mark { justify-content: center; margin: 0 auto 16px; }
 .loading-screen-mark .ce-brandmark-img { width: 64px; }
+/* Inhaltsverzeichnis mit zwei Ebenen (AGB: Teile und §§) und PDF-Knopf über dem Text. */
+.legal-toc-sub { padding-left: var(--ce-space-4); }
+.legal-doc-actions--top { margin: 0 0 var(--ce-space-5); justify-content: flex-end; }

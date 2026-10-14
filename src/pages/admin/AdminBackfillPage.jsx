@@ -64,6 +64,7 @@ function LegalTextsCard() {
           nicht freigegeben. Die öffentlichen Seiten und die aktive Buchungsfassung bleiben unverändert.
         </p>
         <div className="adm-legal-texts-links">
+          <Link className="btn btn-primary btn-sm" to="/vorschau/rechtstexte/agb">Seitenvorschau (wie veröffentlicht)</Link>
           <Link className="btn btn-outline btn-sm" to="/admin/legal-drafts">Arbeitsfassungen G1–G9</Link>
         </div>
       </div>

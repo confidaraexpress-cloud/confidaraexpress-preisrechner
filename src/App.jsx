@@ -52,6 +52,7 @@ const AdminUsersPage = React.lazy(() => import("./pages/admin/AdminUsersPage"));
 const AdminUserDetailPage = React.lazy(() => import("./pages/admin/AdminUserDetailPage"));
 const AdminInvoicesPage = React.lazy(() => import("./pages/admin/AdminInvoicesPage"));
 const AdminBackfillPage = React.lazy(() => import("./pages/admin/AdminBackfillPage"));
+const AdminLegalDraftsPage = React.lazy(() => import("./pages/admin/AdminLegalDraftsPage"));
 const AdminInvoiceDetailPage = React.lazy(() => import("./pages/admin/AdminInvoiceDetailPage"));
 const AdminCancellationRequestsPage = React.lazy(() => import("./pages/admin/AdminCancellationRequestsPage"));
 const AdminCancellationRequestDetailPage = React.lazy(() => import("./pages/admin/AdminCancellationRequestDetailPage"));
@@ -174,6 +175,7 @@ export default function App() {
           <Route path="/admin/invoices"     element={<AdminInvoicesPage />} />
           {/* Statische Route vor '/:id' — React Router rankt statisch > dynamisch; Reihenfolge zusätzlich klar. */}
           <Route path="/admin/invoices/backfill" element={<AdminBackfillPage />} />
+          <Route path="/admin/legal-drafts" element={<AdminLegalDraftsPage />} />
           <Route path="/admin/invoices/:id" element={<AdminInvoiceDetailPage />} />
           <Route path="/admin/cancellation-requests"     element={<AdminCancellationRequestsPage />} />
           <Route path="/admin/cancellation-requests/:id" element={<AdminCancellationRequestDetailPage />} />

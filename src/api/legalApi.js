@@ -15,23 +15,12 @@
 // wenn das Token gerade abgelaufen ist — der zentrale 401/403-Handler bleibt unberührt.
 import { API, apiFetch } from "./client";
 
-// Gibt die rohe Response zurück; der Aufrufer wertet Status und Body selbst aus (konsistent mit
-// den übrigen Callern dieses Projekts). 200 → `{ enabled:false }` oder `{ enabled:true, setKey,
-// documents }`; 503 → `LEGAL_DOCUMENTS_NOT_CONFIGURED` (Schranke an, Tresor nicht auslieferbar).
-export function getLegalBookingContext({ signal } = {}) {
-  return apiFetch(`/api/legal/booking-context`, { signal });
-}
+// ── Öffentliche Rechtsseiten (/agb, /datenschutz, /partnervereinbarung) ─────────
+// Welche Fassung gilt, sagt GET /api/legal/current (getCurrentLegalSet, unten); trägt sie eine
+// Webfassung, steht deren Pfad in `contentPath` (utils/legalPageState.mjs).
 
-// ── Öffentliche Rechtsseiten (/agb, /datenschutz) ───────────────────────────────
-// GET /api/legal/current — welche Fassungen gelten gerade; trägt eine Fassung eine
-// Webfassung, steht ihr Abrufpfad in `contentPath` (utils/legalPageState.mjs).
-// Öffentlich, ohne Auth: Rechtsdokumente sind für jeden lesbar.
-export function getLegalCurrent({ signal } = {}) {
-  return apiFetch(`/api/legal/current`, { signal });
-}
-
-// GET …/inhalt — die Webfassung genau dieser Fassung. Der Pfad kommt aus der
-// Serverantwort und ist vorher geprüft (safeContentPath).
+// GET …/inhalt — die Webfassung genau dieser Fassung. Öffentlich, ohne Auth; der Pfad kommt
+// aus der Serverantwort und ist vorher geprüft (safeContentPath).
 export function getLegalContent(contentPath, { signal } = {}) {
   return apiFetch(contentPath, { signal });
 }
@@ -39,4 +28,18 @@ export function getLegalContent(contentPath, { signal } = {}) {
 /** Adresse einer registrierten Fassung (PDF) am API-Host — oder null. */
 export function legalDocumentUrl(documentPath) {
   return typeof documentPath === "string" && documentPath.startsWith("/api/legal/") ? `${API}${documentPath}` : null;
+}
+
+// Gibt die rohe Response zurück; der Aufrufer wertet Status und Body selbst aus (konsistent mit
+// den übrigen Callern dieses Projekts). 200 → `{ enabled:false }` oder `{ enabled:true, setKey,
+// documents }`; 503 → `LEGAL_DOCUMENTS_NOT_CONFIGURED` (Schranke an, Tresor nicht auslieferbar).
+export function getLegalBookingContext({ signal } = {}) {
+  return apiFetch(`/api/legal/booking-context`, { signal });
+}
+
+// Die heute gültigen Fassungen (Paket C): die Registrierung zeigt die AGB-Fassung an, der
+// zugestimmt wird, und meldet ihren Setschlüssel als „gesehen" zurück. Öffentlich, ohne Auth.
+// 200 → `{ setId, setKey, documents }`; 503 → keine auslieferbare Fassung.
+export function getCurrentLegalSet({ signal } = {}) {
+  return apiFetch(`/api/legal/current`, { signal });
 }

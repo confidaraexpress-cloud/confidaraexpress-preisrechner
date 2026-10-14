@@ -648,6 +648,27 @@ export function backfillInvoiceDocument(id) {
   });
 }
 
+// ── Rechtstexte (nur Admin, nur lesend) ─────────────────────────────────────
+// Die vorbereiteten Entwürfe G1–G9 lesen — keine Freigabe, keine Änderung. Steht neben
+// dem Backfill, weil der Einstieg auf derselben Seite liegt („Interne Vorschau-PDFs").
+export function listAdminLegalDrafts() {
+  return apiFetch("/admin/legal-drafts", { auth: true });
+}
+export function getAdminLegalDraft(id) {
+  return apiFetch("/admin/legal-drafts/" + encodeURIComponent(id), { auth: true });
+}
+// Seitenvorschau der künftigen Rechtsseiten (abgeleitete Veröffentlichungsfassung der
+// Entwürfe, offene Punkte, PDF mit Wasserzeichen) — nichts wird registriert oder veröffentlicht.
+export function listAdminLegalPublications() {
+  return apiFetch("/admin/legal-publications", { auth: true });
+}
+export function getAdminLegalPublication(id) {
+  return apiFetch("/admin/legal-publications/" + encodeURIComponent(id), { auth: true });
+}
+export function getAdminLegalPublicationPdf(id) {
+  return apiFetch("/admin/legal-publications/" + encodeURIComponent(id) + "/pdf", { auth: true, timeoutMs: 60000 });
+}
+
 // ── Öffentliche Adminantwort im Supportverlauf ───────────────────────────────
 // POST /admin/support-requests/:id/messages — speichert eine für den Kunden
 // SICHTBARE Antwort und erzeugt (serverseitig, in derselben Transaktion) dessen
@@ -832,23 +853,3 @@ export const getAdminPreliveMailPreview = (query = {}) =>
   apiFetch(`${PRELIVE_PATH}/mail-preview${buildQuery(query, PRELIVE_MAIL_PREVIEW_PARAMS)}`, { auth: true });
 export const getAdminPreliveCleanup = () => apiFetch(`${PRELIVE_PATH}/cleanup`, { auth: true });
 export const runAdminPreliveCleanup = (body) => preliveLongPost(`${PRELIVE_PATH}/cleanup`, body);
-
-// Nur Admin: vorbereitete Rechtsentwuerfe lesen, keine Freigabe oder Aenderung.
-export function listAdminLegalDrafts() {
-  return apiFetch("/admin/legal-drafts", { auth: true });
-}
-export function getAdminLegalDraft(id) {
-  return apiFetch("/admin/legal-drafts/" + encodeURIComponent(id), { auth: true });
-}
-
-// Nur Admin: Seitenvorschau der künftigen Rechtsseiten (abgeleitete Veröffentlichungsfassung
-// der Entwürfe, offene Punkte, PDF mit Wasserzeichen) — nichts wird registriert oder veröffentlicht.
-export function listAdminLegalPublications() {
-  return apiFetch("/admin/legal-publications", { auth: true });
-}
-export function getAdminLegalPublication(id) {
-  return apiFetch("/admin/legal-publications/" + encodeURIComponent(id), { auth: true });
-}
-export function getAdminLegalPublicationPdf(id) {
-  return apiFetch("/admin/legal-publications/" + encodeURIComponent(id) + "/pdf", { auth: true, timeoutMs: 60000 });
-}

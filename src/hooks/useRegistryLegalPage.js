@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getLegalContent, getLegalCurrent } from "../api/legalApi";
+import { getCurrentLegalSet, getLegalContent } from "../api/legalApi";
 import { readLegalContent, readLegalCurrent } from "../utils/legalPageState.mjs";
 
 // Lädt für /agb bzw. /datenschutz die AKTIVE Fassung der Legal-Registry und — wenn sie
@@ -15,7 +15,7 @@ export function useRegistryLegalPage(documentType) {
     const aktuell = () => lauf === laufRef.current;
     setState({ loading: true, mode: null });
     try {
-      const r = await getLegalCurrent();
+      const r = await getCurrentLegalSet();
       let body = null;
       try { body = await r.json(); } catch { body = null; }
       if (!aktuell()) return;

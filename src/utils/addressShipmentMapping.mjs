@@ -61,7 +61,9 @@ export function mapAddressToOrderRecipient(address) {
   const a = address || {};
   return {
     company: a.company || "",
-    fullName: a.contactName || "",
+    // Neue Adressbucheinträge führen Vor- und Nachname getrennt; `contactName` ist nur noch
+    // Altwert. Zusammengesetzt (nie zerlegt), damit der Auftrag den Empfängernamen behält.
+    fullName: a.contactName || [a.firstName, a.lastName].map((x) => String(x || "").trim()).filter(Boolean).join(" "),
     streetAndNumber: a.streetAndNumber || "",
     addressAddition: a.addressAdd || "",
     postalCode: a.postalCode || "",

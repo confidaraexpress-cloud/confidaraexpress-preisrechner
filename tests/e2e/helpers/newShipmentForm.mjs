@@ -35,7 +35,7 @@
  * ausdrücklich, statt es zu überspringen.
  */
 
-import { isPostalCodeQueryable, isStreetQueryable, streetSearchTerm } from "../../../src/utils/addressValidationView.mjs";
+import { isPostalCodeQueryable, isStreetQueryable, isValidationReady, streetQueryText } from "../../../src/utils/addressValidationView.mjs";
 
 /** Vollständiger, gültiger Standardvorgang. Einzelne Werte lassen sich je
  *  Suite überschreiben; die Struktur bleibt dieselbe. */
@@ -183,11 +183,18 @@ export function erwarteteAdressvorschlaege({ absender = STANDARD_ABSENDER, empfa
       });
     }
     if (isStreetQueryable(a.country, a.zip, a.city, a.street)) {
+      // Gesucht wird mit der vollständigen Eingabe (Straße UND Hausnummer). PLZ und Ort
+      // grenzen ein, wenn sie beim Absenden schon im Formular stehen — das hängt vom
+      // Tempo der Eingabe ab und wird deshalb nicht verglichen.
       liste.push({
         name: `${seite}: Straßen zu ${a.zip}`, pfad: "/api/address/streets",
-        werte: { country: String(a.country), postalCode: String(a.zip), city: String(a.city),
-                 street: streetSearchTerm(a.street) },
+        werte: { country: String(a.country), street: streetQueryText(a.street) },
       });
+    }
+    // Die Gesamtprüfung läuft automatisch, sobald die Anschrift vollständig aussieht und
+    // eine Sekunde ruht (POST ohne Query — gezählt wird je Adresse ein Aufruf).
+    if (isValidationReady({ country: a.country, postalCode: a.zip, city: a.city, street: a.street })) {
+      liste.push({ name: `${seite}: Adressprüfung`, pfad: "/api/address/validate", werte: {} });
     }
   }
   return liste;

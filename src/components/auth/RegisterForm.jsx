@@ -7,6 +7,9 @@ import { B2B_NOTICE, B2B_ACTIVATION_NOTE } from "../../utils/registrationValidat
 // Die sichtbare Zusage „min. 8 Zeichen" kommt aus derselben Konstante wie die
 // Prüfung — Text und Regel können damit nicht auseinanderlaufen.
 import { PASSWORD_MIN_LEN } from "../../utils/passwordPolicy.mjs";
+import { AddressSuggestInput } from "../address/AddressSuggestInput";
+import { useAddressValidation } from "../../hooks/useAddressValidation";
+import { applyAddressSuggestion, cityFromSuggestion } from "../../utils/addressValidationView.mjs";
 
 // Pflichtfeld-Markierung. Das Sternchen ist rein visuell (aria-hidden) — für
 // Screenreader trägt das jeweilige Eingabefeld required/aria-required.
@@ -16,6 +19,20 @@ export function RegisterForm({ form, onChange, onRegister, loading, errors = {},
   // Nur die Länder, die ConfidaraExpress heute anbietet — die Liste kommt vom Server
   // (GET /api/shipping/launch-scope), nicht aus einer zweiten Aufzählung im Client.
   const { countries: launchCountries } = useLaunchScope();
+  // Adressvorschläge auch ohne Anmeldung — über die öffentlichen Routen mit eigener Grenze
+  // je IP und eigenem kleinen Kontingent; eine Gesamtprüfung gibt es hier nicht. Die Adresse
+  // bleibt optional, die Registrierung hängt nie an den Vorschlägen.
+  const addressHelp = useAddressValidation({
+    country: form.country, postalCode: form.zip, city: form.city, street: form.street, publicAccess: true,
+  });
+  const applyAddress = (item) => {
+    const patch = applyAddressSuggestion({ country: form.country, street: form.street }, item);
+    if (!patch.street) return;
+    addressHelp.markSelected(patch.street);
+    onChange("street", patch.street);
+    if (patch.postalCode) onChange("zip", patch.postalCode);
+    if (patch.city) onChange("city", patch.city);
+  };
   const upd = (k, v) => onChange(k, v);
   return (
     <form noValidate onSubmit={(e) => { e.preventDefault(); onRegister(); }}>
@@ -164,17 +181,18 @@ export function RegisterForm({ form, onChange, onRegister, loading, errors = {},
         <div className="auth-field-row">
           <label className="auth-field-label" htmlFor="reg-street">Straße &amp; Hausnummer</label>
         </div>
-        <div className="auth-input-wrap">
-          <input
-            id="reg-street"
-            className={`auth-input auth-input-no-icon${errors.street ? " auth-input-error" : ""}`}
-            value={form.street}
-            onChange={(e) => upd("street", e.target.value)}
-            placeholder="Musterstraße 12"
-            autoComplete="street-address"
-            aria-invalid={errors.street ? "true" : undefined}
-          />
-        </div>
+        <AddressSuggestInput
+          id="reg-street"
+          wrapClassName="auth-input-wrap"
+          inputClassName={`auth-input auth-input-no-icon${errors.street ? " auth-input-error" : ""}`}
+          value={form.street}
+          onChange={(v) => upd("street", v)}
+          onSelect={applyAddress}
+          suggestions={addressHelp.streetOptions}
+          placeholder="Musterstraße 12"
+          autoComplete="street-address"
+          invalid={Boolean(errors.street)}
+        />
         {errors.street && <span className="auth-field-error">{errors.street}</span>}
       </div>
 
@@ -200,16 +218,17 @@ export function RegisterForm({ form, onChange, onRegister, loading, errors = {},
           <div className="auth-field-row">
             <label className="auth-field-label" htmlFor="reg-city">Stadt</label>
           </div>
-          <div className="auth-input-wrap">
-            <input
-              id="reg-city"
-              className={`auth-input auth-input-no-icon${errors.city ? " auth-input-error" : ""}`}
-              value={form.city}
-              onChange={(e) => upd("city", e.target.value)}
-              autoComplete="address-level2"
-              aria-invalid={errors.city ? "true" : undefined}
-            />
-          </div>
+          <AddressSuggestInput
+            id="reg-city"
+            wrapClassName="auth-input-wrap"
+            inputClassName={`auth-input auth-input-no-icon${errors.city ? " auth-input-error" : ""}`}
+            value={form.city}
+            onChange={(v) => upd("city", v)}
+            onSelect={(item) => upd("city", cityFromSuggestion(item))}
+            suggestions={addressHelp.cityOptions}
+            autoComplete="address-level2"
+            invalid={Boolean(errors.city)}
+          />
           {errors.city && <span className="auth-field-error">{errors.city}</span>}
         </div>
         <div className="auth-field">

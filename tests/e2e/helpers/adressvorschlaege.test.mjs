@@ -5,6 +5,9 @@
 // MwSt.-Umschalter, weil die Angebote schneller als die Entprellzeit erschienen — und wurden dem Umschalter
 // zugeschrieben. `adressvorschlaegeAbgeschlossen` wartet auf genau diese Anfragen. Diese Suite prüft die
 // Wartelogik ohne Browser: eine Attrappe der Seite sendet dieselben Ereignisse wie Playwright.
+//
+// Seit der Geoapify-Umstellung (2026-10-14) gehören dazu: Orte zur PLZ, Vorschläge zur vollständigen
+// Straßeneingabe (mit Hausnummer) und je Adresse eine automatische Gesamtprüfung.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
@@ -19,31 +22,39 @@ const anfrage = (pfad, werte) => {
   return { url: () => u.toString() };
 };
 const orte = (a) => anfrage("/api/address/localities", { country: a.country, postalCode: a.zip });
-const strassen = (a, street) => anfrage("/api/address/streets",
-  { country: a.country, postalCode: a.zip, city: a.city, street });
+// PLZ und Ort hängen am Tempo der Eingabe — die Wartelogik darf sie nicht verlangen.
+const strassen = (a, street = a.street, mitKontext = true) => anfrage("/api/address/streets",
+  mitKontext ? { country: a.country, postalCode: a.zip, city: a.city, street } : { country: a.country, street });
+const pruefung = () => anfrage("/api/address/validate", {});
 const seite = () => new EventEmitter();
 const offen = (p) => p.listenerCount("requestfinished") + p.listenerCount("requestfailed");
 const mikro = () => new Promise((r) => setImmediate(r));
 
-test("A1 — der Standardvorgang erwartet je Adresse Orte und Straßen, Straßenname ohne Hausnummer", () => {
+const ALLE = () => [
+  orte(STANDARD_ABSENDER), strassen(STANDARD_ABSENDER), pruefung(),
+  orte(STANDARD_EMPFAENGER), strassen(STANDARD_EMPFAENGER, STANDARD_EMPFAENGER.street, false), pruefung(),
+];
+
+test("A1 — der Standardvorgang erwartet je Adresse Orte, Vorschläge (mit Hausnummer) und eine Prüfung", () => {
   assert.deepEqual(erwarteteAdressvorschlaege().map((e) => [e.pfad, e.werte]), [
     ["/api/address/localities", { country: "DE", postalCode: "70173" }],
-    ["/api/address/streets", { country: "DE", postalCode: "70173", city: "Berlin", street: "Hauptstrasse" }],
+    ["/api/address/streets", { country: "DE", street: "Hauptstrasse 1" }],
+    ["/api/address/validate", {}],
     ["/api/address/localities", { country: "DE", postalCode: "80331" }],
-    ["/api/address/streets", { country: "DE", postalCode: "80331", city: "Muenchen", street: "Bahnhofstrasse" }],
+    ["/api/address/streets", { country: "DE", street: "Bahnhofstrasse 9" }],
+    ["/api/address/validate", {}],
   ]);
 });
 
-test("A2 — erfüllt erst, wenn alle vier Abfragen abgeschlossen sind; Reihenfolge egal", async () => {
+test("A2 — erfüllt erst, wenn alle sechs Abfragen abgeschlossen sind; Reihenfolge egal", async () => {
   const p = seite();
   let erfuellt = false;
   const warten = adressvorschlaegeAbgeschlossen(p).then(() => { erfuellt = true; });
-  p.emit("requestfinished", strassen(STANDARD_EMPFAENGER, "Bahnhofstrasse"));
-  p.emit("requestfinished", orte(STANDARD_ABSENDER));
-  p.emit("requestfinished", orte(STANDARD_EMPFAENGER));
+  const [o1, s1, v1, o2, s2, v2] = ALLE();
+  for (const r of [s2, o1, v1, o2, v2]) p.emit("requestfinished", r);
   await mikro();
-  assert.equal(erfuellt, false, "erfüllt, obwohl die Straßenabfrage des Absenders noch aussteht");
-  p.emit("requestfinished", strassen(STANDARD_ABSENDER, "Hauptstrasse"));
+  assert.equal(erfuellt, false, "erfüllt, obwohl die Vorschlagsabfrage des Absenders noch aussteht");
+  p.emit("requestfinished", s1);
   await warten;
   assert.equal(erfuellt, true);
   assert.equal(offen(p), 0, "Ereignisbeobachter nicht entfernt");
@@ -59,10 +70,7 @@ test("A3 — Zwischenstände und fremde Requests zählen nicht", async () => {
   p.emit("requestfinished", { url: () => "kein-url" });
   await mikro();
   assert.equal(erfuellt, false);
-  for (const r of [orte(STANDARD_ABSENDER), strassen(STANDARD_ABSENDER, "Hauptstrasse"),
-                   orte(STANDARD_EMPFAENGER), strassen(STANDARD_EMPFAENGER, "Bahnhofstrasse")]) {
-    p.emit("requestfinished", r);
-  }
+  for (const r of ALLE()) p.emit("requestfinished", r);
   await warten;
   assert.equal(erfuellt, true);
 });
@@ -70,28 +78,28 @@ test("A3 — Zwischenstände und fremde Requests zählen nicht", async () => {
 test("A4 — eine vom Formular abgebrochene Abfrage (requestfailed) gilt als abgeschlossen", async () => {
   const p = seite();
   const warten = adressvorschlaegeAbgeschlossen(p);
-  p.emit("requestfailed", orte(STANDARD_ABSENDER));
-  p.emit("requestfinished", strassen(STANDARD_ABSENDER, "Hauptstrasse"));
-  p.emit("requestfailed", orte(STANDARD_EMPFAENGER));
-  p.emit("requestfinished", strassen(STANDARD_EMPFAENGER, "Bahnhofstrasse"));
+  ALLE().forEach((r, i) => p.emit(i % 2 ? "requestfinished" : "requestfailed", r));
   await warten;
   assert.equal(offen(p), 0);
 });
 
-test("A5 — ohne abfragbare Adresse (Land ohne Prüfung, PLZ zu kurz) wird auf nichts gewartet", async () => {
+test("A5 — ohne Land wird auf nichts gewartet; eine zu kurze PLZ verlangt weder Orte noch Prüfung", async () => {
   const p = seite();
   await adressvorschlaegeAbgeschlossen(p, {
-    absender: { ...STANDARD_ABSENDER, country: "FR" },
-    empfaenger: { ...STANDARD_EMPFAENGER, zip: "803" },
+    absender: { ...STANDARD_ABSENDER, country: "" },
+    empfaenger: { ...STANDARD_EMPFAENGER, country: "" },
   });
   assert.equal(offen(p), 0);
+  assert.deepEqual(
+    erwarteteAdressvorschlaege({ absender: null, empfaenger: { ...STANDARD_EMPFAENGER, zip: "803" } }).map((e) => e.pfad),
+    ["/api/address/streets"], "Vorschläge ja (die Straße genügt), Orte und Prüfung erst mit gültiger PLZ");
 });
 
 test("A6 — Zeitlimit: lehnt mit den fehlenden Abfragen ab und entfernt die Beobachter", async () => {
   const p = seite();
   const warten = adressvorschlaegeAbgeschlossen(p, { timeout: 30 });
-  p.emit("requestfinished", orte(STANDARD_ABSENDER));
-  p.emit("requestfinished", strassen(STANDARD_ABSENDER, "Hauptstrasse"));
-  await assert.rejects(warten, /Empfänger: Orte zu 80331, Empfänger: Straßen zu 80331/);
+  const [o1, s1, v1] = ALLE();
+  for (const r of [o1, s1, v1]) p.emit("requestfinished", r);
+  await assert.rejects(warten, /Empfänger: Orte zu 80331, Empfänger: Straßen zu 80331, Empfänger: Adressprüfung/);
   assert.equal(offen(p), 0);
 });

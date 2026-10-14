@@ -51,6 +51,7 @@ function MarkdownPreview({ markdown }) {
         blocks.push(
           <div className="adm-ld-table-scroll" key={key}>
             <table>
+              <caption className="sr-only">Tabelle des Rechtsentwurfs</caption>
               <thead><tr>{rows[0].map((cell, j) => <th key={j}><Inline value={cell} /></th>)}</tr></thead>
               <tbody>{rows.slice(1).map((row, r) =>
                 <tr key={r}>{row.map((cell, j) => <td key={j}><Inline value={cell} /></td>)}</tr>

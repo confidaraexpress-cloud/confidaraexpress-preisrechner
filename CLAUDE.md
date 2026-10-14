@@ -67,7 +67,7 @@ Docker: `docker build -t confidaraexpress .` → nginx auf Port 80.
 
 - Jede E2E-Suite mockt ihre Backendaufrufe über `page.route` gegen einen lokalen Dev-Server. **Kein echtes Backend, keine Bestellung, keine E-Mail.**
 - **Jede Suite, die die Buchungsseite erreicht, muss `GET /api/legal/booking-context` beantworten.** Ohne Antwort greift der Sammelfall, die Auswertung wertet das fail-closed, und die Bestellung ist gesperrt — richtiges Produktverhalten, aber die Suite muss den Endpunkt kennen.
-- **Dev-Server-Teardown:** `spawn` mit `detached: true`, Beendigung über `process.kill(-pid)` in `try`. Ein Signal an den npx-Prozess allein lässt Kind und Enkel samt Port stehen; ein ungefangenes `ESRCH` färbt eine bestandene Suite rot.
+- **Dev-Server-Teardown:** `spawn` mit `{ ...DEV_SERVER_SPAWN, … }`, Beendigung über `stopDevServer(server, …)` im `after`-Haken (`tests/e2e/helpers/devServer.mjs`). POSIX: eigene Prozessgruppe und Gruppenkill — ein Signal an den npx-Prozess allein lässt Kind und Enkel samt Port stehen. Windows: kein `detached` (sonst öffnet jede Suite ein sichtbares Konsolenfenster), Prozessbaum per `taskkill /T`. Kein `detached: true` und kein `process.kill(-pid)` direkt in einer Suite.
 - **Portregel:** jede Suite hat ihren eigenen Port (`--strictPort`). Zwei Suiten auf demselben Port machen den Lauf nicht wiederholbar.
 - Bedienelemente über stabile `id`s ansprechen, **nicht** über Platzhaltertexte oder Positionen. Ein Platzhalter ist Beschriftung, kein Selektor.
 - Nichts erzwingen: kein `force`-Klick, kein Entfernen von `disabled`. Genau das umginge die Produktprüfung, um die es geht.

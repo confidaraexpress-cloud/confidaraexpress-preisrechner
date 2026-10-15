@@ -19,12 +19,13 @@ const SORT_OPTIONS = [
   { id: "priciest",    label: "Teuerste"   },
 ];
 
-// Ruhige Textzeile unter den Ergebnissen (Redesign 2026-10: ohne Symbole).
+// Ruhige Textzeile unter den Ergebnissen (Redesign 2026-10: ohne Symbole). Go-Live (Paket E):
+// nur Aussagen mit Systembeleg — keine Konformitäts-, Nachhaltigkeits- oder Rund-um-die-Uhr-Behauptung.
 const TRUST_ITEMS = [
-  { title: "Sicher & zuverlässig",  desc: "SSL-verschlüsselt, DSGVO-konform" },
-  { title: "Nachhaltige Optionen",   desc: "Umweltfreundliche Versandwege" },
+  { title: "Sicher & zuverlässig",  desc: "SSL-verschlüsselte Übertragung" },
+  { title: "Abholung oder Abgabe",   desc: "Je nach Tarif mit Abholung oder Abgabe im Paketshop" },
   { title: "Zeitsparnis",            desc: "Vergleich in Sekunden, nicht Stunden" },
-  { title: "Persönlicher Support",   desc: "Ihr Team ist jederzeit erreichbar" },
+  { title: "Persönlicher Support",   desc: "Per E-Mail und Telefon" },
 ];
 
 export function OffersList({

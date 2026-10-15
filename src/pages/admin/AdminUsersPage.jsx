@@ -21,6 +21,7 @@ import {
   isAdminAccount,
   listEmptyState,
   statusActionNote,
+  statusChangeWasNoOp,
   statusSuccessMessage,
 } from "../../utils/adminCustomerView.mjs";
 import {
@@ -269,7 +270,7 @@ export default function AdminUsersPage() {
       // Erfolgsmeldung erst nach erfolgreicher Antwort.
       let d = {};
       try { d = await r.json(); } catch { d = {}; }
-      const noOp = !!(d && (d.no_op === true || d.noop === true || d.changed === false || d.unchanged === true));
+      const noOp = statusChangeWasNoOp(d);
       setActionMsg({
         type: "success",
         text: noOp ? "Status war bereits gesetzt." : statusSuccessMessage(target, status),

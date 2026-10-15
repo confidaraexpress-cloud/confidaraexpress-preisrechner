@@ -209,3 +209,67 @@ test("INTERNAL-01: der Hinweis unter dem gesperrten Supportabruf folgt dem Serve
   assert.match(hinweis("provider_not_ready"), /noch kein nutzbares Versandlabel/);
   assert.equal(hinweis("not_in_ce_yet"), "In CE liegt noch kein Versandlabel.");
 });
+
+test("Paritätsaudit B1 — Versand der Auftragsbestätigung: Aktion aus dem Status, Ergebnis aus dem Server", async () => {
+  const {
+    orderConfirmationMailAction, orderConfirmationMailOutcome, orderConfirmationMailError, ORDER_CONFIRMATION_MAIL_TEXT: T,
+  } = await import("./adminShipmentOperations.mjs");
+  const { readFileSync } = await import("node:fs");
+
+  // Aktion: pending/failed → send, sent → bewusstes resend, sending → Übernahme mit Prüfhinweis.
+  assert.deepEqual(orderConfirmationMailAction({ emailStatus: "pending" }), { kind: "send", label: "Auftragsbestätigung senden", unclear: false });
+  assert.equal(orderConfirmationMailAction({ emailStatus: "failed" }).kind, "send");
+  assert.deepEqual(orderConfirmationMailAction({ emailStatus: "sent" }), { kind: "resend", label: "Auftragsbestätigung erneut senden", unclear: false });
+  assert.equal(orderConfirmationMailAction({ emailStatus: "sending" }).unclear, true);
+  assert.equal(orderConfirmationMailAction({ emailStatus: "sending" }).kind, "send", "eine Übernahme ist nie ein Resend");
+  for (const unbekannt of [{ emailStatus: "irgendwas" }, { emailStatus: null }, null, undefined]) {
+    assert.equal(orderConfirmationMailAction(unbekannt), null);
+  }
+
+  // Ergebnis: nur `sent` ist ein Erfolg.
+  assert.deepEqual(orderConfirmationMailOutcome({ outcome: "sent" }, "send"), { type: "success", text: T.sent });
+  assert.deepEqual(orderConfirmationMailOutcome({ outcome: "sent" }, "resend"), { type: "success", text: T.resent });
+  assert.deepEqual(orderConfirmationMailOutcome({ outcome: "already_sent" }, "send"), { type: "info", text: T.alreadySent });
+  assert.deepEqual(orderConfirmationMailOutcome({ outcome: "in_progress" }, "send"), { type: "info", text: T.inProgress });
+  assert.deepEqual(orderConfirmationMailOutcome({ outcome: "superseded" }, "send"), { type: "info", text: T.superseded });
+  assert.deepEqual(orderConfirmationMailOutcome({ outcome: "failed", errorCode: "finalize_failed" }, "send"), { type: "info", text: T.unclear });
+  assert.deepEqual(orderConfirmationMailOutcome({ outcome: "failed", errorCode: "provider_rejected" }, "send"), { type: "error", text: T.failed });
+  assert.equal(orderConfirmationMailOutcome({}, "send").type, "error");
+  assert.equal(orderConfirmationMailOutcome(null, "send").type, "error");
+
+  // 409: gesperrter Versand nach Code, nie der Code selbst; sonst der Satz des Servers.
+  for (const [code, muster] of [
+    ["order_confirmation_email_recipient_missing", /keine E-Mail-Adresse hinterlegt/],
+    ["order_confirmation_email_recipient_anonymized", /anonymisiert/],
+    ["order_confirmation_email_recipient_invalid", /ungültig/],
+    ["order_confirmation_email_config_missing", /Absenderkonfiguration/],
+    ["order_confirmation_email_not_sent_yet", /noch nicht versendet/],
+  ]) {
+    const m = orderConfirmationMailError(409, { error: code, message: "Servertext" });
+    assert.equal(m.type, "error");
+    assert.match(m.text, muster);
+    assert.ok(!m.text.includes(code));
+  }
+  assert.deepEqual(orderConfirmationMailError(409, { error: "x_neu", message: "Ein fertiger Satz." }), { type: "error", text: "Ein fertiger Satz." });
+  assert.deepEqual(orderConfirmationMailError(404, { error: "Nicht gefunden" }), { type: "error", text: T.notFound });
+  assert.deepEqual(orderConfirmationMailError(429, {}), { type: "error", text: T.rateLimited });
+  assert.deepEqual(orderConfirmationMailError(500, { error: "Fehler" }), { type: "error", text: T.generic });
+
+  // Seite: Versand nur nach dem Dialog, Route je nach Art, Neuladen danach, kein Body.
+  const roh = readFileSync(new URL("../pages/admin/AdminShipmentDetailPage.jsx", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const seite = roh.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const handler = seite.slice(seite.indexOf("const confirmOcMail = async () =>"), seite.indexOf("return (", seite.indexOf("const confirmOcMail = async () =>")));
+  assert.ok(handler.length > 0, "confirmOcMail fehlt");
+  assert.match(handler, /if \(ocMailBusy\) return;/);
+  assert.match(handler, /ocMailKind === "resend"\s*\?\s*await resendAdminOrderConfirmationEmail\(id\)\s*:\s*await sendAdminOrderConfirmationEmail\(id\)/);
+  assert.ok(handler.indexOf("await sendAdminOrderConfirmationEmail") < handler.indexOf("setOcMailMsg(orderConfirmationMailOutcome"),
+    "die Rückmeldung entsteht erst aus der Antwort");
+  assert.match(handler, /setOcMailMsg\(orderConfirmationMailOutcome\(d, ocMailKind\)\);\s*await load\(\);/);
+  assert.match(seite, /onClick=\{\(\) => \{ setOcMailMsg\(null\); setOcMailOpen\(true\); \}\}/);
+  assert.match(seite, /\{ocMailOpen && ocMail && \(\s*<ConfirmDialog/);
+  assert.match(seite, /onConfirm=\{confirmOcMail\}/);
+  assert.match(seite, /busy=\{ocMailBusy\}/);
+  const api = readFileSync(new URL("../api/adminApi.js", import.meta.url), "utf8");
+  assert.match(api, /\/admin\/shipments\/\$\{encodeURIComponent\(shipmentId\)\}\/order-confirmation-email\/send`, \{\s*method: "POST", auth: true,\s*\}\)/);
+  assert.match(api, /\/admin\/shipments\/\$\{encodeURIComponent\(shipmentId\)\}\/order-confirmation-email\/resend`, \{\s*method: "POST", auth: true,\s*\}\)/);
+});

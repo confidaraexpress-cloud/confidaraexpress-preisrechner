@@ -5,7 +5,7 @@ import { AdminBackLink } from "../../components/admin/AdminBackLink";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import {
   getAdminShipment, downloadAdminShipmentLabel, getAdminShipmentTracking,
-  retryAdminShipmentEmailDelivery,
+  retryAdminShipmentEmailDelivery, sendAdminOrderConfirmationEmail, resendAdminOrderConfirmationEmail,
 } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
@@ -21,9 +21,11 @@ import {
   TRACKING_LABELS,
   customerIdentity,
   detailSections,
+  isTestBooking,
   routeLabel,
   shipmentIdentity,
   shipmentInsuranceView,
+  shipmentVoucherView,
   shippingModeLabel,
   trackingLinkOrNull,
   trackingView,
@@ -32,7 +34,10 @@ import {
   canRetryDelivery, deliveryStatusMeta, deliveryTypeLabel, sortDeliveries,
   deliveryOutcomeUnclear, DELIVERY_UNCLEAR_HINT, retryOutcomeMessage,
 } from "../../utils/shipmentEmailDeliveryView.mjs";
-import { documentsSummary, labelDownloadHint, reconciliationNotices, selectOperations } from "../../utils/adminShipmentOperations.mjs";
+import {
+  documentsSummary, labelDownloadHint, reconciliationNotices, selectOperations,
+  orderConfirmationMailAction, orderConfirmationMailOutcome, orderConfirmationMailError, ORDER_CONFIRMATION_MAIL_TEXT,
+} from "../../utils/adminShipmentOperations.mjs";
 import { attemptLabel } from "../../utils/adminReconciliation.mjs";
 // Block C: der beim Buchen gebundene Abgabe-Paketshop — nur aus dem Serverfeld `dropoff_location`.
 import { boundDropoffLocationLine, DROPOFF_LOCATION_LABEL } from "../../utils/dropoffParcelShop.mjs";
@@ -110,6 +115,14 @@ function KV({ items }) {
   );
 }
 
+// Rückmeldung einer Adminaktion. Ein Hinweis („läuft bereits", „noch nicht versandbereit") ist
+// kein Fehler und wird nicht rot gezeigt (Paritätsaudit B1/B3).
+function ActionMsg({ msg, id }) {
+  if (!msg) return null;
+  const cls = msg.type === "success" ? "alert-success" : msg.type === "info" ? "alert-info" : "alert-error";
+  return <div id={id} className={`alert ${cls}`} role={msg.type === "error" ? "alert" : "status"}>{msg.text}</div>;
+}
+
 function AddressBlock({ title, addr }) {
   const built = buildAddress(addr);
   return (
@@ -150,11 +163,14 @@ export default function AdminShipmentDetailPage() {
   const [trackError, setTrackError] = useState(null);      // Fehlertext
   const [retryBusyId, setRetryBusyId] = useState(null);    // laufender Zustellversuch
   const [retryMsg, setRetryMsg] = useState(null);          // { type, text }
+  const [ocMailOpen, setOcMailOpen] = useState(false);     // Dialog Auftragsbestätigungsmail
+  const [ocMailBusy, setOcMailBusy] = useState(false);     // Versand läuft
+  const [ocMailMsg, setOcMailMsg] = useState(null);        // { type, text }
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    setNotFound(false);
+  // Beim Wechsel auf eine andere Sendung Dialoge, Meldungen und Livedaten zurücksetzen. Bewusst NICHT
+  // in `load`: nach einer Aktion lädt die Seite neu, und die Rückmeldung der Aktion muss danach
+  // stehen bleiben — bis hierher löschte das Neuladen sie sofort wieder (Paritätsaudit B3).
+  useEffect(() => {
     setShowPii(false); // jede Sendung startet eingeklappt; kein Merken (localStorage)
     setConfirmLabel(false);
     setLabelMsg(null);
@@ -162,6 +178,14 @@ export default function AdminShipmentDetailPage() {
     setTrackError(null);
     setRetryMsg(null);
     setRetryBusyId(null);
+    setOcMailOpen(false);
+    setOcMailMsg(null);
+  }, [id]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    setNotFound(false);
     try {
       const r = await getAdminShipment(id);
       if (!r.ok) {
@@ -248,6 +272,10 @@ export default function AdminShipmentDetailPage() {
   const ops = selectOperations(s);
   const opsNotices = reconciliationNotices(ops);
   const docSummary = documentsSummary(ops);
+  // Paritätsaudit B1: Versand der Auftragsbestätigung — Aktion aus dem echten Mailstatus.
+  const ocMail = ops ? orderConfirmationMailAction(ops.orderConfirmation) : null;
+  const ocMailKind = ocMail?.kind || "send";
+  const voucher = shipmentVoucherView(s);
   const labelAvailable = labelAvailOf(s) === true || labelAvailOf(s) === "true";
 
   const openLabelConfirm = () => { setLabelMsg(null); setConfirmLabel(true); };
@@ -325,6 +353,35 @@ export default function AdminShipmentDetailPage() {
     }
   };
 
+  // Paritätsaudit B1: gesendet wird erst nach dem Dialog; die Rückmeldung entsteht erst aus der
+  // Serverantwort, danach wird der Stand neu geladen. Kein Body — Empfänger und Dokument stehen
+  // serverseitig fest. Den Schutz vor einer zweiten Mail trägt der atomare Claim des Servers.
+  const confirmOcMail = async () => {
+    if (ocMailBusy) return;
+    setOcMailBusy(true);
+    setOcMailMsg(null);
+    try {
+      const r = ocMailKind === "resend"
+        ? await resendAdminOrderConfirmationEmail(id)
+        : await sendAdminOrderConfirmationEmail(id);
+      let d = {};
+      try { d = await r.json(); } catch { d = {}; }
+      if (!r.ok) {
+        if (r.status === 401 || r.status === 403) return; // zentraler Redirect
+        setOcMailMsg(orderConfirmationMailError(r.status, d));
+        if (r.status === 409) await load(); // der Status hat sich geändert — Aktion neu bestimmen
+        return;
+      }
+      setOcMailMsg(orderConfirmationMailOutcome(d, ocMailKind));
+      await load();
+    } catch {
+      setOcMailMsg({ type: "error", text: ORDER_CONFIRMATION_MAIL_TEXT.generic });
+    } finally {
+      setOcMailBusy(false);
+      setOcMailOpen(false);
+    }
+  };
+
   return (
     <div className="adm-page">
       {/* 1) Kopfbereich — derselbe Seitenkopf wie in den Adminlisten. Die
@@ -348,6 +405,8 @@ export default function AdminShipmentDetailPage() {
         meta={(
           <>
             <span className={`badge ${statusCls}`}>{statusLabel}</span>
+            {/* Paritätsaudit B4: eine Testbuchung (Testlabel, Nullwertrechnung) ist auf einen Blick erkennbar. */}
+            {isTestBooking(s) && <span className="badge badge-yellow" id="adm-ship-test-badge">Testbuchung</span>}
             <span className="adm-chip">{carrierOf(s) ? resolveCarrierName(carrierOf(s)) : "Carrier noch nicht gewählt"}</span>
             <span className="adm-chip">{shippingModeLabel(s)}</span>
             <span className="adm-chip">{fmtDate(dateOf(s))}</span>
@@ -492,6 +551,27 @@ export default function AdminShipmentDetailPage() {
                   : "Keine"],
               ]} />
 
+              {/* Paritätsaudit B1: Versand der Auftragsbestätigung. Senden (pending), erneut
+                  versuchen (failed), bewusst erneut senden (sent) oder einen hängenden Versand
+                  übernehmen (sending) — jeweils erst nach dem Bestätigungsdialog. */}
+              <ActionMsg msg={ocMailMsg} id="adm-ship-oc-mail-msg" />
+              {ocMail && (
+                <>
+                  {ocMail.unclear && <p className="adm-support-hint" id="adm-ship-oc-mail-hint">{ORDER_CONFIRMATION_MAIL_TEXT.sendingHint}</p>}
+                  <div className="adm-support">
+                    <button
+                      type="button"
+                      id="adm-ship-oc-mail-action"
+                      className="btn btn-outline btn-sm"
+                      onClick={() => { setOcMailMsg(null); setOcMailOpen(true); }}
+                      disabled={ocMailBusy}
+                    >
+                      {ocMail.label}
+                    </button>
+                  </div>
+                </>
+              )}
+
               <div className="adm-op-subtitle">
                 Buchungsversuche{ops.attemptsLimited ? ` — die neuesten ${ops.attempts.length} von ${ops.attemptsTotal}` : ""}
               </div>
@@ -542,6 +622,11 @@ export default function AdminShipmentDetailPage() {
               ["Netto", firstDefined(s.price_netto, s.price_net, s.priceNet) != null ? money(firstDefined(s.price_netto, s.price_net, s.priceNet)) : "—"],
               ["MwSt.", firstDefined(s.price_vat, s.priceVat, s.vat) != null ? money(firstDefined(s.price_vat, s.priceVat, s.vat)) : "—"],
               ["Endpreis", firstDefined(s.price_final, s.priceFinal) != null ? money(firstDefined(s.price_final, s.priceFinal)) : "—"],
+              // Paritätsaudit B4: nur bei einem bestätigten Gutschein — sonst keine Zeile.
+              ...(voucher ? [
+                ["Gutschein", <span className="adm-mono" id="adm-ship-voucher-code">{voucher.code}</span>],
+                ...(voucher.discountGross != null ? [["Gutscheinnachlass (brutto)", money(voucher.discountGross)]] : []),
+              ] : []),
             ]} />
           </div>
         </div>
@@ -592,15 +677,7 @@ export default function AdminShipmentDetailPage() {
           <div className="adm-card">
             <div className="adm-card-head">Zusätzliche E-Mail-Zustellungen</div>
             <div className="adm-card-body">
-              {retryMsg && (
-                <div
-                  className={`alert ${retryMsg.type === "success" ? "alert-success" : "alert-error"}`}
-                  role="status"
-                  aria-live="polite"
-                >
-                  {retryMsg.text}
-                </div>
-              )}
+              <ActionMsg msg={retryMsg} id="adm-ship-retry-msg" />
               {emailDeliveries.map((row) => {
                 const [cls, text, roh] = deliveryStatusMeta(row.status, row.error_code);
                 return (
@@ -868,6 +945,26 @@ export default function AdminShipmentDetailPage() {
           confirmLabel="Download bestätigen"
           onCancel={() => setConfirmLabel(false)}
           onConfirm={confirmDownload}
+        />
+      )}
+
+      {/* Paritätsaudit B1: Bestätigung vor jedem Versand der Auftragsbestätigung. */}
+      {ocMailOpen && ocMail && (
+        <ConfirmDialog
+          title={ocMailKind === "resend" ? "Auftragsbestätigung erneut senden?"
+            : ocMail.unclear ? "Hängenden Versand übernehmen?" : "Auftragsbestätigung per E-Mail senden?"}
+          text={ocMailKind === "resend"
+            ? "Die Auftragsbestätigung wurde bereits versendet. Möchten Sie sie bewusst ein zweites Mal an die E-Mail-Adresse des Kundenkontos senden?"
+            : ocMail.unclear ? ORDER_CONFIRMATION_MAIL_TEXT.sendingHint
+            : "Sendet die Auftragsbestätigung an die E-Mail-Adresse des Kundenkontos."}
+          subline={ops?.orderConfirmation?.confirmationNumber
+            ? `Auftragsbestätigung ${ops.orderConfirmation.confirmationNumber}` : undefined}
+          note="Die Aktion wird im Protokoll festgehalten. Es entsteht keine neue Auftragsbestätigung und keine neue Nummer."
+          confirmLabel={ocMailKind === "resend" ? "Erneut senden" : ocMail.unclear ? "Versand übernehmen" : "Senden"}
+          busy={ocMailBusy}
+          busyLabel="Wird gesendet…"
+          onCancel={() => { if (!ocMailBusy) setOcMailOpen(false); }}
+          onConfirm={confirmOcMail}
         />
       )}
     </div>

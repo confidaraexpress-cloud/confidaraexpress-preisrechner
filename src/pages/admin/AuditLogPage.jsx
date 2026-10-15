@@ -71,6 +71,12 @@ const ACTION_LABELS = {
   "invoice.email_retry": "Rechnung: E-Mail erneut versucht",
   "invoice.email_resend": "Rechnung erneut gesendet",
   "invoice.backfill_document": "Interne Rechnungsvorschau erzeugt",
+  // Paritätsaudit B14: die Dokumenterzeugung aus dem Rechnungsdetail (Erstlauf bzw. Wiederholung nach
+  // einem Fehlschlag) und zwei weitere geschriebene Aktionen standen bis hierher als Rohwert da.
+  "invoice.generate_document": "Rechnungsdokument erzeugt",
+  "invoice.retry_document": "Rechnungsdokument erneut erzeugt",
+  "sales_partner.billing_details_viewed": "Abrechnungsdaten eines Vertriebspartners eingesehen",
+  "user.business_verification": "Unternehmerprüfung erfasst",
   "invoice.consolidated_run_triggered": "Sammelrechnungslauf gestartet",
   "user.billing_mode_changed": "Abrechnungsart geändert",
   "user.price_markup_confirm": "Preisaufschlag bestätigt",
@@ -254,7 +260,7 @@ export default function AuditLogPage() {
     setLoading(true);
     setError("");
     try {
-      const r = await listAuditLogs({ ...applied, page, page_size: PAGE_SIZE });
+      const r = await listAuditLogs({ ...applied, page, pageSize: PAGE_SIZE });
       if (!r.ok) {
         // 401/403 → zentraler Logout/Redirect via apiFetch; hier nichts anzeigen.
         if (r.status !== 401 && r.status !== 403) {

@@ -562,3 +562,35 @@ test("32 — Selbsttest: die Prüflogik greift tatsächlich", () => {
   // Und die Spaltenzählung erkennt eine echte Abweichung.
   assert.equal(('<th scope="col">A</th><th scope="col">B</th>'.match(/<th scope="col"/g) || []).length, 2);
 });
+
+test("Paritätsaudit B9/B13 — No-op am echten Feld, Vertriebspartnerkonten mit eigenem Hinweis", async () => {
+  const {
+    statusChangeWasNoOp, anonymizeWasNoOp, isSalesPartnerManaged, SALES_PARTNER_MANAGED_TEXT,
+  } = await import("./adminCustomerView.mjs");
+  // Der Server sendet `noOp` (Statusänderung) und `alreadyAnonymized` (Anonymisierung).
+  assert.equal(statusChangeWasNoOp({ message: "Status unverändert", noOp: true }), true);
+  assert.equal(statusChangeWasNoOp({ message: "Status aktualisiert", noOp: false }), false);
+  assert.equal(statusChangeWasNoOp({ no_op: true }), true, "Altform bleibt Rückfall");
+  assert.equal(statusChangeWasNoOp(null), false);
+  assert.equal(anonymizeWasNoOp({ anonymized: true, alreadyAnonymized: true }), true);
+  assert.equal(anonymizeWasNoOp({ anonymized: true }), false);
+  assert.equal(anonymizeWasNoOp({ already_anonymized: true }), true);
+  // 409 SALES_PARTNER_MANAGED_SEPARATELY — nur mit Code, nur bei 409.
+  const partner = { error: "Vertriebspartner werden im Bereich Vertriebspartner verwaltet.", code: "SALES_PARTNER_MANAGED_SEPARATELY" };
+  assert.equal(isSalesPartnerManaged(409, partner), true);
+  assert.equal(isSalesPartnerManaged(400, partner), false);
+  assert.equal(isSalesPartnerManaged(409, { error: "x" }), false);
+  assert.equal(isSalesPartnerManaged(409, null), false);
+  assert.match(SALES_PARTNER_MANAGED_TEXT, /Bereich „Vertriebspartner“/);
+  // Die Seiten nutzen die Regeln — keine eigene Feldliste mehr.
+  for (const src of [listSrc, detailSrc]) assert.doesNotMatch(src, /d\.no_op === true|d\.already_anonymized === true/);
+  assert.match(listSrc, /const noOp = statusChangeWasNoOp\(d\);/);
+  assert.match(detailSrc, /const noOp = anonymizeWasNoOp\(d\);/);
+  assert.match(detailSrc, /statusChangeWasNoOp\(d\) \? SUCCESS_MESSAGES\.unchanged : statusSuccessMessage\("blocked"\)/);
+  // Löschen und Anonymisieren lesen den Körper und erkennen das Partnerkonto vor dem Katalogtext.
+  const loeschen = detailSrc.slice(detailSrc.indexOf("const confirmDelete = async"), detailSrc.indexOf("const customerNumber = customerNumberFromDetail"));
+  assert.ok(loeschen.indexOf("isSalesPartnerManaged(r.status, body)") > -1);
+  assert.ok(loeschen.indexOf("isSalesPartnerManaged(r.status, body)") < loeschen.indexOf("DELETE_ERRORS[r.status]"));
+  const anon = detailSrc.slice(detailSrc.indexOf("const confirmAnon = async"), detailSrc.indexOf("const delConfirmed"));
+  assert.match(anon, /isSalesPartnerManaged\(r\.status, body\)\s*\?\s*\{ type: "info", text: SALES_PARTNER_MANAGED_TEXT \}/);
+});

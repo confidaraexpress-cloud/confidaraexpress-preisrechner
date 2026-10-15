@@ -333,6 +333,30 @@ export const SUCCESS_MESSAGES = Object.freeze({
   unchanged: "Status war bereits gesetzt.",
 });
 
+// Paritätsaudit B9: der Server meldet einen No-op maschinenlesbar — `noOp` bei der Statusänderung,
+// `alreadyAnonymized` bei der Anonymisierung. Die Seiten lasen bis hierher nur `no_op`, `noop`,
+// `changed`, `unchanged` bzw. `already_anonymized` — Felder, die der Server nie sendet; ein
+// unveränderter Status erschien deshalb als „freigeschaltet". Die Altformen bleiben als Rückfall.
+export function statusChangeWasNoOp(d) {
+  return !!(d && typeof d === "object"
+    && (d.noOp === true || d.no_op === true || d.noop === true || d.changed === false || d.unchanged === true));
+}
+export function anonymizeWasNoOp(d) {
+  return !!(d && typeof d === "object"
+    && (d.alreadyAnonymized === true || d.already_anonymized === true || d.no_op === true || d.noop === true
+      || d.changed === false));
+}
+
+// Paritätsaudit B13: Vertriebspartnerkonten verwaltet der Bereich „Vertriebspartner". Statusänderung,
+// Löschen und Anonymisieren lehnt der Server hier mit 409 SALES_PARTNER_MANAGED_SEPARATELY ab. Die
+// Seite sagte bis hierher „Konflikt" bzw. „vorhandene Sendungsdaten — Anonymisierung verwenden" —
+// beides benennt die falsche Ursache und schickt den Admin in eine Aktion, die ebenfalls scheitert.
+export const SALES_PARTNER_MANAGED_TEXT =
+  "Dieses Konto gehört einem Vertriebspartner und wird im Bereich „Vertriebspartner“ verwaltet. Hier wurde nichts geändert.";
+export function isSalesPartnerManaged(status, body) {
+  return status === 409 && !!body && typeof body === "object" && body.code === "SALES_PARTNER_MANAGED_SEPARATELY";
+}
+
 export function statusSuccessMessage(targetStatus, previousStatus) {
   if (targetStatus === "blocked") return SUCCESS_MESSAGES.blocked;
   if (targetStatus === "approved") {

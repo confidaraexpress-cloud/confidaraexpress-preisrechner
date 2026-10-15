@@ -30,8 +30,8 @@ const AUDIT_LOG_PARAMS = [
   "target_user_id",
   "from",
   "to",
-  "page",
-  "page_size",
+  "limit",
+  "offset",
 ];
 
 // Baut aus einem Params-Objekt einen Query-String — nur allowlisted Keys, leere
@@ -52,8 +52,15 @@ function buildQuery(params, allow) {
 
 // GET /admin/audit-logs — read-only. Gibt die rohe Response zurück; der Aufrufer
 // prüft r.ok/r.status und liest den Body defensiv (kein rohes Objekt rendern).
+// Paritätsaudit B2: der Server liest ausschließlich limit/offset (parsePagination). `page` und
+// `page_size` ignorierte er — jede Seite zeigte dieselben ersten Einträge. Dieselbe Umrechnung
+// wie bei den übrigen Adminlisten (Benutzer, Sendungen, Rechnungen).
 export function listAuditLogs(params = {}) {
-  return apiFetch(`/admin/audit-logs${buildQuery(params, AUDIT_LOG_PARAMS)}`, { auth: true });
+  const { page = 1, pageSize = 25, ...filters } = params || {};
+  const size = Number(pageSize) > 0 ? Math.floor(Number(pageSize)) : 25;
+  const p = Number(page) >= 1 ? Math.floor(Number(page)) : 1;
+  const query = { ...filters, limit: size, offset: (p - 1) * size };
+  return apiFetch(`/admin/audit-logs${buildQuery(query, AUDIT_LOG_PARAMS)}`, { auth: true });
 }
 
 // Erlaubte Query-Parameter für GET /admin/shipments (Backend-Vertrag). Bewusst
@@ -172,6 +179,21 @@ export function getAdminShipmentTracking(id) {
 // Clienteingabe bestimmt werden (sonst wäre die Funktion ein offenes Mailrelais).
 // Der Server erlaubt den Versuch ausschließlich für eine Zustellung im Status
 // „failed", die zu GENAU dieser Sendung gehört, und auditiert ihn.
+// Paritätsaudit B1: Versand der Auftragsbestätigung, adressiert über die SENDUNG (1:1 zur
+// Bestätigung). Kein Body: Empfänger, Dokument und Nummer stehen serverseitig fest.
+//   send   — pending, failed oder ein hängender Versand
+//   resend — nur nach „sent": bewusster zweiter Versand
+export function sendAdminOrderConfirmationEmail(shipmentId) {
+  return apiFetch(`/admin/shipments/${encodeURIComponent(shipmentId)}/order-confirmation-email/send`, {
+    method: "POST", auth: true,
+  });
+}
+export function resendAdminOrderConfirmationEmail(shipmentId) {
+  return apiFetch(`/admin/shipments/${encodeURIComponent(shipmentId)}/order-confirmation-email/resend`, {
+    method: "POST", auth: true,
+  });
+}
+
 export function retryAdminShipmentEmailDelivery(shipmentId, deliveryId) {
   return apiFetch(
     `/admin/shipments/${encodeURIComponent(shipmentId)}/email-deliveries/${encodeURIComponent(deliveryId)}/retry`,

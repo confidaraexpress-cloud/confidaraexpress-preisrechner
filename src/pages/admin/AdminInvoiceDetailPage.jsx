@@ -25,6 +25,7 @@ import {
   currentAccount,
   documentOutcomeMessage,
   documentState,
+  documentErrorMessage,
   emailOutcomeMessage,
   emailState,
   invoiceDetailError,
@@ -262,10 +263,8 @@ export default function AdminInvoiceDetailPage() {
       try { d = await r.json(); } catch { d = {}; }
       if (!r.ok) {
         if (r.status === 401 || r.status === 403) return;
-        setDocMsg({ type: "error", text: r.status === 404
-          ? "Rechnung wurde nicht gefunden oder existiert nicht mehr."
-          : r.status === 429 ? "Zu viele Admin-Aktionen. Bitte kurz warten."
-          : DOCUMENT_ERROR_NOTE });
+        // Paritätsaudit B6: eine Sperre des Produktiv-Guards ist kein „erneut möglich".
+        setDocMsg(documentErrorMessage(r.status, d));
         return;
       }
       setDocMsg(documentOutcomeMessage(d.outcome));
@@ -309,7 +308,7 @@ export default function AdminInvoiceDetailPage() {
           : EMAIL_ERROR_NOTE });
         return;
       }
-      setMailMsg(emailOutcomeMessage(d.outcome, mailKind));
+      setMailMsg(emailOutcomeMessage(d.outcome, mailKind, d.errorCode));
       load();
     } catch {
       setMailMsg({ type: "error", text: EMAIL_ERROR_NOTE });

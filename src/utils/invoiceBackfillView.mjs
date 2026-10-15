@@ -57,6 +57,80 @@ export function businessLetterView(readiness) {
   };
 }
 
+// ── Paritätsaudit B8: zwei Prüfungen der Readiness-Antwort, die die Seite bis hierher nicht zeigte ──
+// `checks.invoice_document_generation`: Probelauf des ECHTEN Erzeugungspfads (H2) — würde eine
+// produktive Rechnung mit der aktuellen Konfiguration ein PDF bekommen? `legalDocuments`: Stand des
+// aktiven Rechtsdokument-Sets (Paket 4-D). Beide liefern nur Status, Codes und Feldnamen, nie Werte.
+// Ein älteres Backend ohne den Block → null (keine Zeile, kein Raten). Ein unbekannter Code bleibt
+// als Code sichtbar (`code`), statt eine Ursache zu erfinden.
+const GENERATION_CODE_LABELS = Object.freeze({
+  vat_rate_invalid: "Steuersatz-Konfiguration ungültig",
+  invoice_claim_projection_incomplete: "Datenbankprojektion der Rechnung unvollständig",
+  invoice_snapshot_not_production_ready: "Aussteller- oder Bankdaten nicht produktionsreif",
+  production_invoice_blocked_in_test_mode: "Testmodus aktiv — es entstehen keine Produktivdokumente",
+  ambiguous_invoice_document_mode: "Dokumentmodus nicht eindeutig",
+  classified_test_document: "Als Testdokument eingestuft",
+  reconstructed_preview_requires_test_mode: "Nur als interne Vorschau erzeugbar",
+});
+const listeVon = (v) => (Array.isArray(v) ? v.filter((f) => typeof f === "string" && f) : []);
+
+export function documentGenerationView(readiness) {
+  const c = readiness && typeof readiness === "object" && readiness.checks && typeof readiness.checks === "object"
+    ? readiness.checks.invoice_document_generation : null;
+  if (!c || typeof c !== "object" || typeof c.ready !== "boolean") return null;
+  if (c.ready === true) return { ready: true, label: "Bereit", code: null, missing: [], placeholders: [] };
+  const code = typeof c.code === "string" ? c.code : "";
+  const bekannt = Object.prototype.hasOwnProperty.call(GENERATION_CODE_LABELS, code);
+  return {
+    ready: false,
+    label: bekannt ? GENERATION_CODE_LABELS[code] : "Blockiert",
+    code: bekannt ? null : (code || null),
+    missing: listeVon(c.missingFields),
+    placeholders: listeVon(c.placeholderFields),
+  };
+}
+
+const LEGAL_REASON_LABELS = Object.freeze({
+  lookup_failed: "Prüfung fehlgeschlagen",
+  no_active_set: "Kein aktives Rechtsdokument-Set",
+  no_active_legal_set: "Kein aktives Rechtsdokument-Set",
+  ambiguous_active_legal_set: "Mehrere aktive Sets — nicht eindeutig",
+  incomplete_legal_set: "Aktives Set unvollständig",
+  set_incomplete: "Aktives Set unvollständig",
+});
+const LEGAL_TYPE_LABELS = Object.freeze({ terms: "AGB", privacy: "Datenschutzhinweise" });
+const LEGAL_ASSET_LABELS = Object.freeze({
+  invalid_asset_path: "Dateipfad ungültig",
+  asset_missing: "Datei fehlt",
+  invalid_pdf: "keine gültige PDF-Datei",
+  size_mismatch: "Dateigröße weicht ab",
+  sha256_mismatch: "Prüfsumme weicht ab",
+  unknown: "nicht prüfbar",
+});
+
+function legalReasonLabel(reason) {
+  if (Object.prototype.hasOwnProperty.call(LEGAL_REASON_LABELS, reason)) return LEGAL_REASON_LABELS[reason];
+  const fehlt = /^([a-z]+)_missing_in_set$/.exec(reason);
+  if (fehlt && LEGAL_TYPE_LABELS[fehlt[1]]) return `${LEGAL_TYPE_LABELS[fehlt[1]]} fehlen im aktiven Set`;
+  const datei = /^([a-z]+)_asset_([a-z0-9_]+)$/.exec(reason);
+  if (datei && LEGAL_TYPE_LABELS[datei[1]] && LEGAL_ASSET_LABELS[datei[2]]) {
+    return `PDF der ${LEGAL_TYPE_LABELS[datei[1]]}: ${LEGAL_ASSET_LABELS[datei[2]]}`;
+  }
+  return null;
+}
+
+export function legalDocumentsView(readiness) {
+  const l = readiness && typeof readiness === "object" ? readiness.legalDocuments : null;
+  if (!l || typeof l !== "object" || typeof l.ready !== "boolean") return null;
+  const setKey = l.activeSet && typeof l.activeSet === "object" && typeof l.activeSet.setKey === "string"
+    ? l.activeSet.setKey : null;
+  const gateEnabled = l.gateEnabled === true;
+  if (l.ready === true) return { ready: true, label: "Bereit", setKey, gateEnabled, code: null };
+  const reason = typeof l.reason === "string" ? l.reason : "";
+  const label = legalReasonLabel(reason);
+  return { ready: false, label: label || "Nicht bereit", setKey, gateEnabled, code: label ? null : (reason || null) };
+}
+
 // Anzeige-Status je Kandidat: „Bereit" (schon ein PDF) · „Vorschau erzeugbar (Snapshot wird
 // rekonstruiert)" (Alt-Rechnung ohne Snapshots — im Testbetrieb aus gespeicherten Daten
 // rekonstruierbar) · „Fehlt" (erzeugbar, Snapshots vorhanden) · „Unvollständig" (historische Daten

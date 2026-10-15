@@ -31,6 +31,11 @@ import {
   selectUser,
   BLOCK_DIALOG,
   SELF_ACTION_REASON,
+  SALES_PARTNER_MANAGED_TEXT,
+  SUCCESS_MESSAGES,
+  anonymizeWasNoOp,
+  isSalesPartnerManaged,
+  statusChangeWasNoOp,
   statusSuccessMessage,
 } from "../../utils/adminCustomerView.mjs";
 import { useAuth } from "../../context/AuthContext";
@@ -357,13 +362,17 @@ export default function AdminUserDetailPage() {
       if (!r.ok) {
         // 401/403 → zentraler Logout/Redirect via apiFetch; hier nichts anzeigen.
         if (r.status !== 401 && r.status !== 403) {
-          setAnonMsg({ type: "error", text: ANON_ERRORS[r.status] || ANON_ERRORS.default });
+          let body = null;
+          try { body = await r.json(); } catch { body = null; }
+          setAnonMsg(isSalesPartnerManaged(r.status, body)
+            ? { type: "info", text: SALES_PARTNER_MANAGED_TEXT }
+            : { type: "error", text: ANON_ERRORS[r.status] || ANON_ERRORS.default });
         }
         return;
       }
       let d = {};
       try { d = await r.json(); } catch { d = {}; }
-      const noOp = !!(d && (d.no_op === true || d.noop === true || d.already_anonymized === true || d.changed === false));
+      const noOp = anonymizeWasNoOp(d);
       setAnonMsg({ type: "success", text: noOp ? "Das Konto war bereits anonymisiert." : "Das Konto wurde anonymisiert." });
       load(); // Detail neu laden — Backend-Realität, kein lokales Raten
     } catch {
@@ -394,6 +403,13 @@ export default function AdminUserDetailPage() {
       }
       // 401/403 → zentraler Logout/Redirect via apiFetch; hier nichts anzeigen.
       if (r.status === 401 || r.status === 403) return;
+      let body = null;
+      try { body = await r.json(); } catch { body = null; }
+      // Paritätsaudit B13: ein Vertriebspartnerkonto ist kein Fall für die Anonymisierung.
+      if (isSalesPartnerManaged(r.status, body)) {
+        setDelMsg({ type: "info", text: SALES_PARTNER_MANAGED_TEXT });
+        return;
+      }
       // 409 ist der erwartete Delete-Guard (Hinweis auf Anonymisierung), kein Fehler.
       setDelMsg({
         type: r.status === 409 ? "info" : "error",
@@ -509,7 +525,7 @@ export default function AdminUserDetailPage() {
       }
       let d = {};
       try { d = await r.json(); } catch { d = {}; }
-      const noOp = !!(d && (d.no_op === true || d.noop === true || d.changed === false || d.unchanged === true));
+      const noOp = statusChangeWasNoOp(d);
       setApproveMsg({
         type: "success",
         text: noOp ? "Status war bereits gesetzt." : "Der Kunde wurde freigeschaltet.",
@@ -547,7 +563,10 @@ export default function AdminUserDetailPage() {
         });
         return;
       }
-      setApproveMsg({ type: "success", text: statusSuccessMessage("blocked") });
+      let d = {};
+      try { d = await r.json(); } catch { d = {}; }
+      // Paritätsaudit B9: ein bereits blockiertes Konto meldet der Server als No-op.
+      setApproveMsg({ type: "success", text: statusChangeWasNoOp(d) ? SUCCESS_MESSAGES.unchanged : statusSuccessMessage("blocked") });
       load(); // Backend-Realität neu laden
     } catch {
       setApproveMsg({ type: "error", text: "Der Kunde wurde nicht blockiert. Es wurden keine Änderungen gespeichert." });

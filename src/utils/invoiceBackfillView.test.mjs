@@ -115,3 +115,39 @@ test("Readiness-Karte: Block nur mit Serverdaten, ohne Werte, unter den bestehen
   assert.match(src, /<ChipList items=\{briefangaben\.placeholders\} \/>/);
   assert.ok(src.indexOf('id="adm-business-letter"') > src.indexOf("readiness.placeholderFields.length > 0"), "Block steht nach den Platzhaltern der Rechnungsbereitschaft");
 });
+
+test("Paritätsaudit B8 — Probelauf der Dokumenterzeugung und Rechtsdokumente; keine tote Testmodus-Zeile", async () => {
+  const { documentGenerationView, legalDocumentsView } = await import("./invoiceBackfillView.mjs");
+  const { readFileSync } = await import("node:fs");
+  // Probelauf: bereit, blockiert mit bekanntem Code (Feldnamen als Chips), unbekannter Code bleibt sichtbar.
+  assert.deepEqual(documentGenerationView({ checks: { invoice_document_generation: { ready: true, mode: "production" } } }),
+    { ready: true, label: "Bereit", code: null, missing: [], placeholders: [] });
+  assert.deepEqual(documentGenerationView({ checks: { invoice_document_generation: {
+    ready: false, code: "invoice_snapshot_not_production_ready", missingFields: ["bank.iban"], placeholderFields: ["issuer.vatId", 7] } } }),
+  { ready: false, label: "Aussteller- oder Bankdaten nicht produktionsreif", code: null, missing: ["bank.iban"], placeholders: ["issuer.vatId"] });
+  assert.equal(documentGenerationView({ checks: { invoice_document_generation: { ready: false, code: "neu_x" } } }).code, "neu_x");
+  assert.equal(documentGenerationView({ checks: { invoice_document_generation: { ready: false, code: "vat_rate_invalid" } } }).label,
+    "Steuersatz-Konfiguration ungültig");
+  for (const alt of [{}, { checks: {} }, { checks: { invoice_document_generation: {} } }, null]) {
+    assert.equal(documentGenerationView(alt), null, "älteres Backend: keine Zeile");
+  }
+  // Rechtsdokumente: Gründe übersetzt, auch die zusammengesetzten; unbekannt bleibt als Code.
+  assert.deepEqual(legalDocumentsView({ legalDocuments: { ready: true, gateEnabled: true, activeSet: { setKey: "SET-2026-08" } } }),
+    { ready: true, label: "Bereit", setKey: "SET-2026-08", gateEnabled: true, code: null });
+  const grund = (reason) => legalDocumentsView({ legalDocuments: { ready: false, gateEnabled: false, reason } });
+  assert.equal(grund("no_active_legal_set").label, "Kein aktives Rechtsdokument-Set");
+  assert.equal(grund("lookup_failed").label, "Prüfung fehlgeschlagen");
+  assert.equal(grund("privacy_missing_in_set").label, "Datenschutzhinweise fehlen im aktiven Set");
+  assert.equal(grund("terms_asset_sha256_mismatch").label, "PDF der AGB: Prüfsumme weicht ab");
+  assert.deepEqual([grund("etwas_neues").label, grund("etwas_neues").code], ["Nicht bereit", "etwas_neues"]);
+  assert.equal(legalDocumentsView({}), null);
+  // Seite: die Zeile „Testmodus" ist weg (das Feld kommt nicht), beide Prüfungen stehen da.
+  const seite = readFileSync(new URL("../pages/admin/AdminBackfillPage.jsx", import.meta.url), "utf8")
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+  assert.doesNotMatch(seite, /<dt>Testmodus<\/dt>/);
+  assert.doesNotMatch(seite, /readiness\.testMode/);
+  assert.match(seite, /const erzeugung = documentGenerationView\(readiness\);/);
+  assert.match(seite, /const recht = legalDocumentsView\(readiness\);/);
+  assert.match(seite, /id="adm-readiness-generation"/);
+  assert.match(seite, /id="adm-readiness-legal"/);
+});

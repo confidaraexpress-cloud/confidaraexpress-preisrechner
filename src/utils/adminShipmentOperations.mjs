@@ -149,6 +149,81 @@ function versuch(raw) {
   };
 }
 
+/* ── Paritätsaudit B1: Versand der Auftragsbestätigung aus der Sendung ───────
+   POST /admin/shipments/:id/order-confirmation-email/send    pending, failed — und ein hängender
+                                                              Versand (sending), den nur eine
+                                                              Adminaktion übernehmen darf (JOB-1)
+   POST /admin/shipments/:id/order-confirmation-email/resend  NUR nach „sent": bewusster zweiter Versand
+   Anders als bei der Rechnung sperrt eine Testbuchung den Versand NICHT — die Testbuchung durchläuft
+   im Backend bewusst den vollständigen Kundenprozess, die Mail ist dort als Test gekennzeichnet. Die
+   Aktion folgt allein dem Status. Der Server setzt dieselben Bedingungen per atomarem Claim noch einmal
+   durch: ein laufender Versand antwortet `in_progress`, ein bereits versendeter `already_sent` —
+   ein zweiter Klick oder ein paralleler Lauf erzeugt keine zweite Mail. */
+export function orderConfirmationMailAction(oc) {
+  const status = oc && typeof oc === "object" ? oc.emailStatus : null;
+  if (status === "sent") return { kind: "resend", label: "Auftragsbestätigung erneut senden", unclear: false };
+  if (status === "failed") return { kind: "send", label: "Auftragsbestätigung erneut versuchen", unclear: false };
+  if (status === "pending") return { kind: "send", label: "Auftragsbestätigung senden", unclear: false };
+  if (status === "sending") return { kind: "send", label: "Hängenden Versand übernehmen", unclear: true };
+  return null;
+}
+
+export const ORDER_CONFIRMATION_MAIL_TEXT = Object.freeze({
+  sendingHint: "Ein Versand hat begonnen und ist nicht abgeschlossen. Läuft er noch, ändert ein erneuter Versuch nichts. Ist er seit mehr als zehn Minuten offen, ist sein Ausgang unklar: Prüfen Sie vor dem Übernehmen, ob die Mail beim Kunden angekommen ist.",
+  sent: "Die Auftragsbestätigung wurde versendet.",
+  resent: "Die Auftragsbestätigung wurde erneut versendet.",
+  alreadySent: "Diese Auftragsbestätigung wurde bereits versendet. Für einen bewussten zweiten Versand „Auftragsbestätigung erneut senden“ verwenden.",
+  inProgress: "Ein Versand dieser Auftragsbestätigung läuft bereits. Bitte laden Sie den Stand gleich neu.",
+  superseded: "Ein anderer Versandlauf hat diese Auftragsbestätigung inzwischen übernommen. Bitte prüfen Sie den aktuellen Stand, bevor Sie erneut senden.",
+  unclear: "Der Ausgang des Versands ist unklar — die Mail kann angekommen sein. Bitte prüfen Sie das, bevor Sie erneut senden.",
+  failed: "Der Versand der Auftragsbestätigung ist fehlgeschlagen. Ein erneuter Versuch ist möglich.",
+  notFound: "Zu dieser Sendung gibt es keine Auftragsbestätigung.",
+  rateLimited: "Zu viele Admin-Aktionen. Bitte kurz warten.",
+  generic: "Die Auftragsbestätigung konnte nicht versendet werden. Bitte versuchen Sie es erneut.",
+});
+
+// 409 des Servers: gesperrter Versand (`error: order_confirmation_email_<grund>`, nichts versendet)
+// oder ein Resend vor dem ersten Versand. Bekannter Code → eigener Text, sonst der fertige Satz in
+// `message`, sonst der allgemeine Text. Nie der Code selbst.
+const ORDER_CONFIRMATION_MAIL_BLOCKED = Object.freeze({
+  order_confirmation_email_recipient_missing: "Für dieses Kundenkonto ist keine E-Mail-Adresse hinterlegt. Es wurde nichts versendet.",
+  order_confirmation_email_recipient_anonymized: "Das Kundenkonto ist anonymisiert. Es wurde nichts versendet.",
+  order_confirmation_email_recipient_invalid: "Die E-Mail-Adresse des Kundenkontos ist ungültig. Es wurde nichts versendet.",
+  order_confirmation_email_config_missing: "Die Absenderkonfiguration für E-Mails ist unvollständig. Es wurde nichts versendet.",
+  order_confirmation_email_not_sent_yet: "Diese Auftragsbestätigung wurde noch nicht versendet — bitte den regulären Versand verwenden.",
+});
+
+/** Rückmeldung zu einer 2xx-Antwort: nur `sent` ist ein Erfolg. */
+export function orderConfirmationMailOutcome(body, kind) {
+  const outcome = body && typeof body === "object" ? body.outcome : null;
+  const T = ORDER_CONFIRMATION_MAIL_TEXT;
+  if (outcome === "sent") return { type: "success", text: kind === "resend" ? T.resent : T.sent };
+  if (outcome === "already_sent") return { type: "info", text: T.alreadySent };
+  if (outcome === "in_progress") return { type: "info", text: T.inProgress };
+  if (outcome === "superseded") return { type: "info", text: T.superseded };
+  // Der Anbieter hat angenommen, der Status ließ sich nicht speichern: kein „fehlgeschlagen" —
+  // ein erneuter Versuch wäre eine zweite Mail.
+  if (outcome === "unclear" || (outcome === "failed" && body.errorCode === "finalize_failed")) {
+    return { type: "info", text: T.unclear };
+  }
+  return { type: "error", text: T.failed };
+}
+
+/** Rückmeldung zu einer Nicht-2xx-Antwort (außer 401/403, die zentral abmelden). */
+export function orderConfirmationMailError(status, body) {
+  const T = ORDER_CONFIRMATION_MAIL_TEXT;
+  const code = body && typeof body === "object" && typeof body.error === "string" ? body.error : "";
+  if (Object.prototype.hasOwnProperty.call(ORDER_CONFIRMATION_MAIL_BLOCKED, code)) {
+    return { type: "error", text: ORDER_CONFIRMATION_MAIL_BLOCKED[code] };
+  }
+  if (status === 409 && body && typeof body.message === "string" && body.message.trim()) {
+    return { type: "error", text: body.message.trim() };
+  }
+  if (status === 404) return { type: "error", text: T.notFound };
+  if (status === 429) return { type: "error", text: T.rateLimited };
+  return { type: "error", text: T.generic };
+}
+
 /** Die normalisierte Betriebssicht — oder `null` ohne `operations` (älteres Backend). */
 export function selectOperations(shipment) {
   const o = shipment && typeof shipment === "object" ? shipment.operations : null;

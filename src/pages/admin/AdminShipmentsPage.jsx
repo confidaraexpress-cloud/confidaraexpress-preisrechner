@@ -141,7 +141,7 @@ function StatusCell({ row }) {
       {markers.length > 0 && (
         <span className="adm-ship-markers">
           {markers.map((m) => (
-            <span key={m.key} className="adm-ship-marker">
+            <span key={m.key} className={m.badge ? `badge ${m.badge}` : "adm-ship-marker"}>
               {m.label}
             </span>
           ))}

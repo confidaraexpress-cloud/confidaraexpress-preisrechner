@@ -30,7 +30,7 @@ const FIELD_LABELS = {
   "issuer.taxNumber": "Steuernummer", "issuer.vatId": "USt-IdNr.",
   "issuer.taxNumberOrVatId": "Steuernummer oder USt-IdNr.",
   "issuer.registerCourt": "Registergericht", "issuer.registerNumber": "Handelsregisternummer",
-  "issuer.managingDirectors": "Geschäftsführung",
+  "issuer.managingDirectors": "Geschäftsführung", "issuer.seat": "Sitz der Gesellschaft",
   "bank.accountHolder": "Kontoinhaber", "bank.name": "Bankname", "bank.iban": "IBAN", "bank.bic": "BIC",
   "invoice.currency": "Rechnungswährung",
   "customer_snapshot": "Kundendaten (Firma)", "invoice_number": "Rechnungsnummer",
@@ -38,6 +38,24 @@ const FIELD_LABELS = {
   "service_snapshot": "Leistungsdaten", "amounts": "Beträge",
 };
 export const fieldLabel = (key) => FIELD_LABELS[key] || String(key ?? "—");
+
+// Geschäftsbriefangaben (§ 35a GmbHG) — eigener, additiver Block der Readiness-Antwort. Er meldet
+// nur, was in Mail-Fußzeilen, Auftragsbestätigungen und Rechnungen noch fehlt oder noch ein
+// Platzhalter ist (`placeholderFields`; die Fußzeile lässt solche Werte weg), und berührt weder
+// `ready` noch irgendeine Sperre. Ein älteres Backend liefert ihn nicht → null (kein Block, kein Raten).
+export function businessLetterView(readiness) {
+  const b = readiness && typeof readiness === "object" ? readiness.businessLetter : null;
+  if (!b || typeof b !== "object" || typeof b.ready !== "boolean") return null;
+  const liste = (v) => (Array.isArray(v) ? v.filter((f) => typeof f === "string" && f) : []);
+  const missing = liste(b.missingFields);
+  const placeholders = liste(b.placeholderFields);
+  return {
+    ready: b.ready === true && missing.length === 0 && placeholders.length === 0,
+    registerRequired: b.registerRequired === true,
+    missing,
+    placeholders,
+  };
+}
 
 // Anzeige-Status je Kandidat: „Bereit" (schon ein PDF) · „Vorschau erzeugbar (Snapshot wird
 // rekonstruiert)" (Alt-Rechnung ohne Snapshots — im Testbetrieb aus gespeicherten Daten

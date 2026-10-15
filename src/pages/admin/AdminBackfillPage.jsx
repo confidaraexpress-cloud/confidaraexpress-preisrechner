@@ -12,6 +12,7 @@ import {
 } from "../../api/adminApi";
 import {
   readinessMeta, fieldLabel, candidateStatusMeta, canBackfillCandidate, backfillOutcomeMessage,
+  businessLetterView,
 } from "../../utils/invoiceBackfillView.mjs";
 
 const PAGE_SIZE = 25;
@@ -74,6 +75,7 @@ function LegalTextsCard() {
 
 function ReadinessCard({ readiness, loading, error, onReload }) {
   const [cls, label] = readinessMeta(readiness);
+  const briefangaben = businessLetterView(readiness);
   const yesNo = (b) => (b === true ? "ja" : b === false ? "nein" : "—");
   const num = (n) => (Number.isFinite(Number(n)) ? String(Number(n)) : "—");
   return (
@@ -118,6 +120,31 @@ function ReadinessCard({ readiness, loading, error, onReload }) {
               <div className="adm-readiness-block">
                 <span className="adm-readiness-label adm-readiness-label-warn">Platzhalter-/Testwerte (vor dem ersten echten Kunden ersetzen)</span>
                 <ChipList items={readiness.placeholderFields} />
+              </div>
+            )}
+            {briefangaben && (
+              <div className="adm-readiness-block" id="adm-business-letter">
+                <span className={`adm-readiness-label${briefangaben.ready ? "" : " adm-readiness-label-warn"}`}>
+                  Geschäftsbriefangaben (§ 35a GmbHG) in Mails, Auftragsbestätigungen und Rechnungen
+                </span>
+                {briefangaben.ready ? (
+                  <span className="adm-muted">vollständig</span>
+                ) : briefangaben.placeholders.length === 0 ? (
+                  <ChipList items={briefangaben.missing} />
+                ) : (
+                  <>
+                    {briefangaben.missing.length > 0 && (
+                      <div className="adm-readiness-sub">
+                        <span className="adm-readiness-sub-label">Fehlt:</span>
+                        <ChipList items={briefangaben.missing} />
+                      </div>
+                    )}
+                    <div className="adm-readiness-sub">
+                      <span className="adm-readiness-sub-label">Platzhalter (in Mail-Fußzeilen ausgeblendet):</span>
+                      <ChipList items={briefangaben.placeholders} />
+                    </div>
+                  </>
+                )}
               </div>
             )}
             <p className="adm-support-hint">

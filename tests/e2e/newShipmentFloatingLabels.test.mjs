@@ -22,6 +22,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import { fuelleSendungsangaben } from "./helpers/newShipmentForm.mjs";
@@ -119,12 +120,12 @@ async function messung(page, id) {
 }
 
 test.before(async () => {
-  // `detached: true` ist hier tragend: `npm run dev` startet Vite als KIND, und
+  // `DEV_SERVER_SPAWN` ist hier tragend: `npm run dev` startet Vite als KIND, und
   // ein SIGTERM an npm lässt Vite am Port zurück. Der nächste Lauf scheitert
   // dann an `--strictPort` — und meldet „Dev-Server startet nicht" statt eines
   // echten Befunds. Deshalb eine eigene Prozessgruppe, die am Ende komplett fällt.
   server = spawn("npm", ["run", "dev", "--", "--port", String(PORT), "--strictPort"],
-    { cwd: process.cwd(), stdio: ["ignore", "pipe", "pipe"], detached: true });
+    { cwd: process.cwd(), stdio: ["ignore", "pipe", "pipe"], ...DEV_SERVER_SPAWN });
   await new Promise((res, rej) => {
     const t = setTimeout(() => rej(new Error("Dev-Server startet nicht")), 60000);
     server.stdout.on("data", (d) => { if (String(d).includes("ready in") || String(d).includes("Local:")) { clearTimeout(t); setTimeout(res, 900); } });
@@ -136,7 +137,7 @@ test.beforeEach(() => { calcAntwort = null; });
 
 test.after(async () => {
   if (browser) await browser.close();
-  if (server) { try { process.kill(-server.pid, "SIGTERM"); } catch { server.kill("SIGTERM"); } }
+  stopDevServer(server, "SIGTERM");
 });
 
 /* ══════════ 1 — Nullzustand: die Beschriftung ist KEIN Wert ═══════════════ */

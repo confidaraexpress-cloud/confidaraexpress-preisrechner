@@ -19,6 +19,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { chromium } from "playwright";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import os from "node:os";
@@ -59,7 +60,7 @@ async function warteBisWeg() {
 
 async function startePreview() {
   server = spawn("npx", ["vite", "preview", "--outDir", OUT, "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], {
-    stdio: "ignore", detached: true,
+    stdio: "ignore", ...DEV_SERVER_SPAWN,
   });
   await warteAufServer();
 }
@@ -67,8 +68,7 @@ async function startePreview() {
 function stoppePreview() {
   if (!server) return;
   // Die Prozessgruppe, nicht nur das Kind (npx → sh → node).
-  try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
-  try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+  stopDevServer(server, "SIGKILL");
   server = null;
 }
 
@@ -91,7 +91,7 @@ async function mockApi(ctx, apiCalls) {
 test.before(async () => {
   OUT = mkdtempSync(path.join(os.tmpdir(), "ce-pwa-core-"));
   await new Promise((resolve, reject) => {
-    const b = spawn("npx", ["vite", "build", "--outDir", OUT, "--emptyOutDir", "--logLevel", "error"], { stdio: "ignore" });
+    const b = spawn("npx", ["vite", "build", "--outDir", OUT, "--emptyOutDir", "--logLevel", "error"], { stdio: "ignore", windowsHide: true });
     b.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`vite build beendet mit ${code}`))));
     b.on("error", reject);
   });

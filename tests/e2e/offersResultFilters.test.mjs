@@ -19,6 +19,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -122,7 +123,7 @@ const anzahlKarten = (page) => page.locator(".offer-card").count();
 const ueberschrift  = (page) => page.locator(".offers-result-count").textContent();
 
 test.before(async () => {
-  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { detached: true, stdio: "ignore" });
+  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { ...DEV_SERVER_SPAWN, stdio: "ignore" });
   const deadline = Date.now() + 90000;
   for (;;) {
     try { const r = await fetch(`${BASE}/`); if (r.ok) break; } catch { /* noch nicht bereit */ }
@@ -138,8 +139,7 @@ test.after(async () => {
     // Die Prozessgruppe, nicht nur das Kind: npx startet `sh -c vite`, das
     // seinerseits node startet. Ein Signal an den npx-Prozess ließe den Enkel
     // — den eigentlichen Dev-Server — auf seinem Port stehen.
-    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
-    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+    stopDevServer(server, "SIGKILL");
   }
 });
 

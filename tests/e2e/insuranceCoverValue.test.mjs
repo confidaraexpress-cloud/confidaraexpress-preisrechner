@@ -20,6 +20,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -192,7 +193,7 @@ async function sichtbarerText(page) {
 
 test.before(async () => {
   server = spawn("npm", ["run", "dev", "--", "--port", String(PORT), "--strictPort"], {
-    cwd: process.cwd(), stdio: "ignore", detached: true,
+    cwd: process.cwd(), stdio: "ignore", ...DEV_SERVER_SPAWN,
   });
   const start = Date.now();
   while (Date.now() - start < 60000) {
@@ -204,7 +205,7 @@ test.before(async () => {
 
 test.after(async () => {
   if (browser) await browser.close();
-  if (server?.pid) { try { process.kill(-server.pid, "SIGTERM"); } catch { /* schon beendet */ } }
+  stopDevServer(server, "SIGTERM");
 });
 
 /* ── 1. Karten und Texte ─────────────────────────────────────────────────── */

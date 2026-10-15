@@ -130,7 +130,7 @@ export default function AddressBookPage({ onUseForNewShipment, utility }) {
       const r = drawer.mode === "edit" ? await updateAddress(drawer.editingId, payload) : await createAddress(payload);
       if (r.status === 401 || r.status === 403) return { ok: false };
       let d = null; try { d = await r.json(); } catch { d = null; }
-      if (!r.ok) return { ok: false, message: mapAddressErrorToMessage(d?.code) };
+      if (!r.ok) return { ok: false, message: mapAddressErrorToMessage(d?.code, d?.field) };
       if (drawer.mode === "edit") setItems((prev) => applyAddressMutation(prev, d, "update"));
       else load(); // neu erstellt → aktuelle Ansicht sicher neu laden (Reihenfolge bleibt serverseitig autoritativ)
       showSuccess(drawer.mode === "edit" ? "Adresse aktualisiert." : "Adresse gespeichert.");
@@ -151,7 +151,8 @@ export default function AddressBookPage({ onUseForNewShipment, utility }) {
       const r = await updateAddress(address.id, payload);
       if (r.status === 401 || r.status === 403) { setBusyId(null); return; }
       let d = null; try { d = await r.json(); } catch { d = null; }
-      if (!r.ok) { setActionError(mapAddressErrorToMessage(d?.code)); setBusyId(null); return; }
+      // Paritätsaudit A3: eine Altbestandsadresse ohne vollständigen Versandkontakt nennt das fehlende Feld.
+      if (!r.ok) { setActionError(mapAddressErrorToMessage(d?.code, d?.field)); setBusyId(null); return; }
       setItems((prev) => applyAddressMutation(prev, applyServerOrFallback(address, d, patch), "update"));
       showSuccess(successText);
     } catch {

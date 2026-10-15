@@ -94,8 +94,10 @@ test("8 — validiert wird nur die aktive Option", () => {
 
 test("9 — Fehler erscheinen erst nach dem Weiterklicken", () => {
   // Ein gerade eingeschaltetes, noch leeres Feld darf nicht sofort rot sein.
-  assert.match(bookingPage, /trackingEmailError=\{emailShowErrors \? trackingEmailProblem : null\}/);
-  assert.match(bookingPage, /labelTrackingEmailError=\{emailShowErrors \? labelTrackingEmailProblem : null\}/);
+  // Paritätsaudit A5: dazu kommt der Feldfehler des Servers — er entsteht erst mit einer Antwort auf
+  // die Buchung, also ebenfalls nie beim bloßen Einschalten.
+  assert.match(bookingPage, /trackingEmailError=\{\(emailShowErrors && trackingEmailProblem\) \|\| zusatzmailFeldFehler\("trackingEmail"\)\}/);
+  assert.match(bookingPage, /labelTrackingEmailError=\{\(emailShowErrors && labelTrackingEmailProblem\) \|\| zusatzmailFeldFehler\("labelTrackingEmail"\)\}/);
   assert.match(bookingPage, /setEmailShowErrors\(true\)/);
 });
 

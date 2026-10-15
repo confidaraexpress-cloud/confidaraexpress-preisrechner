@@ -5,6 +5,7 @@ import { apiFetch, authH, triggerAuthError } from "../../api/client";
 // Passwort-Längenregel (8–128, Zählung in Code-Points). Einzige Quelle der
 // Wahrheit im Frontend; Spiegel von lib/passwordPolicy.js im Backend.
 import { PASSWORD_MIN_LEN, PASSWORD_MAX_LEN, passwordLengthError } from "../../utils/passwordPolicy.mjs";
+import { endsSession } from "../../utils/emailChangeView.mjs";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Passwortänderung — aus Profile.jsx ausgelagert, wortgleich und
@@ -107,13 +108,13 @@ export function PasswordChangeSection() {
         // Erfolgsmeldung bleibt als Quittung sichtbar.
         pwReturnFocus.current = true;
         setPwOpen(false);
-      } else if (r.status === 401) {
+      } else if (r.status === 401 || r.status === 403) {
         const d = await r.json().catch(() => ({}));
-        // P3: Token wurde serverseitig bereits invalidiert (z.B. Passwort in
-        // einem anderen Tab geändert) — dann ist es keine Falscheingabe,
-        // sondern eine abgelaufene Session. Gleicher Logout-Pfad wie bei
-        // jedem anderen 401 auf einem `auth: true`-Request.
-        if (d.error === "Sitzung abgelaufen. Bitte melden Sie sich erneut an.") {
+        // Token serverseitig ungültig (z. B. Passwort in einem anderen Tab geändert,
+        // Code SESSION_EXPIRED) oder Konto gesperrt/nicht freigegeben (403) — dann ist
+        // es keine Falscheingabe, sondern ein Sitzungsende (Paritätsaudit A6/BP6).
+        // Gleicher Logout-Pfad wie bei jedem anderen 401/403 auf einem `auth: true`-Request.
+        if (endsSession(r.status, d)) {
           triggerAuthError();
         } else {
           setPwError("Das aktuelle Passwort ist nicht korrekt.");

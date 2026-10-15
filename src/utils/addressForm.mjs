@@ -167,6 +167,24 @@ const ERROR_MESSAGES = {
 };
 const GENERIC_ERROR_MESSAGE = "Die Adresse konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.";
 
-export function mapAddressErrorToMessage(code) {
+// Paritätsaudit A3: das Backend speichert keine Adresse ohne vollständigen
+// Versandkontakt — auch nicht beim Favorit-/Standardsetzen einer Altbestandsadresse,
+// die nur `contactName` trägt. Seit Backend #432 nennt `field` das erste fehlende
+// Feld im öffentlichen Vertrag (firstName, lastName, email, phone).
+const CONTACT_FIELD_LABELS = Object.freeze({
+  firstName: "der Vorname",
+  lastName: "der Nachname",
+  email: "die E-Mail-Adresse",
+  phone: "die Telefonnummer",
+});
+const CONTACT_INCOMPLETE_HINT = "Bitte ergänzen Sie Vor- und Nachname, E-Mail-Adresse und Telefonnummer über „Bearbeiten“ — erst dann lässt sich die Adresse ändern.";
+
+export function mapAddressErrorToMessage(code, field) {
+  if (code === "ADDRESS_CONTACT_INCOMPLETE") {
+    const fehlt = CONTACT_FIELD_LABELS[field];
+    return fehlt
+      ? `Für diese Adresse fehlt noch ${fehlt} des Versandkontakts. ${CONTACT_INCOMPLETE_HINT}`
+      : `Für diese Adresse fehlt noch der vollständige Versandkontakt. ${CONTACT_INCOMPLETE_HINT}`;
+  }
   return ERROR_MESSAGES[code] || GENERIC_ERROR_MESSAGE;
 }

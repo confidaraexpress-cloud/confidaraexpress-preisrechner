@@ -117,7 +117,7 @@ test("8 — 400/422: Profil, Neuberechnung und Referenzfeld stehen vor den Feld-
   const profil = zweig.indexOf('d?.code === "BUSINESS_PROFILE_INCOMPLETE"');
   const neuberechnen = zweig.indexOf("fordertNeuberechnung(d)");
   const referenz = zweig.indexOf('d?.code === "INVALID_REFERENCE_NUMBER"');
-  const email = zweig.indexOf('d?.field === "trackingEmail"');
+  const email = zweig.indexOf("zusatzmailFehler(d, backendMsg)");
   assert.ok(profil >= 0 && neuberechnen > profil && referenz > neuberechnen && email > referenz);
   // F1: nennt die 422 die fehlenden Felder, sagt der Hinweis genau diese — sonst der Katalogtext.
   assert.match(zweig, /setProfileHint\(bookingProfileGateText\(d, normalizeApiError\(\{ status: r\.status, body: d \}\)\.message\)\);/);

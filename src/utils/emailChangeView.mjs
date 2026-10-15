@@ -23,8 +23,22 @@ export const EMAIL_MAX_LENGTH = 255;
 // ist die fachliche Falscheingabe „aktuelles Passwort falsch" und darf NICHT
 // ausloggen.
 export const SESSION_EXPIRED_ERROR = "Sitzung abgelaufen. Bitte melden Sie sich erneut an.";
+// Paritätsaudit A6: maßgeblich ist der Code `SESSION_EXPIRED` (middleware/auth.js),
+// nicht der Wortlaut — auch „Token fehlt“ ist ein Sitzungsende. Der Textvergleich
+// bleibt nur als Rückfall für einen Server ohne Code.
 export function isSessionExpiredBody(body) {
-  return !!body && body.error === SESSION_EXPIRED_ERROR;
+  if (!body || typeof body !== "object") return false;
+  return body.code === "SESSION_EXPIRED" || body.error === SESSION_EXPIRED_ERROR;
+}
+
+// Paritätsaudit A6/BP6: Endet mit dieser Antwort die Sitzung? Ein 401 nur mit dem
+// Sitzungscode (sonst ist er die fachliche Falscheingabe „aktuelles Passwort falsch“),
+// ein 403 immer: auf diesen Selbstbedienungsrouten bedeutet er gesperrtes, nicht
+// freigegebenes oder nicht mehr vorhandenes Konto (ACCOUNT_BLOCKED, ACCOUNT_PENDING_APPROVAL,
+// ACCOUNT_PRELIVE_TEST_INACTIVE …) — dieselbe Regel wie der zentrale Abmeldeweg in api/client.js.
+export function endsSession(status, body) {
+  if (status === 403) return true;
+  return status === 401 && isSessionExpiredBody(body);
 }
 
 // ── Startdialog-Validierung ─────────────────────────────────────────────────

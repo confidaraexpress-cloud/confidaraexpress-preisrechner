@@ -66,6 +66,7 @@ export {
   addressPickerLabel,
   addressPickerPerson,
   addressPickerMeta,
+  addressContactPerson,
 } from "./addressPickerView.mjs";
 
 export {

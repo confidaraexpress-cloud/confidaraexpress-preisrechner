@@ -525,3 +525,13 @@ test("L5 kein Wizard: die drei Abschnitte stehen in einem Formular", () => {
     pos = i;
   }
 });
+
+test("Adressbuch → Auftrag: ohne Altwert `contactName` entsteht der Name aus Vor- und Nachname", () => {
+  // Neue Adressbucheinträge führen den Namen strukturiert; früher blieb der Empfängername leer.
+  const r = mapAddressToOrderRecipient({ firstName: "Erika", lastName: "Muster", streetAndNumber: "S 1",
+    postalCode: "10115", city: "Berlin", country: "DE" });
+  assert.equal(r.fullName, "Erika Muster");
+  assert.equal(mapAddressToOrderRecipient({ contactName: "Alt Wert", firstName: "Neu", lastName: "Name" }).fullName,
+    "Alt Wert", "ein vorhandener Altwert bleibt");
+  assert.equal(mapAddressToOrderRecipient({ firstName: " ", lastName: "Muster" }).fullName, "Muster");
+});

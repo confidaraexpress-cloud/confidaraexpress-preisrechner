@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ErrorState, LoadingState } from "../components/ui/StateView";
 import { agreementDocumentUrl, getSalesPartnerAgreement } from "../api/partnerApi";
+import { getLegalContent } from "../api/legalApi";
+import { LegalDocumentView } from "../components/legal/LegalDocumentView";
+import { legalVersionLine, readLegalContent } from "../utils/legalPageState.mjs";
 import { EXTERNAL_LINK_REL, EXTERNAL_LINK_TARGET } from "../utils/externalLink.mjs";
 import {
   AGREEMENT_TEXTS,
@@ -18,9 +21,14 @@ import {
 
    Zustände: Laden · keine veröffentlichte Fassung · Fassung mit Dokument ·
    Ladefehler mit „Erneut versuchen". Ein Fehler wird nie als „keine Fassung"
-   ausgegeben. */
+   ausgegeben.
+
+   Trägt die gültige Fassung eine Webfassung (`contentPath`, aus derselben Datei
+   erzeugt wie die PDF), steht ihr Wortlaut auf der Seite — im selben Leselayout
+   wie /agb (components/legal/LegalDocumentView.jsx). Ist sie nicht ladbar, bleibt
+   es bei Fassung, Gültigkeit und Dokumentknopf: dieselbe Fassung, kein anderer Text. */
 export default function PartnerAgreementPage() {
-  const [state, setState] = useState({ loading: true, error: false, agreement: null });
+  const [state, setState] = useState({ loading: true, error: false, agreement: null, markdown: null });
   const laufRef = useRef(0);
 
   const load = useCallback(async () => {
@@ -35,7 +43,18 @@ export default function PartnerAgreementPage() {
       }
       if (lauf !== laufRef.current) return;
       const gelesen = r.ok ? readAgreementResponse(d) : { ok: false, agreement: null };
-      setState({ loading: false, error: !gelesen.ok, agreement: gelesen.agreement });
+      let markdown = null;
+      if (gelesen.ok && gelesen.agreement && gelesen.agreement.contentPath) {
+        try {
+          const c = await getLegalContent(gelesen.agreement.contentPath);
+          let cb = null;
+          try { cb = await c.json(); } catch { cb = null; }
+          const inhalt = readLegalContent(c.status, cb, gelesen.agreement.version);
+          if (inhalt.ok) markdown = inhalt.markdown;
+        } catch { markdown = null; }
+        if (lauf !== laufRef.current) return;
+      }
+      setState({ loading: false, error: !gelesen.ok, agreement: gelesen.agreement, markdown });
     } catch {
       if (lauf === laufRef.current) setState({ loading: false, error: true, agreement: null });
     }
@@ -46,7 +65,7 @@ export default function PartnerAgreementPage() {
     return () => { laufRef.current += 1; };
   }, [load]);
 
-  const { loading, error, agreement } = state;
+  const { loading, error, agreement, markdown } = state;
   const dokument = agreement ? agreementDocumentUrl(agreement.documentPath) : null;
   const gueltigkeit = agreement ? agreementValidityLabel(agreement) : null;
 
@@ -79,6 +98,19 @@ export default function PartnerAgreementPage() {
         ) : (
           <p className="legal-p" id="spa-no-document">{AGREEMENT_TEXTS.noDocument}</p>
         )}
+      </div>
+    );
+  }
+
+  if (!loading && !error && agreement && markdown) {
+    return (
+      <div className="page-with-navbar" data-legal-mode="content">
+        <LegalDocumentView
+          markdown={markdown}
+          versionLine={legalVersionLine({ version: agreement.version, effectiveFrom: agreement.effectiveFrom })}
+          documentUrl={dokument}
+          tocMaxLevel={2}
+        />
       </div>
     );
   }

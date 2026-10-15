@@ -10,7 +10,9 @@ import { mapAddressToOrderRecipient, TAB_RECIPIENT } from "../../utils/addressBo
 import { AddressSuggestInput } from "../address/AddressSuggestInput";
 import { AddressStatusLine } from "../address/AddressStatusLine";
 import { useAddressValidation } from "../../hooks/useAddressValidation";
-import { applyStreetSuggestion } from "../../utils/addressValidationView.mjs";
+import { applyAddressSuggestion, cityFromSuggestion, streetFieldHint } from "../../utils/addressValidationView.mjs";
+import { cityPlaceholder } from "../../utils/addressPlaceholders.mjs";
+import { postalCodeExample, postalCodeInputMode } from "../../utils/postalCode.mjs";
 import {
   ORDER_RECIPIENT_LIMITS, emptyOrderRecipient, postalCodeRequirement,
   validateOrderRecipient, normalizeOrderRecipient, reservationPreview,
@@ -260,38 +262,10 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
           <Feld id="o-name" label="Name / Ansprechpartner *" value={recipient.fullName} onChange={set("fullName")}
                 error={errs.fullName} maxLength={ORDER_RECIPIENT_LIMITS.fullName} autoComplete="name" />
         </div>
+        {/* Land ZUERST (wie in „Neue Sendung“): Adressvorschläge gelten immer für ein Land.
+            Stand es hinter Straße und Ort, suchte eine ausländische Anschrift noch mit der
+            Vorbelegung DE. Die Vorbelegung selbst bleibt unverändert. */}
         <div className="inv-grid-2">
-          <AddressSuggestInput
-            id="o-street" label="Straße und Hausnummer" required
-            value={recipient.streetAndNumber}
-            onChange={(v) => set("streetAndNumber")(v)}
-            onSelect={(item) => set("streetAndNumber")(
-              applyStreetSuggestion(recipient.streetAndNumber, typeof item === "string" ? item : item.street))}
-            suggestions={addressCheck.streetOptions}
-            error={errs.streetAndNumber}
-            maxLength={ORDER_RECIPIENT_LIMITS.streetAndNumber}
-            autoComplete="address-line1" />
-          <Feld id="o-add" label="Adresszusatz" value={recipient.addressAddition} onChange={set("addressAddition")}
-                maxLength={ORDER_RECIPIENT_LIMITS.addressAddition} autoComplete="address-line2" />
-        </div>
-        <div className="inv-grid-3">
-          {/* Der Stern folgt dem LAND, nicht der Gewohnheit: das Backend prüft
-              die PLZ über validatePostalCode() — Pflicht ist sie nur, wo das
-              Land eine kennt. Länder ohne Postleitzahlsystem bekommen gar kein
-              Feld. */}
-          {plzRegel.shown && (
-            <Feld id="o-zip" label={plzRegel.required ? "PLZ *" : "PLZ"} value={recipient.postalCode} onChange={set("postalCode")}
-                  error={errs.postalCode} maxLength={ORDER_RECIPIENT_LIMITS.postalCode} autoComplete="postal-code" />
-          )}
-          <AddressSuggestInput
-            id="o-city" label="Ort" required
-            value={recipient.city}
-            onChange={(v) => set("city")(v)}
-            onSelect={(item) => set("city")(typeof item === "string" ? item : item.city)}
-            suggestions={addressCheck.cityOptions}
-            error={errs.city}
-            maxLength={ORDER_RECIPIENT_LIMITS.city}
-            autoComplete="address-level2" />
           <div className="inv-field">
             <label className="field-label" htmlFor="o-country">Land *</label>
             {/* Sichtbar der Landesname, gespeichert und gesendet unverändert der
@@ -305,11 +279,58 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
             {errs.country && <p className="inv-field-error">{errs.country}</p>}
           </div>
         </div>
-        {/* Ergebnis der Adressprüfung — erscheint nur, wenn es etwas zu sagen gibt. */}
+        <div className="inv-grid-2">
+          <AddressSuggestInput
+            id="o-street" label="Straße und Hausnummer" required
+            value={recipient.streetAndNumber}
+            onChange={(v) => set("streetAndNumber")(v)}
+            onSelect={(item) => {
+              // Nur Straße/Hausnummer, PLZ und Ort — Firma, Name, Zusatz und Kontakt bleiben.
+              const patch = applyAddressSuggestion({ country: recipient.country, street: recipient.streetAndNumber }, item);
+              if (!patch.street) return;
+              addressCheck.markSelected(patch.street);
+              setRecipient((cur) => ({
+                ...cur,
+                streetAndNumber: patch.street,
+                ...(patch.postalCode ? { postalCode: patch.postalCode } : {}),
+                ...(patch.city ? { city: patch.city } : {}),
+              }));
+            }}
+            suggestions={addressCheck.streetOptions}
+            loading={addressCheck.streetLoading}
+            noResults={addressCheck.streetNoResults}
+            hint={streetFieldHint(recipient.country, recipient.streetAndNumber) || undefined}
+            error={errs.streetAndNumber}
+            maxLength={ORDER_RECIPIENT_LIMITS.streetAndNumber}
+            autoComplete="address-line1" />
+          <Feld id="o-add" label="Adresszusatz" value={recipient.addressAddition} onChange={set("addressAddition")}
+                maxLength={ORDER_RECIPIENT_LIMITS.addressAddition} autoComplete="address-line2" />
+        </div>
+        <div className="inv-grid-2">
+          {/* Der Stern folgt dem LAND, nicht der Gewohnheit: das Backend prüft
+              die PLZ über validatePostalCode() — Pflicht ist sie nur, wo das
+              Land eine kennt. Länder ohne Postleitzahlsystem bekommen gar kein
+              Feld. */}
+          {plzRegel.shown && (
+            <Feld id="o-zip" label={plzRegel.required ? "PLZ *" : "PLZ"} value={recipient.postalCode} onChange={set("postalCode")}
+                  error={errs.postalCode} maxLength={ORDER_RECIPIENT_LIMITS.postalCode} autoComplete="postal-code"
+                  placeholder={postalCodeExample(recipient.country)} inputMode={postalCodeInputMode(recipient.country)} />
+          )}
+          <AddressSuggestInput
+            id="o-city" label="Ort" required
+            value={recipient.city}
+            onChange={(v) => set("city")(v)}
+            onSelect={(item) => set("city")(cityFromSuggestion(item))}
+            suggestions={addressCheck.cityOptions}
+            placeholder={cityPlaceholder(recipient.country)}
+            error={errs.city}
+            maxLength={ORDER_RECIPIENT_LIMITS.city}
+            autoComplete="address-level2" />
+        </div>
+        {/* Ergebnis der Adressprüfung — Platz reserviert, Text nur, wenn es etwas zu sagen gibt. */}
         <AddressStatusLine
           status={addressCheck.status}
-          acknowledged={addressCheck.acknowledged}
-          onAcknowledge={addressCheck.acknowledge}
+          reason={addressCheck.reason}
           citySuggestions={addressCheck.cityOptions}
           onPickCity={(c) => set("city")(c)}
         />

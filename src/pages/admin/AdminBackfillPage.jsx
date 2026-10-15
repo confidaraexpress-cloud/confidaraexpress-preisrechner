@@ -53,6 +53,25 @@ function StatusCell({ c }) {
 }
 
 // ── Produktionsbereitschaft-Karte — rein informativ, blockiert NICHTS mehr ──
+// Einstieg in die vorbereiteten Rechtstexte (nur lesend, nicht veröffentlicht).
+function LegalTextsCard() {
+  return (
+    <div className="adm-card" id="adm-legal-texts">
+      <div className="adm-card-head">Rechtstexte (Entwürfe)</div>
+      <div className="adm-card-body">
+        <p className="adm-support-hint">
+          Die vorbereiteten Rechtstexte lesen und prüfen — nicht veröffentlicht und rechtlich noch
+          nicht freigegeben. Die öffentlichen Seiten und die aktive Buchungsfassung bleiben unverändert.
+        </p>
+        <div className="adm-legal-texts-links">
+          <Link className="btn btn-primary btn-sm" to="/vorschau/rechtstexte/agb">Seitenvorschau (wie veröffentlicht)</Link>
+          <Link className="btn btn-outline btn-sm" to="/admin/legal-drafts">Arbeitsfassungen G1–G9</Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ReadinessCard({ readiness, loading, error, onReload }) {
   const [cls, label] = readinessMeta(readiness);
   const yesNo = (b) => (b === true ? "ja" : b === false ? "nein" : "—");
@@ -253,6 +272,10 @@ export default function AdminBackfillPage() {
       </p>
 
       <ReadinessCard readiness={readiness} loading={readinessLoading} error={readinessError} onReload={loadReadiness} />
+
+      {/* Rechtstexte: Einstieg über diese Seite statt eines weiteren Sidebar-Eintrags —
+          die Sidebar hat bei 1440 × 900 keinen Platz mehr (premiumAdminPaketE 1c). */}
+      <LegalTextsCard />
 
       {pageMsg && (
         <div className={`alert ${pageMsg.type === "success" ? "alert-success" : pageMsg.type === "info" ? "alert-info" : "alert-error"}`} role={pageMsg.type === "error" ? "alert" : "status"}>

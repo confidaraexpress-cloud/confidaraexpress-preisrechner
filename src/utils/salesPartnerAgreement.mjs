@@ -27,6 +27,7 @@
 
 import { isSafeApiPath } from "./shipmentDocumentsView.mjs";
 import { formatIsoDate } from "./salesPartnerView.mjs";
+import { safeContentPath } from "./legalPageState.mjs";
 
 export const AGREEMENT_TEXTS = Object.freeze({
   title: "Vertriebspartnervereinbarung",
@@ -61,6 +62,8 @@ export function normalizeAgreement(raw) {
     effectiveFrom: str(a.effectiveFrom),
     effectiveTo: str(a.effectiveTo),
     documentPath: agreementDocumentPath(a.documentPath),
+    // Webfassung derselben Fassung (nur wenn der Server sie nennt; utils/legalPageState.mjs).
+    ...(safeContentPath(a.contentPath, "sales_partner_agreement") ? { contentPath: safeContentPath(a.contentPath, "sales_partner_agreement") } : {}),
   };
 }
 

@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { API } from "../../api/client";
 import {
-  LEGAL_READY, legalTermsDocument, legalGateError,
+  LEGAL_READY, legalTermsDocument, legalTermsNotices, legalGateError,
 } from "../../utils/legalBookingView.mjs";
 
 // AGB-Bestätigung + separate Pflichtbestätigung zu ausgeschlossenen Gütern —
@@ -34,6 +34,12 @@ import {
 // ein beweglicher Text neben einem eingefrorenen Nachweis — der Kunde bestätigte etwas anderes,
 // als gespeichert wird. Deshalb dort dieselbe versionierte Fassung. Ein DRITTER Acceptance-Typ
 // entsteht dadurch nicht: die Bestätigung bleibt fachlich eine eigene Tatsachenaussage.
+//
+// ─── Buchungshinweise der AGB-Fassung ───────────────────────────────────────────────────────
+// Trägt die aktive AGB-Fassung Hinweise (künftig: ADSp 2017 als Anlage, Hinweis nach § 449
+// Abs. 2 HGB), erscheinen sie VOR den Bestätigungen, und der AGB-Zusatz steht im Text der
+// ersten Checkbox. Wortlaut und Zeitpunkt bestimmt allein der Server über die registrierte
+// Fassung — hier steht kein Hinweistext. Ohne Hinweise ändert sich an diesem Bereich nichts.
 export function TermsModule({
   accepted, onChange, prohibitedAccepted, onProhibitedChange, prohibitedError,
   legalContext,
@@ -42,6 +48,9 @@ export function TermsModule({
   const aktiv = legalContext && legalContext.state === LEGAL_READY;
   const termsDoc = aktiv ? legalTermsDocument(legalContext) : null;
   const ladefehler = legalGateError(legalContext);
+  const { labelSuffix, notices } = legalTermsNotices(legalContext);
+  // Die Hinweise beschreiben die erste Bestätigung: ein Screenreader liest sie beim Fokus mit.
+  const hinweisIds = notices.map((_, i) => `booking-legal-notice-${i}`);
 
   // Absolute Adresse: die Dokumente liegen auf der API, nicht auf der SPA-Domain.
   const docHref = (d) => `${API}${d.url}`;
@@ -84,12 +93,21 @@ export function TermsModule({
         </div>
       )}
 
+      {aktiv && notices.map((n, i) => (
+        <section key={hinweisIds[i]} id={hinweisIds[i]} className="booking-legal-notice"
+          role="note" aria-labelledby={`${hinweisIds[i]}-title`}>
+          <p id={`${hinweisIds[i]}-title`} className="booking-legal-notice-title">{n.title}</p>
+          <p className="booking-legal-notice-text">{n.text}</p>
+        </section>
+      ))}
+
       <label className="booking-agb-label">
-        <input type="checkbox" className="booking-agb-checkbox" checked={accepted} onChange={e => onChange(e.target.checked)} />
+        <input type="checkbox" className="booking-agb-checkbox" checked={accepted} onChange={e => onChange(e.target.checked)}
+          aria-describedby={aktiv && hinweisIds.length ? hinweisIds.join(" ") : undefined} />
         <span className="booking-agb-text">
           Ich bestätige die oben genannten Sendungsdaten und stimme den{" "}
           {agbLink}
-          {termsDoc ? <> (Stand {termsDoc.version})</> : null}{" "}
+          {termsDoc ? <> <span className="booking-nowrap">(Stand {termsDoc.version})</span>{labelSuffix ? <> {labelSuffix}</> : null}</> : null}{" "}
           zu. Mir ist bewusst, dass diese Bestellung verbindlich ist und eine Zahlungsverpflichtung auslöst.
         </span>
       </label>

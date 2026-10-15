@@ -12,6 +12,8 @@
 //       und der echte /book-Payload trägt setKey + genau zwei Flags.
 //   C — Fassungswechsel: 409 LEGAL_SET_CHANGED zeigt die Meldung, lädt die neue Fassung,
 //       leert beide Checkboxen — und löst KEINEN zweiten Buchungsversuch aus.
+//   D — AGB-Fassung mit Buchungshinweisen (ADSp-Anlage, § 449 HGB): Hinweis vor den
+//       Bestätigungen, Zusatz im AGB-Text, mobil ohne Überlauf, Payload unverändert.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -42,16 +44,21 @@ const TARIFF = {
   deliveryDate: "2026-09-08T00:00:00Z", insuranceAvailable: false,
 };
 
-// Zwei Fassungen — C wechselt zwischen ihnen.
-const SET = (stand) => ({
+// Zwei Fassungen — C wechselt zwischen ihnen. D: eine AGB-Fassung mit Buchungshinweisen
+// (ADSp-Anlage, Hinweis nach § 449 HGB), wie sie der Server aus der Registry liefert. Der
+// Wortlaut ist ein Testtext, kein Rechtstext.
+const HINWEIS = { title: "Hinweis nach § 449 Abs. 2 HGB", text: "Erste Testzeile.\nZweite Testzeile." };
+const SET = (stand, { hinweise = false } = {}) => ({
   enabled: true,
   setKey: `CE-B2B-${stand}`,
   documents: [
-    { type: "terms", version: stand, label: "Allgemeine Geschäftsbedingungen", url: `/api/legal/terms/${stand}` },
+    { type: "terms", version: stand, label: "Allgemeine Geschäftsbedingungen", url: `/api/legal/terms/${stand}`,
+      ...(hinweise ? { labelSuffix: "einschließlich der ADSp 2017 (Anlage 1)", notices: [HINWEIS] } : {}) },
     { type: "privacy", version: stand, label: "Datenschutzerklärung", url: `/api/legal/privacy/${stand}` },
     { type: "b2b_contract_information", version: stand, label: "B2B-Vertragsinformationen", url: `/api/legal/b2b_contract_information/${stand}` },
   ],
 });
+const NOTICE = ".booking-legal-notice";
 
 const DOCS      = ".booking-legal-docs";
 const DOC_LINKS = ".booking-legal-docs-list a";
@@ -104,9 +111,9 @@ async function setupRoutes(page, state) {
 async function neueSeite(opts = {}) {
   const state = {
     contextCalls: 0, bookCalls: [], stand: "2026-08",
-    bookRejectsOnce: false, gateAus: false, ...opts,
+    bookRejectsOnce: false, gateAus: false, hinweise: false, ...opts,
   };
-  state.context = () => (state.gateAus ? { enabled: false } : SET(state.stand));
+  state.context = () => (state.gateAus ? { enabled: false } : SET(state.stand, { hinweise: state.hinweise }));
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
   const page = await ctx.newPage();
   const fehler = [];
@@ -234,6 +241,9 @@ test("SMOKE B — Schranke AN: drei versionierte Links, zwei Checkboxen, Payload
   // IMMER NOCH genau zwei Checkboxen — Datenschutz und B2B bekommen keine.
   assert.equal(await page.locator(AGB_BOX).count(), 2,
     "Datenschutz oder B2B-Information hat eine Zustimmungscheckbox bekommen");
+  // Eine Fassung ohne Buchungshinweise zeigt keinen Hinweis und keinen AGB-Zusatz.
+  assert.equal(await page.locator(NOTICE).count(), 0, "ein Hinweis erscheint, den die Fassung nicht trägt");
+  assert.ok(!/ADSp/.test(await page.locator(".booking-agb-text").first().innerText()), "AGB-Zusatz ohne Fassung");
 
   // Ohne beide Bestätigungen ist der Bestellknopf gesperrt.
   assert.equal(await page.locator(BOOK_BTN).isEnabled(), false, "ohne Bestätigung bestellbar");
@@ -287,6 +297,62 @@ test("SMOKE C — 409 LEGAL_SET_CHANGED: neue Fassung, leere Checkboxen, KEIN Au
   await page.waitForTimeout(1500);
   assert.equal(state.bookCalls.length, 1,
     `automatischer Wiederholungsversuch: ${state.bookCalls.length} Buchungsaufrufe`);
+  assert.deepEqual(fehler, []);
+  await ctx.close();
+});
+
+test("SMOKE D — AGB-Fassung mit Buchungshinweisen: Hinweis vor den Bestätigungen, Zusatz im Text, Payload unverändert", async () => {
+  const { ctx, page, state, fehler } = await neueSeite({ hinweise: true });
+  await zurBestelluebersicht(page);
+  await page.waitForSelector(NOTICE, { timeout: 15000 });
+
+  // Genau der registrierte Hinweis, mit erhaltenem Zeilenumbruch.
+  assert.equal(await page.locator(NOTICE).count(), 1);
+  const hinweisText = await page.locator(NOTICE).innerText();
+  assert.match(hinweisText, /Hinweis nach § 449 Abs\. 2 HGB/);
+  assert.match(hinweisText, /Erste Testzeile\.\nZweite Testzeile\./, "der Zeilenumbruch des Hinweises ging verloren");
+
+  // Der Hinweis steht VOR den Bestätigungen, und die AGB-Bestätigung verweist auf ihn.
+  const reihenfolge = await page.evaluate(() => {
+    const n = document.querySelector(".booking-legal-notice");
+    const c = document.querySelector(".booking-agb-checkbox");
+    return !!(n.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+  assert.equal(reihenfolge, true, "der Hinweis steht nicht vor den Bestätigungen");
+  const beschrieben = await page.locator(AGB_BOX).first().getAttribute("aria-describedby");
+  const hinweisId = await page.locator(NOTICE).getAttribute("id");
+  assert.ok(beschrieben && beschrieben.split(" ").includes(hinweisId), "die AGB-Bestätigung verweist nicht auf den Hinweis");
+  assert.equal(await page.locator(NOTICE).getAttribute("role"), "note");
+
+  // Der AGB-Zusatz steht im Text der ersten Bestätigung.
+  assert.match(await page.locator(".booking-agb-text").first().innerText(),
+    /Allgemeinen Geschäftsbedingungen \(Stand 2026-08\) einschließlich der ADSp 2017 \(Anlage 1\) zu\./);
+  assert.equal(await page.locator(AGB_BOX).count(), 2, "der Hinweis ist eine dritte Zustimmung geworden");
+
+  // Mobil: der Hinweis passt in die Breite, keine waagrechte Scrollleiste.
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.waitForTimeout(150);
+  const mobil = await page.evaluate(() => {
+    const r = document.querySelector(".booking-legal-notice").getBoundingClientRect();
+    return { links: r.left, rechts: r.right, breite: window.innerWidth,
+      scroll: document.documentElement.scrollWidth };
+  });
+  assert.ok(mobil.links >= 0 && mobil.rechts <= mobil.breite, `Hinweis ragt aus der Breite: ${JSON.stringify(mobil)}`);
+  assert.ok(mobil.scroll <= mobil.breite, `waagrechter Überlauf: ${JSON.stringify(mobil)}`);
+  await page.setViewportSize({ width: 1280, height: 1000 });
+
+  // Der Payload bleibt genau derselbe: Setschlüssel + zwei Bestätigungen, kein Hinweisfeld.
+  await bestaetigeBeide(page);
+  await page.locator(BOOK_BTN).click();
+  await page.waitForTimeout(1200);
+  assert.equal(state.bookCalls.length, 1);
+  const payload = state.bookCalls[0];
+  assert.equal(payload.legalSetKey, "CE-B2B-2026-08");
+  assert.equal(payload.termsAccepted, true);
+  assert.equal(payload.prohibitedGoodsAccepted, true);
+  for (const feld of ["notices", "labelSuffix", "noticeAccepted", "noticesAccepted"]) {
+    assert.equal(feld in payload, false, `„${feld}" gehört nicht in den Payload`);
+  }
   assert.deepEqual(fehler, []);
   await ctx.close();
 });

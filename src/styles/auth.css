@@ -457,6 +457,16 @@
   .auth-check { min-height: 44px; }
 }
 
+/* ── Erklärungen der Registrierung (Paket C) ────────────────────────────────
+   Zwei Pflicht-Checkboxen vor dem Absenden. Mehrzeiliger Text: die Box sitzt an der
+   ersten Zeile, nicht mittig; der AGB-Link bleibt als Link erkennbar. */
+.auth-declarations { display: flex; flex-direction: column; gap: 10px; margin: 18px 0; }
+.auth-check.auth-declaration { display: flex; align-items: flex-start; line-height: 1.5; }
+.auth-check.auth-declaration .auth-checkbox { margin-top: 1px; }
+.auth-declaration a { color: var(--auth-blue-soft); text-decoration: underline; }
+.auth-declaration-hint { margin: 2px 0 0; font-size: 12px; line-height: 1.5; color: var(--auth-ink-3); }
+.auth-nowrap { white-space: nowrap; }
+
 /* ── Register form legal hint ───────────────────────────────────────────── */
 .auth-form-legal {
   margin-top: 14px; text-align: center;

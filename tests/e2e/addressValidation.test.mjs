@@ -49,8 +49,10 @@ const S_ADD     = "#ns-s-addition";
 let server, browser;
 
 // `mode`: "ok" (Dienst eingerichtet), "down" (Ausfall), "off" (kein Schlüssel: not_configured).
+// `streetDelay`: Verzögerung der Straßenantwort je Land in ms (z. B. { DE: 900 }) — damit lässt
+// sich eine Antwort erzeugen, die erst NACH einem Landwechsel eintrifft.
 // Jede Adressanfrage wird in `log` festgehalten (Pfad, Query, Authorization vorhanden?).
-async function setupRoutes(page, { mode = "ok", angemeldet = true } = {}) {
+async function setupRoutes(page, { mode = "ok", angemeldet = true, streetDelay = {} } = {}) {
   const log = [];
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const req = route.request();
@@ -72,10 +74,18 @@ async function setupRoutes(page, { mode = "ok", angemeldet = true } = {}) {
       return json({ status: "unverified", reason: "postal_code_unknown", cities: [] });
     }
     if (p === "/api/address/streets" || p === "/api/address/public/streets") {
-      const q = (url.searchParams.get("street") || "").toLowerCase().replace(/str\b\.?/g, "straße");
+      const cc = url.searchParams.get("country");
+      const warte = streetDelay[cc] || 0;
+      if (warte) await new Promise((r) => setTimeout(r, warte));
+      if (cc === "FR") {
+        return json({ status: "confirmed", reason: null,
+          streets: [{ street: "Rue de la Paix", houseNumber: "12", postalCode: "75002", city: "Paris", region: "Île-de-France" }] });
+      }
+      const q =(url.searchParams.get("street") || "").toLowerCase().replace(/str\b\.?/g, "straße");
       const name = q.replace(/\s*\d+\w*$/, "").trim();
       const hits = ADRESSEN.filter((a) => a.street.toLowerCase().startsWith(name.slice(0, 6)));
-      return json({ status: hits.length ? "confirmed" : "unverified", reason: null, streets: hits });
+      // Wie das Backend: ohne Treffer `no_suggestions` — daraus zeigt das Feld den Leerzustand.
+      return json({ status: hits.length ? "confirmed" : "unverified", reason: hits.length ? null : "no_suggestions", streets: hits });
     }
     if (p === "/api/address/validate") {
       const b = JSON.parse(req.postData() || "{}");
@@ -174,7 +184,7 @@ test("Smoke 2 — 63743 + München: Hinweis mit Ortsvorschlag, keine Sperre, Kor
   await zumFormular(page);
   await fuelleAbsender(page, { zip: "63743", city: "München", street: "Schweinheimer Straße 187" });
   await page.waitForSelector(".addr-status--warning", { timeout: 10000 });
-  assert.match(await statusText(page), /PLZ und Ort passen möglicherweise nicht zusammen/);
+  assert.match(await statusText(page), /PLZ und Ort passen evtl\. nicht zusammen/);
   assert.ok(log.some((e) => e.p === "/api/address/validate"), "die Gesamtprüfung lief automatisch");
   assert.equal(await page.locator(".addr-status--error").count(), 0, "kein Fehlerton");
   assert.equal(await page.locator(S_CITY).isDisabled(), false);
@@ -182,7 +192,7 @@ test("Smoke 2 — 63743 + München: Hinweis mit Ortsvorschlag, keine Sperre, Kor
   await page.locator(".addr-status-city", { hasText: "Aschaffenburg" }).click();
   assert.equal(await page.locator(S_CITY).inputValue(), "Aschaffenburg");
   await page.waitForSelector(".addr-status--success", { timeout: 10000 });
-  assert.match(await statusText(page), /Adresse gefunden \(Straße, Hausnummer, PLZ und Ort\)\./);
+  assert.match(await statusText(page), /Adresse gefunden/);
   assert.ok(!/zustell/i.test(await statusText(page)));
   await page.close();
 });
@@ -260,7 +270,7 @@ test("Smoke 5 — eine geänderte Hausnummer verwirft „gefunden“ und prüft 
   await page.locator(S_STREET).fill("Schweinheimer Straße 42");
   assert.equal(await page.locator(".addr-status--success").count(), 0, "die alte Bestätigung verfällt sofort");
   await page.waitForSelector(".addr-status--warning", { timeout: 10000 });
-  assert.match(await statusText(page), /Hausnummer konnte nicht bestätigt werden/);
+  assert.match(await statusText(page), /Hausnummer nicht bestätigt/);
   await page.close();
 });
 
@@ -271,8 +281,10 @@ test("Smoke 6 — bei Ausfall bleibt das Formular vollständig benutzbar", async
   await setupRoutes(page, { mode: "down" });
   await zumFormular(page);
   await fuelleAbsender(page, { zip: "63743", city: "Aschaffenburg", street: "Schweinheimer Straße 187" });
-  await page.waitForSelector(".addr-status--warning", { timeout: 10000 });
-  assert.match(await statusText(page), /momentan nicht verfügbar/);
+  // Ein Ausfall ist neutral — er sagt nichts über die Eingabe des Kunden.
+  await page.waitForSelector(".addr-status--neutral", { timeout: 10000 });
+  assert.match(await statusText(page), /derzeit nicht verfügbar/);
+  assert.equal(await page.locator(".addr-status--warning").count(), 0, "keine Warnung bei Ausfall");
   assert.equal(await page.locator(S_STREET).isDisabled(), false);
   assert.equal(await page.locator(S_STREET).inputValue(), "Schweinheimer Straße 187", "die Eingabe bleibt unangetastet");
   assert.equal(await page.locator(".addr-status--error").count(), 0);
@@ -316,6 +328,19 @@ test("Smoke 8 — 390 px mit Touch: kein Überlauf, Liste und Quellenangabe im B
   assert.ok(quelle.x + quelle.width <= 391 && Math.abs(quelle.width - feld.width) < 2);
   const hoehen = await page.locator('#ns-s-street-list [role="option"]').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
   assert.ok(hoehen.every((h) => h >= 44), `Optionen unter 44 px: ${hoehen.join(", ")}`);
+  // Sichtbarkeit: Feld und Fläche liegen unter der festen Kopfleiste und im Sichtbereich.
+  const sicht = await page.evaluate(() => {
+    const kopf = document.querySelector(".mobile-topbar");
+    const kopfUnten = kopf && getComputedStyle(kopf).display !== "none" ? kopf.getBoundingClientRect().bottom : 0;
+    const input = document.querySelector("#ns-s-street").getBoundingClientRect();
+    const pop = document.querySelector(".addr-suggest-pop").getBoundingClientRect();
+    return { kopfUnten, inputOben: input.top, popUnten: pop.bottom, hoehe: window.innerHeight };
+  });
+  assert.ok(sicht.inputOben >= sicht.kopfUnten - 1, `das Feld liegt unter der Kopfleiste: ${JSON.stringify(sicht)}`);
+  assert.ok(sicht.popUnten <= sicht.hoehe + 1, `die Fläche ist vollständig sichtbar: ${JSON.stringify(sicht)}`);
+  // Touch-Auswahl übernimmt den Vorschlag.
+  await page.locator('#ns-s-street-list [role="option"]').first().tap();
+  assert.equal(await page.locator(S_STREET).inputValue(), "Schweinheimer Straße 187");
   await ctx.close();
 });
 
@@ -329,6 +354,10 @@ test("Smoke 9 — Adressbuch: Vorschlag füllt Straße, PLZ und Ort", async () =
   await neu.waitFor({ timeout: 20000 });
   await neu.click();
   await page.waitForSelector("#abk-streetAndNumber", { timeout: 20000 });
+  // Land zuerst — auch im Adressbuch (die Vorbelegung DE bleibt).
+  assert.equal(await page.locator("#abk-country").inputValue(), "DE");
+  assert.ok(await page.evaluate(() => document.querySelector("#abk-country").getBoundingClientRect().top
+    < document.querySelector("#abk-streetAndNumber").getBoundingClientRect().top), "Land vor der Straße");
   await page.locator("#abk-country").selectOption("DE");
   await page.locator("#abk-streetAndNumber").fill("Schweinheimer Str 187");
   await page.waitForSelector('#abk-streetAndNumber-list [role="option"]', { timeout: 10000 });
@@ -384,5 +413,210 @@ test("Smoke 12 — Preisrechner: Ort zur PLZ wird ergänzt", async () => {
   await page.locator("#calc-to-city").fill("");
   await page.locator("#calc-to-zip").fill("63743");
   await page.waitForFunction(() => document.querySelector("#calc-to-city")?.value === "Aschaffenburg", { timeout: 10000 });
+  await page.close();
+});
+
+/* ══════════ Smoke 13–14 — Startzustand ohne Land (Live-Befund 2026-10-15) ══════════ */
+// Bis hierher wählten alle Smokes das Land ZUERST — genau der Ablauf, den ein Kunde nicht
+// zwingend nimmt. Live tippte man die Straße in das leere Formular und bekam nichts, weil
+// ohne Land nicht gesucht wird und das Land unter der Straße stand.
+
+test("Smoke 13 — ohne Land: Hinweis, Straße bleibt, die Landwahl startet die Suche selbst", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const log = await setupRoutes(page);
+  await zumFormular(page);
+  assert.equal(await page.locator(S_COUNTRY).inputValue(), "", "das Formular startet weiterhin ohne Land");
+  // Das Land steht in beiden Adressen VOR der Straße.
+  const reihenfolge = await page.evaluate(() => ["s", "r"].map((p) => {
+    const land = document.querySelector(`#ns-${p}-country`), strasse = document.querySelector(`#ns-${p}-street`);
+    return Boolean(land.compareDocumentPosition(strasse) & Node.DOCUMENT_POSITION_FOLLOWING)
+      && land.getBoundingClientRect().top < strasse.getBoundingClientRect().top;
+  }));
+  assert.deepEqual(reihenfolge, [true, true]);
+  // Ohne Land: sichtbarer Hinweis, keine Anfrage — die getippte Straße bleibt stehen.
+  assert.equal((await page.locator("#ns-s-street-hint").innerText()).trim(), "Bitte zuerst das Land auswählen.");
+  assert.equal((await page.locator("#ns-r-street-hint").innerText()).trim(), "Bitte zuerst das Land auswählen.");
+  await page.locator(S_STREET).click();
+  await page.keyboard.type("Schweinheimer Str 187", { delay: 20 });
+  await page.waitForTimeout(900);
+  assert.equal(log.filter((e) => e.p === "/api/address/streets").length, 0, "ohne Land darf nicht gesucht werden");
+  // Land wählen → die Suche startet mit der bereits getippten Straße, der Hinweis verschwindet.
+  await page.locator(S_COUNTRY).selectOption("DE");
+  await page.waitForFunction(() => !document.querySelector("#ns-s-street-hint")
+    || !/Land auswählen/.test(document.querySelector("#ns-s-street-hint").textContent), null, { timeout: 5000 });
+  await page.waitForTimeout(800);
+  const suche = log.filter((e) => e.p === "/api/address/streets");
+  assert.equal(suche.length, 1, "genau eine Suche nach der Landwahl");
+  assert.deepEqual([suche[0].q.country, suche[0].q.street], ["DE", "Schweinheimer Str 187"]);
+  assert.equal(await page.locator(S_STREET).inputValue(), "Schweinheimer Str 187", "die Eingabe bleibt erhalten");
+  // Zurück ins Straßenfeld: die Vorschläge sind da, die Auswahl übernimmt wie bisher.
+  await page.locator(S_STREET).click();
+  await page.waitForSelector('#ns-s-street-list [role="option"]', { timeout: 5000 });
+  await page.locator('#ns-s-street-list [role="option"]').first().dispatchEvent("mousedown");
+  assert.equal(await page.locator(S_STREET).inputValue(), "Schweinheimer Straße 187");
+  assert.equal(await page.locator(S_ZIP).inputValue(), "63743");
+  assert.equal(await page.locator(S_CITY).inputValue(), "Aschaffenburg");
+  await page.close();
+});
+
+test("Smoke 14 — Empfänger: Land wählen, per Tab weiter — die Liste öffnet, sobald Vorschläge da sind", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await setupRoutes(page);
+  await zumFormular(page);
+  await page.locator("#ns-r-street").fill("Schweinheimer Str 9");
+  await page.locator("#ns-r-country").selectOption("DE");
+  await page.locator("#ns-r-country").focus();
+  await page.keyboard.press("Tab");
+  // Zwischen Land und Straße kann der Bundesstaat stehen (nur US/CA) — für DE nicht.
+  assert.equal(await page.evaluate(() => document.activeElement?.id), "ns-r-street", "nach dem Land kommt die Straße");
+  await page.waitForSelector('#ns-r-street-list [role="option"]', { timeout: 5000 });
+  assert.ok(await page.locator('#ns-r-street-list [role="option"]').count() > 0);
+  await page.close();
+});
+
+/* ══════════ Smoke 15–19 — Premium-Durchgang (2026-10-15) ══════════ */
+
+test("Smoke 15 — Landwechsel DE → FR: alte Liste sofort weg, verspätete DE-Antwort wird verworfen, Eingaben bleiben", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  // Die DE-Antwort trifft erst nach dem Landwechsel ein.
+  const log = await setupRoutes(page, { streetDelay: { DE: 1200 } });
+  await zumFormular(page);
+  await fuelleAbsender(page, { zip: "63743", city: "Aschaffenburg" });
+  await page.locator(S_STREET).fill("Schweinheimer Str 187");
+  // Erst eine DE-Liste sichtbar machen (die erste Antwort kommt verzögert).
+  await page.waitForSelector('#ns-s-street-list [role="option"]', { timeout: 10000 });
+  // Jetzt erneut tippen: die neue DE-Anfrage läuft, die Antwort hängt 1,2 s.
+  await page.locator(S_STREET).fill("Schweinheimer Str 18");
+  await page.waitForTimeout(450);
+  assert.ok(log.filter((e) => e.p === "/api/address/streets" && e.q.country === "DE").length >= 2, "zweite DE-Suche läuft");
+  await page.locator(S_COUNTRY).selectOption("FR");
+  // Sofort: keine DE-Vorschläge mehr, keine Prüfung, alle Eingaben unverändert.
+  assert.equal(await page.locator('#ns-s-street-list [role="option"]').count(), 0, "die alte Liste ist sofort weg");
+  assert.equal(await page.locator(".addr-status--success").count(), 0);
+  assert.equal(await page.locator(S_STREET).inputValue(), "Schweinheimer Str 18");
+  assert.equal(await page.locator(S_ZIP).inputValue(), "63743", "die PLZ wird nicht still geändert");
+  assert.equal(await page.locator(S_CITY).inputValue(), "Aschaffenburg", "der Ort wird nicht still geändert");
+  // Die FR-Liste kommt; die verspätete DE-Antwort landet danach nie in der Liste.
+  await page.locator(S_STREET).focus();
+  await page.waitForSelector('#ns-s-street-list [role="option"]', { timeout: 5000 });
+  await page.waitForTimeout(1500);
+  const opts = await page.locator('#ns-s-street-list [role="option"]').allInnerTexts();
+  assert.ok(opts.length > 0 && opts.every((t) => t.includes("Paris")), `nur FR-Vorschläge erwartet: ${opts.join(" | ")}`);
+  const fr = log.filter((e) => e.p === "/api/address/streets" && e.q.country === "FR");
+  assert.equal(fr.length, 1, "genau eine Suche für das neue Land");
+  // Auswahl übernimmt die FR-Anschrift in Landesreihenfolge — nur Straße, PLZ, Ort.
+  await page.locator('#ns-s-street-list [role="option"]').first().dispatchEvent("mousedown");
+  assert.equal(await page.locator(S_STREET).inputValue(), "12 Rue de la Paix");
+  assert.equal(await page.locator(S_ZIP).inputValue(), "75002");
+  assert.equal(await page.locator(S_CITY).inputValue(), "Paris");
+  assert.equal(await page.locator(S_FIRST).inputValue(), "Max");
+  await page.close();
+});
+
+test("Smoke 16 — ruhige Statuszeile: kein Layoutsprung, kein Prüf-Flackern, „gefunden“ tritt zurück", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await setupRoutes(page);
+  await zumFormular(page);
+  await fuelleAbsender(page, {});
+  const telefonOben = () => page.evaluate(() => document.querySelector("#ns-s-phone").getBoundingClientRect().top + window.scrollY);
+  const vorher = await telefonOben();
+  // Zustände protokollieren, die die Zeile annimmt.
+  await page.evaluate(() => {
+    window.__statusKlassen = [];
+    const slot = document.querySelectorAll(".addr-status-slot")[0];
+    new MutationObserver(() => {
+      const el = slot.querySelector(".addr-status");
+      window.__statusKlassen.push(el ? el.className : "leer");
+    }).observe(slot, { subtree: true, childList: true, attributes: true });
+  });
+  await page.locator(S_ZIP).fill("63743");
+  await page.locator(S_CITY).fill("Aschaffenburg");
+  await page.locator(S_STREET).fill("Schweinheimer Straße 187");
+  await page.waitForSelector(".addr-status--success", { timeout: 10000 });
+  assert.equal(await telefonOben(), vorher, "„gefunden“ verschiebt nichts");
+  await page.locator(S_STREET).fill("Schweinheimer Straße 42");
+  assert.equal(await page.locator(".addr-status--success").count(), 0, "keine alte Bestätigung neben neuer Adresse");
+  assert.equal(await telefonOben(), vorher, "das Zurücksetzen verschiebt nichts");
+  await page.waitForSelector(".addr-status--warning", { timeout: 10000 });
+  assert.equal(await telefonOben(), vorher, "der Hinweis verschiebt nichts");
+  const klassen = await page.evaluate(() => window.__statusKlassen);
+  assert.ok(!klassen.some((k) => /checking/.test(k)), `schnelle Prüfung ohne Zwischenzustand: ${klassen.join(" → ")}`);
+  // „Adresse gefunden“ tritt nach kurzer Zeit zurück — das Häkchen bleibt, Platz bleibt.
+  await page.locator(S_STREET).fill("Schweinheimer Straße 187");
+  await page.waitForSelector(".addr-status--success .addr-status-icon", { timeout: 10000 });
+  assert.equal(await page.locator(".addr-status--success .addr-status-text--quiet").count(), 0, "zuerst sichtbar");
+  await page.waitForSelector(".addr-status--success .addr-status-text--quiet", { timeout: 6000 });
+  assert.equal(await telefonOben(), vorher);
+  await page.close();
+});
+
+test("Smoke 17 — Ladezeile nur bei spürbarer Wartezeit, verständlicher Leerzustand", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await setupRoutes(page, { streetDelay: { DE: 1000 } });
+  await zumFormular(page);
+  await fuelleAbsender(page, {});
+  await page.locator(S_STREET).fill("Schweinheimer");
+  await page.waitForSelector(".addr-suggest-state", { timeout: 5000 });
+  assert.match(await page.locator(".addr-suggest-state").innerText(), /Suche läuft/);
+  await page.waitForSelector('#ns-s-street-list [role="option"]', { timeout: 5000 });
+  assert.equal(await page.locator(".addr-suggest-state").count(), 0, "die Ladezeile weicht der Liste");
+  await page.locator(S_STREET).fill("Xyzqwe");
+  await page.waitForSelector(".addr-suggest-state >> text=Keine Vorschläge gefunden", { timeout: 6000 });
+  assert.match(await page.locator(".addr-suggest-state").innerText(), /frei eingeben/);
+  assert.equal(await page.locator(S_STREET).inputValue(), "Xyzqwe", "freie Eingabe bleibt möglich");
+  // Fokus weg → die Leerzeile verschwindet, nichts bleibt stehen.
+  await page.locator(S_FIRST).click();
+  assert.equal(await page.locator(".addr-suggest-state").count(), 0);
+  await page.close();
+});
+
+test("Smoke 18 — eine Fläche mit Quellenangabe, getippte Wortanfänge hervorgehoben, Tastatur und Escape", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await setupRoutes(page);
+  await zumFormular(page);
+  await fuelleAbsender(page, {});
+  await page.locator(S_STREET).fill("Schweinheimer Str 187");
+  await page.waitForSelector('#ns-s-street-list [role="option"]', { timeout: 10000 });
+  const geo = await page.evaluate(() => {
+    const pop = document.querySelector(".addr-suggest-pop");
+    const liste = pop.querySelector(".addr-suggest-list"), quelle = pop.querySelector(".addr-suggest-attr");
+    const input = document.querySelector("#ns-s-street").getBoundingClientRect();
+    const p = pop.getBoundingClientRect();
+    return { liste: Boolean(liste), quelle: Boolean(quelle), breite: Math.abs(p.width - input.width),
+             hits: [...pop.querySelectorAll('[role="option"]')[0].querySelectorAll(".addr-suggest-hit")].map((e) => e.textContent) };
+  });
+  assert.equal(geo.liste && geo.quelle, true, "Liste und Quellenangabe in derselben Fläche");
+  assert.ok(geo.breite < 1.5, "die Fläche ist so breit wie das Feld");
+  assert.deepEqual(geo.hits, ["Schweinheimer", "Str", "187"]);
+  await page.locator(S_STREET).press("ArrowDown");
+  assert.equal(await page.locator(".addr-suggest-opt--active").count(), 1);
+  await page.locator(S_STREET).press("Escape");
+  assert.equal(await page.locator(".addr-suggest-pop").count(), 0, "Escape schließt");
+  assert.equal(await page.locator(S_STREET).inputValue(), "Schweinheimer Str 187", "Escape ändert nichts an der Eingabe");
+  await page.close();
+});
+
+test("Smoke 19 — Gesamtablauf: Land → Suche → Auswahl → Korrektur → Formular bleibt nutzbar", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await setupRoutes(page);
+  await zumFormular(page);
+  await fuelleAbsender(page, {});
+  await page.locator(S_COMPANY).fill("Muster GmbH");
+  await page.locator(S_STREET).fill("Schweinheimer Str 187");
+  await page.waitForSelector('#ns-s-street-list [role="option"]', { timeout: 10000 });
+  await page.locator('#ns-s-street-list [role="option"]').first().click();
+  await page.waitForSelector(".addr-status--success", { timeout: 10000 });
+  // Korrektur der Hausnummer durch den Kunden: Bestätigung verfällt, neue Prüfung, Hinweis.
+  await page.locator(S_STREET).fill("Schweinheimer Straße 189");
+  await page.waitForSelector(".addr-status--warning", { timeout: 10000 });
+  // Weiterarbeiten: Empfänger erreichbar, Firmenname und Übernahme stehen.
+  await page.locator("#ns-r-country").selectOption("FR");
+  await page.locator("#ns-r-street").fill("12 rue de la p");
+  await page.waitForSelector('#ns-r-street-list [role="option"]', { timeout: 10000 });
+  await page.locator('#ns-r-street-list [role="option"]').first().click();
+  assert.equal(await page.locator("#ns-r-street").inputValue(), "12 Rue de la Paix");
+  assert.equal(await page.locator(S_STREET).inputValue(), "Schweinheimer Straße 189", "die Korrektur des Kunden bleibt");
+  assert.equal(await page.locator(S_COMPANY).inputValue(), "Muster GmbH");
+  assert.equal(await page.locator(S_ZIP).inputValue(), "63743");
   await page.close();
 });

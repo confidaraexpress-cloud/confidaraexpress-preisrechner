@@ -173,7 +173,7 @@ async function felder(page) {
       sCompany: v("ns-s-company"),
       sFirstName: v("ns-s-firstName"),
       sLastName: v("ns-s-lastName"),
-      rCity: document.querySelector('input[placeholder="Zürich"]')?.value ?? null,
+      rCity: v("ns-r-city"),
       angebote: document.querySelectorAll(".offer-card").length,
     };
   });
@@ -205,7 +205,8 @@ async function adressenFuellen(page) {
   await page.fill("#ns-s-firstName", "Max");
   await page.fill("#ns-s-lastName", "Mustermann");
   await page.fill("#ns-s-phone", "+49301234567");
-  await page.fill('input[placeholder="Zürich"]', "Hamburg");
+  // Über die id: der Ortsplatzhalter folgt seit 2026-10-15 dem Land (kein festes „Zürich“ mehr).
+  await page.fill("#ns-r-city", "Hamburg");
   const plz = page.locator('#ns-r-zip, input[placeholder="26133"]').last();
   if (await plz.count()) await plz.fill("20457");
   await page.waitForTimeout(200);

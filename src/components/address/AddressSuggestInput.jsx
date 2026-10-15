@@ -1,5 +1,6 @@
-import React, { useEffect, useId, useRef, useState } from "react";
+import React, { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { AddressAttribution } from "./AddressAttribution";
+import { highlightSegments } from "../../utils/addressValidationView.mjs";
 
 // AddressSuggestInput — EIN Vorschlagsfeld für alle Adressformulare (Straße und Ort).
 //
@@ -34,10 +35,55 @@ import { AddressAttribution } from "./AddressAttribution";
 // Quellenangabe (AddressAttribution). Ohne `label` (z. B. im Registrierungs- oder Profilformular,
 // das seine Beschriftung selbst setzt) ist das Feld über `id` mit dem fremden <label> verbunden;
 // `inputClassName`/`wrapClassName` übernehmen dort die Feldgestaltung der jeweiligen Fläche.
+//
+// Premium-Durchgang (2026-10-15): Liste und Quellenangabe bilden EINE schwebende Fläche (vorher
+// zwei getrennte Kästen). Die getippten Wortanfänge sind im Vorschlag hervorgehoben, PLZ und Ort
+// stehen gedämpft daneben (schmal: darunter). `loading` und `noResults` (aus dem Hook) zeigen
+// in derselben Fläche eine Lade- bzw. Leerzeile — nur, solange das Feld den Fokus hat.
+
+// Die Ladezeile erscheint erst, wenn die Suche spürbar dauert — eine schnelle Antwort zeigt
+// direkt die Liste, ohne kurz aufblitzenden Zwischenzustand.
+export const SUGGEST_LOADING_DELAY_MS = 250;
+const LEER_TEXT = "Keine Vorschläge gefunden – Sie können die Adresse frei eingeben.";
+
+// Der Bereich, der tatsächlich scrollt: in der App-Shell ist das ein innerer Container, nicht
+// das Fenster. Ohne ihn liefe ein window.scrollBy ins Leere.
+function scrollBehaelter(el) {
+  for (let n = el?.parentElement; n; n = n.parentElement) {
+    const oy = getComputedStyle(n).overflowY;
+    if ((oy === "auto" || oy === "scroll") && n.scrollHeight > n.clientHeight) return n;
+  }
+  return window;
+}
+
+// Auf Touchgeräten deckt die Bildschirmtastatur den unteren Teil der Seite ab. Öffnet die Liste,
+// scrollt die Seite höchstens so weit, dass die Liste über der Tastatur steht — aber nie so weit,
+// dass das Eingabefeld selbst unter die feste Kopfleiste (.mobile-topbar) rutscht.
+function listeInsBildHolen(input, pop) {
+  if (!input || !pop || typeof window === "undefined") return;
+  const vv = window.visualViewport;
+  const sichtOben = vv ? vv.offsetTop : 0;
+  const sichtUnten = vv ? vv.offsetTop + vv.height : window.innerHeight;
+  const topbar = document.querySelector(".mobile-topbar");
+  const kopf = topbar && getComputedStyle(topbar).display !== "none" ? topbar.getBoundingClientRect().height : 0;
+  const ueberstand = pop.getBoundingClientRect().bottom - sichtUnten + 8;
+  const spielraum = input.getBoundingClientRect().top - sichtOben - kopf - 8;
+  const weg = Math.min(ueberstand, spielraum);
+  // „instant“: globals.css setzt `scroll-behavior: smooth` — eine Animation liefe hier gegen
+  // die sich öffnende Tastatur und käme zu spät.
+  if (weg > 1) scrollBehaelter(input).scrollBy({ top: weg, behavior: "instant" });
+}
+
+function istTouch() {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function"
+    && window.matchMedia("(pointer: coarse)").matches;
+}
+
 export function AddressSuggestInput({
   id, label, value, onChange, onSelect, suggestions = [], placeholder, maxLength,
   error, hint, required, disabled, autoComplete, inputMode, className = "",
   emptyHint, floating = false, inputClassName, wrapClassName = "", invalid = false, onBlur, dataField, describedBy,
+  loading = false, noResults = false,
 }) {
   const reactId = useId();
   const inputId = id || `addr-${reactId}`;
@@ -45,10 +91,19 @@ export function AddressSuggestInput({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [fokussiert, setFokussiert] = useState(false);
+  const [ladenSichtbar, setLadenSichtbar] = useState(false);
   const wrapRef = useRef(null);
+  const inputRef = useRef(null);
+  const popRef = useRef(null);
 
   const items = suggestions.slice(0, 8);
   const hasItems = items.length > 0;
+
+  useEffect(() => {
+    if (!loading) { setLadenSichtbar(false); return undefined; }
+    const t = setTimeout(() => setLadenSichtbar(true), SUGGEST_LOADING_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   // Ein Klick außerhalb schließt die Liste. Bewusst `mousedown`: bei `click` wäre das Feld
   // bereits neu gerendert, bevor die Auswahl greift.
@@ -62,8 +117,18 @@ export function AddressSuggestInput({
   }, [open]);
 
   // Neue Vorschläge setzen die Hervorhebung zurück — sonst zeigte sie auf einen Eintrag,
-  // den es nicht mehr gibt.
-  useEffect(() => { setActive(-1); }, [suggestions]);
+  // den es nicht mehr gibt. Treffen sie ein, während das Feld den Fokus hat (z. B. nach
+  // „Land auswählen“ → Tab ins Straßenfeld, während die Suche noch läuft), öffnet sich die
+  // Liste — aber nur, wenn sie etwas anderes zeigt als den bereits eingetragenen Wert.
+  useEffect(() => {
+    setActive(-1);
+    const eigenerWert = String(value ?? "").trim().toLowerCase();
+    const etwasNeues = suggestions.some((s) => {
+      const t = typeof s === "string" ? s : (s && (s.label || s.street));
+      return String(t ?? "").trim().toLowerCase() !== eigenerWert;
+    });
+    if (fokussiert && etwasNeues) setOpen(true);
+  }, [suggestions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const choose = (item) => {
     setOpen(false);
@@ -98,7 +163,21 @@ export function AddressSuggestInput({
   };
 
   const showList = open && hasItems && !disabled;
+  // Lade- und Leerzeile nur für den, der gerade tippt — nie als stehengebliebene Fläche.
+  const zeigeLaden = open && fokussiert && !hasItems && ladenSichtbar && !disabled;
+  const zeigeLeer = open && fokussiert && !hasItems && !loading && noResults && !disabled;
+  const showPop = showList || zeigeLaden || zeigeLeer;
   const activeId = showList && active >= 0 ? `${inputId}-opt-${active}` : undefined;
+
+  // Mobile Sichtbarkeit: beim Öffnen und wenn die Tastatur den Sichtbereich verkleinert.
+  useLayoutEffect(() => {
+    if (!showPop || !fokussiert || !istTouch()) return undefined;
+    const ausrichten = () => listeInsBildHolen(inputRef.current, popRef.current);
+    ausrichten();
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", ausrichten);
+    return () => vv?.removeEventListener("resize", ausrichten);
+  }, [showPop, fokussiert, items.length]);
 
   // Schwebezustand aus dem React-Wert plus Fokus — dieselbe Ableitung wie in
   // <Field />, damit beide Bauteile auf „Neue Sendung" im Gleichtakt laufen.
@@ -121,6 +200,10 @@ export function AddressSuggestInput({
     </label>
   );
 
+  const ansage = showList
+    ? `${items.length} ${items.length === 1 ? "Vorschlag" : "Vorschläge"} verfügbar`
+    : (zeigeLeer ? "Keine Vorschläge gefunden" : "");
+
   return (
     <div className={rahmenKlasse} ref={wrapRef}>
       {!floating && beschriftung}
@@ -130,6 +213,7 @@ export function AddressSuggestInput({
           unverändert 4 px unter der Feldunterkante, auch bei 54 px Feldhöhe. */}
       <div className={`addr-suggest-wrap${wrapClassName ? ` ${wrapClassName}` : ""}`}>
         <input
+          ref={inputRef}
           id={inputId}
           className={inputClassName || `field-input${floating ? " ce-field-input" : ""}${error ? " field-input-error" : ""}`}
           type="text"
@@ -138,6 +222,7 @@ export function AddressSuggestInput({
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={activeId}
+          aria-busy={loading ? "true" : undefined}
           aria-invalid={error || invalid ? "true" : undefined}
           aria-required={required ? "true" : undefined}
           aria-describedby={beschreibung}
@@ -149,41 +234,59 @@ export function AddressSuggestInput({
           maxLength={maxLength}
           disabled={disabled}
           onChange={(e) => { onChange(e.target.value); setOpen(true); }}
-          onFocus={() => { setFokussiert(true); if (hasItems) setOpen(true); }}
-          onBlur={(e) => { setFokussiert(false); onBlur?.(e); }}
+          onFocus={() => { setFokussiert(true); if (hasItems || noResults) setOpen(true); }}
+          onBlur={(e) => {
+            setFokussiert(false);
+            // Wechselt der Fokus in ein anderes Feld (Tab, Tippen, Antippen), schließt die Liste —
+            // sonst läge sie offen über den nächsten Feldern. Ohne neues Ziel (Klick auf die
+            // Bildlaufleiste der Liste) bleibt sie offen; den Klick daneben regelt `mousedown`.
+            if (e.relatedTarget && wrapRef.current && !wrapRef.current.contains(e.relatedTarget)) setOpen(false);
+            onBlur?.(e);
+          }}
           onKeyDown={onKeyDown}
         />
         {floating && beschriftung}
-        {showList && (
-          <div className="addr-suggest-pop">
-            <ul className="addr-suggest-list" id={listId} role="listbox" aria-label={label || "Vorschläge"}>
-              {items.map((item, i) => {
-                const text = typeof item === "string" ? item : (item.label || item.street);
-                const meta = typeof item === "string" ? "" : [item.postalCode, item.city].filter(Boolean).join(" ");
-                return (
-                  <li
-                    key={`${text}-${i}`}
-                    id={`${inputId}-opt-${i}`}
-                    role="option"
-                    aria-selected={i === active}
-                    className={`addr-suggest-opt${i === active ? " addr-suggest-opt--active" : ""}`}
-                    // mousedown statt click: der Blur des Feldes darf die Auswahl nicht überholen.
-                    onMouseDown={(e) => { e.preventDefault(); choose(item); }}
-                    onMouseEnter={() => setActive(i)}
-                  >
-                    <span className="addr-suggest-opt-text">{text}</span>
-                    {meta && <span className="addr-suggest-opt-meta">{meta}</span>}
-                  </li>
-                );
-              })}
-            </ul>
-            <AddressAttribution />
+        {showPop && (
+          <div className="addr-suggest-pop" ref={popRef}>
+            {showList && (
+              <ul className="addr-suggest-list" id={listId} role="listbox" aria-label={label || "Vorschläge"}>
+                {items.map((item, i) => {
+                  const text = typeof item === "string" ? item : (item.label || item.street);
+                  const meta = typeof item === "string" ? "" : [item.postalCode, item.city].filter(Boolean).join(" ");
+                  return (
+                    <li
+                      key={`${text}-${i}`}
+                      id={`${inputId}-opt-${i}`}
+                      role="option"
+                      aria-selected={i === active}
+                      className={`addr-suggest-opt${i === active ? " addr-suggest-opt--active" : ""}`}
+                      // mousedown statt click: der Blur des Feldes darf die Auswahl nicht überholen.
+                      onMouseDown={(e) => { e.preventDefault(); choose(item); }}
+                      onMouseEnter={() => setActive(i)}
+                    >
+                      <span className="addr-suggest-opt-text">
+                        {highlightSegments(text, value).map((teil, k) => (teil.match
+                          ? <span key={k} className="addr-suggest-hit">{teil.text}</span>
+                          : <React.Fragment key={k}>{teil.text}</React.Fragment>))}
+                      </span>
+                      {meta && <span className="addr-suggest-opt-meta">{meta}</span>}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {zeigeLaden && (
+              <p className="addr-suggest-state">
+                <span className="spinner spinner-dark" aria-hidden="true" />
+                <span>Suche läuft …</span>
+              </p>
+            )}
+            {zeigeLeer && <p className="addr-suggest-state">{LEER_TEXT}</p>}
+            {showList && <AddressAttribution />}
           </div>
         )}
         {/* Trefferzahl für Screenreader: die Liste selbst kündigt sich beim Öffnen nicht an. */}
-        <span className="sr-only" role="status" aria-live="polite">
-          {showList ? `${items.length} ${items.length === 1 ? "Vorschlag" : "Vorschläge"} verfügbar` : ""}
-        </span>
+        <span className="sr-only" role="status" aria-live="polite">{ansage}</span>
       </div>
       {error
         ? <span className="field-error" id={fehlerId}>{error}</span>

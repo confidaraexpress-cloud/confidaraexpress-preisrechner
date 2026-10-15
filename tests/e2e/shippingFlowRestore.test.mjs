@@ -151,14 +151,17 @@ function fehlerSammler(page) {
    Kontaktperson, E-Mail und Telefon laufen deshalb unten ueber ihre ids. */
 const EINGABEN = [
   ["Firma AG", "ACME Logistik GmbH"],
-  ["Beispielweg 5", "Hafenstr. 12"], ["Zürich", "Hamburg"],
+  ["Beispielweg 5", "Hafenstr. 12"],
 ];
+// Der Ort des Empfängers über seine id: sein Platzhalter folgt seit 2026-10-15 dem Land
+// (kein festes „Zürich“ mehr) und taugt nicht als Selektor.
 
 /* Kontaktperson und Pflichtkontakt ueber die STABILEN ids. Der Platzhalter des frueheren
    kombinierten Namensfeldes existiert nicht mehr, und der Profil-Seed traegt weder eine
    getrennte Kontaktperson noch eine Telefonnummer — das Konto fuehrt einen einzelnen
    Ansprechpartnernamen (der nicht zerlegt wird) und gar keine Telefonspalte. */
 const KONTAKT = [
+  ["ns-r-city", "Hamburg"],
   ["ns-s-firstName", "Max"], ["ns-s-lastName", "Mustermann"],
   ["ns-s-email", "max@example.com"], ["ns-s-phone", "+49301234567"],
   ["ns-r-firstName", "Dora"], ["ns-r-lastName", "Beispiel"],
@@ -242,7 +245,8 @@ async function zustand(page) {
         const v = (id) => document.getElementById(id)?.value?.trim() || "";
         return [v("ns-r-firstName"), v("ns-r-lastName")].filter(Boolean).join(" ") || null;
       })(),
-      ort: w["Zürich"] || null,
+      // Über die id: der Ortsplatzhalter folgt seit 2026-10-15 dem Land.
+      ort: document.getElementById("ns-r-city")?.value || null,
       plz: w["26133"] || null,
       // Paketfelder über ihre ids: die Platzhalter heißen „z. B. 5" usw. — ein
       // Platzhalter-Selektor träfe nichts. Die Anzahl trägt als einziges Feld

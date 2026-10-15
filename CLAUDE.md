@@ -361,6 +361,22 @@ Eine Anwendung — dieselbe SPA im Browser und installiert. Projektweiter Stand:
 
 ---
 
+## Effizienzstandard
+
+Gilt zusätzlich zu allen Sicherheits-, Provider-, Datenbank- und Go-Live-Regeln dieser Datei und des Canonical Context. Bei kritischen Änderungen bleiben sämtliche dort verlangten Prüfungen Pflicht.
+
+1. **Keine Doppelanalysen:** Bereits verifizierte Erkenntnisse wiederverwenden; nur das konkret betroffene Problem untersuchen.
+2. **Kleinste wirksame Änderung:** Keine zusätzlichen Features, Refactorings oder Änderungen außerhalb des Auftrags.
+3. **Risikobasierte Tests:** Bei kleinen Frontend-Änderungen lokal nur die betroffenen Unit-/Vertragstests, gezielte Browser-Suiten und `npm run build`. Die vollständigen Läufe übernimmt CI.
+4. **Keine pauschalen E2E-Gesamtläufe:** Nicht alle Browser-Suiten manuell starten, wenn nur einzelne Formulare geändert wurden. Breitere lokale Läufe nur bei konkret begründetem Risiko oder fehlender CI-Abdeckung.
+5. **Bekannte Fehler nicht endlos wiederholen:** Belegte Windows-Baseline-Probleme dokumentieren statt sie in jeder Sitzung neu zu untersuchen.
+6. **Parallele Sitzungen schützen:** Eigene Worktrees, Ports und Prozesse sauber verwalten. Niemals pauschal fremde Node-, Vite- oder Terminalprozesse beenden.
+7. **Direkter Entwicklungsabschluss:** Ursache prüfen → minimal implementieren → gezielt testen → Build → Diff-Review → Commit → Push → PR → CI prüfen. Kein eigenständiger Merge, kein Deployment.
+8. **Probleme gezielt eskalieren:** Hängt ein Test oder entsteht eine unerwartete Blockade, Ursache isolieren und das Vorgehen ändern — nicht minutenlang dieselben Befehle wiederholen.
+9. **Kurzer Abschlussbericht:** Nur Änderungen, tatsächlich ausgeführte Tests, CI, PR und offene Risiken nennen (Pflichtangaben des Abschlussberichts bleiben).
+
+---
+
 ## Git / PR
 
 Der allgemeine Workflow steht im Canonical Context §18. Zusätzlich für dieses Repository:

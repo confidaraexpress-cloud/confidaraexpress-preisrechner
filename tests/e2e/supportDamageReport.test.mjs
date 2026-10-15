@@ -12,6 +12,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -89,7 +90,7 @@ async function optionenGeladen(page) {
 }
 
 test.before(async () => {
-  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { detached: true, stdio: "ignore" });
+  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { ...DEV_SERVER_SPAWN, stdio: "ignore" });
   const deadline = Date.now() + 90000;
   for (;;) {
     try { const r = await fetch(`${BASE}/`); if (r.ok) break; } catch { /* noch nicht bereit */ }
@@ -102,8 +103,7 @@ test.before(async () => {
 test.after(async () => {
   if (browser) await browser.close();
   if (server) {
-    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
-    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+    stopDevServer(server, "SIGKILL");
   }
 });
 

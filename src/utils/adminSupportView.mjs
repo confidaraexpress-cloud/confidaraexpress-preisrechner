@@ -20,6 +20,7 @@ import { statusFallback } from "./statusFallback.mjs";
 const CATEGORY_LABELS = Object.assign(Object.create(null), {
   booking: "Buchung und Versand",
   tracking: "Sendungsverfolgung",
+  damage: "Schaden oder Verlust",
   invoice: "Rechnung",
   cancellation: "Stornierung",
   account: "Konto und Unternehmen",

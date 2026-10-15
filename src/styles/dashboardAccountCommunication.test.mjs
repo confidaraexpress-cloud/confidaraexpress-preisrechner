@@ -308,7 +308,9 @@ test("13 — der Supportdialog nutzt das globale Dialog- und Formularsystem", ()
 });
 
 test("14 — Support-E-Mail- und API-Logik sind unverändert", () => {
-  assert.match(supportDialog, /createSupportRequest\(\{ category, subject, message \}\)/);
+  // Go-Live Paket G: die Anfrage trägt zusätzlich die gewählte Sendung — gesendet wird sie nur
+  // bei „Schaden oder Verlust" (buildSupportRequestBody), sonst bleibt der Body wie bisher.
+  assert.match(supportDialog, /createSupportRequest\(\{ category, subject, message, shipmentId \}\)/);
   assert.match(supportThread, /replySupportRequest\(requestId, reply\.trim\(\), idemKey\.current\)/);
   assert.match(supportThread, /confirmSupportViewed\(requestId, through\)/);
   // Kein automatischer Statuswechsel aus dem Frontend.

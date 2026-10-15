@@ -90,9 +90,77 @@ export function getRegErrors(form = {}, passwordRepeat = "") {
 
 // Felder, die das Formular überhaupt kennt — schützt davor, dass eine unbekannte
 // `field`-Angabe aus einer Antwort einen unsichtbaren Fehler erzeugt.
+// Die beiden Erklärungen (Paket C) zählen dazu: ein Feldfehler des Servers landet
+// dann an der jeweiligen Checkbox statt als allgemeiner Banner.
 const KNOWN_FORM_FIELDS = new Set([
   "name", "email", "password", "company_name", "vat_id", "street", "zip", "city", "country",
+  "businessCustomerConfirmed", "termsAcknowledged",
 ]);
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Erklärungen bei der Registrierung (Go-Live Paket C) — ADDITIV. Die Regeln oben
+// (Feldnamen, Pflichtfelder, Payload) sind unverändert; die Erklärungen haben
+// eine eigene Prüfung, damit bestehende Aufrufer von getRegErrors gleich bleiben.
+//
+// Zwei Pflicht-Checkboxen VOR dem Absenden: die Unternehmererklärung (§ 14 BGB)
+// und die Bestätigung der AGB in der angezeigten Fassung. Die Datenschutz-
+// erklärung wird nur verlinkt — eine „Datenschutz akzeptiert"-Box wäre eine
+// erfundene Einwilligung. Was gilt und gespeichert wird, entscheidet der Server.
+// ═════════════════════════════════════════════════════════════════════════════
+export const REG_DECLARATION_TEXTS = Object.freeze({
+  business:
+    "Ich lege dieses Konto als Unternehmer im Sinne von § 14 BGB an, also für meine gewerbliche oder selbständige berufliche Tätigkeit.",
+  businessRequired: "Bitte bestätigen Sie, dass Sie das Konto als Unternehmer anlegen.",
+  termsRequired: "Bitte bestätigen Sie die Allgemeinen Geschäftsbedingungen.",
+  setChanged:
+    "Die Allgemeinen Geschäftsbedingungen wurden aktualisiert. Bitte prüfen und bestätigen Sie die aktuelle Fassung erneut.",
+  // Steht unter den Erklärungen, sobald NUR noch sie fehlen: der Knopf ist dann gesperrt, und
+  // ein gesperrter Knopf ohne Begründung ist im UAT als Fehler gemessen worden.
+  missingHint: "Bitte bestätigen Sie die beiden Erklärungen, um das Konto zu beantragen.",
+});
+
+export const emptyRegistrationDeclarations = () => ({ businessCustomerConfirmed: false, termsAcknowledged: false });
+
+// Rückgabe wie getRegErrors: { <feld>: "<Text>" } — leer = absendbar.
+export function getRegDeclarationErrors(decl = {}) {
+  const e = {};
+  if (decl.businessCustomerConfirmed !== true) e.businessCustomerConfirmed = REG_DECLARATION_TEXTS.businessRequired;
+  if (decl.termsAcknowledged !== true) e.termsAcknowledged = REG_DECLARATION_TEXTS.termsRequired;
+  return e;
+}
+
+/**
+ * Wertet `GET /api/legal/current` für die Registrierung aus — welche AGB-Fassung wird
+ * angezeigt? `null`, wenn keine Fassung abrufbar ist (dann verweist die Checkbox auf die
+ * Webseite /agb, und der Server speichert die Bestätigung ehrlich ohne Fassung).
+ */
+export function parseRegistrationLegalContext(status, body) {
+  if (status !== 200 || !body || typeof body !== "object") return null;
+  const setKey = typeof body.setKey === "string" ? body.setKey.trim() : "";
+  const docs = Array.isArray(body.documents) ? body.documents : [];
+  const doc = (typ) => {
+    const d = docs.find((x) => x && x.type === typ);
+    if (!d || typeof d.version !== "string" || typeof d.url !== "string" || !d.url) return null;
+    const suffix = typeof d.labelSuffix === "string" && d.labelSuffix.trim() ? d.labelSuffix.trim() : null;
+    return { version: d.version, url: d.url, labelSuffix: suffix };
+  };
+  const terms = doc("terms");
+  if (!setKey || !terms) return null;
+  return { setKey, terms, privacy: doc("privacy") };
+}
+
+// Die Erklärungen kommen nur in den Body, wenn BEIDE gesetzt sind — sonst bleibt der
+// Payload exakt der bisherige. Der Setschlüssel nur, wenn eine Fassung angezeigt wurde:
+// er ist ein „das habe ich gesehen"-Token, keine Auswahl (der Server vergleicht).
+export function withRegistrationDeclarations(payload, decl = {}, legalContext = null) {
+  if (decl.businessCustomerConfirmed !== true || decl.termsAcknowledged !== true) return payload;
+  const out = { ...payload, businessCustomerConfirmed: true, termsAcknowledged: true };
+  if (legalContext && legalContext.setKey) out.legalSetKey = legalContext.setKey;
+  return out;
+}
+
+export const isRegistrationSetChanged = (status, body) =>
+  status === 409 && !!body && body.code === "LEGAL_SET_CHANGED";
 
 // Ordnet eine Fehlerantwort des Backends dem richtigen Eingabefeld zu.
 //

@@ -37,11 +37,14 @@ async function setup(page, { onRegister } = {}) {
   return registerCalls;
 }
 
-// Füllt alle Pflichtfelder außer den beiden Passwortfeldern.
+// Füllt alle Pflichtfelder außer den beiden Passwortfeldern — seit Paket C gehören
+// die beiden Pflichterklärungen (Unternehmer, AGB) dazu.
 async function fillPflichtfelder(page) {
   await page.fill("#reg-name", "Max Mustermann");
   await page.fill("#reg-email", "einkauf@muster-logistik.de");
   await page.fill("#reg-company", "Muster Logistik GmbH");
+  await page.click("#reg-business .auth-checkbox");
+  await page.click("#reg-terms .auth-checkbox");
 }
 
 const pwFelder = (page) => page.locator('.auth-input[type="password"]');

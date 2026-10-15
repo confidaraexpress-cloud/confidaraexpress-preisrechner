@@ -78,8 +78,10 @@ export const OFFERS_DROPPED_NOTICE = Object.freeze({
 // `firstName`/`lastName` sind mit dem Versandkontaktvertrag dazugekommen. `fullName`
 // bleibt daneben, damit ein Altbestandswert aus einem fortgesetzten Entwurf den
 // Rundweg übersteht — abgeleitet oder zerlegt wird er nirgends.
+// `state` (Bundesstaat, nur US/CA) fehlte hier, obwohl der Kommentar genau davor warnt — er
+// ging auf dem Weg „Buchung → Zurück → Buchung“ verloren.
 const PARTY_SUFFIXES = ["company", "firstName", "lastName", "fullName",
-                        "street", "addition", "zip", "city", "country", "phone", "email"];
+                        "street", "addition", "zip", "city", "country", "state", "phone", "email"];
 const PACKAGE_KEYS = ["packageCount", "weight", "length", "width", "height"];
 // `latestDeliveryTime` ist additiv ergänzt — OHNE Versionssprung, damit ein
 // laufender Vorgang nicht grundlos verworfen wird (ein alter Vorgang liefert

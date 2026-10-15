@@ -348,3 +348,8 @@ test("classifyFormDraftTransition: shipment_persistence_failed blockiert weiterh
   assert.equal(t.blocking, true);
   assert.equal(t.consumed, false);
 });
+
+test("Fortsetzen ohne Empfängerland: kein erfundenes Land (früher fiel es auf CH zurück)", () => {
+  assert.equal(blankNewShipmentForm().r_country, "", "das Empfängerland bleibt leer und wird bewusst gewählt");
+  assert.equal(blankNewShipmentForm().s_country, "DE", "Absender bleibt Deutschland (einziger Ursprung)");
+});

@@ -30,9 +30,10 @@ test("Snapshot: enthält exakt die erlaubten Felder (kein UI-/Ergebnis-State)", 
   assert.deepEqual(snap.declarations,
     { content: null, goodsValue: null });
   // `firstName`/`lastName` sind mit dem Versandkontaktvertrag dazugekommen;
-  // `fullName` bleibt als Altbestandswert eines fortgesetzten Entwurfs erhalten.
+  // `fullName` bleibt als Altbestandswert eines fortgesetzten Entwurfs erhalten; `state`
+  // (Bundesstaat, nur US/CA) ging bis 2026-10-14 beim Speichern verloren.
   assert.deepEqual(Object.keys(snap.sender).sort(), ["addressAddition", "city", "company", "country",
-    "email", "firstName", "lastName", "fullName", "phone", "postalCode", "streetAndNumber"].sort());
+    "email", "firstName", "lastName", "fullName", "phone", "postalCode", "state", "streetAndNumber"].sort());
   assert.deepEqual(Object.keys(snap.packages).sort(), ["height", "length", "packageCount", "weight", "width"]);
   assert.deepEqual(Object.keys(snap.shippingOptions).sort(), ["publicCarrierIds", "serviceFilter", "shippingDate", "shippingModeFilter"]);
 });

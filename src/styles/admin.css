@@ -862,6 +862,15 @@
 .adm-edit-select { max-width: 320px; }
 .adm-edit-hint { font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
 
+/* Unternehmerprüfung (Go-Live Paket C) — Erklärungen, Prüfvermerke, Formular.
+   Gleiche Bausteine wie die übrigen Kundendetailsektionen; die Notiz steht als
+   eigene Zeile unter dem Vermerk, die Historie ist eingeklappt. */
+.adm-evidence-note { display: block; margin-top: 2px; font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); word-break: break-word; }
+.adm-evidence-history { margin: var(--ce-space-3) 0; font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-secondary); }
+.adm-evidence-history summary { cursor: pointer; }
+.adm-evidence-history ul { margin: var(--ce-space-2) 0 0; padding-left: var(--ce-space-5); display: flex; flex-direction: column; gap: var(--ce-space-2); }
+.adm-evidence-form { display: flex; flex-direction: column; gap: 6px; margin-top: var(--ce-space-4); max-width: 520px; }
+
 /* ── Produktion & Backfill ───────────────────────────────────────────────── */
 /* Testbuchungskarte — der Kartenkörper stapelt Schalter, Hinweise und Meldungen
    in gleichmäßigem Abstand. */

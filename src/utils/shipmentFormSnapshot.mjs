@@ -66,6 +66,9 @@ function party(form, p) {
     postalCode: trimStr(form[`${p}_zip`]),
     city: trimStr(form[`${p}_city`]),
     country: trimStr(form[`${p}_country`]),
+    // Bundesstaat bzw. Provinz (nur US/CA Pflicht). Ging beim Speichern bisher verloren,
+    // obwohl die Buchung ihn verlangt; das Fortsetzen (formDraftsView mapParty) liest ihn.
+    state: trimStr(form[`${p}_state`]),
     phone: trimStr(form[`${p}_phone`]),
     email: trimStr(form[`${p}_email`]),
   };

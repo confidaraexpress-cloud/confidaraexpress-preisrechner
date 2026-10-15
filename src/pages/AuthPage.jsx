@@ -24,7 +24,11 @@ import {
   buildRegistrationPayload,
   withReferralCode,
   REG_PASSWORD_TEXTS,
+  // Paket C: Unternehmererklärung + AGB-Bestätigung bei der Registrierung.
+  REG_DECLARATION_TEXTS, emptyRegistrationDeclarations, getRegDeclarationErrors,
+  parseRegistrationLegalContext, withRegistrationDeclarations, isRegistrationSetChanged,
 } from "../utils/registrationValidation.mjs";
+import { getCurrentLegalSet } from "../api/legalApi";
 // Passwort-Längenregel (8–128, Zählung in Code-Points). Einzige Quelle der
 // Wahrheit im Frontend; Spiegel von lib/passwordPolicy.js im Backend.
 import { PASSWORD_MIN_LEN, PASSWORD_MAX_LEN, passwordLengthError } from "../utils/passwordPolicy.mjs";
@@ -81,6 +85,33 @@ export default function AuthPage() {
   });
   const [regPasswordRepeat, setRegPasswordRepeat] = useState("");
   const [regErrors, setRegErrors] = useState({});
+  // Paket C: die beiden Erklärungen und die angezeigte AGB-Fassung (GET /api/legal/current).
+  // Die Fassung ist Anzeige und „gesehen"-Token, keine Auswahl — der Server vergleicht.
+  const [regDeclarations, setRegDeclarations] = useState(emptyRegistrationDeclarations);
+  const [regLegal, setRegLegal] = useState(null);
+  const [regLegalLoad, setRegLegalLoad] = useState(0);
+
+  useEffect(() => {
+    if (tab !== "register") return undefined;
+    const ac = new AbortController();
+    (async () => {
+      try {
+        const r = await getCurrentLegalSet({ signal: ac.signal });
+        const d = await readJson(r);
+        if (!ac.signal.aborted) setRegLegal(parseRegistrationLegalContext(r.status, d));
+      } catch {
+        // Nicht abrufbar: die Checkbox verweist auf /agb, der Server speichert die
+        // Bestätigung dann ohne Fassung. Die Registrierung bleibt möglich.
+        if (!ac.signal.aborted) setRegLegal(null);
+      }
+    })();
+    return () => ac.abort();
+  }, [tab, regLegalLoad]);
+
+  const handleDeclarationChange = (k, v) => {
+    setRegDeclarations((p) => ({ ...p, [k]: v === true }));
+    setRegErrors((p) => { const n = { ...p }; delete n[k]; return n; });
+  };
 
   // Navigations-State nach dem ersten Lesen entfernen, damit die Meldung nach
   // einem Reload nicht erneut erscheint (der lokale State-Wert bleibt erhalten).
@@ -152,7 +183,7 @@ export default function AuthPage() {
     // Doppelklick-/Mehrfachversand-Schutz: der Button ist bereits über `loading`
     // deaktiviert, hier zusätzlich als Guard, falls das Formular per Enter kommt.
     if (loading) return;
-    const errs = getRegErrors(regForm, regPasswordRepeat);
+    const errs = { ...getRegErrors(regForm, regPasswordRepeat), ...getRegDeclarationErrors(regDeclarations) };
     if (Object.keys(errs).length > 0) { setRegErrors(errs); return; }
     setRegErrors({});
     setError(""); setLoading(true);
@@ -162,11 +193,23 @@ export default function AuthPage() {
         method: "POST",
         headers: jsonH,
         // Ein gültiger Code des Kundenlinks geht als eigenes Feld mit; ohne
-        // Code ist der Body exakt der bisherige.
-        body: JSON.stringify(withReferralCode(buildRegistrationPayload(regForm), referralCodeFor("customer"))),
+        // Code ist der Body exakt der bisherige. Dazu die beiden Erklärungen
+        // und — falls angezeigt — der Schlüssel der gesehenen AGB-Fassung.
+        body: JSON.stringify(withRegistrationDeclarations(
+          withReferralCode(buildRegistrationPayload(regForm), referralCodeFor("customer")),
+          regDeclarations, regLegal)),
       });
       let d = {};
       try { d = await r.json(); } catch { d = {}; }
+      if (isRegistrationSetChanged(r.status, d)) {
+        // Die gesehene AGB-Fassung gilt nicht mehr: neu laden und die AGB-Bestätigung
+        // zurücksetzen — eine Bestätigung von Fassung A ist keine von Fassung B.
+        setRegDeclarations((p) => ({ ...p, termsAcknowledged: false }));
+        setRegLegalLoad((n) => n + 1);
+        setError(REG_DECLARATION_TEXTS.setChanged);
+        setLoading(false);
+        return;
+      }
       if (!r.ok) {
         // Feldbezogene Backend-Fehler (z. B. fehlender Firmenname) werden am
         // betroffenen Eingabefeld angezeigt statt nur als Banner oben.
@@ -256,7 +299,10 @@ export default function AuthPage() {
     });
   };
 
-  const regValid = Object.keys(getRegErrors(regForm, regPasswordRepeat)).length === 0;
+  const regFieldsValid = Object.keys(getRegErrors(regForm, regPasswordRepeat)).length === 0;
+  const regDeclarationsOk = Object.keys(getRegDeclarationErrors(regDeclarations)).length === 0;
+  const regValid = Object.keys(getRegErrors(regForm, regPasswordRepeat)).length === 0
+    && Object.keys(getRegDeclarationErrors(regDeclarations)).length === 0;
 
   return (
     <div className="auth-page">
@@ -377,6 +423,10 @@ export default function AuthPage() {
                   onPasswordBlur={handleRegPasswordBlur}
                   passwordRepeat={regPasswordRepeat}
                   onPasswordRepeatChange={handleRegPasswordRepeat}
+                  declarations={regDeclarations}
+                  onDeclarationChange={handleDeclarationChange}
+                  legalContext={regLegal}
+                  declarationsMissingOnly={regFieldsValid && !regDeclarationsOk}
                 />
               )}
             </div>

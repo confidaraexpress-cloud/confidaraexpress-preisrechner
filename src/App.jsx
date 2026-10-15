@@ -52,6 +52,9 @@ const AdminUsersPage = React.lazy(() => import("./pages/admin/AdminUsersPage"));
 const AdminUserDetailPage = React.lazy(() => import("./pages/admin/AdminUserDetailPage"));
 const AdminInvoicesPage = React.lazy(() => import("./pages/admin/AdminInvoicesPage"));
 const AdminBackfillPage = React.lazy(() => import("./pages/admin/AdminBackfillPage"));
+const AdminLegalDraftsPage = React.lazy(() => import("./pages/admin/AdminLegalDraftsPage"));
+// Geschützte Seitenvorschau der künftigen Rechtsseiten — öffentlicher Rahmen, nur Admins.
+const LegalPreviewPage = React.lazy(() => import("./pages/LegalPreviewPage"));
 const AdminInvoiceDetailPage = React.lazy(() => import("./pages/admin/AdminInvoiceDetailPage"));
 const AdminCancellationRequestsPage = React.lazy(() => import("./pages/admin/AdminCancellationRequestsPage"));
 const AdminCancellationRequestDetailPage = React.lazy(() => import("./pages/admin/AdminCancellationRequestDetailPage"));
@@ -155,6 +158,10 @@ export default function App() {
           {/* Vertriebspartnervereinbarung — Fassung, Gültigkeit und der Link
               auf das registrierte Dokument (verlinkt aus der Partnerregistrierung). */}
           <Route path="/partnervereinbarung" element={<PartnerAgreementPage />} />
+          {/* Geschützte Vorschau der künftigen Rechtsseiten: derselbe öffentliche Rahmen
+              wie /agb (die Vorschau soll aussehen wie die Seite), aber nur für Admins —
+              die Daten liefert ausschließlich /admin/legal-publications (requireAdmin). */}
+          <Route path="/vorschau/rechtstexte/:seite" element={<AdminRoute><LegalPreviewPage /></AdminRoute>} />
         </Route>
 
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
@@ -174,6 +181,7 @@ export default function App() {
           <Route path="/admin/invoices"     element={<AdminInvoicesPage />} />
           {/* Statische Route vor '/:id' — React Router rankt statisch > dynamisch; Reihenfolge zusätzlich klar. */}
           <Route path="/admin/invoices/backfill" element={<AdminBackfillPage />} />
+          <Route path="/admin/legal-drafts" element={<AdminLegalDraftsPage />} />
           <Route path="/admin/invoices/:id" element={<AdminInvoiceDetailPage />} />
           <Route path="/admin/cancellation-requests"     element={<AdminCancellationRequestsPage />} />
           <Route path="/admin/cancellation-requests/:id" element={<AdminCancellationRequestDetailPage />} />

@@ -90,6 +90,9 @@ async function kundenformularAbsenden(page) {
   const pw = page.locator('.auth-input[type="password"]');
   await pw.nth(0).fill("EinSicheresPasswort2026");
   await pw.nth(1).fill("EinSicheresPasswort2026");
+  // Seit der Pflichterklärung bei der Registrierung (Unternehmer, AGB) gehören beide Häkchen dazu.
+  await page.click("#reg-business .auth-checkbox");
+  await page.click("#reg-terms .auth-checkbox");
   await page.locator("button.auth-cta").click();
 }
 

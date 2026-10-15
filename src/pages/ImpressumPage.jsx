@@ -66,12 +66,16 @@ export default function ImpressumPage() {
             <div className="legal-section">
               <h2 className="legal-h2">Datenquellen und Lizenzhinweise</h2>
               <p className="legal-p">
-                Für die Prüfung und Vervollständigung von Postleitzahlen, Orten und Straßennamen in
-                Deutschland, Österreich, der Schweiz und Liechtenstein nutzen wir das offene
-                Verzeichnis der <strong>OpenPLZ API</strong> (openplzapi.org).
+                Für Adressvorschläge und die Prüfung von Anschriften nutzen wir den Dienst{" "}
+                <strong>Geoapify</strong> (Powered by{" "}
+                <a href="https://www.geoapify.com/" target="_blank" rel="noopener noreferrer">Geoapify</a>).
+                Die Adressdaten stammen aus OpenStreetMap und weiteren offenen Quellen:{" "}
+                <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
+                  © OpenStreetMap-Mitwirkende
+                </a>.
               </p>
               <p className="legal-p">
-                Die dort bereitgestellten Daten stehen unter der{" "}
+                Die OpenStreetMap-Daten stehen unter der{" "}
                 <strong>Open Data Commons Open Database License (ODbL) v1.0</strong>. Der Lizenztext
                 ist unter{" "}
                 <a
@@ -81,8 +85,8 @@ export default function ImpressumPage() {
                 >
                   opendatacommons.org/licenses/odbl/1-0/
                 </a>{" "}
-                abrufbar. Die ODbL verlangt diese Namensnennung; sie erfolgt hier für die genannte
-                Datenquelle.
+                abrufbar. Die ODbL verlangt diese Namensnennung; sie erfolgt hier und an jeder
+                Vorschlagsliste.
               </p>
             </div>
 

@@ -274,6 +274,104 @@ h1, h2, h3, h4 { font-family: var(--ce-font-sans); font-weight: 600; }
 .legal-sheet a.btn-primary:hover { color: var(--ce-color-text-inverse); }
 .legal-sheet a.btn:focus-visible { border-radius: var(--ce-radius-md); }
 
+/* ── Rechtstexte aus Markdown (components/legal/LegalMarkdown.jsx) ─────────
+   Dieselbe Fläche und Typografie wie die Seiten oben; ergänzt nur, was die
+   gesetzten Texte zusätzlich brauchen: tiefere Überschriften, Listen mit der
+   Nummer aus dem Text („1.“, „a)“), Hinweiskästen, Tabellen und — nur in der
+   Vorschau — ausgezeichnete Entwurfsmarken. */
+.legal-anchor { scroll-margin-top: 88px; }
+.legal-sheet .legal-h2 { margin-top: var(--ce-space-7); }
+.legal-sheet .legal-h2:first-child { margin-top: 0; }
+.legal-h4, .legal-h5 {
+  margin: var(--ce-space-4) 0 var(--ce-space-2);
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-body-size);
+  font-weight: 600;
+  line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-primary);
+  overflow-wrap: break-word;
+}
+.legal-md-list { padding-left: 22px; }
+.legal-md-list--marked { list-style: none; padding-left: 0; }
+.legal-md-list--marked > li { display: grid; grid-template-columns: minmax(2.2em, max-content) minmax(0, 1fr); column-gap: var(--ce-space-2); }
+.legal-md-depth-1 { margin-left: 20px; }
+.legal-md-depth-2, .legal-md-depth-3 { margin-left: 40px; }
+.legal-md-item { min-width: 0; overflow-wrap: break-word; }
+.legal-callout {
+  margin: 0 0 var(--ce-space-4);
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border-left: 3px solid var(--ce-color-brand-ink);
+  background: var(--ce-color-surface-muted);
+  border-radius: var(--ce-radius-sm);
+}
+.legal-callout .legal-p:last-child { margin-bottom: 0; }
+.legal-ident { overflow-wrap: break-word; }
+.legal-table-wrap { margin: 0 0 var(--ce-space-4); max-width: 100%; overflow-x: auto; }
+.legal-table-wrap:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+/* Die globale Regel `table { min-width: 480px }` (dashboard.css) gilt hier nicht: Rechtstabellen
+   brechen um bzw. werden auf dem Smartphone zu Karten. */
+.legal-table {
+  width: 100%;
+  min-width: 0;
+  border-collapse: collapse;
+  font-size: var(--ce-text-body-size);
+  line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-primary);
+}
+.legal-table th, .legal-table td {
+  padding: var(--ce-space-2) var(--ce-space-3);
+  border: 1px solid var(--ce-color-border-subtle);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+/* Auch die globalen Zellregeln (dashboard.css: feste Höhe 40/56 px, Kopf ohne Umbruch) gelten
+   hier nicht — Rechtstext bestimmt seine Höhe selbst. */
+.legal-table th, .legal-table td { height: auto; }
+.legal-table th {
+  background: var(--ce-color-surface-muted);
+  font-size: var(--ce-text-body-size);
+  font-weight: 600;
+  line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-primary);
+  white-space: normal;
+}
+/* Entwurfsmarken — nur in der geschützten Vorschau sichtbar; eine veröffentlichte
+   Fassung enthält keine (der Server lehnt sie bei der Eintragung ab). */
+.legal-mark {
+  padding: 0 3px;
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-status-warning-surface);
+  color: var(--ce-color-status-warning-fg);
+  box-shadow: inset 0 -1px 0 var(--ce-color-status-warning-border);
+}
+.legal-mark--gap { font-style: italic; }
+.legal-mark--open {
+  background: var(--ce-color-status-neutral-surface);
+  color: var(--ce-color-status-neutral-fg);
+  box-shadow: inset 0 -1px 0 var(--ce-color-status-neutral-border);
+}
+
+/* Schmale Bildschirme: Tabellen werden zu Karten — keine Spalte wird abgeschnitten,
+   jede Zelle trägt ihre Spaltenbezeichnung. */
+@media (max-width: 600px) {
+  .legal-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .legal-table, .legal-table tbody, .legal-table tr, .legal-table td { display: block; width: auto; box-sizing: border-box; }
+  .legal-table { width: 100%; }
+  .legal-table tr { margin-bottom: var(--ce-space-3); border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-sm); }
+  .legal-table td { border: 0; border-bottom: 1px solid var(--border-hairline); }
+  .legal-table td:last-child { border-bottom: 0; }
+  .legal-table td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: var(--ce-text-caption-size);
+    line-height: var(--ce-text-caption-line);
+    font-weight: 600;
+    color: var(--ce-color-text-secondary);
+  }
+  .legal-md-depth-1, .legal-md-depth-2, .legal-md-depth-3 { margin-left: var(--ce-space-3); }
+}
+
 @media (min-width: 768px) {
   .legal-wrap {
     max-width: calc(var(--ce-size-prose) + 2 * var(--ce-page-gutter));
@@ -356,3 +454,6 @@ h1, h2, h3, h4 { font-family: var(--ce-font-sans); font-weight: 600; }
    nicht am Container: die Assetdatei bringt width/height="256" mit. */
 .loading-screen-mark { justify-content: center; margin: 0 auto 16px; }
 .loading-screen-mark .ce-brandmark-img { width: 64px; }
+/* Inhaltsverzeichnis mit zwei Ebenen (AGB: Teile und §§) und PDF-Knopf über dem Text. */
+.legal-toc-sub { padding-left: var(--ce-space-4); }
+.legal-doc-actions--top { margin: 0 0 var(--ce-space-5); justify-content: flex-end; }

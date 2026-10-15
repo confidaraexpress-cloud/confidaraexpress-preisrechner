@@ -8,7 +8,7 @@ import {
 import { AddressSuggestInput } from "../address/AddressSuggestInput";
 import { AddressStatusLine } from "../address/AddressStatusLine";
 import { useAddressValidation } from "../../hooks/useAddressValidation";
-import { applyStreetSuggestion } from "../../utils/addressValidationView.mjs";
+import { applyAddressSuggestion, cityFromSuggestion, shippingLengthHint } from "../../utils/addressValidationView.mjs";
 
 const TITLES = { create: "Neue Adresse", edit: "Adresse bearbeiten", duplicate: "Adresse duplizieren" };
 
@@ -58,9 +58,9 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Adressprüfung der eingegebenen Anschrift. Es werden ausschließlich Land, PLZ, Ort und
-  // Straßenname geprüft — Firma, Ansprechpartner, E-Mail und Telefon bleiben im Formular.
-  // Für Länder ohne Abdeckung meldet der Hook `unsupported` und zeigt nichts an; das
+  // Adressprüfung der eingegebenen Anschrift. Es werden ausschließlich Land, PLZ, Ort sowie
+  // Straße und Hausnummer geprüft — Firma, Ansprechpartner, E-Mail und Telefon bleiben im
+  // Formular. Für Länder ohne Abdeckung meldet der Hook `unsupported` und zeigt nichts an; das
   // Speichern einer Adresse wird durch die Prüfung NIE blockiert (das Adressbuch ist eine
   // Stammdatenpflege, keine Buchung).
   const addressCheck = useAddressValidation({
@@ -209,12 +209,24 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
                 label="Straße und Hausnummer"
                 value={form.streetAndNumber}
                 onChange={(v) => upd("streetAndNumber", v)}
-                onSelect={(item) => upd("streetAndNumber",
-                  applyStreetSuggestion(form.streetAndNumber, typeof item === "string" ? item : item.street))}
+                onSelect={(item) => {
+                  // Nur Straße/Hausnummer, PLZ und Ort — Firma, Namen, Zusatz, Region, Kontakt
+                  // und Rolle bleiben unberührt.
+                  const patch = applyAddressSuggestion({ country: form.country, street: form.streetAndNumber }, item);
+                  if (!patch.street) return;
+                  addressCheck.markSelected(patch.street);
+                  setForm((prev) => ({
+                    ...prev,
+                    streetAndNumber: patch.street,
+                    ...(patch.postalCode ? { postalCode: patch.postalCode } : {}),
+                    ...(patch.city ? { city: patch.city } : {}),
+                  }));
+                }}
                 suggestions={addressCheck.streetOptions}
                 placeholder="Musterstraße 1"
                 maxLength={200}
                 error={errors.streetAndNumber}
+                hint={shippingLengthHint("street", form.streetAndNumber) || undefined}
                 autoComplete="address-line1"
               />
               {field("addressAdd", "Adresszusatz", { optional: true, placeholder: "Etage, c/o …", maxLength: 100 })}
@@ -229,6 +241,7 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
                     placeholder={postalCodeExample(form.country) || "PLZ"}
                     inputMode={postalCodeInputMode(form.country)}
                     maxLength={postalCodeMaxLength()}
+                    autoComplete="postal-code"
                   />
                   {errors.postalCode
                     ? <span className="field-error">{errors.postalCode}</span>
@@ -241,16 +254,18 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
                   label="Ort"
                   value={form.city}
                   onChange={(v) => upd("city", v)}
-                  onSelect={(item) => upd("city", typeof item === "string" ? item : item.city)}
+                  onSelect={(item) => upd("city", cityFromSuggestion(item))}
                   suggestions={addressCheck.cityOptions}
                   placeholder="Berlin"
                   error={errors.city}
+                  hint={shippingLengthHint("city", form.city) || undefined}
                   autoComplete="address-level2"
                 />
               </div>
               {/* Ergebnis der Adressprüfung — nur sichtbar, wenn es etwas zu sagen gibt. */}
               <AddressStatusLine
                 status={addressCheck.status}
+                reason={addressCheck.reason}
                 acknowledged={addressCheck.acknowledged}
                 onAcknowledge={addressCheck.acknowledge}
                 citySuggestions={addressCheck.cityOptions}

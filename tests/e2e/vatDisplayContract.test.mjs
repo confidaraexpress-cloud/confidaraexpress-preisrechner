@@ -432,6 +432,13 @@ test("N5 — Versandkostenrechner: neue Berechnung netto, Einblenden behält bru
   const p = await setup(page);
   await page.goto(`${BASE}/calculator`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("#calc-to-zip", { timeout: 20000 });
+  // Seit 2026-10-14 schlägt auch der Rechner zur PLZ den Ort vor (entprellte Ortsabfrage). Sie gehört
+  // zur EINGABE — wie in N7 vor dem Ausfüllen angelegt und nach den Karten abgewartet, damit sie nicht
+  // in das Beobachtungsfenster des Umschalters fällt. Ohne Straße entsteht dabei keine Prüfung.
+  const ortsabfragen = adressvorschlaegeAbgeschlossen(page, {
+    absender: { country: "DE", zip: "70173", city: "Stuttgart", street: "" },
+    empfaenger: { country: "DE", zip: "10115", city: "Berlin", street: "" },
+  });
   await page.fill("#calc-from-zip", "70173");
   await page.fill("#calc-to-zip", "10115");
   await page.fill("#calc-from-city", "Stuttgart");
@@ -444,6 +451,7 @@ test("N5 — Versandkostenrechner: neue Berechnung netto, Einblenden behält bru
   const cta = page.getByRole("button", { name: /Angebote vergleichen/i }).first();
   await cta.click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
+  await ortsabfragen;
   assert.equal(p.calc.length, 1);
   const karte = karteVon(page, JM);
   assert.equal(await gedrueckt(page, NETTO), true, "der Rechner startet nicht in Netto");

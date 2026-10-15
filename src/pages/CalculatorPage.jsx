@@ -22,6 +22,9 @@ import { postalCodeExample, postalCodeInputMode, postalCodeMaxLength } from "../
 import { useShippingFlow } from "../context/ShippingFlowContext";
 import { formHasInput, droppedNotice } from "../utils/shippingFlowState.mjs";
 import { calculatorSelectionToShipmentTransfer } from "../utils/calculatorShipmentHandoff.mjs";
+import { AddressSuggestInput } from "../components/address/AddressSuggestInput";
+import { useAddressValidation } from "../hooks/useAddressValidation";
+import { cityFromSuggestion } from "../utils/addressValidationView.mjs";
 
 // Reine Client-Filter (kein neuer /calculate-price-Request nötig): Änderungen
 // hieran verwerfen KEINE bestehenden Angebote. Alle übrigen Formularfelder
@@ -242,6 +245,19 @@ export default function CalculatorPage() {
   // (src/utils/calculatorValidation.mjs → postalCode.mjs), und das Ergebnis ist
   // feldbezogen. Siehe dort auch die internationale Behandlung: keine pauschale
   // Fünfstelligkeit.
+
+  // Ortsvorschläge zur PLZ — dieselbe zentrale Adresslogik wie in den Adressformularen, hier
+  // ohne Straße (der Preisrechner fragt keine Straße ab) und damit ohne Gesamtprüfung.
+  // Genau ein gefundener Ort wird in ein LEERES Feld übernommen; bei mehreren bleibt es bei
+  // Vorschlägen. Ein bereits eingetragener Ort wird nie überschrieben.
+  const fromCityHelp = useAddressValidation({ country: form.from_country, postalCode: form.from_zip, city: form.from_city, street: "" });
+  const toCityHelp = useAddressValidation({ country: form.to_country, postalCode: form.to_zip, city: form.to_city, street: "" });
+  useEffect(() => {
+    if (fromCityHelp.cityOptions.length === 1 && !String(form.from_city || "").trim()) upd("from_city", fromCityHelp.cityOptions[0]);
+  }, [fromCityHelp.cityOptions]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (toCityHelp.cityOptions.length === 1 && !String(form.to_city || "").trim()) upd("to_city", toCityHelp.cityOptions[0]);
+  }, [toCityHelp.cityOptions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const volWeight = form.length && form.width && form.height
     ? ((Number(form.length) * Number(form.width) * Number(form.height)) / 5000).toFixed(2) : null;
@@ -688,14 +704,19 @@ export default function CalculatorPage() {
                   </div>
                   <div className="field">
                     <label className="field-label" htmlFor="calc-from-city">Ort *</label>
-                    <input
+                    <AddressSuggestInput
                       id="calc-from-city"
-                      className={`field-input${fieldErrors.from_city ? " field-input-error" : ""}`}
+                      inputClassName={`field-input${fieldErrors.from_city ? " field-input-error" : ""}`}
                       value={form.from_city}
-                      onChange={e => { upd("from_city", e.target.value); resetResults(); }}
+                      onChange={v => { upd("from_city", v); resetResults(); }}
+                      onSelect={item => { upd("from_city", cityFromSuggestion(item)); resetResults(); }}
+                      suggestions={fromCityHelp.cityOptions}
                       placeholder="z. B. Stuttgart"
                       maxLength={CITY_MAX_LENGTH}
-                      {...fieldErrorProps("from_city", fieldErrors.from_city).input}
+                      autoComplete="address-level2"
+                      dataField="from_city"
+                      invalid={Boolean(fieldErrors.from_city)}
+                      describedBy={fieldErrorProps("from_city", fieldErrors.from_city).input["aria-describedby"]}
                     />
                     {fieldErrors.from_city
                       && <span className="field-error" id={fieldErrorProps("from_city", fieldErrors.from_city).errorId}>{fieldErrors.from_city}</span>}
@@ -734,14 +755,19 @@ export default function CalculatorPage() {
                   </div>
                   <div className="field">
                     <label className="field-label" htmlFor="calc-to-city">Ort *</label>
-                    <input
+                    <AddressSuggestInput
                       id="calc-to-city"
-                      className={`field-input${fieldErrors.to_city ? " field-input-error" : ""}`}
+                      inputClassName={`field-input${fieldErrors.to_city ? " field-input-error" : ""}`}
                       value={form.to_city}
-                      onChange={e => { upd("to_city", e.target.value); resetResults(); }}
+                      onChange={v => { upd("to_city", v); resetResults(); }}
+                      onSelect={item => { upd("to_city", cityFromSuggestion(item)); resetResults(); }}
+                      suggestions={toCityHelp.cityOptions}
                       placeholder="z. B. Berlin"
                       maxLength={CITY_MAX_LENGTH}
-                      {...fieldErrorProps("to_city", fieldErrors.to_city).input}
+                      autoComplete="address-level2"
+                      dataField="to_city"
+                      invalid={Boolean(fieldErrors.to_city)}
+                      describedBy={fieldErrorProps("to_city", fieldErrors.to_city).input["aria-describedby"]}
                     />
                     {fieldErrors.to_city
                       && <span className="field-error" id={fieldErrorProps("to_city", fieldErrors.to_city).errorId}>{fieldErrors.to_city}</span>}

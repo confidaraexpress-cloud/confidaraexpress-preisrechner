@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from "react";
+import { AddressAttribution } from "./AddressAttribution";
 
 // AddressSuggestInput — EIN Vorschlagsfeld für alle Adressformulare (Straße und Ort).
 //
@@ -26,10 +27,17 @@ import React, { useEffect, useId, useRef, useState } from "react";
 // allein am Floating-Modus, sodass die gestapelte Fassung (Adressbuch,
 // Auftragsdialog) ihren Hinweis und Fehler nicht programmatisch verband. Das ist
 // eine reine Barrierefreiheitsergänzung: Markup, Werte und Verhalten bleiben.
+//
+// Seit Geoapify (2026-10-14) sind Straßenvorschläge strukturierte Anschriften
+// ({ street, houseNumber, postalCode, city, label }); angezeigt wird `label` (Straße und
+// Hausnummer in Landesreihenfolge) plus PLZ und Ort. Unter jeder Liste steht die Pflicht-
+// Quellenangabe (AddressAttribution). Ohne `label` (z. B. im Registrierungs- oder Profilformular,
+// das seine Beschriftung selbst setzt) ist das Feld über `id` mit dem fremden <label> verbunden;
+// `inputClassName`/`wrapClassName` übernehmen dort die Feldgestaltung der jeweiligen Fläche.
 export function AddressSuggestInput({
   id, label, value, onChange, onSelect, suggestions = [], placeholder, maxLength,
   error, hint, required, disabled, autoComplete, inputMode, className = "",
-  emptyHint, floating = false,
+  emptyHint, floating = false, inputClassName, wrapClassName = "", invalid = false, onBlur, dataField, describedBy,
 }) {
   const reactId = useId();
   const inputId = id || `addr-${reactId}`;
@@ -98,7 +106,8 @@ export function AddressSuggestInput({
   const fehlerId = `${inputId}-err`;
   const hinweisId = `${inputId}-hint`;
   const hinweisText = hint || emptyHint;
-  const beschreibung = error ? fehlerId : (hinweisText ? hinweisId : undefined);
+  // `describedBy` verbindet eine Fehlermeldung, die das Formular selbst rendert (z. B. Preisrechner).
+  const beschreibung = describedBy || (error ? fehlerId : (hinweisText ? hinweisId : undefined));
 
   const rahmenKlasse = floating
     ? ["addr-suggest", "field", "ce-field", "ce-field--floating",
@@ -119,19 +128,20 @@ export function AddressSuggestInput({
           von .addr-suggest-wrap, das ohnehin `position: relative` trägt und der
           Bezugspunkt der Vorschlagsliste ist. Dadurch bleibt die Liste
           unverändert 4 px unter der Feldunterkante, auch bei 54 px Feldhöhe. */}
-      <div className="addr-suggest-wrap">
+      <div className={`addr-suggest-wrap${wrapClassName ? ` ${wrapClassName}` : ""}`}>
         <input
           id={inputId}
-          className={`field-input${floating ? " ce-field-input" : ""}${error ? " field-input-error" : ""}`}
+          className={inputClassName || `field-input${floating ? " ce-field-input" : ""}${error ? " field-input-error" : ""}`}
           type="text"
           role="combobox"
           aria-expanded={showList}
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={activeId}
-          aria-invalid={error ? "true" : undefined}
+          aria-invalid={error || invalid ? "true" : undefined}
           aria-required={required ? "true" : undefined}
           aria-describedby={beschreibung}
+          data-field={dataField}
           autoComplete={autoComplete || "off"}
           inputMode={inputMode}
           value={value}
@@ -140,33 +150,40 @@ export function AddressSuggestInput({
           disabled={disabled}
           onChange={(e) => { onChange(e.target.value); setOpen(true); }}
           onFocus={() => { setFokussiert(true); if (hasItems) setOpen(true); }}
-          onBlur={() => setFokussiert(false)}
+          onBlur={(e) => { setFokussiert(false); onBlur?.(e); }}
           onKeyDown={onKeyDown}
         />
         {floating && beschriftung}
         {showList && (
-          <ul className="addr-suggest-list" id={listId} role="listbox" aria-label={label || "Vorschläge"}>
-            {items.map((item, i) => {
-              const text = typeof item === "string" ? item : item.street;
-              const meta = typeof item === "string" ? "" : [item.postalCode, item.city].filter(Boolean).join(" ");
-              return (
-                <li
-                  key={`${text}-${i}`}
-                  id={`${inputId}-opt-${i}`}
-                  role="option"
-                  aria-selected={i === active}
-                  className={`addr-suggest-opt${i === active ? " addr-suggest-opt--active" : ""}`}
-                  // mousedown statt click: der Blur des Feldes darf die Auswahl nicht überholen.
-                  onMouseDown={(e) => { e.preventDefault(); choose(item); }}
-                  onMouseEnter={() => setActive(i)}
-                >
-                  <span className="addr-suggest-opt-text">{text}</span>
-                  {meta && <span className="addr-suggest-opt-meta">{meta}</span>}
-                </li>
-              );
-            })}
-          </ul>
+          <div className="addr-suggest-pop">
+            <ul className="addr-suggest-list" id={listId} role="listbox" aria-label={label || "Vorschläge"}>
+              {items.map((item, i) => {
+                const text = typeof item === "string" ? item : (item.label || item.street);
+                const meta = typeof item === "string" ? "" : [item.postalCode, item.city].filter(Boolean).join(" ");
+                return (
+                  <li
+                    key={`${text}-${i}`}
+                    id={`${inputId}-opt-${i}`}
+                    role="option"
+                    aria-selected={i === active}
+                    className={`addr-suggest-opt${i === active ? " addr-suggest-opt--active" : ""}`}
+                    // mousedown statt click: der Blur des Feldes darf die Auswahl nicht überholen.
+                    onMouseDown={(e) => { e.preventDefault(); choose(item); }}
+                    onMouseEnter={() => setActive(i)}
+                  >
+                    <span className="addr-suggest-opt-text">{text}</span>
+                    {meta && <span className="addr-suggest-opt-meta">{meta}</span>}
+                  </li>
+                );
+              })}
+            </ul>
+            <AddressAttribution />
+          </div>
         )}
+        {/* Trefferzahl für Screenreader: die Liste selbst kündigt sich beim Öffnen nicht an. */}
+        <span className="sr-only" role="status" aria-live="polite">
+          {showList ? `${items.length} ${items.length === 1 ? "Vorschlag" : "Vorschläge"} verfügbar` : ""}
+        </span>
       </div>
       {error
         ? <span className="field-error" id={fehlerId}>{error}</span>

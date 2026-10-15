@@ -247,3 +247,15 @@ export function shippingLengthHint(field, value) {
   if (!limit || len <= limit) return null;
   return `${len} Zeichen – einige Versandoptionen übernehmen höchstens ${limit}. Kürzen Sie bei Bedarf (z. B. „Str.“).`;
 }
+
+// ── Land zuerst ─────────────────────────────────────────────────────────────
+// Adressvorschläge gelten immer für EIN Land. Ist noch keines gewählt, kann die Suche nicht
+// starten — das sagt der Hinweis am Straßenfeld, statt still nichts anzuzeigen. Eine bereits
+// eingetippte Straße bleibt stehen; sobald das Land gewählt ist, sucht der Hook damit los.
+export const COUNTRY_FIRST_HINT = "Bitte zuerst das Land auswählen.";
+
+// Hinweis unter dem Straßenfeld: ohne Land der Land-zuerst-Hinweis, sonst ggf. der Längenhinweis.
+export function streetFieldHint(country, street) {
+  if (!isAddressCheckSupported(country)) return COUNTRY_FIRST_HINT;
+  return shippingLengthHint("street", street);
+}

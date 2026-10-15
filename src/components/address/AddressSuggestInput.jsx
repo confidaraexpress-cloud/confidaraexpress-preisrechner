@@ -62,8 +62,18 @@ export function AddressSuggestInput({
   }, [open]);
 
   // Neue Vorschläge setzen die Hervorhebung zurück — sonst zeigte sie auf einen Eintrag,
-  // den es nicht mehr gibt.
-  useEffect(() => { setActive(-1); }, [suggestions]);
+  // den es nicht mehr gibt. Treffen sie ein, während das Feld den Fokus hat (z. B. nach
+  // „Land auswählen“ → Tab ins Straßenfeld, während die Suche noch läuft), öffnet sich die
+  // Liste — aber nur, wenn sie etwas anderes zeigt als den bereits eingetragenen Wert.
+  useEffect(() => {
+    setActive(-1);
+    const eigenerWert = String(value ?? "").trim().toLowerCase();
+    const etwasNeues = suggestions.some((s) => {
+      const t = typeof s === "string" ? s : (s && (s.label || s.street));
+      return String(t ?? "").trim().toLowerCase() !== eigenerWert;
+    });
+    if (fokussiert && etwasNeues) setOpen(true);
+  }, [suggestions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const choose = (item) => {
     setOpen(false);

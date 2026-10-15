@@ -425,7 +425,6 @@ function normalizeMember(raw) {
     status: str(m.status),
     activeSince: str(m.activeSince),
     relevant: m.relevant === true,
-    rank: int(m.rank),
     commissionCurrentMonthCents: int(m.commissionCurrentMonthCents),
     commissionTotalCents: int(m.commissionTotalCents),
   };
@@ -433,66 +432,54 @@ function normalizeMember(raw) {
 
 export function normalizeTeam(raw) {
   const d = obj(raw);
-  const lim = obj(d.limits);
   return {
-    limits: { level1: int(lim.level1), level2: int(lim.level2) },
+    // Übergang Backend vor Frontend: ein Server, der noch eine Platzgrenze meldet
+    // (`limits`, Vertrag bis 2026-10-13), entscheidet auch nach ihr — dann nennt
+    // die Erklärung keine Regel „alle zählen" (teamExplanation).
+    serverReportsLimit: d.limits != null,
     level1: arr(d.level1).map(normalizeMember),
     level2: arr(d.level2).map(normalizeMember),
   };
 }
 
 // UX-Paket 6: die zwei Ebenen mit verständlichen Namen. Für die Teamprovision
-// zählen je Ebene die ersten `limits` AKTIVEN Partner in der Reihenfolge ihrer
-// Aktivierung (Server: lib/salesPartner/store.js teamRankingAt) — der Platz ist
-// keine Leistungswertung. Inaktive Partner haben keinen Platz.
+// zählt jeder aktive Partner beider Ebenen — ohne Platzgrenze und ohne
+// Reihenfolge (Betreiberentscheidung 2026-10-13). Ob ein Partner zählt, sagt
+// allein `relevant` des Servers.
 export const TEAM_TEXTS = Object.freeze({
   level1Title: "Direkt geworben (Ebene 1)",
   level2Title: "Weitere Partner (Ebene 2)",
   level2Note: "Partner, die Ihre direkt geworbenen Partner geworben haben.",
   emptyLevel: "Auf dieser Ebene gibt es noch keine Vertriebspartner.",
   countsLabel: "Zählt für Ihre Teamprovision",
+  rule: "Für Ihre Teamprovision zählen alle berechtigten aktiven Partner auf Ebene 1 und Ebene 2.",
+  ruleByMember: "Ob ein Partner für Ihre Teamprovision zählt, steht bei jedem Partner.",
 });
 
-const teamLimit = (level, team) => (level === 1 ? team?.limits?.level1 : team?.limits?.level2);
-
-/** „Ja – Platz 2 von 10" / „Nein – nur aktive Partner zählen" / „Nein – Platz 11; es zählen die ersten 10". */
-export function relevanceLabel(member, limit = null) {
+/** „Ja" / „Nein – nur aktive Partner zählen" / „Nein" — allein das Kennzeichen des Servers. */
+export function relevanceLabel(member) {
   if (!member) return "Nein";
-  const mitGrenze = Number.isInteger(limit);
-  if (member.relevant === true) {
-    return Number.isInteger(member.rank) && mitGrenze ? `Ja – Platz ${member.rank} von ${limit}` : "Ja";
-  }
+  if (member.relevant === true) return "Ja";
   if (member.status === "inactive") return "Nein – nur aktive Partner zählen";
-  if (Number.isInteger(member.rank) && mitGrenze && member.rank > limit) return `Nein – Platz ${member.rank}; es zählen die ersten ${limit}`;
   return "Nein";
 }
 
 /** Name einer Ebene: „Direkt geworben (Ebene 1)" / „Weitere Partner (Ebene 2)". */
 export const teamLevelTitle = (level) => (level === 1 ? TEAM_TEXTS.level1Title : TEAM_TEXTS.level2Title);
 
-/** Belegung einer Ebene: „3 Partner · 2 zählen für Ihre Teamprovision (höchstens 10)" — gezählt
- *  werden nur die Kennzeichen des Servers. Früher „Ebene 1 · 12 von 10": dort zählten
- *  auch inaktive Mitglieder gegen die zehn Plätze. */
+/** Belegung einer Ebene: „3 Partner · 2 zählen für Ihre Teamprovision" — gezählt werden nur
+ *  die Kennzeichen des Servers, ohne Obergrenze. */
 export function teamLevelSummary(level, team) {
   const liste = level === 1 ? arr(team?.level1) : arr(team?.level2);
   if (liste.length === 0) return TEAM_TEXTS.emptyLevel;
   const zaehlen = liste.filter((m) => m && m.relevant === true).length;
-  const limit = teamLimit(level, team);
-  const grenze = Number.isInteger(limit) ? ` (höchstens ${limit})` : "";
-  return `${liste.length} Partner · ${zaehlen} ${zaehlen === 1 ? "zählt" : "zählen"} für Ihre Teamprovision${grenze}`;
+  return `${liste.length} Partner · ${zaehlen} ${zaehlen === 1 ? "zählt" : "zählen"} für Ihre Teamprovision`;
 }
 
-/** Erklärung über dem Team: die Regel der Plätze (Grenzen des Servers) und die Sätze der Übersicht.
- *  Die Rangfolge selbst bestimmt allein der Server (`rank`, `relevant`). */
+/** Erklärung über dem Team: die Regel der Teamprovision und die Sätze der Übersicht. Meldet der
+ *  Server noch eine Platzgrenze, steht statt der Regel nur der Verweis auf die Kennzeichen. */
 export function teamExplanation(team, overview) {
-  const l1 = teamLimit(1, team);
-  const l2 = teamLimit(2, team);
-  let regel = "Für Ihre Teamprovision zählen aktive Partner, in der Reihenfolge ihrer Aktivierung.";
-  if (Number.isInteger(l1) && l1 === l2) {
-    regel = `Für Ihre Teamprovision zählen je Ebene die ersten ${l1} aktiven Partner, in der Reihenfolge ihrer Aktivierung.`;
-  } else if (Number.isInteger(l1) && Number.isInteger(l2)) {
-    regel = `Für Ihre Teamprovision zählen auf Ebene 1 die ersten ${l1} und auf Ebene 2 die ersten ${l2} aktiven Partner, in der Reihenfolge ihrer Aktivierung.`;
-  }
+  const regel = team && team.serverReportsLimit ? TEAM_TEXTS.ruleByMember : TEAM_TEXTS.rule;
   const r = overview && overview.rates ? overview.rates : null;
   const saetze = r && r.level1Percent && r.level2Percent
     ? ` Ihre Sätze: Ebene 1 ${formatPercent(r.level1Percent)} · Ebene 2 ${formatPercent(r.level2Percent)}.` : "";

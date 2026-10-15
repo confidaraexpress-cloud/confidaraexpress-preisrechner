@@ -389,50 +389,55 @@ test("9b — Provisionen (UX-Paket 6): Monat, verdient und auszahlbar zuerst —
   assert.equal(commissionBasisText(null), "—");
 });
 
-test("10 — „Mein Team“ ist immer da (auch ohne Einträge); Plätze aus Rang und Kennzeichen des Servers", () => {
+test("10 — „Mein Team“ ist immer da (auch ohne Einträge); es zählt allein das Kennzeichen des Servers, ohne Platz", () => {
   // Bewusste Ankeränderung (UX-Paket 1, Betreiberentscheidung 2026-10-08): früher
   // erschien der Bereich nur mit Einträgen und verschwand bei einem Ladefehler
   // unbemerkt. Jetzt stehen alle sechs Bereiche immer da; „Gutschriften“
   // zwischen Provisionen und Team (salesPartnerCreditNotes.test.mjs, Test 7).
   assert.deepEqual(visiblePartnerTabs().map((t) => t.id), ["overview", "customers", "commissions", "credit-notes", "team", "account"]);
   assert.deepEqual(visiblePartnerTabs().map((t) => t.id), PARTNER_TABS.map((t) => t.id));
-  const team = normalizeTeam({ limits: { level1: 10, level2: 10 },
-    level1: [{ name: "Tom Team", status: "active", relevant: true, rank: 2, commissionCurrentMonthCents: 500, commissionTotalCents: 9000 }],
+  const team = normalizeTeam({
+    level1: [{ name: "Tom Team", status: "active", relevant: true, commissionCurrentMonthCents: 500, commissionTotalCents: 9000 }],
     level2: [] });
-  // UX-Paket 6 (bewusste Ankeränderung): „Ja (Rang 2)" klang nach Leistungswertung —
-  // der Rang ist die Reihenfolge der Aktivierung (Server: teamRankingAt), also ein Platz.
-  assert.equal(relevanceLabel(team.level1[0], 10), "Ja – Platz 2 von 10");
-  assert.equal(relevanceLabel(team.level1[0]), "Ja", "ohne Grenze kein „von …“");
-  assert.equal(relevanceLabel({ status: "inactive", relevant: false, rank: null }, 10), "Nein – nur aktive Partner zählen");
-  assert.equal(relevanceLabel({ status: "active", relevant: false, rank: 11 }, 10), "Nein – Platz 11; es zählen die ersten 10");
+  // Bewusste Ankeränderung (Betreiberentscheidung 2026-10-13): keine Platzgrenze je Ebene —
+  // vorher „Ja – Platz 2 von 10“ bzw. „Nein – Platz 11; es zählen die ersten 10“.
+  assert.equal(relevanceLabel(team.level1[0]), "Ja");
+  assert.ok(!("rank" in team.level1[0]), "kein Rang im Teammitglied");
+  assert.equal(relevanceLabel({ status: "inactive", relevant: false }), "Nein – nur aktive Partner zählen");
   // Widersprüchliche Angaben werden nicht „repariert": ohne Kennzeichen kein Ja.
-  assert.equal(relevanceLabel({ status: "active", relevant: false, rank: 1 }, 10), "Nein");
-  assert.equal(relevanceLabel({ status: "active", relevant: "true", rank: 1 }, 10), "Nein", "nur exakt true");
-  assert.equal(relevanceLabel(null, 10), "Nein");
+  assert.equal(relevanceLabel({ status: "active", relevant: false }), "Nein");
+  assert.equal(relevanceLabel({ status: "active", relevant: "true" }), "Nein", "nur exakt true");
+  assert.equal(relevanceLabel(null), "Nein");
+  // Ein Rang aus einer älteren Antwort bleibt wirkungslos: kein Platz, keine Grenze im Text.
+  assert.equal(relevanceLabel({ status: "active", relevant: false, rank: 11 }, 10), "Nein");
 });
 
-test("10a — Team (UX-Paket 6): zwei Ebenen mit Namen, Belegung ohne „12 von 10“, Regel und Sätze", () => {
+test("10a — Team: zwei Ebenen mit Namen, Belegung ohne Obergrenze, „alle zählen“ nur ohne Grenze des Servers", () => {
   assert.equal(teamLevelTitle(1), "Direkt geworben (Ebene 1)");
   assert.equal(teamLevelTitle(2), "Weitere Partner (Ebene 2)");
   assert.equal(TEAM_TEXTS.level2Note, "Partner, die Ihre direkt geworbenen Partner geworben haben.");
-  const mitglied = (i, relevant, status = "active") => ({ name: `P${i}`, status, relevant, rank: relevant ? i : null });
-  const team = normalizeTeam({ limits: { level1: 10, level2: 10 },
+  const mitglied = (i, relevant, status = "active") => ({ name: `P${i}`, status, relevant });
+  // 1.000 Mitglieder auf Ebene 2, zwei davon inaktiv: alle stehen da, 998 zählen — keine Obergrenze.
+  const team = normalizeTeam({
     level1: [mitglied(1, true)],
-    // Früher „Ebene 2 · 12 von 10": inaktive Mitglieder zählten gegen die zehn Plätze.
-    level2: [...Array.from({ length: 10 }, (_, i) => mitglied(i + 1, true)), mitglied(11, false, "inactive"), mitglied(12, false, "inactive")] });
-  assert.equal(teamLevelSummary(1, team), "1 Partner · 1 zählt für Ihre Teamprovision (höchstens 10)");
-  assert.equal(teamLevelSummary(2, team), "12 Partner · 10 zählen für Ihre Teamprovision (höchstens 10)");
+    level2: Array.from({ length: 1000 }, (_, i) => (i === 10 || i === 99 ? mitglied(i + 1, false, "inactive") : mitglied(i + 1, true))) });
+  assert.equal(team.level2.length, 1000);
+  assert.equal(teamLevelSummary(1, team), "1 Partner · 1 zählt für Ihre Teamprovision");
+  assert.equal(teamLevelSummary(2, team), "1000 Partner · 998 zählen für Ihre Teamprovision");
   assert.equal(teamLevelSummary(2, normalizeTeam({ level2: [] })), TEAM_TEXTS.emptyLevel);
-  assert.equal(teamLevelSummary(1, normalizeTeam({ level1: [mitglied(1, true)] })), "1 Partner · 1 zählt für Ihre Teamprovision",
-    "ohne Grenze des Servers keine erfundene Zahl");
 
   const uebersicht = normalizeOverview(OVERVIEW);
   assert.equal(teamExplanation(team, uebersicht),
-    "Für Ihre Teamprovision zählen je Ebene die ersten 10 aktiven Partner, in der Reihenfolge ihrer Aktivierung. Ihre Sätze: Ebene 1 5,00 % · Ebene 2 2,50 %.");
-  assert.equal(teamExplanation(normalizeTeam({ limits: { level1: 10, level2: 5 } }), null),
-    "Für Ihre Teamprovision zählen auf Ebene 1 die ersten 10 und auf Ebene 2 die ersten 5 aktiven Partner, in der Reihenfolge ihrer Aktivierung.");
-  assert.equal(teamExplanation(normalizeTeam(null), null),
-    "Für Ihre Teamprovision zählen aktive Partner, in der Reihenfolge ihrer Aktivierung.");
+    "Für Ihre Teamprovision zählen alle berechtigten aktiven Partner auf Ebene 1 und Ebene 2. Ihre Sätze: Ebene 1 5,00 % · Ebene 2 2,50 %.");
+  assert.equal(teamExplanation(normalizeTeam(null), null), TEAM_TEXTS.rule);
+  // Übergang Backend vor Frontend: ein Server, der noch eine Platzgrenze meldet, entscheidet auch nach
+  // ihr — die Erklärung behauptet dann keine unbegrenzte Teamprovision und nennt keine Zahl.
+  const altServer = normalizeTeam({ limits: { level1: 10, level2: 10 }, level1: [mitglied(1, true)], level2: [] });
+  assert.equal(teamExplanation(altServer, uebersicht),
+    "Ob ein Partner für Ihre Teamprovision zählt, steht bei jedem Partner. Ihre Sätze: Ebene 1 5,00 % · Ebene 2 2,50 %.");
+  for (const text of [teamExplanation(altServer, uebersicht), teamLevelSummary(1, altServer), teamExplanation(team, uebersicht), teamLevelSummary(2, team)]) {
+    assert.ok(!/Platz|höchstens|die ersten|Reihenfolge/.test(text), text);
+  }
   assert.equal(teamMonthLabel(partnerMonths(uebersicht)), "Teamprovision im Oktober");
   assert.equal(teamMonthLabel(partnerMonths(null)), "Teamprovision im laufenden Monat");
 });

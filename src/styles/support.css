@@ -23,6 +23,13 @@
   font-weight: 600; color: var(--ce-color-text-primary); margin-bottom: var(--ce-space-2);
 }
 .sup-dialog-desc { font-size: var(--ce-text-body-size); color: var(--ce-color-text-secondary); line-height: var(--ce-text-body-line); margin-bottom: var(--ce-space-5); }
+/* Schaden oder Verlust (Go-Live Paket G): ruhiger Info-Hinweis über dem Nummernfeld —
+   dieselbe Infofläche wie die Buchungshinweise, kein Warnton. */
+.sup-dialog-damage-hint {
+  margin: var(--ce-space-3) 0 var(--ce-space-3); padding: var(--ce-space-3) var(--ce-space-4);
+  border-radius: var(--ce-radius-sm); color: var(--ce-color-text-primary);
+  background: var(--ce-color-status-info-surface); border: 1px solid var(--ce-color-status-info-border);
+}
 
 .sup-dialog-success {
   padding: var(--ce-space-3) var(--ce-space-4); margin-bottom: var(--ce-space-4); border-radius: var(--ce-radius-sm);

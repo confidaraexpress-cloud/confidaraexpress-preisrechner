@@ -58,7 +58,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
-import { DEV_SERVER_SPAWN, stopDevServer } from "./devServer.mjs";
+import { DEV_SERVER_SPAWN, stopDevServer, isStillRunning } from "./devServer.mjs";
 
 const E2E = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -202,4 +202,21 @@ test("5 — stopDevServer beendet Kind UND Enkel und wirft bei einem beendeten S
 
   assert.doesNotThrow(() => stopDevServer(kind, "SIGKILL"), "zweiter Aufruf auf beendeten Server");
   assert.doesNotThrow(() => stopDevServer(null), "kein Server gestartet");
+});
+
+test("6 — Windows: taskkill nur fuer den eigenen, noch laufenden Prozess (keine neu vergebene PID)", () => {
+  /* Nach dem Ende eines Kindes darf Windows seine PID neu vergeben. `taskkill /PID … /T`
+     auf eine solche PID beendete einen FREMDEN Prozessbaum — eine andere Suite, ein
+     anderes Projekt oder eine laufende Claude-Sitzung. Deshalb ruft stopDevServer
+     taskkill nur, solange Node den Prozess noch als laufend kennt. */
+  assert.equal(isStillRunning({ pid: 4242, exitCode: null, signalCode: null }), true);
+  assert.equal(isStillRunning({ pid: 4242, exitCode: 0, signalCode: null }), false, "mit Exitcode beendet");
+  assert.equal(isStillRunning({ pid: 4242, exitCode: null, signalCode: "SIGKILL" }), false, "per Signal beendet");
+  assert.equal(isStillRunning({ pid: undefined, exitCode: null, signalCode: null }), false, "nie gestartet");
+  assert.equal(isStillRunning(null), false);
+  const helfer = readFileSync(path.join(E2E, "helpers", "devServer.mjs"), "utf8");
+  const vorTaskkill = helfer.slice(0, helfer.indexOf('spawnSync("taskkill"'));
+  assert.ok(vorTaskkill.slice(vorTaskkill.lastIndexOf("if (WINDOWS)")).includes("if (isStillRunning(server))"),
+    "taskkill muss hinter der Laufpruefung stehen");
+  assert.ok(!/taskkill[^\n]*\/IM|Stop-Process|pkill|killall/.test(helfer), "kein Beenden nach Prozessname");
 });

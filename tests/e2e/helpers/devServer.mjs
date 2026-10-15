@@ -32,12 +32,23 @@ const WINDOWS = process.platform === "win32";
 /** Spawn-Optionen fuer jeden Dev-Server einer Suite (per Spread ins Optionsobjekt). */
 export const DEV_SERVER_SPAWN = Object.freeze({ detached: !WINDOWS, windowsHide: true });
 
+/** true, solange der gestartete Prozess laut Node noch laeuft (weder Exitcode noch Signal).
+ *  Unter Windows ist das die Voraussetzung fuer `taskkill`: nach dem Ende kann die PID
+ *  bereits an einen FREMDEN Prozess vergeben sein — `/T` beendete dann dessen ganzen Baum
+ *  (eine andere Suite, ein anderes Projekt, eine laufende Claude-Sitzung). */
+export function isStillRunning(server) {
+  return Boolean(server?.pid) && server.exitCode === null && server.signalCode === null;
+}
+
 /** Beendet den Dev-Server samt Kind und Enkel. Ein bereits beendeter Server ist
  *  kein Testfehler — nichts hiervon wirft. */
 export function stopDevServer(server, signal = "SIGKILL") {
   if (!server?.pid) return;
   if (WINDOWS) {
-    spawnSync("taskkill", ["/PID", String(server.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
+    // Nur den EIGENEN, noch laufenden Prozessbaum — nie eine moeglicherweise neu vergebene PID.
+    if (isStillRunning(server)) {
+      spawnSync("taskkill", ["/PID", String(server.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
+    }
   } else {
     try { process.kill(-server.pid, signal); } catch { /* schon beendet */ }
   }

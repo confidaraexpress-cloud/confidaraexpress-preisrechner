@@ -29,17 +29,20 @@ export const ADDRESS_STATUS = {
 // Kundentexte. Bewusst ohne technische Begriffe: kein Anbietername, kein „API“, kein
 // HTTP-Status, kein „Provider“. Der Kunde soll wissen, was zu tun ist. Keine Aussage behauptet,
 // dass eine Sendung zugestellt werden kann — „gefunden“ heißt: der Adressdienst kennt die
-// Anschrift.
+// Anschrift bis zur Hausnummer.
+//
+// Kurz gehalten (Premium-Durchgang 2026-10-15): jeder Text passt auch bei 390 px in EINE Zeile
+// der Statuszeile. Deren Höhe ist reserviert — ein Statuswechsel verschiebt so kein Feld darunter.
 export const ADDRESS_MESSAGES = {
-  [ADDRESS_STATUS.CONFIRMED]:   "Adresse gefunden (Straße, Hausnummer, PLZ und Ort).",
-  [ADDRESS_STATUS.UNVERIFIED]:  "Adresse konnte nicht automatisch bestätigt werden. Bitte prüfen Sie die Schreibweise.",
-  [ADDRESS_STATUS.UNAVAILABLE]: "Automatische Adressprüfung ist momentan nicht verfügbar.",
+  [ADDRESS_STATUS.CONFIRMED]:   "Adresse gefunden",
+  [ADDRESS_STATUS.UNVERIFIED]:  "Adresse nicht bestätigt – bitte Schreibweise prüfen.",
+  [ADDRESS_STATUS.UNAVAILABLE]: "Adressprüfung derzeit nicht verfügbar.",
 };
 
 export const ADDRESS_REASON_MESSAGES = {
-  house_number_unconfirmed:  "Straße gefunden – die Hausnummer konnte nicht bestätigt werden. Bitte prüfen.",
-  house_number_missing:      "Straße gefunden. Bitte ergänzen Sie die Hausnummer, falls vorhanden.",
-  postal_code_city_mismatch: "PLZ und Ort passen möglicherweise nicht zusammen.",
+  house_number_unconfirmed:  "Hausnummer nicht bestätigt – bitte prüfen.",
+  house_number_missing:      "Hausnummer ergänzen, falls vorhanden.",
+  postal_code_city_mismatch: "PLZ und Ort passen evtl. nicht zusammen.",
 };
 
 export function addressStatusMessage(status, reason) {
@@ -212,17 +215,12 @@ export function readStreetSuggestions(body) {
     }));
 }
 
-// Braucht der Zustand einen Hinweis mit der Möglichkeit, ihn bewusst zu übergehen?
-// („Adresse so verwenden“ — der Kunde entscheidet, nicht der Automat. Gesperrt wird nichts.)
-export function addressNeedsAcknowledgement(status) {
-  return status === ADDRESS_STATUS.UNVERIFIED || status === ADDRESS_STATUS.UNAVAILABLE;
-}
-
 // Der Ton der Statusanzeige. Es gibt keinen Fehlerton: ein Hinweis des Adressdienstes ist nie
-// ein Beweis, dass die Anschrift falsch ist.
+// ein Beweis, dass die Anschrift falsch ist. Ein Ausfall der Prüfung ist neutral — er sagt
+// nichts über die Eingabe des Kunden und ist deshalb keine Warnung.
 export function addressStatusTone(status) {
   if (status === ADDRESS_STATUS.CONFIRMED) return "success";
-  if (status === ADDRESS_STATUS.UNVERIFIED || status === ADDRESS_STATUS.UNAVAILABLE) return "warning";
+  if (status === ADDRESS_STATUS.UNVERIFIED) return "warning";
   return "neutral";
 }
 
@@ -254,8 +252,43 @@ export function shippingLengthHint(field, value) {
 // eingetippte Straße bleibt stehen; sobald das Land gewählt ist, sucht der Hook damit los.
 export const COUNTRY_FIRST_HINT = "Bitte zuerst das Land auswählen.";
 
+// Nur der Land-zuerst-Hinweis — für Formulare ohne Versandlängen (Profil, Registrierung,
+// Partnerabrechnung).
+export function countryFirstHint(country) {
+  return isAddressCheckSupported(country) ? null : COUNTRY_FIRST_HINT;
+}
+
 // Hinweis unter dem Straßenfeld: ohne Land der Land-zuerst-Hinweis, sonst ggf. der Längenhinweis.
 export function streetFieldHint(country, street) {
-  if (!isAddressCheckSupported(country)) return COUNTRY_FIRST_HINT;
-  return shippingLengthHint("street", street);
+  return countryFirstHint(country) || shippingLengthHint("street", street);
+}
+
+// ── Hervorhebung in der Vorschlagsliste ─────────────────────────────────────
+// Markiert in einem Vorschlag die Wortanfänge, die der Kunde getippt hat („Schweinheimer Str 187“
+// → „Schweinheimer“, „Str“ in „Straße“, „187“). Reine Anzeige: geliefert werden Textstücke
+// mit `match`; zusammengesetzt ergeben sie exakt den Ausgangstext. Ohne verwertbare Eingabe
+// kommt der Text unverändert als ein Stück zurück.
+const WORD_SEPARATORS = /([\s,.\-/]+)/;
+
+export function highlightSegments(text, query) {
+  const t = String(text ?? "");
+  const tokens = [...new Set(String(query ?? "").toLowerCase().split(WORD_SEPARATORS)
+    .filter((w, i) => i % 2 === 0 && (w.length >= 2 || /^\d+$/.test(w))))]
+    .sort((a, b) => b.length - a.length);
+  if (!t || tokens.length === 0) return [{ text: t, match: false }];
+  const out = [];
+  const push = (part, match) => {
+    if (!part) return;
+    const last = out[out.length - 1];
+    if (last && last.match === match) last.text += part;
+    else out.push({ text: part, match });
+  };
+  t.split(WORD_SEPARATORS).forEach((part, i) => {
+    if (i % 2 === 1) { push(part, false); return; }
+    const low = part.toLowerCase();
+    const token = low.length === part.length ? tokens.find((k) => low.startsWith(k)) : null;
+    if (token) { push(part.slice(0, token.length), true); push(part.slice(token.length), false); }
+    else push(part, false);
+  });
+  return out;
 }

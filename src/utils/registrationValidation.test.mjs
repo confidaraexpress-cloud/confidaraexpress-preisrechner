@@ -198,8 +198,10 @@ test("17 — kein Kontotyp-Schalter und keine Unternehmer-Checkbox im Formular",
 test("18 — mobile Struktur bleibt erhalten (bestehende Grid-Klassen unverändert)", () => {
   const rows2 = registerFormSrc.match(/field-row field-row-2/g) || [];
   const rows3 = registerFormSrc.match(/field-row field-row-3/g) || [];
-  assert.equal(rows2.length, 2, "zwei zweispaltige Reihen wie bisher");
-  assert.equal(rows3.length, 1, "eine dreispaltige Reihe (PLZ/Stadt/Land) wie bisher");
+  // Seit „Land zuerst“ (2026-10-15) steht das Land einzeln VOR der Straße; PLZ und Stadt
+  // bilden die dritte zweispaltige Reihe statt einer dreispaltigen PLZ/Stadt/Land.
+  assert.equal(rows2.length, 3, "drei zweispaltige Reihen (Kontakt, Unternehmen, PLZ/Stadt)");
+  assert.equal(rows3.length, 0, "keine dreispaltige Reihe mehr");
   // Der Hinweis ist ein normales Blockelement ohne feste Höhe/Breite.
   assert.equal(/auth-b2b-notice[^"]*"[\s\S]{0,200}(width:|height:)/.test(registerFormSrc), false);
 });

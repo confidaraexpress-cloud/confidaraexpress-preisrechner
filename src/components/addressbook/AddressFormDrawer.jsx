@@ -8,7 +8,8 @@ import {
 import { AddressSuggestInput } from "../address/AddressSuggestInput";
 import { AddressStatusLine } from "../address/AddressStatusLine";
 import { useAddressValidation } from "../../hooks/useAddressValidation";
-import { applyAddressSuggestion, cityFromSuggestion, shippingLengthHint } from "../../utils/addressValidationView.mjs";
+import { applyAddressSuggestion, cityFromSuggestion, shippingLengthHint, streetFieldHint } from "../../utils/addressValidationView.mjs";
+import { cityPlaceholder } from "../../utils/addressPlaceholders.mjs";
 
 const TITLES = { create: "Neue Adresse", edit: "Adresse bearbeiten", duplicate: "Adresse duplizieren" };
 
@@ -204,6 +205,23 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
             {/* Abschnitt 3 — Anschrift */}
             <div className="abk-drawer-section">
               <div className="abk-drawer-section-title">Anschrift</div>
+              {/* Land ZUERST (wie in „Neue Sendung“): Adressvorschläge gelten immer für ein Land.
+                  Stand es unter der Straße, suchte eine ausländische Adresse noch mit der
+                  Vorbelegung DE — und eine Auswahl brachte deutsche PLZ und Orte mit. Die
+                  Vorbelegung selbst bleibt unverändert; die Region folgt dem Land. */}
+              <div className="field">
+                <label className="field-label" htmlFor="abk-country">Land</label>
+                <select
+                  id="abk-country"
+                  className={`field-input field-select${errors.country ? " field-input-error" : ""}`}
+                  value={form.country}
+                  onChange={(e) => upd("country", e.target.value)}
+                >
+                  {launchCountries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+                </select>
+                {errors.country && <span className="field-error">{errors.country}</span>}
+              </div>
+              {field("state", "Bundesland / Region", { optional: true, placeholder: "z. B. Berlin", maxLength: 100 })}
               <AddressSuggestInput
                 id="abk-streetAndNumber"
                 label="Straße und Hausnummer"
@@ -223,11 +241,14 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
                   }));
                 }}
                 suggestions={addressCheck.streetOptions}
+                loading={addressCheck.streetLoading}
+                noResults={addressCheck.streetNoResults}
                 placeholder="Musterstraße 1"
                 maxLength={200}
                 error={errors.streetAndNumber}
-                hint={shippingLengthHint("street", form.streetAndNumber) || undefined}
+                hint={streetFieldHint(form.country, form.streetAndNumber) || undefined}
                 autoComplete="address-line1"
+                className="field"
               />
               {field("addressAdd", "Adresszusatz", { optional: true, placeholder: "Etage, c/o …", maxLength: 100 })}
               <div className="field-row field-row-2">
@@ -243,11 +264,11 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
                     maxLength={postalCodeMaxLength()}
                     autoComplete="postal-code"
                   />
+                  {/* Das Beispiel steht im Platzhalter; eine zweite Zeile „Beispiel: …“ wiederholte
+                      es nur und blieb auch neben einer fertigen PLZ stehen. */}
                   {errors.postalCode
                     ? <span className="field-error">{errors.postalCode}</span>
-                    : (postalCodeExample(form.country)
-                        ? <span className="field-hint">Beispiel: {postalCodeExample(form.country)}</span>
-                        : (!isPostalCodeRequired(form.country) ? <span className="field-hint">Für dieses Land optional.</span> : null))}
+                    : (!isPostalCodeRequired(form.country) ? <span className="field-hint">Für dieses Land optional.</span> : null)}
                 </div>
                 <AddressSuggestInput
                   id="abk-city"
@@ -256,34 +277,20 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
                   onChange={(v) => upd("city", v)}
                   onSelect={(item) => upd("city", cityFromSuggestion(item))}
                   suggestions={addressCheck.cityOptions}
-                  placeholder="Berlin"
+                  placeholder={cityPlaceholder(form.country)}
                   error={errors.city}
                   hint={shippingLengthHint("city", form.city) || undefined}
                   autoComplete="address-level2"
+                  className="field"
                 />
               </div>
-              {/* Ergebnis der Adressprüfung — nur sichtbar, wenn es etwas zu sagen gibt. */}
+              {/* Ergebnis der Adressprüfung — Platz reserviert, Text nur, wenn es etwas zu sagen gibt. */}
               <AddressStatusLine
                 status={addressCheck.status}
                 reason={addressCheck.reason}
-                acknowledged={addressCheck.acknowledged}
-                onAcknowledge={addressCheck.acknowledge}
                 citySuggestions={addressCheck.cityOptions}
                 onPickCity={(c) => upd("city", c)}
               />
-              {field("state", "Bundesland / Region", { optional: true, placeholder: "z. B. Berlin", maxLength: 100 })}
-              <div className="field">
-                <label className="field-label" htmlFor="abk-country">Land</label>
-                <select
-                  id="abk-country"
-                  className={`field-input field-select${errors.country ? " field-input-error" : ""}`}
-                  value={form.country}
-                  onChange={(e) => upd("country", e.target.value)}
-                >
-                  {launchCountries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-                </select>
-                {errors.country && <span className="field-error">{errors.country}</span>}
-              </div>
             </div>
 
             {/* Abschnitt 4 — Optionen */}

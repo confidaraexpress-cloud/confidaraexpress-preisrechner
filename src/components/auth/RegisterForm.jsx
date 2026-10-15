@@ -9,7 +9,9 @@ import { B2B_NOTICE, B2B_ACTIVATION_NOTE } from "../../utils/registrationValidat
 import { PASSWORD_MIN_LEN } from "../../utils/passwordPolicy.mjs";
 import { AddressSuggestInput } from "../address/AddressSuggestInput";
 import { useAddressValidation } from "../../hooks/useAddressValidation";
-import { applyAddressSuggestion, cityFromSuggestion } from "../../utils/addressValidationView.mjs";
+import { applyAddressSuggestion, cityFromSuggestion, countryFirstHint } from "../../utils/addressValidationView.mjs";
+import { cityPlaceholder } from "../../utils/addressPlaceholders.mjs";
+import { postalCodeExample, postalCodeInputMode } from "../../utils/postalCode.mjs";
 
 // Pflichtfeld-Markierung. Das Sternchen ist rein visuell (aria-hidden) — für
 // Screenreader trägt das jeweilige Eingabefeld required/aria-required.
@@ -177,6 +179,28 @@ export function RegisterForm({ form, onChange, onRegister, loading, errors = {},
 
       <span className="auth-section-label">Adresse <span className="auth-optional">(optional)</span></span>
 
+      {/* Land ZUERST (wie in „Neue Sendung“): Adressvorschläge gelten immer für ein Land.
+          Stand es hinter PLZ und Stadt, suchte eine ausländische Anschrift noch mit der
+          Vorbelegung DE. Die Vorbelegung selbst bleibt unverändert. */}
+      <div className="auth-field">
+        <div className="auth-field-row">
+          <label className="auth-field-label" htmlFor="reg-country">Land</label>
+        </div>
+        <div className="auth-input-wrap">
+          <select
+            id="reg-country"
+            className="auth-input auth-select auth-input-no-icon"
+            value={form.country}
+            onChange={(e) => upd("country", e.target.value)}
+            autoComplete="country"
+          >
+            {launchCountries.map((c) => (
+              <option key={c.code} value={c.code}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <div className="auth-field">
         <div className="auth-field-row">
           <label className="auth-field-label" htmlFor="reg-street">Straße &amp; Hausnummer</label>
@@ -189,6 +213,9 @@ export function RegisterForm({ form, onChange, onRegister, loading, errors = {},
           onChange={(v) => upd("street", v)}
           onSelect={applyAddress}
           suggestions={addressHelp.streetOptions}
+          loading={addressHelp.streetLoading}
+          noResults={addressHelp.streetNoResults}
+          hint={countryFirstHint(form.country) || undefined}
           placeholder="Musterstraße 12"
           autoComplete="street-address"
           invalid={Boolean(errors.street)}
@@ -196,7 +223,7 @@ export function RegisterForm({ form, onChange, onRegister, loading, errors = {},
         {errors.street && <span className="auth-field-error">{errors.street}</span>}
       </div>
 
-      <div className="field-row field-row-3">
+      <div className="field-row field-row-2">
         <div className="auth-field">
           <div className="auth-field-row">
             <label className="auth-field-label" htmlFor="reg-zip">PLZ</label>
@@ -208,7 +235,8 @@ export function RegisterForm({ form, onChange, onRegister, loading, errors = {},
               value={form.zip}
               onChange={(e) => upd("zip", e.target.value)}
               autoComplete="postal-code"
-              inputMode="numeric"
+              placeholder={postalCodeExample(form.country)}
+              inputMode={postalCodeInputMode(form.country)}
               aria-invalid={errors.zip ? "true" : undefined}
             />
           </div>
@@ -226,28 +254,11 @@ export function RegisterForm({ form, onChange, onRegister, loading, errors = {},
             onChange={(v) => upd("city", v)}
             onSelect={(item) => upd("city", cityFromSuggestion(item))}
             suggestions={addressHelp.cityOptions}
+            placeholder={cityPlaceholder(form.country)}
             autoComplete="address-level2"
             invalid={Boolean(errors.city)}
           />
           {errors.city && <span className="auth-field-error">{errors.city}</span>}
-        </div>
-        <div className="auth-field">
-          <div className="auth-field-row">
-            <label className="auth-field-label" htmlFor="reg-country">Land</label>
-          </div>
-          <div className="auth-input-wrap">
-            <select
-              id="reg-country"
-              className="auth-input auth-select auth-input-no-icon"
-              value={form.country}
-              onChange={(e) => upd("country", e.target.value)}
-              autoComplete="country"
-            >
-              {launchCountries.map((c) => (
-                <option key={c.code} value={c.code}>{c.name}</option>
-              ))}
-            </select>
-          </div>
         </div>
       </div>
 

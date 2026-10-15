@@ -11,17 +11,32 @@
    auf `.calc-panel` gemessen platziert werden muss). */
 .addr-suggest-wrap { position: relative; }
 
-/* Die schwebende Fläche: Liste plus Quellenangabe. Sie trägt nur Position und Breite; die
-   Liste darin bleibt bündig am oberen Rand, also 4 px unter dem Feld und so breit wie das Feld. */
+/* Die schwebende Fläche: EIN Kasten für Liste, Lade-/Leerzeile und Quellenangabe
+   (Premium-Durchgang 2026-10-15 — vorher zwei getrennte Kästen). Sie liegt 4 px unter dem
+   Feld, ist so breit wie das Feld und nie breiter als der verfügbare Platz — damit kann sie
+   auf keinem Viewport aus dem Bild laufen. Sie legt sich ÜBER das Formular und verschiebt
+   nichts. */
 .addr-suggest-pop {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
-  /* An der Feldbreite ausgerichtet und nie breiter als der verfügbare Platz — damit kann
-     die Fläche auf keinem Viewport aus dem Bild laufen. */
   width: 100%;
   max-width: 100%;
   z-index: 30;
+  overflow: hidden;
+  background: var(--ce-color-surface);
+  border-radius: var(--ce-radius-md);
+  /* Schwebende Liste = Dropdown-Tiefe (Redesign 2026-10), nicht die Dialogstufe. Die
+     Haarlinie ist ein Schattenring statt eines Rahmens: sie belegt keinen Platz, die Liste
+     darin bleibt exakt so breit wie das Feld. */
+  box-shadow: 0 0 0 1px var(--ce-color-border-subtle), var(--ce-elevation-dropdown);
+  animation: addr-suggest-in var(--ce-motion-fast) var(--ce-motion-ease-entrance);
+}
+
+/* Nur Deckkraft, keine Bewegung: die Fläche steht vom ersten Bild an exakt 4 px unter dem Feld. */
+@keyframes addr-suggest-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .addr-suggest-list {
@@ -35,27 +50,24 @@
   max-height: 288px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: var(--ce-color-surface);
-  border: 1px solid var(--ce-color-border-subtle);
-  border-radius: var(--ce-radius-md);
-  /* Schwebende Liste = Dropdown-Tiefe (Redesign 2026-10), nicht die Dialogstufe. */
-  box-shadow: var(--ce-elevation-dropdown);
 }
 
-/* Pflicht-Quellenangabe der Vorschläge (OpenStreetMap, Geoapify) — eine schmale Fußzeile
-   direkt unter der Liste, gleiche Breite, gleiche Fläche. */
+/* Pflicht-Quellenangabe der Vorschläge (OpenStreetMap, Geoapify) — die leise Fußzeile der
+   Fläche, durch eine Haarlinie von der Liste getrennt. */
 .addr-suggest-attr {
-  margin: 2px 0 0;
-  padding: 4px 10px;
-  background: var(--ce-color-surface);
-  border: 1px solid var(--ce-color-border-subtle);
-  border-radius: var(--ce-radius-md);
-  box-shadow: var(--ce-elevation-dropdown);
+  margin: 0;
+  padding: 6px 12px;
+  border-top: 1px solid var(--ce-color-border-subtle);
+  background: var(--ce-color-surface-subtle);
   font-size: var(--ce-text-caption-size);
   line-height: 1.5;
-  color: var(--ce-color-text-secondary);
+  text-align: right;
+  color: var(--ce-color-text-muted);
 }
-.addr-suggest-attr a { color: inherit; }
+/* Jede Angabe bleibt am Stück; schmal bricht die Zeile nur zwischen den beiden Angaben. */
+.addr-suggest-attr a { color: inherit; text-decoration: none; white-space: nowrap; }
+.addr-suggest-attr a:hover,
+.addr-suggest-attr a:focus-visible { color: var(--ce-color-text-secondary); text-decoration: underline; }
 
 /* Eine Vorschlagsliste darf aus einer Karte mit `overflow: hidden` (Preisrechner, Neue
    Sendung) herausragen, solange sie offen ist — sonst schnitte die Kartenkante sie ab. */
@@ -70,57 +82,104 @@
   padding: 9px 10px;
   border-radius: var(--ce-radius-sm);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--ce-text-body-size);
   line-height: 1.4;
   color: var(--ce-color-text-primary);
+  transition: background-color var(--ce-motion-instant) var(--ce-motion-ease-standard);
 }
 
 /* Ein Zustand für Maus UND Tastatur: die Pfeiltasten setzen dieselbe Klasse, die der
    Zeiger beim Überfahren erzeugt. Zwei getrennte Hervorhebungen wären verwirrend. */
 .addr-suggest-opt--active { background: var(--ce-color-brand-soft); }
 
-.addr-suggest-opt-text { font-weight: 500; }
-/* Straßennamen können lang sein und brechen an Wortgrenzen um — es wird nichts gekürzt
-   und nichts zeichenweise zerlegt. */
+/* Straße und Hausnummer stehen vorn; die getippten Wortanfänge sind zurückhaltend
+   hervorgehoben (nur Gewicht, keine Farbe). Straßennamen können lang sein und brechen an
+   Wortgrenzen um — es wird nichts gekürzt und nichts zeichenweise zerlegt. */
+.addr-suggest-opt-text { font-weight: 400; }
+.addr-suggest-hit { font-weight: 600; }
 .addr-suggest-opt-meta { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-secondary); }
 
+/* Lade- und Leerzeile in derselben Fläche. */
+.addr-suggest-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  font-size: var(--ce-text-body-s-size);
+  line-height: 1.45;
+  color: var(--ce-color-text-secondary);
+}
+
 /* ── Statuszeile ───────────────────────────────────────────────────────────────
-   Reiner Text ohne Statussymbol (Redesign 2026-10): die Farbe ergänzt die
-   Aussage, sie trägt sie nie allein — der Satz sagt, was los ist. */
+   Der Platz ist IMMER reserviert (eine Textzeile): ein Ergebnis, das kommt oder geht,
+   verschiebt kein Feld darunter. Der negative Abstand nach oben rückt die Zeile an die
+   Adressfelder heran, deren eigener Feldabstand sonst eine Lücke ließe. */
+.addr-status-slot {
+  min-height: calc(var(--ce-text-body-s-size) * 1.45);
+  margin: -8px 0 var(--ce-space-3);
+  font-size: var(--ce-text-body-s-size);
+  line-height: 1.45;
+}
+
 .addr-status {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 8px;
-  margin-top: 6px;
-  font-size: 13px;
-  line-height: 1.45;
+  margin: 0;
 }
-.addr-status-text { flex: 1 1 220px; min-width: 0; }
+.addr-status-text { flex: 1 1 200px; min-width: 0; transition: opacity var(--ce-motion-slow) var(--ce-motion-ease-standard); }
+/* „Adresse gefunden“ tritt nach kurzer Zeit zurück; das Häkchen bleibt. Der Text bleibt für
+   Screenreader im Baum und belegt weiter seinen Platz — nichts springt. */
+.addr-status-text--quiet { opacity: 0; }
+
+/* Kleines rundes Statussymbol: Häkchen (gefunden) bzw. Hinweis (nicht bestätigt). */
+.addr-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--ce-radius-full);
+}
+.addr-status--success .addr-status-icon {
+  color: var(--ce-color-status-success-fg);
+  background: var(--ce-color-status-success-surface);
+  border: 1px solid var(--ce-color-status-success-border);
+}
+.addr-status--warning .addr-status-icon {
+  color: var(--ce-color-status-warning-fg);
+  background: var(--ce-color-status-warning-surface);
+  border: 1px solid var(--ce-color-status-warning-border);
+}
 
 .addr-status--success  { color: var(--ce-color-status-success-fg); }
-.addr-status--error    { color: var(--ce-color-status-error-fg); }
 .addr-status--warning  { color: var(--ce-color-status-warning-fg); }
 .addr-status--neutral,
 .addr-status--checking { color: var(--ce-color-text-secondary); }
 
-.addr-status--checking { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.addr-status--checking { gap: 8px; }
 
-/* Die Aktionen erben die Statusfarbe, damit „Adresse so verwenden" sichtbar zum Hinweis
-   gehört und nicht wie ein fremder Link daneben steht. */
-.addr-status-ack,
+/* Die Ortsvorschläge erben die Statusfarbe, damit sie sichtbar zum Hinweis gehören und
+   nicht wie ein fremder Link daneben stehen. */
 .addr-status-city { color: inherit; text-decoration: underline; flex: 0 0 auto; }
 
 /* Touch: jede Option und jede Aktion der Statuszeile mindestens 44 px hoch. */
 @media (pointer: coarse) {
   .addr-suggest-opt { min-height: var(--ce-size-touch-target); }
-  .addr-status-ack,
   .addr-status-city { min-height: var(--ce-size-touch-target); }
 }
 
 @media (max-width: 480px) {
-  /* Auf schmalen Geräten steht die Aktion in einer eigenen Zeile, statt den Text zu
-     quetschen. Die Trefferfläche bleibt dabei erhalten. */
-  .addr-status-ack { flex-basis: 100%; }
+  /* Schmal: PLZ und Ort stehen unter der Straße statt daneben — zwei ruhige Zeilen. */
+  .addr-suggest-opt { flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; }
   .addr-suggest-list { max-height: 220px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .addr-suggest-pop { animation: none; }
+  .addr-suggest-opt,
+  .addr-status-text { transition: none; }
 }

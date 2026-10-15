@@ -21,9 +21,12 @@ import {
   isAddressCheckSupported, isPostalCodeQueryable, isStreetQueryable, isValidationReady, STREET_MIN_CHARS,
   streetQueryText, streetSearchTerm, splitStreetAndNumber, formatStreetLine, suggestionLabel,
   applyAddressSuggestion, cityFromSuggestion, addressFingerprint, shouldInvalidateAddress,
-  readAddressResponse, readStreetSuggestions, addressNeedsAcknowledgement,
+  readAddressResponse, readStreetSuggestions,
   addressStatusTone, showsAddressStatus, shippingLengthHint, SHIPPING_LINE_HINT_LIMITS,
+  countryFirstHint, highlightSegments,
 } from "./addressValidationView.mjs";
+import { cityPlaceholder } from "./addressPlaceholders.mjs";
+import { postalCodeInputMode } from "./postalCode.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (p) => fs.readFileSync(path.join(here, p), "utf8");
@@ -56,7 +59,6 @@ test("1 Länder: das Frontend führt keine Länderliste — der Server entscheid
 
 test("2 KRITISCH: ein nicht abgedecktes Land zeigt nichts und sperrt nichts", () => {
   assert.equal(showsAddressStatus(ADDRESS_STATUS.UNSUPPORTED), false, "es wird nichts angezeigt");
-  assert.equal(addressNeedsAcknowledgement(ADDRESS_STATUS.UNSUPPORTED), false);
   assert.ok(!("addressBlocksSubmit" in view), "es gibt keine Sperrfunktion mehr");
 });
 
@@ -134,7 +136,7 @@ test("9 KRITISCH: keine Zusage der Zustellbarkeit, „gefunden“ nur mit bestä
   for (const t of texte) {
     assert.ok(!/zustell|garant|sicher ankommt/i.test(t), `„${t}“ verspricht Zustellbarkeit`);
   }
-  assert.equal(ADDRESS_MESSAGES[ADDRESS_STATUS.CONFIRMED], "Adresse gefunden (Straße, Hausnummer, PLZ und Ort).");
+  assert.equal(ADDRESS_MESSAGES[ADDRESS_STATUS.CONFIRMED], "Adresse gefunden");
   // Die Hausnummer gilt nur zusammen mit „confirmed“ als gefunden — auch eine manipulierte Antwort
   // kann das nicht anders behaupten.
   assert.equal(readAddressResponse({ status: "unverified", houseNumberVerified: true }).houseNumberVerified, false);
@@ -143,24 +145,24 @@ test("9 KRITISCH: keine Zusage der Zustellbarkeit, „gefunden“ nur mit bestä
 });
 
 test("10 Hinweise je Grund, sonst der allgemeine Text", () => {
-  assert.equal(addressStatusMessage("unverified", "house_number_unconfirmed"),
-    "Straße gefunden – die Hausnummer konnte nicht bestätigt werden. Bitte prüfen.");
-  assert.equal(addressStatusMessage("unverified", "postal_code_city_mismatch"),
-    "PLZ und Ort passen möglicherweise nicht zusammen.");
-  assert.equal(addressStatusMessage("unverified", "house_number_missing"),
-    "Straße gefunden. Bitte ergänzen Sie die Hausnummer, falls vorhanden.");
+  assert.equal(addressStatusMessage("unverified", "house_number_unconfirmed"), "Hausnummer nicht bestätigt – bitte prüfen.");
+  assert.equal(addressStatusMessage("unverified", "postal_code_city_mismatch"), "PLZ und Ort passen evtl. nicht zusammen.");
+  assert.equal(addressStatusMessage("unverified", "house_number_missing"), "Hausnummer ergänzen, falls vorhanden.");
   assert.equal(addressStatusMessage("unverified", "address_not_found"), ADDRESS_MESSAGES.unverified);
   assert.equal(addressStatusMessage("unavailable", "budget_exhausted"), ADDRESS_MESSAGES.unavailable);
   assert.equal(addressStatusMessage("unsupported", "not_configured"), "");
 });
 
-test("11 Hinweise lassen sich bewusst übergehen; es gibt keinen Fehlerton", () => {
-  assert.equal(addressNeedsAcknowledgement(ADDRESS_STATUS.UNVERIFIED), true);
-  assert.equal(addressNeedsAcknowledgement(ADDRESS_STATUS.UNAVAILABLE), true);
-  assert.equal(addressNeedsAcknowledgement(ADDRESS_STATUS.CONFIRMED), false);
+test("11 kein Fehlerton, kein Bestätigungsknopf; ein Ausfall ist neutral, keine Warnung", () => {
+  assert.ok(!("addressNeedsAcknowledgement" in view), "es gibt nichts zu bestätigen");
+  for (const [name, src] of [["status", statusSrc], ["hook", hookSrc], ["NewShipmentPage", newShipSrc], ["AddressFormDrawer", drawerSrc],
+                             ["OrderCreateForm", orderSrc], ["Profile", profileSrc], ["PartnerBillingDetailsSection", partnerSrc]]) {
+    assert.ok(!/so verwenden|onAcknowledge|acknowledge\b|acknowledged/.test(strip(src)),
+      `${name}: der funktionslose Bestätigungsknopf ist entfernt`);
+  }
   assert.equal(addressStatusTone(ADDRESS_STATUS.CONFIRMED), "success");
   assert.equal(addressStatusTone(ADDRESS_STATUS.UNVERIFIED), "warning");
-  assert.equal(addressStatusTone(ADDRESS_STATUS.UNAVAILABLE), "warning");
+  assert.equal(addressStatusTone(ADDRESS_STATUS.UNAVAILABLE), "neutral");
   assert.ok(!Object.values(ADDRESS_STATUS).includes("invalid"), "den Zustand „invalid“ gibt es nicht mehr");
   assert.ok(!/addr-status--error/.test(statusSrc));
 });
@@ -379,7 +381,7 @@ test("34 keine technischen Begriffe in Kundentexten", () => {
       assert.ok(!text.includes(wort), `„${text}“ darf „${wort}“ nicht nennen`);
     }
   }
-  assert.equal(ADDRESS_MESSAGES[ADDRESS_STATUS.UNAVAILABLE], "Automatische Adressprüfung ist momentan nicht verfügbar.");
+  assert.equal(ADDRESS_MESSAGES[ADDRESS_STATUS.UNAVAILABLE], "Adressprüfung derzeit nicht verfügbar.");
 });
 
 test("35 in Neue Sendung tragen Absender UND Empfänger je Straße und Ort das Vorschlagsfeld", () => {
@@ -434,4 +436,99 @@ test("38 Neue Sendung: das Land steht in beiden Adressen VOR der Straße, der Hi
 
 test("39 treffen Vorschläge bei fokussiertem Feld ein, öffnet sich die Liste", () => {
   assert.ok(/if \(fokussiert && etwasNeues\) setOpen\(true\);/.test(inputSrc));
+});
+
+// ── 11. Premium-Durchgang (2026-10-15) ─────────────────────────────────────
+
+const FORMULARE_MIT_LAND = [
+  ["AddressFormDrawer", drawerSrc, 'htmlFor="abk-country"', 'id="abk-streetAndNumber"'],
+  ["OrderCreateForm", orderSrc, 'htmlFor="o-country"', 'id="o-street"'],
+  ["Profile", profileSrc, 'htmlFor="pf-country"', 'htmlFor="pf-street"'],
+  ["RegisterForm", registerSrc, 'htmlFor="reg-country"', 'htmlFor="reg-street"'],
+  ["PartnerBillingDetailsSection", partnerSrc, 'id="spp-billing-country"', 'id="spp-billing-street"'],
+];
+
+test("40 KRITISCH: in JEDEM Adressformular steht das Land vor der Straße", () => {
+  for (const [name, src, land, strasse] of FORMULARE_MIT_LAND) {
+    const a = src.indexOf(land);
+    const b = src.indexOf(strasse);
+    assert.ok(a > 0 && b > 0 && a < b, `${name}: Land muss vor der Straße stehen`);
+    assert.equal(src.split(land).length - 1, 1, `${name}: genau eine Länderauswahl`);
+  }
+  // Ohne Land der Hinweis — in Versandformularen über streetFieldHint, sonst countryFirstHint.
+  assert.ok(/hint=\{streetFieldHint\(form\.country, form\.streetAndNumber\)/.test(drawerSrc));
+  assert.ok(/hint=\{streetFieldHint\(recipient\.country, recipient\.streetAndNumber\)/.test(orderSrc));
+  for (const src of [profileSrc, registerSrc, partnerSrc]) assert.ok(/hint=\{countryFirstHint\(/.test(src));
+  assert.equal(countryFirstHint(""), "Bitte zuerst das Land auswählen.");
+  assert.equal(countryFirstHint("DE"), null);
+  // Partnerabrechnung: der leere Start bleibt; der Fehlersprung folgt der neuen Reihenfolge.
+  assert.ok(/<option value="">Bitte wählen<\/option>/.test(partnerSrc));
+  assert.ok(/\["billingName", "spp-billing-name"\], \["country", "spp-billing-country"\], \["street", "spp-billing-street"\]/.test(partnerSrc));
+});
+
+test("41 KRITISCH: ein Landwechsel verwirft Vorschläge sofort und ignoriert alte Antworten", () => {
+  const block = hookSrc.slice(hookSrc.indexOf("const lastCountry = useRef(country);"));
+  const effekt = block.slice(0, block.indexOf("}, [country]);"));
+  assert.ok(effekt.length > 0, "eigener Effekt auf das Land");
+  for (const muss of ["locSeq.current += 1;", "strSeq.current += 1;", "localitiesAbort.current?.abort();",
+                      "streetsAbort.current?.abort();", "setCityOptions([]);", "setStreetOptions([]);"]) {
+    assert.ok(effekt.includes(muss), `Landwechsel: ${muss} fehlt`);
+  }
+  // Kundeneingaben bleiben unangetastet — der Hook schreibt nie ins Formular.
+  assert.ok(!/onChange|setForm|upd\(/.test(strip(hookSrc)), "der Hook ändert keine Eingaben");
+  // Die Prüfung verfällt über den Fingerabdruck, zu dem das Land gehört.
+  assert.equal(shouldInvalidateAddress(addressFingerprint(BASIS), addressFingerprint({ ...BASIS, country: "FR" })), true);
+});
+
+test("42 Statuszeile: reservierter Platz, verzögertes „wird geprüft“, „gefunden“ tritt zurück", () => {
+  assert.ok(/<div className="addr-status-slot" role="status" aria-live="polite">/.test(statusSrc), "dauerhafte Live-Region");
+  assert.ok(/\.addr-status-slot \{[\s\S]*?min-height:/.test(cssSrc), "der Platz ist reserviert");
+  assert.ok(/export const CHECKING_DELAY_MS = \d{3};/.test(statusSrc));
+  assert.ok(/export const CONFIRMED_TEXT_MS = \d{4};/.test(statusSrc));
+  assert.ok(/\.addr-status-text--quiet \{ opacity: 0; \}/.test(cssSrc), "der Text tritt zurück, ohne Platz freizugeben");
+  // Jede Meldung bleibt kurz genug für eine Zeile bei 390 px (ca. 55 Zeichen bei 13 px).
+  for (const t of [...Object.values(ADDRESS_MESSAGES), ...Object.values(ADDRESS_REASON_MESSAGES)]) {
+    assert.ok(t.length <= 55, `„${t}“ ist zu lang für eine Zeile`);
+  }
+  // Eine Änderung setzt sofort zurück: kein Ergebnis bleibt neben einer geänderten Adresse.
+  assert.ok(/setStatus\(frueher \? frueher\.status : ADDRESS_STATUS\.IDLE\);/.test(hookSrc));
+});
+
+test("43 Vorschlagsfläche: eine Fläche, Lade- und Leerzustand, Hervorhebung", () => {
+  assert.ok(/\.addr-suggest-pop \{[\s\S]*?border-radius: var\(--ce-radius-md\);[\s\S]*?box-shadow:/.test(cssSrc), "die Fläche trägt Rahmen und Schatten");
+  assert.ok(!/\.addr-suggest-list \{[^}]*box-shadow/.test(cssSrc), "die Liste ist kein eigener Kasten mehr");
+  assert.ok(!/\.addr-suggest-attr \{[^}]*box-shadow/.test(cssSrc), "die Quellenangabe ist kein eigener Kasten mehr");
+  assert.ok(/export const SUGGEST_LOADING_DELAY_MS = \d{3};/.test(inputSrc));
+  assert.ok(/Keine Vorschläge gefunden – Sie können die Adresse frei eingeben\./.test(inputSrc));
+  assert.ok(/body\.reason === "no_suggestions"/.test(hookSrc), "leer nur bei echter Suche ohne Treffer");
+  for (const [name, src] of FORMULARE_MIT_LAND.concat([["NewShipmentPage", newShipSrc]])) {
+    assert.ok(/loading=\{[\w.]+\.streetLoading\}/.test(src) && /noResults=\{[\w.]+\.streetNoResults\}/.test(src),
+      `${name}: Lade-/Leerzustand verdrahtet`);
+  }
+  const zusammen = (segs) => segs.map((x) => x.text).join("");
+  const a = highlightSegments("Schweinheimer Straße 187", "schweinheimer str 187");
+  assert.equal(zusammen(a), "Schweinheimer Straße 187", "der Text bleibt exakt erhalten");
+  assert.deepEqual(a.filter((x) => x.match).map((x) => x.text), ["Schweinheimer", "Str", "187"]);
+  assert.deepEqual(highlightSegments("Hauptstraße", ""), [{ text: "Hauptstraße", match: false }]);
+  assert.deepEqual(highlightSegments("12 Rue de la Paix", "12 r").filter((x) => x.match).map((x) => x.text), ["12"],
+    "einzelne Buchstaben werden nicht markiert");
+  // Mobile: die Liste wird über die Bildschirmtastatur geholt, nie unter die Kopfleiste.
+  assert.ok(/visualViewport/.test(inputSrc) && /\.mobile-topbar/.test(inputSrc));
+});
+
+test("44 PLZ und Ort: Platzhalter und Eingabemodus folgen dem Land", () => {
+  assert.equal(cityPlaceholder("DE"), "Berlin");
+  assert.equal(cityPlaceholder("nl"), "Amsterdam");
+  assert.equal(cityPlaceholder(""), "");
+  assert.equal(cityPlaceholder("US"), "", "außerhalb des Launch-Scope kein Beispielort");
+  assert.equal(postalCodeInputMode("DE"), "numeric");
+  assert.equal(postalCodeInputMode("NL"), "text");
+  assert.ok(!/inputMode="numeric"/.test(registerSrc), "die Registrierung erzwingt keine Zifferntastatur mehr");
+  for (const src of [registerSrc, profileSrc, partnerSrc, orderSrc]) {
+    assert.ok(/inputMode=\{postalCodeInputMode\(/.test(src) && /placeholder=\{postalCodeExample\(/.test(src));
+  }
+  assert.ok(!/placeholder="(Stuttgart|Zürich|Berlin)"/.test(newShipSrc + drawerSrc), "kein fester Beispielort mehr");
+  // Die Zeile „Beispiel: …“ wiederholte nur den Platzhalter.
+  assert.ok(!/Beispiel: \{postalCodeExample/.test(drawerSrc));
+  assert.ok(!newShipSrc.includes("`Beispiel: ${beispiel}`"));
 });

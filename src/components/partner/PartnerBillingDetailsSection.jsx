@@ -9,7 +9,9 @@ import { normalizeThrownError } from "../../utils/apiError.mjs";
 import { AddressSuggestInput } from "../address/AddressSuggestInput";
 import { AddressStatusLine } from "../address/AddressStatusLine";
 import { useAddressValidation } from "../../hooks/useAddressValidation";
-import { applyAddressSuggestion, cityFromSuggestion } from "../../utils/addressValidationView.mjs";
+import { applyAddressSuggestion, cityFromSuggestion, countryFirstHint } from "../../utils/addressValidationView.mjs";
+import { cityPlaceholder } from "../../utils/addressPlaceholders.mjs";
+import { postalCodeExample, postalCodeInputMode } from "../../utils/postalCode.mjs";
 import {
   BILLING_FIELD_LABELS,
   BILLING_TEXTS,
@@ -33,8 +35,8 @@ const normalisieren = (d) => normalizeBillingResponse(d);
 // Eingabe (eigene Prüfung oder 400 des Servers) springt der Fokus auf das erste
 // markierte Feld — die Meldung steht dort, nicht nur im Sammelhinweis oben.
 const FEHLER_FELDER = [
-  ["billingName", "spp-billing-name"], ["street", "spp-billing-street"],
-  ["postalCode", "spp-billing-postal-code"], ["city", "spp-billing-city"], ["country", "spp-billing-country"],
+  ["billingName", "spp-billing-name"], ["country", "spp-billing-country"], ["street", "spp-billing-street"],
+  ["postalCode", "spp-billing-postal-code"], ["city", "spp-billing-city"],
   ["taxStatus", "spp-billing-tax-with_vat"], ["taxNumber", "spp-billing-tax-number"],
   ["taxIds", "spp-billing-tax-number"], ["vatId", "spp-billing-vat-id"],
   ["accountHolder", "spp-billing-account-holder"], ["iban", "spp-billing-iban"], ["bic", "spp-billing-bic"],
@@ -198,10 +200,21 @@ export function PartnerBillingDetailsSection() {
         <Field id="spp-billing-name" label={BILLING_FIELD_LABELS.billingName} required autoComplete="organization"
           value={form.billingName} onChange={(v) => setFeld("billingName", v)} error={fieldErrors.billingName}
           disabled={saving} />
+        {/* Land ZUERST: Adressvorschläge gelten immer für ein Land. Es startet bewusst leer
+            (keine Annahme über den Sitz); bis zur Auswahl sagt der Hinweis am Straßenfeld,
+            warum noch nichts vorgeschlagen wird. */}
+        <Field as="select" id="spp-billing-country" label={BILLING_FIELD_LABELS.country} required autoComplete="country"
+          value={form.country} onChange={(v) => setFeld("country", v)} error={fieldErrors.country} disabled={saving}>
+          <option value="">Bitte wählen</option>
+          {billingCountryOptions(form.country).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </Field>
         <AddressSuggestInput id="spp-billing-street" label={BILLING_FIELD_LABELS.street} required
           autoComplete="street-address" className="field"
           value={form.street} onChange={(v) => setFeld("street", v)} error={fieldErrors.street} disabled={saving}
+          hint={countryFirstHint(form.country) || undefined}
           suggestions={adresse.streetOptions}
+          loading={adresse.streetLoading}
+          noResults={adresse.streetNoResults}
           onSelect={(item) => {
             // Nur Straße/Hausnummer, PLZ und Ort — Name, Steuer- und Bankdaten bleiben unberührt.
             const patch = applyAddressSuggestion({ country: form.country, street: form.street }, item);
@@ -213,23 +226,18 @@ export function PartnerBillingDetailsSection() {
           }} />
         <div className="field-row field-row-2">
           <Field id="spp-billing-postal-code" label={BILLING_FIELD_LABELS.postalCode} required autoComplete="postal-code"
-            value={form.postalCode} onChange={(v) => setFeld("postalCode", v)} error={fieldErrors.postalCode} disabled={saving} />
+            value={form.postalCode} onChange={(v) => setFeld("postalCode", v)} error={fieldErrors.postalCode} disabled={saving}
+            placeholder={postalCodeExample(form.country)} inputMode={postalCodeInputMode(form.country)} />
           <AddressSuggestInput id="spp-billing-city" label={BILLING_FIELD_LABELS.city} required
             autoComplete="address-level2" className="field"
             value={form.city} onChange={(v) => setFeld("city", v)} error={fieldErrors.city} disabled={saving}
+            placeholder={cityPlaceholder(form.country)}
             suggestions={adresse.cityOptions}
             onSelect={(item) => setFeld("city", cityFromSuggestion(item))} />
         </div>
-        <Field as="select" id="spp-billing-country" label={BILLING_FIELD_LABELS.country} required autoComplete="country"
-          value={form.country} onChange={(v) => setFeld("country", v)} error={fieldErrors.country} disabled={saving}>
-          <option value="">Bitte wählen</option>
-          {billingCountryOptions(form.country).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </Field>
         <AddressStatusLine
           status={adresse.status}
           reason={adresse.reason}
-          acknowledged={adresse.acknowledged}
-          onAcknowledge={adresse.acknowledge}
           citySuggestions={adresse.cityOptions}
           onPickCity={(c) => setFeld("city", c)}
         />

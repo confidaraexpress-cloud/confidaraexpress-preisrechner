@@ -44,6 +44,9 @@
   .auth-badge { font-size: 11px; padding: 7px 14px 7px 10px; letter-spacing: 0.18em; }
   .auth-tab { padding: 10px 12px; font-size: 13px; gap: 8px; }
   .auth-input { padding: 12px 14px 12px 42px; font-size: 14px; }
+  /* Felder ohne Symbol (Firma, USt-ID, Anschrift) behalten ihren schmalen Einzug — die Zeile
+     darüber reservierte sonst auch dort 42 px für ein Symbol, das es nicht gibt. */
+  .auth-input.auth-input-no-icon { padding-left: 14px; }
   .auth-cta { padding: 14px 20px; font-size: 14px; }
   .auth-trust-title { font-size: 12px; }
   .auth-trust-sub { font-size: 11px; }

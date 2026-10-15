@@ -74,9 +74,10 @@ export function useAddressValidation({
   const [streetOptions, setStreetOptions] = useState([]);
   const [normalized, setNormalized] = useState(gemerkt ? gemerkt.normalized : null);
   const [houseNumberVerified, setHouseNumberVerified] = useState(gemerkt ? gemerkt.houseNumberVerified : false);
-  // Der Kunde kann einen nicht bestätigten Zustand bewusst übernehmen („Adresse so verwenden“).
-  // Das ist eine Entscheidung, kein Prüfergebnis — deshalb ein eigener Wert.
-  const [acknowledged, setAcknowledged] = useState(false);
+  // Zustand der Straßensuche für die Liste: läuft gerade eine Anfrage, und hat die letzte für
+  // den aktuellen Text nichts gefunden? Daraus zeigt das Feld Lade- und Leerzustand.
+  const [streetLoading, setStreetLoading] = useState(false);
+  const [streetNoResults, setStreetNoResults] = useState(false);
   // Zählt Serverauskünfte „nicht abgedeckt/nicht eingerichtet“, damit `supported` neu
   // berechnet wird (die Merker liegen modulweit, nicht im State).
   const [, setUnsupportedTick] = useState(0);
@@ -134,7 +135,6 @@ export function useAddressValidation({
       setReason(frueher ? frueher.reason : null);
       setNormalized(frueher ? frueher.normalized : null);
       setHouseNumberVerified(frueher ? frueher.houseNumberVerified : false);
-      setAcknowledged(false);
     } else {
       lastFingerprint.current = fingerprint;
     }
@@ -142,6 +142,25 @@ export function useAddressValidation({
 
   // Laufende Anfragen beim Verlassen abbrechen.
   useEffect(() => () => abortAll(), [abortAll]);
+
+  // ── Landwechsel ────────────────────────────────────────────────────────────
+  // Vorschläge gelten für genau ein Land. Wechselt es, verschwinden Orts- und Straßenvorschläge
+  // SOFORT, und eine noch laufende Antwort für das alte Land wird verworfen (Abbruch plus
+  // Sequenznummer). Vorher stand nach DE → FR kurz noch die deutsche Liste da. Die Eingaben des
+  // Kunden (Straße, PLZ, Ort) bleiben unangetastet — nur die Prüfung verfällt (Fingerabdruck).
+  const lastCountry = useRef(country);
+  useEffect(() => {
+    if (lastCountry.current === country) return;
+    lastCountry.current = country;
+    locSeq.current += 1;
+    strSeq.current += 1;
+    localitiesAbort.current?.abort();
+    streetsAbort.current?.abort();
+    setCityOptions([]);
+    setStreetOptions([]);
+    setStreetLoading(false);
+    setStreetNoResults(false);
+  }, [country]);
 
   // ── PLZ → Ortsvorschläge ───────────────────────────────────────────────────
   // Läuft entprellt, sobald die PLZ formal gültig ist. Ein Ergebnis wird NIE ungefragt in das
@@ -187,8 +206,11 @@ export function useAddressValidation({
   }, [enabled]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const text = streetQueryText(street);
+    // Jeder neue Text beendet einen alten Leerzustand: „keine Vorschläge“ galt dem vorigen Text.
+    setStreetNoResults(false);
     if (!enabled || !supported || !isStreetQueryable(country, postalCode, city, street)) {
       setStreetOptions([]);
+      setStreetLoading(false);
       return undefined;
     }
     if (!streetEditedRef.current) {
@@ -205,6 +227,12 @@ export function useAddressValidation({
       const controller = new AbortController();
       streetsAbort.current = controller;
       const ctx = contextRef.current;
+      setStreetLoading(true);
+      const fertig = (options, leer) => {
+        setStreetOptions(options);
+        setStreetLoading(false);
+        setStreetNoResults(options.length === 0 && leer);
+      };
       try {
         const r = await fetchStreets(
           {
@@ -216,14 +244,17 @@ export function useAddressValidation({
           { signal: controller.signal, publicAccess }
         );
         if (strSeq.current !== mine) return;
-        if (!r.ok) { setStreetOptions([]); return; }
+        if (!r.ok) { fertig([], false); return; }
         const body = await r.json().catch(() => null);
         if (strSeq.current !== mine) return;
         markUnsupported(body);
-        setStreetOptions(readStreetSuggestions(body).map((s) => ({ ...s, label: suggestionLabel(s, country) })));
+        // „Keine Vorschläge“ nur, wenn der Dienst wirklich gesucht und nichts gefunden hat —
+        // ein Ausfall oder ein nicht abgedecktes Land ist kein Leerzustand.
+        fertig(readStreetSuggestions(body).map((s) => ({ ...s, label: suggestionLabel(s, country) })),
+          Boolean(body && body.reason === "no_suggestions"));
       } catch (e) {
         if (e && e.name === "AbortError") return;
-        setStreetOptions([]);
+        fertig([], false);
       }
     }, DEBOUNCE_MS);
     return () => clearTimeout(timer);
@@ -281,8 +312,6 @@ export function useAddressValidation({
     return () => clearTimeout(timer);
   }, [publicAccess, enabled, supported, status, fingerprint, runValidation]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const acknowledge = useCallback(() => setAcknowledged(true), []);
-
   // Das Formular meldet die Übernahme eines Vorschlags: für genau diesen Straßenwert wird
   // nicht erneut gesucht, und die Liste schließt sich.
   const markSelected = useCallback((streetValue) => {
@@ -290,6 +319,8 @@ export function useAddressValidation({
     strSeq.current += 1;
     streetsAbort.current?.abort();
     setStreetOptions([]);
+    setStreetLoading(false);
+    setStreetNoResults(false);
   }, []);
 
   const reset = useCallback(() => {
@@ -298,14 +329,15 @@ export function useAddressValidation({
     setReason(null);
     setCityOptions([]);
     setStreetOptions([]);
+    setStreetLoading(false);
+    setStreetNoResults(false);
     setNormalized(null);
     setHouseNumberVerified(false);
-    setAcknowledged(false);
   }, [abortAll]);
 
   return {
-    status, reason, cityOptions, streetOptions, normalized, houseNumberVerified, acknowledged,
-    supported, runValidation, acknowledge, markSelected, reset,
+    status, reason, cityOptions, streetOptions, streetLoading, streetNoResults, normalized, houseNumberVerified,
+    supported, runValidation, markSelected, reset,
     fingerprint,
   };
 }

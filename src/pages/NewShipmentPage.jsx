@@ -12,6 +12,7 @@ import { deliveryDeadlineOptions } from "../utils/deliveryTimeView.mjs";
 import { revealOffers } from "../utils/revealOffers.mjs";
 import { resumeInitialState, missingFieldsHint } from "../utils/newShipmentResume.mjs";
 import { validatePostalCode, postalCodeExample, postalCodeInputMode, postalCodeMaxLength, isPostalCodeRequired } from "../utils/postalCode";
+import { cityPlaceholder } from "../utils/addressPlaceholders.mjs";
 import { OffersList } from "../components/offers/OffersList";
 import { ShipmentFilterBar } from "../components/offers/ShipmentFilterBar";
 import { OfferComparisonLoadingOverlay } from "../components/offers/OfferComparisonLoadingOverlay";
@@ -1570,8 +1571,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
 
   // PLZ: Beschriftung und Beispiel sind zwei verschiedene Dinge. Der Platzhalter
   // trägt deshalb ausschließlich das landesabhängige Beispiel — ein Rückfallwert
-  // "PLZ" hätte nur die Beschriftung darüber wiederholt.
-  // Hinweiszeile, Eingabemodus, Maximallänge und Validierung sind unverändert.
+  // "PLZ" hätte nur die Beschriftung darüber wiederholt. Eine zusätzliche Zeile
+  // „Beispiel: …“ wiederholte genau diesen Platzhalter und blieb auch neben einer
+  // fertigen PLZ stehen; sie ist entfallen (Premium-Durchgang 2026-10-15). Das
+  // Beispiel nennt weiterhin die Formatmeldung (postalErr).
+  // Eingabemodus, Maximallänge und Validierung sind unverändert.
   const zipField = (p) => {
     const fk = `${p}_zip`;
     const land = form[`${p}_country`];
@@ -1588,9 +1592,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         inputMode={postalCodeInputMode(land)}
         maxLength={postalCodeMaxLength()}
         error={errors[fk]}
-        hint={beispiel
-          ? `Beispiel: ${beispiel}`
-          : (!isPostalCodeRequired(land) ? "Für dieses Land optional." : undefined)}
+        hint={land && !isPostalCodeRequired(land) ? "Für dieses Land optional." : undefined}
       />
     );
   };
@@ -1814,6 +1816,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     onChange={(v) => upd("s_street", v)}
                     onSelect={(item) => applyStreet("s", item, senderCheck)}
                     suggestions={senderCheck.streetOptions}
+                    loading={senderCheck.streetLoading}
+                    noResults={senderCheck.streetNoResults}
                     placeholder="Musterstraße 1"
                     error={errors.s_street}
                     hint={streetFieldHint(form.s_country, form.s_street) || undefined}
@@ -1831,20 +1835,19 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                       onChange={(v) => upd("s_city", v)}
                       onSelect={(item) => upd("s_city", cityFromSuggestion(item))}
                       suggestions={senderCheck.cityOptions}
-                      placeholder="Stuttgart"
+                      placeholder={cityPlaceholder(form.s_country)}
                       error={errors.s_city}
                       hint={shippingLengthHint("city", form.s_city) || undefined}
                       autoComplete="address-level2"
                       className="field"
                     />
                   </div>
-                  {/* Ergebnis der Adressprüfung. Erscheint erst, wenn es etwas zu sagen gibt —
-                      im Ausgangszustand und für Länder ohne Abdeckung bleibt hier nichts stehen. */}
+                  {/* Ergebnis der Adressprüfung. Der Platz ist reserviert; Text erscheint erst,
+                      wenn es etwas zu sagen gibt — im Ausgangszustand und für Länder ohne
+                      Abdeckung bleibt die Zeile leer. */}
                   <AddressStatusLine
                     status={senderCheck.status}
                     reason={senderCheck.reason}
-                    acknowledged={senderCheck.acknowledged}
-                    onAcknowledge={senderCheck.acknowledge}
                     citySuggestions={senderCheck.cityOptions}
                     onPickCity={(c) => upd("s_city", c)}
                   />
@@ -1883,6 +1886,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     onChange={(v) => upd("r_street", v)}
                     onSelect={(item) => applyStreet("r", item, recipientCheck)}
                     suggestions={recipientCheck.streetOptions}
+                    loading={recipientCheck.streetLoading}
+                    noResults={recipientCheck.streetNoResults}
                     placeholder="Beispielweg 5"
                     error={errors.r_street}
                     hint={streetFieldHint(form.r_country, form.r_street) || undefined}
@@ -1900,20 +1905,19 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                       onChange={(v) => upd("r_city", v)}
                       onSelect={(item) => upd("r_city", cityFromSuggestion(item))}
                       suggestions={recipientCheck.cityOptions}
-                      placeholder="Zürich"
+                      placeholder={cityPlaceholder(form.r_country)}
                       error={errors.r_city}
                       hint={shippingLengthHint("city", form.r_city) || undefined}
                       autoComplete="address-level2"
                       className="field"
                     />
                   </div>
-                  {/* Ergebnis der Adressprüfung. Erscheint erst, wenn es etwas zu sagen gibt —
-                      im Ausgangszustand und für Länder ohne Abdeckung bleibt hier nichts stehen. */}
+                  {/* Ergebnis der Adressprüfung. Der Platz ist reserviert; Text erscheint erst,
+                      wenn es etwas zu sagen gibt — im Ausgangszustand und für Länder ohne
+                      Abdeckung bleibt die Zeile leer. */}
                   <AddressStatusLine
                     status={recipientCheck.status}
                     reason={recipientCheck.reason}
-                    acknowledged={recipientCheck.acknowledged}
-                    onAcknowledge={recipientCheck.acknowledge}
                     citySuggestions={recipientCheck.cityOptions}
                     onPickCity={(c) => upd("r_city", c)}
                   />

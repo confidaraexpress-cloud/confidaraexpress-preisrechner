@@ -1162,6 +1162,16 @@ Paketshop-Finder-Karte (Go-Live-Abschluss 2026-09-29, beobachtet am ausgeliefert
 
 Go-Live Block B (2026-10-02, wirksam nach Merge): **Späteste Lieferzeit** — bewertet wird ausschließlich die Anbieterzusage (`deliveryDateMax`/`deliveryDate`, `deliveryTimeUntil`); nachweislich zu späte Angebote fallen wie bisher heraus. Ein Angebot ohne sicher vergleichbare Anbieterzusage — kein Anbieterdatum (etwa jedes Transglobal-Angebot) oder am Stichtag keine Uhrzeit bei gesetzter Uhrzeit — bleibt sichtbar und trägt den neutralen Hinweis „Zustelltermin nicht bewertbar“; ohne Filter nie. Kein Termin wird geschätzt, keine Uhrzeit aus einem Tarifnamen gelesen, keine CE-Prognose wird zur Anbieterzusage (`utils/offersFilterView.mjs`, `deliveryDeadlineAssessment`; die Tarife selbst bleiben unverändert). **Samstagszustellung** steht als Detailzeile „Samstagszustellung: Ja“ unter „Hauptmerkmale“ nur bei `deliveryOnSaturday === true`; auf der Kartenfläche trägt der kuratierte Tarifname die Unterscheidung. Den Kartennamen liefert der Server; die Oberfläche fällt nur ohne ihn auf den Versandartnamen zurück.
 
+### Adressvorschläge und Adressprüfung (Geoapify, 2026-10-14, wirksam nach Merge)
+
+Betreiberentscheidung 2026-10-14: **Geoapify ist der einzige externe Adressdienst.** OpenPLZ ist aus der aktiven Funktion entfernt; es gibt keinen Rückfall auf einen anderen Anbieter. Zugriff ausschließlich über das Backend (`lib/addressValidation/geoapify.js`, fester EU-Endpunkt `api-eu.geoapify.com`), Schlüssel `GEOAPIFY_API_KEY` nur im Backend; **ohne Schlüssel keine Anfrage und keine Vorschläge** — die Formulare arbeiten dann mit der bestehenden Formatprüfung. Routen: angemeldet (`authenticateAccount`: Kunden, Admins, Vertriebspartner) `/api/address/localities`, `/streets`, `/validate`; öffentlich nur für die Registrierung `/api/address/public/localities` und `/public/streets` (Grenze je IP, eigener Credit-Anteil, keine Prüfung). Ein Frontend (`useAddressValidation`, `AddressSuggestInput`, `AddressStatusLine`, Quellenangabe `AddressAttribution`) für alle Adressformulare: Neue Sendung, Adressbuch, Auftrag anlegen, Firmenprofil, Registrierung, Partnerabrechnung; im Preisrechner Ortsvorschlag zur PLZ.
+
+- **Übernahme nur nach Auswahl**: Straße und Hausnummer (landesübliche Reihenfolge, Hausnummer vorn in FR/LU/IE/MT), PLZ und Ort; Firma, Namen, Zusatz, Kontakt, Bundesstaat und die Angabe Privat/Geschäft werden nie angefasst. Jede Übernahme ist eine normale Formularänderung — in Neue Sendung verfällt das Angebot wie bei jeder Eingabe.
+- **Bewertung** nur aus Rückgabewerten: „Adresse gefunden“ nur bei Gebäudetreffer mit derselben Hausnummer und PLZ; sonst Hinweise (Hausnummer prüfen, PLZ/Ort passen möglicherweise nicht zusammen, nicht automatisch bestätigt). **Nie eine Zusage der Zustellbarkeit, nie eine Sperre** — den Zustand `invalid` gibt es nicht mehr; Preisberechnung, Entwürfe und Adressbuch hängen nicht am Ergebnis. Eine geänderte Hausnummer macht eine frühere Bestätigung ungültig.
+- **Angebot und Buchung unberührt**: `/calculate-price`, `/book`, Transglobal-Buchungseinstieg, `offerId`, Revalidierung, Tarifzuordnung und Dokumente rufen die Adressprüfung nicht auf.
+- **Kosten**: 1 Anfrage = 1 Credit; Zwischenspeicher im Prozess; Tagesdeckel `GEOAPIFY_DAILY_CREDIT_LIMIT` (Default 2500) mit Anteil `GEOAPIFY_PUBLIC_DAILY_CREDIT_LIMIT` (Default 250) — **je Prozess**, kein absolutes Kontolimit (Produktion: ein Container, ein Prozess, gelesen 2026-10-14).
+- **Aktivierung** durch den Betreiber nach `docs/geoapify-aktivierung.md` (Backend): neue Datenschutzfassung (die registrierte Fassung 2026-07 nennt OpenPLZ und wird nicht überschrieben), AGB/AVV von Geoapify (KEPTAGO LTD, Zypern), Schlüssel in Coolify.
+
 ### Icon-System
 
 Aktuell existiert ein eigenes Frontend-Icon-System.
@@ -1420,6 +1430,8 @@ Folgende Punkte dürfen ohne aktuelle Runtime-/Produktbestätigung nicht als Fak
   - `TG_PORTAL_BOOKING_DEADLINE_MS` (Soll 90000: mit der Vorbestellfrist 55 s unter der Browserfrist von `/book`, 150 s; die Startprüfung allein erlaubt bis 100000), Proxyfristen ≥ 150 s, Stop-Grace ≥ `SHUTDOWN_GRACE_MS`; Rechnungsaussteller ohne Platzhalter (`GET /admin/invoices/production-readiness`);
   - die Collection-Position der 29 und ein Privatadresszuschlag auf Live-Rechnungen — nur durch die jeweilige echte Buchung belegbar; die Gebühr der 29 wird erst nach einer Live-Rechnung angepasst, der Referenzparser erst nach einem belegt abweichenden Live-Format.
 
+- Ob `GEOAPIFY_API_KEY` im Backend gesetzt ist (Default: nicht gesetzt — keine Adressvorschläge) und ob eine Datenschutzfassung mit Geoapify gilt; die Bewertungsschwellen sind gegen echte Antworten je Land noch nicht kalibriert (`docs/geoapify-aktivierung.md` Abschnitt 5).
+
 Wenn eine Aufgabe davon abhängt: prüfen statt raten.
 
 ---
@@ -1517,6 +1529,12 @@ Eine KI oder ein Entwickler darf aus diesem Dokument insbesondere NICHT ableiten
 ---
 
 ## 25. Changelog
+
+### v2.44 — 2026-10-14 (Geoapify: Adressvorschläge und Adressprüfung in allen Adressformularen)
+
+- 15: neuer Abschnitt „Adressvorschläge und Adressprüfung (Geoapify)“ — Betreiberentscheidung: Geoapify einziger Adressdienst, OpenPLZ entfernt, kein Rückfall; Server-Proxy mit EU-Endpunkt; ohne Schlüssel aus; Übernahme nur nach Auswahl; Bewertung aus Rückgabewerten ohne Zustellzusage und ohne Sperre (`invalid` entfällt); Credit-Deckel je Prozess; öffentliche Routen nur für die Registrierung. 21: Schlüssel, Datenschutzfassung und Kalibrierung als Laufzeitfragen.
+- Nebenbefunde im Funktionszusammenhang behoben: die bisher nie ausgelöste Gesamtprüfung läuft; Formularentwürfe behalten Vor-/Nachname und Bundesstaat; Adressbuch → Auftrag übernimmt den strukturierten Namen; Längenhinweis an Straße/Ort/Firma statt erst beim Buchen (ohne neue Sperre — Transglobal kennt andere Grenzen).
+- Backend: `lib/addressValidation/{geoapify,index}.js`, `routes/address.js`, `routes/formDrafts.js`, BACKEND_ARCHITECTURE §5.7/§11, `docs/geoapify-aktivierung.md`, Rechtsentwürfe G2/G3/G7/G9-01 und Dateninventar auf Geoapify. Keine Schemaänderung, kein Feature-Flag, keine Änderung im Angebots- oder Buchungsweg. Kein Providerrequest, keine Buchung, kein Deployment, keine ENV-Änderung. Wirksam nach Merge; Nummerierung setzt die offenen Einträge v2.42/v2.43 voraus.
 
 ### v2.41 — 2026-10-12 (DPD Classic 137 in der ersten Live-Welle)
 

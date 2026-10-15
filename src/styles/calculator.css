@@ -495,8 +495,21 @@
 .booking-legal-docs-title { font-size: 12px; font-weight: 600; color: var(--ce-color-text-primary); margin: 0 0 6px; }
 .booking-legal-docs-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .booking-legal-docs-list li { font-size: 13px; line-height: 1.6; color: var(--ce-color-text-secondary); }
-.booking-legal-docs-version { color: var(--ce-color-text-muted); }
+.booking-legal-docs-version { color: var(--ce-color-text-muted); white-space: nowrap; }
+/* „(Stand 2026-08)" bricht nie am Bindestrich mitten im Datum um (schmale Viewports). */
+.booking-nowrap { white-space: nowrap; }
 .booking-legal-error { display: block; margin-bottom: 16px; }
+/* Buchungshinweise der aktiven AGB-Fassung (z. B. Hinweis nach § 449 Abs. 2 HGB) — direkt vor
+   den Bestätigungen, auf die sie sich beziehen. Eine deutlich abgesetzte Fläche ohne Symbol
+   (Hinweisregel des Redesigns): der Wortlaut trägt die Aussage, der Zeilenumbruch des
+   registrierten Textes bleibt erhalten. */
+.booking-legal-notice {
+  margin: 0 0 18px; padding: 12px 14px;
+  border-radius: var(--ce-radius-md);
+  background: var(--ce-color-status-info-surface); border: 1px solid var(--ce-color-status-info-border);
+}
+.booking-legal-notice-title { font-size: 13px; font-weight: 600; color: var(--ce-color-text-primary); margin: 0 0 4px; }
+.booking-legal-notice-text { font-size: 13px; line-height: 1.6; color: var(--ce-color-text-primary); margin: 0; white-space: pre-line; }
 /* Die eine finale Buchungsaktion — Primary in der großen Stufe (48 px). */
 .booking-book-btn { --ce-btn-height: var(--ce-size-control-lg); }
 .booking-email-note { text-align: center; font-size: 12px; color: var(--ce-color-text-muted); margin-top: 12px; }

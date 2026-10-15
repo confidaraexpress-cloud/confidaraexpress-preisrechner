@@ -8,7 +8,8 @@ import {
 import { AddressSuggestInput } from "../address/AddressSuggestInput";
 import { AddressStatusLine } from "../address/AddressStatusLine";
 import { useAddressValidation } from "../../hooks/useAddressValidation";
-import { applyStreetSuggestion } from "../../utils/addressValidationView.mjs";
+import { applyAddressSuggestion, cityFromSuggestion, shippingLengthHint, streetFieldHint } from "../../utils/addressValidationView.mjs";
+import { cityPlaceholder } from "../../utils/addressPlaceholders.mjs";
 
 const TITLES = { create: "Neue Adresse", edit: "Adresse bearbeiten", duplicate: "Adresse duplizieren" };
 
@@ -58,9 +59,9 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Adressprüfung der eingegebenen Anschrift. Es werden ausschließlich Land, PLZ, Ort und
-  // Straßenname geprüft — Firma, Ansprechpartner, E-Mail und Telefon bleiben im Formular.
-  // Für Länder ohne Abdeckung meldet der Hook `unsupported` und zeigt nichts an; das
+  // Adressprüfung der eingegebenen Anschrift. Es werden ausschließlich Land, PLZ, Ort sowie
+  // Straße und Hausnummer geprüft — Firma, Ansprechpartner, E-Mail und Telefon bleiben im
+  // Formular. Für Länder ohne Abdeckung meldet der Hook `unsupported` und zeigt nichts an; das
   // Speichern einer Adresse wird durch die Prüfung NIE blockiert (das Adressbuch ist eine
   // Stammdatenpflege, keine Buchung).
   const addressCheck = useAddressValidation({
@@ -204,18 +205,50 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
             {/* Abschnitt 3 — Anschrift */}
             <div className="abk-drawer-section">
               <div className="abk-drawer-section-title">Anschrift</div>
+              {/* Land ZUERST (wie in „Neue Sendung“): Adressvorschläge gelten immer für ein Land.
+                  Stand es unter der Straße, suchte eine ausländische Adresse noch mit der
+                  Vorbelegung DE — und eine Auswahl brachte deutsche PLZ und Orte mit. Die
+                  Vorbelegung selbst bleibt unverändert; die Region folgt dem Land. */}
+              <div className="field">
+                <label className="field-label" htmlFor="abk-country">Land</label>
+                <select
+                  id="abk-country"
+                  className={`field-input field-select${errors.country ? " field-input-error" : ""}`}
+                  value={form.country}
+                  onChange={(e) => upd("country", e.target.value)}
+                >
+                  {launchCountries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+                </select>
+                {errors.country && <span className="field-error">{errors.country}</span>}
+              </div>
+              {field("state", "Bundesland / Region", { optional: true, placeholder: "z. B. Berlin", maxLength: 100 })}
               <AddressSuggestInput
                 id="abk-streetAndNumber"
                 label="Straße und Hausnummer"
                 value={form.streetAndNumber}
                 onChange={(v) => upd("streetAndNumber", v)}
-                onSelect={(item) => upd("streetAndNumber",
-                  applyStreetSuggestion(form.streetAndNumber, typeof item === "string" ? item : item.street))}
+                onSelect={(item) => {
+                  // Nur Straße/Hausnummer, PLZ und Ort — Firma, Namen, Zusatz, Region, Kontakt
+                  // und Rolle bleiben unberührt.
+                  const patch = applyAddressSuggestion({ country: form.country, street: form.streetAndNumber }, item);
+                  if (!patch.street) return;
+                  addressCheck.markSelected(patch.street);
+                  setForm((prev) => ({
+                    ...prev,
+                    streetAndNumber: patch.street,
+                    ...(patch.postalCode ? { postalCode: patch.postalCode } : {}),
+                    ...(patch.city ? { city: patch.city } : {}),
+                  }));
+                }}
                 suggestions={addressCheck.streetOptions}
+                loading={addressCheck.streetLoading}
+                noResults={addressCheck.streetNoResults}
                 placeholder="Musterstraße 1"
                 maxLength={200}
                 error={errors.streetAndNumber}
+                hint={streetFieldHint(form.country, form.streetAndNumber) || undefined}
                 autoComplete="address-line1"
+                className="field"
               />
               {field("addressAdd", "Adresszusatz", { optional: true, placeholder: "Etage, c/o …", maxLength: 100 })}
               <div className="field-row field-row-2">
@@ -229,46 +262,35 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
                     placeholder={postalCodeExample(form.country) || "PLZ"}
                     inputMode={postalCodeInputMode(form.country)}
                     maxLength={postalCodeMaxLength()}
+                    autoComplete="postal-code"
                   />
+                  {/* Das Beispiel steht im Platzhalter; eine zweite Zeile „Beispiel: …“ wiederholte
+                      es nur und blieb auch neben einer fertigen PLZ stehen. */}
                   {errors.postalCode
                     ? <span className="field-error">{errors.postalCode}</span>
-                    : (postalCodeExample(form.country)
-                        ? <span className="field-hint">Beispiel: {postalCodeExample(form.country)}</span>
-                        : (!isPostalCodeRequired(form.country) ? <span className="field-hint">Für dieses Land optional.</span> : null))}
+                    : (!isPostalCodeRequired(form.country) ? <span className="field-hint">Für dieses Land optional.</span> : null)}
                 </div>
                 <AddressSuggestInput
                   id="abk-city"
                   label="Ort"
                   value={form.city}
                   onChange={(v) => upd("city", v)}
-                  onSelect={(item) => upd("city", typeof item === "string" ? item : item.city)}
+                  onSelect={(item) => upd("city", cityFromSuggestion(item))}
                   suggestions={addressCheck.cityOptions}
-                  placeholder="Berlin"
+                  placeholder={cityPlaceholder(form.country)}
                   error={errors.city}
+                  hint={shippingLengthHint("city", form.city) || undefined}
                   autoComplete="address-level2"
+                  className="field"
                 />
               </div>
-              {/* Ergebnis der Adressprüfung — nur sichtbar, wenn es etwas zu sagen gibt. */}
+              {/* Ergebnis der Adressprüfung — Platz reserviert, Text nur, wenn es etwas zu sagen gibt. */}
               <AddressStatusLine
                 status={addressCheck.status}
-                acknowledged={addressCheck.acknowledged}
-                onAcknowledge={addressCheck.acknowledge}
+                reason={addressCheck.reason}
                 citySuggestions={addressCheck.cityOptions}
                 onPickCity={(c) => upd("city", c)}
               />
-              {field("state", "Bundesland / Region", { optional: true, placeholder: "z. B. Berlin", maxLength: 100 })}
-              <div className="field">
-                <label className="field-label" htmlFor="abk-country">Land</label>
-                <select
-                  id="abk-country"
-                  className={`field-input field-select${errors.country ? " field-input-error" : ""}`}
-                  value={form.country}
-                  onChange={(e) => upd("country", e.target.value)}
-                >
-                  {launchCountries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-                </select>
-                {errors.country && <span className="field-error">{errors.country}</span>}
-              </div>
             </div>
 
             {/* Abschnitt 4 — Optionen */}

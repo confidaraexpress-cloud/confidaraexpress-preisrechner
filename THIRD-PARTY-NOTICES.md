@@ -24,3 +24,19 @@ from Google's internationalized address data.
   libaddressinput **source code** is Apache-2.0.
 
 Provenance/refresh: `src/utils/README.address-metadata.md`.
+
+## Address suggestions and address check (Geoapify / OpenStreetMap)
+
+Address suggestions, postal-code → locality lists and the address check shown in the address
+forms are provided by the **Geoapify** geocoding service (requested exclusively by the
+ConfidaraExpress backend via the EU endpoint; the browser never contacts Geoapify). The
+underlying address data comes from OpenStreetMap and further open sources.
+
+| Source | Attribution | License |
+|---|---|---|
+| OpenStreetMap data | © OpenStreetMap contributors — <https://www.openstreetmap.org/copyright> | Open Data Commons Open Database License (ODbL) v1.0 — <https://opendatacommons.org/licenses/odbl/1-0/> |
+| Geoapify service | "Powered by Geoapify" — <https://www.geoapify.com/> | Geoapify Terms and Conditions (service, not redistributed data) |
+
+Both attributions are shown below every suggestion list (`src/components/address/AddressAttribution.jsx`)
+and on the Impressum page. Until 2026-10-14 the address check used the OpenPLZ API (ODbL); it is
+no longer used.

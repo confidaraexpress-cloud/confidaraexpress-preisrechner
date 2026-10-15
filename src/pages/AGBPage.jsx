@@ -1,4 +1,5 @@
 import React from "react";
+import { RegistryLegalPage } from "../components/legal/RegistryLegalPage";
 
 /* Rechtsseite im gemeinsamen Leselayout (Redesign 2026-10): Titel und Stand
    auf dem Canvas, der Text auf EINER ruhigen weißen Fläche (layout.css,
@@ -24,7 +25,9 @@ const TOC = [
   [17, "Schlussbestimmungen"],
 ];
 
-export default function AGBPage() {
+// Die Fassung 2026-08 — ihr Wortlaut ist zugleich der der registrierten PDF
+// (legal/README.md im Backend). Sie erscheint nur, solange genau diese Fassung aktiv ist.
+function AgbFassung202608() {
   return (
     <div className="page-with-navbar">
       <div className="legal-wrap">
@@ -797,4 +800,11 @@ export default function AGBPage() {
       </div>
     </div>
   );
+}
+
+/* Die Seite folgt der AKTIVEN Fassung der Legal-Registry — derselben, der im Checkout
+   zugestimmt wird (components/legal/RegistryLegalPage.jsx). Trägt sie eine Webfassung, steht
+   deren Text hier; ist die Fassung 2026-08 aktiv, die bisherige Seite oben. */
+export default function AGBPage() {
+  return <RegistryLegalPage documentType="terms" title="Allgemeine Geschäftsbedingungen" legacy={AgbFassung202608} tocMaxLevel={3} />;
 }

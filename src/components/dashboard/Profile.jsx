@@ -35,6 +35,12 @@ import { EORI_HINT, eoriFieldError } from "../../utils/eori.mjs";
 import { accountInitials, accountDisplayName } from "../../utils/accountIdentity.mjs";
 import { bookingProfileNotice } from "../../utils/bookingProfileView.mjs";
 import { CopyableNumber } from "../ui/CopyableNumber";
+import { AddressSuggestInput } from "../address/AddressSuggestInput";
+import { AddressStatusLine } from "../address/AddressStatusLine";
+import { useAddressValidation } from "../../hooks/useAddressValidation";
+import { applyAddressSuggestion, cityFromSuggestion, countryFirstHint } from "../../utils/addressValidationView.mjs";
+import { cityPlaceholder } from "../../utils/addressPlaceholders.mjs";
+import { postalCodeExample, postalCodeInputMode } from "../../utils/postalCode.mjs";
 
 // Benötigt Backend: PATCH /kunde/profil — bereichsweise Teilupdates:
 //   Unternehmensdaten → { company_name, vat_id, eori_number, street, zip, city, country }
@@ -87,6 +93,27 @@ export function Profile({ user, utility }) {
   // das noch ein nicht mehr angebotenes Land trägt, soll seinen Wert lesbar sehen und
   // nicht plötzlich einen rohen Ländercode.
   const { countries: launchCountries } = useLaunchScope();
+  // Adressvorschläge und -prüfung der Geschäftsanschrift (zugleich Rechnungsanschrift) —
+  // dieselbe zentrale Logik wie in allen Adressformularen; nur aktiv, solange die Karte
+  // „Unternehmensdaten“ bearbeitet wird. Das Speichern hängt nicht am Ergebnis.
+  const companyAddressCheck = useAddressValidation({
+    country: companyForm?.country, postalCode: companyForm?.zip,
+    city: companyForm?.city, street: companyForm?.street,
+    enabled: editCard === "company" && companyForm !== null,
+  });
+  useEffect(() => {
+    if (companyAddressCheck.cityOptions.length === 1 && companyForm && !String(companyForm.city || "").trim()) {
+      setCompanyForm((p) => (p && !String(p.city || "").trim() ? { ...p, city: companyAddressCheck.cityOptions[0] } : p));
+    }
+  }, [companyAddressCheck.cityOptions]); // eslint-disable-line react-hooks/exhaustive-deps
+  const applyCompanyAddress = (item) => {
+    const patch = applyAddressSuggestion({ country: companyForm?.country, street: companyForm?.street }, item);
+    if (!patch.street) return;
+    companyAddressCheck.markSelected(patch.street);
+    updCompany("street", patch.street);
+    if (patch.postalCode) updCompany("zip", patch.postalCode);
+    if (patch.city) updCompany("city", patch.city);
+  };
   const countryName = countries.find(c => c.code === user?.country)?.name;
   const paymentTerm = paymentTermValue(user);
   // Kundennummer ausschließlich aus dem API-Feld customer_number — nie aus user.id abgeleitet.
@@ -272,30 +299,51 @@ export function Profile({ user, utility }) {
                   ? <span className="profile-field-error" role="alert">{eoriFieldError(companyForm.eori_number)}</span>
                   : null)}
             </div>}
+            {/* Land ZUERST (wie in „Neue Sendung“): Adressvorschläge gelten immer für ein Land.
+                Stand es hinter PLZ und Ort, suchte eine ausländische Anschrift noch im zuvor
+                gespeicherten Land. */}
+            <div className="field">
+              <label className="field-label" htmlFor="pf-country">Land</label>
+              <select id="pf-country" className="field-input field-select" value={companyForm.country}
+                onChange={e => updCompany("country", e.target.value)}>
+                {launchCountries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+              </select>
+            </div>
             <div className="field">
               <label className="field-label" htmlFor="pf-street">Straße & Hausnummer</label>
-              <input id="pf-street" className="field-input" value={companyForm.street}
-                onChange={e => updCompany("street", e.target.value)} />
+              <AddressSuggestInput id="pf-street" value={companyForm.street}
+                onChange={(v) => updCompany("street", v)}
+                onSelect={applyCompanyAddress}
+                suggestions={companyAddressCheck.streetOptions}
+                loading={companyAddressCheck.streetLoading}
+                noResults={companyAddressCheck.streetNoResults}
+                hint={countryFirstHint(companyForm.country) || undefined}
+                autoComplete="address-line1" />
             </div>
-            <div className="field-row field-row-3">
+            <div className="field-row field-row-2">
               <div className="field">
                 <label className="field-label" htmlFor="pf-zip">PLZ</label>
                 <input id="pf-zip" className="field-input" value={companyForm.zip}
-                  onChange={e => updCompany("zip", e.target.value)} />
+                  onChange={e => updCompany("zip", e.target.value)} autoComplete="postal-code"
+                  placeholder={postalCodeExample(companyForm.country)} inputMode={postalCodeInputMode(companyForm.country)} />
               </div>
               <div className="field">
                 <label className="field-label" htmlFor="pf-city">Stadt</label>
-                <input id="pf-city" className="field-input" value={companyForm.city}
-                  onChange={e => updCompany("city", e.target.value)} />
-              </div>
-              <div className="field">
-                <label className="field-label" htmlFor="pf-country">Land</label>
-                <select id="pf-country" className="field-input field-select" value={companyForm.country}
-                  onChange={e => updCompany("country", e.target.value)}>
-                  {launchCountries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
-                </select>
+                <AddressSuggestInput id="pf-city" value={companyForm.city}
+                  onChange={(v) => updCompany("city", v)}
+                  onSelect={(item) => updCompany("city", cityFromSuggestion(item))}
+                  suggestions={companyAddressCheck.cityOptions}
+                  placeholder={cityPlaceholder(companyForm.country)}
+                  autoComplete="address-level2" />
               </div>
             </div>
+            {/* Ergebnis der Adressprüfung — ein Hinweis, nie eine Sperre des Speicherns. */}
+            <AddressStatusLine
+              status={companyAddressCheck.status}
+              reason={companyAddressCheck.reason}
+              citySuggestions={companyAddressCheck.cityOptions}
+              onPickCity={(c) => updCompany("city", c)}
+            />
             {renderCardActions("company", canSaveCompany(companyForm, companyBase, saving))}
           </div>
         ) : (

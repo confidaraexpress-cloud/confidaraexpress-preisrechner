@@ -38,6 +38,7 @@ import { CustomerMarkupSection } from "../../components/admin/CustomerMarkupSect
 import { CustomerApprovalCard } from "../../components/admin/CustomerApprovalCard";
 import { CustomerSupportSection } from "../../components/admin/CustomerSupportSection";
 import { SalesPartnerAttributionSection } from "../../components/admin/SalesPartnerAttributionSection";
+import { CustomerBusinessEvidenceSection } from "../../components/admin/CustomerBusinessEvidenceSection";
 import { BillingModeSection } from "../../components/admin/BillingModeSection";
 import { PreliveTestBadge } from "../../components/admin/PreliveTestBadge";
 import { setAdminUserBillingMode } from "../../api/adminApi";
@@ -680,6 +681,14 @@ export default function AdminUserDetailPage() {
           blockDisabledReason={selfAccount ? SELF_ACTION_REASON : ""}
           onBlock={() => { setApproveMsg(null); setBlockOpen(true); }}
         />
+
+        {/* 3c) Unternehmerprüfung (Go-Live Paket C) — Erklärungen der Registrierung
+             und Prüfvermerke. Selbstladend wie die Supportsektion; ein Fehler dort
+             blockiert diese Seite nicht. Kein Gate: die Freischaltung oben hängt
+             nicht daran. Nur für Kundenkonten. */}
+        {roleOf(u) !== "admin" && roleOf(u) !== "sales_partner" && (
+          <CustomerBusinessEvidenceSection userId={idOf(u)} />
+        )}
 
         {/* 3d) Abrechnung — Einzel- oder Sammelrechnung. Support/Onboarding dürfen
              das umstellen; die Änderung wirkt ausschließlich für künftige Buchungen. */}

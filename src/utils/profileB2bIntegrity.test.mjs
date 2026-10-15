@@ -236,7 +236,10 @@ test("18 — mobile Struktur bleibt erhalten (bestehende Feldklassen unveränder
   // Die Karten nutzen weiterhin dieselben Container- und Grid-Klassen; ergänzt
   // wurden nur reine Zusatzklassen ohne eigene Breiten-/Höhenangaben.
   assert.match(profileSrc, /className="profile-form-body profile-inline-form"/);
-  assert.equal((profileSrc.match(/className="field-row field-row-3"/g) || []).length, 1);
+  // Seit „Land zuerst“ (2026-10-15) steht das Land einzeln vor der Straße; PLZ und Stadt
+  // bilden eine zweispaltige Reihe statt der dreispaltigen PLZ/Stadt/Land.
+  assert.equal((profileSrc.match(/className="field-row field-row-3"/g) || []).length, 0);
+  assert.ok((profileSrc.match(/className="field-row field-row-2"/g) || []).length >= 1);
   assert.equal((profileSrc.match(/className="field"/g) || []).length >= 5, true);
   for (const cls of ["profile-req", "profile-field-error", "profile-required-hint"]) {
     assert.equal(new RegExp(`${cls}[^"]*"[^>]*style=`).test(profileSrc), false, `${cls} darf kein Inline-Layout setzen`);

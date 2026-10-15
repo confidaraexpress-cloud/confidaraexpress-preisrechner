@@ -71,9 +71,9 @@ test("2 — die Formularschlüssel decken genau die Felder der jeweiligen Seite 
   // „Buchung → Zurück → Buchung" nicht — der Vorgang spiegelt nur, was er kennt.
   for (const k of ["s_company", "s_firstName", "s_lastName", "s_fullName",
                    "s_street", "s_addition", "s_zip", "s_city",
-                   "s_country", "s_phone", "s_email",
+                   "s_country", "s_state", "s_phone", "s_email",
                    "r_company", "r_firstName", "r_lastName", "r_fullName", "r_street",
-                   "r_addition", "r_zip", "r_city", "r_country", "r_phone", "r_email",
+                   "r_addition", "r_zip", "r_city", "r_country", "r_state", "r_phone", "r_email",
                    "packageCount", "weight", "length", "width", "height",
                    "max_price", "latestDeliveryDate", "latestDeliveryTime",
                    // Die Sendungsangaben aus Paket 9A (Inhalt, Warenwert). Sie sind Pflicht VOR
@@ -83,7 +83,9 @@ test("2 — die Formularschlüssel decken genau die Felder der jeweiligen Seite 
                    "declaredContent", "declaredGoodsValue"]) {
     assert.ok(SHIPMENT_FORM_KEYS.includes(k), `${k} fehlt im Sendungsformular`);
   }
-  assert.equal(SHIPMENT_FORM_KEYS.length, 32);
+  // 34: der Bundesstaat (s_state/r_state, nur US/CA) ist seit der Geoapify-Umstellung dabei —
+  // vorher ging er auf dem Weg „Buchung → Zurück → Buchung“ verloren.
+  assert.equal(SHIPMENT_FORM_KEYS.length, 34);
   // TG22 Residential: die Adressartfragen stehen nicht mehr im Formular. Ein älterer Vorgang,
   // der sie noch trägt, verliert sie beim Einlesen still — die übrigen Angaben bleiben.
   {

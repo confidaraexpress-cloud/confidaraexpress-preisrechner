@@ -35,7 +35,7 @@
  * ausdrücklich, statt es zu überspringen.
  */
 
-import { isPostalCodeQueryable, isStreetQueryable, streetSearchTerm } from "../../../src/utils/addressValidationView.mjs";
+import { isPostalCodeQueryable, isStreetQueryable, isValidationReady, streetQueryText } from "../../../src/utils/addressValidationView.mjs";
 
 /** Vollständiger, gültiger Standardvorgang. Einzelne Werte lassen sich je
  *  Suite überschreiben; die Struktur bleibt dieselbe. */
@@ -130,6 +130,15 @@ export async function fuellePaket(page, paket = STANDARD_PAKET) {
 /**
  * Bringt „Neue Sendung" in einen vollständig gültigen Zustand.
  * Wartet vorher darauf, dass das Formular wirklich steht.
+ *
+ * Und danach darauf, dass die Adresshilfe der Eingabe zur Ruhe gekommen ist: seit 2026-10-14
+ * prüft das Formular eine vollständige Anschrift nach einer Ruhesekunde automatisch und zeigt
+ * das Ergebnis über den Angeboten an. Ein Kunde füllt danach noch die Paketangaben aus; ein Test
+ * klickt sofort — die Statuszeile käme dann erst NACH den Angebotskarten und verschöbe die Seite
+ * mitten in einer Messung. Abgewartet wird bestmöglich (Zeitlimit ohne Fehler): eine Suite, deren
+ * Attrappe die Adressrouten als „nicht abgedeckt“ beantwortet, löst weniger Anfragen aus — für
+ * sie gibt es nichts abzuwarten. Wer ein exaktes Beobachtungsfenster braucht, nutzt weiterhin
+ * `adressvorschlaegeAbgeschlossen` (dort mit Fehler bei Zeitüberschreitung).
  */
 export async function fuelleVersandformular(page, {
   absender = STANDARD_ABSENDER,
@@ -138,10 +147,12 @@ export async function fuelleVersandformular(page, {
   sendungsangaben = STANDARD_SENDUNGSANGABEN,
 } = {}) {
   await page.waitForSelector("#ns-weight", { timeout: 20000 });
+  const adresshilfe = adressvorschlaegeAbgeschlossen(page, { absender, empfaenger, timeout: 4000 });
   await fuelleAdresse(page, "s", absender);
   await fuelleAdresse(page, "r", empfaenger);
   await fuellePaket(page, paket);
   await fuelleSendungsangaben(page, sendungsangaben);
+  await adresshilfe.catch(() => {});
 }
 
 /* ── Die Adressvorschläge der Eingabe abwarten ─────────────────────────────
@@ -183,11 +194,18 @@ export function erwarteteAdressvorschlaege({ absender = STANDARD_ABSENDER, empfa
       });
     }
     if (isStreetQueryable(a.country, a.zip, a.city, a.street)) {
+      // Gesucht wird mit der vollständigen Eingabe (Straße UND Hausnummer). PLZ und Ort
+      // grenzen ein, wenn sie beim Absenden schon im Formular stehen — das hängt vom
+      // Tempo der Eingabe ab und wird deshalb nicht verglichen.
       liste.push({
         name: `${seite}: Straßen zu ${a.zip}`, pfad: "/api/address/streets",
-        werte: { country: String(a.country), postalCode: String(a.zip), city: String(a.city),
-                 street: streetSearchTerm(a.street) },
+        werte: { country: String(a.country), street: streetQueryText(a.street) },
       });
+    }
+    // Die Gesamtprüfung läuft automatisch, sobald die Anschrift vollständig aussieht und
+    // eine Sekunde ruht (POST ohne Query — gezählt wird je Adresse ein Aufruf).
+    if (isValidationReady({ country: a.country, postalCode: a.zip, city: a.city, street: a.street })) {
+      liste.push({ name: `${seite}: Adressprüfung`, pfad: "/api/address/validate", werte: {} });
     }
   }
   return liste;

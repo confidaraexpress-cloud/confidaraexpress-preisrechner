@@ -399,6 +399,39 @@ test("36 Längenhinweis: Hinweis statt Sperre, an den Grenzen des Buchungsvertra
   assert.ok(shippingLengthHint("company", "x".repeat(40)));
   assert.equal(shippingLengthHint("phone", "x".repeat(99)), null);
   // Als Hinweis verdrahtet — nicht im Fehlerobjekt, das die Berechnung sperren würde.
-  assert.equal((newShipSrc.match(/hint=\{shippingLengthHint\("(street|city)"/g) || []).length, 4);
+  // Ort direkt, Straße über streetFieldHint (Land-zuerst-Hinweis, sonst derselbe Längenhinweis — Test 37/38).
+  assert.equal((newShipSrc.match(/hint=\{shippingLengthHint\("city"/g) || []).length, 2);
+  assert.equal((newShipSrc.match(/hint=\{streetFieldHint\(/g) || []).length, 2);
   assert.ok(!/e\.[sr]_street\s*=\s*shippingLengthHint/.test(newShipSrc));
+});
+
+// ── 10. Land zuerst (Live-Befund 2026-10-15) ───────────────────────────────
+
+test("37 ohne Land: Hinweis am Straßenfeld statt stiller Untätigkeit", async () => {
+  const { COUNTRY_FIRST_HINT, streetFieldHint } = await import("./addressValidationView.mjs");
+  assert.equal(COUNTRY_FIRST_HINT, "Bitte zuerst das Land auswählen.");
+  assert.equal(streetFieldHint("", "Pariser Platz 1"), COUNTRY_FIRST_HINT);
+  assert.equal(streetFieldHint(undefined, ""), COUNTRY_FIRST_HINT);
+  assert.equal(streetFieldHint("DE", "Pariser Platz 1"), null, "mit Land kein Hinweis");
+  assert.match(streetFieldHint("DE", "x".repeat(36)), /höchstens 35/, "der Längenhinweis bleibt");
+  // Ohne Land wird nicht gesucht — mit Land schon, auch für eine vorher getippte Straße.
+  assert.equal(isStreetQueryable("", "", "", "Pariser"), false);
+  assert.equal(isStreetQueryable("DE", "", "", "Pariser"), true);
+});
+
+test("38 Neue Sendung: das Land steht in beiden Adressen VOR der Straße, der Hinweis ist verdrahtet", () => {
+  for (const p of ["s", "r"]) {
+    const land = newShipSrc.indexOf(`{countrySelect("${p}")}`);
+    const strasse = newShipSrc.indexOf(`id="ns-${p}-street"`);
+    assert.ok(land > 0 && strasse > 0 && land < strasse, `${p}: Land muss vor der Straße stehen`);
+    assert.equal(newShipSrc.split(`{countrySelect("${p}")}`).length - 1, 1, `${p}: genau eine Länderauswahl`);
+    assert.ok(newShipSrc.includes(`hint={streetFieldHint(form.${p}_country, form.${p}_street) || undefined}`));
+  }
+  // Der Sprung zum ersten Fehler folgt der neuen Reihenfolge.
+  assert.ok(/"s_company", "s_country", "s_street"/.test(newShipSrc));
+  assert.ok(/"r_company", "r_country", "r_street"/.test(newShipSrc));
+});
+
+test("39 treffen Vorschläge bei fokussiertem Feld ein, öffnet sich die Liste", () => {
+  assert.ok(/if \(fokussiert && etwasNeues\) setOpen\(true\);/.test(inputSrc));
 });

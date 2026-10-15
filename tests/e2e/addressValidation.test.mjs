@@ -386,3 +386,61 @@ test("Smoke 12 — Preisrechner: Ort zur PLZ wird ergänzt", async () => {
   await page.waitForFunction(() => document.querySelector("#calc-to-city")?.value === "Aschaffenburg", { timeout: 10000 });
   await page.close();
 });
+
+/* ══════════ Smoke 13–14 — Startzustand ohne Land (Live-Befund 2026-10-15) ══════════ */
+// Bis hierher wählten alle Smokes das Land ZUERST — genau der Ablauf, den ein Kunde nicht
+// zwingend nimmt. Live tippte man die Straße in das leere Formular und bekam nichts, weil
+// ohne Land nicht gesucht wird und das Land unter der Straße stand.
+
+test("Smoke 13 — ohne Land: Hinweis, Straße bleibt, die Landwahl startet die Suche selbst", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const log = await setupRoutes(page);
+  await zumFormular(page);
+  assert.equal(await page.locator(S_COUNTRY).inputValue(), "", "das Formular startet weiterhin ohne Land");
+  // Das Land steht in beiden Adressen VOR der Straße.
+  const reihenfolge = await page.evaluate(() => ["s", "r"].map((p) => {
+    const land = document.querySelector(`#ns-${p}-country`), strasse = document.querySelector(`#ns-${p}-street`);
+    return Boolean(land.compareDocumentPosition(strasse) & Node.DOCUMENT_POSITION_FOLLOWING)
+      && land.getBoundingClientRect().top < strasse.getBoundingClientRect().top;
+  }));
+  assert.deepEqual(reihenfolge, [true, true]);
+  // Ohne Land: sichtbarer Hinweis, keine Anfrage — die getippte Straße bleibt stehen.
+  assert.equal((await page.locator("#ns-s-street-hint").innerText()).trim(), "Bitte zuerst das Land auswählen.");
+  assert.equal((await page.locator("#ns-r-street-hint").innerText()).trim(), "Bitte zuerst das Land auswählen.");
+  await page.locator(S_STREET).click();
+  await page.keyboard.type("Schweinheimer Str 187", { delay: 20 });
+  await page.waitForTimeout(900);
+  assert.equal(log.filter((e) => e.p === "/api/address/streets").length, 0, "ohne Land darf nicht gesucht werden");
+  // Land wählen → die Suche startet mit der bereits getippten Straße, der Hinweis verschwindet.
+  await page.locator(S_COUNTRY).selectOption("DE");
+  await page.waitForFunction(() => !document.querySelector("#ns-s-street-hint")
+    || !/Land auswählen/.test(document.querySelector("#ns-s-street-hint").textContent), null, { timeout: 5000 });
+  await page.waitForTimeout(800);
+  const suche = log.filter((e) => e.p === "/api/address/streets");
+  assert.equal(suche.length, 1, "genau eine Suche nach der Landwahl");
+  assert.deepEqual([suche[0].q.country, suche[0].q.street], ["DE", "Schweinheimer Str 187"]);
+  assert.equal(await page.locator(S_STREET).inputValue(), "Schweinheimer Str 187", "die Eingabe bleibt erhalten");
+  // Zurück ins Straßenfeld: die Vorschläge sind da, die Auswahl übernimmt wie bisher.
+  await page.locator(S_STREET).click();
+  await page.waitForSelector('#ns-s-street-list [role="option"]', { timeout: 5000 });
+  await page.locator('#ns-s-street-list [role="option"]').first().dispatchEvent("mousedown");
+  assert.equal(await page.locator(S_STREET).inputValue(), "Schweinheimer Straße 187");
+  assert.equal(await page.locator(S_ZIP).inputValue(), "63743");
+  assert.equal(await page.locator(S_CITY).inputValue(), "Aschaffenburg");
+  await page.close();
+});
+
+test("Smoke 14 — Empfänger: Land wählen, per Tab weiter — die Liste öffnet, sobald Vorschläge da sind", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await setupRoutes(page);
+  await zumFormular(page);
+  await page.locator("#ns-r-street").fill("Schweinheimer Str 9");
+  await page.locator("#ns-r-country").selectOption("DE");
+  await page.locator("#ns-r-country").focus();
+  await page.keyboard.press("Tab");
+  // Zwischen Land und Straße kann der Bundesstaat stehen (nur US/CA) — für DE nicht.
+  assert.equal(await page.evaluate(() => document.activeElement?.id), "ns-r-street", "nach dem Land kommt die Straße");
+  await page.waitForSelector('#ns-r-street-list [role="option"]', { timeout: 5000 });
+  assert.ok(await page.locator('#ns-r-street-list [role="option"]').count() > 0);
+  await page.close();
+});

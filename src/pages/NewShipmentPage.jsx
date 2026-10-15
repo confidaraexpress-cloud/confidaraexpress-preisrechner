@@ -76,9 +76,9 @@ const SHIPMENT_FIELD_MAP = {
 // Reihenfolge im Formular — bestimmt, welches Feld bei mehreren Fehlern
 // angesprungen wird (immer das oberste).
 const SHIPMENT_FIELD_ORDER = [
-  "s_firstName", "s_lastName", "s_company", "s_street", "s_addition", "s_zip", "s_city",
+  "s_firstName", "s_lastName", "s_company", "s_country", "s_street", "s_addition", "s_zip", "s_city",
   "s_email", "s_phone",
-  "r_firstName", "r_lastName", "r_company", "r_street", "r_addition", "r_zip", "r_city",
+  "r_firstName", "r_lastName", "r_company", "r_country", "r_street", "r_addition", "r_zip", "r_city",
   "r_email", "r_phone",
   "packageCount", "weight", "length", "width", "height", "shippingDate",
   // Die Sendungsangaben stehen ANS ENDE: sie sind im Formular unterhalb der Paketdaten,
@@ -105,7 +105,7 @@ import { AddressPickerButton } from "../components/addressbook/AddressPickerButt
 import { AddressSuggestInput } from "../components/address/AddressSuggestInput";
 import { AddressStatusLine } from "../components/address/AddressStatusLine";
 import { useAddressValidation } from "../hooks/useAddressValidation";
-import { applyAddressSuggestion, cityFromSuggestion, shippingLengthHint } from "../utils/addressValidationView.mjs";
+import { applyAddressSuggestion, cityFromSuggestion, shippingLengthHint, streetFieldHint } from "../utils/addressValidationView.mjs";
 import { mapAddressToShipmentFormPatch, TAB_SENDER, TAB_RECIPIENT } from "../utils/addressBookView.mjs";
 import { ShipmentDraftLeaveDialog } from "../components/drafts/ShipmentDraftLeaveDialog";
 import { ShipmentResetConfirmDialog } from "../components/drafts/ShipmentResetConfirmDialog";
@@ -1801,6 +1801,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     {addrField("s", "firstName", "Vorname",  "text", "Max")}
                     {addrField("s", "lastName",  "Nachname", "text", "Mustermann")}
                   </div>
+                  {/* Land ZUERST: Adressvorschläge gelten immer für ein Land. Ohne Auswahl
+                      steht am Straßenfeld ein Hinweis; eine schon getippte Straße bleibt.
+                      Der Bundesstaat (nur US/CA) folgt dem Land unmittelbar. */}
+                  {countrySelect("s")}
+                  {stateSelect("s")}
                   <AddressSuggestInput
                     id="ns-s-street"
                     label="Straße & Hausnr."
@@ -1811,7 +1816,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     suggestions={senderCheck.streetOptions}
                     placeholder="Musterstraße 1"
                     error={errors.s_street}
-                    hint={shippingLengthHint("street", form.s_street) || undefined}
+                    hint={streetFieldHint(form.s_country, form.s_street) || undefined}
                     autoComplete="address-line1"
                     className="field"
                   />
@@ -1833,8 +1838,6 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                       className="field"
                     />
                   </div>
-                  {countrySelect("s")}
-                  {stateSelect("s")}
                   {/* Ergebnis der Adressprüfung. Erscheint erst, wenn es etwas zu sagen gibt —
                       im Ausgangszustand und für Länder ohne Abdeckung bleibt hier nichts stehen. */}
                   <AddressStatusLine
@@ -1867,6 +1870,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     {addrField("r", "firstName", "Vorname",  "text", "Erika")}
                     {addrField("r", "lastName",  "Nachname", "text", "Muster")}
                   </div>
+                  {/* Land ZUERST: Adressvorschläge gelten immer für ein Land. Ohne Auswahl
+                      steht am Straßenfeld ein Hinweis; eine schon getippte Straße bleibt.
+                      Der Bundesstaat (nur US/CA) folgt dem Land unmittelbar. */}
+                  {countrySelect("r")}
+                  {stateSelect("r")}
                   <AddressSuggestInput
                     id="ns-r-street"
                     label="Straße & Hausnr."
@@ -1877,7 +1885,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     suggestions={recipientCheck.streetOptions}
                     placeholder="Beispielweg 5"
                     error={errors.r_street}
-                    hint={shippingLengthHint("street", form.r_street) || undefined}
+                    hint={streetFieldHint(form.r_country, form.r_street) || undefined}
                     autoComplete="address-line1"
                     className="field"
                   />
@@ -1899,8 +1907,6 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                       className="field"
                     />
                   </div>
-                  {countrySelect("r")}
-                  {stateSelect("r")}
                   {/* Ergebnis der Adressprüfung. Erscheint erst, wenn es etwas zu sagen gibt —
                       im Ausgangszustand und für Länder ohne Abdeckung bleibt hier nichts stehen. */}
                   <AddressStatusLine

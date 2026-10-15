@@ -42,6 +42,7 @@ import {
   DETAIL_TEXTS,
   agreementSummary,
   assessmentSummary,
+  showExcludedPackagesColumn,
   codesSummary,
   customersSummary,
   teamSummary,
@@ -252,7 +253,9 @@ function PartnerDetailBody({ detail, partnerId, from, refreshKey, onChanged, zie
         <AdminDisclosureCard id="adm-sp-assessments-card" title="Monatsbewertungen" summary={assessmentSummary(detail.assessments)}>
           {detail.assessments.length === 0 ? (
             <p className="adm-support-hint">Noch keine Monatsbewertung.</p>
-          ) : (
+          ) : (() => {
+            const mitAusgeschlossenen = showExcludedPackagesColumn(detail.assessments);
+            return (
             <div className="table-scroll adm-sp-mini-table adm-sp-cardtable">
               <table>
                 <caption className="sr-only">Monatsbewertungen: Monat, Bemessungsmonat, aktive Kunden, Pakete, Kunden-Level, Paket-Level, Mindestpakete, Version.</caption>
@@ -265,6 +268,7 @@ function PartnerDetailBody({ detail, partnerId, from, refreshKey, onChanged, zie
                     <th scope="col">Kunden-Level</th>
                     <th scope="col">Paket-Level</th>
                     <th scope="col" className="adm-num">Mindestpakete</th>
+                    {mitAusgeschlossenen && <th scope="col" className="adm-num">Ohne gültige Paketzahl</th>}
                     <th scope="col" className="adm-num">Version</th>
                   </tr>
                 </thead>
@@ -278,13 +282,21 @@ function PartnerDetailBody({ detail, partnerId, from, refreshKey, onChanged, zie
                       <td data-label="Kunden-Level">{levelText(a.customerLevel)} · {formatBonusPercent(a.customerBonusPercent)}</td>
                       <td data-label="Paket-Level">{levelText(a.packageLevel)} · {formatBonusPercent(a.packageBonusPercent)}</td>
                       <td data-label="Mindestpakete" className="adm-num">{formatCount(a.minPackages)}</td>
-                      <td data-label="Version" className="adm-num">{formatCount(a.version)}</td>
+                      {mitAusgeschlossenen && (
+                        <td data-label="Ohne gültige Paketzahl" className="adm-num">{formatCount(a.excludedInvalidPackageCount)}</td>
+                      )}
+                      {/* Paritätsaudit BA4: eine abgelöste Version ist als solche erkennbar. */}
+                      <td data-label="Version" className="adm-num">
+                        {formatCount(a.version)}
+                        {a.superseded && <> <span className="badge badge-gray">abgelöst</span></>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
+            );
+          })()}
         </AdminDisclosureCard>
       </Gruppe>
 

@@ -138,9 +138,16 @@ export function capSummary(caps) {
 const stufe = (n) => (Number.isInteger(n) ? String(n) : "—");
 /** Jüngste Monatsbewertung (der Server liefert die neueste zuerst). */
 export function assessmentSummary(assessments) {
-  const a = arr(assessments)[0];
+  // Paritätsaudit BA4: die gültige Bewertung, nicht eine abgelöste Version.
+  const a = arr(assessments).find((x) => x && x.superseded !== true) || arr(assessments)[0];
   if (!a) return "Noch keine Monatsbewertung";
   return `${formatMonth(a.month)}: Kunden-Level ${stufe(a.customerLevel)} · Paket-Level ${stufe(a.packageLevel)}`;
+}
+
+/** Paritätsaudit BA4: die Spalte „Ohne gültige Paketzahl" nur, wenn eine Bewertung solche Sendungen
+ *  ausgeschlossen hat — sonst wäre sie eine Spalte voller Nullen. */
+export function showExcludedPackagesColumn(assessments) {
+  return arr(assessments).some((x) => x && Number.isInteger(x.excludedInvalidPackageCount) && x.excludedInvalidPackageCount > 0);
 }
 
 /** Provisionen des gewählten Monats (normalizeAdminCommissions) — Summen des Servers. */

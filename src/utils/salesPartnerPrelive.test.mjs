@@ -153,7 +153,7 @@ test("6 — Testsendung: Vertragsfelder in Cent, dispatched nur als true, paidOn
     "kein truthy-String für dispatched, kein leeres paidOn");
   const kaputt = buildTestShipmentBody({ customerUserId: "", shipDate: "15.09.2026", packageCount: "0", customerNet: "-1", purchaseNet: "", paidOn: "x" });
   assert.deepEqual(Object.keys(kaputt.errors).sort(), ["customerNet", "customerUserId", "packageCount", "paidOn", "purchaseNet", "shipDate"]);
-  assert.equal(buildTestShipmentBody({ customerUserId: 7, shipDate: "2026-09-15", packageCount: "10000", customerNet: "1", purchaseNet: "1" })
+  assert.equal(buildTestShipmentBody({ customerUserId: 7, shipDate: "2026-09-15", packageCount: "100", customerNet: "1", purchaseNet: "1" })
     .errors.packageCount, INPUT.packagesInvalid);
 });
 
@@ -330,4 +330,15 @@ test("17 — Fehlerabbildung: feste deutsche Texte am richtigen Feld, Modus aus 
   assert.equal(preliveErrorOutcome(409, { code: "ALREADY_PAID" }).reload, true);
   assert.equal(preliveErrorOutcome(409, { code: "UNBEKANNT", error: "Servertext" }).text, "Servertext");
   assert.match(preliveErrorOutcome(500, { code: "EMAIL_EXISTS", error: "TypeError" }).text, /nicht ausgeführt/, "Codes nur bei 4xx");
+});
+
+test("Paritätsaudit BA2 — Testsendungen: höchstens 99 Pakete wie jede Sendung", async () => {
+  const { MAX_PACKAGES: max, buildTestShipmentBody: bauen, INPUT: texte } = await import("./salesPartnerPrelive.mjs");
+  const { PACKAGE_COUNT_MAX } = await import("./newShipmentForm.mjs");
+  assert.equal(max, 99);
+  assert.equal(max, PACKAGE_COUNT_MAX, "eine Grenze, keine zweite Fassung");
+  const basis = { customerUserId: 7, shipDate: "2026-09-15", customerNet: "1", purchaseNet: "1" };
+  assert.equal(bauen({ ...basis, packageCount: "99" }).errors.packageCount, undefined);
+  assert.equal(bauen({ ...basis, packageCount: "100" }).errors.packageCount, texte.packagesInvalid);
+  assert.match(texte.packagesInvalid, /von 1 bis 99/);
 });

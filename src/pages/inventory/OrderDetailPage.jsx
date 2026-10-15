@@ -44,6 +44,7 @@ export default function OrderDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelError, setCancelError] = useState("");
   const [cancelling, setCancelling] = useState(false);
   // Lieferschein-Download je Sendung: die laufende Sendungs-ID und ein
   // Fehlerzustand. Beides zeilenbezogen — ein Fehler an einer Sendung darf die
@@ -117,13 +118,16 @@ export default function OrderDetailPage() {
 
   const stornieren = async () => {
     setCancelling(true);
-    setError("");
+    setCancelError("");
     try {
       const res = await cancelOrder(id);
-      if (!res.ok) { setError(inventoryErrorText(await res.json().catch(() => null), "Der Auftrag konnte nicht storniert werden.")); return; }
+      // Paritätsaudit BI1: der Grund steht IM Dialog — die Seitenmeldung lag bis hierher hinter dem
+      // offenen Dialog. Ein bereits versendeter Auftrag (409 ORDER_ALREADY_SHIPPED) hat seinen
+      // eigenen Satz (inventoryErrors.mjs).
+      if (!res.ok) { setCancelError(inventoryErrorText(await res.json().catch(() => null), "Der Auftrag konnte nicht storniert werden.")); return; }
       setCancelOpen(false);
       await load();
-    } catch { setError("Der Auftrag konnte nicht storniert werden."); }
+    } catch { setCancelError("Der Auftrag konnte nicht storniert werden."); }
     finally { setCancelling(false); }
   };
 
@@ -170,7 +174,7 @@ export default function OrderDetailPage() {
         actions={o && (
           <>
             {stornierbar && (
-              <button type="button" className="btn btn-outline" onClick={() => setCancelOpen(true)}>Auftrag stornieren</button>
+              <button type="button" className="btn btn-outline" onClick={() => { setCancelError(""); setCancelOpen(true); }}>Auftrag stornieren</button>
             )}
             {versandbereit && (
               <button type="button" className="btn btn-primary" disabled={preparing} onClick={versandVorbereiten}>
@@ -371,6 +375,7 @@ export default function OrderDetailPage() {
           </>
         }
       >
+        <InlineError text={cancelError} />
         <p>
           Die noch reservierte Menge wird freigegeben und steht sofort wieder zur Verfügung.
           Der physische Bestand ändert sich dadurch nicht.

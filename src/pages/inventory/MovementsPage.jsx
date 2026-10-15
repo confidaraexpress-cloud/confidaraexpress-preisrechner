@@ -4,6 +4,8 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState, NoResultsState, ListSkeleton } from "../../components/ui/StateView";
 import { InlineError, ProductFilterField } from "../../components/inventory/InventoryShared";
 import { getMovements, getProduct } from "../../api/inventoryApi";
+import { useAllWarehouses } from "../../hooks/useAllWarehouses";
+import { showWarehouseFilter, warehouseOptionLabel } from "../../utils/warehouseView.mjs";
 import {
   adjustmentReasonLabel, movementTypeView, movementTypeOptions, movementReferenceView,
   movementNote, signedQuantity, formatUnits, inventoryErrorText,
@@ -66,6 +68,9 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
   // geladenen Zeilen oder — bei einem Deep-Link ohne Treffer — aus einem
   // gezielten Nachladen (siehe Effekt unten).
   const [productName, setProductName] = useState("");
+  // Paritätsaudit BI7: Lagerfilter ("" = alle Lager), Serverparameter warehouseId.
+  const [warehouseId, setWarehouseId] = useState("");
+  const lagerListe = useAllWarehouses();
   const [from, setFrom] = useState(heute ? heuteIso() : "");
   const [to, setTo] = useState(heute ? heuteIso() : "");
   const [loading, setLoading] = useState(true);
@@ -83,6 +88,7 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
       const res = await getMovements({
         limit: PAGE_LIMIT, cursor: cursor || undefined,
         type: type || undefined, productId: productId || undefined,
+        warehouseId: warehouseId || undefined,
         from: from || undefined, to: to || undefined,
       });
       if (seq.current !== meins) return;
@@ -95,7 +101,7 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
     } finally {
       if (seq.current === meins) { setLoading(false); setLoadingMore(false); }
     }
-  }, [type, productId, from, to]);
+  }, [type, productId, warehouseId, from, to]);
 
   useEffect(() => { load(null); }, [load]);
 
@@ -122,9 +128,9 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
   }, [productId, items, loading, productName]);
 
   const artikelWaehlen = (p) => { setProductId(String(p.id)); setProductName(p.name || ""); };
-  const alleFilterWeg = () => { setType(""); setProductId(""); setProductName(""); setFrom(""); setTo(""); };
+  const alleFilterWeg = () => { setType(""); setProductId(""); setProductName(""); setWarehouseId(""); setFrom(""); setTo(""); };
 
-  const aktiveFilter = [type, productId, from, to].filter(Boolean).length;
+  const aktiveFilter = [type, productId, warehouseId, from, to].filter(Boolean).length;
   const hatFilter = aktiveFilter > 0;
   // Sichtbar sind die heute erzeugbaren Typen — plus jeder Typ, der in den
   // geladenen Zeilen tatsächlich vorkommt (Altdaten bleiben filterbar).
@@ -139,6 +145,7 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
       />
 
       <InlineError text={error} onRetry={() => load(null)} />
+      <InlineError text={lagerListe.error} onRetry={lagerListe.reload} />
 
       <div className="ce-toolbar inv-toolbar">
         <ProductFilterField
@@ -153,6 +160,17 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
             {typOptionen.map((t) => <option key={t} value={t}>{movementTypeView(t)[1]}</option>)}
           </select>
         </div>
+        {/* Paritätsaudit BI7: erst ab zwei Lagern; inaktive Lager bleiben wählbar — ihre
+            Bewegungen sind Historie und bleiben lesbar. */}
+        {showWarehouseFilter(lagerListe.warehouses) && (
+          <div className="inv-toolbar-filter">
+            <label className="field-label" htmlFor="inv-mv-warehouse">Lager</label>
+            <select id="inv-mv-warehouse" className="field-select" value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)}>
+              <option value="">Alle Lager</option>
+              {lagerListe.warehouses.map((w) => <option key={w.id} value={w.id}>{warehouseOptionLabel(w)}</option>)}
+            </select>
+          </div>
+        )}
         <div className="inv-toolbar-filter">
           <label className="field-label" htmlFor="inv-mv-from">Von</label>
           <input id="inv-mv-from" className="field-input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />

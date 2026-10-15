@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState, ListSkeleton } from "../../components/ui/StateView";
 import { InventoryStatCard, InventoryPreviewList, InventoryDialog, InlineError } from "../../components/inventory/InventoryShared";
+import { WarehouseManager } from "../../components/inventory/WarehouseManager";
 import { getInventoryOverview, getWarehouses, createWarehouse } from "../../api/inventoryApi";
 import {
   formatUnits, inventoryErrorText, OVERVIEW_METRICS, overviewMetric,
@@ -37,24 +38,37 @@ import {
 export default function InventoryOverviewPage({ utility, onNavigate, onNewShipment }) {
   const [stats, setStats] = useState(null);
   const [warehouses, setWarehouses] = useState(null);
+  // Paritätsaudit BI11: ein Ladefehler der Lagerliste ist KEIN „noch kein Lager".
+  // Bis hierher wurde er zur leeren Liste — die Seite bot dann „Hauptlager anlegen"
+  // an, obwohl Lager existieren.
+  const [warehouseError, setWarehouseError] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
   // Welche Kennzahl ist aufgeklappt? Reiner UI-Zustand dieser Seite.
   const [openMetric, setOpenMetric] = useState(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  // `silent`: nach einer Änderung in der Lagerverwaltung werden Kennzahlen und Lagerstand neu
+  // geladen, ohne die Seite durch den Ladezustand zu ersetzen — sonst verschwände die
+  // Verwaltung samt ihrer Rückmeldung für einen Augenblick.
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     setError("");
+    setWarehouseError("");
     try {
-      const [o, w] = await Promise.all([getInventoryOverview(), getWarehouses({ limit: 5 })]);
+      // Ob es überhaupt ein Lager gibt, sagt eine Zeile; die Liste selbst führt die
+      // Lagerverwaltung darunter (Seite für Seite).
+      const [o, w] = await Promise.all([getInventoryOverview(), getWarehouses({ limit: 1 })]);
       if (!o.ok) { setError(inventoryErrorText(await o.json().catch(() => null), "Die Lagerübersicht konnte nicht geladen werden.")); }
       else setStats(await o.json());
-      if (w.ok) setWarehouses((await w.json()).warehouses || []);
-      else setWarehouses([]);
+      if (w.ok) setWarehouses((await w.json().catch(() => null))?.warehouses || []);
+      else {
+        setWarehouses(null);
+        setWarehouseError(inventoryErrorText(await w.json().catch(() => null), "Die Lager konnten nicht geladen werden."));
+      }
     } catch {
       setError("Die Lagerübersicht konnte nicht geladen werden.");
-    } finally { setLoading(false); }
+    } finally { if (!silent) setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -111,11 +125,13 @@ export default function InventoryOverviewPage({ utility, onNavigate, onNewShipme
         )}
       />
 
-      <InlineError text={error} onRetry={load} />
+      <InlineError text={error} onRetry={() => load()} />
+      {/* BI11: ohne geladene Lagerliste kein Onboarding — nur der Fehler mit Wiederholung. */}
+      {!error && <InlineError text={warehouseError} onRetry={() => load()} />}
 
       {loading && <ListSkeleton rows={3} label="Lagerübersicht wird geladen" />}
 
-      {!loading && !hatLager && (
+      {!loading && !warehouseError && Array.isArray(warehouses) && !hatLager && (
         <EmptyState
           title="Noch kein Lager angelegt"
           text="Bestand, Artikel und Aufträge brauchen mindestens ein Lager. Legen Sie Ihr Hauptlager an — weitere Lager können Sie jederzeit ergänzen."
@@ -175,18 +191,9 @@ export default function InventoryOverviewPage({ utility, onNavigate, onNewShipme
             />
           )}
 
-          <section className="ce-card inv-warehouses">
-            <h2 className="inv-section-title">Lager</h2>
-            <ul className="inv-warehouse-list">
-              {warehouses.map((w) => (
-                <li key={w.id} className="inv-warehouse-item">
-                  <span className="inv-warehouse-name">{w.name}</span>
-                  {w.isDefault && <span className="badge badge--info">Standard</span>}
-                  {w.status === "inactive" && <span className="badge badge--neutral">Inaktiv</span>}
-                </li>
-              ))}
-            </ul>
-          </section>
+          {/* Paritätsaudit BI9 / Umfang C: die vollständige Lagerverwaltung statt einer
+              Liste der ersten fünf Lager. Jede Änderung lädt Kennzahlen und Lagerstand neu. */}
+          <WarehouseManager onChanged={() => load({ silent: true })} />
         </>
       )}
 

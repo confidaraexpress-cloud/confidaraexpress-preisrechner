@@ -5,6 +5,8 @@ import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { InlineError, InlineSuccess, InventoryDialog, QuantityField, StockBadge } from "../../components/inventory/InventoryShared";
 import { ProductForm } from "../../components/inventory/ProductForm";
 import { getProduct, updateProduct, postBlock, postUnblock, postReceipt } from "../../api/inventoryApi";
+import { useAllWarehouses } from "../../hooks/useAllWarehouses";
+import { bookingWarehouseOptions, preferredBookingWarehouseId, warehouseOptionLabel } from "../../utils/warehouseView.mjs";
 import {
   formatKg, formatUnits, signedQuantity, movementTypeView,
   inventoryErrorText, mapProductToShipment, adjustmentReasonLabel,
@@ -59,6 +61,11 @@ export default function ProductDetailPage() {
   const [stockBusy, setStockBusy] = useState(false);
   const [stockError, setStockError] = useState("");
   const [success, setSuccess] = useState("");
+  // Paritätsaudit BI3: das Ziellager des Wareneingangs. Ein neuer Artikel hat noch keinen
+  // Bestand und damit kein Lager in `balances` — eingebucht wird dann ins Standardlager
+  // (bei mehreren aktiven Lagern wählbar), statt den ersten Wareneingang zu verweigern.
+  const [stockWarehouseId, setStockWarehouseId] = useState("");
+  const lagerListe = useAllWarehouses();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,6 +101,9 @@ export default function ProductDetailPage() {
 
   const oeffneStock = (art) => {
     setStockDialog(art);
+    setStockWarehouseId(art === "receipt"
+      ? (preferredBookingWarehouseId(lagerListe.warehouses, primaryWarehouse?.warehouseId) || primaryWarehouse?.warehouseId || "")
+      : (primaryWarehouse?.warehouseId || ""));
     setStockQty("1");
     setStockReason(BLOCK_REASONS[0].value);
     setStockNote("");
@@ -105,7 +115,8 @@ export default function ProductDetailPage() {
   // Der Client rechnet nichts aus und schickt keinen Zielwert — er nennt eine
   // Menge, alles Weitere entscheidet der Server.
   const stockAbsenden = async () => {
-    if (!primaryWarehouse) { setStockError("Für diesen Artikel ist noch kein Lager hinterlegt."); return; }
+    // Sperren und Freigeben brauchen Bestand in einem Lager; ein Wareneingang nicht (BI3).
+    if (stockDialog !== "receipt" && !primaryWarehouse) { setStockError("Für diesen Artikel gibt es noch keinen Bestand in einem Lager."); return; }
     const menge = Number(String(stockQty).trim());
     if (!Number.isInteger(menge) || menge < 1) { setStockError("Bitte eine ganze Menge größer null angeben."); return; }
     const notiz = stockNote.trim();
@@ -116,7 +127,8 @@ export default function ProductDetailPage() {
     setStockBusy(true);
     setStockError("");
     try {
-      const basis = { productId: id, warehouseId: primaryWarehouse.warehouseId, quantity: menge };
+      // Ohne bekanntes Lager entscheidet der Server (Standardlager) — es wird nichts geraten.
+      const basis = { productId: id, warehouseId: stockWarehouseId || undefined, quantity: menge };
       const res = stockDialog === "receipt" ? await postReceipt({ ...basis, note: notiz || undefined })
         : stockDialog === "block" ? await postBlock({ ...basis, reason: stockReason, note: notiz || undefined })
         : await postUnblock({ ...basis, note: notiz || undefined });
@@ -132,6 +144,10 @@ export default function ProductDetailPage() {
     } catch { setStockError("Der Vorgang konnte nicht ausgeführt werden."); }
     finally { setStockBusy(false); }
   };
+
+  const empfangsLager = bookingWarehouseOptions(lagerListe.warehouses, stockWarehouseId);
+  const zielLagerName = lagerListe.warehouses.find((w) => w.id === String(stockWarehouseId))?.name
+    || primaryWarehouse?.warehouseName || "Standardlager";
 
   // Der Prefill reist im History-State zum Dashboard und wird dort genau einmal
   // gelesen und sofort aus der History entfernt — er darf bei einem späteren
@@ -423,12 +439,24 @@ export default function ProductDetailPage() {
             <InlineError text={stockError} />
             <dl className="inv-dialog-facts">
               <div><dt>Artikel</dt><dd>{p.name}</dd></div>
-              <div><dt>Lager</dt><dd>{primaryWarehouse?.warehouseName || "—"}</dd></div>
+              {!(stockDialog === "receipt" && empfangsLager.length > 1) && (
+                <div><dt>Lager</dt><dd>{stockDialog === "receipt" ? zielLagerName : (primaryWarehouse?.warehouseName || "—")}</dd></div>
+              )}
               <div>
                 <dt>{stockDialog === "unblock" ? "Gesperrt" : "Verfügbar"}</dt>
                 <dd>{formatUnits(stockDialog === "unblock" ? gesperrt : p.stock?.available)}</dd>
               </div>
             </dl>
+
+            {stockDialog === "receipt" && empfangsLager.length > 1 && (
+              <div className="inv-field">
+                <label className="field-label" htmlFor="inv-stock-warehouse">Lager</label>
+                <select id="inv-stock-warehouse" className="field-select" value={stockWarehouseId}
+                        onChange={(e) => setStockWarehouseId(e.target.value)} disabled={stockBusy}>
+                  {empfangsLager.map((w) => <option key={w.id} value={w.id}>{warehouseOptionLabel(w)}</option>)}
+                </select>
+              </div>
+            )}
 
             <QuantityField
               id="inv-stock-qty"

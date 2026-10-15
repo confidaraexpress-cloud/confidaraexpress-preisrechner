@@ -293,7 +293,8 @@ test("24 — die Detailseite zeigt höchstens fünf Bewegungen und verlinkt den 
 test("25 — der Artikelfilter wirkt und ist sichtbar abwählbar", () => {
   const code = ohneKommentare(bewegungen);
   assert.match(code, /productId: productId \|\| undefined/, "der Filter wird nicht mitgesendet");
-  assert.match(code, /\}, \[type, productId, from, to\]\)/, "der Filter löst kein Neuladen aus");
+  // Paritätsaudit BI7 (dokumentierte Ankeränderung): der Lagerfilter steht mit in der Liste.
+  assert.match(code, /\}, \[type, productId, warehouseId, from, to\]\)/, "der Filter löst kein Neuladen aus");
   // Ohne sichtbaren Hinweis sähe der Nutzer eine verkürzte Liste ohne Grund.
   assert.match(code, /inv-toolbar-chip/);
   // Der Chip räumt den Filter weg. Geprüft wird die WIRKUNG, nicht der exakte

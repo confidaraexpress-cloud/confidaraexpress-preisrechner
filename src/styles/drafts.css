@@ -184,6 +184,10 @@
   background: var(--ce-color-status-warning-surface); border: 1px solid var(--ce-color-status-warning-border);
   color: var(--ce-color-status-warning-fg); flex-wrap: wrap;
 }
+/* Preisvergleich nach der Übernahme aus dem öffentlichen Preisrechner: mehrzeilig in derselben Hinweiszeile. */
+.ns-public-price-compare { flex-direction: column; align-items: flex-start; gap: var(--ce-space-1); }
+.ns-public-price-compare p { margin: 0; }
+.ns-public-price-compare-title, .ns-public-price-compare-note { font-weight: 600; }
 .dft-resume-conflict-text { flex: 1; min-width: 200px; }
 .dft-resume-conflict .btn { flex-shrink: 0; }
 

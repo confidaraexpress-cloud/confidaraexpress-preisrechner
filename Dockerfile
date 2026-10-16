@@ -19,5 +19,7 @@ RUN npm run build
 
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
+# Öffentlicher Preisrechner: zweiter Build (vite.preisrechner.config.js), eigener server-Block in nginx.conf.
+COPY --from=build /app/dist-preisrechner /usr/share/nginx/preisrechner
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

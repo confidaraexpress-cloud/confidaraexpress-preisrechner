@@ -37,7 +37,7 @@ Framework-/Runtimeversionen stehen in `package.json` und den CI-Workflows — **
 
 ```bash
 npm run dev       # Vite Dev-Server (0.0.0.0)
-npm run build     # Produktionsbuild nach dist/
+npm run build     # Hauptbuild nach dist/ (unverändert ohne Konfiguration), danach der Preisrechner nach dist-preisrechner/
 npm run preview   # Build-Vorschau
 npm test          # Unit-/Vertragstests (Node Test Runner)
 npm run test:e2e  # Browser-E2E (Playwright, eigener Runner)
@@ -157,7 +157,7 @@ Buttons (`.btn` + Varianten), Eingaben (`.field-*`), `Switch`, Badges, Karten, `
 
 ### Typografie
 
-Eine Skala aus `--ce-text-*` (Seitentitel 28/36, mobil 24/32 · Abschnitt 18/26 · Karte 16/24 · Fließtext 14/22 · klein 13/20 · Label 13/18 · Caption/Tabellenkopf 12/18 · Kennzahl 32/38). Die Kunden-Sidebar hat eine eigene Stufe (`--ce-sidebar-nav-*`: 15/22, Hauptpunkte 600, Unterpunkte und sekundäre Aktionen 500, jede Zeile 44 px); die allgemeine Navigationsrolle (`--ce-text-nav-*`, Admin, öffentlicher Drawer) bleibt 14/20, 500. DM Sans für alles außerhalb des Auth-Bereichs, auch für Seitentitel und alle Zahlen; Cormorant nur noch im (unveränderten) Auth-Bereich. Keine Halbpixel, nichts unter 12 px außerhalb von Auth, höchstes Gewicht 600. Zahlen tabellarisch und in Zahlenspalten rechtsbündig.
+Eine Skala aus `--ce-text-*` (Seitentitel 28/36, mobil 24/32 · Abschnitt 18/26 · Karte 16/24 · Fließtext 14/22 · klein 13/20 · Label 13/18 · Caption/Tabellenkopf 12/18 · Kennzahl 32/38). Die Kunden-Sidebar hat eine eigene Stufe (`--ce-sidebar-nav-*`: 15/22, Hauptpunkte 600, Unterpunkte und sekundäre Aktionen 500, jede Zeile 44 px); die allgemeine Navigationsrolle (`--ce-text-nav-*`, Admin, öffentlicher Drawer) bleibt 14/20, 500. DM Sans für alles außerhalb des Auth-Bereichs, auch für Seitentitel und alle Zahlen; Cormorant nur noch im (unveränderten) Auth-Bereich — einzige Ausnahme (Betreiberentscheidung 2026-10-16): Headline und Abschnittstitel der eigenständigen Preisrechnerseite (`.pc-display`, `.pc-section-title`; typography.test.mjs). Keine Halbpixel, nichts unter 12 px außerhalb von Auth, höchstes Gewicht 600. Zahlen tabellarisch und in Zahlenspalten rechtsbündig.
 
 ### App-Shell und Sidebar
 
@@ -329,6 +329,16 @@ Alle Preisflächen der Buchung (ausgewähltes Angebot, Live- und Sticky-Leiste, 
 Kein roher Backendwert im sichtbaren Text: unbekannte Status laufen über `statusFallback`, API-Fehler über `utils/apiError.mjs`, Buchungsfehler über `utils/bookingErrors.mjs`. Ein Fehlerzustand kann Zeichenkette **oder** Objekt sein — beide Formen müssen gerendert werden können (ein Objekt als React-Kind ist ein Renderfehler).
 
 ---
+
+## Öffentlicher Preisrechner (preisrechner.confidaraexpress.de)
+
+Projektweiter Stand: Canonical Context 1A „Öffentlicher Preisrechner“ und §15/§16. Frontendregeln:
+
+- **Eigene Seite, eigener Build:** statisches Seitengerüst `preisrechner/index.html` (Kopf, Hero, Ablauf, Plattform, Service, FAQ, Fuß in HTML/CSS), der Rechner als React-Insel aus `src/public-calculator/`, zweiter Build `vite.preisrechner.config.js` → `dist-preisrechner/`, eigener nginx-`server`-Block mit eigener CSP (der Anwendungsblock bleibt `default_server`), `preisrechner/public/sw.js` meldet sich nur ab. Governance: `src/styles/preisrechnerGovernance.test.mjs`, `src/public-calculator/publicCalculatorIsland.test.mjs`.
+- **Die Insel bleibt klein:** kein `index.css`, kein Router, kein Versandvorgang, keine Anmeldung, keine Dashboard-, Adress- oder Kartenmodule, kein Storage. Stylesheet `src/styles/public-calculator.css` aus den Foundation-Tokens; die Diagnose-Tokens des Vergleichsmodus filtert der Build heraus (keine Einkaufsquelle im Bündel). Logik in `utils/publicCalculatorView.mjs`, Felder über `components/ui/Field.jsx`.
+- **Anfragen nur auf `/api/public/*`** (CORS): die erste Anweisung des Einstiegs ist `prepare` (Simple-Request, `credentials: "omit"`, keepalive, nie abgewartet); die Länder kommen aus `/api/public/launch-scope` (derselbe Serverhandler wie im Portal, ohne Antwort die volle Liste); die Preisabfrage hat 75 s. Carrierauswahl und Ordnung laufen im Browser, eine unveränderte Eingabe fragt nicht erneut.
+- **Übergabe:** feste Adresse `https://confidaraexpress.de/preisrechner-uebernahme#t=…`, kein Redirect-Parameter. `main.jsx` liest das Fragment vor dem ersten Rendern und entfernt es; das Token liegt nur in `utils/publicQuoteHandoffStore.mjs` (Modulspeicher, nie Storage). Die Prüfung (`handoff/verify`) läuft ohne `auth: true` — ein fachliches 403 meldet nicht ab, 401 über `triggerAuthError`. In „Neue Sendung“ trägt die Absicht den `productKey`; bei genau einem Treffer steht der neue Kundenpreis sichtbar neben dem öffentlichen (`publicPriceComparison`).
+- **Messkonzept:** `tests/e2e/publicCalculatorBuild.test.mjs` — Bündelscan, Bericht gzip/brotli je Asset gegen `tests/e2e/fixtures/public-calculator-build-baseline.json` (mehr als 10 % Wachstum schlägt an; Baseline nur bewusst und im selben Commit wie die Ursache aktualisieren), Erstaufruf gegen `/login`, FCP/LCP/CLS und Zeit bis zum bedienbaren Formular unter Slow 4G und CPU 4×.
 
 ## ConfidaraExpress als App (PWA)
 

@@ -883,3 +883,15 @@ export const getAdminUserBusinessEvidence = (userId) =>
   apiFetch(`/admin/users/${encodeURIComponent(userId)}/business-evidence`, { auth: true });
 export const addAdminUserBusinessVerification = (userId, body) =>
   jsonPost(`/admin/users/${encodeURIComponent(userId)}/business-verifications`, body);
+
+// Öffentlicher Preisrechner (2026-10-16): globaler Besucheraufschlag und Schalter. Jede Änderung trägt die
+// zuletzt gelesene Revision (409 PUBLIC_CALCULATOR_REVISION_CONFLICT mit `current`, wenn jemand anderes
+// zwischenzeitlich gespeichert hat); ein unveränderter Wert ist beim Server ein No-op ohne Protokoll.
+const PUBLIC_CALCULATOR_PATH = "/admin/public-calculator";
+export const getAdminPublicCalculatorSettings = () => apiFetch(`${PUBLIC_CALCULATOR_PATH}/settings`, { auth: true });
+export const updateAdminPublicCalculatorMarkup = ({ markupPercent, expectedRevision }) =>
+  jsonPost(`${PUBLIC_CALCULATOR_PATH}/markup`, { markupPercent, expectedRevision }, "PUT");
+export const updateAdminPublicCalculatorAvailability = ({ enabled, expectedRevision }) =>
+  (typeof enabled === "boolean"
+    ? jsonPost(`${PUBLIC_CALCULATOR_PATH}/availability`, { enabled, expectedRevision }, "PUT")
+    : Promise.reject(new Error("invalid_enabled")));

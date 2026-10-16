@@ -68,6 +68,12 @@ const AUTH_DATEI = "auth.css";
 const istAuth = (g) => g.datei === AUTH_DATEI
   || g.selektor.split(",").every((t) => /^\.auth-[\w-]+/.test(t.trim()));
 
+// Öffentlicher Preisrechner (Betreiberentscheidung 2026-10-16): eine eigene, statische Seite mit
+// Premium-Auftritt. Ihre Headline ist die EINZIGE Stelle außerhalb von Auth mit einer Display-Größe
+// jenseits der Skala (ganze Pixel, 34/44/52 px je Breite). Alles andere dort bleibt auf der Skala.
+const PREISRECHNER_DATEI = "public-calculator.css";
+const istPreisrechnerDisplay = (g) => g.datei === PREISRECHNER_DATEI && g.selektor.trim() === ".pc-display";
+
 // Alle font-size-Vorkommen als { datei, zeile, wert, media, selektor }.
 function alleGroessen() {
   const out = [];
@@ -145,7 +151,7 @@ test("3 — jede Schriftgröße liegt auf einer definierten Stufe der Skala", ()
   // Die Skala kennt Desktop- und Mobilwerte; beide sind zulässige Stufen.
   // Der eingefrorene Auth-Bereich behält seine eigenen Größen (Redesign 2026-10).
   const erlaubt = new Set([...SKALA]);
-  const treffer = GROESSEN.filter((g) => !erlaubt.has(g.wert) && !istAuth(g))
+  const treffer = GROESSEN.filter((g) => !erlaubt.has(g.wert) && !istAuth(g) && !istPreisrechnerDisplay(g))
     .map((g) => `${g.datei}:${g.zeile} ${g.selektor} (${g.wert}px)`);
   assert.deepEqual(treffer, [], `Größen außerhalb der Skala:\n  ${treffer.join("\n  ")}`);
   // Die Skala selbst ist vollständig und trägt die freigegebenen Werte. Die
@@ -250,6 +256,10 @@ const CORMORANT_ERLAUBT = new Set([
   // Erlaubnisse sind entfallen — eine Erlaubnis für etwas Nichtvorhandenes
   // erlaubt still auch seine Wiedereinführung (siehe unten).
   ".auth-title",           // Auth-Bereich (eigene Welt)
+  // Öffentlicher Preisrechner (Betreiberentscheidung 2026-10-16): Cormorant sparsam für die
+  // Headlines dieser eigenen Seite — die Headline und die Abschnittstitel, sonst nichts.
+  ".pc-display",
+  ".pc-section-title",
 ]);
 // Abschlusspaket: `.auth-hero-title` stand hier als Erlaubnis, obwohl die Klasse
 // weder in einem Stylesheet noch in einem Markup existiert. Eine Erlaubnis für
@@ -469,8 +479,10 @@ test("12 — Phase 2.5 fasst nur Typografie an", () => {
   // Neue Admin-Lesevorschau der G1–G9-Dokumente: +1 ansteuerbare Route.
   // Geschützte Seitenvorschau der Rechtstexte (/vorschau/rechtstexte/:seite,
   // dokumentierte Ankeränderung): +1 im öffentlichen Rahmen hinter AdminRoute.
-  assert.equal(mitPfad + indexRt, 43,
-    "43 Routen einschliesslich der Admin-Rechtstextvorschau und der Seitenvorschau");
+  // Öffentlicher Preisrechner (dokumentierte Ankeränderung): +2 — die Übernahmeseite
+  // /preisrechner-uebernahme im öffentlichen Rahmen und /admin/public-calculator am Adminrahmen.
+  assert.equal(mitPfad + indexRt, 45,
+    "45 Routen einschliesslich der Admin-Rechtstextvorschau, der Seitenvorschau und des öffentlichen Preisrechners");
   assert.equal(pfadlos, 4,
     "die Zahl der pfadlosen Layoutrouten ist unverändert (4: Dashboard, öffentlich, Admin, Auth)");
 });

@@ -28,7 +28,15 @@
    ähnliches Angebot ist nicht dasselbe. Die `offerId` ist je Berechnung neu; laufübergreifend
    trägt nur die Tarif-ID (JUMiNGO-Tarife, z. B. 3588 oder „s-2036"). Transglobal-Angebote
    führen öffentlich keine dauerhafte Kennung — ihre Absicht wird nach der Neuberechnung
-   deshalb ehrlich gelöst statt geraten. */
+   deshalb ehrlich gelöst statt geraten.
+
+   ── Zweite Quelle: der öffentliche Preisrechner (2026-10-16) ────────────────────────
+   Von preisrechner.confidaraexpress.de kommt die Auswahl nach dem Login über das geprüfte
+   Übergabetoken (POST /api/price-quote/handoff/verify): dieselben 15 Felder wie hier, dazu die
+   Tarifwahl. Ihre Identität ist der `productKey` — derselbe Schlüssel, den der Server auch in die
+   Kundenantwort schreibt (aus Quelle, Produkt und Übergabeart, laufübergreifend stabil). Die
+   Absicht trägt zusätzlich den öffentlichen Preis samt Status, NUR zum sichtbaren Vergleich: nach
+   der Neuberechnung steht der Kundenpreis daneben, nie still an seiner Stelle. */
 
 import { createEmptyShipmentForm } from "./newShipmentForm.mjs";
 import { offerSelectable, sameOffer } from "./offerIdentity.mjs";
@@ -36,21 +44,52 @@ import { offerSelectable, sameOffer } from "./offerIdentity.mjs";
 import { FORM_SERVICE_FILTERS, FORM_SHIPPING_MODES } from "./formDraftsView.mjs";
 
 export const CALCULATOR_INTENT_SOURCE = "calculator";
+export const PUBLIC_CALCULATOR_INTENT_SOURCE = "public_calculator";
+const QUELLEN = Object.freeze([CALCULATOR_INTENT_SOURCE, PUBLIC_CALCULATOR_INTENT_SOURCE]);
+const PRODUCT_KEY_RE = /^pk1_[A-Za-z0-9_-]{22}$/;
+const PREISSTATUS = Object.freeze(["exact", "from"]);
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const PACKAGE_KEYS = ["packageCount", "weight", "length", "width", "height"];
 
 const text = (v) => (typeof v === "string" ? v : typeof v === "number" && Number.isFinite(v) ? String(v) : "");
 
+const betrag = (w) => (typeof w === "number" && Number.isFinite(w) && w >= 0 ? w : null);
+
+/** Der öffentliche Preis einer Übergabe — nur zum Vergleich, nie zur Buchung. */
+function oeffentlicherPreis(raw) {
+  const p = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : null;
+  if (!p || !PREISSTATUS.includes(p.priceStatus) || betrag(p.netPrice) === null) return null;
+  return Object.freeze({
+    priceStatus: p.priceStatus,
+    netPrice: betrag(p.netPrice),
+    vatAmount: betrag(p.vatAmount),
+    finalPrice: betrag(p.finalPrice),
+    currency: typeof p.currency === "string" && /^[A-Z]{3}$/.test(p.currency) ? p.currency : null,
+  });
+}
+
 /**
  * Die Absicht in geprüfter Form — oder `null`. Ohne Anzeigename oder ohne jede
- * Identität ist sie wertlos und wird verworfen.
+ * Identität ist sie wertlos und wird verworfen. Eine Absicht aus dem öffentlichen
+ * Preisrechner trägt als Identität ausschließlich den `productKey`.
  *
- * @returns {{source: "calculator", offerId: string|null, tariffId: string|number|null, label: string}|null}
+ * @returns {{source: "calculator", offerId: string|null, tariffId: string|number|null, label: string}
+ *          |{source: "public_calculator", offerId: null, tariffId: null, label: string, productKey: string,
+ *            publicPrice: object|null}|null}
  */
 export function normalizeCalculatorIntent(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  if (raw.source !== CALCULATOR_INTENT_SOURCE) return null;
+  if (!QUELLEN.includes(raw.source)) return null;
+  if (raw.source === PUBLIC_CALCULATOR_INTENT_SOURCE) {
+    const productKey = typeof raw.productKey === "string" && PRODUCT_KEY_RE.test(raw.productKey) ? raw.productKey : null;
+    const label = typeof raw.label === "string" ? raw.label.trim().slice(0, 160) : "";
+    if (label === "" || productKey === null) return null;
+    return Object.freeze({
+      source: PUBLIC_CALCULATOR_INTENT_SOURCE, offerId: null, tariffId: null, label, productKey,
+      publicPrice: oeffentlicherPreis(raw.publicPrice),
+    });
+  }
   const offerId = typeof raw.offerId === "string" && raw.offerId.trim() !== "" && raw.offerId.trim().length <= 64
     ? raw.offerId.trim() : null;
   const tariffId = typeof raw.tariffId === "number" && Number.isFinite(raw.tariffId)
@@ -119,6 +158,41 @@ export function calculatorSelectionToShipmentTransfer({ calculator, tariff, labe
 }
 
 /**
+ * Die Übergabe aus dem öffentlichen Preisrechner als Patch für „shipment" — dieselbe Form wie die
+ * Übergabe des Kundenrechners. Die geprüften Eingaben (Antwort von handoff/verify) tragen dieselben
+ * Feldnamen wie dessen Formular; die Tarifwahl reist nur als Absicht samt öffentlichem Preis.
+ *
+ * @param {object} arg
+ * @param {object} arg.input      geprüfte Eingaben (15 Felder)
+ * @param {object} arg.selection  Tarifwahl: { productKey, priceStatus, netPrice, vatAmount, finalPrice, currency }
+ * @param {string} arg.label      Anzeigename „Carrier · Service" aus den bestehenden Anzeigehelfern
+ */
+export function publicQuoteToShipmentTransfer({ input, selection, label } = {}) {
+  const i = input && typeof input === "object" ? input : {};
+  const auswahl = selection && typeof selection === "object" ? selection : {};
+  const patch = calculatorSelectionToShipmentTransfer({
+    calculator: {
+      form: i,
+      shippingDate: i.shippingDate,
+      serviceFilter: i.serviceFilter,
+      shippingModeFilter: i.shippingModeFilter,
+      vatMode: "net",
+    },
+    tariff: {},
+    label,
+  });
+  return {
+    ...patch,
+    calculatorIntent: normalizeCalculatorIntent({
+      source: PUBLIC_CALCULATOR_INTENT_SOURCE,
+      productKey: auswahl.productKey,
+      label,
+      publicPrice: auswahl,
+    }),
+  };
+}
+
+/**
  * Löst die Absicht gegen die Angebote einer NEUEN Berechnung auf.
  *
  * `matched` nur bei GENAU EINEM auswählbaren Angebot derselben Identität (dieselbe `offerId`
@@ -131,6 +205,15 @@ export function resolveCalculatorIntent(tariffs, intent) {
   const absicht = normalizeCalculatorIntent(intent);
   if (!absicht) return null;
   const liste = Array.isArray(tariffs) ? tariffs : [];
+  if (absicht.source === PUBLIC_CALCULATOR_INTENT_SOURCE) {
+    // Derselbe productKey in der Kundenantwort — genau ein auswählbarer Treffer oder keiner.
+    const gleich = liste.filter((t) => t && typeof t === "object" && t.productKey === absicht.productKey);
+    const angebot = gleich.length === 1 && offerSelectable(gleich[0]) ? gleich[0] : null;
+    return Object.freeze({
+      outcome: angebot ? "matched" : "unmatched", offer: angebot, label: absicht.label,
+      source: PUBLIC_CALCULATOR_INTENT_SOURCE, publicPrice: absicht.publicPrice,
+    });
+  }
   const treffer = liste.filter((t) => t && typeof t === "object" && (
     (absicht.offerId !== null && sameOffer({ offerId: absicht.offerId }, t))
     || (absicht.tariffId !== null && sameOffer({ id: absicht.tariffId }, { id: t.id }))));
@@ -162,4 +245,44 @@ export function calculatorIntentNotice({ intent = null, resolution = null, selec
       + "nicht eindeutig zuordnen. Bitte wählen Sie ein Angebot aus der Liste.";
   }
   return "";
+}
+
+/* ── Preisvergleich nach der Übernahme aus dem öffentlichen Preisrechner ─────────────
+   Nur bei genau einem Treffer und nur, solange genau dieses Angebot ausgewählt ist: der neu
+   berechnete Kundenpreis NEBEN dem öffentlichen Preis samt Status („ab" oder exakt). Weicht er
+   ab, sagt der Satz es deutlich; überschrieben wird nichts, gebucht wird der neue Preis. */
+const euro = (w) => (betrag(w) === null ? null : new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(w));
+
+export const PUBLIC_PRICE_COMPARISON_TEXT = Object.freeze({
+  title: "Preisvergleich zu Ihrer Auswahl im Preisrechner",
+  publicLabel: "Preis im Preisrechner",
+  customerLabel: "Ihr Preis jetzt",
+  changed: "Der neu berechnete Preis weicht vom Preis im Preisrechner ab. Gebucht wird der neu berechnete Preis.",
+  same: "Der neu berechnete Preis entspricht dem Preis im Preisrechner.",
+  fromNote: "Im Preisrechner war das ein „ab“-Preis ohne vollständige Sendungsangaben.",
+});
+
+/**
+ * @returns {{publicNet: string, publicGross: string|null, customerNet: string, customerGross: string|null,
+ *            changed: boolean, note: string, fromNote: string|null}|null}
+ */
+export function publicPriceComparison({ resolution = null, selected = null } = {}) {
+  const r = resolution && typeof resolution === "object" ? resolution : null;
+  if (!r || r.source !== PUBLIC_CALCULATOR_INTENT_SOURCE || r.outcome !== "matched" || !r.offer) return null;
+  if (!sameOffer(r.offer, selected)) return null;
+  const oeffentlich = r.publicPrice;
+  const kunde = selected;
+  const kundeNetto = euro(kunde.netPrice);
+  if (!oeffentlich || kundeNetto === null) return null;
+  const vorsatz = oeffentlich.priceStatus === "from" ? "ab " : "";
+  const geaendert = Math.round(oeffentlich.netPrice * 100) !== Math.round(kunde.netPrice * 100);
+  return {
+    publicNet: `${vorsatz}${euro(oeffentlich.netPrice)}`,
+    publicGross: oeffentlich.finalPrice === null ? null : `${vorsatz}${euro(oeffentlich.finalPrice)}`,
+    customerNet: kundeNetto,
+    customerGross: euro(kunde.finalPrice),
+    changed: geaendert,
+    note: geaendert ? PUBLIC_PRICE_COMPARISON_TEXT.changed : PUBLIC_PRICE_COMPARISON_TEXT.same,
+    fromNote: oeffentlich.priceStatus === "from" ? PUBLIC_PRICE_COMPARISON_TEXT.fromNote : null,
+  };
 }

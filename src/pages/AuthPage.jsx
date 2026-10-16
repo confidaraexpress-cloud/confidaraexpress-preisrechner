@@ -15,6 +15,8 @@ import { partnerReturnTarget, safeReturnTarget } from "../utils/loginReturnTarge
 // Kundenlinks wird bei der Kundenregistrierung mitgesendet (nur Art „customer").
 import { isSalesPartner, landingPathFor } from "../utils/roleLanding.mjs";
 import { clearReferral, referralCodeFor } from "../utils/referralCapture.mjs";
+import { HANDOFF_PATH, clearPendingHandoff, hasPendingHandoff } from "../utils/publicQuoteHandoffStore.mjs";
+import { HANDOFF_AUTH_TEXT } from "../utils/publicQuoteHandoffView.mjs";
 
 // Validierung, B2B-Wording und Feldfehler-Mapping liegen in einem reinen Modul,
 // damit sie ohne React-Render-Infrastruktur mit `node --test` prüfbar sind.
@@ -64,6 +66,10 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  // Öffentlicher Preisrechner: wartet eine Tarifwahl (Modulspeicher), sagt die Anmeldeseite es; nach einer
+  // Registrierung bleibt sie bis zur Freischaltung nicht erhalten — und auch das steht da.
+  const [uebernahmeWartet, setUebernahmeWartet] = useState(() => hasPendingHandoff());
+  const [uebernahmeVerworfen, setUebernahmeVerworfen] = useState(false);
   // Neutrale Erfolgsmeldung nach bestätigter E-Mail-Änderung (kommt über den
   // Navigations-State der öffentlichen Confirm-Seite; keine neue/alte E-Mail
   // wird vorausgefüllt).
@@ -170,6 +176,9 @@ export default function AuthPage() {
       // Navigation endete kommentarlos wieder auf /login.
       const ok = await login(d.token);
       if (!ok) { setError(KUNDENBEREICH_NACH_LOGIN_FEHLER); setLoading(false); return; }
+      // Öffentlicher Preisrechner: eine wartende Tarifwahl entscheidet die Übernahmeseite für JEDE Rolle
+      // (Kundenkonto: Übernahme; Admin und Vertriebspartner: Hinweis und die eigene Startseite).
+      if (returnTarget === HANDOFF_PATH && hasPendingHandoff()) { navigate(HANDOFF_PATH); setLoading(false); return; }
       // Ein Vertriebspartner hat keinen Kundenbereich: sein Ziel ist immer das
       // Partnerportal — auf Wunsch der zuletzt geöffnete Bereich (UX-Paket 6),
       // nie ein (für ihn gesperrtes) Kunden-Rücksprungziel.
@@ -222,6 +231,12 @@ export default function AuthPage() {
       clearReferral("customer");
       setSuccess("Firmenkonto beantragt! Wir prüfen Ihre Angaben und melden uns nach der Freischaltung per E-Mail.");
       setTab("login");
+      // Bis zur Freischaltung kann sich niemand anmelden — eine wartende Tarifwahl bliebe nicht erhalten.
+      if (hasPendingHandoff()) {
+        clearPendingHandoff();
+        setUebernahmeWartet(false);
+        setUebernahmeVerworfen(true);
+      }
     } catch (e) { setError(mapAuthThrownError(e)); }
     setLoading(false);
   };
@@ -401,6 +416,12 @@ export default function AuthPage() {
               )}
               {error   && <div className="auth-alert auth-alert-error" role="alert">{error}</div>}
               {success && <div className="auth-alert auth-alert-success" role="status">{success}</div>}
+              {uebernahmeWartet && (
+                <div className="auth-alert auth-alert-info" role="status" id="auth-handoff-pending">{HANDOFF_AUTH_TEXT.pending}</div>
+              )}
+              {uebernahmeVerworfen && (
+                <div className="auth-alert auth-alert-info" role="status" id="auth-handoff-dropped">{HANDOFF_AUTH_TEXT.droppedAfterRegistration}</div>
+              )}
 
               {tab === "login" ? (
                 <LoginForm

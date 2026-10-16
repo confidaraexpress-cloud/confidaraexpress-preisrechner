@@ -327,6 +327,11 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
                   // +1): öffentlicher Rahmen wie /agb, aber hinter AdminRoute; die
                   // Daten liefert ausschließlich /admin/legal-publications.
                   "/vorschau/rechtstexte/:seite",
+                  // Öffentlicher Preisrechner (bewusste Ankeränderung, +2): die öffentlich
+                  // erreichbare Übernahmeseite der Tarifwahl (Token nur im Fragment und im
+                  // Modulspeicher) und die Adminseite für Aufschlag und Schalter — nur über
+                  // die Karte der Adminübersicht erreichbar, kein Sidebar-Eintrag.
+                  "/preisrechner-uebernahme", "/admin/public-calculator",
                   "*"];
   const gefunden = [...app.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(gefunden.sort(), [...ROUTEN].sort(), "der Routenbestand hat sich verändert");

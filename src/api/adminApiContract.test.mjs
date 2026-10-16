@@ -65,3 +65,17 @@ test("B1 — Auftragsbestätigung: send/resend über die Sendung, POST ohne Body
   assert.equal(letzter().pfad, "/admin/shipments/77/order-confirmation-email/resend");
   assert.deepEqual(letzter().opts, { method: "POST", auth: true });
 });
+
+test("P1 — öffentlicher Preisrechner: Einstellungen lesen, Aufschlag und Schalter mit Revision ändern", async () => {
+  await api.getAdminPublicCalculatorSettings();
+  assert.deepEqual(letzter(), { pfad: "/admin/public-calculator/settings", opts: { auth: true } });
+  await api.updateAdminPublicCalculatorMarkup({ markupPercent: 22.5, expectedRevision: 3 });
+  assert.deepEqual(letzter(), { pfad: "/admin/public-calculator/markup",
+    opts: { method: "PUT", auth: true, body: JSON.stringify({ markupPercent: 22.5, expectedRevision: 3 }) } });
+  await api.updateAdminPublicCalculatorAvailability({ enabled: true, expectedRevision: 4 });
+  assert.deepEqual(letzter(), { pfad: "/admin/public-calculator/availability",
+    opts: { method: "PUT", auth: true, body: JSON.stringify({ enabled: true, expectedRevision: 4 }) } });
+  const vorher = aufrufe.length;
+  await assert.rejects(api.updateAdminPublicCalculatorAvailability({ enabled: "true", expectedRevision: 4 }), /invalid_enabled/);
+  assert.equal(aufrufe.length, vorher, "ein nicht strikt boolescher Schalter erreicht den Server nie");
+});

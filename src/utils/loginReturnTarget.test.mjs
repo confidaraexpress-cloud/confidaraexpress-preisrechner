@@ -200,3 +200,14 @@ test("12 — Partnerportal (UX-Paket 6): Bereich aus der Allowlist, Rücksprung 
   assert.match(page, /navigate\(partnerReturnTarget\(returnTarget\) \|\| landingPathFor\(ok\)\)/);
   assert.equal((page.match(/partnerReturnTarget\(/g) || []).length, 1, "genau ein Aufruf");
 });
+
+test("13 — öffentlicher Preisrechner: genau die Übernahmeseite, ohne Query und ohne Fragment", () => {
+  assert.equal(safeReturnTarget("/preisrechner-uebernahme"), "/preisrechner-uebernahme");
+  assert.equal(safeReturnTarget("/preisrechner-uebernahme?t=h1.abc&next=//evil.example"), "/preisrechner-uebernahme",
+    "die Query wird nie durchgereicht");
+  assert.equal(safeReturnTarget("/preisrechner-uebernahme#t=h1.abc"), "/preisrechner-uebernahme",
+    "das Fragment (Token) gehört nie in den Rücksprung");
+  assert.equal(safeReturnTarget("/preisrechner-uebernahme/x"), null);
+  assert.equal(safeReturnTarget("//preisrechner-uebernahme"), null);
+  assert.equal(partnerReturnTarget("/preisrechner-uebernahme"), null, "Partner springen nie dorthin");
+});

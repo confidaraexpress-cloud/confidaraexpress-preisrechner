@@ -58,6 +58,9 @@ const BEREICHE = [
     desc: "Ungeklärte Buchungsvorgänge prüfen und entscheiden." },
   { to: "/admin/invoices/backfill", title: "Interne Vorschau-PDFs",
     desc: "Produktionsbereitschaft prüfen und fehlende Rechnungs-PDFs als Vorschau erzeugen." },
+  // Öffentlicher Preisrechner (2026-10-16): nur über diese Karte erreichbar — kein Sidebar-Eintrag (Höhenbudget).
+  { to: "/admin/public-calculator", title: "Öffentlicher Preisrechner",
+    desc: "Aufschlag und Verfügbarkeit der Preise ohne Anmeldung pflegen." },
   { to: "/admin/audit-logs", title: "Protokoll",
     desc: "Protokollierte Adminvorgänge einsehen und filtern." },
 ];

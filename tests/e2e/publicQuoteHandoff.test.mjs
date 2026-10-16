@@ -134,10 +134,16 @@ for (const [breite, hoehe] of [[1440, 1000], [390, 844]]) {
     const { page, fehler } = await neueSeite({ width: breite, height: hoehe });
     const p = await setup(page);
     await page.goto(`${BASE}/preisrechner-uebernahme#t=${TOKEN}`, { waitUntil: "domcontentloaded" });
-    await page.waitForURL(/\/login$/, { timeout: 30000 });
+    // Ohne Anmeldung direkt in die Registrierung (Betreiberentscheidung 2026-10-16).
+    await page.waitForURL(/\/register$/, { timeout: 30000 });
     assert.ok(!page.url().includes("#"), "das Token steht noch in der Adresse");
     await page.waitForSelector("#auth-handoff-pending", { timeout: 10000 });
-    assert.match(norm(await page.locator("#auth-handoff-pending").innerText()), /Tarifauswahl aus dem Preisrechner wartet/);
+    assert.match(norm(await page.locator(".auth-tab.active").innerText()), /Registrieren/);
+    assert.match(norm(await page.locator("#auth-handoff-pending").innerText()),
+      /Tarifauswahl aus dem Preisrechner wartet\. Registrieren Sie hier Ihr Geschäftskonto/);
+    // Ein bestehendes Konto wechselt zur Anmeldung — die Übernahme wartet weiter.
+    await page.locator(".auth-tab", { hasText: "Anmelden" }).click();
+    assert.match(norm(await page.locator("#auth-handoff-pending").innerText()), /Nach der Anmeldung übernehmen wir sie/);
     assert.equal(p.pruefungen.length, 0, "vor der Anmeldung wird nichts geprüft");
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "Querscrollen auf der Anmeldung");
 
@@ -186,12 +192,13 @@ test("P — ausstehende Freischaltung: Meldung unverändert, die Übernahme wart
   const { page, fehler } = await neueSeite();
   const p = await setup(page, { login: (json) => json({ error: "Konto noch nicht freigeschaltet", code: "ACCOUNT_PENDING_APPROVAL" }, 403) });
   await page.goto(`${BASE}/preisrechner-uebernahme#t=${TOKEN}`, { waitUntil: "domcontentloaded" });
-  await page.waitForURL(/\/login$/, { timeout: 30000 });
+  await page.waitForURL(/\/register$/, { timeout: 30000 });
+  await page.locator(".auth-tab", { hasText: "Anmelden" }).click();
   await anmelden(page);
   await page.waitForSelector(".auth-alert-error", { timeout: 10000 });
   assert.match(norm(await page.locator(".auth-alert-error").innerText()), /noch nicht freigeschaltet/);
   assert.equal(await page.locator("#auth-handoff-pending").count(), 1);
-  assert.match(page.url(), /\/login$/);
+  assert.match(page.url(), /\/register$/);
   assert.equal(p.pruefungen.length, 0);
   assert.deepEqual(await page.evaluate(() => Object.keys(localStorage)), []);
   assert.deepEqual(fehler, []);

@@ -3,39 +3,43 @@ import { Field } from "../components/ui/Field";
 import { countries } from "../utils/countries.js";
 import { scopedCountries, scopedOriginCountries } from "../utils/launchScopeView.mjs";
 import { postalCodeExample, postalCodeMaxLength } from "../utils/postalCode.mjs";
+import { businessTodayISO } from "../utils/businessDate.mjs";
 import { requestPublicPriceQuote } from "../api/publicCalculatorApi.js";
 import {
-  LOGIN_URL, OUTCOME, SERVICE_FILTER_OPTIONS, SHIPPING_MODE_OPTIONS, SLOW_HINT_AFTER_MS,
-  buildPublicQuoteRequest, emptyPublicForm, localIsoDate, publicFormErrors, quoteOutcomeFromError,
-  quoteOutcomeFromResponse, requestKey, shippingDateAllowed,
+  LOGIN_URL, OUTCOME, SLOW_HINT_AFTER_MS, buildPublicQuoteRequest, emptyPublicForm, localIsoDate, publicFormErrors,
+  quoteOutcomeFromError, quoteOutcomeFromResponse, requestKey,
 } from "../utils/publicCalculatorView.mjs";
 import { PublicResults } from "./PublicResults.jsx";
 
 // ── Öffentlicher Preisrechner: Formular und Ablauf ───────────────────────────
-// Felder, Prüfungen und Datumsvorgabe wie im Versandkostenrechner der Kunden;
-// Abholung/Abgabe und Versandart sind Teil der Anfrage. Ein Request je Absenden:
-// der Knopf ist gesperrt, solange gerechnet wird, und eine unveränderte Eingabe
-// löst keinen neuen Request aus. Die Ergebnisse stehen im eigenen Abschnitt
-// direkt unter dem Rechner (Portal in #pc-results) und erscheinen erst mit der
-// ersten Berechnung.
+// Bewusst schmal (Betreiberentscheidung 2026-10-16): Absender und Empfänger mit Land, PLZ und
+// Stadt, das Paket mit Anzahl (vorbelegt 1), Gewicht und Maßen — sonst nichts. Versanddatum,
+// Abholung/Abgabe und Versandart fragt die Seite nicht ab: gerechnet wird ab dem heutigen
+// Geschäftstag (Europe/Berlin, utils/businessDate.mjs), den der Server wie im Kundenrechner auf
+// den nächstmöglichen Abholtag schiebt, mit allen Dienstleistungen und Versandarten.
+// Prüfungen wie im Versandkostenrechner der Kunden. Ein Request je Absenden: der Knopf ist
+// gesperrt, solange gerechnet wird, und eine unveränderte Eingabe löst keinen neuen Request aus.
+// Die Ergebnisse stehen im eigenen Abschnitt direkt unter dem Hero (Portal in #pc-results) und
+// erscheinen erst mit der ersten Berechnung.
 //
-// Das Seitengerüst (preisrechner/index.html) trägt dieselbe Formularstruktur als
-// statisches Skelett: beim ersten Rendern ersetzt React es Element für Element,
-// ohne dass die Seite springt. Wer hier eine Zeile oder ein Feld ändert, ändert
-// das Skelett mit (publicCalculatorIsland.test.mjs vergleicht die Struktur,
-// tests/e2e/publicCalculatorBuild.test.mjs die Höhen in sechs Breiten).
+// Das Seitengerüst (preisrechner/index.html) trägt dieselbe Formularstruktur als statisches
+// Skelett: beim ersten Rendern ersetzt React es, ohne dass die Seite springt. Wer hier eine Zeile
+// oder ein Feld ändert, ändert das Skelett mit (publicCalculatorIsland.test.mjs vergleicht die
+// Struktur, tests/e2e/publicCalculatorBuild.test.mjs die Höhen in sechs Breiten).
 
 const FELD_ID = Object.freeze({
   from_country: "pc-from-country", from_zip: "pc-from-zip", from_city: "pc-from-city",
   to_country: "pc-to-country", to_zip: "pc-to-zip", to_city: "pc-to-city",
   packageCount: "pc-package-count", weight: "pc-weight", length: "pc-length", width: "pc-width", height: "pc-height",
-  shippingDate: "pc-shipping-date",
 });
 
 const ERGEBNISZUSTAENDE = new Set([OUTCOME.OK, OUTCOME.PARTIAL, OUTCOME.NO_OFFERS]);
 
 // Ein Platzhalter ist Beschriftung, kein Wert: „z. B." macht das sichtbar.
 const beispiel = (wert) => (wert ? `z. B. ${wert}` : undefined);
+
+// Der Geschäftstag des Servers; ohne Zeitzonendaten im Browser der lokale Kalendertag.
+const heutigerVersandtag = () => businessTodayISO(new Date()) || localIsoDate(new Date());
 
 // Sanftes Scrollen nur ohne den Wunsch nach reduzierter Bewegung.
 function scrollVerhalten() {
@@ -61,10 +65,6 @@ export function zeigeFormular() {
 
 export function PublicCalculatorApp({ availability, launchScope, resultsHost }) {
   const [form, setForm] = useState(emptyPublicForm);
-  const [serviceFilter, setServiceFilter] = useState("all");
-  const [shippingModeFilter, setShippingModeFilter] = useState("all");
-  const heute = useMemo(() => localIsoDate(new Date()), []);
-  const [shippingDate, setShippingDate] = useState(heute);
   const [scope, setScope] = useState(null);
   const [verfuegbar, setVerfuegbar] = useState(availability ? availability.wert : null);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -159,7 +159,7 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
     if (abbruch.current !== ac) return;
     abbruch.current = null;
     if (!ausgang) { setPhase("idle"); return; }
-    if (ausgang.outcome === OUTCOME.INVALID && ausgang.field && ausgang.fieldMessage) {
+    if (ausgang.outcome === OUTCOME.INVALID && ausgang.field && ausgang.fieldMessage && FELD_ID[ausgang.field]) {
       setFieldErrors({ [ausgang.field]: ausgang.fieldMessage });
     }
     letzterSchluessel.current = ERGEBNISZUSTAENDE.has(ausgang.outcome) ? schluessel : null;
@@ -171,20 +171,16 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
     event.preventDefault();
     if (phase === "loading") return;
     const pruefung = publicFormErrors(form);
-    const fehler = { ...pruefung.fieldErrors };
-    if (!shippingDateAllowed(shippingDate, new Date())) {
-      fehler.shippingDate = "Bitte wählen Sie heute oder einen späteren Tag.";
-    }
-    if (Object.keys(fehler).length > 0) {
-      setFieldErrors(fehler);
+    if (Object.keys(pruefung.fieldErrors).length > 0) {
+      setFieldErrors(pruefung.fieldErrors);
       setBanner(pruefung.banner || { title: "Angaben prüfen", message: "Bitte prüfen Sie die markierten Angaben." });
-      fokussiere(pruefung.firstField || "shippingDate");
+      fokussiere(pruefung.firstField || "from_zip");
       return;
     }
     setFieldErrors({});
     setBanner(null);
 
-    const body = buildPublicQuoteRequest(form, { serviceFilter, shippingModeFilter, shippingDate });
+    const body = buildPublicQuoteRequest(form, { shippingDate: heutigerVersandtag() });
     const schluessel = requestKey(body);
     if (schluessel === letzterSchluessel.current && ergebnis && ERGEBNISZUSTAENDE.has(ergebnis.outcome)) {
       // Unveränderte Eingabe: kein neuer Request — die bestehenden Angebote bleiben.
@@ -196,11 +192,32 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
 
   const wiederholen = () => {
     if (phase === "loading" || !ergebnis || !ergebnis.request) return;
-    berechne(ergebnis.request, requestKey(ergebnis.request));
+    // Eine Wiederholung rechnet ab dem dann heutigen Geschäftstag.
+    const body = { ...ergebnis.request, shippingDate: heutigerVersandtag() };
+    berechne(body, requestKey(body));
   };
 
   const ausgeschaltet = verfuegbar === false;
   const laedt = phase === "loading";
+
+  const ortFelder = (seite) => {
+    const land = `${seite}_country`, plz = `${seite}_zip`, stadt = `${seite}_city`;
+    const liste = seite === "from" ? herkunftsliste : zielliste;
+    return (
+      <div className="pc-row-fields pc-row-fields--place">
+        <Field as="select" id={FELD_ID[land]} fieldKey={land} label="Land" value={form[land]} className="pc-field-country"
+          error={fieldErrors[land]} onChange={(v) => setze(land, v)}>
+          {liste.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+        </Field>
+        <Field id={FELD_ID[plz]} fieldKey={plz} label="PLZ" required value={form[plz]} error={fieldErrors[plz]}
+          onChange={(v) => setze(plz, v)} autoComplete={seite === "from" ? "postal-code" : "off"}
+          maxLength={postalCodeMaxLength()} placeholder={beispiel(postalCodeExample(form[land]))} />
+        <Field id={FELD_ID[stadt]} fieldKey={stadt} label="Stadt" required value={form[stadt]} error={fieldErrors[stadt]}
+          onChange={(v) => setze(stadt, v)} autoComplete={seite === "from" ? "address-level2" : "off"} maxLength={100}
+          placeholder={seite === "from" ? "z. B. Stuttgart" : "z. B. Berlin"} />
+      </div>
+    );
+  };
 
   return (
     <>
@@ -212,35 +229,15 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
           </div>
         )}
 
-        <div className="pc-row" role="group" aria-labelledby="pc-row-from">
-          <span className="pc-row-label" id="pc-row-from">Von</span>
-          <div className="pc-row-fields pc-row-fields--route">
-            <Field as="select" id={FELD_ID.from_country} fieldKey="from_country" label="Land" value={form.from_country}
-              error={fieldErrors.from_country} onChange={(v) => setze("from_country", v)}>
-              {herkunftsliste.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-            </Field>
-            <Field id={FELD_ID.from_zip} fieldKey="from_zip" label="PLZ" required value={form.from_zip}
-              error={fieldErrors.from_zip} onChange={(v) => setze("from_zip", v)} autoComplete="postal-code"
-              maxLength={postalCodeMaxLength()} placeholder={beispiel(postalCodeExample(form.from_country))} />
-            <Field id={FELD_ID.from_city} fieldKey="from_city" label="Ort" required value={form.from_city}
-              error={fieldErrors.from_city} onChange={(v) => setze("from_city", v)} autoComplete="address-level2"
-              maxLength={100} placeholder="z. B. Stuttgart" />
+        <div className="pc-route">
+          <div className="pc-row" role="group" aria-labelledby="pc-row-from">
+            <span className="pc-row-label" id="pc-row-from">Absender</span>
+            {ortFelder("from")}
           </div>
-        </div>
-
-        <div className="pc-row" role="group" aria-labelledby="pc-row-to">
-          <span className="pc-row-label" id="pc-row-to">Nach</span>
-          <div className="pc-row-fields pc-row-fields--route">
-            <Field as="select" id={FELD_ID.to_country} fieldKey="to_country" label="Land" value={form.to_country}
-              error={fieldErrors.to_country} onChange={(v) => setze("to_country", v)}>
-              {zielliste.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-            </Field>
-            <Field id={FELD_ID.to_zip} fieldKey="to_zip" label="PLZ" required value={form.to_zip}
-              error={fieldErrors.to_zip} onChange={(v) => setze("to_zip", v)} autoComplete="off"
-              maxLength={postalCodeMaxLength()} placeholder={beispiel(postalCodeExample(form.to_country))} />
-            <Field id={FELD_ID.to_city} fieldKey="to_city" label="Ort" required value={form.to_city}
-              error={fieldErrors.to_city} onChange={(v) => setze("to_city", v)} autoComplete="off" maxLength={100}
-              placeholder="z. B. Berlin" />
+          <span className="pc-route-arrow" aria-hidden="true" />
+          <div className="pc-row" role="group" aria-labelledby="pc-row-to">
+            <span className="pc-row-label" id="pc-row-to">Empfänger</span>
+            {ortFelder("to")}
           </div>
         </div>
 
@@ -263,24 +260,7 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
               value={form.height} error={fieldErrors.height} onChange={(v) => setze("height", v)}
               inputMode="decimal" autoComplete="off" maxLength={6} />
           </div>
-          <p className="pc-row-hint" id="pc-package-hint">Gewicht und Maße je Paket — mehrere Pakete sind identisch.</p>
-        </div>
-
-        <div className="pc-row" role="group" aria-labelledby="pc-row-shipping">
-          <span className="pc-row-label" id="pc-row-shipping">Versand</span>
-          <div className="pc-row-fields pc-row-fields--options">
-            <Field id={FELD_ID.shippingDate} fieldKey="shippingDate" label="Versanddatum" type="date" min={heute}
-              value={shippingDate} error={fieldErrors.shippingDate}
-              onChange={(v) => { setShippingDate(v); loescheFehler("shippingDate"); }} />
-            <Field as="select" id="pc-service-filter" label="Abholung / Abgabe" value={serviceFilter}
-              onChange={(v) => setServiceFilter(v)}>
-              {SERVICE_FILTER_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-            </Field>
-            <Field as="select" id="pc-shipping-mode" label="Versandart" value={shippingModeFilter}
-              onChange={(v) => setShippingModeFilter(v)}>
-              {SHIPPING_MODE_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-            </Field>
-          </div>
+          <p className="pc-row-hint" id="pc-package-hint">Gewicht und Maße je Paket — bei mehreren Paketen gleich.</p>
         </div>
 
         <div className="pc-submit-row">
@@ -301,8 +281,8 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
           <p className="pc-sr-only" id="pc-submit-status" aria-live="polite">{laedt ? "Preise werden berechnet." : ""}</p>
         </div>
         <p className="pc-form-note" id="pc-form-note">
-          Für die Berechnung verwenden wir nur Länder, Postleitzahlen, Orte und Paketdaten. Angebote ausschließlich für
-          Unternehmen. Hinweise zum <a href="https://confidaraexpress.de/datenschutz">Datenschutz</a>.
+          Unverbindlich und ohne Anmeldung. Wir verwenden nur Länder, Postleitzahlen, Städte und Paketdaten —{" "}
+          <a href="https://confidaraexpress.de/datenschutz">Datenschutz</a>.
         </p>
       </form>
 

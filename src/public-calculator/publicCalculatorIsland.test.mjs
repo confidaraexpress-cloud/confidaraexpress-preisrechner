@@ -130,10 +130,10 @@ test("3 — Anfragevertrag: prepare als Simple-Request, Preisabfrage 75 s, Scope
   assert.equal(client.abmeldungen, 1, "401 meldet über den zentralen Handler ab");
 });
 
-test("4 — Seitengerüst: Kopf, Hero, Ergebnisse, Ablauf, Plattform, Service, FAQ, Fuß in dieser Reihenfolge", () => {
+test("4 — Seitengerüst: Kopf, Hero, Ergebnisse, Ablauf, Plattform, FAQ mit Service, Fuß in dieser Reihenfolge", () => {
   const marken = [
     'class="pc-skip"', 'class="pc-header"', 'id="pc-hero-title"', 'id="pc-calculator-card"', 'id="pc-calculator"',
-    'id="pc-results"', 'id="pc-steps-title"', 'id="pc-platform-title"', 'id="pc-service-title"', 'id="pc-faq-title"',
+    'id="pc-results"', 'id="pc-steps-title"', 'id="pc-platform-title"', 'id="pc-faq-title"', 'id="pc-service-title"',
     'class="pc-footer"',
   ];
   let letzte = -1;
@@ -142,8 +142,9 @@ test("4 — Seitengerüst: Kopf, Hero, Ergebnisse, Ablauf, Plattform, Service, F
     assert.ok(i > letzte, `${m} fehlt oder steht an falscher Stelle`);
     letzte = i;
   }
-  assert.match(HTML_OHNE, /<h1 class="pc-display" id="pc-hero-title"><span class="pc-display-line">Versand für Unternehmen\.<\/span> <span class="pc-display-line">Einfach vergleichen\.<\/span><\/h1>/);
-  assert.match(HTML_OHNE, /<p class="pc-lead">Ihre digitale Versand- und Logistikplattform – transparente Versandoptionen verschiedener Dienstleister und persönliche Ansprechpartner\.<\/p>/);
+  assert.match(HTML_OHNE, /<h1 class="pc-display" id="pc-hero-title"><span class="pc-display-line">Versand für Unternehmen\.<\/span> <span class="pc-display-line pc-display-line--soft">Einfach vergleichen\.<\/span><\/h1>/);
+  assert.match(HTML_OHNE, /<p class="pc-eyebrow">Digitale Versand- und Logistikplattform<\/p>/);
+  assert.match(HTML_OHNE, /<p class="pc-lead">Mehrere Versanddienstleister auf einer Plattform: transparente Nettopreise für Ihre Sendung, effizient gebucht im Kundenbereich — mit persönlichem Ansprechpartner\.<\/p>/);
   // Bereich 2 gibt es erst nach der ersten Berechnung: vorher steht dort nichts, auch keine Überschrift.
   assert.match(HTML_OHNE, /<div id="pc-results"><\/div>/);
   assert.doesNotMatch(HTML_OHNE, /id="pc-results-title"|id="pc-results-section"/);
@@ -185,6 +186,11 @@ test("6 — keine Versprechen ohne Beleg und keine Einkaufsquelle", () => {
   assert.ok(impressum.includes("015118003775") && HTML_OHNE.includes(">015118003775<"));
 });
 
+function skelettVorab() {
+  const start = HTML_OHNE.indexOf('<div class="pc-form pc-form--skeleton" aria-hidden="true" inert>');
+  return HTML_OHNE.slice(start, HTML_OHNE.indexOf('<div class="pc-hero-body">'));
+}
+
 test("7 — Formularskelett: dieselben Zeilen und Felder wie die Insel, nicht bedienbar, ohne reservierte Höhe", () => {
   const app = lies(path.join(HIER, "PublicCalculatorApp.jsx"));
   const start = HTML_OHNE.indexOf('<div class="pc-form pc-form--skeleton" aria-hidden="true" inert>');
@@ -193,13 +199,23 @@ test("7 — Formularskelett: dieselben Zeilen und Felder wie die Insel, nicht be
   // Zeilen und Feldbeschriftungen in derselben Reihenfolge.
   const zeilen = (src, re) => [...src.matchAll(re)].map((m) => m[1]);
   const appZeilen = zeilen(app, /<span className="pc-row-label" id="[^"]+">([^<]+)<\/span>/g);
-  const appFelder = zeilen(app, /<Field [^>]*?label="([^"]+)"/g);
-  assert.deepEqual(appZeilen, ["Von", "Nach", "Paket", "Versand"], "Anker in PublicCalculatorApp.jsx nicht gefunden");
-  assert.equal(appFelder.length, 14, "Anker der Felder in PublicCalculatorApp.jsx nicht gefunden");
+  // Die Ortsfelder baut `ortFelder` — einmal für den Absender, einmal für den Empfänger.
+  const hilfe = app.slice(app.indexOf("const ortFelder = "), app.indexOf("return (", app.indexOf("const ortFelder = ") + 40) + 2000);
+  const ort = zeilen(hilfe.slice(0, hilfe.indexOf("</div>")), /<Field [^>]*?label="([^"]+)"/g);
+  const paket = zeilen(app.slice(app.indexOf('pc-row-fields pc-row-fields--package')), /<Field [^>]*?label="([^"]+)"/g);
+  assert.deepEqual(app.match(/\{ortFelder\("(from|to)"\)\}/g), ['{ortFelder("from")}', '{ortFelder("to")}']);
+  const appFelder = [...ort, ...ort, ...paket];
+  assert.deepEqual(appZeilen, ["Absender", "Empfänger", "Paket"], "Anker in PublicCalculatorApp.jsx nicht gefunden");
+  assert.deepEqual(ort, ["Land", "PLZ", "Stadt"], "Ortsfelder: nur Land, PLZ und Stadt");
+  assert.deepEqual(paket, ["Anzahl", "Gewicht", "Länge", "Breite", "Höhe"], "Paket: Anzahl, Gewicht und Maße");
+  // Kein Versanddatum, keine Abholung/Abgabe, keine Versandart (Betreiberentscheidung 2026-10-16).
+  assert.doesNotMatch(app, /pc-shipping-date|pc-service-filter|pc-shipping-mode|type="date"/);
+  assert.doesNotMatch(skelettVorab(), /Versanddatum|Abholung \/ Abgabe|Versandart|type="date"/);
   assert.deepEqual(zeilen(skelett, /<span class="pc-row-label">([^<]+)<\/span>/g), appZeilen);
   assert.deepEqual(zeilen(skelett, /<label class="field-label">([^<]+?)(?:<span> \*<\/span>)?<\/label>/g), appFelder);
   assert.deepEqual(zeilen(skelett, /class="pc-row-fields (pc-row-fields--\w+)"/g),
-    zeilen(app, /className="pc-row-fields (pc-row-fields--\w+)"/g));
+    ["pc-row-fields--place", "pc-row-fields--place", "pc-row-fields--package"]);
+  assert.deepEqual(zeilen(app, /className="pc-row-fields (pc-row-fields--\w+)"/g), ["pc-row-fields--place", "pc-row-fields--package"]);
   // Einheiten an denselben Feldern.
   assert.deepEqual(zeilen(skelett, /<span class="ce-field-unit">(\w+)<\/span>/g), zeilen(app, /unit="(\w+)"/g));
   // Nicht bedienbar: keine ids (keine Doppelungen mit der Insel), keine Namen, nichts im Tabulatorweg.

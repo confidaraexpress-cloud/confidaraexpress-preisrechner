@@ -3,8 +3,8 @@
   "assets": {
     "404.html": {
       "raw": 2315,
-      "gzip": 935,
-      "brotli": 782
+      "gzip": 933,
+      "brotli": 783
     },
     "assets/cormorantgaramond-400.woff2": {
       "raw": 37640,
@@ -52,9 +52,9 @@
       "brotli": 2653
     },
     "assets/index.js": {
-      "raw": 261113,
-      "gzip": 82048,
-      "brotli": 70958
+      "raw": 259835,
+      "gzip": 81979,
+      "brotli": 70828
     },
     "assets/lockup-reverse.svg": {
       "raw": 11224,
@@ -62,9 +62,9 @@
       "brotli": 2531
     },
     "assets/public-calculator.css": {
-      "raw": 38458,
-      "gzip": 7740,
-      "brotli": 6918
+      "raw": 39868,
+      "gzip": 7907,
+      "brotli": 7060
     },
     "assets/tnt.svg": {
       "raw": 13707,
@@ -82,9 +82,9 @@
       "brotli": 1282
     },
     "index.html": {
-      "raw": 15745,
-      "gzip": 3792,
-      "brotli": 3315
+      "raw": 14849,
+      "gzip": 3667,
+      "brotli": 3199
     },
     "robots.txt": {
       "raw": 23,

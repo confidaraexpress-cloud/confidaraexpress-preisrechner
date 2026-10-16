@@ -8,11 +8,13 @@ import {
 // ── Tarifkarte des öffentlichen Preisrechners ────────────────────────────────
 // Kopf: Carrier, Service und die Übergabeart als Kennzeichnung. Darunter in zwei
 // Spalten Abholtag bzw. Abgabe und Laufzeit „laut Versanddienstleister", dann der
-// Preis — netto groß, brutto daneben, bei nicht exaktem Preis mit „ab" und
-// Erklärung —, die Hinweise und die Aktion. „Mit diesem Tarif fortfahren" nur,
-// wenn der Server das Angebot mit vollständigen Sendungsangaben als buchbar
-// kennzeichnet; sonst bleibt die Karte sichtbar wie im Portal — mit dem
-// Grundtext und ohne Aktion. Keine Auszeichnung, kein Rang.
+// Preis — netto groß, darunter klein „zzgl. MwSt." (Betreiberentscheidung
+// 2026-10-16: öffentlich nur der Nettopreis), bei nicht exaktem Preis mit „ab" und
+// Erklärung —, die Hinweise und die Aktion. „Angebot auswählen" nur, wenn der Server
+// das Angebot mit vollständigen Sendungsangaben als buchbar kennzeichnet; sie führt
+// über die Übernahmeseite der Hauptdomain direkt in die Registrierung (angemeldete
+// Kundinnen und Kunden direkt in „Neue Sendung"). Sonst bleibt die Karte sichtbar wie
+// im Portal — mit dem Grundtext und ohne Aktion. Keine Auszeichnung, kein Rang.
 
 export function PublicOfferCard({ offer, index }) {
   const carrier = publicCarrierDisplay(offer);
@@ -26,7 +28,7 @@ export function PublicOfferCard({ offer, index }) {
   const titelId = `pc-offer-${index}-title`;
   const abgabe = offer.serviceType === "dropoff";
 
-  const fortfahren = () => {
+  const auswaehlen = () => {
     const ziel = handoffUrl(offer.handoffToken);
     if (ziel) window.location.assign(ziel);
   };
@@ -71,10 +73,8 @@ export function PublicOfferCard({ offer, index }) {
           <p className="pc-price-main">{PRICE_TEXT.onRequest}</p>
         ) : (
           <>
-            <p className="pc-price-main">
-              <span className="pc-price-amount">{preis.net}</span> <span className="pc-price-suffix">{PRICE_TEXT.net}</span>
-            </p>
-            {preis.gross && <p className="pc-price-gross">{preis.gross} {PRICE_TEXT.gross}</p>}
+            <p className="pc-price-main"><span className="pc-price-amount">{preis.net}</span></p>
+            <p className="pc-price-vat">{PRICE_TEXT.vatNote}</p>
             {preis.note && <p className="pc-price-note">{preis.note}</p>}
           </>
         )}
@@ -88,9 +88,9 @@ export function PublicOfferCard({ offer, index }) {
 
       <div className="pc-offer-action">
         {weiter ? (
-          <button type="button" className="pc-button pc-button--primary pc-offer-continue" onClick={fortfahren}
+          <button type="button" className="pc-button pc-button--primary pc-offer-continue" onClick={auswaehlen}
             aria-describedby={titelId}>
-            Mit diesem Tarif fortfahren
+            Angebot auswählen
           </button>
         ) : (
           <p className="pc-offer-unavailable">{gesperrt}</p>

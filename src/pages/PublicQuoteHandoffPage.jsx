@@ -17,7 +17,9 @@ import {
    Das Übergabetoken hat main.jsx schon vor dem ersten Rendern aus dem Fragment
    gelesen und aus der Adresse entfernt (utils/publicQuoteHandoffStore.mjs). Diese
    Seite entscheidet nur noch:
-     • nicht angemeldet → Anmeldung, danach zurück hierher (safeReturnTarget),
+     • nicht angemeldet → direkt die Registrierung (Betreiberentscheidung 2026-10-16); wer
+                          schon ein Konto hat, wechselt dort zur Anmeldung und kommt danach
+                          hierher zurück (safeReturnTarget),
      • Kundenkonto      → Prüfung beim Server, dann „Neue Sendung" vorbelegt; der Preis
                           wird dort mit den Konditionen des Kontos neu berechnet,
      • Admin / Partner  → Hinweis und die eigene Startseite, ohne Kundenendpunkt,
@@ -72,7 +74,7 @@ export default function PublicQuoteHandoffPage() {
       return;
     }
     if (!authed) {
-      navigate("/login", { replace: true, state: { from: HANDOFF_PATH } });
+      navigate("/register", { replace: true, state: { from: HANDOFF_PATH } });
       return;
     }
     if (!isCustomerAccount(user)) {

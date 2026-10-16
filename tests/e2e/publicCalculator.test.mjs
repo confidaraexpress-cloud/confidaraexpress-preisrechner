@@ -149,24 +149,32 @@ for (const [breite, hoehe] of [[1440, 900], [390, 844]]) {
       "packageCount", "publicCarrierIds", "serviceFilter", "shippingDate", "shippingModeFilter", "to_city", "to_country", "to_zip",
       "weight", "width"]);
     assert.equal(p.quotes[0].body.weight, 2.5, "Dezimalkomma als Zahl");
+    // Schmale Maske: kein Versanddatum, keine Abholung/Abgabe, keine Versandart. Gerechnet wird ab dem
+    // heutigen Geschäftstag (Europe/Berlin) mit allen Dienstleistungen und Versandarten.
+    assert.equal(await page.locator("#pc-shipping-date, #pc-service-filter, #pc-shipping-mode, input[type=date]").count(), 0);
+    assert.equal(await page.locator("#pc-calculator input, #pc-calculator select").count(), 11, "genau elf Felder");
+    const berlin = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    assert.equal(p.quotes[0].body.shippingDate, berlin);
+    assert.deepEqual([p.quotes[0].body.serviceFilter, p.quotes[0].body.shippingModeFilter, p.quotes[0].body.packageCount], ["all", "all", 1]);
 
     const karten = page.locator("#pc-offers .pc-offer");
     assert.equal(await karten.count(), 3);
     const ups = norm(await karten.nth(0).innerText());
     assert.match(ups, /UPS/);
-    assert.match(ups, /10,50\s*€\s*netto/);
-    assert.match(ups, /12,50\s*€\s*brutto/);
+    // Öffentlich nur der Nettopreis, darunter „zzgl. MwSt.“ — kein Bruttopreis.
+    assert.match(ups, /10,50\s*€\s*zzgl\. MwSt\./);
+    assert.doesNotMatch(ups, /brutto|12,50/);
     assert.match(ups, /laut Versanddienstleister/);
     assert.ok(!/\bab\b 10,50/.test(ups), "ein exakter Preis trägt kein „ab“");
     const dhl = norm(await karten.nth(1).innerText());
-    assert.match(dhl, /ab 8,40\s*€\s*netto/);
+    assert.match(dhl, /ab 8,40\s*€\s*zzgl\. MwSt\./);
     assert.match(dhl, /nach der Anmeldung mit vollständigen Sendungsangaben/);
     assert.match(dhl, /Bei einer privaten Lieferadresse kann ein Zuschlag anfallen\./);
     const dpd = norm(await karten.nth(2).innerText());
     assert.match(dpd, /Derzeit nicht direkt buchbar/);
     assert.match(dpd, /Nur für Geschäftsempfänger verfügbar\./);
     assert.equal(await karten.nth(2).locator("button").count(), 0, "ohne availableWithShipmentDetails keine Aktion");
-    assert.equal(await karten.nth(0).getByRole("button", { name: "Mit diesem Tarif fortfahren" }).count(), 1);
+    assert.equal(await karten.nth(0).getByRole("button", { name: "Angebot auswählen" }).count(), 1);
     assert.equal(await page.locator(".pc-badge, .offer-badge").count(), 0, "keine Bestwahl-Markierung");
 
     // Je Reihe gleich hohe Karten, und Preis wie Aktion stehen in einer Reihe auf derselben Höhe (subgrid).
@@ -308,7 +316,7 @@ test("F — Übergabe: feste Adresse der Hauptdomain, Token nur im Fragment", as
   await fuelle(page);
   await page.click("#pc-submit");
   await page.waitForSelector("#pc-offers .pc-offer", { timeout: 20000 });
-  await page.locator("#pc-offers .pc-offer").nth(0).getByRole("button", { name: "Mit diesem Tarif fortfahren" }).click();
+  await page.locator("#pc-offers .pc-offer").nth(0).getByRole("button", { name: "Angebot auswählen" }).click();
   await page.waitForURL(/^https:\/\/confidaraexpress\.de\/preisrechner-uebernahme/, { timeout: 10000 });
   assert.equal(page.url(), `https://confidaraexpress.de/preisrechner-uebernahme#t=${TOKEN_UPS}`);
   assert.deepEqual(fehler, []);
@@ -331,7 +339,7 @@ test("G — Ergebnisbereich erst nach der Berechnung, Carrierauswahl, „Angaben
   await page.click("#pc-submit");
   await page.waitForSelector("#pc-offers .pc-offer", { timeout: 20000 });
   assert.match(norm(await page.locator("#pc-results-summary").innerText()),
-    /^DE 70173 Stuttgart → DE 10115 Berlin · 1 Paket · 2,5 kg · 30 × 20 × 10 cm · Versanddatum \S+, \d{2}\.\d{2}\.$/);
+    /^DE 70173 Stuttgart → DE 10115 Berlin · 1 Paket · 2,5 kg · 30 × 20 × 10 cm$/);
   const oben = await page.locator("#pc-results-title").evaluate((el) => Math.round(el.getBoundingClientRect().top));
   assert.ok(oben >= 0 && oben < 120, `Ergebnisüberschrift nicht im Blick (${oben} px)`);
 

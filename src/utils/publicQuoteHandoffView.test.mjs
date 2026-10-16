@@ -38,12 +38,15 @@ test("(2) Rollen: nur ein Kundenkonto übernimmt; Admin und Partner kommen auf i
   assert.equal(ownHomeFor({ role: "customer" }), "/dashboard");
 });
 
-test("(3) Übernahmeseite: Rolle vor jeder Prüfung, Anmeldung mit Rücksprung, Patch über die Übergabefunktion", () => {
+test("(3) Übernahmeseite: Rolle vor jeder Prüfung, Registrierung mit Rücksprung, Patch über die Übergabefunktion", () => {
   const src = ohneKommentare(read("pages/PublicQuoteHandoffPage.jsx"));
   const rolle = src.indexOf("if (!isCustomerAccount(user))");
   const pruefung = src.indexOf("pruefe(token);");
   assert.ok(rolle > 0 && pruefung > rolle, "ein Nicht-Kundenkonto darf nie den Kundenendpunkt erreichen");
-  assert.match(src, /navigate\("\/login", \{ replace: true, state: \{ from: HANDOFF_PATH \} \}\)/);
+  // Ohne Anmeldung direkt in die Registrierung (Betreiberentscheidung 2026-10-16); der Rücksprung bleibt,
+  // damit ein bestehendes Konto nach dem Wechsel zur Anmeldung hierher zurückkommt.
+  assert.match(src, /navigate\("\/register", \{ replace: true, state: \{ from: HANDOFF_PATH \} \}\)/);
+  assert.doesNotMatch(src, /navigate\("\/login"/);
   assert.match(src, /clearScope\("shipment"\);\s*\n\s*setScope\("shipment", publicQuoteToShipmentTransfer\(/);
   assert.match(src, /navigate\("\/dashboard\?page=new", \{ replace: true \}\)/);
   assert.doesNotMatch(src, /localStorage|sessionStorage/);
@@ -52,7 +55,8 @@ test("(3) Übernahmeseite: Rolle vor jeder Prüfung, Anmeldung mit Rücksprung, 
 test("(4) Anmeldeseite: Hinweisband, Übernahmeseite für jede Rolle, nach der Registrierung verworfen und gesagt", () => {
   const src = ohneKommentare(read("pages/AuthPage.jsx"));
   assert.match(src, /useState\(\(\) => hasPendingHandoff\(\)\)/);
-  assert.match(src, /id="auth-handoff-pending">\{HANDOFF_AUTH_TEXT\.pending\}/);
+  // Aus dem Preisrechner kommt man in die Registrierung: dort der Registrierungstext, sonst der Anmeldetext.
+  assert.match(src, /id="auth-handoff-pending">\s*\{tab === "register" \? HANDOFF_AUTH_TEXT\.pendingRegister : HANDOFF_AUTH_TEXT\.pending\}/);
   assert.match(src, /id="auth-handoff-dropped">\{HANDOFF_AUTH_TEXT\.droppedAfterRegistration\}/);
   // Vor der unveränderten Rollenweiche: eine wartende Übernahme entscheidet die Übernahmeseite.
   const umleitung = src.indexOf("if (returnTarget === HANDOFF_PATH && hasPendingHandoff()) { navigate(HANDOFF_PATH);");

@@ -27,7 +27,9 @@ import { focusFirstError } from "../utils/focusField";
 import { Field } from "../components/ui/Field";
 import { useShippingFlow } from "../context/ShippingFlowContext";
 import { formHasInput, pickRestoreSource, droppedNotice } from "../utils/shippingFlowState.mjs";
-import { resolveCalculatorIntent, calculatorIntentNotice } from "../utils/calculatorShipmentHandoff.mjs";
+import {
+  resolveCalculatorIntent, calculatorIntentNotice, publicPriceComparison, PUBLIC_PRICE_COMPARISON_TEXT,
+} from "../utils/calculatorShipmentHandoff.mjs";
 import {
   createEmptyShipmentForm, senderPatchFromProfile, hasProfileSenderData,
   packageErrors, packageComplete, packageHint, packagePayload, PACKAGE_PLACEHOLDERS,
@@ -644,6 +646,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const calculatorHinweis = calculatorIntentNotice({
     intent: calculatorIntent, resolution: calculatorIntentResolution, selected,
   });
+  // Übernahme aus dem öffentlichen Preisrechner: der neu berechnete Preis NEBEN dem öffentlichen —
+  // nur bei genau einem Treffer und solange genau dieses Angebot ausgewählt ist.
+  const preisvergleich = publicPriceComparison({ resolution: calculatorIntentResolution, selected });
   // Zweite, sanftere Erklärung für den häufigsten Fall: das Paket ist noch nicht
   // vollständig. Sie erscheint als Hinweiszeile am deaktivierten Knopf, ohne
   // dass ein einziges Feld rot markiert wird — ein frisches Formular soll
@@ -1718,6 +1723,22 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
           {calculatorHinweis && (
             <div className="dft-resume-info ns-calculator-intent" role="status">
               <span>{calculatorHinweis}</span>
+            </div>
+          )}
+          {preisvergleich && (
+            <div className={`${preisvergleich.changed ? "dft-resume-conflict" : "dft-resume-info"} ns-public-price-compare`}
+              role="status" id="ns-public-price-compare" data-changed={preisvergleich.changed ? "true" : "false"}>
+              <p className="ns-public-price-compare-title">{PUBLIC_PRICE_COMPARISON_TEXT.title}</p>
+              <p>
+                {PUBLIC_PRICE_COMPARISON_TEXT.publicLabel}: {preisvergleich.publicNet} netto
+                {preisvergleich.publicGross && <> · {preisvergleich.publicGross} brutto</>}
+              </p>
+              <p>
+                {PUBLIC_PRICE_COMPARISON_TEXT.customerLabel}: {preisvergleich.customerNet} netto
+                {preisvergleich.customerGross && <> · {preisvergleich.customerGross} brutto</>}
+              </p>
+              {preisvergleich.fromNote && <p>{preisvergleich.fromNote}</p>}
+              <p className="ns-public-price-compare-note">{preisvergleich.note}</p>
             </div>
           )}
           {/* F1: Konto noch nicht buchungsbereit (z. B. Rechnungsanschrift fehlt). Bewusst der

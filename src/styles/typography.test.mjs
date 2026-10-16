@@ -479,8 +479,10 @@ test("12 — Phase 2.5 fasst nur Typografie an", () => {
   // Neue Admin-Lesevorschau der G1–G9-Dokumente: +1 ansteuerbare Route.
   // Geschützte Seitenvorschau der Rechtstexte (/vorschau/rechtstexte/:seite,
   // dokumentierte Ankeränderung): +1 im öffentlichen Rahmen hinter AdminRoute.
-  assert.equal(mitPfad + indexRt, 43,
-    "43 Routen einschliesslich der Admin-Rechtstextvorschau und der Seitenvorschau");
+  // Öffentlicher Preisrechner (dokumentierte Ankeränderung): +2 — die Übernahmeseite
+  // /preisrechner-uebernahme im öffentlichen Rahmen und /admin/public-calculator am Adminrahmen.
+  assert.equal(mitPfad + indexRt, 45,
+    "45 Routen einschliesslich der Admin-Rechtstextvorschau, der Seitenvorschau und des öffentlichen Preisrechners");
   assert.equal(pfadlos, 4,
     "die Zahl der pfadlosen Layoutrouten ist unverändert (4: Dashboard, öffentlich, Admin, Auth)");
 });

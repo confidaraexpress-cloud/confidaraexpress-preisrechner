@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Versandpreise für Unternehmen berechnen | ConfidaraExpress</title>
+    <meta name="description" content="Versandpreise für Unternehmen berechnen: Angebote verschiedener Versanddienstleister mit Netto- und Bruttopreis vergleichen. Gebucht wird nach Registrierung und Freischaltung im Kundenbereich von ConfidaraExpress." />
+    <link rel="canonical" href="https://preisrechner.confidaraexpress.de/" />
+    <meta name="theme-color" content="#111A33" />
+    <link rel="icon" type="image/svg+xml" href="/favicon-v2.svg" />
+    <!-- Die API früh verbinden: das Aufwärmen ist die erste Anfrage der Seite. -->
+    <link rel="preconnect" href="https://api.confidaraexpress.de" crossorigin />
+    <!-- Genau die zwei Schnitte oberhalb der Falz: DM Sans (Text, Formular) und Cormorant Garamond (Headline). -->
+    <link rel="preload" href="../src/assets/fonts/dmsans-300.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="../src/assets/fonts/cormorantgaramond-400.woff2" as="font" type="font/woff2" crossorigin />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ConfidaraExpress" />
+    <meta property="og:locale" content="de_DE" />
+    <meta property="og:url" content="https://preisrechner.confidaraexpress.de/" />
+    <meta property="og:title" content="Versandpreise für Unternehmen berechnen | ConfidaraExpress" />
+    <meta property="og:description" content="Angebote verschiedener Versanddienstleister mit Netto- und Bruttopreis vergleichen. Gebucht wird nach Freischaltung im Kundenbereich." />
+  </head>
+  <body class="pc-page">
+    <a class="pc-skip" href="#pc-calculator-title">Zum Preisrechner springen</a>
+
+    <header class="pc-header">
+      <div class="pc-wrap pc-header-inner">
+        <a class="pc-brand" href="/">
+          <img class="pc-brand-img" src="../src/assets/brand/lockup-standard.svg" alt="ConfidaraExpress" width="92" height="48" />
+        </a>
+        <nav class="pc-header-nav" aria-label="Kundenbereich">
+          <a class="pc-link-button pc-link-button--quiet" href="https://confidaraexpress.de/login">Anmelden</a>
+          <a class="pc-link-button" href="https://confidaraexpress.de/register">Konto registrieren</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="pc-main">
+      <section class="pc-hero" aria-labelledby="pc-hero-title">
+        <div class="pc-wrap pc-hero-grid">
+          <div class="pc-hero-head">
+            <p class="pc-eyebrow">Paketversand für Geschäftskunden</p>
+            <h1 class="pc-display" id="pc-hero-title">Versandlösungen für Unternehmen. Einfach. Transparent. Persönlich.</h1>
+          </div>
+
+          <div class="pc-calculator-card">
+            <h2 class="pc-card-title" id="pc-calculator-title" tabindex="-1">Versandpreise berechnen</h2>
+            <p class="pc-card-sub">Strecke und Paketdaten eingeben. Pflichtfelder sind mit * gekennzeichnet.</p>
+            <div id="pc-calculator" class="pc-calculator-root">
+              <noscript><p class="pc-notice pc-notice--info">Für den Preisrechner wird JavaScript benötigt.</p></noscript>
+            </div>
+          </div>
+
+          <div class="pc-hero-body">
+            <p class="pc-lead">Vergleichen Sie Versandoptionen verschiedener Dienstleister über eine Plattform – mit transparenten Preisen und persönlichen Ansprechpartnern bei ConfidaraExpress.</p>
+            <ul class="pc-hero-points">
+              <li>Preise ohne Anmeldung berechnen</li>
+              <li>Netto- und Bruttopreis auf jedem Angebot</li>
+              <li>Buchung im Kundenbereich nach Freischaltung Ihres Kontos</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="pc-results-section" aria-labelledby="pc-results-title">
+        <div class="pc-wrap">
+          <h2 class="pc-section-title" id="pc-results-title" tabindex="-1">Ihre Versandoptionen</h2>
+          <p class="pc-results-intro" id="pc-results-intro">Die Angebote erscheinen hier, sobald Sie die Preise berechnet haben. Laufzeiten und Termine stammen von den Versanddienstleistern.</p>
+          <div id="pc-results" class="pc-results-root"></div>
+        </div>
+      </section>
+
+      <section class="pc-section" aria-labelledby="pc-steps-title">
+        <div class="pc-wrap">
+          <h2 class="pc-section-title" id="pc-steps-title">So funktioniert’s</h2>
+          <ol class="pc-steps">
+            <li class="pc-step">
+              <span class="pc-step-number" aria-hidden="true">1</span>
+              <h3 class="pc-step-title">Preise vergleichen</h3>
+              <p class="pc-step-text">Strecke und Paketdaten eingeben und die Angebote mit Netto- und Bruttopreis vergleichen – ohne Anmeldung.</p>
+            </li>
+            <li class="pc-step">
+              <span class="pc-step-number" aria-hidden="true">2</span>
+              <h3 class="pc-step-title">Geschäftskonto registrieren und freischalten lassen</h3>
+              <p class="pc-step-text">Registrieren Sie Ihr Unternehmen. ConfidaraExpress prüft jedes Konto und schaltet es frei.</p>
+            </li>
+            <li class="pc-step">
+              <span class="pc-step-number" aria-hidden="true">3</span>
+              <h3 class="pc-step-title">Im Kundenbereich buchen</h3>
+              <p class="pc-step-text">Nach der Anmeldung übernehmen Sie Ihre Auswahl, ergänzen die Sendungsangaben und buchen. Der Preis wird dabei mit Ihren vollständigen Angaben neu berechnet.</p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="pc-section pc-section--plain" aria-labelledby="pc-platform-title">
+        <div class="pc-wrap">
+          <h2 class="pc-section-title" id="pc-platform-title">Eine Plattform für Ihren Versand</h2>
+          <p class="pc-section-lead">Was Ihnen im Kundenbereich nach der Freischaltung zur Verfügung steht.</p>
+          <ul class="pc-features">
+            <li class="pc-feature">
+              <h3 class="pc-feature-title">Tarifvergleich</h3>
+              <p class="pc-feature-text">Angebote mehrerer Versanddienstleister für Ihre Sendung nebeneinander – mit Übergabeart, Laufzeit und Preis.</p>
+            </li>
+            <li class="pc-feature">
+              <h3 class="pc-feature-title">Buchung</h3>
+              <p class="pc-feature-text">Den gewählten Tarif mit Absender, Empfänger und Sendungsangaben direkt im Kundenbereich buchen.</p>
+            </li>
+            <li class="pc-feature">
+              <h3 class="pc-feature-title">Versanddokumente</h3>
+              <p class="pc-feature-text">Versandlabel und Sendungsdokumente nach der Buchung im Kundenbereich abrufen.</p>
+            </li>
+            <li class="pc-feature">
+              <h3 class="pc-feature-title">Tracking</h3>
+              <p class="pc-feature-text">Den Status Ihrer Sendungen im Kundenbereich verfolgen.</p>
+            </li>
+            <li class="pc-feature">
+              <h3 class="pc-feature-title">Rechnungen</h3>
+              <p class="pc-feature-text">Rechnungen zu Ihren Sendungen gesammelt im Kundenbereich einsehen.</p>
+            </li>
+            <li class="pc-feature">
+              <h3 class="pc-feature-title">Adressbuch</h3>
+              <p class="pc-feature-text">Häufige Absender und Empfänger speichern und für die nächste Sendung übernehmen.</p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="pc-section" aria-labelledby="pc-service-title">
+        <div class="pc-wrap pc-service">
+          <div>
+            <h2 class="pc-section-title" id="pc-service-title">Service und Ansprechpartner</h2>
+            <p class="pc-section-lead">Hinter der Plattform steht ConfidaraExpress mit persönlichen Ansprechpartnern.</p>
+          </div>
+          <dl class="pc-contact">
+            <div class="pc-contact-item">
+              <dt>E-Mail</dt>
+              <dd><a href="mailto:support@confidaraexpress.de">support@confidaraexpress.de</a></dd>
+            </div>
+            <div class="pc-contact-item">
+              <dt>Telefon</dt>
+              <dd><a href="tel:+4915118003775">015118003775</a></dd>
+            </div>
+            <div class="pc-contact-item">
+              <dt>Im Kundenbereich</dt>
+              <dd>Supportanfragen zu Sendungen stellen Sie direkt im Kundenbereich.</dd>
+            </div>
+            <div class="pc-contact-item">
+              <dt>Freischaltung</dt>
+              <dd>Jedes Konto wird von ConfidaraExpress geprüft und freigeschaltet.</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="pc-section pc-section--plain" aria-labelledby="pc-faq-title">
+        <div class="pc-wrap pc-faq-wrap">
+          <h2 class="pc-section-title" id="pc-faq-title">Häufige Fragen</h2>
+          <div class="pc-faq">
+            <details class="pc-faq-item">
+              <summary>Warum steht bei manchen Preisen „ab“?</summary>
+              <p>Einige Preise hängen von Angaben ab, die erst bei der Buchung vorliegen, etwa von der Art der Lieferadresse. Diese Preise sind mit „ab“ gekennzeichnet. Den Endpreis berechnet ConfidaraExpress nach der Anmeldung mit Ihren vollständigen Sendungsangaben.</p>
+            </details>
+            <details class="pc-faq-item">
+              <summary>Warum muss ich mich zum Buchen anmelden?</summary>
+              <p>ConfidaraExpress ist eine Versandplattform für Geschäftskunden. Gebucht wird im Kundenbereich mit einem freigeschalteten Konto – dort stehen auch Versanddokumente, Sendungsverfolgung und Rechnungen bereit. Ihre Tarifwahl aus dem Preisrechner können Sie nach der Anmeldung übernehmen; die Preise werden dabei neu berechnet und können abweichen.</p>
+            </details>
+            <details class="pc-faq-item">
+              <summary>In welche Länder kann ich versenden?</summary>
+              <p>Versendet wird ab Deutschland – innerhalb Deutschlands und in Länder der Europäischen Union. Welche Länder aktuell verfügbar sind, zeigt das Auswahlfeld im Preisrechner.</p>
+            </details>
+            <details class="pc-faq-item">
+              <summary>Für wen ist ConfidaraExpress?</summary>
+              <p>Für Unternehmen. Die Angebote richten sich ausschließlich an Geschäftskunden; jedes Konto wird nach Prüfung durch ConfidaraExpress freigeschaltet.</p>
+            </details>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="pc-footer">
+      <div class="pc-wrap pc-footer-inner">
+        <img class="pc-footer-brand" src="../src/assets/brand/lockup-reverse.svg" alt="ConfidaraExpress" width="92" height="48" loading="lazy" />
+        <p class="pc-footer-note">Angebote ausschließlich für Unternehmen. Nettopreise zuzüglich Umsatzsteuer.</p>
+        <nav class="pc-footer-nav" aria-label="Rechtliches">
+          <a href="https://confidaraexpress.de/impressum">Impressum</a>
+          <a href="https://confidaraexpress.de/datenschutz">Datenschutz</a>
+          <a href="https://confidaraexpress.de/agb">AGB</a>
+        </nav>
+      </div>
+    </footer>
+
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>

@@ -417,7 +417,9 @@ export default function AuthPage() {
               {error   && <div className="auth-alert auth-alert-error" role="alert">{error}</div>}
               {success && <div className="auth-alert auth-alert-success" role="status">{success}</div>}
               {uebernahmeWartet && (
-                <div className="auth-alert auth-alert-info" role="status" id="auth-handoff-pending">{HANDOFF_AUTH_TEXT.pending}</div>
+                <div className="auth-alert auth-alert-info" role="status" id="auth-handoff-pending">
+                  {tab === "register" ? HANDOFF_AUTH_TEXT.pendingRegister : HANDOFF_AUTH_TEXT.pending}
+                </div>
               )}
               {uebernahmeVerworfen && (
                 <div className="auth-alert auth-alert-info" role="status" id="auth-handoff-dropped">{HANDOFF_AUTH_TEXT.droppedAfterRegistration}</div>

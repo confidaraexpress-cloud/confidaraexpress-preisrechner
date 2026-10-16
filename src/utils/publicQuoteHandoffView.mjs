@@ -56,6 +56,8 @@ export const HANDOFF_PAGE_TEXT = Object.freeze({
 // Die Hinweise der Anmeldeseite (AuthPage).
 export const HANDOFF_AUTH_TEXT = Object.freeze({
   pending: "Ihre Tarifauswahl aus dem Preisrechner wartet. Nach der Anmeldung übernehmen wir sie in „Neue Sendung“ und berechnen die Preise mit Ihren Konditionen neu.",
+  // Aus dem Preisrechner kommt man direkt in die Registrierung; bestehende Konten wechseln zur Anmeldung.
+  pendingRegister: "Ihre Tarifauswahl aus dem Preisrechner wartet. Registrieren Sie hier Ihr Geschäftskonto — gebucht wird nach der Freischaltung. Sie haben schon ein Konto? Dann melden Sie sich an: wir übernehmen die Auswahl in „Neue Sendung“ und berechnen die Preise mit Ihren Konditionen neu.",
   droppedAfterRegistration: "Ihre Tarifauswahl aus dem Preisrechner bleibt bis zur Freischaltung Ihres Kontos nicht erhalten. Nach der Freischaltung berechnen Sie die Preise einfach erneut.",
 });
 

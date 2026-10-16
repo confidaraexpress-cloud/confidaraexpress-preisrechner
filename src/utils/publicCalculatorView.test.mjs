@@ -173,12 +173,12 @@ test("(11) keine Zusagen, keine Anbieter: Texte ohne Garantie, Bestpreis oder Ei
   assert.doesNotMatch(src, /localStorage|sessionStorage|fetch\(|Date\.now\(\)/, "rein: kein Speicher, kein Netz, keine Uhr");
 });
 
-test("(12) Zusammenfassung über den Ergebnissen: Strecke, Pakete, Gewicht, Maße, Versanddatum", () => {
+test("(12) Zusammenfassung über den Ergebnissen: Strecke, Pakete, Gewicht, Maße — ohne Versanddatum", () => {
   const body = buildPublicQuoteRequest(FORM, { serviceFilter: "all", shippingModeFilter: "all", shippingDate: "2026-10-21" });
   assert.equal(requestSummary(body),
-    "DE 70173 Stuttgart → AT 1010 Wien · 2 Pakete · 2,5 kg je Paket · 30 × 20 × 10 cm · Versanddatum Mi., 21.10.");
+    "DE 70173 Stuttgart → AT 1010 Wien · 2 Pakete · 2,5 kg je Paket · 30 × 20 × 10 cm");
   assert.equal(requestSummary({ ...body, packageCount: 1 }),
-    "DE 70173 Stuttgart → AT 1010 Wien · 1 Paket · 2,5 kg · 30 × 20 × 10 cm · Versanddatum Mi., 21.10.");
+    "DE 70173 Stuttgart → AT 1010 Wien · 1 Paket · 2,5 kg · 30 × 20 × 10 cm");
   assert.equal(requestSummary(null), null);
   assert.equal(requestSummary({}), null);
 });

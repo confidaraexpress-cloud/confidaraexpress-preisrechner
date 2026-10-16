@@ -152,7 +152,10 @@ export function PublicResults({ host, phase, ergebnis, anfrage, langsam, sekunde
         </header>
         <p className="pc-sr-only" aria-live="polite" id="pc-results-status">{ansage}</p>
         {inhalt}
-        <p className="pc-results-foot">Laufzeiten und Termine stammen von den Versanddienstleistern. Gebucht wird im Kundenbereich nach der Anmeldung.</p>
+        <p className="pc-results-foot">
+          Alle Preise netto zzgl. MwSt. Nach der Auswahl registrieren Sie Ihr Geschäftskonto — bestehende Kundinnen und
+          Kunden melden sich an. Gebucht wird im Kundenbereich; Laufzeiten und Termine stammen von den Versanddienstleistern.
+        </p>
       </div>
     </section>,
     host,

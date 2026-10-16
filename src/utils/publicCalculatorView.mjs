@@ -13,10 +13,10 @@
 //   • Sperrgründe: offerIdentity.mjs · Zuschlagshinweis: residentialPriceInputs.mjs
 //   • Beträge: vatDisplayView.mjs · Carrier: carrierMap.js
 //
-// Bewusst anders als im Portal (reine Darstellung): Netto UND Brutto auf der
-// Karte, „ab" bei einem nicht exakten Preis, Carrierauswahl im Browser über
-// `publicCarrierId` (kein neuer Request), keine Bestwahl-Markierung, und statt
-// „Buchen" die Übernahme nach der Anmeldung.
+// Bewusst anders als im Portal (reine Darstellung): auf der Karte nur der Nettopreis
+// mit „zzgl. MwSt." (Betreiberentscheidung 2026-10-16), „ab" bei einem nicht exakten
+// Preis, Carrierauswahl im Browser über `publicCarrierId` (kein neuer Request), keine
+// Bestwahl-Markierung, und statt „Buchen" die Übernahme über die Registrierung.
 
 import { getCalculatorErrors, firstErrorField } from "./calculatorValidation.mjs";
 import { deliveryContractOf, DELIVERY_ON_REQUEST } from "./deliveryContractView.mjs";
@@ -155,7 +155,8 @@ const zahlText = (w) => (typeof w === "number" && Number.isFinite(w) ? ZAHL.form
 
 /**
  * Die Anfrage in einer Zeile über den Ergebnissen — damit klar bleibt, wofür die Preise gelten:
- * „DE 70173 Stuttgart → DE 10115 Berlin · 1 Paket · 2,5 kg · 30 × 20 × 10 cm · Versanddatum Mi., 21.10.".
+ * „DE 70173 Stuttgart → DE 10115 Berlin · 1 Paket · 2,5 kg · 30 × 20 × 10 cm". Das Versanddatum
+ * wählt niemand (die Seite rechnet ab dem heutigen Geschäftstag) — es steht deshalb nicht darin.
  * Ohne Anfrage `null`.
  */
 export function requestSummary(body) {
@@ -172,8 +173,6 @@ export function requestSummary(body) {
   if (gewicht) teile.push(`${gewicht} kg${anzahl > 1 ? " je Paket" : ""}`);
   const masse = [b.length, b.width, b.height].map(zahlText);
   if (masse.every(Boolean)) teile.push(`${masse.join(" × ")} cm`);
-  const tag = shortDay(b.shippingDate);
-  if (tag) teile.push(`Versanddatum ${tag}`);
   return teile.length ? teile.join(" · ") : null;
 }
 
@@ -219,6 +218,7 @@ export const PRICE_TEXT = Object.freeze({
   fromNote: "Der Endpreis wird nach der Anmeldung mit vollständigen Sendungsangaben berechnet.",
   net: "netto",
   gross: "brutto",
+  vatNote: "zzgl. MwSt.",
   onRequest: "Preis auf Anfrage",
 });
 

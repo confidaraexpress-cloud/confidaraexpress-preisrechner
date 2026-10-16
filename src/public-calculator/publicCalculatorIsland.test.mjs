@@ -8,7 +8,9 @@
 //   • Anfragen (ausgeführt gegen einen abgefangenen Client): prepare ohne Body und Kopfzeilen,
 //     credentials "omit", keepalive; Preisabfrage mit 75 s; Länderscope ohne Cookies; die
 //     Übernahmeprüfung meldet nur bei 401 ab.
-//   • Seitengerüst: Reihenfolge der Abschnitte, belegte Aussagen, keine verbotenen Versprechen.
+//   • Seitengerüst: Reihenfolge der Abschnitte, belegte Aussagen, keine verbotenen Versprechen; der
+//     Ergebnisbereich ist vor der ersten Berechnung leer, und das statische Formularskelett trägt
+//     dieselben Zeilen und Felder wie die Insel (die Höhen misst tests/e2e/publicCalculator.test.mjs).
 //
 // Run: node --test src/public-calculator/publicCalculatorIsland.test.mjs
 import test from "node:test";
@@ -130,8 +132,9 @@ test("3 — Anfragevertrag: prepare als Simple-Request, Preisabfrage 75 s, Scope
 
 test("4 — Seitengerüst: Kopf, Hero, Ergebnisse, Ablauf, Plattform, Service, FAQ, Fuß in dieser Reihenfolge", () => {
   const marken = [
-    'class="pc-skip"', 'class="pc-header"', 'id="pc-hero-title"', 'id="pc-calculator"', 'id="pc-results-title"',
-    'id="pc-steps-title"', 'id="pc-platform-title"', 'id="pc-service-title"', 'id="pc-faq-title"', 'class="pc-footer"',
+    'class="pc-skip"', 'class="pc-header"', 'id="pc-hero-title"', 'id="pc-calculator-card"', 'id="pc-calculator"',
+    'id="pc-results"', 'id="pc-steps-title"', 'id="pc-platform-title"', 'id="pc-service-title"', 'id="pc-faq-title"',
+    'class="pc-footer"',
   ];
   let letzte = -1;
   for (const m of marken) {
@@ -139,8 +142,11 @@ test("4 — Seitengerüst: Kopf, Hero, Ergebnisse, Ablauf, Plattform, Service, F
     assert.ok(i > letzte, `${m} fehlt oder steht an falscher Stelle`);
     letzte = i;
   }
-  assert.match(HTML_OHNE, /<h1 class="pc-display" id="pc-hero-title">Versandlösungen für Unternehmen\. Einfach\. Transparent\. Persönlich\.<\/h1>/);
-  assert.match(HTML_OHNE, /Vergleichen Sie Versandoptionen verschiedener Dienstleister über eine Plattform – mit transparenten Preisen und persönlichen Ansprechpartnern bei ConfidaraExpress\./);
+  assert.match(HTML_OHNE, /<h1 class="pc-display" id="pc-hero-title"><span class="pc-display-line">Versand für Unternehmen\.<\/span> <span class="pc-display-line">Einfach vergleichen\.<\/span><\/h1>/);
+  assert.match(HTML_OHNE, /<p class="pc-lead">Ihre digitale Versand- und Logistikplattform – transparente Versandoptionen verschiedener Dienstleister und persönliche Ansprechpartner\.<\/p>/);
+  // Bereich 2 gibt es erst nach der ersten Berechnung: vorher steht dort nichts, auch keine Überschrift.
+  assert.match(HTML_OHNE, /<div id="pc-results"><\/div>/);
+  assert.doesNotMatch(HTML_OHNE, /id="pc-results-title"|id="pc-results-section"/);
   for (const ziel of ["login", "register", "impressum", "datenschutz", "agb"]) {
     assert.ok(HTML_OHNE.includes(`href="https://confidaraexpress.de/${ziel}"`), `Link auf /${ziel} der Hauptdomain fehlt`);
   }
@@ -153,7 +159,8 @@ test("5 — Kopf: preconnect zur API, genau zwei vorgeladene Schriftschnitte, nu
   const preloads = [...HTML_OHNE.matchAll(/<link rel="preload" href="([^"]+)" as="font" type="font\/woff2" crossorigin \/>/g)].map((m) => m[1]);
   assert.deepEqual(preloads, ["../src/assets/fonts/dmsans-300.woff2", "../src/assets/fonts/cormorantgaramond-400.woff2"]);
   const bilder = [...HTML_OHNE.matchAll(/<img [^>]*src="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(bilder, ["../src/assets/brand/lockup-standard.svg", "../src/assets/brand/lockup-reverse.svg"],
+  // Kopf und Fuß liegen auf dunklem Grund: zweimal das helle Lockup.
+  assert.deepEqual(bilder, ["../src/assets/brand/lockup-reverse.svg", "../src/assets/brand/lockup-reverse.svg"],
     "keine Logo-Wand der Carrier, kein Master-SVG");
   assert.doesNotMatch(HTML_OHNE, /<style|style="|<script(?![^>]*src="\/main\.js")/, "CSP: nichts inline");
 });
@@ -176,4 +183,32 @@ test("6 — keine Versprechen ohne Beleg und keine Einkaufsquelle", () => {
   const impressum = lies(path.join(SRC, "pages", "ImpressumPage.jsx"));
   assert.ok(impressum.includes("support@confidaraexpress.de") && HTML_OHNE.includes("support@confidaraexpress.de"));
   assert.ok(impressum.includes("015118003775") && HTML_OHNE.includes(">015118003775<"));
+});
+
+test("7 — Formularskelett: dieselben Zeilen und Felder wie die Insel, nicht bedienbar, ohne reservierte Höhe", () => {
+  const app = lies(path.join(HIER, "PublicCalculatorApp.jsx"));
+  const start = HTML_OHNE.indexOf('<div class="pc-form pc-form--skeleton" aria-hidden="true" inert>');
+  assert.ok(start > HTML_OHNE.indexOf('id="pc-calculator"'), "Skelett fehlt oder steht nicht in #pc-calculator");
+  const skelett = HTML_OHNE.slice(start, HTML_OHNE.indexOf('<div class="pc-hero-body">'));
+  // Zeilen und Feldbeschriftungen in derselben Reihenfolge.
+  const zeilen = (src, re) => [...src.matchAll(re)].map((m) => m[1]);
+  const appZeilen = zeilen(app, /<span className="pc-row-label" id="[^"]+">([^<]+)<\/span>/g);
+  const appFelder = zeilen(app, /<Field [^>]*?label="([^"]+)"/g);
+  assert.deepEqual(appZeilen, ["Von", "Nach", "Paket", "Versand"], "Anker in PublicCalculatorApp.jsx nicht gefunden");
+  assert.equal(appFelder.length, 14, "Anker der Felder in PublicCalculatorApp.jsx nicht gefunden");
+  assert.deepEqual(zeilen(skelett, /<span class="pc-row-label">([^<]+)<\/span>/g), appZeilen);
+  assert.deepEqual(zeilen(skelett, /<label class="field-label">([^<]+?)(?:<span> \*<\/span>)?<\/label>/g), appFelder);
+  assert.deepEqual(zeilen(skelett, /class="pc-row-fields (pc-row-fields--\w+)"/g),
+    zeilen(app, /className="pc-row-fields (pc-row-fields--\w+)"/g));
+  // Einheiten an denselben Feldern.
+  assert.deepEqual(zeilen(skelett, /<span class="ce-field-unit">(\w+)<\/span>/g), zeilen(app, /unit="(\w+)"/g));
+  // Nicht bedienbar: keine ids (keine Doppelungen mit der Insel), keine Namen, nichts im Tabulatorweg.
+  assert.doesNotMatch(skelett, /\sid="|\sname="|<form|<button/);
+  for (const feld of skelett.match(/<(input|select)[^>]*>/g)) assert.match(feld, /tabindex="-1"/, feld);
+  // Die frühere feste Mindesthöhe der Wurzel ist entfallen — das Skelett gibt die Höhe vor.
+  const css = lies(path.join(SRC, "styles", "public-calculator.css")).replace(/\/\*[\s\S]*?\*\//g, "");
+  const wurzel = css.match(/\.pc-calculator-root \{([^}]*)\}/);
+  assert.ok(wurzel, ".pc-calculator-root fehlt");
+  assert.doesNotMatch(wurzel[1], /min-height|height:/);
+  assert.doesNotMatch(css, /\.pc-calculator-root \{[^}]*min-height/);
 });

@@ -10,6 +10,9 @@
 //   D  prepare meldet „available: false“: Hinweis statt Absenden, keine Preisabfrage.
 //   E  Tastatur: Skip-Link, Pflichtfelder mit Fehlern am Feld, Absenden per Enter, Fokus auf die Ergebnisse.
 //   F  Übergabe: „Mit diesem Tarif fortfahren“ öffnet die feste Adresse der Hauptdomain mit dem Token im Fragment.
+//   G  1366×768, reduzierte Bewegung: vor der ersten Berechnung kein Ergebnisbereich, Absenden ohne Scrollen
+//      erreichbar; danach Zusammenfassung der Anfrage und Ergebnisse im Blick; Carrierauswahl filtert und setzt
+//      zurück, ohne neuen Request; „Angaben ändern“ führt sofort zur Rechnerkarte zurück, Eingaben bleiben.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -166,9 +169,25 @@ for (const [breite, hoehe] of [[1440, 900], [390, 844]]) {
     assert.equal(await karten.nth(0).getByRole("button", { name: "Mit diesem Tarif fortfahren" }).count(), 1);
     assert.equal(await page.locator(".pc-badge, .offer-badge").count(), 0, "keine Bestwahl-Markierung");
 
-    // Gleich hohe Karten (die Liste steht einspaltig oder im Raster — die Höhe ist je Zeile gleich).
-    const hoehen = await karten.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
-    assert.equal(new Set(hoehen).size, 1, `ungleiche Kartenhöhen: ${hoehen}`);
+    // Je Reihe gleich hohe Karten, und Preis wie Aktion stehen in einer Reihe auf derselben Höhe (subgrid).
+    // Einspaltig ist jede Karte ihre eigene Reihe und so hoch wie ihr Inhalt.
+    const reihen = await karten.evaluateAll((els) => {
+      const nachReihe = new Map();
+      for (const el of els) {
+        const r = el.getBoundingClientRect();
+        const oben = Math.round(r.top);
+        const lage = (sel) => { const t = el.querySelector(sel); return t ? Math.round(t.getBoundingClientRect().top) : null; };
+        if (!nachReihe.has(oben)) nachReihe.set(oben, []);
+        nachReihe.get(oben).push({ hoehe: Math.round(r.height), preis: lage(".pc-offer-price"), aktion: lage(".pc-offer-action") });
+      }
+      return [...nachReihe.values()];
+    });
+    assert.equal(reihen.length, breite >= 1100 ? 1 : 3, `Reihen: ${JSON.stringify(reihen)}`);
+    for (const reihe of reihen) {
+      for (const k of ["hoehe", "preis", "aktion"]) {
+        assert.equal(new Set(reihe.map((karte) => karte[k])).size, 1, `${k} je Reihe ungleich: ${JSON.stringify(reihe)}`);
+      }
+    }
 
     assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.id), "pc-results-title");
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "horizontales Scrollen");
@@ -292,6 +311,51 @@ test("F — Übergabe: feste Adresse der Hauptdomain, Token nur im Fragment", as
   await page.locator("#pc-offers .pc-offer").nth(0).getByRole("button", { name: "Mit diesem Tarif fortfahren" }).click();
   await page.waitForURL(/^https:\/\/confidaraexpress\.de\/preisrechner-uebernahme/, { timeout: 10000 });
   assert.equal(page.url(), `https://confidaraexpress.de/preisrechner-uebernahme#t=${TOKEN_UPS}`);
+  assert.deepEqual(fehler, []);
+  await page.close();
+});
+
+test("G — Ergebnisbereich erst nach der Berechnung, Carrierauswahl, „Angaben ändern“ zurück zum Formular", async () => {
+  const page = await browser.newPage({ viewport: { width: 1366, height: 768 }, reducedMotion: "reduce" });
+  const fehler = [];
+  page.on("pageerror", (e) => fehler.push(String(e)));
+  const p = await setup(page);
+  await oeffne(page);
+  // Vor der ersten Berechnung belegt der Ergebnisbereich keinen Platz — keine leere Fläche, keine Überschrift.
+  assert.equal(await page.locator("#pc-results-section").count(), 0);
+  assert.equal(await page.locator("#pc-results").evaluate((el) => el.childElementCount), 0);
+  assert.ok(await page.locator("#pc-submit").evaluate((el) => el.getBoundingClientRect().bottom <= window.innerHeight),
+    "Absenden auf 1366×768 nicht ohne Scrollen erreichbar");
+
+  await fuelle(page);
+  await page.click("#pc-submit");
+  await page.waitForSelector("#pc-offers .pc-offer", { timeout: 20000 });
+  assert.match(norm(await page.locator("#pc-results-summary").innerText()),
+    /^DE 70173 Stuttgart → DE 10115 Berlin · 1 Paket · 2,5 kg · 30 × 20 × 10 cm · Versanddatum \S+, \d{2}\.\d{2}\.$/);
+  const oben = await page.locator("#pc-results-title").evaluate((el) => Math.round(el.getBoundingClientRect().top));
+  assert.ok(oben >= 0 && oben < 120, `Ergebnisüberschrift nicht im Blick (${oben} px)`);
+
+  // Carrierauswahl: filtert im Browser über die geladenen Angebote; „Alle anzeigen“ setzt zurück.
+  await page.locator("label.pc-chip", { hasText: "DPD" }).click();
+  assert.equal(await page.locator("#pc-offers .pc-offer").count(), 1);
+  assert.equal(norm(await page.locator("#pc-count").innerText()), "1 Angebot von 3");
+  await page.click("#pc-carrier-reset");
+  assert.equal(await page.locator("#pc-offers .pc-offer").count(), 3);
+  assert.equal(await page.locator(".pc-chip-input:checked").count(), 0);
+  assert.equal(await page.locator("#pc-carrier-reset").count(), 0);
+  assert.equal(p.quotes.length, 1, "die Auswahl hat neu gefragt");
+
+  // „Angaben ändern“: sofort (reduzierte Bewegung) zurück zur Karte, Fokus auf ihrer Überschrift.
+  await page.click("#pc-edit");
+  assert.equal(await page.evaluate(() => document.activeElement.id), "pc-calculator-title");
+  const karte = await page.locator("#pc-calculator-card").evaluate((el) => Math.round(el.getBoundingClientRect().top));
+  assert.ok(karte >= 0 && karte <= 40, `Rechnerkarte nicht oben im Blick (${karte} px)`);
+  assert.equal(await page.inputValue("#pc-from-zip"), "70173", "die Eingaben bleiben stehen");
+  // Unverändert erneut absenden: kein Request, zurück zu den bestehenden Angeboten.
+  await page.click("#pc-submit");
+  await kurz(300);
+  assert.equal(p.quotes.length, 1);
+  assert.equal(await page.evaluate(() => document.activeElement.id), "pc-results-title");
   assert.deepEqual(fehler, []);
   await page.close();
 });

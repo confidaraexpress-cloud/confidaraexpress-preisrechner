@@ -150,6 +150,33 @@ export function requestKey(body) {
   return JSON.stringify(body);
 }
 
+const ZAHL = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 });
+const zahlText = (w) => (typeof w === "number" && Number.isFinite(w) ? ZAHL.format(w) : null);
+
+/**
+ * Die Anfrage in einer Zeile über den Ergebnissen — damit klar bleibt, wofür die Preise gelten:
+ * „DE 70173 Stuttgart → DE 10115 Berlin · 1 Paket · 2,5 kg · 30 × 20 × 10 cm · Versanddatum Mi., 21.10.".
+ * Ohne Anfrage `null`.
+ */
+export function requestSummary(body) {
+  const b = body && typeof body === "object" ? body : null;
+  if (!b) return null;
+  const ort = (land, plz, stadt) => [land, plz, stadt].filter((t) => typeof t === "string" && t.trim() !== "").join(" ");
+  const teile = [];
+  const von = ort(b.from_country, b.from_zip, b.from_city);
+  const nach = ort(b.to_country, b.to_zip, b.to_city);
+  if (von && nach) teile.push(`${von} → ${nach}`);
+  const anzahl = Number.isInteger(b.packageCount) && b.packageCount > 0 ? b.packageCount : null;
+  if (anzahl !== null) teile.push(anzahl === 1 ? "1 Paket" : `${anzahl} Pakete`);
+  const gewicht = zahlText(b.weight);
+  if (gewicht) teile.push(`${gewicht} kg${anzahl > 1 ? " je Paket" : ""}`);
+  const masse = [b.length, b.width, b.height].map(zahlText);
+  if (masse.every(Boolean)) teile.push(`${masse.join(" × ")} cm`);
+  const tag = shortDay(b.shippingDate);
+  if (tag) teile.push(`Versanddatum ${tag}`);
+  return teile.length ? teile.join(" · ") : null;
+}
+
 // ─── Ergebnisliste: Carrierauswahl und Ordnung im Browser ───────────────────
 const istAngebot = (o) => !!o && typeof o === "object";
 

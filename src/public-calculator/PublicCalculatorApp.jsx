@@ -15,8 +15,15 @@ import { PublicResults } from "./PublicResults.jsx";
 // Felder, Prüfungen und Datumsvorgabe wie im Versandkostenrechner der Kunden;
 // Abholung/Abgabe und Versandart sind Teil der Anfrage. Ein Request je Absenden:
 // der Knopf ist gesperrt, solange gerechnet wird, und eine unveränderte Eingabe
-// löst keinen neuen Request aus. Die Ergebnisse stehen im eigenen Abschnitt der
-// Seite (Portal in #pc-results).
+// löst keinen neuen Request aus. Die Ergebnisse stehen im eigenen Abschnitt
+// direkt unter dem Rechner (Portal in #pc-results) und erscheinen erst mit der
+// ersten Berechnung.
+//
+// Das Seitengerüst (preisrechner/index.html) trägt dieselbe Formularstruktur als
+// statisches Skelett: beim ersten Rendern ersetzt React es Element für Element,
+// ohne dass die Seite springt. Wer hier eine Zeile oder ein Feld ändert, ändert
+// das Skelett mit (publicCalculatorIsland.test.mjs vergleicht die Struktur,
+// tests/e2e/publicCalculatorBuild.test.mjs die Höhen in sechs Breiten).
 
 const FELD_ID = Object.freeze({
   from_country: "pc-from-country", from_zip: "pc-from-zip", from_city: "pc-from-city",
@@ -30,9 +37,26 @@ const ERGEBNISZUSTAENDE = new Set([OUTCOME.OK, OUTCOME.PARTIAL, OUTCOME.NO_OFFER
 // Ein Platzhalter ist Beschriftung, kein Wert: „z. B." macht das sichtbar.
 const beispiel = (wert) => (wert ? `z. B. ${wert}` : undefined);
 
-function fokussiereErgebnis() {
+// Sanftes Scrollen nur ohne den Wunsch nach reduzierter Bewegung.
+function scrollVerhalten() {
+  return typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "auto" : "smooth";
+}
+
+/** Den Ergebnisbereich in den Blick holen und seine Überschrift fokussieren (Tastatur, Screenreader). */
+export function zeigeErgebnis({ fokus = true } = {}) {
+  const bereich = document.getElementById("pc-results-section");
+  if (bereich) bereich.scrollIntoView({ block: "start", behavior: scrollVerhalten() });
   const h = document.getElementById("pc-results-title");
-  if (h) h.focus();
+  if (fokus && h) h.focus({ preventScroll: true });
+}
+
+/** Zurück zum Formular — etwa, um die Angaben nach einer Berechnung anzupassen. */
+export function zeigeFormular() {
+  const karte = document.getElementById("pc-calculator-card");
+  if (karte) karte.scrollIntoView({ block: "start", behavior: scrollVerhalten() });
+  const titel = document.getElementById("pc-calculator-title");
+  if (titel) titel.focus({ preventScroll: true });
 }
 
 export function PublicCalculatorApp({ availability, launchScope, resultsHost }) {
@@ -47,6 +71,7 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
   const [banner, setBanner] = useState(null);
   const [phase, setPhase] = useState("idle");
   const [ergebnis, setErgebnis] = useState(null);
+  const [anfrage, setAnfrage] = useState(null);
   const [langsam, setLangsam] = useState(false);
   const [sekunden, setSekunden] = useState(0);
   const abbruch = useRef(null);
@@ -81,9 +106,11 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
     return () => { clearTimeout(hinweis); clearInterval(takt); };
   }, [phase]);
 
-  // Nach jeder Berechnung: Fokus auf die Ergebnisüberschrift (statisch in der Seite).
+  // Beginn der Berechnung: der Ergebnisbereich kommt in den Blick (ohne Fokus — das Formular bleibt
+  // für Screenreader, wo es ist). Ende: Fokus auf die Ergebnisüberschrift.
   useEffect(() => {
-    if (phase === "done") fokussiereErgebnis();
+    if (phase === "loading") zeigeErgebnis({ fokus: false });
+    if (phase === "done") zeigeErgebnis({ fokus: true });
   }, [phase, ergebnis]);
 
   useEffect(() => {
@@ -118,6 +145,7 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
   async function berechne(body, schluessel) {
     const ac = new AbortController();
     abbruch.current = ac;
+    setAnfrage(body);
     setPhase("loading");
     let ausgang = null;
     try {
@@ -160,7 +188,7 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
     const schluessel = requestKey(body);
     if (schluessel === letzterSchluessel.current && ergebnis && ERGEBNISZUSTAENDE.has(ergebnis.outcome)) {
       // Unveränderte Eingabe: kein neuer Request — die bestehenden Angebote bleiben.
-      fokussiereErgebnis();
+      zeigeErgebnis({ fokus: true });
       return;
     }
     await berechne(body, schluessel);
@@ -184,9 +212,9 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
           </div>
         )}
 
-        <fieldset className="pc-fieldset">
-          <legend className="pc-legend">Von</legend>
-          <div className="pc-grid pc-grid--route">
+        <div className="pc-row" role="group" aria-labelledby="pc-row-from">
+          <span className="pc-row-label" id="pc-row-from">Von</span>
+          <div className="pc-row-fields pc-row-fields--route">
             <Field as="select" id={FELD_ID.from_country} fieldKey="from_country" label="Land" value={form.from_country}
               error={fieldErrors.from_country} onChange={(v) => setze("from_country", v)}>
               {herkunftsliste.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
@@ -198,11 +226,11 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
               error={fieldErrors.from_city} onChange={(v) => setze("from_city", v)} autoComplete="address-level2"
               maxLength={100} placeholder="z. B. Stuttgart" />
           </div>
-        </fieldset>
+        </div>
 
-        <fieldset className="pc-fieldset">
-          <legend className="pc-legend">Nach</legend>
-          <div className="pc-grid pc-grid--route">
+        <div className="pc-row" role="group" aria-labelledby="pc-row-to">
+          <span className="pc-row-label" id="pc-row-to">Nach</span>
+          <div className="pc-row-fields pc-row-fields--route">
             <Field as="select" id={FELD_ID.to_country} fieldKey="to_country" label="Land" value={form.to_country}
               error={fieldErrors.to_country} onChange={(v) => setze("to_country", v)}>
               {zielliste.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
@@ -214,12 +242,11 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
               error={fieldErrors.to_city} onChange={(v) => setze("to_city", v)} autoComplete="off" maxLength={100}
               placeholder="z. B. Berlin" />
           </div>
-        </fieldset>
+        </div>
 
-        <fieldset className="pc-fieldset">
-          <legend className="pc-legend">Paket</legend>
-          <p className="pc-legend-hint" id="pc-package-hint">Gewicht und Maße je Paket — mehrere Pakete sind identisch.</p>
-          <div className="pc-grid pc-grid--package">
+        <div className="pc-row" role="group" aria-labelledby="pc-row-package" aria-describedby="pc-package-hint">
+          <span className="pc-row-label" id="pc-row-package">Paket</span>
+          <div className="pc-row-fields pc-row-fields--package">
             <Field id={FELD_ID.packageCount} fieldKey="packageCount" label="Anzahl" required value={form.packageCount}
               error={fieldErrors.packageCount} onChange={(v) => setze("packageCount", v)}
               inputMode="numeric" autoComplete="off" maxLength={2} aria-describedby="pc-package-hint" />
@@ -236,11 +263,12 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
               value={form.height} error={fieldErrors.height} onChange={(v) => setze("height", v)}
               inputMode="decimal" autoComplete="off" maxLength={6} />
           </div>
-        </fieldset>
+          <p className="pc-row-hint" id="pc-package-hint">Gewicht und Maße je Paket — mehrere Pakete sind identisch.</p>
+        </div>
 
-        <fieldset className="pc-fieldset">
-          <legend className="pc-legend">Versand</legend>
-          <div className="pc-grid pc-grid--options">
+        <div className="pc-row" role="group" aria-labelledby="pc-row-shipping">
+          <span className="pc-row-label" id="pc-row-shipping">Versand</span>
+          <div className="pc-row-fields pc-row-fields--options">
             <Field id={FELD_ID.shippingDate} fieldKey="shippingDate" label="Versanddatum" type="date" min={heute}
               value={shippingDate} error={fieldErrors.shippingDate}
               onChange={(v) => { setShippingDate(v); loescheFehler("shippingDate"); }} />
@@ -253,19 +281,19 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
               {SHIPPING_MODE_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
             </Field>
           </div>
-        </fieldset>
+        </div>
 
         <div className="pc-submit-row">
           {ausgeschaltet ? (
-            <div className="pc-notice pc-notice--info" role="status" id="pc-unavailable">
-              <p className="pc-notice-title">Der Preisrechner ist in Kürze verfügbar.</p>
-              <p className="pc-notice-text">
-                Kundinnen und Kunden mit freigeschaltetem Konto berechnen Preise im Kundenbereich.{" "}
+            <div className="pc-unavailable" role="status" id="pc-unavailable">
+              <p className="pc-unavailable-title">Der Preisrechner ist in Kürze verfügbar.</p>
+              <p className="pc-unavailable-text">
+                Mit Ihrem Konto berechnen Sie Preise im Kundenbereich.{" "}
                 <a href={LOGIN_URL}>Zur Anmeldung</a>
               </p>
             </div>
           ) : (
-            <button type="submit" className="pc-button pc-button--primary" id="pc-submit" disabled={laedt}
+            <button type="submit" className="pc-button pc-button--primary pc-button--submit" id="pc-submit" disabled={laedt}
               aria-describedby="pc-submit-status">
               {laedt ? "Preise werden berechnet …" : "Versandpreise berechnen"}
             </button>
@@ -273,9 +301,8 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
           <p className="pc-sr-only" id="pc-submit-status" aria-live="polite">{laedt ? "Preise werden berechnet." : ""}</p>
         </div>
         <p className="pc-form-note" id="pc-form-note">
-          Für die Berechnung verwenden wir nur Länder, Postleitzahlen, Orte und Paketdaten.
-          Angebote ausschließlich für Unternehmen. Hinweise zum{" "}
-          <a href="https://confidaraexpress.de/datenschutz">Datenschutz</a>.
+          Für die Berechnung verwenden wir nur Länder, Postleitzahlen, Orte und Paketdaten. Angebote ausschließlich für
+          Unternehmen. Hinweise zum <a href="https://confidaraexpress.de/datenschutz">Datenschutz</a>.
         </p>
       </form>
 
@@ -283,9 +310,11 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
         host={resultsHost}
         phase={phase}
         ergebnis={ergebnis}
+        anfrage={anfrage}
         langsam={langsam}
         sekunden={sekunden}
         onRetry={wiederholen}
+        onEdit={zeigeFormular}
       />
     </>
   );

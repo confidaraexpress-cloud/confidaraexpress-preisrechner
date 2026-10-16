@@ -7,6 +7,8 @@
 //   • der neue Block greift nur über server_name, mit einer CSP ohne Kartenkacheln und ohne
 //     'unsafe-inline', und JEDE location mit eigenem add_header wiederholt den Sicherheitsblock,
 //   • index.html und sw.js gehen no-cache hinaus, gehashte Assets ein Jahr immutable,
+//   • die Seite gibt es genau unter „/“; Adressen der Anwendung (/login, /register …) leiten auf die
+//     Hauptdomain, jede andere Adresse antwortet 404 mit eigener Seite — nie mit dem Rechner,
 //   • das Dockerfile kopiert beide Builds, package.json baut den Hauptbuild unverändert zuerst,
 //   • der Service Worker der Domain meldet sich nur ab und cacht nichts.
 //
@@ -81,7 +83,13 @@ test("4 — Caching: index.html und sw.js no-cache, gehashte Assets ein Jahr imm
   const assets = locationBlock(PREISRECHNER, "location ^~ /assets/ {");
   assert.match(assets, /expires 1y;/);
   assert.match(assets, /immutable/);
-  assert.match(locationBlock(PREISRECHNER, "location / {"), /try_files \$uri \/index\.html;/);
+  // „/“ leitet intern auf /index.html (no-cache); alles andere fällt nicht mehr auf die Seite zurück.
+  assert.match(locationBlock(PREISRECHNER, "location = / {"), /try_files \$uri \/index\.html;/);
+  assert.match(locationBlock(PREISRECHNER, "location / {"), /try_files \$uri =404;/);
+  const fehlerseite = locationBlock(PREISRECHNER, "location = /404.html {");
+  assert.match(fehlerseite, /^\s*internal;$/m, "die 404-Seite ist nur intern erreichbar");
+  assert.match(fehlerseite, /add_header Cache-Control "no-cache" always;/);
+  assert.match(PREISRECHNER, /^\s*error_page 404 \/404\.html;$/m);
 });
 
 test("5 — Dockerfile kopiert beide Builds; package.json baut den Hauptbuild unverändert zuerst", () => {
@@ -117,4 +125,53 @@ test("7 — der Service Worker der Domain meldet sich ab und cacht nichts", () =
 test("8 — eigene robots.txt und dasselbe Favicon wie die Hauptdomain", () => {
   assert.match(lies("preisrechner/public/robots.txt"), /^User-agent: \*$/m);
   assert.equal(lies("preisrechner/public/favicon-v2.svg"), lies("public/favicon-v2.svg"));
+});
+
+// Auflösung wie nginx: exakte location zuerst, dann das längste Präfix; ^~ beendet die Suche, sonst
+// gewinnt der erste passende reguläre Ausdruck (~ / ~*) in Dateireihenfolge, danach das Präfix.
+function ordneZu(block, uri) {
+  const orte = [...block.matchAll(/^ {4}location (=|\^~|~\*|~)? ?(\S+) \{$/gm)].map((m) => ({ mod: m[1] || "", muster: m[2] }));
+  const exakt = orte.find((o) => o.mod === "=" && o.muster === uri);
+  if (exakt) return `= ${exakt.muster}`;
+  const praefix = orte.filter((o) => (o.mod === "" || o.mod === "^~") && uri.startsWith(o.muster))
+    .sort((a, b) => b.muster.length - a.muster.length)[0];
+  if (praefix && praefix.mod === "^~") return `^~ ${praefix.muster}`;
+  const regex = orte.find((o) => (o.mod === "~" || o.mod === "~*") && new RegExp(o.muster, o.mod === "~*" ? "i" : "").test(uri));
+  if (regex) return "weiterleitung";
+  return praefix ? praefix.muster : null;
+}
+
+test("9 — Adressen: „/“ ist die Seite, Anwendungspfade gehen zur Hauptdomain, alles andere ist 404", () => {
+  const zeile = PREISRECHNER.match(/^ {4}location ~\* \^\/\(([^)]+)\)\(\/\|\$\) \{$/m);
+  assert.ok(zeile, "location für die Anwendungspfade fehlt");
+  const weitergeleitet = zeile[1].split("|").sort();
+  assert.match(locationBlock(PREISRECHNER, zeile[0].trim()), /^\s*return 302 https:\/\/confidaraexpress\.de\$request_uri;$/m,
+    "Ziel ist fest die Hauptdomain, samt Pfad und Abfrage");
+  // Die Liste folgt den Routen der Anwendung: jede erste Pfadstufe aus src/App.jsx, nichts darüber hinaus.
+  const routen = [...new Set([...lies("src/App.jsx").matchAll(/<Route [^>]*\bpath="\/([^"/:*]+)/g)].map((m) => m[1]))].sort();
+  assert.ok(routen.length >= 15, `zu wenige Routen erkannt: ${routen.join(", ")}`);
+  assert.deepEqual(weitergeleitet, routen, "nginx-Weiterleitung und Routen in src/App.jsx laufen auseinander");
+
+  const faelle = [
+    ["/", "= /"], ["/index.html", "= /index.html"], ["/robots.txt", "= /robots.txt"], ["/sw.js", "= /sw.js"],
+    ["/favicon-v2.svg", "^~ /favicon"], ["/assets/index-abc12345.js", "^~ /assets/"],
+    ["/login", "weiterleitung"], ["/login/", "weiterleitung"], ["/LOGIN", "weiterleitung"], ["/register", "weiterleitung"],
+    ["/registrieren", "weiterleitung"], ["/partner-registrieren", "weiterleitung"], ["/dashboard/settings", "weiterleitung"],
+    ["/preisrechner-uebernahme", "weiterleitung"], ["/impressum", "weiterleitung"], ["/admin/users/7", "weiterleitung"],
+    ["/loginx", "/"], ["/gibtsnicht", "/"], ["/preisrechner", "/"], ["/.env", "/"], ["/404.html", "= /404.html"],
+  ];
+  for (const [uri, erwartet] of faelle) assert.equal(ordneZu(PREISRECHNER, uri), erwartet, uri);
+});
+
+test("10 — die 404-Seite: eigener Eintrag im Build, ohne Skript, nicht indexiert, mit Weg zurück", () => {
+  const cfg = lies("vite.preisrechner.config.js");
+  assert.match(cfg, /index: path\.join\(REPO, "preisrechner", "index\.html"\)/);
+  assert.match(cfg, /404: path\.join\(REPO, "preisrechner", "404\.html"\)/);
+  const html = lies("preisrechner/404.html").replace(/<!--[\s\S]*?-->/g, "");
+  assert.doesNotMatch(html, /<script|style="|<style/, "kein Skript (keine Aufwärmmeldung), nichts inline (CSP)");
+  assert.match(html, /<meta name="robots" content="noindex" \/>/);
+  assert.match(html, /<html lang="de">/);
+  assert.match(html, /href="\/"/, "Weg zurück zum Rechner");
+  assert.match(html, /href="https:\/\/confidaraexpress\.de\/"/, "Weg zur Hauptdomain");
+  assert.doesNotMatch(html.replace(/<[^>]+>/g, " "), /jumingo|transglobal/i);
 });

@@ -36,11 +36,13 @@ const ERROR_MESSAGES = {
 };
 const GENERIC_ERROR = "Die Stornierungsanfrage konnte nicht geladen werden. Bitte versuchen Sie es erneut.";
 
-// Fehlertexte für das Speichern (Status/Notiz). 409 ist KEIN klassischer Fehler,
-// sondern der Optimistic-Locking-Konflikt → eigener Banner (kein Text hier).
+// Fehlertexte für das Speichern (Status/Notiz). Ein 409 ist entweder der Optimistic-
+// Locking-Konflikt → eigener Banner, oder ein unzulässiger Statuswechsel → dieser Text
+// (Paritätsaudit B11, wie in der Supportanfrage).
 const SAVE_ERRORS = {
   400: "Die Änderung ist ungültig oder nicht erlaubt.",
   404: "Die Anfrage wurde nicht gefunden oder existiert nicht mehr.",
+  409: "Dieser Statuswechsel ist nicht zulässig.",
   422: "Die Änderung ist ungültig oder nicht erlaubt.",
   429: "Zu viele Admin-Aktionen. Bitte kurz warten.",
   500: "Die Änderung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
@@ -283,13 +285,20 @@ export default function AdminCancellationRequestDetailPage() {
       }
       if (resp.status === 401 || resp.status === 403) return; // zentraler Redirect
       if (resp.status === 409) {
-        // Optimistic-Locking-Konflikt: lokale Eingabe BEHALTEN, nichts automatisch
-        // überschreiben, lokale Revision NICHT erhöhen. Der vom Server mitgelieferte
-        // aktuelle Stand wird nur angezeigt — übernommen wird er erst auf Klick.
+        // Zwei verschiedene 409: Optimistic-Locking-Konflikt (CANCELLATION_REQUEST_CONFLICT, mit
+        // `current`) ODER unzulässiger Statuswechsel (CANCELLATION_STATUS_TRANSITION_INVALID). Nur der
+        // erste bekommt den Banner — bis hierher behauptete auch der zweite eine parallele Änderung
+        // und bot „Stand übernehmen" an (Paritätsaudit B11).
         let body = {};
         try { body = await resp.json(); } catch { body = {}; }
         const c = readCancellationConflict(409, body);
-        setConflict({ current: c.current });
+        if (c.conflict) {
+          // Lokale Eingabe BEHALTEN, nichts automatisch überschreiben, lokale Revision NICHT
+          // erhöhen. Der Serverstand wird nur angezeigt — übernommen wird er erst auf Klick.
+          setConflict({ current: c.current });
+          return;
+        }
+        setSaveMsg({ type: "error", text: SAVE_ERRORS[409] });
         return;
       }
       setSaveMsg({ type: "error", text: SAVE_ERRORS[resp.status] || SAVE_ERRORS.default });

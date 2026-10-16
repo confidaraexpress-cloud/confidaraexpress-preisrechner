@@ -181,11 +181,47 @@
 .inv-ops-head .inv-section-title { margin-bottom: var(--ce-space-2); }
 /* Textaktion bündig mit der Liste darüber — ohne den Innenabstand des Links. */
 .inv-ops-all { margin-top: var(--ce-space-3); padding-inline: 0; }
-.inv-warehouse-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ce-space-2); }
-.inv-warehouse-item { display: flex; align-items: center; gap: var(--ce-space-3); flex-wrap: wrap; min-width: 0; }
+/* ── Lagerverwaltung (Paritätsaudit BI9, Umfang C) ──
+   Eine Zeile je Lager: links Identität (Name, Kürzel, Marker, Notiz), rechts die
+   Aktionen. Bei wenig Platz rücken die Aktionen unter die Identität — nie
+   daneben gequetscht und nie aus der Karte heraus. */
+.inv-warehouses-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ce-space-3); flex-wrap: wrap; }
+.inv-warehouses-empty {
+  margin: 0; font-family: var(--fs); font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
+}
+.inv-warehouse-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.inv-warehouse-item {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ce-space-3);
+  flex-wrap: wrap; min-width: 0; padding-block: var(--ce-space-3);
+}
+.inv-warehouse-item + .inv-warehouse-item { border-top: 1px solid var(--ce-color-border-subtle); }
+.inv-warehouse-main { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: var(--ce-space-1); }
+.inv-warehouse-title { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ce-space-2); min-width: 0; }
 .inv-warehouse-name {
   font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: 600;
   color: var(--ce-color-text-primary); min-width: 0; overflow-wrap: break-word;
+}
+/* Das Kürzel ist ein technischer String; die Zeile darüber schrumpft (min-width: 0), deshalb
+   genügt break-word — kein weiteres anywhere (responsiveHardening Test 8). */
+.inv-warehouse-code {
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 500;
+  color: var(--ce-color-text-secondary); overflow-wrap: break-word; min-width: 0;
+}
+/* Notizen sind Freitext bis 2.000 Zeichen — sichtbar sind drei Zeilen. */
+.inv-warehouse-notes {
+  margin: 0; font-family: var(--fs); font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary);
+  overflow-wrap: break-word; white-space: pre-line;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.inv-warehouse-actions { display: flex; align-items: center; gap: var(--ce-space-2); flex-wrap: wrap; }
+.inv-warehouses-more { margin-top: var(--ce-space-3); }
+.inv-warehouse-form { display: flex; flex-direction: column; gap: var(--ce-space-4); min-width: 0; }
+.inv-warehouse-default-check { align-self: flex-start; }
+.inv-warehouse-dialog-text {
+  margin: var(--ce-space-3) 0 0; font-family: var(--fs); font-size: var(--ce-text-body-size);
+  line-height: var(--ce-text-body-line); color: var(--ce-color-text-secondary);
 }
 
 /* ── Toolbar ──
@@ -666,6 +702,9 @@
    Wie im übrigen System: jedes Bedienelement erreicht 44 px. Textlinks in
    Fließtext bleiben ausgenommen (Inline-Ausnahme). */
 @media (max-width: 860px) {
+  .inv-warehouse-actions .btn,
+  .inv-warehouses-head .btn,
+  .inv-warehouses-more,
   .inv-row-actions .btn,
   .inv-card-actions .btn,
   .inv-form-actions .btn,

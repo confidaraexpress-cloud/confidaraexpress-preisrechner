@@ -41,6 +41,7 @@ import { normalizeReferralCode } from "./referralCapture.mjs";
 import { partnerRegistrationMode } from "./salesPartnerPublicConfig.mjs";
 import { adminActionErrorText, formatTimestamp, isIsoDate } from "./adminSalesPartnerView.mjs";
 import { formatCents, formatCount, statusMetaFrom } from "./salesPartnerView.mjs";
+import { PACKAGE_COUNT_MAX } from "./newShipmentForm.mjs";
 
 const objOrNull = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : null);
 const arr = (v) => (Array.isArray(v) ? v : []);
@@ -64,7 +65,9 @@ export const sameId = (a, b) => a !== null && a !== undefined && b !== null && b
 
 export const MAX_TEXT_LENGTH = 200;
 export const MAX_EMAIL_LENGTH = 255;
-export const MAX_PACKAGES = 9999;
+// Paritätsaudit BA2: dieselbe Grenze wie jede Sendung (Server: PACKAGE_COUNT_MAX in
+// lib/packageDimensions.js, 1–99) — vorher erlaubte das Formular bis 9999, und der Server lehnte ab.
+export const MAX_PACKAGES = PACKAGE_COUNT_MAX;
 
 export const PRELIVE_TEXTS = Object.freeze({
   title: "Pre-Live-Testmodus",

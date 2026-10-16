@@ -133,6 +133,16 @@ const labelAus = (optionen, wert, fallback = "—") => {
 };
 export const deactivationReasonLabel = (v) => labelAus(DEACTIVATION_REASON_OPTIONS, v, "Unbekannter Grund");
 
+// Paritätsaudit BA7: Gründe im Statusverlauf. Neben den drei Deaktivierungsgründen schreibt der
+// Server `approved` (Freigabe, auch eines Testpartners) und `reactivated` (Reaktivierung); bis
+// hierher standen beide als Rohwert im Verlauf. Ein unbekannter Grund wird nicht geraten.
+const STATUS_EVENT_REASONS = Object.freeze([
+  ...DEACTIVATION_REASON_OPTIONS,
+  Object.freeze({ value: "approved", label: "Freigabe" }),
+  Object.freeze({ value: "reactivated", label: "Reaktivierung" }),
+]);
+export const statusEventReasonLabel = (v) => labelAus(STATUS_EVENT_REASONS, v, "Unbekannter Grund");
+
 const ATTRIBUTION_SOURCES = Object.freeze([
   Object.freeze({ value: "referral_link", label: "Empfehlungslink" }),
   Object.freeze({ value: "admin_assignment", label: "Zuordnung durch Admin" }),
@@ -330,9 +340,22 @@ export function buildApproveBody(form = {}, opts = {}) {
 }
 
 /** POST …/reject — Begründung optional. */
-export function buildRejectBody(form = {}) {
-  const r = grund(form.reason, false);
-  return ergebnis(r.error ? { reason: r.error } : {}, r.value ? { reason: r.value } : {});
+// Paritätsaudit BA9: der Server liest beim Ablehnen nichts aus dem Body — eine Begründung wurde
+// gesendet und verworfen. Das Feld entfällt (keine neue Ablehnungsnotiz im Backend).
+export function buildRejectBody() {
+  return ergebnis({}, {});
+}
+
+// Paritätsaudit BA1: Feldfehler der Deaktivierung stehen am Feld (der Server nennt `field`).
+// Die Notiz ist intern — sie erscheint im Statusverlauf, nie beim Partner.
+const DEACTIVATION_FIELD_ERRORS = Object.freeze({
+  DEACTIVATION_REASON_INVALID: Object.freeze({ feld: "reason", text: "Bitte einen Grund aus der Liste wählen." }),
+  DEACTIVATION_NOTE_INVALID: Object.freeze({ feld: "note", text: `Die Notiz darf höchstens ${MAX_NOTE_LENGTH} Zeichen lang sein.` }),
+});
+export function deactivationFieldError(status, body) {
+  const code = body && typeof body === "object" && typeof body.code === "string" ? body.code : "";
+  return status === 400 && Object.prototype.hasOwnProperty.call(DEACTIVATION_FIELD_ERRORS, code)
+    ? DEACTIVATION_FIELD_ERRORS[code] : null;
 }
 
 /** POST …/deactivate — Grund aus der festen Liste, Notiz optional;
@@ -886,7 +909,8 @@ export function normalizeAdminPartnerDetail(raw) {
     },
     statusHistory: arr(d.statusHistory).map((s) => {
       const x = obj(s);
-      return { status: str(x.status), effectiveDate: str(x.effectiveDate), reason: str(x.reason), createdAt: str(x.createdAt) };
+      // Paritätsaudit BA1: die interne Notiz einer Deaktivierung (seit Backend #432 ausgeliefert).
+      return { status: str(x.status), effectiveDate: str(x.effectiveDate), reason: str(x.reason), note: str(x.note), createdAt: str(x.createdAt) };
     }),
     levelRules: {
       mode: lr.mode === "custom" ? "custom" : (lr.mode === "global" ? "global" : null),
@@ -922,6 +946,10 @@ export function normalizeAdminPartnerDetail(raw) {
         ruleSetId: x.ruleSetId ?? null,
         createdAt: str(x.createdAt),
         version: int(x.version),
+        // Paritätsaudit BA4: Sendungen ohne gültige Paketanzahl, die die Bewertung nicht gezählt hat,
+        // und ob diese Version durch eine neuere abgelöst ist.
+        excludedInvalidPackageCount: int(x.excludedInvalidPackageCount),
+        superseded: x.superseded === true,
       };
     }),
   };
@@ -963,6 +991,9 @@ export function normalizeAdminCommissions(raw) {
           capApplied: dec.capApplied === true,
           purchaseNetCents: int(dec.purchaseNetCents),
           customerNetCents: int(dec.customerNetCents),
+          // Paritätsaudit BA3: eine abgelöste Entscheidung (Rücknahme mit Neuberechnung) nimmt der
+          // Server nicht noch einmal zurück (409 DECISION_SUPERSEDED).
+          superseded: dec.superseded === true,
         } : null,
       };
     }),
@@ -977,7 +1008,23 @@ export function reversedDecisionIds(entries) {
 /** Darf eine Buchung eine Rücknahme anbieten? Nur Provisionsbuchungen mit
  *  Entscheidung, die noch nicht zurückgenommen ist. */
 export function canReverseEntry(entry, reversed) {
-  return !!entry && entry.type === "accrual" && entry.decisionId !== null && !(reversed && reversed.has(String(entry.decisionId)));
+  return !!entry && entry.type === "accrual" && entry.decisionId !== null
+    && !(entry.decision && entry.decision.superseded === true)
+    && !(reversed && reversed.has(String(entry.decisionId)));
+}
+
+/** Paritätsaudit BA3: Rückmeldung einer Rücknahme aus der Serverantwort `{ reversed, reprocess }`.
+ *  `reversed: 0` heißt: es gab keine offene Gutschrift mehr (etwa schon in einem anderen Monat
+ *  zurückgenommen) — das ist kein Erfolg, sondern ein Hinweis. */
+export function reverseOutcomeMessage(body) {
+  const b = obj(body);
+  const n = Number.isInteger(b.reversed) && b.reversed >= 0 ? b.reversed : null;
+  const neu = b.reprocess === true ? " Die Entscheidung ist abgelöst; die Sendung wird neu berechnet." : "";
+  if (n === 0) {
+    return { type: "info", text: `Es gab keine offene Buchung mehr zurückzunehmen.${neu || " Es wurde nichts geändert."}` };
+  }
+  if (n === null) return { type: "success", text: `Die Entscheidung wurde zurückgenommen.${neu}` };
+  return { type: "success", text: `Die Entscheidung wurde zurückgenommen (${n} ${n === 1 ? "Buchung" : "Buchungen"} storniert).${neu}` };
 }
 
 export function normalizeEvidence(raw) {

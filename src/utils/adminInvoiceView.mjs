@@ -24,6 +24,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { statusFallback } from "./statusFallback.mjs";
+import { fieldLabel } from "./invoiceBackfillView.mjs";
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 const str = (v) => (v === null || v === undefined ? "" : String(v).trim());
 const numOrNull = (v) => {
@@ -437,6 +438,12 @@ export const SUCCESS_TEXT = Object.freeze({
   emailResent: "E-Mail erneut versendet",
   emailAlreadySent: "Diese Rechnung wurde bereits versendet. Für einen erneuten Versand bitte „Rechnung erneut senden“ verwenden.",
   emailInProgress: "Ein Versand läuft bereits.",
+  // Paritätsaudit B7: zwei Ausgänge, die weder Erfolg noch Fehlschlag sind. `unclear`: der Versand
+  // hatte begonnen und wurde nie abgeschlossen — die Mail kann angekommen sein. Ebenso ein Versuch,
+  // den der Anbieter angenommen hat, dessen Status aber nicht gespeichert werden konnte
+  // (`errorCode: finalize_failed`). `superseded`: ein anderer Lauf hat den Versand übernommen.
+  emailUnclear: "Der Ausgang des Versands ist unklar — die E-Mail kann angekommen sein. Bitte prüfen Sie das, bevor Sie erneut senden.",
+  emailSuperseded: "Ein anderer Versandlauf hat diese E-Mail inzwischen übernommen. Bitte prüfen Sie den aktuellen Stand, bevor Sie erneut senden.",
 });
 
 // Outcome des Dokument-Endpunkts → Meldung. Unbekanntes Outcome ⇒ Fehlertext.
@@ -447,9 +454,48 @@ export function documentOutcomeMessage(outcome) {
   return { type: "error", text: DOCUMENT_ERROR_NOTE };
 }
 
-export function emailOutcomeMessage(outcome, kind) {
+// Paritätsaudit B6: eine GESPERRTE Dokumenterzeugung (409/422 des Produktiv-Guards) ist kein
+// technischer Fehlschlag. Die Rechnung bleibt unverändert, und ein erneuter Klick ändert nichts,
+// solange die Ursache besteht — bis hierher stand dort „ein erneuter Versuch ist möglich".
+// Bekannter Code → eigener Satz, dazu die fehlenden bzw. noch als Platzhalter geführten Angaben.
+const DOCUMENT_BLOCK_TEXT = Object.freeze({
+  classified_test_document: "Diese Rechnung stammt aus einer Testbuchung — für sie wird kein Produktivdokument erzeugt.",
+  reconstructed_preview_requires_test_mode: "Für diese Altrechnung ist nur eine interne Vorschau möglich (PDF-Backfill), kein Produktivdokument.",
+  production_invoice_blocked_in_test_mode: "Im Testmodus wird für eine Produktivrechnung kein Dokument erzeugt.",
+  ambiguous_invoice_document_mode: "Ob diese Rechnung ein Produktiv- oder ein Testbeleg ist, ist nicht eindeutig — es wird kein Dokument erzeugt.",
+  invoice_snapshot_not_production_ready: "Die eingefrorenen Rechnungsdaten sind nicht produktionsreif — es wird kein Produktivdokument erzeugt.",
+});
+export const DOCUMENT_BLOCKED_NOTE =
+  "Die Rechnung bleibt unverändert. Ein erneuter Versuch hilft erst, wenn die Ursache behoben ist.";
+
+export function documentErrorMessage(status, body) {
+  const b = body && typeof body === "object" ? body : {};
+  if (status === 404) return { type: "error", text: "Rechnung wurde nicht gefunden oder existiert nicht mehr." };
+  if (status === 429) return { type: "error", text: "Zu viele Admin-Aktionen. Bitte kurz warten." };
+  if (status === 409 || status === 422) {
+    const code = typeof b.error === "string" ? b.error : "";
+    const basis = (Object.prototype.hasOwnProperty.call(DOCUMENT_BLOCK_TEXT, code) && DOCUMENT_BLOCK_TEXT[code])
+      || (typeof b.message === "string" && b.message.trim())
+      || "Für diese Rechnung darf derzeit kein Produktivdokument erzeugt werden.";
+    const liste = (v) => (Array.isArray(v) ? v.filter((f) => typeof f === "string" && f).map(fieldLabel) : []);
+    const fehlend = liste(b.missingFields);
+    const platzhalter = liste(b.placeholderFields);
+    const teile = [basis];
+    if (fehlend.length) teile.push(`Fehlende Angaben: ${fehlend.join(", ")}.`);
+    if (platzhalter.length) teile.push(`Noch Platzhalter: ${platzhalter.join(", ")}.`);
+    teile.push(DOCUMENT_BLOCKED_NOTE);
+    return { type: "error", text: teile.join(" ") };
+  }
+  return { type: "error", text: DOCUMENT_ERROR_NOTE };
+}
+
+export function emailOutcomeMessage(outcome, kind, errorCode) {
   if (outcome === "sent") return { type: "success", text: kind === "resend" ? SUCCESS_TEXT.emailResent : SUCCESS_TEXT.emailStarted };
   if (outcome === "already_sent") return { type: "info", text: SUCCESS_TEXT.emailAlreadySent };
   if (outcome === "in_progress") return { type: "info", text: SUCCESS_TEXT.emailInProgress };
+  if (outcome === "unclear" || (outcome === "failed" && errorCode === "finalize_failed")) {
+    return { type: "info", text: SUCCESS_TEXT.emailUnclear };
+  }
+  if (outcome === "superseded") return { type: "info", text: SUCCESS_TEXT.emailSuperseded };
   return { type: "error", text: EMAIL_ERROR_NOTE };
 }

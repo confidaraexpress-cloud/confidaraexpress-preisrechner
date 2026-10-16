@@ -123,7 +123,8 @@ test("4 — Freigabe: Grundprovision Pflicht, Ebenen nur wenn angegeben (sonst S
 
 test("5 — Ablehnen, Deaktivieren, Login: nur Vertragsfelder", () => {
   assert.deepEqual(buildRejectBody({}).body, {});
-  assert.deepEqual(buildRejectBody({ reason: "  Unvollständig " }).body, { reason: "Unvollständig" });
+  // Paritätsaudit BA9: der Server liest keine Begründung — sie wird nicht mehr gesendet.
+  assert.deepEqual(buildRejectBody({ reason: "  Unvollständig " }).body, {});
   assert.equal(buildDeactivateBody({ reason: "weil" }).ok, false, "nur Gründe aus der Liste");
   assert.deepEqual(buildDeactivateBody({ reason: "contract_ended", note: "" }).body, { reason: "contract_ended" });
   assert.deepEqual(buildDeactivateBody({ reason: "other", note: " Rückfrage " }).body, { reason: "other", note: "Rückfrage" });
@@ -507,4 +508,82 @@ test("24 — Zuordnung: PRELIVE_TEST_MISMATCH mit festem Satz", () => {
   assert.equal(attributionErrorText(409, { code: "PARTNER_NOT_ACTIVE", error: "Nur aktive Vertriebspartner können zugeordnet werden." }),
     "Nur aktive Vertriebspartner können zugeordnet werden.");
   assert.match(attributionErrorText(500, { code: "PRELIVE_TEST_MISMATCH" }), /nicht ausgeführt/, "Code nur bei 409");
+});
+
+test("Paritätsaudit BA1/BA7/BA9 — Statusverlauf mit Notiz und Gründen, Feldfehler am Feld, keine Ablehnungsbegründung", async () => {
+  const { statusEventReasonLabel, deactivationFieldError, normalizeAdminPartnerDetail } = await import("./adminSalesPartnerView.mjs");
+  const { readFileSync } = await import("node:fs");
+  // BA7: Freigabe und Reaktivierung haben ein Label; unbekannt wird nicht geraten.
+  assert.equal(statusEventReasonLabel("approved"), "Freigabe");
+  assert.equal(statusEventReasonLabel("reactivated"), "Reaktivierung");
+  assert.equal(statusEventReasonLabel("contract_ended"), "Vertrag beendet");
+  assert.equal(statusEventReasonLabel("neu"), "Unbekannter Grund");
+  assert.equal(statusEventReasonLabel(""), "—");
+  // BA1: Feldfehler der Deaktivierung.
+  assert.deepEqual(deactivationFieldError(400, { code: "DEACTIVATION_NOTE_INVALID", field: "note" }),
+    { feld: "note", text: "Die Notiz darf höchstens 1000 Zeichen lang sein." });
+  assert.equal(deactivationFieldError(400, { code: "DEACTIVATION_REASON_INVALID" }).feld, "reason");
+  assert.equal(deactivationFieldError(409, { code: "DEACTIVATION_NOTE_INVALID" }), null);
+  assert.equal(deactivationFieldError(400, { code: "ANDERS" }), null);
+  // BA1: die Notiz kommt durch die Normalisierung.
+  {
+    const d = normalizeAdminPartnerDetail({ partner: { id: 5 }, statusHistory: [
+      { status: "inactive", effectiveDate: "2026-10-01", reason: "suspended", note: "Rückfrage Vertrag", createdAt: "2026-10-01T09:00:00Z" },
+    ] });
+    assert.equal(d.statusHistory[0].note, "Rückfrage Vertrag");
+  }
+  const karte = readFileSync(new URL("../components/admin/SalesPartnerStatusCard.jsx", import.meta.url), "utf8")
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  assert.match(karte, /\{s\.reason && <span className="adm-sp-sub">\{statusEventReasonLabel\(s\.reason\)\}<\/span>\}/);
+  assert.match(karte, /\{s\.note && <span className="adm-sp-sub adm-sp-history-note">Interne Notiz: \{s\.note\}<\/span>\}/);
+  assert.match(karte, /const feldfehler = kind === "deactivate" \? deactivationFieldError\(r\.status, body\) : null;/);
+  // BA9: kein Begründungsfeld mehr beim Ablehnen.
+  assert.doesNotMatch(karte, /adm-sp-reject-reason/);
+  assert.match(karte, /gebaut = buildRejectBody\(\);/);
+});
+
+test("Paritätsaudit BA3 — abgelöste Entscheidungen: keine Rücknahme; Rückmeldung aus `reversed`", async () => {
+  const { normalizeAdminCommissions, canReverseEntry: darf, reverseOutcomeMessage, reversedDecisionIds } = await import("./adminSalesPartnerView.mjs");
+  const roh = { month: "2026-10", totals: { accruedCents: 0, payableCents: 0 }, entries: [
+    { id: 1, decisionId: 11, type: "accrual", amountCents: 500, decision: { dispatchDate: "2026-10-02", superseded: true } },
+    { id: 2, decisionId: 12, type: "accrual", amountCents: 500, decision: { dispatchDate: "2026-10-03", superseded: false } },
+  ] };
+  const c = normalizeAdminCommissions(roh);
+  assert.equal(c.entries[0].decision.superseded, true);
+  assert.equal(c.entries[1].decision.superseded, false);
+  const zurueck = reversedDecisionIds(c.entries);
+  assert.equal(darf(c.entries[0], zurueck), false, "abgelöst: der Server antwortet 409 DECISION_SUPERSEDED");
+  assert.equal(darf(c.entries[1], zurueck), true);
+  // Rückmeldung: 0 zurückgenommene Buchungen sind ein Hinweis, kein Erfolg.
+  assert.deepEqual(reverseOutcomeMessage({ ok: true, reversed: 0, reprocess: false }),
+    { type: "info", text: "Es gab keine offene Buchung mehr zurückzunehmen. Es wurde nichts geändert." });
+  assert.deepEqual(reverseOutcomeMessage({ ok: true, reversed: 0, reprocess: true }),
+    { type: "info", text: "Es gab keine offene Buchung mehr zurückzunehmen. Die Entscheidung ist abgelöst; die Sendung wird neu berechnet." });
+  assert.deepEqual(reverseOutcomeMessage({ ok: true, reversed: 2, reprocess: false }),
+    { type: "success", text: "Die Entscheidung wurde zurückgenommen (2 Buchungen storniert)." });
+  assert.equal(reverseOutcomeMessage({ ok: true, reversed: 1 }).text, "Die Entscheidung wurde zurückgenommen (1 Buchung storniert).");
+  assert.equal(reverseOutcomeMessage(null).type, "success");
+  const { readFileSync } = await import("node:fs");
+  const karte = readFileSync(new URL("../components/admin/SalesPartnerCommissionsCard.jsx", import.meta.url), "utf8");
+  assert.match(karte, /setMessage\(reverseOutcomeMessage\(d\)\);/);
+  assert.match(karte, /message\.type === "info" \? "alert-info"/);
+});
+
+test("Paritätsaudit BA4 — Monatsbewertungen: abgelöste Version erkennbar, ausgeschlossene Sendungen sichtbar", async () => {
+  const { normalizeAdminPartnerDetail } = await import("./adminSalesPartnerView.mjs");
+  const { assessmentSummary, showExcludedPackagesColumn } = await import("./adminPartnerDetailView.mjs");
+  const d = normalizeAdminPartnerDetail({ partner: { id: 5 }, assessments: [
+    { month: "2026-10", measuredMonth: "2026-09", customerLevel: 1, packageLevel: 2, version: 2, excludedInvalidPackageCount: 3, superseded: false },
+    { month: "2026-10", measuredMonth: "2026-09", customerLevel: 0, packageLevel: 0, version: 1, excludedInvalidPackageCount: 0, superseded: true },
+  ] });
+  assert.equal(d.assessments[0].excludedInvalidPackageCount, 3);
+  assert.equal(d.assessments[1].superseded, true);
+  assert.equal(showExcludedPackagesColumn(d.assessments), true);
+  assert.equal(showExcludedPackagesColumn([{ excludedInvalidPackageCount: 0 }, {}]), false, "keine Spalte voller Nullen");
+  // Die Zusammenfassung nennt die gültige Version, auch wenn eine abgelöste vorn stünde.
+  assert.match(assessmentSummary([d.assessments[1], d.assessments[0]]), /Kunden-Level 1 · Paket-Level 2/);
+  const { readFileSync } = await import("node:fs");
+  const seite = readFileSync(new URL("../pages/admin/AdminSalesPartnerDetailPage.jsx", import.meta.url), "utf8");
+  assert.match(seite, /const mitAusgeschlossenen = showExcludedPackagesColumn\(detail\.assessments\);/);
+  assert.match(seite, /\{a\.superseded && <> <span className="badge badge-gray">abgelöst<\/span><\/>\}/);
 });

@@ -1,5 +1,6 @@
 import React from "react";
 import { useDialog } from "../../hooks/useDialog";
+import { addressContactPerson } from "../../utils/addressPickerView.mjs";
 
 // Bestätigungsdialog vor dem endgültigen Löschen einer Adressbuchzeile. Macht
 // ausdrücklich klar, dass die Löschung dauerhaft und nicht wiederherstellbar ist
@@ -14,7 +15,7 @@ export function AddressDeleteConfirmDialog({ address, busy, error, onCancel, onC
   const dialogRef = useDialog({ open: !!address, onClose: onCancel, closeOnEscape: !busy });
 
   if (!address) return null;
-  const name = address.label || address.company || address.contactName || "diese Adresse";
+  const name = address.label || address.company || addressContactPerson(address) || "diese Adresse";
 
   return (
     <div className="abk-dialog-overlay" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onCancel(); }}>

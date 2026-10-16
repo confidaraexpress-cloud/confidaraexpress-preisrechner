@@ -15,10 +15,22 @@
    bricht in der Darstellung um (CSS), er verliert keine Zeichen. Und es wird
    nie ein roher Backendwert als Ersatz eingesetzt, nie „undefined" im Text. */
 
-// Zeile 1 — der beste vorhandene Name. Unverändert (Bestandsverhalten).
+// Die Kontaktperson einer Adresse (Paritätsaudit A2). Seit dem Versandkontakt-
+// Vertrag sind Vor- und Nachname bei neuen Adressen Pflicht; `contactName` trägt
+// nur noch der Altbestand (er wird nie zerlegt). Vorher lasen Liste, Picker und
+// Rollen-Dialog ausschließlich `contactName` — die Person neuer Adressen erschien
+// nirgends, eine Adresse ohne Bezeichnung und Firma hieß „Ohne Bezeichnung“.
+export function addressContactPerson(address) {
+  const a = address || {};
+  const text = (v) => (typeof v === "string" ? v.trim() : "");
+  const vollerName = [text(a.firstName), text(a.lastName)].filter(Boolean).join(" ");
+  return vollerName || text(a.contactName);
+}
+
+// Zeile 1 — der beste vorhandene Name: Bezeichnung, Firma, sonst die Kontaktperson.
 export function addressPickerLabel(address) {
   const a = address || {};
-  const name = (a.label || a.company || a.contactName || "").trim();
+  const name = ((a.label || a.company || "").trim()) || addressContactPerson(a);
   return name || "Ohne Bezeichnung";
 }
 
@@ -32,7 +44,7 @@ export function addressPickerPerson(address) {
   const titel = addressPickerLabel(a);
   const teile = [];
   const firma = typeof a.company === "string" ? a.company.trim() : "";
-  const person = typeof a.contactName === "string" ? a.contactName.trim() : "";
+  const person = addressContactPerson(a);
   if (firma && firma !== titel) teile.push(firma);
   if (person && person !== titel) teile.push(person);
   return teile.join(" · ");

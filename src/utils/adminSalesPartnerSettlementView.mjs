@@ -111,7 +111,10 @@ export const normalizeAdminBilling = (raw) => normalizeBillingResponse(raw, { ad
 
 /** „Es fehlen: Straße und Hausnummer, IBAN." — oder null. */
 export function missingFieldsText(missingFields) {
-  const namen = [...new Set((Array.isArray(missingFields) ? missingFields : []).map((k) => billingFieldLabel(k)))];
+  // Paritätsaudit BA5: `billingDetails` heißt „gar keine Daten hinterlegt" — das sagt die Karte schon
+  // selbst; ein zweiter Hinweis „Es fehlen: Abrechnungsdaten" daneben wäre doppelt.
+  const namen = [...new Set((Array.isArray(missingFields) ? missingFields : [])
+    .filter((k) => k !== "billingDetails").map((k) => billingFieldLabel(k)))];
   return namen.length ? `Es fehlen: ${namen.join(", ")}.` : null;
 }
 
@@ -119,7 +122,11 @@ export function missingFieldsText(missingFields) {
 export function adminBillingRows(state) {
   const d = state?.billingDetails || null;
   const fehlend = new Set(Array.isArray(state?.missingFields) ? state.missingFields : []);
-  const zeile = (key, wert, extra = {}) => ({ key, label: BILLING_FIELD_LABELS[key], value: wert || null, missing: fehlend.has(key), ...extra });
+  // Paritätsaudit BA5: fehlen Steuernummer UND USt-IdNr., meldet der Server `taxNumberOrVatId` —
+  // markiert werden dann beide Zeilen, denn jede von beiden würde genügen.
+  const steuerFehlt = fehlend.has("taxNumberOrVatId");
+  const zeile = (key, wert, extra = {}) => ({ key, label: BILLING_FIELD_LABELS[key], value: wert || null,
+    missing: fehlend.has(key) || (steuerFehlt && (key === "taxNumber" || key === "vatId")), ...extra });
   return [
     zeile("billingName", d?.billingName),
     zeile("street", d?.street),
@@ -204,7 +211,10 @@ export const documentStatusMeta = (status) => statusMetaFrom(DOCUMENT_STATUS_MET
 /** „Benachrichtigt am 02.10.2026, 10:01" bzw. „Noch nicht benachrichtigt". */
 export function notificationText(cn) {
   const am = formatTimestamp(cn?.notifiedAt, { withTime: true });
-  return am !== "—" ? `Benachrichtigt am ${am}` : "Noch nicht benachrichtigt";
+  if (am !== "—") return `Benachrichtigt am ${am}`;
+  // Paritätsaudit BA6: eine Testgutschrift benachrichtigt der Server nie (Pre-Live-Testmodus) —
+  // „noch nicht" würde einen Versand ankündigen, der nicht kommt.
+  return cn?.isTest === true ? "Keine Benachrichtigung (Testgutschrift)" : "Noch nicht benachrichtigt";
 }
 
 const mitKennung = (cn) => !!cn && cn.id !== null && cn.id !== undefined;
@@ -213,8 +223,10 @@ export const canMarkPaid = (cn) => mitKennung(cn) && cn.kind === "regular" && !c
 /** Stornieren: nur eine nicht stornierte Gutschrift (kein Storno eines Stornos). */
 export const canCancel = (cn) => mitKennung(cn) && cn.kind === "regular" && !cn.cancelled;
 /** Dokument erneut erzeugen: solange es nicht bereit ist oder der Partner noch
- *  nicht benachrichtigt wurde. */
-export const canRegenerate = (cn) => mitKennung(cn) && (cn.documentStatus !== "ready" || !cn.notifiedAt);
+ *  nicht benachrichtigt wurde. Paritätsaudit BA6: eine Testgutschrift wird nie
+ *  benachrichtigt — mit bereitem Dokument gibt es für sie nichts mehr zu tun. */
+export const canRegenerate = (cn) => mitKennung(cn)
+  && (cn.documentStatus !== "ready" || (!cn.notifiedAt && cn.isTest !== true));
 /** PDF: nur ein bereites Dokument. */
 export const canDownloadAdmin = (cn) => mitKennung(cn) && (cn.documentReady === true || cn.documentStatus === "ready");
 

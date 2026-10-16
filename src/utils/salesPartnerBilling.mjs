@@ -115,6 +115,10 @@ export const BILLING_FIELD_LABELS = Object.freeze({
   accountHolder: "Kontoinhaber",
   iban: "IBAN",
   bic: "BIC",
+  // Paritätsaudit BA5: zwei Schlüssel, die nur in `missingFields` vorkommen (Server:
+  // lib/salesPartner/billingDetails.js). Bis hierher erschienen beide als „Weitere Angabe".
+  taxNumberOrVatId: "Steuernummer oder USt-IdNr.",
+  billingDetails: "Abrechnungsdaten",
 });
 /** Deutsches Label eines Vertragsfelds; ein unbekannter Schlüssel erscheint nie roh. */
 export const billingFieldLabel = (key) => (own(BILLING_FIELD_LABELS, key) ? BILLING_FIELD_LABELS[key] : "Weitere Angabe");

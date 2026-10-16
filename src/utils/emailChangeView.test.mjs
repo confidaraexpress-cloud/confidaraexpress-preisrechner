@@ -138,3 +138,17 @@ test("19 — hasUsableToken nur bei nicht-leerem String", () => {
   assert.equal(hasUsableToken(null), false);
   assert.equal(hasUsableToken(undefined), false);
 });
+
+// ── Paritätsaudit A6/BP6: Sitzungsende am Code, 403 ist kein Formularfehler ──
+test("A6/BP6 — SESSION_EXPIRED am Code (auch „Token fehlt“), 403 beendet die Sitzung, fachlicher 401 nicht", async () => {
+  const { endsSession } = await import("./emailChangeView.mjs");
+  assert.equal(isSessionExpiredBody({ error: "Token fehlt", code: "SESSION_EXPIRED" }), true);
+  assert.equal(isSessionExpiredBody({ error: "Aktuelles Passwort ist falsch" }), false);
+  assert.equal(endsSession(401, { error: "Token fehlt", code: "SESSION_EXPIRED" }), true);
+  assert.equal(endsSession(401, { error: "Aktuelles Passwort ist falsch" }), false, "Falscheingabe darf nicht abmelden");
+  for (const code of ["ACCOUNT_BLOCKED", "ACCOUNT_PENDING_APPROVAL", "ACCOUNT_PRELIVE_TEST_INACTIVE", "ACCOUNT_NOT_AVAILABLE"]) {
+    assert.equal(endsSession(403, { error: "Konto nicht freigegeben", code }), true, code);
+  }
+  assert.equal(endsSession(400, { code: "SESSION_EXPIRED" }), false);
+  assert.equal(endsSession(500, null), false);
+});

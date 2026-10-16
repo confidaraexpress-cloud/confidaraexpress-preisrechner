@@ -428,3 +428,25 @@ test("F5 Foundation-Konformität: keine eigenen Farben, Radien oder Tiefen", () 
   assert.doesNotMatch(block, /border-radius:\s*\d/);
   assert.doesNotMatch(block, /box-shadow:(?!\s*var\()/);
 });
+
+test("A2 — Vor- und Nachname neuer Adressen erscheinen in Liste, Picker und Dialogen; contactName nur Altbestand", async () => {
+  const { addressContactPerson } = await import("./addressBookView.mjs");
+  const neu = { firstName: "Anna", lastName: "Muster", streetAndNumber: "Weg 1", postalCode: "10115", city: "Berlin", country: "DE" };
+  assert.equal(addressContactPerson(neu), "Anna Muster");
+  assert.equal(addressPickerLabel(neu), "Anna Muster", "ohne Bezeichnung und Firma ist die Person der Titel — nicht „Ohne Bezeichnung“");
+  assert.equal(addressPickerPerson({ ...neu, company: "Muster GmbH" }), "Anna Muster");
+  // Altbestand: nur contactName, wird nicht zerlegt.
+  assert.equal(addressContactPerson({ contactName: " Max Weber " }), "Max Weber");
+  // Vor-/Nachname haben Vorrang vor einem gleichzeitig gespeicherten contactName.
+  assert.equal(addressContactPerson({ contactName: "Empfang", firstName: "Eva", lastName: "Lang" }), "Eva Lang");
+  assert.equal(addressContactPerson({ firstName: "Eva" }), "Eva");
+  assert.equal(addressContactPerson({}), "");
+  assert.equal(addressPickerLabel({}), "Ohne Bezeichnung");
+  // Jede Anzeigestelle nutzt den Helfer — kein reines contactName mehr im sichtbaren Namen.
+  for (const datei of ["../components/addressbook/AddressCard.jsx", "../components/addressbook/AddressDesktopRow.jsx",
+    "../components/addressbook/NewShipmentRoleDialog.jsx", "../components/addressbook/AddressActionsMenu.jsx",
+    "../components/addressbook/AddressDeleteConfirmDialog.jsx"]) {
+    const code = ohneKommentare(lies(datei));
+    assert.ok(!/address\.contactName/.test(code), `${datei} liest den Namen noch aus contactName`);
+  }
+});

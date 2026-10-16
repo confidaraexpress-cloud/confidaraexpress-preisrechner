@@ -195,6 +195,28 @@ test("readErrorCode liest error/code defensiv", () => {
   assert.equal(readErrorCode(null), "");
 });
 
+test("A1: die echte Backendantwort ({ error: Satz, code }) wird am Code klassifiziert", () => {
+  // Formen aus routes/cancellations.js — `error` ist immer ein deutscher Satz.
+  const nichtGefunden = { error: "Sendung nicht gefunden.", code: "SHIPMENT_NOT_FOUND" };
+  assert.equal(readErrorCode(nichtGefunden), "SHIPMENT_NOT_FOUND");
+  assert.equal(classifyCancellationError(404, readErrorCode(nichtGefunden)).kind, "not_found");
+
+  const nichtErlaubt = { error: "Für diese Sendung ist keine Stornierungsanfrage möglich.", code: "SHIPMENT_CANCELLATION_NOT_ALLOWED" };
+  const e = classifyCancellationError(409, readErrorCode(nichtErlaubt));
+  assert.equal(e.kind, "not_allowed");
+  assert.equal(e.markPending, false, "eine nicht stornierbare Sendung darf nicht als angefragt erscheinen");
+
+  const grund = { error: "Bitte einen Grund angeben.", code: "CANCELLATION_REASON_INVALID" };
+  assert.equal(classifyCancellationError(400, readErrorCode(grund)).kind, "reason_invalid");
+
+  // Ein Satz in `error` ohne Code ist kein Code.
+  assert.equal(readErrorCode({ error: "Interner Fehler" }), "");
+  // Unbekannter 409-Grund: weder „bereits angefragt“ noch optimistische Markierung.
+  const fremd = classifyCancellationError(409, "IRGENDETWAS_NEUES");
+  assert.equal(fremd.kind, "conflict");
+  assert.equal(fremd.markPending, false);
+});
+
 test("shipmentDialogLabel: eigene Referenz bevorzugt, sonst die Auftragsbestätigung", () => {
   assert.equal(shipmentDialogLabel({ reference_number: "REF-9" }), "REF-9");
   assert.equal(shipmentDialogLabel({ order_confirmation_number: "CE-AB26-00042" }), "CE-AB26-00042");

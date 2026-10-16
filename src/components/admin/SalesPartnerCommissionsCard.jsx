@@ -26,6 +26,7 @@ import {
   buildAdjustmentBody,
   buildReverseBody,
   canReverseEntry,
+  reverseOutcomeMessage,
   currentLocalMonth,
   formatTimestamp,
   normalizeAdminCommissions,
@@ -143,8 +144,11 @@ export function SalesPartnerCommissionsCard({ partnerId, refreshKey = 0 }) {
         setReverse((x) => (x ? { ...x, error: adminActionErrorText(r.status, body) } : x));
         return;
       }
+      // Paritätsaudit BA3: die Meldung folgt der Antwort — `reversed: 0` ist kein Erfolg.
+      let d = null;
+      try { d = await r.json(); } catch { d = null; }
       setReverse(null);
-      setMessage({ type: "success", text: "Die Entscheidung wurde zurückgenommen." });
+      setMessage(reverseOutcomeMessage(d));
       load();
     } catch {
       setReverse((x) => (x ? { ...x, error: "Die Rücknahme wurde nicht ausgeführt. Bitte versuchen Sie es erneut." } : x));
@@ -197,7 +201,7 @@ export function SalesPartnerCommissionsCard({ partnerId, refreshKey = 0 }) {
     <>
       <AdminDisclosureCard id="adm-sp-commissions-card" title="Provisionen" summary={sectionSummary(state, commissionsSummary)}>
         {message && (
-          <div className={`alert ${message.type === "success" ? "alert-success" : "alert-error"}`} role={message.type === "success" ? "status" : "alert"}>
+          <div className={`alert ${message.type === "success" ? "alert-success" : message.type === "info" ? "alert-info" : "alert-error"}`} role={message.type === "error" ? "alert" : "status"}>
             {message.text}
           </div>
         )}

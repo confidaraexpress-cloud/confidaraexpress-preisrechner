@@ -287,6 +287,13 @@ test("11 — Outcome-Meldungen sind einheitlich und nie vor dem Backend-Erfolg",
   assert.deepEqual(emailOutcomeMessage("sent", "send"), { type: "success", text: SUCCESS_TEXT.emailStarted });
   assert.equal(emailOutcomeMessage("already_sent").type, "info");
   assert.equal(emailOutcomeMessage(null).type, "error");
+  // Paritätsaudit B7: unklarer und abgelöster Ausgang sind weder Erfolg noch Fehlschlag.
+  assert.deepEqual(emailOutcomeMessage("unclear", "send"), { type: "info", text: SUCCESS_TEXT.emailUnclear });
+  assert.deepEqual(emailOutcomeMessage("failed", "send", "finalize_failed"), { type: "info", text: SUCCESS_TEXT.emailUnclear });
+  assert.deepEqual(emailOutcomeMessage("superseded", "resend"), { type: "info", text: SUCCESS_TEXT.emailSuperseded });
+  assert.equal(emailOutcomeMessage("failed", "send", "provider_rejected").type, "error");
+  assert.match(SUCCESS_TEXT.emailUnclear, /bevor Sie erneut senden/);
+  assert.match(detailSrc, /emailOutcomeMessage\(d\.outcome, mailKind, d\.errorCode\)/);
   // Die Seite setzt die Erfolgsmeldung erst NACH der Antwort und lädt danach neu.
   // Geprüft wird die REIHENFOLGE im Funktionsrumpf, nicht ein Zeichenabstand: in jeder
   // mutierenden Aktion muss der await-Aufruf VOR jeder Erfolgs-/Infomeldung stehen.
@@ -599,4 +606,27 @@ test("29 — Selbsttest: die Prüflogik greift tatsächlich", () => {
   assert.notEqual(invoiceMode(TEST_INV), invoiceMode(PREVIEW_INV));
   assert.notEqual(snapshotRecipient(PROD_OPEN).company, currentAccount(PROD_OPEN).company);
   assert.equal(('<th scope="col">A</th><th scope="col">B</th>'.match(/<th scope="col"/g) || []).length, 2);
+});
+
+test("Paritätsaudit B6 — eine gesperrte Dokumenterzeugung ist kein „erneut möglich“", async () => {
+  const { documentErrorMessage, DOCUMENT_BLOCKED_NOTE, DOCUMENT_ERROR_NOTE } = await import("./adminInvoiceView.mjs");
+  const gesperrt = documentErrorMessage(422, {
+    error: "invoice_snapshot_not_production_ready",
+    message: "Für diese Rechnung darf derzeit kein Produktivdokument erzeugt werden.",
+    missingFields: ["bank.iban", "issuer.name"], placeholderFields: ["issuer.vatId"],
+  });
+  assert.equal(gesperrt.type, "error");
+  assert.match(gesperrt.text, /nicht produktionsreif/);
+  assert.match(gesperrt.text, /Fehlende Angaben: IBAN, Firmierung\./);
+  assert.match(gesperrt.text, /Noch Platzhalter: USt-IdNr\./);
+  assert.ok(gesperrt.text.endsWith(DOCUMENT_BLOCKED_NOTE));
+  assert.ok(!gesperrt.text.includes(DOCUMENT_ERROR_NOTE), "kein „erneuter Versuch ist möglich“");
+  assert.ok(!gesperrt.text.includes("invoice_snapshot_not_production_ready"));
+  assert.match(documentErrorMessage(409, { error: "classified_test_document" }).text, /Testbuchung/);
+  // Unbekannter Sperrcode: der Satz des Servers, nie der Code.
+  const neu = documentErrorMessage(409, { error: "neuer_code", message: "Ein Satz." });
+  assert.equal(neu.text, `Ein Satz. ${DOCUMENT_BLOCKED_NOTE}`);
+  assert.equal(documentErrorMessage(500, { error: "Fehler" }).text, DOCUMENT_ERROR_NOTE);
+  assert.match(documentErrorMessage(404, {}).text, /nicht gefunden/);
+  assert.match(detailSrc, /setDocMsg\(documentErrorMessage\(r\.status, d\)\);/);
 });

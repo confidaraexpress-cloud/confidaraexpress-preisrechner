@@ -800,3 +800,24 @@ test("27 — die Versicherungskarte entsteht nur mit gespeichertem Typ, neutral 
     "ein unbekannter Typ wird nie roh angezeigt");
   assert.match(detailSrc, /\{insurance && \(/);
 });
+
+test("Paritätsaudit B4 — Testbuchung in Liste und Detail, Gutschein nur, wenn gesetzt", async () => {
+  const { isTestBooking, shipmentVoucherView, shipmentMarkers: marker } = await import("./adminShipmentView.mjs");
+  assert.equal(isTestBooking({ is_test_booking: true }), true);
+  for (const nein of [{ is_test_booking: false }, { is_test_booking: "true" }, {}, null]) assert.equal(isTestBooking(nein), false);
+  // Der Testmarker steht vorn und als Badge; ohne Testbuchung kein Marker.
+  assert.deepEqual(marker({ is_test_booking: true, has_tracking: true }).map((m) => m.key), ["test", "tracking"]);
+  assert.equal(marker({ is_test_booking: true })[0].badge, "badge-yellow");
+  assert.deepEqual(marker({ is_test_booking: false }), []);
+  // Gutschein: nur mit Code; der Nachlass nur, wenn er eine Zahl ist.
+  assert.deepEqual(shipmentVoucherView({ voucher_code: "WELCOME10", voucher_discount_gross: "11.90" }), { code: "WELCOME10", discountGross: 11.9 });
+  assert.deepEqual(shipmentVoucherView({ voucher_code: "WELCOME10", voucher_discount_gross: null }), { code: "WELCOME10", discountGross: null });
+  assert.equal(shipmentVoucherView({ voucher_code: null, voucher_discount_gross: 5 }), null);
+  assert.equal(shipmentVoucherView({ voucher_code: "  " }), null);
+  assert.equal(shipmentVoucherView(null), null);
+  const detail = read("pages/admin/AdminShipmentDetailPage.jsx");
+  assert.match(detail, /\{isTestBooking\(s\) && <span className="badge badge-yellow" id="adm-ship-test-badge">Testbuchung<\/span>\}/);
+  assert.match(detail, /\.\.\.\(voucher \? \[/);
+  const liste = read("pages/admin/AdminShipmentsPage.jsx");
+  assert.match(liste, /className=\{m\.badge \? `badge \$\{m\.badge\}` : "adm-ship-marker"\}/);
+});

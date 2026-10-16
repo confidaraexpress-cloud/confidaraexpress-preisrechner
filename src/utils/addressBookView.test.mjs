@@ -439,3 +439,21 @@ test("34 — addressBadgeList zeigt immer genau ein Rollen-Badge, auch ohne weit
   const plain = addressBadgeList(addr({ role: ROLE_RECIPIENT, isDefaultSender: false, isDefaultRecipient: false, favorite: false }));
   assert.deepEqual(plain.map((b) => b.text), ["Empfänger"]);
 });
+
+// Paritätsaudit A3 — Altbestandsadresse ohne vollständigen Versandkontakt (Backend #432 liefert `field`).
+test("A3 — ADDRESS_CONTACT_INCOMPLETE nennt das fehlende Feld und den Weg über „Bearbeiten“", () => {
+  const telefon = mapAddressErrorToMessage("ADDRESS_CONTACT_INCOMPLETE", "phone");
+  assert.match(telefon, /fehlt noch die Telefonnummer des Versandkontakts/);
+  assert.match(telefon, /über „Bearbeiten“/);
+  assert.match(mapAddressErrorToMessage("ADDRESS_CONTACT_INCOMPLETE", "firstName"), /der Vorname/);
+  assert.match(mapAddressErrorToMessage("ADDRESS_CONTACT_INCOMPLETE", "lastName"), /der Nachname/);
+  assert.match(mapAddressErrorToMessage("ADDRESS_CONTACT_INCOMPLETE", "email"), /die E-Mail-Adresse/);
+  // Ohne oder mit unbekanntem Feld: der vollständige Kontakt, nie ein Rohwert.
+  for (const feld of [undefined, "first_name", "irgendwas"]) {
+    const t = mapAddressErrorToMessage("ADDRESS_CONTACT_INCOMPLETE", feld);
+    assert.match(t, /vollständige Versandkontakt/);
+    assert.doesNotMatch(t, /first_name|irgendwas|ADDRESS_CONTACT_INCOMPLETE/);
+  }
+  // Andere Codes unverändert — ein zweites Argument stört nicht.
+  assert.match(mapAddressErrorToMessage("ADDRESS_NOT_FOUND", "phone"), /nicht gefunden/);
+});

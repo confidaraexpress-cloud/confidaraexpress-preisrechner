@@ -120,18 +120,19 @@ test("B6 ohne Treffer wird der Artikelname gezielt nachgeladen", () => {
   assert.match(code, /const ausZeilen = items\.find\(\(m\) => String\(m\.productId\) === String\(productId\)\)\?\.productName/);
 });
 
-test("B7 alle vier Filter wirken gemeinsam und lösen gemeinsam neu", () => {
-  assert.match(code, /\}, \[type, productId, from, to\]\)/);
+// Paritätsaudit BI7 (dokumentierte Ankeränderung): der Lagerfilter ist der fünfte Filter.
+test("B7 alle fünf Filter wirken gemeinsam und lösen gemeinsam neu", () => {
+  assert.match(code, /\}, \[type, productId, warehouseId, from, to\]\)/);
   const anfrage = code.slice(code.indexOf("const res = await getMovements"), code.indexOf("if (seq.current !== meins) return;"));
-  for (const feld of ["type:", "productId:", "from:", "to:"]) {
+  for (const feld of ["type:", "productId:", "warehouseId:", "from:", "to:"]) {
     assert.ok(anfrage.includes(feld), `${feld} fehlt in der Anfrage`);
   }
 });
 
 test("B8 „Filter zurücksetzen“ erscheint erst ab zwei gesetzten Filtern", () => {
-  assert.match(code, /const aktiveFilter = \[type, productId, from, to\]\.filter\(Boolean\)\.length/);
+  assert.match(code, /const aktiveFilter = \[type, productId, warehouseId, from, to\]\.filter\(Boolean\)\.length/);
   assert.match(code, /\{aktiveFilter > 1 && \(/);
-  assert.match(code, /const alleFilterWeg = \(\) => \{ setType\(""\); setProductId\(""\); setProductName\(""\); setFrom\(""\); setTo\(""\); \}/);
+  assert.match(code, /const alleFilterWeg = \(\) => \{ setType\(""\); setProductId\(""\); setProductName\(""\); setWarehouseId\(""\); setFrom\(""\); setTo\(""\); \}/);
 });
 
 test("B9 kein eigener Datepicker und keine Kalenderbibliothek", () => {

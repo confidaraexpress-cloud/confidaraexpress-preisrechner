@@ -5,7 +5,7 @@ import { dtDE } from "../../utils/formatters";
 import {
   mapEmailChangeStartError, mapEmailChangeResendError,
   EMAIL_CHANGE_START_GENERIC, EMAIL_CHANGE_RATE_LIMIT, EMAIL_CHANGE_RESEND_GENERIC, EMAIL_CHANGE_CANCEL_GENERIC,
-  isSessionExpiredBody, isResendRequestGone,
+  endsSession, isResendRequestGone,
 } from "../../utils/emailChangeView.mjs";
 import { EmailChangeDialog } from "./EmailChangeDialog";
 import { EmailChangeCancelDialog } from "./EmailChangeCancelDialog";
@@ -60,10 +60,12 @@ export function EmailChangeSection({ user }) {
           showNotice("Wir haben eine Bestätigungs-E-Mail an die neue Adresse gesendet.", "success");
         }
         refreshUser();
+      } else if (endsSession(r.status, d)) {
+        // Sitzungsende (401 SESSION_EXPIRED oder 403 gesperrtes/nicht freigegebenes
+        // Konto, Paritätsaudit A6/BP6): globaler Logout statt Formularfehler.
+        triggerAuthError(); return;
       } else if (r.status === 401) {
-        // Fachlicher 401 (falsches Passwort) darf NICHT ausloggen; nur der echte
-        // Session-Sentinel-Body löst den globalen Logout aus.
-        if (isSessionExpiredBody(d)) { triggerAuthError(); return; }
+        // Fachlicher 401 (falsches Passwort) darf NICHT ausloggen.
         setStartError(mapEmailChangeStartError(d?.code || "CURRENT_PASSWORD_INVALID"));
       } else if (r.status === 429) {
         setStartError(EMAIL_CHANGE_RATE_LIMIT);

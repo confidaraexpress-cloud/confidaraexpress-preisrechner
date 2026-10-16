@@ -1,5 +1,6 @@
 import React from "react";
 import { useDialog } from "../../hooks/useDialog";
+import { addressContactPerson } from "../../utils/addressPickerView.mjs";
 
 // „Beides"-Adressen sind für „Neue Sendung" nicht eindeutig zuordenbar — vor
 // der Navigation entscheidet der Nutzer bewusst, als welche Rolle die Adresse
@@ -10,7 +11,7 @@ export function NewShipmentRoleDialog({ address, onCancel, onChoose }) {
   const dialogRef = useDialog({ open: !!address, onClose: onCancel });
 
   if (!address) return null;
-  const name = address.label || address.company || address.contactName || "Diese Adresse";
+  const name = address.label || address.company || addressContactPerson(address) || "Diese Adresse";
 
   return (
     <div className="abk-dialog-overlay" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}>

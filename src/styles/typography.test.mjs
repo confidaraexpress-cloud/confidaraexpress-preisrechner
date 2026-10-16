@@ -70,7 +70,7 @@ const istAuth = (g) => g.datei === AUTH_DATEI
 
 // Öffentlicher Preisrechner (Betreiberentscheidung 2026-10-16): eine eigene, statische Seite mit
 // Premium-Auftritt. Ihre Headline ist die EINZIGE Stelle außerhalb von Auth mit einer Display-Größe
-// jenseits der Skala (ganze Pixel, 34/44/52 px je Breite). Alles andere dort bleibt auf der Skala.
+// jenseits der Skala (ganze Pixel, 36/44/48 px je Breite). Alles andere dort bleibt auf der Skala.
 const PREISRECHNER_DATEI = "public-calculator.css";
 const istPreisrechnerDisplay = (g) => g.datei === PREISRECHNER_DATEI && g.selektor.trim() === ".pc-display";
 

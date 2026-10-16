@@ -6,11 +6,13 @@ import {
 } from "../utils/publicCalculatorView.mjs";
 
 // ── Tarifkarte des öffentlichen Preisrechners ────────────────────────────────
-// Carrier und Service, Übergabe und Abholtag, Laufzeit „laut Versanddienstleister",
-// Netto und Brutto (bei nicht exaktem Preis mit „ab" und Erklärung), Hinweise.
-// „Mit diesem Tarif fortfahren" nur, wenn der Server das Angebot mit vollständigen
-// Sendungsangaben als buchbar kennzeichnet; sonst bleibt die Karte sichtbar wie im
-// Portal — mit dem Grundtext und ohne Aktion. Keine Auszeichnung, kein Rang.
+// Kopf: Carrier, Service und die Übergabeart als Kennzeichnung. Darunter in zwei
+// Spalten Abholtag bzw. Abgabe und Laufzeit „laut Versanddienstleister", dann der
+// Preis — netto groß, brutto daneben, bei nicht exaktem Preis mit „ab" und
+// Erklärung —, die Hinweise und die Aktion. „Mit diesem Tarif fortfahren" nur,
+// wenn der Server das Angebot mit vollständigen Sendungsangaben als buchbar
+// kennzeichnet; sonst bleibt die Karte sichtbar wie im Portal — mit dem
+// Grundtext und ohne Aktion. Keine Auszeichnung, kein Rang.
 
 export function PublicOfferCard({ offer, index }) {
   const carrier = publicCarrierDisplay(offer);
@@ -22,6 +24,7 @@ export function PublicOfferCard({ offer, index }) {
   const weiter = offerCanContinue(offer);
   const gesperrt = offerUnavailableText(offer);
   const titelId = `pc-offer-${index}-title`;
+  const abgabe = offer.serviceType === "dropoff";
 
   const fortfahren = () => {
     const ziel = handoffUrl(offer.handoffToken);
@@ -29,7 +32,8 @@ export function PublicOfferCard({ offer, index }) {
   };
 
   return (
-    <article className="pc-offer" aria-labelledby={titelId} data-product-key={offer.productKey || undefined}>
+    <article className={`pc-offer${weiter ? "" : " pc-offer--quiet"}`} aria-labelledby={titelId}
+      data-product-key={offer.productKey || undefined}>
       <header className="pc-offer-head">
         <span className="pc-offer-logo">
           {carrier.logo ? <img src={carrier.logo} alt="" width="72" height="32" loading="lazy" /> : null}
@@ -38,19 +42,16 @@ export function PublicOfferCard({ offer, index }) {
           <h3 className="pc-offer-carrier" id={titelId}>{carrier.name}</h3>
           <p className="pc-offer-service">{service}</p>
         </div>
+        {abholung.title && (
+          <span className={`pc-offer-tag${abgabe ? " pc-offer-tag--dropoff" : ""}`}>{abholung.title}</span>
+        )}
       </header>
 
       <dl className="pc-offer-facts">
-        {abholung.title && (
-          <div className="pc-fact">
-            <dt>Übergabe</dt>
-            <dd>{abholung.title}</dd>
-          </div>
-        )}
         <div className="pc-fact">
           <dt>{abholung.dayLabel}</dt>
           <dd>
-            {abholung.day || "—"}
+            <span className="pc-fact-main">{abholung.day || "—"}</span>
             {abholung.time && <span className="pc-fact-sub">{abholung.time}</span>}
             {abholung.adjustedNote && <span className="pc-fact-sub">{abholung.adjustedNote}</span>}
           </dd>
@@ -58,7 +59,7 @@ export function PublicOfferCard({ offer, index }) {
         <div className="pc-fact">
           <dt>{zustellung.label}</dt>
           <dd>
-            {zustellung.value}
+            <span className="pc-fact-main">{zustellung.value}</span>
             {zustellung.time && <span className="pc-fact-sub">{zustellung.time}</span>}
             {zustellung.note && <span className="pc-fact-sub pc-fact-note">{zustellung.note}</span>}
           </dd>
@@ -67,15 +68,13 @@ export function PublicOfferCard({ offer, index }) {
 
       <div className="pc-offer-price">
         {preis.onRequest ? (
-          <p className="pc-price-net">{PRICE_TEXT.onRequest}</p>
+          <p className="pc-price-main">{PRICE_TEXT.onRequest}</p>
         ) : (
           <>
-            <p className="pc-price-net">
+            <p className="pc-price-main">
               <span className="pc-price-amount">{preis.net}</span> <span className="pc-price-suffix">{PRICE_TEXT.net}</span>
             </p>
-            {preis.gross && (
-              <p className="pc-price-gross">{preis.gross} {PRICE_TEXT.gross}</p>
-            )}
+            {preis.gross && <p className="pc-price-gross">{preis.gross} {PRICE_TEXT.gross}</p>}
             {preis.note && <p className="pc-price-note">{preis.note}</p>}
           </>
         )}

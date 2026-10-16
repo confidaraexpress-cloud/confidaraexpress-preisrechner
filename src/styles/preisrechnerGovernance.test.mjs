@@ -162,3 +162,16 @@ test("9 — Adressen: „/“ ist die Seite, Anwendungspfade gehen zur Hauptdoma
   ];
   for (const [uri, erwartet] of faelle) assert.equal(ordneZu(PREISRECHNER, uri), erwartet, uri);
 });
+
+test("10 — die 404-Seite: eigener Eintrag im Build, ohne Skript, nicht indexiert, mit Weg zurück", () => {
+  const cfg = lies("vite.preisrechner.config.js");
+  assert.match(cfg, /index: path\.join\(REPO, "preisrechner", "index\.html"\)/);
+  assert.match(cfg, /404: path\.join\(REPO, "preisrechner", "404\.html"\)/);
+  const html = lies("preisrechner/404.html").replace(/<!--[\s\S]*?-->/g, "");
+  assert.doesNotMatch(html, /<script|style="|<style/, "kein Skript (keine Aufwärmmeldung), nichts inline (CSP)");
+  assert.match(html, /<meta name="robots" content="noindex" \/>/);
+  assert.match(html, /<html lang="de">/);
+  assert.match(html, /href="\/"/, "Weg zurück zum Rechner");
+  assert.match(html, /href="https:\/\/confidaraexpress\.de\/"/, "Weg zur Hauptdomain");
+  assert.doesNotMatch(html.replace(/<[^>]+>/g, " "), /jumingo|transglobal/i);
+});

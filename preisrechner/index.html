@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Versandpreise für Unternehmen berechnen | ConfidaraExpress</title>
-    <meta name="description" content="Versandpreise für Unternehmen berechnen: Angebote verschiedener Versanddienstleister mit Netto- und Bruttopreis vergleichen. Gebucht wird nach Registrierung und Freischaltung im Kundenbereich von ConfidaraExpress." />
+    <title>Versandpreise für Unternehmen vergleichen | ConfidaraExpress</title>
+    <meta name="description" content="Versand für Unternehmen: Versandoptionen verschiedener Dienstleister mit Netto- und Bruttopreis vergleichen. Buchung, Versanddokumente und Sendungsverfolgung nach Freischaltung im Kundenbereich von ConfidaraExpress." />
     <link rel="canonical" href="https://preisrechner.confidaraexpress.de/" />
     <meta name="theme-color" content="#111A33" />
     <link rel="icon" type="image/svg+xml" href="/favicon-v2.svg" />
@@ -17,8 +17,8 @@
     <meta property="og:site_name" content="ConfidaraExpress" />
     <meta property="og:locale" content="de_DE" />
     <meta property="og:url" content="https://preisrechner.confidaraexpress.de/" />
-    <meta property="og:title" content="Versandpreise für Unternehmen berechnen | ConfidaraExpress" />
-    <meta property="og:description" content="Angebote verschiedener Versanddienstleister mit Netto- und Bruttopreis vergleichen. Gebucht wird nach Freischaltung im Kundenbereich." />
+    <meta property="og:title" content="Versand für Unternehmen. Einfach vergleichen. | ConfidaraExpress" />
+    <meta property="og:description" content="Versandoptionen verschiedener Dienstleister mit Netto- und Bruttopreis vergleichen. Gebucht wird nach Freischaltung im Kundenbereich." />
   </head>
   <body class="pc-page">
     <a class="pc-skip" href="#pc-calculator-title">Zum Preisrechner springen</a>
@@ -26,136 +26,159 @@
     <header class="pc-header">
       <div class="pc-wrap pc-header-inner">
         <a class="pc-brand" href="/">
-          <img class="pc-brand-img" src="../src/assets/brand/lockup-standard.svg" alt="ConfidaraExpress" width="92" height="48" />
+          <img class="pc-brand-img" src="../src/assets/brand/lockup-reverse.svg" alt="ConfidaraExpress" width="92" height="48" />
         </a>
         <nav class="pc-header-nav" aria-label="Kundenbereich">
-          <a class="pc-link-button pc-link-button--quiet" href="https://confidaraexpress.de/login">Anmelden</a>
-          <a class="pc-link-button" href="https://confidaraexpress.de/register">Konto registrieren</a>
+          <a class="pc-link-button pc-link-button--ghost" href="https://confidaraexpress.de/login">Anmelden</a>
+          <a class="pc-link-button" href="https://confidaraexpress.de/register">Registrieren</a>
         </nav>
       </div>
     </header>
 
     <main id="pc-main">
+      <!-- Bereich 1: Positionierung links, Rechner rechts. Das dunkle Band hinter Kopf und Hero zeichnet
+           .pc-hero-grid::before (public-calculator.css); die Rechnerkarte ragt darüber hinaus. -->
       <section class="pc-hero" aria-labelledby="pc-hero-title">
         <div class="pc-wrap pc-hero-grid">
           <div class="pc-hero-head">
-            <p class="pc-eyebrow">Paketversand für Geschäftskunden</p>
-            <h1 class="pc-display" id="pc-hero-title">Versandlösungen für Unternehmen. Einfach. Transparent. Persönlich.</h1>
+            <p class="pc-eyebrow">Versandpreisrechner für Geschäftskunden</p>
+            <h1 class="pc-display" id="pc-hero-title"><span class="pc-display-line">Versand für Unternehmen.</span> <span class="pc-display-line">Einfach vergleichen.</span></h1>
+            <p class="pc-lead">Ihre digitale Versand- und Logistikplattform – transparente Versandoptionen verschiedener Dienstleister und persönliche Ansprechpartner.</p>
           </div>
 
-          <div class="pc-calculator-card">
-            <h2 class="pc-card-title" id="pc-calculator-title" tabindex="-1">Versandpreise berechnen</h2>
-            <p class="pc-card-sub">Strecke und Paketdaten eingeben. Pflichtfelder sind mit * gekennzeichnet.</p>
+          <div class="pc-calculator-card" id="pc-calculator-card">
+            <div class="pc-card-head">
+              <h2 class="pc-card-title" id="pc-calculator-title" tabindex="-1">Versandpreise berechnen</h2>
+              <p class="pc-card-sub">Pflichtfelder sind mit * gekennzeichnet.</p>
+            </div>
             <div id="pc-calculator" class="pc-calculator-root">
               <noscript><p class="pc-notice pc-notice--info">Für den Preisrechner wird JavaScript benötigt.</p></noscript>
+              <!-- Statisches Skelett mit der Struktur des Formulars (PublicCalculatorApp.jsx): die Karte hat ab dem
+                   ersten Bild ihre endgültige Höhe, React ersetzt das Skelett ohne Sprung. Nicht bedienbar. -->
+              <div class="pc-form pc-form--skeleton" aria-hidden="true" inert>
+                <div class="pc-row">
+                  <span class="pc-row-label">Von</span>
+                  <div class="pc-row-fields pc-row-fields--route">
+                    <div class="field"><label class="field-label">Land</label><select class="field-input field-select" tabindex="-1"><option>Deutschland</option></select></div>
+                    <div class="field"><label class="field-label">PLZ<span> *</span></label><input class="field-input" tabindex="-1" placeholder="z. B. 26133" /></div>
+                    <div class="field"><label class="field-label">Ort<span> *</span></label><input class="field-input" tabindex="-1" placeholder="z. B. Stuttgart" /></div>
+                  </div>
+                </div>
+                <div class="pc-row">
+                  <span class="pc-row-label">Nach</span>
+                  <div class="pc-row-fields pc-row-fields--route">
+                    <div class="field"><label class="field-label">Land</label><select class="field-input field-select" tabindex="-1"><option>Deutschland</option></select></div>
+                    <div class="field"><label class="field-label">PLZ<span> *</span></label><input class="field-input" tabindex="-1" placeholder="z. B. 26133" /></div>
+                    <div class="field"><label class="field-label">Ort<span> *</span></label><input class="field-input" tabindex="-1" placeholder="z. B. Berlin" /></div>
+                  </div>
+                </div>
+                <div class="pc-row">
+                  <span class="pc-row-label">Paket</span>
+                  <div class="pc-row-fields pc-row-fields--package">
+                    <div class="field"><label class="field-label">Anzahl<span> *</span></label><input class="field-input" tabindex="-1" value="1" /></div>
+                    <div class="field ce-field--has-unit"><label class="field-label">Gewicht<span> *</span></label><div class="ce-field-control"><input class="field-input" tabindex="-1" /><span class="ce-field-unit">kg</span></div></div>
+                    <div class="field ce-field--has-unit"><label class="field-label">Länge<span> *</span></label><div class="ce-field-control"><input class="field-input" tabindex="-1" /><span class="ce-field-unit">cm</span></div></div>
+                    <div class="field ce-field--has-unit"><label class="field-label">Breite<span> *</span></label><div class="ce-field-control"><input class="field-input" tabindex="-1" /><span class="ce-field-unit">cm</span></div></div>
+                    <div class="field ce-field--has-unit"><label class="field-label">Höhe<span> *</span></label><div class="ce-field-control"><input class="field-input" tabindex="-1" /><span class="ce-field-unit">cm</span></div></div>
+                  </div>
+                  <p class="pc-row-hint">Gewicht und Maße je Paket — mehrere Pakete sind identisch.</p>
+                </div>
+                <div class="pc-row">
+                  <span class="pc-row-label">Versand</span>
+                  <div class="pc-row-fields pc-row-fields--options">
+                    <div class="field"><label class="field-label">Versanddatum</label><input class="field-input" type="date" tabindex="-1" /></div>
+                    <div class="field"><label class="field-label">Abholung / Abgabe</label><select class="field-input field-select" tabindex="-1"><option>Alle Dienstleistungen</option></select></div>
+                    <div class="field"><label class="field-label">Versandart</label><select class="field-input field-select" tabindex="-1"><option>Alle Versandarten</option></select></div>
+                  </div>
+                </div>
+                <div class="pc-submit-row">
+                  <span class="pc-button pc-button--primary pc-button--submit">Versandpreise berechnen</span>
+                </div>
+                <p class="pc-form-note">Für die Berechnung verwenden wir nur Länder, Postleitzahlen, Orte und Paketdaten. Angebote ausschließlich für Unternehmen. Hinweise zum <a href="https://confidaraexpress.de/datenschutz" tabindex="-1">Datenschutz</a>.</p>
+              </div>
             </div>
           </div>
 
           <div class="pc-hero-body">
-            <p class="pc-lead">Vergleichen Sie Versandoptionen verschiedener Dienstleister über eine Plattform – mit transparenten Preisen und persönlichen Ansprechpartnern bei ConfidaraExpress.</p>
             <ul class="pc-hero-points">
-              <li>Preise ohne Anmeldung berechnen</li>
-              <li>Netto- und Bruttopreis auf jedem Angebot</li>
-              <li>Buchung im Kundenbereich nach Freischaltung Ihres Kontos</li>
+              <li>Versandoptionen verschiedener Dienstleister im Vergleich</li>
+              <li>Netto- und Bruttopreise ohne Anmeldung</li>
+              <li>Buchung, Dokumente und Sendungsverfolgung an einem Ort</li>
+              <li>Persönliche Ansprechpartner und geprüfte Geschäftskonten</li>
+            </ul>
+            <p class="pc-hero-contact">
+              <span class="pc-hero-contact-label">Persönlich erreichbar</span>
+              <a href="mailto:support@confidaraexpress.de">support@confidaraexpress.de</a>
+              <a href="tel:+4915118003775">015118003775</a>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Bereich 2: Ergebnisse — erst nach der ersten Berechnung (PublicResults.jsx rendert hierher). -->
+      <div id="pc-results"></div>
+
+      <!-- Bereich 3: Ablauf, Plattform und Service in einem Abschnitt. -->
+      <section class="pc-platform" aria-label="Ablauf, Plattform und Service">
+        <div class="pc-wrap pc-platform-grid">
+          <div class="pc-platform-col" role="region" aria-labelledby="pc-steps-title">
+            <h2 class="pc-section-title" id="pc-steps-title">So funktioniert’s</h2>
+            <ol class="pc-steps">
+              <li class="pc-step">
+                <span class="pc-step-number" aria-hidden="true">1</span>
+                <div class="pc-step-body">
+                  <h3 class="pc-step-title">Preise vergleichen</h3>
+                  <p class="pc-step-text">Strecke und Paket eingeben und die Angebote mit Netto- und Bruttopreis vergleichen – ohne Anmeldung.</p>
+                </div>
+              </li>
+              <li class="pc-step">
+                <span class="pc-step-number" aria-hidden="true">2</span>
+                <div class="pc-step-body">
+                  <h3 class="pc-step-title">Geschäftskonto registrieren</h3>
+                  <p class="pc-step-text">ConfidaraExpress prüft jedes Konto und schaltet es frei.</p>
+                </div>
+              </li>
+              <li class="pc-step">
+                <span class="pc-step-number" aria-hidden="true">3</span>
+                <div class="pc-step-body">
+                  <h3 class="pc-step-title">Im Kundenbereich buchen</h3>
+                  <p class="pc-step-text">Auswahl übernehmen, Sendungsangaben ergänzen und buchen. Der Preis wird dabei mit Ihren vollständigen Angaben neu berechnet.</p>
+                </div>
+              </li>
+            </ol>
+          </div>
+
+          <div class="pc-platform-col" role="region" aria-labelledby="pc-platform-title">
+            <h2 class="pc-section-title" id="pc-platform-title">Alles in einem Kundenbereich</h2>
+            <ul class="pc-features">
+              <li class="pc-feature"><h3 class="pc-feature-title">Tarifvergleich</h3><p class="pc-feature-text">Angebote mehrerer Versanddienstleister nebeneinander.</p></li>
+              <li class="pc-feature"><h3 class="pc-feature-title">Buchung</h3><p class="pc-feature-text">Absender, Empfänger und Sendungsangaben an einem Ort.</p></li>
+              <li class="pc-feature"><h3 class="pc-feature-title">Versanddokumente</h3><p class="pc-feature-text">Versandlabel und Sendungsdokumente abrufen.</p></li>
+              <li class="pc-feature"><h3 class="pc-feature-title">Tracking</h3><p class="pc-feature-text">Den Status Ihrer Sendungen verfolgen.</p></li>
+              <li class="pc-feature"><h3 class="pc-feature-title">Rechnungen</h3><p class="pc-feature-text">Rechnungen zu Ihren Sendungen gesammelt einsehen.</p></li>
+              <li class="pc-feature"><h3 class="pc-feature-title">Adressbuch</h3><p class="pc-feature-text">Häufige Absender und Empfänger wiederverwenden.</p></li>
             </ul>
           </div>
-        </div>
-      </section>
 
-      <section class="pc-results-section" aria-labelledby="pc-results-title">
-        <div class="pc-wrap">
-          <h2 class="pc-section-title" id="pc-results-title" tabindex="-1">Ihre Versandoptionen</h2>
-          <p class="pc-results-intro" id="pc-results-intro">Die Angebote erscheinen hier, sobald Sie die Preise berechnet haben. Laufzeiten und Termine stammen von den Versanddienstleistern.</p>
-          <div id="pc-results" class="pc-results-root"></div>
-        </div>
-      </section>
-
-      <section class="pc-section" aria-labelledby="pc-steps-title">
-        <div class="pc-wrap">
-          <h2 class="pc-section-title" id="pc-steps-title">So funktioniert’s</h2>
-          <ol class="pc-steps">
-            <li class="pc-step">
-              <span class="pc-step-number" aria-hidden="true">1</span>
-              <h3 class="pc-step-title">Preise vergleichen</h3>
-              <p class="pc-step-text">Strecke und Paketdaten eingeben und die Angebote mit Netto- und Bruttopreis vergleichen – ohne Anmeldung.</p>
-            </li>
-            <li class="pc-step">
-              <span class="pc-step-number" aria-hidden="true">2</span>
-              <h3 class="pc-step-title">Geschäftskonto registrieren und freischalten lassen</h3>
-              <p class="pc-step-text">Registrieren Sie Ihr Unternehmen. ConfidaraExpress prüft jedes Konto und schaltet es frei.</p>
-            </li>
-            <li class="pc-step">
-              <span class="pc-step-number" aria-hidden="true">3</span>
-              <h3 class="pc-step-title">Im Kundenbereich buchen</h3>
-              <p class="pc-step-text">Nach der Anmeldung übernehmen Sie Ihre Auswahl, ergänzen die Sendungsangaben und buchen. Der Preis wird dabei mit Ihren vollständigen Angaben neu berechnet.</p>
-            </li>
-          </ol>
-        </div>
-      </section>
-
-      <section class="pc-section pc-section--plain" aria-labelledby="pc-platform-title">
-        <div class="pc-wrap">
-          <h2 class="pc-section-title" id="pc-platform-title">Eine Plattform für Ihren Versand</h2>
-          <p class="pc-section-lead">Was Ihnen im Kundenbereich nach der Freischaltung zur Verfügung steht.</p>
-          <ul class="pc-features">
-            <li class="pc-feature">
-              <h3 class="pc-feature-title">Tarifvergleich</h3>
-              <p class="pc-feature-text">Angebote mehrerer Versanddienstleister für Ihre Sendung nebeneinander – mit Übergabeart, Laufzeit und Preis.</p>
-            </li>
-            <li class="pc-feature">
-              <h3 class="pc-feature-title">Buchung</h3>
-              <p class="pc-feature-text">Den gewählten Tarif mit Absender, Empfänger und Sendungsangaben direkt im Kundenbereich buchen.</p>
-            </li>
-            <li class="pc-feature">
-              <h3 class="pc-feature-title">Versanddokumente</h3>
-              <p class="pc-feature-text">Versandlabel und Sendungsdokumente nach der Buchung im Kundenbereich abrufen.</p>
-            </li>
-            <li class="pc-feature">
-              <h3 class="pc-feature-title">Tracking</h3>
-              <p class="pc-feature-text">Den Status Ihrer Sendungen im Kundenbereich verfolgen.</p>
-            </li>
-            <li class="pc-feature">
-              <h3 class="pc-feature-title">Rechnungen</h3>
-              <p class="pc-feature-text">Rechnungen zu Ihren Sendungen gesammelt im Kundenbereich einsehen.</p>
-            </li>
-            <li class="pc-feature">
-              <h3 class="pc-feature-title">Adressbuch</h3>
-              <p class="pc-feature-text">Häufige Absender und Empfänger speichern und für die nächste Sendung übernehmen.</p>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <section class="pc-section" aria-labelledby="pc-service-title">
-        <div class="pc-wrap pc-service">
-          <div>
-            <h2 class="pc-section-title" id="pc-service-title">Service und Ansprechpartner</h2>
-            <p class="pc-section-lead">Hinter der Plattform steht ConfidaraExpress mit persönlichen Ansprechpartnern.</p>
+          <div class="pc-platform-col pc-service" role="region" aria-labelledby="pc-service-title">
+            <h2 class="pc-section-title" id="pc-service-title">Persönlich für Sie da</h2>
+            <p class="pc-service-text">Hinter der Plattform stehen persönliche Ansprechpartner bei ConfidaraExpress. Supportanfragen zu Sendungen stellen Sie direkt im Kundenbereich.</p>
+            <dl class="pc-contact">
+              <div class="pc-contact-item"><dt>E-Mail</dt><dd><a href="mailto:support@confidaraexpress.de">support@confidaraexpress.de</a></dd></div>
+              <div class="pc-contact-item"><dt>Telefon</dt><dd><a href="tel:+4915118003775">015118003775</a></dd></div>
+            </dl>
+            <a class="pc-link-button pc-service-cta" href="https://confidaraexpress.de/register">Geschäftskonto registrieren</a>
           </div>
-          <dl class="pc-contact">
-            <div class="pc-contact-item">
-              <dt>E-Mail</dt>
-              <dd><a href="mailto:support@confidaraexpress.de">support@confidaraexpress.de</a></dd>
-            </div>
-            <div class="pc-contact-item">
-              <dt>Telefon</dt>
-              <dd><a href="tel:+4915118003775">015118003775</a></dd>
-            </div>
-            <div class="pc-contact-item">
-              <dt>Im Kundenbereich</dt>
-              <dd>Supportanfragen zu Sendungen stellen Sie direkt im Kundenbereich.</dd>
-            </div>
-            <div class="pc-contact-item">
-              <dt>Freischaltung</dt>
-              <dd>Jedes Konto wird von ConfidaraExpress geprüft und freigeschaltet.</dd>
-            </div>
-          </dl>
         </div>
       </section>
 
-      <section class="pc-section pc-section--plain" aria-labelledby="pc-faq-title">
-        <div class="pc-wrap pc-faq-wrap">
-          <h2 class="pc-section-title" id="pc-faq-title">Häufige Fragen</h2>
+      <!-- Bereich 4: die wichtigsten Fragen. -->
+      <section class="pc-faq-section" aria-labelledby="pc-faq-title">
+        <div class="pc-wrap pc-faq-grid">
+          <div class="pc-faq-intro">
+            <h2 class="pc-section-title" id="pc-faq-title">Häufige Fragen</h2>
+            <p class="pc-faq-lead">Weitere Fragen beantworten wir persönlich unter <a href="mailto:support@confidaraexpress.de">support@confidaraexpress.de</a>.</p>
+          </div>
           <div class="pc-faq">
             <details class="pc-faq-item">
               <summary>Warum steht bei manchen Preisen „ab“?</summary>
@@ -163,7 +186,7 @@
             </details>
             <details class="pc-faq-item">
               <summary>Warum muss ich mich zum Buchen anmelden?</summary>
-              <p>ConfidaraExpress ist eine Versandplattform für Geschäftskunden. Gebucht wird im Kundenbereich mit einem freigeschalteten Konto – dort stehen auch Versanddokumente, Sendungsverfolgung und Rechnungen bereit. Ihre Tarifwahl aus dem Preisrechner können Sie nach der Anmeldung übernehmen; die Preise werden dabei neu berechnet und können abweichen.</p>
+              <p>Gebucht wird im Kundenbereich mit einem freigeschalteten Geschäftskonto – dort stehen auch Versanddokumente, Sendungsverfolgung und Rechnungen bereit. Ihre Tarifwahl übernehmen Sie nach der Anmeldung; die Preise werden dabei neu berechnet und können abweichen.</p>
             </details>
             <details class="pc-faq-item">
               <summary>In welche Länder kann ich versenden?</summary>

@@ -47,6 +47,14 @@ export default defineConfig({
   build: {
     outDir: path.join(REPO, "dist-preisrechner"),
     emptyOutDir: true,
+    // Zwei Seiten: der Rechner und die 404-Seite, die nginx für jede unbekannte Adresse ausliefert
+    // (ohne Skript — sie meldet nichts an die API).
+    rolldownOptions: {
+      input: {
+        index: path.join(REPO, "preisrechner", "index.html"),
+        404: path.join(REPO, "preisrechner", "404.html"),
+      },
+    },
   },
   server: {
     fs: { allow: [REPO] },

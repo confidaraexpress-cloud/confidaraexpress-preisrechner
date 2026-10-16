@@ -13,7 +13,7 @@ import {
   SHIPPING_MODE_OPTIONS, availabilityFromPrepare, buildPublicQuoteRequest, carrierChoices, emptyPublicForm,
   filterOffersByCarrier, handoffUrl, localIsoDate, normalizeDecimalInput, offerCanContinue, offerDeliveryView,
   offerHints, offerPickupView, offerPriceView, offerUnavailableText, publicFormErrors, quoteOutcomeFromError,
-  quoteOutcomeFromResponse, requestKey, resultAnnouncement, shippingDateAllowed, shortDay, sortPublicOffers,
+  quoteOutcomeFromResponse, requestKey, requestSummary, resultAnnouncement, shippingDateAllowed, shortDay, sortPublicOffers,
 } from "./publicCalculatorView.mjs";
 import { getCalculatorErrors } from "./calculatorValidation.mjs";
 import { RESIDENTIAL_TEXT } from "./residentialPriceInputs.mjs";
@@ -171,4 +171,14 @@ test("(11) keine Zusagen, keine Anbieter: Texte ohne Garantie, Bestpreis oder Ei
   assert.doesNotMatch(alles, /garantiert|günstigste|beste[nr]? Preis|jumingo|transglobal/i);
   const src = ohneKommentare(read("utils/publicCalculatorView.mjs"));
   assert.doesNotMatch(src, /localStorage|sessionStorage|fetch\(|Date\.now\(\)/, "rein: kein Speicher, kein Netz, keine Uhr");
+});
+
+test("(12) Zusammenfassung über den Ergebnissen: Strecke, Pakete, Gewicht, Maße, Versanddatum", () => {
+  const body = buildPublicQuoteRequest(FORM, { serviceFilter: "all", shippingModeFilter: "all", shippingDate: "2026-10-21" });
+  assert.equal(requestSummary(body),
+    "DE 70173 Stuttgart → AT 1010 Wien · 2 Pakete · 2,5 kg je Paket · 30 × 20 × 10 cm · Versanddatum Mi., 21.10.");
+  assert.equal(requestSummary({ ...body, packageCount: 1 }),
+    "DE 70173 Stuttgart → AT 1010 Wien · 1 Paket · 2,5 kg · 30 × 20 × 10 cm · Versanddatum Mi., 21.10.");
+  assert.equal(requestSummary(null), null);
+  assert.equal(requestSummary({}), null);
 });

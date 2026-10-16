@@ -10,6 +10,9 @@
 //   B4  Unter Drosselung (Slow 4G: 150 ms RTT, 1,6 Mbit/s; CPU 4×), je drei Läufe, Median: FCP, LCP, CLS und die
 //       Zeit bis zum bedienbaren Formular. Kriterien: LCP nicht schlechter als die Login-Seite unter gleicher
 //       Drosselung, CLS unter 0,1. Die Werte stehen im Testprotokoll.
+//   B5  Das Seitengerüst trägt das Formular als statisches Skelett (keine reservierte Mindesthöhe): ohne JavaScript
+//       ist die Rechnerkarte so hoch wie mit — in allen sechs Pflichtbreiten, ±2 px; ab 768 px auch im ausgeschalteten
+//       Zustand (der Hinweis steht in der Höhe des Knopfs). Kein Querscrollen, vor der Berechnung kein Ergebnisbereich.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -225,4 +228,50 @@ test("B4 — gedrosselt (Slow 4G, CPU 4×): FCP, LCP, CLS, bedienbares Formular;
   assert.ok(a.bedienbar !== null, "die Insel hat ihr Formular nie gemeldet");
   assert.ok(a.lcp <= b.lcp, `LCP Preisrechner ${Math.round(a.lcp)} ms > /login ${Math.round(b.lcp)} ms`);
   assert.ok(a.cls < 0.1, `CLS ${a.cls}`);
+});
+
+const BREITEN = [[1920, 1080], [1440, 900], [1366, 768], [768, 1024], [390, 844], [360, 800]];
+
+async function rechnerkarte(viewport, { ohneJs = false, verfuegbar = true } = {}) {
+  const ctx = await browser.newContext({ viewport });
+  await ctx.route("**/api.confidaraexpress.de/**", (route) => (
+    new URL(route.request().url()).pathname === "/api/public/price-quote/prepare"
+      ? route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ available: verfuegbar }) })
+      : API_MOCK(route)));
+  if (ohneJs) await ctx.route("**/assets/*.js", (route) => route.abort());
+  const page = await ctx.newPage();
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+  await page.evaluate(() => document.fonts.ready);
+  if (!ohneJs) await page.waitForSelector(verfuegbar ? "#pc-submit" : "#pc-unavailable", { timeout: 15000 });
+  const m = await page.evaluate(() => ({
+    wurzel: Math.round(document.querySelector("#pc-calculator").getBoundingClientRect().height * 10) / 10,
+    karte: Math.round(document.querySelector("#pc-calculator-card").getBoundingClientRect().height * 10) / 10,
+    skelett: document.querySelectorAll(".pc-form--skeleton").length,
+    quer: document.documentElement.scrollWidth > window.innerWidth,
+    ergebnis: document.querySelector("#pc-results").childElementCount,
+  }));
+  await ctx.close();
+  return m;
+}
+
+test("B5 — Skelett und Formular gleich hoch in sechs Breiten, kein Querscrollen, kein leerer Ergebnisbereich", async () => {
+  console.log("\n  Rechnerkarte: Skelett (ohne JavaScript) · Formular · ausgeschaltet");
+  for (const [width, height] of BREITEN) {
+    const vp = { width, height };
+    const ohne = await rechnerkarte(vp, { ohneJs: true });
+    const mit = await rechnerkarte(vp);
+    const aus = await rechnerkarte(vp, { verfuegbar: false });
+    console.log(`    ${`${width}×${height}`.padEnd(10)} ${String(ohne.karte).padStart(7)} · ${String(mit.karte).padStart(7)} · ${String(aus.karte).padStart(7)} px`);
+    assert.equal(ohne.skelett, 1, `${width}: ohne JavaScript fehlt das Skelett`);
+    assert.equal(mit.skelett, 0, `${width}: React hat das Skelett nicht ersetzt`);
+    assert.ok(Math.abs(mit.wurzel - ohne.wurzel) <= 2, `${width}×${height}: Formular ${mit.wurzel} px, Skelett ${ohne.wurzel} px`);
+    assert.ok(Math.abs(mit.karte - ohne.karte) <= 2, `${width}×${height}: Karte ${mit.karte} px, mit Skelett ${ohne.karte} px`);
+    if (width >= 768) {
+      assert.ok(Math.abs(aus.karte - ohne.karte) <= 2, `${width}×${height}: ausgeschaltet ${aus.karte} px, Skelett ${ohne.karte} px`);
+    }
+    for (const [name, m] of [["ohne JS", ohne], ["mit JS", mit], ["ausgeschaltet", aus]]) {
+      assert.equal(m.quer, false, `${width}×${height} ${name}: horizontales Scrollen`);
+      assert.equal(m.ergebnis, 0, `${width}×${height} ${name}: Ergebnisbereich vor der Berechnung`);
+    }
+  }
 });

@@ -20,9 +20,10 @@ export function AddressList({
   // leiste zeigt den dezenten "searching"-Indikator (dieselbe Bedingung).
   if (loading && items.length === 0) return <AddressSkeleton />;
 
+  // Fehler als Live-Meldung (role="alert") — Screenreader hören ihn sofort, nicht erst beim Suchen.
   if (error) {
     return (
-      <div className="alert alert-error">
+      <div className="alert alert-error" role="alert">
         <span style={{ flex: 1 }}>{error}</span>
         <button type="button" className="btn btn-ghost btn-sm" onClick={onRetry}>Erneut versuchen</button>
       </div>
@@ -53,7 +54,7 @@ export function AddressList({
       {hasMore && (
         <div className="abk-loadmore-wrap">
           {loadMoreError && (
-            <div className="alert alert-error" style={{ width: "100%" }}>
+            <div className="alert alert-error" role="alert" style={{ width: "100%" }}>
               {loadMoreError}
             </div>
           )}

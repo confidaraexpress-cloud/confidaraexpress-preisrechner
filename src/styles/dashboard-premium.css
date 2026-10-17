@@ -81,21 +81,21 @@
 .app-shell .page-with-navbar { background: transparent; }
 
 /* ── Mobile-Topbar ──
-   Drei Teile, alle als Text: „Menü", die Marke, „Mitteilungen". */
+   Drei Teile: links das Hamburger-Symbol, in der Mitte die Marke, rechts die
+   Glocke (Betreiberentscheidung 2026-10-17; vorher „Menü"/„Mitteilungen" als
+   Text). Beide Symbolknöpfe sind quadratische 44-px-Ziele mit zugänglichem
+   Namen. */
 .mobile-topbar {
   background: var(--surface);
   border-bottom: 1px solid var(--border-subtle);
 }
 .app-shell .hamburger-btn {
   display: none; align-items: center; justify-content: center;
+  min-width: var(--ce-size-touch-target);
   min-height: var(--ce-size-touch-target);
-  padding: 0 var(--ce-space-3);
+  padding: 0;
   margin-left: calc(-1 * var(--ce-space-2));
   background: none; border: 0; border-radius: var(--ce-radius-sm);
-  font-family: var(--ce-font-sans);
-  font-size: var(--ce-text-button-size);
-  font-weight: var(--ce-text-button-weight);
-  line-height: var(--ce-text-button-line);
   color: var(--ce-color-text-primary);
   cursor: pointer;
 }
@@ -344,6 +344,10 @@
   /* Ohne Bewegung darf die Sichtbarkeit nicht verzögert umschalten — sonst
      bliebe der zugeklappte Bereich für die Dauer der Verzögerung fokussierbar. */
   .pp-nav-group-items { transition: visibility 0s; }
+  /* Dasselbe für den mobilen Drawer: ohne Bewegung öffnet und schließt er sofort
+     (höhere Spezifität als die Drawer-Regeln unter 860 px). */
+  .app-shell .sidebar.pp-side,
+  .app-shell .sidebar.pp-side.sidebar-open { transition: none; }
 }
 
 /* Zweite Ebene: dieselbe Größe und Zeilenhöhe, um 12 px eingerückt und eine
@@ -755,6 +759,18 @@
      sonst als Streifen an den Bildschirmrand. */
   .sidebar.pp-side { box-shadow: none; }
   .sidebar.sidebar-open { transform: translateX(0); box-shadow: var(--ce-elevation-3); }
+  /* Geschlossen ist der Drawer unsichtbar, nicht nur verschoben: sonst erreichte
+     die Tabulatortaste seine Einträge außerhalb des Bildes, und Screenreader
+     läsen sie vor. Beim Schließen wechselt die Sichtbarkeit erst nach der
+     Bewegung, beim Öffnen sofort. Die feste Spalte ab 861 px bleibt unberührt. */
+  .sidebar.pp-side {
+    visibility: hidden;
+    transition: transform var(--ce-motion-slow) var(--ce-motion-ease-standard), visibility 0s linear var(--ce-motion-slow);
+  }
+  .sidebar.pp-side.sidebar-open {
+    visibility: visible;
+    transition: transform var(--ce-motion-slow) var(--ce-motion-ease-standard), visibility 0s linear 0s;
+  }
   .sidebar-close-btn { display: inline-flex; }
   .app-shell .main-content { margin-left: 0; }
   .mobile-topbar { display: flex; }

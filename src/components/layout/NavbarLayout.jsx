@@ -5,15 +5,24 @@ import { BrandLogo } from "../ui/BrandLogo";
 import { Footer } from "./Footer";
 import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
 import { landingPathFor } from "../../utils/roleLanding.mjs";
+import { Icon, ICON_SIZE } from "../ui/Icon";
+import { useDialog } from "../../hooks/useDialog";
 
-/* Öffentliche Leiste der Leseseiten (Redesign 2026-10): hell, ruhig, ohne
-   Symbole. Links die Original-Wortmarke, rechts die unveränderten Aktionen;
-   mobil öffnet der Textknopf „Menü" den dunklen Navy-Drawer. Routing und
-   Handler sind unverändert. */
+// Kennung des Drawers — Ziel von aria-controls am Menüknopf, solange er offen ist
+// (der Drawer wird nur geöffnet gerendert).
+const DRAWER_ID = "ce-oeffentliche-navigation";
+
+/* Öffentliche Leiste der Leseseiten (Redesign 2026-10): hell und ruhig. Links
+   die Original-Wortmarke, rechts die unveränderten Aktionen; mobil öffnet das
+   Hamburger-Symbol (Betreiberentscheidung 2026-10-17, wie in Kunden- und
+   Adminbereich) den dunklen Navy-Drawer. Routing und Handler sind unverändert. */
 function Navbar() {
   const { authed, user } = useAuth();
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  // Der geöffnete Drawer verhält sich wie ein Dialog: Fokus hinein, Tab bleibt darin,
+  // Escape schließt, danach steht der Fokus wieder auf dem Menüknopf.
+  const drawerRef = useDialog({ open: drawerOpen, onClose: () => setDrawerOpen(false) });
   // „Dashboard" führt rollenabhängig: Vertriebspartner ins Partnerportal,
   // alle anderen unverändert in den Kundenbereich.
   const startziel = landingPathFor(user);
@@ -21,8 +30,16 @@ function Navbar() {
     <>
       <nav className="navbar">
         <div className="container navbar-inner">
-          <button type="button" className="hamburger-btn" aria-label="Menü – Navigation öffnen" onClick={() => setDrawerOpen(true)}>
-            Menü
+          <button
+            type="button"
+            className="hamburger-btn"
+            aria-label="Menü – Navigation öffnen"
+            title="Menü – Navigation öffnen"
+            aria-expanded={drawerOpen}
+            aria-controls={drawerOpen ? DRAWER_ID : undefined}
+            onClick={() => setDrawerOpen(true)}
+          >
+            <Icon n="menu" s={ICON_SIZE.lg} />
           </button>
           {/* Die Marke führt zum Login — ein echter Button. Sein zugänglicher
               Name ist der alt-Text der Original-Wortmarke („ConfidaraExpress").
@@ -49,7 +66,7 @@ function Navbar() {
               1000), sonst verdeckte die Leiste seinen Kopf. Er trägt die dunkle
               Navy-Fläche der Sidebar (dashboard.css) — die Marke steht deshalb
               als Originalkomposition in der Reverse-Fassung, „Schließen" als Text. */}
-          <div className="mobile-drawer open" style={{ zIndex: 1001 }}>
+          <div ref={drawerRef} id={DRAWER_ID} className="mobile-drawer open" style={{ zIndex: 1001 }}>
             <div className="mobile-drawer-header">
               <BrandLogo variant="lockup" tone="reverse" className="navbar-drawer-brand" />
               <button type="button" className="drawer-close-btn" aria-label="Navigation schließen" onClick={() => setDrawerOpen(false)}>

@@ -3,6 +3,12 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { accountInitials, accountDisplayName } from "../../utils/accountIdentity.mjs";
 import { BrandLogo } from "../ui/BrandLogo";
+import { useNavigationDrawer } from "../../hooks/useNavigationDrawer";
+
+// Kennung der Adminsidebar — Ziel von aria-controls am Menüknopf der mobilen Topbar
+// (AdminLayout). Darunter ist sie ein Drawer (admin.css, `@media (max-width: 900px)`).
+export const ADMIN_NAV_ID = "ce-adminnavigation";
+const DRAWER_BIS_PX = 900;
 
 // Aktive Adminnavigation (URL-basiert). NavLink liefert den Active-Zustand über
 // die URL — bewusst KEINE Vermischung mit dem State-basierten Kunden-Dashboard.
@@ -58,10 +64,21 @@ export function AdminSidebar({ open, onClose }) {
   const handleLogout = () => { logout(); navigate("/login"); };
   const goDashboard = () => { onClose?.(); navigate("/dashboard"); };
 
+  // Geöffneter Drawer (unter 900 px) wie ein Dialog: Fokus hinein, Tab bleibt im Drawer, Escape
+  // schließt, danach Fokus zurück auf den Menüknopf; wird das Fenster breiter als die Schwelle,
+  // schließt er (useNavigationDrawer). Geschlossen ist der Drawer per CSS unsichtbar und damit
+  // nicht per Tab erreichbar; die feste Spalte ab 901 px bleibt unberührt.
+  const drawerRef = useNavigationDrawer({ open, onClose, drawerMaxPx: DRAWER_BIS_PX });
+
   return (
     <>
       {open && <div className="adm-side-overlay" onClick={onClose} aria-hidden="true" />}
-      <aside className={`adm-side${open ? " adm-side-open" : ""}`} aria-label="Adminbereich Seitenleiste">
+      <aside
+        ref={drawerRef}
+        id={ADMIN_NAV_ID}
+        className={`adm-side${open ? " adm-side-open" : ""}`}
+        aria-label="Adminbereich Seitenleiste"
+      >
         <div className="adm-brand">
           {/* Dieselbe Marke aus demselben Bauteil wie im Kundenportal — die
               Originalkomposition, auf der hellen Admin-Sidebar in der

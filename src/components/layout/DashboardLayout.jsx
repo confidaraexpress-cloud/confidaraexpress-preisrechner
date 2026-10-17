@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { DashboardSidebar } from "./DashboardSidebar";
+import { DashboardSidebar, SIDEBAR_NAV_ID } from "./DashboardSidebar";
 import { DashboardSectionHeader } from "./DashboardSectionHeader";
 import { LegalLinks } from "./LegalLinks";
 import { NotificationsProvider } from "../../context/NotificationsContext";
@@ -9,6 +9,7 @@ import { NotificationBell } from "../notifications/NotificationBell";
 import { UtilityCluster } from "../ui/PageHeader";
 import { UserChip } from "../ui/UserChip";
 import { BrandLogo } from "../ui/BrandLogo";
+import { Icon, ICON_SIZE } from "../ui/Icon";
 import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
 import { AppStatusNotice } from "../common/AppStatusNotice";
 import { updateNoticeSuppressed } from "../../utils/appVersionCheck.mjs";
@@ -75,13 +76,22 @@ export function DashboardLayout() {
         setSidebarOpen={setSidebarOpen}
       />
       <main className="main-content">
+        {/* Menü, Marke, Mitteilungen — keine zweite Identität neben der Sidebar (Paket A,
+            Phase 3). Menü und Mitteilungen als Symbolknöpfe mit unverändertem zugänglichem
+            Namen, dazu aria-expanded/aria-controls (Betreiberentscheidung 2026-10-17). */}
         <div className="mobile-topbar">
-          <button type="button" className="hamburger-btn" aria-label="Menü – Navigation öffnen" onClick={() => setSidebarOpen(true)}>
-            Menü
+          <button
+            type="button"
+            className="hamburger-btn"
+            aria-label="Menü – Navigation öffnen"
+            title="Menü – Navigation öffnen"
+            aria-expanded={sidebarOpen}
+            aria-controls={SIDEBAR_NAV_ID}
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Icon n="menu" s={ICON_SIZE.lg} />
           </button>
           <BrandLogo variant="signet" tone="standard" className="topbar-brand" />
-          {/* Menü, Marke, Mitteilungen — keine zweite Identität neben der
-              Sidebar (Paket A, Phase 3). Alle drei als Text, ohne Symbole. */}
           <div className="topbar-right">
             <NotificationBell variant="topbar" navigateTo={navigateTo} />
           </div>

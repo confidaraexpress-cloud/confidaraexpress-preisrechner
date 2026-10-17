@@ -5,6 +5,7 @@ import { SupportRequestDialog } from "../support/SupportRequestDialog";
 import { SUPPORT_CARD } from "../../utils/supportRequest.mjs";
 import { BrandLogo } from "../ui/BrandLogo";
 import { usePwaInstall } from "../../hooks/usePwaInstall";
+import { useNavigationDrawer } from "../../hooks/useNavigationDrawer";
 import {
   markInstallHintDone, promptPwaInstall, requestInstallCardFocus,
 } from "../../utils/pwaInstallPrompt";
@@ -40,6 +41,14 @@ import { INSTALL_STATE } from "../../utils/pwaInstallView.mjs";
 // und die aktive Fläche. Es gibt deshalb auch keine Iconzuordnung mehr in
 // dieser Konfiguration — lucide-react bleibt als Abhängigkeit verboten.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Kennung der Sidebar — Ziel von aria-controls am Menüknopf der mobilen Kopfleiste
+// (DashboardPage, DashboardLayout). Eine Quelle, damit Knopf und Drawer nie auseinanderlaufen.
+export const SIDEBAR_NAV_ID = "ce-kundennavigation";
+
+// Ab dieser Breite ist die Sidebar die feste Spalte, darunter ein Drawer
+// (dashboard-premium.css, `@media (max-width: 860px)`).
+const DRAWER_BIS_PX = 860;
 
 const OVERVIEW_ITEM = { id: "overview", label: "Übersicht" };
 const ADDRESSBOOK_ITEM = { id: "addressbook", label: "Adressbuch" };
@@ -258,12 +267,24 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
 
   const gruppe = (id) => NAV_GROUPS.find((g) => g.id === id);
 
+  // Der geöffnete Drawer (unter 860 px) verhält sich wie ein Dialog — Fokus hinein (auf
+  // „Schließen“), Tab bleibt im Drawer, Escape schließt, Fokus zurück auf den Menüknopf — und
+  // schließt, wenn das Fenster breiter als die Schwelle wird (useNavigationDrawer). Auf dem
+  // Desktop ist `sidebarOpen` nie wahr; geschlossen ist der Drawer per CSS unsichtbar
+  // (`visibility`) und damit nicht per Tab erreichbar.
+  const drawerRef = useNavigationDrawer({ open: sidebarOpen, onClose: () => setSidebarOpen(false), drawerMaxPx: DRAWER_BIS_PX });
+
   return (
     <>
       {sidebarOpen && (
         <div className="sidebar-overlay open" onClick={() => setSidebarOpen(false)} style={{ zIndex: 198 }} />
       )}
-      <aside className={`sidebar pp-side ${sidebarOpen ? "sidebar-open" : ""}`} style={{ zIndex: 199 }}>
+      <aside
+        ref={drawerRef}
+        id={SIDEBAR_NAV_ID}
+        className={`sidebar pp-side ${sidebarOpen ? "sidebar-open" : ""}`}
+        style={{ zIndex: 199 }}
+      >
         <div className="pp-side-in">
 
           {/* Die Marke kommt aus dem gemeinsamen Bauteil (BrandLogo): die

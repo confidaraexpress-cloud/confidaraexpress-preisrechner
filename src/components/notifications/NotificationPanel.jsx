@@ -20,7 +20,7 @@ import {
 // (SupportRequestDialog, InvoicePdfPreviewModal): Fokus beim Öffnen ins Fenster,
 // Escape schließt, Tab-Falle innerhalb des Fensters, Fokus danach zurück auf die
 // auslösende Glocke (das erledigt der aufrufende Bell-Button).
-export function NotificationPanel({ onClose, onSelect }) {
+export function NotificationPanel({ id, onClose, onSelect }) {
   const { items, loading, error, markError, refresh, markRead, markAllRead } = useNotifications();
   const boxRef = useRef(null);
 
@@ -82,6 +82,7 @@ export function NotificationPanel({ onClose, onSelect }) {
 
   return (
     <div
+      id={id}
       className="ntf-panel"
       role="dialog"
       aria-modal="true"

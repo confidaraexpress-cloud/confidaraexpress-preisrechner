@@ -182,6 +182,11 @@ const LIMIT_RULES = {
   packages_total_weight:     { order: 5, tpl: (op, v) => `Das Gesamtgewicht aller Packstücke darf ${op} ${v} kg betragen.` },
 };
 
+// Grenzwerte deutsch formatiert (Auftrag 1, Sofortkorrektur B, 2026-10-17): „31,5 kg“ statt
+// „31.5 kg“, höchstens zwei Nachkommastellen, Tausenderpunkt — wie die Profilzeilen
+// (serviceDetailsView.mjs). Es werden nur gelieferte Grenzen gezeigt, keine ergänzt.
+const LIMIT_NUMBER = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 });
+
 function buildLimitLines(tariffLimits) {
   if (!Array.isArray(tariffLimits)) return [];
   const lines = [];
@@ -198,7 +203,7 @@ function buildLimitLines(tariffLimits) {
     const rule   = LIMIT_RULES[operant];
     const opWord = LIMIT_OPERATORS[operator];
     if (!rule || !opWord) return; // unbekannte Operanten/Operatoren überspringen
-    lines.push({ key: `${operant}-${operator}-${i}`, order: rule.order, text: rule.tpl(opWord, num) });
+    lines.push({ key: `${operant}-${operator}-${i}`, order: rule.order, text: rule.tpl(opWord, LIMIT_NUMBER.format(num)) });
   });
   return lines.sort((a, b) => a.order - b.order);
 }

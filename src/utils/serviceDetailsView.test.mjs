@@ -214,7 +214,9 @@ test("10 — Zusätzliche Transportabsicherung bis 2.500 € Warenwert; Selbstbe
 test("11 — Nicht zugelassen: Paletten, Koffer", () => {
   assert.deepEqual(serviceDetailsView(TG22).restrictions.rows,
     [{ id: "notAccepted", label: "Nicht zugelassen", value: "Paletten, Koffer" }]);
-  assert.deepEqual(SERVICE_NOT_ACCEPTED_TEXT, { pallets: "Paletten", suitcases: "Koffer" });
+  // Auftrag 2 / P4: dieselbe Codeliste trägt seitdem die Verpackungsregeln der DPD-Serviceseite (packageRulesView.mjs).
+  assert.deepEqual(SERVICE_NOT_ACCEPTED_TEXT, { pallets: "Paletten", suitcases: "Koffer", wooden_crates: "Holzkisten",
+    mailer_bags: "Versandtaschen", padded_envelopes: "Luftpolsterumschläge" });
   for (const kaputt of [[], ["pallets", "pallets"], ["dangerous_goods"], "pallets", ["Paletten"]]) {
     assert.equal(serviceDetailsView(mit({ serviceDetails: details({ notAccepted: kaputt }) })), null, JSON.stringify(kaputt));
   }
@@ -255,15 +257,20 @@ test("15 — keine Samstagszustellung", () => {
   for (const datei of [MODUL, PROFIL]) assert.ok(!/samstag|saturday/i.test(code(datei)), datei);
 });
 
-test("16 — keine Länge und kein Gurtmaß als Zahl", () => {
+// Auftrag 2 / P4 (2026-10-17): das Profil zeigt seitdem genau die BELEGTEN Maßgrenzen des Servers — die längste Seite
+// (`first_length`) und das Gurtmaß nach der Formel des Anbieters (`length_and_girth`). Eine Grenze ohne belegte Formel
+// (`girth`) oder eine Seite ohne Zuordnung (`length`) bleibt weiterhin unsichtbar; ohne gelieferte Grenze keine Zahl.
+test("16 — Länge und Gurtmaß nur aus belegten Grenzen des Servers, nie aus girth oder length", () => {
   for (const v of VIEWS()) {
-    assert.ok(!/länge|gurtmaß|girth|umfang|\d+\s*cm/i.test(alleTexte(v)), "eine Maßangabe im Profil");
+    assert.ok(!/länge|gurtmaß|girth|umfang|\d+\s*cm/i.test(alleTexte(v)), "eine Maßangabe ohne gelieferte Grenze");
   }
-  // Selbst eine gelieferte Maßgrenze wird im Profil nicht dargestellt.
   const mitMass = serviceDetailsView(mit({ tariffLimits: [...TG22.tariffLimits, { operant: "girth", operator: "<=", value: 300 },
                                                           { operant: "length", operator: "<=", value: 270 }] }));
-  assert.ok(!/300|270|cm/.test(alleTexte(mitMass)));
-  assert.ok(!/girth|first_length|Gurt|Länge/.test(code(MODUL)));
+  assert.ok(!/300|270|cm/.test(alleTexte(mitMass)), "eine Grenze ohne belegte Formel im Profil");
+  const belegt = serviceDetailsView(mit({ tariffLimits: [...TG22.tariffLimits, { operant: "first_length", operator: "<=", value: 270 },
+                                                         { operant: "length_and_girth", operator: "<=", value: 400 }] }));
+  assert.ok(/270 cm/.test(alleTexte(belegt)) && /400 cm/.test(alleTexte(belegt)), "die belegten Grenzen fehlen");
+  assert.ok(!/"girth"|"length"/.test(code(MODUL)), "das Modul liest einen Operanten ohne belegte Formel");
 });
 
 test("17 — kein Datum", () => {

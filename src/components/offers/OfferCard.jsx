@@ -24,6 +24,7 @@ import { pickupContractOf, pickupTimeText, pickupWindowDetailText, pickupDayLabe
   from "../../utils/pickupContractView.mjs";
 import { deliveryContractOf } from "../../utils/deliveryContractView.mjs";
 import { serviceDetailsView } from "../../utils/serviceDetailsView.mjs";
+import { packageRulesLines } from "../../utils/packageRulesView.mjs";
 import { projectedDeliveryText } from "../../utils/deliveryProjectionView.mjs";
 import { ServiceProfileDetails } from "./ServiceProfileDetails";
 import { carrierAppliesLabel, LABEL_HANDLING_TEXT } from "../../utils/labelHandling.mjs";
@@ -176,6 +177,8 @@ const LIMIT_RULES = {
   second_length:             { order: 2, tpl: (op, v) => `Die zweitlängste Seite eines Packstücks darf ${op} ${v} cm lang sein.` },
   shortest_and_longest_side: { order: 2, tpl: (op, v) => `Die kürzeste und die längste Seite eines Packstücks dürfen zusammen ${op} ${v} cm lang sein.` },
   girth:                     { order: 3, tpl: (op, v) => `Das Gurtmaß eines Packstücks darf ${op} ${v} cm betragen.` },
+  // Auftrag 2 / P4: das Gurtmaß nach der belegten Formel des Anbieters — die Formel steht deshalb im Satz.
+  length_and_girth:          { order: 3, tpl: (op, v) => `Das Gurtmaß eines Packstücks (längste Seite + 2 × Breite + 2 × Höhe) darf ${op} ${v} cm betragen.` },
   // Singular nach der ZAHL (n), nicht nach dem formatierten Text (v ist seit Sofortkorrektur B ein String).
   packages_count:            { order: 4, tpl: (op, v, n) => n === 1
     ? `Mit diesem Versandtarif kann ${op} ${v} Packstück pro Sendung verschickt werden.`
@@ -286,7 +289,8 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
   const showPickupSurcharge = t.hasPickupSurcharge === true;
 
   // Neue Jumingo-Felder: Einschränkungen (tariffLimits) & Carrier-Links.
-  const limitLines = buildLimitLines(t.tariffLimits);
+  // Auftrag 2 / P4: dahinter die verbindlichen Verpackungsregeln (Codes vom Server, Sätze in packageRulesView.mjs).
+  const limitLines = [...buildLimitLines(t.tariffLimits), ...packageRulesLines(t)];
   const carrierLinkItems = buildCarrierLinks(t.carrierLinks);
 
   // ── Hauptmerkmale als Feature-Grid: dezentes Label + starker Wert. Das

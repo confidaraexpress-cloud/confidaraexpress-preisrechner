@@ -414,6 +414,17 @@ export function payErrorMessage(status, code) {
 
 // Technische Dokument-/Versandfehler verständlich einordnen. Der rohe Code wird
 // NICHT als Meldung gezeigt; er gehört (gekürzt) in die technischen Infos.
+// „Rechnungsdokument erzeugen“ (Auftrag 1, Sofortkorrektur A, 2026-10-17). Bis hierher hieß der
+// Knopf „PDF erzeugen“, und der Dialog versprach „Es wird keine E-Mail versendet.“ Das war falsch:
+// Nach erfolgreicher produktiver Erzeugung stößt der Server den automatischen Erstversand an
+// (lib/invoiceDocument.js, resolveAutomaticInvoiceMail; Sperren prüft invoiceEmailFlow erneut).
+// Die Logik bleibt unverändert — nur Name und Text sagen jetzt, was geschieht.
+export const DOCUMENT_GENERATE = Object.freeze({
+  button: "Rechnungsdokument erzeugen",
+  retryButton: "Rechnungsdokument erneut erzeugen",
+  note: "Nach erfolgreicher Erzeugung sendet das System die Rechnung automatisch per E-Mail an den Kunden, sofern sie noch nicht versendet wurde und keine Versandsperre greift (etwa Testdokument oder fehlende Empfängeradresse). Die Aktion wird im Protokoll festgehalten.",
+});
+
 export const DOCUMENT_ERROR_NOTE =
   "Die Dokumenterstellung ist fehlgeschlagen. Die Rechnung selbst ist davon unberührt; ein erneuter Versuch ist möglich.";
 export const EMAIL_ERROR_NOTE =

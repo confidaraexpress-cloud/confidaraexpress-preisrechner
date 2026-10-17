@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import {
+  DOCUMENT_GENERATE,
   EMPTY_INVOICE_FILTERS,
   INVOICE_STATUS_FILTER_OPTIONS,
   NON_PRODUCTIVE_MAIL_NOTE,
@@ -629,4 +630,19 @@ test("Paritätsaudit B6 — eine gesperrte Dokumenterzeugung ist kein „erneut 
   assert.equal(documentErrorMessage(500, { error: "Fehler" }).text, DOCUMENT_ERROR_NOTE);
   assert.match(documentErrorMessage(404, {}).text, /nicht gefunden/);
   assert.match(detailSrc, /setDocMsg\(documentErrorMessage\(r\.status, d\)\);/);
+});
+
+test("Auftrag 1 A — „Rechnungsdokument erzeugen“ sagt die Wahrheit über den automatischen Versand", () => {
+  assert.equal(DOCUMENT_GENERATE.button, "Rechnungsdokument erzeugen");
+  assert.equal(DOCUMENT_GENERATE.retryButton, "Rechnungsdokument erneut erzeugen");
+  assert.match(DOCUMENT_GENERATE.note, /automatisch per E-Mail an den Kunden/);
+  assert.doesNotMatch(DOCUMENT_GENERATE.note, /keine E-Mail/);
+  assert.doesNotMatch(detailSrc, /Es wird keine E-Mail versendet/, "der falsche Dialogtext ist zurück");
+  assert.doesNotMatch(detailSrc, />\s*PDF (erneut )?erzeugen\s*</, "der mehrdeutige Knopfname ist zurück");
+  assert.match(detailSrc, /\{DOCUMENT_GENERATE\.button\}/);
+  assert.match(detailSrc, /\{DOCUMENT_GENERATE\.retryButton\}/);
+  assert.match(detailSrc, /note=\{DOCUMENT_GENERATE\.note\}/);
+  // Die Logik bleibt: derselbe Aufruf, derselbe Ergebnis- und Schließpfad.
+  assert.match(detailSrc, /const r = await generateAdminInvoiceDocument\(id\);/);
+  assert.match(detailSrc, /setDocMsg\(documentOutcomeMessage\(d\.outcome\)\);/);
 });

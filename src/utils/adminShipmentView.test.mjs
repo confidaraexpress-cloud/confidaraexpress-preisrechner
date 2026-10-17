@@ -24,6 +24,7 @@ import {
   TRACKING_LABELS,
   activeShipmentFilterChips,
   customerIdentity,
+  customerDetailFields,
   detailSections,
   hasActiveShipmentFilters,
   hasShippingMode,
@@ -820,4 +821,14 @@ test("Paritätsaudit B4 — Testbuchung in Liste und Detail, Gutschein nur, wenn
   assert.match(detail, /\.\.\.\(voucher \? \[/);
   const liste = read("pages/admin/AdminShipmentsPage.jsx");
   assert.match(liste, /className=\{m\.badge \? `badge \$\{m\.badge\}` : "adm-ship-marker"\}/);
+});
+
+test("Auftrag 1 P9 — Kundenkarte: ohne Firmennamen steht die Nummer unter „Kundennummer“, nicht unter „Firmenname“", () => {
+  assert.deepEqual(customerDetailFields({ customer_number: "CE-K-9" }),
+    { company: "Kein Firmenname hinterlegt", number: "CE-K-9", known: true, companyMissing: true });
+  assert.deepEqual(customerDetailFields(BOOKED),
+    { company: "Borner Spedition GmbH", number: "CE-K-10031", known: true, companyMissing: false });
+  assert.deepEqual(customerDetailFields({}), { company: "Kunde nicht auflösbar", number: "—", known: false, companyMissing: true });
+  assert.ok(detailSrc.includes('["Kundennummer", kunde.number]'), "die Kundennummer steht nicht in ihrer Zeile");
+  assert.ok(!detailSrc.includes('["Kundennummer", cust.secondary'), "die alte Zuordnung ist zurück");
 });

@@ -103,6 +103,25 @@ export function customerIdentity(row) {
   return { primary: "Kunde nicht auflösbar", secondary: "", known: false };
 }
 
+// Die Karte „Kunde“ im Admin-Sendungsdetail hat feste Zeilen: „Firmenname“ und „Kundennummer“.
+// customerIdentity() rückt ohne Firmennamen die Kundennummer nach vorn — richtig für die Liste,
+// falsch für diese Zeilen: dort stand die Nummer bis 2026-10 unter „Firmenname“, und
+// „Kundennummer“ zeigte „—“ (Auftrag 1, P9). Hier steht jede Angabe in ihrer eigenen Zeile.
+//
+// → { company, number, known, companyMissing }
+export function customerDetailFields(row) {
+  const f = shipmentFields(row);
+  if (!f.customerCompany && !f.customerNumber) {
+    return { company: "Kunde nicht auflösbar", number: "—", known: false, companyMissing: true };
+  }
+  return {
+    company: f.customerCompany || "Kein Firmenname hinterlegt",
+    number: f.customerNumber || "—",
+    known: true,
+    companyMissing: !f.customerCompany,
+  };
+}
+
 // ── Versandart (service_type) ───────────────────────────────────────────────
 // pickup/dropoff sind die einzigen belegten Werte. Ein fehlender Wert wird
 // fachlich genau beschrieben statt pauschal „Unbekannt":

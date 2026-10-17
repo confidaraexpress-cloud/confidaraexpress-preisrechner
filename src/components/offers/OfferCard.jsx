@@ -176,7 +176,8 @@ const LIMIT_RULES = {
   second_length:             { order: 2, tpl: (op, v) => `Die zweitlängste Seite eines Packstücks darf ${op} ${v} cm lang sein.` },
   shortest_and_longest_side: { order: 2, tpl: (op, v) => `Die kürzeste und die längste Seite eines Packstücks dürfen zusammen ${op} ${v} cm lang sein.` },
   girth:                     { order: 3, tpl: (op, v) => `Das Gurtmaß eines Packstücks darf ${op} ${v} cm betragen.` },
-  packages_count:            { order: 4, tpl: (op, v) => v === 1
+  // Singular nach der ZAHL (n), nicht nach dem formatierten Text (v ist seit Sofortkorrektur B ein String).
+  packages_count:            { order: 4, tpl: (op, v, n) => n === 1
     ? `Mit diesem Versandtarif kann ${op} ${v} Packstück pro Sendung verschickt werden.`
     : `Mit diesem Versandtarif können ${op} ${v} Packstücke pro Sendung verschickt werden.` },
   packages_total_weight:     { order: 5, tpl: (op, v) => `Das Gesamtgewicht aller Packstücke darf ${op} ${v} kg betragen.` },
@@ -203,7 +204,7 @@ function buildLimitLines(tariffLimits) {
     const rule   = LIMIT_RULES[operant];
     const opWord = LIMIT_OPERATORS[operator];
     if (!rule || !opWord) return; // unbekannte Operanten/Operatoren überspringen
-    lines.push({ key: `${operant}-${operator}-${i}`, order: rule.order, text: rule.tpl(opWord, LIMIT_NUMBER.format(num)) });
+    lines.push({ key: `${operant}-${operator}-${i}`, order: rule.order, text: rule.tpl(opWord, LIMIT_NUMBER.format(num), num) });
   });
   return lines.sort((a, b) => a.order - b.order);
 }

@@ -8,12 +8,12 @@
 // autoritativ und validiert erneut.
 //
 // WICHTIG (Backend-Abgleich, siehe routes/kunde.js PROFILE_EDITABLE_FIELDS):
-// Editierbar sind ausschließlich  name, company_name, vat_id, eori_number, street,
-// zip, city, country. E-Mail, Passwort, Status, Rolle, Zahlungsziel, Kreditwerte, id sind
-// NICHT editierbar und tauchen in keinem PATCH-Body auf. Ein „phone"/Telefon-Feld
-// existiert im Nutzer-Datenmodell NICHT (keine users.phone-Spalte, nicht in der
-// Whitelist, nicht in /kundenbereich) — die Ansprechpartner-Karte führt daher
-// bewusst nur „Name" und täuscht keinen nicht speicherbaren Telefonwert vor.
+// Editierbar sind ausschließlich  name, contact_email, contact_phone, company_name, vat_id,
+// eori_number, street, zip, city, country. Login-E-Mail, Passwort, Status, Rolle, Zahlungsziel,
+// Kreditwerte, id sind NICHT editierbar und tauchen in keinem PATCH-Body auf.
+// Auftrag 2 / P8 (2026-10-17): die Ansprechpartner-Karte führt neben dem Namen die optionale
+// Kontakt-E-Mail und Telefonnummer (users.contact_email / users.contact_phone). Die Kontakt-E-Mail ist
+// NICHT die Login-E-Mail — sie ändert weder Anmeldung noch Rechnungsempfang oder Systemmails.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { B2B_REQUIRED_FIELDS, b2bFieldError } from "./registrationValidation.mjs";
@@ -24,10 +24,12 @@ import { paymentTermLabel } from "./paymentTerm.mjs";
 // aus lib/eori.js des Backends. Sie prüft das FORMAT, nie die behördliche Gültigkeit.
 import { eoriFieldError, normalizeEori } from "./eori.mjs";
 import { CUSTOMS_UI_ENABLED } from "../config/launchMode.mjs";
+// Kontakt-E-Mail und Telefon: EINE Regel, gespiegelt aus Backend lib/contactDetails.js (gemeinsame Falltabelle).
+import { validateContactEmail, validateContactPhone } from "./contactDetails.mjs";
 
 // Feldgruppen exakt nach Backend-Whitelist (snake_case = echte Spalten-/Body-Namen).
 export const COMPANY_FIELDS = ["company_name", "vat_id", "eori_number", "street", "zip", "city", "country"];
-export const CONTACT_FIELDS = ["name"];
+export const CONTACT_FIELDS = ["name", "contact_email", "contact_phone"];
 
 // Backend-Längengrenzen (routes/kunde.js PROFILE_EDITABLE_FIELDS). Frontend prüft
 // nur vor, damit kein Roh-400 nötig ist; strengere Fachregeln werden NICHT erfunden.
@@ -69,7 +71,7 @@ export function companyBaseline(user) {
 }
 
 export function contactBaseline(user) {
-  return { name: str(user?.name) };
+  return { name: str(user?.name), contact_email: str(user?.contact_email), contact_phone: str(user?.contact_phone) };
 }
 
 // ── PATCH-Body-Bau ──────────────────────────────────────────────────────────
@@ -91,8 +93,14 @@ export function buildCompanyPatch(form) {
   };
 }
 
+// Die Telefonnummer mit derselben Leerraum-Normalisierung wie das Backend — sonst gälte eine nur anders
+// eingerückte Nummer als Änderung, und die Speicherbestätigung verglich zwei verschiedene Schreibweisen.
 export function buildContactPatch(form) {
-  return { name: trimmed(form?.name) };
+  return {
+    name: trimmed(form?.name),
+    contact_email: trimmed(form?.contact_email),
+    contact_phone: str(form?.contact_phone).replace(/\s+/g, " ").trim(),
+  };
 }
 
 // ── Dirty-State ─────────────────────────────────────────────────────────────
@@ -109,7 +117,7 @@ export function isCompanyDirty(form, baseline) {
 }
 
 export function isContactDirty(form, baseline) {
-  return buildContactPatch(form).name !== buildContactPatch(baseline).name;
+  return !shallowEqual(buildContactPatch(form), buildContactPatch(baseline));
 }
 
 // ── B2B-Pflichtfelder ───────────────────────────────────────────────────────
@@ -176,7 +184,25 @@ export function validateCompanyForm(form) {
 }
 
 export function validateContactForm(form) {
-  return { ...validateMaxLen(CONTACT_FIELDS, form), ...validateB2BRequired(CONTACT_FIELDS, form) };
+  const errors = { ...validateMaxLen(CONTACT_FIELDS, form), ...validateB2BRequired(CONTACT_FIELDS, form) };
+  const email = validateContactEmail(form?.contact_email);
+  if (!email.ok) errors.contact_email = email.error;
+  const telefon = validateContactPhone(form?.contact_phone);
+  if (!telefon.ok) errors.contact_phone = telefon.error;
+  return errors;
+}
+
+// Auftrag 2 / P8: „Gespeichert" erscheint nur, wenn die Antwort des Servers die gesendeten Werte TRÄGT. Ein
+// Backend ohne die neuen Felder ignoriert unbekannte Schlüssel still und antwortet trotzdem 200 — dann fehlen
+// sie in der Antwortzeile, und genau das darf nicht als Erfolg gelten.
+export function contactSaveConfirmed(patch, user) {
+  const u = user && typeof user === "object" ? user : null;
+  if (!u || !Object.prototype.hasOwnProperty.call(u, "contact_email") || !Object.prototype.hasOwnProperty.call(u, "contact_phone")) {
+    return false;
+  }
+  const p = patch && typeof patch === "object" ? patch : {};
+  return str(u.name) === str(p.name) && str(u.contact_email) === str(p.contact_email)
+    && str(u.contact_phone) === str(p.contact_phone);
 }
 
 // ── Backend-Feldfehler zuordnen ─────────────────────────────────────────────
@@ -303,6 +329,10 @@ export const PROFILE_TEXT = {
   companySubtitle: "Stammdaten Ihres Unternehmens",
   contactTitle: "Ansprechpartner",
   contactSubtitle: "Kontaktperson für Rückfragen",
+  contactEmailLabel: "E-Mail für Rückfragen",
+  contactPhoneLabel: "Telefon",
+  contactOptionalHint: "E-Mail und Telefon sind freiwillig. Die E-Mail für Rückfragen ist nicht Ihre Login-E-Mail; Anmeldung, Rechnungen und Benachrichtigungen bleiben unverändert.",
+  contactSaveNotConfirmed: "Ihre Kontaktdaten wurden nicht übernommen. Bitte versuchen Sie es später erneut.",
   accountTitle: "Konto & Zahlungsbedingungen",
   paymentMethodLabel: "Zahlungsweise",
   paymentMethodValue: "Rechnung",

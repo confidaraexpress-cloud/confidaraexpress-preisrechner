@@ -654,7 +654,11 @@ export default function AdminUserDetailPage() {
             <KV items={[
               ["Firmenname", missingField(u, "company_name") || dash(companyOf(u))],
               ["Ansprechpartner", missingField(u, "name") || dash(nameOf(u))],
-              ["E-Mail", dash(emailOf(u))],
+              // Auftrag 2 / P8: Kontaktdaten des Ansprechpartners (optional, vom Kunden gepflegt) — getrennt von der
+              // Login-E-Mail darunter, an die Anmeldung, Rechnungen und Systemmails gehen.
+              ["Kontakt-E-Mail", dash(u.contact_email)],
+              ["Kontakt-Telefon", dash(u.contact_phone)],
+              ["Login-E-Mail", dash(emailOf(u))],
               ["Straße", dash(streetOf(u))],
               ["PLZ", dash(zipOf(u))],
               ["Stadt", dash(cityOf(u))],

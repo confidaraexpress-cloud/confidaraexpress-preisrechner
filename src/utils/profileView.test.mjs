@@ -40,8 +40,9 @@ test("2 — companyBaseline setzt Deutschland-Default bei fehlendem Land", () =>
   assert.equal(companyBaseline({ country: "AT" }).country, "AT");
 });
 
-test("3 — contactBaseline enthält nur den Namen", () => {
-  assert.deepEqual(contactBaseline(USER), { name: "Miguel Vance" });
+// Auftrag 2 / P8 (2026-10-17): dazu Kontakt-E-Mail und Telefon des Ansprechpartners (optional, leer = "").
+test("3 — contactBaseline enthält Name, Kontakt-E-Mail und Telefon", () => {
+  assert.deepEqual(contactBaseline(USER), { name: "Miguel Vance", contact_email: "", contact_phone: "" });
   assert.deepEqual(Object.keys(contactBaseline(USER)), CONTACT_FIELDS);
 });
 
@@ -59,10 +60,12 @@ test("5 — buildCompanyPatch enthält KEIN verbotenes Feld, auch wenn im Form-S
   assert.equal(Object.prototype.hasOwnProperty.call(p, "name"), false, "Ansprechpartnername gehört nicht in den Unternehmens-Patch");
 });
 
-test("6 — buildContactPatch enthält ausschließlich name", () => {
+test("6 — buildContactPatch enthält ausschließlich die drei Ansprechpartnerfelder", () => {
   const dirty = { name: "Neu", email: "hack@x.de", company_name: "X", role: "admin", phone: "+49 1" };
   const p = buildContactPatch(dirty);
-  assert.deepEqual(Object.keys(p), ["name"]);
+  // Auftrag 2 / P8: `phone` ist weiterhin kein Feld — die Telefonnummer heißt `contact_phone`.
+  assert.deepEqual(Object.keys(p), ["name", "contact_email", "contact_phone"]);
+  assert.deepEqual([p.contact_email, p.contact_phone], ["", ""]);
   for (const f of [...FORBIDDEN, "company_name", "phone"]) {
     assert.equal(Object.prototype.hasOwnProperty.call(p, f), false, `Feld ${f} darf nicht im Ansprechpartner-Body sein`);
   }

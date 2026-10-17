@@ -44,6 +44,8 @@ async function fillPflichtfelder(page) {
   await page.fill("#reg-name", "Max Mustermann");
   await page.fill("#reg-email", "einkauf@muster-logistik.de");
   await page.fill("#reg-company", "Muster Logistik GmbH");
+  // Auftrag 2 / P10: die USt-IdNr. ist bei jeder Neuregistrierung Pflicht.
+  await page.fill("#reg-vat", "DE123456789");
   await page.click("#reg-business .auth-checkbox");
   await page.click("#reg-terms .auth-checkbox");
 }

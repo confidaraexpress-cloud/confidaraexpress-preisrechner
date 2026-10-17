@@ -65,6 +65,7 @@ export function ServiceProfileDetails({ view }) {
           {size.rows.map((z) => <ProfilZeile key={z.id} zeile={z} />)}
           {size.note && <p className="offer-profile-note">{size.note}</p>}
           {size.formula && <p className="offer-profile-note" data-profile-note="formula">{size.formula}</p>}
+          {size.girthNote && <p className="offer-profile-note" data-profile-note="girth">{size.girthNote}</p>}
         </Abschnitt>
       )}
 

@@ -230,8 +230,9 @@ test("H2 — „Neue Sendung“: Absicht gespiegelt, nach der Neuberechnung gena
     "die Absicht wird nicht gegen die frische Liste aufgelöst");
   assert.ok(rechnen.includes("setCalculatorIntent(null);"), "die Absicht wird nicht verbraucht");
   // Fehlende Angaben werden nach einer Übergabe sofort angefordert — die Vorrangkette des Initialisierers bleibt.
-  assert.ok(seite.includes("useState(() => (resumeInit ? getErrors(resumeInit.form) : {}))"));
-  assert.match(seite, /if \(flowInit && flowInit\.calculatorIntent\) setErrors\(getErrors\(flowInit\.form\)\);/);
+  // Seit Auftrag 1 (P11) sind die sichtbaren Fehler abgeleitet; die Übergabe setzt `submitted`.
+  assert.ok(seite.includes("useState(() => Boolean(resumeInit))"));
+  assert.match(seite, /if \(flowInit && flowInit\.calculatorIntent\) setSubmitted\(true\);/);
   const reset = seite.match(/const resetToFreshShipment = \(\) => \{[\s\S]*?\n  \};/)[0];
   assert.ok(reset.includes("setCalculatorIntent(null);") && reset.includes("setCalculatorIntentResolution(null);"));
 });

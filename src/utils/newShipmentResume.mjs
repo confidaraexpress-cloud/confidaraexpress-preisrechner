@@ -51,19 +51,33 @@ export function resumeInitialState(resumeInit) {
 // Feldschlüssel → menschenlesbare Bezeichnung, in der Sprache der Formular-
 // beschriftungen, damit der Hinweis direkt zum markierten Feld führt.
 const FIELD_LABELS = Object.assign(Object.create(null), {
+  // Vollständig und in der Reihenfolge der Darstellung (Auftrag 1, P11, 2026-10-17). Bis dahin
+  // fehlten Vor- und Nachname, Land, Bundesstaat, Telefon und das Versanddatum — der Hinweis
+  // nannte dann nur eine Zahl statt der Angabe.
+  shippingDate: "Versanddatum",
   s_company:  "Absender – Unternehmen",
+  s_firstName: "Absender – Vorname",
+  s_lastName:  "Absender – Nachname",
   s_fullName: "Absender – Vor- und Nachname",
+  s_country:  "Absender – Land",
+  s_state:    "Absender – Bundesstaat",
   s_street:   "Absender – Straße & Hausnr.",
   s_addition: "Absender – Adresszusatz",
   s_zip:      "Absender – PLZ",
   s_city:     "Absender – Stadt",
+  s_phone:    "Absender – Telefon",
   s_email:    "Absender – E-Mail",
   r_company:  "Empfänger – Unternehmen",
+  r_firstName: "Empfänger – Vorname",
+  r_lastName:  "Empfänger – Nachname",
   r_fullName: "Empfänger – Vor- und Nachname",
+  r_country:  "Empfänger – Land",
+  r_state:    "Empfänger – Bundesstaat",
   r_street:   "Empfänger – Straße & Hausnr.",
   r_addition: "Empfänger – Adresszusatz",
   r_zip:      "Empfänger – PLZ",
   r_city:     "Empfänger – Stadt",
+  r_phone:    "Empfänger – Telefon",
   r_email:    "Empfänger – E-Mail",
   packageCount: "Anzahl Pakete",
   weight:       "Gewicht",
@@ -75,7 +89,7 @@ const FIELD_LABELS = Object.assign(Object.create(null), {
   declaredGoodsValue:      "Warenwert",
 });
 
-// Stabile Anzeigereihenfolge (Absender → Empfänger → Paket), unabhängig von der
+// Stabile Anzeigereihenfolge (Datum → Absender → Empfänger → Paket), unabhängig von der
 // Schlüsselreihenfolge des Fehlerobjekts.
 const FIELD_ORDER = Object.keys(FIELD_LABELS);
 

@@ -17,8 +17,11 @@ import { todayISO } from "../utils/date";
 import { FormAlert } from "../components/ui/FormAlert";
 import { errorFromResponse, normalizeThrownError, summaryMessage } from "../utils/apiError.mjs";
 import { getCalculatorErrors, firstErrorField, CALCULATOR_FIELD_MAP, CITY_MAX_LENGTH } from "../utils/calculatorValidation.mjs";
-import { focusFirstError, fieldErrorProps } from "../utils/focusField";
-import { postalCodeExample, postalCodeInputMode, postalCodeMaxLength } from "../utils/postalCode";
+import { focusFirstError } from "../utils/focusField";
+import { visibleFieldErrors, markFieldTouched, withoutFieldError, keepFocusOnMouseDown } from "../utils/fieldTouchState.mjs";
+import { Field } from "../components/ui/Field";
+import { DEFAULT_ORIGIN_COUNTRY } from "../utils/newShipmentForm.mjs";
+import { postalCodeHint, postalCodeInputMode, postalCodeMaxLength } from "../utils/postalCode";
 import { useShippingFlow } from "../context/ShippingFlowContext";
 import { formHasInput, droppedNotice } from "../utils/shippingFlowState.mjs";
 import { calculatorSelectionToShipmentTransfer } from "../utils/calculatorShipmentHandoff.mjs";
@@ -114,11 +117,14 @@ export default function CalculatorPage() {
     // Wie in „Neue Sendung": über die Länderliste, nie roh aus dem Profil.
     // `users.country` ist VARCHAR(10) ohne CHECK — ein Wert wie „DEU" ginge sonst
     // unverändert an /calculate-price und ins Auswahlfeld, das ihn nicht anzeigen kann.
-    from_country: normalizeCountryCode(user?.country),
-    from_zip:     user?.zip     || "",
-    // Der Ort wird wie die PLZ aus dem Profil vorbelegt — dieselbe Quelle,
-    // dieselbe Regel. Er wird NIE aus der Postleitzahl abgeleitet.
-    from_city:    user?.city    || "",
+    // Absenderland: Deutschland, der einzige Ursprung, den der Server erlaubt (Auftrag 1, P11).
+    // PLZ und Ort kommen nur dann aus dem Profil, wenn das Profil ebenfalls in Deutschland liegt —
+    // sonst stünde eine fremde Postleitzahl unter „Deutschland". Der Ort wird NIE aus der
+    // Postleitzahl abgeleitet.
+    from_country: DEFAULT_ORIGIN_COUNTRY,
+    from_zip:     normalizeCountryCode(user?.country) === DEFAULT_ORIGIN_COUNTRY ? (user?.zip || "") : "",
+    from_city:    normalizeCountryCode(user?.country) === DEFAULT_ORIGIN_COUNTRY ? (user?.city || "") : "",
+    // Das Empfängerland bleibt wie bisher frei wählbar (Auftrag 1, P11 ändert nur die Herkunft).
     to_country:   "DE",
     to_zip:       "",
     to_city:      "",
@@ -134,10 +140,15 @@ export default function CalculatorPage() {
   // `error` trägt jetzt { title, message } statt eines einzelnen Strings, damit
   // die Meldung das Problem benennt UND die Korrektur erklärt.
   const [error, setError]           = useState(null);
-  // Feldbezogene Fehler: Schlüssel = Formularfeld, Wert = kurzer Text unter dem
-  // Feld. Quelle sind sowohl die Client-Vorprüfung als auch das `field` einer
-  // Serverantwort — dadurch landet auch ein Backend-Fehler am richtigen Feld.
-  const [fieldErrors, setFieldErrors] = useState({});
+  // Feldbezogene Fehler (Auftrag 1, P11, 2026-10-17). Geprüft wird immer mit
+  // getCalculatorErrors(form) — der einzigen Regel dieses Formulars. SICHTBAR ist davon nur, was
+  // der Kunde schon verlassen hat (`touched`) oder was ein Klick auf „Angebote vergleichen"
+  // angefordert hat (`submitted`), dazu das `field` einer Serverantwort, bis das Feld geändert
+  // wird. Unberührte leere Felder bleiben neutral; eine Korrektur nimmt die Markierung sofort weg.
+  const [touched, setTouched]           = useState({});
+  const [submitted, setSubmitted]       = useState(false);
+  const [serverErrors, setServerErrors] = useState({});
+  const [focusRequest, setFocusRequest] = useState(null);
   const [hasResults, setHasResults] = useState(!!(flowInit && flowInit.tariffs.length > 0));
   // Zeitpunkt der Preisberechnung — trägt die Ablauffrist des Vorgangs.
   const calculatedAtRef = useRef(flowInit ? flowInit.calculatedAt : null);
@@ -231,6 +242,8 @@ export default function CalculatorPage() {
 
   const upd = (k, v) => {
     setForm(p => ({ ...p, [k]: v }));
+    // Nur der Serverfehler DIESES Feldes fällt weg; alle übrigen Markierungen bleiben.
+    setServerErrors(p => withoutFieldError(p, k));
     // Stale-State-Schutz (Muster wie NewShipmentPage): Ändert sich ein route-/
     // paketrelevantes Feld (nicht die reinen Client-Filter max_price/latestDeliveryDate),
     // werden alte Angebote sofort verworfen → nie veraltete Preise zu neuen
@@ -270,18 +283,24 @@ export default function CalculatorPage() {
   // still durch die Hauptstadt des Landes (COUNTRY_DEFAULTS) — der Kunde bekam
   // einen Tarif für „Berlin", ohne das je gesagt zu haben. Dieselbe Klasse
   // stiller Ersatzwerte wie zuvor bei den Paketmaßen.
-  const calcValid = !!form.from_zip && !!form.to_zip && !!form.weight && !!form.packageCount
-    && !!form.length && !!form.width && !!form.height
-    && !!String(form.from_city ?? "").trim() && !!String(form.to_city ?? "").trim();
+  // Sichtbare Feldfehler, abgeleitet (siehe oben). Kein zweiter Regelsatz: dieselbe Funktion
+  // entscheidet über Markierung, Klickprüfung und Request.
+  const liveFieldErrors = useMemo(() => getCalculatorErrors(form).fieldErrors, [form]);
+  const fieldErrors = visibleFieldErrors({ live: liveFieldErrors, touched, submitted, server: serverErrors });
+  const markTouched = (k) => setTouched(t => markFieldTouched(t, k));
+  // Fokus erst NACH dem Rendern der Markierungen — dann trägt das Feld schon aria-invalid und
+  // seinen Fehlertext.
+  useEffect(() => {
+    if (focusRequest && focusRequest.field) focusFirstError(focusRequest.field);
+  }, [focusRequest]);
 
   const resetResults = () => {
     setHasResults(false);
     setTariffs([]);
     setSelected(null);
     setError(null);
-    // Feldmarkierungen verschwinden, sobald der Kunde die Eingabe ändert — die
-    // eingegebenen WERTE bleiben dabei unangetastet erhalten.
-    setFieldErrors({});
+    // Feldmarkierungen bleiben: ob ein Feld rot ist, entscheidet seine eigene Prüfung (siehe
+    // `fieldErrors`). Bis 2026-10 löschte jede Eingabe hier ALLE Markierungen (Auftrag 1, P11).
     calculatedAtRef.current = null;
     setFlowNotice(null);
   };
@@ -464,16 +483,16 @@ export default function CalculatorPage() {
     // Sammeltext zu sehen.
     const { fieldErrors: preErrors, banner } = getCalculatorErrors(form);
     if (Object.keys(preErrors).length > 0) {
-      setFieldErrors(preErrors);
+      setSubmitted(true);
       const anzahl = Object.keys(preErrors).length;
       setError({
         title: banner?.title || "Angaben prüfen",
         message: anzahl > 1 ? `${banner?.message || ""} ${summaryMessage(anzahl)}`.trim() : banner?.message,
       });
-      focusFirstError(firstErrorField(preErrors));
+      setFocusRequest({ field: firstErrorField(preErrors), at: Date.now() });
       return;
     }
-    setFieldErrors({});
+    setServerErrors({});
     calcInFlight.current = true;   // erst NACH der Validierung: ein abgelehnter Klick blockiert nichts
     // Betreiberentscheidung 2026-10-02: jede ECHTE neue Preisberechnung startet in Netto — wie in
     // „Neue Sendung" erst hier, nach der Validierung. Der Einblende-Zweig oben behält die Wahl.
@@ -530,7 +549,7 @@ export default function CalculatorPage() {
         if (seq !== calcSeq.current) return;
         if (reqKey !== calcKeyRef.current) { setLoading(false); return; }
         if (norm.field) {
-          setFieldErrors({ [norm.field]: norm.fieldMessage || norm.message });
+          setServerErrors({ [norm.field]: norm.fieldMessage || norm.message });
         }
         // Angesprungen wird das Feld (sonst der Knopf) erst nach dem Laden — bis
         // dahin ist der Seiteninhalt inert, ein Fokus jetzt liefe ins Leere.
@@ -666,114 +685,71 @@ export default function CalculatorPage() {
             carrierEmptyHint="Zuerst Preise berechnen, um Carrier-Filter zu aktivieren"
           />
 
-          {/* ── Versandroute — Land + PLZ ── */}
+          {/* ── Versandroute — Land + PLZ + Ort ──
+              Betreiberentscheidung Auftrag 1, P11 (2026-10-17): schwebende Beschriftungen über
+              <Field /> und das Vorschlagsfeld (wie „Neue Sendung"), keine Musterplatzhalter —
+              das PLZ-Format steht als Hinweiszeile unter dem Feld. Jedes Feld trägt `data-field`
+              (Ziel von focusFirstError) und wird beim Verlassen „berührt". */}
           <div className="calc-panel mb-16">
             <div className="calc-panel-header"><h3>Versandroute</h3></div>
             <div className="calc-panel-body">
               <div className="booking-addr-grid">
-
-                {/* Herkunft */}
-                <div>
-                  <div className="calc-section-title">Herkunft</div>
-                  <div className="field">
-                    <label className="field-label" htmlFor="calc-from-country">Land</label>
-                    <select
-                      id="calc-from-country"
-                      className="field-input field-select"
-                      value={form.from_country}
-                      onChange={e => { upd("from_country", e.target.value); resetResults(); }}
-                    >
-                      {launchOriginCountries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
-                    </select>
-                  </div>
-                  <div className="field">
-                    <label className="field-label" htmlFor="calc-from-zip">PLZ *</label>
-                    <input
-                      id="calc-from-zip"
-                      className={`field-input${fieldErrors.from_zip ? " field-input-error" : ""}`}
-                      value={form.from_zip}
-                      onChange={e => { upd("from_zip", e.target.value); resetResults(); }}
-                      placeholder={postalCodeExample(form.from_country) || "PLZ"}
-                      inputMode={postalCodeInputMode(form.from_country)}
-                      maxLength={postalCodeMaxLength()}
-                      {...fieldErrorProps("from_zip", fieldErrors.from_zip).input}
-                    />
-                    {fieldErrors.from_zip
-                      ? <span className="field-error" id={fieldErrorProps("from_zip", fieldErrors.from_zip).errorId}>{fieldErrors.from_zip}</span>
-                      : (postalCodeExample(form.from_country) && <span className="field-hint">Beispiel: {postalCodeExample(form.from_country)}</span>)}
-                  </div>
-                  <div className="field">
-                    <label className="field-label" htmlFor="calc-from-city">Ort *</label>
-                    <AddressSuggestInput
-                      id="calc-from-city"
-                      inputClassName={`field-input${fieldErrors.from_city ? " field-input-error" : ""}`}
-                      value={form.from_city}
-                      onChange={v => { upd("from_city", v); resetResults(); }}
-                      onSelect={item => { upd("from_city", cityFromSuggestion(item)); resetResults(); }}
-                      suggestions={fromCityHelp.cityOptions}
-                      placeholder="z. B. Stuttgart"
-                      maxLength={CITY_MAX_LENGTH}
-                      autoComplete="address-level2"
-                      dataField="from_city"
-                      invalid={Boolean(fieldErrors.from_city)}
-                      describedBy={fieldErrorProps("from_city", fieldErrors.from_city).input["aria-describedby"]}
-                    />
-                    {fieldErrors.from_city
-                      && <span className="field-error" id={fieldErrorProps("from_city", fieldErrors.from_city).errorId}>{fieldErrors.from_city}</span>}
-                  </div>
-                </div>
-
-                {/* Ziel */}
-                <div>
-                  <div className="calc-section-title">Ziel</div>
-                  <div className="field">
-                    <label className="field-label" htmlFor="calc-to-country">Land</label>
-                    <select
-                      id="calc-to-country"
-                      className="field-input field-select"
-                      value={form.to_country}
-                      onChange={e => { upd("to_country", e.target.value); resetResults(); }}
-                    >
-                      {launchCountries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
-                    </select>
-                  </div>
-                  <div className="field">
-                    <label className="field-label" htmlFor="calc-to-zip">PLZ *</label>
-                    <input
-                      id="calc-to-zip"
-                      className={`field-input${fieldErrors.to_zip ? " field-input-error" : ""}`}
-                      value={form.to_zip}
-                      onChange={e => { upd("to_zip", e.target.value); resetResults(); }}
-                      placeholder={postalCodeExample(form.to_country) || "PLZ"}
-                      inputMode={postalCodeInputMode(form.to_country)}
-                      maxLength={postalCodeMaxLength()}
-                      {...fieldErrorProps("to_zip", fieldErrors.to_zip).input}
-                    />
-                    {fieldErrors.to_zip
-                      ? <span className="field-error" id={fieldErrorProps("to_zip", fieldErrors.to_zip).errorId}>{fieldErrors.to_zip}</span>
-                      : (postalCodeExample(form.to_country) && <span className="field-hint">Beispiel: {postalCodeExample(form.to_country)}</span>)}
-                  </div>
-                  <div className="field">
-                    <label className="field-label" htmlFor="calc-to-city">Ort *</label>
-                    <AddressSuggestInput
-                      id="calc-to-city"
-                      inputClassName={`field-input${fieldErrors.to_city ? " field-input-error" : ""}`}
-                      value={form.to_city}
-                      onChange={v => { upd("to_city", v); resetResults(); }}
-                      onSelect={item => { upd("to_city", cityFromSuggestion(item)); resetResults(); }}
-                      suggestions={toCityHelp.cityOptions}
-                      placeholder="z. B. Berlin"
-                      maxLength={CITY_MAX_LENGTH}
-                      autoComplete="address-level2"
-                      dataField="to_city"
-                      invalid={Boolean(fieldErrors.to_city)}
-                      describedBy={fieldErrorProps("to_city", fieldErrors.to_city).input["aria-describedby"]}
-                    />
-                    {fieldErrors.to_city
-                      && <span className="field-error" id={fieldErrorProps("to_city", fieldErrors.to_city).errorId}>{fieldErrors.to_city}</span>}
-                  </div>
-                </div>
-
+                {[
+                  { side: "from", title: "Herkunft", liste: launchOriginCountries, help: fromCityHelp },
+                  { side: "to",   title: "Ziel",     liste: launchCountries,       help: toCityHelp },
+                ].map(({ side, title, liste, help }) => {
+                  const land = form[`${side}_country`];
+                  const plzHinweis = postalCodeHint(land) || undefined;
+                  return (
+                    <div key={side}>
+                      <div className="calc-section-title">{title}</div>
+                      <Field
+                        id={`calc-${side}-country`}
+                        fieldKey={`${side}_country`}
+                        labelMode="floating"
+                        as="select"
+                        label="Land"
+                        required
+                        value={land}
+                        onChange={(v) => { upd(`${side}_country`, v); resetResults(); }}
+                        onBlur={() => markTouched(`${side}_country`)}
+                        error={fieldErrors[`${side}_country`]}
+                      >
+                        <option value="">Land auswählen</option>
+                        {liste.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                      </Field>
+                      <Field
+                        id={`calc-${side}-zip`}
+                        fieldKey={`${side}_zip`}
+                        labelMode="floating"
+                        label="PLZ"
+                        required
+                        value={form[`${side}_zip`]}
+                        onChange={(v) => { upd(`${side}_zip`, v); resetResults(); }}
+                        onBlur={() => markTouched(`${side}_zip`)}
+                        inputMode={postalCodeInputMode(land)}
+                        maxLength={postalCodeMaxLength()}
+                        error={fieldErrors[`${side}_zip`]}
+                        hint={plzHinweis}
+                      />
+                      <AddressSuggestInput
+                        id={`calc-${side}-city`}
+                        label="Ort"
+                        required
+                        floating
+                        className="field"
+                        value={form[`${side}_city`]}
+                        onChange={v => { upd(`${side}_city`, v); resetResults(); }}
+                        onSelect={item => { upd(`${side}_city`, cityFromSuggestion(item)); resetResults(); }}
+                        onBlur={() => markTouched(`${side}_city`)}
+                        suggestions={help.cityOptions}
+                        maxLength={CITY_MAX_LENGTH}
+                        dataField={`${side}_city`}
+                        error={fieldErrors[`${side}_city`]}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -782,61 +758,37 @@ export default function CalculatorPage() {
           <div className="calc-panel mb-16">
             <div className="calc-panel-header"><h3>Paketdaten</h3></div>
             <div className="calc-panel-body">
-              {/* Reihenfolge: Anzahl · Gewicht · Länge · Breite · Höhe (nur Anzeige;
-                  Bindings/State-Keys unverändert). Anzahl = Anzahl identischer Pakete
-                  (pro Paket: Gewicht + Maße), nur an /calculate-price. */}
-              {/* Jedes Paketfeld kann seinen eigenen Fehler tragen (markiert,
-                  beschrieben, per aria-describedby verbunden und anspringbar). */}
-              {/* Dieselbe Feldsprache wie „Neue Sendung" (Redesign 2026-10): die
-                  Einheit steht nicht mehr im sichtbaren Beschriftungstext, sondern
-                  als Suffix rechts im Feld (dekorativ, aria-hidden); vorgelesen
-                  wird sie über den unsichtbaren Labelzusatz. IDs, Werte, Fehler-
-                  und Hinweisverknüpfung sind unverändert. */}
+              {/* Reihenfolge: Anzahl · Gewicht · Länge · Breite · Höhe (Bindings/State-Keys
+                  unverändert). Anzahl = Anzahl identischer Pakete (pro Paket: Gewicht + Maße),
+                  nur an /calculate-price. Dieselbe Feldsprache wie „Neue Sendung": schwebende
+                  Beschriftung, Einheit rechts im Feld (dekorativ, vorgelesen über unitLabel),
+                  kein Beispielplatzhalter; eine unvollständige Zahl hält die Beschriftung oben. */}
               <div className="field-row field-row-5">
                 {[
-                  // Die Beispiele sind PLACEHOLDER, keine Werte. Eine nackte „5"
-                  // in einem Zahlenfeld ist von einer echten Eingabe nicht zu
-                  // unterscheiden — deshalb steht „z. B." davor.
-                  { key: "packageCount", label: "Anzahl",  ph: "1",  hint: "Identische Pakete", extra: { min: "1", max: "99", step: "1" } },
-                  { key: "weight",       label: "Gewicht", unit: "kg", unitLabel: "in Kilogramm",  ph: "z. B. 5"  },
-                  { key: "length",       label: "Länge",   unit: "cm", unitLabel: "in Zentimetern", ph: "z. B. 30" },
-                  { key: "width",        label: "Breite",  unit: "cm", unitLabel: "in Zentimetern", ph: "z. B. 20" },
-                  { key: "height",       label: "Höhe",    unit: "cm", unitLabel: "in Zentimetern", ph: "z. B. 15" },
-                ].map(({ key, label, unit, unitLabel, ph, hint, extra }) => {
-                  const err = fieldErrors[key];
-                  const a11y = fieldErrorProps(key, err);
-                  const eingabe = (
-                    <input
-                      id={`calc-${key}`}
-                      className={`field-input${err ? " field-input-error" : ""}`}
-                      type="number"
-                      value={form[key]}
-                      onChange={e => upd(key, e.target.value)}
-                      placeholder={ph}
-                      aria-required="true"
-                      {...(extra || {})}
-                      {...a11y.input}
-                    />
-                  );
-                  return (
-                    <div className={`field${unit ? " ce-field--has-unit" : ""}`} key={key}>
-                      <label className="field-label" htmlFor={`calc-${key}`}>
-                        {label}
-                        {unitLabel && <span className="sr-only"> {unitLabel}</span>}
-                        <span aria-hidden="true"> *</span>
-                      </label>
-                      {unit ? (
-                        <div className="ce-field-control">
-                          {eingabe}
-                          <span className="ce-field-unit" aria-hidden="true">{unit}</span>
-                        </div>
-                      ) : eingabe}
-                      {err
-                        ? <span className="field-error" id={a11y.errorId}>{err}</span>
-                        : (hint && <span className="field-hint">{hint}</span>)}
-                    </div>
-                  );
-                })}
+                  { key: "packageCount", label: "Anzahl",  hint: "Identische Pakete", extra: { min: "1", max: "99", step: "1" } },
+                  { key: "weight",       label: "Gewicht", unit: "kg", unitLabel: "in Kilogramm" },
+                  { key: "length",       label: "Länge",   unit: "cm", unitLabel: "in Zentimetern" },
+                  { key: "width",        label: "Breite",  unit: "cm", unitLabel: "in Zentimetern" },
+                  { key: "height",       label: "Höhe",    unit: "cm", unitLabel: "in Zentimetern" },
+                ].map(({ key, label, unit, unitLabel, hint, extra }) => (
+                  <Field
+                    key={key}
+                    id={`calc-${key}`}
+                    fieldKey={key}
+                    labelMode="floating"
+                    label={label}
+                    required
+                    type="number"
+                    unit={unit}
+                    unitLabel={unitLabel}
+                    value={form[key]}
+                    onChange={(v) => upd(key, v)}
+                    onBlur={() => markTouched(key)}
+                    error={fieldErrors[key]}
+                    hint={hint}
+                    {...(extra || {})}
+                  />
+                ))}
               </div>
               <p className="pkg-count-note">
                 <span>Gewicht und Maße gelten je Paket. Der Preis gilt für alle Pakete zusammen.</span>
@@ -852,7 +804,17 @@ export default function CalculatorPage() {
 
           {/* ── Calculate CTA ── */}
           <div className="offers-calc-cta">
-            <button ref={calcCtaRef} className="btn btn-primary btn-lg btn-full" onClick={calculate} disabled={loading || !calcValid}>
+            {/* Auftrag 1, P11: bedienbar auch bei fehlenden Angaben — gesperrt nur, während gerechnet
+                wird. Ein Klick auf ein unvollständiges Formular sendet nichts, markiert alle Pflicht-
+                felder und springt zum ersten; onMouseDown hält den Fokus bis zum Klick im Feld. */}
+            <button
+              type="button"
+              ref={calcCtaRef}
+              className="btn btn-primary btn-lg btn-full"
+              onClick={calculate}
+              onMouseDown={keepFocusOnMouseDown}
+              disabled={loading}
+            >
               {loading ? <><span className="spinner" /> Berechne…</> : "Angebote vergleichen"}
             </button>
             {/* Direkt am Aktionsbutton: benennt das Problem und erklärt die

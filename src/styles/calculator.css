@@ -3,6 +3,10 @@
    eigener Radius/Schatten mehr. .calc-panel bleibt der Klassenname (viele
    Aufrufer), das Material kommt jetzt 1:1 aus .ce-card. */
 .calc-panel { background: var(--ce-color-surface); border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-lg); overflow: hidden; box-shadow: var(--ce-elevation-1); }
+/* Versanddatum ohne Wert nach dem Klick auf „Angebote vergleichen“ (Auftrag 1, P11): derselbe
+   Fehlerrahmen und dieselbe Fehlerzeile wie an jedem Eingabefeld. */
+.calc-panel.calc-panel--error { border-color: var(--ce-color-status-error-fg); }
+.calc-panel-error { display: block; padding: 0 var(--ce-space-3) var(--ce-space-3); }
 /* Kartenkopf (Redesign 2026-10): Titel in der Kartenstufe 16/24, Innenabstand 16/24. */
 .calc-panel-header { padding: 16px 24px; border-bottom: 1px solid var(--ce-color-border-subtle); display: flex; align-items: center; gap: 10px; background: var(--ce-color-surface); }
 .calc-panel-header h3 {

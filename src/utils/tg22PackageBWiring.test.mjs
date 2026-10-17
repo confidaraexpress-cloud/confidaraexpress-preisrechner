@@ -160,11 +160,15 @@ test("12 — ein fortgesetzter Entwurf bekommt kein Ersatzdatum; ohne Datum kein
   assert.doesNotMatch(neu, /buildResumeInitialState\([^)]*todayISO\(\)/);
   assert.doesNotMatch(neu, /init\.shippingDate \|\| todayISO\(\)/);
   assert.match(neu, /resumeInit \? \(resumeInit\.shippingDate \|\| null\)/);
-  // Seit der Geoapify-Umstellung (2026-10-14) sperrt die Adressprüfung die Berechnung nicht mehr;
-  // das fehlende Versanddatum sperrt unverändert.
-  assert.match(neu, /disabled=\{loading \|\| !calcValid \|\| saving \|\| datumFehlt\}/);
+  // Seit der Geoapify-Umstellung (2026-10-14) sperrt die Adressprüfung die Berechnung nicht mehr.
+  // Seit Auftrag 1 (P11, 2026-10-17) ist auch der Knopf nicht mehr wegen fehlender Angaben
+  // gesperrt: ein fehlendes Versanddatum ist ein Feldfehler wie jeder andere, und ohne Datum geht
+  // weiterhin KEIN Request hinaus (kein Ersatzdatum).
+  assert.match(neu, /disabled=\{loading \|\| saving\}/);
   const berechnen = abschnitt(neu, "const calculate = async", "const reloadFormDraft");
-  assert.ok(berechnen.indexOf("if (!shippingDate) {") < berechnen.indexOf("setHasResults(false); setTariffs([]);"));
+  const pruefung = berechnen.indexOf("const errs = datumFehlt ? { shippingDate: DATUM_FEHLT_HINWEIS, ...getErrors(form) } : getErrors(form);");
+  assert.ok(pruefung > 0, "das fehlende Datum zählt nicht als Fehler");
+  assert.ok(pruefung < berechnen.indexOf("apiFetch("), "ohne Datum geht ein Request hinaus");
   assert.match(neu, /resumeInit && resumeInit\.shippingDateExpired \? RESUME_PAST_DATE_NOTICE : ""/);
 });
 

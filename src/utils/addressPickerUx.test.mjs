@@ -335,7 +335,9 @@ test("E4 die Übernahme verwirft alte Angebote vollständig", () => {
 });
 
 test("E5 sichtbare Feldfehler der ersetzten Felder verschwinden mit ihrem Wert", () => {
-  assert.match(handler, /setErrors\(p => \{[\s\S]*for \(const k of keys\) delete n\[k\]/);
+  // Seit Auftrag 1 (P11) sind die sichtbaren Fehler abgeleitet: Serverfehler der ersetzten Felder
+  // fallen weg, und ob ein Feld noch rot ist, entscheidet getErrors mit dem übernommenen Wert.
+  assert.match(handler, /setServerErrors\(p => \{[\s\S]*for \(const k of keys\) delete n\[k\]/);
 });
 
 test("E6 jede Seite bekommt ihren eigenen Reiter", () => {

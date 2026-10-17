@@ -22,6 +22,12 @@
 import { normalizeCountryCode } from "./countries.js";
 import { blankDeclarations } from "./shipmentDeclarations.mjs";
 
+// Absenderland neuer Versandvorgänge (Auftrag 1, P11, 2026-10-17): Deutschland ist vorausgewählt.
+// Keine neue Regel — der Server erlaubt als Ursprung nur DE (Launch-Scope `originCountries`,
+// Canonical „Versand ab Deutschland“); die Auswahlliste bleibt die des Servers. Das Empfängerland
+// bleibt leer und wird frei gewählt; gespeicherte Entwürfe behalten ihr Land.
+export const DEFAULT_ORIGIN_COUNTRY = "DE";
+
 export const PACKAGE_FIELDS = Object.freeze(["packageCount", "weight", "length", "width", "height"]);
 export const PARTY_PREFIXES = Object.freeze(["s", "r"]);
 
@@ -143,6 +149,9 @@ export function createEmptyShipmentForm() {
   // Sie steht NACH der Schleife, damit die Schleife die Regel „alles leer" unverändert
   // ausspricht und die Ausnahme als solche sichtbar bleibt.
   form.packageCount = PACKAGE_COUNT_DEFAULT;
+  // Zweite Ausnahme (Auftrag 1, P11, 2026-10-17): das Absenderland ist Deutschland — der einzige
+  // Ursprung, den der Server erlaubt (DEFAULT_ORIGIN_COUNTRY). Das Empfängerland bleibt leer.
+  form.s_country = DEFAULT_ORIGIN_COUNTRY;
   // Die beiden Sendungsangaben (Inhalt, Warenwert), die vor dem Angebotsvergleich erhoben
   // werden. Sie folgen derselben Regel wie alles andere: KEIN Vorgabewert. Die Art der
   // Lieferadresse gehört nicht hierher — sie wird erst nach der Angebotsauswahl gefragt.

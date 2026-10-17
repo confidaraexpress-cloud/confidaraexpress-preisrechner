@@ -11,8 +11,7 @@ import { applyResultFilters } from "../utils/offersFilterView.mjs";
 import { deliveryDeadlineOptions } from "../utils/deliveryTimeView.mjs";
 import { revealOffers } from "../utils/revealOffers.mjs";
 import { resumeInitialState, missingFieldsHint } from "../utils/newShipmentResume.mjs";
-import { validatePostalCode, postalCodeExample, postalCodeInputMode, postalCodeMaxLength, isPostalCodeRequired } from "../utils/postalCode";
-import { cityPlaceholder } from "../utils/addressPlaceholders.mjs";
+import { validatePostalCode, postalCodeExample, postalCodeHint, postalCodeInputMode, postalCodeMaxLength, isPostalCodeRequired } from "../utils/postalCode";
 import { OffersList } from "../components/offers/OffersList";
 import { ShipmentFilterBar } from "../components/offers/ShipmentFilterBar";
 import { OfferComparisonLoadingOverlay } from "../components/offers/OfferComparisonLoadingOverlay";
@@ -24,6 +23,7 @@ import { businessTodayISO } from "../utils/businessDate.mjs";
 import { getFormDraft, createFormDraft, updateFormDraft } from "../api/formDraftsApi";
 import { normalizeApiError, normalizeThrownError, summaryMessage } from "../utils/apiError.mjs";
 import { focusFirstError } from "../utils/focusField";
+import { visibleFieldErrors, markFieldTouched, withoutFieldError, keepFocusOnMouseDown } from "../utils/fieldTouchState.mjs";
 import { Field } from "../components/ui/Field";
 import { useShippingFlow } from "../context/ShippingFlowContext";
 import { formHasInput, pickRestoreSource, droppedNotice } from "../utils/shippingFlowState.mjs";
@@ -32,7 +32,7 @@ import {
 } from "../utils/calculatorShipmentHandoff.mjs";
 import {
   createEmptyShipmentForm, senderPatchFromProfile, hasProfileSenderData,
-  packageErrors, packageComplete, packageHint, packagePayload, PACKAGE_PLACEHOLDERS,
+  packageErrors, packagePayload,
   buildPartyPayload, shippingContactErrors,
 } from "../utils/newShipmentForm.mjs";
 
@@ -78,12 +78,17 @@ const SHIPMENT_FIELD_MAP = {
 
 // Reihenfolge im Formular — bestimmt, welches Feld bei mehreren Fehlern
 // angesprungen wird (immer das oberste).
+// Genau die Reihenfolge der Darstellung (Auftrag 1, P11): das Versanddatum steht in der
+// Filterleiste ÜBER den Adressen; je Seite Unternehmen, Vor-/Nachname, Land, Bundesstaat,
+// Straße, Zusatz, PLZ, Stadt, Telefon, E-Mail. Bis 2026-10 standen Unternehmen und Name sowie
+// E-Mail und Telefon vertauscht, der Bundesstaat fehlte, und das Datum stand am Ende.
 const SHIPMENT_FIELD_ORDER = [
-  "s_firstName", "s_lastName", "s_company", "s_country", "s_street", "s_addition", "s_zip", "s_city",
-  "s_email", "s_phone",
-  "r_firstName", "r_lastName", "r_company", "r_country", "r_street", "r_addition", "r_zip", "r_city",
-  "r_email", "r_phone",
-  "packageCount", "weight", "length", "width", "height", "shippingDate",
+  "shippingDate",
+  "s_company", "s_firstName", "s_lastName", "s_fullName", "s_country", "s_state", "s_street", "s_addition",
+  "s_zip", "s_city", "s_phone", "s_email",
+  "r_company", "r_firstName", "r_lastName", "r_fullName", "r_country", "r_state", "r_street", "r_addition",
+  "r_zip", "r_city", "r_phone", "r_email",
+  "packageCount", "weight", "length", "width", "height",
   // Die Sendungsangaben stehen ANS ENDE: sie sind im Formular unterhalb der Paketdaten,
   // und der Sprung zum ersten Fehler soll der Leserichtung folgen.
   "declaredContent", "declaredGoodsValue",
@@ -435,17 +440,24 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const [hasResults, setHasResults] = useState(!!(flowInit && flowInit.tariffs.length > 0));
   // Zeitpunkt der Preisberechnung — trägt die Ablauffrist des Vorgangs.
   const calculatedAtRef = useRef(flowInit ? flowInit.calculatedAt : null);
-  // Fortgesetzter Entwurf: unvollständige Pflichtangaben werden SOFORT markiert.
-  // Ein abgebrochener Entwurf sieht ausgefüllt aus, deaktiviert den CTA aber
-  // stillschweigend — ohne Vorbelegung erklärt nichts, welche Angabe fehlt, und
-  // der Nutzer klickt wirkungslos. Bei einer neuen Sendung bleibt es unverändert
-  // beim leeren Fehlerobjekt (der Nutzer füllt das Formular gerade erst aus).
-  const [errors, setErrors]         = useState(() => (resumeInit ? getErrors(resumeInit.form) : {}));
+  // Sichtbare Feldfehler (Auftrag 1, P11, 2026-10-17). Geprüft wird immer mit getErrors(form) —
+  // der einzigen Formularregel dieser Seite. SICHTBAR ist davon nur, was der Kunde schon
+  // verlassen hat (`touched`) oder was ein Klick auf „Angebote vergleichen" angefordert hat
+  // (`submitted`), dazu Feldfehler des Servers, bis das Feld geändert wird (`serverErrors`).
+  // Unberührte leere Felder bleiben neutral; eine Korrektur nimmt die Markierung sofort weg.
+  //
+  // Ein fortgesetzter Entwurf zeigt seine Lücken SOFORT (submitted beim Mount): er sieht
+  // ausgefüllt aus, und ohne Markierung erklärte nichts, welche Angabe noch fehlt.
+  const [touched, setTouched]           = useState({});
+  const [submitted, setSubmitted]       = useState(() => Boolean(resumeInit));
+  const [serverErrors, setServerErrors] = useState({});
+  // Fokusauftrag für das erste Fehlerfeld — ausgeführt NACH dem Rendern (Effekt unten).
+  const [focusRequest, setFocusRequest] = useState(null);
   // Dasselbe gilt für eine Übergabe aus dem Preisrechner: Route, Paket und Datum stehen da, Straße,
-  // Kontakt und Sendungsangaben fehlen — ohne Markierung wäre der gesperrte CTA unerklärt. Einmalig
-  // beim Mount und nur mit offener Absicht; die Vorrangkette des Initialisierers darüber bleibt unberührt.
+  // Kontakt und Sendungsangaben fehlen. Einmalig beim Mount und nur mit offener Absicht; die
+  // Vorrangkette des Initialisierers darüber bleibt unberührt.
   useEffect(() => {
-    if (flowInit && flowInit.calculatorIntent) setErrors(getErrors(flowInit.form));
+    if (flowInit && flowInit.calculatorIntent) setSubmitted(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -617,7 +629,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
 
   const upd = (k, v) => {
     setForm(p => ({ ...p, [k]: v }));
-    setErrors(p => { if (!p[k]) return p; const n = { ...p }; delete n[k]; return n; });
+    // Nur der Serverfehler DIESES Feldes fällt weg; alle übrigen Markierungen bleiben. Ob das
+    // Feld selbst noch rot ist, entscheidet getErrors mit dem neuen Wert (siehe `errors`).
+    setServerErrors(p => withoutFieldError(p, k));
     // Stale-State-Schutz: Ändert sich ein buchungsrelevantes Feld (Absender-,
     // Empfänger-, Paket- oder Routendaten), werden alte Tarife UND die
     // Sendungskennung verworfen. So kann niemals ein veralteter Tarif / eine alte
@@ -631,16 +645,32 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const chargeWeight = volWeight && form.weight
     ? Math.max(Number(form.weight), Number(volWeight)).toFixed(2) : form.weight || null;
 
-  const calcValid = Object.keys(getErrors(form)).length === 0;
+  // Die Formularregel läuft EINMAL je Render — für die Sichtbarkeit, den Sammelhinweis und die
+  // Klickprüfung. Keine zweite Fassung einer Regel.
+  const liveErrors = useMemo(() => getErrors(form), [form]);
+  const calcValid = Object.keys(liveErrors).length === 0;
   // TG22 Paket B: ohne Versanddatum keine Berechnung. Das tritt nur bei einem fortgesetzten
   // Entwurf auf, dessen Datum vergangen ist — dort wird bewusst nichts ersetzt.
   const datumFehlt = !shippingDate;
   const DATUM_FEHLT_HINWEIS = "Bitte wählen Sie ein Versanddatum, um Angebote zu vergleichen.";
-  // Hinweis am CTA — NUR aus bereits sichtbar markierten Feldern (`errors`), nie
-  // aus einer stillen Vorabvalidierung des laufenden Tippens. Bei einer neuen
-  // Sendung ist `errors` bis zum ersten Klick leer → kein Hinweis, Verhalten
-  // unverändert. Bei einem fortgesetzten Entwurf ist es beim Mount vorbelegt.
-  const calcHint = calcValid ? null : missingFieldsHint(errors);
+  const errors = visibleFieldErrors({
+    live: datumFehlt ? { shippingDate: "Bitte wählen Sie ein Versanddatum.", ...liveErrors } : liveErrors,
+    touched, submitted, server: serverErrors,
+  });
+  // Verlassen eines Feldes: ab jetzt zeigt es seinen Fehler (nur dieses Feld).
+  const markTouched = (k) => setTouched(t => markFieldTouched(t, k));
+  // Hinweis am CTA — NUR aus bereits sichtbar markierten Feldern (`errors`), nie aus einer
+  // stillen Vorabvalidierung des laufenden Tippens.
+  const calcHint = calcValid && !datumFehlt ? null : missingFieldsHint(errors);
+
+  // Fokus erst NACH dem Rendern der Markierungen (Auftrag 1, P11): dann trägt das Feld schon
+  // aria-invalid und seinen Fehlertext, und ein Screenreader liest beides beim Fokus vor.
+  // Bis 2026-10 lief der Fokus im Klick selbst — vor dem Rendern, also auf ein noch
+  // unmarkiertes Feld.
+  useEffect(() => {
+    if (focusRequest && focusRequest.field) focusFirstError(focusRequest.field);
+  }, [focusRequest]);
+  const requestFocus = (field) => { if (field) setFocusRequest({ field, at: Date.now() }); };
   // Hinweis zur Angebotsabsicht aus dem Preisrechner — offen, ausgewählt oder nicht zuzuordnen.
   // Abgeleitet, keine eigene Wahrheit; ohne Übergabe ist er leer und erscheint nicht.
   const calculatorHinweis = calculatorIntentNotice({
@@ -649,12 +679,6 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // Übernahme aus dem öffentlichen Preisrechner: der neu berechnete Preis NEBEN dem öffentlichen —
   // nur bei genau einem Treffer und solange genau dieses Angebot ausgewählt ist.
   const preisvergleich = publicPriceComparison({ resolution: calculatorIntentResolution, selected });
-  // Zweite, sanftere Erklärung für den häufigsten Fall: das Paket ist noch nicht
-  // vollständig. Sie erscheint als Hinweiszeile am deaktivierten Knopf, ohne
-  // dass ein einziges Feld rot markiert wird — ein frisches Formular soll
-  // erklären, was fehlt, und nicht wie ein Fehlerprotokoll aussehen. Die roten
-  // Markierungen entstehen unverändert erst beim Weiterklicken (getErrors).
-  const paketHinweis = packageComplete(form) ? "" : packageHint(form);
 
   // EINE gemeinsame Quelle mit der Buchungsseite (utils/newShipmentForm.mjs) — siehe dort,
   // warum die Liste nicht mehr zweimal gepflegt wird.
@@ -702,9 +726,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     const patch = mapAddressToShipmentFormPatch(address, prefix);
     const keys = Object.keys(patch);
     setForm(p => ({ ...p, ...patch }));
-    // Sichtbare Feldfehler der ersetzten Felder verschwinden mit ihrem Wert —
-    // dieselbe Regel wie in upd(), nur für alle neun Schlüssel auf einmal.
-    setErrors(p => {
+    // Serverfehler der ersetzten Felder verschwinden mit ihrem Wert — dieselbe Regel wie in
+    // upd(), nur für alle neun Schlüssel auf einmal. Ob ein ersetztes Feld noch rot ist,
+    // entscheidet getErrors mit dem übernommenen Wert.
+    setServerErrors(p => {
       if (!keys.some(k => p[k])) return p;
       const n = { ...p };
       for (const k of keys) delete n[k];
@@ -729,7 +754,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     const patch = senderPatchFromProfile(user);
     const keys = Object.keys(patch);
     setForm(p => ({ ...p, ...patch }));
-    setErrors(p => {
+    setServerErrors(p => {
       if (!keys.some(k => p[k])) return p;
       const n = { ...p };
       for (const k of keys) delete n[k];
@@ -915,7 +940,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     setPublicCarriers([]);
     setSortMode("recommended");
     setVatMode("net");
-    setErrors({});
+    setTouched({});
+    setSubmitted(false);
+    setServerErrors({});
     setAddressNote({ s: "", r: "" });
     setResumeSource(null);
     setResumeNotice("");
@@ -980,8 +1007,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       if (r.status === 400) {
         const norm = normalizeApiError({ status: r.status, body: d, fieldMap: SHIPMENT_FIELD_MAP });
         if (norm.field) {
-          setErrors((prev) => ({ ...prev, [norm.field]: norm.fieldMessage || norm.message }));
-          focusFirstError(norm.field);
+          setServerErrors((prev) => ({ ...prev, [norm.field]: norm.fieldMessage || norm.message }));
+          requestFocus(norm.field);
           setSaveMode("fieldError");
           setSaving(false);
           return { ok: false };
@@ -1216,24 +1243,21 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       revealOffers(offersRef.current);
       return;
     }
-    // TG22 Paket B: ohne Versanddatum wird nicht gerechnet — kein Ersatzdatum, kein Request.
-    if (!shippingDate) {
-      setError(DATUM_FEHLT_HINWEIS);
-      return;
-    }
     setHasResults(false); setTariffs([]);
     lastCalcKeyRef.current = "";
-    const errs = getErrors(form);
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
-      // Zahl der betroffenen Angaben nennen und zum ersten fehlerhaften Feld
-      // springen — bisher blieb der Kunde am Button stehen und musste das Feld
-      // in einem langen Formular selbst suchen.
-      setError(summaryMessage(Object.keys(errs).length));
-      focusFirstError(firstShipmentErrorField(errs));
+    // Ungültige oder fehlende Angaben: KEIN Request. Alle Pflichtfelder zeigen ihren Fehler
+    // (submitted), der Sammeltext nennt die Zahl, und nach dem Rendern springt der Fokus sanft
+    // auf das oberste Fehlerfeld. TG22 Paket B: ohne Versanddatum wird nicht gerechnet — kein
+    // Ersatzdatum; das Datum ist dabei ein Feld wie jedes andere.
+    const errs = datumFehlt ? { shippingDate: DATUM_FEHLT_HINWEIS, ...getErrors(form) } : getErrors(form);
+    const anzahl = Object.keys(errs).length;
+    if (anzahl > 0) {
+      setSubmitted(true);
+      setError(anzahl === 1 && errs.shippingDate ? DATUM_FEHLT_HINWEIS : summaryMessage(anzahl));
+      requestFocus(firstShipmentErrorField(errs));
       return;
     }
-    setErrors({});
+    setServerErrors({});
     calcInFlight.current = true;   // erst NACH der Validierung: ein abgelehnter Klick blockiert nichts
     // Betreiberentscheidung 2026-10-02: jede ECHTE neue Preisberechnung startet in Netto. Erst hier — nach
     // der Validierung, unmittelbar vor dem Request. Der Einblende-Zweig oben rechnet nicht neu und behält
@@ -1324,7 +1348,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         // Sammeltext am Button zu zeigen.
         const norm = normalizeApiError({ status: r.status, body: d, fieldMap: SHIPMENT_FIELD_MAP });
         if (norm.field) {
-          setErrors((prev) => ({ ...prev, [norm.field]: norm.fieldMessage || norm.message }));
+          setServerErrors((prev) => ({ ...prev, [norm.field]: norm.fieldMessage || norm.message }));
         }
         // Angesprungen wird das Feld (sonst der Knopf) erst nach dem Laden — bis
         // dahin ist der Seiteninhalt inert, ein Fokus jetzt liefe ins Leere.
@@ -1545,76 +1569,92 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // Dienstes darf jemanden am Versand hindern. Verbindlich bleiben allein die Formular- und
   // Buchungsprüfungen.
 
-  /* ── Felder dieser Seite laufen über <Field /> (gestapelt) ─────────────────
-     Seit dem Redesign (2026-10) steht die Beschriftung wie auf jeder anderen
-     Seite dauerhaft ÜBER dem Feld — der frühere Floating-Prototyp dieser Seite
-     ist zurückgenommen. IDs, `data-field`, Hilfetexte, Werte und Fokusführung
-     (focusFirstError) sind unverändert; Einheiten (kg, cm, EUR) stehen als
-     Suffix im Feld (Field `unit`).
+  /* ── Felder dieser Seite laufen über <Field /> mit schwebender Beschriftung ──
+     Betreiberentscheidung Auftrag 1, P11 (2026-10-17): die Beschriftung steht bei leerem
+     Feld IM Feldrahmen und wandert bei Fokus oder Eingabe nach oben (labelMode="floating";
+     vorher seit dem Redesign 2026-10 gestapelt darüber). Keine Musterplatzhalter mehr
+     („Musterstraße 1", erfundene Personen und Firmen) — ein Format, das wirklich hilft (PLZ),
+     steht als Hinweiszeile unter dem Feld.
 
-     <Field /> erzwingt `id` + `htmlFor`: ein Label ohne Verbindung ist für einen
-     Screenreader kein Label. Ebenso trägt jedes Feld `data-field`, womit
-     focusFirstError() nach einem Serverfehler nicht nur die PLZ-Felder findet. */
-  const addrField = (p, key, label, type = "text", placeholder = "", optional = false) => {
+     <Field /> erzwingt `id` + `htmlFor`, `aria-invalid`, `aria-describedby` und
+     `aria-required`; jedes Feld trägt `data-field` — das Ziel von focusFirstError().
+     Beim Verlassen wird das Feld „berührt" und zeigt ab dann seinen eigenen Fehler.
+
+     Autofill: Kontaktfelder tragen ihr Token mit Abschnitt (section-absender /
+     section-empfaenger), damit der Browser Absender und Empfänger nicht vermischt. Straße
+     und Ort sind Vorschlagsfelder ohne Browser-Autofill (AddressSuggestInput, P5). */
+  const AUTOFILL_TOKEN = {
+    company: "organization", firstName: "given-name", lastName: "family-name",
+    addition: "address-line2", phone: "tel", email: "email", zip: "postal-code", country: "country",
+  };
+  const autofill = (p, key) => (AUTOFILL_TOKEN[key]
+    ? `section-${p === "s" ? "absender" : "empfaenger"} ${AUTOFILL_TOKEN[key]}` : undefined);
+
+  const addrField = (p, key, label, type = "text", optional = false) => {
     const fk = `${p}_${key}`;
     return (
       <Field
         id={`ns-${p}-${key}`}
         fieldKey={fk}
+        labelMode="floating"
         label={label}
         required={!optional}
         optional={optional}
         type={type}
         value={form[fk]}
         onChange={(v) => upd(fk, v)}
-        placeholder={placeholder}
+        onBlur={() => markTouched(fk)}
+        autoComplete={autofill(p, key)}
         error={errors[fk]}
         hint={key === "company" ? shippingLengthHint("company", form[fk]) || undefined : undefined}
       />
     );
   };
 
-  // PLZ: Beschriftung und Beispiel sind zwei verschiedene Dinge. Der Platzhalter
-  // trägt deshalb ausschließlich das landesabhängige Beispiel — ein Rückfallwert
-  // "PLZ" hätte nur die Beschriftung darüber wiederholt. Eine zusätzliche Zeile
-  // „Beispiel: …“ wiederholte genau diesen Platzhalter und blieb auch neben einer
-  // fertigen PLZ stehen; sie ist entfallen (Premium-Durchgang 2026-10-15). Das
-  // Beispiel nennt weiterhin die Formatmeldung (postalErr).
-  // Eingabemodus, Maximallänge und Validierung sind unverändert.
+  // PLZ: das landesabhängige Format steht als Hinweiszeile unter dem Feld („Beispiel: 70173").
+  // Im schwebenden Feld wäre ein Platzhalter erst nach dem Fokus sichtbar und läge dort, wo die
+  // Beschriftung im Ruhezustand steht (Auftrag 1, P11; vorher Platzhalter, 2026-10-15).
+  // Eingabemodus (PL/PT mit Bindestrich: Texttastatur, P5), Maximallänge und Validierung sind
+  // unverändert.
   const zipField = (p) => {
     const fk = `${p}_zip`;
     const land = form[`${p}_country`];
-    const beispiel = postalCodeExample(land);
+    const hinweis = land && !isPostalCodeRequired(land) ? "Für dieses Land optional." : (postalCodeHint(land) || undefined);
     return (
       <Field
         id={`ns-${p}-zip`}
         fieldKey={fk}
+        labelMode="floating"
         label="PLZ"
         required
         value={form[fk]}
         onChange={(v) => upd(fk, v)}
-        placeholder={beispiel || ""}
+        onBlur={() => markTouched(fk)}
+        autoComplete={autofill(p, "zip")}
         inputMode={postalCodeInputMode(land)}
         maxLength={postalCodeMaxLength()}
         error={errors[fk]}
-        hint={land && !isPostalCodeRequired(land) ? "Für dieses Land optional." : undefined}
+        hint={hinweis}
       />
     );
   };
 
-  // Das Land startet LEER. Ein vorausgewähltes „DE" war eine Annahme über die
-  // Sendung — beim Empfänger besonders fragwürdig, und beim Absender überschrieb
-  // sie stillschweigend das, was im Konto stand. Die Auswahl bleibt Pflicht
-  // (getErrors), die Optionsliste ist unverändert dieselbe wie überall sonst.
+  // Absenderland: bei einem neuen Vorgang Deutschland (createEmptyShipmentForm, Auftrag 1, P11 —
+  // der Launch-Scope erlaubt als Ursprung nur DE). Das Empfängerland startet leer und wird frei
+  // gewählt. Ein fortgesetzter Entwurf behält sein gespeichertes Land. Die Auswahl bleibt
+  // Pflicht (getErrors), die Optionslisten sind dieselben wie überall sonst.
   const countrySelect = (p) => (
     <Field
       id={`ns-${p}-country`}
       fieldKey={`${p}_country`}
+      labelMode="floating"
       as="select"
       label="Land"
       required
       value={form[`${p}_country`]}
       onChange={(v) => upd(`${p}_country`, v)}
+      onBlur={() => markTouched(`${p}_country`)}
+      autoComplete={autofill(p, "country")}
       error={errors[`${p}_country`]}
     >
       <option value="">Land auswählen</option>
@@ -1634,11 +1674,13 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       <Field
         id={`ns-${p}-state`}
         fieldKey={`${p}_state`}
+        labelMode="floating"
         as="select"
         label="Bundesstaat"
         required
         value={form[`${p}_state`]}
         onChange={(v) => upd(`${p}_state`, v)}
+        onBlur={() => markTouched(`${p}_state`)}
         error={errors[`${p}_state`]}
       >
         <option value="">Bundesstaat auswählen</option>
@@ -1761,6 +1803,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
             serviceFilter={serviceFilter} handleServiceFilter={handleServiceFilter}
             datePickerOpen={datePickerOpen} setDatePickerOpen={setDatePickerOpen}
             shippingDate={shippingDate} handleDateChange={handleDateChange}
+            dateError={errors.shippingDate}
             carrierRef={carrierRef} carrierDropdownOpen={carrierDropdownOpen} setCarrierDropdownOpen={setCarrierDropdownOpen}
             carrierLabel={carrierLabel} selectedPublicCarrierIds={selectedPublicCarrierIds}
             setSelectedPublicCarrierIds={setSelectedPublicCarrierIds} resetResults={resetResults}
@@ -1815,14 +1858,14 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     />
                   </div>
                   {addressNote.s && <p className="calc-section-note">{addressNote.s}</p>}
-                  {addrField("s", "company",  "Unternehmen",       "text",  "Firma GmbH",     true)}
+                  {addrField("s", "company",  "Unternehmen",  "text",  true)}
                   {/* Die Kontaktperson steht strukturiert. Ein einzelnes Namensfeld konnte
                       „Max Mustermann" und „Muster GmbH" nicht unterscheiden — die Firma
                       steht deshalb darüber und getrennt. Zwei Spalten im vorhandenen
                       Raster, unter 600 px stapeln sie wie jede andere `field-row-2`. */}
                   <div className="field-row field-row-2">
-                    {addrField("s", "firstName", "Vorname",  "text", "Max")}
-                    {addrField("s", "lastName",  "Nachname", "text", "Mustermann")}
+                    {addrField("s", "firstName", "Vorname",  "text")}
+                    {addrField("s", "lastName",  "Nachname", "text")}
                   </div>
                   {/* Land ZUERST: Adressvorschläge gelten immer für ein Land. Ohne Auswahl
                       steht am Straßenfeld ein Hinweis; eine schon getippte Straße bleibt.
@@ -1839,13 +1882,14 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     suggestions={senderCheck.streetOptions}
                     loading={senderCheck.streetLoading}
                     noResults={senderCheck.streetNoResults}
-                    placeholder="Musterstraße 1"
+                    floating
+                    dataField="s_street"
+                    onBlur={() => markTouched("s_street")}
                     error={errors.s_street}
                     hint={streetFieldHint(form.s_country, form.s_street) || undefined}
-                    autoComplete="address-line1"
                     className="field"
                   />
-                  {addrField("s", "addition", "Adresszusatz",      "text",  "Etage, c/o …",   true)}
+                  {addrField("s", "addition", "Adresszusatz", "text",  true)}
                   <div className="field-row field-row-2">
                     {zipField("s")}
                     <AddressSuggestInput
@@ -1856,10 +1900,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                       onChange={(v) => upd("s_city", v)}
                       onSelect={(item) => upd("s_city", cityFromSuggestion(item))}
                       suggestions={senderCheck.cityOptions}
-                      placeholder={cityPlaceholder(form.s_country)}
+                      floating
+                      dataField="s_city"
+                      onBlur={() => markTouched("s_city")}
                       error={errors.s_city}
                       hint={shippingLengthHint("city", form.s_city) || undefined}
-                      autoComplete="address-level2"
                       className="field"
                     />
                   </div>
@@ -1875,8 +1920,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                   {/* Pflicht seit dem Versandkontaktvertrag — der Carrier braucht einen
                       erreichbaren Ansprechpartner, und ConfidaraExpress erhebt ihn
                       deshalb generell, nicht je nach Tarif. */}
-                  {addrField("s", "phone", "Telefon", "tel",   "+49 711 …")}
-                  {addrField("s", "email", "E-Mail",  "email", "max@firma.de")}
+                  {addrField("s", "phone", "Telefon", "tel")}
+                  {addrField("s", "email", "E-Mail",  "email")}
                 </div>
                 <div>
                   <div className="calc-section-head">
@@ -1889,10 +1934,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     />
                   </div>
                   {addressNote.r && <p className="calc-section-note">{addressNote.r}</p>}
-                  {addrField("r", "company",  "Unternehmen",       "text",  "Firma AG",     true)}
+                  {addrField("r", "company",  "Unternehmen",  "text",  true)}
                   <div className="field-row field-row-2">
-                    {addrField("r", "firstName", "Vorname",  "text", "Erika")}
-                    {addrField("r", "lastName",  "Nachname", "text", "Muster")}
+                    {addrField("r", "firstName", "Vorname",  "text")}
+                    {addrField("r", "lastName",  "Nachname", "text")}
                   </div>
                   {/* Land ZUERST: Adressvorschläge gelten immer für ein Land. Ohne Auswahl
                       steht am Straßenfeld ein Hinweis; eine schon getippte Straße bleibt.
@@ -1909,13 +1954,14 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     suggestions={recipientCheck.streetOptions}
                     loading={recipientCheck.streetLoading}
                     noResults={recipientCheck.streetNoResults}
-                    placeholder="Beispielweg 5"
+                    floating
+                    dataField="r_street"
+                    onBlur={() => markTouched("r_street")}
                     error={errors.r_street}
                     hint={streetFieldHint(form.r_country, form.r_street) || undefined}
-                    autoComplete="address-line1"
                     className="field"
                   />
-                  {addrField("r", "addition", "Adresszusatz",      "text",  "Etage, c/o …", true)}
+                  {addrField("r", "addition", "Adresszusatz", "text",  true)}
                   <div className="field-row field-row-2">
                     {zipField("r")}
                     <AddressSuggestInput
@@ -1926,10 +1972,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                       onChange={(v) => upd("r_city", v)}
                       onSelect={(item) => upd("r_city", cityFromSuggestion(item))}
                       suggestions={recipientCheck.cityOptions}
-                      placeholder={cityPlaceholder(form.r_country)}
+                      floating
+                      dataField="r_city"
+                      onBlur={() => markTouched("r_city")}
                       error={errors.r_city}
                       hint={shippingLengthHint("city", form.r_city) || undefined}
-                      autoComplete="address-level2"
                       className="field"
                     />
                   </div>
@@ -1942,8 +1989,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     citySuggestions={recipientCheck.cityOptions}
                     onPickCity={(c) => upd("r_city", c)}
                   />
-                  {addrField("r", "phone", "Telefon", "tel",   "+41 44 …")}
-                  {addrField("r", "email", "E-Mail",  "email", "erika@firma.ch")}
+                  {addrField("r", "phone", "Telefon", "tel")}
+                  {addrField("r", "email", "E-Mail",  "email")}
                 </div>
               </div>
             </div>
@@ -1960,30 +2007,30 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                   („Gewicht kg *"), sondern als eigenes, dekoratives Zeichen rechts
                   im Feld. Für Screenreader trägt die Beschriftung sie unsichtbar
                   weiter (unitLabel) — sichtbar „Gewicht", vorgelesen „Gewicht in
-                  Kilogramm", nicht doppelt. Die Platzhalter bleiben unverändert
-                  Beispiele aus PACKAGE_PLACEHOLDERS und werden nie zu Werten. */}
+                  Kilogramm", nicht doppelt. Schwebende Beschriftung, keine Beispiel-
+                  Platzhalter mehr (Auftrag 1, P11); eine unvollständige Zahl
+                  („1e", „-") hält die Beschriftung oben (Field, badInput). */}
               <div className="field-row field-row-5">
-                <Field id="ns-packageCount" fieldKey="packageCount"
+                <Field id="ns-packageCount" fieldKey="packageCount" labelMode="floating"
                        label="Anzahl" required type="number" min="1" max="99" step="1"
-                       value={form.packageCount} onChange={(v) => upd("packageCount", v)}
-                       placeholder={PACKAGE_PLACEHOLDERS.packageCount}
+                       value={form.packageCount} onChange={(v) => upd("packageCount", v)} onBlur={() => markTouched("packageCount")}
                        error={errors.packageCount} hint="Identische Pakete" />
-                <Field id="ns-weight" fieldKey="weight"
+                <Field id="ns-weight" fieldKey="weight" labelMode="floating"
                        label="Gewicht" required type="number" unit="kg" unitLabel="in Kilogramm"
-                       value={form.weight} onChange={(v) => upd("weight", v)}
-                       placeholder={PACKAGE_PLACEHOLDERS.weight} error={errors.weight} />
-                <Field id="ns-length" fieldKey="length"
+                       value={form.weight} onChange={(v) => upd("weight", v)} onBlur={() => markTouched("weight")}
+                       error={errors.weight} />
+                <Field id="ns-length" fieldKey="length" labelMode="floating"
                        label="Länge" required type="number" unit="cm" unitLabel="in Zentimetern"
-                       value={form.length} onChange={(v) => upd("length", v)}
-                       placeholder={PACKAGE_PLACEHOLDERS.length} error={errors.length} />
-                <Field id="ns-width" fieldKey="width"
+                       value={form.length} onChange={(v) => upd("length", v)} onBlur={() => markTouched("length")}
+                       error={errors.length} />
+                <Field id="ns-width" fieldKey="width" labelMode="floating"
                        label="Breite" required type="number" unit="cm" unitLabel="in Zentimetern"
-                       value={form.width} onChange={(v) => upd("width", v)}
-                       placeholder={PACKAGE_PLACEHOLDERS.width} error={errors.width} />
-                <Field id="ns-height" fieldKey="height"
+                       value={form.width} onChange={(v) => upd("width", v)} onBlur={() => markTouched("width")}
+                       error={errors.width} />
+                <Field id="ns-height" fieldKey="height" labelMode="floating"
                        label="Höhe" required type="number" unit="cm" unitLabel="in Zentimetern"
-                       value={form.height} onChange={(v) => upd("height", v)}
-                       placeholder={PACKAGE_PLACEHOLDERS.height} error={errors.height} />
+                       value={form.height} onChange={(v) => upd("height", v)} onBlur={() => markTouched("height")}
+                       error={errors.height} />
               </div>
               <p className="pkg-count-note">
                 <span>Gewicht und Maße gelten je Paket. Der Preis gilt für alle Pakete zusammen.</span>
@@ -2014,18 +2061,18 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
             <div className="calc-panel-header"><h3>Angaben zur Sendung</h3></div>
             <div className="calc-panel-body">
               <div className="field-row field-row-2">
-                <Field id="ns-declaredContent" fieldKey="declaredContent"
+                <Field id="ns-declaredContent" fieldKey="declaredContent" labelMode="floating"
                        label="Inhalt der Sendung" required type="text"
                        maxLength={DECLARED_CONTENT_MAX}
                        value={form.declaredContent} onChange={(v) => upd("declaredContent", v)}
-                       placeholder="z. B. Ersatzteile"
+                       onBlur={() => markTouched("declaredContent")}
                        error={errors.declaredContent}
                        hint="Kurze Beschreibung des Inhalts." />
-                <Field id="ns-declaredGoodsValue" fieldKey="declaredGoodsValue"
+                <Field id="ns-declaredGoodsValue" fieldKey="declaredGoodsValue" labelMode="floating"
                        label="Warenwert" required type="number" unit="EUR" unitLabel="in Euro"
                        min="0" step="0.01"
                        value={form.declaredGoodsValue} onChange={(v) => upd("declaredGoodsValue", v)}
-                       placeholder="z. B. 250"
+                       onBlur={() => markTouched("declaredGoodsValue")}
                        error={errors.declaredGoodsValue}
                        hint="Tatsächlicher Warenwert der Sendung." />
               </div>
@@ -2037,12 +2084,19 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
             <div className="dft-cta-row">
               {/* Die Adressprüfung sperrt die Preisberechnung nicht: ihre Hinweise stehen an der
                   Adresse, der Kunde entscheidet. Verbindlich sind Formular- und Buchungsprüfung. */}
+              {/* Betreiberentscheidung Auftrag 1, P11 (2026-10-17): der Knopf ist auch bei
+                  fehlenden Angaben bedienbar — gesperrt nur, während gerechnet oder gespeichert
+                  wird. Ein Klick auf ein unvollständiges Formular sendet nichts, markiert alle
+                  fehlenden Pflichtfelder und springt zum ersten. onMouseDown hält den Fokus im
+                  Feld, bis der Klick ausgelöst hat: sonst schöbe die Blur-Meldung den Knopf
+                  zwischen Drücken und Loslassen weg. */}
               <button
+                type="button"
                 ref={calcCtaRef}
                 className="btn btn-primary btn-lg dft-cta-primary"
                 onClick={calculate}
-                disabled={loading || !calcValid || saving || datumFehlt}
-                title={datumFehlt ? DATUM_FEHLT_HINWEIS : (calcHint || paketHinweis || undefined)}
+                onMouseDown={keepFocusOnMouseDown}
+                disabled={loading || saving}
               >
                 {loading
                   ? <><span className="spinner" /> Berechne…</>
@@ -2085,11 +2139,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
               </div>
             )}
 
-            {/* Erklärt den deaktivierten CTA. Ohne diesen Hinweis wirkt ein
-                fortgesetzter, unvollständiger Entwurf wie ein toter Button:
-                die Felder sind zwar markiert, liegen aber weiter oben außerhalb
-                des Sichtbereichs. Die Felder selbst bleiben die Detailanzeige. */}
-            {/* TG22 Paket B: ohne Versanddatum (vergangenes Entwurfsdatum) ist der CTA gesperrt —
+            {/* Sammelhinweis: nennt, was markiert ist — die markierten Felder liegen oft weiter
+                oben außerhalb des Sichtbereichs. Die Felder selbst bleiben die Detailanzeige.
+                TG22 Paket B: ohne Versanddatum (vergangenes Entwurfsdatum) wird nicht gerechnet —
                 hier steht, warum. */}
             {datumFehlt && !loading && (
               <div className="dft-save-status" role="status" id="ns-date-missing">
@@ -2103,16 +2155,6 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
               </div>
             )}
 
-            {/* Erklärt den deaktivierten CTA auf einem FRISCHEN Formular, ohne
-                ein einziges Feld rot zu markieren. `calcHint` speist sich aus
-                bereits sichtbaren Fehlern und ist vor dem ersten Klick leer —
-                der Kunde stünde sonst vor einem toten Knopf ohne Begründung.
-                Sobald geklickt wurde, übernimmt `calcHint` (spezifischer). */}
-            {!calcHint && paketHinweis && !loading && (
-              <div className="dft-save-status" role="status">
-                <span>{paketHinweis}</span>
-              </div>
-            )}
 
             {showInlineSave && saveStatus === "saved" && !isDirty && !saving && (
               <div className="dft-save-status dft-save-status--ok" role="status"><span>Entwurf gespeichert.</span></div>

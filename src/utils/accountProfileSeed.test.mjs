@@ -97,19 +97,21 @@ test("B1 die Absenderübernahme von „Neue Sendung“ normalisiert das Land", (
   assert.match(seite, /senderPatchFromProfile\(user\)/);
 });
 
-test("B1b der Ausgangszustand trägt gar kein Land mehr", () => {
+test("B1b der Ausgangszustand trägt nur das Absenderland Deutschland, nichts aus dem Profil", () => {
   // Am erzeugten Objekt gemessen, nicht am Quelltext: das ist die Aussage, auf
   // die es ankommt, und sie hält auch, wenn der Aufbau der Funktion sich ändert.
+  // Betreiberentscheidung Auftrag 1 (P11, 2026-10-17): das Absenderland ist Deutschland — der
+  // einzige Ursprung, den der Server erlaubt, NICHT das Land des Profils. Das Empfängerland
+  // bleibt leer.
   const leer = createEmptyShipmentForm();
-  assert.equal(leer.s_country, "", "Absenderland ist vorbelegt");
+  assert.equal(leer.s_country, "DE", "Absenderland ist nicht Deutschland");
   assert.equal(leer.r_country, "", "Empfängerland ist vorbelegt");
   // Und wirklich jedes ANDERE Feld ist leer — kein Rest eines alten Defaults.
   //
-  // Die Paketanzahl ist die einzige bewusste Vorgabe des Ausgangszustands (Normalfall 1,
-  // siehe PACKAGE_COUNT_DEFAULT in newShipmentForm.mjs). Sie steht hier als benannte
-  // Ausnahme statt die Prüfung zu lockern: ein zweites vorbelegtes Feld — und damit auch
-  // jedes zurückkehrende Land — fällt weiterhin sofort auf.
-  const VORBELEGT = new Set(["packageCount"]);
+  // Die Paketanzahl und das Absenderland sind die einzigen bewussten Vorgaben des Ausgangs-
+  // zustands. Sie stehen hier als benannte Ausnahmen statt die Prüfung zu lockern: ein
+  // drittes vorbelegtes Feld — und damit auch jedes Profildatum — fällt weiterhin sofort auf.
+  const VORBELEGT = new Set(["packageCount", "s_country"]);
   // TG22 Residential: das Formular trägt keine Adressartfragen mehr — ohne Ausnahme startet jedes
   // übrige Feld leer.
   assert.ok(!("collectionIsResidential" in leer) && !("deliveryIsResidential" in leer),
@@ -126,7 +128,11 @@ test("B1b der Ausgangszustand trägt gar kein Land mehr", () => {
 });
 
 test("B2 der Versandkostenrechner ebenso", () => {
-  assert.match(rechner, /from_country:\s*normalizeCountryCode\(user\?\.country\)/);
+  // Seit Auftrag 1 (P11): Herkunft Deutschland, nie roh aus dem Profil. PLZ und Ort kommen nur
+  // aus dem Profil, wenn dessen Land (normalisiert) ebenfalls Deutschland ist.
+  assert.match(rechner, /from_country: DEFAULT_ORIGIN_COUNTRY,/);
+  assert.match(rechner, /from_zip:\s+normalizeCountryCode\(user\?\.country\) === DEFAULT_ORIGIN_COUNTRY \?/);
+  assert.match(rechner, /to_country:\s+"DE",/);
   assert.doesNotMatch(rechner, /from_country:\s*user\?\.country\s*\|\|/);
 });
 
@@ -179,7 +185,9 @@ test("D1 eine 400-Antwort markiert das beanstandete Feld, statt es zu verschluck
   const block = seite.slice(seite.indexOf("const saveCurrentFormDraft"), seite.indexOf("const reloadCurrentDraft"));
   assert.match(block, /r\.status === 400/);
   assert.match(block, /normalizeApiError\(\{ status: r\.status, body: d, fieldMap: SHIPMENT_FIELD_MAP \}\)/);
-  assert.match(block, /focusFirstError\(norm\.field\)/);
+  // Markiert über den Serverfehler des Feldes, angesprungen nach dem Rendern (Auftrag 1, P11).
+  assert.match(block, /setServerErrors\(\(prev\) => \(\{ \.\.\.prev, \[norm\.field\]: norm\.fieldMessage \|\| norm\.message \}\)\);/);
+  assert.match(block, /requestFocus\(norm\.field\)/);
   assert.match(block, /setSaveMode\("fieldError"\)/);
 });
 

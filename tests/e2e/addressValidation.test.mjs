@@ -425,7 +425,11 @@ test("Smoke 13 — ohne Land: Hinweis, Straße bleibt, die Landwahl startet die 
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const log = await setupRoutes(page);
   await zumFormular(page);
-  assert.equal(await page.locator(S_COUNTRY).inputValue(), "", "das Formular startet weiterhin ohne Land");
+  // Seit Auftrag 1 (P11) ist der Absender auf Deutschland vorausgewählt, der Empfänger startet
+  // ohne Land. Für den Fall „ohne Land" wird die Absenderwahl hier bewusst geleert.
+  assert.equal(await page.locator(S_COUNTRY).inputValue(), "DE", "Deutschland ist nicht vorausgewählt");
+  assert.equal(await page.locator("#ns-r-country").inputValue(), "", "das Empfängerland ist vorbelegt");
+  await page.locator(S_COUNTRY).selectOption("");
   // Das Land steht in beiden Adressen VOR der Straße.
   const reihenfolge = await page.evaluate(() => ["s", "r"].map((p) => {
     const land = document.querySelector(`#ns-${p}-country`), strasse = document.querySelector(`#ns-${p}-street`);

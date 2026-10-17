@@ -1,8 +1,23 @@
 import React from "react";
+import { COMPANY_PROFILE as CP } from "../config/companyProfile";
 
 /* Rechtsseite im gemeinsamen Leselayout (Redesign 2026-10): Titel und Stand
    auf dem Canvas, der Text auf EINER ruhigen weißen Fläche (layout.css,
-   .legal-*). Der Rechtstext selbst ist wortgleich; Anker unverändert. */
+   .legal-*). Anker unverändert.
+
+   Schritt 3 (Betreiberentscheidung 2026-10-17): ConfidaraExpress ist keine gegründete GbR; die UG
+   (haftungsbeschränkt) ist in Vorbereitung. Die Angaben kommen aus src/config/companyProfile.js — keine
+   Rechtsform, die es nicht gibt, und keine erfundenen Register- oder Steuerangaben. */
+
+function Anschrift() {
+  return (
+    <>
+      {CP.address.street}<br />
+      {CP.address.zip} {CP.address.city}<br />
+      {CP.address.country}
+    </>
+  );
+}
 
 export default function ImpressumPage() {
   return (
@@ -15,51 +30,40 @@ export default function ImpressumPage() {
 
             <div className="legal-section">
               <h2 className="legal-h2">Angaben gemäß § 5 DDG</h2>
-              <p className="legal-p">
-                Confidara Express GbR<br />
-                Weiherstraße 25<br />
-                73207 Plochingen<br />
-                Deutschland
+              <p className="legal-p" id="impressum-anbieter">
+                {CP.brand}<br />
+                {CP.operators.join(" und ")}<br />
+                <Anschrift />
               </p>
-            </div>
-
-            <div className="legal-section">
-              <h2 className="legal-h2">Vertreten durch die Gesellschafter</h2>
-              <p className="legal-p">
-                Miguel Vance<br />
-                Patrick Werner
-              </p>
+              <p className="legal-p" id="impressum-gruendung">{CP.formationStatus}.</p>
             </div>
 
             <div className="legal-section">
               <h2 className="legal-h2">Kontakt</h2>
               <p className="legal-p">
-                Telefon: 015118003775<br />
+                Telefon: {CP.phone}<br />
                 E-Mail:{" "}
-                <a href="mailto:support@confidaraexpress.de">
-                  support@confidaraexpress.de
+                <a href={`mailto:${CP.email}`}>
+                  {CP.email}
                 </a>
               </p>
             </div>
 
             <div className="legal-section">
               <h2 className="legal-h2">Umsatzsteuer-Identifikationsnummer</h2>
-              <p className="legal-p">Eine Umsatzsteuer-Identifikationsnummer ist nicht vorhanden.</p>
+              <p className="legal-p">{CP.vatIdNote}</p>
             </div>
 
             <div className="legal-section">
               <h2 className="legal-h2">Handelsregister</h2>
-              <p className="legal-p">Die Gesellschaft ist nicht im Handelsregister eingetragen.</p>
+              <p className="legal-p">{CP.registerNote}</p>
             </div>
 
             <div className="legal-section">
               <h2 className="legal-h2">Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h2>
               <p className="legal-p">
-                Miguel Vance<br />
-                Patrick Werner<br />
-                Weiherstraße 25<br />
-                73207 Plochingen<br />
-                Deutschland
+                {CP.operators.map((n) => <React.Fragment key={n}>{n}<br /></React.Fragment>)}
+                <Anschrift />
               </p>
             </div>
 

@@ -4,17 +4,17 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { AdminBackLink } from "../../components/admin/AdminBackLink";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/StateView";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
-import { getAdminInvoice, markAdminInvoicePaid, generateAdminInvoiceDocument, sendAdminInvoiceEmail, resendAdminInvoiceEmail, recordInvoiceReversal } from "../../api/adminApi";
+import { getAdminInvoice, markAdminInvoicePaid, generateAdminInvoiceDocument, sendAdminInvoiceEmail, resendAdminInvoiceEmail, recordInvoiceReversal, createInvoiceReversalInvoice } from "../../api/adminApi";
 import { Field } from "../../components/ui/Field";
 import { DateField } from "../../components/admin/DateField";
 // Auftrag 2 / P1: manuell erstellte Rechnungen — Herkunft, Stornovermerk, Texte ohne automatische E-Mail.
 import {
-  MANUAL_INVOICE_TEXT as MI, EMPTY_REVERSAL_FORM, berlinToday, cancellationInfo, isCancelledInvoice, isManualInvoice,
-  reversalError, reversalPayload,
+  MANUAL_INVOICE_TEXT as MI, EMPTY_REVERSAL_FORM, EMPTY_STORNO_FORM, berlinToday, cancellationInfo, isCancelledInvoice,
+  isManualInvoice, reversalError, reversalPayload, stornoPayload,
 } from "../../utils/manualInvoiceView.mjs";
 import { money } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
-import { downloadAdminInvoicePdf, fetchAdminInvoicePdf } from "../../utils/downloadInvoicePdf";
+import { downloadAdminInvoicePdf, downloadAdminReversalInvoicePdf, fetchAdminInvoicePdf } from "../../utils/downloadInvoicePdf";
 import { InvoicePdfPreviewModal } from "../../components/dashboard/InvoicePdfPreviewModal";
 import { NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
 import { paymentTermLabel } from "../../utils/paymentTerm.mjs";
@@ -151,6 +151,12 @@ export default function AdminInvoiceDetailPage() {
   const [reversalForm, setReversalForm] = useState(EMPTY_REVERSAL_FORM);
   const [reversalErrors, setReversalErrors] = useState({});
   const [reversalMsg, setReversalMsg] = useState(null);
+  // Schritt 3: Stornorechnung im System.
+  const [stornoOpen, setStornoOpen] = useState(false);
+  const [stornoBusy, setStornoBusy] = useState(false);
+  const [stornoForm, setStornoForm] = useState(EMPTY_STORNO_FORM);
+  const [stornoErrors, setStornoErrors] = useState({});
+  const [stornoDownloadBusy, setStornoDownloadBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -183,6 +189,7 @@ export default function AdminInvoiceDetailPage() {
     setMailOpen(false); setMailMsg(null);
     setPreviewOpen(false);
     setReversalOpen(false); setReversalMsg(null); setReversalErrors({});
+    setStornoOpen(false); setStornoErrors({});
   }, [id]);
 
   // Rückweg zur Herkunft (UX-Paket 2), sonst zur Liste.
@@ -374,6 +381,52 @@ export default function AdminInvoiceDetailPage() {
       setReversalMsg({ type: "error", text: MI.failed });
     } finally {
       setReversalBusy(false);
+    }
+  };
+
+  // ── Schritt 3: Stornorechnung im System (nur manuelle Rechnungen) ──
+  const openStorno = () => {
+    setReversalMsg(null);
+    setStornoErrors({});
+    setStornoForm(EMPTY_STORNO_FORM);
+    setStornoOpen(true);
+  };
+  const setStornoField = (key, value) => setStornoForm((p) => ({ ...p, [key]: value }));
+  const confirmStorno = async () => {
+    if (stornoBusy) return;
+    const geprueft = stornoPayload(stornoForm, { paid: status.kind === "paid" });
+    if (!geprueft.ok) { setStornoErrors(geprueft.errors); return; }
+    setStornoBusy(true);
+    setStornoErrors({});
+    try {
+      const r = await createInvoiceReversalInvoice(id, geprueft.body);
+      let d = {};
+      try { d = await r.json(); } catch { d = {}; }
+      if (!r.ok) {
+        if (r.status === 401 || r.status === 403) return;
+        const e = reversalError(r.status, d);
+        setStornoErrors(e.fieldErrors || {});
+        setReversalMsg({ type: "error", text: e.text });
+        return;
+      }
+      setStornoOpen(false);
+      setReversalMsg({ type: "success", text: MI.stornoDone(typeof d.cancellationNumber === "string" ? d.cancellationNumber : "") });
+      load();
+    } catch {
+      setReversalMsg({ type: "error", text: MI.failed });
+    } finally {
+      setStornoBusy(false);
+    }
+  };
+  const downloadStorno = async (number) => {
+    if (stornoDownloadBusy) return;
+    setStornoDownloadBusy(true);
+    try {
+      await downloadAdminReversalInvoicePdf(id, number);
+    } catch {
+      setReversalMsg({ type: "error", text: MI.stornoDownloadFailed });
+    } finally {
+      setStornoDownloadBusy(false);
     }
   };
 
@@ -628,27 +681,42 @@ export default function AdminInvoiceDetailPage() {
           </div>
         </details>
 
-        {/* 8b) Auftrag 2 / P1: Storno — nur manuell erstellte Rechnungen. Der Stornobeleg entsteht außerhalb;
-            vermerkt wird er hier, danach ist die Rechnung keine offene Forderung mehr. */}
+        {/* 8b) Storno — nur manuell erstellte Rechnungen. Regelweg seit Schritt 3: die Stornorechnung entsteht hier
+            im System (CE-ST, PDF). Ein bereits außerhalb erstellter Beleg kann weiterhin vermerkt werden. */}
         {manual && (
           <div className="adm-card" id="adm-inv-reversal">
             <div className="adm-card-head">{MI.reversalTitle}</div>
             <div className="adm-card-body">
               <Alert msg={reversalMsg} />
               {storno ? (
-                <KV items={[
-                  ["Stornobeleg", <span className="adm-mono">{dash(storno.documentNumber)}</span>],
-                  ["Belegdatum", fmtDate(storno.date)],
-                  ["Begründung", dash(storno.reason)],
-                  ["Freigegeben durch", dash(storno.approvedBy)],
-                  ["Vermerkt am", fmtDate(storno.recordedAt)],
-                ]} />
+                <>
+                  <KV items={[
+                    ["Art", storno.internal ? MI.stornoSourceInternal : MI.stornoSourceExternal],
+                    [storno.internal ? "Stornorechnung" : "Stornobeleg", <span className="adm-mono">{dash(storno.documentNumber)}</span>],
+                    ["Belegdatum", fmtDate(storno.date)],
+                    ["Begründung", dash(storno.reason)],
+                    ["Freigegeben durch", dash(storno.approvedBy)],
+                    ["Vermerkt am", fmtDate(storno.recordedAt)],
+                  ]} />
+                  {storno.documentAvailable && (
+                    <div className="adm-support">
+                      <button type="button" id="adm-inv-storno-download" className="btn btn-outline btn-sm"
+                        onClick={() => downloadStorno(storno.documentNumber)} disabled={stornoDownloadBusy}>
+                        {MI.stornoDownload}
+                      </button>
+                    </div>
+                  )}
+                </>
               ) : (
                 <>
-                  <p className="adm-support-hint" style={{ marginTop: 0 }}>{MI.reversalHint}</p>
+                  <p className="adm-support-hint" style={{ marginTop: 0 }}>{MI.stornoHint}</p>
                   <div className="adm-support">
-                    <button type="button" id="adm-inv-reversal-open" className="btn btn-outline btn-sm adm-irreversible-action"
-                      onClick={openReversal} disabled={reversalBusy}>
+                    <button type="button" id="adm-inv-storno-open" className="btn btn-outline btn-sm adm-irreversible-action"
+                      onClick={openStorno} disabled={stornoBusy || reversalBusy}>
+                      {MI.stornoButton}
+                    </button>
+                    <button type="button" id="adm-inv-reversal-open" className="btn btn-ghost btn-sm"
+                      onClick={openReversal} disabled={stornoBusy || reversalBusy}>
                       {MI.reversalButton}
                     </button>
                   </div>
@@ -802,6 +870,38 @@ export default function AdminInvoiceDetailPage() {
             </label>
           )}
           {reversalErrors.acknowledgePaid && <p className="field-error" role="alert">{reversalErrors.acknowledgePaid}</p>}
+        </ConfirmDialog>
+      )}
+
+      {stornoOpen && (
+        <ConfirmDialog
+          title={MI.stornoDialogTitle}
+          text={MI.stornoDialogText}
+          subline={subline}
+          confirmLabel={MI.stornoConfirm}
+          irreversible
+          busy={stornoBusy}
+          busyLabel="Wird erstellt…"
+          confirmId="adm-inv-storno-confirm"
+          onCancel={() => { if (!stornoBusy) setStornoOpen(false); }}
+          onConfirm={confirmStorno}
+        >
+          <Field
+            id="adm-storno-reason" as="textarea" rows={2} label="Begründung (steht auf der Stornorechnung)" required maxLength={300}
+            value={stornoForm.reason} onChange={(v) => setStornoField("reason", v)} error={stornoErrors.reason}
+          />
+          <Field
+            id="adm-storno-approved" label="Freigegeben durch (zweite Person)" required maxLength={120}
+            value={stornoForm.approvedBy} onChange={(v) => setStornoField("approvedBy", v)} error={stornoErrors.approvedBy}
+          />
+          {status.kind === "paid" && (
+            <label className="adm-mi-radio" htmlFor="adm-storno-paid-ack">
+              <input type="checkbox" id="adm-storno-paid-ack" checked={stornoForm.acknowledgePaid === true}
+                onChange={(e) => setStornoField("acknowledgePaid", e.target.checked)} />
+              <span>{MI.reversalPaidAck}</span>
+            </label>
+          )}
+          {stornoErrors.acknowledgePaid && <p className="field-error" role="alert">{stornoErrors.acknowledgePaid}</p>}
         </ConfirmDialog>
       )}
     </div>

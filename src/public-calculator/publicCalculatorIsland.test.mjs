@@ -180,10 +180,10 @@ test("6 — keine Versprechen ohne Beleg und keine Einkaufsquelle", () => {
   for (const titel of ["Tarifvergleich", "Buchung", "Versanddokumente", "Tracking", "Rechnungen", "Adressbuch"]) {
     assert.ok(HTML_OHNE.includes(`<h3 class="pc-feature-title">${titel}</h3>`), titel);
   }
-  // Kontakt aus der bestehenden Quelle (Impressum).
-  const impressum = lies(path.join(SRC, "pages", "ImpressumPage.jsx"));
-  assert.ok(impressum.includes("support@confidaraexpress.de") && HTML_OHNE.includes("support@confidaraexpress.de"));
-  assert.ok(impressum.includes("015118003775") && HTML_OHNE.includes(">015118003775<"));
+  // Kontakt aus der bestehenden Quelle (seit Schritt 3 src/config/companyProfile.js, die das Impressum liest).
+  const profil = lies(path.join(SRC, "config", "companyProfile.js"));
+  assert.ok(profil.includes("support@confidaraexpress.de") && HTML_OHNE.includes("support@confidaraexpress.de"));
+  assert.ok(profil.includes("015118003775") && HTML_OHNE.includes(">015118003775<"));
 });
 
 function skelettVorab() {

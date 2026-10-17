@@ -953,6 +953,14 @@ export function issueManualInvoiceDraft(id, revision) {
 
 // POST /admin/invoices/:id/reversal-record — Storno vermerken (nur manuelle Rechnungen; der Stornobeleg entsteht
 // außerhalb, vermerkt werden Nummer, Datum, Begründung und freigebende Person).
+// POST /admin/invoices/:id/reversal-invoice — Stornorechnung im System (Schritt 3): Vollstorno mit eigener Nummer
+// (CE-ST), PDF serverseitig; keine E-Mail, keine Zahlung. Der Download läuft über utils/downloadInvoicePdf.js.
+export function createInvoiceReversalInvoice(id, body) {
+  return apiFetch(`/admin/invoices/${encodeURIComponent(id)}/reversal-invoice`, {
+    method: "POST", auth: true, body: JSON.stringify({ ...body, confirm: true }),
+  });
+}
+
 export function recordInvoiceReversal(id, body) {
   return apiFetch(`/admin/invoices/${encodeURIComponent(id)}/reversal-record`, {
     method: "POST", auth: true, body: JSON.stringify({ ...body, confirm: true }),

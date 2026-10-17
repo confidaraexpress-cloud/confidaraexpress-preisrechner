@@ -61,9 +61,19 @@ export const MANUAL_INVOICE_TEXT = Object.freeze({
   noAccountExternal: "Externer Empfänger ohne Kundenkonto.",
   documentNoteManual: "Für manuell erstellte Rechnungen sendet das System keine E-Mail — weder nach der Erzeugung noch beim Download oder Druck. Die Aktion wird im Protokoll festgehalten.",
   print: "Drucken",
-  // Stornovermerk
+  // Stornorechnung im System (Schritt 3) und Stornovermerk eines externen Belegs
   reversalTitle: "Storno",
-  reversalButton: "Storno vermerken …",
+  stornoButton: "Stornorechnung erstellen …",
+  stornoDialogTitle: "Stornorechnung erstellen?",
+  stornoDialogText: "Erstellt eine Stornorechnung mit eigener Nummer (CE-ST), die diese Rechnung vollständig aufhebt — mit denselben Positionen und Beträgen mit umgekehrtem Vorzeichen. Die Rechnung selbst, ihre Nummer und ihr PDF bleiben unverändert. Es wird keine E-Mail versendet und keine Zahlung ausgelöst.",
+  stornoConfirm: "Stornorechnung erstellen",
+  stornoHint: "Die Stornorechnung entsteht hier im System. Danach ist die Rechnung keine offene Forderung mehr. Den Beleg laden Sie anschließend herunter und stellen ihn dem Empfänger selbst zu.",
+  stornoDone: (nr) => `${nr ? `Stornorechnung ${nr}` : "Stornorechnung"} erstellt. Es wurde keine E-Mail versendet.`,
+  stornoDownload: "Stornorechnung herunterladen",
+  stornoDownloadFailed: "Die Stornorechnung konnte nicht geladen werden. Bitte erneut versuchen.",
+  stornoSourceInternal: "Stornorechnung (im System erstellt)",
+  stornoSourceExternal: "Externer Stornobeleg (vermerkt)",
+  reversalButton: "Externen Stornobeleg vermerken …",
   reversalDialogTitle: "Storno vermerken?",
   reversalDialogText: "Vermerkt den außerhalb erstellten Stornobeleg an dieser Rechnung. Danach ist sie keine offene Forderung mehr. Die Rechnung selbst, ihre Nummer und ihr PDF bleiben unverändert.",
   reversalConfirm: "Storno vermerken",
@@ -317,6 +327,9 @@ export function cancellationInfo(inv) {
   if (!isCancelledInvoice(inv)) return null;
   return {
     documentNumber: str(inv.cancellation_document_number),
+    // Schritt 3: 'internal' = Stornorechnung im System (PDF abrufbar), sonst vermerkter externer Beleg.
+    internal: inv.cancellation_document_source === "internal",
+    documentAvailable: inv.cancellation_document_available === true,
     date: str(inv.cancellation_date),
     reason: str(inv.cancellation_reason),
     approvedBy: str(inv.cancellation_approved_by),
@@ -345,6 +358,20 @@ export function reversalPayload(form, { paid = false } = {}) {
       reason: str(f.reason).trim(), approvedBy: str(f.approvedBy).trim(), acknowledgePaid: f.acknowledgePaid === true,
     },
   };
+}
+
+export const EMPTY_STORNO_FORM = Object.freeze({ reason: "", approvedBy: "", acknowledgePaid: false });
+
+// Stornorechnung (Schritt 3): Begründung, freigebende Person, bei bezahlter Rechnung die Erstattungsbestätigung.
+// → { ok:true, body } | { ok:false, errors }
+export function stornoPayload(form, { paid = false } = {}) {
+  const f = form && typeof form === "object" ? form : EMPTY_STORNO_FORM;
+  const errors = {};
+  if (!str(f.reason).trim()) errors.reason = "Bitte die Begründung angeben.";
+  if (!str(f.approvedBy).trim()) errors.approvedBy = "Bitte die freigebende Person angeben.";
+  if (paid && f.acknowledgePaid !== true) errors.acknowledgePaid = "Bitte bestätigen, dass die Erstattung gesondert veranlasst wird.";
+  if (Object.keys(errors).length) return { ok: false, errors };
+  return { ok: true, body: { reason: str(f.reason).trim(), approvedBy: str(f.approvedBy).trim(), acknowledgePaid: f.acknowledgePaid === true } };
 }
 
 const REVERSAL_CODE_TEXT = Object.freeze({

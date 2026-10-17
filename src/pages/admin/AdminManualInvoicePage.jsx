@@ -35,17 +35,22 @@ function Notice({ msg }) {
   );
 }
 
-// Lage des Ausstellens laut Server: Schalter, Ausstellerdaten, Steuersatz. Nur Feldnamen, nie Werte.
+// Lage des Ausstellens laut Server: Ausstellerdaten und Steuersatz. Nur Feldnamen, nie Werte. Einen
+// Freigabeschalter gibt es nicht mehr (Schritt 3) — Entwürfe und Vorschau gehen immer.
 function IssueStatus({ status }) {
   if (!status) return null;
   const hinweise = [];
-  if (status.issueEnabled !== true) {
-    hinweise.push("Das Ausstellen manueller Rechnungen ist derzeit nicht freigeschaltet. Entwürfe und Vorschau sind möglich.");
+  const issuer = status.issuer || null;
+  const legalFormFields = issuer && Array.isArray(issuer.legalFormFields) ? issuer.legalFormFields : [];
+  const missing = issuer && Array.isArray(issuer.missingFields) ? issuer.missingFields : [];
+  const placeholders = issuer && Array.isArray(issuer.placeholderFields) ? issuer.placeholderFields : [];
+  if (legalFormFields.length) {
+    hinweise.push("Die Rechtsform des Ausstellers trifft nicht zu (keine GbR; eine geplante Gesellschaft stellt noch keine Rechnungen aus). Entwürfe und Vorschau sind möglich.");
   }
-  if (status.issuer && status.issuer.ready !== true) {
+  if (issuer && issuer.ready !== true && (missing.length || placeholders.length || !legalFormFields.length)) {
     hinweise.push(blockerText({
       message: "Die Ausstellerdaten sind unvollständig oder enthalten Platzhalter — ausgestellt wird erst mit vollständigen Daten.",
-      missingFields: status.issuer.missingFields, placeholderFields: status.issuer.placeholderFields,
+      missingFields: missing, placeholderFields: placeholders,
     }));
   }
   if (status.vatRate && status.vatRate.ok !== true) hinweise.push("Der Umsatzsteuersatz ist nicht korrekt konfiguriert.");

@@ -16,6 +16,13 @@
 // sie sperrt nie, weder die Preisberechnung noch das Speichern.
 
 import { validatePostalCode } from "./postalCode.mjs";
+import {
+  NUMBER_FIRST_COUNTRIES, splitStreetAndNumber, formatStreetLine, chooseHouseNumber,
+} from "./streetLine.mjs";
+
+// Die Zerlegung von „Straße und Hausnummer“ steht in streetLine.mjs — dieselbe Regel und
+// Falltabelle wie im Backend. Hier weitergereicht, damit die Formulare EINEN Einstieg haben.
+export { NUMBER_FIRST_COUNTRIES, splitStreetAndNumber, formatStreetLine };
 
 export const ADDRESS_STATUS = {
   IDLE:        "idle",         // noch nichts geprüft
@@ -97,36 +104,8 @@ export function isValidationReady({ country, postalCode, city, street }) {
 // Gespeichert wird beides in EINEM Feld. In den meisten EU-Ländern steht die Hausnummer hinten,
 // in Frankreich, Luxemburg, Irland und Malta vorn. Dieselbe Regel steht im Backend
 // (lib/addressValidation/index.js) — sie muss dort und hier gleich bleiben.
-export const NUMBER_FIRST_COUNTRIES = Object.freeze(["FR", "LU", "IE", "MT"]);
-const HOUSE_NUMBER = String.raw`\d+\s*[a-zA-Z]?(?:\s*[-/]\s*(?:\d+\s*[a-zA-Z]?|[a-zA-Z]\b))?`;
-const TRAILING_NUMBER_RE = new RegExp(String.raw`^(.*?)[\s,]+(${HOUSE_NUMBER})\s*$`);
-const LEADING_NUMBER_RE = new RegExp(String.raw`^(${HOUSE_NUMBER})(?:\s*,\s*|\s+)(.+)$`);
-
-function isNumberFirst(country) {
-  return NUMBER_FIRST_COUNTRIES.includes(String(country || "").trim().toUpperCase());
-}
-
-export function splitStreetAndNumber(value, country) {
-  const raw = streetQueryText(value);
-  if (!raw) return { street: "", houseNumber: "" };
-  const trailing = () => {
-    const m = TRAILING_NUMBER_RE.exec(raw);
-    return m && m[1].trim() ? { street: m[1].trim().replace(/,$/, ""), houseNumber: m[2].replace(/\s+/g, "") } : null;
-  };
-  const leading = () => {
-    const m = LEADING_NUMBER_RE.exec(raw);
-    return m && m[2].trim() ? { street: m[2].trim(), houseNumber: m[1].replace(/\s+/g, "") } : null;
-  };
-  return (isNumberFirst(country) ? (leading() || trailing()) : trailing()) || { street: raw, houseNumber: "" };
-}
-
-export function formatStreetLine(country, street, houseNumber) {
-  const s = String(street || "").trim();
-  const n = String(houseNumber || "").trim();
-  if (!s) return n;
-  if (!n) return s;
-  return isNumberFirst(country) ? `${n} ${s}` : `${s} ${n}`;
-}
+// Die Zerlegung selbst (Hausnummer vorn in FR/LU/IE/MT, Wohnungsangaben wie „bus 3“, „/34“,
+// „2º B“) steht in streetLine.mjs, siehe Import oben.
 
 // Nur der Straßenname (ohne Hausnummer) — für Anzeige und Vergleiche.
 export function streetSearchTerm(streetAndNumber, country = "DE") {
@@ -146,13 +125,25 @@ export function suggestionLabel(item, country) {
 // EU-Launch-Scope hat kein Formular ein Regionsfeld, das der Versand braucht (Bundesstaaten nur
 // US/CA) — ein gefülltes Feld ginge sonst an Versanddienste, die es nicht erwarten.
 //
-// Hat der Vorschlag keine Hausnummer, bleibt die bereits eingegebene erhalten; erfunden wird
-// keine. Ein leerer Wert des Vorschlags überschreibt nie einen vorhandenen.
+// Die Angaben des Kunden werden nie still überschrieben (Auftrag 1, P2):
+//   • Hat der Vorschlag keine Hausnummer, bleibt die eingegebene; eine genauere eingegebene
+//     Nummer („12a“ zu „12“) bleibt ebenfalls (chooseHouseNumber). Erfunden wird keine.
+//   • Eine Wohnungs-, Etagen- oder Gebäudeangabe („bus 3“, „/34“, „2º B“, „Apartment 4,“) steht
+//     nach der Übernahme wieder an ihrem Platz.
+//   • Trägt die Eingabe Ziffern, die keine erkennbare Hausnummer sind, und nennt der Vorschlag
+//     keine, bleibt die Straßenzeile so, wie der Kunde sie geschrieben hat — übernommen werden dann
+//     nur PLZ und Ort. Vorher wurde aus „Hauptstraße 12–14“ still „Hauptstraße“.
+// Ein leerer Wert des Vorschlags überschreibt nie einen vorhandenen.
 export function applyAddressSuggestion({ country, street }, suggestion) {
   if (!suggestion || typeof suggestion !== "object" || !String(suggestion.street || "").trim()) return {};
-  const typed = splitStreetAndNumber(street, country).houseNumber;
-  const houseNumber = String(suggestion.houseNumber || "").trim() || typed;
-  const patch = { street: formatStreetLine(country, String(suggestion.street).trim(), houseNumber) };
+  const typed = splitStreetAndNumber(street, country);
+  const offered = String(suggestion.houseNumber || "").trim();
+  const ohneErkannteNummer = !typed.houseNumber && !typed.unit && /\d/.test(String(street || ""));
+  const patch = {
+    street: ohneErkannteNummer && !offered
+      ? String(street).replace(/\s+/g, " ").trim()
+      : formatStreetLine(country, String(suggestion.street).trim(), chooseHouseNumber(typed.houseNumber, offered), typed),
+  };
   const pc = String(suggestion.postalCode || "").trim();
   const city = String(suggestion.city || "").trim();
   if (pc) patch.postalCode = pc;
@@ -269,6 +260,14 @@ export function streetFieldHint(country, street) {
 // mit `match`; zusammengesetzt ergeben sie exakt den Ausgangstext. Ohne verwertbare Eingabe
 // kommt der Text unverändert als ein Stück zurück.
 const WORD_SEPARATORS = /([\s,.\-/]+)/;
+
+// Autofill-Token der eigenen Vorschlagsfelder (Straße, Ort) — Betreiberentscheidung Auftrag 1,
+// P5 (2026-10-17). Bewusst KEIN Standard-Token (address-line1, street-address, address-level2):
+// diese luden Chrome-Autofill ein, dessen natives Popup über unserer Liste lag, und eine
+// Autofill-Auswahl öffnete unsere Liste zusätzlich. Chromium füllt Felder mit unbekanntem Token
+// nicht und zeigt dort keine Vorschläge. Grenzen: Firefox und Safari können weiter heuristisch
+// füllen (Safari etwa über die Tastaturleiste); "off" beachtet Chrome bei Adressfeldern nicht verlässlich.
+export const ADDRESS_SUGGEST_AUTOCOMPLETE = "ce-vorschlagsliste";
 
 export function highlightSegments(text, query) {
   const t = String(text ?? "");

@@ -62,7 +62,10 @@ export function AddressStatusLine({ status, reason = null, citySuggestions = [],
     const message = addressStatusMessage(status, reason);
     const zeigeOrte = status === ADDRESS_STATUS.UNVERIFIED && reason === "postal_code_city_mismatch"
       && citySuggestions.length > 0 && typeof onPickCity === "function";
-    const icon = tone === "success" ? "check" : (tone === "warning" ? "info" : null);
+    // Nur „Adresse gefunden“ trägt ein Symbol (Häkchen). Hinweise stehen als ruhiger Text ohne
+    // Warn- oder Infosymbol (Betreiberentscheidung Auftrag 1, 2026-10-16) — der Wortlaut und die
+    // Live-Region bleiben, nichts wird dadurch gesperrt oder abgeschaltet.
+    const icon = tone === "success" ? "check" : null;
     const leise = status === ADDRESS_STATUS.CONFIRMED && !textSichtbar;
     inhalt = (
       <p className={`addr-status addr-status--${tone}`} title={leise ? message : undefined}>

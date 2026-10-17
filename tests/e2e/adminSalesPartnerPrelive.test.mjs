@@ -659,3 +659,98 @@ test("11 — „Testgutschrift prüfen“ öffnet die Gutschriften mit vorbelegt
   assert.equal(await page.locator("#adm-cn-scope-test").isChecked(), false);
   await page.close();
 });
+
+// ── 11b–11d: der vorbelegte Testlauf gehört zu GENAU dem Verlaufseintrag, der ihn trägt ──────────────
+// Ursache des sporadischen Rots in Fall 11 (CI 2026-10-11 und 2026-10-17): React Router 7 führt jede
+// Navigation in einer Transition aus. Lädt die Zielseite (lazy) noch, bleibt die Gutschriftenseite stehen;
+// führt die nächste Navigation zurück auf /admin/partners/credit-notes, übernimmt React DIESELBE Instanz —
+// und ihr Testlauf-Zustand stammte aus dem State des alten Eintrags. 11c macht das Rennen deterministisch
+// (das Modul der Partnerliste wird verzögert ausgeliefert), 11b zeigt denselben Fehler ohne jedes Timing.
+async function zumTestlauf(page) {
+  await zurSeite(page);
+  await page.locator("#adm-pl-step-credit-notes").click();
+  await page.waitForURL(`${BASE}/admin/partners/credit-notes`);
+  await page.locator("#adm-cn-scope-test").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#adm-cn-scope-test").isChecked(), true, "der Testlauf ist vorbelegt");
+}
+// Der Schalter ist nach einer Navigation sofort im neuen Stand — gewartet wird nur, bis die Seite den neuen
+// Verlaufseintrag gerendert hat (eigener Schlüssel am Container), nicht auf einen erhofften Wert.
+async function aufEintragWarten(page, vorherigerSchluessel) {
+  await page.waitForFunction((alt) => {
+    const el = document.querySelector("[data-history-entry]");
+    return !!el && el.getAttribute("data-history-entry") !== alt;
+  }, vorherigerSchluessel, { timeout: 10000 });
+}
+const eintragSchluessel = (page) => page.getAttribute("[data-history-entry]", "data-history-entry");
+
+test("11b — „Gutschriften“ der Teilnavigation auf derselben Seite: der Testlauf ist nicht mehr vorbelegt", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const state = await setup(page);
+  await zumTestlauf(page);
+  await page.locator("#adm-cn-preview").click();
+  await page.locator("#adm-cn-summary").waitFor({ state: "visible" });
+  const vorher = await eintragSchluessel(page);
+  await page.locator("#adm-sp-credit-notes-link").click();
+  await aufEintragWarten(page, vorher);
+  assert.equal(await page.locator("#adm-cn-scope-test").isChecked(), false, "der Testlauf wurde in die normale Ansicht übernommen");
+  assert.equal(await page.locator("#adm-cn-summary").count(), 0, "die Testvorschau steht noch in der normalen Ansicht");
+  assert.equal(await page.locator("#adm-cn-test-note").count(), 0);
+  await page.locator("#adm-cn-preview").click();
+  await page.locator("#adm-cn-summary").waitFor({ state: "visible" });
+  assert.deepEqual(state.previewQueries, ["?month=2026-09&scope=test", "?month=2026-09"], "die zweite Vorschau lief als Testlauf");
+  await page.close();
+});
+
+test("11c — Partnerliste lädt noch, sofort zurück zu „Gutschriften“: kein vorbelegter Testlauf (Rennen deterministisch)", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await setup(page);
+  let verzoegert = 0;
+  await page.route("**/src/pages/admin/AdminSalesPartnersPage.jsx*", async (route) => {
+    verzoegert += 1;
+    await new Promise((r) => setTimeout(r, 2500));
+    await route.continue();
+  });
+  await zumTestlauf(page);
+  const vorher = await eintragSchluessel(page);
+  await page.locator("#adm-sp-list-link").click();
+  await page.waitForURL(`${BASE}/admin/partners`);
+  // Die Partnerliste ist noch nicht geladen — die Gutschriftenseite steht noch, ihr Link wird sofort benutzt.
+  await page.locator("#adm-sp-credit-notes-link").click();
+  await page.waitForURL(`${BASE}/admin/partners/credit-notes`);
+  await aufEintragWarten(page, vorher);
+  assert.equal(verzoegert >= 1, true, "das Modul der Partnerliste wurde nicht verzögert — das Rennen fand nicht statt");
+  assert.equal(await page.locator("#adm-cn-scope-test").isChecked(), false, "der Testlauf überlebte den Wechsel");
+  assert.equal(await page.locator("#adm-cn-test-note").count(), 0);
+  await page.close();
+});
+
+test("11d — Rück- und Vorwärtsnavigation: jeder Eintrag zeigt seinen eigenen Bereich, der normale nie den Testlauf", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await setup(page);
+  await zumTestlauf(page);
+  await page.locator("#adm-sp-list-link").click();
+  await page.waitForURL(`${BASE}/admin/partners`);
+  // Die Partnerliste ist wirklich gerendert (ihr eigener Seitentitel), bevor es weitergeht.
+  await page.getByRole("heading", { level: 1, name: "Vertriebspartner" }).waitFor({ state: "visible" });
+  await page.locator("#adm-sp-credit-notes-link").click();
+  await page.waitForURL(`${BASE}/admin/partners/credit-notes`);
+  await page.locator("#adm-cn-scope-test").waitFor({ state: "visible" });
+  const normal = await eintragSchluessel(page);
+  assert.equal(await page.locator("#adm-cn-scope-test").isChecked(), false, "normaler Eintrag mit Testlauf");
+  // Zurück: Partnerliste, dann der Eintrag mit dem Sprungziel „Testgutschrift prüfen“.
+  await page.goBack();
+  await page.waitForURL(`${BASE}/admin/partners`);
+  await page.goBack();
+  await page.waitForURL(`${BASE}/admin/partners/credit-notes`);
+  await aufEintragWarten(page, normal);
+  const test = await eintragSchluessel(page);
+  assert.equal(await page.locator("#adm-cn-scope-test").isChecked(), true, "der Eintrag mit Sprungziel verlor seinen Testlauf");
+  // Vorwärts bis zum normalen Eintrag: dort nie der Testlauf.
+  await page.goForward();
+  await page.waitForURL(`${BASE}/admin/partners`);
+  await page.goForward();
+  await page.waitForURL(`${BASE}/admin/partners/credit-notes`);
+  await aufEintragWarten(page, test);
+  assert.equal(await page.locator("#adm-cn-scope-test").isChecked(), false, "Vorwärts in den normalen Eintrag übernahm den Testlauf");
+  await page.close();
+});

@@ -69,6 +69,15 @@ const MODE_META = Object.freeze({
 });
 export const invoiceModeMeta = (row) => MODE_META[invoiceMode(row)] || MODE_META.unknown;
 
+// Auftrag 2 / P1: Herkunft der Rechnung als eigenes, ruhiges Kennzeichen neben dem Modus.
+// → { manual:boolean, badge, short, label }
+export function invoiceSourceMeta(row) {
+  const manual = !!row && row.invoice_source === "manual";
+  return manual
+    ? { manual: true, badge: "badge-blue", short: "Manuell", label: "Manuell erstellt" }
+    : { manual: false, badge: null, short: "", label: "" };
+}
+
 // ── Produktive Forderung ────────────────────────────────────────────────────
 // Primär das serverseitig abgeleitete Feld. Fehlt es, wird aus dem Modus
 // abgeleitet — fail-closed: nur ein eindeutiger Produktivmodus zählt.
@@ -115,6 +124,9 @@ export function isInvoiceOverdue(row, now = new Date()) {
 export function paymentStatus(row, now = new Date()) {
   const r = row && typeof row === "object" ? row : {};
   if (!isProductiveInvoice(r)) return { cls: "badge-gray", label: "Keine Forderung", kind: "none" };
+  // Auftrag 2 / P1: ein vermerkter Storno (nur manuelle Rechnungen) geht jedem Zahlungsstatus vor — die
+  // Rechnung ist keine Forderung mehr (Server: openReceivableSql). Strikt === true.
+  if (r.is_cancelled === true) return { cls: "badge-gray", label: "Storniert", kind: "cancelled" };
   const status = str(firstDefined(r.status, r.state));
   if (status === "paid") return { cls: "badge-green", label: "Bezahlt", kind: "paid" };
   if (isInvoiceOverdue(r, now)) return { cls: "badge-red", label: "Überfällig", kind: "overdue" };
@@ -209,6 +221,7 @@ export function payability(row) {
   const r = row && typeof row === "object" ? row : {};
   const flag = boolish(firstDefined(r.is_payable, r.isPayable));
   if (!isProductiveInvoice(r)) return { payable: false, reason: NON_PRODUCTIVE_PAY_NOTE };
+  if (r.is_cancelled === true) return { payable: false, reason: "Für diese Rechnung ist ein Storno vermerkt — sie ist keine offene Forderung mehr." };
   if (str(firstDefined(r.status, r.state)) === "paid") return { payable: false, reason: "Diese Rechnung ist bereits als bezahlt markiert." };
   if (flag === false) return { payable: false, reason: NON_PRODUCTIVE_PAY_NOTE };
   return { payable: true, reason: "" };
@@ -292,6 +305,12 @@ export function currentAccount(row) {
 // → { primary, secondary, known }
 export function customerCell(row) {
   const r = row && typeof row === "object" ? row : {};
+  // Auftrag 2 / P1: eine manuelle Rechnung an eine externe Firma hat kein Konto. Der Server liefert dafür GENAU
+  // die Firma aus dem eingefrorenen Empfänger (recipient_company, nur bei user_id NULL).
+  const extern = str(r.recipient_company);
+  if (r.invoice_source === "manual" && (r.user_id === null || r.user_id === undefined) && extern) {
+    return { primary: extern, secondary: "Externer Empfänger", known: true };
+  }
   const company = str(firstDefined(r.company_name, r.companyName));
   const number = str(firstDefined(r.customer_number, r.customerNumber));
   const name = str(firstDefined(r.name));

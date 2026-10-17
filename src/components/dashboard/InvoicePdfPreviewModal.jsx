@@ -23,13 +23,17 @@ import React, { useEffect, useRef, useState } from "react";
 // (anders als ConfirmDialog mit nur zwei Buttons) einen iframe und variable
 // Aktionen enthält: eine echte Tab-Fokusfalle, damit Tab/Shift+Tab den Dialog
 // nicht verlassen kann, solange er offen ist.
-export function InvoicePdfPreviewModal({ title, fetchPdf, onDownload, onClose }) {
+// Auftrag 2 / P1: `printable` (additiv, Vorgabe aus) zeigt „Drucken" — gedruckt wird das geladene PDF selbst
+// über den Druckdialog des eingebetteten Betrachters. Ohne die Prop ist der Dialog unverändert.
+export function InvoicePdfPreviewModal({ title, fetchPdf, onDownload, onClose, printable = false }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pdfUrl, setPdfUrl] = useState(null);
   const [downloading, setDownloading] = useState(false);
   const urlRef = useRef(null);
   const closeBtnRef = useRef(null);
+  const frameRef = useRef(null);
+  const [printHint, setPrintHint] = useState("");
   const modalRef = useRef(null);
   const openerRef = useRef(typeof document !== "undefined" ? document.activeElement : null);
 
@@ -78,6 +82,18 @@ export function InvoicePdfPreviewModal({ title, fetchPdf, onDownload, onClose })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handlePrint = () => {
+    setPrintHint("");
+    try {
+      const w = frameRef.current && frameRef.current.contentWindow;
+      if (!w) throw new Error("kein Betrachter");
+      w.focus();
+      w.print();
+    } catch {
+      setPrintHint("Drucken über die Druckfunktion der Vorschau oder nach dem Herunterladen.");
+    }
+  };
+
   const handleDownload = async () => {
     if (downloading || typeof onDownload !== "function") return;
     setDownloading(true);
@@ -99,6 +115,11 @@ export function InvoicePdfPreviewModal({ title, fetchPdf, onDownload, onClose })
         <div className="pdfview-head">
           <span className="pdfview-title">{title}</span>
           <div className="pdfview-actions">
+            {printable && (
+              <button type="button" className="btn btn-outline btn-sm" onClick={handlePrint} disabled={loading || !!error}>
+                Drucken
+              </button>
+            )}
             {typeof onDownload === "function" && (
               <button type="button" className="btn btn-outline btn-sm" onClick={handleDownload} disabled={downloading || loading || !!error}>
                 {downloading
@@ -119,7 +140,10 @@ export function InvoicePdfPreviewModal({ title, fetchPdf, onDownload, onClose })
               {error}
             </div>
           ) : (
-            <iframe className="pdfview-frame" src={pdfUrl} title={title} />
+            <>
+              {printHint && <p className="pdfview-hint" role="status">{printHint}</p>}
+              <iframe ref={frameRef} className="pdfview-frame" src={pdfUrl} title={title} />
+            </>
           )}
         </div>
       </div>

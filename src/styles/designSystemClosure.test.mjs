@@ -332,6 +332,10 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
                   // Modulspeicher) und die Adminseite für Aufschlag und Schalter — nur über
                   // die Karte der Adminübersicht erreichbar, kein Sidebar-Eintrag.
                   "/preisrechner-uebernahme", "/admin/public-calculator",
+                  // Manuell erstellte Rechnungen (Auftrag 2 / P1, bewusste Ankeränderung, +1): der
+                  // Editor eines Entwurfs („new" oder Entwurfs-ID) am bestehenden Adminrahmen, erreichbar
+                  // über „Neue Rechnung erstellen" in der Rechnungsliste — kein Sidebar-Eintrag.
+                  "/admin/invoices/manual/:draftId",
                   "*"];
   const gefunden = [...app.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(gefunden.sort(), [...ROUTEN].sort(), "der Routenbestand hat sich verändert");

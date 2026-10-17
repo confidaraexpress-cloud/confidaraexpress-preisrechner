@@ -1776,3 +1776,47 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
   .adm-cn-counts,
   .adm-pl-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ce-space-3) var(--ce-space-4); }
 }
+
+/* ── Auftrag 2 / P1: manuell erstellte Rechnung (Editor) ───────────────────────────────────────────
+   Dieselben Karten wie jede Adminseite; Formularfelder kommen aus Field (forms.css). Ein Raster mit
+   zwei Spalten ab 720 px, darunter eine — kein horizontales Scrollen. Keine Farbliterale. */
+.adm-mi-notice { margin-bottom: var(--ce-space-4); }
+.adm-mi-list { margin: var(--ce-space-1) 0 0; padding-left: var(--ce-space-5); display: flex; flex-direction: column; gap: var(--ce-space-1); }
+.adm-mi-kind { border: 0; padding: 0; margin: 0 0 var(--ce-space-4); display: flex; flex-wrap: wrap; gap: var(--ce-space-2) var(--ce-space-5); }
+.adm-mi-radio { display: inline-flex; align-items: center; gap: var(--ce-space-2); min-height: 44px; font-size: var(--ce-text-body-size); color: var(--ce-color-text-primary); cursor: pointer; }
+.adm-mi-search { margin-bottom: var(--ce-space-4); display: flex; flex-direction: column; gap: var(--ce-space-2); max-width: 560px; }
+.adm-mi-hits { list-style: none; margin: 0; padding: var(--ce-space-1); display: flex; flex-direction: column; gap: 2px;
+  border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-md); background: var(--ce-color-surface); }
+.adm-mi-hit { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: 44px;
+  padding: var(--ce-space-2) var(--ce-space-3); border: 0; border-radius: var(--ce-radius-sm); background: transparent; text-align: left; cursor: pointer; }
+.adm-mi-hit:hover, .adm-mi-hit:focus-visible { background: var(--ce-color-brand-soft); }
+.adm-mi-hit-name { font-weight: 600; color: var(--ce-color-text-primary); }
+.adm-mi-hit-meta { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-muted); }
+.adm-mi-chosen { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2) var(--ce-space-4); margin-bottom: var(--ce-space-4); }
+.adm-mi-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ce-space-3) var(--ce-space-4); }
+.adm-mi-grid > * { min-width: 0; }
+@media (min-width: 720px) {
+  .adm-mi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .adm-mi-grid > .adm-mi-wide { grid-column: 1 / -1; }
+}
+.adm-mi-positions { list-style: none; margin: 0 0 var(--ce-space-3); padding: 0; display: flex; flex-direction: column; gap: var(--ce-space-3); }
+.adm-mi-pos { padding: var(--ce-space-4); border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-md); background: var(--ce-color-surface-subtle); }
+.adm-mi-pos-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2) var(--ce-space-3); margin-bottom: var(--ce-space-3); }
+.adm-mi-pos-no { font-weight: 600; color: var(--ce-color-text-primary); }
+.adm-mi-pos-sum { margin-left: auto; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; color: var(--ce-color-text-secondary); }
+.adm-mi-totals { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--ce-space-1) var(--ce-space-6); max-width: 420px; margin: 0 0 var(--ce-space-2) auto; }
+.adm-mi-totals > div { display: contents; }
+.adm-mi-totals dt { color: var(--ce-color-text-secondary); }
+.adm-mi-totals dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; color: var(--ce-color-text-primary); }
+.adm-mi-totals-gross dt, .adm-mi-totals-gross dd { font-weight: 600; padding-top: var(--ce-space-1); }
+.adm-mi-actions { margin-top: var(--ce-space-4); }
+.adm-mi-blockers { margin: var(--ce-space-3) 0 0; padding-left: var(--ce-space-5); font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted); display: flex; flex-direction: column; gap: var(--ce-space-1); }
+.adm-mi-issued { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-3); padding: var(--ce-space-5); }
+.adm-mi-drafts { margin-bottom: var(--ce-space-4); }
+.adm-mi-draft-list { list-style: none; margin: 0; padding: 0; }
+.adm-mi-draft { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2) var(--ce-space-4);
+  padding: var(--ce-space-3) var(--ce-space-5); border-top: 1px solid var(--ce-color-border-subtle); }
+.adm-mi-draft:first-child { border-top: 0; }
+.adm-mi-draft-main { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.adm-mi-draft-facts { display: flex; flex-wrap: wrap; gap: var(--ce-space-1) var(--ce-space-4); font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-muted); }
+.adm-mi-draft-sum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; color: var(--ce-color-text-primary); }

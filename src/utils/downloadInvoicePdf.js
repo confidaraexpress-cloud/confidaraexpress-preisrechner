@@ -57,6 +57,13 @@ export function fetchCustomerInvoicePdf(invoiceId, invoiceNumber) {
   return fetchInvoicePdf(`/kunde/invoices/${encodeURIComponent(String(invoiceId))}/pdf`, safeFallbackName(invoiceNumber));
 }
 
+// Auftrag 2 / P1: Vorschau eines manuellen Rechnungsentwurfs („Entwurf – keine Rechnung"). Derselbe Abrufweg
+// wie jedes Rechnungs-PDF (nur application/pdf, Fehler als Text) — der Server schreibt dabei nichts.
+export function fetchManualInvoicePreviewPdf(draftId) {
+  return fetchInvoicePdf(`/admin/manual-invoices/drafts/${encodeURIComponent(String(draftId))}/preview`,
+    `entwurf-keine-rechnung-${String(draftId).replace(/[^0-9]/g, "") || "vorschau"}.pdf`);
+}
+
 export function fetchAdminInvoicePdf(invoiceId, invoiceNumber) {
   return fetchInvoicePdf(`/admin/invoices/${encodeURIComponent(String(invoiceId))}/pdf`, safeFallbackName(invoiceNumber));
 }

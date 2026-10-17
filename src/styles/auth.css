@@ -480,6 +480,8 @@
    Der Pflichtfeldhinweis über dem Formular und der nächste Schritt nach dem
    Antrag — beide in der leisen Textfarbe der Auth-Welt. */
 .auth-required-hint { margin: 0 0 16px; font-size: 12px; line-height: 1.5; color: var(--auth-ink-3); }
+/* Auftrag 2 / P10: kurze Formathilfe unter einem Pflichtfeld (USt-IdNr.) — dieselbe Tonlage wie die Hinweise oben. */
+.auth-field-hint { display: block; margin: 4px 0 0; font-size: 12px; line-height: 1.5; color: var(--auth-ink-3); }
 /* Die Zustimmung ist ein Pflichtfeld des Antrags: ihre ganze Zeile ist die
    Trefferfläche — mindestens 44 px hoch (WCAG 2.5.5), Text und Kästchen mittig. */
 #sp-form .auth-check { min-height: var(--ce-size-touch-target); }

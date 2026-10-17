@@ -34,6 +34,8 @@ import { getCurrentLegalSet } from "../api/legalApi";
 // Passwort-Längenregel (8–128, Zählung in Code-Points). Einzige Quelle der
 // Wahrheit im Frontend; Spiegel von lib/passwordPolicy.js im Backend.
 import { PASSWORD_MIN_LEN, PASSWORD_MAX_LEN, passwordLengthError } from "../utils/passwordPolicy.mjs";
+// Auftrag 2 / P10: dieselbe Regel wie die Registrierungsprüfung (gespiegelt aus Backend lib/vatId.js).
+import { validateRequiredVatId } from "../utils/vatId.mjs";
 
 // Wortlaute des Zurücksetzen-Formulars. Der Kurztext bleibt wortgleich zur
 // bisherigen Meldung; der Langtext fehlte hier vorher vollständig.
@@ -304,6 +306,17 @@ export default function AuthPage() {
     });
   };
 
+  // Auftrag 2 / P10: die USt-IdNr. ist Pflicht. Beim Verlassen des Felds steht der Grund direkt am Feld — die
+  // Registrierung ist bis dahin ohnehin gesperrt, und ohne Meldung wüsste der Kunde nicht, warum.
+  const handleRegVatBlur = () => {
+    setRegErrors(p => {
+      const n = { ...p };
+      const r = validateRequiredVatId(regForm.vat_id);
+      if (!r.ok) n.vat_id = r.error; else delete n.vat_id;
+      return n;
+    });
+  };
+
   const handleRegPasswordRepeat = (v) => {
     setRegPasswordRepeat(v);
     setRegErrors(p => {
@@ -445,6 +458,7 @@ export default function AuthPage() {
                   onRegister={handleRegister}
                   loading={loading}
                   errors={regErrors}
+                  onVatBlur={handleRegVatBlur}
                   regValid={regValid}
                   onPasswordBlur={handleRegPasswordBlur}
                   passwordRepeat={regPasswordRepeat}

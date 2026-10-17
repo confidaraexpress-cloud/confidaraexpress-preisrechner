@@ -40,7 +40,8 @@ const VALID = {
   email: "einkauf@muster-logistik.de",
   password: "SicheresPasswort1",
   company_name: "Muster Logistik GmbH",
-  vat_id: "", street: "", zip: "", city: "", country: "DE",
+  // Auftrag 2 / P10 (2026-10-17): die USt-IdNr. ist Pflicht.
+  vat_id: "DE123456789", street: "", zip: "", city: "", country: "DE",
 };
 const REPEAT = VALID.password;
 
@@ -101,11 +102,14 @@ test("8 — bestehende Prüfungen bleiben erhalten (E-Mail, Passwort, Wiederholu
   assert.match(getRegErrors(VALID, "anderes").passwordRepeat, /stimmen nicht überein/);
 });
 
-test("9 — optionale Felder bleiben optional, nur Längen werden geprüft", () => {
-  assert.deepEqual(getRegErrors({ ...VALID, vat_id: "", street: "", zip: "", city: "" }, REPEAT), {});
+test("9 — die Adresse bleibt optional (nur Längen), die USt-IdNr. ist Pflicht mit Formatprüfung", () => {
+  assert.deepEqual(getRegErrors({ ...VALID, street: "", zip: "", city: "" }, REPEAT), {});
   const e = getRegErrors({ ...VALID, vat_id: "X".repeat(31), zip: "1".repeat(11) }, REPEAT);
-  assert.match(e.vat_id, /maximal 30/);
+  assert.match(e.vat_id, /kein gültiges Format/);
   assert.match(e.zip, /maximal 10/);
+  // Auftrag 2 / P10: leer ist nicht mehr erlaubt — es gibt keine alternative Steuernummer.
+  assert.equal(getRegErrors({ ...VALID, vat_id: "" }, REPEAT).vat_id, "Bitte geben Sie die USt-IdNr. Ihres Unternehmens an.");
+  assert.equal(getRegErrors({ ...VALID, vat_id: " de 123 456 789 " }, REPEAT).vat_id, undefined, "Leerzeichen und Kleinschreibung");
 });
 
 // ─── API-Feldvertrag ──────────────────────────────────────────────────────────

@@ -13,6 +13,7 @@ import { useAddressValidation } from "../../hooks/useAddressValidation";
 import { applyAddressSuggestion, cityFromSuggestion, countryFirstHint } from "../../utils/addressValidationView.mjs";
 import { cityPlaceholder } from "../../utils/addressPlaceholders.mjs";
 import { postalCodeExample, postalCodeInputMode } from "../../utils/postalCode.mjs";
+import { VAT_ID_TEXT } from "../../utils/vatId.mjs";
 
 // Pflichtfeld-Markierung. Das Sternchen ist rein visuell (aria-hidden) — für
 // Screenreader trägt das jeweilige Eingabefeld required/aria-required.
@@ -45,7 +46,7 @@ function Erklaerung({ id, checked, onToggle, error, children }) {
 }
 
 export function RegisterForm({
-  form, onChange, onRegister, loading, errors = {}, regValid = true, passwordRepeat = "", onPasswordRepeatChange, onPasswordBlur,
+  form, onChange, onRegister, loading, errors = {}, regValid = true, passwordRepeat = "", onPasswordRepeatChange, onPasswordBlur, onVatBlur,
   // Paket C: Erklärungen (Unternehmer, AGB) und die angezeigte AGB-Fassung (oder null).
   declarations = {}, onDeclarationChange = () => {}, legalContext = null,
   // Nur noch die Erklärungen fehlen: der Knopf ist gesperrt, der Grund steht unter den Erklärungen.
@@ -200,18 +201,27 @@ export function RegisterForm({
         </div>
         <div className="auth-field">
           <div className="auth-field-row">
-            <label className="auth-field-label" htmlFor="reg-vat">USt-ID <span className="auth-optional">(optional)</span></label>
+            <label className="auth-field-label" htmlFor="reg-vat">{VAT_ID_TEXT.label} <Req /></label>
           </div>
           <div className="auth-input-wrap">
+            {/* Auftrag 2 / P10: Pflichtfeld — Format nach Länderpräfix, keine behördliche Bestätigung. */}
             <input
               id="reg-vat"
               className={`auth-input auth-input-no-icon${errors.vat_id ? " auth-input-error" : ""}`}
               value={form.vat_id}
               onChange={(e) => upd("vat_id", e.target.value)}
-              placeholder="DE123456789"
+              onBlur={() => onVatBlur?.()}
               autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              maxLength={20}
+              required
+              aria-required="true"
+              aria-invalid={errors.vat_id ? "true" : undefined}
+              aria-describedby="reg-vat-hint"
             />
           </div>
+          <span className="auth-field-hint" id="reg-vat-hint">{VAT_ID_TEXT.hint}</span>
           {errors.vat_id && <span className="auth-field-error">{errors.vat_id}</span>}
         </div>
       </div>

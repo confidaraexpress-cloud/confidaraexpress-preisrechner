@@ -15,6 +15,8 @@
 import { PASSWORD_MIN_LEN, PASSWORD_MAX_LEN, passwordLengthError } from "./passwordPolicy.mjs";
 // Formprüfung des Empfehlungscodes (Vertriebspartnerprogramm, unten ergänzt).
 import { normalizeReferralCode } from "./referralCapture.mjs";
+// Auftrag 2 / P10: USt-IdNr. — EINE Regel, gespiegelt aus Backend lib/vatId.js (gemeinsame Falltabelle).
+import { validateRequiredVatId, normalizeVatId } from "./vatId.mjs";
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -79,8 +81,12 @@ export function getRegErrors(form = {}, passwordRepeat = "") {
     if (err) e[rule.apiField] = err;
   }
 
+  // Auftrag 2 / P10 (Betreiberentscheidung 2026-10-17): die USt-IdNr. ist bei jeder Neuregistrierung Pflicht —
+  // Format nach Länderpräfix, keine behördliche Prüfung. Verbindlich prüft der Server.
+  const ust = validateRequiredVatId(form.vat_id);
+  if (!ust.ok) e.vat_id = ust.error;
+
   // Weiterhin optionale Felder: nur Längenobergrenzen.
-  if (form.vat_id?.length > 30)  e.vat_id = "USt-ID darf maximal 30 Zeichen enthalten.";
   if (form.street?.length > 200) e.street = "Straße darf maximal 200 Zeichen enthalten.";
   if (form.zip?.length > 10)     e.zip    = "PLZ darf maximal 10 Zeichen enthalten.";
   if (form.city?.length > 100)   e.city   = "Stadt darf maximal 100 Zeichen enthalten.";
@@ -188,6 +194,8 @@ export function buildRegistrationPayload(form = {}) {
     payload[rule.apiField] = trimmed(form[rule.apiField]);
   }
   if (typeof form.email === "string") payload.email = form.email.trim();
+  // Auftrag 2 / P10: die USt-IdNr. in der normalisierten Form (der Server normalisiert dieselbe Regel erneut).
+  if (typeof form.vat_id === "string") payload.vat_id = normalizeVatId(form.vat_id);
   return payload;
 }
 

@@ -88,6 +88,8 @@ async function kundenformularAbsenden(page) {
   await page.fill("#reg-name", "Max Mustermann");
   await page.fill("#reg-email", "einkauf@muster-logistik.de");
   await page.fill("#reg-company", "Muster Logistik GmbH");
+  // Auftrag 2 / P10: die USt-IdNr. ist bei jeder Neuregistrierung Pflicht.
+  await page.fill("#reg-vat", "DE123456789");
   const pw = page.locator('.auth-input[type="password"]');
   await pw.nth(0).fill("EinSicheresPasswort2026");
   await pw.nth(1).fill("EinSicheresPasswort2026");

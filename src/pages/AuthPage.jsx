@@ -374,13 +374,16 @@ export default function AuthPage() {
                 <span className="auth-badge-ico"><Icon n="cube" s={16} /></span>
                 <span>Ihr verlässlicher Partner</span>
               </div>
+              {/* Wortlaut: Betreiberentscheidung Auftrag 1 (P3, 2026-10-17). Keine Geschwindigkeits-
+                  zusage, kein Superlativ — „Versand ab Deutschland in die Länder der EU“ entspricht
+                  dem Launch-Scope (Canonical). */}
               <h1 className="auth-title auth-anim delay-1">
-                Wir verbinden Welten.<br />
-                Sie erreichen <em>mehr.</em>
+                Europa verbinden.<br />
+                Versand <em>vereinfachen.</em>
               </h1>
-              <div className="auth-sub-1 auth-anim delay-2">Sicher. Schnell. Persönlich.</div>
+              <div className="auth-sub-1 auth-anim delay-2">Vergleichen. Buchen. Persönlich betreut.</div>
               <p className="auth-sub-2 auth-anim delay-2">
-                Loggen Sie sich ein und entdecken Sie grenzüberschreitende Exzellenz.
+                Versand ab Deutschland in die Länder der EU – mit persönlichem Service und direkten Ansprechpartnern.
               </p>
             </div>
 

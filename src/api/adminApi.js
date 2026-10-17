@@ -895,3 +895,66 @@ export const updateAdminPublicCalculatorAvailability = ({ enabled, expectedRevis
   (typeof enabled === "boolean"
     ? jsonPost(`${PUBLIC_CALCULATOR_PATH}/availability`, { enabled, expectedRevision }, "PUT")
     : Promise.reject(new Error("invalid_enabled")));
+
+// ── Manuell erstellte Rechnungen (Auftrag 2 / P1, 2026-10-17) ─────────────────────────────────────────
+// Backendvertrag routes/admin/manualInvoices.js. Beträge rechnet ausschließlich der Server; der Client sendet
+// Einzelpreise in Cent, Mengen und Rabatte als Dezimaltext. Ein Entwurf ist keine Rechnung: erst
+// issueManualInvoiceDraft vergibt die Nummer — nie automatisch, nie mit E-Mail.
+
+// GET /admin/manual-invoices/status — Schalter, Ausstellerreife (nur Feldnamen), Steuersatz, Grenzen.
+export function getManualInvoiceStatus() {
+  return apiFetch(`/admin/manual-invoices/status`, { auth: true });
+}
+
+// GET /admin/manual-invoices/customers?q= — Kundensuche (ab 2 Zeichen, höchstens 20 Treffer) mit Rechnungsanschrift.
+export function searchManualInvoiceCustomers(q) {
+  return apiFetch(`/admin/manual-invoices/customers?q=${encodeURIComponent(String(q || ""))}`, { auth: true });
+}
+
+// GET /admin/manual-invoices/drafts — offene Entwürfe.
+export function listManualInvoiceDrafts() {
+  return apiFetch(`/admin/manual-invoices/drafts?limit=100`, { auth: true });
+}
+
+// POST /admin/manual-invoices/drafts — Entwurf anlegen (vollständige Fassung).
+export function createManualInvoiceDraft(body) {
+  return apiFetch(`/admin/manual-invoices/drafts`, { method: "POST", auth: true, body: JSON.stringify(body) });
+}
+
+// GET /admin/manual-invoices/drafts/:id — Entwurf mit Serversummen und Ausstellungssperren.
+export function getManualInvoiceDraft(id) {
+  return apiFetch(`/admin/manual-invoices/drafts/${encodeURIComponent(id)}`, { auth: true });
+}
+
+// PUT /admin/manual-invoices/drafts/:id — vollständige Fassung + revision (veraltete Fassung → 409).
+export function updateManualInvoiceDraft(id, body) {
+  return apiFetch(`/admin/manual-invoices/drafts/${encodeURIComponent(id)}`, { method: "PUT", auth: true, body: JSON.stringify(body) });
+}
+
+// DELETE /admin/manual-invoices/drafts/:id?revision=N — offenen Entwurf verwerfen.
+export function deleteManualInvoiceDraft(id, revision) {
+  return apiFetch(`/admin/manual-invoices/drafts/${encodeURIComponent(id)}?revision=${encodeURIComponent(revision)}`, {
+    method: "DELETE", auth: true,
+  });
+}
+
+// GET /admin/manual-invoices/drafts/:id/preview — PDF „Entwurf – keine Rechnung" (Binärantwort, kein Schreibzugriff).
+export function getManualInvoicePreview(id) {
+  return apiFetch(`/admin/manual-invoices/drafts/${encodeURIComponent(id)}/preview`, { auth: true });
+}
+
+// POST /admin/manual-invoices/drafts/:id/issue — bewusst ausstellen. Der Body trägt NUR die gesehene Fassung und die
+// ausdrückliche Bestätigung; ein Doppelklick liefert serverseitig dieselbe Rechnung (alreadyIssued).
+export function issueManualInvoiceDraft(id, revision) {
+  return apiFetch(`/admin/manual-invoices/drafts/${encodeURIComponent(id)}/issue`, {
+    method: "POST", auth: true, body: JSON.stringify({ revision, confirm: true }),
+  });
+}
+
+// POST /admin/invoices/:id/reversal-record — Storno vermerken (nur manuelle Rechnungen; der Stornobeleg entsteht
+// außerhalb, vermerkt werden Nummer, Datum, Begründung und freigebende Person).
+export function recordInvoiceReversal(id, body) {
+  return apiFetch(`/admin/invoices/${encodeURIComponent(id)}/reversal-record`, {
+    method: "POST", auth: true, body: JSON.stringify({ ...body, confirm: true }),
+  });
+}

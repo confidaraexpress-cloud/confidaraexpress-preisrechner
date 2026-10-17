@@ -1,10 +1,17 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { AdminBackLink } from "../../components/admin/AdminBackLink";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/StateView";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
-import { getAdminInvoice, markAdminInvoicePaid, generateAdminInvoiceDocument, sendAdminInvoiceEmail, resendAdminInvoiceEmail } from "../../api/adminApi";
+import { getAdminInvoice, markAdminInvoicePaid, generateAdminInvoiceDocument, sendAdminInvoiceEmail, resendAdminInvoiceEmail, recordInvoiceReversal } from "../../api/adminApi";
+import { Field } from "../../components/ui/Field";
+import { DateField } from "../../components/admin/DateField";
+// Auftrag 2 / P1: manuell erstellte Rechnungen — Herkunft, Stornovermerk, Texte ohne automatische E-Mail.
+import {
+  MANUAL_INVOICE_TEXT as MI, EMPTY_REVERSAL_FORM, berlinToday, cancellationInfo, isCancelledInvoice, isManualInvoice,
+  reversalError, reversalPayload,
+} from "../../utils/manualInvoiceView.mjs";
 import { money } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import { downloadAdminInvoicePdf, fetchAdminInvoicePdf } from "../../utils/downloadInvoicePdf";
@@ -31,6 +38,7 @@ import {
   emailState,
   invoiceDetailError,
   invoiceModeMeta,
+  invoiceSourceMeta,
   isInvoiceOverdue,
   isProductiveInvoice,
   linkedShipment,
@@ -134,6 +142,16 @@ export default function AdminInvoiceDetailPage() {
   const [mailBusy, setMailBusy] = useState(false);
   const [mailMsg, setMailMsg] = useState(null);
 
+  // Auftrag 2 / P1: Meldung nach dem Ausstellen (aus dem Editor) und Stornovermerk.
+  const location = useLocation();
+  const issuedNoticeText = location.state && typeof location.state.manualInvoiceNotice === "string"
+    ? location.state.manualInvoiceNotice : "";
+  const [reversalOpen, setReversalOpen] = useState(false);
+  const [reversalBusy, setReversalBusy] = useState(false);
+  const [reversalForm, setReversalForm] = useState(EMPTY_REVERSAL_FORM);
+  const [reversalErrors, setReversalErrors] = useState({});
+  const [reversalMsg, setReversalMsg] = useState(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -164,6 +182,7 @@ export default function AdminInvoiceDetailPage() {
     setGenOpen(false); setDocMsg(null);
     setMailOpen(false); setMailMsg(null);
     setPreviewOpen(false);
+    setReversalOpen(false); setReversalMsg(null); setReversalErrors({});
   }, [id]);
 
   // Rückweg zur Herkunft (UX-Paket 2), sonst zur Liste.
@@ -225,6 +244,10 @@ export default function AdminInvoiceDetailPage() {
   const recipient = snapshotRecipient(inv);
   const account = currentAccount(inv);
   const shipment = linkedShipment(inv);
+  const manual = isManualInvoice(inv);
+  const cancelled = isCancelledInvoice(inv);
+  const storno = cancellationInfo(inv);
+  const source = invoiceSourceMeta(inv);
   const number = dash(invoiceNoOf(inv));
   const subline = `Rechnung ${number} · #${dash(idOf(inv))}`;
 
@@ -319,6 +342,41 @@ export default function AdminInvoiceDetailPage() {
     }
   };
 
+  // ── Auftrag 2 / P1: Storno vermerken (nur manuelle Rechnungen) ──
+  const openReversal = () => {
+    setReversalMsg(null);
+    setReversalErrors({});
+    setReversalForm({ ...EMPTY_REVERSAL_FORM, cancellationDate: berlinToday() });
+    setReversalOpen(true);
+  };
+  const setReversalField = (key, value) => setReversalForm((p) => ({ ...p, [key]: value }));
+  const confirmReversal = async () => {
+    if (reversalBusy) return;
+    const geprueft = reversalPayload(reversalForm, { paid: status.kind === "paid" });
+    if (!geprueft.ok) { setReversalErrors(geprueft.errors); return; }
+    setReversalBusy(true);
+    setReversalErrors({});
+    try {
+      const r = await recordInvoiceReversal(id, geprueft.body);
+      let d = {};
+      try { d = await r.json(); } catch { d = {}; }
+      if (!r.ok) {
+        if (r.status === 401 || r.status === 403) return;
+        const e = reversalError(r.status, d);
+        setReversalErrors(e.fieldErrors || {});
+        setReversalMsg({ type: "error", text: e.text });
+        return;
+      }
+      setReversalOpen(false);
+      setReversalMsg({ type: "success", text: MI.reversalDone });
+      load();
+    } catch {
+      setReversalMsg({ type: "error", text: MI.failed });
+    } finally {
+      setReversalBusy(false);
+    }
+  };
+
   return (
     <div className="adm-page">
       {/* 1) Kopfbereich — derselbe Seitenkopf wie in den Adminlisten: Identität
@@ -341,10 +399,16 @@ export default function AdminInvoiceDetailPage() {
           <>
             <span className={`badge ${status.cls}`}>{status.label}</span>
             <span className={`badge ${mode.badge || "badge-blue"}`}>{mode.label}</span>
+            {source.manual && <span className={`badge ${source.badge}`}>{source.label}</span>}
             {!productive && <span className="adm-chip">Nicht zahlungswirksam</span>}
           </>
         )}
       />
+
+      {issuedNoticeText && <Alert msg={{ type: "success", text: issuedNoticeText }} />}
+      {cancelled && (
+        <p className="adm-nonproductive-note adm-head-note" role="note" id="adm-inv-cancelled-note">{MI.cancelledNote}</p>
+      )}
 
       {!productive && (
         <p className="adm-nonproductive-note adm-head-note" role="note">
@@ -425,7 +489,7 @@ export default function AdminInvoiceDetailPage() {
                 </Link>
               </div>
             ) : (
-              <p className="adm-addr-note">Kein verknüpftes Kundenkonto.</p>
+              <p className="adm-addr-note">{manual ? MI.noAccountExternal : "Kein verknüpftes Kundenkonto."}</p>
             )}
           </div>
         </div>
@@ -453,7 +517,7 @@ export default function AdminInvoiceDetailPage() {
                 </div>
               </>
             ) : (
-              <p className="adm-addr-note">Keine Sendung verknüpft.</p>
+              <p className="adm-addr-note">{manual ? MI.noShipment : "Keine Sendung verknüpft."}</p>
             )}
           </div>
         </div>
@@ -564,6 +628,36 @@ export default function AdminInvoiceDetailPage() {
           </div>
         </details>
 
+        {/* 8b) Auftrag 2 / P1: Storno — nur manuell erstellte Rechnungen. Der Stornobeleg entsteht außerhalb;
+            vermerkt wird er hier, danach ist die Rechnung keine offene Forderung mehr. */}
+        {manual && (
+          <div className="adm-card" id="adm-inv-reversal">
+            <div className="adm-card-head">{MI.reversalTitle}</div>
+            <div className="adm-card-body">
+              <Alert msg={reversalMsg} />
+              {storno ? (
+                <KV items={[
+                  ["Stornobeleg", <span className="adm-mono">{dash(storno.documentNumber)}</span>],
+                  ["Belegdatum", fmtDate(storno.date)],
+                  ["Begründung", dash(storno.reason)],
+                  ["Freigegeben durch", dash(storno.approvedBy)],
+                  ["Vermerkt am", fmtDate(storno.recordedAt)],
+                ]} />
+              ) : (
+                <>
+                  <p className="adm-support-hint" style={{ marginTop: 0 }}>{MI.reversalHint}</p>
+                  <div className="adm-support">
+                    <button type="button" id="adm-inv-reversal-open" className="btn btn-outline btn-sm adm-irreversible-action"
+                      onClick={openReversal} disabled={reversalBusy}>
+                      {MI.reversalButton}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* 9) Adminaktionen */}
         <div className="adm-card">
           <div className="adm-card-head">Adminaktionen</div>
@@ -630,7 +724,7 @@ export default function AdminInvoiceDetailPage() {
           title={doc.failed ? "Rechnungsdokument erneut erzeugen?" : "Rechnungsdokument erzeugen?"}
           text={`Erzeugt das unveränderliche Rechnungs-PDF serverseitig${doc.failed ? " neu (Wiederholung nach Fehlschlag)" : ""}. Es entsteht keine neue Rechnung und keine neue Rechnungsnummer; ein bereits fertiges Dokument wird nicht überschrieben.`}
           subline={subline}
-          note={DOCUMENT_GENERATE.note}
+          note={manual ? MI.documentNoteManual : DOCUMENT_GENERATE.note}
           confirmLabel={doc.failed ? "Erneut erzeugen" : "Erzeugen"}
           busy={docBusy}
           busyLabel="Wird erzeugt…"
@@ -644,7 +738,9 @@ export default function AdminInvoiceDetailPage() {
           title={mailKind === "resend" ? "Rechnung erneut per E-Mail senden?" : "Rechnung per E-Mail senden?"}
           text={mailKind === "resend"
             ? "Die Rechnung wurde bereits versendet. Möchten Sie dasselbe unveränderte Rechnungsdokument erneut senden?"
-            : "Sendet die Rechnung mit dem unveränderten, gespeicherten PDF-Dokument an die hinterlegte Kunden-E-Mail."}
+            : manual
+              ? `Sendet die Rechnung mit dem unveränderten, gespeicherten PDF-Dokument an ${recipient.email || "die Empfänger-E-Mail dieser Rechnung"}.`
+              : "Sendet die Rechnung mit dem unveränderten, gespeicherten PDF-Dokument an die hinterlegte Kunden-E-Mail."}
           subline={subline}
           note="Die Aktion wird im Protokoll festgehalten. Es entsteht keine neue Rechnung und keine neue Rechnungsnummer."
           confirmLabel={mailKind === "resend" ? "Erneut senden" : "Senden"}
@@ -661,7 +757,52 @@ export default function AdminInvoiceDetailPage() {
           fetchPdf={() => fetchAdminInvoicePdf(id, invoiceNoOf(inv))}
           onDownload={() => downloadAdminInvoicePdf(id, invoiceNoOf(inv))}
           onClose={() => setPreviewOpen(false)}
+          printable={manual}
         />
+      )}
+
+      {reversalOpen && (
+        <ConfirmDialog
+          title={MI.reversalDialogTitle}
+          text={MI.reversalDialogText}
+          subline={subline}
+          note={MI.reversalHint}
+          confirmLabel={MI.reversalConfirm}
+          irreversible
+          busy={reversalBusy}
+          busyLabel="Wird vermerkt…"
+          confirmId="adm-inv-reversal-confirm"
+          onCancel={() => { if (!reversalBusy) setReversalOpen(false); }}
+          onConfirm={confirmReversal}
+        >
+          <Field
+            id="adm-rev-number" label="Nummer des Stornobelegs" required maxLength={60}
+            value={reversalForm.externalDocumentNumber} onChange={(v) => setReversalField("externalDocumentNumber", v)}
+            error={reversalErrors.externalDocumentNumber}
+          />
+          <DateField
+            id="adm-rev-date" label="Datum des Stornobelegs" required max={berlinToday()}
+            value={reversalForm.cancellationDate} onChange={(v) => setReversalField("cancellationDate", v)}
+            invalid={!!reversalErrors.cancellationDate}
+          />
+          {reversalErrors.cancellationDate && <p className="field-error" role="alert">{reversalErrors.cancellationDate}</p>}
+          <Field
+            id="adm-rev-reason" as="textarea" rows={2} label="Begründung" required maxLength={300}
+            value={reversalForm.reason} onChange={(v) => setReversalField("reason", v)} error={reversalErrors.reason}
+          />
+          <Field
+            id="adm-rev-approved" label="Freigegeben durch (zweite Person)" required maxLength={120}
+            value={reversalForm.approvedBy} onChange={(v) => setReversalField("approvedBy", v)} error={reversalErrors.approvedBy}
+          />
+          {status.kind === "paid" && (
+            <label className="adm-mi-radio" htmlFor="adm-rev-paid-ack">
+              <input type="checkbox" id="adm-rev-paid-ack" checked={reversalForm.acknowledgePaid === true}
+                onChange={(e) => setReversalField("acknowledgePaid", e.target.checked)} />
+              <span>{MI.reversalPaidAck}</span>
+            </label>
+          )}
+          {reversalErrors.acknowledgePaid && <p className="field-error" role="alert">{reversalErrors.acknowledgePaid}</p>}
+        </ConfirmDialog>
       )}
     </div>
   );

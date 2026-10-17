@@ -56,6 +56,8 @@ const AdminLegalDraftsPage = React.lazy(() => import("./pages/admin/AdminLegalDr
 // Geschützte Seitenvorschau der künftigen Rechtsseiten — öffentlicher Rahmen, nur Admins.
 const LegalPreviewPage = React.lazy(() => import("./pages/LegalPreviewPage"));
 const AdminInvoiceDetailPage = React.lazy(() => import("./pages/admin/AdminInvoiceDetailPage"));
+// Auftrag 2 / P1: „Neue Rechnung erstellen" — Entwurf, Vorschau, bewusstes Ausstellen.
+const AdminManualInvoicePage = React.lazy(() => import("./pages/admin/AdminManualInvoicePage"));
 const AdminCancellationRequestsPage = React.lazy(() => import("./pages/admin/AdminCancellationRequestsPage"));
 const AdminCancellationRequestDetailPage = React.lazy(() => import("./pages/admin/AdminCancellationRequestDetailPage"));
 const AdminSupportRequestsPage = React.lazy(() => import("./pages/admin/AdminSupportRequestsPage"));
@@ -188,6 +190,7 @@ export default function App() {
           <Route path="/admin/invoices/backfill" element={<AdminBackfillPage />} />
           <Route path="/admin/legal-drafts" element={<AdminLegalDraftsPage />} />
           <Route path="/admin/invoices/:id" element={<AdminInvoiceDetailPage />} />
+          <Route path="/admin/invoices/manual/:draftId" element={<AdminManualInvoicePage />} />
           <Route path="/admin/cancellation-requests"     element={<AdminCancellationRequestsPage />} />
           <Route path="/admin/cancellation-requests/:id" element={<AdminCancellationRequestDetailPage />} />
           {/* Package C: Buchungsklärung — ungeklärte Buchungsvorgänge beider Anbieter. */}

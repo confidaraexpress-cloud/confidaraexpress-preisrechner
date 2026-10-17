@@ -78,6 +78,8 @@ export function isTestInvoice(inv) {
 // → [tone, label]
 export function paymentStatus(inv) {
   if (isTestInvoice(inv)) return [TONE.NEUTRAL, "Testrechnung"];
+  // Auftrag 2 / P1: Storno vermerkt — keine Forderung mehr, die Rechnung bleibt als Beleg abrufbar.
+  if (inv && inv.is_cancelled === true) return [TONE.NEUTRAL, "Storniert"];
   if (inv && inv.status === "paid") return [TONE.POSITIVE, "Bezahlt"];
   if (isOverdueInvoice(inv)) return [TONE.CRITICAL, "Überfällig"];
   return [TONE.ATTENTION, "Offen"];
@@ -211,6 +213,8 @@ export function matchesInvoiceFilter(inv, filterValue) {
     // „Überfällig" und „Bezahlt" schließen sie bereits von selbst aus: is_overdue kommt aus
     // derselben Forderungsdefinition, und bezahlt ist sie nie.
     if (isTestInvoice(inv)) return false;
+    // Auftrag 2 / P1: eine stornierte Rechnung ist keine offene Forderung (Server: openReceivableSql).
+    if (inv.is_cancelled === true) return false;
     return inv.status !== "paid"; // schließt überfällige mit ein (Teilmenge von „offen")
   }
   return true;

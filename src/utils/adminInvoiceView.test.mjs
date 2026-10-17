@@ -555,8 +555,9 @@ test("26 — der zentrale ConfirmDialog erfüllt Fokus, Escape und Doppelklicksc
   assert.match(dialogSrc, /aria-labelledby=\{titleId\}/);
   assert.match(dialogSrc, /aria-describedby=\{descId\}/);
   assert.equal((dialogSrc.match(/disabled=\{busy\}/g) || []).length, 2, "beide Buttons sind während des Requests gesperrt");
-  // Alle drei mutierenden Aktionen der Detailseite nutzen diesen einen Dialog.
-  assert.equal((detailSrc.match(/<ConfirmDialog\b/g) || []).length, 3, "Zahlung, Dokument und E-Mail nutzen den zentralen Dialog");
+  // Alle mutierenden Aktionen der Detailseite nutzen diesen einen Dialog — seit Auftrag 2 / P1 vier: Zahlung,
+  // Dokument, E-Mail und der Stornovermerk einer manuell erstellten Rechnung.
+  assert.equal((detailSrc.match(/<ConfirmDialog\b/g) || []).length, 4, "Zahlung, Dokument, E-Mail und Storno nutzen den zentralen Dialog");
   assert.equal(/adm-modal-overlay/.test(detailSrc), false, "kein handgebautes Modal mehr auf der Seite");
 });
 
@@ -641,7 +642,9 @@ test("Auftrag 1 A — „Rechnungsdokument erzeugen“ sagt die Wahrheit über d
   assert.doesNotMatch(detailSrc, />\s*PDF (erneut )?erzeugen\s*</, "der mehrdeutige Knopfname ist zurück");
   assert.match(detailSrc, /\{DOCUMENT_GENERATE\.button\}/);
   assert.match(detailSrc, /\{DOCUMENT_GENERATE\.retryButton\}/);
-  assert.match(detailSrc, /note=\{DOCUMENT_GENERATE\.note\}/);
+  // Auftrag 2 / P1: für eine MANUELL erstellte Rechnung gilt der Wortlaut ohne automatischen Versand — die Mailregel
+  // sendet für sie nie (Backend lib/invoiceMailPolicy.js). Für jede andere Rechnung bleibt es bei DOCUMENT_GENERATE.note.
+  assert.match(detailSrc, /note=\{manual \? MI\.documentNoteManual : DOCUMENT_GENERATE\.note\}/);
   // Die Logik bleibt: derselbe Aufruf, derselbe Ergebnis- und Schließpfad.
   assert.match(detailSrc, /const r = await generateAdminInvoiceDocument\(id\);/);
   assert.match(detailSrc, /setDocMsg\(documentOutcomeMessage\(d\.outcome\)\);/);

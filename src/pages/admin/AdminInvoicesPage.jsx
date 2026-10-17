@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
-import { listAdminInvoices } from "../../api/adminApi";
+import { listAdminInvoices, listManualInvoiceDrafts } from "../../api/adminApi";
+import { MANUAL_INVOICE_TEXT, formatCents } from "../../utils/manualInvoiceView.mjs";
 import { money } from "../../utils/formatters";
 import { selectListTotal, selectListHasMore } from "../../utils/adminOverview.mjs";
 import {
@@ -15,6 +16,7 @@ import {
   invoiceEmptyState,
   invoiceMarkers,
   invoiceModeMeta,
+  invoiceSourceMeta,
   isInvoiceOverdue,
   isProductiveInvoice,
   paymentStatus,
@@ -76,6 +78,7 @@ const detailPath = (id) => `/admin/invoices/${encodeURIComponent(id)}`;
 // sie wird NIE gekürzt, weil das ihre Eindeutigkeit zerstören würde.
 function InvoiceCell({ row }) {
   const mode = invoiceModeMeta(row);
+  const source = invoiceSourceMeta(row);
   const id = idOf(row);
   const number = dash(invoiceNoOf(row));
   return (
@@ -86,6 +89,7 @@ function InvoiceCell({ row }) {
       <span className="adm-inv-meta">
         {fmtDate(createdOf(row))}
         {mode.badge && <span className={`badge ${mode.badge}`}>{mode.short}</span>}
+        {source.manual && <span className={`badge ${source.badge}`} title={source.label}>{source.short}</span>}
       </span>
     </div>
   );
@@ -139,6 +143,51 @@ function MarkerCell({ row }) {
     <span className="adm-inv-markers">
       {markers.map((m) => <span key={m.key} className={`badge ${m.cls}`}>{m.label}</span>)}
     </span>
+  );
+}
+
+// ── Auftrag 2 / P1: offene Entwürfe manueller Rechnungen ────────────────────────────────────────────
+// Erscheint nur, wenn es Entwürfe gibt — ein Entwurf ist keine Rechnung und steht deshalb NICHT in der
+// Forderungsliste darunter. Betrag = Serverrechnung der gespeicherten Fassung.
+function ManualInvoiceDrafts() {
+  const [drafts, setDrafts] = useState(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let aus = false;
+    (async () => {
+      try {
+        const r = await listManualInvoiceDrafts();
+        if (!r.ok) { if (!aus && r.status !== 401 && r.status !== 403) setError(MANUAL_INVOICE_TEXT.draftsError); return; }
+        const d = await r.json().catch(() => ({}));
+        if (!aus) setDrafts(Array.isArray(d.drafts) ? d.drafts : []);
+      } catch { if (!aus) setError(MANUAL_INVOICE_TEXT.draftsError); }
+    })();
+    return () => { aus = true; };
+  }, []);
+  if (error) return <p className="adm-support-hint" role="alert">{error}</p>;
+  if (!drafts || drafts.length === 0) return null;
+  return (
+    <section className="adm-card adm-mi-drafts" aria-labelledby="mi-drafts-h" id="mi-drafts">
+      <h2 className="adm-card-title" id="mi-drafts-h">{MANUAL_INVOICE_TEXT.draftsTitle}</h2>
+      <ul className="adm-mi-draft-list">
+        {drafts.map((d) => (
+          <li key={d.id} className="adm-mi-draft" data-draft={d.id}>
+            <div className="adm-mi-draft-main">
+              <span className="adm-inv-cust-name">{d.recipientCompany || "Ohne Empfänger"}</span>
+              <span className="adm-inv-cust-no">
+                {d.recipientKind === "external" ? MANUAL_INVOICE_TEXT.externalRecipient : (d.customerNumber || "")}
+              </span>
+            </div>
+            <div className="adm-mi-draft-facts">
+              <span>{d.positionCount === 1 ? "1 Position" : `${d.positionCount} Positionen`}</span>
+              <span className="adm-mi-draft-sum">{Number.isFinite(d.grossCents) ? formatCents(d.grossCents) : "—"}</span>
+              <span>geändert {fmtDate(d.updatedAt)}</span>
+            </div>
+            <Link className="btn btn-outline btn-sm" to={`/admin/invoices/manual/${encodeURIComponent(d.id)}`}>Bearbeiten</Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -214,9 +263,14 @@ export default function AdminInvoicesPage() {
         actions={(
           <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
           Aktualisieren
-        </button></>
+        </button>
+          <Link id="adm-new-invoice" className="btn btn-primary btn-sm" to="/admin/invoices/manual/new">
+            {MANUAL_INVOICE_TEXT.newButton}
+          </Link></>
         )}
       />
+
+      <ManualInvoiceDrafts />
 
       <form className="adm-filters" onSubmit={(e) => { e.preventDefault(); applyFilters(); }}>
         <div className="adm-filter-field">

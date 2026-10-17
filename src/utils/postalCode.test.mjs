@@ -79,6 +79,12 @@ test("postalCodeExample/inputMode/hasPostalCode liefern sinnvolle Werte", () => 
   assert.equal(postalCodeExample("CN"), "266033"); // libaddressinput zipex[0] für CN
   assert.equal(postalCodeInputMode("DE"), "numeric"); // reine Ziffern
   assert.equal(postalCodeInputMode("GB"), "text");    // alphanumerisch
+  // Pflicht-Bindestrich (Auftrag 1, P5): die iOS-Zifferntastatur hat keinen Bindestrich.
+  assert.equal(postalCodeInputMode("PL"), "text");
+  assert.equal(postalCodeInputMode("PT"), "text");
+  // Optionales Leerzeichen: die Ziffern allein sind gültig, die Zifferntastatur bleibt.
+  assert.equal(postalCodeInputMode("CZ"), "numeric");
+  assert.equal(postalCodeInputMode("AT"), "numeric");
   assert.equal(hasPostalCode("DE"), true);
   assert.equal(hasPostalCode("AE"), false);           // kein PLZ-System → Feld optional/ausblendbar
 });

@@ -86,14 +86,18 @@ export function postalCodeExample(country) {
   return rule && rule.example ? rule.example : "";
 }
 
-// "numeric" when the pattern accepts digits/spaces/hyphens only; otherwise "text".
+// "numeric" when the pattern accepts digits (and optional spaces) only; otherwise "text".
+// A REQUIRED hyphen (PL 00-000, PT 0000-000) gives "text": the iOS digit keypad has no hyphen,
+// so a valid code could not be typed there (Auftrag 1, P5, 2026-10-17). An optional space
+// (CZ "100 00") stays numeric — the digits alone are valid.
 // Regex escapes like \d/\w contain a Latin letter in the pattern STRING — strip
 // backslash-escapes first so e.g. "\d{5}" (DE) is correctly detected as numeric.
 export function postalCodeInputMode(country) {
   const rule = getPostalCodeRule(country);
   if (!rule || !rule.pattern) return "text";
   const stripped = rule.pattern.replace(/\\[a-zA-Z]/g, "");
-  return /[A-Za-z]/.test(stripped) ? "text" : "numeric";
+  if (/[A-Za-z]/.test(stripped)) return "text";
+  return /-(?![?])/.test(stripped) ? "text" : "numeric";
 }
 
 export function postalCodeMaxLength() {

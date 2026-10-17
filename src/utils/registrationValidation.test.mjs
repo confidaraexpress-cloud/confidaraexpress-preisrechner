@@ -189,7 +189,9 @@ test("16 — Browser-Autocomplete ist sinnvoll gesetzt", () => {
   assert.match(registerFormSrc, /autoComplete="organization"/,  "Firmenname → organization");
   assert.match(registerFormSrc, /autoComplete="name"/,          "Ansprechpartner → name");
   assert.match(registerFormSrc, /autoComplete="email"/,         "E-Mail → email");
-  assert.match(registerFormSrc, /autoComplete="street-address"/);
+  // Straße und Ort sind Vorschlagsfelder: ihr Token setzt AddressSuggestInput zentral
+  // (Auftrag 1, P5, 2026-10-17 — vorher street-address, das Chromes Popup über die Liste legte).
+  assert.doesNotMatch(registerFormSrc, /autoComplete="street-address"|autoComplete="address-level2"/);
   assert.match(registerFormSrc, /autoComplete="postal-code"/);
   const newPw = registerFormSrc.match(/autoComplete="new-password"/g) || [];
   assert.equal(newPw.length >= 2, true, "beide Passwortfelder nutzen new-password");

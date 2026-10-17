@@ -8,6 +8,7 @@ import {
   parseEuroCents, formatCentsInput, parseQuantity, parseDiscount, emptyDraftForm, draftToForm, formToPayload,
   applyCustomerToForm, formKeyOf, issueAvailability, blockerText, manualInvoiceError, reversalPayload, reversalError,
   isManualInvoice, isCancelledInvoice, cancellationInfo, issuedNotice, countryOptions, MANUAL_INVOICE_TEXT,
+  stornoPayload,
 } from "./manualInvoiceView.mjs";
 import { paymentStatus as adminPaymentStatus, customerCell, payability, invoiceSourceMeta } from "./adminInvoiceView.mjs";
 import { paymentStatus as customerPaymentStatus, matchesInvoiceFilter } from "./customerInvoiceView.mjs";
@@ -91,7 +92,7 @@ test("5 — Ausstellen nur aus der gespeicherten Fassung und ohne Serversperre",
   assert.equal(issueAvailability({ draft: { id: 1, issueBlockers: [] }, dirty: true }).allowed, false);
   assert.deepEqual(issueAvailability({ draft: { id: 1, issueBlockers: [] }, dirty: false }), { allowed: true, reasons: [] });
   const gesperrt = issueAvailability({ draft: { id: 1, issueBlockers: [
-    { code: "MANUAL_INVOICE_ISSUE_DISABLED", message: "Das Ausstellen manueller Rechnungen ist nicht freigeschaltet." },
+    { code: "ISSUER_LEGAL_FORM_UNCONFIRMED", message: "Die Rechtsform des Ausstellers trifft nicht zu.", fields: ["issuer.legalForm"] },
     { code: "ISSUER_NOT_READY", message: "Die Ausstellerdaten sind unvollständig.", missingFields: ["issuer.street"], placeholderFields: ["bank.name"] },
   ] }, dirty: false });
   assert.equal(gesperrt.allowed, false);
@@ -125,6 +126,23 @@ test("7 — Stornovermerk: Pflichtangaben, Bestätigung bei bezahlter Rechnung, 
   assert.ok(bezahlt.errors.acknowledgePaid);
   assert.deepEqual(reversalError(409, { code: "REVERSAL_NUMBER_TAKEN" }).fieldErrors, { externalDocumentNumber: "Diese Stornobelegnummer ist bereits vermerkt." });
   assert.match(reversalError(409, { code: "INVOICE_ALREADY_CANCELLED" }).text, /bereits ein Storno/);
+});
+
+test("7b — Stornorechnung (Schritt 3): Pflichtangaben, Erstattungsbestätigung, Herkunft des Belegs", () => {
+  assert.deepEqual(Object.keys(stornoPayload({}).errors).sort(), ["approvedBy", "reason"]);
+  assert.deepEqual(stornoPayload({ reason: " Leistung entfallen ", approvedBy: " E. Nordmann " }).body,
+    { reason: "Leistung entfallen", approvedBy: "E. Nordmann", acknowledgePaid: false });
+  assert.ok(stornoPayload({ reason: "x", approvedBy: "y" }, { paid: true }).errors.acknowledgePaid);
+  assert.equal(stornoPayload({ reason: "x", approvedBy: "y", acknowledgePaid: true }, { paid: true }).body.acknowledgePaid, true);
+  const intern = cancellationInfo({ is_cancelled: true, cancellation_document_number: "CE-ST26-00001",
+    cancellation_document_source: "internal", cancellation_document_available: true });
+  assert.deepEqual([intern.internal, intern.documentAvailable, intern.documentNumber], [true, true, "CE-ST26-00001"]);
+  const extern = cancellationInfo({ is_cancelled: true, cancellation_document_number: "ST-1", cancellation_document_source: "external" });
+  assert.deepEqual([extern.internal, extern.documentAvailable], [false, false]);
+  assert.equal(MANUAL_INVOICE_TEXT.stornoDone("CE-ST26-00001"), "Stornorechnung CE-ST26-00001 erstellt. Es wurde keine E-Mail versendet.");
+  // Kein Freigabeschalter mehr: der Editor kennt ihn nicht.
+  const editor = lies("../pages/admin/AdminManualInvoicePage.jsx");
+  assert.ok(!/issueEnabled/.test(editor), "der Editor liest den entfallenen Schalter");
 });
 
 test("8 — Listen- und Kundensicht: Herkunft, externer Empfänger, Storniert ohne Zahlungsaktion", () => {
@@ -178,7 +196,7 @@ test("9 — Quelltextverträge: Route, Knopf, keine Summenrechnung, keine E-Mail
   // API: die vereinbarten Pfade, keine zweite Abstraktion.
   const api = lies("../api/adminApi.js");
   for (const pfad of ["/admin/manual-invoices/status", "/admin/manual-invoices/customers?q=", "/admin/manual-invoices/drafts",
-    "/issue", "/preview", "/reversal-record"]) {
+    "/issue", "/preview", "/reversal-record", "/reversal-invoice"]) {
     assert.ok(api.includes(pfad), `Pfad fehlt im API-Vertrag: ${pfad}`);
   }
   assert.match(api, /JSON\.stringify\(\{ revision, confirm: true \}\)/);

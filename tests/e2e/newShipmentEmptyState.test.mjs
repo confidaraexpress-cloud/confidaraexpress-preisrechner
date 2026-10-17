@@ -207,8 +207,7 @@ async function adressenFuellen(page) {
   await page.fill("#ns-s-phone", "+49301234567");
   // Über die id: der Ortsplatzhalter folgt seit 2026-10-15 dem Land (kein festes „Zürich“ mehr).
   await page.fill("#ns-r-city", "Hamburg");
-  const plz = page.locator('#ns-r-zip, input[placeholder="26133"]').last();
-  if (await plz.count()) await plz.fill("20457");
+  await page.fill("#ns-r-zip", "20457");
   await page.waitForTimeout(200);
   await fuelleSendungsangaben(page);
 }
@@ -252,15 +251,17 @@ test("S1 — „Neue Sendung“ startet vollständig leer (kein Profil, keine Ma
     // geprüft, nicht auf leer — und auch nicht gar nicht.
     assert.equal(f.packageCount, PACKAGE_COUNT_DEFAULT,
       `Paketanzahl ohne dokumentierte Vorbelegung: ${JSON.stringify(f.packageCount)}`);
-    assert.equal(f.phWeight, "z. B. 5");
-    assert.equal(f.phLength, "z. B. 30");
+    // Seit Auftrag 1 (P11) keine Beispielplatzhalter mehr — die Beschriftung steht im Feld.
+    assert.equal(f.phWeight, "");
+    assert.equal(f.phLength, "");
     // Absender: NICHT aus dem Profil.
     assert.equal(f.sCompany, "", "Firma kam automatisch aus dem Profil");
     assert.equal(f.sFirstName, "", "Vorname kam automatisch aus dem Profil");
     assert.equal(f.sLastName, "", "Nachname kam automatisch aus dem Profil");
     assert.equal(f.sStreet, "", "Straße kam automatisch aus dem Profil");
-    // Land: beide leer, „Land auswählen".
-    assert.equal(f.sCountry, "", "Absenderland ist vorausgewählt");
+    // Land: Absender Deutschland (Auftrag 1, P11 — der einzige Ursprung des Launch-Scopes, nicht
+    // das Land des Profils), Empfänger leer („Land auswählen").
+    assert.equal(f.sCountry, "DE", "Absenderland ist nicht Deutschland");
     assert.equal(f.rCountry, "", "Empfängerland ist vorausgewählt");
     assert.equal(f.angebote, 0);
     assert.deepEqual(fehler, []);
@@ -395,22 +396,25 @@ test("S6 — ohne vollständige Maße geht KEIN calculate-price hinaus", async (
     await page.fill("#ns-length", "");
     await page.waitForTimeout(200);
 
+    // Seit Auftrag 1 (P11) ist der Knopf bedienbar: der Klick sendet nichts, markiert die Länge
+    // und springt dorthin.
     const cta = page.locator("button", { hasText: "Angebote vergleichen" }).first();
-    assert.equal(await cta.isDisabled(), true, "der Knopf ist trotz fehlender Länge bedienbar");
-    // Auch ein erzwungener Klick darf nichts senden.
-    await cta.click({ force: true }).catch(() => {});
+    assert.equal(await cta.isDisabled(), false, "der Knopf ist wegen fehlender Angaben gesperrt");
+    await cta.click();
+    await page.waitForFunction(() => document.activeElement?.id === "ns-length", null, { timeout: 5000 });
+    assert.equal(await page.getAttribute("#ns-length", "aria-invalid"), "true");
     await page.waitForTimeout(400);
     assert.equal(calcBodies.length, 0, `es ging ein Request hinaus: ${JSON.stringify(calcBodies)}`);
 
-    // Länge ergänzen → jetzt erlaubt.
+    // Länge ergänzen → die Markierung verschwindet sofort.
     await page.fill("#ns-length", "30");
-    await page.waitForTimeout(200);
-    assert.equal(await cta.isDisabled(), false, "der Knopf bleibt trotz vollständiger Angaben gesperrt");
+    assert.equal(await page.getAttribute("#ns-length", "aria-invalid"), null, "die Markierung bleibt trotz Korrektur");
 
-    // Gegenprobe mit einem zweiten Feld: Höhe leeren.
+    // Gegenprobe mit einem zweiten Feld: Höhe leeren → sofort markiert, Klick sendet nichts.
     await page.fill("#ns-height", "");
-    await page.waitForTimeout(200);
-    assert.equal(await cta.isDisabled(), true, "fehlende Höhe sperrt nicht");
+    assert.equal(await page.getAttribute("#ns-height", "aria-invalid"), "true", "fehlende Höhe wird nicht markiert");
+    await cta.click();
+    await page.waitForTimeout(400);
     assert.equal(calcBodies.length, 0, "es ging doch ein Request hinaus");
     assert.deepEqual(fehler, []);
   } finally { await ctx.close(); }
@@ -498,10 +502,13 @@ test(`S9 — ${name}: kein horizontaler Überlauf, Felder und Hinweis lesbar`, a
       document.documentElement.scrollWidth - document.documentElement.clientWidth);
     assert.ok(ueberlauf <= 1, `horizontaler Überlauf: ${ueberlauf} px`);
 
-    // Der Hinweis am gesperrten Knopf ist sichtbar und erklärt, was fehlt.
+    // Seit Auftrag 1 (P11) ist der Knopf bedienbar: ein frisches Formular zeigt keinen Hinweis,
+    // der Klick markiert die Felder und der Sammelhinweis nennt, was fehlt.
+    assert.equal(await page.locator('[aria-invalid="true"]').count(), 0, "ein frisches Formular zeigt Fehler");
+    await page.locator("button", { hasText: "Angebote vergleichen" }).first().click();
+    await page.waitForSelector('[data-field][aria-invalid="true"]', { timeout: 5000 });
     const text = await page.evaluate(() => document.body.innerText);
-    assert.match(text, /Gewicht sowie Länge, Breite und Höhe/,
-      "der Hinweis zum unvollständigen Paket fehlt");
+    assert.match(text, /markierte Angabe/, "der Sammelhinweis fehlt");
     // Kein Feld ragt aus dem Bild.
     const zuBreit = await page.evaluate(() => {
       const w = document.documentElement.clientWidth;

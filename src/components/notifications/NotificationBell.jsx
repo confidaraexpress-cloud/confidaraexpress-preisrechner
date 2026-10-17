@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNotifications } from "../../context/NotificationsContext";
 import { NotificationPanel } from "./NotificationPanel";
+import { Icon, ICON_SIZE } from "../ui/Icon";
 import {
   badgeLabel, showBadge, badgeAriaLabel, notificationTarget,
 } from "../../utils/notificationsView.mjs";
@@ -12,14 +13,16 @@ import {
 // gemeinsamen Provider — es läuft also genau EINE Abfrageschleife pro Shell,
 // unabhängig davon, wie oft der Knopf gerendert wird.
 //
-// Seit dem Redesign (2026-10) ist der Einstieg ein TEXTknopf „Mitteilungen"
-// mit der Zahl ungelesener Meldungen — keine Glocke mehr. Der zugängliche Name
-// beginnt mit dem sichtbaren Wort (WCAG 2.5.3) und nennt die Zahl ausgeschrieben.
+// Auf dem Desktop ist der Einstieg der Textknopf „Mitteilungen" (Redesign
+// 2026-10) mit der Zahl ungelesener Meldungen. In der mobilen Topbar steht seit
+// der Betreiberentscheidung 2026-10-17 wieder das Glockensymbol; der Zähler sitzt
+// klein an der Glocke. Der zugängliche Name ist in beiden Fällen derselbe
+// („Mitteilungen, 3 ungelesen“) und nennt die Zahl ausgeschrieben.
 //
 // `variant` steuert nur die Optik des Knopfes:
-//   "overview" — Utility-Zeile der Übersicht
-//   "topbar"   — mobile Topbar (< 860 px)
-//   "page"     — Utility-Zeile der übrigen Desktop-Unterseiten
+//   "overview" — Utility-Zeile der Übersicht (Text)
+//   "topbar"   — mobile Topbar (< 860 px, Glockensymbol)
+//   "page"     — Utility-Zeile der übrigen Desktop-Unterseiten (Text)
 //
 // Das Öffnen des Fensters markiert NICHTS als gelesen und erledigt nichts.
 const KNOPF_TEXT = "Mitteilungen";
@@ -78,6 +81,9 @@ export function NotificationBell({ variant = "page", navigateTo }) {
 
   const label = badgeLabel(unread);
 
+  // aria-controls zeigt auf das Panel, solange es offen ist (es wird nur geöffnet gerendert).
+  const panelId = `ntf-panel-${useId().replace(/:/g, "")}`;
+
   return (
     <div className={`ntf-wrap ntf-wrap-${variant}`}>
       <button
@@ -87,10 +93,13 @@ export function NotificationBell({ variant = "page", navigateTo }) {
         onClick={toggle}
         aria-label={knopfName(unread)}
         aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
         aria-haspopup="dialog"
         title={badgeAriaLabel(unread)}
       >
-        <span className="ntf-bell-text">{KNOPF_TEXT}</span>
+        {variant === "topbar"
+          ? <Icon n="bell" s={ICON_SIZE.lg} />
+          : <span className="ntf-bell-text">{KNOPF_TEXT}</span>}
         {showBadge(unread) && (
           // aria-hidden: die Zahl steht bereits im zugänglichen Namen des
           // Knopfes — "9+" wäre als vorgelesener Text unbrauchbar.
@@ -106,7 +115,7 @@ export function NotificationBell({ variant = "page", navigateTo }) {
             aria-label="Benachrichtigungen schließen"
             tabIndex={-1}
           />
-          <NotificationPanel onClose={close} onSelect={handleSelect} />
+          <NotificationPanel id={panelId} onClose={close} onSelect={handleSelect} />
         </>
       )}
     </div>

@@ -256,7 +256,6 @@ export function RegisterForm({
           noResults={addressHelp.streetNoResults}
           hint={countryFirstHint(form.country) || undefined}
           placeholder="Musterstraße 12"
-          autoComplete="street-address"
           invalid={Boolean(errors.street)}
         />
         {errors.street && <span className="auth-field-error">{errors.street}</span>}
@@ -294,7 +293,6 @@ export function RegisterForm({
             onSelect={(item) => upd("city", cityFromSuggestion(item))}
             suggestions={addressHelp.cityOptions}
             placeholder={cityPlaceholder(form.country)}
-            autoComplete="address-level2"
             invalid={Boolean(errors.city)}
           />
           {errors.city && <span className="auth-field-error">{errors.city}</span>}

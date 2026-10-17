@@ -20,6 +20,7 @@ import {
   TRACKING_HINTS,
   TRACKING_LABELS,
   customerIdentity,
+  customerDetailFields,
   detailSections,
   isTestBooking,
   routeLabel,
@@ -259,6 +260,7 @@ export default function AdminShipmentDetailPage() {
   const s = data;
   const ident = shipmentIdentity(s);
   const cust = customerIdentity(s);
+  const kunde = customerDetailFields(s);
   const sections = detailSections(s);
   const emailDeliveries = sortDeliveries(emailDeliveriesOf(s));
   const [statusCls, statusLabel] = shipmentStatusMeta(statusOf(s));
@@ -429,8 +431,8 @@ export default function AdminShipmentDetailPage() {
             <div className="adm-card-head">Kunde</div>
             <div className="adm-card-body">
               <KV items={[
-                ["Firmenname", cust.known ? cust.primary : <span className="adm-muted">{cust.primary}</span>],
-                ["Kundennummer", cust.secondary || "—"],
+                ["Firmenname", kunde.companyMissing ? <span className="adm-muted">{kunde.company}</span> : kunde.company],
+                ["Kundennummer", kunde.number],
                 ["Ansprechpartner", dash(firstDefined(s.customer_name, s.customerName))],
               ]} />
               {userIdOf(s) != null && (

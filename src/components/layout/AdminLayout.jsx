@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { AdminSidebar } from "./AdminSidebar";
+import { AdminSidebar, ADMIN_NAV_ID } from "./AdminSidebar";
 import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
+import { Icon, ICON_SIZE } from "../ui/Icon";
 
 // Eigenständiger Adminbereich-Rahmen (Light-Theme, adm- Prefix, URL-basiertes
 // Routing). Kein Bezug zum State-basierten Kunden-Dashboard und keine
@@ -9,8 +10,10 @@ import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
 // <Outlet /> gerendert.
 //
 // Seit dem Redesign (2026-10) dieselbe Geometrie wie die Kunden-Shell: helle
-// Sidebar (248 px, Trennlinie statt Schatten), reine Textnavigation, mobile
-// Topbar mit dem Textknopf „Menü" statt eines Burger-Symbols.
+// Sidebar (248 px, Trennlinie statt Schatten), reine Textnavigation. Die mobile
+// Topbar trägt seit der Betreiberentscheidung 2026-10-17 wieder das
+// Hamburger-Symbol (statt des Textknopfs „Menü“) — mit unverändertem
+// zugänglichem Namen, aria-expanded und aria-controls auf den Drawer.
 export function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { pathname } = useLocation();
@@ -26,8 +29,11 @@ export function AdminLayout() {
             className="adm-topbar-burger"
             onClick={() => setSidebarOpen(true)}
             aria-label="Menü öffnen"
+            title="Menü öffnen"
+            aria-expanded={sidebarOpen}
+            aria-controls={ADMIN_NAV_ID}
           >
-            Menü
+            <Icon n="menu" s={ICON_SIZE.lg} />
           </button>
           <span className="adm-topbar-title">Adminbereich</span>
           <span className="adm-topbar-spacer" aria-hidden="true" />

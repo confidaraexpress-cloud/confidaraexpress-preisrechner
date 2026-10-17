@@ -14,6 +14,7 @@ import { paymentTermLabel } from "../../utils/paymentTerm.mjs";
 import { shipmentStatusMeta } from "../../utils/adminShipments";
 import {
   DOCUMENT_ERROR_NOTE,
+  DOCUMENT_GENERATE,
   EMAIL_ERROR_NOTE,
   INVOICE_DETAIL_ERROR,
   NON_PRODUCTIVE_NOTE,
@@ -490,12 +491,12 @@ export default function AdminInvoiceDetailPage() {
               )}
               {doc.status === "pending_document" && (
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => { setDocMsg(null); setGenOpen(true); }} disabled={docBusy}>
-                  PDF erzeugen
+                  {DOCUMENT_GENERATE.button}
                 </button>
               )}
               {doc.failed && (
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => { setDocMsg(null); setGenOpen(true); }} disabled={docBusy}>
-                  PDF erneut erzeugen
+                  {DOCUMENT_GENERATE.retryButton}
                 </button>
               )}
               {doc.status === "generating" && (
@@ -629,7 +630,7 @@ export default function AdminInvoiceDetailPage() {
           title={doc.failed ? "Rechnungsdokument erneut erzeugen?" : "Rechnungsdokument erzeugen?"}
           text={`Erzeugt das unveränderliche Rechnungs-PDF serverseitig${doc.failed ? " neu (Wiederholung nach Fehlschlag)" : ""}. Es entsteht keine neue Rechnung und keine neue Rechnungsnummer; ein bereits fertiges Dokument wird nicht überschrieben.`}
           subline={subline}
-          note="Die Aktion wird im Protokoll festgehalten. Es wird keine E-Mail versendet."
+          note={DOCUMENT_GENERATE.note}
           confirmLabel={doc.failed ? "Erneut erzeugen" : "Erzeugen"}
           busy={docBusy}
           busyLabel="Wird erzeugt…"

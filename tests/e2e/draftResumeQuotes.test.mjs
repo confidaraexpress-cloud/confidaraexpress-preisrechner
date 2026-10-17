@@ -307,12 +307,15 @@ test("Neue Sendung: Ablauf unverändert, bewusste Carrier-Auswahl bleibt erhalte
   await page.keyboard.press("Escape");
 
   const cta = ctaOf(page);
-  assert.equal(await cta.isDisabled(), true, "leeres Formular muss den CTA weiterhin sperren");
+  // Seit Auftrag 1 (P11): der Knopf ist bedienbar, ein leeres Formular sendet aber nichts.
+  assert.equal(await cta.isDisabled(), false, "der Knopf ist wegen fehlender Angaben gesperrt");
+  await cta.click();
+  await page.waitForSelector('[data-field][aria-invalid="true"]', { timeout: 5000 });
+  assert.equal(calls.length, 0, "ein leeres Formular hat eine Anfrage ausgelöst");
 
   // Absender UND Empfänger: seit „Neue Sendung startet leer" gibt es keinen
-  // Profil-Seed mehr, der Absender wäre sonst unvollständig und der CTA bliebe
-  // (korrekt) gesperrt. Die Sperre davor bleibt genau deshalb stehen — sie ist
-  // die eigentliche Aussage dieses Abschnitts.
+  // Profil-Seed mehr, der Absender wäre sonst unvollständig und der Klick sendete
+  // (korrekt) nichts. Genau das ist die Aussage des Abschnitts davor.
   await fuelleVersandformular(page);
 
   assert.equal(await cta.isDisabled(), false);
@@ -339,8 +342,12 @@ test("Unvollständiger Entwurf: keine Anfrage, Feld markiert, Hinweis sichtbar",
   const { page, calls } = await openApp({ formData: luecke });
   await resumeDraft(page);
 
-  assert.equal(await ctaOf(page).isDisabled(), true, "unvollständiger Entwurf darf nicht absendbar sein");
+  // Seit Auftrag 1 (P11) ist der Knopf bedienbar; ein fortgesetzter Entwurf markiert seine Lücke
+  // trotzdem sofort, und ein Klick sendet nichts.
+  assert.equal(await ctaOf(page).isDisabled(), false);
   assert.equal(await page.locator(".field-error").count(), 1, "fehlendes Feld muss sofort markiert sein");
+  await ctaOf(page).click();
+  await page.waitForFunction(() => document.activeElement?.id === "ns-r-city", null, { timeout: 5000 });
   const hinweis = await page.locator(".dft-save-status").first().textContent();
   assert.match(hinweis.trim(), /Empfänger – Stadt/, "Hinweis muss das fehlende Feld benennen");
   assert.equal(calls.length, 0, "ungültige Daten dürfen keine Anfrage auslösen");
@@ -349,7 +356,6 @@ test("Unvollständiger Entwurf: keine Anfrage, Feld markiert, Hinweis sichtbar",
   // Feldes, nicht über seine Position im Raster — ein zusätzliches Eingabefeld
   // im Empfängerblock hätte `nth(5)` still auf ein anderes Feld gelenkt.
   await page.locator("#ns-r-city").fill("Muenchen");
-  assert.equal(await ctaOf(page).isDisabled(), false);
   await ctaOf(page).click();
   await page.waitForSelector(".offer-card", { timeout: 20_000 });
   assert.equal(calls.length, 1);

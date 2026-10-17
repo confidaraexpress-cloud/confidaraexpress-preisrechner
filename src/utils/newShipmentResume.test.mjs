@@ -197,8 +197,14 @@ test("Verdrahtung: der Resume-Initialzustand laeuft durch resumeInitialState", (
 });
 
 test("Verdrahtung: Validierungsfehler eines fortgesetzten Entwurfs stehen ab dem Mount fest", () => {
-  assert.ok(PAGE_CODE.includes("useState(() => (resumeInit ? getErrors(resumeInit.form) : {}))"),
-    "errors wird beim Fortsetzen nicht synchron vorbelegt");
+  // Seit Auftrag 1 (P11, 2026-10-17) sind die sichtbaren Fehler abgeleitet: getErrors(form) für
+  // berührte Felder oder nach einem Klick (`submitted`). Ein fortgesetzter Entwurf startet
+  // `submitted` — seine Lücken sind ab dem ersten Render markiert, wie bisher.
+  assert.ok(PAGE_CODE.includes("const [submitted, setSubmitted]       = useState(() => Boolean(resumeInit));"),
+    "ein fortgesetzter Entwurf zeigt seine Fehler nicht ab dem Mount");
+  assert.ok(PAGE_CODE.includes("const liveErrors = useMemo(() => getErrors(form), [form]);"));
+  assert.ok(/const errors = visibleFieldErrors\(\{[\s\S]{0,200}touched, submitted, server: serverErrors,/.test(PAGE_CODE),
+    "die sichtbaren Fehler werden nicht aus der Formularregel abgeleitet");
 });
 
 test("Verdrahtung: neue Sendung startet unverändert ohne Filter und ohne Fehler", () => {
@@ -208,7 +214,9 @@ test("Verdrahtung: neue Sendung startet unverändert ohne Filter und ohne Fehler
   //   Entwurf > laufender Vorgang > Standard.
   assert.ok(PAGE_CODE.includes("resumeInit ? resumeInit.selectedPublicCarrierIds : flowInit ? flowInit.selectedPublicCarrierIds : []"),
     "Vorrangkette des Carrier-Filters verändert");
-  assert.ok(PAGE_CODE.includes("resumeInit ? getErrors(resumeInit.form) : {}"));
+  // Ohne Entwurf startet die Seite ohne sichtbare Fehler (nichts berührt, nichts abgeschickt).
+  assert.ok(PAGE_CODE.includes("const [touched, setTouched]           = useState({});"));
+  assert.ok(PAGE_CODE.includes("useState(() => Boolean(resumeInit))"));
   assert.ok(PAGE_CODE.includes("resumeInit ? resumeInit.form : flowInit ? flowInit.form : leeresFormular()"),
     "Vorrangkette des Formular-Seeds verändert");
   // Der dritte Zweig ist seit dem Paket „leerer Nullzustand" das LEERE Formular
@@ -243,23 +251,22 @@ test("Verdrahtung: laufende Anfrage blockiert einen zweiten Klick (keine Doppelr
     "Guard wird nicht in finally zurueckgesetzt (CTA koennte dauerhaft blockieren)");
   // Erst NACH der Validierung setzen: ein abgelehnter Klick darf nichts blockieren.
   const gesetztIdx = ankerPosition(CALCULATE, "calcInFlight.current = true;", "Guard-Setzung");
-  assert.ok(gesetztIdx > ankerPosition(CALCULATE, "const errs = getErrors(form);", "Validierung"),
+  assert.ok(gesetztIdx > ankerPosition(CALCULATE, "const errs = datumFehlt ?", "Validierung"),
     "Guard darf erst nach der Validierung gesetzt werden");
-  // Geprueft werden die BEDINGUNGEN, nicht der genaue Wortlaut: der Ausdruck darf um
-  // weitere Sperrgruende wachsen (z. B. eine nachweislich widerspruechliche Adresse),
-  // solange Laden, Ungueltigkeit und Speichern weiterhin sperren.
-  const ctaDisabled = (PAGE_CODE.match(/disabled=\{loading \|\| !calcValid \|\| saving[^}]*\}/) || [])[0];
+  // Betreiberentscheidung Auftrag 1 (P11, 2026-10-17): der CTA ist nur während laufender
+  // Vorgänge gesperrt (Rechnen, Speichern) — nie wegen fehlender Angaben. Die Sperre gegen
+  // Doppelklicks bleibt (calcInFlight oben und `loading`).
+  const ctaDisabled = (PAGE_CODE.match(/disabled=\{loading \|\| saving\}/) || [])[0];
   assert.ok(ctaDisabled, "CTA muss waehrend Laden/Speichern deaktiviert bleiben");
-  for (const grund of ["loading", "!calcValid", "saving"]) {
-    assert.ok(ctaDisabled.includes(grund), `Sperrgrund ${grund} fehlt am CTA`);
-  }
+  assert.doesNotMatch(PAGE_CODE, /disabled=\{loading \|\| !calcValid/, "der CTA ist wieder wegen fehlender Angaben gesperrt");
 });
 
 test("Verdrahtung: ungültige Daten senden keinen Request und markieren die Felder", () => {
   const vorRequest = CALCULATE.slice(0, ankerPosition(CALCULATE, "apiFetch(", "Requeststelle"));
-  assert.ok(vorRequest.includes("const errs = getErrors(form);"), "Validierung vor dem Request fehlt");
-  assert.ok(/if \(Object\.keys\(errs\)\.length > 0\) \{[\s\S]*setErrors\(errs\);[\s\S]*return;/.test(vorRequest),
-    "ungültige Daten müssen VOR dem Request mit gesetzten Fehlern abbrechen");
+  assert.ok(vorRequest.includes("const errs = datumFehlt ? { shippingDate: DATUM_FEHLT_HINWEIS, ...getErrors(form) } : getErrors(form);"),
+    "Validierung vor dem Request fehlt");
+  assert.ok(/if \(anzahl > 0\) \{[\s\S]*setSubmitted\(true\);[\s\S]*requestFocus\(firstShipmentErrorField\(errs\)\);[\s\S]*return;/.test(vorRequest),
+    "ungültige Daten müssen VOR dem Request abbrechen, alle Felder markieren und das erste anspringen");
 });
 
 test("Verdrahtung: Payload-Felder der Preisberechnung sind unverändert", () => {

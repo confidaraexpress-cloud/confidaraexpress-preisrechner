@@ -3,7 +3,7 @@
    Adressliste: Requestparameter, Query-String, Cache-Schlüssel, Pagination,
    Leerzustand und der Mutations-Refresh. Kein React, kein Netzwerk. */
 
-import { TAB_SENDER, TAB_RECIPIENT, ROLE_SENDER, ROLE_RECIPIENT } from "./addressRoles.mjs";
+import { TAB_SENDER, TAB_RECIPIENT, ROLE_SENDER, ROLE_RECIPIENT, belongsToTab } from "./addressRoles.mjs";
 
 // ── Requestparameter (Suche/Filter/Pagination) ──────────────────────────────
 // Nur explizit erlaubte Query-Parameter, leere Werte werden NICHT gesendet.
@@ -80,13 +80,49 @@ export function resolveEmptyStateKind({ resultCount, hasQuery, favoritesOnly }) 
 // Löschen entfernt die Adresse aus der aktuell sichtbaren Liste. Andere
 // Mutationen (Bearbeiten/Favorit/Standard) ersetzen den Eintrag 1:1 durch die
 // vom Server bestätigte Version.
-export function applyAddressMutation(items, address, type) {
+//
+// Standard (Audit P7, 2026-10): Wird eine Adresse Standard-Absender bzw. -Empfänger, setzt der
+// Server den bisherigen Standard in derselben Transaktion zurück. Dasselbe geschieht hier lokal —
+// sonst trugen zwei Zeilen „Standard-Absender“ bis zum Neuladen, und ein Klick auf der alten Zeile
+// konnte den alten Standard zurückholen. Kein Neuladen auf Seite 1.
+//
+// `view` (optional) beschreibt die sichtbare Ansicht: gehört die Adresse nach der Änderung nicht
+// mehr hinein (Rolle gewechselt, Favorit entfernt unter „Nur Favoriten“), verschwindet sie hier.
+export function applyAddressMutation(items, address, type, view = {}) {
   const list = items || [];
   if (type === "delete") {
     return list.filter((a) => a.id !== address.id);
   }
   if (type === "update" || type === "favorite" || type === "defaultSender" || type === "defaultRecipient") {
-    return list.map((a) => (a.id === address.id ? address : a));
+    const neuerAbsender = address?.isDefaultSender === true;
+    const neuerEmpfaenger = address?.isDefaultRecipient === true;
+    const { tab = null, favoritesOnly = false } = view || {};
+    return list
+      .map((a) => {
+        if (a.id === address.id) return address;
+        const absenderZurueck = neuerAbsender && a.isDefaultSender === true;
+        const empfaengerZurueck = neuerEmpfaenger && a.isDefaultRecipient === true;
+        if (!absenderZurueck && !empfaengerZurueck) return a;
+        return {
+          ...a,
+          ...(absenderZurueck ? { isDefaultSender: false } : {}),
+          ...(empfaengerZurueck ? { isDefaultRecipient: false } : {}),
+        };
+      })
+      .filter((a) => a.id !== address.id
+        || ((!tab || belongsToTab(a, tab)) && (!favoritesOnly || a.favorite === true)));
   }
   return list;
+}
+
+// Der Server hat nach dem Löschen des Standard-Absenders eine andere Adresse nachrücken lassen
+// (DELETE → newDefaultSenderId). Die sichtbare Liste folgt lokal, ohne auf Seite 1 zu springen.
+export function applyPromotedDefaultSender(items, newDefaultSenderId) {
+  const list = items || [];
+  if (newDefaultSenderId == null) return list;
+  const id = String(newDefaultSenderId);
+  return list.map((a) => {
+    if (String(a.id) === id) return a.isDefaultSender === true ? a : { ...a, isDefaultSender: true };
+    return a.isDefaultSender === true ? { ...a, isDefaultSender: false } : a;
+  });
 }

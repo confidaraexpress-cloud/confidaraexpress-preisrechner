@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { buildAddressMenuModel } from "../../utils/addressBookView.mjs";
-import { addressContactPerson } from "../../utils/addressPickerView.mjs";
+import { buildAddressMenuModel, addressActionTarget } from "../../utils/addressBookView.mjs";
 
 // Zugängliches Verwaltungs-Aktionsmenü (Textmenü „Weitere Aktionen", Redesign
 // 2026-10: kein Kebab-Symbol, keine Symbole in den Einträgen) — geteilt zwischen
@@ -66,7 +65,7 @@ export function AddressActionsMenu({
         className="abk-actions-trigger"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Weitere Aktionen für ${address.label || address.company || addressContactPerson(address) || "Adresse"}`}
+        aria-label={`Weitere Aktionen für ${addressActionTarget(address)}`}
         onClick={() => setOpen((v) => !v)}
         disabled={busy}
       >

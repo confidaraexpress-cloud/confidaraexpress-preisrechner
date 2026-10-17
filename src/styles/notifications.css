@@ -2,10 +2,11 @@
    Eigener Scope `ntf-`, additiv wie die übrigen Bereichs-Stylesheets. Nutzt
    ausschließlich Foundation-Tokens — keine eigenen Hex-Werte, keine Verläufe.
 
-   Seit dem Redesign (2026-10) ist der Einstieg ein Knopf „Mitteilungen" mit
-   der Zahl ungelesener Meldungen — keine Glocke, kein runder Iconknopf. Auf
-   dem Desktop steht er als Soft Button, in der mobilen Topbar als
-   Textaktion. Die Klassennamen .ntf-bell* bleiben als Aufrufweg bestehen.
+   Auf dem Desktop ist der Einstieg seit dem Redesign (2026-10) der Soft Button
+   „Mitteilungen" mit der Zahl ungelesener Meldungen. In der mobilen Topbar
+   steht seit der Betreiberentscheidung 2026-10-17 wieder das Glockensymbol als
+   quadratischer 44-px-Knopf, der Zähler klein oben rechts an der Glocke. Die
+   Klassennamen .ntf-bell* bleiben als Aufrufweg bestehen.
 
    Bewusst KEINE Animation und kein pulsierender Zähler: Bewegung gibt es nur
    als kurze Zustandsreaktion (Hover/Fokus), nie als Ambiente. */
@@ -39,7 +40,27 @@
 .ntf-bell:hover { background: var(--ce-color-surface-hover); }
 .ntf-bell[aria-expanded="true"] { background: var(--ce-color-surface-pressed); }
 .ntf-bell:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
-.ntf-bell-topbar { min-height: var(--ce-size-touch-target); margin-right: calc(-1 * var(--ce-space-2)); }
+/* Mobile Topbar: die Glocke als quadratischer Symbolknopf (44 × 44). */
+.ntf-bell-topbar {
+  justify-content: center;
+  min-width: var(--ce-size-touch-target);
+  min-height: var(--ce-size-touch-target);
+  padding: 0;
+  margin-right: calc(-1 * var(--ce-space-2));
+}
+/* Der Zähler sitzt klein oben rechts an der Glocke. Die Kante in der
+   Flächenfarbe trennt ihn vom Symbol; „9+" passt auch bei 320 px in den Knopf. */
+.ntf-bell-topbar .ntf-badge {
+  position: absolute;
+  top: 3px;
+  right: 1px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 2px solid var(--ce-color-surface);
+  line-height: 14px;
+  font-size: var(--ce-text-micro-size);
+}
 
 /* Desktop — Utility-Zeile der Übersicht und der Unterseiten: Soft Button
    (Feinkorrektur 2026-10). Brand-Soft-Fläche, leise Markenkante, Schrift in

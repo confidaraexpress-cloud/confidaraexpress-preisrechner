@@ -182,10 +182,11 @@ test("P — Produktionsfall: Route, Paket, Datum und Angebotsabsicht kommen an; 
   }
   assert.equal(await page.locator("#ns-r-street").getAttribute("aria-invalid"), "true", "die fehlende Straße wird nicht angefordert");
   assert.notEqual(await page.locator("#ns-r-zip").getAttribute("aria-invalid"), "true", "die übernommene PLZ gilt als fehlerhaft");
+  // Seit Auftrag 1 (P11) ist der Knopf bedienbar; der Sammelhinweis nennt, was markiert ist.
   const cta = page.locator(".offers-calc-cta button").first();
-  assert.equal(await cta.isDisabled(), true);
-  assert.match(norm(await page.locator(".offers-calc-cta .dft-save-status").first().textContent()), /Angaben|prüfen Sie/,
-    "der gesperrte CTA erklärt nicht, was fehlt");
+  assert.equal(await cta.isDisabled(), false, "der Knopf ist wegen fehlender Angaben gesperrt");
+  assert.match(norm(await page.locator(".offers-calc-cta .dft-save-status").first().textContent()), /Angabe|prüfen Sie/,
+    "der Sammelhinweis erklärt nicht, was fehlt");
   assert.equal(p.calc.length, 1, "„Neue Sendung“ hat ohne vollständige Angaben gerechnet");
   assert.equal(await page.locator(".offer-card").count(), 0, "ein Preisrechner-Angebot steht in „Neue Sendung“");
 

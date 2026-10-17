@@ -531,8 +531,14 @@ test("M — Entwurf mit vergangenem Datum: leer, erklärt, keine Berechnung bis 
   assert.match(await text(trigger), /Bitte Datum wählen/);
   assert.match(await text(page.locator("body")), /Versanddatum liegt in der Vergangenheit/);
   await page.locator("#ns-date-missing").waitFor({ timeout: 5000 });
+  // Seit Auftrag 1 (P11) ist der Knopf bedienbar: ohne Datum sendet ein Klick nichts, markiert das
+  // Versanddatum und springt dorthin — kein Ersatzdatum.
   const cta = page.locator(".offers-calc-cta button").first();
-  assert.equal(await cta.isDisabled(), true, "ohne Datum ist der CTA bedienbar");
+  assert.equal(await cta.isDisabled(), false, "der Knopf ist wegen des fehlenden Datums gesperrt");
+  await cta.click();
+  await page.waitForFunction(() => document.activeElement?.getAttribute("data-field") === "shippingDate", null, { timeout: 5000 });
+  assert.equal(await trigger.getAttribute("aria-invalid"), "true", "das fehlende Datum ist nicht markiert");
+  await page.waitForTimeout(300);
   assert.equal(protokoll.calc.length, 0);
 
   await trigger.click();

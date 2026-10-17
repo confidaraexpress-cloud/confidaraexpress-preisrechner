@@ -328,13 +328,26 @@ test("12 — Sidebar-Fußzeile bleibt vorhanden", () => {
 
 /* ── Mobile / kurze Viewports ───────────────────────────────────────────── */
 
-test("13 — mobile Sidebar öffnet und schließt weiterhin — per Textknopf „Menü“", () => {
+test("13 — mobile Sidebar öffnet und schließt weiterhin — per Hamburger-Symbol mit Namen und Zustand", () => {
+  // Betreiberentscheidung 2026-10-17: das Hamburger-Symbol ersetzt den Textknopf
+  // „Menü“ (Redesign #465). Die Schutzfunktion bleibt: die Topbar öffnet den Drawer
+  // über einen benannten Knopf — der zugängliche Name ist unverändert (E2E-Selektoren),
+  // dazu meldet der Knopf seinen Zustand (aria-expanded) und sein Ziel (aria-controls).
   assert.match(dashboardJsx, /setSidebarOpen\(true\)/, "Öffnen über die Topbar fehlt");
   assert.match(layoutJsx, /setSidebarOpen\(true\)/, "Öffnen über die Topbar fehlt (Preisrechner)");
   for (const [name, jsx] of [["DashboardPage", dashboardJsx], ["DashboardLayout", layoutJsx]]) {
-    assert.match(stripJsxComments(jsx), /className="hamburger-btn"[\s\S]{0,200}?\}>\s*Menü\s*</,
-      `${name}: die Topbar öffnet die Navigation über den Textknopf „Menü“`);
+    const code = stripJsxComments(jsx);
+    const knopf = code.slice(code.indexOf('className="hamburger-btn"'), code.indexOf("</button>", code.indexOf('className="hamburger-btn"')));
+    assert.ok(knopf.length > 0, `${name}: kein Menüknopf in der Topbar`);
+    assert.match(knopf, /aria-label="Menü – Navigation öffnen"/, `${name}: der zugängliche Name hat sich geändert`);
+    assert.match(knopf, /title="Menü – Navigation öffnen"/, `${name}: der Symbolknopf braucht einen Tooltip`);
+    assert.match(knopf, /aria-expanded=\{sidebarOpen\}/, `${name}: aria-expanded fehlt`);
+    assert.match(knopf, /aria-controls=\{SIDEBAR_NAV_ID\}/, `${name}: aria-controls zeigt nicht auf die Sidebar`);
+    assert.match(knopf, /<Icon n="menu" s=\{ICON_SIZE\.lg\} \/>/, `${name}: kein Hamburger-Symbol`);
+    assert.doesNotMatch(knopf, />\s*Menü\s*$/, `${name}: der Textknopf „Menü“ ist zurück`);
   }
+  assert.match(sidebarJsx, /export const SIDEBAR_NAV_ID = "ce-kundennavigation";/, "die Sidebar-Kennung fehlt");
+  assert.match(sidebarJsx, /id=\{SIDEBAR_NAV_ID\}/, "die Sidebar trägt die Kennung nicht");
   assert.match(sidebarJsx, /sidebarOpen \? "sidebar-open" : ""/, "Drawer-Zustandsklasse fehlt");
   assert.match(sidebarJsx, /onClick=\{\(\) => setSidebarOpen\(false\)\}/, "Schließen fehlt");
   assert.match(stripJsxComments(sidebarJsx), /pp-close"[\s\S]{0,200}?\}>\s*Schließen\s*</,

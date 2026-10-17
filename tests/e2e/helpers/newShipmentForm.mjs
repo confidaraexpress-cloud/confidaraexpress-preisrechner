@@ -118,7 +118,7 @@ export async function fuelleAdresse(page, seite, adresse) {
 }
 
 /** Füllt die fünf Paketfelder. Ein Feld auf `""` LEERT es ausdrücklich —
- *  so prüfen Suiten, dass der CTA ohne vollständige Maße gesperrt bleibt. */
+ *  so prüfen Suiten, dass ohne vollständige Maße kein Request hinausgeht. */
 export async function fuellePaket(page, paket = STANDARD_PAKET) {
   for (const feld of PAKETFELDER) {
     const wert = paket[feld];
@@ -254,22 +254,28 @@ export function angebotsCta(page) {
 /**
  * Löst die Preisberechnung aus und wartet auf die Angebotskarten.
  *
- * Prüft VORHER, dass der CTA tatsächlich bedienbar ist. Ein `force`-Klick auf
- * einen deaktivierten Knopf würde eine Produktprüfung umgehen und wäre genau
- * das, was diese Suiten aufdecken sollen — deshalb schlägt die Hilfsfunktion
- * hier lieber mit einer sprechenden Meldung fehl.
+ * Seit Auftrag 1 (P11, 2026-10-17) ist der CTA auch bei unvollständigem Formular bedienbar;
+ * gesperrt ist er nur, während gerechnet oder gespeichert wird. Ein Klick auf ein
+ * unvollständiges Formular sendet nichts und markiert die Felder — dann schlägt diese
+ * Hilfsfunktion mit den markierten Feldern fehl, statt still auf Angebote zu warten.
+ * Ein `force`-Klick bleibt verboten.
  */
 export async function berechneAngebote(page, { timeout = 20000 } = {}) {
   const cta = angebotsCta(page);
   await cta.waitFor({ state: "visible", timeout });
   if (await cta.isDisabled()) {
-    const hinweis = await page.locator(".offers-calc-cta").innerText().catch(() => "");
-    throw new Error(
-      "Der Angebots-CTA ist deaktiviert — das Formular ist unvollständig. " +
-      `Sichtbarer Hinweis: ${hinweis.replace(/\s+/g, " ").trim() || "(keiner)"}`
-    );
+    throw new Error("Der Angebots-CTA ist gesperrt — es läuft noch eine Berechnung oder ein Speichervorgang.");
   }
   await cta.click();
+  const ergebnis = await Promise.race([
+    page.waitForSelector(".offer-card", { timeout }).then(() => "angebote").catch(() => "zeitlimit"),
+    page.waitForSelector('[data-field][aria-invalid="true"]', { timeout }).then(() => "fehler").catch(() => "zeitlimit"),
+  ]);
+  if (ergebnis === "fehler" && (await page.locator(".offer-card").count()) === 0) {
+    const felder = await page.locator('[data-field][aria-invalid="true"]').evaluateAll(
+      (els) => els.map((e) => e.getAttribute("data-field")));
+    throw new Error(`Das Formular ist unvollständig — markiert: ${felder.join(", ")}`);
+  }
   await page.waitForSelector(".offer-card", { timeout });
 }
 

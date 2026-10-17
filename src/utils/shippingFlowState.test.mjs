@@ -593,7 +593,9 @@ test("36 — resetToFreshShipment setzt genau die Felder zurück, die der Spiege
   for (const setter of [
     "setForm(seed)", "setShippingDate(todayISO())", 'setServiceFilter("all")',
     'setShippingModeFilter("all")', "setSelectedPublicCarrierIds([])", "setPublicCarriers([])",
-    'setSortMode("recommended")', 'setVatMode("net")', "setErrors({})",
+    // Seit Auftrag 1 (P11) sind die sichtbaren Fehler abgeleitet: zurückgesetzt werden berührte
+    // Felder, Klickzustand und Serverfehler (vorher setErrors({})).
+    'setSortMode("recommended")', 'setVatMode("net")', "setTouched({})", "setSubmitted(false)", "setServerErrors({})",
     "setResumeSource(null)", "setResumeNotice(\"\")", "setResumeConflict(false)",
     'setSaveMode("idle")', "resetResults()", "setBaseline(", 'clearFlowScope("shipment")',
   ]) {

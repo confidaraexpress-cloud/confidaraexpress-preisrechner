@@ -317,8 +317,7 @@ export function Profile({ user, utility }) {
                 suggestions={companyAddressCheck.streetOptions}
                 loading={companyAddressCheck.streetLoading}
                 noResults={companyAddressCheck.streetNoResults}
-                hint={countryFirstHint(companyForm.country) || undefined}
-                autoComplete="address-line1" />
+                hint={countryFirstHint(companyForm.country) || undefined} />
             </div>
             <div className="field-row field-row-2">
               <div className="field">
@@ -333,8 +332,7 @@ export function Profile({ user, utility }) {
                   onChange={(v) => updCompany("city", v)}
                   onSelect={(item) => updCompany("city", cityFromSuggestion(item))}
                   suggestions={companyAddressCheck.cityOptions}
-                  placeholder={cityPlaceholder(companyForm.country)}
-                  autoComplete="address-level2" />
+                  placeholder={cityPlaceholder(companyForm.country)} />
               </div>
             </div>
             {/* Ergebnis der Adressprüfung — ein Hinweis, nie eine Sperre des Speicherns. */}

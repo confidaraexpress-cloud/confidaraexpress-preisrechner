@@ -113,8 +113,10 @@ test("6 — das Modul rechnet nicht: keine Arithmetik, kein Steuersatz", () => {
 /* ══════════ §2  NEUE ECHTE BERECHNUNG → NETTO; EINBLENDEN → WAHL BLEIBT ══════════════ */
 
 for (const [name, datei, validierungsEnde] of [
-  ["Neue Sendung", NEUE_SENDUNG, "focusFirstError(firstShipmentErrorField(errs));"],
-  ["Preisrechner", PREISRECHNER, "focusFirstError(firstErrorField(preErrors));"],
+  // Ende der Validierung: der Fokusauftrag aufs erste Fehlerfeld (seit Auftrag 1, P11, nach dem
+  // Rendern ausgeführt — vorher focusFirstError direkt im Klick).
+  ["Neue Sendung", NEUE_SENDUNG, "requestFocus(firstShipmentErrorField(errs));"],
+  ["Preisrechner", PREISRECHNER, "setFocusRequest({ field: firstErrorField(preErrors), at: Date.now() });"],
 ]) {
   test(`7 — ${name}: setVatMode("net") genau einmal in calculate — nach Einblende-Zweig und Validierung, vor dem Request`, () => {
     const quelle = code(datei);

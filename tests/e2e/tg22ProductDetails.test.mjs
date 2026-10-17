@@ -436,7 +436,7 @@ test("E — Regression JUMiNGO: bisheriger Detailbereich mit Merkmalsraster, Ein
   for (const label of ["Voraussichtliche Laufzeit", "Drucker", "Sendungsverfolgung", "Versandart", "Abrechnungsgewicht", "Tarif-ID"]) {
     assert.ok(merkmale.includes(label), `„${label}“ fehlt im bisherigen Merkmalsraster`);
   }
-  assert.deepEqual(await alleTexte(panel.locator(".offer-limit-item")), ["Packstücke dürfen max. 31.5 kg wiegen."]);
+  assert.deepEqual(await alleTexte(panel.locator(".offer-limit-item")), ["Packstücke dürfen max. 31,5 kg wiegen."]);
   assert.doesNotMatch(norm(await panel.textContent()), /Paletten|Koffer|Volumengewicht|Grundabsicherung/);
   assert.deepEqual(fehler, []);
   await page.close();

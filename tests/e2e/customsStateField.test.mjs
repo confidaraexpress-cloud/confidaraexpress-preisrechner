@@ -125,15 +125,21 @@ test("3 — das Land wechselt, das Feld folgt", async () => {
   await page.close();
 });
 
-test("4 — ohne Bundesstaat bleibt die Preisberechnung gesperrt", async () => {
+test("4 — ohne Bundesstaat fragt der Klick keinen Tarif an und markiert den Bundesstaat", async () => {
+  const aufnahme = {};
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
-  await setupRoutes(page);
+  await setupRoutes(page, aufnahme);
   await neueSendung(page);
   await fuelleVersandformular(page, { empfaenger: { ...US_EMPFAENGER, state: undefined } });
   await page.waitForSelector("#ns-r-state", { timeout: 10000 });
   assert.equal(await page.locator("#ns-r-state").inputValue(), "", "Vorbedingung: Feld ist leer");
-  assert.equal(await angebotsCta(page).isDisabled(), true,
-    "eine unvollständige US-Adresse darf keinen Tarif anfragen");
+  // Seit Auftrag 1 (P11) ist der Knopf bedienbar; der Klick sendet nichts und springt zum Feld.
+  assert.equal(await angebotsCta(page).isDisabled(), false);
+  await angebotsCta(page).click();
+  await page.waitForFunction(() => document.activeElement?.id === "ns-r-state", null, { timeout: 5000 });
+  assert.equal(await page.locator("#ns-r-state").getAttribute("aria-invalid"), "true");
+  await page.waitForTimeout(300);
+  assert.equal(aufnahme.body, undefined, "eine unvollständige US-Adresse darf keinen Tarif anfragen");
   await page.close();
 });
 

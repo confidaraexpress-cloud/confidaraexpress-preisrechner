@@ -131,10 +131,12 @@ test("6 — die Vorgabe ist die bisherige gestapelte Beschriftung", () => {
   assert.match(feld, /if \(!floating\) \{[\s\S]*?className="field-label" htmlFor=\{feldId\}/);
 });
 
-test("7 — keine Seite aktiviert Floating (Redesign 2026-10)", () => {
-  // Früher: nur „Neue Sendung". Seit dem Redesign stehen alle Beschriftungen
-  // außerhalb von Auth oberhalb des Feldes — auch dort.
-  assert.ok(!seite.includes('labelMode="floating"'), "„Neue Sendung“ nutzt wieder schwebende Beschriftungen");
+test("7 — genau die beiden Versandformulare nutzen Floating (Auftrag 1, P11)", () => {
+  // Betreiberentscheidung 2026-10-17 (Auftrag 1, P11): der angemeldete Preisrechner und
+  // „Neue Sendung" tragen wieder schwebende Beschriftungen; das Redesign 2026-10 hatte sie
+  // zurückgenommen. Alle übrigen Seiten bleiben gestapelt — die Schutzfunktion dieses Tests
+  // (kein Floating auf Verdacht) gilt dort unverändert.
+  assert.ok(seite.includes('labelMode="floating"'), "„Neue Sendung“ nutzt keine schwebenden Beschriftungen");
 
   const dateien = [];
   const sammle = (rel) => {
@@ -146,8 +148,9 @@ test("7 — keine Seite aktiviert Floating (Redesign 2026-10)", () => {
   sammle("src");
   const nutzer = dateien.filter((d) => /labelMode="floating"|<AddressSuggestInput[\s\S]{0,400}?\bfloating\b/
     .test(ohneKommentare(lies(d))));
-  assert.deepEqual(nutzer, [],
-    `Floating ist wieder aktiviert: ${nutzer.join(", ")}`);
+  const erlaubt = [path.join("src", "pages", "CalculatorPage.jsx"), path.join("src", "pages", "NewShipmentPage.jsx")];
+  assert.deepEqual(nutzer.sort(), erlaubt.sort(),
+    `Floating außerhalb der Versandformulare oder nicht in beiden: ${nutzer.join(", ")}`);
 });
 
 test("8 — AddressSuggestInput: Darstellung opt-in, Barrierefreiheit immer", () => {
@@ -302,10 +305,13 @@ test("15 — keine neue Abhängigkeit, kein DOM-Hack, kein Polling", () => {
 });
 
 test("16 — der Nullzustand von „Neue Sendung\" ist unangetastet", () => {
-  // Die Beispiele bleiben Platzhalter aus der einen Quelle und werden nie Werte.
+  // Seit Auftrag 1 (P11) gibt es in „Neue Sendung" gar keine Beispielplatzhalter mehr — die
+  // Beschriftung steht im leeren Feld. Ein Beispiel kann so nie zum Wert werden.
   for (const k of ["packageCount", "weight", "length", "width", "height"])
-    assert.ok(seite.includes(`placeholder={PACKAGE_PLACEHOLDERS.${k}}`),
-      `${k}: Platzhalter nicht mehr aus PACKAGE_PLACEHOLDERS`);
+    assert.ok(!seite.includes(`placeholder={PACKAGE_PLACEHOLDERS.${k}}`),
+      `${k}: Beispielplatzhalter ist zurück`);
+  assert.ok(!/placeholder="(Musterstraße 1|Beispielweg 5|Max|Mustermann|Erika|Muster|Firma GmbH|Firma AG)"/.test(seite),
+    "Musterplatzhalter sind zurück");
   assert.ok(!/defaultValue/.test(seite), "defaultValue im Formular");
   assert.ok(!/\|\|\s*(30|20|15)\b/.test(seite), "Maß-Ersatzwert eingeschleppt");
   assert.ok(seite.includes("createEmptyShipmentForm()"), "der leere Ausgangszustand ist verloren");

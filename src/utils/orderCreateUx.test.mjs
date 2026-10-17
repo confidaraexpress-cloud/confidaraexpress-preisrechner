@@ -235,14 +235,21 @@ test("C3 kein freies zweistelliges Textfeld mehr für das Land", () => {
 
 /* ══════════ D — Autofill-Attribute ═══════════════════════════════════════ */
 
-test("D1 jedes Empfängerfeld trägt ein passendes autocomplete", () => {
-  for (const token of ["organization", "name", "address-line1", "address-line2", "postal-code", "address-level2", "country", "tel", "email"]) {
+// Betreiberentscheidung Auftrag 1, P5 (2026-10-17): Straße und Ort sind Vorschlagsfelder
+// (AddressSuggestInput) und tragen den zentralen Nicht-Standard-Token der Komponente — sonst lag
+// Chromes Autofill-Popup über der eigenen Liste. Bis dahin verlangte D1 hier address-line1 und
+// address-level2. Alle übrigen Empfängerfelder behalten ihr passendes Token.
+test("D1 jedes Empfängerfeld außer Straße und Ort trägt ein passendes autocomplete", () => {
+  for (const token of ["organization", "name", "address-line2", "postal-code", "country", "tel", "email"]) {
     assert.match(formCode, new RegExp(`autoComplete="${token}"`), `autocomplete ${token} fehlt`);
   }
 });
 
-test("D2 Autofill wird nicht mit Tricks abgeschaltet", () => {
+test("D2 Autofill wird nicht mit Tricks abgeschaltet — die Vorschlagsfelder regelt EINE Stelle", () => {
+  // Weiterhin kein Abschalten am Formular selbst. Straße und Ort übergeben gar kein Token mehr;
+  // ihres setzt AddressSuggestInput zentral (addressSuggestAutofill.test.mjs).
   assert.doesNotMatch(formCode, /autoComplete="off"|autoComplete="new-password"|autoComplete="nope"/);
+  assert.doesNotMatch(formCode, /autoComplete="address-line1"|autoComplete="address-level2"|autoComplete="street-address"/);
 });
 
 /* ══════════ E — Positionen: Vorschau ist Darstellung ═════════════════════ */

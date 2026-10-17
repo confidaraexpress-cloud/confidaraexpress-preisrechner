@@ -240,7 +240,8 @@
 
 /* ── Main / mobile Topbar ────────────────────────────────────────────────── */
 .adm-main { flex: 1; min-width: 0; margin-left: var(--ce-size-sidebar-admin); }
-/* Mobil: „Menü" als Textknopf und der Bereichsname — keine Symbole. */
+/* Mobil: das Hamburger-Symbol (Betreiberentscheidung 2026-10-17, vorher der
+   Textknopf „Menü") und der Bereichsname. */
 .adm-topbar {
   display: none; align-items: center; gap: var(--ce-space-3);
   min-height: 56px;
@@ -251,14 +252,11 @@
 }
 .adm-topbar-burger {
   display: inline-flex; align-items: center; justify-content: center;
+  min-width: var(--ce-size-control-md);
   min-height: var(--ce-size-control-md);
-  padding: 0 var(--ce-space-3);
+  padding: 0;
   margin-left: calc(-1 * var(--ce-space-2));
   background: none; border: 0; border-radius: var(--ce-radius-sm);
-  font-family: var(--ce-font-sans);
-  font-size: var(--ce-text-button-size);
-  font-weight: var(--ce-text-button-weight);
-  line-height: var(--ce-text-button-line);
   color: var(--ce-color-text-primary);
   cursor: pointer;
 }
@@ -289,12 +287,20 @@
   /* Drawer höchstens 320 px, rechts immer mindestens 32 px Inhalt sichtbar.
      Die Overlaytiefe trägt er nur geöffnet — geschlossen läge sein Schatten
      sonst als Streifen am linken Bildrand. */
+  /* Geschlossen ist der Drawer unsichtbar, nicht nur verschoben: sonst erreichte
+     die Tabulatortaste seine Einträge außerhalb des Bildes. Beim Schließen
+     wechselt die Sichtbarkeit erst nach der Bewegung, beim Öffnen sofort. */
   .adm-side {
     width: min(320px, calc(100vw - 32px));
     transform: translateX(-100%);
-    transition: transform var(--ce-motion-slow) var(--ce-motion-ease-standard);
+    visibility: hidden;
+    transition: transform var(--ce-motion-slow) var(--ce-motion-ease-standard), visibility 0s linear var(--ce-motion-slow);
   }
-  .adm-side-open { transform: translateX(0); box-shadow: var(--ce-elevation-3); }
+  .adm-side-open {
+    transform: translateX(0); box-shadow: var(--ce-elevation-3);
+    visibility: visible;
+    transition: transform var(--ce-motion-slow) var(--ce-motion-ease-standard), visibility 0s linear 0s;
+  }
   /* Im Drawer scrollt die ganze Spalte (Marke, Navigation, Fuß) statt nur der
      Navigation: mit 44-px-Zielen und Gruppen passt sie auf Telefonen nicht in
      eine Höhe, und ein innerer Scrollbereich versteckte die letzten Einträge

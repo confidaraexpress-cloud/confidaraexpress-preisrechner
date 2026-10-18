@@ -10,7 +10,8 @@ import { serviceDetailsView, SERVICE_DETAILS_TEXT, SERVICE_NOT_ACCEPTED_TEXT } f
 const karte = readFileSync(new URL("../components/offers/OfferCard.jsx", import.meta.url), "utf8");
 const profilKomponente = readFileSync(new URL("../components/offers/ServiceProfileDetails.jsx", import.meta.url), "utf8");
 
-const DPD = { notAccepted: ["pallets", "wooden_crates", "suitcases", "mailer_bags", "padded_envelopes"], handlingAidFromKg: null };
+const DPD = { notAccepted: ["pallets", "wooden_crates", "suitcases", "mailer_bags", "padded_envelopes"], handlingAidFromKg: null,
+              palletFromKg: null };
 const GRENZEN_22 = [
   { operant: "packages_count", operator: "<=", value: 1 }, { operant: "weight", operator: "<=", value: 70 },
   { operant: "first_length", operator: "<=", value: 270 }, { operant: "length_and_girth", operator: "<=", value: 400 },
@@ -26,12 +27,34 @@ test("1 — Verpackungsregeln: nicht zugelassene Verpackungen und Ladehilfe als 
     ["packageRules-notAccepted", "packageRules-handlingAid"]);
 });
 
+test("1b — Palettenpflicht (DHL 84/87/107, Carrier-Abschluss 2026-10-18): eigener Satz nach der Ladehilfe", () => {
+  const dhl = { notAccepted: [], handlingAidFromKg: 30, palletFromKg: 70 };
+  assert.deepEqual(packageRulesLines({ packageRules: dhl }).map((z) => [z.key, z.text]), [
+    ["packageRules-handlingAid", "Packstücke ab 30 kg müssen auf einer Ladehilfe stehen, etwa einer Palette oder einem rollbaren Untersatz."],
+    ["packageRules-pallet", "Packstücke ab 70 kg müssen auf einer Palette (Euro- oder Einwegpalette) eingeliefert werden."],
+  ]);
+  // Ohne Palettenpflicht (85/86, TNT) und bei einem älteren Server ohne das Feld: keine Palettenzeile, dieselben Sätze.
+  for (const regeln of [{ notAccepted: [], handlingAidFromKg: 30, palletFromKg: null }, { notAccepted: [], handlingAidFromKg: 30 }]) {
+    assert.deepEqual(packageRulesLines({ packageRules: regeln }).map((z) => z.key), ["packageRules-handlingAid"], JSON.stringify(regeln));
+  }
+  // Eine Palettenpflicht allein ist eine Aussage.
+  assert.deepEqual(readPackageRules({ packageRules: { notAccepted: [], handlingAidFromKg: null, palletFromKg: 70 } }),
+    { notAccepted: [], handlingAidFromKg: null, palletFromKg: 70 });
+  assert.equal(PACKAGE_RULES_TEXT.pallet("70").includes("70 kg"), true);
+});
+
+test("1c — GLS 110: die zweitlängste Seite steht als eigener Satz zwischen längster Seite und Gurtmaß", () => {
+  assert.match(karte, /second_length: +\{ order: 2, tpl: \(op, v\) => `Die zweitlängste Seite eines Packstücks darf \$\{op\} \$\{v\} cm lang sein\.` \}/);
+});
+
 test("2 — fail closed: ein unbekannter Code oder eine fremde Form ergibt keine Zeile, nie einen Rohcode", () => {
   for (const kaputt of [
     null, undefined, "pallets", [], { notAccepted: ["parcels"], handlingAidFromKg: null },
     { notAccepted: ["pallets", "pallets"], handlingAidFromKg: null }, { notAccepted: [], handlingAidFromKg: null },
     { notAccepted: [], handlingAidFromKg: 0 }, { notAccepted: [], handlingAidFromKg: "30" },
     { notAccepted: ["__proto__"], handlingAidFromKg: null }, { notAccepted: "pallets", handlingAidFromKg: null },
+    { notAccepted: [], handlingAidFromKg: null, palletFromKg: null }, { notAccepted: [], handlingAidFromKg: 30, palletFromKg: 0 },
+    { notAccepted: [], handlingAidFromKg: 30, palletFromKg: "70" }, { notAccepted: [], handlingAidFromKg: 30, palletFromKg: -70 },
   ]) {
     assert.equal(readPackageRules({ packageRules: kaputt }), null, JSON.stringify(kaputt));
     assert.deepEqual(packageRulesLines({ packageRules: kaputt }), []);
@@ -45,7 +68,7 @@ test("3 — jeder Code des Servers hat einen deutschen Text", () => {
 });
 
 test("4 — Karte ohne Profil: das Gurtmaß nennt die Formel; die Verpackungsregeln stehen unter „Einschränkungen\"", () => {
-  assert.match(karte, /length_and_girth: +\{ order: 3, tpl: \(op, v\) => `Das Gurtmaß eines Packstücks \(längste Seite \+ 2 × Breite \+ 2 × Höhe\) darf \$\{op\} \$\{v\} cm betragen\.` \}/);
+  assert.match(karte, /length_and_girth: +\{ order: 3, tpl: \(op, v\) => `Das Gurtmaß eines Packstücks \(längste Seite \+ 2 × die beiden anderen Seiten\) darf \$\{op\} \$\{v\} cm betragen\.` \}/);
   assert.match(karte, /const limitLines = \[\.\.\.buildLimitLines\(t\.tariffLimits\), \.\.\.packageRulesLines\(t\)\];/);
   // `girth` (ohne belegte Formel, JUMiNGO) bleibt unverändert.
   assert.match(karte, /girth: +\{ order: 3, tpl: \(op, v\) => `Das Gurtmaß eines Packstücks darf \$\{op\} \$\{v\} cm betragen\.` \}/);
@@ -63,7 +86,13 @@ test("5 — Karte mit Profil (22, 29): längste Seite und Gurtmaß in „Größe
     ["Packstücke", "1 je Sendung"], ["Max. Gewicht", "70 kg"], ["Max. längste Seite", "270 cm"], ["Max. Gurtmaß", "400 cm"],
   ]);
   assert.equal(v.size.girthNote, SERVICE_DETAILS_TEXT.lengthAndGirthNote);
-  assert.equal(SERVICE_DETAILS_TEXT.lengthAndGirthNote, "Gurtmaß = längste Seite + 2 × Breite + 2 × Höhe.");
+  assert.equal(SERVICE_DETAILS_TEXT.lengthAndGirthNote, "Gurtmaß = längste Seite + 2 × die beiden anderen Seiten.");
+  // Die Formel des Anbieters zaehlt die beiden KUERZEREN Seiten doppelt, gleich in welchem Eingabefeld die laengste
+  // steht (Backend packageMeasures.js). „Breite" und „Hoehe" sind Eingabefelder und wuerden bei 40 × 120 × 30 cm
+  // 340 statt richtig 260 cm nahelegen — deshalb nennt kein Formeltext ein Eingabefeld.
+  for (const text of [SERVICE_DETAILS_TEXT.lengthAndGirthNote, karte.match(/length_and_girth: +\{[^\n]*/)[0]]) {
+    assert.ok(!/Breite|Höhe/.test(text), text);
+  }
   assert.match(profilKomponente, /size\.girthNote && <p className="offer-profile-note" data-profile-note="girth">\{size\.girthNote\}<\/p>/);
   // Ohne Maßgrenze kein Hinweis und keine Zeile — es wird nichts ergänzt.
   const ohne = serviceDetailsView({ ...tarif, tariffLimits: GRENZEN_22.slice(0, 2) });

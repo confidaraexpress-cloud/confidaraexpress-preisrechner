@@ -1,8 +1,10 @@
 /* utils/packageRulesView.mjs — die verbindlichen Verpackungsregeln eines Angebots als Sätze (Auftrag 2 / P4).
    Reine Funktionen: kein Netz, kein Zustand, kein React.
    ─── DER SERVER BELEGT, DIESE DATEI FORMULIERT ────────────────────────────────
-   `packageRules` kommt vom Server als `{ notAccepted: Code[], handlingAidFromKg: Zahl|null }`. Belegt ist das
-   durch die Serviceseite des Anbieters (Backend `docs/transglobal/servicegrenzen.md`); hier wird nichts ergänzt.
+   `packageRules` kommt vom Server als `{ notAccepted: Code[], handlingAidFromKg: Zahl|null, palletFromKg: Zahl|null }`.
+   Belegt ist das durch die Serviceseite des Anbieters bzw. den Carrier (Backend `docs/transglobal/servicegrenzen.md`);
+   hier wird nichts ergänzt. `palletFromKg` (DHL: Palette ab 70 kg, Carrier-Abschluss 2026-10-18) fehlt bei einem
+   älteren Server — dann gibt es schlicht keine Palettenzeile, nie eine erfundene.
    ─── FAIL CLOSED ──────────────────────────────────────────────────────────────
    Ein unbekannter Code oder eine fremde Form ergibt KEINE Zeile — nie einen Rohcode und nie eine halbe Aussage. */
 import { SERVICE_NOT_ACCEPTED_TEXT } from "./serviceDetailsView.mjs";
@@ -12,11 +14,13 @@ const KG = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 });
 export const PACKAGE_RULES_TEXT = Object.freeze({
   notAccepted: (liste) => `Nicht zugelassen: ${liste}.`,
   handlingAid: (kg) => `Packstücke ab ${kg} kg müssen auf einer Ladehilfe stehen, etwa einer Palette oder einem rollbaren Untersatz.`,
+  pallet: (kg) => `Packstücke ab ${kg} kg müssen auf einer Palette (Euro- oder Einwegpalette) eingeliefert werden.`,
 });
 
 const istObjekt = (w) => !!w && typeof w === "object" && !Array.isArray(w);
 // Nur eigene Schlüssel: „constructor" oder „__proto__" sind kein Code.
 const hat = (tabelle, code) => typeof code === "string" && Object.prototype.hasOwnProperty.call(tabelle, code);
+const istGewicht = (w) => typeof w === "number" && Number.isFinite(w) && w > 0;
 
 /** Die Regeln in genau der Form des Vertrags — oder `null`. */
 export function readPackageRules(tariff) {
@@ -26,9 +30,11 @@ export function readPackageRules(tariff) {
   if (!Array.isArray(liste) || liste.some((code) => !hat(SERVICE_NOT_ACCEPTED_TEXT, code))) return null;
   if (new Set(liste).size !== liste.length) return null;
   const ab = r.handlingAidFromKg;
-  if (ab !== null && !(typeof ab === "number" && Number.isFinite(ab) && ab > 0)) return null;
-  if (liste.length === 0 && ab === null) return null;
-  return { notAccepted: [...liste], handlingAidFromKg: ab };
+  if (ab !== null && !istGewicht(ab)) return null;
+  const palette = r.palletFromKg === undefined ? null : r.palletFromKg;
+  if (palette !== null && !istGewicht(palette)) return null;
+  if (liste.length === 0 && ab === null && palette === null) return null;
+  return { notAccepted: [...liste], handlingAidFromKg: ab, palletFromKg: palette };
 }
 
 /** Die Sätze für den Abschnitt „Einschränkungen" — in fester Reihenfolge, ohne Duplikate. */
@@ -42,6 +48,9 @@ export function packageRulesLines(tariff) {
   }
   if (r.handlingAidFromKg !== null) {
     zeilen.push({ key: "packageRules-handlingAid", text: PACKAGE_RULES_TEXT.handlingAid(KG.format(r.handlingAidFromKg)) });
+  }
+  if (r.palletFromKg !== null) {
+    zeilen.push({ key: "packageRules-pallet", text: PACKAGE_RULES_TEXT.pallet(KG.format(r.palletFromKg)) });
   }
   return zeilen;
 }

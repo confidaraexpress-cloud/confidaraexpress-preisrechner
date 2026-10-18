@@ -45,7 +45,7 @@ test("3 — jeder Code des Servers hat einen deutschen Text", () => {
 });
 
 test("4 — Karte ohne Profil: das Gurtmaß nennt die Formel; die Verpackungsregeln stehen unter „Einschränkungen\"", () => {
-  assert.match(karte, /length_and_girth: +\{ order: 3, tpl: \(op, v\) => `Das Gurtmaß eines Packstücks \(längste Seite \+ 2 × Breite \+ 2 × Höhe\) darf \$\{op\} \$\{v\} cm betragen\.` \}/);
+  assert.match(karte, /length_and_girth: +\{ order: 3, tpl: \(op, v\) => `Das Gurtmaß eines Packstücks \(längste Seite \+ 2 × die beiden anderen Seiten\) darf \$\{op\} \$\{v\} cm betragen\.` \}/);
   assert.match(karte, /const limitLines = \[\.\.\.buildLimitLines\(t\.tariffLimits\), \.\.\.packageRulesLines\(t\)\];/);
   // `girth` (ohne belegte Formel, JUMiNGO) bleibt unverändert.
   assert.match(karte, /girth: +\{ order: 3, tpl: \(op, v\) => `Das Gurtmaß eines Packstücks darf \$\{op\} \$\{v\} cm betragen\.` \}/);
@@ -63,7 +63,13 @@ test("5 — Karte mit Profil (22, 29): längste Seite und Gurtmaß in „Größe
     ["Packstücke", "1 je Sendung"], ["Max. Gewicht", "70 kg"], ["Max. längste Seite", "270 cm"], ["Max. Gurtmaß", "400 cm"],
   ]);
   assert.equal(v.size.girthNote, SERVICE_DETAILS_TEXT.lengthAndGirthNote);
-  assert.equal(SERVICE_DETAILS_TEXT.lengthAndGirthNote, "Gurtmaß = längste Seite + 2 × Breite + 2 × Höhe.");
+  assert.equal(SERVICE_DETAILS_TEXT.lengthAndGirthNote, "Gurtmaß = längste Seite + 2 × die beiden anderen Seiten.");
+  // Die Formel des Anbieters zaehlt die beiden KUERZEREN Seiten doppelt, gleich in welchem Eingabefeld die laengste
+  // steht (Backend packageMeasures.js). „Breite" und „Hoehe" sind Eingabefelder und wuerden bei 40 × 120 × 30 cm
+  // 340 statt richtig 260 cm nahelegen — deshalb nennt kein Formeltext ein Eingabefeld.
+  for (const text of [SERVICE_DETAILS_TEXT.lengthAndGirthNote, karte.match(/length_and_girth: +\{[^\n]*/)[0]]) {
+    assert.ok(!/Breite|Höhe/.test(text), text);
+  }
   assert.match(profilKomponente, /size\.girthNote && <p className="offer-profile-note" data-profile-note="girth">\{size\.girthNote\}<\/p>/);
   // Ohne Maßgrenze kein Hinweis und keine Zeile — es wird nichts ergänzt.
   const ohne = serviceDetailsView({ ...tarif, tariffLimits: GRENZEN_22.slice(0, 2) });

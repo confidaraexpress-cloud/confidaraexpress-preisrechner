@@ -178,7 +178,7 @@ const LIMIT_RULES = {
   shortest_and_longest_side: { order: 2, tpl: (op, v) => `Die kürzeste und die längste Seite eines Packstücks dürfen zusammen ${op} ${v} cm lang sein.` },
   girth:                     { order: 3, tpl: (op, v) => `Das Gurtmaß eines Packstücks darf ${op} ${v} cm betragen.` },
   // Auftrag 2 / P4: das Gurtmaß nach der belegten Formel des Anbieters — die Formel steht deshalb im Satz.
-  length_and_girth:          { order: 3, tpl: (op, v) => `Das Gurtmaß eines Packstücks (längste Seite + 2 × Breite + 2 × Höhe) darf ${op} ${v} cm betragen.` },
+  length_and_girth:          { order: 3, tpl: (op, v) => `Das Gurtmaß eines Packstücks (längste Seite + 2 × die beiden anderen Seiten) darf ${op} ${v} cm betragen.` },
   // Singular nach der ZAHL (n), nicht nach dem formatierten Text (v ist seit Sofortkorrektur B ein String).
   packages_count:            { order: 4, tpl: (op, v, n) => n === 1
     ? `Mit diesem Versandtarif kann ${op} ${v} Packstück pro Sendung verschickt werden.`

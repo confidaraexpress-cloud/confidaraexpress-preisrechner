@@ -45,7 +45,7 @@ export const SERVICE_DETAILS_TEXT = Object.freeze({
   // Auftrag 2 / P4: längste Seite und Gurtmaß je Packstück (Formel des Anbieters).
   maxLongestSideLabel:   "Max. längste Seite",
   maxLengthAndGirthLabel: "Max. Gurtmaß",
-  lengthAndGirthNote:    "Gurtmaß = längste Seite + 2 × Breite + 2 × Höhe.",
+  lengthAndGirthNote:    "Gurtmaß = längste Seite + 2 × die beiden anderen Seiten.",
   chargeableWeightLabel: OFFER_METADATA_LABEL.chargeableWeight,
   chargeableWeightNote:  "Für die Abrechnung zählt das höhere Gewicht aus tatsächlichem Gewicht und Volumengewicht.",
   volumetricLabel:       "Volumengewicht",

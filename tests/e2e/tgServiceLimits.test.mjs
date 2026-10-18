@@ -128,7 +128,7 @@ test("A — Profilkarte: längste Seite und Gurtmaß in „Größe & Gewicht“,
   const groesse = panel.locator('[data-profile-section="size"]');
   assert.deepEqual((await zeilen(groesse)).filter(([l]) => l !== "Abrechnungsgewicht"),
     [["Packstücke", "1 je Sendung"], ["Max. Gewicht", "70 kg"], ["Max. längste Seite", "270 cm"], ["Max. Gurtmaß", "400 cm"]]);
-  assert.equal(norm(await groesse.locator('[data-profile-note="girth"]').textContent()), "Gurtmaß = längste Seite + 2 × Breite + 2 × Höhe.");
+  assert.equal(norm(await groesse.locator('[data-profile-note="girth"]').textContent()), "Gurtmaß = längste Seite + 2 × die beiden anderen Seiten.");
   assert.equal(await panel.locator(".offer-limit-item").count(), 0, "das Profil wiederholt die Grenzen als Liste");
   assert.deepEqual(fehler, []);
   await page.close();
@@ -140,7 +140,7 @@ test("B — PaketShop ohne Profil: Grenzsätze und Verpackungsregeln unter „Ei
   assert.deepEqual(await einschraenkungen(panel), [
     "Packstücke dürfen max. 31,5 kg wiegen.",
     "Die längste Seite eines Packstücks darf max. 100 cm lang sein.",
-    "Das Gurtmaß eines Packstücks (längste Seite + 2 × Breite + 2 × Höhe) darf max. 300 cm betragen.",
+    "Das Gurtmaß eines Packstücks (längste Seite + 2 × die beiden anderen Seiten) darf max. 300 cm betragen.",
     "Mit diesem Versandtarif kann max. 1 Packstück pro Sendung verschickt werden.",
     "Nicht zugelassen: Paletten, Holzkisten, Koffer, Versandtaschen, Luftpolsterumschläge.",
   ]);

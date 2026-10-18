@@ -2,9 +2,11 @@
 // Echter Dev-Server, echter Browser, gemocktes Backend mit den Angebotsformen des Servers (Codes und Zahlen).
 //
 //   A  Profilkarte (UPS 22): „Größe & Gewicht“ mit Packstücken, Gewicht, längster Seite und Gurtmaß samt Formel
-//   B  Karte ohne Profil (DPD PaketShop 124): „Einschränkungen“ mit den Grenzsätzen und den Verpackungsregeln
-//   C  Karte ohne belegte Maße (DHL 84): nur Paketgrenze und Ladehilfe — keine erfundene Gewichts- oder Maßzeile
+//   B  Karte ohne Profil (DPD PaketShop 124): „Einschränkungen“ mit den Grenzsätzen der Paketshop-Abgabe und den
+//      Verpackungsregeln
+//   C  Karte ohne belegte Maße (DHL 84): Paketgrenze, Ladehilfe und Palettenpflicht — keine erfundene Gewichts- oder Maßzeile
 //   D  390 px: alles innerhalb der Karte, kein horizontaler Überlauf
+//   E  GLS Pick&Ship 110: längste Seite, zweitlängste Seite und Gurtmaß (Carrier-Abschluss 2026-10-18)
 //
 // Kein echtes Backend, keine Bestellung, kein Anbieter.
 import { test } from "node:test";
@@ -48,15 +50,22 @@ const DPD124 = {
   ...BASIS, offerId: "tg-grenzen-dpd124-00000000000000124", publicCarrierId: "dpd", publicServiceName: "PaketShop",
   serviceType: "dropoff", collectionDate: null, collectionReadyFrom: null,
   netPrice: 6.08, vatAmount: 1.16, finalPrice: 7.24,
-  tariffLimits: [{ operant: "packages_count", operator: "<=", value: 1 }, { operant: "weight", operator: "<=", value: 31.5 },
-                 { operant: "first_length", operator: "<=", value: 100 }, { operant: "length_and_girth", operator: "<=", value: 300 }],
-  packageRules: { notAccepted: ["pallets", "wooden_crates", "suitcases", "mailer_bags", "padded_envelopes"], handlingAidFromKg: null },
+  tariffLimits: [{ operant: "packages_count", operator: "<=", value: 1 }, { operant: "weight", operator: "<=", value: 20 },
+                 { operant: "first_length", operator: "<=", value: 100 }, { operant: "length_and_girth", operator: "<=", value: 250 }],
+  packageRules: { notAccepted: ["pallets", "wooden_crates", "suitcases", "mailer_bags", "padded_envelopes"], handlingAidFromKg: null,
+                  palletFromKg: null },
 };
 const DHL84 = {
   ...BASIS, offerId: "tg-grenzen-dhl84-000000000000000084", publicCarrierId: "dhl", publicServiceName: "Domestic Express",
   netPrice: 95.08, vatAmount: 18.07, finalPrice: 113.15,
   tariffLimits: [{ operant: "packages_count", operator: "<=", value: 2 }],
-  packageRules: { notAccepted: [], handlingAidFromKg: 30 },
+  packageRules: { notAccepted: [], handlingAidFromKg: 30, palletFromKg: 70 },
+};
+const GLS110 = {
+  ...BASIS, offerId: "tg-grenzen-gls110-00000000000000110", publicCarrierId: "gls", publicServiceName: "Pick&Ship",
+  netPrice: 18.53, vatAmount: 3.52, finalPrice: 22.05, labelFormats: [], printerRequired: false,
+  tariffLimits: [{ operant: "packages_count", operator: "<=", value: 1 }, { operant: "first_length", operator: "<=", value: 200 },
+                 { operant: "second_length", operator: "<=", value: 80 }, { operant: "length_and_girth", operator: "<=", value: 300 }],
 };
 
 let server, browser;
@@ -72,8 +81,8 @@ async function seite(viewport = { width: 1440, height: 1000 }) {
     if (pfad.endsWith("/api/legal/booking-context")) return json({ enabled: false });
     if (pfad.includes("/kunde/notifications")) return json({ notifications: [], unreadCount: 0, snapshotAt: "", pagination: {} });
     if (pfad.includes("/api/jumingo/calculate-price")) {
-      return json({ ceShipmentId: 4997, tariffs: [UPS22, DPD124, DHL84], availableShippingModes: ["standard", "express"],
-        publicCarriers: [{ id: "ups", name: "UPS" }, { id: "dpd", name: "DPD" }, { id: "dhl", name: "DHL" }],
+      return json({ ceShipmentId: 4997, tariffs: [UPS22, DPD124, DHL84, GLS110], availableShippingModes: ["standard", "express"],
+        publicCarriers: [{ id: "ups", name: "UPS" }, { id: "dpd", name: "DPD" }, { id: "dhl", name: "DHL" }, { id: "gls", name: "GLS" }],
         customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null });
     }
     return json({ items: [], drafts: [], addresses: [], shipments: [], invoices: [], nextCursor: null, pagination: { total: 0 } });
@@ -138,9 +147,9 @@ test("B — PaketShop ohne Profil: Grenzsätze und Verpackungsregeln unter „Ei
   const { page, fehler } = await seite();
   const panel = await oeffne(page, DPD124);
   assert.deepEqual(await einschraenkungen(panel), [
-    "Packstücke dürfen max. 31,5 kg wiegen.",
+    "Packstücke dürfen max. 20 kg wiegen.",
     "Die längste Seite eines Packstücks darf max. 100 cm lang sein.",
-    "Das Gurtmaß eines Packstücks (längste Seite + 2 × die beiden anderen Seiten) darf max. 300 cm betragen.",
+    "Das Gurtmaß eines Packstücks (längste Seite + 2 × die beiden anderen Seiten) darf max. 250 cm betragen.",
     "Mit diesem Versandtarif kann max. 1 Packstück pro Sendung verschickt werden.",
     "Nicht zugelassen: Paletten, Holzkisten, Koffer, Versandtaschen, Luftpolsterumschläge.",
   ]);
@@ -148,22 +157,24 @@ test("B — PaketShop ohne Profil: Grenzsätze und Verpackungsregeln unter „Ei
   await page.close();
 });
 
-test("C — DHL ohne belegte Maße: nur Paketgrenze und Ladehilfe, keine erfundene Gewichts- oder Maßzeile", async () => {
+test("C — DHL ohne belegte Maße: Paketgrenze, Ladehilfe und Palettenpflicht, keine erfundene Gewichts- oder Maßzeile", async () => {
   const { page, fehler } = await seite();
   const panel = await oeffne(page, DHL84);
   assert.deepEqual(await einschraenkungen(panel), [
     "Mit diesem Versandtarif können max. 2 Packstücke pro Sendung verschickt werden.",
     "Packstücke ab 30 kg müssen auf einer Ladehilfe stehen, etwa einer Palette oder einem rollbaren Untersatz.",
+    "Packstücke ab 70 kg müssen auf einer Palette (Euro- oder Einwegpalette) eingeliefert werden.",
   ]);
   const text = norm(await panel.textContent());
-  assert.ok(!/\d+\s*cm|Gurtmaß|längste Seite|70 kg/.test(text), `erfundene Grenze: ${text}`);
+  // Die 70 kg stehen nur in der Palettenpflicht — keine Gewichtsgrenze („dürfen max."), keine Maßzeile.
+  assert.ok(!/\d+\s*cm|Gurtmaß|längste Seite|dürfen max\./.test(text), `erfundene Grenze: ${text}`);
   assert.deepEqual(fehler, []);
   await page.close();
 });
 
 test("D — 390 px: Grenzen und Regeln innerhalb der Karte, kein horizontaler Überlauf", async () => {
   const { page, fehler } = await seite({ width: 390, height: 900 });
-  for (const t of [UPS22, DPD124]) {
+  for (const t of [UPS22, DPD124, GLS110]) {
     const panel = await oeffne(page, t);
     const karte = await karteVon(page, t).boundingBox();
     for (const el of await panel.locator(".offer-limit-item, .offer-detail-row, .offer-profile-note").all()) {
@@ -173,6 +184,21 @@ test("D — 390 px: Grenzen und Regeln innerhalb der Karte, kein horizontaler Ü
     }
   }
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0);
+  assert.deepEqual(fehler, []);
+  await page.close();
+});
+
+test("E — GLS Pick&Ship: längste Seite, zweitlängste Seite und Gurtmaß als eigene Sätze", async () => {
+  const { page, fehler } = await seite();
+  const panel = await oeffne(page, GLS110);
+  assert.deepEqual(await einschraenkungen(panel), [
+    "Die längste Seite eines Packstücks darf max. 200 cm lang sein.",
+    "Die zweitlängste Seite eines Packstücks darf max. 80 cm lang sein.",
+    "Das Gurtmaß eines Packstücks (längste Seite + 2 × die beiden anderen Seiten) darf max. 300 cm betragen.",
+    "Mit diesem Versandtarif kann max. 1 Packstück pro Sendung verschickt werden.",
+  ]);
+  // Kein Gewicht: GLS 110 traegt keine Gewichtsgrenze, und es wird keine ergaenzt.
+  assert.ok(!/kg/.test(norm(await panel.textContent())), "erfundene Gewichtsgrenze");
   assert.deepEqual(fehler, []);
   await page.close();
 });

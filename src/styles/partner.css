@@ -223,7 +223,7 @@
 .spp-cell-sub { font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
 
 /* Erklärung über einer Liste (UX-Paket 6): Begriffe bzw. Regel in einer leisen
-   Fläche — Kunden: Kundenkonto vs. Kunden-Level; Team: die Regel der Plätze. */
+   Fläche — Kunden: Kundenkonto vs. Kunden-Level; Team: die Regel der Teamprovision. */
 .spp-explain {
   margin: 0;
   padding: var(--ce-space-3) var(--ce-space-4);

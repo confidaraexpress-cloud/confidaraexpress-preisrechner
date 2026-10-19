@@ -141,7 +141,7 @@ async function setup(page, state, { token = null } = {}) {
       return json({ error: "Nicht erlaubt", code: "ROLE_NOT_PERMITTED" }, 403);
     }
     if (p.endsWith("/api/sales-partner/me/overview")) return json(OVERVIEW);
-    if (p.endsWith("/api/sales-partner/me/team")) return json({ limits: { level1: 10, level2: 10 }, level1: [], level2: [] });
+    if (p.endsWith("/api/sales-partner/me/team")) return json({ level1: [], level2: [] });
     if (p.endsWith("/api/sales-partner/me/customers")) return json({ customers: [] });
     if (p.endsWith("/api/sales-partner/me/commissions")) {
       return json({ month: "2026-10", totals: { accruedCents: 0, payableCents: 0, byLevel: { 0: 0, 1: 0, 2: 0 } }, entries: [] });

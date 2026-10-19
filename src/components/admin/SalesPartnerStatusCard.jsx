@@ -67,7 +67,7 @@ const AKTIONEN = Object.freeze({
   },
   reactivate: {
     title: "Vertriebspartner reaktivieren",
-    text: "{ab} entstehen wieder Provisionen. In der Platzreihenfolge im Team seines Sponsors zählt er als neu aktiviert. Der Login wird dadurch nicht verändert.",
+    text: "{ab} entstehen wieder Provisionen, und er zählt wieder im Team seines Sponsors. Der Login wird dadurch nicht verändert.",
     confirm: "Reaktivieren",
     success: "Der Vertriebspartner wurde reaktiviert.",
   },

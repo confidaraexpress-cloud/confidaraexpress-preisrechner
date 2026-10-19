@@ -106,7 +106,7 @@ const VOLL6 = {
     { customerId: 7, companyName: "Muster Logistik GmbH", assignedSince: "2026-05-01", assignedUntil: null, source: "referral_link", referralCodeUsed: "WXYZ6789" },
     { customerId: 8, companyName: "Alt Kunde AG", assignedSince: "2026-01-01", assignedUntil: "2026-04-01", source: "admin", referralCodeUsed: null },
   ],
-  team: { level1: [{ id: 5, name: "Petra Partner", status: "active", activeSince: "2026-10-06", relevant: true, rank: 1,
+  team: { level1: [{ id: 5, name: "Petra Partner", status: "active", activeSince: "2026-10-06", relevant: true,
     commissionCurrentMonthCents: 125, commissionTotalCents: 125 }], level2: [] },
   assessments: [{ month: "2026-10", measuredMonth: "2026-09", activeCustomers: 1, shippedPackages: 120, customerLevel: 0,
     customerBonusPercent: "0.00", packageLevel: 1, packageBonusPercent: "2.50", minPackages: 3, ruleSetId: 1, version: 1,

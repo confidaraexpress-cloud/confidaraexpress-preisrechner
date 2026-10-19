@@ -364,6 +364,8 @@ Eine Anwendung — dieselbe SPA im Browser und installiert. Projektweiter Stand:
 
 ## Verbotene Muster
 
+- Oberflächensperren oder Schalter für fertige, sicher nutzbare Funktionen ohne benannten Schutzzweck (Canonical Context 1A „Sichtbarkeit fertiger Funktionen“) — Schutzmechanismen für Buchungen, Rechnungen, Zahlungen und Rechte bleiben
+- Unternehmensangaben (Firmierung, Rechtsform, Anschrift, Kontakt) außerhalb von `src/config/companyProfile.js` — veröffentlichte Rechtsfassungen ausgenommen, sie bleiben wortgleich
 - zweite API-Schicht neben `src/api/`
 - App-Code, API-Antworten, Dokumente oder Kundendaten im Service-Worker-Cache
 - externe Icon-Bibliothek

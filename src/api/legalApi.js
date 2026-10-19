@@ -43,3 +43,10 @@ export function getLegalBookingContext({ signal } = {}) {
 export function getCurrentLegalSet({ signal } = {}) {
   return apiFetch(`/api/legal/current`, { signal });
 }
+
+// Die Anbieterangaben für das Impressum (Schritt 3, 2026-10-19): die zentrale Ausstellerkonfiguration des Servers,
+// nur wenn dieser Aussteller einen gültigen Beleg ausstellen dürfte. Öffentlich, ohne Auth.
+// 200 → `{ status: "issuer", profile }` oder `{ status: "pre_formation" }` (utils/companyProfileView.mjs).
+export function getCompanyProfile({ signal } = {}) {
+  return apiFetch(`/api/legal/company-profile`, { signal });
+}

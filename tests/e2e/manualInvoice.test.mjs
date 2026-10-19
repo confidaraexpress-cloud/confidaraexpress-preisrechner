@@ -10,6 +10,7 @@
 //   F  Bestehender Kunde: Suche, Auswahl belegt die Rechnungsanschrift vor, Request mit recipientUserId
 //   G  Vorschau „Entwurf – keine Rechnung" mit Drucken
 //   H  Rechnungsdetail: Stornovermerk mit Pflichtangaben, genau ein Request; Versanddialog nennt den Empfänger
+//   H2 Rechnungsdetail: Stornorechnung im System (Schritt 3) — Pflichtangaben, genau ein Request, Download, keine E-Mail
 //   I  390 px: kein horizontaler Überlauf im Editor
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -31,7 +32,9 @@ function chromiumExecutablePath() {
 
 let server, browser;
 
-const SPERRE_SCHALTER = { code: "MANUAL_INVOICE_ISSUE_DISABLED", message: "Das Ausstellen manueller Rechnungen ist nicht freigeschaltet." };
+// Schritt 3: kein Freigabeschalter mehr — gesperrt wird nur durch tatsächliche Bedingungen, hier die Rechtsform.
+const SPERRE_RECHTSFORM = { code: "ISSUER_LEGAL_FORM_UNCONFIRMED", fields: ["issuer.name"],
+  message: "Die Rechtsform des Ausstellers trifft nicht zu (keine GbR; eine geplante Gesellschaft stellt noch keine Rechnungen aus) — es wird keine Rechnung ausgestellt." };
 
 function entwurf(id, ueber = {}) {
   return {
@@ -42,14 +45,15 @@ function entwurf(id, ueber = {}) {
     serviceDateFrom: "2026-10-15", serviceDateTo: null, customerReference: null, paymentTermDays: 7,
     introText: null, closingText: null, paymentNote: null, taxCase: "domestic_standard",
     totals: { netCents: 12345, vatCents: 2346, grossCents: 14691, vatRatePercent: 19, lines: [{ netCents: 12345, vatCents: 2346, netBeforeDiscountCents: 12345, discountCents: 0 }] },
-    issueBlockers: [SPERRE_SCHALTER],
+    issueBlockers: [SPERRE_RECHTSFORM],
     ...ueber,
   };
 }
 
-async function seite({ blockers = [SPERRE_SCHALTER], issueEnabled = false, viewport = { width: 1440, height: 1100 } } = {}) {
+async function seite({ blockers = [SPERRE_RECHTSFORM], legalFormFields = ["issuer.name"], viewport = { width: 1440, height: 1100 } } = {}) {
   const page = await browser.newPage({ viewport });
-  const z = { creates: [], updates: [], issues: [], reversals: [], emails: 0, previews: 0, searches: [], reversalDone: false };
+  const z = { creates: [], updates: [], issues: [], reversals: [], emails: 0, previews: 0, searches: [], reversalDone: false,
+    stornos: [], stornoDone: false, stornoDownloads: 0 };
   const fehler = [];
   page.on("pageerror", (e) => fehler.push(String(e)));
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
@@ -60,7 +64,7 @@ async function seite({ blockers = [SPERRE_SCHALTER], issueEnabled = false, viewp
     const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
     if (p.endsWith("/kundenbereich")) return json({ user: ADMIN });
     if (p.endsWith("/admin/manual-invoices/status")) {
-      return json({ issueEnabled, issuer: { ready: true, missingFields: [], placeholderFields: [] }, vatRate: { ok: true, ratePercent: 19 },
+      return json({ issuer: { ready: legalFormFields.length === 0, missingFields: [], placeholderFields: [], legalFormFields }, vatRate: { ok: true, ratePercent: 19 },
         taxCases: ["domestic_standard"], domesticCountry: "DE", limits: { paymentTermDefaultDays: 7, paymentTermMaxDays: 60 } });
     }
     if (p.endsWith("/admin/manual-invoices/customers")) {
@@ -107,20 +111,37 @@ async function seite({ blockers = [SPERRE_SCHALTER], issueEnabled = false, viewp
       z.reversalDone = true;
       return json({ recorded: true, invoiceNumber: "CE-RE26-00042" }, 201);
     }
+    if (p.endsWith("/admin/invoices/77/reversal-invoice") && m === "POST") {
+      z.stornos.push(req.postDataJSON());
+      await new Promise((r) => setTimeout(r, 300));
+      z.stornoDone = true;
+      return json({ issued: true, invoiceNumber: "CE-RE26-00042", cancellationNumber: "CE-ST26-00001", grossCents: -14691 }, 201);
+    }
+    if (p.endsWith("/admin/invoices/77/reversal-invoice") && m === "GET") {
+      z.stornoDownloads++;
+      return route.fulfill({ status: 200, contentType: "application/pdf", body: PDF,
+        // Wie die echte API (middleware/cors.js EXPOSED_HEADERS): ohne Freigabe sähe der Browser den Namen nicht.
+        headers: { "content-disposition": 'attachment; filename="Stornorechnung_CE-ST26-00001.pdf"',
+          "access-control-expose-headers": "Content-Disposition" } });
+    }
     if (p.endsWith("/admin/invoices/77/send-email") || p.endsWith("/admin/invoices/77/resend-email")) { z.emails++; return json({ outcome: "sent" }); }
     if (p.endsWith("/admin/invoices/77") && m === "GET") {
       return json({ invoice: {
         id: 77, invoice_number: "CE-RE26-00042", user_id: null, shipment_id: null, invoice_source: "manual",
         amount: 146.91, gross_amount: 146.91, net_amount: 123.45, vat_amount: 23.46, vat_rate: 0.19, currency: "EUR", payment_term: 7,
-        status: "unpaid", document_status: "ready", email_status: "pending", is_productive: true, is_payable: !z.reversalDone,
+        status: "unpaid", document_status: "ready", email_status: "pending", is_productive: true, is_payable: !(z.reversalDone || z.stornoDone),
         is_overdue: false, document_mode: "production", is_test_document: false, document_mode_label: "production",
         snapshot_company: "Elbufer Handel OHG", snapshot_name: "Tom Krüger", snapshot_email: "rechnung@elbufer-handel.example",
         due_date: "2026-10-24T10:00:00", issued_at: "2026-10-17T10:00:00Z", created_at: "2026-10-17T10:00:00Z",
         service_date: "2026-10-15", pdf_generated_at: "2026-10-17T10:00:01Z",
-        is_cancelled: z.reversalDone, cancelled_at: z.reversalDone ? "2026-10-17T11:00:00Z" : null,
-        cancellation_document_number: z.reversalDone ? "ST-2026-0001" : null, cancellation_date: z.reversalDone ? "2026-10-17" : null,
-        cancellation_reason: z.reversalDone ? "Leistung entfallen" : null, cancellation_approved_by: z.reversalDone ? "Erika Nordmann" : null,
-        cancellation_recorded_at: z.reversalDone ? "2026-10-17T11:00:00Z" : null,
+        is_cancelled: z.reversalDone || z.stornoDone, cancelled_at: z.reversalDone || z.stornoDone ? "2026-10-17T11:00:00Z" : null,
+        cancellation_document_number: z.stornoDone ? "CE-ST26-00001" : z.reversalDone ? "ST-2026-0001" : null,
+        cancellation_date: z.reversalDone || z.stornoDone ? "2026-10-17" : null,
+        cancellation_reason: z.reversalDone || z.stornoDone ? "Leistung entfallen" : null,
+        cancellation_approved_by: z.reversalDone || z.stornoDone ? "Erika Nordmann" : null,
+        cancellation_recorded_at: z.reversalDone || z.stornoDone ? "2026-10-17T11:00:00Z" : null,
+        cancellation_document_source: z.stornoDone ? "internal" : z.reversalDone ? "external" : null,
+        cancellation_document_available: z.stornoDone,
       } });
     }
     return json({});
@@ -214,8 +235,9 @@ test("D — Ausstellen gesperrt: Gründe vom Server; ungespeicherte Änderung sp
   await page.goto(`${BASE}/admin/invoices/manual/11`, { waitUntil: "networkidle" });
   await page.locator("#mi-issue").waitFor({ timeout: 15000 });
   assert.equal(await page.locator("#mi-issue").isDisabled(), true);
-  assert.match(norm(await page.locator("#mi-issue-blocked").innerText()), /nicht freigeschaltet/);
-  assert.match(norm(await page.locator("#mi-issue-status").innerText()), /nicht freigeschaltet/);
+  assert.match(norm(await page.locator("#mi-issue-blocked").innerText()), /Rechtsform des Ausstellers trifft nicht zu/);
+  assert.match(norm(await page.locator("#mi-issue-status").innerText()), /Rechtsform des Ausstellers trifft nicht zu/);
+  assert.doesNotMatch(norm(await page.locator("body").innerText()), /freigeschaltet/, "ein Schalterhinweis erscheint noch");
   assert.equal(await page.locator("#mi-preview").isDisabled(), false);
   await page.fill("#mi-pos-0-description", "Beratung geändert");
   assert.equal(await page.locator("#mi-preview").isDisabled(), true, "die Vorschau zeigte eine ungespeicherte Fassung");
@@ -226,7 +248,7 @@ test("D — Ausstellen gesperrt: Gründe vom Server; ungespeicherte Änderung sp
 });
 
 test("E — Ausstellen: Bestätigung, Doppelklick = ein Request, Meldung ohne E-Mail, kein Versandaufruf", async () => {
-  const { page, z, fehler } = await seite({ blockers: [], issueEnabled: true });
+  const { page, z, fehler } = await seite({ blockers: [], legalFormFields: [] });
   await page.goto(`${BASE}/admin/invoices/manual/11`, { waitUntil: "networkidle" });
   await page.locator("#mi-issue").waitFor({ timeout: 15000 });
   assert.equal(await page.locator("#mi-issue").isDisabled(), false);
@@ -311,6 +333,36 @@ test("H — Rechnungsdetail: Stornovermerk mit Pflichtangaben, genau ein Request
   assert.equal(z.reversals[0].externalDocumentNumber, "ST-2026-0001");
   await page.locator("#adm-inv-cancelled-note").waitFor({ timeout: 10000 });
   assert.match(norm(await page.locator("#adm-inv-reversal").innerText()), /ST-2026-0001.*Leistung entfallen.*Erika Nordmann/);
+  assert.equal(z.emails, 0);
+  assert.deepEqual(fehler, []);
+  await page.close();
+});
+
+test("H2 — Rechnungsdetail: Stornorechnung im System — Pflichtangaben, ein Request, Download, keine E-Mail", async () => {
+  const { page, z, fehler } = await seite();
+  await page.goto(`${BASE}/admin/invoices/77`, { waitUntil: "networkidle" });
+  await page.locator("#adm-inv-storno-open").waitFor({ timeout: 15000 });
+  assert.match(norm(await page.locator("#adm-inv-reversal").innerText()), /Stornorechnung entsteht hier im System/);
+  await page.click("#adm-inv-storno-open");
+  await page.locator("#adm-inv-storno-confirm").waitFor();
+  assert.match(norm(await page.locator(".adm-modal").innerText()), /eigener Nummer \(CE-ST\).*keine E-Mail versendet und keine Zahlung ausgelöst/);
+  await page.click("#adm-inv-storno-confirm");
+  await page.locator("#adm-storno-reason-err").waitFor({ timeout: 5000 });
+  assert.equal(z.stornos.length, 0, "ohne Pflichtangaben ging ein Request hinaus");
+  await page.fill("#adm-storno-reason", "Leistung entfallen");
+  await page.fill("#adm-storno-approved", "Erika Nordmann");
+  // Doppelklick: genau EIN Request.
+  await page.locator("#adm-inv-storno-confirm").dblclick();
+  await page.getByText("Stornorechnung CE-ST26-00001 erstellt. Es wurde keine E-Mail versendet.", { exact: true }).waitFor({ timeout: 10000 });
+  assert.equal(z.stornos.length, 1, "der Doppelklick erzeugte mehr als einen Request");
+  assert.deepEqual(z.stornos[0], { reason: "Leistung entfallen", approvedBy: "Erika Nordmann", acknowledgePaid: false, confirm: true });
+  await page.locator("#adm-inv-storno-download").waitFor({ timeout: 10000 });
+  const karte = norm(await page.locator("#adm-inv-reversal").innerText());
+  assert.match(karte, /Stornorechnung \(im System erstellt\).*CE-ST26-00001.*Leistung entfallen.*Erika Nordmann/);
+  const [download] = await Promise.all([page.waitForEvent("download"), page.click("#adm-inv-storno-download")]);
+  assert.equal(download.suggestedFilename(), "Stornorechnung_CE-ST26-00001.pdf");
+  assert.equal(z.stornoDownloads, 1);
+  assert.equal(z.reversals.length, 0, "der externe Vermerk wurde mit ausgelöst");
   assert.equal(z.emails, 0);
   assert.deepEqual(fehler, []);
   await page.close();

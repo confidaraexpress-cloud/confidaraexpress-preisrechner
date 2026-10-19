@@ -555,9 +555,9 @@ test("26 — der zentrale ConfirmDialog erfüllt Fokus, Escape und Doppelklicksc
   assert.match(dialogSrc, /aria-labelledby=\{titleId\}/);
   assert.match(dialogSrc, /aria-describedby=\{descId\}/);
   assert.equal((dialogSrc.match(/disabled=\{busy\}/g) || []).length, 2, "beide Buttons sind während des Requests gesperrt");
-  // Alle mutierenden Aktionen der Detailseite nutzen diesen einen Dialog — seit Auftrag 2 / P1 vier: Zahlung,
-  // Dokument, E-Mail und der Stornovermerk einer manuell erstellten Rechnung.
-  assert.equal((detailSrc.match(/<ConfirmDialog\b/g) || []).length, 4, "Zahlung, Dokument, E-Mail und Storno nutzen den zentralen Dialog");
+  // Alle mutierenden Aktionen der Detailseite nutzen diesen einen Dialog — seit Schritt 3 fünf: Zahlung, Dokument,
+  // E-Mail, die Stornorechnung und der Stornovermerk eines externen Belegs (beide nur manuell erstellte Rechnungen).
+  assert.equal((detailSrc.match(/<ConfirmDialog\b/g) || []).length, 5, "Zahlung, Dokument, E-Mail, Stornorechnung und Stornovermerk nutzen den zentralen Dialog");
   assert.equal(/adm-modal-overlay/.test(detailSrc), false, "kein handgebautes Modal mehr auf der Seite");
 });
 

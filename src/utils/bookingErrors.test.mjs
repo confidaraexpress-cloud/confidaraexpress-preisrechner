@@ -116,3 +116,60 @@ test("8 — TG22 Paket B: offene Ausgänge ersetzen den Bestellknopf (Konflikt),
   assert.ok(!/setError\(mapBookThrownError/.test(doBook), "ein geworfener Fehler landet wieder im Banner");
   assert.ok(!/setError\(mapBookUnreadableSuccess/.test(doBook), "ein unlesbarer Erfolg landet wieder im Banner");
 });
+
+test("Paritätsaudit A4/A5/O1 — Paketshop, Zusatzadressen und Neubepreisung entscheiden am Code", async () => {
+  const {
+    PARCELSHOP_REQUIRED_TEXT, paketshopFehlt, zusatzmailFehler, LABEL_EMAIL_NOT_AVAILABLE_TEXT,
+    ZUSATZMAIL_HINWEIS, repriceFehlerText, OFFER_ALREADY_USED_TEXT,
+  } = await import("./bookingErrors.mjs");
+  const { schneideZwischen } = await import("../testing/quelltext.mjs");
+
+  // A4: nur der 409 mit diesem Code; der Text sagt, dass nichts beauftragt wurde.
+  const tg = { error: "Die Buchung ist nicht zustande gekommen. Es wurde nichts beauftragt.", code: "PARCELSHOP_REQUIRED" };
+  assert.equal(paketshopFehlt(409, tg), true);
+  assert.equal(paketshopFehlt(400, tg), false);
+  assert.equal(paketshopFehlt(409, { code: "OFFER_NOT_BOOKABLE" }), false);
+  assert.equal(paketshopFehlt(409, null), false);
+  assert.match(PARCELSHOP_REQUIRED_TEXT, /Paketshop/);
+  assert.match(PARCELSHOP_REQUIRED_TEXT, /nichts beauftragt/);
+
+  // A5: LABEL_EMAIL_NOT_AVAILABLE gehört an die Labeladresse, oben nur der Hinweis.
+  const label = zusatzmailFehler(
+    { error: "Für diesen Tarif wird das Versandlabel bei der Abholung am Paket angebracht.", code: "LABEL_EMAIL_NOT_AVAILABLE", field: "labelTrackingEmail" },
+    "Für diesen Tarif wird das Versandlabel bei der Abholung am Paket angebracht.");
+  assert.deepEqual(label, { feld: "labelTrackingEmail", feldText: LABEL_EMAIL_NOT_AVAILABLE_TEXT, text: ZUSATZMAIL_HINWEIS });
+  assert.match(LABEL_EMAIL_NOT_AVAILABLE_TEXT, /schalten Sie diese Option aus/);
+  // Ein Formatfehler des Servers steht an seinem Feld; ohne Text bleibt der bisherige Satz oben.
+  assert.deepEqual(zusatzmailFehler({ field: "trackingEmail" }, "Bitte geben Sie eine gültige E-Mail-Adresse an."),
+    { feld: "trackingEmail", feldText: "Bitte geben Sie eine gültige E-Mail-Adresse an.", text: ZUSATZMAIL_HINWEIS });
+  assert.deepEqual(zusatzmailFehler({ field: "labelTrackingEmail" }, ""),
+    { feld: "labelTrackingEmail", feldText: null, text: "Bitte prüfen Sie die zusätzliche E-Mail-Adresse." });
+  assert.equal(zusatzmailFehler({ field: "reference" }, "x"), null);
+  assert.equal(zusatzmailFehler(null, "x"), null);
+
+  // O1: jeder 4xx-Code der gestuften Neubepreisung hat einen Kundentext ohne Feldnamen; unbekannt → null.
+  const codes = ["TARIFF_SELECTION_INVALID", "OFFER_NOT_BOOKABLE", "OFFER_NOT_FOUND", "OFFER_MISMATCH",
+    "OFFER_ALREADY_USED", "TARIFF_NOT_FOUND", "TARIFF_AMBIGUOUS", "TARIFF_NOT_INSURABLE",
+    "INSURANCE_SELECTION_INVALID", "CONTENT_DESCRIPTION_INVALID", "GOODS_VALUE_REQUIRED", "GOODS_VALUE_INVALID",
+    "INSURANCE_VALUE_INVALID", "SHIPMENT_NOT_FOUND", "SHIPMENT_NOT_DRAFT"];
+  for (const code of codes) {
+    const text = repriceFehlerText({ error: "goodsValue: muss zwischen 1 und 9999999 liegen", code });
+    assert.equal(typeof text, "string", code);
+    assert.ok(!/goodsValue|extraInsuranceValue|shipperTariffId|insuranceType|contentDescription|[A-Z]{2,}_[A-Z]/.test(text), `${code}: ${text}`);
+  }
+  assert.equal(repriceFehlerText({ code: "OFFER_ALREADY_USED" }), OFFER_ALREADY_USED_TEXT);
+  assert.ok(!/Preis hat sich geändert/.test(repriceFehlerText({ code: "SHIPMENT_NOT_DRAFT" })));
+  assert.equal(repriceFehlerText({ code: "UNBEKANNT" }), null);
+  assert.equal(repriceFehlerText({ code: "toString" }), null);
+  assert.equal(repriceFehlerText(null), null);
+
+  // Die Buchungsseite nutzt die Regeln — A4 vor den Absicherungszweigen und dem Sammelzweig.
+  const page = strip(buchungsFlaeche());
+  const konflikt = schneideZwischen(page, "if (paketshopFehlt(r.status, d))", "setConflict(asStr(d?.error)", "409-Kette");
+  assert.match(konflikt, /setStep\(1\);\s*setError\(PARCELSHOP_REQUIRED_TEXT\);/);
+  assert.ok(konflikt.indexOf("isInsured && coverModel && isCoverBookError(d)") > -1, "A4 muss vor den Absicherungszweigen stehen");
+  assert.match(page, /const zusatzmail = zusatzmailFehler\(d, backendMsg\);/);
+  assert.match(page, /labelTrackingEmailError=\{\(emailShowErrors && labelTrackingEmailProblem\) \|\| zusatzmailFeldFehler\("labelTrackingEmail"\)\}/);
+  assert.match(page, /trackingEmailError=\{\(emailShowErrors && trackingEmailProblem\) \|\| zusatzmailFeldFehler\("trackingEmail"\)\}/);
+  assert.match(page, /coverRepriceErrorText\(r\.status, d\) : \(repriceFehlerText\(d\) \|\|/);
+});

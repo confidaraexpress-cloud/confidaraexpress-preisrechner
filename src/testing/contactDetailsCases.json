@@ -1,0 +1,39 @@
+{
+  "hinweis": "Auftrag 2 / P8 (2026-10-17): Falltabelle der Ansprechpartner-Kontaktdaten. Bytegleich in Backend (tests/fixtures/contactDetailsCases.json) und Frontend (src/testing/contactDetailsCases.json); beide Implementierungen pruefen gegen sie.",
+  "email": [
+    { "eingabe": "", "ok": true, "wert": null },
+    { "eingabe": "   ", "ok": true, "wert": null },
+    { "eingabe": "anna.berger@firma.de", "ok": true, "wert": "anna.berger@firma.de" },
+    { "eingabe": "  Anna.Berger@Firma.DE  ", "ok": true, "wert": "Anna.Berger@Firma.DE" },
+    { "eingabe": "versand+rueckfragen@beispiel-gmbh.de", "ok": true, "wert": "versand+rueckfragen@beispiel-gmbh.de" },
+    { "eingabe": "a@b.co", "ok": true, "wert": "a@b.co" },
+    { "eingabe": "anna.berger", "ok": false },
+    { "eingabe": "anna@firma", "ok": false },
+    { "eingabe": "anna@firma.d", "ok": false },
+    { "eingabe": "anna berger@firma.de", "ok": false },
+    { "eingabe": "anna@@firma.de", "ok": false },
+    { "eingabe": "anna@firma.de, bob@firma.de", "ok": false },
+    { "eingabe": "anna@firma.de;bob@firma.de", "ok": false },
+    { "eingabe": "<anna@firma.de>", "ok": false },
+    { "eingabe": "anna@firma.de\nBcc: x@y.de", "ok": false },
+    { "eingabe": "@firma.de", "ok": false }
+  ],
+  "phone": [
+    { "eingabe": "", "ok": true, "wert": null },
+    { "eingabe": "   ", "ok": true, "wert": null },
+    { "eingabe": "+49 711 123456", "ok": true, "wert": "+49 711 123456" },
+    { "eingabe": "0711 / 123 456-78", "ok": true, "wert": "0711 / 123 456-78" },
+    { "eingabe": "(0711) 123456", "ok": true, "wert": "(0711) 123456" },
+    { "eingabe": "  +49   711    123456  ", "ok": true, "wert": "+49 711 123456" },
+    { "eingabe": "0151.12345678", "ok": true, "wert": "0151.12345678" },
+    { "eingabe": "12345", "ok": false },
+    { "eingabe": "+49 711 123456 Durchwahl 3", "ok": false },
+    { "eingabe": "0711+123456", "ok": false },
+    { "eingabe": "++49 711 123456", "ok": false },
+    { "eingabe": "123456789012345678901", "ok": false },
+    { "eingabe": "+49 (0) 711 123 456 789 012 345", "ok": false },
+    { "eingabe": "keine Angabe", "ok": false },
+    { "eingabe": "0711 123456\n", "ok": true, "wert": "0711 123456" },
+    { "eingabe": "0711\t123456", "ok": true, "wert": "0711 123456" }
+  ]
+}

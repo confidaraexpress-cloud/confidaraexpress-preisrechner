@@ -21,6 +21,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -283,7 +284,7 @@ const buchenKnopf = (page) => page.getByRole("button", { name: /Kostenpflichtig 
 
 test.before(async () => {
   server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"],
-    { stdio: "ignore", detached: true });
+    { stdio: "ignore", ...DEV_SERVER_SPAWN });
   const frist = Date.now() + 90000;
   for (;;) {
     try { const r = await fetch(`${BASE}/`); if (r.ok) break; } catch { /* noch nicht da */ }
@@ -296,8 +297,7 @@ test.before(async () => {
 test.after(async () => {
   if (browser) await browser.close();
   if (server) {
-    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
-    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+    stopDevServer(server, "SIGKILL");
   }
 });
 
@@ -531,8 +531,14 @@ test("M — Entwurf mit vergangenem Datum: leer, erklärt, keine Berechnung bis 
   assert.match(await text(trigger), /Bitte Datum wählen/);
   assert.match(await text(page.locator("body")), /Versanddatum liegt in der Vergangenheit/);
   await page.locator("#ns-date-missing").waitFor({ timeout: 5000 });
+  // Seit Auftrag 1 (P11) ist der Knopf bedienbar: ohne Datum sendet ein Klick nichts, markiert das
+  // Versanddatum und springt dorthin — kein Ersatzdatum.
   const cta = page.locator(".offers-calc-cta button").first();
-  assert.equal(await cta.isDisabled(), true, "ohne Datum ist der CTA bedienbar");
+  assert.equal(await cta.isDisabled(), false, "der Knopf ist wegen des fehlenden Datums gesperrt");
+  await cta.click();
+  await page.waitForFunction(() => document.activeElement?.getAttribute("data-field") === "shippingDate", null, { timeout: 5000 });
+  assert.equal(await trigger.getAttribute("aria-invalid"), "true", "das fehlende Datum ist nicht markiert");
+  await page.waitForTimeout(300);
   assert.equal(protokoll.calc.length, 0);
 
   await trigger.click();

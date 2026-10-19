@@ -19,6 +19,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -170,7 +171,7 @@ const gewaehlt = (page) => page.locator(".ins-card--selected .ins-card-name").in
 
 test.before(async () => {
   server = spawn("npm", ["run", "dev", "--", "--port", String(PORT), "--strictPort"], {
-    cwd: process.cwd(), stdio: "ignore", detached: true,
+    cwd: process.cwd(), stdio: "ignore", ...DEV_SERVER_SPAWN,
   });
   const start = Date.now();
   while (Date.now() - start < 60000) {
@@ -182,7 +183,7 @@ test.before(async () => {
 
 test.after(async () => {
   if (browser) await browser.close();
-  if (server?.pid) { try { process.kill(-server.pid, "SIGTERM"); } catch { /* schon beendet */ } }
+  stopDevServer(server, "SIGTERM");
 });
 
 /* ── 1. Standard ─────────────────────────────────────────────────────────── */
@@ -263,7 +264,8 @@ test("3 — dritte Option: korrekter Name, neutraler Haftungstext, kein CE-AGB-L
   const text = await modul.innerText();
   assert.match(text, /Keine zusätzliche Transportversicherung/);
   assert.ok(!/Kein Versicherungsschutz/.test(text), "der alte Name ist noch sichtbar");
-  assert.match(text, /Es gelten die Haftungs- und Beförderungsbedingungen des gewählten Versanddienstleisters\./);
+  assert.match(text, /Ohne Zusatzversicherung gilt die gesetzliche und vertragliche Haftung für Verlust und Beschädigung; sie ist in der Regel der Höhe nach begrenzt\./);
+  assert.ok(!/Bedingungen des gewählten Versanddienstleisters/.test(text), "der Paketdienst erscheint wieder als allein Haftender");
 
   // Kein Link auf die CE-eigenen AGB. Sie laufen als RELATIVE Route (/agb,
   // /agb#paragraf-10) — die Carrier-URL des Tarifs ist absolut und darf hier
@@ -307,7 +309,7 @@ test("5 — fehlender carrierLinks.agb erzeugt weder Link noch Pseudo-Link", asy
   const none = karte(page, "Keine zusätzliche Transportversicherung");
   assert.equal(await none.locator(SEL.terms).count(), 0, "es wird ein Link gezeigt, obwohl der Tarif keinen liefert");
   // Der neutrale Satz steht trotzdem da.
-  assert.match(await none.innerText(), /Haftungs- und Beförderungsbedingungen des gewählten Versanddienstleisters/);
+  assert.match(await none.innerText(), /gesetzliche und vertragliche Haftung für Verlust und Beschädigung/);
   // Kein Element, das wie ein Link aussieht, aber keiner ist.
   assert.equal(await page.locator(".ins-card-cond-link--static").count(), 0, "der inerte Pseudo-Link lebt noch");
   assert.equal(await page.locator(".booking-insurance-box a").count(), 0,

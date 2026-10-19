@@ -57,8 +57,22 @@ export function fetchCustomerInvoicePdf(invoiceId, invoiceNumber) {
   return fetchInvoicePdf(`/kunde/invoices/${encodeURIComponent(String(invoiceId))}/pdf`, safeFallbackName(invoiceNumber));
 }
 
+// Auftrag 2 / P1: Vorschau eines manuellen Rechnungsentwurfs („Entwurf – keine Rechnung"). Derselbe Abrufweg
+// wie jedes Rechnungs-PDF (nur application/pdf, Fehler als Text) — der Server schreibt dabei nichts.
+export function fetchManualInvoicePreviewPdf(draftId) {
+  return fetchInvoicePdf(`/admin/manual-invoices/drafts/${encodeURIComponent(String(draftId))}/preview`,
+    `entwurf-keine-rechnung-${String(draftId).replace(/[^0-9]/g, "") || "vorschau"}.pdf`);
+}
+
 export function fetchAdminInvoicePdf(invoiceId, invoiceNumber) {
   return fetchInvoicePdf(`/admin/invoices/${encodeURIComponent(String(invoiceId))}/pdf`, safeFallbackName(invoiceNumber));
+}
+
+// Schritt 3: Stornorechnung einer manuell erstellten Rechnung (Server prüft den SHA-256 vor der Auslieferung).
+export function fetchAdminReversalInvoicePdf(invoiceId, cancellationNumber) {
+  const nr = String(cancellationNumber == null ? "" : cancellationNumber).replace(/[^A-Za-z0-9._-]/g, "");
+  return fetchInvoicePdf(`/admin/invoices/${encodeURIComponent(String(invoiceId))}/reversal-invoice`,
+    `stornorechnung-${nr || "dokument"}.pdf`);
 }
 
 // Gemeinsamer Download-Abschluss: temporäre Object-URL, programmatischer Klick,
@@ -85,5 +99,10 @@ export async function downloadCustomerInvoicePdf(invoiceId, invoiceNumber) {
 // serverseitige Dateiname kennzeichnet sie als test-rechnung-…).
 export async function downloadAdminInvoicePdf(invoiceId, invoiceNumber) {
   const { blob, filename } = await fetchAdminInvoicePdf(invoiceId, invoiceNumber);
+  saveBlob(blob, filename);
+}
+
+export async function downloadAdminReversalInvoicePdf(invoiceId, cancellationNumber) {
+  const { blob, filename } = await fetchAdminReversalInvoicePdf(invoiceId, cancellationNumber);
   saveBlob(blob, filename);
 }

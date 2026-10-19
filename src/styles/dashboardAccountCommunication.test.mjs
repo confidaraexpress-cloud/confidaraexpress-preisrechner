@@ -258,8 +258,11 @@ test("11 — Passwortregeln, Felder und API sind unverändert", () => {
   // bleibt bestehen.
   assert.match(passwort, /triggerAuthError\(\)/);
   assert.match(passwort, /Das aktuelle Passwort ist nicht korrekt\./);
-  // Der Sitzungssentinel und 429 bleiben wortgleich.
-  assert.match(passwort, /d\.error === "Sitzung abgelaufen\. Bitte melden Sie sich erneut an\."/);
+  // Paritätsaudit A6/BP6 (dokumentierte Ankeränderung): das Sitzungsende entscheidet der Code
+  // „SESSION_EXPIRED“ bzw. ein 403 über endsSession() (utils/emailChangeView.mjs) — der Wortlaut
+  // des Sentinels ist dort nur noch Rückfall für einen Server ohne Code. 429 bleibt wortgleich.
+  assert.match(passwort, /if \(endsSession\(r\.status, d\)\) \{\s*triggerAuthError\(\);/);
+  assert.match(passwort, /Zu viele Versuche\. Bitte versuchen Sie es später erneut\./);
   assert.match(passwort, /Zu viele Versuche\. Bitte versuchen Sie es später erneut\./);
 });
 
@@ -308,7 +311,9 @@ test("13 — der Supportdialog nutzt das globale Dialog- und Formularsystem", ()
 });
 
 test("14 — Support-E-Mail- und API-Logik sind unverändert", () => {
-  assert.match(supportDialog, /createSupportRequest\(\{ category, subject, message \}\)/);
+  // Go-Live Paket G: die Anfrage trägt zusätzlich die gewählte Sendung — gesendet wird sie nur
+  // bei „Schaden oder Verlust" (buildSupportRequestBody), sonst bleibt der Body wie bisher.
+  assert.match(supportDialog, /createSupportRequest\(\{ category, subject, message, shipmentId \}\)/);
   assert.match(supportThread, /replySupportRequest\(requestId, reply\.trim\(\), idemKey\.current\)/);
   assert.match(supportThread, /confirmSupportViewed\(requestId, through\)/);
   // Kein automatischer Statuswechsel aus dem Frontend.

@@ -9,10 +9,18 @@ import { NewShipmentRoleDialog } from "../components/addressbook/NewShipmentRole
 import { getAddresses, createAddress, updateAddress, deleteAddress } from "../api/addressBookApi";
 import {
   TAB_SENDER, ROLE_SENDER, ROLE_RECIPIENT,
-  addressListStateKey, appendPageResults, resolveEmptyStateKind, mapAddressErrorToMessage,
+  addressListStateKey, appendPageResults, resolveEmptyStateKind,
   emptyAddressForm, addressToFormValues, prepareDuplicateFormValues,
-  resolveNewShipmentRole, mapAddressToShipmentFormPatch, applyAddressMutation, normalizeAddressForm,
+  resolveNewShipmentRole, mapAddressToShipmentFormPatch, applyAddressMutation, applyPromotedDefaultSender,
+  ADDRESS_OPERATIONS, addressFailureMessage, addressExceptionMessage, addressServerFieldErrors,
 } from "../utils/addressBookView.mjs";
+
+// Fehlerantwort lesen, ohne je einen Rohwert weiterzugeben: nur Status, Code und Feldname.
+async function fehlerAusAntwort(r) {
+  let d = null;
+  try { d = await r.json(); } catch { d = null; }
+  return { status: r.status, code: d?.code, field: d?.field };
+}
 
 const PAGE_LIMIT = 20;
 
@@ -70,8 +78,16 @@ export default function AddressBookPage({ onUseForNewShipment, utility }) {
       .then(async (r) => {
         if (seq !== reqSeq.current) return;
         if (r.status === 401 || r.status === 403) { setLoading(false); return; }
+        if (!r.ok) {
+          // Ein Fehler beim LADEN heißt nie „konnte nicht gespeichert werden“ (Audit P7).
+          const f = await fehlerAusAntwort(r);
+          if (seq !== reqSeq.current) return;
+          setError(addressFailureMessage(ADDRESS_OPERATIONS.LOAD, f));
+          setLoading(false);
+          return;
+        }
         let d = null; try { d = await r.json(); } catch { d = null; }
-        if (!r.ok) throw new Error(mapAddressErrorToMessage(d?.code));
+        if (seq !== reqSeq.current) return;
         setItems(Array.isArray(d?.items) ? d.items : []);
         setNextCursor(d?.nextCursor ?? null);
         setLoading(false);
@@ -79,7 +95,8 @@ export default function AddressBookPage({ onUseForNewShipment, utility }) {
       .catch((e) => {
         if (e?.name === "AbortError") return;
         if (seq !== reqSeq.current) return;
-        setError(e?.message || "Adressen konnten nicht geladen werden.");
+        // Netzfehler oder Zeitlimit: nie der Rohtext des Browsers („Failed to fetch“).
+        setError(addressExceptionMessage(ADDRESS_OPERATIONS.LOAD, e));
         setLoading(false);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -102,12 +119,15 @@ export default function AddressBookPage({ onUseForNewShipment, utility }) {
     try {
       const r = await getAddresses({ tab, q: debouncedQ, favoritesOnly, cursor: nextCursor, limit: PAGE_LIMIT });
       if (r.status === 401 || r.status === 403) { setLoadingMore(false); return; }
-      let d = null; try { d = await r.json(); } catch { d = null; }
-      if (!r.ok) throw new Error(mapAddressErrorToMessage(d?.code));
-      setItems((prev) => appendPageResults(prev, Array.isArray(d?.items) ? d.items : []));
-      setNextCursor(d?.nextCursor ?? null);
+      if (!r.ok) {
+        setLoadMoreError(addressFailureMessage(ADDRESS_OPERATIONS.LOAD_MORE, await fehlerAusAntwort(r)));
+      } else {
+        let d = null; try { d = await r.json(); } catch { d = null; }
+        setItems((prev) => appendPageResults(prev, Array.isArray(d?.items) ? d.items : []));
+        setNextCursor(d?.nextCursor ?? null);
+      }
     } catch (e) {
-      setLoadMoreError(e?.message || "Weitere Adressen konnten nicht geladen werden.");
+      setLoadMoreError(addressExceptionMessage(ADDRESS_OPERATIONS.LOAD_MORE, e));
     }
     setLoadingMore(false);
   };
@@ -125,18 +145,26 @@ export default function AddressBookPage({ onUseForNewShipment, utility }) {
   const openDuplicate = (address) => setDrawer({ mode: "duplicate", initialForm: prepareDuplicateFormValues(address), editingId: null });
   const closeDrawer = () => setDrawer(null);
 
+  // Die sichtbare Ansicht — eine geänderte Adresse, die nicht mehr hineingehört (Rolle gewechselt,
+  // Favorit entfernt unter „Nur Favoriten“), verschwindet aus ihr (applyAddressMutation).
+  const ansicht = { tab, favoritesOnly };
+
   const onSubmitDrawer = async (payload) => {
     try {
       const r = drawer.mode === "edit" ? await updateAddress(drawer.editingId, payload) : await createAddress(payload);
       if (r.status === 401 || r.status === 403) return { ok: false };
+      if (!r.ok) {
+        // Feldbezogene Serverfehler (`field`) stehen am Feld, der Satz darüber nennt den Vorgang.
+        const f = await fehlerAusAntwort(r);
+        return { ok: false, message: addressFailureMessage(ADDRESS_OPERATIONS.SAVE, f), fieldErrors: addressServerFieldErrors(f) };
+      }
       let d = null; try { d = await r.json(); } catch { d = null; }
-      if (!r.ok) return { ok: false, message: mapAddressErrorToMessage(d?.code) };
-      if (drawer.mode === "edit") setItems((prev) => applyAddressMutation(prev, d, "update"));
+      if (drawer.mode === "edit" && d && d.id != null) setItems((prev) => applyAddressMutation(prev, d, "update", ansicht));
       else load(); // neu erstellt → aktuelle Ansicht sicher neu laden (Reihenfolge bleibt serverseitig autoritativ)
       showSuccess(drawer.mode === "edit" ? "Adresse aktualisiert." : "Adresse gespeichert.");
       return { ok: true };
-    } catch {
-      return { ok: false, message: "Die Adresse konnte nicht gespeichert werden. Bitte versuchen Sie es erneut." };
+    } catch (e) {
+      return { ok: false, message: addressExceptionMessage(ADDRESS_OPERATIONS.SAVE, e) };
     }
   };
 
@@ -144,24 +172,33 @@ export default function AddressBookPage({ onUseForNewShipment, utility }) {
   // erst NACH Server-Bestätigung wird der Eintrag ersetzt (kein Optimistic-UI). ──
   const applyServerOrFallback = (address, d, fallbackPatch) => (d && d.id != null ? d : { ...address, ...fallbackPatch });
 
-  const quickUpdate = async (address, patch, successText) => {
+  // Teil-Update (Audit P7): gesendet wird NUR die Änderung — { favorite }, { isDefaultSender: true }
+  // oder { isDefaultRecipient: true }. Bis 2026-10 ging das ganze Objekt aus dem lokalen Stand mit;
+  // trug die Zeile nach einem Standardwechsel noch das alte isDefaultSender: true, machte ein
+  // Favoriten-Klick sie still wieder zum Standard. Der Server prüft den Versandkontakt weiter gegen
+  // den Zustand nach der Änderung (A3).
+  const quickUpdate = async (address, patch, type, successText) => {
     setBusyId(address.id); setActionError("");
     try {
-      const payload = normalizeAddressForm({ ...addressToFormValues(address), ...patch });
-      const r = await updateAddress(address.id, payload);
+      const r = await updateAddress(address.id, patch);
       if (r.status === 401 || r.status === 403) { setBusyId(null); return; }
+      if (!r.ok) {
+        // Paritätsaudit A3: eine Altbestandsadresse ohne vollständigen Versandkontakt nennt das fehlende Feld.
+        setActionError(addressFailureMessage(ADDRESS_OPERATIONS.UPDATE, await fehlerAusAntwort(r)));
+        setBusyId(null);
+        return;
+      }
       let d = null; try { d = await r.json(); } catch { d = null; }
-      if (!r.ok) { setActionError(mapAddressErrorToMessage(d?.code)); setBusyId(null); return; }
-      setItems((prev) => applyAddressMutation(prev, applyServerOrFallback(address, d, patch), "update"));
+      setItems((prev) => applyAddressMutation(prev, applyServerOrFallback(address, d, patch), type, ansicht));
       showSuccess(successText);
-    } catch {
-      setActionError("Die Änderung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.");
+    } catch (e) {
+      setActionError(addressExceptionMessage(ADDRESS_OPERATIONS.UPDATE, e));
     }
     setBusyId(null);
   };
-  const onToggleFavorite = (address) => quickUpdate(address, { favorite: !address.favorite }, address.favorite ? "Favorit entfernt." : "Als Favorit markiert.");
-  const onSetDefaultSender = (address) => quickUpdate(address, { isDefaultSender: true }, "Standard-Absender gesetzt.");
-  const onSetDefaultRecipient = (address) => quickUpdate(address, { isDefaultRecipient: true }, "Standard-Empfänger gesetzt.");
+  const onToggleFavorite = (address) => quickUpdate(address, { favorite: !address.favorite }, "favorite", address.favorite ? "Favorit entfernt." : "Als Favorit markiert.");
+  const onSetDefaultSender = (address) => quickUpdate(address, { isDefaultSender: true }, "defaultSender", "Standard-Absender gesetzt.");
+  const onSetDefaultRecipient = (address) => quickUpdate(address, { isDefaultRecipient: true }, "defaultRecipient", "Standard-Empfänger gesetzt.");
 
   // ── Löschen (Bestätigungsdialog) ──────────────────────────────────────────
   // Echte, dauerhafte Löschung. Bei Fehler bleibt der Dialog offen (Fehler wird
@@ -176,17 +213,21 @@ export default function AddressBookPage({ onUseForNewShipment, utility }) {
     try {
       const r = await deleteAddress(address.id);
       if (r.status === 401 || r.status === 403) { setDeleteBusy(false); return; }
+      if (!r.ok) {
+        // 404 (fremde oder schon gelöschte Adresse), 429 (Schreibgrenze), 5xx — je eigener Satz.
+        setDeleteError(addressFailureMessage(ADDRESS_OPERATIONS.DELETE, await fehlerAusAntwort(r)));
+        setDeleteBusy(false);
+        return;
+      }
       let d = null; try { d = await r.json(); } catch { d = null; }
-      if (!r.ok) { setDeleteError(mapAddressErrorToMessage(d?.code)); setDeleteBusy(false); return; }
-      // Erfolg: Adresse lokal entfernen, Dialog schließen, Erfolgsmeldung.
-      setItems((prev) => applyAddressMutation(prev, address, "delete"));
+      // Erfolg: Adresse lokal entfernen, Dialog schließen, Erfolgsmeldung. Hat das Backend einen
+      // neuen Standard-Absender nachrücken lassen, folgt die sichtbare Liste lokal — ohne
+      // Neuladen auf Seite 1 (bereits nachgeladene Seiten bleiben stehen).
+      setItems((prev) => applyPromotedDefaultSender(applyAddressMutation(prev, address, "delete"), d?.newDefaultSenderId));
       setDeleteBusy(false); setDeleteTarget(null);
       showSuccess("Adresse wurde gelöscht.");
-      // Hat das Backend einen neuen Standard-Absender bestimmt, spiegelt ein
-      // kontrollierter Refetch den geänderten Standardstatus der übrigen Zeilen.
-      if (d?.newDefaultSenderId != null) load();
-    } catch {
-      setDeleteError("Die Adresse konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.");
+    } catch (e) {
+      setDeleteError(addressExceptionMessage(ADDRESS_OPERATIONS.DELETE, e));
       setDeleteBusy(false);
     }
   };

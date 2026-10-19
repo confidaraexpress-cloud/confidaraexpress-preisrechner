@@ -3,7 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState, NoResultsState, ListSkeleton } from "../../components/ui/StateView";
 import { InlineError, InlineSuccess, InventoryDialog, ProductPicker, QuantityField, RowActionsMenu } from "../../components/inventory/InventoryShared";
-import { getBalances, getProducts, getWarehouses, postReceipt, postAdjustment, postBlock, postUnblock } from "../../api/inventoryApi";
+import { getBalances, getProducts, postReceipt, postAdjustment, postBlock, postUnblock } from "../../api/inventoryApi";
+import { useAllWarehouses } from "../../hooks/useAllWarehouses";
+import {
+  bookingWarehouseOptions, preferredBookingWarehouseId, showWarehouseFilter, warehouseOptionLabel,
+} from "../../utils/warehouseView.mjs";
 import {
   ADJUSTMENT_REASONS, BLOCK_REASONS, adjustmentPreview, formatUnits,
   inventoryErrorText, isLowStock, lowStockInfo, receiptPreview,
@@ -61,7 +65,12 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
   const [pickerItems, setPickerItems] = useState([]);
   const [pickerLoading, setPickerLoading] = useState(false);
   const [warehouseId, setWarehouseId] = useState(null);
-  const [warehouses, setWarehouses] = useState([]);
+  // Paritätsaudit BI7: Lagerfilter der Bestandsliste ("" = alle Lager), Serverparameter warehouseId.
+  const [filterWarehouseId, setFilterWarehouseId] = useState("");
+  // Alle Lager über den Cursor des Servers (vorher höchstens die ersten 50) — mit Ladefehler,
+  // der nicht als „ein Lager" durchgeht.
+  const lagerListe = useAllWarehouses();
+  const warehouses = lagerListe.warehouses;
 
   const seq = useRef(0);
 
@@ -75,16 +84,10 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
     return () => clearTimeout(t);
   }, [q]);
 
+  // Vorauswahl des Buchungslagers: das Standardlager — gebucht wird nur in aktive Lager.
   useEffect(() => {
-    getWarehouses({ limit: 50 }).then(async (r) => {
-      if (!r.ok) return;
-      const data = await r.json();
-      const list = data.warehouses || [];
-      setWarehouses(list);
-      const def = list.find(w => w.isDefault) || list[0];
-      if (def) setWarehouseId(def.id);
-    }).catch(() => {});
-  }, []);
+    setWarehouseId((cur) => cur || preferredBookingWarehouseId(warehouses, null) || null);
+  }, [warehouses]);
 
   const load = useCallback(async (cursor = null) => {
     const meins = ++seq.current;
@@ -93,6 +96,7 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
       const res = await getBalances({
         limit: PAGE_LIMIT, cursor: cursor || undefined,
         q: debouncedQ || undefined, lowStock: lowOnly ? "true" : undefined,
+        warehouseId: filterWarehouseId || undefined,
       });
       if (seq.current !== meins) return;
       if (!res.ok) { setError(inventoryErrorText(await res.json().catch(() => null), "Der Bestand konnte nicht geladen werden.")); return; }
@@ -104,7 +108,7 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
     } finally {
       if (seq.current === meins) { setLoading(false); setLoadingMore(false); }
     }
-  }, [debouncedQ, lowOnly]);
+  }, [debouncedQ, lowOnly, filterWarehouseId]);
 
   useEffect(() => { load(null); }, [load]);
 
@@ -133,7 +137,8 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
     setNote("");
     setAdjustReason(ADJUSTMENT_REASONS[0].value);
     setBlockReason(BLOCK_REASONS[0].value);
-    if (vorbelegt?.warehouseId) setWarehouseId(vorbelegt.warehouseId);
+    // Eine Zeile bringt IHR Lager mit; sonst gilt das Standardlager.
+    setWarehouseId(vorbelegt?.warehouseId ? String(vorbelegt.warehouseId) : (preferredBookingWarehouseId(warehouses, null) || null));
     sucheArtikel("");
   };
 
@@ -196,7 +201,9 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
     finally { setBusy(false); }
   };
 
-  const hatFilter = Boolean(debouncedQ || lowOnly);
+  const hatFilter = Boolean(debouncedQ || lowOnly || filterWarehouseId);
+  const buchungsLager = bookingWarehouseOptions(warehouses, warehouseId);
+  const filterZuruecksetzen = () => { setQ(""); setLowOnly(false); setFilterWarehouseId(""); };
 
   const dialogTitel = dialog === "receipt" ? "Bestand einbuchen"
     : dialog === "adjust" ? "Bestand korrigieren"
@@ -264,6 +271,7 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
 
       <InlineSuccess text={success} />
       <InlineError text={error} onRetry={() => load(null)} />
+      <InlineError text={lagerListe.error} onRetry={lagerListe.reload} />
 
       <div className="ce-toolbar inv-toolbar">
         <div className="inv-toolbar-search">
@@ -274,6 +282,17 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
         {/* Der Haken zeigt genau das, was der Server unter „niedrig" versteht:
             verfügbar UNTER dem gepflegten Mindestbestand. Artikel ohne
             Mindestbestand erscheinen nie — ohne Sollwert gibt es keine Aussage. */}
+        {/* Paritätsaudit BI7: erst ab zwei Lagern — inaktive bleiben wählbar, ihr Bestand ist lesbar. */}
+        {showWarehouseFilter(warehouses) && (
+          <div className="inv-toolbar-filter">
+            <label className="field-label" htmlFor="inv-stock-filter-wh">Lager</label>
+            <select id="inv-stock-filter-wh" className="field-select" value={filterWarehouseId}
+                    onChange={(e) => setFilterWarehouseId(e.target.value)}>
+              <option value="">Alle Lager</option>
+              {warehouses.map((w) => <option key={w.id} value={w.id}>{warehouseOptionLabel(w)}</option>)}
+            </select>
+          </div>
+        )}
         <label className="inv-toolbar-check">
           <input type="checkbox" checked={lowOnly} onChange={(e) => setLowOnly(e.target.checked)} />
           <span>Nur niedriger Bestand</span>
@@ -295,7 +314,7 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
         <NoResultsState
           title="Kein Bestand gefunden"
           text="Für diese Suche oder Filterung gibt es keine Treffer."
-          action={<button type="button" className="btn btn-outline" onClick={() => { setQ(""); setLowOnly(false); }}>Filter zurücksetzen</button>}
+          action={<button type="button" className="btn btn-outline" onClick={filterZuruecksetzen}>Filter zurücksetzen</button>}
         />
       )}
 
@@ -431,11 +450,11 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
           )
           : <ProductPicker products={pickerItems} loading={pickerLoading} value={null} onChange={setPicked} onSearch={sucheArtikel} disabled={busy} />}
 
-        {warehouses.length > 1 && (
+        {buchungsLager.length > 1 && (
           <div className="inv-field">
             <label className="field-label" htmlFor="inv-stock-wh">Lager</label>
             <select id="inv-stock-wh" className="field-select" value={warehouseId || ""} onChange={(e) => setWarehouseId(e.target.value)} disabled={busy}>
-              {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+              {buchungsLager.map((w) => <option key={w.id} value={w.id}>{warehouseOptionLabel(w)}</option>)}
             </select>
           </div>
         )}

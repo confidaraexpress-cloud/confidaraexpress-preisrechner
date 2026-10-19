@@ -8,7 +8,8 @@ import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher, loadPr
 import { FormAlert } from "../components/ui/FormAlert";
 import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess, istOffenerAusgang,
   fordertNeuberechnung, erlaubtSpaeterenVersuch, istUnklarerAusgang, BOOK_FEHLER, OFFER_ALREADY_USED_TEXT,
-  REFERENCE_INVALID_TEXT, lagerkonfliktBeimBuchen, preisangabenFehlenHandlung } from "../utils/bookingErrors.mjs";
+  REFERENCE_INVALID_TEXT, lagerkonfliktBeimBuchen, preisangabenFehlenHandlung,
+  PARCELSHOP_REQUIRED_TEXT, paketshopFehlt, zusatzmailFehler, repriceFehlerText } from "../utils/bookingErrors.mjs";
 import { customerText, normalizeApiError } from "../utils/apiError.mjs";
 import {
   labelFormatOptionsOf, restoredLabelFormat, labelFormatBookPayload, labelDeliveryInfo,
@@ -437,6 +438,12 @@ export default function BookingPage() {
   // Fehler erscheinen erst, wenn der Kunde weitergehen will — nicht schon beim
   // Einschalten eines noch leeren Feldes (dieselbe Regel wie bei den Zollangaben).
   const [emailShowErrors, setEmailShowErrors] = useState(false);
+  // Paritätsaudit A5: ein Feldfehler des Servers zu einer Zusatzadresse ({ feld, text }) steht an
+  // genau dieser Option — bis der Kunde dort etwas ändert.
+  const [zusatzmailServerFehler, setZusatzmailServerFehler] = useState(null);
+  useEffect(() => { setZusatzmailServerFehler(null); },
+    [trackingEmail, trackingEmailEnabled, labelTrackingEmail, labelTrackingEmailEnabled]);
+  const zusatzmailFeldFehler = (feld) => (zusatzmailServerFehler?.feld === feld ? zusatzmailServerFehler.text : null);
 
   /* ── Art der Lieferadresse (TG22 Residential) ────────────────────────────────
      Nur für ein Angebot, dessen `requiredPriceInputs` die Angabe nennt — und erst NACH der
@@ -883,12 +890,14 @@ export default function BookingPage() {
           setRepriceLoading(false);
           return;
         }
-        setRepriceError(coverModel ? coverRepriceErrorText(r.status, d) :
+        // Paritätsaudit O1: ohne Deckungsmodell entscheidet zuerst der Code (bookingErrors.mjs), erst
+        // danach die bisherige Kette nach Status.
+        setRepriceError(coverModel ? coverRepriceErrorText(r.status, d) : (repriceFehlerText(d) || (
           r.status === 400 ? (asStr(d?.error) || "Die Angaben zur Versicherung sind ungültig.") :
           r.status === 409 ? "Der Preis hat sich geändert. Bitte aktualisieren Sie den Versicherungspreis." :
           r.status === 429 ? "Zu viele Anfragen. Bitte später erneut versuchen." :
           "Versicherungspreis konnte nicht bestätigt werden."
-        );
+        )));
         setRepriceLoading(false);
         return;
       }
@@ -1488,6 +1497,15 @@ export default function BookingPage() {
           setLoading(false);
           return;
         }
+        // Paritätsaudit A4: ohne gültigen Abgabe-Paketshop beauftragt der Server nichts. Zurück an die
+        // Shopauswahl wie beim clientseitigen Gate — VOR den Absicherungszweigen, eine Neubepreisung
+        // löst das nicht, und VOR dem Sammelzweig, der „bereits verarbeitet“ behaupten würde.
+        if (paketshopFehlt(r.status, d)) {
+          setStep(1);
+          setError(PARCELSHOP_REQUIRED_TEXT);
+          setLoading(false);
+          return;
+        }
         // Lagerkonflikt: die Bestandsreservierung läuft VOR der Bestellung und ist gescheitert — nichts
         // beauftragt (utils/bookingErrors.mjs). Bis hierher lief dieser 409 in den Sammelzweig unten („bereits
         // verarbeitet", „Zu meinen Sendungen") oder bei versicherter Buchung in eine Neubepreisung, die nichts
@@ -1601,10 +1619,14 @@ export default function BookingPage() {
         // ist strenger als die clientseitige (sie weist zusätzlich Adresslisten und
         // Steuerzeichen ab); dieser Zweig ist also erreichbar, obwohl der Client
         // vorher geprüft hat.
-        if (d?.field === "trackingEmail" || d?.field === "labelTrackingEmail") {
+        // Paritätsaudit A5: der Grund steht am betroffenen Feld (auch LABEL_EMAIL_NOT_AVAILABLE, das
+        // seit Backend #432 `field: "labelTrackingEmail"` trägt), oben nur der Hinweis, wo zu prüfen ist.
+        const zusatzmail = zusatzmailFehler(d, backendMsg);
+        if (zusatzmail) {
           setEmailShowErrors(true);
+          setZusatzmailServerFehler(zusatzmail.feldText ? { feld: zusatzmail.feld, text: zusatzmail.feldText } : null);
           setStep(1);
-          setError(backendMsg || "Bitte prüfen Sie die zusätzliche E-Mail-Adresse.");
+          setError(zusatzmail.text);
           setLoading(false);
           return;
         }
@@ -2243,12 +2265,12 @@ export default function BookingPage() {
               onTrackingEmailChange={setTrackingEmail}
               trackingEmailEnabled={trackingEmailEnabled}
               onTrackingEmailEnabledChange={setTrackingEmailEnabled}
-              trackingEmailError={emailShowErrors ? trackingEmailProblem : null}
+              trackingEmailError={(emailShowErrors && trackingEmailProblem) || zusatzmailFeldFehler("trackingEmail")}
               labelTrackingEmail={labelTrackingEmail}
               onLabelTrackingEmailChange={setLabelTrackingEmail}
               labelTrackingEmailEnabled={effectiveLabelTrackingEmailEnabled}
               onLabelTrackingEmailEnabledChange={setLabelTrackingEmailEnabled}
-              labelTrackingEmailError={emailShowErrors ? labelTrackingEmailProblem : null}
+              labelTrackingEmailError={(emailShowErrors && labelTrackingEmailProblem) || zusatzmailFeldFehler("labelTrackingEmail")}
               labelFormat={labelFormat}
               onLabelFormatChange={setLabelFormat}
               showExternalDeliveryNote={showExternalDeliveryNote}

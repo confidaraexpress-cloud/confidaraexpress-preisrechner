@@ -24,6 +24,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { statusFallback } from "./statusFallback.mjs";
+import { fieldLabel } from "./invoiceBackfillView.mjs";
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 const str = (v) => (v === null || v === undefined ? "" : String(v).trim());
 const numOrNull = (v) => {
@@ -67,6 +68,15 @@ const MODE_META = Object.freeze({
   unknown:    Object.freeze({ label: "Modus nicht bestimmbar", badge: "badge-gray", short: "Unklar" }),
 });
 export const invoiceModeMeta = (row) => MODE_META[invoiceMode(row)] || MODE_META.unknown;
+
+// Auftrag 2 / P1: Herkunft der Rechnung als eigenes, ruhiges Kennzeichen neben dem Modus.
+// → { manual:boolean, badge, short, label }
+export function invoiceSourceMeta(row) {
+  const manual = !!row && row.invoice_source === "manual";
+  return manual
+    ? { manual: true, badge: "badge-blue", short: "Manuell", label: "Manuell erstellt" }
+    : { manual: false, badge: null, short: "", label: "" };
+}
 
 // ── Produktive Forderung ────────────────────────────────────────────────────
 // Primär das serverseitig abgeleitete Feld. Fehlt es, wird aus dem Modus
@@ -114,6 +124,9 @@ export function isInvoiceOverdue(row, now = new Date()) {
 export function paymentStatus(row, now = new Date()) {
   const r = row && typeof row === "object" ? row : {};
   if (!isProductiveInvoice(r)) return { cls: "badge-gray", label: "Keine Forderung", kind: "none" };
+  // Auftrag 2 / P1: ein vermerkter Storno (nur manuelle Rechnungen) geht jedem Zahlungsstatus vor — die
+  // Rechnung ist keine Forderung mehr (Server: openReceivableSql). Strikt === true.
+  if (r.is_cancelled === true) return { cls: "badge-gray", label: "Storniert", kind: "cancelled" };
   const status = str(firstDefined(r.status, r.state));
   if (status === "paid") return { cls: "badge-green", label: "Bezahlt", kind: "paid" };
   if (isInvoiceOverdue(r, now)) return { cls: "badge-red", label: "Überfällig", kind: "overdue" };
@@ -208,6 +221,7 @@ export function payability(row) {
   const r = row && typeof row === "object" ? row : {};
   const flag = boolish(firstDefined(r.is_payable, r.isPayable));
   if (!isProductiveInvoice(r)) return { payable: false, reason: NON_PRODUCTIVE_PAY_NOTE };
+  if (r.is_cancelled === true) return { payable: false, reason: "Für diese Rechnung ist ein Storno vermerkt — sie ist keine offene Forderung mehr." };
   if (str(firstDefined(r.status, r.state)) === "paid") return { payable: false, reason: "Diese Rechnung ist bereits als bezahlt markiert." };
   if (flag === false) return { payable: false, reason: NON_PRODUCTIVE_PAY_NOTE };
   return { payable: true, reason: "" };
@@ -291,6 +305,12 @@ export function currentAccount(row) {
 // → { primary, secondary, known }
 export function customerCell(row) {
   const r = row && typeof row === "object" ? row : {};
+  // Auftrag 2 / P1: eine manuelle Rechnung an eine externe Firma hat kein Konto. Der Server liefert dafür GENAU
+  // die Firma aus dem eingefrorenen Empfänger (recipient_company, nur bei user_id NULL).
+  const extern = str(r.recipient_company);
+  if (r.invoice_source === "manual" && (r.user_id === null || r.user_id === undefined) && extern) {
+    return { primary: extern, secondary: "Externer Empfänger", known: true };
+  }
   const company = str(firstDefined(r.company_name, r.companyName));
   const number = str(firstDefined(r.customer_number, r.customerNumber));
   const name = str(firstDefined(r.name));
@@ -413,6 +433,17 @@ export function payErrorMessage(status, code) {
 
 // Technische Dokument-/Versandfehler verständlich einordnen. Der rohe Code wird
 // NICHT als Meldung gezeigt; er gehört (gekürzt) in die technischen Infos.
+// „Rechnungsdokument erzeugen“ (Auftrag 1, Sofortkorrektur A, 2026-10-17). Bis hierher hieß der
+// Knopf „PDF erzeugen“, und der Dialog versprach „Es wird keine E-Mail versendet.“ Das war falsch:
+// Nach erfolgreicher produktiver Erzeugung stößt der Server den automatischen Erstversand an
+// (lib/invoiceDocument.js, resolveAutomaticInvoiceMail; Sperren prüft invoiceEmailFlow erneut).
+// Die Logik bleibt unverändert — nur Name und Text sagen jetzt, was geschieht.
+export const DOCUMENT_GENERATE = Object.freeze({
+  button: "Rechnungsdokument erzeugen",
+  retryButton: "Rechnungsdokument erneut erzeugen",
+  note: "Nach erfolgreicher Erzeugung sendet das System die Rechnung automatisch per E-Mail an den Kunden, sofern sie noch nicht versendet wurde und keine Versandsperre greift (etwa Testdokument oder fehlende Empfängeradresse). Die Aktion wird im Protokoll festgehalten.",
+});
+
 export const DOCUMENT_ERROR_NOTE =
   "Die Dokumenterstellung ist fehlgeschlagen. Die Rechnung selbst ist davon unberührt; ein erneuter Versuch ist möglich.";
 export const EMAIL_ERROR_NOTE =
@@ -437,6 +468,12 @@ export const SUCCESS_TEXT = Object.freeze({
   emailResent: "E-Mail erneut versendet",
   emailAlreadySent: "Diese Rechnung wurde bereits versendet. Für einen erneuten Versand bitte „Rechnung erneut senden“ verwenden.",
   emailInProgress: "Ein Versand läuft bereits.",
+  // Paritätsaudit B7: zwei Ausgänge, die weder Erfolg noch Fehlschlag sind. `unclear`: der Versand
+  // hatte begonnen und wurde nie abgeschlossen — die Mail kann angekommen sein. Ebenso ein Versuch,
+  // den der Anbieter angenommen hat, dessen Status aber nicht gespeichert werden konnte
+  // (`errorCode: finalize_failed`). `superseded`: ein anderer Lauf hat den Versand übernommen.
+  emailUnclear: "Der Ausgang des Versands ist unklar — die E-Mail kann angekommen sein. Bitte prüfen Sie das, bevor Sie erneut senden.",
+  emailSuperseded: "Ein anderer Versandlauf hat diese E-Mail inzwischen übernommen. Bitte prüfen Sie den aktuellen Stand, bevor Sie erneut senden.",
 });
 
 // Outcome des Dokument-Endpunkts → Meldung. Unbekanntes Outcome ⇒ Fehlertext.
@@ -447,9 +484,48 @@ export function documentOutcomeMessage(outcome) {
   return { type: "error", text: DOCUMENT_ERROR_NOTE };
 }
 
-export function emailOutcomeMessage(outcome, kind) {
+// Paritätsaudit B6: eine GESPERRTE Dokumenterzeugung (409/422 des Produktiv-Guards) ist kein
+// technischer Fehlschlag. Die Rechnung bleibt unverändert, und ein erneuter Klick ändert nichts,
+// solange die Ursache besteht — bis hierher stand dort „ein erneuter Versuch ist möglich".
+// Bekannter Code → eigener Satz, dazu die fehlenden bzw. noch als Platzhalter geführten Angaben.
+const DOCUMENT_BLOCK_TEXT = Object.freeze({
+  classified_test_document: "Diese Rechnung stammt aus einer Testbuchung — für sie wird kein Produktivdokument erzeugt.",
+  reconstructed_preview_requires_test_mode: "Für diese Altrechnung ist nur eine interne Vorschau möglich (PDF-Backfill), kein Produktivdokument.",
+  production_invoice_blocked_in_test_mode: "Im Testmodus wird für eine Produktivrechnung kein Dokument erzeugt.",
+  ambiguous_invoice_document_mode: "Ob diese Rechnung ein Produktiv- oder ein Testbeleg ist, ist nicht eindeutig — es wird kein Dokument erzeugt.",
+  invoice_snapshot_not_production_ready: "Die eingefrorenen Rechnungsdaten sind nicht produktionsreif — es wird kein Produktivdokument erzeugt.",
+});
+export const DOCUMENT_BLOCKED_NOTE =
+  "Die Rechnung bleibt unverändert. Ein erneuter Versuch hilft erst, wenn die Ursache behoben ist.";
+
+export function documentErrorMessage(status, body) {
+  const b = body && typeof body === "object" ? body : {};
+  if (status === 404) return { type: "error", text: "Rechnung wurde nicht gefunden oder existiert nicht mehr." };
+  if (status === 429) return { type: "error", text: "Zu viele Admin-Aktionen. Bitte kurz warten." };
+  if (status === 409 || status === 422) {
+    const code = typeof b.error === "string" ? b.error : "";
+    const basis = (Object.prototype.hasOwnProperty.call(DOCUMENT_BLOCK_TEXT, code) && DOCUMENT_BLOCK_TEXT[code])
+      || (typeof b.message === "string" && b.message.trim())
+      || "Für diese Rechnung darf derzeit kein Produktivdokument erzeugt werden.";
+    const liste = (v) => (Array.isArray(v) ? v.filter((f) => typeof f === "string" && f).map(fieldLabel) : []);
+    const fehlend = liste(b.missingFields);
+    const platzhalter = liste(b.placeholderFields);
+    const teile = [basis];
+    if (fehlend.length) teile.push(`Fehlende Angaben: ${fehlend.join(", ")}.`);
+    if (platzhalter.length) teile.push(`Noch Platzhalter: ${platzhalter.join(", ")}.`);
+    teile.push(DOCUMENT_BLOCKED_NOTE);
+    return { type: "error", text: teile.join(" ") };
+  }
+  return { type: "error", text: DOCUMENT_ERROR_NOTE };
+}
+
+export function emailOutcomeMessage(outcome, kind, errorCode) {
   if (outcome === "sent") return { type: "success", text: kind === "resend" ? SUCCESS_TEXT.emailResent : SUCCESS_TEXT.emailStarted };
   if (outcome === "already_sent") return { type: "info", text: SUCCESS_TEXT.emailAlreadySent };
   if (outcome === "in_progress") return { type: "info", text: SUCCESS_TEXT.emailInProgress };
+  if (outcome === "unclear" || (outcome === "failed" && errorCode === "finalize_failed")) {
+    return { type: "info", text: SUCCESS_TEXT.emailUnclear };
+  }
+  if (outcome === "superseded") return { type: "info", text: SUCCESS_TEXT.emailSuperseded };
   return { type: "error", text: EMAIL_ERROR_NOTE };
 }

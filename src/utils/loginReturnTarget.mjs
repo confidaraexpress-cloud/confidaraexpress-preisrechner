@@ -19,6 +19,12 @@
 // Seit UX-Paket 6 auch das Partnerportal (/partner, Bereich als ?page=…). Ein
 // Partner springt nur dorthin zurück (partnerReturnTarget); ein Kunde mit
 // diesem Ziel landet über PartnerRoute ohnehin im Kundenbereich.
+//
+// Seit dem öffentlichen Preisrechner (2026-10-16) genau ein weiterer Pfad: die
+// Übernahmeseite /preisrechner-uebernahme — ohne Query und ohne Fragment (das
+// Übergabetoken liegt nur im Modulspeicher, utils/publicQuoteHandoffStore.mjs).
+
+import { HANDOFF_PATH } from "./publicQuoteHandoffStore.mjs";
 
 const INTERNE_BASIS = "https://ce.invalid";
 const ID = /^[1-9][0-9]{0,9}$/;
@@ -76,6 +82,7 @@ export function safeReturnTarget(raw) {
     return page && page !== "overview" && PARTNER_BEREICHE.has(page) ? `${PARTNER_PORTAL}?page=${page}` : PARTNER_PORTAL;
   }
   if (pfad === "/calculator") return "/calculator";
+  if (pfad === HANDOFF_PATH) return HANDOFF_PATH;
   if (INVENTAR.test(pfad)) return pfad;
   if (ADMIN.test(pfad)) return pfad;
   return null;

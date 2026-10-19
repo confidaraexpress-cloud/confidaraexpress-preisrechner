@@ -14,6 +14,7 @@
 export const SUPPORT_CATEGORIES = Object.freeze([
   { value: "booking",      label: "Buchung und Versand" },
   { value: "tracking",     label: "Sendungsverfolgung" },
+  { value: "damage",       label: "Schaden oder Verlust" },
   { value: "invoice",      label: "Rechnung" },
   { value: "cancellation", label: "Stornierung" },
   { value: "account",      label: "Konto und Unternehmen" },
@@ -82,31 +83,92 @@ export function supportMessageState(value) {
   };
 }
 
+// ── Schaden oder Verlust (Go-Live Paket G) ───────────────────────────────────
+// Die einzige Kategorie mit Sendungsbezug: der Kunde wählt die betroffene Sendung aus seiner
+// eigenen Sendungsliste (GET /kunde/shipments). Gesendet wird ihre interne ID; der Server prüft
+// das Eigentum an dieser ID. Die Auftragsbestätigungsnummer (CE-AB…) dient nur der Anzeige in
+// der Auswahl — sie löst serverseitig nichts auf. Maßgeblich bleibt der Server.
+export const SUPPORT_DAMAGE_CATEGORY = "damage";
+// Kein Fristversprechen und keine Rechtsauskunft: nur, was in jedem Fall stimmt.
+export const SUPPORT_DAMAGE_TEXTS = Object.freeze({
+  label: "Betroffene Sendung",
+  placeholder: "Bitte Sendung wählen",
+  help: "Zur Auswahl stehen die letzten Sendungen Ihres Kontos.",
+  loading: "Ihre Sendungen werden geladen …",
+  loadError: "Ihre Sendungen konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+  empty: "In Ihrem Konto gibt es noch keine Sendung, zu der Sie einen Schaden melden könnten.",
+  hint: "Bitte melden Sie Schäden und Verluste so schnell wie möglich – für Reklamationen gelten kurze Fristen. Bewahren Sie Verpackung und Ware bis zur Klärung auf.",
+});
+
+// Strikte positive Ganzzahl wie serverseitig (lib/support.js: parseSupportShipmentId).
+function parseShipmentId(value) {
+  if (typeof value === "number") return Number.isSafeInteger(value) && value > 0 ? value : null;
+  if (typeof value === "string" && /^[1-9]\d*$/.test(value.trim())) {
+    const n = Number(value.trim());
+    return Number.isSafeInteger(n) ? n : null;
+  }
+  return null;
+}
+
+// Auswahl aus der eigenen Sendungsliste: [{ value: "<id>", label }]. Beschriftung aus der
+// Auftragsbestätigungsnummer (Rückfall: „Sendung ohne Vorgangsnummer"), Buchungstag und Carrier —
+// nur Werte, die die Liste ohnehin zeigt. Zeilen ohne gültige ID entfallen.
+export function supportShipmentOptions(shipments) {
+  if (!Array.isArray(shipments)) return [];
+  const datum = (iso) => {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Berlin" });
+  };
+  const out = [];
+  for (const s of shipments) {
+    const id = parseShipmentId(s && s.id);
+    if (!id) continue;
+    const nr = typeof s.order_confirmation_number === "string" && s.order_confirmation_number.trim()
+      ? s.order_confirmation_number.trim() : "Sendung ohne Vorgangsnummer";
+    const carrier = typeof s.selected_carrier === "string" && s.selected_carrier.trim() ? s.selected_carrier.trim().toUpperCase() : "";
+    out.push({ value: String(id), label: [nr, datum(s.created_at), carrier].filter(Boolean).join(" · ") });
+  }
+  return out;
+}
+
 // Gesamtzustand des Formulars. `canSubmit` ist die EINZIGE Quelle für den Button —
 // es gibt keine zweite, abweichende Bedingung in der Komponente.
-export function supportFormState({ category, subject, message } = {}) {
+export function supportFormState({ category, subject, message, shipmentId } = {}) {
   const categoryValid = SUPPORT_CATEGORY_VALUES.includes(category);
   const subjectState = supportSubjectState(subject);
   const messageState = supportMessageState(message);
+  const referenceRequired = category === SUPPORT_DAMAGE_CATEGORY;
+  const reference = {
+    required: referenceRequired,
+    valid: !referenceRequired || parseShipmentId(shipmentId) !== null,
+  };
   return {
     categoryValid,
     subject: subjectState,
     message: messageState,
-    canSubmit: categoryValid && subjectState.valid && messageState.valid,
+    reference,
+    canSubmit: categoryValid && subjectState.valid && messageState.valid && reference.valid,
   };
 }
 
 // ── Absende-Payload ──────────────────────────────────────────────────────────
-// Genau drei Felder — nie eine user_id, nie ein Status, nie eine Ticketnummer. Werte
-// werden getrimmt gesendet; die abschließende Bereinigung bleibt serverseitig.
-// Ungültige Eingaben werden fail-closed abgelehnt (der Aufrufer prüft vorher canSubmit).
-export function buildSupportRequestBody({ category, subject, message } = {}) {
+// Genau drei Felder — bei „Schaden oder Verlust" zusätzlich die gewählte Sendung (interne ID,
+// serverseitig auf Eigentum geprüft). Nie eine user_id, nie ein Status, nie eine Ticketnummer.
+// Werte werden getrimmt gesendet; die abschließende Bereinigung bleibt serverseitig. Ungültige
+// Eingaben werden fail-closed abgelehnt (der Aufrufer prüft vorher canSubmit).
+export function buildSupportRequestBody({ category, subject, message, shipmentId } = {}) {
   if (!SUPPORT_CATEGORY_VALUES.includes(category)) throw new Error("invalid_category");
-  return {
+  const body = {
     category,
     subject: String(subject ?? "").trim(),
     message: String(message ?? "").trim(),
   };
+  if (category === SUPPORT_DAMAGE_CATEGORY) {
+    const id = parseShipmentId(shipmentId);
+    if (!id) throw new Error("invalid_shipment");
+    body.shipmentId = id;
+  }
+  return body;
 }
 
 // ── Erfolgsmeldung ───────────────────────────────────────────────────────────
@@ -143,6 +205,9 @@ const CODE_MESSAGES = {
   SUPPORT_MESSAGE_INVALID: `Bitte beschreiben Sie Ihr Anliegen mit ${SUPPORT_MESSAGE_MIN} bis ${SUPPORT_MESSAGE_MAX} Zeichen.`,
   SUPPORT_RATE_LIMITED: "Sie haben in kurzer Zeit mehrere Anfragen gesendet. Bitte versuchen Sie es in einigen Minuten erneut.",
   ACCOUNT_NOT_AVAILABLE: "Ihr Konto ist derzeit nicht verfügbar. Bitte melden Sie sich neu an.",
+  SUPPORT_SHIPMENT_REFERENCE_INVALID: "Bitte wählen Sie die betroffene Sendung aus.",
+  // Unbekannt und fremd sind serverseitig bewusst nicht unterscheidbar — hier ebenso.
+  SUPPORT_SHIPMENT_NOT_FOUND: "Diese Sendung finden wir in Ihrem Konto nicht. Bitte wählen Sie eine Sendung aus Ihrer Liste.",
 };
 
 const STATUS_MESSAGES = {

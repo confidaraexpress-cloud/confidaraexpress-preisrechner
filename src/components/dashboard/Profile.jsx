@@ -23,7 +23,7 @@ import {
   companyBaseline, contactBaseline,
   buildCompanyPatch, buildContactPatch,
   validateCompanyForm, validateContactForm, isFormValid,
-  canSaveCompany, canSaveContact, isEditActionDisabled,
+  canSaveCompany, canSaveContact, isEditActionDisabled, contactSaveConfirmed,
   companyAddressLine, paymentTermValue, PROFILE_TEXT,
   mapApiProfileError,
 } from "../../utils/profileView.mjs";
@@ -44,14 +44,15 @@ import { postalCodeExample, postalCodeInputMode } from "../../utils/postalCode.m
 
 // Benötigt Backend: PATCH /kunde/profil — bereichsweise Teilupdates:
 //   Unternehmensdaten → { company_name, vat_id, eori_number, street, zip, city, country }
-//   Ansprechpartner   → { name }
+//   Ansprechpartner   → { name, contact_email, contact_phone }
 // Response: { user: { ...aktualisiertes User-Objekt } }
 //
 // Die Passwortänderung (PATCH /kunde/password) steht in PasswordChangeSection.jsx.
 //
-// „Telefon" wird bewusst NICHT geführt: das Nutzer-Datenmodell hat keine
-// phone-Spalte (weder in users, noch in der Profil-Whitelist, noch in
-// /kundenbereich). Es wird kein nicht speicherbarer Wert vorgetäuscht.
+// Auftrag 2 / P8 (2026-10-17): Kontakt-E-Mail und Telefon des Ansprechpartners sind optional und eigene
+// Stammdaten (users.contact_email / users.contact_phone) — NICHT die Login-E-Mail. „Gespeichert" erscheint nur,
+// wenn die Serverantwort die gesendeten Werte trägt (contactSaveConfirmed); ein Backend, das die Felder still
+// ignoriert, zeigt so keinen falschen Erfolg.
 
 export function Profile({ user, utility }) {
   const { updateUser } = useAuth();
@@ -176,6 +177,12 @@ export function Profile({ user, utility }) {
       // F1: die Buchungsbereitschaft steht TOP-LEVEL neben `user` und wird mit ihr neu
       // gesetzt — sonst bliebe der Hinweis nach dem Ergänzen der Anschrift stehen.
       if (d.user) updateUser({ ...d.user, bookingProfile: d.bookingProfile ?? null });
+      if (which === "contact" && !contactSaveConfirmed(patch, d.user)) {
+        // Die Karte bleibt offen, die Eingaben bleiben stehen — kein „Gespeichert" für nicht übernommene Werte.
+        setCardError(PROFILE_TEXT.contactSaveNotConfirmed);
+        setSaving(false);
+        return;
+      }
       refocusRef.current = which;
       setSavedCard(which);
       setCompanyForm(null); setContactForm(null);
@@ -317,8 +324,7 @@ export function Profile({ user, utility }) {
                 suggestions={companyAddressCheck.streetOptions}
                 loading={companyAddressCheck.streetLoading}
                 noResults={companyAddressCheck.streetNoResults}
-                hint={countryFirstHint(companyForm.country) || undefined}
-                autoComplete="address-line1" />
+                hint={countryFirstHint(companyForm.country) || undefined} />
             </div>
             <div className="field-row field-row-2">
               <div className="field">
@@ -333,8 +339,7 @@ export function Profile({ user, utility }) {
                   onChange={(v) => updCompany("city", v)}
                   onSelect={(item) => updCompany("city", cityFromSuggestion(item))}
                   suggestions={companyAddressCheck.cityOptions}
-                  placeholder={cityPlaceholder(companyForm.country)}
-                  autoComplete="address-level2" />
+                  placeholder={cityPlaceholder(companyForm.country)} />
               </div>
             </div>
             {/* Ergebnis der Adressprüfung — ein Hinweis, nie eine Sperre des Speicherns. */}
@@ -396,12 +401,35 @@ export function Profile({ user, utility }) {
                 autoComplete="name" />
               {fieldErr("name")}
             </div>
+            <div className="field">
+              <label className="field-label" htmlFor="pf-contact-email">{PROFILE_TEXT.contactEmailLabel}</label>
+              <input id="pf-contact-email" type="email" inputMode="email" value={contactForm.contact_email}
+                className={`field-input${fieldErrors.contact_email ? " field-input-error" : ""}`}
+                aria-invalid={fieldErrors.contact_email ? "true" : undefined}
+                aria-describedby="pf-contact-hint"
+                onChange={e => updContact("contact_email", e.target.value)}
+                autoComplete="email" maxLength={254} />
+              {fieldErr("contact_email")}
+            </div>
+            <div className="field">
+              <label className="field-label" htmlFor="pf-contact-phone">{PROFILE_TEXT.contactPhoneLabel}</label>
+              <input id="pf-contact-phone" type="tel" inputMode="tel" value={contactForm.contact_phone}
+                className={`field-input${fieldErrors.contact_phone ? " field-input-error" : ""}`}
+                aria-invalid={fieldErrors.contact_phone ? "true" : undefined}
+                aria-describedby="pf-contact-hint"
+                onChange={e => updContact("contact_phone", e.target.value)}
+                autoComplete="tel" maxLength={30} />
+              {fieldErr("contact_phone")}
+            </div>
+            <p className="profile-hint" id="pf-contact-hint">{PROFILE_TEXT.contactOptionalHint}</p>
             {renderCardActions("contact", canSaveContact(contactForm, contactBase, saving))}
           </div>
         ) : (
           <div className="profile-section-body">
             {renderRows([
               { k: "Name", v: user?.name || "Nicht angegeben", empty: !user?.name },
+              { k: PROFILE_TEXT.contactEmailLabel, v: user?.contact_email || "Nicht angegeben", empty: !user?.contact_email },
+              { k: PROFILE_TEXT.contactPhoneLabel, v: user?.contact_phone || "Nicht angegeben", empty: !user?.contact_phone },
             ])}
           </div>
         )}

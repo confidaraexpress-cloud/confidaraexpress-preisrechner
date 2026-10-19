@@ -1,6 +1,7 @@
 import React from "react";
 import { countries } from "../../utils/countries";
 import { addressBadgeList } from "../../utils/addressBookView.mjs";
+import { addressPickerLabel, addressContactPerson } from "../../utils/addressPickerView.mjs";
 import { AddressActionsMenu } from "./AddressActionsMenu";
 import { AddressCreateShipmentButton } from "./AddressCreateShipmentButton";
 
@@ -19,12 +20,15 @@ function AddressBadges({ address }) {
 }
 
 export function AddressDesktopRow({ address, busy, onEdit, onDuplicate, onToggleFavorite, onSetDefaultSender, onSetDefaultRecipient, onNewShipment, onDelete }) {
+  // Kontaktperson aus Vor-/Nachname, Altbestand über `contactName` (Paritätsaudit A2).
+  const titel = addressPickerLabel(address);
+  const person = addressContactPerson(address);
   return (
     <li className="abk-row">
       <div className="abk-row-identity">
-        <span className="abk-row-name">{address.label || address.company || address.contactName || "Ohne Bezeichnung"}</span>
+        <span className="abk-row-name">{titel}</span>
         {address.company && address.label && <span className="abk-row-company">{address.company}</span>}
-        {address.contactName && <span className="abk-row-contact">{address.contactName}</span>}
+        {person && person !== titel && <span className="abk-row-contact">{person}</span>}
       </div>
       <div className="abk-row-detail">
         <span className="abk-row-addr">

@@ -84,8 +84,11 @@ test("4 — die dritte Option heißt „Keine zusätzliche Transportversicherung
     "der Kartenname im Orchestrator ist nicht aktualisiert");
   assert.ok(!ohneKommentare(booking).includes("Kein Versicherungsschutz"),
     "der alte, fachlich falsche Name lebt noch");
-  // Sie nennt neutral die Carrierbedingungen — und KEINE Haftungssumme.
-  assert.match(INSURANCE_CARD_COPY.none.description, /Haftungs- und Beförderungsbedingungen des gewählten Versanddienstleisters/);
+  // Sie nennt neutral die begrenzte gesetzliche und vertragliche Haftung — KEINE Haftungssumme
+  // und (Go-Live Paket E) nicht mehr den Paketdienst als allein Haftenden.
+  assert.match(INSURANCE_CARD_COPY.none.description, /gesetzliche und vertragliche Haftung für Verlust und Beschädigung; sie ist in der Regel der Höhe nach begrenzt/);
+  assert.ok(!/Bedingungen des gewählten Versanddienstleisters/.test(INSURANCE_CARD_COPY.none.description),
+    "der Satz legt wieder nahe, allein der Paketdienst hafte");
   for (const quelle of alleTexte) {
     assert.ok(!/gewichtsabhängig/.test(quelle), "die statische Gewichtsaussage lebt noch");
     assert.ok(!/bis\s+\d+\s*€/.test(quelle), "es wird eine feste Haftungssumme behauptet");

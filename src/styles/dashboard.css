@@ -689,6 +689,8 @@ tr:last-child td { border-bottom: none; }
 .pdfview-body { flex: 1; min-height: 0; background: var(--ce-color-surface-muted); display: flex; flex-direction: column; }
 .pdfview-frame { border: 0; width: 100%; height: 100%; flex: 1; }
 .pdfview-error { margin: var(--ce-space-4); }
+/* Auftrag 2 / P1: Hinweis, falls der eingebettete Betrachter den Druckdialog nicht freigibt. */
+.pdfview-hint { margin: var(--ce-space-2) var(--ce-space-4) 0; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted); }
 /* Mobil: Vollbilddarstellung (dynamische Viewport-Höhe wie Auth/Overview). */
 @media (max-width: 600px) {
   .pdfview-overlay { padding: 0; }

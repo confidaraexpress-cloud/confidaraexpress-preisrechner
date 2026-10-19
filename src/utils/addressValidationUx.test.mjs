@@ -13,6 +13,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 import * as view from "./addressValidationView.mjs";
@@ -93,13 +94,20 @@ test("5 die Gesamtprüfung braucht Straße, Ort und eine gültige PLZ", () => {
 
 // ── 2. Straße und Hausnummer ────────────────────────────────────────────────
 
+// Gemeinsame Falltabelle mit dem Backend (tests/fixtures/house-number-cases.json, bytegleich).
+// Wer einen Fall ändert, ändert ihn in beiden Repos und trägt die neue Prüfsumme in beiden Tests ein.
+const HN_FIXTURE = "../testing/houseNumberCases.json";
+const HN_FIXTURE_SHA256 = "270affb4e6cd58b967b3ac2c0e1fca3baa9b73acdd10e640b5ddf2142cfeb02e";
+const HN = JSON.parse(read(HN_FIXTURE));
+const teile = (r) => ({ street: r.street, houseNumber: r.houseNumber, unit: r.unit });
+
 test("6 Straße und Hausnummer je Land getrennt und zusammengesetzt", () => {
-  assert.deepEqual(splitStreetAndNumber("Schweinheimer Straße 187", "DE"), { street: "Schweinheimer Straße", houseNumber: "187" });
-  assert.deepEqual(splitStreetAndNumber("Hauptstr. 12a", "DE"), { street: "Hauptstr.", houseNumber: "12a" });
-  assert.deepEqual(splitStreetAndNumber("Bahnhofstraße 1-3", "DE"), { street: "Bahnhofstraße", houseNumber: "1-3" });
-  assert.deepEqual(splitStreetAndNumber("Straße des 17. Juni", "DE"), { street: "Straße des 17. Juni", houseNumber: "" });
-  assert.deepEqual(splitStreetAndNumber("Via Roma 1/B", "IT"), { street: "Via Roma", houseNumber: "1/B" });
-  assert.deepEqual(splitStreetAndNumber("12 rue de la Paix", "FR"), { street: "rue de la Paix", houseNumber: "12" });
+  assert.deepEqual(teile(splitStreetAndNumber("Schweinheimer Straße 187", "DE")), { street: "Schweinheimer Straße", houseNumber: "187", unit: "" });
+  assert.deepEqual(teile(splitStreetAndNumber("Hauptstr. 12a", "DE")), { street: "Hauptstr.", houseNumber: "12a", unit: "" });
+  assert.deepEqual(teile(splitStreetAndNumber("Bahnhofstraße 1-3", "DE")), { street: "Bahnhofstraße", houseNumber: "1-3", unit: "" });
+  assert.deepEqual(teile(splitStreetAndNumber("Straße des 17. Juni", "DE")), { street: "Straße des 17. Juni", houseNumber: "", unit: "" });
+  assert.deepEqual(teile(splitStreetAndNumber("Via Roma 1/B", "IT")), { street: "Via Roma", houseNumber: "1/B", unit: "" });
+  assert.deepEqual(teile(splitStreetAndNumber("12 rue de la Paix", "FR")), { street: "rue de la Paix", houseNumber: "12", unit: "" });
   assert.equal(formatStreetLine("FR", "Rue de la Paix", "12"), "12 Rue de la Paix");
   assert.equal(formatStreetLine("DE", "Hauptstraße", "12a"), "Hauptstraße 12a");
   assert.equal(streetSearchTerm("Hauptstr. 12a"), "Hauptstr.");
@@ -127,6 +135,40 @@ test("8 KRITISCH: die getippte Hausnummer bleibt, wenn der Vorschlag keine nennt
   assert.deepEqual(applyAddressSuggestion({ country: "DE", street: "x" }, null), {});
   assert.equal(cityFromSuggestion("Aschaffenburg"), "Aschaffenburg");
   assert.equal(cityFromSuggestion({ city: "Paris" }), "Paris");
+});
+
+test("8a Falltabelle (wie im Backend): Zerlegung je Land inklusive Wohnungsangaben", () => {
+  assert.ok(Array.isArray(HN.split) && HN.split.length >= 60, "Falltabelle unvollständig");
+  const fehler = HN.split
+    .map((c) => ({ c, ist: teile(splitStreetAndNumber(c.input, c.country)) }))
+    .filter(({ c, ist }) => JSON.stringify(ist) !== JSON.stringify({ street: c.street, houseNumber: c.houseNumber, unit: c.unit }))
+    .map(({ c, ist }) => `${c.country} „${c.input}“ → ${JSON.stringify(ist)}`);
+  assert.deepEqual(fehler, []);
+});
+
+test("8b Falltabelle bytegleich mit dem Backend (Prüfsumme)", () => {
+  const sha = crypto.createHash("sha256").update(fs.readFileSync(path.join(here, HN_FIXTURE))).digest("hex");
+  assert.equal(sha, HN_FIXTURE_SHA256,
+    "die Falltabelle wurde geändert — dieselbe Änderung gehört in tests/fixtures/house-number-cases.json (Backend) und die Prüfsumme in beide Tests");
+});
+
+test("8c KRITISCH: eine Übernahme verliert keine Ziffer und überschreibt Hausnummer oder Wohnungsangabe nie still", () => {
+  const fehler = HN.apply
+    .map((c) => ({ c, ist: applyAddressSuggestion({ country: c.country, street: c.typed }, c.suggestion).street }))
+    .filter(({ c, ist }) => ist !== c.street)
+    .map(({ c, ist }) => `${c.country} „${c.typed}“ + ${JSON.stringify(c.suggestion)} → „${ist}“ (erwartet „${c.street}“)`);
+  assert.deepEqual(fehler, []);
+  // Nennt der Vorschlag PLZ und Ort, kommen sie auch dann, wenn die Straßenzeile unverändert bleibt.
+  const p = applyAddressSuggestion({ country: "DE", street: "Hauptstraße 12-II" },
+    { street: "Hauptstraße", houseNumber: "", postalCode: "10115", city: "Berlin" });
+  assert.deepEqual(p, { street: "Hauptstraße 12-II", postalCode: "10115", city: "Berlin" });
+  // Jede Ziffer der Eingabe steht nach der Übernahme noch da (Vorschläge ohne Hausnummer).
+  for (const c of HN.split) {
+    const ziffern = (s) => (String(s).match(/\d/g) || []).join("");
+    const nach = applyAddressSuggestion({ country: c.country, street: c.input }, { street: c.street || "Testweg", houseNumber: "" }).street;
+    assert.ok(ziffern(nach).includes(ziffern(c.input)) || ziffern(nach) === ziffern(c.input),
+      `${c.country} „${c.input}“ → „${nach}“ verliert Ziffern`);
+  }
 });
 
 // ── 3. Aussagen und Töne ────────────────────────────────────────────────────
@@ -165,6 +207,21 @@ test("11 kein Fehlerton, kein Bestätigungsknopf; ein Ausfall ist neutral, keine
   assert.equal(addressStatusTone(ADDRESS_STATUS.UNAVAILABLE), "neutral");
   assert.ok(!Object.values(ADDRESS_STATUS).includes("invalid"), "den Zustand „invalid“ gibt es nicht mehr");
   assert.ok(!/addr-status--error/.test(statusSrc));
+});
+
+test("11b Betreiberentscheidung: kein Warn- oder Infosymbol bei Hinweisen — nur das Häkchen bei „gefunden“", () => {
+  const code = strip(statusSrc);
+  assert.ok(/const icon = tone === "success" \? "check" : null;/.test(code), "nur „gefunden“ trägt ein Symbol");
+  assert.ok(!/"info"/.test(code), "kein Infosymbol in der Statuszeile");
+  assert.ok(!/\.addr-status--warning \.addr-status-icon/.test(cssSrc), "kein Stil mehr für ein Hinweissymbol");
+  assert.ok(/\.addr-status--success \.addr-status-icon/.test(cssSrc), "das Häkchen bleibt");
+  // Ruhig: der Hinweis ist Sekundärtext, keine bernsteinfarbene Warnung.
+  assert.ok(/\.addr-status--warning,\s*\n\s*\.addr-status--neutral,\s*\n\s*\.addr-status--checking \{ color: var\(--ce-color-text-secondary\); \}/.test(cssSrc),
+    "der Hinweis steht nicht als ruhiger Sekundärtext da");
+  assert.ok(!/\.addr-status--warning[^{]*\{[^}]*status-warning/.test(cssSrc), "keine Warnfarbe am Hinweis");
+  // Die sachlichen Texte und die Live-Region bleiben.
+  assert.equal(addressStatusMessage("unverified", "house_number_unconfirmed"), "Hausnummer nicht bestätigt – bitte prüfen.");
+  assert.ok(/<div className="addr-status-slot" role="status" aria-live="polite">/.test(statusSrc));
 });
 
 // ── 4. Auswertung der Serverantwort ─────────────────────────────────────────
@@ -347,7 +404,9 @@ test("29 jede Übernahme läuft über applyAddressSuggestion und meldet die Ausw
 test("30 KRITISCH: die Preisberechnung hängt nicht an der Adressprüfung", () => {
   const code = strip(newShipSrc);
   assert.ok(!/addressBlocksCalculation|addressBlocksSubmit/.test(code));
-  assert.ok(/disabled=\{loading \|\| !calcValid \|\| saving \|\| datumFehlt\}/.test(code));
+  // Seit Auftrag 1 (P11) sperrt der CTA nur während Rechnen oder Speichern — und nie wegen der
+  // Adressprüfung (unverändert die Schutzfunktion dieses Falls).
+  assert.ok(/disabled=\{loading \|\| saving\}/.test(code));
   assert.ok(!/senderCheck\.status|recipientCheck\.status[^\n]*disabled/.test(code.replace(/status=\{(sender|recipient)Check\.status\}/g, "")));
 });
 
@@ -429,9 +488,9 @@ test("38 Neue Sendung: das Land steht in beiden Adressen VOR der Straße, der Hi
     assert.equal(newShipSrc.split(`{countrySelect("${p}")}`).length - 1, 1, `${p}: genau eine Länderauswahl`);
     assert.ok(newShipSrc.includes(`hint={streetFieldHint(form.${p}_country, form.${p}_street) || undefined}`));
   }
-  // Der Sprung zum ersten Fehler folgt der neuen Reihenfolge.
-  assert.ok(/"s_company", "s_country", "s_street"/.test(newShipSrc));
-  assert.ok(/"r_company", "r_country", "r_street"/.test(newShipSrc));
+  // Der Sprung zum ersten Fehler folgt der Darstellung: Land (und Bundesstaat) vor der Straße.
+  assert.ok(/"s_country", "s_state", "s_street"/.test(newShipSrc));
+  assert.ok(/"r_country", "r_state", "r_street"/.test(newShipSrc));
 });
 
 test("39 treffen Vorschläge bei fokussiertem Feld ein, öffnet sich die Liste", () => {

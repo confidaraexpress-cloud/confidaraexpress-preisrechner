@@ -466,9 +466,11 @@ test("31h — optionale Referenzen erscheinen nur, wenn gesetzt (keine Platzhalt
   assert.equal(without.invoiceId, null);
   assert.match(detailPage, /\.\.\.\(req\.shipmentId != null/, "Sendungsreferenz wird bedingungslos gerendert");
   assert.match(detailPage, /\.\.\.\(req\.invoiceId != null/, "Rechnungsreferenz wird bedingungslos gerendert");
-  // Im Kundenformular gibt es dafür keine Felder.
+  // Im Kundenformular gibt es kein Rechnungsfeld. Eine Sendung wählt der Kunde seit Go-Live
+  // Paket G nur bei „Schaden oder Verlust" — aus seiner eigenen Liste, serverseitig geprüft.
   const dialog = read("../components/support/SupportRequestDialog.jsx");
-  assert.ok(!/shipmentId|invoiceId/.test(dialog), "der Kundendialog kennt die Referenzen");
+  assert.ok(!/invoiceId/.test(dialog), "der Kundendialog kennt die Rechnungsreferenz");
+  assert.match(dialog, /\{isDamage && \(/, "die Sendungsauswahl hängt nicht an der Schadenskategorie");
 });
 
 /* ── Filter in der Oberfläche ────────────────────────────────────────────── */
@@ -480,7 +482,9 @@ test("31i — die Liste bietet Status-, Kategorie- und Suchfilter mit Default qu
   assert.match(listPage, /Ticketnummer oder Betreff/, "Beschriftung des Suchfelds weicht ab");
   assert.match(listPage, /sort: SUPPORT_SORT_DEFAULT/, "Default-Sortierung wird nicht gesendet");
   assert.equal(SUPPORT_CATEGORY_FILTER_OPTIONS[0].label, "Alle");
-  assert.equal(SUPPORT_CATEGORY_FILTER_OPTIONS.length, 8);
+  // „Alle" + acht Kategorien (seit Go-Live Paket G mit „Schaden oder Verlust").
+  assert.equal(SUPPORT_CATEGORY_FILTER_OPTIONS.length, 9);
+  assert.ok(SUPPORT_CATEGORY_FILTER_OPTIONS.some((o) => o.value === "damage" && o.label === "Schaden oder Verlust"));
 });
 
 test("31j — die Suche wird NICHT bei jedem Tastendruck gesendet", () => {

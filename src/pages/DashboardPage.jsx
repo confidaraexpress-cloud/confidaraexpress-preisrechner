@@ -5,7 +5,7 @@ import { Overview } from "../components/dashboard/Overview";
 import { ShipmentsList } from "../components/dashboard/ShipmentsList";
 import { InvoicesList } from "../components/dashboard/InvoicesList";
 import { Profile } from "../components/dashboard/Profile";
-import { DashboardSidebar } from "../components/layout/DashboardSidebar";
+import { DashboardSidebar, SIDEBAR_NAV_ID } from "../components/layout/DashboardSidebar";
 import { DashboardSectionHeader } from "../components/layout/DashboardSectionHeader";
 import { LegalLinks } from "../components/layout/LegalLinks";
 import { NotificationsProvider } from "../context/NotificationsContext";
@@ -15,6 +15,7 @@ import { businessMonthKey } from "../utils/kpis";
 import { UtilityCluster } from "../components/ui/PageHeader";
 import { UserChip } from "../components/ui/UserChip";
 import { BrandLogo } from "../components/ui/BrandLogo";
+import { Icon, ICON_SIZE } from "../components/ui/Icon";
 import { ContentErrorBoundary } from "../components/common/ContentErrorBoundary";
 import { AppStatusNotice } from "../components/common/AppStatusNotice";
 import { updateNoticeSuppressed } from "../utils/appVersionCheck.mjs";
@@ -614,7 +615,20 @@ export default function DashboardPage() {
       />
       <main className="main-content">
         <div className="mobile-topbar">
-          <button type="button" className="hamburger-btn" aria-label="Menü – Navigation öffnen" onClick={() => setSidebarOpen(true)}>Menü</button>
+          {/* Betreiberentscheidung 2026-10-17: links das Hamburger-Symbol statt des
+              Textknopfs „Menü“ — derselbe zugängliche Name, dazu aria-expanded und
+              aria-controls auf den Drawer. */}
+          <button
+            type="button"
+            className="hamburger-btn"
+            aria-label="Menü – Navigation öffnen"
+            title="Menü – Navigation öffnen"
+            aria-expanded={sidebarOpen}
+            aria-controls={SIDEBAR_NAV_ID}
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Icon n="menu" s={ICON_SIZE.lg} />
+          </button>
           <BrandLogo variant="signet" tone="standard" className="topbar-brand" />
           {/* Menü, Marke, Mitteilungen — mehr nicht. Unterhalb von 860 px ist die
               Topbar der EINE mobile Mount von „Mitteilungen" auf JEDER Seite, auch

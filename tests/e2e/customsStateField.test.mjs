@@ -9,6 +9,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -66,7 +67,7 @@ async function neueSendung(page) {
 }
 
 test.before(async () => {
-  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { detached: true, stdio: "ignore" });
+  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { ...DEV_SERVER_SPAWN, stdio: "ignore" });
   const deadline = Date.now() + 90000;
   for (;;) {
     try { const r = await fetch(`${BASE}/`); if (r.ok) break; } catch { /* noch nicht bereit */ }
@@ -81,8 +82,7 @@ test.after(async () => {
   if (server) {
     // Die Prozessgruppe, nicht nur das Kind: npx startet `sh -c vite`, das seinerseits node
     // startet. Ein Signal an den npx-Prozess liesse den Enkel auf seinem Port stehen.
-    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
-    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+    stopDevServer(server, "SIGKILL");
   }
 });
 
@@ -125,15 +125,21 @@ test("3 — das Land wechselt, das Feld folgt", async () => {
   await page.close();
 });
 
-test("4 — ohne Bundesstaat bleibt die Preisberechnung gesperrt", async () => {
+test("4 — ohne Bundesstaat fragt der Klick keinen Tarif an und markiert den Bundesstaat", async () => {
+  const aufnahme = {};
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
-  await setupRoutes(page);
+  await setupRoutes(page, aufnahme);
   await neueSendung(page);
   await fuelleVersandformular(page, { empfaenger: { ...US_EMPFAENGER, state: undefined } });
   await page.waitForSelector("#ns-r-state", { timeout: 10000 });
   assert.equal(await page.locator("#ns-r-state").inputValue(), "", "Vorbedingung: Feld ist leer");
-  assert.equal(await angebotsCta(page).isDisabled(), true,
-    "eine unvollständige US-Adresse darf keinen Tarif anfragen");
+  // Seit Auftrag 1 (P11) ist der Knopf bedienbar; der Klick sendet nichts und springt zum Feld.
+  assert.equal(await angebotsCta(page).isDisabled(), false);
+  await angebotsCta(page).click();
+  await page.waitForFunction(() => document.activeElement?.id === "ns-r-state", null, { timeout: 5000 });
+  assert.equal(await page.locator("#ns-r-state").getAttribute("aria-invalid"), "true");
+  await page.waitForTimeout(300);
+  assert.equal(aufnahme.body, undefined, "eine unvollständige US-Adresse darf keinen Tarif anfragen");
   await page.close();
 });
 

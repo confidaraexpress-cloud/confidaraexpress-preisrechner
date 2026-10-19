@@ -8,6 +8,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -133,7 +134,7 @@ async function fuelleAbsender(page, { zip, city, street, country = "DE" } = {}) 
 const statusText = (page) => page.locator(".offers-form-section .addr-status").first().innerText();
 
 test.before(async () => {
-  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { detached: true, stdio: "ignore" });
+  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { ...DEV_SERVER_SPAWN, stdio: "ignore" });
   const deadline = Date.now() + 90000;
   for (;;) {
     try { const r = await fetch(`${BASE}/`); if (r.ok) break; } catch { /* noch nicht bereit */ }
@@ -146,8 +147,7 @@ test.before(async () => {
 test.after(async () => {
   if (browser) await browser.close();
   if (server) {
-    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
-    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+    stopDevServer(server, "SIGKILL");
   }
 });
 
@@ -425,7 +425,11 @@ test("Smoke 13 — ohne Land: Hinweis, Straße bleibt, die Landwahl startet die 
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const log = await setupRoutes(page);
   await zumFormular(page);
-  assert.equal(await page.locator(S_COUNTRY).inputValue(), "", "das Formular startet weiterhin ohne Land");
+  // Seit Auftrag 1 (P11) ist der Absender auf Deutschland vorausgewählt, der Empfänger startet
+  // ohne Land. Für den Fall „ohne Land" wird die Absenderwahl hier bewusst geleert.
+  assert.equal(await page.locator(S_COUNTRY).inputValue(), "DE", "Deutschland ist nicht vorausgewählt");
+  assert.equal(await page.locator("#ns-r-country").inputValue(), "", "das Empfängerland ist vorbelegt");
+  await page.locator(S_COUNTRY).selectOption("");
   // Das Land steht in beiden Adressen VOR der Straße.
   const reihenfolge = await page.evaluate(() => ["s", "r"].map((p) => {
     const land = document.querySelector(`#ns-${p}-country`), strasse = document.querySelector(`#ns-${p}-street`);

@@ -15,6 +15,8 @@ import { partnerReturnTarget, safeReturnTarget } from "../utils/loginReturnTarge
 // Kundenlinks wird bei der Kundenregistrierung mitgesendet (nur Art „customer").
 import { isSalesPartner, landingPathFor } from "../utils/roleLanding.mjs";
 import { clearReferral, referralCodeFor } from "../utils/referralCapture.mjs";
+import { HANDOFF_PATH, clearPendingHandoff, hasPendingHandoff } from "../utils/publicQuoteHandoffStore.mjs";
+import { HANDOFF_AUTH_TEXT } from "../utils/publicQuoteHandoffView.mjs";
 
 // Validierung, B2B-Wording und Feldfehler-Mapping liegen in einem reinen Modul,
 // damit sie ohne React-Render-Infrastruktur mit `node --test` prüfbar sind.
@@ -32,6 +34,8 @@ import { getCurrentLegalSet } from "../api/legalApi";
 // Passwort-Längenregel (8–128, Zählung in Code-Points). Einzige Quelle der
 // Wahrheit im Frontend; Spiegel von lib/passwordPolicy.js im Backend.
 import { PASSWORD_MIN_LEN, PASSWORD_MAX_LEN, passwordLengthError } from "../utils/passwordPolicy.mjs";
+// Auftrag 2 / P10: dieselbe Regel wie die Registrierungsprüfung (gespiegelt aus Backend lib/vatId.js).
+import { validateRequiredVatId } from "../utils/vatId.mjs";
 
 // Wortlaute des Zurücksetzen-Formulars. Der Kurztext bleibt wortgleich zur
 // bisherigen Meldung; der Langtext fehlte hier vorher vollständig.
@@ -64,6 +68,10 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  // Öffentlicher Preisrechner: wartet eine Tarifwahl (Modulspeicher), sagt die Anmeldeseite es; nach einer
+  // Registrierung bleibt sie bis zur Freischaltung nicht erhalten — und auch das steht da.
+  const [uebernahmeWartet, setUebernahmeWartet] = useState(() => hasPendingHandoff());
+  const [uebernahmeVerworfen, setUebernahmeVerworfen] = useState(false);
   // Neutrale Erfolgsmeldung nach bestätigter E-Mail-Änderung (kommt über den
   // Navigations-State der öffentlichen Confirm-Seite; keine neue/alte E-Mail
   // wird vorausgefüllt).
@@ -170,6 +178,9 @@ export default function AuthPage() {
       // Navigation endete kommentarlos wieder auf /login.
       const ok = await login(d.token);
       if (!ok) { setError(KUNDENBEREICH_NACH_LOGIN_FEHLER); setLoading(false); return; }
+      // Öffentlicher Preisrechner: eine wartende Tarifwahl entscheidet die Übernahmeseite für JEDE Rolle
+      // (Kundenkonto: Übernahme; Admin und Vertriebspartner: Hinweis und die eigene Startseite).
+      if (returnTarget === HANDOFF_PATH && hasPendingHandoff()) { navigate(HANDOFF_PATH); setLoading(false); return; }
       // Ein Vertriebspartner hat keinen Kundenbereich: sein Ziel ist immer das
       // Partnerportal — auf Wunsch der zuletzt geöffnete Bereich (UX-Paket 6),
       // nie ein (für ihn gesperrtes) Kunden-Rücksprungziel.
@@ -222,6 +233,12 @@ export default function AuthPage() {
       clearReferral("customer");
       setSuccess("Firmenkonto beantragt! Wir prüfen Ihre Angaben und melden uns nach der Freischaltung per E-Mail.");
       setTab("login");
+      // Bis zur Freischaltung kann sich niemand anmelden — eine wartende Tarifwahl bliebe nicht erhalten.
+      if (hasPendingHandoff()) {
+        clearPendingHandoff();
+        setUebernahmeWartet(false);
+        setUebernahmeVerworfen(true);
+      }
     } catch (e) { setError(mapAuthThrownError(e)); }
     setLoading(false);
   };
@@ -285,6 +302,17 @@ export default function AuthPage() {
       const n = { ...p };
       const err = regForm.password ? passwordLengthError(regForm.password, REG_PASSWORD_TEXTS) : null;
       if (err) n.password = err; else if (n.password) delete n.password;
+      return n;
+    });
+  };
+
+  // Auftrag 2 / P10: die USt-IdNr. ist Pflicht. Beim Verlassen des Felds steht der Grund direkt am Feld — die
+  // Registrierung ist bis dahin ohnehin gesperrt, und ohne Meldung wüsste der Kunde nicht, warum.
+  const handleRegVatBlur = () => {
+    setRegErrors(p => {
+      const n = { ...p };
+      const r = validateRequiredVatId(regForm.vat_id);
+      if (!r.ok) n.vat_id = r.error; else delete n.vat_id;
       return n;
     });
   };
@@ -359,13 +387,16 @@ export default function AuthPage() {
                 <span className="auth-badge-ico"><Icon n="cube" s={16} /></span>
                 <span>Ihr verlässlicher Partner</span>
               </div>
+              {/* Wortlaut: Betreiberentscheidung Auftrag 1 (P3, 2026-10-17). Keine Geschwindigkeits-
+                  zusage, kein Superlativ — „Versand ab Deutschland in die Länder der EU“ entspricht
+                  dem Launch-Scope (Canonical). */}
               <h1 className="auth-title auth-anim delay-1">
-                Wir verbinden Welten.<br />
-                Sie erreichen <em>mehr.</em>
+                Europa verbinden.<br />
+                Versand <em>vereinfachen.</em>
               </h1>
-              <div className="auth-sub-1 auth-anim delay-2">Sicher. Schnell. Persönlich.</div>
+              <div className="auth-sub-1 auth-anim delay-2">Vergleichen. Buchen. Persönlich betreut.</div>
               <p className="auth-sub-2 auth-anim delay-2">
-                Loggen Sie sich ein und entdecken Sie grenzüberschreitende Exzellenz.
+                Versand ab Deutschland in die Länder der EU – mit persönlichem Service und direkten Ansprechpartnern.
               </p>
             </div>
 
@@ -401,6 +432,14 @@ export default function AuthPage() {
               )}
               {error   && <div className="auth-alert auth-alert-error" role="alert">{error}</div>}
               {success && <div className="auth-alert auth-alert-success" role="status">{success}</div>}
+              {uebernahmeWartet && (
+                <div className="auth-alert auth-alert-info" role="status" id="auth-handoff-pending">
+                  {tab === "register" ? HANDOFF_AUTH_TEXT.pendingRegister : HANDOFF_AUTH_TEXT.pending}
+                </div>
+              )}
+              {uebernahmeVerworfen && (
+                <div className="auth-alert auth-alert-info" role="status" id="auth-handoff-dropped">{HANDOFF_AUTH_TEXT.droppedAfterRegistration}</div>
+              )}
 
               {tab === "login" ? (
                 <LoginForm
@@ -419,6 +458,7 @@ export default function AuthPage() {
                   onRegister={handleRegister}
                   loading={loading}
                   errors={regErrors}
+                  onVatBlur={handleRegVatBlur}
                   regValid={regValid}
                   onPasswordBlur={handleRegPasswordBlur}
                   passwordRepeat={regPasswordRepeat}

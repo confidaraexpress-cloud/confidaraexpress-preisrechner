@@ -54,6 +54,9 @@ export function shipmentFields(row) {
     trackingStatus: str(firstDefined(r.tracking_status, r.trackingStatus)),
     hasTracking: firstDefined(r.has_tracking, r.hasTracking) === true,
     labelAvailable: firstDefined(r.label_available, r.labelAvailable) === true,
+    // Paritätsaudit B4: Testbuchung (Sandbox: Testlabel, Nullwertrechnung) — seit Backend #432 in
+    // Liste und Detail ausgeliefert. Nur ein echtes `true` zählt.
+    isTestBooking: firstDefined(r.is_test_booking, r.isTestBooking) === true,
     // Sichtbare Vorgangsnummer (CE-AB…) — ausschließlich aus dem fachlichen Feld,
     // nie aus der ID und nie aus einer Providerreferenz.
     orderConfirmationNumber: str(firstDefined(r.order_confirmation_number, r.orderConfirmationNumber)),
@@ -98,6 +101,25 @@ export function customerIdentity(row) {
   if (f.customerNumber) return { primary: f.customerNumber, secondary: "", known: true };
   // Kunde nicht auflösbar (z. B. gelöschtes Konto) — ehrlich benennen.
   return { primary: "Kunde nicht auflösbar", secondary: "", known: false };
+}
+
+// Die Karte „Kunde“ im Admin-Sendungsdetail hat feste Zeilen: „Firmenname“ und „Kundennummer“.
+// customerIdentity() rückt ohne Firmennamen die Kundennummer nach vorn — richtig für die Liste,
+// falsch für diese Zeilen: dort stand die Nummer bis 2026-10 unter „Firmenname“, und
+// „Kundennummer“ zeigte „—“ (Auftrag 1, P9). Hier steht jede Angabe in ihrer eigenen Zeile.
+//
+// → { company, number, known, companyMissing }
+export function customerDetailFields(row) {
+  const f = shipmentFields(row);
+  if (!f.customerCompany && !f.customerNumber) {
+    return { company: "Kunde nicht auflösbar", number: "—", known: false, companyMissing: true };
+  }
+  return {
+    company: f.customerCompany || "Kein Firmenname hinterlegt",
+    number: f.customerNumber || "—",
+    known: true,
+    companyMissing: !f.customerCompany,
+  };
 }
 
 // ── Versandart (service_type) ───────────────────────────────────────────────
@@ -154,9 +176,26 @@ export function priceDisplay(row) {
 export function shipmentMarkers(row) {
   const f = shipmentFields(row);
   const out = [];
+  // Paritätsaudit B4: die Testbuchung zuerst und als Badge — sie ändert, wie die Zeile zu lesen ist.
+  if (f.isTestBooking) out.push({ key: "test", label: "Testbuchung", badge: "badge-yellow" });
   if (f.hasTracking) out.push({ key: "tracking", label: "Tracking" });
   if (f.labelAvailable) out.push({ key: "label", label: "Label" });
   return out;
+}
+
+// ── Paritätsaudit B4: Testbuchung und Gutschein im Detail ───────────────────
+// `voucher_code` ist der vom Anbieter bestätigte Code, `voucher_discount_gross` der dadurch
+// entfallene Bruttobetrag; NULL heißt „kein Gutschein". Angezeigt wird nur, was gesetzt ist —
+// eine leere Gutscheinzeile würde einen Gutschein behaupten.
+export function isTestBooking(row) {
+  return shipmentFields(row).isTestBooking;
+}
+
+export function shipmentVoucherView(row) {
+  const r = row && typeof row === "object" ? row : {};
+  const code = str(firstDefined(r.voucher_code, r.voucherCode));
+  if (!code) return null;
+  return { code, discountGross: numOrNull(firstDefined(r.voucher_discount_gross, r.voucherDiscountGross)) };
 }
 
 // ── Filter ──────────────────────────────────────────────────────────────────

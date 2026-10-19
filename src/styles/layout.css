@@ -31,19 +31,16 @@ h1, h2, h3, h4 { font-family: var(--ce-font-sans); font-weight: 600; }
 }
 .navbar-logo:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 .navbar-actions { display: flex; align-items: center; gap: var(--ce-space-2); flex-shrink: 0; }
-/* Textknopf „Menü" — kein Burger-Symbol. Sichtbar erst unterhalb von 768 px
-   (responsive.css); dort trägt er auch die 44-px-Trefferfläche. */
+/* Hamburger-Symbol (Betreiberentscheidung 2026-10-17, vorher Textknopf „Menü").
+   Sichtbar erst unterhalb von 768 px (responsive.css); dort trägt er auch die
+   quadratische 44-px-Trefferfläche. */
 .hamburger-btn {
   display: none; align-items: center; justify-content: center;
   flex-shrink: 0;
-  padding: 0 var(--ce-space-3);
-  margin-left: calc(-1 * var(--ce-space-3));
+  padding: 0;
+  margin-left: calc(-1 * var(--ce-space-2));
   background: none; border: none; cursor: pointer;
   border-radius: var(--radius-sm);
-  font-family: var(--ce-font-sans);
-  font-size: var(--ce-text-button-size);
-  font-weight: var(--ce-text-button-weight);
-  line-height: var(--ce-text-button-line);
   color: var(--ce-color-text-primary);
 }
 .hamburger-btn:hover { background: var(--ce-color-surface-hover); }

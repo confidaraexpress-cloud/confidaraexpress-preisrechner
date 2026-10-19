@@ -43,6 +43,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -140,7 +141,8 @@ async function bereich(page, id) {
 // `startDefaults`: Startwerte in Detail- und Regelantwort (null = älterer Server ohne Feld).
 // `prelive`: Pre-Live-Testmodus an (Status, Testkonten, Testpartner, Rückdatierung).
 // `voll`: Partner 6 voll belegt (UX-Paket 4); `zugriffe` zählt die Abrufe seiner Bereiche.
-async function setup(page, { startDefaults = null, prelive = false, voll = false } = {}) {
+// `historie6`: Statusverlauf von Partner 6 (Paritätsaudit BA1/BA7) statt des Standardverlaufs.
+async function setup(page, { startDefaults = null, prelive = false, voll = false, historie6 = null } = {}) {
   const state = { list: [], approve: [], evidence: [], evidenceRejected: [], partnerStatus: "pending", other: [], login: [], login6: "approved",
     rules: [], caps: [], capQueries: [], partnerCap: null, approve42: [], attribution: [], status42: "pending",
     zugriffe: { detail6: 0, billing6: 0, credit6: 0, caps6: 0, commissions6: 0 }, rates6: null,
@@ -199,7 +201,9 @@ async function setup(page, { startDefaults = null, prelive = false, voll = false
       state.zugriffe.detail6 += 1;
       const d = detail("active");
       const basis = { ...d, partner: { ...d.partner, id: 6, name: "Sam Sponsor", loginStatus: state.login6 } };
-      return json(voll ? { ...basis, ...VOLL6, rates: { current: state.rates6 || d.rates.current, history: [] } } : basis);
+      const mitVerlauf = historie6 ? { ...basis, statusHistory: historie6 } : basis;
+      return json(voll ? { ...mitVerlauf, ...VOLL6, ...(historie6 ? { statusHistory: historie6 } : {}),
+        rates: { current: state.rates6 || d.rates.current, history: [] } } : mitVerlauf);
     }
     // Bereiche von Partner 6 (UX-Paket 4): Abrechnungsdaten und Gutschriften.
     if (p.endsWith("/admin/sales-partners/6/billing-details") && req.method() === "GET") {
@@ -294,7 +298,7 @@ async function setup(page, { startDefaults = null, prelive = false, voll = false
 }
 
 test.before(async () => {
-  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { detached: true, stdio: "ignore" });
+  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { ...DEV_SERVER_SPAWN, stdio: "ignore" });
   const deadline = Date.now() + 90000;
   for (;;) {
     try { const r = await fetch(`${BASE}/`); if (r.ok) break; } catch { /* noch nicht bereit */ }
@@ -307,8 +311,7 @@ test.before(async () => {
 test.after(async () => {
   if (browser) await browser.close();
   if (server) {
-    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
-    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+    stopDevServer(server, "SIGKILL");
   }
 });
 
@@ -952,5 +955,36 @@ test("15 — UX-Paket 4: 390 px — kein seitliches Scrollen, Tabellen als Karte
     ss.filter((s) => s.checkVisibility()).map((s) => ({ text: s.textContent.trim().slice(0, 40), h: Math.round(s.getBoundingClientRect().height) })));
   assert.ok(ziele.length >= 10, `zu wenige Ziele gemessen: ${ziele.length}`);
   for (const z of ziele) assert.ok(z.h >= 44, `Touch-Ziel unter 44 px: ${z.text} (${z.h} px)`);
+  await page.close();
+});
+
+test("16 — Paritätsaudit BA1/BA7/BA9: Statusverlauf mit Gründen und interner Notiz; Ablehnen ohne Begründungsfeld", async () => {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await setup(page, { historie6: [
+    { status: "active", effectiveDate: "2026-09-15", reason: "reactivated", note: null, createdAt: "2026-09-15T08:00:00Z" },
+    { status: "inactive", effectiveDate: "2026-09-01", reason: "suspended", note: "Rückfrage zum Vertrag offen — Unterlagen fehlen noch vollständig", createdAt: "2026-09-01T08:00:00Z" },
+    { status: "active", effectiveDate: "2026-03-01", reason: "approved", note: null, createdAt: "2026-03-01T08:00:00Z" },
+  ] });
+  await page.goto(`${BASE}/admin/partners/6`, { waitUntil: "networkidle" });
+  await page.locator("#adm-sp-status-history").waitFor({ state: "attached" });
+  await page.locator("#adm-sp-status-history > summary").click();
+  await page.waitForFunction(() => document.getElementById("adm-sp-status-history")?.open === true);
+  const verlauf = await page.locator("#adm-sp-status-history .adm-sp-history").innerText();
+  // BA7: Gründe als Wort, nie als Rohwert.
+  for (const t of ["Reaktivierung", "Vorübergehend gesperrt", "Freigabe"]) assert.ok(verlauf.includes(t), `Grund fehlt: ${t}`);
+  for (const roh of ["reactivated", "approved", "suspended"]) assert.ok(!verlauf.includes(roh), `Rohwert sichtbar: ${roh}`);
+  // BA1: die interne Notiz der Deaktivierung steht am Ereignis.
+  assert.ok(verlauf.includes("Interne Notiz: Rückfrage zum Vertrag offen"), "Notiz fehlt");
+  const { sw, iw } = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: window.innerWidth }));
+  assert.ok(sw <= iw + 1, `horizontaler Überlauf (${sw}px > ${iw}px)`);
+
+  // BA9: der Antrag (Partner 5) wird ohne Begründungsfeld abgelehnt — der Server liest keine.
+  await page.goto(`${BASE}/admin/partners/5`, { waitUntil: "networkidle" });
+  await page.locator("#adm-sp-reject").click();
+  const dialog = page.getByRole("dialog");
+  await dialog.waitFor({ state: "visible" });
+  assert.equal(await dialog.locator("textarea").count(), 0, "Begründungsfeld noch vorhanden");
+  assert.equal(await page.locator("#adm-sp-reject-reason").count(), 0);
+  await dialog.getByRole("button", { name: "Abbrechen", exact: true }).click();
   await page.close();
 });

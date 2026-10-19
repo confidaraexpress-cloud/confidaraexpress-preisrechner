@@ -35,7 +35,9 @@ const VALID = {
   email: "einkauf@muster-logistik.de",
   password: "SicheresPasswort1",
   company_name: "Muster Logistik GmbH",
-  vat_id: "", street: "", zip: "", city: "", country: "DE",
+  // Auftrag 2 / P10: die USt-IdNr. ist bei jeder Neuregistrierung Pflicht.
+  vat_id: "DE123456789",
+  street: "", zip: "", city: "", country: "DE",
 };
 // Baut Formular + passende Wiederholung — die Wiederholung wird separat geprüft.
 const mitPasswort = (pw) => [{ ...VALID, password: pw }, pw];

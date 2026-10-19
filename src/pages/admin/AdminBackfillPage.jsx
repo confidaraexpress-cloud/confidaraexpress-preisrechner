@@ -12,6 +12,8 @@ import {
 } from "../../api/adminApi";
 import {
   readinessMeta, fieldLabel, candidateStatusMeta, canBackfillCandidate, backfillOutcomeMessage,
+  documentGenerationView, legalDocumentsView,
+  businessLetterView,
 } from "../../utils/invoiceBackfillView.mjs";
 
 const PAGE_SIZE = 25;
@@ -74,6 +76,10 @@ function LegalTextsCard() {
 
 function ReadinessCard({ readiness, loading, error, onReload }) {
   const [cls, label] = readinessMeta(readiness);
+  const briefangaben = businessLetterView(readiness);
+  // Paritätsaudit B8: Probelauf der Dokumenterzeugung und Stand der Rechtsdokumente.
+  const erzeugung = documentGenerationView(readiness);
+  const recht = legalDocumentsView(readiness);
   const yesNo = (b) => (b === true ? "ja" : b === false ? "nein" : "—");
   const num = (n) => (Number.isFinite(Number(n)) ? String(Number(n)) : "—");
   return (
@@ -100,7 +106,31 @@ function ReadinessCard({ readiness, loading, error, onReload }) {
               )}
             </div>
             <dl className="adm-kv">
-              <div className="adm-kv-item"><dt>Testmodus</dt><dd>{readiness.testMode ? "aktiv – keine automatischen echten Rechnungen" : "aus"}</dd></div>
+              {/* Paritätsaudit B8: Die Zeile „Testmodus" entfällt — die Antwort trägt dieses Feld nicht,
+                  die Zeile stand deshalb immer auf „aus". Ob der Testmodus Produktivdokumente sperrt,
+                  zeigt der Probelauf der Dokumenterzeugung. */}
+              {erzeugung && (
+                <div className="adm-kv-item" id="adm-readiness-generation">
+                  <dt>Dokumenterzeugung (Probelauf)</dt>
+                  <dd>
+                    <span className={`badge ${erzeugung.ready ? "badge-green" : "badge-red"}`}>{erzeugung.label}</span>
+                    {erzeugung.code && <> <span className="adm-mono">{erzeugung.code}</span></>}
+                  </dd>
+                </div>
+              )}
+              {recht && (
+                <div className="adm-kv-item" id="adm-readiness-legal">
+                  <dt>Rechtsdokumente</dt>
+                  <dd>
+                    <span className={`badge ${recht.ready ? "badge-green" : "badge-yellow"}`}>{recht.label}</span>
+                    {recht.setKey && <> <span className="adm-mono">{recht.setKey}</span></>}
+                    {recht.code && <> <span className="adm-mono">{recht.code}</span></>}
+                  </dd>
+                </div>
+              )}
+              {recht && (
+                <div className="adm-kv-item"><dt>Buchungssperre ohne Rechtsdokumente</dt><dd>{recht.gateEnabled ? "aktiv" : "aus"}</dd></div>
+              )}
               <div className="adm-kv-item"><dt>E-Mail-Versand bereit</dt><dd>{yesNo(readiness.emailProviderReady)}</dd></div>
               <div className="adm-kv-item"><dt>RESEND konfiguriert</dt><dd>{yesNo(readiness.resendConfigured)}</dd></div>
               <div className="adm-kv-item"><dt>Datenbank/Schema bereit</dt><dd>{yesNo(readiness.databaseReady)}</dd></div>
@@ -108,6 +138,12 @@ function ReadinessCard({ readiness, loading, error, onReload }) {
               <div className="adm-kv-item"><dt>PDF-Backfill: unvollständig</dt><dd>{num(readiness.blockedCount)}</dd></div>
               <div className="adm-kv-item"><dt>Rechnungen ohne PDF gesamt</dt><dd>{num(readiness.legacyInvoiceCount)}</dd></div>
             </dl>
+            {erzeugung && !erzeugung.ready && (erzeugung.missing.length > 0 || erzeugung.placeholders.length > 0) && (
+              <div className="adm-readiness-block" id="adm-readiness-generation-fields">
+                <span className="adm-readiness-label adm-readiness-label-warn">Probelauf blockiert durch</span>
+                <ChipList items={[...new Set([...erzeugung.missing, ...erzeugung.placeholders])]} />
+              </div>
+            )}
             {Array.isArray(readiness.missingFields) && readiness.missingFields.length > 0 && (
               <div className="adm-readiness-block">
                 <span className="adm-readiness-label">Fehlende Pflichtangaben</span>
@@ -118,6 +154,31 @@ function ReadinessCard({ readiness, loading, error, onReload }) {
               <div className="adm-readiness-block">
                 <span className="adm-readiness-label adm-readiness-label-warn">Platzhalter-/Testwerte (vor dem ersten echten Kunden ersetzen)</span>
                 <ChipList items={readiness.placeholderFields} />
+              </div>
+            )}
+            {briefangaben && (
+              <div className="adm-readiness-block" id="adm-business-letter">
+                <span className={`adm-readiness-label${briefangaben.ready ? "" : " adm-readiness-label-warn"}`}>
+                  Geschäftsbriefangaben (§ 35a GmbHG) in Mails, Auftragsbestätigungen und Rechnungen
+                </span>
+                {briefangaben.ready ? (
+                  <span className="adm-muted">vollständig</span>
+                ) : briefangaben.placeholders.length === 0 ? (
+                  <ChipList items={briefangaben.missing} />
+                ) : (
+                  <>
+                    {briefangaben.missing.length > 0 && (
+                      <div className="adm-readiness-sub">
+                        <span className="adm-readiness-sub-label">Fehlt:</span>
+                        <ChipList items={briefangaben.missing} />
+                      </div>
+                    )}
+                    <div className="adm-readiness-sub">
+                      <span className="adm-readiness-sub-label">Platzhalter (in Mail-Fußzeilen ausgeblendet):</span>
+                      <ChipList items={briefangaben.placeholders} />
+                    </div>
+                  </>
+                )}
               </div>
             )}
             <p className="adm-support-hint">

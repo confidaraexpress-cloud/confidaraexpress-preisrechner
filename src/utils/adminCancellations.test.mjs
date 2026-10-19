@@ -526,3 +526,34 @@ test("Selbsttest: die Prüflogik greift tatsächlich", () => {
   // Und der Pfadtest würde eine Drift wirklich bemerken.
   assert.equal(adminApiSrc.includes("/api/admin/cancellation-requests"), false);
 });
+
+test("Paritätsaudit B11 — nur der Revisionskonflikt bekommt den Konfliktbanner", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { readCancellationConflict: lies } = await import("./adminCancellations.mjs");
+  // Der unzulässige Statuswechsel ist KEIN Konflikt: kein `current`, kein Banner.
+  assert.deepEqual(lies(409, { error: "Dieser Statuswechsel ist nicht zulässig.", code: "CANCELLATION_STATUS_TRANSITION_INVALID" }),
+    { conflict: false, current: null });
+  assert.equal(lies(409, { code: "CANCELLATION_REQUEST_CONFLICT", current: { id: 3, status: "accepted", revision: 4 } }).conflict, true);
+  const seite = readFileSync(new URL("../pages/admin/AdminCancellationRequestDetailPage.jsx", import.meta.url), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  assert.match(seite, /409: "Dieser Statuswechsel ist nicht zulässig\."/);
+  assert.match(seite, /const c = readCancellationConflict\(409, body\);\s*if \(c\.conflict\) \{\s*setConflict\(\{ current: c\.current \}\);\s*return;\s*\}\s*setSaveMsg\(\{ type: "error", text: SAVE_ERRORS\[409\] \}\);/);
+});
+
+test("Paritätsaudit B10 (Integration, Backend #432) — Serviceart, Bruttopreis und Kundennummer kommen an", async () => {
+  const { normalizeCancellationRequest } = await import("./adminCancellations.mjs");
+  // Genau die Form von GET /admin/cancellation-requests/:id (routes/admin/cancellations.js) nach Backend #432.
+  const r = normalizeCancellationRequest({
+    id: 7, status: "open", revision: 2,
+    shipment: { id: 77, orderConfirmationNumber: "CE-AB26-00077", serviceType: "EXPRESS", priceGross: "28.56" },
+    customer: { id: 9, company: "Muster GmbH", contactName: "Max", email: "max@example.com", customerNumber: "CE-K-10030" },
+  });
+  assert.equal(r.shipment.serviceType, "EXPRESS");
+  assert.equal(String(r.shipment.price), "28.56");
+  assert.equal(r.customer.customerNumber, "CE-K-10030");
+  // NULL bleibt NULL — keine erfundene Zahl.
+  const leer = normalizeCancellationRequest({ id: 8, status: "open", revision: 0,
+    shipment: { id: 78, serviceType: null, priceGross: null }, customer: { id: 9, customerNumber: null } });
+  assert.equal(leer.shipment.price ?? null, null);
+  assert.equal(leer.customer.customerNumber ?? null, null);
+});

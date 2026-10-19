@@ -14,6 +14,7 @@
 import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
@@ -54,7 +55,7 @@ let browser = null;
 
 before(async () => {
   server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], {
-    stdio: "ignore", detached: true,
+    stdio: "ignore", ...DEV_SERVER_SPAWN,
   });
   const deadline = Date.now() + 90_000;
   for (;;) {
@@ -71,8 +72,7 @@ after(async () => {
     // Die Prozessgruppe, nicht nur das Kind: npx startet `sh -c vite`,
     // das seinerseits node startet. Ein Signal an den npx-Prozess laesst
     // den Enkel — den eigentlichen Dev-Server — auf seinem Port stehen.
-    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
-    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+    stopDevServer(server, "SIGKILL");
   }
 });
 

@@ -27,8 +27,12 @@ export function ShipmentFilterBar({
   publicCarriers, selectedPublicSet, handleTogglePublicCarrier,
   shippingModeOpen, setShippingModeOpen, selectedShippingMode, SHIPPING_MODE_OPTIONS, shippingModeFilter, handleShippingMode,
   latestOpen, setLatestOpen, form, handleLatestDeliveryChange, handleLatestDeliveryTimeChange, zeitOptionen,
-  idPrefix, carrierEmptyHint,
+  idPrefix, carrierEmptyHint, dateError,
 }) {
+  // Versanddatum als Formularfeld (Auftrag 1, P11): `data-field` ist das Ziel von
+  // focusFirstError(); ein Fehler steht sichtbar unter dem Auslöser und ist per
+  // aria-describedby verbunden. Ohne `dateError` ist das Markup unverändert.
+  const datumFehlerId = `${idPrefix || "filter"}-date-err`;
   return (
           <div className="calc-filter-bar mb-16">
             {/* Service Filter */}
@@ -68,11 +72,15 @@ export function ShipmentFilterBar({
             </div>
 
             {/* Versanddatum */}
-            <div className="calc-panel">
+            <div className={`calc-panel${dateError ? " calc-panel--error" : ""}`}>
               <button
+                type="button"
                 className="service-filter-trigger"
                 onClick={() => setDatePickerOpen(o => !o)}
                 aria-expanded={datePickerOpen}
+                data-field="shippingDate"
+                aria-invalid={dateError ? "true" : undefined}
+                aria-describedby={dateError ? datumFehlerId : undefined}
               >
                 <div className="service-filter-trigger-left">
                   <div>
@@ -97,6 +105,7 @@ export function ShipmentFilterBar({
                   />
                 </div>
               )}
+              {dateError && <span className="field-error calc-panel-error" id={datumFehlerId}>{dateError}</span>}
             </div>
 
             {/* Carrier Filter */}

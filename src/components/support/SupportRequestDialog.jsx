@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import { FormAlert } from "../ui/FormAlert";
-import { createSupportRequest } from "../../api/supportApi";
+import { createSupportRequest, listOwnShipmentsForSupport } from "../../api/supportApi";
 import {
   SUPPORT_CATEGORIES,
   SUPPORT_CATEGORY_PLACEHOLDER,
@@ -9,9 +9,12 @@ import {
   SUPPORT_MESSAGE_MAX,
   SUPPORT_MESSAGE_MIN,
   SUPPORT_NETWORK_ERROR,
+  SUPPORT_DAMAGE_CATEGORY,
+  SUPPORT_DAMAGE_TEXTS,
   mapSupportError,
   readTicketNumber,
   supportFormState,
+  supportShipmentOptions,
   supportSuccessMessage,
 } from "../../utils/supportRequest.mjs";
 
@@ -27,6 +30,10 @@ export function SupportRequestDialog({ onClose, onCreated }) {
   const [category, setCategory] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  // Nur bei „Schaden oder Verlust": die gewählte Sendung (interne ID als String) und die
+  // Auswahlliste der eigenen Sendungen — geladen erst, wenn die Kategorie gewählt wird.
+  const [shipmentId, setShipmentId] = useState("");
+  const [shipmentList, setShipmentList] = useState({ state: "idle", options: [] });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(null); // { text } nach erfolgreicher Übermittlung
@@ -47,9 +54,31 @@ export function SupportRequestDialog({ onClose, onCreated }) {
   const msgId = `sup-msg-${uid}`;
   const subjCounterId = `sup-subj-counter-${uid}`;
   const msgCounterId = `sup-msg-counter-${uid}`;
+  const refId = `sup-ref-${uid}`;
+  const refHelpId = `sup-ref-help-${uid}`;
+  const damageHintId = `sup-damage-hint-${uid}`;
 
-  const fs = supportFormState({ category, subject, message });
+  const fs = supportFormState({ category, subject, message, shipmentId });
+  const isDamage = category === SUPPORT_DAMAGE_CATEGORY;
   const canSubmit = fs.canSubmit && !busy;
+
+  // Eigene Sendungen für die Auswahl — nur bei „Schaden oder Verlust", einmal je Öffnen
+  // (erneut nur über „Erneut laden"). Ein Ladefehler sperrt nur diese Kategorie (ohne Sendung
+  // kein Absenden), nie den Dialog. Kein Abbruch beim Kategoriewechsel: das Ergebnis bleibt
+  // für ein erneutes Wählen der Kategorie stehen; nach dem Schließen wird nichts mehr gesetzt.
+  const mounted = useRef(true);
+  useEffect(() => () => { mounted.current = false; }, []);
+  useEffect(() => {
+    if (!isDamage || shipmentList.state !== "idle") return;
+    setShipmentList({ state: "loading", options: [] });
+    listOwnShipmentsForSupport()
+      .then(async (r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        const d = await r.json();
+        if (mounted.current) setShipmentList({ state: "ready", options: supportShipmentOptions(d && d.shipments) });
+      })
+      .catch(() => { if (mounted.current) setShipmentList({ state: "error", options: [] }); });
+  }, [isDamage, shipmentList.state]);
 
   useEffect(() => {
     firstFieldRef.current?.focus();
@@ -80,7 +109,7 @@ export function SupportRequestDialog({ onClose, onCreated }) {
     setBusy(true);
     setError("");
     try {
-      const r = await createSupportRequest({ category, subject, message });
+      const r = await createSupportRequest({ category, subject, message, shipmentId });
       let d = {};
       try { d = await r.json(); } catch { d = {}; }
       if (!r.ok) {
@@ -168,6 +197,48 @@ export function SupportRequestDialog({ onClose, onCreated }) {
               <option key={c.value} value={c.value}>{c.label}</option>
             ))}
           </select>
+
+          {/* Schaden oder Verlust: Sendungsbezug über die Auswahl einer EIGENEN Sendung. Gesendet
+              wird ihre interne ID; der Server prüft das Eigentum. Die Auftragsbestätigungsnummer
+              steht nur in der Beschriftung. */}
+          {isDamage && (
+            <>
+              <p id={damageHintId} className="sup-dialog-desc sup-dialog-damage-hint">{SUPPORT_DAMAGE_TEXTS.hint}</p>
+              <label className="field-label sup-dialog-label" htmlFor={refId}>{SUPPORT_DAMAGE_TEXTS.label}</label>
+              <select
+                id={refId}
+                className="field-input field-select"
+                value={shipmentId}
+                onChange={(e) => setShipmentId(e.target.value)}
+                disabled={busy || shipmentList.state !== "ready" || shipmentList.options.length === 0}
+                required
+                aria-required="true"
+                aria-describedby={`${refHelpId} ${damageHintId}`}
+              >
+                <option value="">
+                  {shipmentList.state === "loading" ? SUPPORT_DAMAGE_TEXTS.loading : SUPPORT_DAMAGE_TEXTS.placeholder}
+                </option>
+                {shipmentList.options.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <div className="sup-dialog-meta">
+                <span id={refHelpId} className="sup-dialog-counter" aria-live="polite">
+                  {shipmentList.state === "error"
+                    ? SUPPORT_DAMAGE_TEXTS.loadError
+                    : shipmentList.state === "ready" && shipmentList.options.length === 0
+                      ? SUPPORT_DAMAGE_TEXTS.empty
+                      : SUPPORT_DAMAGE_TEXTS.help}
+                </span>
+                {shipmentList.state === "error" && (
+                  <button type="button" className="btn btn-outline btn-sm"
+                    onClick={() => setShipmentList({ state: "idle", options: [] })} disabled={busy}>
+                    Erneut laden
+                  </button>
+                )}
+              </div>
+            </>
+          )}
 
           <label className="field-label sup-dialog-label" htmlFor={subjId}>Betreff</label>
           <input

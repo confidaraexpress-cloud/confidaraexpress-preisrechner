@@ -10,6 +10,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -74,7 +75,7 @@ async function fill(page, { toZip, masse = true }) {
 }
 
 test.before(async () => {
-  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { detached: true, stdio: "ignore" });
+  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { ...DEV_SERVER_SPAWN, stdio: "ignore" });
   const deadline = Date.now() + 90000;
   for (;;) {
     try { const r = await fetch(`${BASE}/`); if (r.ok) break; } catch { /* noch nicht bereit */ }
@@ -90,8 +91,7 @@ test.after(async () => {
     // Die Prozessgruppe, nicht nur das Kind: npx startet `sh -c vite`,
     // das seinerseits node startet. Ein Signal an den npx-Prozess laesst
     // den Enkel — den eigentlichen Dev-Server — auf seinem Port stehen.
-    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
-    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+    stopDevServer(server, "SIGKILL");
   }
 });
 
@@ -116,7 +116,11 @@ test("die ungültige deutsche Ziel-PLZ 4444 wird konkret erklärt und markiert",
   assert.match(banner, /fünfstellige/);
 
   // Feldbezogene Meldung direkt unter dem Eingabefeld.
-  const feldText = await page.locator("#calc-to-zip ~ .field-error").innerText();
+  // Über aria-describedby statt über die DOM-Nachbarschaft: im schwebenden Feld steht die
+  // Meldung unter dem Feldrahmen, nicht direkt hinter der Eingabe (Auftrag 1, P11).
+  const fehlerId = await page.getAttribute("#calc-to-zip", "aria-describedby");
+  assert.equal(await page.getAttribute("#calc-to-zip", "aria-invalid"), "true");
+  const feldText = await page.locator(`#${fehlerId}`).innerText();
   assert.match(feldText, /fünfstellige deutsche Postleitzahl/);
 
   // Ungültige Eingabe geht gar nicht erst ans Backend.
@@ -280,7 +284,10 @@ test("eine gültige Anfrage funktioniert unverändert (keine Regression)", async
    Paket, das er nie beschrieben hat, während der Carrier nach dem echten Paket
    abrechnet. */
 
-test("ohne Maße bleibt der CTA gesperrt und es geht KEIN Request hinaus", async () => {
+// Betreiberentscheidung Auftrag 1, P11 (2026-10-17): der Knopf ist auch bei fehlenden Angaben
+// bedienbar. Die Schutzfunktion dieser Fälle bleibt: ohne Maße oder Ort erreicht nichts den Server
+// — der Klick markiert stattdessen die fehlenden Felder und springt zum ersten.
+test("ohne Maße geht KEIN Request hinaus — der Klick markiert die Maße und springt zur Länge", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const konsole = await setup(page);
   let gesendet = 0;
@@ -291,52 +298,50 @@ test("ohne Maße bleibt der CTA gesperrt und es geht KEIN Request hinaus", async
   await fill(page, { toZip: "10115", masse: false });
 
   const cta = page.getByRole("button", { name: /Angebote vergleichen/i }).first();
-  assert.equal(await cta.isDisabled(), true,
-    "ohne Länge, Breite und Höhe darf die Berechnung nicht auslösbar sein");
-
-  // Ein deaktivierter Knopf wird NICHT erzwungen — ein `force`-Klick würde
-  // genau die Prüfung umgehen, um die es hier geht. Stattdessen wird belegt,
-  // dass auch kein Request entsteht.
+  assert.equal(await cta.isDisabled(), false, "der Knopf ist wegen fehlender Angaben gesperrt");
+  await cta.click();
+  await page.waitForFunction(() => document.activeElement?.id === "calc-length", null, { timeout: 5000 });
+  for (const id of ["calc-length", "calc-width", "calc-height"]) {
+    assert.equal(await page.getAttribute(`#${id}`, "aria-invalid"), "true", `${id} ist nicht markiert`);
+  }
   await page.waitForTimeout(300);
   assert.equal(gesendet, 0, "ein unvollständiges Paket darf den Server nie erreichen");
   assert.deepEqual(konsole, [], "keine Konsolenfehler");
   await page.close();
 });
 
-test("die Sperre nennt, was fehlt — und löst sich, sobald es da ist", async () => {
+test("keine Fehlerwand vor dem Klick; Verlassen markiert nur das Feld; vollständige Maße rechnen", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await setup(page);
+  let gesendet = 0;
+  page.on("request", (r) => { if (r.url().includes("calculate-price")) gesendet++; });
   await page.goto(`${BASE}/calculator`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("#calc-to-zip", { timeout: 20000 });
   await fill(page, { toZip: "10115", masse: false });
 
-  const cta = page.getByRole("button", { name: /Angebote vergleichen/i }).first();
-  // Keine Fehlerwand auf einem noch nicht abgeschickten Formular: rote
-  // Markierungen entstehen erst beim Weiterklicken.
-  assert.equal(await page.locator(".field-input-error").count(), 0,
+  // Keine Fehlerwand auf einem noch nicht abgeschickten Formular.
+  assert.equal(await page.locator('[aria-invalid="true"]').count(), 0,
     "ein noch nicht abgesendetes Formular darf keine Fehlerwand zeigen");
-
-  /* BEWUSST NICHT GEPRÜFT: eine Hinweiszeile am gesperrten CTA.
-     „Neue Sendung" hat sie (`packageHint`, NewShipmentPage.jsx:518), der
-     PREISRECHNER hat sie NICHT — hier steht nur der deaktivierte Knopf ohne
-     Begründung. Gemessen, nicht vermutet: `.offers-calc-cta` enthält auf
-     /calculator ausschließlich den Text „Angebote vergleichen".
-
-     Das ist eine offene Lücke gegenüber der eigenen Regel (CLAUDE.md,
-     „Paketmaße sind Pflicht": der deaktivierte CTA soll sagen, was fehlt — und
-     der Preisrechner steht dort ausdrücklich im Geltungsbereich). Sie wird hier
-     NICHT durch eine Testerwartung vorweggenommen: ein Test, der eine noch
-     nicht gebaute Oberfläche verlangt, ist kein Regressionsschutz. Sobald die
-     Zeile da ist, gehört die Prüfung hierher. */
-
-  // Genau ein fehlendes Maß reicht für die Sperre.
+  // Verlassen prüft nur das verlassene Feld.
+  await page.click("#calc-length");
+  await page.keyboard.press("Tab");
+  assert.equal(await page.getAttribute("#calc-length", "aria-invalid"), "true");
+  assert.equal(await page.getAttribute("#calc-height", "aria-invalid"), null, "ein unberührtes Feld ist markiert");
+  // Eine Korrektur nimmt die Markierung sofort weg.
   await page.fill("#calc-length", "30");
+  assert.equal(await page.getAttribute("#calc-length", "aria-invalid"), null);
   await page.fill("#calc-width", "20");
-  assert.equal(await cta.isDisabled(), true, "zwei von drei Maßen dürfen nicht genügen");
+  // Ein fehlendes Maß genügt, damit nichts hinausgeht.
+  const cta = page.getByRole("button", { name: /Angebote vergleichen/i }).first();
+  await cta.click();
+  await page.waitForFunction(() => document.activeElement?.id === "calc-height", null, { timeout: 5000 });
+  await page.waitForTimeout(200);
+  assert.equal(gesendet, 0, "zwei von drei Maßen dürfen nicht genügen");
 
   await page.fill("#calc-height", "15");
-  await page.waitForTimeout(200);
-  assert.equal(await cta.isDisabled(), false, "vollständige Maße müssen die Sperre lösen");
+  await cta.click();
+  await page.waitForTimeout(500);
+  assert.equal(gesendet, 1, "vollständige Maße müssen rechnen");
   await page.close();
 });
 
@@ -345,7 +350,7 @@ test("die Sperre nennt, was fehlt — und löst sich, sobald es da ist", async (
 // ersetzte einen fehlenden Ort still durch die Hauptstadt des Landes
 // (COUNTRY_DEFAULTS). Der Kunde bekam einen Tarif für „Berlin", ohne das je
 // gesagt zu haben.
-test("ohne Ort bleibt der CTA gesperrt und es geht KEIN Request hinaus", async () => {
+test("ohne Ort geht KEIN Request hinaus — der Klick markiert den Ort", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const konsole = await setup(page);
   let gesendet = 0;
@@ -354,35 +359,25 @@ test("ohne Ort bleibt der CTA gesperrt und es geht KEIN Request hinaus", async (
   await page.goto(`${BASE}/calculator`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("#calc-to-zip", { timeout: 20000 });
   await fill(page, { toZip: "10115" });
-
   const cta = page.getByRole("button", { name: /Angebote vergleichen/i }).first();
-  assert.equal(await cta.isDisabled(), false, "das vollständige Formular muss auslösbar sein");
 
   // Der Ort wird NICHT aus der Postleitzahl abgeleitet: ein geleertes Ortsfeld
-  // sperrt, obwohl die PLZ „10115" eindeutig auf Berlin zeigt. Genau das ist die
-  // Zusage — es gibt im Client keine PLZ→Ort-Ableitung.
-  await page.fill("#calc-to-city", "");
-  await page.waitForTimeout(200);
-  assert.equal(await cta.isDisabled(), true,
-    "ohne Zielort darf die Berechnung nicht auslösbar sein");
-
-  // Ein Feld voller Leerzeichen gilt nicht als ausgefüllt.
-  await page.fill("#calc-to-city", "   ");
-  await page.waitForTimeout(200);
-  assert.equal(await cta.isDisabled(), true, "Leerzeichen sind kein Ort");
-
-  // Deaktivierter Knopf wird nicht erzwungen — belegt wird, dass nichts hinausgeht.
+  // blockiert, obwohl die PLZ „10115" eindeutig auf Berlin zeigt.
+  for (const wert of ["", "   "]) {
+    await page.fill("#calc-to-city", wert);
+    await cta.click();
+    await page.waitForFunction(() => document.activeElement?.id === "calc-to-city", null, { timeout: 5000 });
+    assert.equal(await page.getAttribute("#calc-to-city", "aria-invalid"), "true", `Ort „${wert}“ ist nicht markiert`);
+  }
   await page.waitForTimeout(300);
   assert.equal(gesendet, 0, "eine Sendung ohne Ort darf den Server nie erreichen");
 
+  // Nach dem Klick zeigt das Formular alle Fehler live: der gesetzte Ort nimmt die Markierung
+  // sofort weg, ein geleerter Herkunftsort ist sofort markiert.
   await page.fill("#calc-to-city", "Berlin");
-  await page.waitForTimeout(200);
-  assert.equal(await cta.isDisabled(), false, "ein gesetzter Ort muss die Sperre lösen");
-
-  // Dasselbe gilt für die Herkunft.
+  assert.equal(await page.getAttribute("#calc-to-city", "aria-invalid"), null);
   await page.fill("#calc-from-city", "");
-  await page.waitForTimeout(200);
-  assert.equal(await cta.isDisabled(), true, "auch der Herkunftsort ist Pflicht");
+  assert.equal(await page.getAttribute("#calc-from-city", "aria-invalid"), "true", "auch der Herkunftsort ist Pflicht");
 
   assert.deepEqual(konsole, [], "keine Konsolenfehler");
   await page.close();

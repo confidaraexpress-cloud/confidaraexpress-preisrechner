@@ -2,6 +2,7 @@ import React from "react";
 import { countries } from "../../utils/countries";
 import { AddressActionsMenu, AddressBadges } from "./AddressDesktopRow";
 import { AddressCreateShipmentButton } from "./AddressCreateShipmentButton";
+import { addressPickerLabel, addressContactPerson } from "../../utils/addressPickerView.mjs";
 
 const countryName = (code) => countries.find((c) => c.code === code)?.name || code;
 
@@ -11,18 +12,21 @@ const countryName = (code) => countries.find((c) => c.code === code)?.name || co
 // (große Touchfläche, füllt die Breite) direkt neben „Weitere Aktionen" —
 // nicht im Menü versteckt. Kontaktzeilen stehen als reiner Text, ohne Symbole.
 export function AddressCard({ address, busy, onEdit, onDuplicate, onToggleFavorite, onSetDefaultSender, onSetDefaultRecipient, onNewShipment, onDelete }) {
+  // Kontaktperson aus Vor-/Nachname, Altbestand über `contactName` (Paritätsaudit A2).
+  const titel = addressPickerLabel(address);
+  const person = addressContactPerson(address);
   return (
     <li className="abk-card">
       <div className="abk-card-top">
         <div style={{ minWidth: 0 }}>
-          <div className="abk-card-name">{address.label || address.company || address.contactName || "Ohne Bezeichnung"}</div>
+          <div className="abk-card-name">{titel}</div>
           {address.company && address.label && <div className="abk-card-company">{address.company}</div>}
         </div>
       </div>
       <AddressBadges address={address} />
       <div className="abk-card-info">
-        {address.contactName && (
-          <div className="abk-card-info-row">{address.contactName}</div>
+        {person && person !== titel && (
+          <div className="abk-card-info-row abk-card-person">{person}</div>
         )}
         <div className="abk-card-info-row">
           <span>{[address.streetAndNumber, [address.postalCode, address.city].filter(Boolean).join(" "), countryName(address.country)].filter(Boolean).join(", ")}</span>

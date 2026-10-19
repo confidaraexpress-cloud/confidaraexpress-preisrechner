@@ -4,6 +4,17 @@
    Kebab-Menümodell und die Badge-Liste. Kein React, kein Netzwerk. */
 
 import { ROLE_SENDER, ROLE_RECIPIENT, ROLE_BOTH, canSetDefaultSender, canSetDefaultRecipient } from "./addressRoles.mjs";
+import { addressContactPerson } from "./addressPickerView.mjs";
+
+// ── Wofür eine Zeilenaktion gilt ─────────────────────────────────────────────
+// Bezeichnung, Firma oder Kontaktperson — derselbe Name in „Weitere Aktionen für …“ und im
+// unsichtbaren Zusatz von „Sendung erstellen für …“. Ohne ihn trug jede Zeile denselben
+// zugänglichen Namen „Sendung erstellen“, und ein Screenreader konnte die Knöpfe nicht unterscheiden.
+export function addressActionTarget(address) {
+  const a = address || {};
+  const text = (v) => (typeof v === "string" ? v.trim() : "");
+  return text(a.label) || text(a.company) || addressContactPerson(a) || "Adresse";
+}
 
 // ── Sichtbare Zeilen-/Karten-Hauptaktion „Sendung erstellen" ────────────────
 // Exakter, verbindlicher Button-Text (Fachvorgabe — NICHT „Neue Sendung",

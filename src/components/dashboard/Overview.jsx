@@ -92,12 +92,16 @@ function CarrierRoutes() {
   );
 }
 
-/* ── Onboarding-Inhalte (Copy wortgleich zum bisherigen Stand) ── */
+/* ── Onboarding-Inhalte ──
+   Go-Live (Paket E): Aussagen ohne Systembeleg sind ersetzt — „in Echtzeit" (Tracking wird beim
+   Carrier abgefragt, nicht live gestreamt), „aller führenden Carrier" (angeboten wird, was für die
+   Sendung verfügbar ist), „DSGVO-konform" (eine Konformitätsbehauptung ohne Nachweis) und die
+   „Tiefpreisgarantie" (es gibt keine Preisgarantie — weder in den AGB noch im System). */
 const STEPS = [
   { title: "Paketdaten eingeben",  desc: "Geben Sie Abhol- und Lieferadresse, Maße, Gewicht und weitere Details ein." },
-  { title: "Angebote vergleichen", desc: "Vergleichen Sie Preise und Laufzeiten aller führenden Carrier in Echtzeit." },
+  { title: "Angebote vergleichen", desc: "Vergleichen Sie Preise und Laufzeiten der für Ihre Sendung verfügbaren Carrier." },
   { title: "Versand buchen",       desc: "Wählen Sie das beste Angebot und buchen Sie Ihren Versand." },
-  { title: "Tracking verfolgen",   desc: "Behalten Sie Ihre Sendung jederzeit im Blick – in Echtzeit." },
+  { title: "Tracking verfolgen",   desc: "Behalten Sie den Status Ihrer Sendung im Blick." },
 ];
 /* „Beste Preise" ist zu „Konditionen direkt vergleichen" geworden: der
    Superlativ war eine unbelegte Werbeaussage, der Vergleich selbst ist die
@@ -106,12 +110,12 @@ const WHY = [
   { key: "b2b",     title: "Für Geschäftskunden entwickelt", desc: "Speziell für Unternehmen entwickelt – mit Transparenz, einfacher Abwicklung und persönlichem Support." },
   { key: "compare", title: "Konditionen direkt vergleichen", desc: "Wir vergleichen für Sie automatisch die Preise von führenden Versanddienstleistern." },
   { key: "modes",   title: "Express & Standard",             desc: "Egal ob Express oder Standard – finden Sie die passende Versandart für Ihre Anforderungen." },
-  { key: "trans",   title: "Vollständige Transparenz",       desc: "Verfolgen Sie jede Sendung in Echtzeit und behalten Sie alle wichtigen Informationen im Blick." },
+  { key: "trans",   title: "Vollständige Transparenz",       desc: "Verfolgen Sie den Status jeder Sendung und behalten Sie alle wichtigen Informationen im Blick." },
 ];
 const TRUST = [
-  { title: "Sicher & DSGVO-konform", desc: "Ihre Daten sind sicher und werden DSGVO-konform verarbeitet." },
+  { title: "Verschlüsselte Übertragung", desc: "Ihre Daten werden verschlüsselt übertragen (TLS)." },
   { title: "Persönlicher Support",   desc: "Unser Team ist für Sie da – schnell und zuverlässig." },
-  { title: "Tiefpreisgarantie",      desc: "Wir garantieren Ihnen die besten Versandpreise." },
+  { title: "Preise im Vergleich",    desc: "Sie sehen die verfügbaren Tarife für Ihre Sendung nebeneinander." },
 ];
 
 // `kpisReady` sagt: „die Sendungen wurden mindestens EINMAL erfolgreich geladen".

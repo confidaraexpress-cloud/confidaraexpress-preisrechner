@@ -1,0 +1,100 @@
+{
+  "hinweis": "Komprimierte Größen je Asset des Preisrechner-Builds (gzip Stufe 9, brotli Stufe 11). Bewusst aktualisieren: PREISRECHNER_BASELINE_WRITE=1 node --test tests/e2e/publicCalculatorBuild.test.mjs",
+  "assets": {
+    "404.html": {
+      "raw": 2315,
+      "gzip": 933,
+      "brotli": 783
+    },
+    "assets/cormorantgaramond-400.woff2": {
+      "raw": 37640,
+      "gzip": 37673,
+      "brotli": 37644
+    },
+    "assets/cormorantgaramond-400-italic.woff2": {
+      "raw": 39260,
+      "gzip": 39293,
+      "brotli": 39264
+    },
+    "assets/der-kurier.svg": {
+      "raw": 81313,
+      "gzip": 58742,
+      "brotli": 58455
+    },
+    "assets/dhl.svg": {
+      "raw": 6240,
+      "gzip": 2350,
+      "brotli": 2026
+    },
+    "assets/dmsans-300.woff2": {
+      "raw": 62724,
+      "gzip": 62656,
+      "brotli": 62728
+    },
+    "assets/dmsans-300-italic.woff2": {
+      "raw": 28040,
+      "gzip": 27979,
+      "brotli": 28044
+    },
+    "assets/emons.svg": {
+      "raw": 14656,
+      "gzip": 5705,
+      "brotli": 4950
+    },
+    "assets/fedex.svg": {
+      "raw": 5130,
+      "gzip": 2083,
+      "brotli": 1883
+    },
+    "assets/gls.svg": {
+      "raw": 8241,
+      "gzip": 3086,
+      "brotli": 2653
+    },
+    "assets/index.js": {
+      "raw": 259835,
+      "gzip": 81979,
+      "brotli": 70828
+    },
+    "assets/lockup-reverse.svg": {
+      "raw": 11224,
+      "gzip": 3942,
+      "brotli": 2531
+    },
+    "assets/public-calculator.css": {
+      "raw": 39868,
+      "gzip": 7907,
+      "brotli": 7060
+    },
+    "assets/tnt.svg": {
+      "raw": 13707,
+      "gzip": 4952,
+      "brotli": 4172
+    },
+    "assets/trans-o-flex.svg": {
+      "raw": 18050,
+      "gzip": 6714,
+      "brotli": 5424
+    },
+    "favicon-v2.svg": {
+      "raw": 4238,
+      "gzip": 1837,
+      "brotli": 1282
+    },
+    "index.html": {
+      "raw": 14849,
+      "gzip": 3667,
+      "brotli": 3199
+    },
+    "robots.txt": {
+      "raw": 23,
+      "gzip": 43,
+      "brotli": 27
+    },
+    "sw.js": {
+      "raw": 939,
+      "gzip": 523,
+      "brotli": 470
+    }
+  }
+}

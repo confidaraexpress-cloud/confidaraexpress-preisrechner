@@ -59,3 +59,19 @@ test("3 — jede Aktion des Partnerprogramms hat ein deutsches Label; die Seite 
   assert.match(seite, /<td><Targets row=\{row\} \/><\/td>/);
   assert.doesNotMatch(seite, /partyOf\(row, "target"\)/, "die alte Zuordnung ohne target_user ist zurück");
 });
+
+test("4 — Paritätsaudit B2/B14: Seiten als limit/offset, die Dokumenterzeugung hat ein Label", () => {
+  const seite = read("pages/admin/AuditLogPage.jsx");
+  // Die Seite übergibt Seite und Größe; die Umrechnung in limit/offset steht im API-Wrapper
+  // (src/api/adminApiContract.test.mjs führt sie aus).
+  assert.match(seite, /listAuditLogs\(\{ \.\.\.applied, page, pageSize: PAGE_SIZE \}\)/);
+  assert.doesNotMatch(seite, /page_size/);
+  for (const [action, label] of [
+    ["invoice.generate_document", "Rechnungsdokument erzeugt"],
+    ["invoice.retry_document", "Rechnungsdokument erneut erzeugt"],
+    ["sales_partner.billing_details_viewed", "Abrechnungsdaten eines Vertriebspartners eingesehen"],
+    ["user.business_verification", "Unternehmerprüfung erfasst"],
+  ]) {
+    assert.ok(seite.includes(`"${action}": "${label}"`), `${action} ohne Label`);
+  }
+});

@@ -13,6 +13,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { chromium } from "playwright";
 // Erwartete Vorbelegung aus der PRODUKTIVEN Konstante, nicht als "1" wiederholt.
 import { PACKAGE_COUNT_DEFAULT } from "../../src/utils/newShipmentForm.mjs";
@@ -148,9 +149,12 @@ function fehlerSammler(page) {
 /* Restliche Felder ueber ihren Platzhalter. Der frueher hier stehende Hinweis, die
    Felder truegen keine id, stimmte nicht: `addrField` vergibt jedem eine (`ns-…`).
    Kontaktperson, E-Mail und Telefon laufen deshalb unten ueber ihre ids. */
+// Über stabile ids (Auftrag 1, P11): die Felder tragen keine Musterplatzhalter mehr, und ein
+// Platzhalter war ohnehin nie ein Selektor (FE-CLAUDE.md, E2E-Verträge).
 const EINGABEN = [
-  ["Firma AG", "ACME Logistik GmbH"],
-  ["Beispielweg 5", "Hafenstr. 12"],
+  ["ns-r-company", "ACME Logistik GmbH"],
+  ["ns-r-street", "Hafenstr. 12"],
+  ["ns-r-zip", "20457"],
 ];
 // Der Ort des Empfängers über seine id: sein Platzhalter folgt seit 2026-10-15 dem Land
 // (kein festes „Zürich“ mehr) und taugt nicht als Selektor.
@@ -177,16 +181,14 @@ async function formularFuellen(page) {
   const land = page.locator("#ns-r-country");
   if (await land.count()) await land.selectOption("DE");
 
-  for (const [ph, wert] of EINGABEN) {
-    const el = page.locator(`input[placeholder="${ph}"]`).first();
+  for (const [id, wert] of EINGABEN) {
+    const el = page.locator(`#${id}`);
     if (await el.count()) await el.fill(wert);
   }
   for (const [id, wert] of KONTAKT) {
     const el = page.locator(`#${id}`);
     if (await el.count()) await el.fill(wert);
   }
-  const plz = page.locator('input[placeholder="26133"]');
-  if (await plz.count() > 1) await plz.nth(1).fill("20457");
   // Paketfelder über ihre ids — die Platzhalter tragen jetzt „z. B." davor und
   // taugen nicht mehr als Selektor. Alle fünf sind Pflicht.
   for (const [id, wert] of [["ns-packageCount", "2"], ["ns-weight", "5.5"],
@@ -228,7 +230,8 @@ async function zustand(page) {
   return page.evaluate(() => {
     const w = {};
     for (const el of document.querySelectorAll("input, select, textarea")) {
-      if (el.value && el.placeholder) w[el.placeholder] = el.value;
+      // Schlüssel ist die stabile id (seit Auftrag 1, P11, gibt es keine Musterplatzhalter mehr).
+      if (el.value && el.id) w[el.id] = el.value;
     }
     return {
       url: location.pathname + location.search,
@@ -246,7 +249,7 @@ async function zustand(page) {
       })(),
       // Über die id: der Ortsplatzhalter folgt seit 2026-10-15 dem Land.
       ort: document.getElementById("ns-r-city")?.value || null,
-      plz: w["26133"] || null,
+      plz: document.getElementById("ns-r-zip")?.value || null,
       // Paketfelder über ihre ids: die Platzhalter heißen „z. B. 5" usw. — ein
       // Platzhalter-Selektor träfe nichts. Die Anzahl trägt als einziges Feld
       // eine Vorbelegung (PACKAGE_COUNT_DEFAULT), die übrigen starten leer.
@@ -285,7 +288,7 @@ async function bisZurBuchung(page, { sortieren = true } = {}) {
 
 test.before(async () => {
   server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"],
-    { stdio: "ignore", detached: true });
+    { stdio: "ignore", ...DEV_SERVER_SPAWN });
   const frist = Date.now() + 90000;
   for (;;) {
     try { const r = await fetch(BASE); if (r.ok) break; } catch { /* noch nicht da */ }
@@ -298,8 +301,7 @@ test.before(async () => {
 test.after(async () => {
   try { await browser?.close(); } catch { /* egal */ }
   if (server) {
-    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
-    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+    stopDevServer(server, "SIGKILL");
   }
 });
 
@@ -604,7 +606,7 @@ test("12 — erfolgreiche Buchung löscht den Vorgang, der Erfolgsbildschirm ble
     await neu.click();
     await page.waitForTimeout(1200);
     const leer = await page.evaluate((k) => ({
-      empfaenger: [...document.querySelectorAll("input")].find((i) => i.placeholder === "Erika Muster")?.value || null,
+      empfaenger: document.getElementById("ns-r-firstName")?.value || null,
       speicher: (() => { try { return sessionStorage.getItem(k); } catch { return null; } })(),
     }), SPEICHER);
     assert.equal(leer.speicher, null, "der Neustart hat einen Vorgang zurückgelassen");

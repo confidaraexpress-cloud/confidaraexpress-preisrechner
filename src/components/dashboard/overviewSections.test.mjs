@@ -173,11 +173,17 @@ test("11 — alle vier Vorteile bleiben erhalten, aus EINER Datenquelle; kein Su
   assert.match(code, /\{WHY\.map\(\(w\) => \(/, "die Vorteile laufen nicht über EINE Datenquelle");
 });
 
-test("12 — die drei Zusicherungen bleiben wortgleich erhalten", () => {
-  for (const t of ["Sicher & DSGVO-konform", "Persönlicher Support", "Tiefpreisgarantie"]) {
-    assert.ok(TRUST.includes(`title: "${t}"`), `Zusicherung „${t}“ fehlt`);
+test("12 — drei Aussagen mit Systembeleg; keine Preisgarantie, keine Konformitäts- oder Echtzeitbehauptung", () => {
+  // Go-Live (Paket E): Die frühere „Tiefpreisgarantie" („Wir garantieren Ihnen die besten Versandpreise.")
+  // hatte weder in den AGB noch im System eine Grundlage, „DSGVO-konform" war eine Konformitäts-
+  // behauptung ohne Nachweis, „in Echtzeit" beschreibt die Abfrage beim Carrier nicht.
+  for (const t of ["Verschlüsselte Übertragung", "Persönlicher Support", "Preise im Vergleich"]) {
+    assert.ok(TRUST.includes(`title: "${t}"`), `Aussage „${t}“ fehlt`);
   }
-  assert.ok(TRUST.includes("Wir garantieren Ihnen die besten Versandpreise."), "der Wortlaut wurde verändert");
+  assert.equal(zaehle(TRUST, /title:/g), 3);
+  for (const block of [STEPS, WHY, TRUST]) {
+    assert.ok(!/garantier|Tiefpreis|DSGVO-konform|Echtzeit|aller führenden/i.test(block), `unbelegte Werbeaussage zurück: ${block.slice(0, 80)}`);
+  }
 });
 
 test("13 — Onboarding ist ruhiger Text: keine Symbole, keine dunklen Flächen, kein Wasserzeichen", () => {

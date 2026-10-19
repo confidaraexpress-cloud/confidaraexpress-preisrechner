@@ -301,8 +301,7 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
             noResults={addressCheck.streetNoResults}
             hint={streetFieldHint(recipient.country, recipient.streetAndNumber) || undefined}
             error={errs.streetAndNumber}
-            maxLength={ORDER_RECIPIENT_LIMITS.streetAndNumber}
-            autoComplete="address-line1" />
+            maxLength={ORDER_RECIPIENT_LIMITS.streetAndNumber} />
           <Feld id="o-add" label="Adresszusatz" value={recipient.addressAddition} onChange={set("addressAddition")}
                 maxLength={ORDER_RECIPIENT_LIMITS.addressAddition} autoComplete="address-line2" />
         </div>
@@ -324,8 +323,7 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
             suggestions={addressCheck.cityOptions}
             placeholder={cityPlaceholder(recipient.country)}
             error={errs.city}
-            maxLength={ORDER_RECIPIENT_LIMITS.city}
-            autoComplete="address-level2" />
+            maxLength={ORDER_RECIPIENT_LIMITS.city} />
         </div>
         {/* Ergebnis der Adressprüfung — Platz reserviert, Text nur, wenn es etwas zu sagen gibt. */}
         <AddressStatusLine

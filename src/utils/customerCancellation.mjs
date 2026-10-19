@@ -69,17 +69,29 @@ export const isCancellationReasonValid = (reason) => cancellationReasonState(rea
 export function classifyCancellationError(status, code) {
   const c = typeof code === "string" ? code : "";
 
-  if (c === "CANCELLATION_REQUEST_ALREADY_EXISTS" || status === 409) {
+  // Paritätsaudit A1: der fachliche Grund kommt aus dem Code und wird VOR dem
+  // 409-Rückfall geprüft — eine nicht stornierbare Sendung ist keine bereits
+  // gestellte Anfrage und wird nicht als „angefragt“ markiert.
+  if (c === "SHIPMENT_CANCELLATION_NOT_ALLOWED") {
+    return {
+      kind: "not_allowed",
+      message: "Für diese Sendung kann keine Stornierungsanfrage mehr gestellt werden.",
+      keepDialogOpen: false, refetch: true, markPending: false,
+    };
+  }
+  if (c === "CANCELLATION_REQUEST_ALREADY_EXISTS" || (status === 409 && c === "")) {
     return {
       kind: "already_exists",
       message: "Für diese Sendung wurde bereits eine Stornierungsanfrage gestellt.",
       keepDialogOpen: false, refetch: true, markPending: true,
     };
   }
-  if (c === "SHIPMENT_CANCELLATION_NOT_ALLOWED") {
+  // Ein anderer, unbekannter 409-Grund: keine Behauptung „bereits angefragt“ und
+  // keine optimistische Markierung — der Serverstand wird neu geladen.
+  if (status === 409) {
     return {
-      kind: "not_allowed",
-      message: "Für diese Sendung kann keine Stornierungsanfrage mehr gestellt werden.",
+      kind: "conflict",
+      message: "Die Stornierungsanfrage ist für diese Sendung derzeit nicht möglich.",
       keepDialogOpen: false, refetch: true, markPending: false,
     };
   }
@@ -125,11 +137,15 @@ export function classifyCancellationError(status, code) {
   };
 }
 
-// Liest einen Backend-Fehlercode defensiv aus dem JSON-Body (error/code/…).
+// Liest einen Backend-Fehlercode defensiv aus dem JSON-Body. `code` zuerst
+// (Paritätsaudit A1): das Backend füllt `error` in jedem Fehlerfall mit einem
+// deutschen Satz — als „Code“ gelesen, erreichte der echte Code nie die
+// Klassifikation. Ein Feld zählt nur, wenn es wie ein Code aussieht.
+const CODE_FORM = /^[A-Z][A-Z0-9_]*$/;
 export function readErrorCode(body) {
   if (!body || typeof body !== "object") return "";
-  for (const k of ["error", "code", "error_code", "errorCode"]) {
-    if (typeof body[k] === "string" && body[k]) return body[k];
+  for (const k of ["code", "error_code", "errorCode", "error"]) {
+    if (typeof body[k] === "string" && CODE_FORM.test(body[k])) return body[k];
   }
   return "";
 }

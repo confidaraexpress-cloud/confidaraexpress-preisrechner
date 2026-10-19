@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  DELIVERY_ERROR_OUTCOME_UNKNOWN, DELIVERY_UNCLEAR_HINT, RETRY_STARTED_TEXT, RETRY_UNCLEAR_TEXT,
+  DELIVERY_ERROR_OUTCOME_UNKNOWN, DELIVERY_UNCLEAR_HINT, RETRY_STARTED_TEXT, RETRY_UNCLEAR_TEXT, RETRY_OUTCOME_TEXT,
   canRetryDelivery, deliveryOutcomeUnclear, deliveryStatusMeta, retryOutcomeMessage,
 } from "./shipmentEmailDeliveryView.mjs";
 
@@ -39,11 +39,22 @@ test("2 — unklarer Ausgang: eigener Zustand mit Prüfhinweis, nur bei `failed`
   assert.equal(canRetryDelivery({ status: "failed", error_code: "send_outcome_unknown" }), true);
 });
 
-test("3 — Rückmeldung nach „Erneut versuchen“: unklar ist kein Erfolg, alles andere bleibt wie bisher", () => {
+test("3 — Rückmeldung nach „Erneut versuchen“: nur `sent` ist ein Erfolg (Paritätsaudit B3)", () => {
   assert.deepEqual(retryOutcomeMessage("unclear"), { type: "error", text: RETRY_UNCLEAR_TEXT });
-  for (const outcome of ["sent", "failed", "deferred", undefined, null]) {
-    assert.deepEqual(retryOutcomeMessage(outcome), { type: "success", text: RETRY_STARTED_TEXT }, String(outcome));
+  assert.deepEqual(retryOutcomeMessage("sent"), { type: "success", text: RETRY_OUTCOME_TEXT.sent });
+  // Gescheitert oder nicht mehr vorhanden: Fehler, nie „erneut angestoßen".
+  assert.deepEqual(retryOutcomeMessage("failed"), { type: "error", text: RETRY_OUTCOME_TEXT.failed });
+  assert.deepEqual(retryOutcomeMessage("not_found"), { type: "error", text: RETRY_OUTCOME_TEXT.not_found });
+  // Kein Fehlschlag, aber auch kein Versand: Hinweis mit dem Grund.
+  assert.deepEqual(retryOutcomeMessage("not_ready"), { type: "info", text: RETRY_OUTCOME_TEXT.not_ready });
+  assert.match(RETRY_OUTCOME_TEXT.not_ready, /Trackingnummer oder Versandlabel fehlen/);
+  assert.deepEqual(retryOutcomeMessage("in_progress"), { type: "info", text: RETRY_OUTCOME_TEXT.in_progress });
+  assert.deepEqual(retryOutcomeMessage("already_sent"), { type: "info", text: RETRY_OUTCOME_TEXT.already_sent });
+  // Unbekannt bleibt neutral — weder Erfolg noch Fehler wird behauptet.
+  for (const outcome of ["deferred", undefined, null]) {
+    assert.deepEqual(retryOutcomeMessage(outcome), { type: "info", text: RETRY_STARTED_TEXT }, String(outcome));
   }
+  for (const text of Object.values(RETRY_OUTCOME_TEXT)) assert.ok(!/[a-z]+_[a-z]+/.test(text), text);
   assert.equal(RETRY_STARTED_TEXT, "Der Versand wurde erneut angestoßen.");
   assert.match(RETRY_UNCLEAR_TEXT, /Ausgang ist aber unklar/);
 });
@@ -52,6 +63,14 @@ test("4 — die Detailseite übergibt den Fehlercode und wertet das `outcome` de
   assert.match(seite, /deliveryStatusMeta\(row\.status, row\.error_code\)/);
   assert.match(seite, /deliveryOutcomeUnclear\(row\)\s*\?\s*DELIVERY_UNCLEAR_HINT/);
   assert.match(seite, /setRetryMsg\(retryOutcomeMessage\(d\?\.outcome\)\);/);
+  // Die Rückmeldung überlebt das Neuladen nach der Aktion: zurückgesetzt wird nur beim Sendungswechsel.
+  const laden = seite.slice(seite.indexOf("const load = useCallback"), seite.indexOf("useEffect(() => { load(); }, [load]);"));
+  assert.ok(laden.length > 0, "load nicht gefunden");
+  assert.doesNotMatch(laden, /setRetryMsg\(null\)|setOcMailMsg\(null\)/);
+  assert.match(seite, /setRetryMsg\(null\);[\s\S]*?\}, \[id\]\);/);
+  // Ein Hinweis wird nicht als Fehler gezeigt.
+  assert.match(seite, /<ActionMsg msg=\{retryMsg\}/);
+  assert.match(seite, /msg\.type === "info" \? "alert-info"/);
   // Kein Rohwert im sichtbaren Text: der Fehlercode steht nirgends als Kind eines Elements.
   assert.doesNotMatch(seite, /\{row\.error_code\}|\{row\.error_message\}/);
 });

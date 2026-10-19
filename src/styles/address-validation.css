@@ -134,7 +134,8 @@
    Screenreader im Baum und belegt weiter seinen Platz — nichts springt. */
 .addr-status-text--quiet { opacity: 0; }
 
-/* Kleines rundes Statussymbol: Häkchen (gefunden) bzw. Hinweis (nicht bestätigt). */
+/* Kleines rundes Statussymbol — nur das Häkchen bei „Adresse gefunden“. Hinweise tragen seit
+   Auftrag 1 (2026-10-16) kein Symbol mehr. */
 .addr-status-icon {
   display: inline-flex;
   align-items: center;
@@ -149,14 +150,12 @@
   background: var(--ce-color-status-success-surface);
   border: 1px solid var(--ce-color-status-success-border);
 }
-.addr-status--warning .addr-status-icon {
-  color: var(--ce-color-status-warning-fg);
-  background: var(--ce-color-status-warning-surface);
-  border: 1px solid var(--ce-color-status-warning-border);
-}
 
+/* Ein Hinweis („Hausnummer ergänzen, falls vorhanden.“) ist eine sachliche Eingabehilfe, keine
+   Warnung: ruhiger Sekundärtext wie ein Feldhinweis. Die Klasse --warning bleibt als Zustands-
+   merkmal (Tests, Ortsvorschläge); sie färbt nicht mehr bernsteinfarben. */
 .addr-status--success  { color: var(--ce-color-status-success-fg); }
-.addr-status--warning  { color: var(--ce-color-status-warning-fg); }
+.addr-status--warning,
 .addr-status--neutral,
 .addr-status--checking { color: var(--ce-color-text-secondary); }
 

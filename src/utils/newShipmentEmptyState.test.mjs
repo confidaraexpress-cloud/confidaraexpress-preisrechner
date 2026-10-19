@@ -20,7 +20,9 @@ import {
   createEmptyShipmentForm, senderPatchFromProfile, hasProfileSenderData,
   packageFieldError, packageErrors, packageComplete, packageHint,
   packagePayload, packageSummaryLine, PACKAGE_FIELDS, PACKAGE_PLACEHOLDERS, PACKAGE_COUNT_DEFAULT,
+  DEFAULT_ORIGIN_COUNTRY,
 } from "./newShipmentForm.mjs";
+import { isValidationReady } from "./addressValidationView.mjs";
 import { buildResumeInitialState } from "./formDraftsView.mjs";
 // Fail-closed Quelltextzugriff: fehlende Anker sind LAUTE Fehler, nie leere Ausschnitte.
 import { schnitt } from "../../scripts/governance.mjs";
@@ -43,10 +45,14 @@ const VOLL = { packageCount: "1", weight: "5", length: "30", width: "20", height
 
 test("1 — jedes user-editierbare Feld startet leer, nur die Anzahl trägt ihre Vorgabe", () => {
   const leer = createEmptyShipmentForm();
-  // Die Regel ist unverändert „alles leer" — mit GENAU EINER benannten Ausnahme.
-  // Sie steht hier als Allowlist und nicht als gelockerte Prüfung: ein zweites
-  // vorbelegtes Feld fällt weiterhin sofort auf.
-  const VORBELEGT = { packageCount: PACKAGE_COUNT_DEFAULT };
+  // Die Regel ist unverändert „alles leer" — mit GENAU ZWEI benannten Ausnahmen: der
+  // Paketanzahl und (Betreiberentscheidung Auftrag 1, P11, 2026-10-17) dem Absenderland
+  // Deutschland, dem einzigen Ursprung, den der Server erlaubt. Sie stehen hier als Allowlist
+  // und nicht als gelockerte Prüfung: ein drittes vorbelegtes Feld fällt weiterhin sofort auf.
+  // Das Empfängerland bleibt leer.
+  const VORBELEGT = { packageCount: PACKAGE_COUNT_DEFAULT, s_country: DEFAULT_ORIGIN_COUNTRY };
+  assert.equal(DEFAULT_ORIGIN_COUNTRY, "DE");
+  assert.equal(leer.r_country, "", "das Empfängerland ist vorbelegt");
   // TG22 Residential: die Adressartfragen stehen nicht mehr im Formular — jedes übrige Feld
   // startet leer, ohne Ausnahme.
   assert.ok(!("collectionIsResidential" in leer) && !("deliveryIsResidential" in leer),
@@ -138,14 +144,11 @@ test("5 — Maße starten leer, die Anzahl mit 1; Placeholder bleiben Beispiele"
     assert.equal(leer[k], "", `${k} ist vorbelegt`);
   }
   assert.equal(leer.packageCount, "1", "die Paketanzahl startet nicht mit 1");
-  // Die Beispiele sind als solche erkennbar — eine nackte „5" in einem
-  // Zahlenfeld ist von einer echten Eingabe nicht zu unterscheiden.
-  assert.equal(PACKAGE_PLACEHOLDERS.packageCount, "1");
-  for (const [k, erwartet] of [["weight", "z. B. 5"], ["length", "z. B. 30"], ["width", "z. B. 20"], ["height", "z. B. 15"]])
-    assert.equal(PACKAGE_PLACEHOLDERS[k], erwartet, `${k}: falscher Placeholder`);
-  // Und im Markup steht kein hartes Zahlenliteral mehr als Placeholder.
+  // Seit Auftrag 1 (P11, 2026-10-17) tragen die Paketfelder eine schwebende Beschriftung und
+  // KEINEN Beispielplatzhalter mehr — ein Beispiel kann so nie für einen Wert gehalten werden.
+  // PACKAGE_PLACEHOLDERS bleibt für andere Formulare bestehen, „Neue Sendung" benutzt es nicht.
   for (const k of PACKAGE_FIELDS)
-    assert.ok(seite.includes(`placeholder={PACKAGE_PLACEHOLDERS.${k}}`), `${k}: Placeholder nicht aus der Quelle`);
+    assert.ok(!seite.includes(`placeholder={PACKAGE_PLACEHOLDERS.${k}}`), `${k}: Beispielplatzhalter ist zurück`);
   assert.ok(!/placeholder="(5|30|20|15)"/.test(seite), "hart verdrahteter Zahlen-Placeholder übrig");
   // Kein defaultValue, nirgends.
   assert.ok(!/defaultValue/.test(seite), "defaultValue im Formular");
@@ -233,12 +236,16 @@ test("15 — ein Entwurf ohne Maße lädt, kann aber nicht rechnen und bleibt sp
 
 test("16 — ein leeres Formular löst keine Adressprüfung aus", () => {
   const leer = createEmptyShipmentForm();
-  // Ohne Land ist das Land „nicht unterstützt" — der Hook fragt dann nichts ab
-  // und zeigt nichts an. Das ist die bestehende Regel, sie greift hier von
-  // selbst, weil das Land jetzt leer startet.
-  assert.equal(leer.s_country, "");
+  // Seit Auftrag 1 (P11) startet das Absenderland mit Deutschland. Geprüft wird trotzdem nichts:
+  // ohne Straße, PLZ und Ort ist keine Seite prüfbereit (isValidationReady), der Hook fragt
+  // nichts ab und zeigt nichts an.
+  assert.equal(leer.s_country, DEFAULT_ORIGIN_COUNTRY);
   assert.equal(leer.r_country, "");
   assert.equal(leer.s_zip, "");
+  for (const p of ["s", "r"]) {
+    assert.equal(isValidationReady({ country: leer[`${p}_country`], postalCode: leer[`${p}_zip`],
+      city: leer[`${p}_city`], street: leer[`${p}_street`] }), false, `${p}: leeres Formular wäre prüfbereit`);
+  }
 });
 
 /* ══════════ TEST 17 — Komfortauswahl + Adressprüfung ════════════════════ */
@@ -278,7 +285,12 @@ test("19 — kein `|| 30/20/15`-Ersatzwert mehr im Frontend", () => {
 });
 
 test("20 — der Preisrechner verlangt die Maße ebenfalls", () => {
-  assert.ok(/calcValid =[\s\S]{0,200}form\.length[\s\S]{0,60}form\.width[\s\S]{0,60}form\.height/.test(rechner),
+  // Seit Auftrag 1 (P11) ist der Knopf nicht mehr gesperrt; die Maße bleiben Pflicht in der EINEN
+  // Regel des Rechners (getCalculatorErrors), und der Klick prüft mit ihr vor dem Request.
+  assert.ok(/const \{ fieldErrors: preErrors, banner \} = getCalculatorErrors\(form\);/.test(rechner),
+    "der Rechner prüft vor dem Request nicht");
+  const calcRegel = lies("../utils/calculatorValidation.mjs");
+  assert.ok(/\["length", "Länge"\], \["width", "Breite"\], \["height", "Höhe"\]/.test(calcRegel),
     "der Rechner lässt eine Berechnung ohne Maße zu");
 });
 

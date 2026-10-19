@@ -12,6 +12,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -136,7 +137,7 @@ async function ergaenzeFehlendes(page) {
 
 test.before(async () => {
   server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"],
-    { stdio: "ignore", detached: true });
+    { stdio: "ignore", ...DEV_SERVER_SPAWN });
   const frist = Date.now() + 90000;
   for (;;) {
     try { const r = await fetch(`${BASE}/`); if (r.ok) break; } catch { /* noch nicht da */ }
@@ -150,8 +151,7 @@ test.after(async () => {
   if (browser) await browser.close();
   if (server) {
     // Die Prozessgruppe, nicht nur das Kind: npx startet `sh -c vite`, das seinerseits node startet.
-    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
-    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+    stopDevServer(server, "SIGKILL");
   }
 });
 
@@ -182,10 +182,11 @@ test("P — Produktionsfall: Route, Paket, Datum und Angebotsabsicht kommen an; 
   }
   assert.equal(await page.locator("#ns-r-street").getAttribute("aria-invalid"), "true", "die fehlende Straße wird nicht angefordert");
   assert.notEqual(await page.locator("#ns-r-zip").getAttribute("aria-invalid"), "true", "die übernommene PLZ gilt als fehlerhaft");
+  // Seit Auftrag 1 (P11) ist der Knopf bedienbar; der Sammelhinweis nennt, was markiert ist.
   const cta = page.locator(".offers-calc-cta button").first();
-  assert.equal(await cta.isDisabled(), true);
-  assert.match(norm(await page.locator(".offers-calc-cta .dft-save-status").first().textContent()), /Angaben|prüfen Sie/,
-    "der gesperrte CTA erklärt nicht, was fehlt");
+  assert.equal(await cta.isDisabled(), false, "der Knopf ist wegen fehlender Angaben gesperrt");
+  assert.match(norm(await page.locator(".offers-calc-cta .dft-save-status").first().textContent()), /Angabe|prüfen Sie/,
+    "der Sammelhinweis erklärt nicht, was fehlt");
   assert.equal(p.calc.length, 1, "„Neue Sendung“ hat ohne vollständige Angaben gerechnet");
   assert.equal(await page.locator(".offer-card").count(), 0, "ein Preisrechner-Angebot steht in „Neue Sendung“");
 

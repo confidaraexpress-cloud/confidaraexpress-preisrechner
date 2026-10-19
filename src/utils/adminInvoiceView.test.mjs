@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import {
+  DOCUMENT_GENERATE,
   EMPTY_INVOICE_FILTERS,
   INVOICE_STATUS_FILTER_OPTIONS,
   NON_PRODUCTIVE_MAIL_NOTE,
@@ -287,6 +288,13 @@ test("11 — Outcome-Meldungen sind einheitlich und nie vor dem Backend-Erfolg",
   assert.deepEqual(emailOutcomeMessage("sent", "send"), { type: "success", text: SUCCESS_TEXT.emailStarted });
   assert.equal(emailOutcomeMessage("already_sent").type, "info");
   assert.equal(emailOutcomeMessage(null).type, "error");
+  // Paritätsaudit B7: unklarer und abgelöster Ausgang sind weder Erfolg noch Fehlschlag.
+  assert.deepEqual(emailOutcomeMessage("unclear", "send"), { type: "info", text: SUCCESS_TEXT.emailUnclear });
+  assert.deepEqual(emailOutcomeMessage("failed", "send", "finalize_failed"), { type: "info", text: SUCCESS_TEXT.emailUnclear });
+  assert.deepEqual(emailOutcomeMessage("superseded", "resend"), { type: "info", text: SUCCESS_TEXT.emailSuperseded });
+  assert.equal(emailOutcomeMessage("failed", "send", "provider_rejected").type, "error");
+  assert.match(SUCCESS_TEXT.emailUnclear, /bevor Sie erneut senden/);
+  assert.match(detailSrc, /emailOutcomeMessage\(d\.outcome, mailKind, d\.errorCode\)/);
   // Die Seite setzt die Erfolgsmeldung erst NACH der Antwort und lädt danach neu.
   // Geprüft wird die REIHENFOLGE im Funktionsrumpf, nicht ein Zeichenabstand: in jeder
   // mutierenden Aktion muss der await-Aufruf VOR jeder Erfolgs-/Infomeldung stehen.
@@ -547,8 +555,9 @@ test("26 — der zentrale ConfirmDialog erfüllt Fokus, Escape und Doppelklicksc
   assert.match(dialogSrc, /aria-labelledby=\{titleId\}/);
   assert.match(dialogSrc, /aria-describedby=\{descId\}/);
   assert.equal((dialogSrc.match(/disabled=\{busy\}/g) || []).length, 2, "beide Buttons sind während des Requests gesperrt");
-  // Alle drei mutierenden Aktionen der Detailseite nutzen diesen einen Dialog.
-  assert.equal((detailSrc.match(/<ConfirmDialog\b/g) || []).length, 3, "Zahlung, Dokument und E-Mail nutzen den zentralen Dialog");
+  // Alle mutierenden Aktionen der Detailseite nutzen diesen einen Dialog — seit Schritt 3 fünf: Zahlung, Dokument,
+  // E-Mail, die Stornorechnung und der Stornovermerk eines externen Belegs (beide nur manuell erstellte Rechnungen).
+  assert.equal((detailSrc.match(/<ConfirmDialog\b/g) || []).length, 5, "Zahlung, Dokument, E-Mail, Stornorechnung und Stornovermerk nutzen den zentralen Dialog");
   assert.equal(/adm-modal-overlay/.test(detailSrc), false, "kein handgebautes Modal mehr auf der Seite");
 });
 
@@ -599,4 +608,44 @@ test("29 — Selbsttest: die Prüflogik greift tatsächlich", () => {
   assert.notEqual(invoiceMode(TEST_INV), invoiceMode(PREVIEW_INV));
   assert.notEqual(snapshotRecipient(PROD_OPEN).company, currentAccount(PROD_OPEN).company);
   assert.equal(('<th scope="col">A</th><th scope="col">B</th>'.match(/<th scope="col"/g) || []).length, 2);
+});
+
+test("Paritätsaudit B6 — eine gesperrte Dokumenterzeugung ist kein „erneut möglich“", async () => {
+  const { documentErrorMessage, DOCUMENT_BLOCKED_NOTE, DOCUMENT_ERROR_NOTE } = await import("./adminInvoiceView.mjs");
+  const gesperrt = documentErrorMessage(422, {
+    error: "invoice_snapshot_not_production_ready",
+    message: "Für diese Rechnung darf derzeit kein Produktivdokument erzeugt werden.",
+    missingFields: ["bank.iban", "issuer.name"], placeholderFields: ["issuer.vatId"],
+  });
+  assert.equal(gesperrt.type, "error");
+  assert.match(gesperrt.text, /nicht produktionsreif/);
+  assert.match(gesperrt.text, /Fehlende Angaben: IBAN, Firmierung\./);
+  assert.match(gesperrt.text, /Noch Platzhalter: USt-IdNr\./);
+  assert.ok(gesperrt.text.endsWith(DOCUMENT_BLOCKED_NOTE));
+  assert.ok(!gesperrt.text.includes(DOCUMENT_ERROR_NOTE), "kein „erneuter Versuch ist möglich“");
+  assert.ok(!gesperrt.text.includes("invoice_snapshot_not_production_ready"));
+  assert.match(documentErrorMessage(409, { error: "classified_test_document" }).text, /Testbuchung/);
+  // Unbekannter Sperrcode: der Satz des Servers, nie der Code.
+  const neu = documentErrorMessage(409, { error: "neuer_code", message: "Ein Satz." });
+  assert.equal(neu.text, `Ein Satz. ${DOCUMENT_BLOCKED_NOTE}`);
+  assert.equal(documentErrorMessage(500, { error: "Fehler" }).text, DOCUMENT_ERROR_NOTE);
+  assert.match(documentErrorMessage(404, {}).text, /nicht gefunden/);
+  assert.match(detailSrc, /setDocMsg\(documentErrorMessage\(r\.status, d\)\);/);
+});
+
+test("Auftrag 1 A — „Rechnungsdokument erzeugen“ sagt die Wahrheit über den automatischen Versand", () => {
+  assert.equal(DOCUMENT_GENERATE.button, "Rechnungsdokument erzeugen");
+  assert.equal(DOCUMENT_GENERATE.retryButton, "Rechnungsdokument erneut erzeugen");
+  assert.match(DOCUMENT_GENERATE.note, /automatisch per E-Mail an den Kunden/);
+  assert.doesNotMatch(DOCUMENT_GENERATE.note, /keine E-Mail/);
+  assert.doesNotMatch(detailSrc, /Es wird keine E-Mail versendet/, "der falsche Dialogtext ist zurück");
+  assert.doesNotMatch(detailSrc, />\s*PDF (erneut )?erzeugen\s*</, "der mehrdeutige Knopfname ist zurück");
+  assert.match(detailSrc, /\{DOCUMENT_GENERATE\.button\}/);
+  assert.match(detailSrc, /\{DOCUMENT_GENERATE\.retryButton\}/);
+  // Auftrag 2 / P1: für eine MANUELL erstellte Rechnung gilt der Wortlaut ohne automatischen Versand — die Mailregel
+  // sendet für sie nie (Backend lib/invoiceMailPolicy.js). Für jede andere Rechnung bleibt es bei DOCUMENT_GENERATE.note.
+  assert.match(detailSrc, /note=\{manual \? MI\.documentNoteManual : DOCUMENT_GENERATE\.note\}/);
+  // Die Logik bleibt: derselbe Aufruf, derselbe Ergebnis- und Schließpfad.
+  assert.match(detailSrc, /const r = await generateAdminInvoiceDocument\(id\);/);
+  assert.match(detailSrc, /setDocMsg\(documentOutcomeMessage\(d\.outcome\)\);/);
 });

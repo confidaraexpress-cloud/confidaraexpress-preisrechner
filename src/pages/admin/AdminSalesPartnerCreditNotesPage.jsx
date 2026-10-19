@@ -142,8 +142,20 @@ function NextStep({ row, from, mitId }) {
    Vorschau. Kommt der Admin aus dem Pre-Live-Testbereich, ist der Schalter
    vorbelegt (Router-State, adminJumpState.mjs). Im Testlauf steht deutlich:
    Testgutschriften (CE-TEST-PG …), nicht steuerlich gültig, keine E-Mail,
-   keine Auszahlung. */
+   keine Auszahlung.
+
+   Jeder Verlaufseintrag öffnet die Ansicht NEU (Schlüssel = location.key). Der Testlauf wird aus dem
+   Router-State genau EINES Eintrags vorbelegt und darf nie in einen anderen übernommen werden. Ohne den
+   Schlüssel übernahm React dieselbe Instanz samt Testlauf, sobald eine Navigation wieder auf diese Route
+   führte, ohne dass dazwischen eine andere Seite gerendert war: „Gutschriften“ der Teilnavigation auf
+   derselben Seite, oder — React Router führt jede Navigation in einer Transition aus — ein Wechsel zur
+   lazy geladenen Partnerliste, deren Modul noch lud (E2E 11b/11c, sporadisches Rot in Fall 11). */
 export default function AdminSalesPartnerCreditNotesPage() {
+  const location = useLocation();
+  return <GutschriftenAnsicht key={location.key} />;
+}
+
+function GutschriftenAnsicht() {
   const [optionen] = useState(() => closedMonthOptions(localIsoDate(), 24));
   const [monat, setMonat] = useState(() => optionen[0]?.value || "");
   const [vorschau, setVorschau] = useState({ loading: false, error: "", data: null });
@@ -479,7 +491,7 @@ export default function AdminSalesPartnerCreditNotesPage() {
   }
 
   return (
-    <div className="adm-page">
+    <div className="adm-page" data-history-entry={location.key}>
       <PageHeader
         variant="admin"
         title={<>Gutschriften</>}

@@ -53,12 +53,28 @@ export function deliveryStatusMeta(value, errorCode) {
   return ["badge--neutral", "Unbekannter Status", key];
 }
 
-/* Rückmeldung nach „Erneut versuchen" aus dem `outcome` der Serverantwort. Nur der unklare
-   Ausgang hat einen eigenen Text; jede andere Antwort behält die bisherige Meldung, und der
-   maßgebliche Zustand steht nach dem Neuladen an der Zeile. */
+/* Rückmeldung nach „Erneut versuchen" aus dem `outcome` der Serverantwort (processDelivery).
+   Paritätsaudit B3: nur `sent` ist ein Erfolg. Ein gescheiterter Versuch, ein noch nicht
+   versandbereiter Auftrag (Trackingnummer oder Label fehlen), ein laufender oder ein bereits
+   erledigter Versand bekamen bis hierher ebenfalls „erneut angestoßen" — eine Zusage, die der
+   Server nicht gemacht hatte. Ein unbekanntes Outcome bleibt neutral; der maßgebliche Zustand
+   steht nach dem Neuladen an der Zeile. */
+export const RETRY_OUTCOME_TEXT = Object.freeze({
+  sent: "Die Mail wurde erneut versendet.",
+  failed: "Der erneute Versand ist fehlgeschlagen. Der aktuelle Stand steht an der Zustellung.",
+  not_ready: "Die Mail kann noch nicht versendet werden, weil Trackingnummer oder Versandlabel fehlen. Sie geht automatisch hinaus, sobald beides vorliegt.",
+  in_progress: "Für diese Zustellung läuft bereits ein Versand. Bitte laden Sie den Stand gleich neu.",
+  already_sent: "Diese Mail wurde bereits versendet. Ein zweiter Versand ist hier nicht vorgesehen.",
+  not_found: "Diese Zustellung gibt es nicht mehr. Bitte laden Sie die Seite neu.",
+});
 export function retryOutcomeMessage(outcome) {
   if (outcome === "unclear") return { type: "error", text: RETRY_UNCLEAR_TEXT };
-  return { type: "success", text: RETRY_STARTED_TEXT };
+  if (outcome === "sent") return { type: "success", text: RETRY_OUTCOME_TEXT.sent };
+  if (outcome === "failed" || outcome === "not_found") return { type: "error", text: RETRY_OUTCOME_TEXT[outcome] };
+  if (outcome === "not_ready" || outcome === "in_progress" || outcome === "already_sent") {
+    return { type: "info", text: RETRY_OUTCOME_TEXT[outcome] };
+  }
+  return { type: "info", text: RETRY_STARTED_TEXT };
 }
 
 /* Kundenfähige Bezeichnung der Zustellart. Der technische Bezeichner erscheint

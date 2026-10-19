@@ -4,7 +4,9 @@ import { postalCodeExample, postalCodeInputMode, postalCodeMaxLength, isPostalCo
 import {
   UI_ROLE_OPTIONS, ROLE_SENDER, ROLE_RECIPIENT, ROLE_BOTH,
   validateAddressForm, normalizeAddressForm, canSetDefaultSender, canSetDefaultRecipient,
+  ADDRESS_FIELD_MAXLEN, firstAddressErrorField,
 } from "../../utils/addressBookView.mjs";
+import { Field } from "../ui/Field";
 import { AddressSuggestInput } from "../address/AddressSuggestInput";
 import { AddressStatusLine } from "../address/AddressStatusLine";
 import { useAddressValidation } from "../../hooks/useAddressValidation";
@@ -31,13 +33,23 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  // Fokusauftrag nach einem gescheiterten Speichern: erst NACH dem Rendern der Fehler auf das
+  // erste Fehlerfeld — dann trägt es schon aria-invalid und seinen Fehlertext (Audit P7).
+  const [fokusAuftrag, setFokusAuftrag] = useState(0);
   const drawerRef = useRef(null);
-  const firstFieldRef = useRef(null);
   const dirtyRef = useRef(JSON.stringify(initialForm));
   const openerRef = useRef(typeof document !== "undefined" ? document.activeElement : null);
 
   useEffect(() => {
-    firstFieldRef.current?.focus();
+    if (!fokusAuftrag) return;
+    const feld = firstAddressErrorField(errors);
+    const el = feld ? drawerRef.current?.querySelector(`#abk-${feld}`) : null;
+    if (el) { el.focus(); el.scrollIntoView?.({ block: "center" }); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fokusAuftrag]);
+
+  useEffect(() => {
+    drawerRef.current?.querySelector("#abk-label")?.focus();
     const el = drawerRef.current;
     const onKeyDown = (e) => {
       if (e.key === "Tab") {
@@ -105,6 +117,7 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
     if (Object.keys(localErrors).length > 0) {
       setErrors(localErrors);
       setSubmitError("Bitte korrigieren Sie die markierten Felder.");
+      setFokusAuftrag((n) => n + 1);
       return;
     }
     setErrors({}); setSubmitError(""); setSaving(true);
@@ -112,8 +125,10 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
     const result = await onSubmit(payload);
     setSaving(false);
     if (!result?.ok) {
+      // Ein Serverfehler mit Feldbezug steht am Feld (fieldErrors), der Satz darüber nennt den Vorgang.
       setErrors(result?.fieldErrors || {});
       setSubmitError(result?.message || "Die Adresse konnte nicht gespeichert werden.");
+      if (result?.fieldErrors && Object.keys(result.fieldErrors).length > 0) setFokusAuftrag((n) => n + 1);
       return;
     }
     onClose();
@@ -122,24 +137,24 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
   const canDefaultSender = canSetDefaultSender({ role: form.role });
   const canDefaultRecipient = canSetDefaultRecipient({ role: form.role });
 
+  // Eingabefelder über das zentrale Field (Audit P7): Beschriftung über htmlFor, bei Fehler
+  // aria-invalid und aria-describedby auf den Fehlertext, sonst auf den Hinweis. Die Längen kommen
+  // aus ADDRESS_FIELD_MAXLEN (nie über der Servergrenze). Die IDs bleiben `abk-<Feld>`.
   const field = (key, label, opts = {}) => (
-    <div className="field">
-      <label className="field-label" htmlFor={`abk-${key}`}>
-        {label}{opts.optional && <span className="field-optional"> (optional)</span>}
-      </label>
-      <input
-        id={`abk-${key}`}
-        ref={opts.autoFocus ? firstFieldRef : undefined}
-        className={`field-input${errors[key] ? " field-input-error" : ""}`}
-        type={opts.type || "text"}
-        value={form[key]}
-        onChange={(e) => upd(key, e.target.value)}
-        placeholder={opts.placeholder}
-        maxLength={opts.maxLength}
-        inputMode={opts.inputMode}
-      />
-      {errors[key] ? <span className="field-error">{errors[key]}</span> : (opts.hint && <span className="field-hint">{opts.hint}</span>)}
-    </div>
+    <Field
+      id={`abk-${key}`}
+      label={label}
+      optional={opts.optional === true}
+      value={form[key]}
+      onChange={(v) => upd(key, v)}
+      type={opts.type || "text"}
+      placeholder={opts.placeholder}
+      maxLength={ADDRESS_FIELD_MAXLEN[key]}
+      inputMode={opts.inputMode}
+      error={errors[key]}
+      hint={opts.hint}
+      aria-required={opts.optional ? undefined : "true"}
+    />
   );
 
   return (
@@ -167,7 +182,7 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
             {/* Abschnitt 1 — Zuordnung */}
             <div className="abk-drawer-section">
               <div className="abk-drawer-section-title">Zuordnung</div>
-              {field("label", "Anzeigename / Label", { optional: true, placeholder: "z. B. Lager Berlin", autoFocus: true, maxLength: 100 })}
+              {field("label", "Anzeigename / Label", { optional: true, placeholder: "z. B. Lager Berlin" })}
               <div className="field">
                 <span className="field-label">Typ</span>
                 <div className="abk-role-options" role="radiogroup" aria-label="Adresstyp">
@@ -184,13 +199,13 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
             {/* Abschnitt 2 — Firma und Kontakt */}
             <div className="abk-drawer-section">
               <div className="abk-drawer-section-title">Firma und Kontakt</div>
-              {field("company", "Firma", { optional: true, placeholder: "Beispiel GmbH", maxLength: 200 })}
+              {field("company", "Firma", { optional: true })}
               {/* Die Kontaktperson strukturiert — dieselbe Regel wie im Versandformular.
                   Eine Adresse aus der Zeit davor öffnet sich mit leeren Namensfeldern:
                   der alte `contactName` wird NICHT zerlegt, sondern bleibt darunter als
                   Altwert sichtbar, bis die Felder ergänzt sind. */}
-              {field("firstName", "Vorname", { placeholder: "Max", maxLength: 35 })}
-              {field("lastName", "Nachname", { placeholder: "Mustermann", maxLength: 35,
+              {field("firstName", "Vorname")}
+              {field("lastName", "Nachname", {
                                                hint: "Vor- und Nachname zusammen max. 35 Zeichen." })}
               {form.contactName && !(form.firstName || form.lastName) && (
                 <p className="abk-drawer-hint">
@@ -216,12 +231,14 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
                   className={`field-input field-select${errors.country ? " field-input-error" : ""}`}
                   value={form.country}
                   onChange={(e) => upd("country", e.target.value)}
+                  aria-invalid={errors.country ? "true" : undefined}
+                  aria-describedby={errors.country ? "abk-country-err" : undefined}
                 >
                   {launchCountries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
                 </select>
-                {errors.country && <span className="field-error">{errors.country}</span>}
+                {errors.country && <span className="field-error" id="abk-country-err">{errors.country}</span>}
               </div>
-              {field("state", "Bundesland / Region", { optional: true, placeholder: "z. B. Berlin", maxLength: 100 })}
+              {field("state", "Bundesland / Region", { optional: true, placeholder: "z. B. Berlin" })}
               <AddressSuggestInput
                 id="abk-streetAndNumber"
                 label="Straße und Hausnummer"
@@ -243,33 +260,28 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
                 suggestions={addressCheck.streetOptions}
                 loading={addressCheck.streetLoading}
                 noResults={addressCheck.streetNoResults}
-                placeholder="Musterstraße 1"
                 maxLength={200}
                 error={errors.streetAndNumber}
                 hint={streetFieldHint(form.country, form.streetAndNumber) || undefined}
-                autoComplete="address-line1"
                 className="field"
               />
-              {field("addressAdd", "Adresszusatz", { optional: true, placeholder: "Etage, c/o …", maxLength: 100 })}
+              {field("addressAdd", "Adresszusatz", { optional: true, placeholder: "Etage, c/o …" })}
               <div className="field-row field-row-2">
-                <div className="field">
-                  <label className="field-label" htmlFor="abk-postalCode">PLZ</label>
-                  <input
-                    id="abk-postalCode"
-                    className={`field-input${errors.postalCode ? " field-input-error" : ""}`}
-                    value={form.postalCode}
-                    onChange={(e) => upd("postalCode", e.target.value)}
-                    placeholder={postalCodeExample(form.country) || "PLZ"}
-                    inputMode={postalCodeInputMode(form.country)}
-                    maxLength={postalCodeMaxLength()}
-                    autoComplete="postal-code"
-                  />
-                  {/* Das Beispiel steht im Platzhalter; eine zweite Zeile „Beispiel: …“ wiederholte
-                      es nur und blieb auch neben einer fertigen PLZ stehen. */}
-                  {errors.postalCode
-                    ? <span className="field-error">{errors.postalCode}</span>
-                    : (!isPostalCodeRequired(form.country) ? <span className="field-hint">Für dieses Land optional.</span> : null)}
-                </div>
+                {/* Das Beispiel steht im Platzhalter; eine zweite Zeile „Beispiel: …“ wiederholte
+                    es nur und blieb auch neben einer fertigen PLZ stehen. */}
+                <Field
+                  id="abk-postalCode"
+                  label="PLZ"
+                  value={form.postalCode}
+                  onChange={(v) => upd("postalCode", v)}
+                  placeholder={postalCodeExample(form.country) || "PLZ"}
+                  inputMode={postalCodeInputMode(form.country)}
+                  maxLength={postalCodeMaxLength()}
+                  autoComplete="postal-code"
+                  error={errors.postalCode}
+                  hint={!isPostalCodeRequired(form.country) ? "Für dieses Land optional." : undefined}
+                  aria-required={isPostalCodeRequired(form.country) ? "true" : undefined}
+                />
                 <AddressSuggestInput
                   id="abk-city"
                   label="Ort"
@@ -280,7 +292,6 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
                   placeholder={cityPlaceholder(form.country)}
                   error={errors.city}
                   hint={shippingLengthHint("city", form.city) || undefined}
-                  autoComplete="address-level2"
                   className="field"
                 />
               </div>
@@ -333,17 +344,17 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
             {/* Abschnitt 5 — Notiz */}
             <div className="abk-drawer-section">
               <div className="abk-drawer-section-title">Notiz</div>
-              <div className="field">
-                <label className="field-label" htmlFor="abk-notes">Interne Notiz <span className="field-optional">(optional)</span></label>
-                <textarea
-                  id="abk-notes"
-                  className="field-input field-textarea"
-                  value={form.notes}
-                  onChange={(e) => upd("notes", e.target.value)}
-                  maxLength={500}
-                  placeholder="Nur intern sichtbar …"
-                />
-              </div>
+              <Field
+                as="textarea"
+                id="abk-notes"
+                label="Interne Notiz"
+                optional
+                value={form.notes}
+                onChange={(v) => upd("notes", v)}
+                maxLength={ADDRESS_FIELD_MAXLEN.notes}
+                placeholder="Nur intern sichtbar …"
+                error={errors.notes}
+              />
             </div>
           </div>
 

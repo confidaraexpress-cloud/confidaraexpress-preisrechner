@@ -208,8 +208,7 @@ export function PartnerBillingDetailsSection() {
           <option value="">Bitte wählen</option>
           {billingCountryOptions(form.country).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </Field>
-        <AddressSuggestInput id="spp-billing-street" label={BILLING_FIELD_LABELS.street} required
-          autoComplete="street-address" className="field"
+        <AddressSuggestInput id="spp-billing-street" label={BILLING_FIELD_LABELS.street} required className="field"
           value={form.street} onChange={(v) => setFeld("street", v)} error={fieldErrors.street} disabled={saving}
           hint={countryFirstHint(form.country) || undefined}
           suggestions={adresse.streetOptions}
@@ -228,8 +227,7 @@ export function PartnerBillingDetailsSection() {
           <Field id="spp-billing-postal-code" label={BILLING_FIELD_LABELS.postalCode} required autoComplete="postal-code"
             value={form.postalCode} onChange={(v) => setFeld("postalCode", v)} error={fieldErrors.postalCode} disabled={saving}
             placeholder={postalCodeExample(form.country)} inputMode={postalCodeInputMode(form.country)} />
-          <AddressSuggestInput id="spp-billing-city" label={BILLING_FIELD_LABELS.city} required
-            autoComplete="address-level2" className="field"
+          <AddressSuggestInput id="spp-billing-city" label={BILLING_FIELD_LABELS.city} required className="field"
             value={form.city} onChange={(v) => setFeld("city", v)} error={fieldErrors.city} disabled={saving}
             placeholder={cityPlaceholder(form.country)}
             suggestions={adresse.cityOptions}

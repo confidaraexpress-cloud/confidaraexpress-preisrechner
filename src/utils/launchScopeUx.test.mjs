@@ -115,7 +115,9 @@ test("(B3) alle acht Auswahlfelder hängen am Scope, keines mehr an der vollen L
     ["src/components/inventory/OrderCreateForm.jsx", 1],
     ["src/components/dashboard/Profile.jsx", 1],
     ["src/pages/NewShipmentPage.jsx", 1],
-    ["src/pages/CalculatorPage.jsx", 2],
+    // Seit Auftrag 1 (P11) rendert der Preisrechner Herkunft und Ziel wie „Neue Sendung" über
+    // EINEN gemeinsamen Renderer; die Liste hängt an der Seite (E8).
+    ["src/pages/CalculatorPage.jsx", 1],
   ];
   for (const [datei, anzahl] of felder) {
     const src = ohneKommentare(lies(datei));
@@ -307,9 +309,12 @@ test("(E8) genau die ABSENDERfelder benutzen die Ursprungsliste — sonst nichts
   }
   // Der Preisrechner: Herkunft ja, Ziel nein.
   const calc = lies("src/pages/CalculatorPage.jsx");
-  assert.ok(/launchOriginCountries\.map/.test(calc), "das Herkunftsfeld muss die Ursprungsliste benutzen");
-  assert.strictEqual((calc.match(/launchOriginCountries\.map/g) || []).length, 1,
-    "genau EIN Feld des Preisrechners ist die Herkunft");
+  assert.ok(/side: "from", title: "Herkunft", liste: launchOriginCountries/.test(calc),
+    "das Herkunftsfeld muss die Ursprungsliste benutzen");
+  assert.ok(/side: "to",\s+title: "Ziel",\s+liste: launchCountries,/.test(calc),
+    "das Zielfeld muss die Zielliste benutzen");
+  assert.strictEqual((calc.match(/launchOriginCountries/g) || []).length, 2,
+    "die Ursprungsliste kommt genau einmal aus dem Hook und speist genau EIN Feld");
   // Neue Sendung: ein Renderer, die Liste hängt am Präfix.
   const ns = lies("src/pages/NewShipmentPage.jsx");
   assert.ok(/p === "s" \? launchOriginCountries : launchCountries/.test(ns),

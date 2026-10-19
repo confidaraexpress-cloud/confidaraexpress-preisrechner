@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { AddressAttribution } from "./AddressAttribution";
-import { highlightSegments } from "../../utils/addressValidationView.mjs";
+import { highlightSegments, ADDRESS_SUGGEST_AUTOCOMPLETE } from "../../utils/addressValidationView.mjs";
 
 // AddressSuggestInput — EIN Vorschlagsfeld für alle Adressformulare (Straße und Ort).
 //
@@ -81,7 +81,7 @@ function istTouch() {
 
 export function AddressSuggestInput({
   id, label, value, onChange, onSelect, suggestions = [], placeholder, maxLength,
-  error, hint, required, disabled, autoComplete, inputMode, className = "",
+  error, hint, required, disabled, inputMode, className = "",
   emptyHint, floating = false, inputClassName, wrapClassName = "", invalid = false, onBlur, dataField, describedBy,
   loading = false, noResults = false,
 }) {
@@ -196,7 +196,7 @@ export function AddressSuggestInput({
 
   const beschriftung = label && (
     <label className={floating ? "field-label ce-field-label" : "field-label"} htmlFor={inputId}>
-      {label}{required ? " *" : ""}
+      {label}{required && <span aria-hidden="true"> *</span>}
     </label>
   );
 
@@ -227,7 +227,11 @@ export function AddressSuggestInput({
           aria-required={required ? "true" : undefined}
           aria-describedby={beschreibung}
           data-field={dataField}
-          autoComplete={autoComplete || "off"}
+          // Ein nicht standardisierter Token für ALLE Vorschlagsfelder (Auftrag 1, P5): Chrome und
+          // Edge füllen ein Feld mit unbekanntem Token nicht und zeigen dort kein eigenes Popup —
+          // so gibt es für Straße und Ort nur EINE Liste, unsere. Der Aufrufer kann das nicht
+          // überschreiben. Kontaktfelder (Name, E-Mail, Telefon, Firma, PLZ) behalten ihre Tokens.
+          autoComplete={ADDRESS_SUGGEST_AUTOCOMPLETE}
           inputMode={inputMode}
           value={value}
           placeholder={placeholder}

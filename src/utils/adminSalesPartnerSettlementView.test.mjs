@@ -475,3 +475,24 @@ test("Pre-Live — neue Fehlercodes des Laufs und der Belegaktionen", () => {
     assert.doesNotMatch(t, /PARTNER_|PRELIVE_/, "kein Rohcode im Text");
   }
 });
+
+test("Paritätsaudit BA5/BA6 — fehlende Steuerangabe benannt, Testgutschrift ohne Endlosaktion", async () => {
+  const m = await import("./adminSalesPartnerSettlementView.mjs");
+  // BA5: taxNumberOrVatId und billingDetails haben ein Label; billingDetails erzeugt keinen Doppelhinweis.
+  assert.equal(m.missingFieldsText(["taxNumberOrVatId", "iban"]), "Es fehlen: Steuernummer oder USt-IdNr., IBAN.");
+  assert.equal(m.missingFieldsText(["billingDetails"]), null);
+  const state = m.normalizeAdminBilling({ ...BILLING, missingFields: ["taxNumberOrVatId"] });
+  const zeilen = Object.fromEntries(m.adminBillingRows(state).map((z) => [z.key, z]));
+  assert.equal(zeilen.taxNumber.missing, true);
+  assert.equal(zeilen.vatId.missing, true);
+  assert.equal(zeilen.iban.missing, false);
+  // BA6: Testgutschrift — keine Benachrichtigung, kein „erneut erzeugen" bei bereitem Dokument.
+  const test = { id: 9, kind: "regular", isTest: true, documentStatus: "ready", notifiedAt: null };
+  assert.equal(m.canRegenerate(test), false);
+  assert.equal(m.notificationText(test), "Keine Benachrichtigung (Testgutschrift)");
+  assert.equal(m.canRegenerate({ ...test, documentStatus: "failed" }), true, "ein fehlgeschlagenes Dokument bleibt wiederholbar");
+  const echt = { ...test, isTest: false };
+  assert.equal(m.canRegenerate(echt), true, "echte Gutschrift: Benachrichtigung steht noch aus");
+  assert.equal(m.notificationText(echt), "Noch nicht benachrichtigt");
+  assert.equal(m.canRegenerate({ ...echt, notifiedAt: "2026-10-02T08:01:00Z" }), false);
+});

@@ -42,6 +42,10 @@ export const SERVICE_DETAILS_TEXT = Object.freeze({
   transitNote:           "Die Laufzeit ist eine Schätzung des Versanddienstleisters und keine Zustellzusage.",
   packagesLabel:         "Packstücke",
   maxWeightLabel:        "Max. Gewicht",
+  // Auftrag 2 / P4: längste Seite und Gurtmaß je Packstück (Formel des Anbieters).
+  maxLongestSideLabel:   "Max. längste Seite",
+  maxLengthAndGirthLabel: "Max. Gurtmaß",
+  lengthAndGirthNote:    "Gurtmaß = längste Seite + 2 × die beiden anderen Seiten.",
   chargeableWeightLabel: OFFER_METADATA_LABEL.chargeableWeight,
   chargeableWeightNote:  "Für die Abrechnung zählt das höhere Gewicht aus tatsächlichem Gewicht und Volumengewicht.",
   volumetricLabel:       "Volumengewicht",
@@ -59,8 +63,12 @@ export const SERVICE_SUMMARY_TEXT = Object.freeze({
 
 /* Die nicht zugelassenen Sendungsarten je Code. */
 export const SERVICE_NOT_ACCEPTED_TEXT = Object.freeze({
-  pallets:   "Paletten",
-  suitcases: "Koffer",
+  pallets:          "Paletten",
+  suitcases:        "Koffer",
+  // Auftrag 2 / P4: belegt durch die DPD-Serviceseite des Anbieters (Verpackungsregeln, packageRulesView.mjs).
+  wooden_crates:    "Holzkisten",
+  mailer_bags:      "Versandtaschen",
+  padded_envelopes: "Luftpolsterumschläge",
 });
 
 const istObjekt = (w) => !!w && typeof w === "object" && !Array.isArray(w);
@@ -168,6 +176,15 @@ export function serviceDetailsView(tariff) {
   if (hoechstgewicht !== null) {
     sizeRows.push({ id: "maxWeight", label: SERVICE_DETAILS_TEXT.maxWeightLabel, value: `${KG.format(hoechstgewicht)} kg` });
   }
+  // Auftrag 2 / P4: die belegten Maßgrenzen je Packstück — nur, wenn der Server sie liefert.
+  const laengsteSeite = grenzeVon(t.tariffLimits, "first_length");
+  if (laengsteSeite !== null) {
+    sizeRows.push({ id: "maxLongestSide", label: SERVICE_DETAILS_TEXT.maxLongestSideLabel, value: `${KG.format(laengsteSeite)} cm` });
+  }
+  const gurtmass = grenzeVon(t.tariffLimits, "length_and_girth");
+  if (gurtmass !== null) {
+    sizeRows.push({ id: "maxLengthAndGirth", label: SERVICE_DETAILS_TEXT.maxLengthAndGirthLabel, value: `${KG.format(gurtmass)} cm` });
+  }
   const abrechnung = chargeableWeightLine(t);
   if (abrechnung !== null) {
     sizeRows.push({ id: "chargeableWeight", label: SERVICE_DETAILS_TEXT.chargeableWeightLabel, value: abrechnung });
@@ -176,6 +193,8 @@ export function serviceDetailsView(tariff) {
   const mitDivisor = profil.volumetricDivisor !== null;
   const size = sizeRows.length > 0 || mitDivisor ? {
     rows: sizeRows,
+    // Nur mit gelieferter Gurtmaßgrenze — ohne sie trägt der Abschnitt keinen Maßbezug, auch keinen leeren Schlüssel.
+    ...(gurtmass !== null ? { girthNote: SERVICE_DETAILS_TEXT.lengthAndGirthNote } : {}),
     note: mitDivisor ? SERVICE_DETAILS_TEXT.chargeableWeightNote : null,
     formula: mitDivisor ? `${SERVICE_DETAILS_TEXT.volumetricLabel}: L × B × H ÷ ${ZAHL.format(profil.volumetricDivisor)}` : null,
   } : null;

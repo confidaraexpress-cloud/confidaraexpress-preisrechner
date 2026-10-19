@@ -91,13 +91,17 @@ export function Field({
   const hinweisId = `${feldId}-hint`;
 
   const [fokussiert, setFokussiert] = useState(false);
+  // Unvollständige Zahl („1e", „-", „1,2,3") in type="number": der Browser zeigt den Text, meldet
+  // aber value === "" (validity.badInput). Ohne diesen Zustand sänke die schwebende Beschriftung
+  // über den sichtbaren Text, und ein Fehler „fehlt" wäre irreführend (Auftrag 1, P11).
+  const [unvollstaendig, setUnvollstaendig] = useState(false);
 
   const floating = labelMode === "floating";
   // Ein <select> zeigt seinen Wert immer an — es gibt dort keinen sichtbaren
   // Leerzustand, den ein ruhendes Label besetzen könnte. Sein Label steht
   // deshalb dauerhaft oben, statt einen Leerzustand vorzutäuschen.
   const dauerhaftOben = as === "select";
-  const hatWert = String(value ?? "").length > 0;
+  const hatWert = String(value ?? "").length > 0 || unvollstaendig;
   const angehoben = floating && (dauerhaftOben || hatWert || fokussiert);
 
   // Fehler UND Hinweis können gleichzeitig gemeint sein; sichtbar ist immer nur
@@ -117,6 +121,9 @@ export function Field({
     onChange: onChange ? (e) => onChange(e.target.value, e) : undefined,
     onFocus: (e) => { setFokussiert(true); onFocus?.(e); },
     onBlur: (e) => { setFokussiert(false); onBlur?.(e); },
+    onInput: type === "number" && as === "input"
+      ? (e) => setUnvollstaendig(Boolean(e.target.validity && e.target.validity.badInput))
+      : undefined,
     "aria-invalid": error ? "true" : undefined,
     "aria-required": required ? "true" : undefined,
     "aria-describedby": beschreibung || undefined,
@@ -151,8 +158,10 @@ export function Field({
            maxLength={maxLength} readOnly={readOnly} />
   );
 
+  // Bei einer unvollständigen Zahl sagt der Fehler, was zu tun ist — nicht „fehlt".
+  const fehlerText = error && unvollstaendig ? "Bitte geben Sie eine gültige Zahl ein." : error;
   const fuss = error
-    ? <span className="field-error" id={fehlerId}>{error}</span>
+    ? <span className="field-error" id={fehlerId}>{fehlerText}</span>
     : hint ? <span className="field-hint" id={hinweisId}>{hint}</span> : null;
 
   if (!floating) {

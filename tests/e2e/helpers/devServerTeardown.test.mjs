@@ -35,6 +35,16 @@
  * einen etwaigen Rest ab. Beide sind deshalb in `try` gefasst — ein bereits
  * beendeter Server ist kein Testfehler.
  *
+ * ── Windows ───────────────────────────────────────────────────────────────
+ * Dort gibt es weder Prozessgruppen-Signale noch ein harmloses `detached`:
+ * ein detached-Kind hat keine Konsole, und `cmd.exe` der Volta-Shims oeffnet
+ * dann je Suite ein sichtbares Terminalfenster; `process.kill(-pid)` wirft
+ * immer, Vite blieb samt Port stehen. Beides kapselt deshalb EIN Helfer,
+ * `helpers/devServer.mjs`: `DEV_SERVER_SPAWN` (POSIX `detached`, Windows
+ * `windowsHide`) und `stopDevServer` (POSIX Gruppenkill, Windows
+ * `taskkill /T`). Die Suiten benutzen nur den Helfer; die Pruefungen unten
+ * stellen sicher, dass keine an ihm vorbei startet oder beendet.
+ *
  * Schwesterdatei: `portUniqueness.test.mjs` deckt dieselbe Fehlerklasse von
  * der anderen Seite ab (zwei Suiten auf EINEM Port). Beide brauchen keinen
  * Browser und laufen deshalb im Unit-Lauf mit: `npm test` sucht neben `src/`
@@ -47,6 +57,8 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawn } from "node:child_process";
+import { DEV_SERVER_SPAWN, stopDevServer, isStillRunning } from "./devServer.mjs";
 
 const E2E = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -90,77 +102,121 @@ function spawnStatement(src) {
   return ende === -1 ? null : src.slice(m.index, ende + 2);
 }
 
-/** Steht `detached: true` im OPTIONSOBJEKT des Aufrufs — und nicht in einem
- *  verschachtelten Objekt darin?
+/** Die Schluessel, die DIREKT im Optionsobjekt des Aufrufs stehen — nicht in
+ *  einem verschachtelten Objekt darin. Ein Spread zaehlt als `...NAME`.
  *
  *  Das ist keine Spitzfindigkeit, sondern ein gemessener Fehler: in
- *  `newShipmentEmptyState` landete die Option zunaechst INNERHALB von
- *  `env: { … }`. Dort ist sie bedeutungslos — sie wird zu einer
+ *  `newShipmentEmptyState` landete `detached` zunaechst INNERHALB von
+ *  `env: { … }`. Dort ist es bedeutungslos — es wird zu einer
  *  Umgebungsvariable namens „detached" — und der Dev-Server lief undetached
- *  weiter. Eine reine Textsuche nach `detached: true` sah die Zeile und war
- *  zufrieden; der Server ueberlebte den Lauf trotzdem. Deshalb wird hier die
- *  Klammertiefe mitgezaehlt statt nur nach Text zu suchen. */
-function detachedImOptionsobjekt(stmt) {
-  let paren = 0, brace = 0, optionsTiefe = null;
+ *  weiter. Eine reine Textsuche sah die Zeile und war zufrieden; der Server
+ *  ueberlebte den Lauf trotzdem. Deshalb wird hier die Klammertiefe
+ *  mitgezaehlt statt nur nach Text zu suchen. */
+function optionsSchluessel(stmt) {
+  const schluessel = [];
+  let paren = 0, brace = 0, bracket = 0, optionsTiefe = null;
   for (let i = 0; i < stmt.length; i++) {
     const c = stmt[i];
     if (c === "(") paren++;
     else if (c === ")") paren--;
+    else if (c === "[") bracket++;
+    else if (c === "]") bracket--;
     else if (c === "{") {
       brace++;
       // Das Optionsobjekt ist das erste `{` direkt in der Argumentliste.
-      if (optionsTiefe === null && paren === 1) optionsTiefe = brace;
+      if (optionsTiefe === null && paren === 1 && bracket === 0) optionsTiefe = brace;
     } else if (c === "}") brace--;
-    else if (optionsTiefe !== null && brace === optionsTiefe && stmt.startsWith("detached", i)) {
-      if (/^detached\s*:\s*true\b/.test(stmt.slice(i))) return true;
+    else if (optionsTiefe !== null && brace === optionsTiefe && bracket === 0) {
+      const m = /^(\.\.\.\w+|\w+)\s*(?=[:,}\s])/.exec(stmt.slice(i));
+      if (m && /[{,\s]/.test(stmt[i - 1])) { schluessel.push(m[1]); i += m[1].length - 1; }
     }
   }
-  return false;
+  return schluessel;
 }
 
-test("1 — jede Suite mit Dev-Server startet ihn in einer EIGENEN Prozessgruppe", () => {
-  const ohne = serverSuiten()
-    .filter(({ src }) => {
-      const stmt = spawnStatement(src);
-      return !stmt || !detachedImOptionsobjekt(stmt);
-    })
-    .map(({ name }) => name);
-
-  assert.deepEqual(ohne, [],
-    "`detached: true` fehlt im OPTIONSOBJEKT des spawn-Aufrufs (in einem\n" +
-    "verschachtelten `env: {…}` wirkt es NICHT). Ohne eigene Prozessgruppe ist\n" +
-    "kein Gruppenkill moeglich, und der Server ueberlebt die Suite:\n  " +
-    ohne.join("\n  "));
-});
-
-test("2 — jede Suite mit Dev-Server beendet die PROZESSGRUPPE, nicht nur das Kind", () => {
-  const ohne = serverSuiten()
-    .filter(({ src }) => !/process\.kill\(\s*-\s*server\.pid/.test(src))
-    .map(({ name }) => name);
-
-  assert.deepEqual(ohne, [],
-    "npx startet `sh -c vite`, das node startet. Ein Signal an den npx-Prozess\n" +
-    "laesst den Enkel — den eigentlichen Dev-Server — auf seinem Port stehen:\n  " +
-    ohne.join("\n  "));
-});
-
-test("3 — der Gruppenkill steht im Teardown und ist gegen ESRCH gefasst", () => {
-  /* Ein bereits beendeter Server ist kein Testfehler: `process.kill` auf eine
-     leere Gruppe wirft ESRCH. Ohne `try` risse das den `test.after`-Haken auf
-     und faerbte eine erfolgreiche Suite rot — der Aufraeumcode wuerde damit
-     genau das kaputtmachen, wofuer er da ist. */
+test("1 — jede Suite startet ihren Dev-Server mit DEV_SERVER_SPAWN und ueberschreibt es nicht", () => {
   const fehler = [];
   for (const { name, src } of serverSuiten()) {
-    // Beide Schreibweisen sind gleichwertig: `test.after(…)` und der aus
-    // `node:test` importierte Haken `after(…)`. Drei Suiten nutzen die zweite.
-    if (!/\bafter\s*\(/.test(src)) {
-      fehler.push(`${name}: kein after-Haken — der Server wird nie beendet`);
-      continue;
-    }
-    const zeile = src.split("\n").find((z) => /process\.kill\(\s*-\s*server\.pid/.test(z));
-    if (zeile && !/try\s*\{/.test(zeile)) {
-      fehler.push(`${name}: Gruppenkill ohne try — ESRCH wuerde den Teardown aufreissen`);
+    const stmt = spawnStatement(src);
+    const s = stmt ? optionsSchluessel(stmt) : [];
+    if (!s.includes("...DEV_SERVER_SPAWN")) fehler.push(`${name}: \`...DEV_SERVER_SPAWN\` fehlt im Optionsobjekt`);
+    // Ein eigenes `detached`/`windowsHide` daneben hebelte den Helfer aus —
+    // auf Windows hiesse das wieder ein Konsolenfenster je Suite.
+    for (const k of ["detached", "windowsHide"]) {
+      if (s.includes(k)) fehler.push(`${name}: eigenes \`${k}\` neben DEV_SERVER_SPAWN`);
     }
   }
+  assert.deepEqual(fehler, [],
+    "Jede Suite startet ihren Server ueber `helpers/devServer.mjs` (in einem\n" +
+    "verschachtelten `env: {…}` wirkt der Spread NICHT). Ohne eigene Prozessgruppe\n" +
+    "ueberlebt der Server die Suite (POSIX), mit `detached` oeffnet er ein\n" +
+    "Konsolenfenster (Windows):\n  " + fehler.join("\n  "));
+});
+
+test("2 — jede Suite beendet den Server ueber stopDevServer, nicht an ihm vorbei", () => {
+  const fehler = [];
+  for (const { name, src } of serverSuiten()) {
+    if (!/\bstopDevServer\(\s*server\b/.test(src)) fehler.push(`${name}: kein stopDevServer(server, …)`);
+    // Direkte Gruppenkills sind POSIX-only: unter Windows werfen sie immer, und
+    // `server.kill()` allein laesst den Enkel — den eigentlichen Dev-Server — stehen.
+    if (/process\.kill\(\s*-/.test(src)) fehler.push(`${name}: direkter process.kill(-…) statt stopDevServer`);
+  }
   assert.deepEqual(fehler, [], fehler.join("\n"));
+});
+
+test("3 — der Aufruf steht in einem after-Haken", () => {
+  // Beide Schreibweisen sind gleichwertig: `test.after(…)` und der aus
+  // `node:test` importierte Haken `after(…)`. Drei Suiten nutzen die zweite.
+  const ohne = serverSuiten()
+    .filter(({ src }) => !/\bafter\s*\(/.test(src))
+    .map(({ name }) => `${name}: kein after-Haken — der Server wird nie beendet`);
+  assert.deepEqual(ohne, [], ohne.join("\n"));
+});
+
+test("4 — DEV_SERVER_SPAWN: POSIX eigene Prozessgruppe, Windows unsichtbare Konsole ohne detached", () => {
+  assert.equal(DEV_SERVER_SPAWN.windowsHide, true);
+  assert.equal(DEV_SERVER_SPAWN.detached, process.platform !== "win32");
+  assert.ok(Object.isFrozen(DEV_SERVER_SPAWN), "eine Suite darf die gemeinsamen Optionen nicht veraendern");
+});
+
+test("5 — stopDevServer beendet Kind UND Enkel und wirft bei einem beendeten Server nicht", async () => {
+  /* Nachgebaut wie `npx -> sh -c vite -> node`: das Kind startet einen Enkel,
+     meldet dessen PID und bleibt stehen. Geprueft wird am Enkel — er haelt im
+     echten Lauf den Port. */
+  const kindCode =
+    "const { spawn } = require('node:child_process');" +
+    "const e = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });" +
+    "console.log(e.pid); setInterval(() => {}, 1000);";
+  const kind = spawn(process.execPath, ["-e", kindCode], { ...DEV_SERVER_SPAWN, stdio: ["ignore", "pipe", "ignore"] });
+  const enkelPid = await new Promise((res, rej) => {
+    const t = setTimeout(() => rej(new Error("Enkel meldet sich nicht")), 10000);
+    kind.stdout.once("data", (d) => { clearTimeout(t); res(Number(String(d).trim())); });
+  });
+  const lebt = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
+  assert.ok(lebt(enkelPid), "Vorbedingung: der Enkel laeuft");
+
+  stopDevServer(kind, "SIGKILL");
+  const ende = Date.now() + 5000;
+  while (lebt(enkelPid) && Date.now() < ende) await new Promise((r) => setTimeout(r, 100));
+  assert.equal(lebt(enkelPid), false, "der Enkel muss mit dem Kind fallen");
+
+  assert.doesNotThrow(() => stopDevServer(kind, "SIGKILL"), "zweiter Aufruf auf beendeten Server");
+  assert.doesNotThrow(() => stopDevServer(null), "kein Server gestartet");
+});
+
+test("6 — Windows: taskkill nur fuer den eigenen, noch laufenden Prozess (keine neu vergebene PID)", () => {
+  /* Nach dem Ende eines Kindes darf Windows seine PID neu vergeben. `taskkill /PID … /T`
+     auf eine solche PID beendete einen FREMDEN Prozessbaum — eine andere Suite, ein
+     anderes Projekt oder eine laufende Claude-Sitzung. Deshalb ruft stopDevServer
+     taskkill nur, solange Node den Prozess noch als laufend kennt. */
+  assert.equal(isStillRunning({ pid: 4242, exitCode: null, signalCode: null }), true);
+  assert.equal(isStillRunning({ pid: 4242, exitCode: 0, signalCode: null }), false, "mit Exitcode beendet");
+  assert.equal(isStillRunning({ pid: 4242, exitCode: null, signalCode: "SIGKILL" }), false, "per Signal beendet");
+  assert.equal(isStillRunning({ pid: undefined, exitCode: null, signalCode: null }), false, "nie gestartet");
+  assert.equal(isStillRunning(null), false);
+  const helfer = readFileSync(path.join(E2E, "helpers", "devServer.mjs"), "utf8");
+  const vorTaskkill = helfer.slice(0, helfer.indexOf('spawnSync("taskkill"'));
+  assert.ok(vorTaskkill.slice(vorTaskkill.lastIndexOf("if (WINDOWS)")).includes("if (isStillRunning(server))"),
+    "taskkill muss hinter der Laufpruefung stehen");
+  assert.ok(!/taskkill[^\n]*\/IM|Stop-Process|pkill|killall/.test(helfer), "kein Beenden nach Prozessname");
 });

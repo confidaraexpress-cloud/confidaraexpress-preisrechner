@@ -21,6 +21,8 @@ import {
   buildLoginBody,
   buildReactivateBody,
   buildRejectBody,
+  deactivationFieldError,
+  statusEventReasonLabel,
   deactivationReasonLabel,
   formatTimestamp,
   loginActionErrorText,
@@ -32,10 +34,6 @@ import {
 
 // Grund eines Statuswechsels: ein bekannter Deaktivierungsgrund als Label,
 // sonst der Freitext des Servers (Adminbereich).
-const statusReasonText = (reason) => {
-  const label = deactivationReasonLabel(reason);
-  return label === "Unbekannter Grund" ? reason : label;
-};
 
 function Badge({ meta, id }) {
   const [cls, label] = meta;
@@ -97,7 +95,6 @@ const dialogText = (def, mitDatum) =>
 const LOGIN_STEUERBAR = Object.freeze(["active", "inactive"]);
 
 const LEERE_FORMULARE = Object.freeze({
-  reject: { reason: "" },
   deactivate: { reason: "", note: "", effectiveDate: "" },
   reactivate: { effectiveDate: "" },
 });
@@ -147,7 +144,7 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], startDefau
     const datum = { allowEffectiveDate: mitDatum };
     let gebaut = { ok: true, body: {} };
     if (kind === "approve") gebaut = buildApproveBody(form, datum);
-    else if (kind === "reject") gebaut = buildRejectBody(form);
+    else if (kind === "reject") gebaut = buildRejectBody();
     else if (kind === "deactivate") gebaut = buildDeactivateBody(form, datum);
     else if (kind === "reactivate") gebaut = buildReactivateBody(form, datum);
     else if (kind === "loginOff" || kind === "loginOn") gebaut = buildLoginBody(kind === "loginOn");
@@ -166,6 +163,12 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], startDefau
         if (r.status === 401 || r.status === 403) return;     // zentraler Logout
         let body = null;
         try { body = await r.json(); } catch { body = null; }
+        // Paritätsaudit BA1: Feldfehler der Deaktivierung stehen am Feld, nicht oben im Dialog.
+        const feldfehler = kind === "deactivate" ? deactivationFieldError(r.status, body) : null;
+        if (feldfehler) {
+          setDialog((d) => (d ? { ...d, errors: { ...d.errors, [feldfehler.feld]: feldfehler.text } } : d));
+          return;
+        }
         const text = kind === "loginOff" || kind === "loginOn"
           ? loginActionErrorText(r.status, body)
           : adminActionErrorText(r.status, body);
@@ -248,8 +251,10 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], startDefau
                   <li key={i} className="adm-sp-history-line">
                     <Badge meta={adminPartnerStatusMeta(s.status)} />
                     <span>ab {formatTimestamp(s.effectiveDate)}</span>
-                    {s.reason && <span className="adm-sp-sub">{statusReasonText(s.reason)}</span>}
+                    {s.reason && <span className="adm-sp-sub">{statusEventReasonLabel(s.reason)}</span>}
                     <span className="adm-sp-sub">erfasst {formatTimestamp(s.createdAt, { withTime: true })}</span>
+                    {/* Paritätsaudit BA1: die interne Notiz der Deaktivierung — nur für Admins. */}
+                    {s.note && <span className="adm-sp-sub adm-sp-history-note">Interne Notiz: {s.note}</span>}
                   </li>
                 ))}
               </ul>
@@ -304,14 +309,6 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], startDefau
               <p className="adm-edit-hint" id="adm-sp-approve-team-hint">{RATE_TEXTS.teamExplain}</p>
             </>
           )}
-          {dialog.kind === "reject" && (
-            <div className="adm-edit-field">
-              <label className="adm-edit-label" htmlFor="adm-sp-reject-reason">Begründung (optional)</label>
-              <textarea id="adm-sp-reject-reason" className="adm-note-input" maxLength={500}
-                value={dialog.form.reason} onChange={(e) => setFeld("reason", e.target.value)} disabled={busy} />
-              {fehler("reason")}
-            </div>
-          )}
           {dialog.kind === "deactivate" && (
             <>
               <div className="adm-edit-field">
@@ -325,9 +322,10 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], startDefau
                 {fehler("reason")}
               </div>
               <div className="adm-edit-field">
-                <label className="adm-edit-label" htmlFor="adm-sp-deactivate-note">Notiz (optional)</label>
+                <label className="adm-edit-label" htmlFor="adm-sp-deactivate-note">Interne Notiz (optional)</label>
                 <textarea id="adm-sp-deactivate-note" className="adm-note-input" maxLength={1000}
-                  value={dialog.form.note} onChange={(e) => setFeld("note", e.target.value)} disabled={busy} />
+                  value={dialog.form.note} onChange={(e) => setFeld("note", e.target.value)} disabled={busy}
+                  aria-invalid={dialog.errors.note ? "true" : undefined} />
                 {fehler("note")}
               </div>
             </>

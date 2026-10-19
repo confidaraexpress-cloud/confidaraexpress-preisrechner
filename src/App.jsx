@@ -56,6 +56,8 @@ const AdminLegalDraftsPage = React.lazy(() => import("./pages/admin/AdminLegalDr
 // Geschützte Seitenvorschau der künftigen Rechtsseiten — öffentlicher Rahmen, nur Admins.
 const LegalPreviewPage = React.lazy(() => import("./pages/LegalPreviewPage"));
 const AdminInvoiceDetailPage = React.lazy(() => import("./pages/admin/AdminInvoiceDetailPage"));
+// Auftrag 2 / P1: „Neue Rechnung erstellen" — Entwurf, Vorschau, bewusstes Ausstellen.
+const AdminManualInvoicePage = React.lazy(() => import("./pages/admin/AdminManualInvoicePage"));
 const AdminCancellationRequestsPage = React.lazy(() => import("./pages/admin/AdminCancellationRequestsPage"));
 const AdminCancellationRequestDetailPage = React.lazy(() => import("./pages/admin/AdminCancellationRequestDetailPage"));
 const AdminSupportRequestsPage = React.lazy(() => import("./pages/admin/AdminSupportRequestsPage"));
@@ -71,6 +73,8 @@ const AdminSalesPartnerSettingsPage = React.lazy(() => import("./pages/admin/Adm
 const AdminDispatchEvidencePage     = React.lazy(() => import("./pages/admin/AdminDispatchEvidencePage"));
 const AdminSalesPartnerCreditNotesPage = React.lazy(() => import("./pages/admin/AdminSalesPartnerCreditNotesPage"));
 const AdminSalesPartnerPrelivePage  = React.lazy(() => import("./pages/admin/AdminSalesPartnerPrelivePage"));
+const AdminPublicCalculatorPage     = React.lazy(() => import("./pages/admin/AdminPublicCalculatorPage"));
+const PublicQuoteHandoffPage        = React.lazy(() => import("./pages/PublicQuoteHandoffPage"));
 
 /* Der Auth-Bereich hat als einziger Bereich KEIN Layout — Login, Registrierung
    und die E-Mail-Bestätigung hängen direkt an <Routes>. Damit auch dort ein
@@ -158,6 +162,9 @@ export default function App() {
           {/* Vertriebspartnervereinbarung — Fassung, Gültigkeit und der Link
               auf das registrierte Dokument (verlinkt aus der Partnerregistrierung). */}
           <Route path="/partnervereinbarung" element={<PartnerAgreementPage />} />
+          {/* Öffentlicher Preisrechner: Übernahme der Tarifwahl nach dem Login (öffentlich erreichbar,
+              die Seite entscheidet je Anmeldung und Rolle). */}
+          <Route path="/preisrechner-uebernahme" element={<PublicQuoteHandoffPage />} />
           {/* Geschützte Vorschau der künftigen Rechtsseiten: derselbe öffentliche Rahmen
               wie /agb (die Vorschau soll aussehen wie die Seite), aber nur für Admins —
               die Daten liefert ausschließlich /admin/legal-publications (requireAdmin). */}
@@ -183,6 +190,7 @@ export default function App() {
           <Route path="/admin/invoices/backfill" element={<AdminBackfillPage />} />
           <Route path="/admin/legal-drafts" element={<AdminLegalDraftsPage />} />
           <Route path="/admin/invoices/:id" element={<AdminInvoiceDetailPage />} />
+          <Route path="/admin/invoices/manual/:draftId" element={<AdminManualInvoicePage />} />
           <Route path="/admin/cancellation-requests"     element={<AdminCancellationRequestsPage />} />
           <Route path="/admin/cancellation-requests/:id" element={<AdminCancellationRequestDetailPage />} />
           {/* Package C: Buchungsklärung — ungeklärte Buchungsvorgänge beider Anbieter. */}
@@ -197,6 +205,7 @@ export default function App() {
           <Route path="/admin/partners/credit-notes"      element={<AdminSalesPartnerCreditNotesPage />} />
           <Route path="/admin/partners/prelive"           element={<AdminSalesPartnerPrelivePage />} />
           <Route path="/admin/partners/:id"               element={<AdminSalesPartnerDetailPage />} />
+          <Route path="/admin/public-calculator" element={<AdminPublicCalculatorPage />} />
           <Route path="/admin/audit-logs"   element={<AuditLogPage />} />
         </Route>
 

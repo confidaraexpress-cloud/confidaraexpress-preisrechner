@@ -7,6 +7,7 @@ import { ContentErrorBoundary } from "./components/common/ContentErrorBoundary";
 import { startPwaInstallCapture } from "./utils/pwaInstallPrompt";
 import { registerServiceWorker } from "./utils/serviceWorkerRegistration";
 import { startReferralCapture } from "./utils/referralCapture.mjs";
+import { captureHandoffFromLocation } from "./utils/publicQuoteHandoffStore.mjs";
 import { loadSalesPartnerPublicConfig } from "./api/partnerApi";
 import App from "./App";
 
@@ -25,6 +26,12 @@ registerServiceWorker();
    Adresse; gespeichert wird erst nach ausdrücklicher Freigabe durch die
    öffentliche Konfiguration (utils/referralCapture.mjs). */
 startReferralCapture({ loadConfig: loadSalesPartnerPublicConfig });
+
+/* Öffentlicher Preisrechner: die Tarifwahl kommt als Übergabetoken im Fragment von
+   /preisrechner-uebernahme. Es wird HIER gelesen — vor dem ersten Rendern, damit es weder der
+   Router noch die Anmeldung verliert —, verschwindet sofort aus der Adresse und liegt danach
+   nur im Modulspeicher (utils/publicQuoteHandoffStore.mjs), nie im Storage. */
+captureHandoffFromLocation();
 
 /* Die äußerste Fehlergrenze. Sie liegt bewusst ÜBER Router und AuthProvider:
    die Bereichsgrenzen weiter innen hängen selbst am Router und können einen

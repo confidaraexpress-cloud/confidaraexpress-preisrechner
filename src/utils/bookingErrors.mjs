@@ -470,3 +470,64 @@ export function mapBookUnreadableSuccess() {
 export function mapBookThrownError(_e) {
   return BOOK_FEHLER.PRUEFUNG_LAEUFT;
 }
+
+// ─── Paritätsaudit 2026-10-15 (Session 2) ─────────────────────────────────────────
+// A4 — 409 PARCELSHOP_REQUIRED (Transglobal-Buchungseinstieg): ohne gültigen Abgabe-Paketshop
+// beauftragt der Server NICHTS. Bis hierher lief der Code in den Sammelzweig („bereits verarbeitet“,
+// „Zu meinen Sendungen“) oder bei versicherter Buchung in eine Neubepreisung, die nichts löst. Die
+// Handlung ist dieselbe wie beim clientseitigen Gate: zurück an die Shopauswahl.
+export const PARCELSHOP_REQUIRED_CODE = "PARCELSHOP_REQUIRED";
+export const PARCELSHOP_REQUIRED_TEXT =
+  "Bitte wählen Sie einen Paketshop für die Abgabe, bevor Sie buchen. Es wurde nichts beauftragt.";
+export function paketshopFehlt(status, body) {
+  return status === 409 && !!body && typeof body === "object" && body.code === PARCELSHOP_REQUIRED_CODE;
+}
+
+// A5 — Fehler der zusätzlichen E-Mail-Adressen gehören an ihr Feld. Nennt die Antwort `field`
+// (trackingEmail, labelTrackingEmail), steht der Grund an genau dieser Option und oben nur der Hinweis,
+// wo zu prüfen ist. Seit Backend #432 trägt auch 400 LABEL_EMAIL_NOT_AVAILABLE den Feldbezug: der Tarif
+// bringt das Label bei der Abholung mit, eine Labelmail gibt es nicht — vorher führte die Oberfläche den
+// Kunden zu „Adressen vervollständigen“. `serverText` ist der bereits gefilterte Kundentext der Seite.
+export const LABEL_EMAIL_NOT_AVAILABLE_TEXT =
+  "Für diesen Tarif wird das Versandlabel bei der Abholung am Paket angebracht. Ein Versandlabel per E-Mail ist nicht verfügbar — bitte schalten Sie diese Option aus.";
+export const ZUSATZMAIL_HINWEIS = "Bitte prüfen Sie die markierte Angabe unter „Zusätzliche Optionen“.";
+export function zusatzmailFehler(body, serverText) {
+  const field = body && typeof body === "object" ? body.field : null;
+  if (field !== "trackingEmail" && field !== "labelTrackingEmail") return null;
+  if (body.code === "LABEL_EMAIL_NOT_AVAILABLE") {
+    return { feld: "labelTrackingEmail", feldText: LABEL_EMAIL_NOT_AVAILABLE_TEXT, text: ZUSATZMAIL_HINWEIS };
+  }
+  const text = typeof serverText === "string" && serverText.trim() ? serverText.trim() : null;
+  return text
+    ? { feld: field, feldText: text, text: ZUSATZMAIL_HINWEIS }
+    : { feld: field, feldText: null, text: "Bitte prüfen Sie die zusätzliche E-Mail-Adresse." };
+}
+
+// O1 — Neubepreisung der gestuften Versicherung (POST /api/insurance/reprice, Angebot ohne
+// Deckungsmodell). Seit Backend #432 trägt jeder 4xx-Zweig einen Code; die Texte des Servers nennen
+// dort Feldnamen („goodsValue: …“). Die Weiche davor antwortet mit OFFER_NOT_FOUND, OFFER_ALREADY_USED
+// und OFFER_MISMATCH. Bekannter Code → Kundentext; unbekannt → null (die Seite behält ihre bisherige
+// Rückfallkette). Bis hierher wurde jeder 409 als „Der Preis hat sich geändert“ angezeigt — auch eine
+// Sendung, die gar nicht mehr im Entwurf ist, oder ein bereits verwendetes Angebot.
+const REPRICE_CODE_TEXT = Object.freeze({
+  TARIFF_SELECTION_INVALID: "Der gewählte Tarif konnte nicht zugeordnet werden. Bitte berechnen Sie die Preise erneut.",
+  OFFER_NOT_BOOKABLE: "Dieser Tarif ist nicht mehr verfügbar. Bitte berechnen Sie die Preise erneut.",
+  OFFER_NOT_FOUND: "Dieses Angebot ist nicht mehr gültig. Bitte berechnen Sie die Preise erneut.",
+  OFFER_MISMATCH: "Dieses Angebot passt nicht mehr zu Ihrer Sendung. Bitte berechnen Sie die Preise erneut.",
+  OFFER_ALREADY_USED: OFFER_ALREADY_USED_TEXT,
+  TARIFF_NOT_FOUND: "Der gewählte Tarif ist nicht mehr verfügbar. Bitte berechnen Sie die Preise erneut.",
+  TARIFF_AMBIGUOUS: "Der gewählte Tarif konnte nicht eindeutig zugeordnet werden. Bitte berechnen Sie die Preise erneut.",
+  TARIFF_NOT_INSURABLE: "Dieser Tarif kann nicht zusätzlich versichert werden. Bitte wählen Sie einen anderen Tarif oder „ohne Versicherung“.",
+  INSURANCE_SELECTION_INVALID: "Bitte wählen Sie eine gültige Versicherungsstufe.",
+  CONTENT_DESCRIPTION_INVALID: "Die Inhaltsbeschreibung darf höchstens 35 Zeichen lang sein.",
+  GOODS_VALUE_REQUIRED: "Bitte geben Sie den Warenwert an — er ist für die Versicherung erforderlich.",
+  GOODS_VALUE_INVALID: "Bitte geben Sie einen Warenwert zwischen 1 und 9.999.999 € an.",
+  INSURANCE_VALUE_INVALID: "Bitte geben Sie einen Versicherungswert zwischen 1 und 20.000 € an.",
+  SHIPMENT_NOT_FOUND: "Die Sendung wurde nicht gefunden. Bitte berechnen Sie die Preise erneut.",
+  SHIPMENT_NOT_DRAFT: "Diese Sendung kann nicht mehr geändert werden. Bitte prüfen Sie Ihre Sendungen.",
+});
+export function repriceFehlerText(body) {
+  const code = body && typeof body === "object" ? body.code : null;
+  return typeof code === "string" && Object.prototype.hasOwnProperty.call(REPRICE_CODE_TEXT, code)
+    ? REPRICE_CODE_TEXT[code] : null;
+}

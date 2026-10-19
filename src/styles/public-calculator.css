@@ -1,0 +1,1638 @@
+/* ── Öffentlicher Preisrechner (preisrechner.confidaraexpress.de) ─────────────
+   Eigene, statische Seite (preisrechner/index.html) mit dem Rechner als Insel
+   (src/public-calculator/). Diese Datei ist ihr einziges Stylesheet: sie zieht
+   ausschließlich Schriften und Tokens der Foundation herein — nicht index.css,
+   keine Bereichs-Stylesheets der Anwendung.
+
+   Gestaltung (Go-Live-Abschluss 2026-10-16):
+     Raster      Inhaltsbreite --ce-size-content-wide (1420 px), Seitenrand 16–48 px (--pc-gutter).
+                 Vier Bereiche: Hero mit Rechner · Ergebnisse (erst nach der ersten Berechnung) ·
+                 Ablauf und Plattform in einem Band · Fragen mit persönlichem Kontakt, dann der Fuß.
+     Band        Kopf und Hero liegen auf dem dunklen Band (--ce-color-surface-inverse) mit zwei
+                 ruhenden Lichtflächen in Markenfarben. Es ist ein Rasterelement des Heros
+                 (.pc-hero-grid::before), ohne feste Höhen: einspaltig endet es nach der
+                 Positionierung und die Rechnerkarte ragt darüber hinaus, zweispaltig deckt es den
+                 ganzen Hero.
+     Hero        ab 1080 px zweispaltig (Botschaft | Rechnerkarte bis 680 px), darunter einspaltig
+                 in der Reihenfolge Headline → Rechner → Vorteile. Headline 36 / 44 / 48 / 52 px.
+     Formular    nur Route und Paket. Ist die Karte breit genug (Container Query), stehen Absender und
+                 Empfänger nebeneinander, dazwischen der Routenpfeil. Felder 48 px, Eingabe 16 px.
+                 Das Seitengerüst trägt dieselbe Struktur als statisches Skelett — keine reservierte
+                 Mindesthöhe; die Karte hat ab dem ersten Bild ihre Höhe.
+     Schrift     Cormorant Garamond ausschließlich für die Headline (.pc-display) und die
+                 Abschnittstitel (.pc-section-title). Alles andere DM Sans auf der Skala:
+                 Text 16 · Labels 14 · Hinweise 13 · Kleinstes 12.
+     Farbrollen  Grund --ce-color-bg-canvas-top, Flächen --ce-color-surface(-subtle), Tinte
+                 --ce-color-text-*, Aktion --ce-color-brand, Hinweise --ce-color-status-*,
+                 dunkle Flächen --ce-color-surface-inverse mit --ce-color-text-inverse(-soft).
+     Tiefe       Rechnerkarte Stufe 3, Tarifkarten Stufe 1 (Hover Stufe 2).
+     Bewegung    Übergänge nur über opacity/transform, höchstens 200 ms, aus bei reduzierter
+                 Bewegung. Keine Daueranimation, auch nicht beim Laden. */
+
+@import './fonts.css';
+@import './variables.css';
+
+/* ── Grundlage (nur diese Seite) ─────────────────────────────────────────── */
+.pc-page,
+.pc-page *,
+.pc-page *::before,
+.pc-page *::after {
+  box-sizing: border-box;
+}
+
+.pc-page {
+  --pc-gutter: clamp(16px, 4vw, 48px);
+  margin: 0;
+  min-height: 100dvh;
+  font-family: var(--ce-font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ce-color-text-primary);
+  background-color: var(--ce-color-bg-canvas-top);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.pc-page h1,
+.pc-page h2,
+.pc-page h3,
+.pc-page p,
+.pc-page ul,
+.pc-page ol,
+.pc-page dl,
+.pc-page dd,
+.pc-page figure {
+  margin: 0;
+}
+
+.pc-page ul,
+.pc-page ol {
+  padding: 0;
+  list-style: none;
+}
+
+.pc-page img {
+  max-width: 100%;
+  height: auto;
+}
+
+.pc-page a {
+  color: var(--ce-color-brand-ink);
+  text-underline-offset: 3px;
+}
+
+.pc-page a:focus-visible,
+.pc-page button:focus-visible,
+.pc-page summary:focus-visible,
+.pc-page [tabindex="-1"]:focus-visible {
+  outline: var(--ce-focus-ring);
+  outline-offset: var(--ce-focus-ring-offset);
+}
+
+.pc-page [tabindex="-1"]:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.pc-sr-only,
+.pc-page .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.pc-skip {
+  position: absolute;
+  left: var(--ce-space-4);
+  top: var(--ce-space-3);
+  z-index: 10;
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-surface);
+  box-shadow: var(--ce-elevation-2);
+  font-weight: 600;
+  transform: translateY(-160%);
+}
+
+.pc-skip:focus {
+  transform: none;
+}
+
+.pc-wrap {
+  width: 100%;
+  max-width: var(--ce-size-content-wide);
+  margin-inline: auto;
+  padding-inline: var(--pc-gutter);
+}
+
+/* ── Kopf (auf dem dunklen Band) ─────────────────────────────────────────── */
+.pc-header {
+  position: relative;
+  z-index: 1;
+}
+
+.pc-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ce-space-4);
+  min-height: 72px;
+  padding-block: var(--ce-space-3);
+}
+
+.pc-brand {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  border-radius: var(--ce-radius-sm);
+}
+
+.pc-brand-img {
+  display: block;
+  width: 84px;
+  height: auto;
+}
+
+.pc-header-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--ce-space-2);
+}
+
+.pc-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding-inline: var(--ce-space-4);
+  border: 1px solid var(--ce-color-brand);
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-brand);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.pc-page .pc-link-button {
+  color: var(--ce-color-text-inverse);
+}
+
+.pc-page .pc-link-button:hover {
+  border-color: var(--ce-color-brand-hover);
+  background: var(--ce-color-brand-hover);
+}
+
+.pc-page .pc-link-button--ghost {
+  border-color: rgba(255, 255, 255, 0.34);
+  background: transparent;
+}
+
+.pc-page .pc-link-button--ghost:hover {
+  border-color: rgba(255, 255, 255, 0.64);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.pc-page .pc-header a:focus-visible {
+  outline-color: var(--ce-color-text-inverse);
+}
+
+/* ── Bereich 1: Hero mit Rechner ─────────────────────────────────────────── */
+.pc-hero {
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+  padding-block: var(--ce-space-3) var(--ce-space-7);
+}
+
+.pc-hero-grid {
+  --pc-band-into-card: 112px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "head" "card" "body";
+  row-gap: var(--ce-space-6);
+}
+
+/* Das dunkle Band: ein Rasterelement in der Zeile der Positionierung. Nach oben verlängert es
+   sich hinter den Kopf (der liegt mit z-index 1 darüber), seitlich bis an den Fensterrand (den
+   Überstand um die halbe Bildlaufleiste schneidet .pc-hero ab), nach unten ein Stück in die
+   Rechnerkarte hinein. z-index -1 gilt im eigenen Stapelkontext des Heros (isolation). Zwei
+   ruhende Lichtflächen in Markenfarben geben ihm Tiefe — keine Bewegung, kein Bild. */
+.pc-hero-grid::before {
+  content: "";
+  grid-column: 1 / -1;
+  grid-row: 1 / 2;
+  align-self: stretch;
+  z-index: -1;
+  margin-top: -400px;
+  margin-bottom: calc(-1 * (var(--ce-space-6) + var(--pc-band-into-card)));
+  margin-inline: calc(50% - 50vw);
+  border-bottom: 1px solid var(--ce-color-surface-inverse-edge);
+  background:
+    radial-gradient(ellipse 60% 55% at 88% 18%, var(--ce-color-brand-border), transparent 70%),
+    radial-gradient(ellipse 45% 50% at 6% 92%, var(--ce-color-surface-inverse-edge), transparent 72%),
+    var(--ce-color-surface-inverse);
+}
+
+.pc-hero-head {
+  grid-area: head;
+  padding-top: var(--ce-space-2);
+  color: var(--ce-color-text-inverse);
+}
+
+.pc-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ce-space-2);
+  margin-bottom: var(--ce-space-4);
+  padding: var(--ce-space-1) var(--ce-space-3);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--ce-radius-full);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ce-color-text-inverse-soft);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pc-eyebrow::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-brand);
+}
+
+.pc-display {
+  font-family: var(--ce-font-display);
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 1.06;
+  letter-spacing: -0.012em;
+  text-wrap: balance;
+}
+
+/* Die Headline bricht an der Satzgrenze — nie „Unternehmen. Einfach“ in einer Zeile. */
+.pc-display-line {
+  display: block;
+}
+
+.pc-display-line--soft {
+  color: var(--ce-color-text-inverse-soft);
+}
+
+.pc-lead {
+  max-width: 34em;
+  margin-top: var(--ce-space-5);
+  color: var(--ce-color-text-inverse-soft);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.pc-hero-body {
+  grid-area: body;
+  display: grid;
+  gap: var(--ce-space-5);
+  align-content: start;
+}
+
+.pc-hero-points {
+  display: grid;
+  gap: var(--ce-space-4) var(--ce-space-5);
+}
+
+.pc-hero-points li {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding-left: var(--ce-space-8);
+}
+
+/* Häkchen in einem ruhigen Kreis, aus zwei Kanten gezeichnet. */
+.pc-hero-points li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-brand-soft);
+}
+
+.pc-hero-points li::after {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 7px;
+  width: 6px;
+  height: 11px;
+  border-right: 2px solid var(--ce-color-brand-ink);
+  border-bottom: 2px solid var(--ce-color-brand-ink);
+  transform: rotate(45deg);
+}
+
+.pc-hero-points strong {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.pc-hero-points span {
+  color: var(--ce-color-text-secondary);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.pc-hero-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--ce-space-5);
+  padding-top: var(--ce-space-3);
+  border-top: 1px solid var(--ce-color-border-subtle);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.pc-hero-contact-label {
+  width: 100%;
+  color: var(--ce-color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pc-hero-contact a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 500;
+}
+
+/* ── Rechnerkarte ────────────────────────────────────────────────────────── */
+.pc-calculator-card {
+  position: relative;
+  grid-area: card;
+  min-width: 0;
+  overflow: hidden;
+  scroll-margin-top: var(--ce-space-4);
+  padding: var(--ce-space-5) var(--ce-space-4);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg);
+  background: var(--ce-color-surface);
+  box-shadow: var(--ce-elevation-3);
+}
+
+/* Markenlinie an der Oberkante der Karte. */
+.pc-calculator-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--ce-color-brand), var(--ce-color-brand-violet));
+}
+
+.pc-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ce-space-2) var(--ce-space-4);
+  margin-bottom: var(--ce-space-5);
+}
+
+.pc-card-title {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+  letter-spacing: -0.005em;
+}
+
+.pc-card-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px var(--ce-space-3);
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-brand-soft);
+  color: var(--ce-color-brand-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+/* Die Formularbreite steuert das Zeilenlayout (Container Query), nicht die Fensterbreite. */
+.pc-calculator-root {
+  container: pc-form / inline-size;
+}
+
+.pc-form {
+  display: grid;
+  gap: var(--ce-space-5);
+}
+
+.pc-form--skeleton {
+  pointer-events: none;
+  user-select: none;
+}
+
+.pc-route {
+  display: grid;
+  gap: var(--ce-space-5);
+  min-width: 0;
+}
+
+.pc-route-arrow {
+  display: none;
+}
+
+.pc-row {
+  display: grid;
+  align-content: start;
+  gap: var(--ce-space-2);
+  min-width: 0;
+}
+
+.pc-row-label {
+  display: flex;
+  align-items: center;
+  gap: var(--ce-space-3);
+  color: var(--ce-color-brand-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pc-row-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--ce-color-border-subtle);
+}
+
+.pc-row-fields {
+  display: grid;
+  align-items: start;
+  gap: var(--ce-space-3);
+  min-width: 0;
+}
+
+.pc-row-fields--place {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+}
+
+.pc-row-fields--place > .pc-field-country {
+  grid-column: 1 / -1;
+}
+
+.pc-row-fields--package {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.pc-row-fields--package > :nth-child(-n + 2) {
+  grid-column: span 3;
+}
+
+.pc-row-fields--package > :nth-child(n + 3) {
+  grid-column: span 2;
+}
+
+.pc-row-hint {
+  color: var(--ce-color-text-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* Breite Karte: Absender und Empfänger nebeneinander, dazwischen der Pfeil auf der Höhe des
+   Landfelds (Zeilenbeschriftung 18 + Abstand 8 + Feldlabel 20 + Abstand 4 + halbe Feldhöhe 24
+   − halber Pfeil 16 = 58). Das Paket in einer Zeile. */
+@container pc-form (min-width: 560px) {
+  .pc-route {
+    grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
+    column-gap: var(--ce-space-3);
+  }
+  .pc-route-arrow {
+    position: relative;
+    display: block;
+    align-self: start;
+    width: 32px;
+    height: 32px;
+    margin-top: 58px;
+    border: 1px solid var(--ce-color-border-default);
+    border-radius: var(--ce-radius-full);
+    background: var(--ce-color-surface-subtle);
+  }
+  .pc-route-arrow::after {
+    content: "";
+    position: absolute;
+    left: 10px;
+    top: 11px;
+    width: 8px;
+    height: 8px;
+    border-top: 2px solid var(--ce-color-brand-ink);
+    border-right: 2px solid var(--ce-color-brand-ink);
+    transform: rotate(45deg);
+  }
+  .pc-row-fields--package {
+    grid-template-columns: minmax(0, 0.75fr) repeat(4, minmax(0, 1fr));
+  }
+  .pc-row-fields--package > :nth-child(n) {
+    grid-column: auto;
+  }
+}
+
+/* Die zentrale Feldkomponente (components/ui/Field.jsx) — hier in den Tokens dieser Seite, ohne forms.css. */
+.pc-page .field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ce-space-1);
+  min-width: 0;
+}
+
+.pc-page .field-label {
+  overflow: hidden;
+  color: var(--ce-color-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pc-page .field-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 var(--ce-space-3);
+  border: 1px solid var(--ce-color-border-interactive);
+  border-radius: var(--ce-radius-sm);
+  background-color: var(--ce-color-surface);
+  color: var(--ce-color-text-primary);
+  font: inherit;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.pc-page .field-input::placeholder {
+  color: var(--ce-color-text-placeholder);
+  opacity: 1;
+}
+
+.pc-page .field-input:hover {
+  border-color: var(--ce-color-border-interactive-hover);
+}
+
+.pc-page .field-input:focus {
+  outline: none;
+  border-color: var(--ce-color-border-focus);
+  box-shadow: var(--ce-elevation-focus-ring);
+}
+
+.pc-page .field-input-error,
+.pc-page .field-input-error:hover {
+  border-color: var(--ce-color-status-error-fg);
+}
+
+.pc-page .field-select {
+  appearance: none;
+  padding-right: var(--ce-space-8);
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+/* Pfeil der Auswahlfelder: zwei Kanten, auf die Feldmitte gesetzt (Label 20 + Abstand 4 + 24). */
+.pc-page .field:has(> .field-select)::after {
+  content: "";
+  position: absolute;
+  right: 18px;
+  top: 41px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--ce-color-text-secondary);
+  border-bottom: 2px solid var(--ce-color-text-secondary);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+.pc-page .ce-field-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pc-page .ce-field--has-unit .field-input {
+  padding-right: var(--ce-space-8);
+}
+
+.pc-page .ce-field-unit {
+  position: absolute;
+  right: var(--ce-space-3);
+  color: var(--ce-color-text-muted);
+  font-size: 14px;
+  line-height: 20px;
+  pointer-events: none;
+}
+
+.pc-page .field-hint {
+  color: var(--ce-color-text-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.pc-page .field-error {
+  color: var(--ce-color-status-error-fg);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.pc-submit-row {
+  display: grid;
+  gap: var(--ce-space-2);
+}
+
+.pc-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ce-space-2);
+  min-height: 48px;
+  padding: var(--ce-space-2) var(--ce-space-5);
+  border: 1px solid var(--ce-color-border-default);
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-surface);
+  color: var(--ce-color-text-primary);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.pc-button--primary {
+  border-color: var(--ce-color-brand);
+  background: var(--ce-color-brand);
+  color: var(--ce-color-text-inverse);
+}
+
+.pc-button--primary:hover {
+  border-color: var(--ce-color-brand-hover);
+  background: var(--ce-color-brand-hover);
+}
+
+.pc-button--primary:active {
+  background: var(--ce-color-brand-active);
+}
+
+.pc-button--primary:disabled {
+  cursor: progress;
+  border-color: var(--ce-color-brand-active);
+  background: var(--ce-color-brand-active);
+}
+
+.pc-button--submit {
+  width: 100%;
+  min-height: 56px;
+  font-size: 16px;
+}
+
+/* Pfeil nach rechts hinter dem Absendetext — gezeichnet, keine Schriftzeichen. */
+.pc-button--submit::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  margin-left: var(--ce-space-1);
+  border-top: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.pc-button--secondary {
+  border-color: var(--ce-color-brand-border);
+  color: var(--ce-color-brand-ink);
+}
+
+.pc-button--secondary:hover {
+  background: var(--ce-color-brand-soft);
+}
+
+/* Ausgeschaltet: der Hinweis steht an der Stelle des Knopfs, in dessen Höhe. */
+.pc-unavailable {
+  display: grid;
+  align-content: center;
+  min-height: 56px;
+  padding: 7px var(--ce-space-4);
+  border: 1px solid var(--ce-color-status-info-border);
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-status-info-surface);
+  color: var(--ce-color-status-info-fg);
+}
+
+.pc-unavailable-title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.pc-unavailable-text {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.pc-page .pc-unavailable a {
+  color: inherit;
+  font-weight: 600;
+}
+
+.pc-form-note {
+  color: var(--ce-color-text-muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* ── Hinweise ────────────────────────────────────────────────────────────── */
+.pc-notice {
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border: 1px solid var(--ce-color-status-info-border);
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-status-info-surface);
+  color: var(--ce-color-status-info-fg);
+}
+
+.pc-notice--warning {
+  border-color: var(--ce-color-status-warning-border);
+  background: var(--ce-color-status-warning-surface);
+  color: var(--ce-color-status-warning-fg);
+}
+
+.pc-notice--error {
+  border-color: var(--ce-color-status-error-border);
+  background: var(--ce-color-status-error-surface);
+  color: var(--ce-color-status-error-fg);
+}
+
+.pc-notice-title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.pc-notice-text {
+  margin-top: 2px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.pc-notice .pc-button {
+  margin-top: var(--ce-space-3);
+}
+
+.pc-boundary {
+  padding: var(--ce-space-4);
+}
+
+/* ── Bereich 2: Ergebnisse (erst nach der ersten Berechnung) ─────────────── */
+.pc-results-section {
+  scroll-margin-top: var(--ce-space-3);
+  padding-block: var(--ce-space-6) var(--ce-space-9);
+}
+
+.pc-results {
+  display: grid;
+  gap: var(--ce-space-5);
+}
+
+.pc-results-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--ce-space-3) var(--ce-space-5);
+  padding-bottom: var(--ce-space-4);
+  border-bottom: 1px solid var(--ce-color-border-default);
+}
+
+.pc-results-head-text {
+  display: grid;
+  gap: var(--ce-space-1);
+  min-width: 0;
+}
+
+.pc-results-summary {
+  color: var(--ce-color-text-secondary);
+  font-size: 15px;
+  line-height: 22px;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  overflow-wrap: break-word;
+}
+
+.pc-results-edit {
+  flex: none;
+}
+
+.pc-results-foot {
+  max-width: 62em;
+  color: var(--ce-color-text-muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.pc-loading {
+  display: grid;
+  gap: var(--ce-space-5);
+}
+
+.pc-loading-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ce-space-1) var(--ce-space-3);
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border: 1px solid var(--ce-color-brand-border-soft);
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-brand-soft);
+  color: var(--ce-color-brand-ink);
+}
+
+.pc-loading-title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.pc-loading-time {
+  font-size: 14px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.pc-loading-slow {
+  width: 100%;
+  color: var(--ce-color-text-secondary);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.pc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--ce-space-3) var(--ce-space-5);
+}
+
+.pc-count {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.pc-chips {
+  display: flex;
+  flex: 1 1 320px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ce-space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.pc-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding-inline: var(--ce-space-4);
+  border: 1px solid var(--ce-color-border-default);
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-surface);
+  color: var(--ce-color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.pc-chip:hover {
+  border-color: var(--ce-color-border-strong);
+}
+
+.pc-chip--on {
+  border-color: var(--ce-color-brand);
+  background: var(--ce-color-brand-soft);
+  color: var(--ce-color-brand-ink);
+  font-weight: 600;
+}
+
+.pc-chip--on:hover {
+  border-color: var(--ce-color-brand-hover);
+}
+
+.pc-chip-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Fokusring nur bei Tastaturbedienung; ohne :has() wie bisher bei jedem Fokus. */
+.pc-chip:has(.pc-chip-input:focus-visible) {
+  outline: var(--ce-focus-ring);
+  outline-offset: var(--ce-focus-ring-offset);
+}
+
+@supports not selector(:has(*)) {
+  .pc-chip:focus-within {
+    outline: var(--ce-focus-ring);
+    outline-offset: var(--ce-focus-ring-offset);
+  }
+}
+
+.pc-chip-reset {
+  min-height: 40px;
+  padding-inline: var(--ce-space-2);
+  border: 0;
+  background: transparent;
+  color: var(--ce-color-brand-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.pc-sort {
+  flex: 0 0 auto;
+  min-width: 220px;
+}
+
+.pc-offers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: var(--ce-space-5);
+}
+
+.pc-offers-item {
+  display: flex;
+  min-width: 0;
+}
+
+/* Tarifkarten einer Reihe teilen ihre Zeilen (Kopf, Eckdaten, Preis, Hinweise, Aktion): Preise und
+   Aktionen stehen nebeneinander auf einer Höhe. Ohne subgrid bleibt es bei der Spalte je Karte. */
+@supports (grid-template-rows: subgrid) {
+  .pc-offers--list .pc-offers-item {
+    display: grid;
+    grid-row: span 5;
+    grid-template-rows: subgrid;
+  }
+  .pc-offers--list .pc-offer {
+    display: grid;
+    grid-row: 1 / -1;
+    grid-template-rows: subgrid;
+    row-gap: var(--ce-space-4);
+  }
+  .pc-offers--list .pc-offer-head { grid-row: 1; }
+  .pc-offers--list .pc-offer-facts { grid-row: 2; }
+  .pc-offers--list .pc-offer-price { grid-row: 3; align-self: start; }
+  .pc-offers--list .pc-offer-hints { grid-row: 4; align-self: start; }
+  .pc-offers--list .pc-offer-action { grid-row: 5; }
+}
+
+/* ── Tarifkarte ──────────────────────────────────────────────────────────── */
+.pc-offer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ce-space-4);
+  width: 100%;
+  min-width: 0;
+  padding: var(--ce-space-5);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg);
+  background: var(--ce-color-surface);
+  box-shadow: var(--ce-elevation-1);
+}
+
+.pc-offer:hover {
+  border-color: var(--ce-color-brand-border);
+  box-shadow: var(--ce-elevation-2);
+}
+
+.pc-offer--quiet,
+.pc-offer--quiet:hover {
+  border-color: var(--ce-color-border-subtle);
+  background: var(--ce-color-surface-subtle);
+  box-shadow: none;
+}
+
+.pc-offer--skeleton {
+  min-height: 340px;
+  box-shadow: none;
+}
+
+.pc-skeleton-line,
+.pc-skeleton-block {
+  display: block;
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-surface-muted);
+}
+
+.pc-skeleton-line {
+  width: 70%;
+  height: 16px;
+}
+
+.pc-skeleton-line--short {
+  width: 45%;
+}
+
+.pc-skeleton-block {
+  flex: 1;
+  min-height: 160px;
+}
+
+.pc-offer-head {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--ce-space-2) var(--ce-space-3);
+}
+
+.pc-offer-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 44px;
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-surface);
+}
+
+.pc-offer-logo img {
+  width: 52px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.pc-offer-name {
+  min-width: 0;
+}
+
+.pc-offer-carrier {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
+  overflow-wrap: break-word;
+}
+
+.pc-offer-service {
+  color: var(--ce-color-text-secondary);
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: break-word;
+}
+
+.pc-offer-tag {
+  grid-column: 2;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px var(--ce-space-2);
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-brand-soft);
+  color: var(--ce-color-brand-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.pc-offer-tag--dropoff {
+  background: var(--ce-color-status-neutral-surface);
+  color: var(--ce-color-status-neutral-fg);
+}
+
+.pc-offer-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ce-space-3);
+  padding-block: var(--ce-space-3);
+  border-block: 1px solid var(--ce-color-border-subtle);
+}
+
+.pc-fact {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pc-fact dt {
+  color: var(--ce-color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.pc-fact dd {
+  display: grid;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.pc-fact-main {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.pc-fact-sub {
+  color: var(--ce-color-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.pc-fact-note {
+  color: var(--ce-color-text-muted);
+}
+
+.pc-offer-price {
+  display: grid;
+  gap: 2px;
+}
+
+.pc-price-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--ce-space-2);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+}
+
+.pc-price-amount {
+  font-family: var(--ce-font-numeric);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 34px;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* „zzgl. MwSt." klein direkt unter dem Nettopreis. */
+.pc-price-vat {
+  color: var(--ce-color-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.pc-price-note {
+  margin-top: var(--ce-space-1);
+  color: var(--ce-color-text-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.pc-offer-hints {
+  display: grid;
+  gap: var(--ce-space-1);
+}
+
+.pc-offer-hints li {
+  position: relative;
+  padding-left: var(--ce-space-4);
+  color: var(--ce-color-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.pc-offer-hints li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 8px;
+  width: 5px;
+  height: 5px;
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-text-muted);
+}
+
+.pc-offer-action {
+  margin-top: auto;
+  padding-top: var(--ce-space-1);
+}
+
+.pc-offer-continue {
+  width: 100%;
+}
+
+/* In der Höhe des Knopfs, damit Aktionen einer Reihe oben und unten bündig stehen. */
+.pc-offer-unavailable {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: var(--ce-space-2) var(--ce-space-3);
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-status-neutral-surface);
+  color: var(--ce-color-status-neutral-fg);
+  font-size: 14px;
+  line-height: 20px;
+  text-align: center;
+}
+
+/* ── Bereich 3: Ablauf und Plattform ─────────────────────────────────────── */
+.pc-platform {
+  padding-block: var(--ce-space-8);
+  border-block: 1px solid var(--ce-color-border-subtle);
+  background: var(--ce-color-surface);
+}
+
+.pc-platform-grid {
+  display: grid;
+  gap: var(--ce-space-8);
+}
+
+.pc-platform-col {
+  min-width: 0;
+}
+
+.pc-section-title {
+  font-family: var(--ce-font-display);
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+  text-wrap: balance;
+}
+
+.pc-steps {
+  display: grid;
+  gap: var(--ce-space-4);
+  margin-top: var(--ce-space-5);
+}
+
+.pc-step {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--ce-space-3);
+}
+
+.pc-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-brand);
+  color: var(--ce-color-text-inverse);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.pc-step-body {
+  display: grid;
+  gap: 2px;
+  padding-top: var(--ce-space-1);
+}
+
+.pc-step-title,
+.pc-feature-title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.pc-step-text,
+.pc-feature-text {
+  color: var(--ce-color-text-secondary);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.pc-features {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ce-space-4) var(--ce-space-5);
+  margin-top: var(--ce-space-5);
+}
+
+.pc-feature {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding-left: var(--ce-space-3);
+  border-left: 2px solid var(--ce-color-brand-border);
+}
+
+/* ── Bereich 4: Fragen, persönlicher Kontakt und Fuß ─────────────────────── */
+.pc-faq-section {
+  padding-block: var(--ce-space-8);
+}
+
+.pc-faq-grid {
+  display: grid;
+  gap: var(--ce-space-5);
+}
+
+.pc-faq-intro {
+  display: grid;
+  align-content: start;
+  gap: var(--ce-space-5);
+}
+
+.pc-service {
+  display: grid;
+  justify-items: start;
+  gap: var(--ce-space-2);
+  padding: var(--ce-space-5);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg);
+  background: var(--ce-color-surface);
+}
+
+.pc-service-title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.pc-service-text {
+  color: var(--ce-color-text-secondary);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.pc-service-lines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--ce-space-5);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.pc-service-lines a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 500;
+}
+
+.pc-faq {
+  display: grid;
+  align-content: start;
+  border-top: 1px solid var(--ce-color-border-default);
+}
+
+.pc-faq-item {
+  border-bottom: 1px solid var(--ce-color-border-default);
+}
+
+.pc-faq-item summary {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  padding: var(--ce-space-3) var(--ce-space-8) var(--ce-space-3) 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.pc-faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.pc-faq-item summary::after {
+  content: "";
+  position: absolute;
+  right: var(--ce-space-3);
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -6px;
+  border-right: 2px solid var(--ce-color-brand-ink);
+  border-bottom: 2px solid var(--ce-color-brand-ink);
+  transform: rotate(45deg);
+}
+
+.pc-faq-item[open] summary::after {
+  margin-top: -2px;
+  transform: rotate(-135deg);
+}
+
+.pc-faq-item p {
+  max-width: 62ch;
+  padding-bottom: var(--ce-space-4);
+  color: var(--ce-color-text-secondary);
+  font-size: 15px;
+  line-height: 24px;
+}
+
+.pc-footer {
+  background: var(--ce-color-surface-inverse);
+  color: var(--ce-color-text-inverse-soft);
+}
+
+.pc-footer-inner {
+  display: grid;
+  justify-items: start;
+  gap: var(--ce-space-3);
+  padding-block: var(--ce-space-7);
+}
+
+.pc-footer-brand {
+  width: 84px;
+  height: auto;
+}
+
+.pc-footer-note {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.pc-footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--ce-space-5);
+}
+
+.pc-page .pc-footer-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--ce-color-text-inverse);
+  font-size: 14px;
+}
+
+.pc-page .pc-footer a:focus-visible {
+  outline-color: var(--ce-color-text-inverse);
+}
+
+/* ── Seite nicht gefunden (preisrechner/404.html) ────────────────────────── */
+.pc-page--notfound {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Das Band füllt die Höhe bis zum Fuß — kein heller Streifen darunter. */
+.pc-notfound-band {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  background: var(--ce-color-surface-inverse);
+  color: var(--ce-color-text-inverse);
+}
+
+.pc-notfound {
+  display: grid;
+  flex: 1;
+  align-content: center;
+  padding-block: var(--ce-space-9) var(--ce-space-11);
+}
+
+.pc-notfound-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ce-space-3);
+  margin-top: var(--ce-space-7);
+}
+
+/* ── Breiten ─────────────────────────────────────────────────────────────── */
+@media (min-width: 480px) {
+  .pc-hero-points { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 640px) {
+  .pc-hero { padding-block: var(--ce-space-4) var(--ce-space-8); }
+  .pc-calculator-card { padding: var(--ce-space-6); }
+  .pc-card-title { font-size: 24px; line-height: 32px; }
+  .pc-lead { font-size: 18px; }
+  .pc-section-title { font-size: 28px; }
+}
+
+@media (min-width: 640px) {
+  .pc-display { font-size: 44px; }
+}
+
+@media (min-width: 720px) {
+  .pc-hero-points { column-gap: var(--ce-space-7); }
+  .pc-footer-inner { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: var(--ce-space-6); }
+}
+
+@media (min-width: 900px) {
+  .pc-platform-grid { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); column-gap: clamp(40px, 6vw, 112px); }
+  .pc-faq-grid { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.6fr); column-gap: clamp(40px, 6vw, 112px); }
+}
+
+@media (min-width: 1080px) {
+  .pc-hero { padding-block: var(--ce-space-5) var(--ce-space-9); }
+  /* Karte höchstens 680 px (darunter wechselt das Formular per Container Query in die gestapelte
+     Form); die zweite Zeile ist flexibel und nimmt eine höhere Karte auf, ohne die Botschaft
+     auseinanderzuziehen. Das Band deckt hier den ganzen Hero bis zu seinem unteren Rand. */
+  .pc-hero-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, min(680px, 56%));
+    grid-template-areas: "head card" "body card";
+    grid-template-rows: auto 1fr;
+    align-items: start;
+    column-gap: var(--ce-space-9);
+    row-gap: 0;
+  }
+  .pc-hero-grid::before {
+    grid-row: 1 / -1;
+    margin-bottom: calc(-1 * var(--ce-space-9));
+  }
+  .pc-hero-head { padding-top: var(--ce-space-7); }
+  .pc-hero-body { margin-top: var(--ce-space-7); color: var(--ce-color-text-inverse); }
+  .pc-hero-points li::before { background: rgba(255, 255, 255, 0.1); }
+  .pc-hero-points li::after { border-color: var(--ce-color-text-inverse); }
+  .pc-hero-points span { color: var(--ce-color-text-inverse-soft); }
+  .pc-hero-contact { border-top-color: rgba(255, 255, 255, 0.16); }
+  .pc-hero-contact-label { color: var(--ce-color-text-inverse-soft); }
+  .pc-page .pc-hero-contact a { color: var(--ce-color-text-inverse); }
+  .pc-page .pc-hero-body a:focus-visible { outline-color: var(--ce-color-text-inverse); }
+  .pc-calculator-card { padding: var(--ce-space-7); }
+}
+
+/* Kleine Laptops: die linke Spalte ist für zwei Vorteilsspalten zu schmal — eine Spalte, Titel und
+   Zusatz in einer Zeile. Ab 1440 px wieder das Raster aus zwei Spalten. */
+@media (min-width: 1080px) and (max-width: 1439px) {
+  .pc-hero-points { grid-template-columns: minmax(0, 1fr); row-gap: var(--ce-space-3); }
+  .pc-hero-points li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--ce-space-2); min-height: 28px; padding-top: 3px; }
+}
+
+@media (min-width: 1366px) {
+  .pc-display { font-size: 48px; }
+}
+
+@media (min-width: 1366px) {
+  .pc-hero-grid { column-gap: var(--ce-space-10); }
+}
+
+@media (min-width: 1440px) {
+  .pc-display { font-size: 52px; }
+}
+
+@media (pointer: coarse) {
+  .pc-chip,
+  .pc-chip-reset { min-height: 44px; }
+}
+
+/* ── Bewegung: nur Übergänge, höchstens 200 ms, aus bei reduzierter Bewegung ─ */
+@media (prefers-reduced-motion: no-preference) {
+  .pc-button,
+  .pc-link-button,
+  .pc-chip,
+  .pc-offer {
+    transition: opacity var(--ce-motion-fast) ease, transform var(--ce-motion-fast) ease;
+  }
+  .pc-button:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .pc-offer:not(.pc-offer--quiet):not(.pc-offer--skeleton):hover {
+    transform: translateY(-2px);
+  }
+  .pc-faq-item summary::after {
+    transition: transform var(--ce-motion-standard) var(--ce-motion-ease-standard);
+  }
+  .pc-skip {
+    transition: transform var(--ce-motion-fast) ease;
+  }
+}

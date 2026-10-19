@@ -65,11 +65,11 @@ export const INSURANCE_INFO_SECTIONS = Object.freeze([
     title: "Überblick",
     lead:
       "Zu jeder Sendung kann optional eine zusätzliche Transportversicherung gewählt werden. " +
-      "Sie tritt neben die gesetzliche Haftung des Versanddienstleisters und kann Schäden abdecken, " +
+      "Sie tritt neben die gesetzliche Haftung für die Beförderung und kann Schäden abdecken, " +
       "die über deren Grenzen hinausgehen.",
     items: Object.freeze([
       "Die Auswahl erfolgt im Buchungsprozess und ist freiwillig.",
-      "Ohne Zusatzversicherung gelten allein die Haftungs- und Beförderungsbedingungen des gewählten Versanddienstleisters.",
+      "Ohne Zusatzversicherung bleibt es bei der gesetzlichen und vertraglichen Haftung, die in der Regel der Höhe nach begrenzt ist.",
       "Der Versicherungsschutz richtet sich nach den im jeweiligen Versicherungsfall anwendbaren Versicherungsbedingungen.",
     ]),
     quelle: "produkt",
@@ -293,7 +293,7 @@ export const INSURANCE_INFO_SECTIONS = Object.freeze([
     items: Object.freeze([
       "Bestimmte Güter können vom Versicherungsschutz ausgeschlossen sein oder eine vorherige Freigabe erfordern.",
       "Der Versicherungsschutz unterliegt weiteren Voraussetzungen, Grenzen und Ausschlüssen, die sich aus den anwendbaren Versicherungsbedingungen ergeben.",
-      "Ohne zusätzliche Transportversicherung gelten allein die Haftungs- und Beförderungsbedingungen des gewählten Versanddienstleisters.",
+      "Ohne zusätzliche Transportversicherung bleibt es bei der gesetzlichen und vertraglichen Haftung, die in der Regel der Höhe nach begrenzt ist.",
     ]),
     quelle: "bedingungen",
   }),

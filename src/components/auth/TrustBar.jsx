@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Icon } from "../ui/Icon";
 
 const TRUST_ITEMS = [
-  { ico: "truck",   title: "Live Tracking",           sub: "Echtzeit-Transparenz" },
+  { ico: "truck",   title: "Sendungsverfolgung",      sub: "Status direkt im Konto" },
   { ico: "shield",  title: "Sicher & Geschützt",      sub: "Ihre Daten in besten Händen" },
   { ico: "headset", title: "Persönlicher Support",    sub: "Per E-Mail & Telefon" },
   { ico: "cube",    title: "Carrier-Vergleich",       sub: "DHL, UPS, DPD & mehr" },

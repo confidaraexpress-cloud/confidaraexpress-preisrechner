@@ -62,14 +62,22 @@ test("4 — der Badge bleibt für Screenreader vorlesbar", () => {
   assert.equal(badgeAriaLabel(0), "Benachrichtigungen");
   assert.equal(badgeAriaLabel(1), "Benachrichtigungen: 1 ungelesen");
   assert.equal(badgeAriaLabel(12), "Benachrichtigungen: 12 ungelesen");
-  // Redesign 2026-10: der Einstieg ist der Textknopf „Mitteilungen". Sein
-  // zugänglicher Name beginnt mit dem sichtbaren Wort (WCAG 2.5.3) und nennt
-  // die Zahl ausgeschrieben; das visuelle "9+" bleibt aria-hidden.
-  assert.match(bell, /const KNOPF_TEXT = "Mitteilungen";/, "der sichtbare Knopftext fehlt");
+  // Desktop (Redesign 2026-10): der Textknopf „Mitteilungen". Mobile Topbar
+  // (Betreiberentscheidung 2026-10-17): das Glockensymbol. Der zugängliche Name
+  // ist in beiden Fällen „Mitteilungen“ und nennt die Zahl ausgeschrieben; das
+  // visuelle "9+" bleibt aria-hidden. Die Schutzfunktion — ein benannter Knopf,
+  // der die Zahl vorliest — gilt unverändert für beide Darstellungen.
+  assert.match(bell, /const KNOPF_TEXT = "Mitteilungen";/, "der Name des Knopfes fehlt");
   assert.match(bell, /aria-label=\{knopfName\(unread\)\}/, "der zugängliche Name nennt die Zahl nicht");
   assert.match(bell, /`\$\{KNOPF_TEXT\}, \$\{Math\.floor\(n\)\} ungelesen`/, "die Zahl wird nicht ausgeschrieben");
-  assert.match(bell, /<span className="ntf-bell-text">\{KNOPF_TEXT\}<\/span>/, "der Knopf zeigt kein Wort");
+  assert.match(bell, /variant === "topbar"\s*\?\s*<Icon n="bell" s=\{ICON_SIZE\.lg\} \/>\s*:\s*<span className="ntf-bell-text">\{KNOPF_TEXT\}<\/span>/,
+    "mobile Topbar: Glocke, Desktop: das Wort „Mitteilungen“");
+  assert.match(bell, /title=\{badgeAriaLabel\(unread\)\}/, "der Symbolknopf braucht einen Tooltip");
   assert.match(bell, /<span className="ntf-badge" aria-hidden="true">/);
+  // Der Zähler steht an der Glocke (Overlay), nicht neben einem Wort.
+  assert.match(css, /\.ntf-bell-topbar \.ntf-badge \{[^}]*position: absolute;/, "der Zähler sitzt nicht an der Glocke");
+  assert.match(css, /\.ntf-bell-topbar \{[^}]*min-width: var\(--ce-size-touch-target\);[^}]*min-height: var\(--ce-size-touch-target\);/,
+    "die Glocke ist kein 44-px-Ziel");
 });
 
 // ═══ B) Normalisierung ══════════════════════════════════════════════════════

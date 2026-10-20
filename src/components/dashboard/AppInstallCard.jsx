@@ -53,16 +53,15 @@ export function AppInstallCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardFocusPending]);
 
-  // Der Navigations-Guard wechselt erst nach Bestätigung von „Neue Sendung"
-  // ins Profil. Die Karte kann schon im DOM stehen, bevor der Seitenwechsel
-  // fertig gelayoutet ist: ein einmaliger Scroll direkt im Effekt positionierte
-  // dann gelegentlich die Karte außerhalb des sichtbaren Fensters (E2E C11).
+  // Der Sprung kann mit dem Abbau des Verlassen-Dialogs, der bisherigen
+  // Scrollposition und spaeten Layout-Aenderungen der Profilabschnitte
+  // konkurrieren. Ein oder zwei rAF reichen nicht (CI C11: Titel fokussiert,
+  // Karte weiterhin ausserhalb des Fensters). Die Ausrichtung ist deshalb
+  // am TATSAECHLICHEN Rechteck verankert, nicht am Zeitpunkt des Mounts.
   //
-  // Nach dem Rendern zweimal am tatsächlichen Kartenrechteck ausrichten und
-  // ERST DANN den Titel fokussieren. So signalisiert der Fokus einen fertigen
-  // Sprung, nicht nur einen abgearbeiteten Scroll-Aufruf. Kein Timer, kein
-  // automatisches Nachscrollen nach der Nutzeraktion. `scroll-margin-top`
-  // berücksichtigt die mobile Topbar; „instant" verhindert lange Animationen.
+  // Kurzzeitig auf Resize und fremde programmatische Scrolls reagieren,
+  // danach aufhoeren. Sobald der Nutzer selbst scrollt oder interagiert,
+  // hat sein Wunsch Vorrang; beim Unmount wird alles aufgeraeumt.
   useEffect(() => {
     if (!sprung) return undefined;
 
@@ -73,33 +72,64 @@ export function AppInstallCard() {
       return undefined;
     }
 
-    let ersterFrame = 0;
-    let zweiterFrame = 0;
+    let aktiv = true;
+    let frame = 0;
+    let fertigTimer = 0;
+    let fokusGesetzt = false;
+    const imBild = () => {
+      const r = karteEl.getBoundingClientRect();
+      return r.top >= 0 && r.top < window.innerHeight;
+    };
     const ausrichten = () => {
-      if (!karteEl.isConnected || typeof karteEl.scrollIntoView !== "function") return;
-      try {
-        karteEl.scrollIntoView({ block: "start", behavior: "instant" });
-      } catch {
-        karteEl.scrollIntoView();
+      frame = 0;
+      if (!aktiv || !karteEl.isConnected) return;
+      if (!imBild()) {
+        const r = karteEl.getBoundingClientRect();
+        const abstand = parseFloat(getComputedStyle(karteEl).scrollMarginTop) || 0;
+        const root = document.scrollingElement;
+        const max = root ? Math.max(0, root.scrollHeight - window.innerHeight) : Infinity;
+        const ziel = Math.max(0, Math.min(max, window.scrollY + r.top - abstand));
+        // Explizites Fensterziel statt nur scrollIntoView: bei einem erst
+        // entstehenden Profil wurde das Dokument vorher nicht verschoben.
+        window.scrollTo({ top: ziel, behavior: "instant" });
+      }
+      if (imBild() && !fokusGesetzt && titelEl.isConnected) {
+        titelEl.focus({ preventScroll: true });
+        fokusGesetzt = true;
       }
     };
+    const planen = () => {
+      if (!aktiv || frame) return;
+      frame = requestAnimationFrame(ausrichten);
+    };
+    const beenden = () => {
+      if (aktiv) setSprung(false);
+    };
 
-    ersterFrame = requestAnimationFrame(() => {
-      ausrichten();
-      zweiterFrame = requestAnimationFrame(() => {
-        if (karteEl.isConnected) {
-          const top = karteEl.getBoundingClientRect().top;
-          if (top < 0 || top >= window.innerHeight) ausrichten();
-        }
-        if (titelEl.isConnected) titelEl.focus({ preventScroll: true });
-        setSprung(false);
-      });
-    });
+    const beobachter = typeof ResizeObserver === "function"
+      ? new ResizeObserver(planen) : null;
+    if (beobachter) {
+      beobachter.observe(karteEl);
+      const abschnitte = karteEl.closest(".profile-sections");
+      if (abschnitte) beobachter.observe(abschnitte);
+    }
+    window.addEventListener("scroll", planen, { passive: true });
+    // Nutzeraktionen beenden die kurze Nachfuehrung: kein Scroll-Hijacking.
+    for (const event of ["wheel", "touchstart", "pointerdown", "keydown"]) {
+      window.addEventListener(event, beenden, { passive: true });
+    }
+    planen();
+    fertigTimer = window.setTimeout(beenden, 2000);
 
-    // Bei einem weiteren Seitenwechsel niemals nachträglich fokussieren.
     return () => {
-      cancelAnimationFrame(ersterFrame);
-      cancelAnimationFrame(zweiterFrame);
+      aktiv = false;
+      if (frame) cancelAnimationFrame(frame);
+      clearTimeout(fertigTimer);
+      beobachter?.disconnect();
+      window.removeEventListener("scroll", planen);
+      for (const event of ["wheel", "touchstart", "pointerdown", "keydown"]) {
+        window.removeEventListener(event, beenden);
+      }
     };
   }, [sprung]);
 

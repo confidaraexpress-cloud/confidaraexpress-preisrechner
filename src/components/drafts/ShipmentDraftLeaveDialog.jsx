@@ -23,11 +23,27 @@ export function ShipmentDraftLeaveDialog({ mode = "idle", busy = false, onSave, 
   const cardRef = useRef(null);
   const continueRef = useRef(null);
   const openerRef = useRef(typeof document !== "undefined" ? document.activeElement : null);
+  // Beim Verlassen gehört der Fokus der Zielseite. Das alte Navigationselement
+  // beim Unmount wieder zu fokussieren, konkurriert mit deren Scroll-/Fokusziel.
+  const verlaesstBereichRef = useRef(false);
+
+  const weiterBearbeiten = () => {
+    verlaesstBereichRef.current = false;
+    onContinue();
+  };
+  const verwerfenUndVerlassen = () => {
+    verlaesstBereichRef.current = true;
+    onDiscard();
+  };
+  const speichernUndVerlassen = () => {
+    verlaesstBereichRef.current = true;
+    onSave();
+  };
 
   useEffect(() => {
     continueRef.current?.focus();
     const onKey = (e) => {
-      if (e.key === "Escape" && !busy) { e.preventDefault(); onContinue(); return; }
+      if (e.key === "Escape" && !busy) { e.preventDefault(); weiterBearbeiten(); return; }
       if (e.key === "Tab" && cardRef.current) {
         const f = cardRef.current.querySelectorAll("button:not([disabled])");
         if (f.length === 0) return;
@@ -39,7 +55,9 @@ export function ShipmentDraftLeaveDialog({ mode = "idle", busy = false, onSave, 
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
-      openerRef.current?.focus?.();
+      if (!verlaesstBereichRef.current && openerRef.current?.isConnected) {
+        openerRef.current.focus({ preventScroll: true });
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busy]);
@@ -51,10 +69,10 @@ export function ShipmentDraftLeaveDialog({ mode = "idle", busy = false, onSave, 
   const primaryLabel = isConflict ? "Aktuelle Version laden"
     : (mode === "error" || mode === "rateLimited") ? "Erneut versuchen"
     : "Als Entwurf speichern";
-  const onPrimary = isConflict ? onReloadCurrent : onSave;
+  const onPrimary = isConflict ? onReloadCurrent : speichernUndVerlassen;
 
   return (
-    <div className="dft-dialog-overlay" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onContinue(); }}>
+    <div className="dft-dialog-overlay" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) weiterBearbeiten(); }}>
       <div ref={cardRef} className="dft-dialog-card" role="dialog" aria-modal="true" aria-labelledby="dft-leave-title" aria-describedby="dft-leave-desc">
         <h2 id="dft-leave-title" className="dft-dialog-title">Sendung als Entwurf speichern?</h2>
         <p id="dft-leave-desc" className="dft-dialog-desc">
@@ -71,10 +89,10 @@ export function ShipmentDraftLeaveDialog({ mode = "idle", busy = false, onSave, 
           <button type="button" className="btn btn-primary" onClick={onPrimary} disabled={busy} aria-busy={busy || undefined}>
             {busy ? <><span className="spinner" /> Wird gespeichert …</> : primaryLabel}
           </button>
-          <button type="button" className="btn btn-ghost dft-leave-discard" onClick={onDiscard} disabled={busy}>
+          <button type="button" className="btn btn-ghost dft-leave-discard" onClick={verwerfenUndVerlassen} disabled={busy}>
             Verwerfen und verlassen
           </button>
-          <button type="button" ref={continueRef} className="btn btn-outline" onClick={onContinue} disabled={busy}>
+          <button type="button" ref={continueRef} className="btn btn-outline" onClick={weiterBearbeiten} disabled={busy}>
             Weiter bearbeiten
           </button>
         </div>

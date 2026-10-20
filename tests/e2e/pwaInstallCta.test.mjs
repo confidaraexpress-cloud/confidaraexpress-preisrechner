@@ -455,5 +455,21 @@ test("C11 — Verlassen-Guard: Abbruch markiert nichts und hinterlässt keinen F
   }
   assert.equal(await hinweisBenutzt(page), true);
   assert.equal(await eintrag.count(), 0);
+
+  // Realistischer spaeter Layoutzuwachs oberhalb der App-Karte, z. B. wenn
+  // Profilabschnitte nachgeladen werden. Der Fokus bleibt derselbe, aber die
+  // Karte muss auch nach dieser Verschiebung sichtbar sein. Scroll-Anchoring
+  // im Test deaktivieren: die ANWENDUNG muss den Sprung selbst erhalten.
+  await page.evaluate(() => {
+    document.documentElement.style.overflowAnchor = "none";
+    const first = document.querySelector(".profile-sections > .profile-card:first-child");
+    first.style.minHeight = `${first.getBoundingClientRect().height + 1200}px`;
+  });
+  await page.waitForFunction(() => {
+    const card = document.querySelector("#pwa-install-card");
+    const top = card.getBoundingClientRect().top;
+    return top >= 0 && top < window.innerHeight;
+  }, null, { timeout: 5000 });
+  assert.equal(await fokusText(page), KARTENTITEL, "Fokus nach Layoutwechsel verloren");
   await ctx.close();
 });

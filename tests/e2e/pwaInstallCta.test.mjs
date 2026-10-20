@@ -427,7 +427,14 @@ test("C11 — Verlassen-Guard: Abbruch markiert nichts und hinterlässt keinen F
   await karte(page).waitFor();
   await aufKarteGesprungen(page);
   assert.equal(await knopf.getAttribute("aria-expanded"), "true", "Anleitung nach Bestätigen nicht geöffnet");
-  assert.equal(await karteImBild(page), true);
+  // Der Fokus ist bereits gesetzt, während die Scrollposition noch nachlaufen kann.
+  // Nicht selbst scrollen: die Anwendung muss die Karte tatsächlich ins Bild bringen.
+  await page.waitForFunction(() => {
+    const el = document.querySelector("#pwa-install-card");
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    return r.top >= 0 && r.top < window.innerHeight;
+  }, null, { timeout: 10000 });
   assert.equal(await hinweisBenutzt(page), true);
   assert.equal(await eintrag.count(), 0);
   await ctx.close();

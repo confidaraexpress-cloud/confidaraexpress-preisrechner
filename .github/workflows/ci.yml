@@ -84,6 +84,17 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: E2E-Teil ${{ matrix.shard }}
         run: node scripts/run-e2e.mjs --shard ${{ matrix.shard }}/4
+      # Der PWA-Verlassen-Guard C11 fiel mehrfach NUR nach einem Main-Merge
+      # trotz gruenem PR-Lauf aus. Kleine gezielte Zusatzkontrolle noch im PR:
+      # drei isolierte Durchlaeufe bei identischem Browser und ohne Provider.
+      # Kein Retry eines fehlgeschlagenen Tests: beim ERSTEN Fehler bleibt CI rot.
+      - name: PWA-C11-Guard-Stabilitaet (3 unabhaengige Durchlaeufe)
+        if: matrix.shard == 4
+        run: |
+          for durchlauf in 1 2 3; do
+            echo "PWA C11 Durchlauf ${durchlauf}/3"
+            node --test --test-name-pattern="C11" tests/e2e/pwaInstallCta.test.mjs
+          done
 
   # ── Nur Laufzeitabhängigkeiten ────────────────────────────────────────────
   # Ein Fund in einem Buildwerkzeug ist eine andere Frage als einer in dem,

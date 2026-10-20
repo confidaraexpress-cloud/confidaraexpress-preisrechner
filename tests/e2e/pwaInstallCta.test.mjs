@@ -462,11 +462,8 @@ test("C11 — Verlassen-Guard: Abbruch markiert nichts und hinterlässt keinen F
   // im Test deaktivieren: die ANWENDUNG muss den Sprung selbst erhalten.
   await page.evaluate(() => {
     document.documentElement.style.overflowAnchor = "none";
-    const card = document.querySelector("#pwa-install-card");
-    const spacer = document.createElement("div");
-    spacer.style.height = "1200px";
-    spacer.setAttribute("aria-hidden", "true");
-    card.parentElement.insertBefore(spacer, card);
+    const first = document.querySelector(".profile-sections > .profile-card:first-child");
+    first.style.minHeight = `${first.getBoundingClientRect().height + 1200}px`;
   });
   await page.waitForFunction(() => {
     const card = document.querySelector("#pwa-install-card");

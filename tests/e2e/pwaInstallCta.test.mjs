@@ -427,14 +427,32 @@ test("C11 — Verlassen-Guard: Abbruch markiert nichts und hinterlässt keinen F
   await karte(page).waitFor();
   await aufKarteGesprungen(page);
   assert.equal(await knopf.getAttribute("aria-expanded"), "true", "Anleitung nach Bestätigen nicht geöffnet");
-  // Der Fokus ist bereits gesetzt, während die Scrollposition noch nachlaufen kann.
-  // Nicht selbst scrollen: die Anwendung muss die Karte tatsächlich ins Bild bringen.
-  await page.waitForFunction(() => {
-    const el = document.querySelector("#pwa-install-card");
-    if (!el) return false;
-    const r = el.getBoundingClientRect();
-    return r.top >= 0 && r.top < window.innerHeight;
-  }, null, { timeout: 10000 });
+  // Keine Sichtbarkeit vortäuschen: der Nutzer muss die Karte im Fenster sehen.
+  // Bei CI-Fehlern zuerst das echte Rechteck und den Scrollzustand ausgeben.
+  try {
+    await page.waitForFunction(() => {
+      const el = document.querySelector("#pwa-install-card");
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return r.top >= 0 && r.top < window.innerHeight;
+    }, null, { timeout: 10000 });
+  } catch (error) {
+    const diagnose = await page.evaluate(() => {
+      const el = document.querySelector("#pwa-install-card");
+      const r = el?.getBoundingClientRect();
+      const scrollRoot = document.scrollingElement;
+      return {
+        cardTop: r?.top, cardBottom: r?.bottom, cardHeight: r?.height,
+        windowScrollY: window.scrollY, viewportHeight: window.innerHeight,
+        documentScrollHeight: scrollRoot?.scrollHeight,
+        documentClientHeight: scrollRoot?.clientHeight,
+        activeElement: document.activeElement?.textContent?.trim().slice(0, 100),
+        scrollBehavior: getComputedStyle(scrollRoot).scrollBehavior,
+        page: window.location.href,
+      };
+    });
+    assert.fail(`C11: Karte nach Fokus nicht im Bild: ${JSON.stringify(diagnose)}; ${error.message}`);
+  }
   assert.equal(await hinweisBenutzt(page), true);
   assert.equal(await eintrag.count(), 0);
   await ctx.close();

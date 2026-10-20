@@ -53,23 +53,54 @@ export function AppInstallCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardFocusPending]);
 
-  // Sofort statt der globalen weichen Scrollbewegung: die Karte steht am
-  // Seitenende, eine Animation über die ganze Profilseite dauerte Sekunden.
-  // Ausgerichtet wird am Kartenanfang; den Abstand zur klebenden mobilen
-  // Topbar hält `scroll-margin-top` (pwa.css). Ältere Browser kennen
-  // `behavior: "instant"` nicht — dann der Standard.
+  // Der Navigations-Guard wechselt erst nach Bestätigung von „Neue Sendung"
+  // ins Profil. Die Karte kann schon im DOM stehen, bevor der Seitenwechsel
+  // fertig gelayoutet ist: ein einmaliger Scroll direkt im Effekt positionierte
+  // dann gelegentlich die Karte außerhalb des sichtbaren Fensters (E2E C11).
+  //
+  // Nach dem Rendern zweimal am tatsächlichen Kartenrechteck ausrichten und
+  // ERST DANN den Titel fokussieren. So signalisiert der Fokus einen fertigen
+  // Sprung, nicht nur einen abgearbeiteten Scroll-Aufruf. Kein Timer, kein
+  // automatisches Nachscrollen nach der Nutzeraktion. `scroll-margin-top`
+  // berücksichtigt die mobile Topbar; „instant" verhindert lange Animationen.
   useEffect(() => {
-    if (!sprung) return;
-    setSprung(false);
+    if (!sprung) return undefined;
+
     const karteEl = karteRef.current;
-    if (karteEl && typeof karteEl.scrollIntoView === "function") {
+    const titelEl = titelRef.current;
+    if (!karteEl || !titelEl) {
+      setSprung(false);
+      return undefined;
+    }
+
+    let ersterFrame = 0;
+    let zweiterFrame = 0;
+    const ausrichten = () => {
+      if (!karteEl.isConnected || typeof karteEl.scrollIntoView !== "function") return;
       try {
         karteEl.scrollIntoView({ block: "start", behavior: "instant" });
       } catch {
         karteEl.scrollIntoView();
       }
-    }
-    if (titelRef.current) titelRef.current.focus({ preventScroll: true });
+    };
+
+    ersterFrame = requestAnimationFrame(() => {
+      ausrichten();
+      zweiterFrame = requestAnimationFrame(() => {
+        if (karteEl.isConnected) {
+          const top = karteEl.getBoundingClientRect().top;
+          if (top < 0 || top >= window.innerHeight) ausrichten();
+        }
+        if (titelEl.isConnected) titelEl.focus({ preventScroll: true });
+        setSprung(false);
+      });
+    });
+
+    // Bei einem weiteren Seitenwechsel niemals nachträglich fokussieren.
+    return () => {
+      cancelAnimationFrame(ersterFrame);
+      cancelAnimationFrame(zweiterFrame);
+    };
   }, [sprung]);
 
   const installieren = async () => {

@@ -636,6 +636,16 @@ test("10 — Registrierungsweg: produktiv heißt Warnung statt Link, unbekannt h
   await unklar.close();
 });
 
+// Der Schalter ist nach einer Navigation sofort im neuen Stand — gewartet wird nur, bis die Seite den neuen
+// Verlaufseintrag gerendert hat (eigener Schlüssel am Container), nicht auf einen erhofften Wert.
+async function aufEintragWarten(page, vorherigerSchluessel) {
+  await page.waitForFunction((alt) => {
+    const el = document.querySelector("[data-history-entry]");
+    return !!el && el.getAttribute("data-history-entry") !== alt;
+  }, vorherigerSchluessel, { timeout: 10000 });
+}
+const eintragSchluessel = (page) => page.getAttribute("[data-history-entry]", "data-history-entry");
+
 test("11 — „Testgutschrift prüfen“ öffnet die Gutschriften mit vorbelegtem Pre-Live-Testlauf", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const state = await setup(page);
@@ -650,13 +660,20 @@ test("11 — „Testgutschrift prüfen“ öffnet die Gutschriften mit vorbelegt
   await page.locator("#adm-cn-summary").waitFor({ state: "visible" });
   assert.deepEqual(state.previewQueries, ["?month=2026-09&scope=test"]);
   assert.equal(await page.locator("#adm-cn-scope").innerText(), "Pre-Live-Testlauf");
-  // Über die Teilnavigation (ohne Sprungziel) ist nichts vorbelegt.
+  // Über die Partnerliste und deren Teilnavigation (ohne Sprungziel) ist nichts vorbelegt.
+  // waitForURL allein reicht nicht: Die Adresse wechselt sofort, React zeigt während der Transition aber
+  // noch den alten Eintrag samt Testlauf (CI 2026-10-21, Run 39672864501). Darum erst die gerenderte
+  // Partnerliste, dann der neu gerenderte Gutschriften-Eintrag; der Fall ohne geladene Liste ist 11c.
+  const vorher = await eintragSchluessel(page);
   await page.locator("#adm-sp-list-link").click();
   await page.waitForURL(`${BASE}/admin/partners`);
+  await page.getByRole("heading", { level: 1, name: "Vertriebspartner" }).waitFor({ state: "visible" });
   await page.locator("#adm-sp-credit-notes-link").click();
   await page.waitForURL(`${BASE}/admin/partners/credit-notes`);
-  await page.locator("#adm-cn-scope-test").waitFor({ state: "visible" });
-  assert.equal(await page.locator("#adm-cn-scope-test").isChecked(), false);
+  await aufEintragWarten(page, vorher);
+  assert.equal(await page.locator("#adm-cn-scope-test").isChecked(), false, "der Testlauf wurde in die normale Ansicht übernommen");
+  assert.equal(await page.locator("#adm-cn-test-note").count(), 0);
+  assert.equal(await page.locator("#adm-cn-summary").count(), 0, "die Testvorschau steht noch in der normalen Ansicht");
   await page.close();
 });
 
@@ -673,15 +690,6 @@ async function zumTestlauf(page) {
   await page.locator("#adm-cn-scope-test").waitFor({ state: "visible" });
   assert.equal(await page.locator("#adm-cn-scope-test").isChecked(), true, "der Testlauf ist vorbelegt");
 }
-// Der Schalter ist nach einer Navigation sofort im neuen Stand — gewartet wird nur, bis die Seite den neuen
-// Verlaufseintrag gerendert hat (eigener Schlüssel am Container), nicht auf einen erhofften Wert.
-async function aufEintragWarten(page, vorherigerSchluessel) {
-  await page.waitForFunction((alt) => {
-    const el = document.querySelector("[data-history-entry]");
-    return !!el && el.getAttribute("data-history-entry") !== alt;
-  }, vorherigerSchluessel, { timeout: 10000 });
-}
-const eintragSchluessel = (page) => page.getAttribute("[data-history-entry]", "data-history-entry");
 
 test("11b — „Gutschriften“ der Teilnavigation auf derselben Seite: der Testlauf ist nicht mehr vorbelegt", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });

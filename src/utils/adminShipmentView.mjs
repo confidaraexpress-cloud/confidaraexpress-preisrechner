@@ -57,6 +57,9 @@ export function shipmentFields(row) {
     // Paritätsaudit B4: Testbuchung (Sandbox: Testlabel, Nullwertrechnung) — seit Backend #432 in
     // Liste und Detail ausgeliefert. Nur ein echtes `true` zählt.
     isTestBooking: firstDefined(r.is_test_booking, r.isTestBooking) === true,
+    // Canonical v2.60: Buchung der internen Testphase vor der UG-Gründung — ECHTER Providerauftrag,
+    // der ConfidaraExpress-Beleg ist ein Testdokument statt einer Rechnung. Nur ein echtes `true` zählt.
+    invoiceTestPhase: firstDefined(r.invoice_test_phase, r.invoiceTestPhase) === true,
     // Sichtbare Vorgangsnummer (CE-AB…) — ausschließlich aus dem fachlichen Feld,
     // nie aus der ID und nie aus einer Providerreferenz.
     orderConfirmationNumber: str(firstDefined(r.order_confirmation_number, r.orderConfirmationNumber)),
@@ -189,6 +192,11 @@ export function shipmentMarkers(row) {
 // eine leere Gutscheinzeile würde einen Gutschein behaupten.
 export function isTestBooking(row) {
   return shipmentFields(row).isTestBooking;
+}
+
+// Canonical v2.60: Beleg der internen Testphase (Testdokument statt Rechnung) — die Sendung selbst ist echt.
+export function isTestPhaseShipment(row) {
+  return shipmentFields(row).invoiceTestPhase;
 }
 
 export function shipmentVoucherView(row) {

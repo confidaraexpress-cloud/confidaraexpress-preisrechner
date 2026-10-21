@@ -17,6 +17,9 @@ export const INVOICE_DELIVERY_MODE = Object.freeze({
   PENDING: "pending",       // Dokument wird noch erstellt (Modus noch nicht entschieden)
   PRODUCTION: "production", // produktive Rechnung (is_test_document=false) → wird per E-Mail versendet
   TEST: "test",             // interne Vorschau (Testbetrieb) → KEINE Rechnungs-E-Mail
+  // Canonical v2.60: Testdokument der internen Testphase (echter Versandauftrag, keine Rechnung) →
+  // wird mit eigener Belegmail versendet. Vom Server über invoice_test_phase geliefert.
+  TEST_PHASE: "test_phase",
   FAILED: "failed",         // Dokumenterstellung (noch) fehlgeschlagen
 });
 
@@ -89,7 +92,8 @@ export function resolveInvoiceDeliveryMode(invoice) {
   const status = inv.document_status;
   if (status === "document_failed") return INVOICE_DELIVERY_MODE.FAILED;
   if (status === "ready") {
-    return inv.is_test_document === false ? INVOICE_DELIVERY_MODE.PRODUCTION : INVOICE_DELIVERY_MODE.TEST;
+    if (inv.is_test_document === false) return INVOICE_DELIVERY_MODE.PRODUCTION;
+    return inv.invoice_test_phase === true ? INVOICE_DELIVERY_MODE.TEST_PHASE : INVOICE_DELIVERY_MODE.TEST;
   }
   // pending_document | generating | undefined | anderes → noch nicht entschieden
   return INVOICE_DELIVERY_MODE.PENDING;
@@ -99,6 +103,7 @@ export function resolveInvoiceDeliveryMode(invoice) {
 export function isTerminalDeliveryMode(mode) {
   return mode === INVOICE_DELIVERY_MODE.PRODUCTION
     || mode === INVOICE_DELIVERY_MODE.TEST
+    || mode === INVOICE_DELIVERY_MODE.TEST_PHASE
     || mode === INVOICE_DELIVERY_MODE.FAILED;
 }
 
@@ -122,6 +127,8 @@ export function invoiceDeliveryHint(mode) {
       return { tone: "success", text: "Ihre Rechnung wird zusätzlich separat als PDF-Anhang per E-Mail an Sie versendet." };
     case INVOICE_DELIVERY_MODE.TEST:
       return { tone: "warning", text: "Hinweis (Testbetrieb): Aktuell wird nur eine interne Vorschau erstellt — es wird KEINE Rechnungs-E-Mail versendet." };
+    case INVOICE_DELIVERY_MODE.TEST_PHASE:
+      return { tone: "warning", text: "Interner Testbetrieb: Statt einer Rechnung wird ein Testdokument erstellt — keine Rechnung und keine Zahlungsforderung. Es wird Ihnen zusätzlich per E-Mail zugesandt." };
     case INVOICE_DELIVERY_MODE.FAILED:
       return { tone: "info", text: "Ihr Rechnungsdokument konnte noch nicht erstellt werden. Ihre Buchung ist davon unberührt — die Rechnung wird nachgereicht." };
     case INVOICE_DELIVERY_MODE.PENDING:

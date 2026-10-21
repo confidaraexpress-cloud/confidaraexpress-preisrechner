@@ -120,3 +120,21 @@ test("10 — BookingPage verdrahtet Trennung, Deep-Link und Modus-Hinweis", () =
   assert.ok(!src.includes("Bestätigung wurde an") && !hookSrc.includes("Bestätigung wurde an"),
     "alte, verwechselbare Formulierung entfernt");
 });
+
+// ── Canonical v2.60: Testdokument der internen Testphase ──────────────────────────
+test("TP — Testphase: eigener, endgültiger Modus mit wahrheitsgemäßem Hinweis (Belegmail wird versendet)", () => {
+  const inv = { document_status: "ready", is_test_document: true, invoice_test_phase: true };
+  assert.equal(resolveInvoiceDeliveryMode(inv), INVOICE_DELIVERY_MODE.TEST_PHASE);
+  assert.equal(isTerminalDeliveryMode(INVOICE_DELIVERY_MODE.TEST_PHASE), true);
+  const h = invoiceDeliveryHint(INVOICE_DELIVERY_MODE.TEST_PHASE);
+  assert.equal(h.tone, "warning");
+  assert.match(h.text, /Testdokument/);
+  assert.match(h.text, /keine Rechnung/);
+  assert.match(h.text, /keine Zahlungsforderung/);
+  assert.match(h.text, /per E-Mail/);
+  // Nur ein echtes true zählt; ohne Kennzeichen bleibt es die interne Vorschau.
+  assert.equal(resolveInvoiceDeliveryMode({ ...inv, invoice_test_phase: "true" }), INVOICE_DELIVERY_MODE.TEST);
+  // Eine produktive Rechnung bleibt produktiv, auch wenn das Feld (fälschlich) mitkäme.
+  assert.equal(resolveInvoiceDeliveryMode({ document_status: "ready", is_test_document: false, invoice_test_phase: true }),
+    INVOICE_DELIVERY_MODE.PRODUCTION);
+});

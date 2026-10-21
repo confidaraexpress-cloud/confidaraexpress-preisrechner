@@ -101,7 +101,7 @@ function PeriodBlock({ inv }) {
           sondern die einzige Umbruchstelle: zwei direkt aneinandergrenzende Inline-Elemente
           ohne Leerraum dazwischen sind für den Zeilenumbruch EIN unteilbares Token — bei
           schmalen Spaltenbreiten würde die Zeile sonst überlaufen statt umzubrechen. */}
-      <div className="inv-period-row"><span className="inv-period-label">Rechnung</span> <span>{isoDayDE(p.issuedDay)}</span></div>
+      <div className="inv-period-row"><span className="inv-period-label">{p.issuedLabel}</span> <span>{isoDayDE(p.issuedDay)}</span></div>
       {/* Alle drei Daten kommen als kanonische Kalendertage ("YYYY-MM-DD") aus invoicePeriod
           und werden mit isoDayDE rein textuell formatiert. dateDE würde daraus wieder ein Date
           bauen und in der Zeitzone des Betrachters rendern — das Portal zeigte dann ein anderes
@@ -197,7 +197,7 @@ function InvoiceCard({ inv, downloadingId, onView, onDownload }) {
       <dl className="inv-card-kv">
         <div className="inv-card-kv-row inv-card-kv-row--amount"><dt>Betrag</dt><dd>{formatInvoiceAmount(inv.gross_amount ?? inv.amount, inv.currency)}</dd></div>
         {p.dueDay && <div className="inv-card-kv-row"><dt>Fällig</dt><dd className={p.overdue ? "inv-period-due--overdue" : undefined}>{isoDayDE(p.dueDay)}</dd></div>}
-        <div className="inv-card-kv-row"><dt>Rechnungsdatum</dt><dd>{isoDayDE(p.issuedDay)}</dd></div>
+        <div className="inv-card-kv-row"><dt>{p.issuedLabel === "Beleg" ? "Belegdatum" : "Rechnungsdatum"}</dt><dd>{isoDayDE(p.issuedDay)}</dd></div>
         {p.serviceDay && <div className="inv-card-kv-row"><dt>Leistung</dt><dd>{isoDayDE(p.serviceDay)}</dd></div>}
         <div className="inv-card-kv-row"><dt>Dokument</dt><dd><DocumentInfo tone={docTone} label={docLabel} /></dd></div>
         {/* Zeile nur bei tatsächlich erfolgtem Versand — kein interner Betriebszustand. */}

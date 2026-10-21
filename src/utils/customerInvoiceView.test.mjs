@@ -14,6 +14,8 @@ import {
   isOverdueInvoice,
   paymentStatus,
   isTestInvoice,
+  isTestPhaseInvoice,
+  TEST_PHASE_INVOICE_LABEL,
   documentStatusMeta, emailDeliveryMeta,
   invoicePeriod, unavailableActionReason,
   INVOICE_FILTERS, matchesInvoiceFilter,
@@ -275,8 +277,13 @@ test("22 — GO-LIVE: die modus-/testbezogenen Exporte existieren nicht mehr", (
 });
 
 test("23 — GO-LIVE: kein interner Begriff und keine Produktivitätsheuristik im ausführbaren Code", () => {
+  // Canonical v2.60: genau EINE benannte Beschriftung darf „Testdokument" tragen — die des Testphasen-
+  // Belegs (Betreiberentscheidung). Jede weitere Stelle mit dem Begriff bleibt verboten.
+  assert.equal(viewCode.split(JSON.stringify(TEST_PHASE_INVOICE_LABEL)).length - 1, 1,
+    "die Testphasen-Beschriftung steht genau einmal als Konstante im Code");
+  const ohneTestphasenLabel = viewCode.split(JSON.stringify(TEST_PHASE_INVOICE_LABEL)).join("");
   for (const term of ["Interne Vorschau", "Testdokument", "Dokumentbetrag", "zahlungswirksam", "Kein Kundenversand", "Test & Vorschau"]) {
-    assert.equal(viewCode.includes(term), false, `interner Begriff „${term}" steht noch im Code`);
+    assert.equal(ohneTestphasenLabel.includes(term), false, `interner Begriff „${term}" steht noch im Code`);
   }
   // Keine Frontend-Heuristik: die Produktivität wird serverseitig entschieden, hier
   // nicht rekonstruiert — weder über is_productive noch über document_mode_label.
@@ -297,6 +304,19 @@ test("24 — Selbsttest: die Prüflogik greift tatsächlich", () => {
 // Die Liste enthält seit dem Testrechnungspaket zusätzlich die EIGENEN Testrechnungen
 // des Kunden. Sie sind KEINE Forderungen — ohne eigenen Zustand läsen sie sich als
 // offene Zahlungspflicht.
+
+// ─── Testdokument der internen Testphase (Canonical v2.60) ──────────────────────
+test("Testphase: eigener, neutraler Zustand „Testdokument – keine Rechnung“, nie Offen/Überfällig", () => {
+  const tp = { status: "unpaid", is_test_booking: false, invoice_test_phase: true, is_overdue: false };
+  assert.equal(isTestPhaseInvoice(tp), true);
+  assert.equal(isTestInvoice(tp), true);
+  assert.deepEqual(paymentStatus(tp), [TONE.NEUTRAL, "Testdokument – keine Rechnung"]);
+  // Nur ein echtes true zählt.
+  assert.equal(isTestPhaseInvoice({ invoice_test_phase: "true" }), false);
+  assert.equal(isTestPhaseInvoice({}), false);
+  // Eine Sandbox-Testbuchung bleibt „Testrechnung".
+  assert.deepEqual(paymentStatus({ status: "unpaid", is_test_booking: true }), [TONE.NEUTRAL, "Testrechnung"]);
+});
 
 test("Testrechnung: eigener, neutraler Zustand statt Offen", () => {
   assert.deepEqual(paymentStatus({ status: "unpaid", is_test_booking: true }), [TONE.NEUTRAL, "Testrechnung"]);
@@ -331,4 +351,16 @@ test("Filter Offen schliesst Testrechnungen aus", () => {
   // „Bezahlt" und „Überfällig" schließen sie von selbst aus.
   assert.equal(matchesInvoiceFilter(test_, "paid"), false);
   assert.equal(matchesInvoiceFilter(test_, "overdue"), false);
+});
+
+test("Testphase: kein Fälligkeitsdatum und „Beleg“ statt „Rechnung“ — ein Testbeleg ist keine Forderung", () => {
+  const tp = invoicePeriod({ status: "unpaid", issued_at: "2026-10-21", due_date: "2026-10-28", invoice_test_phase: true });
+  assert.equal(tp.dueDay, null);
+  assert.equal(tp.issuedLabel, "Beleg");
+  const sandbox = invoicePeriod({ status: "unpaid", issued_at: "2026-10-21", due_date: "2026-10-28", is_test_booking: true });
+  assert.equal(sandbox.dueDay, null, "auch die Sandbox-Testrechnung fordert nichts");
+  assert.equal(sandbox.issuedLabel, "Rechnung");
+  const echt = invoicePeriod({ status: "unpaid", issued_at: "2026-10-21", due_date: "2026-10-28" });
+  assert.equal(echt.dueDay, "2026-10-28");
+  assert.equal(echt.issuedLabel, "Rechnung");
 });

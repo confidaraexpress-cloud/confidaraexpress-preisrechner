@@ -23,6 +23,7 @@ import {
   customerDetailFields,
   detailSections,
   isTestBooking,
+  isTestPhaseShipment,
   routeLabel,
   shipmentIdentity,
   shipmentInsuranceView,
@@ -409,6 +410,8 @@ export default function AdminShipmentDetailPage() {
             <span className={`badge ${statusCls}`}>{statusLabel}</span>
             {/* Paritätsaudit B4: eine Testbuchung (Testlabel, Nullwertrechnung) ist auf einen Blick erkennbar. */}
             {isTestBooking(s) && <span className="badge badge-yellow" id="adm-ship-test-badge">Testbuchung</span>}
+            {/* Canonical v2.60: echter Versandauftrag der internen Testphase — Beleg ist ein Testdokument. */}
+            {isTestPhaseShipment(s) && <span className="badge badge-yellow" id="adm-ship-testphase-badge">Testdokument statt Rechnung</span>}
             <span className="adm-chip">{carrierOf(s) ? resolveCarrierName(carrierOf(s)) : "Carrier noch nicht gewählt"}</span>
             <span className="adm-chip">{shippingModeLabel(s)}</span>
             <span className="adm-chip">{fmtDate(dateOf(s))}</span>

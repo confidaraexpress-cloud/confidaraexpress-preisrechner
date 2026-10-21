@@ -51,8 +51,18 @@ export function isOverdueInvoice(inv) {
 // Server geliefert — das Frontend leitet es NICHT ab. Strikt `=== true`: ein fehlendes
 // Feld (Backend vor dem Testrechnungspaket) ist keine Testrechnung.
 export function isTestInvoice(inv) {
-  return !!inv && inv.is_test_booking === true;
+  return !!inv && (inv.is_test_booking === true || isTestPhaseInvoice(inv));
 }
+
+// ── Testdokument der internen Testphase (Canonical v2.60) ────────────────────
+// `invoice_test_phase` leitet der Server aus der Rechnungszeile ab (document_mode 'test' + eingefrorener
+// Aussteller mit Testphasen-Kennzeichen): die Buchung entstand vor der UG-Gründung, der Versandauftrag ist
+// echt, der Beleg ist ein Testdokument — KEINE Rechnung und keine Forderung. Strikt `=== true`.
+export function isTestPhaseInvoice(inv) {
+  return !!inv && inv.invoice_test_phase === true;
+}
+// Die EINE Beschriftung dieses Zustands — Betreiberentscheidung 2026-10-21: „TESTDOKUMENT – KEINE RECHNUNG".
+export const TEST_PHASE_INVOICE_LABEL = "Testdokument – keine Rechnung";
 
 // ── Zahlungsstatus — vier Kundenzustände ────────────────────────────────────
 //   Testrechnung      → „Testrechnung" (neutral, KEINE Forderung)
@@ -77,6 +87,7 @@ export function isTestInvoice(inv) {
 // geliefertes Feld angezeigt.
 // → [tone, label]
 export function paymentStatus(inv) {
+  if (isTestPhaseInvoice(inv)) return [TONE.NEUTRAL, TEST_PHASE_INVOICE_LABEL];
   if (isTestInvoice(inv)) return [TONE.NEUTRAL, "Testrechnung"];
   // Auftrag 2 / P1: Storno vermerkt — keine Forderung mehr, die Rechnung bleibt als Beleg abrufbar.
   if (inv && inv.is_cancelled === true) return [TONE.NEUTRAL, "Storniert"];
@@ -164,10 +175,13 @@ export function invoicePeriod(inv) {
   const issuedAt = (inv && (inv.issued_at || inv.created_at)) || null;
   const serviceRaw = inv && inv.service_date ? inv.service_date : null;
   const serviceAt = serviceRaw && !sameCalendarDay(serviceRaw, issuedAt) ? serviceRaw : null;
-  const showDue = !!inv && inv.status !== "paid";
+  // Canonical v2.60: ein Testbeleg (Sandbox oder Testphase) ist KEINE Forderung — er trägt keine Fälligkeit.
+  const showDue = !!inv && inv.status !== "paid" && !isTestInvoice(inv);
   const dueAt = showDue ? (inv.due_date || null) : null;
   return {
     issuedAt,
+    // Das Testdokument der Testphase ist keine Rechnung — sein Datum heißt „Beleg".
+    issuedLabel: isTestPhaseInvoice(inv) ? "Beleg" : "Rechnung",
     serviceAt,
     dueAt,
     overdue: showDue && isOverdueInvoice(inv),

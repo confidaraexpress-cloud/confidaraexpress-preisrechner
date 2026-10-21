@@ -111,7 +111,9 @@ export const emailStatusMeta = (status) => EMAIL_STATUS_META[status] || statusFa
 // "Testdokument – kein Versand" (gelb). Bei 'sent' liefert formatEmailSentAt optional
 // den "Versendet am …"-Zusatz.
 export function emailDisplayMeta(inv) {
-  if (isTestInvoiceDocument(inv)) return ["badge-yellow", "Testdokument – kein Versand"];
+  // Canonical v2.60: das Testdokument der internen Testphase WIRD versendet (Belegmail „keine Rechnung")
+  // — hier gilt der tatsächliche Versandzustand.
+  if (isTestInvoiceDocument(inv) && !(inv && inv.invoice_test_phase === true)) return ["badge-yellow", "Testdokument – kein Versand"];
   return emailStatusMeta(inv ? inv.email_status : null);
 }
 

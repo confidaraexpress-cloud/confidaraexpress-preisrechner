@@ -832,3 +832,15 @@ test("Auftrag 1 P9 — Kundenkarte: ohne Firmennamen steht die Nummer unter „K
   assert.ok(detailSrc.includes('["Kundennummer", kunde.number]'), "die Kundennummer steht nicht in ihrer Zeile");
   assert.ok(!detailSrc.includes('["Kundennummer", cust.secondary'), "die alte Zuordnung ist zurück");
 });
+
+// ── Canonical v2.60: echte Buchung der internen Testphase (Testdokument statt Rechnung) ──
+test("TP — Admin: Testphasen-Buchung strikt erkannt und im Detail eigens gekennzeichnet", async () => {
+  const { isTestPhaseShipment, isTestBooking } = await import("./adminShipmentView.mjs");
+  assert.equal(isTestPhaseShipment({ invoice_test_phase: true }), true);
+  for (const nein of [{ invoice_test_phase: false }, { invoice_test_phase: "true" }, {}, null]) assert.equal(isTestPhaseShipment(nein), false);
+  // Eine Testphasen-Buchung ist KEINE Sandbox-Testbuchung (echtes Label, echter Auftrag).
+  assert.equal(isTestBooking({ invoice_test_phase: true }), false);
+  const fs = await import("node:fs");
+  const detail = fs.readFileSync(new URL("../pages/admin/AdminShipmentDetailPage.jsx", import.meta.url), "utf8");
+  assert.ok(detail.includes('{isTestPhaseShipment(s) && <span className="badge badge-yellow" id="adm-ship-testphase-badge">Testdokument statt Rechnung</span>}'));
+});

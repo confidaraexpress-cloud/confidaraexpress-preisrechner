@@ -37,6 +37,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch: # Manueller Fallback, falls GitHub keinen Main-Push-Lauf erzeugt.
 
 jobs:
   # ── Schnell und billig: läuft in Sekunden und fängt das meiste ─────────────

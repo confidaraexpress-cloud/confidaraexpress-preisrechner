@@ -236,7 +236,8 @@ test("(7) Buchungserfolg zeigt Auftragsbestätigungs- und Rechnungsnummer getren
   const block = schnitt(src, "booking-success-numbers", "booking-success-delivery", "Erfolgsbildschirm-Nummern (7)");
   assert.ok(block.includes("orderConfirmationNumberOf(booking)"), "Auftragsbestätigungsnummer fehlt im Erfolgsscreen");
   assert.ok(block.includes("booking.invoiceNumber"), "Rechnungsnummer fehlt im Erfolgsscreen");
-  assert.ok(block.includes("NUMBER_LABELS.orderConfirmation") && block.includes("NUMBER_LABELS.invoice"),
+  // Auftrag 2 / P2: die zweite Nummer trägt das Label ihrer Belegart (Rechnungsnummer / Testbelegnummer / Belegnummer).
+  assert.ok(block.includes("NUMBER_LABELS.orderConfirmation") && block.includes("wording.numberLabel"),
     "Nummern nicht getrennt beschriftet");
   // Die Vorgangsnummer steht VOR der Rechnungsnummer.
   assert.ok(block.indexOf("orderConfirmationNumber") < block.indexOf("invoiceNumber"),

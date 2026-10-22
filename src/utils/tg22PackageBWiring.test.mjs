@@ -149,7 +149,8 @@ test("11 — der Erfolgsbildschirm zeigt ausschließlich den gebuchten Betrag", 
   // TG22 Residential: die Aufstellung trägt zusätzlich die Bestandteile (bevorzugt aus der Buchungsantwort).
   assert.match(erfolg, /betrag\.showBreakdown \? \(\s*<PriceSummaryModule priceView=\{\{ \.\.\.priceView, totalGross: betrag\.totalGross, components: bookingSuccessComponents\(booking, priceView\) \}\}/);
   assert.match(erfolg, /Gesamtbetrag brutto<\/span>\s*<span className="booking-total-amount">\{money\(betrag\.totalGross\)\}/);
-  assert.match(erfolg, /id="booking-success-amount-hint">\{betrag\.hint\}/);
+  // Auftrag 2 / P2: der Verweis ohne Betrag nennt die Belegart (Rechnung / Testdokument / Beleg) aus derselben Quelle.
+  assert.match(erfolg, /id="booking-success-amount-hint">\{wording\.amountMissingHint\}/);
   assert.doesNotMatch(erfolg, /<PriceSummaryModule priceView=\{priceView\}/, "die ungeprüfte Aufstellung steht wieder da");
 });
 

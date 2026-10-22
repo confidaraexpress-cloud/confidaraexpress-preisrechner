@@ -43,6 +43,61 @@ export const PROFILE_DASHBOARD_TARGET = "/dashboard?page=profile";
 export const BOOKING_AMOUNT_MISSING_HINT =
   "Den gebuchten Gesamtbetrag finden Sie in Ihrer Auftragsbestätigung und auf Ihrer Rechnung.";
 
+// ── Auftrag 2 / P2 (Analysebefund C2): die Worte der Erfolgsseite folgen dem Beleg DIESER Buchung ──
+// In der internen Testphase (Canonical v2.60) ist der Versandauftrag echt, der Beleg aber ein
+// Testdokument — keine Rechnung, keine Forderung. Bis hierher versprach die Seite daneben trotzdem
+// „Rechnungsnummer", „Ihre Rechnung wird automatisch erstellt" und „Zu meinen Rechnungen".
+//
+// Die Quelle der Wahrheit ist zweistufig und kommt in beiden Stufen vom Server, nie aus einem
+// nachträglich gelesenen globalen Schalter:
+//   1. `booking.invoicingPhase` — die Belegphase, die /book VOR dem Providercall eingefroren hat
+//      (`test_phase` | `regular`); sie steht sofort fest, noch bevor ein Dokument existiert.
+//   2. der erzeugte Belegdatensatz (`invoiceDeliveryMode`, aus is_test_document/invoice_test_phase).
+// Widersprechen sich beide nicht, ist das Ergebnis eindeutig; fehlt beides (älterer Server), bleibt
+// die Seite bei der neutralen Form „Beleg" und behauptet weder Rechnung noch Testdokument.
+export const DOCUMENT_WORDING = Object.freeze({
+  REGULAR: "regular",
+  TEST_PHASE: "test_phase",
+  NEUTRAL: "neutral",
+});
+
+const WORDING = Object.freeze({
+  [DOCUMENT_WORDING.REGULAR]: Object.freeze({
+    numberLabel: "Rechnungsnummer",
+    autocreateLine: "Ihre Rechnung wird automatisch erstellt und steht anschließend im Bereich Rechnungen zum Ansehen und Herunterladen bereit.",
+    amountMissingHint: BOOKING_AMOUNT_MISSING_HINT,
+    documentsButton: "Zu meinen Rechnungen",
+  }),
+  [DOCUMENT_WORDING.TEST_PHASE]: Object.freeze({
+    numberLabel: "Testbelegnummer",
+    autocreateLine: "Ihr Testdokument wird automatisch erstellt und steht anschließend im Bereich Rechnungen als „Testdokument – keine Rechnung“ zum Ansehen und Herunterladen bereit.",
+    amountMissingHint: "Den gebuchten Gesamtbetrag finden Sie in Ihrer Auftragsbestätigung und in Ihrem Testdokument.",
+    documentsButton: "Zu meinen Belegen",
+  }),
+  [DOCUMENT_WORDING.NEUTRAL]: Object.freeze({
+    numberLabel: "Belegnummer",
+    autocreateLine: "Ihr Beleg wird automatisch erstellt und steht anschließend im Bereich Rechnungen zum Ansehen und Herunterladen bereit.",
+    amountMissingHint: "Den gebuchten Gesamtbetrag finden Sie in Ihrer Auftragsbestätigung und auf Ihrem Beleg.",
+    documentsButton: "Zu meinen Belegen",
+  }),
+});
+
+/** Welche Belegart DIESE Buchung trägt — aus der eingefrorenen Phase und dem erzeugten Beleg, sonst neutral. */
+export function resolveDocumentWording(booking, invoiceDeliveryMode) {
+  const phase = booking && typeof booking === "object" ? booking.invoicingPhase : null;
+  if (phase === "test_phase" || invoiceDeliveryMode === INVOICE_DELIVERY_MODE.TEST_PHASE) return DOCUMENT_WORDING.TEST_PHASE;
+  if (phase === "regular" || invoiceDeliveryMode === INVOICE_DELIVERY_MODE.PRODUCTION
+      || invoiceDeliveryMode === INVOICE_DELIVERY_MODE.TEST) {
+    return DOCUMENT_WORDING.REGULAR;
+  }
+  return DOCUMENT_WORDING.NEUTRAL;
+}
+
+/** Die Texte der Erfolgsseite zu dieser Belegart: Nummernbezeichnung, Erstellungszeile, Betragsverweis, Knopf. */
+export function bookingDocumentWording(booking, invoiceDeliveryMode) {
+  return WORDING[resolveDocumentWording(booking, invoiceDeliveryMode)];
+}
+
 const gueltigerBetrag = (v) => {
   const n = typeof v === "number" ? v
     : (typeof v === "string" && v.trim() !== "" ? Number(v) : NaN);

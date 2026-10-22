@@ -344,7 +344,8 @@ test("14 — der Erfolgsscreen zeigt Auftragsbestätigungs- und Rechnungsnummer 
   assert.match(bookingPage, /booking\.invoiceNumber/);
   assert.match(bookingPage, /<CopyableNumber/);
   assert.match(bookingPage, /NUMBER_LABELS\.orderConfirmation/);
-  assert.match(bookingPage, /NUMBER_LABELS\.invoice/);
+  // Auftrag 2 / P2: das Label der zweiten Nummer folgt der Belegart (Rechnungsnummer / Testbelegnummer / Belegnummer).
+  assert.match(bookingPage, /wording\.numberLabel/);
   assert.ok(!/booking\.businessOrderNumber/.test(bookingPage),
     "die interne Bestellnummer steht wieder auf dem Erfolgsbildschirm");
 });

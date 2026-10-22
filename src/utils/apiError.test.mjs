@@ -272,6 +272,15 @@ test("25 — ein Serverfehler am Ort landet AM Ortsfeld", () => {
   assert.equal(mapServerField("to_city", CALCULATOR_FIELD_MAP), "to_city");
 });
 
+test("27 — Auftrag 2 / P5: QUOTE_SOURCES_UNAVAILABLE ist eine technische, wiederholbare Störung — kein „Keine Angebote“", () => {
+  const n = normalizeApiError({ status: 503, body: { error: "…", code: "QUOTE_SOURCES_UNAVAILABLE", sourceCoverage: "partial" } });
+  assert.equal(n.type, ERROR_TYPE.TECHNICAL);
+  assert.equal(n.retryable, true);
+  assert.equal(n.title, "Angebote derzeit nicht abrufbar");
+  assert.match(n.message, /erneut/);
+  assert.doesNotMatch(`${n.title} ${n.message}`, /jumingo|transglobal|anbieter/i);
+});
+
 test("26 — ein fehlendes Land verdrängt die Ortsmeldung derselben Seite nicht doppelt", () => {
   // Ohne Land bricht die Seite nach der Landmeldung ab (unveränderte Regel) —
   // es entsteht KEIN zusätzlicher Ortsfehler, der zwei Ursachen behaupten würde.

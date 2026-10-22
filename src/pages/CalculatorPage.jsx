@@ -16,6 +16,7 @@ import { useAuth } from "../context/AuthContext";
 import { todayISO } from "../utils/date";
 import { FormAlert } from "../components/ui/FormAlert";
 import { errorFromResponse, normalizeThrownError, summaryMessage } from "../utils/apiError.mjs";
+import { sourceCoverageNotice } from "../utils/sourceCoverageView.mjs";
 import { getCalculatorErrors, firstErrorField, CALCULATOR_FIELD_MAP, CITY_MAX_LENGTH } from "../utils/calculatorValidation.mjs";
 import { focusFirstError } from "../utils/focusField";
 import { visibleFieldErrors, markFieldTouched, withoutFieldError, keepFocusOnMouseDown } from "../utils/fieldTouchState.mjs";
@@ -140,6 +141,8 @@ export default function CalculatorPage() {
   // `error` trägt jetzt { title, message } statt eines einzelnen Strings, damit
   // die Meldung das Problem benennt UND die Korrektur erklärt.
   const [error, setError]           = useState(null);
+  // Auftrag 2 / P5: Hinweis des Servers, dass die Angebotsliste unvollständig sein kann (null = nichts zu sagen).
+  const [coverageNotice, setCoverageNotice] = useState(null);
   // Feldbezogene Fehler (Auftrag 1, P11, 2026-10-17). Geprüft wird immer mit
   // getCalculatorErrors(form) — der einzigen Regel dieses Formulars. SICHTBAR ist davon nur, was
   // der Kunde schon verlassen hat (`touched`) oder was ein Klick auf „Angebote vergleichen"
@@ -297,6 +300,7 @@ export default function CalculatorPage() {
   const resetResults = () => {
     setHasResults(false);
     setTariffs([]);
+    setCoverageNotice(null);
     setSelected(null);
     setError(null);
     // Feldmarkierungen bleiben: ob ein Feld rot ist, entscheidet seine eigene Prüfung (siehe
@@ -572,6 +576,9 @@ export default function CalculatorPage() {
       // Jedes gelieferte Angebot erscheint (Betreiberentscheidung 2026-10-02: kein Angebot wird wegen
       // eines konkurrierenden Providerpreises verborgen). Was angeboten wird, entscheidet der Server.
       setTariffs(Array.isArray(d.tariffs) ? d.tariffs : []);
+      // Auftrag 2 / P5 (C6): sagt der Server, dass eine Einkaufsquelle ausgefallen ist, steht der
+      // Hinweis über der Liste — die gelieferten Angebote bleiben, nichts wird wiederholt.
+      setCoverageNotice(sourceCoverageNotice(d));
       calculatedAtRef.current = Date.now();   // Ablauffrist des Vorgangs beginnt jetzt
       // Erst JETZT gilt der Schlüssel als berechnet: `reqKey` ist der Stand beim
       // ABSENDEN — eine zwischenzeitliche Eingabe hätte den Request oben schon
@@ -838,6 +845,7 @@ export default function CalculatorPage() {
             tariffs={tariffs}
             loading={loading}
             hasResults={hasResults}
+            coverageNotice={coverageNotice}
             selected={selected}
             onSelect={setSelected}
             onBook={handleBook}

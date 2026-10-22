@@ -89,6 +89,13 @@ const CODE_MAP = {
     type: ERROR_TYPE.BUSINESS, title: "Keine Angebote gefunden", retryable: false,
     message: "Für diese Angaben wurden keine Versandangebote gefunden. Bitte prüfen Sie Versandroute, Versanddatum und Paketdaten.",
   },
+  // Auftrag 2 / P5 (C6): der Server unterscheidet seit 2026-10-22 zwischen „keine Angebote" (alle Quellen haben
+  // geantwortet) und „eine Quelle ist ausgefallen, keine andere hatte etwas" — Letzteres ist eine technische,
+  // wiederholbare Lage, kein fachliches Ergebnis. Kein Quellenname, keine Rohmeldung.
+  QUOTE_SOURCES_UNAVAILABLE: {
+    type: ERROR_TYPE.TECHNICAL, title: "Angebote derzeit nicht abrufbar", retryable: true,
+    message: "Die Angebote konnten gerade nicht vollständig abgerufen werden. Bitte versuchen Sie es in einigen Minuten erneut.",
+  },
   ROUTE_NOT_SUPPORTED: {
     type: ERROR_TYPE.BUSINESS, title: "Versandroute nicht verfügbar", retryable: false,
     message: "Für diese Versandroute sind momentan keine Angebote verfügbar. Bitte prüfen Sie Versanddatum, Paketdaten oder Versandart.",

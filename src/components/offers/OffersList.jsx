@@ -30,6 +30,9 @@ const TRUST_ITEMS = [
 
 export function OffersList({
   sorted, filtered, tariffs, loading, hasResults,
+  // Auftrag 2 / P5: der Hinweis des Servers, dass die Liste unvollständig sein kann (utils/sourceCoverageView.mjs).
+  // Ein fertiger Text oder null — die Liste urteilt nicht selbst über die Quellenlage.
+  coverageNotice = null,
   selected, onSelect, onBook,
   sortMode, onSortChange,
   onRecalculate,
@@ -372,6 +375,14 @@ export function OffersList({
           <div className="offers-loading">
             <span className="spinner spinner-dark" />
             <span className="text-sm text-muted">Preise werden geladen…</span>
+          </div>
+        )}
+
+        {/* Auftrag 2 / P5 (C6): eine ausgefallene Einkaufsquelle macht die Liste unvollständig, nicht leer.
+            Der Hinweis steht über den gelieferten Angeboten, ersetzt sie nicht und nennt keine Quelle. */}
+        {!loading && hasResults && coverageNotice && (
+          <div className="alert alert-info offers-coverage-notice" role="status" aria-live="polite" id="offers-coverage-notice">
+            {coverageNotice}
           </div>
         )}
 

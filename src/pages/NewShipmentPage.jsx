@@ -22,6 +22,7 @@ import { todayISO } from "../utils/date";
 import { businessTodayISO } from "../utils/businessDate.mjs";
 import { getFormDraft, createFormDraft, updateFormDraft } from "../api/formDraftsApi";
 import { normalizeApiError, normalizeThrownError, summaryMessage } from "../utils/apiError.mjs";
+import { sourceCoverageNotice } from "../utils/sourceCoverageView.mjs";
 import { focusFirstError } from "../utils/focusField";
 import { visibleFieldErrors, markFieldTouched, withoutFieldError, keepFocusOnMouseDown } from "../utils/fieldTouchState.mjs";
 import { Field } from "../components/ui/Field";
@@ -435,6 +436,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const [selected, setSelected]     = useState(flowInit ? flowInit.selected : null);
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState("");
+  // Auftrag 2 / P5: Hinweis des Servers, dass die Angebotsliste unvollständig sein kann (null = nichts zu sagen).
+  const [coverageNotice, setCoverageNotice] = useState(null);
   // TG22 Paket B: die letzte Preisberechnung scheiterte an fehlenden Profilangaben (422).
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [hasResults, setHasResults] = useState(!!(flowInit && flowInit.tariffs.length > 0));
@@ -687,6 +690,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const resetResults = () => {
     setHasResults(false);
     setTariffs([]);
+    setCoverageNotice(null);
     setSelected(null);
     setCeShipmentId(null); // alte Sendungskennung mit verwerfen → nie mit neuen Daten buchbar
     setCustoms(null);    // alte Zollentscheidung mit verwerfen
@@ -1401,6 +1405,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       // Jedes gelieferte Angebot erscheint (Betreiberentscheidung 2026-10-02: kein Angebot wird wegen
       // eines konkurrierenden Providerpreises verborgen). Was angeboten wird, entscheidet der Server.
       setTariffs(Array.isArray(d.tariffs) ? d.tariffs : []);
+      // Auftrag 2 / P5 (C6): sagt der Server, dass eine Einkaufsquelle ausgefallen ist, steht der
+      // Hinweis über der Liste — die gelieferten Angebote bleiben, nichts wird wiederholt.
+      setCoverageNotice(sourceCoverageNotice(d));
       setCeShipmentId(d.ceShipmentId ?? null);
       // Angebotsabsicht aus dem Preisrechner: genau EINMAL gegen diese frische, vollständig
       // berechnete Liste auflösen. Ausgewählt wird nur ein eindeutig identisches, auswählbares
@@ -2205,6 +2212,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
             tariffs={tariffs}
             loading={loading}
             hasResults={hasResults}
+            coverageNotice={coverageNotice}
             selected={selected}
             onSelect={setSelected}
             onBook={handleBook}

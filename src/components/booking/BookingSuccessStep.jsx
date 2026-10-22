@@ -34,8 +34,8 @@ import { bookingBillingNotice } from "../../utils/billingModeView.mjs";
 import { publicCarrierDisplay, publicServiceName } from "../../utils/carrierMap";
 import { money } from "../../utils/formatters";
 import {
-  INVOICES_DASHBOARD_TARGET, invoiceDeliveryHint, BOOKING_CONFIRMATION_LINE, INVOICE_AUTOCREATE_LINE,
-  bookingSuccessAmountView, bookingSuccessComponents,
+  INVOICES_DASHBOARD_TARGET, invoiceDeliveryHint, BOOKING_CONFIRMATION_LINE,
+  bookingSuccessAmountView, bookingSuccessComponents, bookingDocumentWording,
 } from "../../utils/bookingSuccessView.mjs";
 import { NUMBER_LABELS, orderConfirmationNumberOf } from "../../utils/businessNumbers.mjs";
 import { sameDaySuccessPickupText, SAME_DAY_TEXT } from "../../utils/sameDayCollectionView.mjs";
@@ -48,6 +48,9 @@ export function BookingSuccessStep({
   // TG22 Paket B: der gebuchte Betrag kommt ausschließlich aus der Buchungsantwort. Die
   // Aufstellung der Buchungsseite erscheint nur, wenn sie ihn auf den Cent trägt.
   const betrag = bookingSuccessAmountView(booking, priceView);
+  // Auftrag 2 / P2 (C2): Rechnung, Testdokument oder neutral „Beleg" — aus der eingefrorenen Belegphase
+  // der Buchung und dem erzeugten Belegdatensatz, nie aus einem globalen Schalter.
+  const wording = bookingDocumentWording(booking, invoiceDeliveryMode);
   // TG22 Same-Day: die beim Buchen TATSÄCHLICH gesendete Abholzeit — aus der Buchungsantwort, nie aus dem Angebot.
   const abholungHeute = sameDaySuccessPickupText(booking);
   // Block C: der beim Buchen gebundene Abgabe-Paketshop — aus der Buchungsantwort, nie aus der lokalen Auswahl.
@@ -75,8 +78,8 @@ export function BookingSuccessStep({
               Der Hinweis darunter sagt stattdessen, wo der Betrag erscheinen wird. */}
           {bookingBillingNotice(booking).showsInvoiceNumber && (
             <div>
-              <div className="text-muted" style={{ fontSize: 12 }}>{NUMBER_LABELS.invoice}</div>
-              <CopyableNumber value={booking.invoiceNumber} label={NUMBER_LABELS.invoice} size="lg" />
+              <div className="text-muted" style={{ fontSize: 12 }} id="booking-success-document-number-label">{wording.numberLabel}</div>
+              <CopyableNumber value={booking.invoiceNumber} label={wording.numberLabel} size="lg" />
             </div>
           )}
         </div>
@@ -88,7 +91,7 @@ export function BookingSuccessStep({
               Stelle, statt beide nebeneinander zu behaupten. */}
           {bookingBillingNotice(booking).consolidated
             ? <p className="text-muted mb-8">{bookingBillingNotice(booking).text}</p>
-            : <p className="text-muted mb-8">{INVOICE_AUTOCREATE_LINE}</p>}
+            : <p className="text-muted mb-8" id="booking-success-document-line">{wording.autocreateLine}</p>}
           {!bookingBillingNotice(booking).consolidated && (() => {
             const hint = invoiceDeliveryHint(invoiceDeliveryMode);
             const cls = hint.tone === "success" ? "alert-success" : hint.tone === "error" ? "alert-error" : "alert-info";
@@ -145,7 +148,7 @@ export function BookingSuccessStep({
                 <span className="booking-total-amount">{money(betrag.totalGross)}</span>
               </div>
             ) : (
-              <p className="text-muted text-sm mt-8" id="booking-success-amount-hint">{betrag.hint}</p>
+              <p className="text-muted text-sm mt-8" id="booking-success-amount-hint">{wording.amountMissingHint}</p>
             )}
           </div>
         </div>
@@ -183,8 +186,8 @@ export function BookingSuccessStep({
               der Kunde diesen Bildschirm über Browser-Zurück wieder
               erreicht und dann neu beginnt. */}
           <button className="btn btn-outline" onClick={() => { clearFlow(); navigate("/calculator"); }}>Neue Sendung</button>
-          <button className="btn btn-outline" onClick={() => navigate(INVOICES_DASHBOARD_TARGET)}>
-            Zu meinen Rechnungen
+          <button className="btn btn-outline" id="booking-success-documents-link" onClick={() => navigate(INVOICES_DASHBOARD_TARGET)}>
+            {wording.documentsButton}
           </button>
         </div>
       </div>  );

@@ -86,7 +86,7 @@ Ob ein Angebot eine voraussichtliche Zustellung trägt, welche Tage und ob eine 
 
 Beide Bedienflächen — oben das Formularfeld „Späteste Lieferzeit", unten der Chip „Lieferung" an der Liste — schreiben denselben Zustand (`form.latestDeliveryDate`, `form.latestDeliveryTime`); jede Änderung wirkt sofort und löst keine Preisanfrage aus (`FILTER_ONLY_FIELDS`). Die Regel steht genau einmal in `utils/offersFilterView.mjs` (`deliveryDeadlineAssessment`), für JUMiNGO und Transglobal gleich:
 
-- **„Passend"** (`met`): Zustelldaten des Anbieters in der Frist — späterster Tag vor der Frist, oder am Fristtag ohne Fristuhrzeit bzw. mit Anbieteruhrzeit ≤ Fristuhrzeit (unverändert seit Block B).
+- **„Passend"** (`met`): Zustelldaten des Anbieters in der Frist — spätester Tag vor der Frist, oder am Fristtag ohne Fristuhrzeit bzw. mit Anbieteruhrzeit ≤ Fristuhrzeit (unverändert seit Block B).
 - **„Voraussichtlich passend"** (`projected`): ohne Anbieterdaten die Prognose des Servers nach derselben Regel, eine belegte Uhrzeit wird wie eine Anbieteruhrzeit verglichen (DHL 12:00 passt zu „bis 12:00", nicht zu „bis 10:00").
 - **„Frist nicht bestätigt"** (`not_assessable`): offenes Fenster („1+") mit frühestem Tag in der Frist, am Fristtag eine Fristuhrzeit ohne Uhrzeit des Angebots, ein unbrauchbares Datum oder gar keine Angabe — sichtbar, als eigene Gruppe.
 - **„Zu spät"** (`too_late`): frühester Tag nach der Frist, ein Zeitraum über die Frist hinaus oder am Fristtag eine spätere Uhrzeit — eingeklappt hinter „n Angebote stellen nach Ihrer Frist zu – anzeigen" (`aria-expanded`), mit jeder neuen Frist wieder zu; die Preisgrenze gilt auch dort (`lateResultOffers`).

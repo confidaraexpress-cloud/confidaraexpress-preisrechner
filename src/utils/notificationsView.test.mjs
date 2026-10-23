@@ -62,22 +62,26 @@ test("4 — der Badge bleibt für Screenreader vorlesbar", () => {
   assert.equal(badgeAriaLabel(0), "Benachrichtigungen");
   assert.equal(badgeAriaLabel(1), "Benachrichtigungen: 1 ungelesen");
   assert.equal(badgeAriaLabel(12), "Benachrichtigungen: 12 ungelesen");
-  // Desktop (Redesign 2026-10): der Textknopf „Mitteilungen". Mobile Topbar
-  // (Betreiberentscheidung 2026-10-17): das Glockensymbol. Der zugängliche Name
-  // ist in beiden Fällen „Mitteilungen“ und nennt die Zahl ausgeschrieben; das
-  // visuelle "9+" bleibt aria-hidden. Die Schutzfunktion — ein benannter Knopf,
-  // der die Zahl vorliest — gilt unverändert für beide Darstellungen.
+  // Paket G (Betreiberentscheidung D9, 2026-10-23): auf jeder Seite dieselbe Glocke, ungelesene
+  // Meldungen als roter Punkt OHNE Zahl. Der zugängliche Name und der Tooltip nennen die Zahl
+  // ausgeschrieben — die Schutzfunktion (ein benannter Knopf, der die Zahl vorliest) bleibt;
+  // sichtbar steht keine Zahl mehr.
   assert.match(bell, /const KNOPF_TEXT = "Mitteilungen";/, "der Name des Knopfes fehlt");
   assert.match(bell, /aria-label=\{knopfName\(unread\)\}/, "der zugängliche Name nennt die Zahl nicht");
+  assert.match(bell, /title=\{knopfName\(unread\)\}/, "der Tooltip nennt die Zahl nicht");
   assert.match(bell, /`\$\{KNOPF_TEXT\}, \$\{Math\.floor\(n\)\} ungelesen`/, "die Zahl wird nicht ausgeschrieben");
-  assert.match(bell, /variant === "topbar"\s*\?\s*<Icon n="bell" s=\{ICON_SIZE\.lg\} \/>\s*:\s*<span className="ntf-bell-text">\{KNOPF_TEXT\}<\/span>/,
-    "mobile Topbar: Glocke, Desktop: das Wort „Mitteilungen“");
-  assert.match(bell, /title=\{badgeAriaLabel\(unread\)\}/, "der Symbolknopf braucht einen Tooltip");
-  assert.match(bell, /<span className="ntf-badge" aria-hidden="true">/);
-  // Der Zähler steht an der Glocke (Overlay), nicht neben einem Wort.
-  assert.match(css, /\.ntf-bell-topbar \.ntf-badge \{[^}]*position: absolute;/, "der Zähler sitzt nicht an der Glocke");
-  assert.match(css, /\.ntf-bell-topbar \{[^}]*min-width: var\(--ce-size-touch-target\);[^}]*min-height: var\(--ce-size-touch-target\);/,
-    "die Glocke ist kein 44-px-Ziel");
+  assert.match(bell, /<Icon n="bell" s=\{ICON_SIZE\.lg\} \/>/, "die Glocke fehlt");
+  assert.doesNotMatch(bell, /variant === "topbar"\s*\?/, "der Inhalt hängt wieder an der Variante");
+  assert.doesNotMatch(bell, /ntf-bell-text|ntf-badge|badgeLabel\(/, "Wort oder Zähler sind zurück");
+  assert.match(bell, /<span className="ntf-dot" aria-hidden="true" \/>/, "der Punkt fehlt oder ist nicht aria-hidden");
+  // Der Punkt sitzt an der Glocke (Overlay) und kommt aus dem Statustoken; keine Zahl, keine Animation.
+  assert.match(css, /\.ntf-dot \{[^}]*position: absolute;[^}]*background: var\(--ce-color-danger-solid\);/,
+    "der Punkt sitzt nicht an der Glocke oder ist nicht rot");
+  assert.doesNotMatch(css, /@keyframes|animation:/, "der Punkt pulsiert");
+  assert.match(css, /\.ntf-bell \{[^}]*width: var\(--ce-size-control-md\);[^}]*height: var\(--ce-size-control-md\);/,
+    "die Glocke ist kein 40-px-Knopf");
+  assert.match(css, /\.ntf-bell-topbar \{[^}]*width: var\(--ce-size-touch-target\);[^}]*height: var\(--ce-size-touch-target\);/,
+    "die Glocke ist in der Topbar kein 44-px-Ziel");
 });
 
 // ═══ B) Normalisierung ══════════════════════════════════════════════════════
@@ -451,10 +455,12 @@ test("33 — das Stylesheet nutzt Layout-Tokens statt eigener Farbwerte", () => 
   assert.deepEqual(literals, [], `zu viele Farbliterale: ${literals.join(", ")}`);
   assert.match(css, /var\(--ce-color-surface\)/);
   assert.match(css, /var\(--ce-color-border-subtle\)/);
-  // Der Akzent läuft über die Foundation-Markenrollen: Fläche über --ce-color-brand,
-  // Text in Textgröße über die dunklere -ink-Rolle (AA auf heller Fläche).
-  assert.match(css, /var\(--ce-color-brand\)/);
+  // Der Akzent läuft über die Foundation-Markenrollen: die Glockenfläche über
+  // --ce-color-brand-soft, Text in Textgröße über die dunklere -ink-Rolle (AA auf
+  // heller Fläche). Der Ungelesen-Punkt (Paket G, D9) kommt aus dem Statustoken.
+  assert.match(css, /var\(--ce-color-brand-soft\)/);
   assert.match(css, /var\(--ce-color-brand-ink\)/);
+  assert.match(css, /var\(--ce-color-danger-solid\)/);
 });
 
 test("34 — das Stylesheet ist in die Importkette aufgenommen", () => {

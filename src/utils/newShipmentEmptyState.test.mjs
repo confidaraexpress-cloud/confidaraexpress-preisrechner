@@ -2,8 +2,10 @@
 //
 // Zwei zusammengehörende Zusagen:
 //   1. Das Formular startet leer. Kein Profil-Autoseed, kein vorausgewähltes
-//      Land, keine Paketwerte — gespeicherte Angaben kommen ausschließlich über
-//      eine bewusste Aktion (Komfortfunktion, Adressbuch, Entwurf öffnen).
+//      Empfängerland, keine Paketwerte — gespeicherte Angaben kommen nur aus einer
+//      Einstellung oder Aktion des Kunden: dem Standard-Absender, den er im
+//      Adressbuch festgelegt hat (Paket G, sichtbar gekennzeichnet), „Adresse
+//      suchen" oder einem geöffneten Entwurf.
 //   2. Anzahl, Gewicht UND alle drei Maße sind Pflicht. Vorher waren Länge,
 //      Breite und Höhe optional, und das Backend ersetzte leere Felder still
 //      durch 30/20/15 cm — der Kunde bekam einen Preis für ein Paket, das er nie
@@ -17,7 +19,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
-  createEmptyShipmentForm, senderPatchFromProfile, hasProfileSenderData,
+  createEmptyShipmentForm, partyHasInput,
   packageFieldError, packageErrors, packageComplete, packageHint,
   packagePayload, packageSummaryLine, PACKAGE_FIELDS, PACKAGE_PLACEHOLDERS, PACKAGE_COUNT_DEFAULT,
   DEFAULT_ORIGIN_COUNTRY,
@@ -86,42 +88,63 @@ test("2 — das Profil belegt den Absender NICHT automatisch vor", () => {
     "ein Effekt schreibt Profildaten ins Formular");
 });
 
-/* ══════════ TEST 3 — Komfortfunktion Absender ════════════════════════════ */
+/* ══════════ TEST 3 — Absender: Standard-Absender statt „Eigene Adresse" ═══ */
 
-test("3 — „Eigene Adresse“ füllt den Absender korrekt", () => {
-  const patch = senderPatchFromProfile({
-    company_name: "Muster GmbH", name: "Max Muster", street: "Musterstr. 1",
-    zip: "70173", city: "Stuttgart", country: "DEU", phone: "0711 1", email: "a@b.de",
-  });
-  assert.deepEqual(patch, {
-    s_company: "Muster GmbH", s_fullName: "Max Muster", s_street: "Musterstr. 1",
-    s_addition: "", s_zip: "70173", s_city: "Stuttgart",
-    // „DEU" wird normalisiert — ein Wert, der in keiner <option> steht, zeigte
-    // im Auswahlfeld gar nichts an und ließ jeden Entwurf serverseitig scheitern.
-    s_country: "DE", s_phone: "0711 1", s_email: "a@b.de",
-  });
-  // Sie fasst ausschließlich Absenderfelder an.
-  for (const k of Object.keys(patch)) assert.ok(k.startsWith("s_"), `${k} ist kein Absenderfeld`);
+// Paket G (Master-Implementierungsauftrag 2026-10-23): „Eigene Adresse" (Absender aus dem Profil)
+// ist entfallen, „Adresse suchen" bleibt für beide Seiten, und der Standard-Absender des Adressbuchs
+// wird auf einem frischen Formular vorbelegt.
+test("3 — „Eigene Adresse“ ist entfallen, samt Profilhelfern", () => {
+  assert.ok(!seite.includes("Eigene Adresse"), "der Knopf „Eigene Adresse“ ist zurück");
+  assert.ok(!/uebernimmProfilAbsender|profilAbsenderVerfuegbar|PROFILE_SENDER_NOTE/.test(seite),
+    "die Profilübernahme ist zurück");
+  const modul = lies("./newShipmentForm.mjs");
+  assert.ok(!/export function senderPatchFromProfile|export function hasProfileSenderData/.test(modul),
+    "die Profilhelfer sind zurück");
 });
 
-test("3b — ohne hinterlegte Anschrift erscheint die Aktion gar nicht", () => {
-  assert.equal(hasProfileSenderData({}), false);
-  assert.equal(hasProfileSenderData(null), false);
-  assert.equal(hasProfileSenderData({ country: "DE" }), false, "ein Land allein ist keine Anschrift");
-  assert.equal(hasProfileSenderData({ city: "Stuttgart" }), true);
-  assert.ok(seite.includes("{profilAbsenderVerfuegbar && ("), "die Sichtbarkeit hängt an nichts");
+test("3b — partyHasInput: das Land allein ist keine Eingabe", () => {
+  const leer = createEmptyShipmentForm();
+  assert.equal(partyHasInput(leer, "s"), false, "das leere Formular zählt als Absendereingabe");
+  assert.equal(partyHasInput({ ...leer, s_country: "AT" }, "s"), false, "ein Land allein ist keine Eingabe");
+  assert.equal(partyHasInput({ ...leer, s_city: "Stuttgart" }, "s"), true);
+  assert.equal(partyHasInput({ ...leer, s_city: "   " }, "s"), false, "Leerzeichen sind keine Eingabe");
+  assert.equal(partyHasInput({ ...leer, s_lastName: "Muster" }, "s"), true, "der Nachname zählt");
+  assert.equal(partyHasInput({ ...leer, r_company: "X" }, "s"), false, "der Empfänger zählt nicht für den Absender");
+  assert.equal(partyHasInput({ ...leer, r_company: "X" }, "r"), true);
+  assert.equal(partyHasInput(null, "s"), false);
 });
 
-test("3c — die Übernahme ist EIN Patch mit GENAU EINER Invalidierung", () => {
-  // Funktionsrumpf fail-closed geschnitten: von der Deklaration bis zur
-  // schließenden Klammer auf Deklarationsebene ("\n  };").
-  const koerper = schnitt(seite, "const uebernimmProfilAbsender = ", "\n  };", "Profilabsender-Übernahme (3c)");
+test("3c — der Standard-Absender: EIN Patch, die Baseline zieht nach, nichts wird überschrieben", () => {
+  // Funktionsrumpf fail-closed geschnitten: von der Deklaration bis zum Ende des useCallback.
+  const koerper = schnitt(seite, "const belegeStandardAbsenderVor = useCallback(async () => {", "\n  }, []);",
+    "Standard-Absender (3c)");
   assert.equal((koerper.match(/setForm\(/g) || []).length, 1, "mehr als ein Formularpatch");
-  assert.equal((koerper.match(/invalidateResults\(\)/g) || []).length, 1, "nicht genau eine Invalidierung");
-  // Die Baseline wird NICHT nachgezogen: eine Nutzeraktion macht die Seite
-  // „dirty" — sonst verschwände der Verlassen-Hinweis und der Entwurfsknopf
-  // bliebe gesperrt.
-  assert.ok(!/setBaseline\(/.test(koerper), "die Baseline wird nachgezogen");
+  // Die Vorbelegung IST der Ausgangszustand — anders als eine Nutzeraktion zieht die Baseline nach
+  // (kein Verlassen-Hinweis für etwas, das der Kunde nicht eingegeben hat).
+  assert.equal((koerper.match(/setBaseline\(/g) || []).length, 1, "die Baseline zieht nicht nach");
+  // Hat der Kunde inzwischen etwas geändert oder in den Absender geschrieben, wird nichts überschrieben.
+  assert.ok(/if \(dirtyRef\.current \|\| partyHasInput\(stand\.form, "s"\)\)/.test(koerper),
+    "die Vorbelegung überschreibt Eingaben");
+  // Dieselbe Feldauslegung wie „Adresse suchen", am Flag erkannt.
+  assert.ok(koerper.includes('mapAddressToShipmentFormPatch(adresse, "s")'));
+  assert.ok(koerper.includes("defaultAddressForTab(data && data.items, TAB_SENDER)"));
+  // Der Kunde sieht, woher die Werte kommen: die Marke am Titel, solange die Werte unverändert sind —
+  // kein Hinweistext über den Feldern (der schöbe die Absenderspalte unter die Empfängerspalte).
+  assert.ok(!koerper.includes("setAddressNote"), "die Vorbelegung schreibt wieder einen Hinweistext");
+  assert.ok(seite.includes('{absenderIstStandard && <span className="badge badge-blue calc-section-badge">{DEFAULT_SENDER_BADGE}</span>}'),
+    "die Marke „Standard-Absender“ fehlt am Titel");
+  // Eine verspätete Antwort (Reset, Verlassen der Seite) schreibt nichts.
+  assert.ok(koerper.includes("mountedRef.current && standardSeqRef.current === meins"));
+});
+
+test("3d — nur auf einem frischen Formular; der Reset beginnt wie das Öffnen", () => {
+  const start = schnitt(seite, "const standardStartRef = useRef(false);", "\n  }, []);", "Start des Standard-Absenders (3d)");
+  assert.ok(start.includes("if (!authed || resumeInit || flowInit || absenderAusPrefill)"),
+    "die Vorbelegung greift auch bei Entwurf, Sitzungsvorgang oder Absender-Prefill");
+  const reset = schnitt(seite, "const resetToFreshShipment = () => {", "\n  };", "Reset (3d)");
+  assert.ok(reset.includes("belegeStandardAbsenderVor();"), "der Reset trägt den Standard-Absender nicht wieder ein");
+  // Ein unverändert eingetragener Standard zählt beim Zurücksetzen nicht als Eingabe.
+  assert.ok(seite.includes("hasMeaningfulShipmentInput(ohneStandardAbsender(currentSnapshot), baseline)"));
 });
 
 /* ══════════ TEST 4 — Adressbuch ══════════════════════════════════════════ */

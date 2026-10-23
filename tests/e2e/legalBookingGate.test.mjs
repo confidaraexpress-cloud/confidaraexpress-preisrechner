@@ -127,8 +127,12 @@ async function neueSeite(opts = {}) {
 async function zurBestelluebersicht(page) {
   await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".offers-form-section", { timeout: 20000 });
-  await page.locator("button", { hasText: "Eigene Adresse" }).first().click();
-  await page.waitForTimeout(150);
+  // Paket G (2026-10-23): „Eigene Adresse" ist entfallen. Das Adressbuch dieser Suite hat keinen
+  // Standard-Absender, der Absender wird deshalb ausdrücklich eingetragen.
+  for (const [id, v] of [
+    ["ns-s-company", "Muster GmbH"], ["ns-s-street", "Musterstraße 1"],
+    ["ns-s-zip", "73207"], ["ns-s-city", "Plochingen"],
+  ]) await page.locator(`#${id}`).fill(v);
   await page.locator("#ns-r-country").selectOption("DE");
   // Ueber die STABILEN ids statt ueber Platzhalter und Feldpositionen. Beide Zugriffe
   // sind mit dem Versandkontaktvertrag gebrochen: der Platzhalter des Namensfeldes gibt
@@ -141,10 +145,7 @@ async function zurBestelluebersicht(page) {
     ["ns-r-street",    "Bahnhofstrasse 9"],
     ["ns-r-zip",       "80331"], ["ns-r-city", "Muenchen"],
   ]) await page.locator(`#${id}`).fill(v);
-  // Der Profil-Seed („Eigene Adresse") traegt Firma, Anschrift und E-Mail des Kontos —
-  // aber keine getrennte Kontaktperson und keine Telefonnummer: das Konto fuehrt einen
-  // einzelnen Ansprechpartnernamen, und der wird nicht zerlegt. Beides wird deshalb
-  // ausdruecklich ergaenzt, so wie es auch ein Kunde tun muss.
+  // Kontaktperson, Telefon und E-Mail des Absenders.
   for (const [id, v] of [
     ["ns-s-firstName", "Max"], ["ns-s-lastName", "Mustermann"],
     ["ns-s-phone",     "+49301234567"], ["ns-s-email", "max@example.com"],

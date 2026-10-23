@@ -17,8 +17,10 @@ import { readFileSync } from "node:fs";
    Kontos, dieselbe Ablehnung in der Buchung, und eine Unternehmenskarte, die
    sich nicht mehr speichern ließ. Der Kunde sah nur „Bitte versuche es erneut."
 
-   Diese Datei hält die Auflösung fest: eine Normalisierung, drei Seed-Punkte,
-   und eine Fehlermeldung, die nicht mehr zum sinnlosen Wiederholen auffordert. */
+   Diese Datei hält die Auflösung fest: eine Normalisierung, die Seed-Punkte
+   (seit Paket G, 2026-10-23, nur noch Rechner und Unternehmenskarte — „Neue
+   Sendung" liest das Profil nicht mehr), und eine Fehlermeldung, die nicht mehr
+   zum sinnlosen Wiederholen auffordert. */
 
 import { countries, normalizeCountryCode } from "./countries.js";
 import { companyBaseline, buildCompanyPatch } from "./profileView.mjs";
@@ -82,19 +84,21 @@ test("A6 jeder Code der Liste übersteht die Normalisierung unverändert", () =>
   for (const c of countries) assert.equal(normalizeCountryCode(c.code), c.code);
 });
 
-/* ══════════ B — Alle drei Seed-Punkte laufen darüber ═════════════════════ */
+/* ══════════ B — Die Seed-Punkte laufen darüber ═══════════════════════════ */
 
-// „Neue Sendung" belegt den Absender seit dem Paket „leerer Nullzustand" NICHT
-// mehr automatisch aus dem Profil — das Formular startet leer, und die Daten
-// kommen erst auf ausdrückliche Anforderung („Eigene Adresse"). Die
-// Normalisierungspflicht gilt dort unverändert weiter: sie ist der Grund, warum
-// ein Konto mit „DEU" überhaupt eine anzeigbare Auswahl bekommt.
-test("B1 die Absenderübernahme von „Neue Sendung“ normalisiert das Land", () => {
+// „Neue Sendung" liest das Profil seit Paket G (Master-Implementierungsauftrag
+// 2026-10-23) gar nicht mehr als Absender: „Eigene Adresse" ist entfallen. Der
+// Absender kommt aus dem Adressbuch — als Standard-Absender oder über „Adresse
+// suchen" — und durch dieselbe Feldauslegung (mapAddressToShipmentFormPatch). Das
+// unnormalisierte Profilland („DEU") kann dort also nicht mehr ankommen; die
+// beiden übrigen Seed-Punkte (B2, B3) normalisieren unverändert.
+test("B1 „Neue Sendung“ liest das Profil nicht als Absender", () => {
   const modul = lies("./newShipmentForm.mjs");
-  assert.match(modul, /s_country:\s*normalizeCountryCode\(u\.country\)/);
-  assert.doesNotMatch(modul, /s_country:\s*u\.country\s*\|\|/);
-  // Und die Seite benutzt genau diese Funktion, statt eine zweite zu bauen.
-  assert.match(seite, /senderPatchFromProfile\(user\)/);
+  assert.doesNotMatch(modul, /export function (senderPatchFromProfile|hasProfileSenderData)\b/, "der Profil-Absender ist zurück");
+  assert.doesNotMatch(seite, /senderPatchFromProfile|hasProfileSenderData|user\??\.company_name|user\??\.street\b/,
+    "die Seite liest wieder Profildaten in den Absender");
+  // Die einzige automatische Absenderquelle ist der Standard-Absender des Adressbuchs.
+  assert.match(seite, /mapAddressToShipmentFormPatch\(adresse, "s"\)/);
 });
 
 test("B1b der Ausgangszustand trägt nur das Absenderland Deutschland, nichts aus dem Profil", () => {

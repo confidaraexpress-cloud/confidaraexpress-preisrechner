@@ -1,10 +1,12 @@
 // Browser-Smokes: Hamburger, Glocke und Navigations-Drawer (Auftrag 1, P6, 2026-10-17).
 //
 // Betreiberentscheidung: auf mobilen Ansichten links oben wieder das Hamburger-Symbol, rechts oben
-// die Glocke mit dem kleinen Zähler (vorher die Textknöpfe „Menü" und „Mitteilungen"). Zugleich
+// die Glocke (vorher die Textknöpfe „Menü" und „Mitteilungen"). Zugleich
 // behoben: Escape schließt den Drawer, der Fokus wandert hinein und kehrt zurück, ein geschlossener
 // Drawer ist per Tab nicht erreichbar, aria-expanded und aria-controls sind verdrahtet.
-// Der Desktop behält die Textnavigation und den Knopf „Mitteilungen".
+// Der Desktop behält die Textnavigation. Seit Paket G (Betreiberentscheidung D9, 2026-10-23) steht
+// die Glocke auf JEDER Seite als Symbol; ungelesene Meldungen zeigt ein roter Punkt ohne Zahl, die
+// Zahl steht nur im zugänglichen Namen und im Tooltip.
 //
 // Echter Dev-Server und Chromium; alle Backendrufe abgefangen, kontrollierte Testdaten.
 import { test } from "node:test";
@@ -71,7 +73,7 @@ test.after(async () => {
   stopDevServer(server, "SIGTERM");
 });
 
-test("1 — Kunde 390 px: Hamburger links, Glocke rechts, Zähler an der Glocke, Namen unverändert", async () => {
+test("1 — Kunde 390 px: Hamburger links, Glocke rechts, Punkt an der Glocke, Namen unverändert", async () => {
   const { ctx, page, fehler } = await neueSeite("/dashboard");
   const menue = page.locator('.mobile-topbar button[aria-label="Menü – Navigation öffnen"]');
   const glocke = page.locator('.mobile-topbar button[aria-label^="Mitteilungen"]');
@@ -80,17 +82,19 @@ test("1 — Kunde 390 px: Hamburger links, Glocke rechts, Zähler an der Glocke,
   assert.equal(await menue.locator("svg").count(), 1, "kein Hamburger-Symbol");
   assert.equal(await glocke.getAttribute("aria-label"), "Mitteilungen, 3 ungelesen");
   assert.equal(await glocke.locator("svg").count(), 1, "keine Glocke");
-  assert.equal((await glocke.locator(".ntf-badge").innerText()).trim(), "3", "der Zähler fehlt");
+  assert.equal(await glocke.locator(".ntf-dot").count(), 1, "der Punkt fehlt");
+  assert.equal((await glocke.innerText()).trim(), "", "an der Glocke steht sichtbarer Text oder eine Zahl");
+  assert.equal(await glocke.getAttribute("title"), "Mitteilungen, 3 ungelesen", "der Tooltip nennt die Zahl nicht");
   const lage = await page.evaluate(() => {
     const m = document.querySelector(".mobile-topbar .hamburger-btn").getBoundingClientRect();
     const g = document.querySelector(".mobile-topbar .ntf-bell").getBoundingClientRect();
-    const z = document.querySelector(".mobile-topbar .ntf-badge").getBoundingClientRect();
+    const z = document.querySelector(".mobile-topbar .ntf-dot").getBoundingClientRect();
     return { mLinks: m.left, gRechts: window.innerWidth - g.right, mW: m.width, mH: m.height, gW: g.width, gH: g.height,
              zImKnopf: z.left >= g.left - 1 && z.right <= g.right + 1 && z.top >= g.top - 1 };
   });
   assert.ok(lage.mLinks < 60 && lage.gRechts < 60, "Menü und Glocke stehen nicht in den Ecken");
   for (const [n, w] of [["Menü", lage.mW], ["Menü", lage.mH], ["Glocke", lage.gW], ["Glocke", lage.gH]]) assert.ok(w >= 44, `${n}: ${w} px`);
-  assert.ok(lage.zImKnopf, "der Zähler sitzt nicht an der Glocke");
+  assert.ok(lage.zImKnopf, "der Punkt sitzt nicht an der Glocke");
   assert.deepEqual(fehler, []);
   await ctx.close();
 });
@@ -157,13 +161,48 @@ test("4 — Admin 390 px: Hamburger mit Zustand, Drawer schließt per Escape und
   await ctx.close();
 });
 
-test("5 — Desktop 1440 px: Textnavigation und Knopf „Mitteilungen“ bleiben, kein Hamburger", async () => {
+test("5 — Desktop 1440 px: Textnavigation bleibt, Glocke als Symbol mit Punkt, kein Hamburger", async () => {
   const { ctx, page } = await neueSeite("/dashboard?page=shipments", { breite: 1440, touch: false });
   await page.waitForSelector("#ce-kundennavigation", { timeout: 20000 });
   assert.equal(await sichtbar(page, "#ce-kundennavigation"), true, "die Sidebar ist auf dem Desktop unsichtbar");
   assert.equal(await sichtbar(page, ".mobile-topbar .hamburger-btn"), false, "der Hamburger erscheint auf dem Desktop");
   const desktopGlocke = page.locator('button.ntf-bell:not(.ntf-bell-topbar)').first();
   await desktopGlocke.waitFor({ state: "visible", timeout: 10000 });
-  assert.match(await desktopGlocke.innerText(), /Mitteilungen/, "der Desktop zeigt nicht mehr das Wort „Mitteilungen“");
+  assert.equal((await desktopGlocke.innerText()).trim(), "", "der Desktop zeigt Text statt des Symbols");
+  assert.equal(await desktopGlocke.locator("svg").count(), 1, "keine Glocke");
+  assert.equal(await desktopGlocke.locator(".ntf-dot").count(), 1, "der Punkt fehlt");
+  assert.equal(await desktopGlocke.getAttribute("aria-label"), "Mitteilungen, 3 ungelesen");
+  assert.equal(await desktopGlocke.getAttribute("title"), "Mitteilungen, 3 ungelesen");
+  const mass = await desktopGlocke.evaluate((b) => { const r = b.getBoundingClientRect(); return { w: r.width, h: r.height }; });
+  assert.deepEqual(mass, { w: 40, h: 40 }, "die Desktop-Glocke ist kein 40-px-Knopf");
   await ctx.close();
+});
+
+test("5b — keine ungelesene Meldung: kein Punkt, Name ohne Zahl; zwölf ungelesene: Punkt ohne Zahl", async () => {
+  for (const breite of [1440, 390]) {
+    const desktop = breite > 860;
+    const sel = desktop ? "button.ntf-bell:not(.ntf-bell-topbar)" : ".mobile-topbar button.ntf-bell";
+    {
+      const { ctx, page, fehler } = await neueSeite("/dashboard?page=shipments", { breite, touch: !desktop, ungelesen: 0 });
+      const glocke = page.locator(sel).first();
+      await glocke.waitFor({ state: "visible", timeout: 20000 });
+      // Der Zähler kommt per Abfrage; erst nach deren Antwort ist „kein Punkt“ eine Aussage.
+      await page.waitForTimeout(600);
+      assert.equal(await glocke.locator(".ntf-dot").count(), 0, `${breite} px: Punkt trotz null ungelesener Meldungen`);
+      assert.equal(await glocke.getAttribute("aria-label"), "Mitteilungen", `${breite} px: Name ohne Zahl erwartet`);
+      assert.deepEqual(fehler, []);
+      await ctx.close();
+    }
+    {
+      const { ctx, page, fehler } = await neueSeite("/dashboard?page=shipments", { breite, touch: !desktop, ungelesen: 12 });
+      const glocke = page.locator(sel).first();
+      await glocke.waitFor({ state: "visible", timeout: 20000 });
+      await glocke.locator(".ntf-dot").waitFor({ state: "visible", timeout: 10000 });
+      assert.equal(await glocke.getAttribute("aria-label"), "Mitteilungen, 12 ungelesen");
+      assert.equal((await glocke.innerText()).trim(), "", `${breite} px: eine Zahl steht sichtbar an der Glocke`);
+      assert.equal(await page.locator(".ntf-badge").count(), 0, "der alte Zähler ist zurück");
+      assert.deepEqual(fehler, []);
+      await ctx.close();
+    }
+  }
 });

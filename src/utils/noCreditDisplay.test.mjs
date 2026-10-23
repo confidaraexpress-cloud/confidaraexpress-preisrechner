@@ -4,7 +4,7 @@
 // „Kredit genutzt" und „Kreditlimit" aus den Spalten credit_limit/credit_used — beides ist
 // entfernt und kehrt nicht zurück. Seit Paket E/F (Master-Implementierungsauftrag 2026-10-23,
 // D5–D7) gibt es den BUCHUNGSRAHMEN: der Server leitet Rahmen, offene Belege, Reservierungen
-// und Spielraum ab und liefert sie als `credit`-Objekt (GET /api/kunde/credit, Admin-Detail
+// und Spielraum ab und liefert sie als `credit`-Objekt (GET /kunde/credit, Admin-Detail
 // und -Liste) bzw. als `creditLimit` der 409-Antwort. Die Oberfläche liest AUSSCHLIESSLICH
 // diese Objekte über utils/creditLimitView.mjs — nie die Rohspalten, nie eine eigene Rechnung.
 // Sichtbar bleiben daneben die Debitoreninformationen: Zahlungsziel, offene Gesamtsumme,

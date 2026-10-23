@@ -2,7 +2,7 @@
 // Buchungsrahmen je Kunde (Master-Implementierungsauftrag 2026-10-23, Paket F; Backend Paket E).
 //
 // Reine, framework-freie Anzeige- und Eingabelogik rund um den Buchungsrahmen:
-//   • Lesen der Serverantworten (`GET /api/kunde/credit`, `credit` im Admin-Detail/-Liste,
+//   • Lesen der Serverantworten (`GET /kunde/credit`, `credit` im Admin-Detail/-Liste,
 //     `creditLimit` im 409 CREDIT_LIMIT_EXCEEDED)
 //   • Texte für Übersicht, Buchungsseite und Admin — neutral, ohne Anbieter, Beträge brutto
 //   • Vorab-Hinweis der Buchungsseite (reine Anzeige: der Server entscheidet beim Buchen erneut

@@ -3,6 +3,7 @@ import { getAddresses } from "../../api/addressBookApi";
 import {
   TAB_SENDER, TAB_RECIPIENT,
   addressPickerLabel, addressPickerPerson, addressPickerMeta,
+  defaultAddressForTab, isDefaultForTab, withDefaultFirst,
 } from "../../utils/addressBookView.mjs";
 
 /* ── Adresse aus dem Adressbuch auswählen ────────────────────────────────────
@@ -26,8 +27,17 @@ import {
    also in keiner der beiden Ansichten.
 
    Bewusst NICHT übernommen sind die Bauteile der Adressbuchseite (Reiter,
-   Favoritenfilter, Standardflags, Verwaltungsmenü). Sie tragen
-   Verwaltungsaufgaben, die in einem Auswahlschritt nichts zu suchen haben.
+   Favoritenfilter, Verwaltungsmenü). Sie tragen Verwaltungsaufgaben, die in
+   einem Auswahlschritt nichts zu suchen haben.
+
+   Paket G (Master-Implementierungsauftrag 2026-10-23, „Standardabsender
+   sinnvoll hervorheben"): die Standardadresse des Reiters steht ohne
+   Suchbegriff zuerst und trägt die Marke „Standard-Absender" bzw.
+   „Standard-Empfänger" — nur als Anzeige, ändern lässt sie sich hier nicht.
+   Sie kommt aus einer eigenen Abfrage (`default=sender|recipient`), weil die
+   Liste nach Anlagedatum geblättert wird und ein älterer Standard sonst nicht
+   unter den ersten Treffern stünde. Mit Suchbegriff bleibt die Reihenfolge
+   des Servers; die Marke steht dann am Treffer selbst.
 
    Die Auswahl ist eine VORBELEGUNG. Es entsteht keine Referenz auf die
    Adressbuchzeile, nichts wird später nachsynchronisiert und nichts wird ins
@@ -42,12 +52,28 @@ const TEXTE = {
   [TAB_SENDER]: {
     listenname: "Absenderadressen",
     leer: "Im Adressbuch ist noch keine eigene Adresse hinterlegt. Sie können die Adresse direkt im Formular eingeben.",
+    standard: "Standard-Absender",
   },
   [TAB_RECIPIENT]: {
     listenname: "Empfängeradressen",
     leer: "Im Adressbuch ist noch kein Empfänger hinterlegt. Sie können die Adresse direkt im Formular eingeben.",
+    standard: "Standard-Empfänger",
   },
 };
+
+// Die Standardadresse des Reiters, oder null. Ein Fehler dieser Zusatzabfrage ist kein Fehler der
+// Auswahl: die Liste erscheint dann ohne Hervorhebung.
+async function ladeStandard(reiter, signal) {
+  try {
+    const res = await getAddresses({ tab: reiter, defaultOnly: true, limit: 1 }, { signal });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return defaultAddressForTab(data && data.items, reiter);
+  } catch (e) {
+    if (e?.name === "AbortError") throw e;
+    return null;
+  }
+}
 
 // Fokus auf die Option, die `schritt` Positionen von der aktuellen entfernt ist.
 // Pfeiltasten sind eine Zugabe — Tab funktioniert unverändert, weil jede Option
@@ -96,15 +122,16 @@ export function AddressPicker({ tab, onSelect, onClose, disabled }) {
     setLoading(true);
     setError("");
     try {
-      const res = await getAddresses(
-        { tab: reiter, q: q || undefined, limit: SEITENGROESSE },
-        { signal: controller.signal }
-      );
+      // Ohne Suchbegriff parallel die Standardadresse (Paket G); mit Suchbegriff genügt die Trefferliste.
+      const [res, standard] = await Promise.all([
+        getAddresses({ tab: reiter, q: q || undefined, limit: SEITENGROESSE }, { signal: controller.signal }),
+        q ? Promise.resolve(null) : ladeStandard(reiter, controller.signal),
+      ]);
       if (seq.current !== meins) return;
       if (!res.ok) { setError(LADEFEHLER); setItems([]); return; }
       const data = await res.json();
       if (seq.current !== meins) return;
-      setItems(data.items || []);
+      setItems(q ? (data.items || []) : withDefaultFirst(data.items, standard));
     } catch (e) {
       // Ein abgebrochener Request ist kein Fehler des Nutzers — er hat nur
       // weitergetippt. Ohne diese Unterscheidung blitzte bei jedem Tastendruck
@@ -186,17 +213,21 @@ export function AddressPicker({ tab, onSelect, onClose, disabled }) {
         {!loading && !error && items.map((a) => {
           const person = addressPickerPerson(a);
           const anschrift = addressPickerMeta(a);
+          const standard = isDefaultForTab(a, reiter);
           return (
             <button
               key={a.id}
               type="button"
               role="option"
               aria-selected="false"
-              className="abk-pick-item"
+              className={`abk-pick-item${standard ? " abk-pick-item-default" : ""}`}
               onClick={() => onSelect?.(a)}
               disabled={disabled}
             >
-              <span className="abk-pick-name">{addressPickerLabel(a)}</span>
+              <span className="abk-pick-title">
+                <span className="abk-pick-name">{addressPickerLabel(a)}</span>
+                {standard && <span className="badge badge-blue abk-pick-default">{texte.standard}</span>}
+              </span>
               {person && <span className="abk-pick-person">{person}</span>}
               {anschrift && <span className="abk-pick-meta">{anschrift}</span>}
             </button>

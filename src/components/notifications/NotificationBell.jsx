@@ -3,9 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useNotifications } from "../../context/NotificationsContext";
 import { NotificationPanel } from "./NotificationPanel";
 import { Icon, ICON_SIZE } from "../ui/Icon";
-import {
-  badgeLabel, showBadge, badgeAriaLabel, notificationTarget,
-} from "../../utils/notificationsView.mjs";
+import { showBadge, notificationTarget } from "../../utils/notificationsView.mjs";
 
 // ── „Mitteilungen" ───────────────────────────────────────────────────────────
 // Eine Komponente, mehrere Mountpunkte (Übersicht, beide mobilen Topbars, der
@@ -13,16 +11,15 @@ import {
 // gemeinsamen Provider — es läuft also genau EINE Abfrageschleife pro Shell,
 // unabhängig davon, wie oft der Knopf gerendert wird.
 //
-// Auf dem Desktop ist der Einstieg der Textknopf „Mitteilungen" (Redesign
-// 2026-10) mit der Zahl ungelesener Meldungen. In der mobilen Topbar steht seit
-// der Betreiberentscheidung 2026-10-17 wieder das Glockensymbol; der Zähler sitzt
-// klein an der Glocke. Der zugängliche Name ist in beiden Fällen derselbe
-// („Mitteilungen, 3 ungelesen“) und nennt die Zahl ausgeschrieben.
+// Seit Paket G (Master-Implementierungsauftrag 2026-10-23, Betreiberentscheidung D9) steht auf JEDER
+// Seite oben rechts dasselbe Glockensymbol — auf dem Desktop auf der Soft-Button-Fläche, in der
+// mobilen Topbar ohne Fläche. Ungelesene Meldungen zeigt ein roter Punkt OHNE Zahl. Die Zahl steht
+// weiter im zugänglichen Namen und im Tooltip („Mitteilungen, 3 ungelesen“), ausgeschrieben.
 //
-// `variant` steuert nur die Optik des Knopfes:
-//   "overview" — Utility-Zeile der Übersicht (Text)
-//   "topbar"   — mobile Topbar (< 860 px, Glockensymbol)
-//   "page"     — Utility-Zeile der übrigen Desktop-Unterseiten (Text)
+// `variant` steuert nur Fläche und Größe des Knopfes, nie den Inhalt:
+//   "overview" — Utility-Zeile der Übersicht (40 × 40, Soft-Button-Fläche)
+//   "topbar"   — mobile Topbar (< 860 px, 44 × 44, ohne Fläche)
+//   "page"     — Utility-Zeile der übrigen Desktop-Unterseiten (40 × 40, Soft-Button-Fläche)
 //
 // Das Öffnen des Fensters markiert NICHTS als gelesen und erledigt nichts.
 const KNOPF_TEXT = "Mitteilungen";
@@ -79,8 +76,6 @@ export function NotificationBell({ variant = "page", navigateTo }) {
     return () => document.removeEventListener("keydown", onKey);
   }, [open, close]);
 
-  const label = badgeLabel(unread);
-
   // aria-controls zeigt auf das Panel, solange es offen ist (es wird nur geöffnet gerendert).
   const panelId = `ntf-panel-${useId().replace(/:/g, "")}`;
 
@@ -95,15 +90,13 @@ export function NotificationBell({ variant = "page", navigateTo }) {
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         aria-haspopup="dialog"
-        title={badgeAriaLabel(unread)}
+        title={knopfName(unread)}
       >
-        {variant === "topbar"
-          ? <Icon n="bell" s={ICON_SIZE.lg} />
-          : <span className="ntf-bell-text">{KNOPF_TEXT}</span>}
+        <Icon n="bell" s={ICON_SIZE.lg} />
         {showBadge(unread) && (
-          // aria-hidden: die Zahl steht bereits im zugänglichen Namen des
-          // Knopfes — "9+" wäre als vorgelesener Text unbrauchbar.
-          <span className="ntf-badge" aria-hidden="true">{label}</span>
+          // Paket G (D9): ein Punkt ohne Zahl. aria-hidden — die Zahl steht ausgeschrieben im
+          // zugänglichen Namen und im Tooltip des Knopfes.
+          <span className="ntf-dot" aria-hidden="true" />
         )}
       </button>
       {open && (

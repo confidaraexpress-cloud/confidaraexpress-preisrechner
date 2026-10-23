@@ -172,11 +172,14 @@ const KONTAKT = [
 ];
 
 async function formularFuellen(page) {
-  // Der ABSENDER kommt seit dem Paket „leerer Nullzustand" nicht mehr
-  // automatisch aus dem Profil — er wird hier über dieselbe Komfortaktion
-  // gefüllt, die auch der Kunde benutzt.
-  const eigene = page.locator("button", { hasText: "Eigene Adresse" }).first();
-  if (await eigene.count()) { await eigene.click(); await page.waitForTimeout(150); }
+  // Der ABSENDER kommt nicht aus dem Profil, und „Eigene Adresse" ist mit Paket G
+  // (2026-10-23) entfallen. Das Adressbuch dieser Suite hat keinen Standard-Absender —
+  // der Absender wird ausdrücklich eingetragen.
+  for (const [id, wert] of [["ns-s-company", "Muster GmbH"], ["ns-s-street", "Musterstr. 1"],
+                            ["ns-s-zip", "10115"], ["ns-s-city", "Berlin"]]) {
+    const el = page.locator(`#${id}`);
+    if (await el.count()) await el.fill(wert);
+  }
   // Auch das Empfängerland startet leer und muss gewählt werden.
   const land = page.locator("#ns-r-country");
   if (await land.count()) await land.selectOption("DE");

@@ -393,6 +393,13 @@
 /* Nichts wird abgeschnitten: ein langer Firmenname bricht um und verliert kein
    Zeichen. Deshalb `break-word` je Zeile statt Ellipsis oder slice(). */
 .abk-pick-name { font-weight: 600; min-width: 0; overflow-wrap: break-word; }
+/* Paket G: Bezeichnung und Standardmarke in einer Zeile; bei wenig Platz rutscht
+   die Marke unter den Namen (wrap), der Name wird nie gekürzt. */
+.abk-pick-title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; max-width: 100%; }
+.abk-pick-default { flex-shrink: 0; }
+/* Die Standardadresse steht zuerst und trägt eine leise Markenkante — dieselbe
+   Rolle wie die Soft-Flächen der Foundation, keine neue Farbe. */
+.abk-pick-item-default { border-color: var(--ce-color-brand-border-soft); }
 .abk-pick-person { color: var(--ce-color-text-secondary); min-width: 0; overflow-wrap: break-word; }
 .abk-pick-meta { color: var(--ce-color-text-muted); min-width: 0; overflow-wrap: break-word; }
 .abk-pick-hint {

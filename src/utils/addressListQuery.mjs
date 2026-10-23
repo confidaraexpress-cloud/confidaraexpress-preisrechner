@@ -7,7 +7,13 @@ import { TAB_SENDER, TAB_RECIPIENT, ROLE_SENDER, ROLE_RECIPIENT, belongsToTab } 
 
 // ── Requestparameter (Suche/Filter/Pagination) ──────────────────────────────
 // Nur explizit erlaubte Query-Parameter, leere Werte werden NICHT gesendet.
-const ADDRESS_LIST_QUERY_KEYS = ["q", "role", "favorite", "cursor", "limit"];
+const ADDRESS_LIST_QUERY_KEYS = ["q", "role", "favorite", "default", "cursor", "limit"];
+
+// Paket G (Master-Implementierungsauftrag 2026-10-23): `default=sender|recipient` liefert nur die
+// Standardadresse dieser Rolle (je Konto höchstens eine). Der Wert folgt dem Reiter; ein unbekannter
+// Reiter sendet keinen Filter.
+const TAB_TO_DEFAULT_PARAM = { [TAB_SENDER]: "sender", [TAB_RECIPIENT]: "recipient" };
+const TAB_TO_DEFAULT_FLAG = { [TAB_SENDER]: "isDefaultSender", [TAB_RECIPIENT]: "isDefaultRecipient" };
 
 // WICHTIG — bewusste, dokumentierte Annahme (API-Gap, siehe Abschlussbericht):
 // Das Backend ist extern und in diesem Repo nicht einsehbar; ob `role=sender`
@@ -24,16 +30,41 @@ export function roleParamForTab(tab) {
 // aus dem vorherigen nextCursor übernommen (kein Erfinden/Verändern). Der
 // Favoritenfilter wird nur bei true gesendet — kein „false" im Query-String,
 // das der Server evtl. anders interpretiert.
-export function buildAddressListParams({ tab, q, favoritesOnly, cursor, limit } = {}) {
+export function buildAddressListParams({ tab, q, favoritesOnly, defaultOnly, cursor, limit } = {}) {
   const params = {};
   const role = roleParamForTab(tab);
   if (role) params.role = role;
   const trimmedQ = typeof q === "string" ? q.trim() : "";
   if (trimmedQ) params.q = trimmedQ;
   if (favoritesOnly === true) params.favorite = "true";
+  if (defaultOnly === true && TAB_TO_DEFAULT_PARAM[tab]) params.default = TAB_TO_DEFAULT_PARAM[tab];
   if (cursor != null && cursor !== "") params.cursor = String(cursor);
   if (limit != null) params.limit = String(limit);
   return params;
+}
+
+// Die Standardadresse eines Reiters aus einer Liste — erkannt am FLAG, nie an der Position. Ein
+// Backend ohne den Filter liefert die gewöhnliche Liste; dann zählt nur ein Eintrag, der das Flag
+// wirklich trägt (sonst stünde die neueste Adresse als „Standard“ im Absender).
+export function defaultAddressForTab(items, tab) {
+  const flag = TAB_TO_DEFAULT_FLAG[tab];
+  if (!flag || !Array.isArray(items)) return null;
+  return items.find((a) => a && a[flag] === true) || null;
+}
+
+// Ist diese Adresse die Standardadresse des Reiters? (Anzeige in der Adressauswahl.)
+export function isDefaultForTab(address, tab) {
+  const flag = TAB_TO_DEFAULT_FLAG[tab];
+  return !!flag && !!address && address[flag] === true;
+}
+
+// Die Standardadresse steht in der Auswahl zuerst — einmal, auch wenn sie zugleich unter den
+// neuesten Einträgen ist. Ohne Standardadresse bleibt die Liste unverändert.
+export function withDefaultFirst(items, standard) {
+  const list = Array.isArray(items) ? items : [];
+  if (!standard || standard.id == null) return list;
+  const id = String(standard.id);
+  return [standard, ...list.filter((a) => !a || String(a.id) !== id)];
 }
 
 // Reiner Query-String-Builder (allowlisted Keys, leere Werte weggelassen) —

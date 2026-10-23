@@ -45,6 +45,12 @@
   font-family: var(--ce-font-sans); font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
   color: var(--ce-color-text-muted);
 }
+/* Paket G: der Tipp ohne Standard-Absender steht am Ende der Spalte (nicht über den
+   Feldern), damit Absender- und Empfängerspalte auf einer Höhe beginnen. */
+.calc-section-tip { margin: var(--ce-space-2) 0 0; }
+/* Paket G: die Marke „Standard" am Titel „Absender" — dieselbe Badge wie im Adressbuch.
+   Die Kopfzeile trägt bereits „Adresse suchen", die Marke macht sie nicht höher. */
+.calc-section-title .calc-section-badge { margin-left: var(--ce-space-2); vertical-align: middle; }
 
 .vol-weight-box { background: var(--ce-color-brand-soft); border: 1px solid var(--ce-color-brand-border); border-radius: var(--radius); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 8px; }
 .vol-weight-label { font-size: 13px; color: var(--ce-color-brand-ink); font-weight: 500; }

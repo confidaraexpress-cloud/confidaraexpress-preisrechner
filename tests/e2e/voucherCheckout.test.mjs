@@ -29,10 +29,8 @@ function chromiumExecutablePath() {
   return root && existsSync(path.join(root, "chromium")) ? path.join(root, "chromium") : undefined;
 }
 
-// Die Anschrift ist VOLLSTÄNDIG, damit die Komfortaktion „Eigene Adresse" den Absender
-// wirklich füllen kann. Seit dem Paket „Neue Sendung startet leer" gibt es keinen
-// automatischen Profil-Seed mehr — ohne vollständige Profildaten bliebe der Absender leer
-// und der Preisrechner-CTA dauerhaft deaktiviert.
+// Kontodaten der Suite. Den Absender liest „Neue Sendung" seit Paket G (2026-10-23) nicht
+// mehr aus dem Profil — er wird unten ausdrücklich eingetragen.
 const USER = {
   id: 1, email: "max@example.com", company_name: "Muster GmbH", name: "Max Mustermann",
   role: "customer", status: "approved", country: "DE", zip: "73207", customer_number: "CE-K-10030",
@@ -118,11 +116,12 @@ async function zurBestelluebersicht(page) {
   await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".offers-form-section", { timeout: 20000 });
 
-  // ABSENDER über die sichtbare Komfortaktion — genau den Weg nimmt auch der Kunde,
-  // seit „Neue Sendung" leer startet und es keinen automatischen Profil-Seed mehr gibt.
-  const eigene = page.locator("button", { hasText: "Eigene Adresse" }).first();
-  await eigene.click();
-  await page.waitForTimeout(150);
+  // ABSENDER: „Eigene Adresse" ist mit Paket G (2026-10-23) entfallen, und das Adressbuch
+  // dieser Suite hat keinen Standard-Absender — der Absender wird ausdrücklich eingetragen.
+  for (const [id, v] of [
+    ["ns-s-company", "Muster GmbH"], ["ns-s-street", "Musterstraße 1"],
+    ["ns-s-zip", "73207"], ["ns-s-city", "Plochingen"],
+  ]) await page.locator(`#${id}`).fill(v);
 
   // EMPFÄNGER: das Land startet ebenfalls leer und muss ausdrücklich gewählt werden.
   await page.locator("#ns-r-country").selectOption("DE");
@@ -137,10 +136,7 @@ async function zurBestelluebersicht(page) {
     ["ns-r-street",    "Bahnhofstrasse 9"],
     ["ns-r-zip",       "80331"], ["ns-r-city", "Muenchen"],
   ]) await page.locator(`#${id}`).fill(v);
-  // Der Profil-Seed („Eigene Adresse") traegt Firma, Anschrift und E-Mail des Kontos —
-  // aber keine getrennte Kontaktperson und keine Telefonnummer: das Konto fuehrt einen
-  // einzelnen Ansprechpartnernamen, und der wird nicht zerlegt. Beides wird deshalb
-  // ausdruecklich ergaenzt, so wie es auch ein Kunde tun muss.
+  // Kontaktperson, Telefon und E-Mail des Absenders.
   for (const [id, v] of [
     ["ns-s-firstName", "Max"], ["ns-s-lastName", "Mustermann"],
     ["ns-s-phone",     "+49301234567"], ["ns-s-email", "max@example.com"],

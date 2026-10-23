@@ -162,9 +162,18 @@ export function OffersList({
   };
 
   // Offenes Dropdown bei Klick außerhalb der Filterzone bzw. per Escape schließen.
+  //
+  // „Innerhalb" heißt im REACT-Baum, nicht nur im DOM: die Uhrzeitliste (DeliveryTimeSelect) hängt als Portal an
+  // document.body und ist kein DOM-Nachfahre der Zone. Ein Druck auf ihren Scrollbalken oder Innenabstand trifft
+  // keine Option — `contains` sah ihn als Außenklick und schloss das ganze Dropdown, die Uhrzeit blieb ungesetzt
+  // (Fehleranalyse 2026-10-23, H7). React stellt das mousedown am Portalcontainer zu, VOR diesem Dokument-Listener,
+  // und lässt es im React-Baum durch die Zone laufen: die Zone merkt sich genau dieses Ereignis (onMouseDown unten).
+  // Verglichen wird das Ereignisobjekt selbst — ein früherer Druck in die Zone verschluckt keinen späteren Außenklick.
+  const zonenDruckRef = useRef(null);
   useEffect(() => {
     if (!openFilter) return;
     const onDown = (e) => {
+      if (e === zonenDruckRef.current) return;
       if (filterZoneRef.current && !filterZoneRef.current.contains(e.target)) setOpenFilter(null);
     };
     const onEsc = (e) => { if (e.key === "Escape") setOpenFilter(null); };
@@ -212,7 +221,8 @@ export function OffersList({
              damit die Dropdowns nicht vom horizontal scrollenden Bar-Container
              (Mobile) abgeschnitten werden. ── */}
       {showSortBar && (
-        <div className="offers-filter-zone" ref={filterZoneRef}>
+        <div className="offers-filter-zone" ref={filterZoneRef}
+             onMouseDown={(e) => { zonenDruckRef.current = e.nativeEvent; }}>
           {/* ── Toolbar in vier gewichteten Gruppen ──────────────────────────────
                  Bis hierher lagen Sortierung, Filter, Zurücksetzen und die
                  MwSt.-Umschaltung als EINE flache Reihe gleich aussehender

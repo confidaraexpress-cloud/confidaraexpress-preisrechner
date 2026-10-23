@@ -21,6 +21,8 @@
 
 import { normalizeCountryCode } from "./countries.js";
 import { blankDeclarations } from "./shipmentDeclarations.mjs";
+// Paket A (2026-10-23): der zentrale Telefonvertrag — Schreibweisen, Durchwahl, Grenzen, gespiegelt aus dem Backend.
+import { parsePhoneNumber, PHONE_INPUT_MAX } from "./phoneNumber.mjs";
 
 // Absenderland neuer Versandvorgänge (Auftrag 1, P11, 2026-10-17): Deutschland ist vorausgewählt.
 // Keine neue Regel — der Server erlaubt als Ursprung nur DE (Launch-Scope `originCountries`,
@@ -349,14 +351,15 @@ export function packagePayload(form) {
    wird jedes Feld für sich gegen die Spaltenbreite und der Gesamtname gegen die
    Carriergrenze — genau wie serverseitig.
 
-   Das Telefon wird auf ANWESENHEIT geprüft, nicht auf Format: ConfidaraExpress hatte nie
-   eine Telefonformatregel, und eine hier erfundene würde gültige Schreibweisen
-   ablehnen, die jeder Carrier annimmt.
+   Das Telefon prüft seit Paket A (Betreiberentscheidung D8, 2026-10-23) der zentrale
+   Telefonvertrag (phoneNumber.mjs, gespiegelt aus dem Backend): Anwesenheit, erkennbare
+   Schreibweise, Durchwahl, 6 bis 15 Ziffern. Eine unlesbare Angabe bekommt ihre Meldung am
+   Feld, statt unbemerkt bis zum Anbieter zu gelangen und dort Tarife zu sperren.
 */
 export const CONTACT_NAME_PART_MAX = 35;
 export const CONTACT_FULL_NAME_MAX = 35;
 export const CONTACT_EMAIL_MAX = 254;
-export const CONTACT_PHONE_MAX = 40;
+export const CONTACT_PHONE_MAX = PHONE_INPUT_MAX;
 
 const CONTACT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -389,8 +392,10 @@ export function shippingContactErrors(form, prefix) {
 
   const tel = v("phone");
   if (!tel)                              e[`${prefix}_phone`] = "Telefonnummer ist ein Pflichtfeld.";
-  else if (tel.length > CONTACT_PHONE_MAX)
-    e[`${prefix}_phone`] = `Telefonnummer darf maximal ${CONTACT_PHONE_MAX} Zeichen enthalten.`;
+  else {
+    const nummer = parsePhoneNumber(tel);
+    if (!nummer.ok) e[`${prefix}_phone`] = nummer.error;
+  }
 
   return e;
 }

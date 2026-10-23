@@ -6,6 +6,9 @@
 
 import { validatePostalCode } from "./postalCode.mjs";
 import { ROLE_SENDER, validateRoleDefaultConsistency } from "./addressRoles.mjs";
+// Paket A (2026-10-23): dieselbe Telefonregel wie im Versandformular — eine gespeicherte Adresse soll beim
+// Versand nicht an einer Nummer scheitern, die das Adressbuch angenommen hat.
+import { parsePhoneNumber } from "./phoneNumber.mjs";
 
 // ── Formularmodell ────────────────────────────────────────────────────────────
 // Leeres Formular für „Neue Adresse". uiRole ist bewusst der Backend-Rollenwert
@@ -130,6 +133,7 @@ export function validateAddressForm(form) {
     errors.lastName = "Vor- und Nachname dürfen zusammen maximal 35 Zeichen enthalten.";
   if (!f.email?.trim()) errors.email = "E-Mail-Adresse ist ein Pflichtfeld.";
   if (!f.phone?.trim()) errors.phone = "Telefonnummer ist ein Pflichtfeld.";
+  else { const nummer = parsePhoneNumber(f.phone); if (!nummer.ok) errors.phone = nummer.error; }
 
   if (!f.streetAndNumber?.trim()) errors.streetAndNumber = "Straße und Hausnummer ist ein Pflichtfeld.";
   if (!f.city?.trim()) errors.city = "Ort ist ein Pflichtfeld.";

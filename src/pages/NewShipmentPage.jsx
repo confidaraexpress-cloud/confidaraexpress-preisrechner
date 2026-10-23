@@ -115,6 +115,8 @@ import { AddressSuggestInput } from "../components/address/AddressSuggestInput";
 import { AddressStatusLine } from "../components/address/AddressStatusLine";
 import { useAddressValidation } from "../hooks/useAddressValidation";
 import { applyAddressSuggestion, cityFromSuggestion, shippingLengthHint, streetFieldHint } from "../utils/addressValidationView.mjs";
+// Paket A (2026-10-23): der Hinweis unter dem Telefonfeld — was an die Anbieter geht, sobald es abweicht.
+import { phoneTransmissionHint } from "../utils/phoneNumber.mjs";
 import { mapAddressToShipmentFormPatch, TAB_SENDER, TAB_RECIPIENT } from "../utils/addressBookView.mjs";
 import { ShipmentDraftLeaveDialog } from "../components/drafts/ShipmentDraftLeaveDialog";
 import { ShipmentResetConfirmDialog } from "../components/drafts/ShipmentResetConfirmDialog";
@@ -1613,7 +1615,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         onBlur={() => markTouched(fk)}
         autoComplete={autofill(p, key)}
         error={errors[fk]}
-        hint={key === "company" ? shippingLengthHint("company", form[fk]) || undefined : undefined}
+        // Paket A: unter dem Telefonfeld steht, was an die Anbieter geht, sobald es von der Schreibweise
+        // abweicht oder eine Durchwahl bei Paketshop- und GLS-Tarifen entfällt — nichts geschieht still.
+        hint={key === "company" ? shippingLengthHint("company", form[fk]) || undefined
+          : key === "phone" ? phoneTransmissionHint(form[fk]) || undefined : undefined}
       />
     );
   };

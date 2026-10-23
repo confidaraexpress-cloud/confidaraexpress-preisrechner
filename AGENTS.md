@@ -204,6 +204,7 @@ Der allgemeine Workflow steht im Canonical Context §18. Zusätzlich für dieses
 - Kein Branchname wird in dieser Datei festgeschrieben. Den aktuellen Stand über `git branch --show-current` und `git fetch origin` ermitteln.
 - E2E- und Dev-Server-Skripte folgen zusätzlich dem globalen Skill `playwright-windows` (Fenster, Ports, Prozessbäume).
 - Vor einem PR mit Buchungs-, Zahlungs-, Login- oder Datenbezug: Skill `security-review` ausführen und das Ergebnis im Abschlussbericht nennen.
+- **Betreiberentscheidung 2026-10-23 (Master-Implementierungsauftrag):** Bei einer vom Betreiber ausdrücklich beauftragten, klar abgegrenzten Implementierung darf nach grüner CI und vollständiger Qualitätsprüfung (relevante Tests, Build, Sichtprüfung Desktop und Mobil, Security-Review, Diff-Review, Canonical synchron) **selbstständig gemergt** und das bestehende automatische Deployment genutzt werden; danach den tatsächlich laufenden Stand in Produktion prüfen. Ohne solchen Auftrag gilt weiterhin: nur Merge empfehlen. Die Entscheidung ist **keine** Freigabe für Serveränderungen, kostenpflichtige Anbieterbuchungen, Live-Providerrequests, Änderungen an Secrets oder produktiven ENV-Werten oder das Umgehen von Sicherheitsprüfungen.
 
 ---
 

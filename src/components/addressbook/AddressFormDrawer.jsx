@@ -11,6 +11,8 @@ import { AddressSuggestInput } from "../address/AddressSuggestInput";
 import { AddressStatusLine } from "../address/AddressStatusLine";
 import { useAddressValidation } from "../../hooks/useAddressValidation";
 import { applyAddressSuggestion, cityFromSuggestion, shippingLengthHint, streetFieldHint } from "../../utils/addressValidationView.mjs";
+// Paket A (2026-10-23): derselbe Hinweis unter dem Telefonfeld wie im Versandformular.
+import { phoneTransmissionHint } from "../../utils/phoneNumber.mjs";
 import { cityPlaceholder } from "../../utils/addressPlaceholders.mjs";
 
 const TITLES = { create: "Neue Adresse", edit: "Adresse bearbeiten", duplicate: "Adresse duplizieren" };
@@ -214,7 +216,7 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
                 </p>
               )}
               {field("email", "E-Mail", { type: "email", placeholder: "logistik@beispiel.de" })}
-              {field("phone", "Telefon", { type: "tel", placeholder: "+49 30 1234" })}
+              {field("phone", "Telefon", { type: "tel", placeholder: "+49 30 1234567", hint: phoneTransmissionHint(form.phone) || undefined })}
             </div>
 
             {/* Abschnitt 3 — Anschrift */}

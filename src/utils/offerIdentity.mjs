@@ -146,11 +146,39 @@ export const OFFER_BUSINESS_RECIPIENT_REASON = "business_recipient_required";
 export const OFFER_BUSINESS_RECIPIENT_TEXT = "Nur für Geschäftsempfänger verfügbar.";
 export const OFFER_BUSINESS_RECIPIENT_HINT = "Bitte hinterlegen Sie beim Empfänger einen Firmennamen.";
 // Für manche Angebote gelten kürzere Namens- und Adressangaben. Der Server prüft das und sendet dafür einen
-// eigenen, kundenlösbaren Grund — sichtbar mit Preis, nicht auswählbar, bis die Angabe gekürzt ist. Welche Angabe
-// und welche Länge, nennt die Oberfläche nicht: sie kennt keine Grenze und prüft nichts selbst.
+// eigenen, kundenlösbaren Grund — sichtbar mit Preis, nicht auswählbar, bis die Angabe gekürzt ist. Die
+// Oberfläche prüft nichts selbst: WELCHE Angabe welcher Partei und welche Grenze, sagt seit Paket A (2026-10-23)
+// der Server in `unavailableDetail` ({ party, field, max }); ohne Einzelheit bleibt der allgemeine Hinweis.
 export const OFFER_ADDRESS_DETAILS_TOO_LONG_REASON = "address_details_too_long";
 export const OFFER_ADDRESS_DETAILS_TOO_LONG_TEXT = "Für diese Adressangaben nicht verfügbar.";
 export const OFFER_ADDRESS_DETAILS_TOO_LONG_HINT = "Bitte kürzen Sie Vor- und Nachname, Firmenname oder Adresszeilen von Absender oder Empfänger.";
+// Die Angaben des Adressvertrags in Kundenworten — providerneutral, ohne Anbieter, ohne Produktnamen.
+const ADDRESS_DETAIL_FIELD_LABEL = Object.freeze({
+  name: "Vor- und Nachname zusammen",
+  forename: "Vorname",
+  surname: "Nachname",
+  company: "Firmenname",
+  phone: "Telefonnummer (ohne Leerzeichen)",
+  email: "E-Mail-Adresse",
+  addressLine1: "Straße und Hausnummer",
+  addressLine2: "Adresszusatz",
+  postcode: "PLZ",
+  city: "Ort",
+});
+const ADDRESS_DETAIL_PARTY_LABEL = Object.freeze({ sender: "des Absenders", recipient: "des Empfängers" });
+/** Der genaue Handlungshinweis zu `address_details_too_long` — oder `null`, wenn der Server keine Einzelheit sendet. */
+export function addressDetailsTooLongHint(detail) {
+  const d = detail && typeof detail === "object" ? detail : null;
+  if (!d) return null;
+  const feld = ADDRESS_DETAIL_FIELD_LABEL[d.field];
+  const partei = ADDRESS_DETAIL_PARTY_LABEL[d.party];
+  if (!feld || !partei) return null;
+  const grenze = Number.isInteger(d.max) && d.max > 0 ? ` (höchstens ${d.max} Zeichen)` : "";
+  if (d.field === "phone") {
+    return `Die Telefonnummer ${partei} ist für dieses Angebot zu lang${grenze}. Bitte kürzen Sie sie, etwa ohne Durchwahl oder Landesvorwahl.`;
+  }
+  return `${feld} ${partei}: für dieses Angebot zu lang${grenze}. Bitte kürzen Sie die Angabe.`;
+}
 // ─── Final Bookability Closure: vier weitere Gründe, die der Server seit P2-05/P2-08 sendet ───────
 // Jeder ist eine Eigenschaft des Angebots für DIESE Sendung — ohne Anbieter, ohne Grenzwert, ohne Zahl:
 //   business_sender_required      das Produkt verlangt einen Geschäftsabsender     → Firmenname beim Absender
@@ -203,7 +231,9 @@ export function offerBlockedHint(tariff) {
   if (OFFER_SAME_DAY_REASONS.includes(t.unavailableReason)) return OFFER_SAME_DAY_UNAVAILABLE_HINT;
   // Die Hinweise, die keine Terminwahl betreffen: hier hilft eine Angabe an der Adresse oder zur Sendung.
   if (t.unavailableReason === OFFER_BUSINESS_RECIPIENT_REASON) return OFFER_BUSINESS_RECIPIENT_HINT;
-  if (t.unavailableReason === OFFER_ADDRESS_DETAILS_TOO_LONG_REASON) return OFFER_ADDRESS_DETAILS_TOO_LONG_HINT;
+  if (t.unavailableReason === OFFER_ADDRESS_DETAILS_TOO_LONG_REASON) {
+    return addressDetailsTooLongHint(t.unavailableDetail) || OFFER_ADDRESS_DETAILS_TOO_LONG_HINT;
+  }
   if (t.unavailableReason === OFFER_BUSINESS_SENDER_REASON) return OFFER_BUSINESS_SENDER_HINT;
   if (t.unavailableReason === OFFER_CONTENT_DESCRIPTION_REASON) return OFFER_CONTENT_DESCRIPTION_HINT;
   return t.unavailableReason === "date_unavailable" ? OFFER_DATE_UNAVAILABLE_HINT : null;

@@ -78,11 +78,14 @@ test("D5 — der ZUSAMMENGESETZTE Name trägt die Grenze, nicht die Hälfte", ()
   assert.match(e.s_lastName, /zusammen maximal 35/);
 });
 
-test("D6 — das Telefon wird nicht auf ein Format geprüft", () => {
-  for (const nummer of ["+49 30 1234-567", "030/1234567", "(030) 1234567"]) {
+test("D6 — das Telefon prüft der zentrale Telefonvertrag (Paket A): übliche Schreibweisen gehen, Unlesbares nennt den Grund", () => {
+  for (const nummer of ["+49 30 1234-567", "030/1234567", "(030) 1234567", "+49 (0) 30 1234567 Durchwahl 12", "0049 30 1234567"]) {
     assert.deepEqual(shippingContactErrors({ ...VOLL("s"), s_phone: nummer }, "s"), {},
       `gültige Schreibweise abgelehnt: ${nummer}`);
   }
+  assert.match(shippingContactErrors({ ...VOLL("s"), s_phone: "0800-CALLME" }, "s").s_phone, /^Telefonnummer nicht erkannt/);
+  assert.match(shippingContactErrors({ ...VOLL("r"), r_phone: "12345" }, "r").r_phone, /^Telefonnummer zu kurz/);
+  assert.equal(shippingContactErrors({ ...VOLL("r"), r_phone: "" }, "r").r_phone, "Telefonnummer ist ein Pflichtfeld.");
 });
 
 /* ══════════ Formularvertrag ═════════════════════════════════════════════════ */

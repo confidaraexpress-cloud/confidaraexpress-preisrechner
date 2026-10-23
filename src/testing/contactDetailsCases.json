@@ -27,7 +27,7 @@
     { "eingabe": "  +49   711    123456  ", "ok": true, "wert": "+49 711 123456" },
     { "eingabe": "0151.12345678", "ok": true, "wert": "0151.12345678" },
     { "eingabe": "12345", "ok": false },
-    { "eingabe": "+49 711 123456 Durchwahl 3", "ok": false },
+    { "eingabe": "+49 711 123456 Durchwahl 3", "ok": true, "wert": "+49 711 123456 Durchwahl 3" },
     { "eingabe": "0711+123456", "ok": false },
     { "eingabe": "++49 711 123456", "ok": false },
     { "eingabe": "123456789012345678901", "ok": false },

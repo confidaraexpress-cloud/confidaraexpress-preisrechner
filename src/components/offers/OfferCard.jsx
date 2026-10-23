@@ -14,7 +14,6 @@ import { isIndicativePrice, INDICATIVE_PRICE_LABEL, INDICATIVE_PRICE_EXPLANATION
 import { isHttpUrl } from "../../utils/externalLink.mjs";
 import { earlyDeliveryNote, deliveryTimeLabel } from "../../utils/deliveryTimeView.mjs";
 import { serviceNameSegments } from "../../utils/serviceNameTimeView.mjs";
-import { DELIVERY_NOT_ASSESSABLE_TEXT } from "../../utils/offersFilterView.mjs";
 import { offerDebugView, offerDebugCardClass } from "../../utils/offerDebugView.mjs";
 import { chargeableWeightLine, labelCapabilityLine, OFFER_METADATA_LABEL } from "../../utils/offerMetadataView.mjs";
 import { offerCardInsurance } from "../../utils/coverInsuranceView.mjs";
@@ -25,7 +24,8 @@ import { pickupContractOf, pickupTimeText, pickupWindowDetailText, pickupDayLabe
 import { deliveryContractOf } from "../../utils/deliveryContractView.mjs";
 import { serviceDetailsView } from "../../utils/serviceDetailsView.mjs";
 import { packageRulesLines } from "../../utils/packageRulesView.mjs";
-import { projectedDeliveryText } from "../../utils/deliveryProjectionView.mjs";
+import { projectedDeliveryText, projectedDeliveryDateText, projectedDeliveryTimeText, projectedDeliveryNote,
+         DELIVERY_PROJECTION_TEXT } from "../../utils/deliveryProjectionView.mjs";
 import { ServiceProfileDetails } from "./ServiceProfileDetails";
 import { carrierAppliesLabel, LABEL_HANDLING_TEXT } from "../../utils/labelHandling.mjs";
 import { vatDisplay, vatSuffixText, isGrossVatMode } from "../../utils/vatDisplayView.mjs";
@@ -54,7 +54,7 @@ const fmtDay = (iso) => {
 // Knoten als { title, primary, secondary[] }: der Titel (Abholung/Lieferung)
 // und die primäre Zeile (Datum bzw. relative Laufzeit) tragen das visuelle
 // Gewicht; Hinweis und Uhrzeit bleiben sekundär und dezent.
-function buildStart(t) {
+function buildStart(t, abgabeTag) {
   // Die Übergabeart kommt aus dem gemeinsamen Helfer, damit Knotentitel und
   // Kennzeichnung darüber nie auseinanderlaufen können — es gibt genau eine
   // Auslegung von „Abholung" und „Shopabgabe" (utils/handoverMode.mjs).
@@ -76,7 +76,12 @@ function buildStart(t) {
   // Es wird nirgends nach dem Provider gefragt: gezeigt wird, was DA ist. Die Regel steht
   // in utils/pickupContractView.mjs — derselbe Helfer liest den Termin im Detailbereich.
   const abholung = pickupContractOf(t);
-  const primary = abholung.day ? fmtDay(abholung.day) : null;
+  // TG-L2: eine Abgabe ohne eigenen Termin zeigt den Tag, auf dem die voraussichtliche Zustellung beruht — das
+  // gewählte Versanddatum, ab dem abgegeben werden kann („ab Mo., 26.10."). Nur, wenn der Server dafür eine Prognose
+  // gerechnet hat: dann ist dieser Tag ihr Tag 0. Ohne Prognose bleibt der Knoten wie bisher ohne Tag.
+  const abgabeAb = modus === HANDOVER_DROPOFF && !abholung.day && abgabeTag && deliveryContractOf(t).kind === "estimate"
+    ? `ab ${fmtDay(abgabeTag)}` : null;
+  const primary = abholung.day ? fmtDay(abholung.day) : abgabeAb;
   const secondary = [];
   // War der gewaehlte Versandtag fuer dieses Angebot nicht abholbar, steht hier der FRUEHESTE
   // moegliche Tag — und die Unterzeile sagt genau das. Kein Grund, kein Wunschtag, kein Anbieter:
@@ -101,9 +106,11 @@ function buildEnd(t, etaLabel, earlyNote) {
   //
   // Ohne Kalenderdatum steht hier die Laufzeit — und der Knoten heisst auch so.
   // „Lieferung / 1–2 Tage" las sich wie ein Zustelltermin, ist aber eine Dauer.
-  // Die Karte RECHNET daraus kein Datum. TG22 Package B: hat der SERVER aus Abholtag
-  // und Laufzeit eine voraussichtliche Lieferung gerechnet, heisst der Knoten
-  // „Voraussichtliche Lieferung" und zeigt ausschliesslich diese Tage — ohne Uhrzeit.
+  // Die Karte RECHNET daraus kein Datum. TG22 Package B / TG-L2: hat der SERVER aus Abhol-
+  // bzw. Abgabetag und Laufzeit eine Prognose gerechnet, heisst der Knoten „Voraussichtliche
+  // Zustellung" und zeigt ausschliesslich diese Tage. Ihre belegte Uhrzeit (nur Zeitprodukte,
+  // `deliveryProjection.timeUntil`) steht wie eine Anbieteruhrzeit darunter — grau oder im
+  // grünen Feld, nach derselben Frühzeit-Regel (deliveryTimeView.mjs).
   // Providerneutral: entschieden wird an den DATEN, nicht daran, von wem das Angebot stammt.
   const zustellung = deliveryContractOf(t);
   const title = zustellung.label;
@@ -284,6 +291,11 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
   // Zustellzeitraum, -termin und „bis"-Uhrzeit aus dem gemeinsamen Zustellvertrag — dieselbe
   // Vorrangregel wie der Timeline-Knoten (Zeitraum vor Einzeldatum; gleiche Tage sind ein Tag).
   const zustellung = deliveryContractOf(t);
+  // TG-L2: die voraussichtliche Zustellung des Servers als eigene Zeile mit ihrem Hinweis — Tage in TT.MM.JJJJ,
+  // eine belegte Uhrzeit dahinter. Ein Angebot mit Produktprofil nennt sie bereits im Abschnitt „Laufzeit"
+  // (ServiceProfileDetails); dort steht sie nicht ein zweites Mal.
+  const prognoseText = zustellung.kind === "estimate" ? projectedDeliveryDateText(zustellung.estimate) : null;
+  const prognoseZeit = zustellung.kind === "estimate" ? projectedDeliveryTimeText(zustellung.estimate) : null;
 
   // Abholzuschlag nur als neutraler Hinweis — niemals als zusätzlicher Preis.
   const showPickupSurcharge = t.hasPickupSurcharge === true;
@@ -338,13 +350,15 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
   // Derselbe Abholvertrag wie im Startknoten der Timeline — ein Angebot mit „bereit ab"-Zeit
   // zeigt ihn damit auch hier, und ein echtes Fenster bleibt ein Fenster.
   const abholung = pickupContractOf(t);
-  const hasTermin = !!(dropoffLabel || abholung.day || abholung.windowFrom || abholung.readyFrom || sameDay
-                   || zustellung.kind === "range" || zustellung.kind === "date" || zustellung.until);
-  const hasLinks = carrierLinkItems.length > 0;
   // TG22 Package A: trägt das Angebot ein kuratiertes Produktprofil, stehen statt Hauptmerkmalen, Einschränkungen
   // und Versicherung fünf geordnete Abschnitte da — ohne zweite Laufzeit, Abholung, Druckerzeile oder
   // Sendungsverfolgung. Ohne Profil bleibt der Detailbereich unverändert.
   const profil = serviceDetailsView(t);
+  const zeigtPrognose = prognoseText !== null && profil === null;
+  const hasTermin = !!(dropoffLabel || abholung.day || abholung.windowFrom || abholung.readyFrom || sameDay
+                   || zustellung.kind === "range" || zustellung.kind === "date"
+                   || (zustellung.kind !== "estimate" && zustellung.until) || zeigtPrognose);
+  const hasLinks = carrierLinkItems.length > 0;
   // Die Merkmalsmarken der Kartenfläche gibt es seit 2026-10-04 nicht mehr. Ohne Profil nennen die Hauptmerkmale
   // Drucker und Versandlabel; das Profil nennt nur „Versandlabel zum Ausdrucken" und die Sendungsverfolgung. Die
   // beiden übrigen Aussagen stehen dann in den Zusatzhinweisen — mit dem Wortlaut der Hauptmerkmale.
@@ -442,7 +456,18 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
             <DetailRow label="Zustellzeitraum" value={`${fmtDE(zustellung.dayFrom)} – ${fmtDE(zustellung.dayUntil)}`} />
           )}
           {zustellung.kind === "date" && <DetailRow label="Zustelltermin" value={fmtDE(zustellung.day)} />}
-          {zustellung.until && <DetailRow label="Zustellung" value={`${zustellung.until} Uhr`} />}
+          {zustellung.kind !== "estimate" && zustellung.until && (
+            <DetailRow label="Zustellung" value={`${zustellung.until} Uhr`} />
+          )}
+          {zeigtPrognose && (
+            <DetailRow label={DELIVERY_PROJECTION_TEXT.label}
+                       value={prognoseZeit ? `${prognoseText}, ${prognoseZeit}` : prognoseText} />
+          )}
+          {zeigtPrognose && (
+            <p className="offer-detail-note offer-projection-note">
+              {projectedDeliveryNote(zustellung.estimate, { dropoff: serviceModus === HANDOVER_DROPOFF })}
+            </p>
+          )}
           {/* Der Abholschluss einer Abholung am selben Tag — der Satz des Servers, vorher unter dem CTA. */}
           {sameDay && <p className="offer-detail-note offer-sameday-until">{sameDay.untilText}</p>}
         </div>
@@ -518,10 +543,11 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
 // bewusst keine visuelle Hervorhebung mehr aus — es gibt keine "Top Empfehlung".
 // React.memo (Standard-Shallow-Vergleich): Eine Karte rendert nur neu, wenn sich
 // eine ihrer Props referenziell ändert (tariff, badge, selected, vatMode,
-// senderPrefill, onSelect, onBook, isTop, deliveryNotAssessable). Interner Zustand (Details auf/zu)
+// senderPrefill, onSelect, onBook, isTop, abgabeTag). Interner Zustand (Details auf/zu)
 // löst weiterhin normal ein Re-Render genau dieser Karte aus. Voraussetzung für
 // den Nutzen: OffersList/Pages reichen stabile Callbacks & senderPrefill herein.
-function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, vatMode, senderPrefill, deliveryNotAssessable }) {
+// `abgabeTag` (TG-L2) ist das gewählte Versanddatum („YYYY-MM-DD") — der Tag, ab dem eine Abgabe möglich ist.
+function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, vatMode, senderPrefill, abgabeTag }) {
   const { name: carrierName, logo: carrierLogo } = publicCarrierDisplay(t);
   const [detailsOpen, setDetailsOpen]       = useState(false);
   const [detailsMounted, setDetailsMounted] = useState(false);
@@ -550,7 +576,7 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
   // `aria-controls` zeigte bei allen auf denselben Bereich.
   const detailsId = `offer-details-${offerKey(t) ?? "unbekannt"}`;
   const etaLabel    = fmtDelivery(t) || "Auf Anfrage";
-  const start = buildStart(t);
+  const start = buildStart(t, abgabeTag);
   const earlyNote = earlyDeliveryNote(t);
   const end   = buildEnd(t, etaLabel, earlyNote);
   // null, wenn das Backend die Übergabeart nicht klassifiziert hat — dann wird
@@ -713,12 +739,9 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
                   {earlyNote && (
                     <p className="offer-early-note">{earlyNote}</p>
                   )}
-                  {/* K2 (Go-Live Block B): unter einem gesetzten Lieferzeitfilter bleibt ein Angebot ohne
-                      sicher vergleichbare Anbieterzusage sichtbar — mit genau diesem neutralen Satz am
-                      Lieferende. Kein geschätzter Termin, keine Uhrzeit aus dem Tarifnamen; ohne Filter nie. */}
-                  {deliveryNotAssessable && (
-                    <p className="offer-deadline-note">{DELIVERY_NOT_ASSESSABLE_TEXT}</p>
-                  )}
+                  {/* Die Einordnung gegen eine gesetzte Lieferfrist steht seit TG-L2 nicht mehr auf der Karte
+                      („Zustelltermin nicht bewertbar"), sondern als Gruppe der Liste mit Kopf und Satz
+                      (OffersList, offersFilterView.mjs) — dieselbe Karte in jeder Gruppe. */}
                 </div>
               </div>
             </div>

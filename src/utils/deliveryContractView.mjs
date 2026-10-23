@@ -9,7 +9,7 @@
  * „Zustellung") — fuer dieselben Daten. Die Regel steht deshalb HIER:
  *
  *   Zustelldaten des Anbieters (Zeitraum oder Tag)  → „Zustellung"
- *   Prognose des Servers (`deliveryProjection`)     → „Voraussichtliche Lieferung"   (TG22 Package B)
+ *   Prognose des Servers (`deliveryProjection`)     → „Voraussichtliche Zustellung"  (TG22 Package B, TG-L2)
  *   nur eine Laufzeit (etwa „1–2 Tage")             → „Voraussichtliche Laufzeit"
  *   nichts davon                                     → „Zustellung" · „Auf Anfrage"
  *
@@ -18,8 +18,10 @@
  *
  * ─── ES WIRD KEIN DATUM GERECHNET ─────────────────────────────────────────────────────
  * Aus einer Laufzeit entsteht hier kein Kalendertag. Eine voraussichtliche Lieferung rechnet
- * ausschliesslich der SERVER (aus Abholtag und Laufzeit, Montag bis Freitag ohne die bundesweiten Feiertage); sie
- * gilt nur ohne Zustelldaten des Anbieters, traegt nie eine Uhrzeit und ist keine Zusage.
+ * ausschliesslich der SERVER (aus Abhol- bzw. Abgabetag und Laufzeit, Montag bis Freitag ohne die bundesweiten
+ * Feiertage); sie gilt nur ohne Zustelldaten des Anbieters und ist keine Zusage. Eine Uhrzeit traegt sie nur als belegte
+ * Zustellzeit des gebuchten Produkts (TG-L1, `timeUntil` vom Server) — dann steht sie wie eine Anbieteruhrzeit in
+ * `until`, der Titel bleibt „voraussichtlich".
  *
  * ─── ES WIRD NICHT NACH DER EINKAUFSQUELLE GEFRAGT ────────────────────────────────────
  * Entschieden wird an den FELDERN, die das Angebot traegt. Ein Angebot mit Zustelldaten behaelt
@@ -47,12 +49,13 @@ const kalendertag = (w) => text(w)?.split("T")[0] ?? null;
  *
  * Vorrang: echter Zeitraum → einzelner Tag → Prognose des Servers → Laufzeit → nichts. Ein Zeitraum
  * entsteht nur, wenn beide Grenzen vorliegen UND verschiedene Tage sind — sonst stuende dort
- * „11.08. – 11.08.". Eine Prognose gilt nur ohne Zustelldaten des Anbieters und nennt nie eine Uhrzeit.
+ * „11.08. – 11.08.". Eine Prognose gilt nur ohne Zustelldaten des Anbieters; ihre Uhrzeit ist allein die belegte
+ * des Servers (`estimate.timeUntil`).
  *
  * @param   {object} tarif  ein Angebot der calculate-price-Antwort
  * @returns {{kind: "range"|"date"|"estimate"|"transit"|"unknown", label: string, dayFrom: string|null,
  *            dayUntil: string|null, day: string|null, transit: string|null, until: string|null,
- *            estimate: {dateMin: string, dateMax: string|null}|null}}
+ *            estimate: {dateMin: string, dateMax: string|null, timeUntil: string|null}|null}}
  */
 export function deliveryContractOf(tarif) {
   const t = tarif && typeof tarif === "object" ? tarif : {};
@@ -71,7 +74,9 @@ export function deliveryContractOf(tarif) {
     dayUntil: zeitraum ? max : null,
     day: tag,
     transit: laufzeit,
-    until: kind === "estimate" || bis === null ? null : (/^bis\b/i.test(bis) ? bis : `bis ${bis}`),
+    until: kind === "estimate"
+      ? (prognose.timeUntil ? `bis ${prognose.timeUntil}` : null)
+      : bis === null ? null : (/^bis\b/i.test(bis) ? bis : `bis ${bis}`),
     estimate: prognose,
   });
 }

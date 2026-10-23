@@ -44,8 +44,9 @@ export function handoverInfo(tariff) {
 // ── Zustellung ──────────────────────────────────────────────────────────────
 // Welche Aussage gilt und wie sie heißt, steht in deliveryContractView.mjs —
 // dieselbe Regel wie auf der Angebotskarte: „Zustellung" mit den Daten des
-// Angebots, „Voraussichtliche Lieferung" mit der Prognose des Servers (TG22 Package B),
-// „Voraussichtliche Laufzeit" bei reiner Laufzeit, sonst „Auf Anfrage".
+// Angebots, „Voraussichtliche Zustellung" mit der Prognose des Servers (TG22 Package B,
+// TG-L2 — eine belegte Uhrzeit in `until`), „Voraussichtliche Laufzeit" bei reiner Laufzeit,
+// sonst „Auf Anfrage".
 // Hier entsteht nur die Schreibweise der Buchungsflächen (TT.MM.JJJJ).
 export function deliveryInfo(tariff) {
   const z = deliveryContractOf(tariff);

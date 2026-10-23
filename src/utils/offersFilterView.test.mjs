@@ -19,7 +19,8 @@ import { pruefeImTestlauf } from "../../scripts/governance.mjs";
 import {
   activeResultFilterCount, hasActiveResultFilter, deliveryChipLabel,
   emptyFilterHint, applyResultFilters, offersCountLabel,
-  deliveryDeadlineAssessment, deliveryDeadlineNotAssessable, DELIVERY_NOT_ASSESSABLE_TEXT,
+  deliveryDeadlineAssessment, deliveryDeadlineGroups, lateResultOffers, lateGroupToggleLabel,
+  DEADLINE_GROUP_TEXT, DELIVERY_DEADLINE,
 } from "./offersFilterView.mjs";
 import { TARIFE_41 } from "./offersFilterFixture.mjs";
 
@@ -227,7 +228,7 @@ test("G2 — es gibt nur noch EINE Filterregel, und beide Seiten importieren sie
   // dürfen GAR KEINE eigene Regel mehr enthalten.
   for (const seite of SEITEN) {
     const q = lies(seite);
-    assert.match(q, /import \{ applyResultFilters \} from "\.\.\/utils\/offersFilterView\.mjs";/,
+    assert.match(q, /import \{ applyResultFilters, lateResultOffers, deliveryDeadlineAssessment, DELIVERY_DEADLINE \}\s*from "\.\.\/utils\/offersFilterView\.mjs";/,
       `${seite}: die zentrale Filterregel wird nicht importiert`);
     assert.match(q, /applyResultFilters\(tariffs, \{/,
       `${seite}: die zentrale Filterregel wird nicht aufgerufen`);
@@ -333,29 +334,43 @@ test("F3b — fehlt das Lieferdatum selbst: sichtbar wie bisher, jetzt ausdrück
   }
 });
 
-/* ══════════ K) K2 — „Zustelltermin nicht bewertbar“ ════════════════════════ */
+/* ══════════ K) Fehlende Evidenz — seit TG-L2 die Gruppe „Frist nicht bestätigt" ═════ */
 
-test("K1 — ohne Lieferzeitfilter: keine Bewertung, kein Hinweis — auch nicht bei fehlenden Daten", () => {
+test("K1 — ohne Lieferzeitfilter: keine Bewertung, keine Gruppen — auch nicht bei fehlenden Daten", () => {
   const ohneDaten = { id: "tg", deliveryDate: null, deliveryDateMax: null, deliveryTimeUntil: null };
   for (const filter of [{}, { latestDeliveryDate: "" }, { latestDeliveryDate: null }, { latestDeliveryTime: "12:00" }]) {
     assert.equal(deliveryDeadlineAssessment(ohneDaten, filter), null, JSON.stringify(filter));
-    assert.equal(deliveryDeadlineNotAssessable(ohneDaten, filter), false, JSON.stringify(filter));
+    assert.equal(deliveryDeadlineGroups([ohneDaten], filter), null, JSON.stringify(filter));
+    assert.deepEqual(lateResultOffers([ohneDaten], filter), [], JSON.stringify(filter));
   }
-  assert.equal(DELIVERY_NOT_ASSESSABLE_TEXT, "Zustelltermin nicht bewertbar");
+  // Der frühere Kartenhinweis ist entfallen — die Gruppe „Frist nicht bestätigt" trägt die Aussage.
+  for (const datei of ["src/utils/offersFilterView.mjs", OFFERS_LIST, "src/components/offers/OfferCard.jsx",
+                       "src/styles/offers.css", ...SEITEN]) {
+    const ohneKommentar = lies(datei).replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    assert.ok(!/offer-deadline-note|DELIVERY_NOT_ASSESSABLE_TEXT|deliveryDeadlineNotAssessable/.test(ohneKommentar), datei);
+  }
 });
 
-test("K2 — Transglobal-Zeitprodukte ohne Anbieterdatum: sichtbar + Hinweis; keine Uhrzeit aus dem Namen", () => {
-  // Der Tarifname nennt eine Uhrzeit, ein Anbieterdatum gibt es nicht — und eine CE-Rechnung zählt nicht als Zusage.
+test("K2 — Transglobal-Zeitprodukte: eine Prognose zählt als „voraussichtlich“; keine Uhrzeit aus dem Namen", () => {
+  // Der Tarifname nennt eine Uhrzeit — sie zählt nie. Zählt, was der Server liefert: die Prognose (Tage, eine belegte
+  // Uhrzeit nur in `timeUntil`). Ohne Prognose und ohne Anbieterdatum ist die Frist nicht bestätigt.
   const tg = [
     { offerId: "tg85", publicServiceName: "Domestic Express 9:00", deliveryDate: null, deliveryDateMax: null,
-      deliveryProjection: { kind: "estimated", dateMin: "2026-08-25", dateMax: "2026-08-25" } },
+      deliveryProjection: { kind: "estimated", dateMin: "2026-08-25", dateMax: "2026-08-25", timeUntil: null } },
     { offerId: "tg87", publicServiceName: "Domestic Express 12:00", deliveryDate: null, deliveryDateMax: null },
     { offerId: "tg48", publicServiceName: "Express 10:00", deliveryDate: null, deliveryDateMax: null, deliveryTimeUntil: null },
   ];
-  for (const frist of [{ latestDeliveryDate: "2026-08-25" }, { latestDeliveryDate: "2026-08-25", latestDeliveryTime: "10:00" },
-                       { latestDeliveryDate: "2026-08-20", latestDeliveryTime: "08:00" }]) {
-    assert.deepEqual(applyResultFilters(tg, frist).map((t) => t.offerId), ["tg85", "tg87", "tg48"], JSON.stringify(frist));
-    for (const t of tg) assert.equal(deliveryDeadlineNotAssessable(t, frist), true, `${t.offerId} ${JSON.stringify(frist)}`);
+  const erwartet = [
+    [{ latestDeliveryDate: "2026-08-25" }, { tg85: "projected", tg87: "not_assessable", tg48: "not_assessable" }],
+    [{ latestDeliveryDate: "2026-08-25", latestDeliveryTime: "10:00" },
+      { tg85: "not_assessable", tg87: "not_assessable", tg48: "not_assessable" }],
+    [{ latestDeliveryDate: "2026-08-20", latestDeliveryTime: "08:00" },
+      { tg85: "too_late", tg87: "not_assessable", tg48: "not_assessable" }],
+  ];
+  for (const [frist, je] of erwartet) {
+    for (const t of tg) assert.equal(deliveryDeadlineAssessment(t, frist), je[t.offerId], `${t.offerId} ${JSON.stringify(frist)}`);
+    assert.deepEqual(applyResultFilters(tg, frist).map((t) => t.offerId),
+      tg.filter((t) => je[t.offerId] !== "too_late").map((t) => t.offerId), JSON.stringify(frist));
   }
 });
 
@@ -385,13 +400,163 @@ test("K4 — der Filter mutiert nichts und erfindet kein Tariffeld", () => {
   assert.ok(f.every((t) => tarife.includes(t)), "der Filter gibt Kopien statt der Tarife zurück");
 });
 
-test("K5 — Karte und Liste: der Hinweis hängt allein am Bewertungsergebnis, der Text steht einmal", () => {
+test("K5 — die Liste gliedert über die EINE Regel; Gruppentexte stehen nur im Modul", () => {
   const liste = lies(OFFERS_LIST);
-  const karte = lies("src/components/offers/OfferCard.jsx");
-  assert.match(liste, /deliveryNotAssessable=\{deliveryDeadlineNotAssessable\(t, \{ latestDeliveryDate, latestDeliveryTime \}\)\}/);
-  assert.match(karte, /\{deliveryNotAssessable && \(\s*<p className="offer-deadline-note">\{DELIVERY_NOT_ASSESSABLE_TEXT\}<\/p>/);
-  // Der Satz steht als Text nur im Modul — keine zweite Schreibweise in Liste oder Karte.
-  assert.ok(!/Zustelltermin nicht bewertbar/.test(liste + karte.replace(/\/\/.*$/gm, "")), "der Hinweistext ist dupliziert");
+  assert.match(liste, /deliveryDeadlineGroups\(sorted, \{ latestDeliveryDate, latestDeliveryTime \}\)/);
+  assert.match(liste, /const FRISTGRUPPEN = Object\.freeze\(\["confirmed", "projected", "unconfirmed"\]\);/);
+  // Auszeichnungen nur unter den Angeboten, die die Frist einhalten (bestätigt oder voraussichtlich).
+  assert.match(liste, /gruppen \? \[\.\.\.gruppen\.confirmed, \.\.\.gruppen\.projected\] : sorted/);
+  assert.match(liste, /assignBadges\(auszeichnungsBasis\)/);
+  // „Zu spät": eingeklappt, mit aria-expanded, und mit jeder neuen Frist wieder zu.
+  assert.match(liste, /const \[spaetOffen, setSpaetOffen\] = useState\(false\);/);
+  assert.match(liste, /useEffect\(\(\) => \{ setSpaetOffen\(false\); \}, \[latestDeliveryDate, latestDeliveryTime\]\);/);
+  assert.match(liste, /aria-expanded=\{spaetOffen\}/);
+  assert.match(liste, /\{spaetOffen && gruppenAbschnitt\("late", spaetListe, `\$\{gruppenId\}-late`\)\}/);
+  // Kein Gruppentext als Literal im Code von Liste oder Karte — alles aus DEADLINE_GROUP_TEXT (Kommentare zählen nicht).
+  const ohneKommentar = (q) => q.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+  const code = ohneKommentar(liste) + ohneKommentar(lies("src/components/offers/OfferCard.jsx"));
+  for (const text of ["Voraussichtlich passend", "Frist nicht bestätigt", "stellen nach Ihrer Frist zu"]) {
+    assert.ok(!code.includes(text), `„${text}" steht als Literal in Liste oder Karte`);
+  }
+});
+
+/* ══════════ T) TG-L2 — vier Ausgänge, eine Regel für beide Provider ══════════════ */
+
+// Die Prüfwerte der Analyse (Abschnitt D, Abholung Mo. 26.10.2026), dazu die Zeitprodukte der Korrektur K.
+const anbieter = (id, max, zeit = null, min = max) => ({ id, deliveryDateMin: min, deliveryDateMax: max, deliveryDate: min,
+                                                        deliveryTimeUntil: zeit });
+const prognose = (id, dateMin, dateMax, timeUntil = null, extra = {}) => ({
+  id, deliveryDate: null, deliveryDateMin: null, deliveryDateMax: null, deliveryTimeUntil: null,
+  deliveryProjection: { kind: "estimated", dateMin, dateMax, timeUntil }, ...extra });
+const MATRIX_ANGEBOTE = [
+  anbieter("J1", "2026-10-27", "09:00"),
+  anbieter("J2", "2026-10-28", "18:00", "2026-10-27"),
+  anbieter("J3", "2026-10-27"),
+  prognose("T1", "2026-10-27", "2026-10-27"),        // „1"
+  prognose("T2", "2026-10-27", "2026-10-28"),        // „1-2"
+  prognose("T3", "2026-10-27", "2026-11-02"),        // „1-5" (über das Wochenende)
+  prognose("T4", "2026-10-28", null),                // „2+"
+  prognose("T5", "2026-10-27", null),                // „1+"
+  { id: "T6", deliveryDate: null, deliveryDateMax: null, deliveryProjection: null, transitDaysMin: 1, transitDaysMax: 2 },
+  prognose("T7", "2026-10-27", "2026-10-27", null, { serviceType: "dropoff" }), // Abgabe „1"
+];
+const A = "met", B = "projected", C = "not_assessable", D = "too_late";
+const MATRIX = [
+  [["2026-10-27", ""],      [A, D, A, B, D, D, D, C, C, B]],
+  [["2026-10-27", "10:00"], [A, D, C, C, D, D, D, C, C, C]],
+  [["2026-10-28", ""],      [A, A, A, B, B, D, C, C, C, B]],
+  [["2026-10-28", "10:00"], [A, D, A, B, C, D, C, C, C, B]],
+  [["2026-11-02", ""],      [A, A, A, B, B, B, C, C, C, B]],
+  [["2026-10-26", "10:00"], [D, D, D, D, D, D, D, D, C, D]],
+];
+
+test("T1 — die Matrix der Analyse: jede Zeile, jede Spalte", () => {
+  for (const [[tag, zeit], erwartet] of MATRIX) {
+    const frist = { latestDeliveryDate: tag, latestDeliveryTime: zeit };
+    MATRIX_ANGEBOTE.forEach((t, i) => {
+      assert.equal(deliveryDeadlineAssessment(t, frist), erwartet[i], `${t.id} gegen ${tag} ${zeit || "(ohne Uhrzeit)"}`);
+    });
+  }
+});
+
+test("T2 — belegte Zustelluhrzeiten (Korrektur K): DHL 12:00 passt zu 12:00, nicht zu 10:00 — ohne Uhrzeit nicht bestätigt", () => {
+  const am = "2026-10-27";
+  const angebote = [
+    prognose("87", am, am, "12:00"), prognose("86", am, am, "10:30"), prognose("85", am, am, "09:00"),
+    prognose("49", am, am), prognose("84", am, am), prognose("29", am, am),
+    anbieter("JU-1200", am, "12:00"),
+  ];
+  const erwartet = {
+    "12:00": { 87: B, 86: B, 85: B, 49: C, 84: C, 29: C, "JU-1200": A },
+    "10:00": { 87: D, 86: D, 85: B, 49: C, 84: C, 29: C, "JU-1200": D },
+    "":      { 87: B, 86: B, 85: B, 49: B, 84: B, 29: B, "JU-1200": A },
+  };
+  for (const [zeit, je] of Object.entries(erwartet)) {
+    for (const t of angebote) {
+      assert.equal(deliveryDeadlineAssessment(t, { latestDeliveryDate: am, latestDeliveryTime: zeit }), je[t.id], `${t.id} ${zeit}`);
+    }
+  }
+  // Am Tag vor dem Prognosetag ist jede Prognose zu spät, am Tag danach jede passend — mit oder ohne Uhrzeit.
+  for (const zeit of ["", "08:00"]) {
+    for (const t of angebote.slice(0, 6)) {
+      assert.equal(deliveryDeadlineAssessment(t, { latestDeliveryDate: "2026-10-26", latestDeliveryTime: zeit }), D, t.id);
+      assert.equal(deliveryDeadlineAssessment(t, { latestDeliveryDate: "2026-10-28", latestDeliveryTime: zeit }), B, t.id);
+    }
+  }
+});
+
+test("T3 — Wochenende und Feiertag: verglichen werden die Tage des Servers, die Oberfläche zählt nichts", () => {
+  // Abholung Fr. 30.10., Laufzeit „1" → Mo. 02.11. (Server): eine Frist Sa. 31.10. hält sie nicht.
+  const freitag = prognose("FR", "2026-11-02", "2026-11-02");
+  assert.equal(deliveryDeadlineAssessment(freitag, { latestDeliveryDate: "2026-10-31" }), D);
+  assert.equal(deliveryDeadlineAssessment(freitag, { latestDeliveryDate: "2026-11-02" }), B);
+  // Abholung Mi. 23.12.2026, Laufzeit „2" → Mo. 28.12. (25./26.12. bundesweit frei).
+  const weihnachten = prognose("XM", "2026-12-28", "2026-12-28");
+  assert.equal(deliveryDeadlineAssessment(weihnachten, { latestDeliveryDate: "2026-12-24" }), D);
+  assert.equal(deliveryDeadlineAssessment(weihnachten, { latestDeliveryDate: "2026-12-28", latestDeliveryTime: "12:00" }), C);
+  assert.equal(deliveryDeadlineAssessment(weihnachten, { latestDeliveryDate: "2026-12-29", latestDeliveryTime: "08:00" }), B);
+  // Eine unbrauchbare Prognose ist keine — nicht bestätigt, nie passend.
+  for (const kaputt of [{ kind: "guaranteed", dateMin: "2026-10-27", dateMax: "2026-10-27" },
+                        { kind: "estimated", dateMin: "27.10.2026", dateMax: null },
+                        { kind: "estimated", dateMin: "2026-10-28", dateMax: "2026-10-27" }]) {
+    assert.equal(deliveryDeadlineAssessment({ deliveryProjection: kaputt }, { latestDeliveryDate: "2026-11-30" }), C,
+      JSON.stringify(kaputt));
+  }
+});
+
+test("T4 — Anbieterdaten haben Vorrang vor einer (vertragswidrig) mitgelieferten Prognose", () => {
+  const beides = { ...anbieter("JX", "2026-10-29", "18:00"), deliveryProjection: { kind: "estimated", dateMin: "2026-10-27",
+                                                                                    dateMax: "2026-10-27", timeUntil: "09:00" } };
+  assert.equal(deliveryDeadlineAssessment(beides, { latestDeliveryDate: "2026-10-28" }), D);
+  assert.equal(deliveryDeadlineAssessment(beides, { latestDeliveryDate: "2026-10-29" }), A);
+});
+
+test("T5 — Gruppen: Reihenfolge der Sortierung, jede sichtbare Karte genau einmal, „Zu spät“ getrennt und im Preis", () => {
+  const frist = { latestDeliveryDate: "2026-10-28" };
+  const sichtbar = applyResultFilters(MATRIX_ANGEBOTE, frist);
+  const g = deliveryDeadlineGroups(sichtbar, frist);
+  assert.deepEqual(g.confirmed.map((t) => t.id), ["J1", "J2", "J3"]);
+  assert.deepEqual(g.projected.map((t) => t.id), ["T1", "T2", "T7"]);
+  assert.deepEqual(g.unconfirmed.map((t) => t.id), ["T4", "T5", "T6"]);
+  assert.equal(g.confirmed.length + g.projected.length + g.unconfirmed.length, sichtbar.length);
+  assert.deepEqual(lateResultOffers(MATRIX_ANGEBOTE, frist).map((t) => t.id), ["T3"]);
+  // Umgekehrte Eingabe → umgekehrte Reihenfolge in jeder Gruppe: die Liste sortiert, die Gruppe übernimmt.
+  const umgekehrt = deliveryDeadlineGroups([...sichtbar].reverse(), frist);
+  assert.deepEqual(umgekehrt.projected.map((t) => t.id), ["T7", "T2", "T1"]);
+  // Die Preisgrenze gilt auch für „Zu spät" — dieselbe Regel wie für die sichtbare Liste.
+  const mitPreis = [{ ...MATRIX_ANGEBOTE[5], netPrice: 30 }, { ...MATRIX_ANGEBOTE[5], id: "T3b", netPrice: 10 }];
+  assert.deepEqual(lateResultOffers(mitPreis, { ...frist, maxPrice: "20" }).map((t) => t.id), ["T3b"]);
+  assert.deepEqual(lateResultOffers(mitPreis, { ...frist, maxPrice: "" }).map((t) => t.id), ["T3", "T3b"]);
+  // Nichts mutiert.
+  const vorher = JSON.stringify(MATRIX_ANGEBOTE);
+  deliveryDeadlineGroups(MATRIX_ANGEBOTE, frist); lateResultOffers(MATRIX_ANGEBOTE, frist);
+  assert.equal(JSON.stringify(MATRIX_ANGEBOTE), vorher);
+});
+
+test("T6 — Wortlaut: Gruppen, Aufklapper, kein Angebot in der Frist — ohne Zusage und ohne Quelle", () => {
+  assert.deepEqual(Object.keys(DEADLINE_GROUP_TEXT), ["confirmed", "projected", "unconfirmed", "late", "noneFitting"]);
+  assert.deepEqual(["confirmed", "projected", "unconfirmed", "late"].map((k) => DEADLINE_GROUP_TEXT[k].title),
+    ["Passend", "Voraussichtlich passend", "Frist nicht bestätigt", "Zu spät"]);
+  assert.equal(lateGroupToggleLabel(1, false), "1 Angebot stellt nach Ihrer Frist zu – anzeigen");
+  assert.equal(lateGroupToggleLabel(3, false), "3 Angebote stellen nach Ihrer Frist zu – anzeigen");
+  assert.equal(lateGroupToggleLabel(3, true), "Zu späte Angebote ausblenden");
+  assert.equal(lateGroupToggleLabel(NaN, false), "0 Angebote stellen nach Ihrer Frist zu – anzeigen");
+  const alles = JSON.stringify(DEADLINE_GROUP_TEXT);
+  assert.ok(!/garant|zugesichert|pünktlich|JUMiNGO|Transglobal/i.test(alles), alles);
+  assert.equal(DELIVERY_DEADLINE.PROJECTED, "projected");
+});
+
+test("T7 — beide Seiten: „Zu spät“ sortiert wie die Liste, die Auswahl wird bei einer Friständerung gelöst", () => {
+  for (const seite of SEITEN) {
+    const q = lies(seite);
+    assert.match(q, /const sorted = React\.useMemo\(\(\) => sortiereAngebote\(filtered, sortMode\), \[filtered, sortMode\]\);/, seite);
+    assert.match(q, /sortiereAngebote\(lateResultOffers\(tariffs, \{/, seite);
+    assert.match(q, /lateOffers=\{spaet\}/, seite);
+    // Gelöst wird nur, was durch die neue Frist zu spät ist — ausgelöst von der Frist, nicht von der Auswahl.
+    assert.match(q, /deliveryDeadlineAssessment\(vorher, frist\) === DELIVERY_DEADLINE\.TOO_LATE/, seite);
+    assert.match(q, /\}, \[form\.latestDeliveryDate, form\.latestDeliveryTime\]\);/, seite);
+  }
 });
 
 test("F4 — die Uhrzeit steht in FILTER_ONLY_FIELDS: kein /calculate-price-Request", () => {

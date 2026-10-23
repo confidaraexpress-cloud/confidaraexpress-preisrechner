@@ -477,7 +477,7 @@ async function istAuswaehlbar(karte, name) {
   assert.doesNotMatch(text, /ab \d+,\d{2} €/, `${name}: „ab“-Betrag`);
   assert.equal(await karte.locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0, `${name}: Abholung heute`);
   assert.equal(await karte.locator(".offer-badge").count(), 0, `${name}: ein vorläufiges Angebot trägt eine Auszeichnung`);
-  assert.notEqual(await inhalt(karte.locator(".offer-tl-node--end .offer-tl-title")), "Voraussichtliche Lieferung",
+  assert.notEqual(await inhalt(karte.locator(".offer-tl-node--end .offer-tl-title")), "Voraussichtliche Zustellung",
     `${name}: ohne kuratierte Prognose erscheint eine voraussichtliche Lieferung`);
 }
 
@@ -575,7 +575,7 @@ test("A — Vergleich: Standard- und Expressversand auswählbar; UPS · Express 
   assert.equal(await inhalt(express.locator(".offer-eta")), "1 Tag");
   assert.equal(await inhalt(express.locator(".offer-price")), "31,67 €", "der Preis der Preisauskunft fehlt");
   const ende = express.locator(".offer-tl-node--end");
-  assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Lieferung");
+  assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(ende.locator(".offer-tl-primary")), kurz(DIENSTAG));
   assert.equal(await ende.locator(".offer-tl-sub").count(), 0, "unter der Prognose steht eine Uhrzeit");
   await istPreisauskunft(express, "UPS · Express");
@@ -617,7 +617,7 @@ test("B — Details UPS · Express: Express-Profil ohne Volumengewichtsformel un
   const abschnitt = (id) => panel.locator(`[data-profile-section="${id}"]`);
   assert.equal(await inhalt(abschnitt("main").locator(".offer-profile-summary")), "Schneller Expressversand für eilige Sendungen.");
   assert.deepEqual(await zeilenVon(abschnitt("transit")), [
-    ["Voraussichtliche Laufzeit", "1 Tag"], ["Voraussichtliche Lieferung", kurz(DIENSTAG)],
+    ["Voraussichtliche Laufzeit", "1 Tag"], ["Voraussichtliche Zustellung", kurz(DIENSTAG)],
   ]);
   // Größe & Gewicht: nur die CE-Grenze von einem Packstück und das Abrechnungsgewicht des Servers.
   assert.deepEqual(await zeilenVon(abschnitt("size")), [["Packstücke", "1 je Sendung"], ["Abrechnungsgewicht", "2,00 kg"]]);
@@ -660,7 +660,7 @@ test("C — Details UPS · Standardversand Mehrpaket: bisheriger Detailbereich m
   const text = norm(await panel.textContent());
   const erfunden = text.match(KEINE_ERFUNDENE_GRENZE);
   assert.equal(erfunden, null, `belegfreie Angabe: „${erfunden && erfunden[0]}“`);
-  assert.doesNotMatch(text, /Voraussichtliche Lieferung/);
+  assert.doesNotMatch(text, /Voraussichtliche Zustellung/);
   assert.doesNotMatch(text, /Keine Zusatzversicherung verfügbar/, "vor der Bindung wird die Absicherung verneint");
   await keinAnbieter(page, "Details UPS · Standardversand Mehrpaket");
   await beleg(page, "mehrpaket-details-1440");

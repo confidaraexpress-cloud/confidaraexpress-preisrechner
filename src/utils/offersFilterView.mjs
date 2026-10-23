@@ -26,6 +26,7 @@
 // GAR KEINE eigene Regel mehr.
 
 import { normalizeDeliveryTime } from "./deliveryTimeView.mjs";
+import { readDeliveryProjection } from "./deliveryProjectionView.mjs";
 
 // „YYYY-MM-DD" → „DD.MM.YYYY". Eigene, string-basierte Fassung statt eines
 // Imports aus utils/date.js: dieses Modul soll ohne Browser-/Zeitzonenbezug
@@ -105,72 +106,160 @@ export function emptyFilterHint({ maxPrice, latestDeliveryDate, latestDeliveryTi
   return "Für diese Anfrage sind derzeit keine Angebote verfügbar.";
 }
 
-// ─── LIEFERFRIST: DREI AUSGÄNGE (Betreiberentscheidung K2, 2026-10-02) ──────
-// Ein Angebot wird gegen die späteste Lieferzeit AUSSCHLIESSLICH mit der
-// Zusage des Anbieters bewertet: `deliveryDateMax` (ersatzweise
-// `deliveryDate`) und `deliveryTimeUntil`. Fehlt eine Zusage, die sich sicher
-// mit der Frist vergleichen lässt, ist das KEIN Ausschlussgrund: das Angebot
-// bleibt sichtbar und trägt diesen neutralen Hinweis. Es wird kein Termin
-// geschätzt, keine Uhrzeit aus einem Tarifnamen gelesen und keine CE-Rechnung
-// zur Anbieterzusage gemacht. Nur ein nachweislich zu spätes Angebot fällt —
-// wie bisher — heraus.
-export const DELIVERY_NOT_ASSESSABLE_TEXT = "Zustelltermin nicht bewertbar";
+// ─── LIEFERFRIST: VIER AUSGÄNGE (TG-L2, Betreiberentscheidung 2026-10-23) ───
+// Bis TG-L2 (Betreiberentscheidung K2, 2026-10-02) bewertete die Frist
+// AUSSCHLIESSLICH Zustelldaten des Anbieters; jedes Angebot ohne sie war „nicht
+// bewertbar" — praktisch jedes Transglobal-Angebot. Seit TG-L1 rechnet der
+// Server für alle Transglobal-Launchprodukte eine Prognose (`deliveryProjection`,
+// mit belegter Uhrzeit nur bei den Zeitprodukten). Sie zählt jetzt — aber als
+// eigene, ehrlich benannte Stufe, nie als Anbieterzusage:
+//
+//   "met"             A  Zustelldaten des Anbieters halten die Frist ein   → „Passend"
+//   "projected"       B  die Prognose des Servers hält die Frist ein        → „Voraussichtlich passend"
+//   "not_assessable"  C  keine sicher vergleichbare Angabe                  → „Frist nicht bestätigt"
+//   "too_late"        D  nach den verfügbaren Daten nach der Frist          → „Zu spät" (eingeklappt)
+//
+// Es wird kein Termin geschätzt, kein Tag gezählt und keine Uhrzeit aus einem
+// Tarifnamen gelesen: verglichen werden ausschließlich die Felder, die der
+// Server liefert. Anbieterdaten haben Vorrang (der Server setzt nie beides).
+// Ein Zeitraum, der über die Frist hinausreicht, ist für beide Quellen gleich
+// „zu spät" — seine späteste Zustellung liegt danach; ein nach oben offenes
+// Fenster („1+") mit frühestem Tag in der Frist ist nicht bestätigt.
+//
+// Den früheren Kartenhinweis „Zustelltermin nicht bewertbar" ersetzt die
+// Gruppe „Frist nicht bestätigt" mit Kopf und Satz (`DEADLINE_GROUP_TEXT`).
+export const DELIVERY_DEADLINE = Object.freeze({
+  MET: "met",
+  PROJECTED: "projected",
+  NOT_ASSESSABLE: "not_assessable",
+  TOO_LATE: "too_late",
+});
 
 const ISO_TAG = /^\d{4}-\d{2}-\d{2}$/;
+
+/* Ein Zustelltag (und die Uhrzeit an ihm, "" ohne) gegen die Frist (Tag, Uhrzeit oder "").
+   `passend` ist der Ausgang einer eingehaltenen Frist — A für Anbieterdaten, B für die Prognose.
+     Tag vor der Frist                    → passend (die Uhrzeit braucht es dafür nicht)
+     Tag nach der Frist                   → zu spät
+     am Fristtag ohne Fristuhrzeit        → passend
+     am Fristtag, Fristuhrzeit, keine Zeit → nicht bestätigt (es wird keine Zeit unterstellt)
+     am Fristtag, Zeit ≤ Fristuhrzeit     → passend, sonst zu spät
+   Beide Werte sind fest formatiert ("YYYY-MM-DD" bzw. "HH:MM", nullgepolstert) — der lexikografische Vergleich
+   ist hier zugleich der chronologische. */
+function gegenFrist(tag, zeit, fristTag, fristZeit, passend) {
+  if (tag < fristTag) return passend;
+  if (tag > fristTag) return DELIVERY_DEADLINE.TOO_LATE;
+  if (!fristZeit) return passend;
+  if (!zeit) return DELIVERY_DEADLINE.NOT_ASSESSABLE;
+  return zeit <= fristZeit ? passend : DELIVERY_DEADLINE.TOO_LATE;
+}
 
 /** Bewertet EIN Angebot gegen den gesetzten Lieferzeitfilter:
  *
  *  - `null`             kein Lieferzeitfilter gesetzt — nichts zu bewerten
- *  - `"met"`            die Anbieterzusage hält die Frist nachweislich ein
- *  - `"too_late"`       die Anbieterzusage liegt nachweislich nach der Frist
- *  - `"not_assessable"` keine sicher vergleichbare Anbieterzusage
+ *  - `"met"`            die Zustelldaten des Anbieters halten die Frist ein (A)
+ *  - `"projected"`      die Prognose des Servers hält die Frist ein (B)
+ *  - `"not_assessable"` keine sicher vergleichbare Angabe (C)
+ *  - `"too_late"`       nach den verfügbaren Daten nach der Frist (D)
  *
- *  NUR Datum → der späteste Liefertag muss am Stichtag oder davor liegen.
- *  Datum UND Uhrzeit → Vergleich des PAARES (Tag, Uhrzeit): ein Tag davor
- *  hält die Frist ein, ein Tag danach nicht — die Uhrzeit braucht es dafür
- *  nicht. Am Stichtag selbst entscheidet die genannte Zeit: „bis 17:00"
- *  erfüllt „bis 12:00" nicht, es wird keine Zeit unterstellt, die der Anbieter
- *  nicht nennt. Nennt er am Stichtag GAR KEINE Zeit, ist die Frist nicht
- *  bewertbar — bis Block B fiel das Angebot hier heraus.
+ *  Anbieterdaten: der späteste Zustelltag (`deliveryDateMax`, ersatzweise
+ *  `deliveryDate`) mit `deliveryTimeUntil` — die Regel von Block B unverändert.
+ *  Ein Liefertag in anderer Form ist keine vergleichbare Zusage (C).
  *
- *  Beide Werte sind fest formatiert ("YYYY-MM-DD" bzw. "HH:MM", beide
- *  nullgepolstert), deshalb ist der lexikografische Vergleich hier zugleich
- *  der chronologische. `normalizeDeliveryTime` erzwingt die Polsterung; ein
- *  Liefertag in anderer Form ist keine vergleichbare Zusage. */
+ *  Prognose (nur ohne Anbieterdaten): frühester Tag nach der Frist → D; nach
+ *  oben offen („1+") → C; sonst der späteste Tag mit der belegten Uhrzeit
+ *  (`timeUntil`, nur an einem einzelnen Tag) nach derselben Regel → B oder D,
+ *  am Fristtag mit Fristuhrzeit ohne Uhrzeit → C. Weder Anbieterdaten noch
+ *  Prognose → C. */
 export function deliveryDeadlineAssessment(tariff, { latestDeliveryDate, latestDeliveryTime } = {}) {
   if (!latestDeliveryDate) return null;
+  const fristZeit = normalizeDeliveryTime(latestDeliveryTime);
   const dd = tariff?.deliveryDateMax || tariff?.deliveryDate;
-  const tag = dd ? String(dd).split("T")[0] : "";
-  if (!ISO_TAG.test(tag)) return "not_assessable";
-  const grenzzeit = normalizeDeliveryTime(latestDeliveryTime);
-  if (!grenzzeit) return tag <= latestDeliveryDate ? "met" : "too_late";
-  if (tag < latestDeliveryDate) return "met";
-  if (tag > latestDeliveryDate) return "too_late";
-  const zeit = normalizeDeliveryTime(tariff?.deliveryTimeUntil);
-  if (!zeit) return "not_assessable";
-  return zeit <= grenzzeit ? "met" : "too_late";
+  if (dd) {
+    const tag = String(dd).split("T")[0];
+    if (!ISO_TAG.test(tag)) return DELIVERY_DEADLINE.NOT_ASSESSABLE;
+    return gegenFrist(tag, normalizeDeliveryTime(tariff?.deliveryTimeUntil), latestDeliveryDate, fristZeit,
+      DELIVERY_DEADLINE.MET);
+  }
+  const prognose = readDeliveryProjection(tariff);
+  if (!prognose) return DELIVERY_DEADLINE.NOT_ASSESSABLE;
+  if (prognose.dateMin > latestDeliveryDate) return DELIVERY_DEADLINE.TOO_LATE;
+  if (prognose.dateMax === null) return DELIVERY_DEADLINE.NOT_ASSESSABLE;
+  return gegenFrist(prognose.dateMax, normalizeDeliveryTime(prognose.timeUntil), latestDeliveryDate, fristZeit,
+    DELIVERY_DEADLINE.PROJECTED);
 }
 
-/** true genau dann, wenn ein Lieferzeitfilter gesetzt ist UND das Angebot
- *  gegen ihn nicht bewertbar ist — die Karte zeigt dann den Hinweis. Ohne
- *  Filter nie. */
-export function deliveryDeadlineNotAssessable(tariff, filters) {
-  return deliveryDeadlineAssessment(tariff, filters) === "not_assessable";
-}
+// Die Preisgrenze — eine Regel für die sichtbare Liste UND die eingeklappte Gruppe „Zu spät".
+const imPreis = (t, maxPrice) => !maxPrice || (t.netPrice != null && t.netPrice <= Number(maxPrice));
 
 /** DIE Ergebnisfilter-Regel — von NewShipmentPage UND CalculatorPage
  *  importiert, nicht kopiert. Rein: kein React, kein Date-Objekt, keine
  *  Zeitzone, keine Mutation der Eingabe.
  *
- *  Der Lieferzeitfilter entfernt ausschließlich nachweislich zu späte Angebote
- *  (`deliveryDeadlineAssessment` oben). Ein nicht bewertbares Angebot bleibt
- *  stehen — unverändert, ohne Zusatzfeld; den Hinweis bildet die Liste beim
- *  Anzeigen aus demselben Ergebnis. */
+ *  Der Lieferzeitfilter entfernt ausschließlich die zu späten Angebote (D,
+ *  `deliveryDeadlineAssessment` oben) aus der sichtbaren Liste — sie stehen
+ *  eingeklappt in einer eigenen Gruppe (`lateResultOffers`). A, B und C bleiben
+ *  stehen, unverändert und ohne Zusatzfeld; die Gruppen bildet die Liste beim
+ *  Anzeigen aus demselben Ergebnis (`deliveryDeadlineGroups`). */
 export function applyResultFilters(tariffs, { maxPrice, latestDeliveryDate, latestDeliveryTime } = {}) {
   let f = [...tariffs];
-  if (maxPrice) f = f.filter(t => t.netPrice != null && t.netPrice <= Number(maxPrice));
+  if (maxPrice) f = f.filter(t => imPreis(t, maxPrice));
   if (latestDeliveryDate) {
-    f = f.filter(t => deliveryDeadlineAssessment(t, { latestDeliveryDate, latestDeliveryTime }) !== "too_late");
+    f = f.filter(t => deliveryDeadlineAssessment(t, { latestDeliveryDate, latestDeliveryTime }) !== DELIVERY_DEADLINE.TOO_LATE);
   }
   return f;
+}
+
+/** Die zu späten Angebote (D) innerhalb der Preisgrenze — die eingeklappte
+ *  Gruppe „Zu spät". Ohne Lieferzeitfilter leer. Reihenfolge der Eingabe. */
+export function lateResultOffers(tariffs, { maxPrice, latestDeliveryDate, latestDeliveryTime } = {}) {
+  if (!latestDeliveryDate) return [];
+  return (Array.isArray(tariffs) ? tariffs : []).filter(t => imPreis(t, maxPrice)
+    && deliveryDeadlineAssessment(t, { latestDeliveryDate, latestDeliveryTime }) === DELIVERY_DEADLINE.TOO_LATE);
+}
+
+/** Die sichtbare Liste in den Fristgruppen — oder `null` ohne Lieferzeitfilter
+ *  (dann bleibt die Liste ungegliedert). Die Reihenfolge innerhalb jeder Gruppe
+ *  ist die der Eingabe, also die gewählte Sortierung. Zu späte Angebote (die
+ *  `applyResultFilters` bereits entfernt hat) erscheinen hier nicht. */
+export function deliveryDeadlineGroups(visible, filters = {}) {
+  if (!filters.latestDeliveryDate) return null;
+  const groups = { confirmed: [], projected: [], unconfirmed: [] };
+  for (const t of Array.isArray(visible) ? visible : []) {
+    const a = deliveryDeadlineAssessment(t, filters);
+    if (a === DELIVERY_DEADLINE.MET) groups.confirmed.push(t);
+    else if (a === DELIVERY_DEADLINE.PROJECTED) groups.projected.push(t);
+    else if (a === DELIVERY_DEADLINE.NOT_ASSESSABLE) groups.unconfirmed.push(t);
+  }
+  return groups;
+}
+
+/** Kopf und Satz der Fristgruppen. Kein „garantiert", keine Quelle, kein Anbietername. */
+export const DEADLINE_GROUP_TEXT = Object.freeze({
+  confirmed: Object.freeze({
+    title: "Passend",
+    sub: "Die Zustelldaten des Versanddienstleisters liegen in Ihrer Frist.",
+  }),
+  projected: Object.freeze({
+    title: "Voraussichtlich passend",
+    sub: "Aus Versandtag und Laufzeit berechnet: Die Zustellung liegt voraussichtlich in Ihrer Frist.",
+  }),
+  unconfirmed: Object.freeze({
+    title: "Frist nicht bestätigt",
+    sub: "Für diese Angebote reichen die Zeitangaben nicht aus, um Ihre Frist zu bewerten.",
+  }),
+  late: Object.freeze({
+    title: "Zu spät",
+    sub: "Nach den verfügbaren Daten stellen diese Angebote nach Ihrer Frist zu.",
+  }),
+  noneFitting: "Kein Angebot hält Ihre Frist nach den verfügbaren Daten ein.",
+});
+
+/** Beschriftung des Aufklappers der Gruppe „Zu spät". */
+export function lateGroupToggleLabel(count, open) {
+  if (open) return "Zu späte Angebote ausblenden";
+  const n = Number.isFinite(count) ? count : 0;
+  return n === 1
+    ? "1 Angebot stellt nach Ihrer Frist zu – anzeigen"
+    : `${n} Angebote stellen nach Ihrer Frist zu – anzeigen`;
 }

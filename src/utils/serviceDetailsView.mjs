@@ -22,11 +22,12 @@
    `volumetricDivisor: null` heißt „für diesen Service nicht belegt“ (UPS-Familie). Das Profil gilt dann
    trotzdem; es entfällt nur die Volumengewichtserklärung — keine Formel, kein Hinweis, kein Ersatzwert. */
 import { fmtDelivery, money } from "./formatters.js";
-import { handoverMode, HANDOVER_PICKUP } from "./handoverMode.mjs";
+import { handoverMode, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "./handoverMode.mjs";
 import { chargeableWeightLine, labelCapabilityLine, OFFER_METADATA_LABEL } from "./offerMetadataView.mjs";
 import { offerCardInsurance } from "./coverInsuranceView.mjs";
 import { COVER_INSURANCE_TEXT } from "./insuranceTerms.mjs";
-import { readDeliveryProjection, projectedDeliveryText, DELIVERY_PROJECTION_TEXT } from "./deliveryProjectionView.mjs";
+import { readDeliveryProjection, projectedDeliveryText, projectedDeliveryTimeText, projectedDeliveryNote,
+         DELIVERY_PROJECTION_TEXT } from "./deliveryProjectionView.mjs";
 
 /* Die sichtbaren Texte — hier und nicht im JSX, damit sie geprüft werden können. */
 export const SERVICE_DETAILS_TEXT = Object.freeze({
@@ -152,17 +153,24 @@ export function serviceDetailsView(tariff) {
   }
 
   // ── 2. Laufzeit — genau einmal, als Schätzung ─────────────────────────────────
-  // TG22 Package B: darunter die voraussichtliche Lieferung, die der SERVER aus Abholtag und Laufzeit
-  // gerechnet hat — mit eigenem kurzen Hinweis. Die Laufzeit des Anbieters bleibt stehen.
+  // TG22 Package B / TG-L2: darunter die voraussichtliche Zustellung, die der SERVER aus Abhol- bzw. Abgabetag
+  // und Laufzeit gerechnet hat — mit eigenem kurzen Hinweis, eine belegte Uhrzeit dahinter. Die Laufzeit des
+  // Anbieters bleibt stehen.
   const laufzeit = fmtDelivery(t);
-  const prognose = projectedDeliveryText(readDeliveryProjection(t));
+  const projektion = readDeliveryProjection(t);
+  const prognose = projectedDeliveryText(projektion);
+  const prognoseZeit = projectedDeliveryTimeText(projektion);
   const transitRows = [];
   if (laufzeit) transitRows.push({ id: "transit", label: SERVICE_DETAILS_TEXT.transitLabel, value: laufzeit });
-  if (prognose) transitRows.push({ id: "projection", label: DELIVERY_PROJECTION_TEXT.label, value: prognose });
+  if (prognose) {
+    transitRows.push({ id: "projection", label: DELIVERY_PROJECTION_TEXT.label,
+                       value: prognoseZeit ? `${prognose}, ${prognoseZeit}` : prognose });
+  }
   const transit = transitRows.length > 0
     ? { rows: transitRows,
         note: laufzeit ? SERVICE_DETAILS_TEXT.transitNote : null,
-        projectionNote: prognose ? DELIVERY_PROJECTION_TEXT.note : null }
+        projectionNote: prognose
+          ? projectedDeliveryNote(projektion, { dropoff: handoverMode(t) === HANDOVER_DROPOFF }) : null }
     : null;
 
   // ── 3. Größe & Gewicht ────────────────────────────────────────────────────────

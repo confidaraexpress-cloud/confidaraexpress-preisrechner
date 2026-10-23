@@ -256,6 +256,9 @@ export function offerPriceView(offer) {
 // ─── Abholung, Zustellung, Laufzeit ──────────────────────────────────────────
 export const SCHEDULE_TEXT = Object.freeze({
   byCarrier: "laut Versanddienstleister",
+  // TG-L2: die voraussichtliche Zustellung rechnet ConfidaraExpress aus Versandtag und Laufzeit — sie steht nicht
+  // „laut Versanddienstleister" da. Die Laufzeit und eine belegte Uhrzeit nennt der Versanddienstleister.
+  estimated: "aus Versandtag und Laufzeit berechnet",
   pickup: "Abholung",
   dropoff: "Abgabe im Paketshop",
   pickupDay: "Abholtag",
@@ -288,7 +291,8 @@ export function offerPickupView(offer) {
   };
 }
 
-/** Zustellung oder Laufzeit — immer mit dem Zusatz „laut Versanddienstleister". */
+/** Zustellung oder Laufzeit mit dem Zusatz „laut Versanddienstleister" — eine voraussichtliche Zustellung des
+ *  Servers (TG-L2) mit „aus Versandtag und Laufzeit berechnet". */
 export function offerDeliveryView(offer) {
   const z = deliveryContractOf(offer);
   let value;
@@ -302,7 +306,7 @@ export function offerDeliveryView(offer) {
   return {
     label: z.label,
     value,
-    note: SCHEDULE_TEXT.byCarrier,
+    note: z.kind === "estimate" ? SCHEDULE_TEXT.estimated : SCHEDULE_TEXT.byCarrier,
     time: frueh || deliveryTimeLabel(offer) || null,
   };
 }

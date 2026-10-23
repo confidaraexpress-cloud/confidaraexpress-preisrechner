@@ -4,7 +4,8 @@
 //      Sie steht unter „Hauptmerkmale" im Detailbereich; auf der Kartenfläche trägt der kuratierte Tarifname
 //      die Unterscheidung (nicht doppelt).
 //   N  Namen: die Karte zeigt den serverseitig kuratierten Namen unverändert; ohne Namen den Versandartnamen.
-//   H  „Zustelltermin nicht bewertbar": neutral gestaltet, nur Foundation-Tokens, keine Warnfarbe.
+//   H  Fristgruppen (TG-L2, ersetzt den Kartenhinweis „Zustelltermin nicht bewertbar"): neutral gestaltet, nur
+//      Foundation-Tokens, keine Status- oder Warnfarbe — die Bewertung steht im Wortlaut.
 //
 // Reine Quelltextprüfungen wie in offerMetadataView/serviceDetailsView — die Karte selbst rendert die E2E-Suite
 // tariffPresentation (Szenarien A–D).
@@ -64,13 +65,20 @@ test("N1 — der Kartenname ist der Servername; Rückfall nur über die Versanda
   assert.ok(!/tariff\?\.tariffName|tariff\.tariffName|tariff\?\.name\b/.test(q), "der Rohname wird gelesen");
 });
 
-test("H1 — der Hinweis „Zustelltermin nicht bewertbar\" ist neutral gestaltet", () => {
-  const css = lies(OFFERS_CSS);
-  const regel = css.match(/\.offer-deadline-note\s*\{([^}]*)\}/);
-  assert.ok(regel, ".offer-deadline-note muss definiert sein");
-  const r = regel[1];
-  for (const token of ["--ce-color-status-neutral-surface", "--ce-color-status-neutral-border", "--ce-color-status-neutral-fg"]) {
-    assert.ok(r.includes(`var(${token})`), `${token} fehlt`);
+test("H1 — die Fristgruppen sind neutral gestaltet: Texttokens, keine Status- oder freie Farbe (TG-L2)", () => {
+  const css = ohneKommentare(lies(OFFERS_CSS));
+  for (const [selektor, token] of [[".offers-group-title", "--ce-color-text-primary"],
+                                    [".offers-group-count", "--ce-color-text-secondary"],
+                                    [".offers-group-sub", "--ce-color-text-secondary"]]) {
+    const regel = css.match(new RegExp(`\\n${selektor.replace(".", "\\.")}\\s*\\{([^}]*)\\}`));
+    assert.ok(regel, `${selektor} muss definiert sein`);
+    assert.ok(regel[1].includes(`var(${token})`), `${selektor}: ${token} fehlt`);
+    assert.ok(!/status|warning|error|success|#[0-9a-f]{3,8}\b|rgba?\(/i.test(regel[1]), `${selektor} trägt eine Statusfarbe`);
   }
-  assert.ok(!/warning|error|success|#[0-9a-f]{3,8}\b|rgba?\(/i.test(r), "der Hinweis trägt eine Status- oder freie Farbe");
+  // Der Aufklapper „Zu spät" hat einen sichtbaren Fokus- und Hoverzustand und das Touch-Ziel.
+  assert.match(css, /\.offers-late-toggle:focus-visible \{ outline: var\(--ce-focus-ring\); outline-offset: var\(--ce-focus-ring-offset\); \}/);
+  assert.match(css, /\.offers-late-toggle:hover \{ background: var\(--ce-color-brand-soft\); \}/);
+  assert.match(css, /@media \(pointer: coarse\) \{ \.offers-late-toggle \{ min-height: var\(--ce-size-touch-target\); \} \}/);
+  // Der entfallene Kartenhinweis hat keine Regel und keine Höhenreserve mehr.
+  assert.ok(!/offer-deadline-note|offers-body--frist/.test(css), "Reste des Kartenhinweises im Stylesheet");
 });

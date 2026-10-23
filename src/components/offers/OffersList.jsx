@@ -6,8 +6,8 @@ import { money } from "../../utils/formatters";
 import { DateCalendar } from "../common/DateCalendar";
 import { fmtDE } from "../../utils/date";
 import {
-  activeResultFilterCount, deliveryChipLabel, deliveryDeadlineNotAssessable, emptyFilterHint as buildEmptyFilterHint,
-  offersCountLabel,
+  activeResultFilterCount, deliveryChipLabel, deliveryDeadlineGroups, DEADLINE_GROUP_TEXT, lateGroupToggleLabel,
+  emptyFilterHint as buildEmptyFilterHint, offersCountLabel,
 } from "../../utils/offersFilterView.mjs";
 import DeliveryTimeSelect from "./DeliveryTimeSelect.jsx";
 import { VatModeToggle } from "./VatModeToggle.jsx";
@@ -28,8 +28,13 @@ const TRUST_ITEMS = [
   { title: "Persönlicher Support",   desc: "Per E-Mail und Telefon" },
 ];
 
+// Die Reihenfolge der Fristgruppen (TG-L2): bestätigt, voraussichtlich, nicht bestätigt — „Zu spät" folgt eingeklappt.
+const FRISTGRUPPEN = Object.freeze(["confirmed", "projected", "unconfirmed"]);
+
 export function OffersList({
   sorted, filtered, tariffs, loading, hasResults,
+  // TG-L2: die zu späten Angebote (sortiert wie `sorted`) — die eingeklappte Gruppe „Zu spät". Ohne Frist leer.
+  lateOffers = [],
   // Auftrag 2 / P5: der Hinweis des Servers, dass die Liste unvollständig sein kann (utils/sourceCoverageView.mjs).
   // Ein fertiger Text oder null — die Liste urteilt nicht selbst über die Quellenlage.
   coverageNotice = null,
@@ -56,7 +61,26 @@ export function OffersList({
   const sortLabelId = `offers-sort-label${leisteId}`;
   const vatLabelId = `offers-vat-label${leisteId}`;
   const filterLabelId = `offers-filter-label${leisteId}`;
-  const badges = useMemo(() => assignBadges(sorted), [sorted]);
+  const gruppenId = `offers-group${leisteId}`;
+
+  // ── Fristgruppen (TG-L2) ────────────────────────────────────────────────────
+  // Ohne Lieferzeitfilter `null` — die Liste bleibt ungegliedert wie bisher. Mit Filter steht jede sichtbare
+  // Karte in genau einer Gruppe; die Reihenfolge darin ist die gewählte Sortierung. Die Regel steht in
+  // utils/offersFilterView.mjs, hier wird nur gegliedert.
+  const gruppen = useMemo(
+    () => deliveryDeadlineGroups(sorted, { latestDeliveryDate, latestDeliveryTime }),
+    [sorted, latestDeliveryDate, latestDeliveryTime]);
+  // Auszeichnungen („Günstigste", „Schnellste") nur unter den Angeboten, die die Frist einhalten — bestätigt oder
+  // voraussichtlich. Eine nicht bestätigte oder zu späte Karte trägt keine.
+  const auszeichnungsBasis = useMemo(
+    () => (gruppen ? [...gruppen.confirmed, ...gruppen.projected] : sorted),
+    [gruppen, sorted]);
+  const badges = useMemo(() => assignBadges(auszeichnungsBasis), [auszeichnungsBasis]);
+
+  // „Zu spät" ist standardmäßig eingeklappt — und klappt mit jeder neuen Frist wieder ein.
+  const [spaetOffen, setSpaetOffen] = useState(false);
+  useEffect(() => { setSpaetOffen(false); }, [latestDeliveryDate, latestDeliveryTime]);
+  const spaetListe = Array.isArray(lateOffers) ? lateOffers : [];
 
   // Slider-Obergrenze aus der ungefilterten Tarifliste ableiten, damit der
   // aktive Preisfilter den eigenen Maximalwert nicht selbst verkleinert.
@@ -93,6 +117,49 @@ export function OffersList({
   const showCards  = !loading && sorted.length > 0;
   const showSortBar = hasResults && !loading && tariffs.length > 0;
   const showTrust  = hasResults && !loading && tariffs.length > 0;
+  // Unter einer Frist hält kein sichtbares Angebot sie ein (weder bestätigt noch voraussichtlich).
+  const keinePassende = !!gruppen && gruppen.confirmed.length + gruppen.projected.length === 0;
+
+  // Eine Angebotskarte — dieselbe in jeder Gruppe und ohne Gruppen.
+  const karte = (t, idx) => (
+    <OfferCard
+      /* Identität aus EINER Quelle (utils/offerIdentity.mjs). Ein Angebot ohne
+         `id` erzeugte hier sonst dreimal `undefined` — und `undefined === undefined`
+         ist `true`: jede solche Karte hätte sich als ausgewählt dargestellt und
+         sich mit allen anderen ein Badge geteilt. Der Index als Rückfallschlüssel
+         ist ausdrücklich zulässig, aber nur, wenn es gar keine Identität gibt. */
+      key={offerKey(t) ?? `idx:${idx}`}
+      tariff={t}
+      badge={badges.get(offerKey(t)) || null}
+      isTop={idx === 0}
+      selected={sameOffer(selected, t)}
+      onSelect={onSelect}
+      onBook={onBook}
+      vatMode={vatMode}
+      senderPrefill={senderPrefill}
+      /* TG-L2: der Tag, ab dem eine Abgabe möglich ist — der Startknoten einer Abgabe nennt ihn. */
+      abgabeTag={shippingDate || null}
+    />
+  );
+
+  // Eine Fristgruppe: Kopf mit Zahl, ein Satz, die Karten. Benannt über ihren sichtbaren Kopf.
+  const gruppenAbschnitt = (schluessel, liste, id) => {
+    const text = DEADLINE_GROUP_TEXT[schluessel];
+    const titelId = `${gruppenId}-${schluessel}-titel`;
+    return (
+      <section key={schluessel} id={id} className={`offers-group offers-group--${schluessel}`}
+               aria-labelledby={titelId} data-offers-group={schluessel}>
+        <div className="offers-group-head">
+          <h3 className="offers-group-title" id={titelId}>
+            <span className="offers-group-name">{text.title}</span>
+            <span className="offers-group-count">{offersCountLabel(liste.length)}</span>
+          </h3>
+          <p className="offers-group-sub">{text.sub}</p>
+        </div>
+        {liste.map((t, idx) => karte(t, idx))}
+      </section>
+    );
+  };
 
   // Offenes Dropdown bei Klick außerhalb der Filterzone bzw. per Escape schließen.
   useEffect(() => {
@@ -326,7 +393,7 @@ export function OffersList({
                     : "Beliebig"}
                 </span>
               </div>
-              <p className="offers-filter-dd-sub">Angebote ausblenden, die später zustellen</p>
+              <p className="offers-filter-dd-sub">Passende Angebote zuerst, zu späte eingeklappt</p>
               <div className="date-quick-options">
                 <button
                   type="button"
@@ -367,10 +434,9 @@ export function OffersList({
         </div>
       )}
 
-      {/* ── Body ── Unter einem gesetzten Lieferzeitfilter kann eine Karte „Zustelltermin nicht
-          bewertbar" tragen; auf schmalen Karten hält dann jede Karte die zweite Hinweiszeile frei
-          (offers.css, `.offers-body--frist`) — gleich hohe Karten auch in dieser Ansicht. */}
-      <div className={`offers-body${latestDeliveryDate ? " offers-body--frist" : ""}`}>
+      {/* ── Body ── Unter einem gesetzten Lieferzeitfilter steht die Liste in Fristgruppen (TG-L2) —
+          die Karten selbst tragen dafür keine Zusatzzeile mehr und bleiben in jeder Gruppe gleich hoch. */}
+      <div className="offers-body">
         {loading && (
           <div className="offers-loading">
             <span className="spinner spinner-dark" />
@@ -412,27 +478,43 @@ export function OffersList({
           </div>
         )}
 
-        {showCards && sorted.map((t, idx) => (
-          <OfferCard
-            /* Identität aus EINER Quelle (utils/offerIdentity.mjs). Ein Angebot ohne
-               `id` erzeugte hier sonst dreimal `undefined` — und `undefined === undefined`
-               ist `true`: jede solche Karte hätte sich als ausgewählt dargestellt und
-               sich mit allen anderen ein Badge geteilt. Der Index als Rückfallschlüssel
-               ist ausdrücklich zulässig, aber nur, wenn es gar keine Identität gibt. */
-            key={offerKey(t) ?? `idx:${idx}`}
-            tariff={t}
-            badge={badges.get(offerKey(t)) || null}
-            isTop={idx === 0}
-            selected={sameOffer(selected, t)}
-            onSelect={onSelect}
-            onBook={onBook}
-            vatMode={vatMode}
-            senderPrefill={senderPrefill}
-            /* K2: unter einem gesetzten Lieferzeitfilter bleibt ein nicht bewertbares Angebot sichtbar und
-               trägt einen neutralen Hinweis. Ein Wahrheitswert, kein neues Tariffeld — ohne Filter immer false. */
-            deliveryNotAssessable={deliveryDeadlineNotAssessable(t, { latestDeliveryDate, latestDeliveryTime })}
-          />
-        ))}
+        {/* Ohne Lieferzeitfilter: die ungegliederte Liste wie bisher. */}
+        {showCards && !gruppen && sorted.map((t, idx) => karte(t, idx))}
+
+        {/* Mit Lieferzeitfilter (TG-L2): „Passend" (Zustelldaten des Anbieters in der Frist), „Voraussichtlich
+            passend" (Prognose in der Frist), „Frist nicht bestätigt" — sichtbar, jede mit Kopf, Zahl und Satz;
+            leere Gruppen entfallen. Darunter „Zu spät", standardmäßig eingeklappt. Kein Angebot verschwindet still. */}
+        {!loading && hasResults && gruppen && (
+          <>
+            {keinePassende && sorted.length > 0 && (
+              <p className="offers-group-none" role="status">{DEADLINE_GROUP_TEXT.noneFitting}</p>
+            )}
+            {FRISTGRUPPEN.map((schluessel) => (gruppen[schluessel].length > 0
+              ? gruppenAbschnitt(schluessel, gruppen[schluessel]) : null))}
+            {spaetListe.length > 0 && (
+              <div className="offers-late">
+                <button
+                  type="button"
+                  className="offers-late-toggle"
+                  aria-expanded={spaetOffen}
+                  aria-controls={spaetOffen ? `${gruppenId}-late` : undefined}
+                  onClick={() => setSpaetOffen((o) => !o)}
+                >
+                  {lateGroupToggleLabel(spaetListe.length, spaetOffen)}
+                  <span className={`offers-late-chevron${spaetOffen ? " open" : ""}`} aria-hidden="true" />
+                </button>
+                {spaetOffen && gruppenAbschnitt("late", spaetListe, `${gruppenId}-late`)}
+              </div>
+            )}
+            {keinePassende && sorted.length > 0 && hasFilter && (
+              <div className="offers-group-reset">
+                <button className="btn btn-outline btn-sm" onClick={onClearFilters} type="button">
+                  Filter zurücksetzen
+                </button>
+              </div>
+            )}
+          </>
+        )}
 
         {hasResults && !loading && (
           <div className="offers-recalc">

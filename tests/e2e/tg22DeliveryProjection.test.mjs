@@ -2,11 +2,11 @@
 // auf der Buchungsseite. Echter Dev-Server, echter Browser, gemocktes Backend: die Tage sind Fixturewerte des Servers —
 // die Oberfläche rechnet sie nicht, sie zeigt sie.
 //
-//   A  Abholung Montag + 1–2 → „Voraussichtliche Lieferung · Di. – Mi."; die Laufzeit bleibt; Detailbereich mit Hinweis
+//   A  Abholung Montag + 1–2 → „Voraussichtliche Zustellung · Di. – Mi."; die Laufzeit bleibt; Detailbereich mit Hinweis
 //   B  Abholung Freitag + 1–2 → Montag–Dienstag, kein Wochenende
 //   C  „1+" → „ab …" und „ab 1 Tag", keine erfundene Obergrenze
 //   D  Abholung am selben Tag: Zuschlag, Abholschluss und Prognose nebeneinander
-//   E  Privatadresse: Buchungsseite mit „Voraussichtliche Lieferung", Wahl der Lieferadresse unverändert
+//   E  Privatadresse: Buchungsseite mit „Voraussichtliche Zustellung", Wahl der Lieferadresse unverändert
 //   F  Regression JUMiNGO: Zustellung mit Anbieterdaten und Uhrzeit — keine Prognose
 //   G  1440 / 834 / 390 px: Knoten und Detailzeile innerhalb der Karte, kein horizontaler Überlauf
 //
@@ -246,7 +246,7 @@ test.after(async () => {
   }
 });
 
-test("A — Abholung Montag, Laufzeit 1–2: „Voraussichtliche Lieferung Di. – Mi.“; die Laufzeit bleibt", async () => {
+test("A — Abholung Montag, Laufzeit 1–2: „Voraussichtliche Zustellung Di. – Mi.“; die Laufzeit bleibt", async () => {
   assert.deepEqual([wochentag(MO_MIN), wochentag(MO_MAX)], [2, 3], "Fixture: Dienstag und Mittwoch");
   const { page, fehler } = await neueSeite();
   await setup(page);
@@ -254,7 +254,7 @@ test("A — Abholung Montag, Laufzeit 1–2: „Voraussichtliche Lieferung Di. �
   const karte = karteVon(page, TG_MO);
   assert.equal(await inhalt(karte.locator(".offer-eta")), "1–2 Tage", "die Laufzeit des Anbieters ist verschwunden");
   const ende = karte.locator(".offer-tl-node--end");
-  assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Lieferung");
+  assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(ende.locator(".offer-tl-primary")), `${kurz(MO_MIN)} – ${kurz(MO_MAX)}`);
   assert.equal(await ende.locator(".offer-tl-sub").count(), 0, "unter der Prognose steht eine Uhrzeit");
 
@@ -262,7 +262,7 @@ test("A — Abholung Montag, Laufzeit 1–2: „Voraussichtliche Lieferung Di. �
   const laufzeit = panel.locator('[data-profile-section="transit"]');
   assert.deepEqual(await zeilenVon(laufzeit), [
     ["Voraussichtliche Laufzeit", "1–2 Tage"],
-    ["Voraussichtliche Lieferung", `${kurz(MO_MIN)} – ${kurz(MO_MAX)}`],
+    ["Voraussichtliche Zustellung", `${kurz(MO_MIN)} – ${kurz(MO_MAX)}`],
   ]);
   assert.deepEqual(await alleTexte(laufzeit.locator(".offer-profile-note")), [
     "Die Laufzeit ist eine Schätzung des Versanddienstleisters und keine Zustellzusage.",
@@ -272,7 +272,7 @@ test("A — Abholung Montag, Laufzeit 1–2: „Voraussichtliche Lieferung Di. �
     ["Hauptmerkmale", "Laufzeit", "Größe & Gewicht", "Transportabsicherung", "Einschränkungen",
      "Termin & Abholung", "Preisaufschlüsselung"]);
   const text = norm(await panel.textContent());
-  assert.equal((text.match(/Voraussichtliche Lieferung/g) || []).length, 1, "die Prognose steht mehrfach in den Details");
+  assert.equal((text.match(/Voraussichtliche Zustellung/g) || []).length, 1, "die Prognose steht mehrfach in den Details");
   assert.doesNotMatch(text, /Zustellzeitraum|Zustelltermin/, "die Prognose erscheint als Anbieterdatum");
   assert.doesNotMatch(norm(await laufzeit.textContent()), /\d{1,2}:\d{2}|\bUhr\b/, "Uhrzeit im Laufzeitblock");
   await keinAnbieter(page, "Angebotsliste mit Prognose");
@@ -287,7 +287,7 @@ test("B — Abholung Freitag, Laufzeit 1–2: Montag–Dienstag — kein Samstag
   await setup(page, { tariffs: [TG_FR, JM], lzOffer: TG_FR });
   await zuDenAngeboten(page);
   const ende = karteVon(page, TG_FR).locator(".offer-tl-node--end");
-  assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Lieferung");
+  assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(ende.locator(".offer-tl-primary")), `${kurz(FR_MIN)} – ${kurz(FR_MAX)}`);
   assert.doesNotMatch(await inhalt(ende), /\bSa\.|\bSo\./, "ein Wochenendtag in der Prognose");
   assert.deepEqual(fehler, []);
@@ -304,7 +304,7 @@ test("C — Laufzeit „1+“: „ab …“ und „ab 1 Tag“ — keine erfunde
   const panel = await oeffneDetails(page, TG_OFFEN);
   assert.deepEqual(await zeilenVon(panel.locator('[data-profile-section="transit"]')), [
     ["Voraussichtliche Laufzeit", "ab 1 Tag"],
-    ["Voraussichtliche Lieferung", `ab ${kurz(MO_MIN)}`],
+    ["Voraussichtliche Zustellung", `ab ${kurz(MO_MIN)}`],
   ]);
   assert.doesNotMatch(await inhalt(karte.locator(".offer-tl-node--end")), /–/, "eine Obergrenze wurde erfunden");
   assert.deepEqual(fehler, []);
@@ -320,7 +320,7 @@ test("D — Abholung am selben Tag: Zuschlag, Abholschluss und Prognose nebenein
   assert.equal(await karte.locator(".offer-card-inner").locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0);
   assert.equal(await inhalt(karte.locator(".offer-tl-node--start .offer-tl-title")), "Abholung heute");
   const ende = karte.locator(".offer-tl-node--end");
-  assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Lieferung");
+  assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(ende.locator(".offer-tl-primary")), `${kurz(HEUTE_MIN)} – ${kurz(HEUTE_MAX)}`);
   const panel = await oeffneDetails(page, TG_HEUTE);
   assert.equal(await inhalt(panel.locator(".offer-sameday-until")), "Abholung heute möglich bis 16:45 Uhr");
@@ -336,10 +336,10 @@ test("E — Privatadresse: die Buchungsseite zeigt die Prognose; Wahl der Liefer
   await zuDenAngeboten(page);
   assert.match(await inhalt(karteVon(page, TG_MO)), /Vorläufiger Preis/);
   await waehle(page, TG_MO);
-  assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-label")), "Voraussichtliche Lieferung");
+  assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-label")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-val")), `${lang(MO_MIN)} – ${lang(MO_MAX)}`);
   assert.equal(await page.locator(".blsum-delivery .blsum-sub").count(), 0, "eine Uhrzeit auf der Buchungsseite");
-  assert.equal(await inhalt(page.locator(".offsum-fact dt").first()), "Voraussichtliche Lieferung");
+  assert.equal(await inhalt(page.locator(".offsum-fact dt").first()), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(page.locator(".offsum-fact dd").first()), `${lang(MO_MIN)} – ${lang(MO_MAX)}`);
   await waehleLieferadresse(page, true);
   await warteAufText(page, ".blsum-price-gross", "18,94");
@@ -368,7 +368,7 @@ test("F — Regression JUMiNGO: Zustellung mit Anbieterdaten und Uhrzeit — kei
   const text = norm(await panel.textContent());
   assert.match(text, /Zustellzeitraum/);
   assert.match(text, /Zustellung\s*bis 18:00 Uhr/);
-  assert.doesNotMatch(text, /Voraussichtliche Lieferung/, "JUMiNGO zeigt eine Prognose");
+  assert.doesNotMatch(text, /Voraussichtliche Zustellung/, "JUMiNGO zeigt eine Prognose");
   assert.deepEqual(fehler, []);
   await page.close();
 });

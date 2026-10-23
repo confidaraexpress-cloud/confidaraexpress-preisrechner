@@ -13,7 +13,7 @@ import { useAddressValidation } from "../../hooks/useAddressValidation";
 import { applyAddressSuggestion, cityFromSuggestion, countryFirstHint } from "../../utils/addressValidationView.mjs";
 import { cityPlaceholder } from "../../utils/addressPlaceholders.mjs";
 import { postalCodeExample, postalCodeInputMode } from "../../utils/postalCode.mjs";
-import { VAT_ID_TEXT } from "../../utils/vatId.mjs";
+import { VAT_ID_TEXT, VAT_ID_ABSENT_TEXT, LEGAL_FORMS_WITHOUT_VAT_ID } from "../../utils/vatId.mjs";
 
 // Pflichtfeld-Markierung. Das Sternchen ist rein visuell (aria-hidden) — für
 // Screenreader trägt das jeweilige Eingabefeld required/aria-required.
@@ -200,29 +200,76 @@ export function RegisterForm({
           {errors.company_name && <span className="auth-field-error">{errors.company_name}</span>}
         </div>
         <div className="auth-field">
-          <div className="auth-field-row">
-            <label className="auth-field-label" htmlFor="reg-vat">{VAT_ID_TEXT.label} <Req /></label>
+          {form.vat_id_absent !== true && (
+            <>
+              <div className="auth-field-row">
+                <label className="auth-field-label" htmlFor="reg-vat">{VAT_ID_TEXT.label} <Req /></label>
+              </div>
+              <div className="auth-input-wrap">
+                {/* Auftrag 2 / P10: Pflichtfeld — Format nach Länderpräfix, keine behördliche Bestätigung. */}
+                <input
+                  id="reg-vat"
+                  className={`auth-input auth-input-no-icon${errors.vat_id ? " auth-input-error" : ""}`}
+                  value={form.vat_id}
+                  onChange={(e) => upd("vat_id", e.target.value)}
+                  onBlur={() => onVatBlur?.()}
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                  maxLength={20}
+                  required
+                  aria-required="true"
+                  aria-invalid={errors.vat_id ? "true" : undefined}
+                  aria-describedby="reg-vat-hint"
+                />
+              </div>
+              <span className="auth-field-hint" id="reg-vat-hint">{VAT_ID_TEXT.hint}</span>
+              {errors.vat_id && <span className="auth-field-error">{errors.vat_id}</span>}
+            </>
+          )}
+          {/* Paket D (D2/D3): ausdrücklich ohne USt-IdNr. — Rechtsform statt Nummer, Sitz Deutschland, manuelle
+              Prüfung durch das Team. Dieselbe Checkbox-Form wie die Erklärungen (Tastatur, role=checkbox). */}
+          <div
+            id="reg-vat-absent"
+            className={`auth-check auth-declaration ${form.vat_id_absent === true ? "checked" : ""}`}
+            onClick={() => upd("vat_id_absent", form.vat_id_absent !== true)}
+            role="checkbox"
+            aria-checked={form.vat_id_absent === true}
+            aria-invalid={errors.vat_id_absent ? "true" : undefined}
+            aria-describedby={errors.vat_id_absent ? "reg-vat-absent-error" : (form.vat_id_absent === true ? "reg-vat-absent-hint" : undefined)}
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); upd("vat_id_absent", form.vat_id_absent !== true); } }}
+          >
+            <span className="auth-checkbox" />
+            <span>{VAT_ID_ABSENT_TEXT.toggle}</span>
           </div>
-          <div className="auth-input-wrap">
-            {/* Auftrag 2 / P10: Pflichtfeld — Format nach Länderpräfix, keine behördliche Bestätigung. */}
-            <input
-              id="reg-vat"
-              className={`auth-input auth-input-no-icon${errors.vat_id ? " auth-input-error" : ""}`}
-              value={form.vat_id}
-              onChange={(e) => upd("vat_id", e.target.value)}
-              onBlur={() => onVatBlur?.()}
-              autoComplete="off"
-              autoCapitalize="characters"
-              spellCheck={false}
-              maxLength={20}
-              required
-              aria-required="true"
-              aria-invalid={errors.vat_id ? "true" : undefined}
-              aria-describedby="reg-vat-hint"
-            />
-          </div>
-          <span className="auth-field-hint" id="reg-vat-hint">{VAT_ID_TEXT.hint}</span>
-          {errors.vat_id && <span className="auth-field-error">{errors.vat_id}</span>}
+          {errors.vat_id_absent && <span className="auth-field-error" id="reg-vat-absent-error">{errors.vat_id_absent}</span>}
+          {form.vat_id_absent === true && (
+            <>
+              <div className="auth-field-row">
+                <label className="auth-field-label" htmlFor="reg-legal-form">{VAT_ID_ABSENT_TEXT.legalFormLabel} <Req /></label>
+              </div>
+              <div className="auth-input-wrap">
+                <select
+                  id="reg-legal-form"
+                  className={`auth-input auth-select auth-input-no-icon${errors.legal_form ? " auth-input-error" : ""}`}
+                  value={form.legal_form || ""}
+                  onChange={(e) => upd("legal_form", e.target.value)}
+                  required
+                  aria-required="true"
+                  aria-invalid={errors.legal_form ? "true" : undefined}
+                  aria-describedby="reg-vat-absent-hint"
+                >
+                  <option value="">{VAT_ID_ABSENT_TEXT.legalFormPlaceholder}</option>
+                  {LEGAL_FORMS_WITHOUT_VAT_ID.map((f) => (
+                    <option key={f.value} value={f.value}>{f.label}</option>
+                  ))}
+                </select>
+              </div>
+              <span className="auth-field-hint" id="reg-vat-absent-hint">{VAT_ID_ABSENT_TEXT.hint}</span>
+              {errors.legal_form && <span className="auth-field-error">{errors.legal_form}</span>}
+            </>
+          )}
         </div>
       </div>
 

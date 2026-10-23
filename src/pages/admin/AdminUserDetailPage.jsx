@@ -663,7 +663,10 @@ export default function AdminUserDetailPage() {
               ["PLZ", dash(zipOf(u))],
               ["Stadt", dash(cityOf(u))],
               ["Land", dash(countryOf(u))],
-              ["USt-ID", dash(vatOf(u))],
+              // Paket D: ein Konto ohne USt-IdNr. zeigt das Kennzeichen und die genannte Rechtsform statt „—".
+              ["USt-ID", u.vat_id_absent === true
+                ? `Keine USt-IdNr. (${u.legal_form_label || "Rechtsform nicht angegeben"})`
+                : dash(vatOf(u))],
               // Kundennummer = fachliche Kundenkennung (CE-K-…). Die interne
               // User-ID bleibt technischer Schlüssel und steht weiter unten.
               ["Kundennummer", customerNumber || "—"],

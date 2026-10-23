@@ -5,6 +5,7 @@ import {
   VERIFICATION_METHOD_OPTIONS,
   VERIFICATION_NOTE_MAX,
   businessDeclarationLine,
+  evidenceGateHint,
   parseVerificationDraft,
   selectBusinessEvidence,
   termsDeclarationParts,
@@ -157,7 +158,11 @@ export function CustomerBusinessEvidenceSection({ userId }) {
                 </button>
               </div>
             </form>
-            <p className="adm-support-hint">{T.gateHint}</p>
+            {/* Paket D: bei einem Konto ohne USt-IdNr. nennt der Hinweis, dass (und welcher) Nachweis vor der
+                Freischaltung fehlt — als Warnung, nicht als Fließtext. */}
+            {data && data.verificationRequired
+              ? <div className="alert alert-warning" role="status" id="adm-evidence-required">{evidenceGateHint(data)}</div>
+              : <p className="adm-support-hint">{evidenceGateHint(data)}</p>}
           </>
         )}
       </div>

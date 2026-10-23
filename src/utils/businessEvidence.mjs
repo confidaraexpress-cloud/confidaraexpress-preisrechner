@@ -44,6 +44,10 @@ export const BUSINESS_EVIDENCE_TEXTS = Object.freeze({
   saveError: "Die Prüfung konnte nicht gespeichert werden.",
   history: "Frühere Prüfungen",
   gateHint: "Die Freischaltung hängt nicht von diesem Vermerk ab. Er dokumentiert, wie die Unternehmereigenschaft geprüft wurde.",
+  // Paket D: Konto ohne USt-IdNr. — hier hängt die Freischaltung an einem Nachweis, der nicht die USt-IdNr. ist.
+  absentPrefix: "Dieses Konto wurde ohne USt-IdNr. registriert",
+  absentRequired: "Vor der Freischaltung muss ein Unternehmernachweis festgehalten werden, der nicht die USt-IdNr. ist (Handelsregister, Gewerbeanmeldung oder sonstiger Nachweis). Fordern Sie ihn bei Bedarf per E-Mail an.",
+  absentSatisfied: "Ein Unternehmernachweis ist festgehalten — die Freischaltung ist möglich.",
 });
 
 const text = (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : null);
@@ -65,7 +69,28 @@ export function selectBusinessEvidence(status, body) {
       verifiedAt: v.verifiedAt,
       verifiedByName: v.verifiedBy && text(v.verifiedBy.name) ? v.verifiedBy.name.trim() : null,
     }));
-  return { declarations: { business, terms }, verifications };
+  // Paket D (D3): ein Konto, das sich ausdrücklich ohne USt-IdNr. registriert hat, braucht vor der Freischaltung einen
+  // Nachweis, der nicht die USt-IdNr. ist — der Server sagt, ob er noch fehlt (`verificationRequired`); nur `true` zählt.
+  const vatIdAbsent = body.vatIdAbsent === true;
+  return {
+    declarations: { business, terms },
+    verifications,
+    vatIdAbsent,
+    legalFormLabel: text(body.legalFormLabel),
+    verificationRequired: vatIdAbsent && body.verificationRequired === true,
+  };
+}
+
+/** Der Hinweis über dem Prüfformular — je nachdem, ob die Freischaltung an einem Nachweis hängt. */
+export function evidenceGateHint(evidence) {
+  const e = evidence && typeof evidence === "object" ? evidence : {};
+  if (e.verificationRequired === true) {
+    return `${BUSINESS_EVIDENCE_TEXTS.absentPrefix}${e.legalFormLabel ? ` (Rechtsform: ${e.legalFormLabel})` : ""}. ${BUSINESS_EVIDENCE_TEXTS.absentRequired}`;
+  }
+  if (e.vatIdAbsent === true) {
+    return `${BUSINESS_EVIDENCE_TEXTS.absentPrefix}${e.legalFormLabel ? ` (Rechtsform: ${e.legalFormLabel})` : ""}. ${BUSINESS_EVIDENCE_TEXTS.absentSatisfied}`;
+  }
+  return BUSINESS_EVIDENCE_TEXTS.gateHint;
 }
 
 export function methodLabelOf(method) {

@@ -49,10 +49,12 @@ const GEMEINSAM = Object.freeze({
   currency: "EUR", collectionDateAdjusted: false, labelFormats: ["PDF"], labelSizes: [], labelFormatOptions: [],
   trackingAvailable: true, printerRequired: true, insuranceAvailable: false, pickupToday: false,
 });
+// Paket B (Betreiberentscheidung D1, 2026-10-23): TNT und DPD 124 fragen keine Adressart mehr — der Server liefert sie
+// sofort buchbar (keine `requiredPriceInputs`), wie die 110.
 const TNT47 = Object.freeze({ ...GEMEINSAM, offerId: "offer-tnt", publicCarrierId: "tnt", publicServiceName: "Express 9:00",
   serviceType: "pickup", collectionDate: "2026-09-16", collectionReadyFrom: "09:00",
-  netPrice: 41.51, vatAmount: 7.89, finalPrice: 49.4, bookable: false, unavailableReason: "price_inputs_required",
-  requiredPriceInputs: ["deliveryIsResidential"], surchargeFreePriceInputs: ["deliveryIsResidential"], parcelShopSearch: null,
+  netPrice: 41.51, vatAmount: 7.89, finalPrice: 49.4, bookable: true, unavailableReason: null,
+  requiredPriceInputs: [], surchargeFreePriceInputs: [], parcelShopSearch: null,
   tariffLimits: [{ operant: "packages_count", operator: "<=", value: 1 }] });
 const GLS110 = Object.freeze({ ...GEMEINSAM, offerId: "offer-gls", publicCarrierId: "gls", publicServiceName: "Pick&Ship",
   serviceType: "pickup", collectionDate: "2026-09-16", collectionReadyFrom: "09:00",
@@ -62,8 +64,8 @@ const GLS110 = Object.freeze({ ...GEMEINSAM, offerId: "offer-gls", publicCarrier
   tariffLimits: [{ operant: "packages_count", operator: "<=", value: 1 }] });
 const DPD124 = Object.freeze({ ...GEMEINSAM, offerId: "offer-dpd", publicCarrierId: "dpd", publicServiceName: "PaketShop",
   serviceType: "dropoff", collectionDate: null, collectionReadyFrom: null,
-  netPrice: 6.08, vatAmount: 1.16, finalPrice: 7.24, bookable: false, unavailableReason: "price_inputs_required",
-  requiredPriceInputs: ["deliveryIsResidential"], surchargeFreePriceInputs: ["deliveryIsResidential"], parcelShopSearch: "server",
+  netPrice: 6.08, vatAmount: 1.16, finalPrice: 7.24, bookable: true, unavailableReason: null,
+  requiredPriceInputs: [], surchargeFreePriceInputs: [], parcelShopSearch: "server",
   tariffLimits: [{ operant: "packages_count", operator: "<=", value: 1 }] });
 // Dieselben Angebote mit zu langem Namen (Schranke P des Servers) — nur der Grund ändert sich.
 const zuLang = (t) => Object.freeze({ ...t, bookable: false, unavailableReason: OFFER_ADDRESS_DETAILS_TOO_LONG_REASON });
@@ -99,11 +101,10 @@ test("(pp3) Abholtag und „bereit ab“ — der Tag des Angebots, bei der Abgab
   assert.equal(pickupContractOf(DPD124).day, null);
 });
 
-test("(pp4) Buchbarkeit und Auswahl: 110 direkt; 47/124 nach der Adressartwahl; zu lange Angaben sperren alle drei", () => {
-  assert.deepEqual([offerBookable(GLS110), offerSelectable(GLS110), offerRequiresResidentialChoice(GLS110)], [true, true, false]);
-  for (const t of [TNT47, DPD124]) {
+test("(pp4) Buchbarkeit und Auswahl: 110, 47 und 124 direkt (seit Paket B ohne Adressartwahl); zu lange Angaben sperren alle drei", () => {
+  for (const t of [TNT47, GLS110, DPD124]) {
     assert.deepEqual([offerBookable(t), offerSelectable(t), offerAwaitsPriceInputs(t), offerRequiresResidentialChoice(t)],
-      [false, true, true, true], t.offerId);
+      [true, true, false, false], t.offerId);
   }
   for (const t of [TNT47, GLS110, DPD124].map(zuLang)) {
     assert.deepEqual([offerBookable(t), offerSelectable(t)], [false, false], t.offerId);

@@ -129,7 +129,7 @@ export function PublicResults({ host, phase, ergebnis, anfrage, langsam, sekunde
         text={ausgang === OUTCOME.PARTIAL ? t.message : OUTCOME_TEXT[OUTCOME.NO_OFFERS].message} id="pc-empty" />;
     } else if (t) {
       inhalt = (
-        <Hinweis ton={ausgang === OUTCOME.INVALID ? "warning" : "error"} titel={t.title} text={t.message} id={`pc-outcome-${ausgang}`} role="alert">
+        <Hinweis ton={ausgang === OUTCOME.INVALID ? "warning" : "error"} titel={t.title} text={ergebnis.message || t.message} id={`pc-outcome-${ausgang}`} role="alert">
           {WIEDERHOLBAR.has(ausgang) && (
             <button type="button" className="pc-button pc-button--secondary" id="pc-retry" onClick={onRetry}>Erneut versuchen</button>
           )}

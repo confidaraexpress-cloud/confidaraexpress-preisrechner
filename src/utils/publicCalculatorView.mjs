@@ -24,6 +24,7 @@ import { projectedDeliveryText } from "./deliveryProjectionView.mjs";
 import { pickupContractOf, pickupTimeText, pickupAdjustedNote } from "./pickupContractView.mjs";
 import { handoverMode, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "./handoverMode.mjs";
 import { offerBlockedLabel, OFFER_BUSINESS_RECIPIENT_TEXT } from "./offerIdentity.mjs";
+import { launchRouteBlockedText, ROUTE_NOT_SUPPORTED_TITLE } from "./launchRouteText.mjs";
 import {
   offerRequiresResidentialChoice, offerResidentialSurchargeFree, RESIDENTIAL_TEXT,
 } from "./residentialPriceInputs.mjs";
@@ -379,9 +380,11 @@ export const OUTCOME_TEXT = Object.freeze({
     message: "Für diese Strecke, dieses Datum und diese Paketdaten liegt derzeit kein Angebot vor. Ändern Sie zum Beispiel das Versanddatum oder die Auswahl „Abholung / Abgabe“.",
   },
   [OUTCOME.INVALID]: { title: "Angaben prüfen", message: "Bitte prüfen Sie die markierten Angaben." },
+  // Paket C (2026-10-23): die Antwort nennt Grund, Seite und erkanntes Gebiet; `quoteOutcomeFromResponse`
+  // legt den daraus formulierten Satz als `message` an den Ausgang (launchRouteText.mjs). Hier nur der Rückfall.
   [OUTCOME.ROUTE]: {
-    title: "Versandroute nicht verfügbar",
-    message: "Für diese Versandroute sind momentan keine Angebote verfügbar. Bitte prüfen Sie Länder, Postleitzahlen und Paketdaten.",
+    title: ROUTE_NOT_SUPPORTED_TITLE,
+    message: launchRouteBlockedText({}),
   },
   [OUTCOME.RATE_LIMITED]: {
     title: "Zu viele Anfragen",
@@ -440,7 +443,7 @@ export function quoteOutcomeFromResponse(status, body) {
     if (offers.length === 0) return { outcome: result.status === "partial" ? OUTCOME.PARTIAL : OUTCOME.NO_OFFERS, result };
     return { outcome: result.status === "partial" ? OUTCOME.PARTIAL : OUTCOME.OK, result };
   }
-  if (status === 422 && b.code === "ROUTE_NOT_SUPPORTED") return { outcome: OUTCOME.ROUTE };
+  if (status === 422 && b.code === "ROUTE_NOT_SUPPORTED") return { outcome: OUTCOME.ROUTE, message: launchRouteBlockedText(b) };
   if (status === 400 || status === 422) {
     const field = typeof b.field === "string" && FELD[b.field] ? FELD[b.field] : null;
     return { outcome: OUTCOME.INVALID, field, fieldMessage: field ? text(b.error) : null };

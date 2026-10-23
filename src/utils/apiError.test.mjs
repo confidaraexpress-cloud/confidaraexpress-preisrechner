@@ -288,3 +288,39 @@ test("26 — ein fehlendes Land verdrängt die Ortsmeldung derselben Seite nicht
   assert.equal(fieldErrors.from_country, "Bitte wählen Sie ein Land aus.");
   assert.equal(fieldErrors.from_city, undefined);
 });
+
+test("28 — Paket C: eine gesperrte Route nennt das erkannte Gebiet und die Seite — keine Begründung, kein Anbieter", () => {
+  const kanaren = normalizeApiError({ status: 422, body: { code: "ROUTE_NOT_SUPPORTED", reason: "special_territory", field: "recipient",
+    territory: "Kanarische Inseln", error: "Dieses Versandziel wird derzeit von ConfidaraExpress nicht unterstützt." } });
+  assert.equal(kanaren.title, "Versandziel nicht verfügbar");
+  assert.equal(kanaren.message, "Die Empfängeradresse liegt in einem Gebiet, das ConfidaraExpress derzeit nicht bedient: Kanarische Inseln. Bitte prüfen Sie Land und Postleitzahl.");
+  assert.equal(kanaren.type, ERROR_TYPE.BUSINESS);
+  assert.equal(kanaren.retryable, false);
+  assert.doesNotMatch(kanaren.message, /zoll|drittland|jumingo|transglobal/i);
+  const absender = normalizeApiError({ status: 422, body: { code: "ROUTE_NOT_SUPPORTED", reason: "special_territory", field: "sender", territory: "Helgoland" } });
+  assert.match(absender.message, /^Die Absenderadresse liegt .*: Helgoland\./);
+  const land = normalizeApiError({ status: 422, body: { code: "ROUTE_NOT_SUPPORTED", reason: "country_not_supported", field: "recipient", territory: null } });
+  assert.match(land.message, /^Das Land der Empfängeradresse wird von ConfidaraExpress derzeit nicht bedient\./);
+  assert.match(land.message, /Mitgliedstaaten der Europäischen Union/);
+  const ursprung = normalizeApiError({ status: 422, body: { code: "ROUTE_NOT_SUPPORTED", reason: "origin_not_supported", field: "sender" } });
+  assert.match(ursprung.message, /nur ab Deutschland/);
+  const plz = normalizeApiError({ status: 422, body: { code: "ROUTE_NOT_SUPPORTED", reason: "missing_postal_code", field: "recipient" } });
+  assert.match(plz.message, /Postleitzahl der Empfängeradresse/);
+  // Ohne Grund (älterer Server): der neutrale Rückfall — und nie mehr der Rat, Versanddatum oder Paketdaten zu prüfen.
+  const alt = normalizeApiError({ status: 422, body: { code: "ROUTE_NOT_SUPPORTED", error: "…" } });
+  assert.equal(alt.message, "Für diese Versandroute sind derzeit keine Angebote verfügbar. Bitte prüfen Sie Land und Postleitzahl von Absender und Empfänger.");
+  assert.doesNotMatch(alt.message, /Versanddatum|Paketdaten/);
+});
+
+test("29 — Paket C, Security-Review: Seite nur über eigene Schlüssel, Gebietsname nur in Ortsnamenform", () => {
+  const konstruktor = normalizeApiError({ status: 422, body: { code: "ROUTE_NOT_SUPPORTED", reason: "special_territory", field: "constructor", territory: "Åland" } });
+  assert.match(konstruktor.message, /^Die Adresse liegt .*: Åland\./);
+  const lang = normalizeApiError({ status: 422, body: { code: "ROUTE_NOT_SUPPORTED", reason: "special_territory", field: "recipient", territory: "x".repeat(61) } });
+  assert.equal(lang.message, "Die Empfängeradresse liegt in einem Gebiet, das ConfidaraExpress derzeit nicht bedient. Bitte prüfen Sie Land und Postleitzahl.");
+  for (const fremd of ["<b>Kanaren</b>", "Kanaren\nBitte rufen Sie an", "http://example.test", { name: "x" }, ["Kanaren"], 42]) {
+    const n = normalizeApiError({ status: 422, body: { code: "ROUTE_NOT_SUPPORTED", reason: "special_territory", field: "recipient", territory: fremd } });
+    assert.doesNotMatch(n.message, /<b>|http|rufen|object|Kanaren/, JSON.stringify(fremd));
+  }
+  const ok = normalizeApiError({ status: 422, body: { code: "ROUTE_NOT_SUPPORTED", reason: "special_territory", field: "sender", territory: "Campione d'Italia" } });
+  assert.match(ok.message, /: Campione d'Italia\./);
+});

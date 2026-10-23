@@ -41,6 +41,9 @@ export function customerFields(user) {
     status: str(firstDefined(u.status, u.state)),
     role: str(firstDefined(u.role)),
     vatId: str(firstDefined(u.vat_id, u.vatId, u.ust_id)),
+    // Paket D: ausdrücklich ohne USt-IdNr. registriert (nur das JSON-Boolean `true`) — mit Rechtsform-Anzeigename.
+    vatIdAbsent: firstDefined(u.vat_id_absent, u.vatIdAbsent) === true,
+    legalFormLabel: str(firstDefined(u.legal_form_label, u.legalFormLabel)),
     createdAt: firstDefined(u.created_at, u.createdAt, u.created) ?? null,
     // Kundennummer ausschließlich aus dem fachlichen Feld — NIE aus der internen ID.
     customerNumber: str(firstDefined(u.customer_number, u.customerNumber)),

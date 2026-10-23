@@ -46,6 +46,34 @@ export const VAT_ID_TEXT = Object.freeze({
   notEu: "Bitte geben Sie eine USt-IdNr. eines EU-Mitgliedstaats an, beginnend mit dem Länderkürzel (z. B. DE).",
 });
 
+// ── Paket D (Betreiberentscheidungen D2/D3, 2026-10-23): Registrierung OHNE USt-IdNr. ─────────────────────────
+// Spiegel von lib/vatId.js (Backend): wer keine USt-IdNr. hat und seinen Sitz in Deutschland hat, wählt die Option
+// und nennt die Rechtsform; das Konto wird manuell geprüft. Keine Steuernummer, kein Dokumentenupload;
+// „Kleinunternehmer" ist eine Steuerregel und keine Rechtsform — bewusst nicht in der Liste. Verbindlich prüft der Server.
+export const LEGAL_FORMS_WITHOUT_VAT_ID = Object.freeze([
+  Object.freeze({ value: "sole_proprietorship", label: "Einzelunternehmen" }),
+  Object.freeze({ value: "freelancer", label: "Freiberufliche Tätigkeit" }),
+  Object.freeze({ value: "gbr", label: "Gesellschaft bürgerlichen Rechts (GbR)" }),
+  Object.freeze({ value: "registered_merchant", label: "Eingetragener Kaufmann / eingetragene Kauffrau (e.K.)" }),
+  Object.freeze({ value: "other", label: "Sonstige Rechtsform" }),
+]);
+export const isLegalFormWithoutVatId = (v) => typeof v === "string" && LEGAL_FORMS_WITHOUT_VAT_ID.some((f) => f.value === v.trim());
+export const legalFormLabel = (v) => {
+  const f = typeof v === "string" ? LEGAL_FORMS_WITHOUT_VAT_ID.find((x) => x.value === v.trim()) : null;
+  return f ? f.label : null;
+};
+
+export const VAT_ID_ABSENT_TEXT = Object.freeze({
+  toggle: "Keine USt-IdNr. vorhanden",
+  legalFormLabel: "Rechtsform",
+  legalFormPlaceholder: "Bitte wählen",
+  legalFormRequired: "Bitte wählen Sie die Rechtsform Ihres Unternehmens.",
+  countryOnlyDe: "Ohne USt-IdNr. können wir derzeit nur Unternehmen mit Sitz in Deutschland registrieren.",
+  conflict: "Bitte geben Sie entweder Ihre USt-IdNr. an oder wählen Sie „Keine USt-IdNr. vorhanden“ — nicht beides.",
+  hint: "Gilt für Unternehmen mit Sitz in Deutschland. Wir prüfen die Unternehmereigenschaft manuell und melden uns, falls wir dafür einen Nachweis benötigen — Sie müssen vorab nichts einreichen.",
+  adminBadge: "Ohne USt-IdNr. registriert",
+});
+
 /** Die normalisierte Form — oder "" ohne Eingabe. */
 export function normalizeVatId(raw) {
   if (typeof raw !== "string") return "";

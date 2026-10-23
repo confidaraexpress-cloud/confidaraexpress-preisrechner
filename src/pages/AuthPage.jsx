@@ -90,6 +90,8 @@ export default function AuthPage() {
   const [regForm, setRegForm] = useState({
     name: "", email: "", password: "", company_name: "",
     vat_id: "", street: "", zip: "", city: "", country: "DE",
+    // Paket D: ausdrücklich ohne USt-IdNr. (Rechtsform statt Nummer, Sitz Deutschland, manuelle Prüfung).
+    vat_id_absent: false, legal_form: "",
   });
   const [regPasswordRepeat, setRegPasswordRepeat] = useState("");
   const [regErrors, setRegErrors] = useState({});
@@ -311,6 +313,8 @@ export default function AuthPage() {
   const handleRegVatBlur = () => {
     setRegErrors(p => {
       const n = { ...p };
+      // Paket D: ohne USt-IdNr. gibt es am Nummernfeld nichts zu melden — die Rechtsform prüft getRegErrors.
+      if (regForm.vat_id_absent === true) { delete n.vat_id; return n; }
       const r = validateRequiredVatId(regForm.vat_id);
       if (!r.ok) n.vat_id = r.error; else delete n.vat_id;
       return n;

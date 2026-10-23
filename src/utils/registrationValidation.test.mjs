@@ -311,3 +311,27 @@ test("25 — AuthPage: Erklärungen gehören zur Gültigkeit, Fassungswechsel se
   assert.ok(!/businessCustomerConfirmed: false/.test(zweig), "die Unternehmererklärung wird unnötig zurückgesetzt");
   assert.match(authPageSrc, /getCurrentLegalSet\(\{ signal: ac\.signal \}\)/);
 });
+
+// ─── Paket D (2026-10-23): Registrierung ohne USt-IdNr. ─────────────────────────────────────────
+
+test("18 — Paket D: ohne USt-IdNr. — Rechtsform Pflicht, Sitz Deutschland, keine Nummer daneben", () => {
+  const ohne = { ...VALID, vat_id: "", vat_id_absent: true, legal_form: "gbr", country: "DE" };
+  assert.deepEqual(getRegErrors(ohne, REPEAT), {});
+  assert.deepEqual(getRegErrors({ ...ohne, country: "" }, REPEAT), {}, "leer gilt wie auf dem Server als Deutschland");
+  assert.equal(getRegErrors({ ...ohne, legal_form: "" }, REPEAT).legal_form, "Bitte wählen Sie die Rechtsform Ihres Unternehmens.");
+  assert.equal(getRegErrors({ ...ohne, legal_form: "kleinunternehmer" }, REPEAT).legal_form, "Bitte wählen Sie die Rechtsform Ihres Unternehmens.");
+  assert.match(getRegErrors({ ...ohne, country: "AT" }, REPEAT).vat_id_absent, /Sitz in Deutschland/);
+  assert.match(getRegErrors({ ...ohne, vat_id: "DE123456789" }, REPEAT).vat_id, /nicht beides/);
+  // Nur das Boolean `true` schaltet um — alles andere bleibt die Pflichtprüfung der Nummer.
+  assert.equal(getRegErrors({ ...VALID, vat_id: "", vat_id_absent: "true" }, REPEAT).vat_id, "Bitte geben Sie die USt-IdNr. Ihres Unternehmens an.");
+  assert.deepEqual(getRegErrors({ ...VALID, vat_id_absent: false, legal_form: "" }, REPEAT), {}, "mit Nummer ist die Rechtsform keine Pflicht");
+});
+
+test("19 — Paket D: Payload ohne USt-IdNr. trägt Kennzeichen und Rechtsform — mit Nummer bleibt er exakt der bisherige", () => {
+  const ohne = buildRegistrationPayload({ ...VALID, vat_id: "", vat_id_absent: true, legal_form: " gbr " });
+  assert.deepEqual([ohne.vat_id, ohne.vat_id_absent, ohne.legal_form], ["", true, "gbr"]);
+  const mit = buildRegistrationPayload({ ...VALID, vat_id_absent: false, legal_form: "gbr" });
+  assert.equal("vat_id_absent" in mit, false);
+  assert.equal("legal_form" in mit, false);
+  assert.deepEqual(Object.keys(mit).sort(), ["city", "company_name", "country", "email", "name", "password", "street", "vat_id", "zip"]);
+});

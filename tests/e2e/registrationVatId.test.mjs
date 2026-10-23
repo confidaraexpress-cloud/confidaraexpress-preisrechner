@@ -179,3 +179,41 @@ test("G — 390 px: Feld, Hinweis und Fehler innerhalb des Formulars, kein Über
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0);
   await page.close();
 });
+
+test("H — Paket D: ohne USt-IdNr. — Option, Rechtsform statt Nummer, Sitz Deutschland; der Server erhält Kennzeichen und Rechtsform", async () => {
+  const { page, fehler } = await seite();
+  const koerper = [];
+  // Neuere Routen gewinnen: diese fängt die Registrierung mit dem ganzen Körper ab.
+  await page.route("**/api.confidaraexpress.de/**", async (route) => {
+    const req = route.request();
+    if (!new URL(req.url()).pathname.endsWith("/register")) return route.fallback();
+    koerper.push(JSON.parse(req.postData() || "{}"));
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ message: "Registrierung erfolgreich" }) });
+  });
+  await page.goto(`${BASE}/register`, { waitUntil: "networkidle" });
+  await fuelle(page);
+  // Die Option sitzt direkt unter dem USt-Feld; sie blendet das Nummernfeld aus und zeigt die Rechtsform.
+  assert.equal(await page.locator("#reg-vat").count(), 1);
+  await page.locator("#reg-vat-absent").click();
+  assert.equal(await page.locator("#reg-vat").count(), 0, "das Nummernfeld bleibt sichtbar");
+  await page.waitForSelector("#reg-legal-form");
+  assert.equal(norm(await page.locator("#reg-vat-absent").innerText()), "Keine USt-IdNr. vorhanden");
+  assert.match(norm(await page.locator("#reg-vat-absent-hint").innerText()), /Sitz in Deutschland.*manuell/);
+  assert.equal(await cta(page).isDisabled(), true, "ohne Rechtsform absendbar");
+  // Zurück zur Nummer: Option abwählen (Tastatur) — das Nummernfeld kehrt zurück, die Rechtsform verschwindet.
+  await page.locator("#reg-vat-absent").focus();
+  await page.keyboard.press("Space");
+  assert.equal(await page.locator("#reg-vat").count(), 1);
+  assert.equal(await page.locator("#reg-legal-form").count(), 0);
+  await page.locator("#reg-vat-absent").click();
+  await page.waitForSelector("#reg-legal-form");
+  await page.selectOption("#reg-legal-form", "gbr");
+  assert.equal(await cta(page).isDisabled(), false, "mit Rechtsform gesperrt");
+  await cta(page).click();
+  // Nach dem Absenden ersetzt die Erfolgsmeldung das Formular — danach gibt es nichts mehr zu klicken.
+  await page.locator(".auth-alert-success").first().waitFor({ timeout: 10000 });
+  assert.equal(koerper.length, 1);
+  assert.deepEqual([koerper[0].vat_id, koerper[0].vat_id_absent, koerper[0].legal_form, koerper[0].country], ["", true, "gbr", "DE"]);
+  assert.deepEqual(fehler, []);
+  await page.close();
+});

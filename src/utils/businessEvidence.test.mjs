@@ -90,3 +90,18 @@ test("5 — die Sektion ist selbstladend, ohne Gate und nur für Kundenkonten ei
   assert.ok(!/businessEvidence|BusinessEvidence|verification/i.test(freischaltung),
     "die Freischaltung hängt an der Unternehmerprüfung — das wäre eine neue Produktregel");
 });
+
+test("Paket D — Konto ohne USt-IdNr.: Kennzeichen, Rechtsform und ob ein Nachweis vor der Freischaltung fehlt", async () => {
+  const { evidenceGateHint } = await import("./businessEvidence.mjs");
+  const fehlt = selectBusinessEvidence(200, { ...ANTWORT, vatIdAbsent: true, legalFormLabel: "Einzelunternehmen", verificationRequired: true });
+  assert.deepEqual([fehlt.vatIdAbsent, fehlt.legalFormLabel, fehlt.verificationRequired], [true, "Einzelunternehmen", true]);
+  assert.match(evidenceGateHint(fehlt), /^Dieses Konto wurde ohne USt-IdNr\. registriert \(Rechtsform: Einzelunternehmen\)\. Vor der Freischaltung/);
+  const belegt = selectBusinessEvidence(200, { ...ANTWORT, vatIdAbsent: true, legalFormLabel: "GbR", verificationRequired: false });
+  assert.equal(belegt.verificationRequired, false);
+  assert.match(evidenceGateHint(belegt), /Ein Unternehmernachweis ist festgehalten/);
+  // Nur das JSON-Boolean zählt; ohne Kennzeichen gilt der bisherige Hinweis.
+  const alt = selectBusinessEvidence(200, { ...ANTWORT, vatIdAbsent: "true", verificationRequired: "true" });
+  assert.deepEqual([alt.vatIdAbsent, alt.verificationRequired, alt.legalFormLabel], [false, false, null]);
+  assert.equal(evidenceGateHint(alt), T.gateHint);
+  assert.equal(evidenceGateHint(null), T.gateHint);
+});

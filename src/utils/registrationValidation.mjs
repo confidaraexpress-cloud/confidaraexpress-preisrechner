@@ -16,7 +16,7 @@ import { PASSWORD_MIN_LEN, PASSWORD_MAX_LEN, passwordLengthError } from "./passw
 // Formprüfung des Empfehlungscodes (Vertriebspartnerprogramm, unten ergänzt).
 import { normalizeReferralCode } from "./referralCapture.mjs";
 // Auftrag 2 / P10: USt-IdNr. — EINE Regel, gespiegelt aus Backend lib/vatId.js (gemeinsame Falltabelle).
-import { validateRequiredVatId, normalizeVatId } from "./vatId.mjs";
+import { validateRequiredVatId, normalizeVatId, isLegalFormWithoutVatId, VAT_ID_ABSENT_TEXT } from "./vatId.mjs";
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -83,8 +83,16 @@ export function getRegErrors(form = {}, passwordRepeat = "") {
 
   // Auftrag 2 / P10 (Betreiberentscheidung 2026-10-17): die USt-IdNr. ist bei jeder Neuregistrierung Pflicht —
   // Format nach Länderpräfix, keine behördliche Prüfung. Verbindlich prüft der Server.
-  const ust = validateRequiredVatId(form.vat_id);
-  if (!ust.ok) e.vat_id = ust.error;
+  // Paket D (D2/D3, 2026-10-23): ausdrücklich OHNE USt-IdNr. — dann Rechtsform Pflicht, Sitz Deutschland, keine
+  // Nummer daneben. Dieselben drei Regeln wie im Backend (resolveRegistrationVatId).
+  if (form.vat_id_absent === true) {
+    if (normalizeVatId(form.vat_id) !== "") e.vat_id = VAT_ID_ABSENT_TEXT.conflict;
+    if ((trimmed(form.country) || "DE").toUpperCase() !== "DE") e.vat_id_absent = VAT_ID_ABSENT_TEXT.countryOnlyDe;
+    if (!isLegalFormWithoutVatId(form.legal_form)) e.legal_form = VAT_ID_ABSENT_TEXT.legalFormRequired;
+  } else {
+    const ust = validateRequiredVatId(form.vat_id);
+    if (!ust.ok) e.vat_id = ust.error;
+  }
 
   // Weiterhin optionale Felder: nur Längenobergrenzen.
   if (form.street?.length > 200) e.street = "Straße darf maximal 200 Zeichen enthalten.";
@@ -99,7 +107,7 @@ export function getRegErrors(form = {}, passwordRepeat = "") {
 // Die beiden Erklärungen (Paket C) zählen dazu: ein Feldfehler des Servers landet
 // dann an der jeweiligen Checkbox statt als allgemeiner Banner.
 const KNOWN_FORM_FIELDS = new Set([
-  "name", "email", "password", "company_name", "vat_id", "street", "zip", "city", "country",
+  "name", "email", "password", "company_name", "vat_id", "vat_id_absent", "legal_form", "street", "zip", "city", "country",
   "businessCustomerConfirmed", "termsAcknowledged",
 ]);
 
@@ -196,6 +204,16 @@ export function buildRegistrationPayload(form = {}) {
   if (typeof form.email === "string") payload.email = form.email.trim();
   // Auftrag 2 / P10: die USt-IdNr. in der normalisierten Form (der Server normalisiert dieselbe Regel erneut).
   if (typeof form.vat_id === "string") payload.vat_id = normalizeVatId(form.vat_id);
+  // Paket D: ohne USt-IdNr. gehen Kennzeichen und Rechtsform mit und die Nummer leer; mit Nummer bleibt der Payload
+  // exakt der bisherige (keine zusätzlichen Schlüssel).
+  if (form.vat_id_absent === true) {
+    payload.vat_id = "";
+    payload.vat_id_absent = true;
+    payload.legal_form = trimmed(form.legal_form);
+  } else {
+    delete payload.vat_id_absent;
+    delete payload.legal_form;
+  }
   return payload;
 }
 

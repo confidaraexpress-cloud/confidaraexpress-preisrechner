@@ -4,7 +4,8 @@ import { apiFetch } from "../api/client";
 import { normalizeCountryCode } from "../utils/countries";
 import { useLaunchScope } from "../hooks/useLaunchScope";
 import { publicCarrierChipLabel, publicCarrierDisplay, publicServiceName } from "../utils/carrierMap";
-import { applyResultFilters } from "../utils/offersFilterView.mjs";
+import { applyResultFilters, lateResultOffers, deliveryDeadlineAssessment, DELIVERY_DEADLINE }
+  from "../utils/offersFilterView.mjs";
 import { deliveryDeadlineOptions } from "../utils/deliveryTimeView.mjs";
 import { revealOffers } from "../utils/revealOffers.mjs";
 import { OffersList } from "../components/offers/OffersList";
@@ -38,6 +39,25 @@ import { cityFromSuggestion } from "../utils/addressValidationView.mjs";
 // /calculate-price-Request auslösen. Sie steht aus demselben Grund NICHT im
 // calcKey — der Schlüssel beschreibt die Payload, nicht die Anzeige.
 const FILTER_ONLY_FIELDS = new Set(["max_price", "latestDeliveryDate", "latestDeliveryTime"]);
+
+// Die Sortierung der Angebotsliste — für die sichtbare Liste UND die eingeklappte Gruppe „Zu spät" (TG-L2).
+// Reine Funktion; die Eingabe bleibt unverändert („recommended" gibt sie unverändert zurück).
+function sortiereAngebote(liste, sortMode) {
+  if (sortMode === "recommended") return liste;
+  const copy = [...liste];
+  if (sortMode === "cheapest") return copy.sort((a, b) => (a.netPrice ?? Infinity) - (b.netPrice ?? Infinity));
+  if (sortMode === "priciest") return copy.sort((a, b) => (b.netPrice ?? -1) - (a.netPrice ?? -1));
+  if (sortMode === "fastest")  return copy.sort((a, b) => {
+    const aMax = a.transitDaysMax ?? 999;
+    const bMax = b.transitDaysMax ?? 999;
+    if (aMax !== bMax) return aMax - bMax;
+    const aMin = a.transitDaysMin ?? 999;
+    const bMin = b.transitDaysMin ?? 999;
+    if (aMin !== bMin) return aMin - bMin;
+    return (a.netPrice ?? Infinity) - (b.netPrice ?? Infinity);
+  });
+  return copy;
+}
 
 // ─── Service options ─────────────────────────────────────────────────────────
 const SERVICE_OPTIONS = [
@@ -384,22 +404,26 @@ export default function CalculatorPage() {
   // Werte stehen in `deliveryTimeView.mjs`, nicht hier.
   const zeitOptionen = useMemo(() => deliveryDeadlineOptions(tariffs), [tariffs]);
 
-  const sorted = React.useMemo(() => {
-    if (sortMode === "recommended") return filtered;
-    const copy = [...filtered];
-    if (sortMode === "cheapest") return copy.sort((a, b) => (a.netPrice ?? Infinity) - (b.netPrice ?? Infinity));
-    if (sortMode === "priciest") return copy.sort((a, b) => (b.netPrice ?? -1) - (a.netPrice ?? -1));
-    if (sortMode === "fastest")  return copy.sort((a, b) => {
-      const aMax = a.transitDaysMax ?? 999;
-      const bMax = b.transitDaysMax ?? 999;
-      if (aMax !== bMax) return aMax - bMax;
-      const aMin = a.transitDaysMin ?? 999;
-      const bMin = b.transitDaysMin ?? 999;
-      if (aMin !== bMin) return aMin - bMin;
-      return (a.netPrice ?? Infinity) - (b.netPrice ?? Infinity);
-    });
-    return copy;
-  }, [filtered, sortMode]);
+  const sorted = React.useMemo(() => sortiereAngebote(filtered, sortMode), [filtered, sortMode]);
+
+  // TG-L2: die zu späten Angebote — eingeklappt in der Gruppe „Zu spät", sortiert wie die sichtbare Liste.
+  // Dieselbe Regel wie `filtered` (utils/offersFilterView.mjs), rein clientseitig, kein Request.
+  const spaet = useMemo(
+    () => sortiereAngebote(lateResultOffers(tariffs, {
+      maxPrice: form.max_price,
+      latestDeliveryDate: form.latestDeliveryDate,
+      latestDeliveryTime: form.latestDeliveryTime,
+    }), sortMode),
+    [tariffs, form.max_price, form.latestDeliveryDate, form.latestDeliveryTime, sortMode]);
+
+  // TG-L2: fällt die Auswahl durch eine neue Frist in die eingeklappte Gruppe „Zu spät", wird sie gelöst. Nur bei
+  // einer Änderung der Frist: wer „Zu spät" aufklappt und dort bewusst wählt, behält seine Wahl.
+  useEffect(() => {
+    if (!form.latestDeliveryDate) return;
+    const frist = { latestDeliveryDate: form.latestDeliveryDate, latestDeliveryTime: form.latestDeliveryTime };
+    setSelected((vorher) => (vorher && deliveryDeadlineAssessment(vorher, frist) === DELIVERY_DEADLINE.TOO_LATE
+      ? null : vorher));
+  }, [form.latestDeliveryDate, form.latestDeliveryTime]);
 
   const handleServiceFilter = (id) => {
     setServiceFilter(id);
@@ -842,6 +866,7 @@ export default function CalculatorPage() {
           <OffersList
             sorted={sorted}
             filtered={filtered}
+            lateOffers={spaet}
             tariffs={tariffs}
             loading={loading}
             hasResults={hasResults}

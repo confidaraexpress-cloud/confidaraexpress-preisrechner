@@ -209,7 +209,9 @@ test("14 — Karten außerhalb des Bildes sparen Renderarbeit, mit gemessenem Pl
   assert.match(offers, /\.offers-body \{ container-type: inline-size; container-name: offers; \}/);
   assert.match(schnitt(offers, "@container offers (max-width: 949px)", "@container offers (max-width: 639px)"),
     /\.offer-card \{ contain-intrinsic-size: auto 294px; \}/);
-  assert.match(schnitt(offers, "@container offers (max-width: 639px)", "@container offers (max-width: 354px)"),
+  // TG-L2: die Stufe bis 354 px (Reserve für den entfallenen Kartenhinweis „Zustelltermin nicht bewertbar") gibt es
+  // nicht mehr — die 639er-Stufe reicht bis zur schmalen.
+  assert.match(schnitt(offers, "@container offers (max-width: 639px)", "@container offers (max-width: 320px)"),
     /\.offer-card \{ contain-intrinsic-size: auto 381px; \}/);
   assert.match(schnitt(offers, "@container offers (max-width: 320px)", "@supports not (container-type: inline-size)"),
     /\.offer-card \{ contain-intrinsic-size: auto 473px; \}/);

@@ -403,7 +403,7 @@ test("TG23 — „express_urgent“ ergibt „Schneller Expressversand für eili
     ["Versandlabel zum Ausdrucken", "PDF · DIN A4 / Thermodruck"],
   ]);
   assert.deepEqual(v.transit.rows.map((z) => [z.label, z.value]),
-    [["Voraussichtliche Laufzeit", "1 Tag"], ["Voraussichtliche Lieferung", "Do., 17.09."]]);
+    [["Voraussichtliche Laufzeit", "1 Tag"], ["Voraussichtliche Zustellung", "Do., 17.09."]]);
   assert.equal(v.transit.projectionNote,
     "Aus Abholtag und Laufzeit berechnet; Wochenenden und bundesweite Feiertage sind nicht mitgezählt. Regionale oder ausländische Feiertage können die Zustellung verschieben.");
   assert.deepEqual(v.size.rows.map((z) => [z.label, z.value]),
@@ -481,7 +481,7 @@ test("TG29 — ein nicht belegter Divisor ist eine Aussage: Profil ja, Volumenge
   assert.equal(zeile(v.size, "maxWeight"), undefined);
   // Die übrigen Abschnitte bleiben — Laufzeit, Prognose, Absicherungsgrenzen, Einschränkungen.
   assert.deepEqual(v.transit.rows.map((z) => [z.label, z.value]),
-    [["Voraussichtliche Laufzeit", "1 Tag"], ["Voraussichtliche Lieferung", "Do., 17.09."]]);
+    [["Voraussichtliche Laufzeit", "1 Tag"], ["Voraussichtliche Zustellung", "Do., 17.09."]]);
   assert.equal(nbsp(zeile(v.cover, "additionalCover").value), "bis 2.500 € Warenwert");
   assert.deepEqual(v.restrictions.rows, [{ id: "notAccepted", label: "Nicht zugelassen", value: "Paletten, Koffer" }]);
   // Keine Uhrzeit, keine Garantie, kein Anbieter.

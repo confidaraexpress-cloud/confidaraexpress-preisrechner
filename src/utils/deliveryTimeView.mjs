@@ -12,6 +12,15 @@
 // auch nichts umgerechnet: keine Zeitzone, kein Date-Objekt, kein Parsen von
 // Zeitstempeln.
 //
+// ZWEITE QUELLE, NACHRANGIG (TG-L2, Betreiberentscheidung 2026-10-23, Korrektur K).
+// Ohne Anbieteruhrzeit zählt die belegte Uhrzeit der Server-Prognose
+// (`deliveryProjection.timeUntil`): die Zustellzeit des gebuchten Produkts, je
+// Service und Strecke auf dem Server kuratiert — nie aus dem Tarifnamen. Ein
+// Angebot trägt nie beides (der Server setzt die Prognose nur ohne
+// Anbieterdaten). Karte, Frühzeit-Hervorhebung und Fristauswahl lesen dieselbe
+// Uhrzeit über `deliveryTimeUntilOf` — die Unterscheidung „voraussichtlich"
+// trägt der Titel der Zustellangabe (deliveryContractView.mjs), nicht die Zeit.
+//
 // KEINE ZUSAGE. Es gibt kein Feld, das eine Zustellzeit als garantiert
 // ausweist: `guaranteed_delivery_date` steht auf allen gemessenen Rohtarifen
 // auf 0, beide Badge-Textfelder sind durchgehend leer. Die Oberfläche nennt
@@ -23,6 +32,8 @@
 // serverseitigen Namens-Regex aber als `standard` eingestuft; umgekehrt ist
 // `UPS EXPRESS SAVER ®` als `express` klassifiziert und trägt nur den
 // Tagesendwert 17:00. Entschieden wird allein an der Uhrzeit.
+
+import { readDeliveryProjection } from "./deliveryProjectionView.mjs";
 
 /** Grenze, ab der eine Zustellzeit als „früh“ HERVORGEHOBEN wird: 900 Minuten
  *  = 15:00 Uhr.
@@ -51,14 +62,27 @@ export function normalizeDeliveryTime(value) {
   return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
 }
 
+/** Die Zustelluhrzeit eines Tarifs als „HH:MM" — oder "".
+ *
+ *  Vorrang hat die Uhrzeit des Anbieters (`deliveryTimeUntil`); ohne sie die
+ *  belegte Uhrzeit der Server-Prognose (`deliveryProjection.timeUntil`, nur an
+ *  einem einzelnen Tag). Es wird nichts geraten und nichts aus dem Namen
+ *  gelesen. */
+export function deliveryTimeUntilOf(tariff) {
+  const anbieter = normalizeDeliveryTime(tariff?.deliveryTimeUntil);
+  if (anbieter) return anbieter;
+  const prognose = readDeliveryProjection(tariff);
+  return prognose && prognose.timeUntil ? normalizeDeliveryTime(prognose.timeUntil) : "";
+}
+
 /** Minuten seit Mitternacht aus einem Tarif — bevorzugt das gelieferte
- *  Zahlenfeld, ersatzweise aus "HH:MM" abgeleitet. `null`, wenn beides fehlt.
- *  0 (Mitternacht) ist ein GÜLTIGER Wert, deshalb `Number.isFinite` statt einer
- *  Falsy-Prüfung. */
+ *  Zahlenfeld, ersatzweise aus "HH:MM" abgeleitet (Anbieter, sonst belegte
+ *  Prognose-Uhrzeit). `null`, wenn alles fehlt. 0 (Mitternacht) ist ein
+ *  GÜLTIGER Wert, deshalb `Number.isFinite` statt einer Falsy-Prüfung. */
 export function deliveryTimeMinutes(tariff) {
   const roh = tariff?.deliveryTimeUntilMinutes;
   if (Number.isFinite(roh)) return roh;
-  const s = normalizeDeliveryTime(tariff?.deliveryTimeUntil);
+  const s = deliveryTimeUntilOf(tariff);
   if (!s) return null;
   return Number(s.slice(0, 2)) * 60 + Number(s.slice(3, 5));
 }
@@ -80,12 +104,14 @@ export function isEarlyDelivery(tariff) {
  *  presste Datum und Uhrzeit in eine Zeile und markierte einen Teil davon
  *  farbig, statt die Sonderinformation als eigene Aussage zu zeigen. */
 export function deliveryTimeLabel(tariff) {
-  const s = normalizeDeliveryTime(tariff?.deliveryTimeUntil);
+  const s = deliveryTimeUntilOf(tariff);
   return s ? `bis ${s} Uhr` : "";
 }
 
 /** Die in den geladenen Tarifen TATSÄCHLICH vorkommenden Zustellzeiten —
  *  dedupliziert, aufsteigend sortiert, Tarife ohne verwertbare Zeit übergangen.
+ *  Seit TG-L2 zählt auch die belegte Prognose-Uhrzeit (`deliveryTimeUntilOf`):
+ *  steht eine „bis 10:30 Uhr"-Prognose im Ergebnis, ist 10:30 wählbar.
  *
  *  Das ist der reale Anteil der Auswahlliste. Ohne Tarife ist er leer; es wird
  *  hier nichts ergänzt und nichts geraten. Die Liste, die das Auswahlfeld
@@ -93,7 +119,7 @@ export function deliveryTimeLabel(tariff) {
 export function deliveryTimeOptions(tariffs) {
   const menge = new Set();
   for (const t of Array.isArray(tariffs) ? tariffs : []) {
-    const s = normalizeDeliveryTime(t?.deliveryTimeUntil);
+    const s = deliveryTimeUntilOf(t);
     if (s) menge.add(s);
   }
   return [...menge].sort();

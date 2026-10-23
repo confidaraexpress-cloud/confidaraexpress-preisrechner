@@ -120,6 +120,18 @@ test("(7) Abholung und Zustellung aus den Portalhelfern; Laufzeit immer „laut 
   assert.equal(shortDay("2026-02-30T00:00:00Z") !== undefined, true);
 });
 
+test("(7b) TG-L2: die Prognose des Servers heißt „Voraussichtliche Zustellung“ — berechnet, nicht „laut Versanddienstleister“", () => {
+  const prognose = offerDeliveryView({ transitDaysMin: 1, transitDaysMax: 2,
+    deliveryProjection: { kind: "estimated", dateMin: "2026-10-27", dateMax: "2026-10-28", timeUntil: null } });
+  assert.deepEqual([prognose.label, prognose.value, prognose.note, prognose.time],
+    ["Voraussichtliche Zustellung", "Di., 27.10. – Mi., 28.10.", "aus Versandtag und Laufzeit berechnet", null]);
+  // Eine belegte Zeitleistung (DHL 87, Laufzeit 1) steht wie eine Anbieteruhrzeit im grünen Feld.
+  const zeit = offerDeliveryView({ transitDaysMin: 1, transitDaysMax: 1,
+    deliveryProjection: { kind: "estimated", dateMin: "2026-10-27", dateMax: "2026-10-27", timeUntil: "12:00" } });
+  assert.deepEqual([zeit.label, zeit.value, zeit.time], ["Voraussichtliche Zustellung", "Di., 27.10.", "Lieferung bis 12:00 Uhr"]);
+  assert.ok(!/garant/i.test(JSON.stringify(zeit)));
+});
+
 test("(8) Hinweise: Zuschlag nur laut requiredPriceInputs, Geschäftsempfänger, Label und Drucker", () => {
   assert.deepEqual(offerHints({ requiredPriceInputs: ["deliveryIsResidential"] }), [RESIDENTIAL_TEXT.surchargeHint]);
   assert.deepEqual(offerHints({ requiredPriceInputs: ["deliveryIsResidential"], surchargeFreePriceInputs: ["deliveryIsResidential"] }),

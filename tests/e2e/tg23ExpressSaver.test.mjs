@@ -3,7 +3,7 @@
 //
 // Es gibt KEINE eigene TG23-Oberfläche: dasselbe Angebotsformat wie der Referenzservice, andere Serverwerte. Gemessen
 // wird, dass der gemeinsame Flow genau diese Werte zeigt — und nichts darüber hinaus:
-//   A  Karte: UPS · Expressversand · 1 Tag · „Voraussichtliche Lieferung“ mit einem Tag, vorläufiger Preis;
+//   A  Karte: UPS · Expressversand · 1 Tag · „Voraussichtliche Zustellung“ mit einem Tag, vorläufiger Preis;
 //      keine Zustelluhrzeit, keine Zusage, keine Auszeichnung (A2: Abholung Freitag → Lieferung Montag)
 //   B  Details: fünf Abschnitte mit dem Express-Profil (1 Packstück, 70 kg, ÷ 5.000, Tracking, A4/Thermodruck, Paletten/Koffer)
 //   C  Art der Lieferadresse: vorläufiger Preis, Serverbeträge, Sperre ohne Wahl, Bindung, neuer Preis
@@ -438,7 +438,7 @@ test("A — TG23-Karte: UPS · Expressversand · 1 Tag · voraussichtliche Liefe
   assert.equal(await inhalt(karte.locator(".offer-service-type")), "Expressversand");
   assert.equal(await inhalt(karte.locator(".offer-eta")), "1 Tag");
   const ende = karte.locator(".offer-tl-node--end");
-  assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Lieferung");
+  assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(ende.locator(".offer-tl-primary")), kurz(DIENSTAG));
   assert.equal(await ende.locator(".offer-tl-sub").count(), 0, "unter der Prognose steht eine Uhrzeit");
   assert.doesNotMatch(await inhalt(ende), /\d{1,2}:\d{2}|\bUhr\b|–/, "Uhrzeit oder Zeitraum an einer eintägigen Prognose");
@@ -488,7 +488,7 @@ test("A2 — Abholung Freitag, Laufzeit 1 Tag: voraussichtliche Lieferung am Mon
   await setup(page, { tariffs: [TG_FR, JM], lz: zustandKuenftig(TG_FR) });
   await zuDenAngeboten(page);
   const ende = karteVon(page, TG_FR).locator(".offer-tl-node--end");
-  assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Lieferung");
+  assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(ende.locator(".offer-tl-primary")), kurz(FREITAG_PLUS_1));
   assert.match(await inhalt(ende.locator(".offer-tl-primary")), /^Mo\., /);
   assert.doesNotMatch(await inhalt(ende), /\bSa\.|\bSo\./, "ein Wochenendtag in der Prognose");
@@ -517,7 +517,7 @@ test("B — Details: fünf Abschnitte mit dem Express-Profil; Termin & Abholung 
   const laufzeit = abschnittVon(panel, "transit");
   assert.deepEqual(await zeilenVon(laufzeit), [
     ["Voraussichtliche Laufzeit", "1 Tag"],
-    ["Voraussichtliche Lieferung", kurz(DIENSTAG)],
+    ["Voraussichtliche Zustellung", kurz(DIENSTAG)],
   ]);
   assert.deepEqual(await alleTexte(laufzeit.locator(".offer-profile-note")), [
     "Die Laufzeit ist eine Schätzung des Versanddienstleisters und keine Zustellzusage.",
@@ -543,7 +543,7 @@ test("B — Details: fünf Abschnitte mit dem Express-Profil; Termin & Abholung 
 
   // Keine Wiederholung im Detailbereich und kein bisheriges Merkmalsraster daneben.
   const text = norm(await panel.textContent());
-  for (const [wort, anzahl] of [["Voraussichtliche Laufzeit", 1], ["Voraussichtliche Lieferung", 1], ["Sendungsverfolgung", 1]]) {
+  for (const [wort, anzahl] of [["Voraussichtliche Laufzeit", 1], ["Voraussichtliche Zustellung", 1], ["Sendungsverfolgung", 1]]) {
     assert.equal((text.match(new RegExp(wort, "g")) || []).length, anzahl, `„${wort}“ steht nicht genau ${anzahl}-mal in den Details`);
   }
   assert.equal(await panel.locator(".offer-feature-grid, .offer-limit-list").count(), 0, "der bisherige Bereich steht daneben");
@@ -812,11 +812,11 @@ test("G — Buchungsseite: UPS · Expressversand, Lieferprognose, Abholtag, Labe
   assert.equal(await inhalt(page.locator(".offsum-service-name")), "Expressversand");
 
   // Lieferprognose des Servers als TT.MM.JJJJ — ein Tag, ohne Uhrzeit.
-  assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-label")), "Voraussichtliche Lieferung");
+  assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-label")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-val")), lang(DIENSTAG));
   assert.equal(await page.locator(".blsum-delivery .blsum-sub").count(), 0, "eine Uhrzeit an der Prognose");
   const fakten = page.locator(".offsum-fact");
-  assert.equal(await inhalt(fakten.nth(0).locator("dt")), "Voraussichtliche Lieferung");
+  assert.equal(await inhalt(fakten.nth(0).locator("dt")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(fakten.nth(0).locator("dd")), lang(DIENSTAG));
 
   // Abholtag und „bereit ab"-Zeit — kein Zeitfenster.
@@ -932,7 +932,7 @@ test("I — JUMiNGO-Pendant „Expressversand“ daneben: beide sichtbar, JUMiNG
     assert.equal(await inhalt(karte.locator(".offer-service-type")), "Expressversand", name);
     assert.equal(await inhalt(karte.locator(".offer-eta")), "1 Tag", name);
   }
-  assert.equal(await inhalt(tg.locator(".offer-tl-node--end .offer-tl-title")), "Voraussichtliche Lieferung");
+  assert.equal(await inhalt(tg.locator(".offer-tl-node--end .offer-tl-title")), "Voraussichtliche Zustellung");
   const jmEnde = jm.locator(".offer-tl-node--end");
   assert.equal(await inhalt(jmEnde.locator(".offer-tl-title")), "Zustellung");
   assert.ok((await inhalt(jmEnde.locator(".offer-tl-primary"))).includes(`${DIENSTAG.slice(8, 10)}.${DIENSTAG.slice(5, 7)}.`),
@@ -950,7 +950,7 @@ test("I — JUMiNGO-Pendant „Expressversand“ daneben: beide sichtbar, JUMiNG
   for (const label of ["Voraussichtliche Laufzeit", "Sendungsverfolgung", "Tarif-ID"]) {
     assert.ok(merkmale.includes(label), `„${label}“ fehlt im bisherigen Merkmalsraster`);
   }
-  assert.doesNotMatch(norm(await panel.textContent()), /Voraussichtliche Lieferung|Expressversand für eilige|Volumengewicht/,
+  assert.doesNotMatch(norm(await panel.textContent()), /Voraussichtliche Zustellung|Expressversand für eilige|Volumengewicht/,
     "das JUMiNGO-Pendant zeigt TG23-Angaben");
 
   await waehle(page, JM);

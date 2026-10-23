@@ -1,10 +1,11 @@
-// TG22 Package B — die voraussichtliche Lieferung in der Oberfläche (utils/deliveryProjectionView.mjs, der Zustellvertrag,
-// die Buchungsflächen, Karte und Detailbereich).
+// TG22 Package B / TG-L2 — die voraussichtliche Zustellung in der Oberfläche (utils/deliveryProjectionView.mjs, der
+// Zustellvertrag, die Buchungsflächen, Karte und Detailbereich).
 //
 // Die Oberfläche rechnet nichts: die Tage kommen vom Server (`deliveryProjection`). Geprüft wird, dass sie genau diese Tage
-// zeigt — als Zeitraum, als einzelnen Tag oder „ab …" —, dass die Laufzeit des Anbieters stehen bleibt, dass keine Uhrzeit
-// und keine Zusage entsteht, dass Filter und Auszeichnungen die Prognose nicht lesen und dass JUMiNGO mit seinen
-// Anbieterdaten unverändert bleibt.
+// zeigt — als Zeitraum, als einzelnen Tag oder „ab …" —, dass die Laufzeit des Anbieters stehen bleibt, dass eine Uhrzeit
+// nur als belegte Zeitleistung des Servers erscheint (`timeUntil`, TG-L1/TG-L2) und keine Zusage entsteht, dass die
+// Auszeichnungen die Prognose nicht lesen (der Lieferzeitfilter seit TG-L2 als eigene Stufe, offersFilterView.test.mjs) und
+// dass JUMiNGO mit seinen Anbieterdaten unverändert bleibt.
 //
 // Die Testnamen tragen die Nummern der Frontend-Pflichttests 1–14. Die Browserprüfungen 15–18 (1440 / 834 / 390 px, kein
 // horizontaler Überlauf) stehen in tests/e2e/tg22DeliveryProjection.test.mjs.
@@ -14,12 +15,13 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import {
-  readDeliveryProjection, projectedDeliveryText, projectedDeliveryDateText, DELIVERY_PROJECTION_TEXT,
+  readDeliveryProjection, projectedDeliveryText, projectedDeliveryDateText, projectedDeliveryTimeText,
+  projectedDeliveryNote, DELIVERY_PROJECTION_TEXT,
 } from "./deliveryProjectionView.mjs";
 import { deliveryContractOf, DELIVERY_LABEL } from "./deliveryContractView.mjs";
 import { deliveryInfo } from "./bookingSummaryView.mjs";
 import { serviceDetailsView, SERVICE_DETAILS_TEXT } from "./serviceDetailsView.mjs";
-import { applyResultFilters } from "./offersFilterView.mjs";
+import { applyResultFilters, deliveryDeadlineAssessment } from "./offersFilterView.mjs";
 import { assignBadges } from "./offerBadges.js";
 import { sameDayOfferView } from "./sameDayCollectionView.mjs";
 import { offerSurchargeHint } from "./residentialPriceInputs.mjs";
@@ -51,7 +53,7 @@ const TG22 = Object.freeze({
   serviceType: "pickup", collectionDate: "2026-09-14", collectionReadyFrom: "09:00",
   deliveryDate: null, deliveryDateMin: null, deliveryDateMax: null,
   transitDaysMin: 1, transitDaysMax: 2, deliveryTime: "1–2 Tage",
-  deliveryProjection: { kind: "estimated", dateMin: "2026-09-15", dateMax: "2026-09-16" },
+  deliveryProjection: { kind: "estimated", dateMin: "2026-09-15", dateMax: "2026-09-16", timeUntil: null },
   netPrice: 12.74, vatAmount: 2.42, finalPrice: 15.16, currency: "EUR",
   bookable: false, unavailableReason: "price_inputs_required", priceCompleteness: "indicative",
   requiredPriceInputs: ["deliveryIsResidential"],
@@ -102,21 +104,24 @@ test("3 — nach oben offen: „ab Di., 15.09.“ — keine erfundene Obergrenze
   assert.ok(!/–/.test(projectedDeliveryText(readDeliveryProjection(offen))), "eine Obergrenze wurde erfunden");
 });
 
-test("4 — Beschriftung „Voraussichtliche Lieferung“ auf Karte, Buchungsflächen und Detailbereich", () => {
-  assert.equal(DELIVERY_PROJECTION_TEXT.label, "Voraussichtliche Lieferung");
-  assert.equal(DELIVERY_LABEL.ESTIMATED, "Voraussichtliche Lieferung");
+test("4 — Beschriftung „Voraussichtliche Zustellung“ auf Karte, Buchungsflächen und Detailbereich (TG-L2)", () => {
+  assert.equal(DELIVERY_PROJECTION_TEXT.label, "Voraussichtliche Zustellung");
+  assert.equal(DELIVERY_LABEL.ESTIMATED, "Voraussichtliche Zustellung");
   const z = deliveryContractOf(TG22);
   assert.equal(z.kind, "estimate");
-  assert.equal(z.label, "Voraussichtliche Lieferung");
-  assert.deepEqual({ ...z.estimate }, { dateMin: "2026-09-15", dateMax: "2026-09-16" });
-  assert.deepEqual(deliveryInfo(TG22), { label: "Voraussichtliche Lieferung", value: "15.09.2026 – 16.09.2026", until: null, isRange: false });
+  assert.equal(z.label, "Voraussichtliche Zustellung");
+  assert.deepEqual({ ...z.estimate }, { dateMin: "2026-09-15", dateMax: "2026-09-16", timeUntil: null });
+  assert.deepEqual(deliveryInfo(TG22), { label: "Voraussichtliche Zustellung", value: "15.09.2026 – 16.09.2026", until: null, isRange: false });
   // Die Karte liest dieselbe Aussage: der Knoten trägt den Titel des Vertrags und die Tage des Servers.
   const ende = abschnitt(code(KARTE), "function buildEnd", "function DetailRow");
   assert.match(ende, /else if \(zustellung\.kind === "estimate"\) primary = projectedDeliveryText\(zustellung\.estimate\);/);
   assert.match(ende, /const title = zustellung\.label;/);
   const profil = serviceDetailsView(TG22);
   assert.deepEqual(profil.transit.rows.find((r) => r.id === "projection"),
-    { id: "projection", label: "Voraussichtliche Lieferung", value: "Di., 15.09. – Mi., 16.09." });
+    { id: "projection", label: "Voraussichtliche Zustellung", value: "Di., 15.09. – Mi., 16.09." });
+  // Eine Prognose ohne den vierten Schlüssel (Server vor TG-L1) bleibt lesbar — ohne Uhrzeit.
+  const alt = mit({ deliveryProjection: { kind: "estimated", dateMin: "2026-09-15", dateMax: "2026-09-16" } });
+  assert.deepEqual({ ...readDeliveryProjection(alt) }, { dateMin: "2026-09-15", dateMax: "2026-09-16", timeUntil: null });
 });
 
 /* ══════════ 5–8  LAUFZEIT, UHRZEIT, ZUSAGE, RÜCKFALL ══════════ */
@@ -126,7 +131,7 @@ test("5 — die Laufzeit des Anbieters bleibt stehen: Karte oben, Zustellvertrag
   const v = serviceDetailsView(TG22);
   assert.deepEqual(v.transit.rows, [
     { id: "transit", label: "Voraussichtliche Laufzeit", value: "1–2 Tage" },
-    { id: "projection", label: "Voraussichtliche Lieferung", value: "Di., 15.09. – Mi., 16.09." },
+    { id: "projection", label: "Voraussichtliche Zustellung", value: "Di., 15.09. – Mi., 16.09." },
   ]);
   assert.equal(v.transit.note, SERVICE_DETAILS_TEXT.transitNote, "der Hinweis zur Laufzeit ist verschwunden");
   assert.equal(v.transit.projectionNote, DELIVERY_PROJECTION_TEXT.note);
@@ -136,19 +141,40 @@ test("5 — die Laufzeit des Anbieters bleibt stehen: Karte oben, Zustellvertrag
   assert.match(code(KARTE), /const etaLabel\s+= fmtDelivery\(t\) \|\| "Auf Anfrage";/);
 });
 
-test("6 — kein „bis HH:MM“ für eine Prognose — auch nicht, wenn das Angebot eine Uhrzeit trüge", () => {
+test("6 — eine Uhrzeit nur als belegte Zeitleistung des Servers — nie aus einem Anbieterfeld, nie an einem Zeitraum", () => {
+  // Ein Anbieterfeld neben einer Prognose wird nicht zur Prognose-Uhrzeit (der Server setzt nie beides).
   const mitUhrzeit = mit({ deliveryTimeUntil: "18:00" });
   assert.equal(deliveryContractOf(mitUhrzeit).until, null);
   assert.equal(deliveryInfo(mitUhrzeit).until, null);
+  // Ohne Zeitleistung (Zeitraum, timeUntil null) entsteht nirgends eine Uhrzeit.
   for (const text of [projectedDeliveryText(readDeliveryProjection(TG22)), deliveryInfo(TG22).value,
                       JSON.stringify(serviceDetailsView(TG22).transit)]) {
     assert.ok(!/\d{1,2}:\d{2}|\bUhr\b/.test(text), `eine Uhrzeit: ${text}`);
   }
-  assert.ok(!/deliveryTimeUntil|Uhr\b/.test(code(MODUL)));
+  // Mit Zeitleistung (DHL 87, Laufzeit 1): „bis 12:00" — in Vertrag, Buchungsflächen und Detailbereich.
+  const zeit = mit({ transitDaysMin: 1, transitDaysMax: 1, deliveryTime: "1 Tag",
+                     deliveryProjection: { kind: "estimated", dateMin: "2026-09-15", dateMax: "2026-09-15", timeUntil: "12:00" } });
+  assert.deepEqual({ ...readDeliveryProjection(zeit) }, { dateMin: "2026-09-15", dateMax: "2026-09-15", timeUntil: "12:00" });
+  assert.equal(deliveryContractOf(zeit).until, "bis 12:00");
+  assert.deepEqual(deliveryInfo(zeit), { label: "Voraussichtliche Zustellung", value: "15.09.2026", until: "bis 12:00", isRange: false });
+  assert.equal(projectedDeliveryTimeText(readDeliveryProjection(zeit)), "bis 12:00 Uhr");
+  assert.deepEqual(serviceDetailsView(zeit).transit.rows.find((r) => r.id === "projection"),
+    { id: "projection", label: "Voraussichtliche Zustellung", value: "Di., 15.09., bis 12:00 Uhr" });
+  assert.equal(serviceDetailsView(zeit).transit.projectionNote, `${DELIVERY_PROJECTION_TEXT.note} ${DELIVERY_PROJECTION_TEXT.noteTime}`);
+  // Eine Uhrzeit an einem Zeitraum oder in fremder Form ist keine — die Tage bleiben.
+  for (const [dateMax, timeUntil] of [["2026-09-16", "12:00"], ["2026-09-15", "9:00"], ["2026-09-15", "24:00"],
+                                      ["2026-09-15", 900], ["2026-09-15", "12:00 Uhr"]]) {
+    const p = readDeliveryProjection(mit({ deliveryProjection: { kind: "estimated", dateMin: "2026-09-15", dateMax, timeUntil } }));
+    assert.equal(p.timeUntil, null, JSON.stringify([dateMax, timeUntil]));
+    assert.equal(p.dateMax, dateMax);
+  }
+  // Das Modul liest kein Anbieterfeld und formatiert die Uhrzeit nur, die der Server nennt.
+  assert.ok(!/deliveryTimeUntil/.test(code(MODUL)));
 });
 
 test("7 — keine Zusage: kein „garantiert“, kein „spätestens“, kein „pünktlich“", () => {
-  for (const text of [DELIVERY_PROJECTION_TEXT.label, DELIVERY_PROJECTION_TEXT.note, projectedDeliveryText(readDeliveryProjection(TG22)),
+  for (const text of [DELIVERY_PROJECTION_TEXT.label, DELIVERY_PROJECTION_TEXT.note, DELIVERY_PROJECTION_TEXT.noteDropoff,
+                      DELIVERY_PROJECTION_TEXT.noteTime, projectedDeliveryText(readDeliveryProjection(TG22)),
                       JSON.stringify(serviceDetailsView(TG22))]) {
     assert.ok(!VERBOTEN_ZUSAGE.test(text), `Zusage im Text: ${text}`);
   }
@@ -231,17 +257,36 @@ test("14 — JUMiNGO: die Zustelluhrzeit bleibt sichtbar", () => {
 
 /* ══════════ Keine operative Autorität: Filter, Auszeichnungen, Sortierung, Kennzahl ══════════ */
 
-test("Filter und Auszeichnungen lesen die Prognose nicht — „Schnellste“ bleibt die Laufzeit", () => {
-  // Der Lieferdatumsfilter kennt nur Anbieterdaten: ein Angebot ohne sie bleibt wie bisher sichtbar.
+test("TG-L2: der Lieferzeitfilter liest die Prognose als eigene Stufe — Auszeichnungen nicht, „Schnellste“ bleibt die Laufzeit", () => {
+  // Frist Di. 16.09.: die Prognose 15.–16.09. hält sie voraussichtlich ein (B), ohne Prognose ist sie nicht bestätigt (C).
+  assert.equal(deliveryDeadlineAssessment(TG22, { latestDeliveryDate: "2026-09-16" }), "projected");
+  assert.equal(deliveryDeadlineAssessment(OHNE_PROGNOSE, { latestDeliveryDate: "2026-09-16" }), "not_assessable");
+  // Frist Di. 15.09.: der Zeitraum reicht darüber hinaus — zu spät (D), wie ein Anbieterzeitraum; ohne Prognose sichtbar (C).
   const frist = { latestDeliveryDate: "2026-09-15" };
-  assert.deepEqual(applyResultFilters([TG22, JUMINGO], frist).map((t) => t.offerId),
-                   applyResultFilters([OHNE_PROGNOSE, JUMINGO], frist).map((t) => t.offerId));
+  assert.deepEqual(applyResultFilters([TG22, JUMINGO], frist).map((t) => t.offerId), []);
+  assert.deepEqual(applyResultFilters([OHNE_PROGNOSE, JUMINGO], frist).map((t) => t.offerId), [TG22.offerId]);
   const schnell = mit({ offerId: "22pb0000000000000000000000000023", bookable: true, unavailableReason: null,
-                        transitDaysMin: 2, transitDaysMax: 3, deliveryProjection: { kind: "estimated", dateMin: "2026-09-15", dateMax: "2026-09-15" } });
+                        transitDaysMin: 2, transitDaysMax: 3, deliveryProjection: { kind: "estimated", dateMin: "2026-09-15", dateMax: "2026-09-15", timeUntil: null } });
   const alle = [{ ...TG22, bookable: true, unavailableReason: null }, schnell];
   assert.deepEqual([...assignBadges(alle).entries()],
                    [...assignBadges(alle.map((t) => ({ ...t, deliveryProjection: null }))).entries()]);
-  for (const datei of ["offersFilterView.mjs", "offerBadges.js", "kpis.mjs", "../pages/NewShipmentPage.jsx", "../pages/CalculatorPage.jsx"]) {
+  // Die Prognose liest nur die eine Filterregel — nicht die Auszeichnungen, nicht die Kennzahl, nicht die Seiten.
+  for (const datei of ["offerBadges.js", "kpis.mjs", "../pages/NewShipmentPage.jsx", "../pages/CalculatorPage.jsx"]) {
     assert.ok(!/deliveryProjection|projectedDelivery/.test(code(datei)), `${datei} liest die Prognose`);
   }
+  assert.match(code("offersFilterView.mjs"), /const prognose = readDeliveryProjection\(tariff\);/);
+});
+
+test("TG-L2: der Hinweis nennt Abhol- oder Abgabetag — und die Herkunft der Uhrzeit nur, wo es eine gibt", () => {
+  const p = readDeliveryProjection(TG22);
+  assert.equal(projectedDeliveryNote(p), DELIVERY_PROJECTION_TEXT.note);
+  assert.equal(projectedDeliveryNote(p, { dropoff: true }), DELIVERY_PROJECTION_TEXT.noteDropoff);
+  assert.match(DELIVERY_PROJECTION_TEXT.noteDropoff, /^Aus Abgabetag und Laufzeit berechnet/);
+  const mitZeit = { dateMin: "2026-09-15", dateMax: "2026-09-15", timeUntil: "10:30" };
+  assert.equal(projectedDeliveryNote(mitZeit, { dropoff: true }),
+    `${DELIVERY_PROJECTION_TEXT.noteDropoff} ${DELIVERY_PROJECTION_TEXT.noteTime}`);
+  assert.equal(projectedDeliveryNote(null), null);
+  // Die Abgabe nennt im Detailbereich ihren eigenen Hinweis (Karte ohne Profil).
+  const details = abschnitt(code(KARTE), "function DetailsPanel", "function OfferCardBase");
+  assert.match(details, /projectedDeliveryNote\(zustellung\.estimate, \{ dropoff: serviceModus === HANDOVER_DROPOFF \}\)/);
 });

@@ -157,12 +157,13 @@
 .offers-filter-chip.has-filter { border-color: var(--ce-color-brand-border); color: var(--ce-color-brand-ink); background: var(--ce-color-brand-soft); }
 .offers-filter-chip.open { border-color: var(--ce-color-brand); color: var(--ce-color-brand-ink); background: var(--ce-color-brand-soft); }
 
-/* ── Klappmarke (Filter-Chips, Details, Uhrzeitauswahl, Öffnungszeiten) ────
+/* ── Klappmarke (Filter-Chips, Details, Uhrzeitauswahl, Öffnungszeiten, „Zu spät") ─
    Kein Icon (Redesign 2026-10): zwei Kanten eines gedrehten Quadrats in der
    Textfarbe. Geschlossen zeigt sie nach unten, offen nach oben. Rein
    dekorativ (aria-hidden) — den Zustand tragen aria-expanded und Knopftext. */
 .offers-filter-chip-caret,
 .offer-details-chevron,
+.offers-late-chevron,
 .offers-time-caret,
 .ap-list-toggle-caret {
   display: inline-block; flex-shrink: 0;
@@ -174,6 +175,7 @@
 }
 .offers-filter-chip.open .offers-filter-chip-caret,
 .offer-details-chevron.open,
+.offers-late-chevron.open,
 .offers-time-trigger.is-open .offers-time-caret,
 .ap-list-toggle--open .ap-list-toggle-caret { transform: translateY(2px) rotate(225deg); }
 
@@ -288,6 +290,64 @@
 /* Rückweg aus dem leeren Zustand: EINE Aktion, mittig unter dem Text
    (Musterebene „Zustände"). Nutzt das globale Button-Primitive. */
 .offers-empty .btn { margin-top: 16px; }
+
+/* ─── Fristgruppen (TG-L2) ─────────────────────────────────────────────────────
+   Unter einem gesetzten Lieferzeitfilter steht die Liste in Gruppen: „Passend",
+   „Voraussichtlich passend", „Frist nicht bestätigt" und eingeklappt „Zu spät".
+   Ruhige Typografie statt Fläche: ein Kopf (Name, Zahl), ein Satz, darunter die
+   unveränderten Karten. Eine feine Linie trennt die Gruppen — kein Kasten, keine
+   Farbe, die eine Gruppe wertet; die Bewertung steht im Wortlaut. */
+.offers-group + .offers-group,
+.offers-group + .offers-late,
+.offers-group-none + .offers-group,
+.offers-group-none + .offers-late {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--ce-color-border-subtle);
+}
+.offers-group-head { margin: 0 0 12px; }
+.offers-group-title {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+  margin: 0;
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-title-card-size); font-weight: 600; line-height: var(--ce-text-title-card-line);
+  color: var(--ce-color-text-primary);
+  text-wrap: balance;
+}
+.offers-group-count {
+  font-size: var(--ce-text-body-s-size); font-weight: 500; line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+.offers-group-sub {
+  max-width: 62ch;
+  margin: 2px 0 0;
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+/* Kein Angebot hält die Frist ein — der Satz steht über den übrigen Gruppen. */
+.offers-group-none {
+  margin: 0;
+  font-size: var(--ce-text-body-size); line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-primary);
+}
+.offers-group-reset { display: flex; justify-content: center; margin-top: 20px; }
+
+/* Aufklapper „Zu spät": dieselbe Textaktion wie „Neu berechnen" — auffindbar,
+   aber leiser als jede Karte. Die Klappmarke wie „Details anzeigen". */
+.offers-late { display: flex; flex-direction: column; align-items: flex-start; }
+.offers-late > .offers-group { align-self: stretch; margin-top: 16px; }
+.offers-late-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: var(--ce-size-control-md); margin-left: -12px; padding: 0 12px; border-radius: var(--ce-radius-sm);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-label-size); font-weight: 600;
+  color: var(--ce-color-brand-ink); background: none; border: none; cursor: pointer; text-align: left;
+  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.offers-late-toggle:hover { background: var(--ce-color-brand-soft); }
+.offers-late-toggle:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+@media (pointer: coarse) { .offers-late-toggle { min-height: var(--ce-size-touch-target); } }
 
 /* ─── Offer Card ──────────────────────────────────────────────────────────────
    Die Tarifkarte ist das Angebot der Seite und trägt deshalb mehr Kartenwirkung
@@ -542,30 +602,6 @@
   /* Bricht der Satz auf einer schmalen Karte um, dann ausgewogen
      („Lieferung bis" / „10:30 Uhr") statt mit einem einzelnen „Uhr". */
   text-wrap: balance;
-}
-
-/* „Zustelltermin nicht bewertbar" (Betreiberentscheidung K2, 2026-10-02): unter
-   einem gesetzten Lieferzeitfilter bleibt ein Angebot ohne vergleichbare
-   Anbieterzusage sichtbar und trägt diesen Hinweis. Dieselbe Form und Lage wie
-   .offer-early-note (im Endknoten, kann die Timeline nicht verziehen), aber
-   bewusst NEUTRAL: keine Warnfarbe, kein Icon — es ist eine Feststellung über
-   fehlende Evidenz, kein Mangel des Angebots. Alle drei Farbwerte sind
-   Foundation-Tokens. */
-.offer-deadline-note {
-  align-self: flex-end;
-  display: inline-flex;
-  align-items: center;
-  max-width: 100%;
-  margin: 0;
-  padding: 1px 6px;
-  border-radius: var(--ce-radius-sm);
-  background: var(--ce-color-status-neutral-surface);
-  border: 1px solid var(--ce-color-status-neutral-border);
-  color: var(--ce-color-status-neutral-fg);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 16px;
-  text-align: left;
 }
 
 /* Uhrzeitzeile des Lieferzeitfilters (beide Formular-Popover + Angebots-
@@ -1026,12 +1062,15 @@
   .offer-actions { flex: 1 1 auto; min-width: 0; margin: 0 0 0 -8px; justify-content: flex-start; }
 }
 
-/* „Zustelltermin nicht bewertbar" (nur unter einem gesetzten
-   Lieferzeitfilter) braucht 188 px und bricht unter 355 px Kartenbreite
-   zweizeilig um. Solange der Filter gesetzt ist (`.offers-body--frist`),
-   hält dort jede Karte die zweite Hinweiszeile frei — ohne Filter nicht. */
-@container offers (max-width: 354px) {
-  .offers-body--frist .offer-tl-labels { min-height: calc(2.6 * var(--ce-text-body-s-size) + 40px); }
+/* TG-L2: „Voraussichtliche Zustellung" (174 px) und „bereit ab 09:00 Uhr" (111 px) passen bis etwa 330 px
+   Kartenbreite nicht beide einzeilig nebeneinander (gemessen 2026-10-23 bei 390 px Viewport: 282 px für beide
+   Spalten). Bricht der Titel um und folgt das Uhrzeitfeld, würde die Karte 16 px höher als ihre Nachbarn — deshalb
+   hält hier JEDE Karte die zweite Titelzeile frei (gleich hohe Karten, Betreiberentscheidung 2026-10-04). Mit
+   Abstand zur gemessenen Grenze; die schmale Stufe darunter reserviert ohnehin mehr. */
+@container offers (max-width: 344px) {
+  /* Platzhalter: gemessen 397 px (eingeklappt, 390–410 px Viewport, jede Karte gleich). */
+  .offer-card { contain-intrinsic-size: auto 397px; }
+  .offer-tl-labels { min-height: calc(2.6 * var(--ce-text-body-s-size) + 40px); }
 }
 
 /* Schmale Karte (bis 320 px, etwa 320–375 px Viewport): Marke, Ablauf,
@@ -1054,10 +1093,7 @@
     flex-direction: column; align-items: flex-start;
     min-height: calc(var(--ce-text-title-card-size) * 1.35 + 2px + var(--ce-text-badge-size) * var(--ce-text-badge-line) + 6px);
   }
-  /* Beide Selektoren: die Filterreserve oben ist spezifischer und darf diese
-     größere Reserve nicht verdrängen. */
-  .offer-tl-labels,
-  .offers-body--frist .offer-tl-labels { min-height: calc(3.9 * var(--ce-text-body-s-size) + 40px); }
+  .offer-tl-labels { min-height: calc(3.9 * var(--ce-text-body-s-size) + 40px); }
   .offer-cta-btn { padding-left: 8px; padding-right: 8px; }
   .offer-zone-4 { min-height: calc(11px + 2 * var(--ce-size-control-sm) + 4px); align-items: flex-start; }
   @media (pointer: coarse) {
@@ -1154,8 +1190,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .offers-filter-chip-caret, .offer-details-chevron, .offers-time-caret, .ap-list-toggle-caret,
-  .offers-sort-btn, .offer-cta-btn, .offer-card { transition: none; }
+  .offers-filter-chip-caret, .offer-details-chevron, .offers-late-chevron, .offers-time-caret, .ap-list-toggle-caret,
+  .offers-sort-btn, .offer-cta-btn, .offer-card, .offers-late-toggle { transition: none; }
   .offers-filter-dropdown, .offer-details-panel--open, .offer-tl-dot { animation: none; }
 }
 

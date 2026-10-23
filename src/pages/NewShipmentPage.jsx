@@ -7,7 +7,8 @@ import { apiFetch } from "../api/client";
 import { useLaunchScope } from "../hooks/useLaunchScope";
 import { money, fmtDelivery } from "../utils/formatters";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
-import { applyResultFilters } from "../utils/offersFilterView.mjs";
+import { applyResultFilters, lateResultOffers, deliveryDeadlineAssessment, DELIVERY_DEADLINE }
+  from "../utils/offersFilterView.mjs";
 import { deliveryDeadlineOptions } from "../utils/deliveryTimeView.mjs";
 import { revealOffers } from "../utils/revealOffers.mjs";
 import { resumeInitialState, missingFieldsHint } from "../utils/newShipmentResume.mjs";
@@ -159,6 +160,21 @@ function postalErr(country, value) {
 // /calculate-price-Request auslösen. Sie steht aus demselben Grund NICHT im
 // calcKey — der Schlüssel beschreibt die Payload, nicht die Anzeige.
 const FILTER_ONLY_FIELDS = new Set(["max_price", "latestDeliveryDate", "latestDeliveryTime"]);
+
+// Die Sortierung der Angebotsliste — für die sichtbare Liste UND die eingeklappte Gruppe „Zu spät" (TG-L2).
+// Reine Funktion; die Eingabe bleibt unverändert („recommended" gibt sie unverändert zurück).
+function sortiereAngebote(liste, sortMode) {
+  if (sortMode === "recommended") return liste;
+  const copy = [...liste];
+  if (sortMode === "cheapest") return copy.sort((a, b) => (a.netPrice ?? Infinity) - (b.netPrice ?? Infinity));
+  if (sortMode === "priciest") return copy.sort((a, b) => (b.netPrice ?? -1) - (a.netPrice ?? -1));
+  if (sortMode === "fastest")  return copy.sort((a, b) => {
+    const aMax = a.transitDaysMax ?? 999, bMax = b.transitDaysMax ?? 999;
+    if (aMax !== bMax) return aMax - bMax;
+    return (a.transitDaysMin ?? 999) - (b.transitDaysMin ?? 999);
+  });
+  return copy;
+}
 
 function getErrors(form) {
   const e = {};
@@ -1203,18 +1219,27 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // Werte stehen in `deliveryTimeView.mjs`, nicht hier.
   const zeitOptionen = useMemo(() => deliveryDeadlineOptions(tariffs), [tariffs]);
 
-  const sorted = React.useMemo(() => {
-    if (sortMode === "recommended") return filtered;
-    const copy = [...filtered];
-    if (sortMode === "cheapest") return copy.sort((a, b) => (a.netPrice ?? Infinity) - (b.netPrice ?? Infinity));
-    if (sortMode === "priciest") return copy.sort((a, b) => (b.netPrice ?? -1) - (a.netPrice ?? -1));
-    if (sortMode === "fastest")  return copy.sort((a, b) => {
-      const aMax = a.transitDaysMax ?? 999, bMax = b.transitDaysMax ?? 999;
-      if (aMax !== bMax) return aMax - bMax;
-      return (a.transitDaysMin ?? 999) - (b.transitDaysMin ?? 999);
-    });
-    return copy;
-  }, [filtered, sortMode]);
+  const sorted = React.useMemo(() => sortiereAngebote(filtered, sortMode), [filtered, sortMode]);
+
+  // TG-L2: die zu späten Angebote — eingeklappt in der Gruppe „Zu spät", sortiert wie die sichtbare Liste.
+  // Dieselbe Regel wie `filtered` (utils/offersFilterView.mjs), rein clientseitig, kein Request.
+  const spaet = useMemo(
+    () => sortiereAngebote(lateResultOffers(tariffs, {
+      maxPrice: form.max_price,
+      latestDeliveryDate: form.latestDeliveryDate,
+      latestDeliveryTime: form.latestDeliveryTime,
+    }), sortMode),
+    [tariffs, form.max_price, form.latestDeliveryDate, form.latestDeliveryTime, sortMode]);
+
+  // TG-L2: fällt die Auswahl durch eine neue Frist in die eingeklappte Gruppe „Zu spät", wird sie gelöst — eine
+  // markierte Karte, die man nicht sieht, wäre eine Buchung ins Ungewisse. Nur bei einer Änderung der Frist: wer „Zu
+  // spät" aufklappt und dort bewusst wählt, behält seine Wahl.
+  useEffect(() => {
+    if (!form.latestDeliveryDate) return;
+    const frist = { latestDeliveryDate: form.latestDeliveryDate, latestDeliveryTime: form.latestDeliveryTime };
+    setSelected((vorher) => (vorher && deliveryDeadlineAssessment(vorher, frist) === DELIVERY_DEADLINE.TOO_LATE
+      ? null : vorher));
+  }, [form.latestDeliveryDate, form.latestDeliveryTime]);
 
   const handleServiceFilter = (id) => { setServiceFilter(id); setServiceFilterOpen(false); resetResults(); };
   const handleShippingMode  = (id) => { setShippingModeFilter(id); setShippingModeOpen(false); resetResults(); };
@@ -2264,6 +2289,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
           <OffersList
             sorted={sorted}
             filtered={filtered}
+            lateOffers={spaet}
             tariffs={tariffs}
             loading={loading}
             hasResults={hasResults}

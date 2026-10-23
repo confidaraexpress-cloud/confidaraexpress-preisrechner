@@ -311,3 +311,16 @@ test("28 — Paket C: eine gesperrte Route nennt das erkannte Gebiet und die Sei
   assert.equal(alt.message, "Für diese Versandroute sind derzeit keine Angebote verfügbar. Bitte prüfen Sie Land und Postleitzahl von Absender und Empfänger.");
   assert.doesNotMatch(alt.message, /Versanddatum|Paketdaten/);
 });
+
+test("29 — Paket C, Security-Review: Seite nur über eigene Schlüssel, Gebietsname nur in Ortsnamenform", () => {
+  const konstruktor = normalizeApiError({ status: 422, body: { code: "ROUTE_NOT_SUPPORTED", reason: "special_territory", field: "constructor", territory: "Åland" } });
+  assert.match(konstruktor.message, /^Die Adresse liegt .*: Åland\./);
+  const lang = normalizeApiError({ status: 422, body: { code: "ROUTE_NOT_SUPPORTED", reason: "special_territory", field: "recipient", territory: "x".repeat(61) } });
+  assert.equal(lang.message, "Die Empfängeradresse liegt in einem Gebiet, das ConfidaraExpress derzeit nicht bedient. Bitte prüfen Sie Land und Postleitzahl.");
+  for (const fremd of ["<b>Kanaren</b>", "Kanaren\nBitte rufen Sie an", "http://example.test", { name: "x" }, ["Kanaren"], 42]) {
+    const n = normalizeApiError({ status: 422, body: { code: "ROUTE_NOT_SUPPORTED", reason: "special_territory", field: "recipient", territory: fremd } });
+    assert.doesNotMatch(n.message, /<b>|http|rufen|object|Kanaren/, JSON.stringify(fremd));
+  }
+  const ok = normalizeApiError({ status: 422, body: { code: "ROUTE_NOT_SUPPORTED", reason: "special_territory", field: "sender", territory: "Campione d'Italia" } });
+  assert.match(ok.message, /: Campione d'Italia\./);
+});

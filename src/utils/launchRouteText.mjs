@@ -17,14 +17,26 @@ const SEITE = Object.freeze({ sender: "Absenderadresse", recipient: "Empfängera
 
 const text = (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : null);
 
+// Security-Review Paket C (B4): der Gebietsname ist der erste Servertext in diesem Kundensatz. Übernommen wird nur,
+// was wie ein konfigurierter Ortsname aussieht — kurz, aus Buchstaben, Ziffern, Leerzeichen und wenigen Satzzeichen.
+// Alles andere (überlang, fremde Zeichen, Steuerzeichen) fällt auf den allgemeinen Gebietstext zurück.
+const TERRITORY_MAX = 60;
+const TERRITORY_RE = /^[\p{L}\p{N} .,'’()\/-]+$/u;
+const gebietsname = (v) => {
+  const t = text(v);
+  return t && t.length <= TERRITORY_MAX && TERRITORY_RE.test(t) ? t : null;
+};
+// (B3): die Seite nur über eigene Schlüssel — kein Griff in die Prototypkette bei `field: "constructor"`.
+const seiteVon = (field) => (typeof field === "string" && Object.hasOwn(SEITE, field) ? SEITE[field] : "Adresse");
+
 /**
  * @param {object} body  der Antwortkörper des Servers ({ code, reason, field, territory, error })
  * @returns {string}     der Kundentext
  */
 export function launchRouteBlockedText(body) {
   const d = body && typeof body === "object" ? body : {};
-  const seite = SEITE[d.field] || "Adresse";
-  const territory = text(d.territory);
+  const seite = seiteVon(d.field);
+  const territory = gebietsname(d.territory);
   switch (d.reason) {
     case "special_territory":
       return territory

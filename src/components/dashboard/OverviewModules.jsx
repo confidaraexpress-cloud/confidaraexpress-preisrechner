@@ -100,7 +100,7 @@ export function RecentShipments({ shipments, loading, onAll }) {
 /* ── Buchungsrahmen (Paket F, 2026-10-23) ──
    Ein ruhiger Block unter den offenen Rechnungen: der verfügbare Rahmen als Betrag, darunter
    ein Satz mit Rahmen und belegtem Anteil, dazu eine schmale Linie als Anteil. Alle Werte kommen
-   vom Server (GET /api/kunde/credit, utils/creditLimitView.mjs); ohne Antwort (altes Backend)
+   vom Server (GET /kunde/credit, utils/creditLimitView.mjs); ohne Antwort (altes Backend)
    steht hier nichts. Ausgeschöpft steht als Wort da, nie nur als Farbe. */
 export function CreditFrame({ credit }) {
   const f = creditFacts(credit);

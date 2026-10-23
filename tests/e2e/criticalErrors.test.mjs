@@ -201,8 +201,8 @@ test("mark-read scheitert: sichtbare Meldung im Panel, Zustand wird zurückgerol
   // Die Schrittnummern gehören zum Onboarding und fehlen, sobald das Konto —
   // wie hier — eine Sendung hat.
   await page.waitForSelector(".ov-kpis", { timeout: 15000 });
-  // Der Einstieg ist seit dem Redesign der Textknopf „Mitteilungen"; sein
-  // zugänglicher Name beginnt mit dem sichtbaren Wort.
+  // Der Einstieg ist die Glocke (seit Paket G auf jeder Seite das Symbol); ihr
+  // zugänglicher Name beginnt mit „Mitteilungen“.
   // Es gibt zwei Einstiege (Topbar mobil, Seitenkopf am Desktop) — geklickt
   // wird der sichtbare.
   await page.locator('button[aria-label^="Mitteilungen"]').locator("visible=true").first().click();

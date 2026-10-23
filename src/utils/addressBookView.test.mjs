@@ -9,7 +9,9 @@ import {
   validateAddressForm, normalizeAddressForm, mapAddressErrorToMessage, resolveNewShipmentRole,
   mapAddressToShipmentFormPatch, applyAddressMutation, roleParamForTab,
   buildAddressMenuModel, CREATE_SHIPMENT_LABEL, CREATE_SHIPMENT_ICON, addressBadgeList,
+  defaultAddressForTab, isDefaultForTab, withDefaultFirst,
 } from "./addressBookView.mjs";
+import { createEmptyShipmentForm } from "./newShipmentForm.mjs";
 
 const addr = (over) => ({
   id: 1, label: "Lager Berlin", company: "Beispiel GmbH", contactName: "Max Mustermann",
@@ -456,4 +458,60 @@ test("A3 — ADDRESS_CONTACT_INCOMPLETE nennt das fehlende Feld und den Weg übe
   }
   // Andere Codes unverändert — ein zweites Argument stört nicht.
   assert.match(mapAddressErrorToMessage("ADDRESS_NOT_FOUND", "phone"), /nicht gefunden/);
+});
+
+// ── Paket G (2026-10-23): Standardadresse in der Auswahl und als Vorbelegung ──
+test("G1 default=sender|recipient folgt dem Reiter und nur auf ausdrücklichen Wunsch", () => {
+  assert.equal(buildAddressListParams({ tab: TAB_SENDER, defaultOnly: true, limit: 1 }).default, "sender");
+  assert.equal(buildAddressListParams({ tab: TAB_RECIPIENT, defaultOnly: true }).default, "recipient");
+  assert.ok(!("default" in buildAddressListParams({ tab: TAB_SENDER })), "ohne Wunsch kein Filter");
+  assert.ok(!("default" in buildAddressListParams({ tab: TAB_SENDER, defaultOnly: "true" })), "nur echtes true");
+  assert.ok(!("default" in buildAddressListParams({ tab: "irgendwas", defaultOnly: true })), "unbekannter Reiter: kein Filter");
+  assert.equal(toQueryString(buildAddressListParams({ tab: TAB_SENDER, defaultOnly: true, limit: 1 })),
+    "?role=sender&default=sender&limit=1");
+});
+
+test("G2 die Standardadresse wird am Flag erkannt, nie an der Position", () => {
+  const a = addr({ id: 1 }), b = addr({ id: 2, isDefaultSender: true }), c = addr({ id: 3, isDefaultRecipient: true });
+  assert.equal(defaultAddressForTab([a, b, c], TAB_SENDER), b);
+  assert.equal(defaultAddressForTab([a, b, c], TAB_RECIPIENT), c);
+  // Ein Backend ohne Filter liefert die gewöhnliche Liste: ohne Flag gibt es keinen Standard.
+  assert.equal(defaultAddressForTab([a], TAB_SENDER), null);
+  assert.equal(defaultAddressForTab([addr({ id: 4, isDefaultSender: "true" })], TAB_SENDER), null, "nur echtes true");
+  assert.equal(defaultAddressForTab(null, TAB_SENDER), null);
+  assert.equal(defaultAddressForTab([b], "irgendwas"), null);
+  assert.equal(isDefaultForTab(b, TAB_SENDER), true);
+  assert.equal(isDefaultForTab(b, TAB_RECIPIENT), false);
+  assert.equal(isDefaultForTab(null, TAB_SENDER), false);
+});
+
+test("G3 der Standard steht zuerst und genau einmal", () => {
+  const a = addr({ id: 1 }), b = addr({ id: 2, isDefaultSender: true }), d = addr({ id: 5 });
+  assert.deepEqual(withDefaultFirst([a, b, d], b).map((x) => x.id), [2, 1, 5]);
+  assert.deepEqual(withDefaultFirst([a, d], b).map((x) => x.id), [2, 1, 5], "ein älterer Standard außerhalb der Seite");
+  assert.deepEqual(withDefaultFirst([a, d], null).map((x) => x.id), [1, 5], "ohne Standard unverändert");
+  assert.deepEqual(withDefaultFirst([a, addr({ id: "2" })], b).map((x) => String(x.id)), ["2", "1"], "Kennung als Text");
+  assert.deepEqual(withDefaultFirst(undefined, b).map((x) => x.id), [2]);
+});
+
+test("G4 die Übernahme füllt JEDES Absenderfeld des Formulars", () => {
+  // „Korrekte Übernahme aller Adressdaten": jedes s_*-Feld des Formulars hat ein Ziel im Patch —
+  // ein künftig ergänztes Formularfeld ohne Auslegung fällt hier sofort auf.
+  const patch = mapAddressToShipmentFormPatch(addr({
+    company: "Muster GmbH", firstName: "Max", lastName: "Muster", contactName: "",
+    streetAndNumber: "Musterstr. 1", addressAdd: "Hinterhaus", postalCode: "70173", city: "Stuttgart",
+    country: "de", state: "", phone: "+49 711 1", email: "a@b.de",
+  }), "s");
+  const formularfelder = Object.keys(createEmptyShipmentForm()).filter((k) => k.startsWith("s_")).sort();
+  assert.deepEqual(Object.keys(patch).sort(), formularfelder);
+  assert.equal(patch.s_company, "Muster GmbH");
+  assert.equal(patch.s_firstName, "Max");
+  assert.equal(patch.s_lastName, "Muster");
+  assert.equal(patch.s_street, "Musterstr. 1");
+  assert.equal(patch.s_addition, "Hinterhaus");
+  assert.equal(patch.s_zip, "70173");
+  assert.equal(patch.s_city, "Stuttgart");
+  assert.equal(patch.s_country, "DE");
+  assert.equal(patch.s_phone, "+49 711 1");
+  assert.equal(patch.s_email, "a@b.de");
 });

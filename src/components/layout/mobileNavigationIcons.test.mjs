@@ -141,11 +141,12 @@ test("5 — geschlossene Drawer sind unter der Schwelle unsichtbar und damit nic
   assert.match(admin, /@media \(prefers-reduced-motion: reduce\) \{\s*\.adm-side,/);
 });
 
-test("6 — die Glocke: in der mobilen Topbar das Symbol, auf dem Desktop das Wort", () => {
-  assert.match(bell, /variant === "topbar"\s*\?\s*<Icon n="bell" s=\{ICON_SIZE\.lg\} \/>\s*:\s*<span className="ntf-bell-text">\{KNOPF_TEXT\}<\/span>/);
+test("6 — die Glocke: auf jeder Seite das Symbol (Paket G, D9); die Variante steuert nur Fläche und Größe", () => {
+  assert.match(bell, /<Icon n="bell" s=\{ICON_SIZE\.lg\} \/>/);
+  assert.doesNotMatch(bell, /variant === "topbar"\s*\?/, "der Inhalt hängt wieder an der Variante");
   assert.match(bell, /aria-label=\{knopfName\(unread\)\}/);
-  assert.match(bell, /title=\{badgeAriaLabel\(unread\)\}/);
-  // Desktop-Mounts bleiben Text: Übersicht und Seitenkopf rufen nicht die Topbar-Variante.
+  assert.match(bell, /title=\{knopfName\(unread\)\}/);
+  // Desktop-Mounts behalten ihre Variante (Soft-Button-Fläche): Übersicht und Seitenkopf rufen nicht die Topbar-Variante.
   assert.match(dashPage, /<NotificationBell variant="page"/);
   assert.match(dashLayout, /<NotificationBell variant="page"/);
 });

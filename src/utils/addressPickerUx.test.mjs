@@ -245,12 +245,12 @@ test("C9 der Picker verwaltet nichts — er wählt aus", () => {
 /* ══════════ D — Auslöser und schwebende Fläche ═══════════════════════════ */
 
 test("D1 der Auslöser sitzt in der Überschriftszeile, nicht darunter", () => {
-  // Beim Absender steht seit dem Paket „leerer Nullzustand" die Komfortaktion
-  // „Eigene Adresse" mit in derselben Zeile — der frühere automatische
-  // Profil-Prefill ist dadurch ersetzt. Geprüft wird deshalb: der Auslöser liegt
-  // INNERHALB der Kopfzeile (vor deren schließendem </div>), nicht darunter.
+  // Geprüft wird: der Auslöser liegt INNERHALB der Kopfzeile (vor deren
+  // schließendem </div>), nicht darunter. Seit Paket G trägt der Titel „Absender"
+  // zusätzlich die Marke „Standard-Absender" — der Titel wird deshalb an seinem
+  // Anfang gefunden, nicht als geschlossener Einzeiler.
   for (const abschnitt of ["Absender", "Empfänger"]) {
-    const start = seite.indexOf(`<div className="calc-section-title">${abschnitt}</div>`);
+    const start = seite.search(new RegExp(`<div className="calc-section-title">\\s*${abschnitt}`));
     assert.ok(start > -1, `${abschnitt}: Abschnittsüberschrift nicht gefunden`);
     const kopfEnde = seite.indexOf("</div>", seite.indexOf("<AddressPickerButton", start));
     const kopf = seite.slice(start, kopfEnde);
@@ -345,20 +345,29 @@ test("E6 jede Seite bekommt ihren eigenen Reiter", () => {
   assert.match(seite, /tab=\{TAB_RECIPIENT\}[\s\S]{0,160}uebernimmAdressbuchAdresse\(a, "r"\)/);
 });
 
-test("E7 nichts belegt den Absender automatisch vor", () => {
-  // Ausdrücklich NICHT vorhanden: eine automatische Vorbelegung aus
-  // is_default_sender. Die Auswahl passiert immer durch den Nutzer.
-  assert.doesNotMatch(seite, /isDefaultSender|is_default_sender/);
-  // Seit dem Paket „leerer Nullzustand" gilt das auch für das PROFIL: der
-  // frühere `profilSeed()` schrieb Firma, Name, Straße, PLZ, Ort, Land, Telefon
-  // und E-Mail beim Mount ins Formular. Er ist ersatzlos entfallen; die Daten
-  // kommen nur noch über die ausdrückliche Aktion „Eigene Adresse".
-  assert.doesNotMatch(seite, /const profilSeed = /,
-    "der automatische Profil-Seed ist zurück");
-  assert.match(seite, /const uebernimmProfilAbsender = /,
-    "die bewusste Übernahme fehlt");
+test("E7 vorbelegt wird nur der Standard-Absender des Adressbuchs — nie das Profil", () => {
+  // Paket G (Master-Implementierungsauftrag 2026-10-23): „Standardabsender sinnvoll hervorheben
+  // beziehungsweise vorbelegen". Die frühere Regel „nichts belegt den Absender vor" gilt weiter für das
+  // PROFIL: der frühere `profilSeed()` ist entfallen, „Eigene Adresse" ebenso. Vorbelegt wird nur die
+  // Adresse, die der Kunde selbst als Standard-Absender festgelegt hat — erkannt am Flag
+  // (defaultAddressForTab), nicht an der Position in der Liste, und sichtbar gekennzeichnet.
+  assert.doesNotMatch(seite, /const profilSeed = |const uebernimmProfilAbsender = /,
+    "ein Profilweg in den Absender ist zurück");
   assert.match(seite, /createEmptyShipmentForm\(\)/,
     "der Ausgangszustand kommt nicht aus dem leeren Formular");
+  assert.match(seite, /getAddresses\(\{ tab: TAB_SENDER, defaultOnly: true, limit: 1 \}\)/);
+  assert.match(seite, /adresse = defaultAddressForTab\(data && data\.items, TAB_SENDER\);/);
+  // Nie roh am Flag vorbei: die Seite liest isDefaultSender nicht selbst.
+  assert.doesNotMatch(seite, /isDefaultSender|is_default_sender/);
+});
+
+test("E7b die Auswahl zeigt den Standard zuerst und kennzeichnet ihn", () => {
+  assert.match(picker, /getAddresses\(\{ tab: reiter, defaultOnly: true, limit: 1 \}, \{ signal \}\)/);
+  assert.match(picker, /setItems\(q \? \(data\.items \|\| \[\]\) : withDefaultFirst\(data\.items, standard\)\);/);
+  assert.match(picker, /const standard = isDefaultForTab\(a, reiter\);/);
+  assert.match(picker, /\{standard && <span className="badge badge-blue abk-pick-default">\{texte\.standard\}<\/span>\}/);
+  // Ein Fehler der Zusatzabfrage ist kein Fehler der Auswahl (nur AbortError wird weitergereicht).
+  assert.match(picker, /if \(e\?\.name === "AbortError"\) throw e;\s*return null;/);
 });
 
 test("E8 der Entwurfs-Snapshot bleibt reine Werte — ohne Adressbuchbezug", () => {

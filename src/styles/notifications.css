@@ -1,82 +1,58 @@
-/* ── Benachrichtigungscenter („Mitteilungen" + Panel) ───────────────────────────
+/* ── Benachrichtigungscenter (Glocke + Panel) ───────────────────────────────────
    Eigener Scope `ntf-`, additiv wie die übrigen Bereichs-Stylesheets. Nutzt
    ausschließlich Foundation-Tokens — keine eigenen Hex-Werte, keine Verläufe.
 
-   Auf dem Desktop ist der Einstieg seit dem Redesign (2026-10) der Soft Button
-   „Mitteilungen" mit der Zahl ungelesener Meldungen. In der mobilen Topbar
-   steht seit der Betreiberentscheidung 2026-10-17 wieder das Glockensymbol als
-   quadratischer 44-px-Knopf, der Zähler klein oben rechts an der Glocke. Die
-   Klassennamen .ntf-bell* bleiben als Aufrufweg bestehen.
+   Seit Paket G (Master-Implementierungsauftrag 2026-10-23, Betreiberentscheidung
+   D9) steht auf jeder Seite dasselbe Glockensymbol: auf dem Desktop als 40-px-Knopf
+   auf der Soft-Button-Fläche (neben „Neue Sendung" klar schwächer als die Haupt-
+   aktion), in der mobilen Topbar als 44-px-Ziel ohne Fläche. Ungelesene Meldungen
+   zeigt ein roter Punkt ohne Zahl; die Zahl steht im zugänglichen Namen und im
+   Tooltip. Die Klassennamen .ntf-bell* bleiben als Aufrufweg bestehen.
 
-   Bewusst KEINE Animation und kein pulsierender Zähler: Bewegung gibt es nur
-   als kurze Zustandsreaktion (Hover/Fokus), nie als Ambiente. */
+   Bewusst KEINE Animation und kein pulsierender Punkt: Bewegung gibt es nur als
+   kurze Zustandsreaktion (Hover/Fokus), nie als Ambiente. */
 
 .ntf-wrap { position: relative; display: inline-flex; flex-shrink: 0; }
 
 /* ── Knopf ──
-   Grundform (mobile Topbar): Textaktion auf der Höhenskala (40 px Desktop,
-   44 px Touch), Text in der Primärrolle, Zähler als kleine Fläche in der
-   Markenfarbe daneben. Kein Kreis. Die Desktop-Varianten setzen darauf die
-   Soft-Button-Fläche (unten). */
+   Quadratischer Symbolknopf auf der Höhenskala (40 px Desktop, 44 px Touch). Das
+   Symbol steht in der Primärrolle; Hover und geöffnetes Fenster zeigen eine leise
+   Fläche, der Fokusring ist der gemeinsame. */
 .ntf-bell {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: var(--ce-space-2);
-  min-height: var(--ce-size-control-md);
-  padding: 0 var(--ce-space-3);
+  justify-content: center;
+  width: var(--ce-size-control-md);
+  height: var(--ce-size-control-md);
+  padding: 0;
   border: 1px solid transparent;
   background: none;
   color: var(--ce-color-text-primary);
   border-radius: var(--ce-radius-sm);
-  font-family: var(--ce-font-sans);
-  font-size: var(--ce-text-button-size);
-  font-weight: 500;
-  line-height: var(--ce-text-button-line);
-  white-space: nowrap;
   cursor: pointer;
-  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+  transition:
+    background-color var(--ce-motion-fast) var(--ce-motion-ease-standard),
+    border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
 .ntf-bell:hover { background: var(--ce-color-surface-hover); }
 .ntf-bell[aria-expanded="true"] { background: var(--ce-color-surface-pressed); }
 .ntf-bell:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
-/* Mobile Topbar: die Glocke als quadratischer Symbolknopf (44 × 44). */
+/* Mobile Topbar: 44 × 44 als Trefferfläche, ohne Fläche — wie der Menüknopf gegenüber. */
 .ntf-bell-topbar {
-  justify-content: center;
-  min-width: var(--ce-size-touch-target);
-  min-height: var(--ce-size-touch-target);
-  padding: 0;
+  width: var(--ce-size-touch-target);
+  height: var(--ce-size-touch-target);
   margin-right: calc(-1 * var(--ce-space-2));
 }
-/* Der Zähler sitzt klein oben rechts an der Glocke. Die Kante in der
-   Flächenfarbe trennt ihn vom Symbol; „9+" passt auch bei 320 px in den Knopf. */
-.ntf-bell-topbar .ntf-badge {
-  position: absolute;
-  top: 3px;
-  right: 1px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  border: 2px solid var(--ce-color-surface);
-  line-height: 14px;
-  font-size: var(--ce-text-micro-size);
-}
 
-/* Desktop — Utility-Zeile der Übersicht und der Unterseiten: Soft Button
-   (Feinkorrektur 2026-10). Brand-Soft-Fläche, leise Markenkante, Schrift in
-   der Markentinte, 40 px hoch wie „Neue Sendung" — klar als Aktion lesbar,
-   aber deutlich schwächer als die gefüllte Hauptaktion. Die mobile Topbar
-   behält die Textaktion neben „Menü". Kein Schatten, kein Symbol. */
+/* Desktop — Utility-Zeile der Übersicht und der Unterseiten: die Soft-Button-
+   Fläche (Brand-Soft, leise Markenkante, Symbol in der Markentinte), 40 px wie
+   „Neue Sendung". Kein Schatten. */
 .ntf-bell-overview,
 .ntf-bell-page {
-  padding: 0 var(--ce-space-3) 0 var(--ce-space-4);
   border-color: var(--ce-color-brand-border-soft);
   background: var(--ce-color-brand-soft);
   color: var(--ce-color-brand-ink);
-  font-weight: var(--ce-text-button-weight);
-  transition:
-    background-color var(--ce-motion-fast) var(--ce-motion-ease-standard),
-    border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
 .ntf-bell-overview:hover,
 .ntf-bell-page:hover,
@@ -85,30 +61,30 @@
   background: var(--ce-color-brand-soft-hover);
   border-color: var(--ce-color-brand-border);
 }
-/* Ohne Zähler trägt der Knopf rechts denselben Innenabstand wie links. */
-.ntf-bell-overview:not(:has(.ntf-badge)),
-.ntf-bell-page:not(:has(.ntf-badge)) { padding-right: var(--ce-space-4); }
 
-/* ── Zähler ──
-   Die Zahl steht als Text neben dem Wort (aria-hidden — der zugängliche Name
-   des Knopfes nennt sie ausgeschrieben). Markenfarbe statt Rot: ungelesen ist ein
-   Hinweis, kein Fehler. */
-.ntf-badge {
-  display: inline-grid;
-  place-items: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
+/* ── Punkt (D9) ──
+   Rot aus dem Statustoken, ohne Zahl, oben rechts an der Glocke. Die Kante in der
+   Farbe der Knopffläche trennt ihn vom Symbol — auf dem Desktop die Soft-Fläche
+   (auch im Hover), in der Topbar die Seitenfläche. aria-hidden im Markup. */
+.ntf-dot {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  border: 2px solid var(--ce-color-surface);
   border-radius: var(--ce-radius-full);
-  background: var(--ce-color-brand);
-  color: var(--ce-color-text-inverse);
-  font-family: var(--ce-font-numeric);
-  font-size: var(--ce-text-caption-size);
-  font-weight: 600;
-  line-height: 20px;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
+  background: var(--ce-color-danger-solid);
+  pointer-events: none;
 }
+.ntf-bell-topbar .ntf-dot { top: 9px; right: 9px; }
+.ntf-bell-overview .ntf-dot,
+.ntf-bell-page .ntf-dot { border-color: var(--ce-color-brand-soft); }
+.ntf-bell-overview:hover .ntf-dot,
+.ntf-bell-page:hover .ntf-dot,
+.ntf-bell-overview[aria-expanded="true"] .ntf-dot,
+.ntf-bell-page[aria-expanded="true"] .ntf-dot { border-color: var(--ce-color-brand-soft-hover); }
 
 /* ── Overlay ──
    Fängt Klicks außerhalb ab. Als Button umgesetzt (nicht als div), damit es kein

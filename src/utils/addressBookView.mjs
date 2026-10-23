@@ -47,6 +47,9 @@ export {
   resolveEmptyStateKind,
   applyAddressMutation,
   applyPromotedDefaultSender,
+  defaultAddressForTab,
+  isDefaultForTab,
+  withDefaultFirst,
 } from "./addressListQuery.mjs";
 
 export {

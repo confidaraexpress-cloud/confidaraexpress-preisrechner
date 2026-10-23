@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/client";
-// `normalizeCountryCode` wird hier nicht mehr gebraucht: die Länder-
-// Normalisierung ist mit dem Profil-Seed nach newShipmentForm.mjs gewandert
-// (senderPatchFromProfile) — sie greift dort unverändert weiter.
+// `normalizeCountryCode` wird hier nicht gebraucht: das Profil ist seit Paket G
+// (2026-10-23) keine Absenderquelle mehr — der Absender kommt aus dem Adressbuch
+// (Standard-Absender oder „Adresse suchen"), dessen Länder der Server prüft.
 import { useLaunchScope } from "../hooks/useLaunchScope";
 import { money, fmtDelivery } from "../utils/formatters";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
@@ -32,7 +32,7 @@ import {
   resolveCalculatorIntent, calculatorIntentNotice, publicPriceComparison, PUBLIC_PRICE_COMPARISON_TEXT,
 } from "../utils/calculatorShipmentHandoff.mjs";
 import {
-  createEmptyShipmentForm, senderPatchFromProfile, hasProfileSenderData,
+  createEmptyShipmentForm, partyHasInput,
   packageErrors, packagePayload,
   buildPartyPayload, shippingContactErrors,
 } from "../utils/newShipmentForm.mjs";
@@ -117,7 +117,8 @@ import { useAddressValidation } from "../hooks/useAddressValidation";
 import { applyAddressSuggestion, cityFromSuggestion, shippingLengthHint, streetFieldHint } from "../utils/addressValidationView.mjs";
 // Paket A (2026-10-23): der Hinweis unter dem Telefonfeld — was an die Anbieter geht, sobald es abweicht.
 import { phoneTransmissionHint } from "../utils/phoneNumber.mjs";
-import { mapAddressToShipmentFormPatch, TAB_SENDER, TAB_RECIPIENT } from "../utils/addressBookView.mjs";
+import { mapAddressToShipmentFormPatch, defaultAddressForTab, TAB_SENDER, TAB_RECIPIENT } from "../utils/addressBookView.mjs";
+import { getAddresses } from "../api/addressBookApi";
 import { ShipmentDraftLeaveDialog } from "../components/drafts/ShipmentDraftLeaveDialog";
 import { ShipmentResetConfirmDialog } from "../components/drafts/ShipmentResetConfirmDialog";
 
@@ -125,7 +126,16 @@ import { ShipmentResetConfirmDialog } from "../components/drafts/ShipmentResetCo
 // Werte sind da, UND sie gehören jetzt diesem Formular — eine spätere Korrektur
 // hier ändert den Adressbucheintrag nicht.
 const ADDRESS_TAKEN_NOTE = "Adresse aus dem Adressbuch übernommen. Sie können sie hier frei anpassen.";
-const PROFILE_SENDER_NOTE = "Absenderadresse aus Ihrem Konto übernommen. Sie können sie hier frei anpassen.";
+// Paket G: steht der Standard-Absender unverändert im Formular, trägt der Titel „Absender" die Marke
+// „Standard" — kompakt in der Kopfzeile, damit die beiden Adressspalten auf einer Höhe beginnen (am Titel
+// „Absender" genügt das Wort; die Auswahl sagt „Standard-Absender", weil dort der Titel fehlt). Mobil passt
+// so die Kopfzeile ab 360 px weiter in eine Zeile. Ändert der Kunde ein Feld, ist es nicht mehr der
+// Standard, und die Marke verschwindet. Ohne Standard-Absender erklärt der Tipp am Ende der Spalte, wie der
+// Absender künftig von selbst dasteht (nur solange der Absender leer ist).
+const DEFAULT_SENDER_BADGE = "Standard";
+const DEFAULT_SENDER_TIP = "Tipp: Legen Sie im Adressbuch eine Adresse als Standard-Absender fest – dann ist der Absender bei jeder neuen Sendung bereits eingetragen.";
+// Der Absender eines leeren Formulars als Snapshot — Vergleichswert für „nur der Standard-Absender steht da".
+const LEERER_ABSENDER = getShipmentFormSnapshot({ form: createEmptyShipmentForm() }).sender;
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -244,8 +254,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
 
   // ── Fortsetzen eines Formularentwurfs (mount-once) ───────────────────────────
   // Ein gültiger Resume-Payload rehydriert das Formular aus dem Snapshot und hat
-  // Vorrang vor dem Profil-Prefill (das Profil wird dann NICHT als Sender-Seed
-  // verwendet). Einmalig beim Mount berechnet — Prop-Änderungen (das Zurücksetzen
+  // Vorrang vor dem Standard-Absender (er wird dann NICHT eingetragen, Paket G).
+  // Einmalig beim Mount berechnet — Prop-Änderungen (das Zurücksetzen
   // im Elternteil über onResumeApplied) lösen KEINE erneute Anwendung aus.
   // resumeInitialState übernimmt alle echten Sendungs-/Berechnungsdaten des
   // Snapshots unverändert und neutralisiert ausschließlich den ergebnis-
@@ -282,7 +292,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // würde die soeben zurückgeholten Angebote im selben Atemzug wieder löschen.
   //
   // Vorrang (shippingFlowState.mjs, RESTORE_PRIORITY):
-  //   Entwurf fortsetzen > Adressbuch-Prefill > Sitzungsvorgang > Profil-Seed
+  //   Entwurf fortsetzen > Adressbuch-Prefill > Sitzungsvorgang > Standard-Absender (Paket G)
   // Ein bewusst geöffneter Entwurf überschreibt den Sitzungsvorgang VOLLSTÄNDIG
   // — es wird nichts gemischt.
   const { shipment: flowShipment, setScope: setFlowScope, clearScope: clearFlowScope,
@@ -359,8 +369,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // Straße, PLZ, Ort, Land, Telefon und E-Mail des Kontos automatisch ins
   // Formular — der Kunde sah ausgefüllte Felder, ohne etwas eingegeben zu haben,
   // und konnte nicht unterscheiden, was er selbst geprüft hatte und was das
-  // System angenommen hat. Das Profil bleibt Datenquelle, aber ausschließlich
-  // für die bewusste Übernahme (`uebernimmProfilAbsender`, siehe unten).
+  // System angenommen hat. Das Profil ist seit Paket G keine Absenderquelle mehr
+  // („Eigene Adresse" entfallen). Einzige Vorbelegung danach: der Standard-
+  // Absender, den der Kunde im Adressbuch selbst festgelegt hat — sichtbar
+  // gekennzeichnet (DEFAULT_SENDER_BADGE), siehe `belegeStandardAbsenderVor`.
   const leeresFormular = useCallback(() => createEmptyShipmentForm(), []);
 
   // Resume-Fall: Formular kommt vollständig aus dem Snapshot (resumeInit.form) —
@@ -745,31 +757,6 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     setAddressNote(p => ({ ...p, [prefix]: ADDRESS_TAKEN_NOTE }));
   };
 
-  // ── Komfortfunktion: eigene Absenderadresse übernehmen ──────────────────────
-  // Das Gegenstück zum entfallenen automatischen Profil-Prefill. Dieselben
-  // Daten, derselbe Normalisierungsweg — nur wird jetzt der Kunde gefragt, statt
-  // sie ihm unterzuschieben.
-  //
-  // Aufbau exakt wie die Adressbuchübernahme darüber: EIN gebündelter Patch,
-  // GENAU EINE invalidateResults(), Feldfehler der ersetzten Felder fallen weg.
-  // Und wie dort wird die Baseline bewusst NICHT nachgezogen — das ist eine
-  // Nutzeraktion, die Seite gilt danach zu Recht als geändert (Verlassen-Hinweis
-  // erscheint, „Als Entwurf speichern" ist bedienbar).
-  const profilAbsenderVerfuegbar = hasProfileSenderData(user);
-  const uebernimmProfilAbsender = () => {
-    const patch = senderPatchFromProfile(user);
-    const keys = Object.keys(patch);
-    setForm(p => ({ ...p, ...patch }));
-    setServerErrors(p => {
-      if (!keys.some(k => p[k])) return p;
-      const n = { ...p };
-      for (const k of keys) delete n[k];
-      return n;
-    });
-    invalidateResults();
-    setAddressNote(p => ({ ...p, s: PROFILE_SENDER_NOTE }));
-  };
-
   // ── Adressbuch → „Neue Sendung": optionaler Werte-Patch ─────────────────────
   // Reiner Wertekopie in das bestehende Formular (s_*/r_*-Felder) — KEINE
   // dauerhafte addressId-Referenz, KEINE automatische Preisberechnung/Buchung.
@@ -893,6 +880,75 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const pendingTargetRef = useRef(null); pendingTargetRef.current = pendingTarget;
   const savingRef = useRef(false); savingRef.current = saving;
 
+  // ── Standard-Absender (Paket G, Master-Implementierungsauftrag 2026-10-23) ──────
+  // „Standardabsender sinnvoll hervorheben beziehungsweise vorbelegen": eine NEUE Sendung startet mit der
+  // Adresse, die der Kunde im Adressbuch selbst als Standard-Absender festgelegt hat. Das ist kein
+  // Profil-Autoseed — die Werte stammen aus einer bewussten Einstellung des Kunden, laufen durch dieselbe
+  // Feldauslegung wie „Adresse suchen" (mapAddressToShipmentFormPatch) und stehen sichtbar gekennzeichnet
+  // da (Marke DEFAULT_SENDER_BADGE am Titel, solange die Werte unverändert sind).
+  //
+  // Nur auf einem frischen Formular: kein fortgesetzter Entwurf, kein Sitzungsvorgang, kein Adressbuch-
+  // Prefill des Absenders. Die Antwort kommt asynchron — hat der Kunde bis dahin etwas geändert oder in den
+  // Absender geschrieben, wird nichts überschrieben. Die Vorbelegung IST der Ausgangszustand: die Baseline
+  // zieht nach (kein Dirty), genau wie beim Adressbuch-Prefill. Keine Invalidierung nötig: ohne Absender
+  // gibt es noch kein Angebot.
+  //
+  // Status: "offen" (noch nicht geprüft) | "gesetzt" | "keiner" (kein Standard hinterlegt) |
+  // "uebersprungen" (Kunde war schneller) | "fehler" (Abfrage gescheitert — still, das Formular bleibt bedienbar).
+  const [standardAbsender, setStandardAbsender] = useState("offen");
+  const standardPatchRef = useRef(null);
+  const standardSeqRef = useRef(0);
+  const zustandRef = useRef(null);
+  zustandRef.current = { form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds, inventoryContext };
+  const belegeStandardAbsenderVor = useCallback(async () => {
+    const meins = ++standardSeqRef.current;
+    standardPatchRef.current = null;
+    setStandardAbsender("offen");
+    const aktuell = () => mountedRef.current && standardSeqRef.current === meins;
+    let adresse = null;
+    try {
+      const res = await getAddresses({ tab: TAB_SENDER, defaultOnly: true, limit: 1 });
+      if (!aktuell()) return;
+      if (!res.ok) { setStandardAbsender("fehler"); return; }
+      const data = await res.json();
+      if (!aktuell()) return;
+      adresse = defaultAddressForTab(data && data.items, TAB_SENDER);
+    } catch {
+      if (aktuell()) setStandardAbsender("fehler");
+      return;
+    }
+    if (!adresse) { setStandardAbsender("keiner"); return; }
+    const stand = zustandRef.current;
+    if (dirtyRef.current || partyHasInput(stand.form, "s")) { setStandardAbsender("uebersprungen"); return; }
+    const patch = mapAddressToShipmentFormPatch(adresse, "s");
+    const merged = { ...stand.form, ...patch };
+    standardPatchRef.current = patch;
+    setForm(merged);
+    setBaseline(getShipmentFormSnapshot({ ...stand, form: merged }));
+    setStandardAbsender("gesetzt");
+  }, []);
+
+  // Einmal beim Mount — nicht beim fortgesetzten Entwurf, nicht beim Sitzungsvorgang, nicht wenn ein
+  // Adressbuch-Prefill den Absender schon trägt. Ein Prefill nur des Empfängers (oder ein Auftrag aus
+  // „Lager & Aufträge", der nur r_* und Paketwerte setzt) bekommt den Standard-Absender dazu.
+  const standardStartRef = useRef(false);
+  useEffect(() => {
+    if (standardStartRef.current) return;
+    standardStartRef.current = true;
+    const absenderAusPrefill = !!prefillAddress && Object.keys(prefillAddress).some((k) => k.startsWith("s_"));
+    if (!authed || resumeInit || flowInit || absenderAusPrefill) { setStandardAbsender("uebersprungen"); return; }
+    belegeStandardAbsenderVor();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Steht im Absender unverändert der eingetragene Standard, trägt der Titel die Marke, und bei „Eingaben
+  // zurücksetzen" ginge nichts verloren (der Reset trägt ihn wieder ein) — er zählt dort nicht als Eingabe.
+  const absenderIstStandard = standardAbsender === "gesetzt" && !!standardPatchRef.current
+    && Object.entries(standardPatchRef.current).every(([k, v]) => String(form[k] ?? "") === String(v ?? ""));
+  const ohneStandardAbsender = (snap) => (absenderIstStandard ? { ...snap, sender: LEERER_ABSENDER } : snap);
+  // Ohne Standard-Absender: ein leiser Tipp, solange der Absender leer ist und kein anderer Hinweis steht.
+  const zeigeStandardTipp = standardAbsender === "keiner" && !addressNote.s && !partyHasInput(form, "s");
+
   // Guard beim Elternteil registrieren: Der Dashboard-Navigationspfad ruft ihn
   // VOR jeder internen Zielnavigation auf. Rückgabe true = abgefangen (Dialog
   // öffnet ODER Navigation blockiert), false = sofort erlauben. Policy: der ERSTE
@@ -970,6 +1026,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       shippingModeFilter: "all", selectedPublicCarrierIds: [],
     }));
     clearFlowScope("shipment");
+    // Paket G: ein frischer Vorgang beginnt wie beim Öffnen — mit dem Standard-Absender, sofern hinterlegt.
+    belegeStandardAbsenderVor();
   };
 
   // ── EINZIGE Save-Orchestrierung (Dialog UND sichtbarer Button teilen sie) ────
@@ -1091,7 +1149,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const canExplicitSave = isDirty && !saving && !loading;
   const explicitSaveHint = saving ? null
     : !isDirty
-      ? (hasMeaningfulShipmentInput(currentSnapshot, baseline) ? "Keine ungespeicherten Änderungen." : "Gib zuerst Sendungsdaten ein.")
+      ? (hasMeaningfulShipmentInput(ohneStandardAbsender(currentSnapshot), baseline) ? "Keine ungespeicherten Änderungen." : "Gib zuerst Sendungsdaten ein.")
       : null;
   // Inline-Feedback nur außerhalb des Verlassen-Dialogs — der Dialog zeigt seinen
   // eigenen Zustand, sodass jeder Save-Zustand an GENAU einer Stelle erscheint.
@@ -1104,7 +1162,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
      sobald tatsächlich etwas verloren ginge. */
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const hatVerwerfbaresEingegeben = hasResults || tariffs.length > 0
-    || hasMeaningfulShipmentInput(currentSnapshot, baseline);
+    || hasMeaningfulShipmentInput(ohneStandardAbsender(currentSnapshot), baseline);
 
   const applyReset = () => {
     setResetConfirmOpen(false);
@@ -1843,25 +1901,15 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                       Viewports bricht die Zeile um (flex-wrap), der Auslöser
                       rutscht unter die Überschrift — nichts wird abgeschnitten. */}
                   <div className="calc-section-head">
-                    <div className="calc-section-title">Absender</div>
-                    {/* Zwei Abkürzungen nebeneinander, beide ausdrücklich vom
-                        Nutzer ausgelöst: die eigene Kontoanschrift und das
-                        Adressbuch. Der frühere automatische Profil-Prefill ist
-                        genau dadurch ersetzt — dieselben Daten, nur auf Wunsch.
-                        Ohne hinterlegte Kontoanschrift erscheint der linke
-                        Knopf gar nicht erst: eine Aktion, die sichtbar nichts
-                        tut, ist schlechter als keine. */}
-                    {profilAbsenderVerfuegbar && (
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm"
-                        onClick={uebernimmProfilAbsender}
-                        disabled={loading}
-                        title="Absenderadresse aus Ihrem Konto übernehmen"
-                      >
-                        Eigene Adresse
-                      </button>
-                    )}
+                    {/* Paket G (2026-10-23): „Eigene Adresse" (Kontoanschrift) ist
+                        entfallen. Der Absender kommt aus dem Adressbuch — als
+                        Standard-Absender schon beim Öffnen eingetragen (Marke am
+                        Titel, solange unverändert) oder über „Adresse suchen", wo
+                        der Standard zuerst steht. */}
+                    <div className="calc-section-title">
+                      Absender
+                      {absenderIstStandard && <span className="badge badge-blue calc-section-badge">{DEFAULT_SENDER_BADGE}</span>}
+                    </div>
                     <AddressPickerButton
                       tab={TAB_SENDER}
                       onSelect={(a) => uebernimmAdressbuchAdresse(a, "s")}
@@ -1934,6 +1982,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                       deshalb generell, nicht je nach Tarif. */}
                   {addrField("s", "phone", "Telefon", "tel")}
                   {addrField("s", "email", "E-Mail",  "email")}
+                  {/* Paket G: am Ende der Spalte, damit beide Adressspalten auf einer Höhe beginnen. */}
+                  {zeigeStandardTipp && <p className="calc-section-note calc-section-tip">{DEFAULT_SENDER_TIP}</p>}
                 </div>
                 <div>
                   <div className="calc-section-head">

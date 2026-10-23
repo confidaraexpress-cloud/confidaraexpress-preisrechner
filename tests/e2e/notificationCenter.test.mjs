@@ -209,7 +209,8 @@ async function openApp({ notifications = [], invoices = [INVOICE], supportReques
 // Auf Desktop ist die Glocke der mobilen Topbar per CSS ausgeblendet (< 860 px).
 // Alle Interaktionen laufen deshalb über die tatsächlich sichtbare Instanz.
 const visibleBell = (page) => page.locator(".ntf-bell").locator("visible=true").first();
-const visibleBadge = (page) => page.locator(".ntf-badge").locator("visible=true");
+// Paket G (D9): ungelesen zeigt die Glocke einen roten Punkt ohne Zahl; die Zahl steht im Namen.
+const visibleDot = (page) => page.locator(".ntf-dot").locator("visible=true");
 
 const notification = (over) => ({
   id: 1, type: "invoice_ready", invoiceId: INVOICE.id, invoiceNumber: INVOICE.invoice_number,
@@ -220,13 +221,14 @@ const notification = (over) => ({
 
 // ═══════════════════════════════════════════════════════════════════════════════
 
-test("1 — Rechnung bereit → Glocke zeigt Badge → PDF-Abruf → Meldung verschwindet", async () => {
+test("1 — Rechnung bereit → Glocke zeigt Punkt → PDF-Abruf → Meldung verschwindet", async () => {
   const { page, state } = await openApp({ notifications: [notification({})] });
 
-  // Badge sichtbar mit "1".
-  const badge = visibleBadge(page).first();
-  await badge.waitFor({ timeout: 10_000 });
-  assert.equal((await badge.textContent()).trim(), "1");
+  // Punkt sichtbar, ohne Zahl; der Name der Glocke nennt „1 ungelesen“.
+  const dot = visibleDot(page).first();
+  await dot.waitFor({ timeout: 10_000 });
+  assert.equal((await dot.textContent()).trim(), "", "der Punkt trägt eine Zahl");
+  assert.equal(await visibleBell(page).getAttribute("aria-label"), "Mitteilungen, 1 ungelesen");
 
   // Panel öffnen — das allein markiert NICHTS als gelesen.
   await visibleBell(page).click();
@@ -300,7 +302,7 @@ test("4 — Zahlungsverbuchung entfernt die Warnung still (keine neue Meldung)",
   });
 
   await page.waitForTimeout(600);
-  assert.equal(await visibleBadge(page).count(), 0, "trotz erledigter Meldung wird ein Badge angezeigt");
+  assert.equal(await visibleDot(page).count(), 0, "trotz erledigter Meldung wird ein Punkt angezeigt");
 
   await visibleBell(page).click();
   await page.waitForSelector(".ntf-panel .ce-state-title", { timeout: 10_000 });

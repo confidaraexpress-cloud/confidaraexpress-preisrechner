@@ -1,11 +1,12 @@
 // Ausgangszustand und Paketregeln von „Neue Sendung" — rein, ohne React.
 //
 // ── Die Produktregel ────────────────────────────────────────────────────────
-// „Neue Sendung" ist ein NEUER Vorgang. Das Formular startet deshalb vollständig
-// leer: kein Absender aus dem Profil, kein Empfänger, keine Paketdaten, kein
-// Land. Gespeicherte Angaben bleiben komfortabel erreichbar — aber ausschließlich
-// über eine bewusste Aktion („Eigene Absenderadresse übernehmen", Adressbuch)
-// oder über das ausdrückliche Öffnen eines Entwurfs.
+// „Neue Sendung" ist ein NEUER Vorgang. Das Formular startet deshalb leer: kein
+// Absender aus dem Profil, kein Empfänger, keine Paketdaten (das Absenderland ist
+// Deutschland, siehe DEFAULT_ORIGIN_COUNTRY). Gespeicherte Angaben kommen nur aus
+// einer Einstellung oder Aktion des Kunden: dem Standard-Absender, den er im
+// Adressbuch festgelegt hat (Paket G, 2026-10-23 — sichtbar gekennzeichnet
+// vorbelegt), „Adresse suchen" oder dem ausdrücklichen Öffnen eines Entwurfs.
 //
 // Vorher belegte `profilSeed()` Firma, Name, Straße, PLZ, Ort, Land, Telefon und
 // E-Mail des Kontos automatisch beim Mount. Der Kunde sah ein ausgefülltes
@@ -19,7 +20,6 @@
 // Beide Seiten kennen dieselben Grenzen: Gewicht 0,1–1000 kg, Maße 0,1–300 cm,
 // Anzahl 1–99 als ganze Zahl.
 
-import { normalizeCountryCode } from "./countries.js";
 import { blankDeclarations } from "./shipmentDeclarations.mjs";
 // Paket A (2026-10-23): der zentrale Telefonvertrag — Schreibweisen, Durchwahl, Grenzen, gespiegelt aus dem Backend.
 import { parsePhoneNumber, PHONE_INPUT_MAX } from "./phoneNumber.mjs";
@@ -165,40 +165,23 @@ export function createEmptyShipmentForm() {
 }
 
 /**
- * Absenderfelder aus dem Profil — die Datenquelle der Komfortfunktion.
+ * Hat der Kunde für diese Partei („s" oder „r") schon etwas eingetragen?
  *
- * Das Profil bleibt also Quelle; es schreibt nur nicht mehr von selbst ins
- * Formular. Das Land läuft unverändert über `normalizeCountryCode()`: die Spalte
- * `users.country` ist VARCHAR(10) ohne CHECK, und ein Wert wie „DEU" stünde in
- * keiner `<option>` — das Auswahlfeld zeigte dann gar nichts an, während jeder
- * Entwurf und jede Buchung dieses Kontos serverseitig scheiterte.
- */
-export function senderPatchFromProfile(user) {
-  const u = user || {};
-  return {
-    s_company: u.company_name || "",
-    s_fullName: u.name || "",
-    s_street: u.street || "",
-    s_addition: "",
-    s_zip: u.zip || "",
-    s_city: u.city || "",
-    s_country: normalizeCountryCode(u.country),
-    s_phone: u.phone || "",
-    s_email: u.email || "",
-  };
-}
-
-/**
- * Hat das Konto überhaupt eine übernehmbare Anschrift?
+ * Paket G (Master-Implementierungsauftrag 2026-10-23): die Vorbelegung mit dem
+ * Standard-Absender kommt asynchron. Steht bis dahin schon etwas im Absender, wird
+ * nichts überschrieben. Das Land zählt nicht: das Absenderland ist im leeren
+ * Formular bereits Deutschland (DEFAULT_ORIGIN_COUNTRY).
  *
- * Ohne diese Prüfung böte die Komfortfunktion einem frisch angelegten Konto eine
- * Aktion an, die sichtbar nichts tut. Das Land allein zählt nicht: es kommt aus
- * `normalizeCountryCode()` und ist selbst bei einem leeren Profil gesetzt.
+ * Die frühere Komfortfunktion „Eigene Adresse" (Absender aus dem Profil) ist mit
+ * Paket G entfallen; ihre Helfer `senderPatchFromProfile`/`hasProfileSenderData`
+ * gibt es nicht mehr. Der Absender kommt aus dem Adressbuch — über den
+ * Standard-Absender oder „Adresse suchen" — und durch dieselbe Feldauslegung
+ * (mapAddressToShipmentFormPatch).
  */
-export function hasProfileSenderData(user) {
-  const patch = senderPatchFromProfile(user);
-  return ["s_company", "s_fullName", "s_street", "s_zip", "s_city", "s_phone", "s_email"]
-    .some((k) => String(patch[k] || "").trim() !== "");
+export function partyHasInput(form, prefix) {
+  const f = form || {};
+  const p = prefix === "r" ? "r" : "s";
+  return PARTY_SUFFIXES.some((s) => s !== "country" && String(f[`${p}_${s}`] ?? "").trim() !== "");
 }
 
 /* ══════════ Paketangaben ═════════════════════════════════════════════════ */

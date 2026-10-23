@@ -6,7 +6,10 @@
 //   • F5 auf einem ausgefüllten Formular → alles leer,
 //   • Sidebar „Neue Sendung" nach einem Bereichswechsel → frischer Vorgang,
 //   • ein ausdrücklich geöffneter Entwurf lädt weiterhin seine Daten,
-//   • Absender-Komfortfunktion und Adressbuch füllen NUR auf Klick,
+//   • „Eigene Adresse" ist entfallen (Paket G); der Standard-Absender des
+//     Adressbuchs steht gekennzeichnet im Absender, ohne Verlassen-Hinweis, und
+//     überschreibt nie eine Eingabe; ohne Standard bleibt der Absender leer,
+//   • das Adressbuch füllt nur auf Klick, der Standard steht dort zuerst,
 //   • ohne vollständige Maße geht KEIN /calculate-price hinaus,
 //   • mit Maßen geht exakt das hinaus, was eingegeben wurde,
 //   • die Buchungsübersicht zeigt Gewicht UND L × B × H,
@@ -64,10 +67,23 @@ const ENTWURF = {
   },
 };
 
+// Paket G: der Standard-Absender, wie ihn GET /api/kunde/addresses?default=sender liefert. Bewusst
+// mit ALLEN Feldern, damit „Korrekte Übernahme aller Adressdaten" am Formular prüfbar ist.
+const STANDARD_ABSENDER = {
+  id: 31, label: "Zentrale", company: "Standard Versand GmbH", firstName: "Sina", lastName: "Standard",
+  contactName: "", streetAndNumber: "Lagerweg 5", addressAdd: "Tor 2", postalCode: "70173",
+  city: "Stuttgart", state: "", country: "DE", phone: "+49711123456", email: "versand@standard.example",
+  role: "sender", isDefaultSender: true, isDefaultRecipient: false, favorite: false,
+};
+
 let server, browser;
 // Jeder an /calculate-price gesendete Body — der Beweis für „kein Request" und
 // für „exakt diese Werte".
 let calcBodies = [];
+// Paket G: Standard-Absender je Test (null = keiner hinterlegt) und eine optionale Verzögerung seiner
+// Antwort — damit lässt sich prüfen, dass eine frühere Eingabe nie überschrieben wird.
+let standardAbsender = null;
+let standardVerzoegerungMs = 0;
 
 async function setupRoutes(ziel) {
   await ziel.route("**/api.confidaraexpress.de/**", async (route) => {
@@ -103,7 +119,14 @@ async function setupRoutes(ziel) {
                                summary: { recipientCity: "München" } }], nextCursor: null });
     if (p.endsWith("/api/kunde/form-drafts")) return json({ draft: { id: 900, revision: 0, schemaVersion: 1 } });
 
-    if (p.includes("/addresses")) return json({ addresses: ADRESSBUCH, pagination: { total: 1 } });
+    if (p.includes("/addresses")) {
+      // Der echte Listenvertrag: { items, nextCursor }. `default=sender` liefert nur den Standard-Absender.
+      if (new URL(req.url()).searchParams.get("default") === "sender") {
+        if (standardVerzoegerungMs) await new Promise((r) => setTimeout(r, standardVerzoegerungMs));
+        return json({ items: standardAbsender ? [standardAbsender] : [], nextCursor: null });
+      }
+      return json({ items: ADRESSBUCH, nextCursor: null });
+    }
     if (p.includes("/address/")) return json({ status: "unsupported" });
     if (p.includes("/notifications/unread-count")) return json({ unreadCount: 0, snapshotAt: "" });
     if (p.includes("/notifications")) return json({ notifications: [], unreadCount: 0, pagination: {} });
@@ -191,7 +214,11 @@ async function paketFuellen(page, { packageCount = "1", weight = "5", length = "
 // gehört zusammen, weil beides den CTA freigibt. Die Sendungsangaben (Paket 9A) laufen
 // über den GEMEINSAMEN Helfer, damit sie nicht ein zweites Mal gepflegt werden müssen.
 async function adressenFuellen(page) {
-  await page.locator('button', { hasText: "Eigene Adresse" }).first().click();
+  // Paket G: „Eigene Adresse" ist entfallen; ohne Standard-Absender wird der Absender eingetragen.
+  // Die frühere Profilübernahme brachte auch die E-Mail des Kontos mit — sie steht jetzt ausdrücklich hier.
+  for (const [id, wert] of [["ns-s-company", "Muster GmbH"], ["ns-s-street", "Musterstr. 1"],
+                            ["ns-s-zip", "10115"], ["ns-s-city", "Berlin"],
+                            ["ns-s-email", "max@example.com"]]) await page.fill(`#${id}`, wert);
   await page.selectOption("#ns-r-country", "DE");
   await page.fill("#ns-r-street", "Hafenstr. 12");
   // Über die stabilen ids — der Platzhalter des früheren kombinierten Namensfeldes
@@ -278,7 +305,7 @@ test("S2 — F5 auf einem ausgefüllten Formular: alles wieder leer", async () =
     await paketFuellen(page);
     const vorher = await felder(page);
     assert.equal(vorher.weight, "5", "die Eingabe kam gar nicht an");
-    assert.equal(vorher.sCompany, "Muster GmbH", "die Komfortfunktion hat nicht gefüllt");
+    assert.equal(vorher.sCompany, "Muster GmbH", "der Absender kam gar nicht an");
 
     // Ausdrücklich NICHT als Entwurf gespeichert.
     await page.reload({ waitUntil: "networkidle" });
@@ -351,35 +378,124 @@ test("S4 — ein ausdrücklich geöffneter Entwurf lädt seine Daten", async () 
 
 /* ══════════ 5 — Komfortfunktionen ═══════════════════════════════════════ */
 
-test("S5 — Absender und Empfänger füllen sich NUR auf Klick", async () => {
+test("S5 — ohne Standard-Absender: kein „Eigene Adresse“, leerer Absender mit Tipp, Adressbuch nur auf Klick", async () => {
+  standardAbsender = null;
   const { ctx, page, fehler } = await neueSeite();
   try {
     await zuNeueSendung(page);
+    assert.equal(await page.locator("button", { hasText: "Eigene Adresse" }).count(), 0, "„Eigene Adresse“ ist zurück");
     assert.equal((await felder(page)).sCompany, "", "der Absender war schon gefüllt");
+    // Der Tipp erklärt den neuen Weg — er erscheint erst nach der Antwort der Standardabfrage.
+    const tipp = page.locator(".calc-section-note", { hasText: "als Standard-Absender fest" });
+    await tipp.waitFor({ state: "visible", timeout: 8000 });
+    // Eine Eingabe im Absender lässt ihn verschwinden.
+    await page.fill("#ns-s-city", "Berlin");
+    assert.equal(await tipp.count(), 0, "der Tipp bleibt trotz Eingabe stehen");
 
-    await page.locator("button", { hasText: "Eigene Adresse" }).first().click();
-    await page.waitForTimeout(150);
-    const nachProfil = await felder(page);
-    assert.equal(nachProfil.sCompany, "Muster GmbH", "die Komfortfunktion füllt den Absender nicht");
-    assert.equal(nachProfil.sStreet, "Musterstr. 1");
-    assert.equal(nachProfil.sCountry, "DE", "das Land wurde nicht normalisiert übernommen");
-    // Der Empfänger bleibt dabei unangetastet.
-    assert.equal(nachProfil.rStreet, "", "die Absenderübernahme hat den Empfänger berührt");
-
-    // Adressbuch für den Empfänger.
-    const picker = page.locator(".abk-pick-trigger, button[title*='Adressbuch']").last();
-    if (await picker.count()) {
-      await picker.click();
-      const treffer = page.locator(".abk-pick-item, [role='option']").first();
-      if (await treffer.count()) {
-        await treffer.click();
-        await page.waitForTimeout(200);
-        const nachBuch = await felder(page);
-        assert.equal(nachBuch.rStreet, "Hafenstr. 12", "das Adressbuch füllt den Empfänger nicht");
-      }
-    }
+    // „Adresse suchen“ füllt den Empfänger — nur auf Klick, mit allen Feldern der Adresse.
+    await page.locator(".abk-pick-trigger").last().click();
+    const treffer = page.locator(".abk-pick-item").first();
+    await treffer.waitFor({ state: "visible", timeout: 8000 });
+    await treffer.click();
+    await page.waitForTimeout(200);
+    const nachBuch = await felder(page);
+    assert.equal(nachBuch.rStreet, "Hafenstr. 12", "das Adressbuch füllt den Empfänger nicht");
+    assert.equal(nachBuch.rCity, "Hamburg");
+    assert.equal(await page.inputValue("#ns-s-city"), "Berlin", "die Empfängerauswahl hat den Absender berührt");
     assert.deepEqual(fehler, []);
   } finally { await ctx.close(); }
+});
+
+test("S5b — der Standard-Absender steht beim Öffnen vollständig im Absender, gekennzeichnet und ohne Verlassen-Hinweis", async () => {
+  standardAbsender = STANDARD_ABSENDER;
+  const { ctx, page, fehler } = await neueSeite();
+  try {
+    await zuNeueSendung(page);
+    await page.waitForFunction(() => document.getElementById("ns-s-company")?.value === "Standard Versand GmbH",
+      null, { timeout: 8000 });
+    // Jedes Feld der Adresse ist angekommen (Paket G: „Korrekte Übernahme aller Adressdaten“).
+    const werte = await page.evaluate(() => Object.fromEntries(
+      ["company", "firstName", "lastName", "street", "addition", "zip", "city", "country", "phone", "email"]
+        .map((k) => [k, document.getElementById(`ns-s-${k}`)?.value ?? null])));
+    assert.deepEqual(werte, {
+      company: "Standard Versand GmbH", firstName: "Sina", lastName: "Standard", street: "Lagerweg 5",
+      addition: "Tor 2", zip: "70173", city: "Stuttgart", country: "DE", phone: "+49711123456",
+      email: "versand@standard.example",
+    });
+    // Der Kunde sieht, woher die Werte kommen: die Marke am Titel „Absender“ — und beide Adressspalten
+    // beginnen auf einer Höhe (kein Hinweistext schiebt die Absenderfelder nach unten).
+    const marke = page.locator(".calc-section-title .calc-section-badge", { hasText: "Standard" });
+    await marke.waitFor({ state: "visible", timeout: 4000 });
+    const spalten = await page.evaluate(() => {
+      const s = document.getElementById("ns-s-company").getBoundingClientRect().top;
+      const r = document.getElementById("ns-r-company").getBoundingClientRect().top;
+      return Math.round(Math.abs(s - r));
+    });
+    assert.ok(spalten <= 2, `die Absenderspalte beginnt ${spalten} px versetzt zur Empfängerspalte`);
+    // Der Empfänger bleibt leer.
+    assert.equal((await felder(page)).rStreet, "", "die Vorbelegung hat den Empfänger berührt");
+    // Eine Vorbelegung ist keine Eingabe: Wegnavigieren fragt nicht nach.
+    await page.locator(".nitem", { hasText: "Übersicht" }).first().click();
+    await page.waitForTimeout(500);
+    assert.equal(await page.locator(".dft-leave-discard").count(), 0, "der Verlassen-Hinweis erscheint für eine Vorbelegung");
+
+    // In „Adresse suchen“ steht der Standard zuerst und trägt seine Marke.
+    await zuNeueSendung(page);
+    await page.waitForFunction(() => document.getElementById("ns-s-company")?.value === "Standard Versand GmbH",
+      null, { timeout: 8000 });
+    await page.locator(".abk-pick-trigger").first().click();
+    const erster = page.locator(".abk-pick-item").first();
+    await erster.waitFor({ state: "visible", timeout: 8000 });
+    assert.match(await erster.innerText(), /Zentrale[\s\S]*Standard-Absender/, "der Standard steht nicht zuerst oder ohne Marke");
+    assert.equal(await page.locator(".abk-pick-item .abk-pick-default").count(), 1, "nicht genau eine Standardmarke");
+    await page.keyboard.press("Escape");
+    // Eine Änderung macht daraus eine eigene Absenderangabe: die Marke am Titel verschwindet.
+    await page.fill("#ns-s-addition", "Tor 3");
+    await page.waitForTimeout(150);
+    assert.equal(await page.locator(".calc-section-title .calc-section-badge").count(), 0,
+      "die Marke bleibt nach einer Änderung stehen");
+    assert.deepEqual(fehler, []);
+  } finally { standardAbsender = null; await ctx.close(); }
+});
+
+test("S5c — eine frühere Eingabe wird nie überschrieben; Entwurf und Reset bleiben korrekt", async () => {
+  standardAbsender = STANDARD_ABSENDER;
+  standardVerzoegerungMs = 1500;
+  const { ctx, page, fehler } = await neueSeite();
+  try {
+    // 1) Der Kunde schreibt, bevor die Standardabfrage antwortet → nichts wird überschrieben. Bewusst
+    //    ohne „networkidle“: das wartete die verzögerte Antwort ab, und der Kunde käme zu spät.
+    await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#ns-s-company", { timeout: 15000 });
+    await page.fill("#ns-s-company", "Selbst getippt GmbH");
+    await page.waitForTimeout(2200);
+    assert.equal(await page.inputValue("#ns-s-company"), "Selbst getippt GmbH", "die Vorbelegung hat eine Eingabe überschrieben");
+    assert.equal(await page.inputValue("#ns-s-street"), "", "die Vorbelegung hat Felder neben einer Eingabe gefüllt");
+    standardVerzoegerungMs = 0;
+
+    // 2) „Eingaben zurücksetzen“ beginnt wie das Öffnen: mit dem Standard-Absender.
+    await page.locator(".dft-reset-cta").first().click();
+    await page.locator(".ce-dialog-actions .btn-primary", { hasText: "Zurücksetzen" }).click();
+    await page.waitForFunction(() => document.getElementById("ns-s-company")?.value === "Standard Versand GmbH",
+      null, { timeout: 8000 });
+    // Nur der unveränderte Standard steht da: ein weiterer Reset fragt nicht nach (nichts ginge verloren).
+    await page.locator(".dft-reset-cta").first().click();
+    await page.waitForTimeout(300);
+    assert.equal(await page.locator("#ns-reset-title").count(), 0, "der Reset fragt bei unverändertem Standard nach");
+    await page.waitForFunction(() => document.getElementById("ns-s-company")?.value === "Standard Versand GmbH",
+      null, { timeout: 8000 });
+
+    // 3) Ein ausdrücklich geöffneter Entwurf behält SEINEN Absender.
+    await page.goto(`${BASE}/dashboard?page=drafts`, { waitUntil: "networkidle" });
+    await verlassenBestaetigen(page);
+    const fortsetzen = page.locator("button", { hasText: "Fortsetzen" }).first();
+    await fortsetzen.waitFor({ timeout: 8000 });
+    await fortsetzen.click();
+    await page.waitForSelector("#ns-weight", { timeout: 8000 });
+    await page.waitForTimeout(800);
+    assert.equal(await page.inputValue("#ns-s-company"), "Alt GmbH", "der Standard-Absender hat den Entwurf überschrieben");
+    assert.deepEqual(fehler, []);
+  } finally { standardAbsender = null; standardVerzoegerungMs = 0; await ctx.close(); }
 });
 
 /* ══════════ 6 — Rate-Gate: kein Request ohne Maße ══════════════════════ */

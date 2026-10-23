@@ -125,7 +125,7 @@ const TRUST = [
 // `!loading` zurück, statt die Zellen dauerhaft leer zu lassen.
 export function Overview({
   user, shipments, invoices, invoiceSummary, serverStats, loading, kpisReady,
-  // Paket F: der Buchungsrahmen (GET /api/kunde/credit) — null, solange nichts geladen ist.
+  // Paket F: der Buchungsrahmen (GET /kunde/credit) — null, solange nichts geladen ist.
   credit = null,
   onNewShipment, onAllShipments, onAllInvoices, onProfile, onNotificationNav,
 }) {

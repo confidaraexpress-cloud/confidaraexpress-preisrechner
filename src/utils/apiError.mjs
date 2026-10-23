@@ -27,6 +27,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { launchRouteBlockedText, ROUTE_NOT_SUPPORTED_TITLE } from "./launchRouteText.mjs";
+import { creditLimitExceededText, CREDIT_LIMIT_EXCEEDED_CODE, CREDIT_TEXT } from "./creditLimitView.mjs";
 
 export const ERROR_TYPE = {
   VALIDATION: "validation",
@@ -108,6 +109,12 @@ const CODE_MAP = {
   ACCOUNT_NOT_CONFIGURED: {
     type: ERROR_TYPE.BUSINESS, title: "Konto nicht freigeschaltet", retryable: false,
     message: "Ihr Konto ist für die Preisberechnung noch nicht vollständig freigeschaltet. Bitte kontaktieren Sie den Support.",
+  },
+  // Paket F (2026-10-23): der Buchungsrahmen des Kontos ist ausgeschöpft (409 bei /book). Der Text
+  // entsteht aus den Beträgen der Antwort (creditLimitView.mjs); nichts wurde beauftragt.
+  CREDIT_LIMIT_EXCEEDED: {
+    type: ERROR_TYPE.BUSINESS, title: CREDIT_TEXT.exceededTitle, retryable: false,
+    message: CREDIT_TEXT.exceededFallback,
   },
 
   // ── Entwurfsübergang (Backend sendet diese bereits produktiv) ──
@@ -261,6 +268,7 @@ export function normalizeApiError({ status, body, fieldMap } = {}) {
       // der kuratierte für Kundinnen und Kunden. Eine gesperrte Route wird aus
       // Grund, Seite und erkanntem Gebiet formuliert (Paket C).
       message: code === "ROUTE_NOT_SUPPORTED" ? launchRouteBlockedText(d)
+        : code === CREDIT_LIMIT_EXCEEDED_CODE ? creditLimitExceededText(d)
         : (known.message || serverText || GENERIC_FALLBACK.message),
       fieldMessage: known.fieldMessage || null,
       field,

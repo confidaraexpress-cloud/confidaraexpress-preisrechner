@@ -1,9 +1,14 @@
-// Kein Kreditlimit in der Oberfläche.
+// Buchungsrahmen statt Kreditlimit-Altlast in der Oberfläche.
 //
-// ConfidaraExpress verwendet kein Kreditlimit. Die Adminseiten zeigten bisher
-// „Kredit genutzt" und „Kreditlimit" — beides ist entfernt. Sichtbar bleiben die
-// reinen Debitoreninformationen: Zahlungsziel, offene Gesamtsumme, unbezahlte und
-// überfällige Rechnungen. Sie sind Information, kein Rahmen.
+// Bis Oktober 2026 kannte ConfidaraExpress kein Kreditlimit; die Adminseiten zeigten früher
+// „Kredit genutzt" und „Kreditlimit" aus den Spalten credit_limit/credit_used — beides ist
+// entfernt und kehrt nicht zurück. Seit Paket E/F (Master-Implementierungsauftrag 2026-10-23,
+// D5–D7) gibt es den BUCHUNGSRAHMEN: der Server leitet Rahmen, offene Belege, Reservierungen
+// und Spielraum ab und liefert sie als `credit`-Objekt (GET /api/kunde/credit, Admin-Detail
+// und -Liste) bzw. als `creditLimit` der 409-Antwort. Die Oberfläche liest AUSSCHLIESSLICH
+// diese Objekte über utils/creditLimitView.mjs — nie die Rohspalten, nie eine eigene Rechnung.
+// Sichtbar bleiben daneben die Debitoreninformationen: Zahlungsziel, offene Gesamtsumme,
+// unbezahlte und überfällige Rechnungen.
 //
 // Das Repo hat bewusst keine React-Render-Testinfrastruktur (devDependencies:
 // nur playwright). Geprüft wird deshalb der Quelltext als Contract — inklusive
@@ -45,17 +50,21 @@ const PRODUCTION_FILES = collectSources(SRC);
 
 // ─── 1./2. Keine Kreditwerte mehr in den Adminseiten ──────────────────────────
 
-test("1 — Admin-Kundenliste zeigt keine Kreditspalten", () => {
+test("1 — Admin-Kundenliste: keine Kreditspalten-Altlast; der Buchungsrahmen kommt aus dem Fachmodul", () => {
   assert.equal(/Kredit genutzt/.test(usersListSrc), false, "Spalte 'Kredit genutzt' muss weg sein");
   assert.equal(/Kreditlimit/.test(usersListSrc), false, "Spalte 'Kreditlimit' muss weg sein");
   assert.equal(/credit_used|credit_limit|creditUsedOf|creditLimitOf/.test(usersListSrc), false,
-    "keine Kreditfelder oder -Getter mehr");
+    "keine Rohspalten oder -Getter");
+  // Paket F: der Rahmen je Zeile ausschließlich über creditRowText (Serverobjekt `credit`).
+  assert.match(usersListSrc, /const c = creditRowText\(user\);/, "die Zeile liest den Rahmen nicht über das Fachmodul");
 });
 
-test("2 — Admin-Kundendetail zeigt keine Kreditwerte", () => {
+test("2 — Admin-Kundendetail: keine Kreditwert-Altlast; der Buchungsrahmen als eigene Sektion aus `credit`", () => {
   assert.equal(/Kredit genutzt/.test(userDetailSrc), false);
   assert.equal(/Kreditlimit/.test(userDetailSrc), false);
   assert.equal(/credit_used|credit_limit|creditUsedOf|creditLimitOf/.test(userDetailSrc), false);
+  assert.match(userDetailSrc, /<CreditLimitSection\s+credit=\{selectCredit\(detailPayload\)\}/,
+    "die Sektion liest den Rahmen nicht aus der Detailantwort");
 });
 
 test("3 — die Karte heißt „Aktivität und Zahlung“ (nicht mehr „Zahlung & Kredit“)", () => {
@@ -95,9 +104,9 @@ test("6 — offene Rechnungen bleiben sichtbar", () => {
 
 test("7 — überfällige Rechnungen bleiben sichtbar", () => {
   assert.match(userDetailSrc, /<Stat label="Überfällige Rechnungen" value=\{num\(metrics\.invoicesOverdue\)\} \/>/);
-  // Sichtbar, aber ausdrücklich ohne Automatik.
+  // Sichtbar, aber ausdrücklich ohne Kontoautomatik — Buchungen begrenzt allein der Buchungsrahmen (Paket E/F).
   assert.match(userDetailSrc, /metrics\.hasOverdue/);
-  assert.match(read("utils/adminCustomerView.mjs"), /Überfällige Rechnungen blockieren Buchungen nicht automatisch/);
+  assert.match(read("utils/adminCustomerView.mjs"), /Überfällige Rechnungen sperren das Konto nicht automatisch/);
 });
 
 test("8 — die Debitorenwerte stammen aus dem Rechnungs-Summary, nicht aus dem User-Objekt", () => {
@@ -180,16 +189,28 @@ test("13 — keine Kreditlimit-Texte in produktiven Kunden- oder Adminseiten", (
   assert.deepEqual(hits, [], `unerwünschte Kredittexte gefunden:\n${hits.join("\n")}`);
 });
 
-test("14 — kein produktiver Code liest credit_limit/credit_used aus der API", () => {
+test("14 — kein produktiver Code liest die Rohspalten credit_limit/credit_used", () => {
   const hits = [];
   for (const file of PRODUCTION_FILES) {
     const src = readFileSync(file, "utf8");
     // Kommentare ausblenden — die Mass-Assignment-Schutzliste im Profil darf die
     // Felder weiterhin ausdrücklich nennen (Defense-in-Depth, bewusst erhalten).
     const code = stripComments(src);
-    if (/credit_limit|credit_used|creditLimit|creditUsed/.test(code)) hits.push(relative(SRC, file));
+    // Paket F: `creditLimit` ist ein Feld der Serverantworten (409-Körper, PUT-Körper) und darum
+    // erlaubt, ebenso der Name der Auditaktion `user.credit_limit_change`; die Rohspalten und der
+    // entwertete Verbrauchszähler bleiben verboten.
+    if (/credit_limit(?!_change)|credit_used|creditUsed/.test(code)) hits.push(relative(SRC, file));
   }
   assert.deepEqual(hits, [], `Kreditfelder im produktiven Code:\n${hits.join("\n")}`);
+});
+
+test("14b — der Buchungsrahmen wird an genau einer Stelle gelesen und formuliert", () => {
+  // Wer `credit`/`creditLimit` einer Serverantwort auswertet, tut es über utils/creditLimitView.mjs.
+  // Eine zweite Rechnung (Rahmen minus offen) in einer Seite wäre eine zweite Fassung der Regel.
+  // Gesucht wird jeder lesende Zugriff `x.credit` / `x?.creditLimit` (nicht die Zuweisung, nicht ein Objektliteral-Schlüssel).
+  const leser = PRODUCTION_FILES.filter((f) => /\??\.(credit|creditLimit)\b(?!\s*=[^=])/.test(stripComments(readFileSync(f, "utf8"))))
+    .map((f) => relative(SRC, f).replace(/\\/g, "/")).sort();
+  assert.deepEqual(leser, ["utils/creditLimitView.mjs"], `Rahmen außerhalb des Fachmoduls gelesen: ${leser.join(", ")}`);
 });
 
 test("15 — der Mass-Assignment-Schutz im Profil bleibt bestehen (Defense-in-Depth)", () => {

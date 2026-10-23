@@ -465,3 +465,44 @@
   .ov-carrier-logo,
   .pp-uchip { transition: none; }
 }
+
+/* ── Buchungsrahmen (Paket F, 2026-10-23) ──
+   Unter den offenen Rechnungen: Betrag in der Ziffernschrift wie der Rechnungsbetrag, darunter
+   eine schmale Linie als belegter Anteil (Zierde — die Zahlen stehen daneben als Text) und ein
+   Satz mit Rahmen und belegtem Betrag. Ausgeschöpft steht als Wort im Badge, nie nur als Farbe. */
+.ov-credit {
+  margin-top: var(--ce-space-5);
+  padding-top: var(--ce-space-4);
+  border-top: 1px solid var(--ce-color-border-subtle);
+}
+.ov-credit-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--ce-space-3);
+}
+.ov-credit-label {
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+.ov-credit-value {
+  margin-top: var(--ce-space-1);
+  font-family: var(--ce-font-numeric);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+  font-size: var(--ce-text-title-card-size);
+  font-weight: var(--ce-text-numeric-display-weight);
+  line-height: 1.2;
+  color: var(--ce-color-text-primary);
+}
+.ov-credit-bar {
+  position: relative; height: 4px; margin-top: var(--ce-space-3);
+  border-radius: var(--ce-radius-full); background: var(--ce-color-border-subtle); overflow: hidden;
+}
+.ov-credit-bar-fill {
+  position: absolute; inset: 0 auto 0 0; border-radius: inherit;
+  background: var(--ce-color-text-primary);
+}
+.ov-credit--exhausted .ov-credit-bar-fill { background: var(--ce-color-status-warning-fg); }
+.ov-credit-meta {
+  margin: var(--ce-space-2) 0 0;
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+.ov-credit-note { margin-top: var(--ce-space-3); font-size: var(--ce-text-body-s-size); }

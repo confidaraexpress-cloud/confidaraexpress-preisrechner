@@ -8,11 +8,13 @@
 //
 // GESCHÄFTSREGELN (unverändert, hier nur abgebildet):
 //   • ConfidaraExpress ist reines B2B — es gibt keine Privatkunden.
-//   • Es gibt KEIN Kreditlimit und KEINE automatische Sperrung bei Zahlungsverzug.
+//   • Seit Paket E/F (2026-10-23) hat jedes Konto einen Buchungsrahmen (Standard 2.000 €
+//     brutto, vom Admin änderbar): ist er ausgeschöpft, lehnt der Server neue BUCHUNGEN ab
+//     (creditLimitView.mjs). Es gibt weiterhin KEINE automatische Sperrung des KONTOS.
 //   • Das Zahlungsziel beträgt für alle Kunden sieben Tage NACH RECHNUNGSERHALT
 //     (nicht nach Rechnungsdatum). Der Wortlaut kommt aus utils/paymentTerm.mjs.
-//   • Offene/überfällige Rechnungen blockieren Buchungen NICHT automatisch; ein
-//     Kunde wird ausschließlich manuell durch einen Admin blockiert.
+//   • Überfällige Rechnungen sperren das Konto NICHT automatisch; ein Kunde wird
+//     ausschließlich manuell durch einen Admin blockiert. Buchungen begrenzt allein der Rahmen.
 //   • Vor jeder echten Transition nach „approved" muss ein individueller
 //     Kundenaufschlag bestätigt sein (Gate in utils/customerMarkup.mjs).
 //
@@ -22,6 +24,7 @@
 
 import { isApprovalBlocked, missingB2BAccountFields } from "./b2bAccount.mjs";
 import { PAYMENT_TERM_DAYS, paymentTermLabel } from "./paymentTerm.mjs";
+import { CREDIT_FILTER_OPTIONS, matchesCreditFilter } from "./creditLimitView.mjs";
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
@@ -84,7 +87,8 @@ export const STATUS_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ value: "anonymized", label: "Anonymisiert" }),
 ]);
 
-export const DEFAULT_FILTERS = Object.freeze({ query: "", status: "all" });
+// Paket F (2026-10-23): + `frame` — Buchungsrahmen „alle | ausgeschöpft | verfügbar" (creditLimitView.mjs).
+export const DEFAULT_FILTERS = Object.freeze({ query: "", status: "all", frame: "all" });
 
 // ── Lokale Suche und Filter ─────────────────────────────────────────────────
 // Das Backend bietet für GET /admin/users KEINE Server-Filter (nur limit/offset).
@@ -108,23 +112,27 @@ export function matchesStatus(user, status) {
 
 export function filterCustomerRows(rows, filters = DEFAULT_FILTERS) {
   const list = Array.isArray(rows) ? rows : [];
-  const { query = "", status = "all" } = filters || {};
-  return list.filter((u) => matchesStatus(u, status) && matchesQuery(u, query));
+  const { query = "", status = "all", frame = "all" } = filters || {};
+  return list.filter((u) => matchesStatus(u, status) && matchesQuery(u, query) && matchesCreditFilter(u, frame));
 }
 
 export function hasActiveFilters(filters = DEFAULT_FILTERS) {
-  const { query = "", status = "all" } = filters || {};
-  return str(query) !== "" || (str(status) !== "" && str(status) !== "all");
+  const { query = "", status = "all", frame = "all" } = filters || {};
+  return str(query) !== "" || (str(status) !== "" && str(status) !== "all") || (str(frame) !== "" && str(frame) !== "all");
 }
 
 // Beschreibt die aktiven Filter als Chips — sichtbar und einzeln entfernbar.
 export function activeFilterChips(filters = DEFAULT_FILTERS) {
-  const { query = "", status = "all" } = filters || {};
+  const { query = "", status = "all", frame = "all" } = filters || {};
   const chips = [];
   if (str(query) !== "") chips.push({ key: "query", label: `Suche: „${str(query)}“` });
   if (str(status) !== "" && str(status) !== "all") {
     const opt = STATUS_FILTER_OPTIONS.find((o) => o.value === status);
     chips.push({ key: "status", label: `Status: ${opt ? opt.label : status}` });
+  }
+  if (str(frame) !== "" && str(frame) !== "all") {
+    const opt = CREDIT_FILTER_OPTIONS.find((o) => o.value === frame);
+    chips.push({ key: "frame", label: `Buchungsrahmen: ${opt ? opt.label : frame}` });
   }
   return chips;
 }
@@ -271,8 +279,9 @@ export function markupRequirementText(status) {
 
 // ── Aktivität und Zahlung ───────────────────────────────────────────────────
 // EINE Quelle für die Debitorenwerte — sie standen bisher doppelt in „Zahlung"
-// und „Aggregierte Kennzahlen". Reine Information: kein Kreditlimit, keine
-// automatische Sperre, kein individuelles Zahlungsziel.
+// und „Aggregierte Kennzahlen". Reine Information: keine automatische
+// Sperre, kein individuelles Zahlungsziel. Der Buchungsrahmen hat seine eigene Sektion
+// (CreditLimitSection, Werte aus `credit` der Detailantwort).
 // Der Wortlaut kommt aus der EINEN zentralen Quelle. Er nennt seit dem Wechsel des
 // Bezugspunkts auch, WOVON gezählt wird: vom Rechnungserhalt, nicht vom Rechnungsdatum.
 export const PAYMENT_TERM_TEXT = paymentTermLabel(PAYMENT_TERM_DAYS);
@@ -297,9 +306,10 @@ export function activityMetrics(summary) {
   };
 }
 
-// Überfällige Rechnungen sind sichtbar, aber ausdrücklich ohne Automatik.
+// Überfällige Rechnungen sind sichtbar, aber ausdrücklich ohne Kontoautomatik. Buchungen
+// begrenzt allein der Buchungsrahmen (Paket E/F) — nicht die Fälligkeit.
 export const OVERDUE_NOTE =
-  "Überfällige Rechnungen blockieren Buchungen nicht automatisch. Ein Konto wird ausschließlich manuell blockiert.";
+  "Überfällige Rechnungen sperren das Konto nicht automatisch. Ein Konto wird ausschließlich manuell blockiert; neue Buchungen begrenzt allein der Buchungsrahmen.";
 
 // ── Lösch-Gate ──────────────────────────────────────────────────────────────
 // Das Backend lehnt die harte Löschung bei abhängigen Sendungs-/Rechnungsdaten

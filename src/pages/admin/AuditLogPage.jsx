@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { statusFallback } from "../../utils/statusFallback.mjs";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState, ErrorState, ListSkeleton } from "../../components/ui/StateView";
@@ -79,6 +80,8 @@ const ACTION_LABELS = {
   "user.business_verification": "Unternehmerprüfung erfasst",
   "invoice.consolidated_run_triggered": "Sammelrechnungslauf gestartet",
   "user.billing_mode_changed": "Abrechnungsart geändert",
+  // Paket E/F (2026-10-23): PUT /admin/users/:id/credit-limit — Vorher/Nachher stehen in den Details.
+  "user.credit_limit_change": "Buchungsrahmen geändert",
   "user.price_markup_confirm": "Preisaufschlag bestätigt",
   "admin.cancellation.view": "Stornierungsanfrage eingesehen",
   "admin.cancellation.status_change": "Stornierungsanfrage: Status geändert",
@@ -246,9 +249,23 @@ function Party({ party }) {
   );
 }
 
+/* Paket F (2026-10-23): Vorbelegung aus der Adresse, damit das Kundendetail direkt auf den Verlauf
+   EINES Kontos und EINER Aktion verlinken kann (z. B. „Buchungsrahmen geändert"). Übernommen werden
+   ausschließlich die Aktion aus der bekannten Liste und eine Zielkonto-ID aus Ziffern — alles andere
+   bleibt leer; die Filter bleiben danach frei bedienbar. */
+function filtersFromSearch(params) {
+  const f = { ...EMPTY_FILTERS };
+  const action = params ? params.get("action") : null;
+  if (action && Object.prototype.hasOwnProperty.call(ACTION_LABELS, action)) f.action = action;
+  const target = params ? params.get("target_user_id") : null;
+  if (target && /^\d{1,10}$/.test(target)) f.target_user_id = target;
+  return f;
+}
+
 export default function AuditLogPage() {
-  const [draft, setDraft] = useState(EMPTY_FILTERS);
-  const [applied, setApplied] = useState(EMPTY_FILTERS);
+  const [searchParams] = useSearchParams();
+  const [draft, setDraft] = useState(() => filtersFromSearch(searchParams));
+  const [applied, setApplied] = useState(() => filtersFromSearch(searchParams));
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);

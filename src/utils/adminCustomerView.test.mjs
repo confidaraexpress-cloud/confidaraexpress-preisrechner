@@ -351,7 +351,9 @@ test("19 — Zahlungswerte stehen genau einmal auf der Seite", () => {
 
 test("20 — überfällige Rechnungen lösen keine automatische Sperre aus", () => {
   assert.equal(activityMetrics({ invoices_overdue: 3 }).hasOverdue, true);
-  assert.match(OVERDUE_NOTE, /blockieren Buchungen nicht automatisch/);
+  // Paket F: Buchungen begrenzt allein der Buchungsrahmen — das Konto sperrt die Fälligkeit nie automatisch.
+  assert.match(OVERDUE_NOTE, /sperren das Konto nicht automatisch/);
+  assert.match(OVERDUE_NOTE, /Buchungsrahmen/);
   assert.match(OVERDUE_NOTE, /ausschließlich manuell blockiert/);
   assert.match(detailSrc, /\{metrics\.hasOverdue && \(/);
   assert.match(detailSrc, /\{OVERDUE_NOTE\}/);

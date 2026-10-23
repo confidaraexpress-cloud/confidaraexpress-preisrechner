@@ -6,6 +6,7 @@ import { resolveCarrierName } from "../../utils/carrierMap";
 import { customerShipmentNumbers, NO_ORDER_CONFIRMATION_TEXT } from "../../utils/businessNumbers.mjs";
 import { notificationSubline, relativeTime } from "../../utils/notificationsView.mjs";
 import { recentShipments, overviewInvoiceFacts, topNotifications } from "../../utils/overviewModules.mjs";
+import { creditFacts, CREDIT_TEXT } from "../../utils/creditLimitView.mjs";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    OPERATIVE ÜBERSICHTSMODULE (Paket D, Redesign 2026-10)
@@ -96,7 +97,31 @@ export function RecentShipments({ shipments, loading, onAll }) {
    unverändert aus der bestehenden Serversummary (overviewInvoiceFacts →
    customerInvoiceSummary). Überfälligkeit trägt das globale Overdue-Badge —
    ruhig, aber eindeutig und nicht allein farblich. Keine Zahlungslogik. */
-export function OpenInvoices({ invoices, summary, onAll }) {
+/* ── Buchungsrahmen (Paket F, 2026-10-23) ──
+   Ein ruhiger Block unter den offenen Rechnungen: der verfügbare Rahmen als Betrag, darunter
+   ein Satz mit Rahmen und belegtem Anteil, dazu eine schmale Linie als Anteil. Alle Werte kommen
+   vom Server (GET /api/kunde/credit, utils/creditLimitView.mjs); ohne Antwort (altes Backend)
+   steht hier nichts. Ausgeschöpft steht als Wort da, nie nur als Farbe. */
+export function CreditFrame({ credit }) {
+  const f = creditFacts(credit);
+  if (!f.show) return null;
+  return (
+    <div className={`ov-credit${f.exhausted ? " ov-credit--exhausted" : ""}`} id="ov-credit" role="group" aria-label={`${CREDIT_TEXT.title}: ${f.summary}`}>
+      <div className="ov-credit-head">
+        <span className="ov-credit-label">{CREDIT_TEXT.availableLabel}</span>
+        {f.exhausted && <span className="badge badge--warning">{CREDIT_TEXT.exhaustedBadge}</span>}
+      </div>
+      <div className="ov-credit-value">{f.availableText}</div>
+      <div className="ov-credit-bar" aria-hidden="true">
+        <span className="ov-credit-bar-fill" style={{ width: `${f.usedPercent}%` }} />
+      </div>
+      <p className="ov-credit-meta">von {f.limitText} · {f.usedText} belegt</p>
+      {f.exhausted && <p className="ov-quiet ov-credit-note">{CREDIT_TEXT.exhaustedNote}</p>}
+    </div>
+  );
+}
+
+export function OpenInvoices({ invoices, summary, onAll, credit = null }) {
   const facts = overviewInvoiceFacts(invoices, summary);
   return (
     <section className="ov-mod" aria-labelledby="ov-inv-title">
@@ -107,11 +132,14 @@ export function OpenInvoices({ invoices, summary, onAll }) {
       />
       <div className="ce-card ov-card ov-card--pad">
         {!facts.showModule ? (
-          <p className="ov-quiet">
-            {facts.state === "empty"
-              ? "Es liegen noch keine Rechnungen vor."
-              : "Aktuell sind keine Forderungen offen."}
-          </p>
+          <>
+            <p className="ov-quiet">
+              {facts.state === "empty"
+                ? "Es liegen noch keine Rechnungen vor."
+                : "Aktuell sind keine Forderungen offen."}
+            </p>
+            <CreditFrame credit={credit} />
+          </>
         ) : (
           <>
             <div className="ov-inv-amount">{money(facts.openAmount)}</div>
@@ -131,6 +159,7 @@ export function OpenInvoices({ invoices, summary, onAll }) {
                 Es liegen zusätzlich Rechnungen in einer anderen Währung vor, die hier nicht mitgerechnet sind.
               </p>
             )}
+            <CreditFrame credit={credit} />
           </>
         )}
       </div>

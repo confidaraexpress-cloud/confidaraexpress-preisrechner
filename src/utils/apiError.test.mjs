@@ -324,3 +324,18 @@ test("29 — Paket C, Security-Review: Seite nur über eigene Schlüssel, Gebiet
   const ok = normalizeApiError({ status: 422, body: { code: "ROUTE_NOT_SUPPORTED", reason: "special_territory", field: "sender", territory: "Campione d'Italia" } });
   assert.match(ok.message, /: Campione d'Italia\./);
 });
+
+test("29 — Paket F: 409 CREDIT_LIMIT_EXCEEDED nennt Betrag, Spielraum und Rahmen aus der Antwort — Geschäftsfall, nicht wiederholbar, kein Anbieter", () => {
+  const e = normalizeApiError({ status: 409, body: { code: "CREDIT_LIMIT_EXCEEDED", error: "SERVERTEXT",
+    creditLimit: { limit: 2000, open: 1500, reserved: 300, available: 200, amount: 250.5, currency: "EUR" } } });
+  const t = (s) => String(s).replace(/[  ]/g, " ");
+  assert.equal(e.title, "Buchungsrahmen ausgeschöpft");
+  assert.equal(t(e.message), "Diese Buchung (250,50 €) überschreitet Ihren verfügbaren Buchungsrahmen (200,00 € von 2.000,00 €). "
+    + "Es wurde nichts beauftragt. Bitte begleichen Sie offene Rechnungen oder wenden Sie sich an uns, wenn Sie einen höheren Rahmen benötigen.");
+  assert.equal(e.type, ERROR_TYPE.BUSINESS);
+  assert.equal(e.retryable, false);
+  assert.doesNotMatch(e.message, /SERVERTEXT|jumingo|transglobal/i);
+  const alt = normalizeApiError({ status: 409, body: { code: "CREDIT_LIMIT_EXCEEDED", error: "SERVERTEXT" } });
+  assert.match(alt.message, /^Diese Buchung überschreitet Ihren verfügbaren Buchungsrahmen\./);
+  assert.doesNotMatch(alt.message, /SERVERTEXT/);
+});

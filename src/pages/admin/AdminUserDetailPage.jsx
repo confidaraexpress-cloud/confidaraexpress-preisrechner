@@ -45,8 +45,11 @@ import { CustomerSupportSection } from "../../components/admin/CustomerSupportSe
 import { SalesPartnerAttributionSection } from "../../components/admin/SalesPartnerAttributionSection";
 import { CustomerBusinessEvidenceSection } from "../../components/admin/CustomerBusinessEvidenceSection";
 import { BillingModeSection } from "../../components/admin/BillingModeSection";
+// Paket F: der Buchungsrahmen — Werte aus `credit` der Detailantwort, Änderung per PUT mit Bestätigung.
+import { CreditLimitSection } from "../../components/admin/CreditLimitSection";
+import { selectCredit, CREDIT_ADMIN_TEXT } from "../../utils/creditLimitView.mjs";
 import { PreliveTestBadge } from "../../components/admin/PreliveTestBadge";
-import { setAdminUserBillingMode } from "../../api/adminApi";
+import { setAdminUserBillingMode, setAdminUserCreditLimit } from "../../api/adminApi";
 import { billingMode as readBillingMode } from "../../utils/billingModeView.mjs";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import {
@@ -207,6 +210,28 @@ export default function AdminUserDetailPage() {
       setBmError("Die Abrechnungsart konnte nicht geändert werden. Bitte prüfen Sie die Verbindung und versuchen Sie es erneut.");
     }
     setBmBusy(false);
+  };
+
+  // Paket F: Buchungsrahmen. Eigener Zustand wie bei der Abrechnungsart; der Wert kommt aus `credit`
+  // der Detailantwort und wird nach dem PUT aus der SERVERantwort übernommen (nie der getippte Wert).
+  const [clBusy, setClBusy] = useState(false);
+  const [clError, setClError] = useState("");
+  const [clSuccess, setClSuccess] = useState("");
+  const saveCreditLimit = async (value) => {
+    if (clBusy || !user) return;
+    setClBusy(true); setClError(""); setClSuccess("");
+    try {
+      const r = await setAdminUserCreditLimit(user.id, value);
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { setClError(d?.error || CREDIT_ADMIN_TEXT.failed); setClBusy(false); return; }
+      const neu = selectCredit(d);
+      setDetailPayload((prev) => (prev && neu ? { ...prev, credit: neu } : prev));
+      // Der gespeicherte Rahmen aus der Serverantwort (selectCredit), nie der getippte Wert.
+      setClSuccess(CREDIT_ADMIN_TEXT.saved(neu ? neu.limit : value));
+    } catch {
+      setClError(CREDIT_ADMIN_TEXT.failed);
+    }
+    setClBusy(false);
   };
 
   const markupInputRef = useRef(null);
@@ -706,6 +731,7 @@ export default function AdminUserDetailPage() {
           blockDisabled={selfAccount}
           blockDisabledReason={selfAccount ? SELF_ACTION_REASON : ""}
           onBlock={() => { setApproveMsg(null); setBlockOpen(true); }}
+          creditLimit={selectCredit(detailPayload)?.limit ?? null}
         />
 
         {/* 3c) Unternehmerprüfung (Go-Live Paket C) — Erklärungen der Registrierung
@@ -726,9 +752,24 @@ export default function AdminUserDetailPage() {
           onChange={changeBillingMode}
         />
 
+        {/* 3e) Buchungsrahmen (Paket F) — Rahmen, offene Belege, reserviert, verfügbar aus
+             derselben Belastungsabfrage wie das Buchungs-Gate; der Admin setzt den Rahmen mit
+             Bestätigung. Nur für Kundenkonten; ohne `credit` in der Antwort (altes Backend)
+             zeigt die Sektion nichts. */}
+        {roleOf(u) !== "admin" && roleOf(u) !== "sales_partner" && (
+          <CreditLimitSection
+            credit={selectCredit(detailPayload)}
+            userId={idOf(u)}
+            busy={clBusy}
+            error={clError}
+            successText={clSuccess}
+            onSave={saveCreditLimit}
+          />
+        )}
+
         {/* 4) Aktivität und Zahlung — EINE Quelle für die Debitorenwerte (früher
-             doppelt in „Zahlung" und „Aggregierte Kennzahlen"). ConfidaraExpress
-             kennt kein Kreditlimit; überfällige Rechnungen lösen NICHTS aus. */}
+             doppelt in „Zahlung" und „Aggregierte Kennzahlen"). Überfällige Rechnungen
+             sperren das Konto nicht; Buchungen begrenzt allein der Buchungsrahmen (3e). */}
         <div className="adm-card">
           <div className="adm-card-head">Aktivität und Zahlung</div>
           <div className="adm-card-body">

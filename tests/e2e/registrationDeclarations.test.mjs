@@ -121,7 +121,10 @@ test("A — ohne Erklärungen: CTA gesperrt mit sichtbarem Grund, kein Request",
   // Keine Einwilligungsbox für den Datenschutz, und der frühere Satz nach dem Knopf ist weg.
   const text = await page.locator("form").innerText();
   assert.ok(!/Mit der Registrierung akzeptieren Sie/.test(text));
-  assert.equal(await page.locator('[role="checkbox"]').count(), 2, "nicht genau zwei Erklärungen");
+  // Paket D: die Option „Keine USt-IdNr. vorhanden“ (#reg-vat-absent) ist ebenfalls eine Checkbox im Auth-Stil —
+  // gezählt werden deshalb nur die Erklärungen im Erklärungsblock (keine Einwilligungsbox für den Datenschutz).
+  assert.equal(await page.locator('.auth-declarations [role="checkbox"]').count(), 2, "nicht genau zwei Erklärungen");
+  assert.equal(await page.locator('[role="checkbox"]').count(), 3, "Erklärungen plus USt-IdNr.-Option");
   await page.close();
 });
 

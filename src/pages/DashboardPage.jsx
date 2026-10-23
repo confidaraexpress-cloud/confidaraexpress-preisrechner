@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { apiFetch } from "../api/client";
+import { selectCredit } from "../utils/creditLimitView.mjs";
 import { Overview } from "../components/dashboard/Overview";
 import { ShipmentsList } from "../components/dashboard/ShipmentsList";
 import { InvoicesList } from "../components/dashboard/InvoicesList";
@@ -147,6 +148,8 @@ export default function DashboardPage() {
   const [shipments, setShipments] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [invoiceSummary, setInvoiceSummary] = useState(null);
+  // Paket F: der Buchungsrahmen des Kontos (GET /kunde/credit) — null ohne Antwort.
+  const [credit, setCredit] = useState(null);
   const [loading, setLoading] = useState(true);
   // „Die Sendungen wurden mindestens EINMAL erfolgreich geladen." Erst danach
   // dürfen die KPI-Karten Zahlen zeigen — eine 0 wäre sonst nicht von einem
@@ -222,7 +225,11 @@ export default function DashboardPage() {
       // beides wird unten skew-tolerant auf null abgebildet.
       apiFetch(`/kunde/shipments?limit=50`, { auth: true }).then(r => { if (!r.ok) throw toErr(r); return r.json(); }),
       apiFetch(`/kunde/invoices?limit=50`,  { auth: true }).then(r => { if (!r.ok) throw toErr(r); return r.json(); }),
-    ]).then(([shipRes, invRes]) => {
+      // Paket F: der Buchungsrahmen. Still bei jedem Fehler (altes Backend ohne die Route, Netz):
+      // die Übersicht zeigt dann einfach keinen Rahmen — kein Fehlerbanner, keine Vermutung.
+      apiFetch(`/kunde/credit`, { auth: true }).then(r => { if (!r.ok) throw toErr(r); return r.json(); }),
+    ]).then(([shipRes, invRes, creditRes]) => {
+      setCredit(creditRes.status === "fulfilled" ? selectCredit(creditRes.value) : null);
       if (shipRes.status === "fulfilled") {
         if (seq === shipmentsReq.current) {
           setShipments(shipRes.value.shipments || []);
@@ -681,6 +688,7 @@ export default function DashboardPage() {
             shipments={shipments}
             invoices={invoices}
             invoiceSummary={invoiceSummary}
+            credit={credit}
             serverStats={shipmentsStats}
             loading={loading}
             kpisReady={shipmentsLoaded}

@@ -5,6 +5,8 @@ import {
   confirmedMarkupLine,
 } from "../../utils/customerMarkup.mjs";
 import { accountStatusCopy, markupRequirementText } from "../../utils/adminCustomerView.mjs";
+// Paket F: der Buchungsrahmen, der ab der Freischaltung gilt — im Dialog sichtbar, wie der bestätigte Aufschlag.
+import { CREDIT_ADMIN_TEXT } from "../../utils/creditLimitView.mjs";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Freischaltung / Reaktivierung in der Admin-Kundendetailansicht.
@@ -20,7 +22,7 @@ import { accountStatusCopy, markupRequirementText } from "../../utils/adminCusto
 // Fall die verbindliche Instanz — auch bei paralleler Änderung (409).
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ApprovalDialog({ title, targetLabel, markupLine, busy, onCancel, onConfirm }) {
+function ApprovalDialog({ title, targetLabel, markupLine, creditLine = null, busy, onCancel, onConfirm }) {
   // Fokusfalle, Fokusrückgabe und Escape kommen seit Paket A, Phase 3 aus dem
   // gemeinsamen Hook; während eines laufenden Requests schließt Escape nicht.
   const dialogRef = useDialog({ onClose: onCancel, closeOnEscape: !busy });
@@ -47,6 +49,9 @@ function ApprovalDialog({ title, targetLabel, markupLine, busy, onCancel, onConf
         {/* Der bestätigte Aufschlag ist im Dialog noch einmal sichtbar. */}
         {markupLine && (
           <p className="adm-approve-markup">{markupLine}</p>
+        )}
+        {creditLine && (
+          <p className="adm-approve-markup" id="adm-approve-credit">{creditLine}</p>
         )}
         <div className="adm-modal-actions">
           <button type="button" className="btn btn-outline btn-sm" onClick={onCancel} disabled={busy}>
@@ -84,6 +89,7 @@ export function CustomerApprovalCard({
   blockDisabled = false,
   blockDisabledReason = "",
   onBlock,
+  creditLimit = null,         // Paket F: Rahmen in Euro aus `credit` der Detailantwort (null = nicht bekannt)
 }) {
   const g = gate || {};
   const explanation = approvalGateExplanation(g);
@@ -184,6 +190,7 @@ export function CustomerApprovalCard({
           title={title}
           targetLabel={targetLabel}
           markupLine={markupLine}
+          creditLine={typeof creditLimit === "number" ? CREDIT_ADMIN_TEXT.approvalLine(creditLimit) : null}
           busy={busy}
           onCancel={onCloseDialog}
           onConfirm={onConfirm}

@@ -11,6 +11,9 @@
 //       keine Klärung, kein automatisches Wiederholen — für beide Angebotsarten
 //   E6  Gegenprobe: 503 OHNE Code bleibt ein offener Ausgang („Buchungsstatus wird geprüft", „Zu meinen Sendungen")
 //   E7  Gegenprobe: 202 BOOKING_PENDING bleibt ein offener Ausgang
+//   E8  Paket F: 409 CREDIT_LIMIT_EXCEEDED — Beträge aus der Antwort, „Zu meinen Rechnungen", kein Bestellknopf,
+//       kein „Zu meinen Sendungen", keine Neuberechnung, kein zweiter /book
+//   E9  Paket F: Vorab-Hinweis zum Rahmen (reine Anzeige) — der Bestellknopf bleibt; ohne Rahmen kein Hinweis
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -103,6 +106,7 @@ async function setup(page, szenario) {
     const pfad = new URL(req.url()).pathname;
     const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
     if (pfad.endsWith("/kundenbereich")) return json({ user: USER });
+    if (pfad.endsWith("/kunde/credit")) return szenario.kredit ? json({ credit: szenario.kredit }) : json({ error: "Nicht gefunden" }, 404);
     if (pfad.endsWith("/api/legal/booking-context")) return json({ enabled: false });
     if (pfad.endsWith("/kunde/shipments")) return json({ shipments: [], nextCursor: null });
     if (pfad.includes("/kunde/invoices")) return json({ invoices: [], summary: null });
@@ -359,4 +363,54 @@ test("E7 — Gegenprobe: 202 BOOKING_PENDING bleibt ein offener Ausgang", async 
   assert.equal(p.book.length, 1);
   assert.deepEqual(fehler, []);
   await page.close();
+});
+
+test("E8 — Paket F: 409 CREDIT_LIMIT_EXCEEDED: Beträge aus der Antwort, Weg zu den Rechnungen, nichts beauftragt, kein zweiter Versuch", async () => {
+  const { page, fehler } = await neueSeite();
+  const p = await setup(page, { buchung: () => ({ status: 409, body: {
+    error: "SERVERTEXT", code: "CREDIT_LIMIT_EXCEEDED",
+    creditLimit: { limit: 2000, open: 1500, reserved: 300, available: 200, amount: 12.85, currency: "EUR" },
+  } }) });
+  await zurBuchungsseite(page, JM);
+  await bucheEinmal(page, p);
+  const flaeche = page.locator("#booking-credit-limit");
+  await flaeche.waitFor({ state: "visible", timeout: 10000 });
+  const text = norm(await flaeche.locator(".booking-conflict-text").textContent()).replace(/[  ]/g, " ");
+  assert.equal(text,
+    "Diese Buchung (12,85 €) überschreitet Ihren verfügbaren Buchungsrahmen (200,00 € von 2.000,00 €). "
+    + "Es wurde nichts beauftragt. Bitte begleichen Sie offene Rechnungen oder wenden Sie sich an uns, wenn Sie einen höheren Rahmen benötigen.");
+  assert.doesNotMatch(text, /SERVERTEXT/);
+  assert.equal(await flaeche.getByRole("button", { name: "Zu meinen Rechnungen", exact: true }).count(), 1);
+  assert.equal(await buchenKnopf(page).count(), 0, "der Bestellknopf steht noch");
+  assert.equal(await knopf(page, "Angebote neu berechnen").count(), 0, "eine Neuberechnung repariert den Rahmen nicht");
+  await keinOffenerAusgangKeinZweiterVersuch(page, p);
+  await flaeche.getByRole("button", { name: "Zu meinen Rechnungen", exact: true }).click();
+  await page.waitForURL((u) => u.searchParams.get("page") === "invoices", { timeout: 10000 });
+  assert.equal(p.book.length, 1);
+  assert.deepEqual(fehler, []);
+  await page.close();
+});
+
+test("E9 — Paket F: Vorab-Hinweis zum Buchungsrahmen ist reine Anzeige — der Bestellknopf bleibt; ohne Rahmen kein Hinweis", async () => {
+  const { page, fehler } = await neueSeite();
+  await setup(page, { buchung: () => ({ status: 200, body: {} }),
+    kredit: { limit: 2000, open: 1990, reserved: 0, available: 10, exhausted: false, currency: "EUR" } });
+  await zurBuchungsseite(page, JM);
+  await zuSchritt2(page);
+  const hinweis = page.locator("#booking-credit-hint");
+  await hinweis.waitFor({ state: "visible", timeout: 10000 });
+  const text = norm(await hinweis.textContent()).replace(/[  ]/g, " ");
+  assert.equal(text, "Hinweis: Diese Buchung (12,85 €) übersteigt Ihren verfügbaren Buchungsrahmen (10,00 €). Der Rahmen wird beim Buchen erneut geprüft.");
+  assert.equal(await buchenKnopf(page).count(), 1, "der Bestellknopf muss trotz Hinweis stehen bleiben");
+  assert.deepEqual(fehler, []);
+  await page.close();
+
+  const ohne = await neueSeite();
+  await setup(ohne.page, { buchung: () => ({ status: 200, body: {} }) });
+  await zurBuchungsseite(ohne.page, JM);
+  await zuSchritt2(ohne.page);
+  await kurz(400);
+  assert.equal(await ohne.page.locator("#booking-credit-hint").count(), 0, "ohne Rahmen (altes Backend) darf kein Hinweis stehen");
+  assert.deepEqual(ohne.fehler, []);
+  await ohne.page.close();
 });

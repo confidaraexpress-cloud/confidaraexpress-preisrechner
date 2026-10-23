@@ -9,6 +9,8 @@ import { userStatusMeta, userRoleMeta } from "../../utils/adminUsers";
 import { missingB2BAccountFields } from "../../utils/b2bAccount.mjs";
 import { CustomerRowActions } from "../../components/admin/CustomerRowActions";
 import { selectListTotal, selectListHasMore } from "../../utils/adminOverview.mjs";
+// Paket F: Buchungsrahmen je Zeile (Kurzform) und der Filter „ausgeschöpft / verfügbar".
+import { CREDIT_FILTER_OPTIONS, creditRowText } from "../../utils/creditLimitView.mjs";
 import {
   BLOCK_DIALOG,
   DEFAULT_FILTERS,
@@ -109,6 +111,16 @@ function CustomerCell({ user }) {
       {f.createdAt && <span className="adm-cust-since">Registriert {fmtDate(f.createdAt)}</span>}
     </div>
   );
+}
+
+/* Paket F: der Buchungsrahmen in Zeile und Karte — „1.450,00 € frei" als ruhiger Text, „ausgeschöpft"
+   als Wort im Badge; ohne Rahmen in der Antwort (altes Backend) ein Strich. Werte vom Server, nie gerechnet. */
+function CreditCell({ user }) {
+  const c = creditRowText(user);
+  if (!c) return <span className="text-muted">—</span>;
+  return c.exhausted
+    ? <span className="badge badge--warning" title={c.title}>{c.text}</span>
+    : <span title={c.title}>{c.text}</span>;
 }
 
 export default function AdminUsersPage() {
@@ -329,6 +341,18 @@ export default function AdminUsersPage() {
             ))}
           </select>
         </div>
+        <div className="adm-filter-field">
+          <label htmlFor="u-credit">Buchungsrahmen</label>
+          <select
+            id="u-credit"
+            value={filters.frame ?? "all"}
+            onChange={(e) => setFilters((f) => ({ ...f, frame: e.target.value }))}
+          >
+            {CREDIT_FILTER_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
         <p id="u-search-hint" className="adm-support-hint adm-filter-hint">
           Durchsucht nur die aktuell angezeigte Seite ({rows.length} {rows.length === 1 ? "Eintrag" : "Einträge"}).
         </p>
@@ -411,7 +435,11 @@ export default function AdminUsersPage() {
                         <span className="adm-email" title={f.email}>{f.email || "—"}</span>
                       </td>
                       <td className="adm-mono adm-nowrap">{f.customerNumber || <span className="text-muted">—</span>}</td>
-                      <td><StatusBadge status={f.status} /></td>
+                      <td>
+                        <StatusBadge status={f.status} />
+                        {/* Paket F: der Buchungsrahmen als zweite Zeile der Statuszelle — die Tabelle behält ihre fünf Spalten. */}
+                        <div className="adm-credit-cell"><CreditCell user={u} /></div>
+                      </td>
                       <td className="adm-col-action">
                         <div className="adm-row-actions-cell">
                           {f.id != null && (
@@ -448,6 +476,7 @@ export default function AdminUsersPage() {
                   <dl className="adm-ucard-kv">
                     <div><dt>E-Mail</dt><dd className="adm-email">{f.email || "—"}</dd></div>
                     <div><dt>Kundennummer</dt><dd className="adm-mono">{f.customerNumber || "—"}</dd></div>
+                    <div><dt>Buchungsrahmen</dt><dd><CreditCell user={u} /></dd></div>
                   </dl>
                   <div className="adm-ucard-actions">
                     {f.id != null && (

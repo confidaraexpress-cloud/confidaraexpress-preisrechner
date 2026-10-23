@@ -11,6 +11,8 @@ import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess, istOffe
   REFERENCE_INVALID_TEXT, lagerkonfliktBeimBuchen, preisangabenFehlenHandlung,
   PARCELSHOP_REQUIRED_TEXT, paketshopFehlt, zusatzmailFehler, repriceFehlerText } from "../utils/bookingErrors.mjs";
 import { customerText, normalizeApiError } from "../utils/apiError.mjs";
+// Paket F: der Buchungsrahmen — Vorab-Hinweis (reine Anzeige) und der 409-Befund „ausgeschöpft".
+import { bookingCreditHint, creditLimitExceededText, isCreditLimitExceeded, selectCredit } from "../utils/creditLimitView.mjs";
 import {
   labelFormatOptionsOf, restoredLabelFormat, labelFormatBookPayload, labelDeliveryInfo,
 } from "../utils/labelFormatOptions.mjs";
@@ -229,6 +231,22 @@ export default function BookingPage() {
   const legalBlocksBooking = legalGateBlocks(legalContext);
   const [prohibitedShowError, setProhibitedShowError] = useState(false);
   const [conflict, setConflict] = useState("");
+  /* Paket F: der Buchungsrahmen des Kontos. Beim Öffnen der Seite einmal gelesen — für den
+     Vorab-Hinweis unter dem Bestellknopf (reine Anzeige: der Server entscheidet beim Buchen
+     erneut unter Sperre). Still bei jedem Fehler: ein altes Backend ohne die Route oder ein
+     Netzfehler nimmt der Buchung nichts. `creditNotice` ist der 409-Befund „ausgeschöpft":
+     nichts beauftragt, nichts berechnet — eigener Zustand neben `conflict`, weil die
+     HANDLUNG eine andere ist (Rechnungen begleichen statt Sendungsliste). */
+  const [credit, setCredit] = useState(null);
+  const [creditNotice, setCreditNotice] = useState("");
+  useEffect(() => {
+    let aktiv = true;
+    apiFetch("/kunde/credit", { auth: true })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (aktiv) setCredit(selectCredit(d)); })
+      .catch(() => { /* still — kein Hinweis ist besser als ein falscher */ });
+    return () => { aktiv = false; };
+  }, []);
   /* TG-7: „es wurde nichts beauftragt, aber dieses Angebot traegt nicht mehr".
      Eigener Zustand neben `conflict`, weil die HANDLUNG eine andere ist —
      neu berechnen statt in die Sendungsliste sehen. */
@@ -1228,7 +1246,7 @@ export default function BookingPage() {
       );
       return;
     }
-    setError(""); setConflict(""); setAddressError(""); setRecalcNotice(""); setInventoryNotice(null); setPriceAcceptNotice(""); setProfileHint(""); setBillingModeHint(""); setLoading(true);
+    setError(""); setConflict(""); setAddressError(""); setRecalcNotice(""); setInventoryNotice(null); setCreditNotice(""); setPriceAcceptNotice(""); setProfileHint(""); setBillingModeHint(""); setLoading(true);
     try {
       // /book erwartet insuranceSelection VERSCHACHTELT (nicht wie /reprice flach).
       // confirmedTotalGross ist reines Drift-Gate (nie Preisquelle) — nur bei
@@ -1478,6 +1496,15 @@ export default function BookingPage() {
         // nicht zu den Daten, abweichende oder fehlende Sendungsangaben) haben nichts
         // ausgelöst — sie führen zur Neuberechnung. Welche Codes das sind, sagt
         // `bookingErrors.mjs`; hier steht keine zweite Liste.
+        // Paket F: der Buchungsrahmen des Kontos ist ausgeschöpft (409 CREDIT_LIMIT_EXCEEDED). Es wurde
+        // nichts beauftragt und nichts berechnet; die Handlung ist weder „Sendungsliste" noch „neu
+        // berechnen", sondern offene Rechnungen begleichen (oder ein höherer Rahmen). Der Text entsteht
+        // aus den Beträgen der Antwort. Die Buchungsseite bleibt stehen.
+        if (isCreditLimitExceeded(d)) {
+          setCreditNotice(creditLimitExceededText(d));
+          setLoading(false);
+          return;
+        }
         if (d?.code === "BOOKING_IN_PROGRESS") {
           setConflict(mapBookRestError(r.status, d).message);
           setLoading(false);
@@ -2518,6 +2545,10 @@ export default function BookingPage() {
                   // entscheidet, und ein im anderen Tab ergänztes Profil darf nicht gesperrt werden.
                   profileHint={profileHint || bookingProfileNotice(user?.bookingProfile)}
                   billingModeHint={billingModeHint}
+                  // Paket F: Buchungsrahmen — Vorab-Hinweis (Anzeige) und der 409-Befund mit dem Weg zu den Rechnungen.
+                  creditHint={bookingCreditHint(credit, priceView.totalGross)}
+                  creditNotice={creditNotice}
+                  onNavigateInvoices={() => navigate("/dashboard?page=invoices")}
                   onNavigateProfile={() => navigate(PROFILE_DASHBOARD_TARGET)}
                   onBook={doBook}
                   onNavigateShipments={() => navigate("/dashboard?page=shipments")}

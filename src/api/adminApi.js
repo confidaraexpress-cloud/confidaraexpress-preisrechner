@@ -358,6 +358,19 @@ export function setAdminUserBillingMode(userId, billingMode) {
   });
 }
 
+// PUT /admin/users/:id/credit-limit — den Buchungsrahmen eines Kontos setzen (Paket F / Backend
+// Paket E). Gesendet wird AUSSCHLIESSLICH der Betrag in Euro brutto als Zahl; das Backend prüft
+// 0 … 1.000.000 mit zwei Nachkommastellen erneut, sperrt die Kontozeile und protokolliert
+// Vorher/Nachher. Ein nicht-numerischer Wert wird gar nicht erst gesendet.
+export function setAdminUserCreditLimit(userId, creditLimit) {
+  if (typeof creditLimit !== "number" || !Number.isFinite(creditLimit)) return Promise.reject(new Error("invalid_credit_frame"));
+  return apiFetch(`/admin/users/${encodeURIComponent(userId)}/credit-limit`, {
+    method: "PUT",
+    auth: true,
+    body: JSON.stringify({ creditLimit }),
+  });
+}
+
 // POST /admin/consolidated-invoices/run — den Sammelrechnungslauf manuell anstoßen.
 //
 // Bewusst OHNE Parameter: kein Konto, kein Zeitraum, kein Stichtag. Ein Aufruf, über

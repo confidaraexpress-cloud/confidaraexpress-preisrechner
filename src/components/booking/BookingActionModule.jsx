@@ -12,6 +12,8 @@ export function BookingActionModule({
   error, conflict, addressError, recalcNotice, inventoryNotice, loading, agbAccepted, prohibitedGoodsAccepted, insuranceBlocksBooking, pickupBlocksBooking, voucherChecking,
   legalBlocksBooking, profileHint, billingModeHint, dropoffShopBlocksBooking,
   priceChangeNotice, onReviewPriceChange, priceChangeActionRef,
+  // Paket F: Buchungsrahmen — Vorab-Hinweis (reine Anzeige) und der 409-Befund „ausgeschöpft".
+  creditHint = null, creditNotice = "", onNavigateInvoices,
   onBook, onNavigateShipments, onNavigateNew, onRecalculate, onNavigateProfile, onNavigateInventory, userEmail,
 }) {
   // Während einer laufenden Gutscheinprüfung ist der anzuzeigende Endbetrag nicht bestimmt —
@@ -65,7 +67,18 @@ export function BookingActionModule({
           </button>
         </div>
       )}
-      {conflict ? (
+      {creditNotice ? (
+        /* ─── Paket F: der Buchungsrahmen ist ausgeschöpft (409 CREDIT_LIMIT_EXCEEDED) ────────
+           Nichts beauftragt, nichts berechnet. Die Handlung ist weder die Sendungsliste (dort steht
+           nichts) noch eine Neuberechnung (derselbe Rahmen lehnte erneut ab), sondern: offene
+           Rechnungen begleichen — oder ein höherer Rahmen. Diese Fläche ERSETZT den Bestellknopf. */
+        <div className="booking-conflict-box" role="alert" id="booking-credit-limit">
+          <p className="booking-conflict-text">{creditNotice}</p>
+          <button type="button" className="btn btn-primary btn-full" onClick={onNavigateInvoices}>
+            Zu meinen Rechnungen
+          </button>
+        </div>
+      ) : conflict ? (
         <div className="booking-conflict-box">
           <p className="booking-conflict-text">{conflict}</p>
           <button className="btn btn-primary btn-full" onClick={onNavigateShipments}>
@@ -158,6 +171,12 @@ export function BookingActionModule({
         <button className="btn btn-primary btn-full booking-book-btn" onClick={onBook} disabled={!bookingAllowed}>
           {loading ? <><span className="spinner" /> Sendung wird gebucht…</> : "Kostenpflichtig buchen"}
         </button>
+      )}
+      {/* Paket F: Vorab-Hinweis zum Buchungsrahmen — nur, wenn der Betrag den Spielraum übersteigt
+          oder der Rahmen ausgeschöpft ist. Der Bestellknopf bleibt: der Server entscheidet unter
+          Sperre, und eine inzwischen beglichene Rechnung darf nicht gesperrt werden. */}
+      {creditHint && !creditNotice && (
+        <p className="booking-credit-hint" id="booking-credit-hint" role="status">{creditHint}</p>
       )}
       <p className="booking-email-note">
         Nach der Buchung erhalten Sie eine Bestätigung per E-Mail an {userEmail}

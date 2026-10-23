@@ -232,7 +232,7 @@ test("B — Zustände partial, leer, 422, 429, 503, Netzfehler; unveränderte Ei
 
   const erwartet = [
     ["2", "#pc-empty", /Keine Angebote für diese Angaben/],
-    ["3", "#pc-outcome-route", /Versandroute nicht verfügbar/],
+    ["3", "#pc-outcome-route", /Versandziel nicht verfügbar/],
     ["4", "#pc-outcome-rate_limited", /Zu viele Anfragen/],
     ["5", "#pc-outcome-unavailable", /derzeit nicht verfügbar/],
     ["6", "#pc-outcome-network", /Verbindung unterbrochen/],

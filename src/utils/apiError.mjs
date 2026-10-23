@@ -26,6 +26,8 @@
 // Datenbank- und Carrier-Rohmeldungen erreichen den Kunden nie.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { launchRouteBlockedText, ROUTE_NOT_SUPPORTED_TITLE } from "./launchRouteText.mjs";
+
 export const ERROR_TYPE = {
   VALIDATION: "validation",
   BUSINESS: "business",
@@ -96,9 +98,12 @@ const CODE_MAP = {
     type: ERROR_TYPE.TECHNICAL, title: "Angebote derzeit nicht abrufbar", retryable: true,
     message: "Die Angebote konnten gerade nicht vollständig abgerufen werden. Bitte versuchen Sie es in einigen Minuten erneut.",
   },
+  // Paket C (2026-10-23): der Text entsteht aus `reason`, `field` und `territory` der Antwort
+  // (launchRouteText.mjs) — eine Kanaren-Adresse liest „Kanarische Inseln", nicht den Rat, das
+  // Versanddatum zu prüfen. `message` hier ist nur der Rückfall ohne Grund.
   ROUTE_NOT_SUPPORTED: {
-    type: ERROR_TYPE.BUSINESS, title: "Versandroute nicht verfügbar", retryable: false,
-    message: "Für diese Versandroute sind momentan keine Angebote verfügbar. Bitte prüfen Sie Versanddatum, Paketdaten oder Versandart.",
+    type: ERROR_TYPE.BUSINESS, title: ROUTE_NOT_SUPPORTED_TITLE, retryable: false,
+    message: launchRouteBlockedText({}),
   },
   ACCOUNT_NOT_CONFIGURED: {
     type: ERROR_TYPE.BUSINESS, title: "Konto nicht freigeschaltet", retryable: false,
@@ -253,8 +258,10 @@ export function normalizeApiError({ status, body, fieldMap } = {}) {
       title: known.title,
       // Reihenfolge bewusst: eigener kuratierter Text vor Servertext. Der
       // Servertext ist für Entwickler formuliert („weight: Pflichtfeld…"),
-      // der kuratierte für Kundinnen und Kunden.
-      message: known.message || serverText || GENERIC_FALLBACK.message,
+      // der kuratierte für Kundinnen und Kunden. Eine gesperrte Route wird aus
+      // Grund, Seite und erkanntem Gebiet formuliert (Paket C).
+      message: code === "ROUTE_NOT_SUPPORTED" ? launchRouteBlockedText(d)
+        : (known.message || serverText || GENERIC_FALLBACK.message),
       fieldMessage: known.fieldMessage || null,
       field,
       retryable: known.retryable === true,

@@ -182,3 +182,11 @@ test("(12) Zusammenfassung über den Ergebnissen: Strecke, Pakete, Gewicht, Maß
   assert.equal(requestSummary(null), null);
   assert.equal(requestSummary({}), null);
 });
+
+test("Paket C — der öffentliche Rechner nennt bei einer gesperrten Route das erkannte Gebiet", () => {
+  const r = quoteOutcomeFromResponse(422, { code: "ROUTE_NOT_SUPPORTED", reason: "special_territory", field: "recipient", territory: "Nordzypern" });
+  assert.equal(r.outcome, OUTCOME.ROUTE);
+  assert.equal(r.message, "Die Empfängeradresse liegt in einem Gebiet, das ConfidaraExpress derzeit nicht bedient: Nordzypern. Bitte prüfen Sie Land und Postleitzahl.");
+  assert.equal(quoteOutcomeFromResponse(422, { code: "ROUTE_NOT_SUPPORTED" }).message, OUTCOME_TEXT[OUTCOME.ROUTE].message);
+  assert.equal(OUTCOME_TEXT[OUTCOME.ROUTE].title, "Versandziel nicht verfügbar");
+});

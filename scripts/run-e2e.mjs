@@ -19,10 +19,12 @@
  * die Dateien auf n Läufe auf, die parallel auf getrennten CI-Maschinen laufen
  * können; lokal bleibt der Aufruf ohne Parameter und führt alles aus.
  *
- * Verteilt wird REIHUM (Datei k → Teil k mod n), nicht in Blöcken: die
- * Laufzeiten der Suiten sind sehr ungleich, und aufeinanderfolgende Dateien
- * gehören oft zum selben Themengebiet und sind dann ähnlich teuer. Blockweise
- * bekäme ein Teil alle schweren.
+ * Verteilt wird NACH GEMESSENER LAUFZEIT (seit 2026-10-24, scripts/e2eVerteilung.mjs
+ * mit scripts/e2e-laufzeiten.json): längste Suite zuerst, jeweils in den
+ * leichtesten Teil. Reihum nach Dateiname lagen die vier Teile 16–22 Minuten
+ * auseinander, weil die Laufzeiten der Suiten sehr ungleich sind. Eine Suite
+ * ohne Messwert zählt mit dem Median — sie läuft immer mit, nur ihre Balance
+ * ist geschätzt. Die Teilanzahl steht allein im CI-Workflow.
  *
  * WICHTIG: Der Aufteilung liegt dieselbe Auffindung zugrunde wie dem vollen
  * Lauf. Es gibt genau eine Quelle für „welche Dateien gibt es" — lokal und in
@@ -32,10 +34,11 @@
  *   node scripts/run-e2e.mjs --shard 2/4     nur der zweite von vier Teilen
  *   node scripts/run-e2e.mjs --list          nur auflisten, nichts starten
  */
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { verteileSuiten } from "./e2eVerteilung.mjs";
 
 const WURZEL   = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const E2E_DIR  = path.join(WURZEL, "tests", "e2e");
@@ -76,12 +79,27 @@ if (alle.length === 0) {
   process.exit(1);
 }
 
-const dateien = shard
-  ? alle.filter((_, k) => k % shard.gesamt === shard.teil - 1)
-  : alle;
+function leseLaufzeiten() {
+  try {
+    return JSON.parse(readFileSync(path.join(WURZEL, "scripts", "e2e-laufzeiten.json"), "utf8")).suiten || {};
+  } catch (e) {
+    // Ohne Messwerte bleibt die Verteilung vollständig, nur die Balance ist geschätzt (gleiche Gewichte).
+    console.log(`::warning::E2E-Laufzeiten nicht lesbar (${e.message}) — Verteilung mit gleichen Gewichten.`);
+    return {};
+  }
+}
+
+let dateien = alle;
+let erwartet = null;
+if (shard) {
+  const teil = verteileSuiten(alle, leseLaufzeiten(), shard.gesamt)[shard.teil - 1];
+  dateien = teil.suiten;
+  erwartet = teil.last;
+}
 
 const kopf = shard ? `Teil ${shard.teil}/${shard.gesamt}` : "vollständig";
-console.log(`E2E ${kopf}: ${dateien.length} von ${alle.length} Suiten`);
+console.log(`E2E ${kopf}: ${dateien.length} von ${alle.length} Suiten`
+  + (erwartet != null ? ` · erwartet ≈ ${(erwartet / 60).toFixed(1)} min` : ""));
 for (const d of dateien) console.log("  ·", d);
 
 if (argv.includes("--list")) process.exit(0);
@@ -112,7 +130,9 @@ function fuehreSuiteAus(datei) {
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
     });
-    const zaehler = { tests: 0, pass: 0, fail: 0, skipped: 0, cancelled: 0 };
+    const zaehler = { tests: 0, pass: 0, fail: 0, skipped: 0, cancelled: 0, dateiAlsTest: false };
+    const norm = (p) => p.replace(/[\\/]+/g, "/"); // TAP verdoppelt Backslashes unter Windows
+    const dateiNorm = norm(datei);
     let rest = "";
     const lies = (stueck) => {
       rest += stueck;
@@ -122,6 +142,10 @@ function fuehreSuiteAus(datei) {
         // TAP („# tests 3", Node 22 ohne Terminal, CI) und spec („ℹ tests 3", Node 24 lokal).
         const m = /^(?:#|ℹ) (tests|pass|fail|skipped|cancelled) (\d+)\s*$/.exec(z);
         if (m) zaehler[m[1]] = Number(m[2]);
+        // Eine Datei OHNE eigene Tests meldet `node --test` als einen bestandenen Test mit dem Dateinamen
+        // („ok 1 - tests/e2e/x.test.mjs“ bzw. „✔ tests\e2e\x.test.mjs (…ms)“) — der Zähler allein sähe 1/1.
+        const t = /^(?:(?:not )?ok \d+ - |[✔✖] )(.+?)(?: \([\d.]+ms\))?\s*$/.exec(z);
+        if (t && norm(t[1]) === dateiNorm) zaehler.dateiAlsTest = true;
       }
     };
     kind.stdout.setEncoding("utf8");
@@ -139,6 +163,7 @@ function fuehreSuiteAus(datei) {
 function befundFuer(r) {
   if (r.fehler) return `nicht gestartet: ${r.fehler}`;
   if (r.code !== 0) return `Exit ${r.code}`;
+  if (r.dateiAlsTest) return "keine eigenen Tests (node --test meldet nur die Datei selbst)";
   if (r.fail > 0 || r.cancelled > 0) return `${r.fail} rot, ${r.cancelled} abgebrochen trotz Exit 0`;
   if (r.tests === 0) return "0 Tests ausgeführt";
   if (r.pass === 0) return "kein Test bestanden";

@@ -41,7 +41,8 @@
  * Uebergabeart bleibt es bei den bisherigen Texten.
  */
 
-import { handoverMode, HANDOVER_DROPOFF } from "./handoverMode.mjs";
+import { handoverMode, HANDOVER_DROPOFF, HANDOVER_PICKUP } from "./handoverMode.mjs";
+import { isPickupWindowAdjustable } from "./pickupWindowClient.mjs";
 
 const text = (w) => (typeof w === "string" && w.trim() !== "" ? w.trim() : null);
 
@@ -142,8 +143,85 @@ export function pickupSummaryOf(tarif, gewaehltesFenster) {
   const wahl = gewaehltesFenster && typeof gewaehltesFenster === "object" ? gewaehltesFenster : {};
   const von = text(wahl.from);
   const bis = text(wahl.until);
-  const zeit = vertrag.windowFrom && vertrag.windowUntil && von && bis
+  // Einheitlicher Abholtermin (2026-10-24): eine Wahl gibt es nur an einem VERSTELLBAREN Fenster. Ein fester
+  // Zeitraum (etwa der Portalzeitraum 09:00–17:00) bleibt fest — auch wenn noch eine Auswahl im Seitenzustand liegt.
+  const zeit = vertrag.windowFrom && vertrag.windowUntil && isPickupWindowAdjustable(tarif) && von && bis
     ? `${von}–${bis} Uhr`
     : pickupTimeText(vertrag);
   return Object.freeze({ day: vertrag.day, time: zeit, dayAdjusted: vertrag.dayAdjusted, handover: vertrag.handover });
+}
+
+/* ─── DER ABSCHNITT „ABHOLTERMIN" DER BUCHUNGSSEITE (Einheitlicher Abholtermin, 2026-10-24) ─────────────
+ *
+ * JEDE Abholung bekommt denselben Abschnitt — in genau der Genauigkeit, die das Angebot belegt:
+ *
+ *   window_adjustable  ein Von/Bis-Fenster, das der Anbieter verstellen laesst      → Zwei-Griff-Regler (JUMiNGO)
+ *   window_fixed       ein Von/Bis-Fenster ohne Wahl                                → fester Zeitraum
+ *   ready_from         nur eine „bereit ab"-Zeit, kein Ende im Anbietervertrag      → „Sendung bereit ab …"
+ *   date_only          ein Abholtag ohne belastbare Uhrzeit                         → nur das Datum
+ *   none               Paketshopabgabe oder kein Abholtag                           → kein Abschnitt
+ *
+ * Entschieden wird ausschliesslich an den FELDERN des Angebots — nie am Provider, nie an einer ServiceID. Ein
+ * Regler entsteht nur, wo der Server `pickupWindowAdjustable: true` UND ein echtes Fenster nennt; eine Zeit wird
+ * nie zu einem Fenster ergaenzt, ein fester Zeitraum nie zur Wahl.
+ */
+export const PICKUP_PROFILE = Object.freeze({
+  ADJUSTABLE: "window_adjustable",
+  FIXED: "window_fixed",
+  READY_FROM: "ready_from",
+  DATE_ONLY: "date_only",
+  NONE: "none",
+});
+
+// Die Kundentexte des Abschnitts — an EINER Stelle, damit Abschnitt, Tests und Dokumentation nicht driften.
+export const PICKUP_SECTION_TEXT = Object.freeze({
+  titleChoice: "Gewünschter Abholtermin",
+  title: "Abholtermin",
+  dayLabel: "Datum",
+  windowLabel: "Abholzeitfenster",
+  readyFromLabel: "Sendung bereit ab",
+  fixedNote: "Vom Versanddienstleister vorgegeben. Die Abholung erfolgt in diesem Zeitraum; eine genaue Uhrzeit wird nicht zugesagt.",
+  readyFromNote: "Bitte halten Sie die Sendung ab dieser Uhrzeit bereit. Ein festes Abholzeitfenster nennt der Versanddienstleister für diesen Tarif nicht.",
+  dateOnlyNote: "Die Uhrzeit der Abholung legt der Versanddienstleister fest.",
+});
+
+const UHRZEIT = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/**
+ * Welche Variante des Abschnitts „Abholtermin" ein Angebot traegt — und mit welchen Werten.
+ *
+ * `sameDayBookBy` ist der wirksame Buchungsschluss einer Abholung HEUTE (`pickupTodayUntil` vom Server, „HH:MM")
+ * — kein Abholende. Fehlt er oder ist er unbrauchbar, ist er `null`.
+ *
+ * @param   {object} tarif  ein Angebot der calculate-price-Antwort
+ * @returns {{kind: string, day: string|null, dayAdjusted: boolean, handover: string|null,
+ *            from: string|null, until: string|null, readyFrom: string|null, minMinutes: number|null,
+ *            sameDayBookBy: string|null}}
+ */
+export function pickupTimeProfileOf(tarif) {
+  const t = tarif && typeof tarif === "object" ? tarif : {};
+  const vertrag = pickupContractOf(t);
+  const leer = { day: null, dayAdjusted: false, handover: vertrag.handover, from: null, until: null,
+                 readyFrom: null, minMinutes: null, sameDayBookBy: null };
+  // Nur eine Fahrerabholung hat einen Abholtermin. Eine Paketshopabgabe (oder eine unbelegte Uebergabeart) nicht.
+  if (vertrag.handover !== HANDOVER_PICKUP) return Object.freeze({ kind: PICKUP_PROFILE.NONE, ...leer });
+  // Ohne Abholtag UND ohne jede Uhrzeit gibt es nichts zu zeigen. Ein Fenster ohne Tag bleibt sichtbar (wie bisher).
+  if (!vertrag.day && !(vertrag.windowFrom && vertrag.windowUntil) && !vertrag.readyFrom) {
+    return Object.freeze({ kind: PICKUP_PROFILE.NONE, ...leer });
+  }
+  const basis = {
+    ...leer,
+    day: vertrag.day,
+    dayAdjusted: vertrag.dayAdjusted,
+    sameDayBookBy: t.pickupToday === true && typeof t.pickupTodayUntil === "string" && UHRZEIT.test(t.pickupTodayUntil)
+      ? t.pickupTodayUntil : null,
+  };
+  if (vertrag.windowFrom && vertrag.windowUntil) {
+    const fenster = { ...basis, from: vertrag.windowFrom, until: vertrag.windowUntil };
+    if (!isPickupWindowAdjustable(t)) return Object.freeze({ kind: PICKUP_PROFILE.FIXED, ...fenster });
+    const min = Number.isFinite(t.pickupWindowMinMinutes) && t.pickupWindowMinMinutes > 0 ? t.pickupWindowMinMinutes : null;
+    return Object.freeze({ kind: PICKUP_PROFILE.ADJUSTABLE, ...fenster, minMinutes: min });
+  }
+  if (vertrag.readyFrom) return Object.freeze({ kind: PICKUP_PROFILE.READY_FROM, ...basis, readyFrom: vertrag.readyFrom });
+  return Object.freeze({ kind: PICKUP_PROFILE.DATE_ONLY, ...basis });
 }

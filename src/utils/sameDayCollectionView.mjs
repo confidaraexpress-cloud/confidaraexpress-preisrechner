@@ -110,10 +110,22 @@ export function sameDayOfferView(tariff) {
   if (!(surchargeNet > 0) || surchargeGross < surchargeNet) return null;
   return Object.freeze({
     until,
-    untilText: `Abholung heute möglich bis ${until} Uhr`,
+    untilText: sameDayBookByText(until),
     surchargeNet,
     surchargeGross,
   });
+}
+
+/**
+ * Der Satz zur Abholung heute: „Abholung heute bei Buchung bis HH:MM Uhr".
+ *
+ * Einheitlicher Abholtermin (2026-10-24): die Uhrzeit ist der WIRKSAME BUCHUNGSSCHLUSS einer Abholung heute
+ * (`pickupTodayUntil`), kein Abholende — der frühere Satz „Abholung heute möglich bis …" ließ sich als „der Fahrer
+ * kommt bis …" lesen. EINE Stelle für Karte, Zusammenfassung und den Abschnitt „Abholtermin".
+ */
+export function sameDayBookByText(until) {
+  const u = uhrzeit(until);
+  return u === null ? null : `Abholung heute bei Buchung bis ${u} Uhr`;
 }
 
 /** „Zuschlag für Abholung am selben Tag: +X,XX €" — netto oder brutto, wie der Kartenpreis darüber. */
@@ -129,7 +141,7 @@ export function sameDayDetailValue(view) {
   return `+${money(view.surchargeNet)} netto · +${money(view.surchargeGross)} brutto`;
 }
 
-/** „Abholung heute möglich bis HH:MM Uhr" eines Angebots — oder `null`. */
+/** „Abholung heute bei Buchung bis HH:MM Uhr" eines Angebots — oder `null`. */
 export function sameDayUntilText(tariff) {
   const v = sameDayOfferView(tariff);
   return v ? v.untilText : null;

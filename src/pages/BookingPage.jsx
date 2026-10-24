@@ -2255,7 +2255,9 @@ export default function BookingPage() {
               />
             )}
 
-            {tariff.serviceType === "pickup" && tariff.pickupTimeFrom && tariff.pickupTimeUntil && (
+            {/* Einheitlicher Abholtermin: der Abschnitt steht bei JEDER Fahrerabholung — welche Variante
+                (Regler, fester Zeitraum, „bereit ab", nur Datum) entscheidet das Modul an den Angebotsfeldern. */}
+            {tariff.serviceType === "pickup" && (
               <PickupWindowModule
                 tariff={tariff}
                 ceShipmentId={bookingData?.ceShipmentId}
@@ -2712,12 +2714,20 @@ export default function BookingPage() {
               gewähltes Fenster ist nicht mehr verfügbar.
             </p>
 
-            <div className="price-drift-compare" style={{ justifyContent: "center" }}>
-              <div className="price-drift-col price-drift-col--new">
-                <span className="price-drift-col-label">Neu verfügbar</span>
-                <span className="price-drift-new">{pickupWindowChanged.availableFrom}–{pickupWindowChanged.availableUntil} Uhr</span>
+            {/* Ohne neues Fenster (der Tarif nennt keines mehr) steht hier keine erfundene Zeit — nur der Satz darunter. */}
+            {pickupWindowChanged.availableFrom && pickupWindowChanged.availableUntil ? (
+              <div className="price-drift-compare" style={{ justifyContent: "center" }}>
+                <div className="price-drift-col price-drift-col--new">
+                  <span className="price-drift-col-label">{pickupWindowChanged.adjustable === false ? "Abholzeitfenster jetzt" : "Neu verfügbar"}</span>
+                  <span className="price-drift-new">{pickupWindowChanged.availableFrom}–{pickupWindowChanged.availableUntil} Uhr</span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <p className="price-drift-desc">Für diesen Tarif nennt der Versanddienstleister kein Abholzeitfenster mehr.</p>
+            )}
+            {pickupWindowChanged.adjustable === false && pickupWindowChanged.availableFrom && pickupWindowChanged.availableUntil && (
+              <p className="price-drift-desc">Dieses Zeitfenster ist fest vorgegeben und kann nicht eingeengt werden.</p>
+            )}
             {Number.isFinite(pickupWindowChanged.minimumMinutes) && pickupWindowChanged.minimumMinutes > 0 && (
               <p className="price-drift-desc">Mindestdauer des Fensters: {formatDuration(pickupWindowChanged.minimumMinutes)}.</p>
             )}

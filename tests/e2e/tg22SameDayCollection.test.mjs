@@ -2,7 +2,7 @@
 // gemocktes Backend (Optionen und Bindung über helpers/residentialPriceInputs.mjs).
 //
 // Gemessen wird, was eine Quelltextprüfung nicht erreicht:
-//   A  Angebotsliste: Preis inkl. Zuschlag, Zuschlagszeile netto/brutto, „Abholung heute möglich bis 16:45 Uhr“,
+//   A  Angebotsliste: Preis inkl. Zuschlag, Zuschlagszeile netto/brutto, „Abholung heute bei Buchung bis 16:45 Uhr“,
 //      Details; ein JUMiNGO-Tarif mit eigener Abholung heute bleibt ohne Zuschlagszeile
 //   B  Nach dem Abholschluss: sichtbar mit Preis, nicht auswählbar, Grund am Knopf, Hinweis darunter
 //   C  Buchung heute + Privatadresse + Absicherung: Zusammenfassungen, frische „bereit ab“-Zeit, Bestandteile,
@@ -354,7 +354,7 @@ test("A — Angebotsliste: Preis inkl. Zuschlag; Zuschlag netto/brutto und Abhol
   const detail = panel.locator('.offer-detail-row:has(.offer-detail-label:text-is("Zuschlag für Abholung am selben Tag"))');
   await detail.waitFor({ timeout: 10000 });
   assert.equal(await inhalt(detail.locator(".offer-detail-value")), "+3,02 € netto · +3,60 € brutto");
-  assert.equal(await inhalt(panel.locator(".offer-sameday-until")), "Abholung heute möglich bis 16:45 Uhr");
+  assert.equal(await inhalt(panel.locator(".offer-sameday-until")), "Abholung heute bei Buchung bis 16:45 Uhr");
 
   // JUMiNGO mit eigener Abholung heute: der Titel bleibt, eine Zuschlagszeile entsteht nicht — auch nicht in den Details.
   const jm = karteVon(page, JM);
@@ -459,7 +459,7 @@ test("C — Buchung heute + Privatadresse + Absicherung: Zeilen auf allen Fläch
   assert.match(await inhalt(page.locator(".blsum-price-gross")), /18,28 €/);
   assert.equal(await inhalt(page.locator("#booking-live-sameday-note")), "inkl. Zuschlag für Abholung am selben Tag 3,60 €");
   assert.equal(await inhalt(page.locator("#offer-summary-sameday-note")), "inkl. Zuschlag für Abholung am selben Tag 3,60 €");
-  assert.equal(await inhalt(page.locator("#offer-summary-sameday-until")), "Abholung heute möglich bis 16:45 Uhr");
+  assert.equal(await inhalt(page.locator("#offer-summary-sameday-until")), "Abholung heute bei Buchung bis 16:45 Uhr");
   assert.match(await inhalt(page.locator(".offsum-facts")), /bereit ab 11:30 Uhr/);
 
   await waehleLieferadresse(page, true);
@@ -624,7 +624,7 @@ test("F — Zurück zum Vergleich: gebundener Preis, Zuschlagszeile und frische 
   const panel = await oeffneDetails(karte);
   const zuschlag = panel.locator('.offer-detail-row:has(.offer-detail-label:text-is("Zuschlag für Abholung am selben Tag"))');
   assert.equal(await inhalt(zuschlag.locator(".offer-detail-value")), "+3,02 € netto · +3,60 € brutto");
-  assert.equal(await inhalt(panel.locator(".offer-sameday-until")), "Abholung heute möglich bis 16:45 Uhr");
+  assert.equal(await inhalt(panel.locator(".offer-sameday-until")), "Abholung heute bei Buchung bis 16:45 Uhr");
   assert.deepEqual(fehler, []);
   await page.close();
 });

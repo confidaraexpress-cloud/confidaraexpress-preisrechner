@@ -61,7 +61,8 @@ test("(2) Anfrage: genau die 15 Felder des Kundenrechners, Zahlen als Zahlen, Ca
 
 test("(3) Optionen: dieselben Kennungen wie der Kundenrechner, ohne wertende Texte", () => {
   assert.deepEqual(SERVICE_FILTER_OPTIONS.map((o) => o.id), ["all", "pickup", "dropoff", "pickup_today"]);
-  assert.deepEqual(SHIPPING_MODE_OPTIONS.map((o) => o.id), ["all", "standard", "express", "economy"]);
+  // Gesamtauftrag F (2026-10-24): ohne „Economy" — Economy-Produkte erscheinen unter „Alle Versandarten".
+  assert.deepEqual(SHIPPING_MODE_OPTIONS.map((o) => o.id), ["all", "standard", "express"]);
   assert.deepEqual(SORT_OPTIONS.map((o) => o.id), ["recommended", "cheapest", "priciest", "fastest"]);
   const texte = JSON.stringify([SERVICE_FILTER_OPTIONS, SHIPPING_MODE_OPTIONS, SORT_OPTIONS]);
   assert.doesNotMatch(texte, /günstigst|empfehl|beste/i);

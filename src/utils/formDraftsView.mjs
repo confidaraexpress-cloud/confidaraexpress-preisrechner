@@ -29,8 +29,13 @@ export const SHIPMENT_DRAFT_KIND = "shipment";
 
 // Erlaubte Filter-Enums (Spiegel von NewShipmentPage SERVICE_OPTIONS /
 // SHIPPING_MODE_OPTIONS). Unbekannte Werte fallen bei der Rehydration auf "all".
+// Gesamtauftrag F (2026-10-24): "economy" ist keine Filteroption mehr. Jeder gespeicherte Zustand mit "economy"
+// (Entwurf, Sitzung, Übergabe, Snapshot) landet damit an dieser EINEN Stelle auf "all"; die Economy-Produkte
+// selbst bleiben und erscheinen unter „Alle Versandarten". Beim Fortsetzen eines Entwurfs sagt es ein Hinweis.
 export const FORM_SERVICE_FILTERS = ["all", "pickup", "dropoff", "pickup_today"];
-export const FORM_SHIPPING_MODES = ["all", "standard", "express", "economy"];
+export const FORM_SHIPPING_MODES = ["all", "standard", "express"];
+// Der entfallene Wert — nur, um beim Fortsetzen eines Entwurfs ehrlich auf die Umstellung hinzuweisen.
+const ENTFALLENER_VERSANDARTFILTER = "economy";
 
 // ── kleine, defensive Helfer ────────────────────────────────────────────────
 const str = (v) => (typeof v === "string" ? v.trim() : "");
@@ -236,6 +241,10 @@ function mapParty(src, prefix, base) {
   base[`${prefix}_state`] = normalizeStateCode(base[`${prefix}_country`], src.state);
 }
 
+// Hinweis beim Fortsetzen eines Entwurfs, dessen gespeicherter Versandartfilter „Economy" war (Gesamtauftrag F).
+export const RESUME_ECONOMY_FILTER_NOTICE =
+  "Der gespeicherte Versandartfilter „Economy“ ist entfallen. Angezeigt werden alle Versandarten — Economy-Produkte sind darin enthalten.";
+
 // Hinweis beim Fortsetzen eines Entwurfs, dessen Versanddatum inzwischen vergangen ist.
 export const RESUME_PAST_DATE_NOTICE =
   "Ihre Angaben sind erhalten geblieben. Das gespeicherte Versanddatum liegt in der Vergangenheit — bitte wählen Sie ein neues Versanddatum, bevor Sie die Angebote vergleichen.";
@@ -272,6 +281,8 @@ export function buildResumeInitialState(formData, { today = null } = {}) {
 
   const serviceFilter = FORM_SERVICE_FILTERS.includes(opt.serviceFilter) ? opt.serviceFilter : "all";
   const shippingModeFilter = FORM_SHIPPING_MODES.includes(opt.shippingModeFilter) ? opt.shippingModeFilter : "all";
+  // Gesamtauftrag F: der Entwurf trug den entfallenen Filter „Economy" — die Seite nennt die Umstellung auf „Alle".
+  const shippingModeReset = opt.shippingModeFilter === ENTFALLENER_VERSANDARTFILTER;
   const selectedPublicCarrierIds = Array.isArray(opt.publicCarrierIds)
     ? opt.publicCarrierIds.map((x) => safeStr(x)).filter((x) => x.length > 0)
     : [];
@@ -291,7 +302,7 @@ export function buildResumeInitialState(formData, { today = null } = {}) {
   // Residential). Der gespeicherte Schnappschuss ist auch hier KEIN Autoritätsbeweis.
   Object.assign(form, declarationsFromSnapshot(fd.declarations));
 
-  return { form, shippingDate, shippingDateExpired, serviceFilter, shippingModeFilter, selectedPublicCarrierIds, inventoryContext };
+  return { form, shippingDate, shippingDateExpired, serviceFilter, shippingModeFilter, shippingModeReset, selectedPublicCarrierIds, inventoryContext };
 }
 
 // ── Resume-Payload (Frontend-Vertrag) ───────────────────────────────────────

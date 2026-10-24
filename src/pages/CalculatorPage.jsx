@@ -67,11 +67,13 @@ const SERVICE_OPTIONS = [
   { id: "pickup_today", icon: "zap",       label: "Abholung heute",        desc: "Tarife mit Abholung noch heute anzeigen" },
 ];
 
+// Gesamtauftrag F (2026-10-24): drei Optionen. „Economy" ist keine Filteroption mehr — Economy-Produkte (etwa
+// TNT Economy Express, DHL Economy Select) bleiben angeboten und erscheinen unter „Alle Versandarten". Ein
+// gespeichertes „economy" fällt zentral auf „all" (utils/formDraftsView.mjs: FORM_SHIPPING_MODES).
 const SHIPPING_MODE_OPTIONS = [
-  { id: "all",      icon: "package", label: "Alle Versandarten", desc: "Standard, Express und Economy anzeigen" },
+  { id: "all",      icon: "package", label: "Alle Versandarten", desc: "Alle Tarife anzeigen, auch Economy-Produkte" },
   { id: "standard", icon: "truck",   label: "Standard",          desc: "Regulärer Versand ohne Aufpreis"        },
   { id: "express",  icon: "zap",     label: "Express",           desc: "Schnellste verfügbare Zustellung"       },
-  { id: "economy",  icon: "clock",   label: "Economy",           desc: "Günstigster Tarif, längere Laufzeit"    },
 ];
 
 export default function CalculatorPage() {

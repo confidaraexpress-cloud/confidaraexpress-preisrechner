@@ -104,7 +104,7 @@ import {
   buildResumeInitialState, resumeSourceFromDraft, isValidResumeDraft, buildResumePayload,
   isValidShipmentResumeDraft,
   classifyFormDraftTransition, mapFormDraftStartError, SHIPMENT_PERSISTENCE_FAILED_MESSAGE,
-  RESUME_PAST_DATE_NOTICE,
+  RESUME_PAST_DATE_NOTICE, RESUME_ECONOMY_FILTER_NOTICE,
 } from "../utils/formDraftsView.mjs";
 import { PROFILE_DASHBOARD_TARGET } from "../utils/bookingSuccessView.mjs";
 import { bookingProfileNotice } from "../utils/bookingProfileView.mjs";
@@ -250,11 +250,13 @@ const SERVICE_OPTIONS = [
   { id: "pickup_today", icon: "zap",       label: "Abholung heute",        desc: "Tarife mit Abholung noch heute anzeigen" },
 ];
 
+// Gesamtauftrag F (2026-10-24): drei Optionen. „Economy" ist keine Filteroption mehr — Economy-Produkte (etwa
+// TNT Economy Express, DHL Economy Select) bleiben angeboten und erscheinen unter „Alle Versandarten". Ein
+// gespeichertes „economy" fällt zentral auf „all" (utils/formDraftsView.mjs: FORM_SHIPPING_MODES).
 const SHIPPING_MODE_OPTIONS = [
-  { id: "all",      icon: "package", label: "Alle Versandarten", desc: "Standard, Express und Economy anzeigen" },
+  { id: "all",      icon: "package", label: "Alle Versandarten", desc: "Alle Tarife anzeigen, auch Economy-Produkte" },
   { id: "standard", icon: "truck",   label: "Standard",          desc: "Regulärer Versand ohne Aufpreis"        },
   { id: "express",  icon: "zap",     label: "Express",           desc: "Schnellste verfügbare Zustellung"       },
-  { id: "economy",  icon: "clock",   label: "Economy",           desc: "Günstigster Tarif, längere Laufzeit"    },
 ];
 
 export default function NewShipmentPage({ prefillAddress, onPrefillApplied, prefillInventory, onInventoryPrefillApplied, resumeDraft, onResumeApplied, registerLeaveGuard, commitLeave } = {}) {
@@ -506,6 +508,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // nicht blockierender Hinweis. TG22 Paket B: startet ein Entwurf mit vergangenem Versanddatum,
   // sagt er sofort, warum das Datum leer ist und die Berechnung auf eine Wahl wartet.
   const [resumeNotice, setResumeNotice]       = useState(() => (resumeInit && resumeInit.shippingDateExpired ? RESUME_PAST_DATE_NOTICE : ""));
+  // Gesamtauftrag F: ein fortgesetzter Entwurf mit dem entfallenen Filter „Economy" zeigt „Alle Versandarten" und sagt es.
+  // Eigener Hinweis neben dem Datumshinweis — beide können zugleich gelten. Er fällt, sobald eine Versandart gewählt wird.
+  const [modeResetNotice, setModeResetNotice] = useState(() => (resumeInit && resumeInit.shippingModeReset ? RESUME_ECONOMY_FILTER_NOTICE : ""));
   const [resumeConflict, setResumeConflict]   = useState(false);  // 409 Konflikt → „Aktuelle Version laden"
   const [reloadingResume, setReloadingResume] = useState(false);
 
@@ -1137,6 +1142,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       const init = buildResumeInitialState(payload.formData, { today: businessTodayISO() });
       const nextDate = init.shippingDate;
       setResumeNotice(init.shippingDateExpired ? RESUME_PAST_DATE_NOTICE : "");
+      setModeResetNotice(init.shippingModeReset ? RESUME_ECONOMY_FILTER_NOTICE : "");
       setForm(init.form);
       setShippingDate(nextDate);
       setServiceFilter(init.serviceFilter);
@@ -1242,7 +1248,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   }, [form.latestDeliveryDate, form.latestDeliveryTime]);
 
   const handleServiceFilter = (id) => { setServiceFilter(id); setServiceFilterOpen(false); resetResults(); };
-  const handleShippingMode  = (id) => { setShippingModeFilter(id); setShippingModeOpen(false); resetResults(); };
+  const handleShippingMode  = (id) => { setShippingModeFilter(id); setShippingModeOpen(false); setModeResetNotice(""); resetResults(); };
   const handleDateChange    = (iso) => {
     if (!iso || iso < todayISO()) return;
     setShippingDate(iso); setDatePickerOpen(false);
@@ -1568,6 +1574,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       resetResults();                                  // frische Grundlage → alte Ergebnisse verwerfen
       setResumeSource(resumeSourceFromDraft(payload)); // aktualisierte Revision
       setResumeConflict(false); setResumeNotice(init.shippingDateExpired ? RESUME_PAST_DATE_NOTICE : "");
+      setModeResetNotice(init.shippingModeReset ? RESUME_ECONOMY_FILTER_NOTICE : "");
     } catch (e) {
       if (mountedRef.current) setError(e?.message || "Die aktuelle Version konnte nicht geladen werden. Bitte versuchen Sie es erneut.");
     }
@@ -1845,6 +1852,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
           {resumeNotice && (
             <div className="dft-resume-info" role="status">
               <span>{resumeNotice}</span>
+            </div>
+          )}
+          {modeResetNotice && (
+            <div className="dft-resume-info" role="status">
+              <span>{modeResetNotice}</span>
             </div>
           )}
           {/* Herkunftshinweis eines Vorgangs aus Lager oder Auftrag. Bewusst

@@ -7,7 +7,7 @@ import {
   normalizeFormDraft, normalizeShipmentDraft, combinedDraftKey, displayUpdatedAt,
   mergeDraftSources, appendFormDraftPage, removeDraftById,
   formatFormRecipient, formatFormSender, formatFormRoute, formatFormPackage, formFormShippingDate,
-  blankNewShipmentForm, buildResumeInitialState,
+  blankNewShipmentForm, buildResumeInitialState, FORM_SHIPPING_MODES, RESUME_ECONOMY_FILTER_NOTICE,
   isValidResumeDraft, buildResumePayload, resumeSourceFromDraft,
   classifyFormDraftTransition, mapFormDraftStartError, mapFormDraftDeleteErrorToMessage,
   hasUsableShipmentReference,
@@ -182,6 +182,20 @@ test("buildResumeInitialState: Versanddatum in der Vergangenheit → leer und al
   assert.equal(heute.shippingDateExpired, false);
   // Ohne Datum ist nichts abgelaufen — es fehlt nur.
   assert.equal(buildResumeInitialState({}, { today: "2026-07-21" }).shippingDateExpired, false);
+});
+
+test("Gesamtauftrag F: ein gespeichertes „economy“ fällt auf „all“ — mit Hinweis nur beim entfallenen Wert", () => {
+  assert.deepEqual(FORM_SHIPPING_MODES, ["all", "standard", "express"]);
+  const economy = buildResumeInitialState({ shippingOptions: { shippingModeFilter: "economy" } }, { today: "2026-07-21" });
+  assert.equal(economy.shippingModeFilter, "all");
+  assert.equal(economy.shippingModeReset, true);
+  for (const [wert, erwartet] of [["express", "express"], ["standard", "standard"], ["all", "all"], ["unsinn", "all"], [undefined, "all"]]) {
+    const s = buildResumeInitialState({ shippingOptions: { shippingModeFilter: wert } }, { today: "2026-07-21" });
+    assert.equal(s.shippingModeFilter, erwartet, String(wert));
+    assert.equal(s.shippingModeReset, false, `kein Hinweis bei ${String(wert)}`);
+  }
+  assert.match(RESUME_ECONOMY_FILTER_NOTICE, /Economy/);
+  assert.match(RESUME_ECONOMY_FILTER_NOTICE, /alle Versandarten/);
 });
 test("buildResumeInitialState: fehlende Werte → normale Defaults", () => {
   const s = buildResumeInitialState({}, { today: "2026-07-21" });

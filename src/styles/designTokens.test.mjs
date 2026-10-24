@@ -50,8 +50,15 @@ const QUELL_JS = [
 // Kommentare enthalten Tokennamen zu Dokumentationszwecken — vor dem Parsen weg.
 const css = roh.replace(/\/\*[\s\S]*?\*\//g, "");
 
+// Gesamtauftrag D (2026-10-24): die Rahmenstufen sind bewusste Neudefinitionen in @media-Blöcken — sie zählen
+// nicht als Widerspruch (Test 1) und stehen ausdrücklich in Test 1b. Jede andere Neudefinition bleibt verboten.
+const STUFEN_RE = /@media \(min-width: (\d+)px\) \{\s*:root \{([^}]*)\}\s*\}/g;
+const stufen = [...css.matchAll(STUFEN_RE)].map(([, ab, rumpf]) => [Number(ab),
+  Object.fromEntries([...rumpf.matchAll(/--([\w-]+):\s*([^;]+);/g)].map(([, n, w]) => [n, w.trim()]))]);
+const cssOhneStufen = css.replace(STUFEN_RE, "");
+
 // Alle Deklarationen einsammeln (Werte dürfen mehrzeilig sein, etwa Verläufe).
-const deklarationen = [...css.matchAll(/--([\w-]+):\s*([^;]+);/g)]
+const deklarationen = [...cssOhneStufen.matchAll(/--([\w-]+):\s*([^;]+);/g)]
   .map(([, name, wert]) => [name, wert.replace(/\s+/g, " ").trim()]);
 
 const werte = new Map();
@@ -73,6 +80,20 @@ const roheZuweisung = (name) => werte.get(name);
 
 test("1 — kein Token doppelt mit widersprüchlichem Wert", () => {
   assert.deepEqual(doppelt, [], `mehrfach mit unterschiedlichem Wert deklariert: ${doppelt.join(", ")}`);
+});
+
+test("1b — Rahmenstufen (Gesamtauftrag D): Kunden 1200 / 1440 / 1680, Admin 1440 / 1680 / 1920, Buchung 800 + 32 + 368", () => {
+  assert.equal(werte.get("ce-size-content"), "1200px");
+  assert.equal(werte.get("ce-size-content-admin"), "1440px");
+  assert.deepEqual(stufen, [
+    [1680, { "ce-size-content": "1440px", "ce-size-content-admin": "1680px" }],
+    [2240, { "ce-size-content": "1680px", "ce-size-content-admin": "1920px" }],
+  ]);
+  // Die zweispaltige Buchung füllt genau den Grundrahmen — Titel, Schritte und Spalten auf einer Kante.
+  const px = (n) => Number(String(werte.get(n)).replace("px", ""));
+  assert.equal(px("ce-size-booking") + px("ce-space-7") + px("ce-size-booking-side"), px("ce-size-content"));
+  // Keine weitere Stufe in der Tokendatei — Stufen wachsen nur hier und nur bewusst.
+  assert.equal((css.match(/@media/g) || []).length, stufen.length);
 });
 
 test("2 — die Farb-Foundation ist vollständig", () => {

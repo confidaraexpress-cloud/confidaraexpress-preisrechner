@@ -128,10 +128,14 @@ test("7 — Angebotskarten sind auf Interactive-Card-Tokens umgestellt", () => {
 test("7b — die Angebotssektion ist auf Desktop begrenzt und zentriert, Mobile bleibt voll", () => {
   const sektion = offersCss.match(/\.offers-section\s*\{([^}]*)\}/);
   assert.ok(sektion, ".offers-section muss definiert sein");
-  const breite = sektion[1].match(/max-width:\s*(\d+)px/);
-  assert.ok(breite, "die Sektion braucht eine Breitenbegrenzung");
-  const px = Number(breite[1]);
-  assert.ok(px >= 1000 && px <= 1120, `unerwartete Breite ${px}px`);
+  // Gesamtauftrag D (2026-10-24): an den Rahmen gebunden statt fest — 120 px schmaler als der Inhalt, höchstens
+  // 1280 px. Im Grundrahmen (1200 px, bis 1679 px Viewport) also unverändert 1080 px.
+  const breite = sektion[1].match(/max-width:\s*min\(calc\(var\(--ce-size-content\) - (\d+)px\), (\d+)px\)/);
+  assert.ok(breite, "die Sektion braucht die an den Rahmen gebundene Breitenbegrenzung");
+  const abzug = Number(breite[1]), obergrenze = Number(breite[2]);
+  assert.equal(obergrenze, 1280, "Obergrenze der Angebotssektion");
+  const px = 1200 - abzug;
+  assert.ok(px >= 1000 && px <= 1120, `unerwartete Breite ${px}px im Grundrahmen`);
   assert.match(sektion[1], /margin-inline:\s*auto/, "ohne Zentrierung klebt die Liste links");
 
   // Die Begrenzung sitzt auf der SEKTION — Ergebniskopf, Filterleiste und Karten

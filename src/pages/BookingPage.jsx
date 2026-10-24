@@ -2212,12 +2212,18 @@ export default function BookingPage() {
           <>
             {/* Netto/Brutto: derselbe Umschalter wie in der Angebotsliste — reine Darstellung. Er steht über
                 der Live-Leiste und nicht in ihr: die Leisten bleiben Zusammenfassungen ohne Bedienelemente. */}
-            <div className="booking-vat-row">
-              <span className="booking-vat-label" id="booking-vat-label">{VAT_TEXT.toggleLabel}</span>
-              <VatModeToggle vatMode={vatMode} onChange={waehleVatMode} labelledBy="booking-vat-label" />
-            </div>
-            <div ref={liveSummaryRef}>
-              <BookingLiveSummary tariff={tariff} priceView={priceView} pickupWindow={pickupWindow} vatMode={vatMode} />
+            {/* Gesamtauftrag D: ab 1600 px stehen Umschalter und Live-Zusammenfassung als Seitenspalte neben der
+                Arbeitsspalte (calculator.css). Darunter sind die beiden Wrapper reine Blöcke ohne eigene Gestalt. */}
+            <div className="booking-side">
+              <div className="booking-side-inner">
+                <div className="booking-vat-row">
+                  <span className="booking-vat-label" id="booking-vat-label">{VAT_TEXT.toggleLabel}</span>
+                  <VatModeToggle vatMode={vatMode} onChange={waehleVatMode} labelledBy="booking-vat-label" />
+                </div>
+                <div ref={liveSummaryRef}>
+                  <BookingLiveSummary tariff={tariff} priceView={priceView} pickupWindow={pickupWindow} vatMode={vatMode} />
+                </div>
+              </div>
             </div>
             <BookingStickySummary tariff={tariff} priceView={priceView} observeRef={liveSummaryRef} vatMode={vatMode} />
           </>

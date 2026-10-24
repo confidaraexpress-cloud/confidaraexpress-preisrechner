@@ -84,6 +84,13 @@
   max-width: var(--ce-size-booking);
   margin-inline: auto;
 }
+/* Gesamtauftrag D: ab 1600 px mit Seitenspalte steht der Titel über der ganzen Komposition (1200 px) — so bleibt
+   er auf der Kante der Arbeitsspalte (calculator.css, .booking-side). */
+@media (min-width: 1600px) {
+  .main-content:has(.booking-side) .ce-page-header--booking .ce-page-header-main {
+    max-width: calc(var(--ce-size-booking) + var(--ce-space-7) + var(--ce-size-booking-side));
+  }
+}
 
 .ce-page-header-title {
   margin: 0;

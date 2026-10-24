@@ -1583,8 +1583,10 @@
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px;
   font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-secondary);
 }
+/* Die Quellenangabe der Kacheln steht unten rechts (MapLibre). Der Abdeckungshinweis lässt ihr Platz und bricht
+   bei schmaler Karte um, statt unter ihr zu verschwinden (gemessen 390 px, „7 von 10 …“). */
 .ap-map-context {
-  position: absolute; left: 12px; bottom: 12px; margin: 0; max-width: calc(100% - 24px);
+  position: absolute; left: 12px; bottom: 12px; margin: 0; max-width: calc(100% - 24px - 150px);
   padding: 6px 10px; border-radius: var(--ce-radius-sm); background: var(--ce-color-surface);
   border: 1px solid var(--ce-color-border-subtle);
   font-size: var(--ce-text-caption-size); color: var(--ce-color-text-secondary);

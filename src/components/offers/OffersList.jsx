@@ -47,6 +47,9 @@ export function OffersList({
   onClearFilters,
   vatMode, onVatToggle,
   senderPrefill,
+  // Gesamtauftrag B: Bestätigungen der Firmenpflicht je Angebot (offerKey → true), die Karte mit fehlender
+  // Bestätigung (offerKey) und der stabile Rückruf. Ohne Rückruf (Versandkostenrechner) zeigt die Karte nur den Hinweis.
+  businessConfirmations = null, businessConfirmError = null, onBusinessConfirm,
 }) {
   // Aktives Filter-Dropdown: "price" | "delivery" | null. Es ist immer höchstens
   // eines offen; das Öffnen des einen schließt das andere. Ersetzt den früheren
@@ -139,6 +142,10 @@ export function OffersList({
       senderPrefill={senderPrefill}
       /* TG-L2: der Tag, ab dem eine Abgabe möglich ist — der Startknoten einer Abgabe nennt ihn. */
       abgabeTag={shippingDate || null}
+      /* Gesamtauftrag B: je Karte nur Wahrheitswerte — eine Bestätigung rendert genau diese Karte neu. */
+      businessConfirmed={!!(businessConfirmations && offerKey(t) && businessConfirmations[offerKey(t)])}
+      businessConfirmError={!!(businessConfirmError && businessConfirmError === offerKey(t))}
+      onBusinessConfirm={onBusinessConfirm}
     />
   );
 

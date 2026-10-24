@@ -15,7 +15,9 @@ import { fileURLToPath } from "node:url";
 import { offerBookable, offerBlocked, offerBlockedLabel, offerBlockedHint, offerSelectable,
          OFFER_BUSINESS_RECIPIENT_REASON, OFFER_BUSINESS_RECIPIENT_TEXT,
          OFFER_BUSINESS_RECIPIENT_HINT, OFFER_ADDRESS_DETAILS_TOO_LONG_REASON,
-         OFFER_ADDRESS_DETAILS_TOO_LONG_TEXT, OFFER_ADDRESS_DETAILS_TOO_LONG_HINT } from "./offerIdentity.mjs";
+         OFFER_ADDRESS_DETAILS_TOO_LONG_TEXT, OFFER_ADDRESS_DETAILS_TOO_LONG_HINT,
+         offerAwaitsBusinessDetails, offerBusinessRequirement, OFFER_BUSINESS_PARTY_TEXT, OFFER_BUSINESS_CONFIRM_LABEL,
+         OFFER_BUSINESS_COMPANY_FIELD_MESSAGE, OFFER_BUSINESS_CONFIRM_ERROR, OFFER_BUSINESS_NOT_FOUND_NOTICE } from "./offerIdentity.mjs";
 import { handoverMode, handoverLabelForTariff, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "./handoverMode.mjs";
 import { fmtDelivery } from "./formatters.js";
 import { deliveryContractOf } from "./deliveryContractView.mjs";
@@ -319,9 +321,11 @@ test("(H1) ohne Buchbarkeit kein Klick, keine Auswahl, keine Folgeaktion", () =>
 });
 
 test("(H2) der Grundtext nennt keinen Provider", () => {
+  // Gesamtauftrag B: business_recipient_required ist seit 2026-10-24 auswählbar und trägt keinen Grundtext mehr
+  // (siehe H3) — an seiner Stelle steht hier ein weiterhin gesperrter kundenlösbarer Grund.
   const texte = [offerBlockedLabel(TG_DROPOFF), offerBlockedLabel({ availableForDate: false }),
                  offerBlockedLabel({ bookable: false, unavailableReason: "unbekannt" }),
-                 offerBlockedLabel({ bookable: false, unavailableReason: OFFER_BUSINESS_RECIPIENT_REASON })];
+                 offerBlockedLabel({ bookable: false, unavailableReason: OFFER_ADDRESS_DETAILS_TOO_LONG_REASON })];
   for (const t of texte) {
     assert.ok(typeof t === "string" && t.length > 0);
     assert.ok(!/transglobal|jumingo/i.test(t), `Providername im Grundtext: ${t}`);
@@ -331,20 +335,35 @@ test("(H2) der Grundtext nennt keinen Provider", () => {
 
 /* ── Geschäftsempfänger: ein kundenlösbarer Grund, kein Providerleck ───────────── */
 
-test("(H3) business_recipient_required: neutraler Text, Handlungshinweis, NICHT auswählbar", () => {
+test("(H3) business_recipient_required: seit Gesamtauftrag B AUSWÄHLBAR, nicht buchbar — Hinweis statt Sperrtext", () => {
+  // Betreiberentscheidung 2026-10-24: die Karte zeigt „Angebot auswählen", die Anforderung und ein Bestätigungsfeld;
+  // fehlt der Firmenname, führt die Seite zum Feld. Gebucht wird erst nach dem neuen Vergleich (Server, /book).
   const t = { bookable: false, unavailableReason: OFFER_BUSINESS_RECIPIENT_REASON };
-  assert.equal(offerBlockedLabel(t), OFFER_BUSINESS_RECIPIENT_TEXT);
-  assert.equal(offerBlockedLabel(t), "Nur für Geschäftsempfänger verfügbar.");
-  assert.equal(offerBlockedHint(t), OFFER_BUSINESS_RECIPIENT_HINT);
-  assert.equal(offerBlockedHint(t), "Bitte hinterlegen Sie beim Empfänger einen Firmennamen.");
-  // Das Angebot bleibt sichtbar, ist aber nicht wählbar — anders als `price_inputs_required`.
-  assert.equal(offerSelectable(t), false, "das Angebot ist auswählbar geblieben");
-  assert.equal(offerBookable(t), false);
+  assert.equal(offerSelectable(t), true, "das Angebot ist nicht auswählbar");
+  assert.equal(offerAwaitsBusinessDetails(t), true);
+  assert.equal(offerBookable(t), false, "auswählbar heißt nicht buchbar");
   assert.equal(offerBlocked(t), true);
+  assert.equal(offerBlockedLabel(t), null, "ein auswählbares Angebot trägt keinen Sperrtext im Knopf");
+  assert.equal(offerBlockedHint(t), null);
+  assert.equal(offerBusinessRequirement(t).party, "recipient");
+  // Der öffentliche Preisrechner nutzt den bisherigen Satz weiterhin (eigene Karte, unverändert).
+  assert.equal(OFFER_BUSINESS_RECIPIENT_TEXT, "Nur für Geschäftsempfänger verfügbar.");
+  assert.equal(OFFER_BUSINESS_RECIPIENT_HINT, "Bitte hinterlegen Sie beim Empfänger einen Firmennamen.");
+  // Ein Angebot, das an diesem Datum nicht verfügbar ist, bleibt gesperrt — die Firma hilft dort nicht.
+  assert.equal(offerSelectable({ ...t, availableForDate: false }), false);
 });
 
 test("(H4) der Rohcode erreicht die Oberfläche nie — und nennt keinen Anbieter", () => {
-  for (const grund of [OFFER_BUSINESS_RECIPIENT_REASON, OFFER_ADDRESS_DETAILS_TOO_LONG_REASON]) {
+  // Gesamtauftrag B: die Firmenpflicht spricht über eigene Texte (Anforderung, Bestätigung, Feldmeldung, Hinweis).
+  const firmenTexte = [...Object.values(OFFER_BUSINESS_PARTY_TEXT), ...Object.values(OFFER_BUSINESS_CONFIRM_LABEL),
+    ...Object.values(OFFER_BUSINESS_COMPANY_FIELD_MESSAGE), OFFER_BUSINESS_CONFIRM_ERROR, OFFER_BUSINESS_NOT_FOUND_NOTICE];
+  for (const s of firmenTexte) {
+    assert.ok(typeof s === "string" && s.length > 0);
+    assert.ok(!/business_|_required/.test(s), `Rohcode im Text: ${s}`);
+    assert.ok(!/transglobal|jumingo|tnt|dhl|ups|dpd|gls|portal/i.test(s), `Anbietername im Text: ${s}`);
+    assert.ok(!/\d{2,}/.test(s), `eine ServiceID oder Grenze im Text: ${s}`);
+  }
+  for (const grund of [OFFER_ADDRESS_DETAILS_TOO_LONG_REASON]) {
     const text = offerBlockedLabel({ bookable: false, unavailableReason: grund });
     const hinweis = offerBlockedHint({ bookable: false, unavailableReason: grund });
     for (const s of [text, hinweis]) {

@@ -110,9 +110,13 @@ export function offerAwaitsPriceInputs(tariff) {
     && Array.isArray(t.requiredPriceInputs) && t.requiredPriceInputs.includes(PRICE_INPUT_DELIVERY_RESIDENTIAL);
 }
 
-/** Darf der Kunde dieses Angebot auswählen (Karte, Knopf, Buchungsseite)? */
+/** Darf der Kunde dieses Angebot auswählen (Karte, Knopf, Buchungsseite)?
+ *
+ * Gesamtauftrag B (2026-10-24): auch ein Angebot, das nur auf einen Firmennamen wartet
+ * (`offerAwaitsBusinessDetails`), ist auswählbar. Die Seite führt dann zum Firmenfeld, statt die Karte zu
+ * sperren; gebucht wird erst nach einem neuen Vergleich mit Firmenname (Server, `/book` unverändert). */
 export function offerSelectable(tariff) {
-  return !offerBlocked(tariff) || offerAwaitsPriceInputs(tariff);
+  return !offerBlocked(tariff) || offerAwaitsPriceInputs(tariff) || offerAwaitsBusinessDetails(tariff);
 }
 
 /* ── Warum nicht auswählbar? ─────────────────────────────────────────────────
@@ -191,6 +195,55 @@ export function addressDetailsTooLongHint(detail) {
 export const OFFER_BUSINESS_SENDER_REASON = "business_sender_required";
 export const OFFER_BUSINESS_SENDER_TEXT = "Nur für Geschäftsabsender verfügbar.";
 export const OFFER_BUSINESS_SENDER_HINT = "Bitte hinterlegen Sie beim Absender einen Firmennamen.";
+// ─── Firmenpflicht: auswählbar, mit Hinweis und Bestätigung (Gesamtauftrag B, 2026-10-24) ─────────────
+// Der Server sagt die Firmenpflicht auf zwei Wegen: als Produkteigenschaft (`senderRequirement`/
+// `recipientRequirement` = "business", auch bei schon eingetragener Firma) und — solange der Firmenname fehlt —
+// als kundenlösbarer Grund (`business_sender_required`/`business_recipient_required`). Die Karte zeigt dann
+// „Angebot auswählen", die Anforderung und ein Bestätigungsfeld; die Bestätigung ersetzt nie den Firmennamen.
+// Fehlt er, führt „Neue Sendung" zum Feld und setzt nach der Ergänzung mit genau einem neuen Vergleich fort.
+// Die Texte nennen weder Carrier noch Einkaufsquelle — die Pflicht ist eine Eigenschaft des Angebots.
+export const OFFER_BUSINESS_PARTY_TEXT = Object.freeze({
+  recipient: "Nur für Geschäftsempfänger: Zugestellt wird ausschließlich an Unternehmen.",
+  sender: "Nur für Geschäftsabsender: Versendet werden kann nur von einem Unternehmen.",
+  both: "Nur zwischen Unternehmen: Absender und Empfänger müssen Unternehmen sein.",
+});
+export const OFFER_BUSINESS_CONFIRM_LABEL = Object.freeze({
+  recipient: "Der Empfänger ist ein Unternehmen.",
+  sender: "Der Absender ist ein Unternehmen.",
+  both: "Absender und Empfänger sind Unternehmen.",
+});
+export const OFFER_BUSINESS_CONFIRM_ERROR = "Bitte bestätigen Sie diese Angabe, um das Angebot auszuwählen.";
+// Die Meldung am Firmenfeld, wenn ein Angebot mit Firmenpflicht ohne Firmennamen gewählt wird.
+export const OFFER_BUSINESS_COMPANY_FIELD_MESSAGE = Object.freeze({
+  sender: "Für das gewählte Angebot ist beim Absender ein Firmenname erforderlich.",
+  recipient: "Für das gewählte Angebot ist beim Empfänger ein Firmenname erforderlich.",
+});
+// Ehrlich, wenn das gewählte Angebot nach dem neuen Vergleich fehlt oder nicht mehr auswählbar ist.
+export const OFFER_BUSINESS_NOT_FOUND_NOTICE =
+  "Das gewählte Angebot ist mit den ergänzten Angaben nicht verfügbar. Bitte wählen Sie ein anderes Angebot.";
+
+/** Welche Partei muss für dieses Angebot ein Unternehmen sein? `party`: "sender" | "recipient" | "both" | null. */
+export function offerBusinessRequirement(tariff) {
+  const t = tariff && typeof tariff === "object" ? tariff : {};
+  const sender = t.senderRequirement === "business" || t.unavailableReason === OFFER_BUSINESS_SENDER_REASON;
+  const recipient = t.recipientRequirement === "business" || t.unavailableReason === OFFER_BUSINESS_RECIPIENT_REASON;
+  const party = sender && recipient ? "both" : sender ? "sender" : recipient ? "recipient" : null;
+  return Object.freeze({ sender, recipient, party });
+}
+
+/** Wartet dieses Angebot ausschließlich auf einen Firmennamen (Absender oder Empfänger)? */
+export function offerAwaitsBusinessDetails(tariff) {
+  const t = tariff && typeof tariff === "object" ? tariff : {};
+  return t.bookable === false && t.availableForDate !== false
+    && (t.unavailableReason === OFFER_BUSINESS_SENDER_REASON || t.unavailableReason === OFFER_BUSINESS_RECIPIENT_REASON);
+}
+
+/** Die DOM-Kennung des Bestätigungsfelds einer Karte — Ziel des Fokus nach dem geführten Vergleich. */
+export function offerBusinessConfirmId(tariff) {
+  const k = offerKey(tariff);
+  return k ? `offer-business-confirm-${k}` : null;
+}
+
 export const OFFER_CONTENT_DESCRIPTION_REASON = "content_description_required";
 export const OFFER_CONTENT_DESCRIPTION_TEXT = "Nur mit Angabe des Inhalts buchbar.";
 export const OFFER_CONTENT_DESCRIPTION_HINT = "Bitte geben Sie den Inhalt der Sendung an.";

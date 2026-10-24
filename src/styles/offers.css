@@ -802,6 +802,42 @@
 }
 .offer-actions .ps-trigger { margin: 0; }
 
+/* ── Firmenpflicht (Gesamtauftrag B, 2026-10-24) ──
+   Links in der Folgezeile, die seit 2026-10-04 frei ist: die Anforderung als ruhiger Sekundärtext und — in
+   „Neue Sendung" — das Bestätigungsfeld. Kein Warnsymbol, keine Signalfarbe; rot ist nur die Meldung bei
+   fehlender Bestätigung. Reicht die Breite nicht, rücken die Folgeaktionen in die nächste Zeile (rechtsbündig). */
+.offer-zone-4 { flex-wrap: wrap; column-gap: 16px; row-gap: 4px; }
+.offer-business { flex: 1 1 280px; min-width: 0; display: grid; justify-items: start; gap: 2px; }
+.offer-business-note {
+  margin: 0;
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+.offer-business-confirm {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: var(--ce-size-control-sm);
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-primary);
+  cursor: pointer;
+}
+/* Fehlt die Bestätigung beim Klick auf „Angebot auswählen", trägt das Feld die Fehlerkontur — auch ohne
+   sichtbaren Fokusring (nach einem Mausklick zeigt der Browser keinen). */
+.offer-business-confirm input[aria-invalid="true"] {
+  outline: 2px solid var(--ce-color-status-error-fg);
+  outline-offset: 2px;
+}
+.offer-business-error {
+  margin: 0;
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-status-error-fg);
+}
+@media (pointer: coarse) {
+  .offer-business-confirm { min-height: var(--ce-size-touch-target); }
+}
+
 /* ─── Details Panel (lazy accordion) ────────────────────────────────────────── */
 .offer-details-panel--closed { display: none; }
 .offer-details-panel--open {

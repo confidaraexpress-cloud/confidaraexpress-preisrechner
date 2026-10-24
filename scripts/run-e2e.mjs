@@ -19,10 +19,12 @@
  * die Dateien auf n Läufe auf, die parallel auf getrennten CI-Maschinen laufen
  * können; lokal bleibt der Aufruf ohne Parameter und führt alles aus.
  *
- * Verteilt wird REIHUM (Datei k → Teil k mod n), nicht in Blöcken: die
- * Laufzeiten der Suiten sind sehr ungleich, und aufeinanderfolgende Dateien
- * gehören oft zum selben Themengebiet und sind dann ähnlich teuer. Blockweise
- * bekäme ein Teil alle schweren.
+ * Verteilt wird NACH GEMESSENER LAUFZEIT (seit 2026-10-24, scripts/e2eVerteilung.mjs
+ * mit scripts/e2e-laufzeiten.json): längste Suite zuerst, jeweils in den
+ * leichtesten Teil. Reihum nach Dateiname lagen die vier Teile 16–22 Minuten
+ * auseinander, weil die Laufzeiten der Suiten sehr ungleich sind. Eine Suite
+ * ohne Messwert zählt mit dem Median — sie läuft immer mit, nur ihre Balance
+ * ist geschätzt. Die Teilanzahl steht allein im CI-Workflow.
  *
  * WICHTIG: Der Aufteilung liegt dieselbe Auffindung zugrunde wie dem vollen
  * Lauf. Es gibt genau eine Quelle für „welche Dateien gibt es" — lokal und in
@@ -32,10 +34,11 @@
  *   node scripts/run-e2e.mjs --shard 2/4     nur der zweite von vier Teilen
  *   node scripts/run-e2e.mjs --list          nur auflisten, nichts starten
  */
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { verteileSuiten } from "./e2eVerteilung.mjs";
 
 const WURZEL   = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const E2E_DIR  = path.join(WURZEL, "tests", "e2e");
@@ -76,12 +79,27 @@ if (alle.length === 0) {
   process.exit(1);
 }
 
-const dateien = shard
-  ? alle.filter((_, k) => k % shard.gesamt === shard.teil - 1)
-  : alle;
+function leseLaufzeiten() {
+  try {
+    return JSON.parse(readFileSync(path.join(WURZEL, "scripts", "e2e-laufzeiten.json"), "utf8")).suiten || {};
+  } catch (e) {
+    // Ohne Messwerte bleibt die Verteilung vollständig, nur die Balance ist geschätzt (gleiche Gewichte).
+    console.log(`::warning::E2E-Laufzeiten nicht lesbar (${e.message}) — Verteilung mit gleichen Gewichten.`);
+    return {};
+  }
+}
+
+let dateien = alle;
+let erwartet = null;
+if (shard) {
+  const teil = verteileSuiten(alle, leseLaufzeiten(), shard.gesamt)[shard.teil - 1];
+  dateien = teil.suiten;
+  erwartet = teil.last;
+}
 
 const kopf = shard ? `Teil ${shard.teil}/${shard.gesamt}` : "vollständig";
-console.log(`E2E ${kopf}: ${dateien.length} von ${alle.length} Suiten`);
+console.log(`E2E ${kopf}: ${dateien.length} von ${alle.length} Suiten`
+  + (erwartet != null ? ` · erwartet ≈ ${(erwartet / 60).toFixed(1)} min` : ""));
 for (const d of dateien) console.log("  ·", d);
 
 if (argv.includes("--list")) process.exit(0);
@@ -92,11 +110,90 @@ if (dateien.length === 0) {
   process.exit(0);
 }
 
-/* --test-concurrency=1: jede Suite belegt einen festen Port für ihren
-   Dev-Server. Parallel gestartet kollidieren sie (`--strictPort`). */
-const kind = spawn(
-  process.execPath,
-  ["--test", "--test-concurrency=1", ...dateien],
-  { cwd: WURZEL, stdio: "inherit" }
-);
-kind.on("exit", (code, signal) => process.exit(signal ? 1 : code ?? 1));
+/* ── Ausführung je Suite (seit 2026-10-24) ────────────────────────────────────
+ * Jede Suite läuft in einem EIGENEN `node --test`-Aufruf, nacheinander: jede
+ * belegt einen festen Port für ihren Dev-Server, parallel gestartet kollidieren
+ * sie (`--strictPort`). Danach steht je Suite eine Zeile
+ *     E2E-Laufzeit <datei> <sekunden> s · <n> Tests, …
+ * im Protokoll — die Messgrundlage der Laufzeitverteilung — und am Ende eine
+ * Zusammenfassung des Teils.
+ *
+ * Eine Suite gilt nur als bestanden, wenn ihr Prozess mit 0 endet, mindestens
+ * ein Test bestanden ist und kein Test rot oder abgebrochen ist. Bewusst
+ * übersprungene Tests (etwa bei abgeschalteter Zolloberfläche) bleiben erlaubt,
+ * stehen aber je Suite sichtbar im Protokoll. Eine rote Suite verdeckt die
+ * übrigen nicht: es laufen immer alle zugeteilten Suiten. */
+function fuehreSuiteAus(datei) {
+  return new Promise((resolve) => {
+    const kind = spawn(process.execPath, ["--test", "--test-concurrency=1", datei], {
+      cwd: WURZEL,
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    });
+    const zaehler = { tests: 0, pass: 0, fail: 0, skipped: 0, cancelled: 0, dateiAlsTest: false };
+    const norm = (p) => p.replace(/[\\/]+/g, "/"); // TAP verdoppelt Backslashes unter Windows
+    const dateiNorm = norm(datei);
+    let rest = "";
+    const lies = (stueck) => {
+      rest += stueck;
+      const zeilen = rest.split("\n");
+      rest = zeilen.pop();
+      for (const z of zeilen) {
+        // TAP („# tests 3", Node 22 ohne Terminal, CI) und spec („ℹ tests 3", Node 24 lokal).
+        const m = /^(?:#|ℹ) (tests|pass|fail|skipped|cancelled) (\d+)\s*$/.exec(z);
+        if (m) zaehler[m[1]] = Number(m[2]);
+        // Eine Datei OHNE eigene Tests meldet `node --test` als einen bestandenen Test mit dem Dateinamen
+        // („ok 1 - tests/e2e/x.test.mjs“ bzw. „✔ tests\e2e\x.test.mjs (…ms)“) — der Zähler allein sähe 1/1.
+        const t = /^(?:(?:not )?ok \d+ - |[✔✖] )(.+?)(?: \([\d.]+ms\))?\s*$/.exec(z);
+        if (t && norm(t[1]) === dateiNorm) zaehler.dateiAlsTest = true;
+      }
+    };
+    kind.stdout.setEncoding("utf8");
+    kind.stderr.setEncoding("utf8");
+    kind.stdout.on("data", (s) => { process.stdout.write(s); lies(s); });
+    kind.stderr.on("data", (s) => process.stderr.write(s));
+    kind.on("error", (e) => resolve({ code: 1, ...zaehler, fehler: e.message }));
+    kind.on("close", (code, signal) => {
+      if (rest) lies(rest + "\n");
+      resolve({ code: signal ? 1 : code ?? 1, ...zaehler });
+    });
+  });
+}
+
+function befundFuer(r) {
+  if (r.fehler) return `nicht gestartet: ${r.fehler}`;
+  if (r.code !== 0) return `Exit ${r.code}`;
+  if (r.dateiAlsTest) return "keine eigenen Tests (node --test meldet nur die Datei selbst)";
+  if (r.fail > 0 || r.cancelled > 0) return `${r.fail} rot, ${r.cancelled} abgebrochen trotz Exit 0`;
+  if (r.tests === 0) return "0 Tests ausgeführt";
+  if (r.pass === 0) return "kein Test bestanden";
+  return null;
+}
+
+const ergebnisse = [];
+const beginnGesamt = Date.now();
+for (const datei of dateien) {
+  const beginn = Date.now();
+  const r = await fuehreSuiteAus(datei);
+  const sekunden = (Date.now() - beginn) / 1000;
+  const befund = befundFuer(r);
+  ergebnisse.push({ datei, sekunden, befund, ...r });
+  console.log(`E2E-Laufzeit ${datei} ${sekunden.toFixed(1)} s · ${r.tests} Tests, ${r.pass} bestanden, `
+    + `${r.fail} rot, ${r.skipped} übersprungen${befund ? ` · ROT: ${befund}` : ""}`);
+}
+
+const summe = (k) => ergebnisse.reduce((s, e) => s + e[k], 0);
+const rot = ergebnisse.filter((e) => e.befund);
+console.log(`\nE2E ${kopf}: ${ergebnisse.length} von ${dateien.length} Suiten gelaufen · ${summe("tests")} Tests, `
+  + `${summe("pass")} bestanden, ${summe("fail")} rot, ${summe("skipped")} übersprungen · `
+  + `${((Date.now() - beginnGesamt) / 60000).toFixed(1)} min`);
+if (ergebnisse.length !== dateien.length) {
+  console.error("❌ Nicht jede zugeteilte Suite ist gelaufen.");
+  process.exit(1);
+}
+if (rot.length > 0) {
+  console.error(`❌ ${rot.length} von ${ergebnisse.length} Suite(n) rot:`);
+  for (const e of rot) console.error(`   ${e.datei}: ${e.befund}`);
+  process.exit(1);
+}
+console.log(`✅ Alle ${ergebnisse.length} Suiten bestanden.`);

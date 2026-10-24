@@ -60,18 +60,23 @@ jobs:
       - name: Produktionsbuild
         run: npm run build
 
-  # ── Browser-E2E, auf vier Läufe verteilt ──────────────────────────────────
+  # ── Browser-E2E, nach gemessener Laufzeit verteilt ────────────────────────
   # Jede Suite startet ihren EIGENEN Dev-Server und ihren eigenen Chromium;
   # nacheinander dauert der volle Lauf entsprechend lang. Die Aufteilung
   # kommt aus demselben Skript wie der lokale Lauf — es gibt genau eine
   # Quelle dafür, welche Dateien es gibt.
+  # Seit 2026-10-24 verteilt scripts/run-e2e.mjs nach gemessener Laufzeit
+  # (scripts/e2e-laufzeiten.json) statt reihum; reihum lagen die vier Teile
+  # 16–22 Minuten auseinander (Median der CI 22,8 Minuten). Die Teilanzahl
+  # steht NUR hier; tests/e2e/helpers/e2eVerteilung.test.mjs prüft, dass
+  # Matrix und Aufruf zusammenpassen und jede Suite genau einem Teil gehört.
   e2e:
-    name: Browser-E2E ${{ matrix.shard }}/4
+    name: Browser-E2E ${{ matrix.shard }}/8
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false          # ein roter Teil darf die anderen nicht abbrechen
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -84,13 +89,28 @@ jobs:
       - name: Chromium bereitstellen
         run: npx playwright install --with-deps chromium
       - name: E2E-Teil ${{ matrix.shard }}
-        run: node scripts/run-e2e.mjs --shard ${{ matrix.shard }}/4
-      # Der PWA-Verlassen-Guard C11 fiel mehrfach NUR nach einem Main-Merge
-      # trotz gruenem PR-Lauf aus. Kleine gezielte Zusatzkontrolle noch im PR:
-      # drei isolierte Durchlaeufe bei identischem Browser und ohne Provider.
-      # Kein Retry eines fehlgeschlagenen Tests: beim ERSTEN Fehler bleibt CI rot.
+        run: node scripts/run-e2e.mjs --shard ${{ matrix.shard }}/8
+
+  # ── PWA-C11: dreifache Stabilitätsprüfung, eigener Job ─────────────────────
+  # Der PWA-Verlassen-Guard C11 fiel mehrfach NUR nach einem Main-Merge
+  # trotz gruenem PR-Lauf aus. Kleine gezielte Zusatzkontrolle noch im PR:
+  # drei isolierte Durchlaeufe bei identischem Browser und ohne Provider.
+  # Kein Retry eines fehlgeschlagenen Tests: beim ERSTEN Fehler bleibt CI rot.
+  # (Bis 2026-10-24 im vierten E2E-Teil; als eigener Job läuft sie parallel
+  # und belastet die laufzeitbasierte Verteilung nicht.)
+  pwa-c11:
+    name: PWA-C11-Guard-Stabilität (3 Durchläufe)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Chromium bereitstellen
+        run: npx playwright install --with-deps chromium
       - name: PWA-C11-Guard-Stabilitaet (3 unabhaengige Durchlaeufe)
-        if: matrix.shard == 4
         run: |
           for durchlauf in 1 2 3; do
             echo "PWA C11 Durchlauf ${durchlauf}/3"
@@ -111,3 +131,22 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm audit --omit=dev --audit-level=high
+
+  # ── Sammelstatus ──────────────────────────────────────────────────────────
+  # Grün NUR, wenn jeder Prüfjob grün ist (bei der Matrix: jeder E2E-Teil).
+  # `if: always()` sorgt dafür, dass er auch nach einem roten oder abgebrochenen
+  # Job läuft und dann selbst rot wird — statt still zu fehlen. Er ist der
+  # maßgebliche Status vor einem Merge (Canonical Context §17.2).
+  ergebnis:
+    name: CI-Ergebnis
+    needs: [unit, e2e, pwa-c11, audit]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Alle Prüfjobs grün?
+        env:
+          ERGEBNISSE: ${{ toJSON(needs) }}
+        run: |
+          echo "$ERGEBNISSE" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$ERGEBNISSE" | jq -e 'length > 0 and (to_entries | all(.value.result == "success"))' > /dev/null \
+            || { echo "::error::Mindestens ein Prüfjob ist nicht grün — die CI ist rot."; exit 1; }

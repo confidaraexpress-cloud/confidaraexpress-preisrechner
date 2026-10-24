@@ -1,6 +1,6 @@
 # Canonical Project Context — zuerst lesen
 
-**Vor jeder Arbeit an ConfidaraExpress: `CONFIDARAEXPRESS_CANONICAL_CONTEXT.md` (Repository-Wurzel) vollständig lesen.**
+**Vor jeder Arbeit an ConfidaraExpress: `CONFIDARAEXPRESS_CANONICAL_CONTEXT.md` (Repository-Wurzel) lesen — verbindlich, aber gezielt:** die Kapitel 0, 5, 17, 18, 24 und 26 sowie jedes vom Auftrag berührte Fachkapitel vollständig; im Zweifel das betroffene Kapitel ganz (Sitzungsbeginn und Übergabe: Canonical Context §18.1).
 
 Sie ist die projektweite Quelle für Produktidentität, Systemstatus, Produktentscheidungen, kritische Invarianten, Providerarchitektur, Pricing, Billing, Legal, Launch-Scope und Sicherheitsgrenzen.
 
@@ -85,7 +85,9 @@ Docker: `docker build -t confidaraexpress .` → nginx auf Port 80.
 
 ### Lokale Verifikation vs. CI
 
-Lokal die für die Änderung **relevanten** Tests plus `npm run build`. Die vollständige Browser-E2E-Suite läuft lokal nur, wenn Umfang/Risiko es rechtfertigen — CI führt sie ohnehin als PR-Gate aus (Details: Canonical Context §17).
+Lokal nach Canonical Context §17.1: die für die Änderung **relevanten** Tests (neue und geänderte Unit-/Vertragstests, gezielte Browser-Suiten der geänderten Ansichten) plus `npm run build`, höchstens ein Browserlauf gleichzeitig. Eine einzelne Suite: `node --test tests/e2e/<suite>.test.mjs`. Die vollständige Browser-E2E-Suite läuft lokal nur, wenn Umfang/Risiko es rechtfertigen — CI führt sie ohnehin als PR-Gate aus.
+
+**CI** (`.github/workflows/ci.yml`): Unit-Tests und Build, die Browser-E2E in parallelen Teilen, die dreifache PWA-C11-Stabilitätsprüfung und die Abhängigkeitsprüfung laufen gleichzeitig; der Sammelstatus **„CI-Ergebnis"** ist nur grün, wenn jeder Job grün ist (Canonical Context §17.2). `scripts/run-e2e.mjs` verteilt die aufgefundenen Suiten nach gemessener Laufzeit (`scripts/e2eVerteilung.mjs`, Messwerte in `scripts/e2e-laufzeiten.json`; eine Suite ohne Messwert zählt mit dem Median und läuft trotzdem mit), führt jede Suite einzeln aus und lässt sie nur mit Exit 0, mindestens einem bestandenen und keinem roten Test gelten. Die Teilanzahl steht allein im Workflow; `tests/e2e/helpers/e2eVerteilung.test.mjs` prüft, dass Matrix und Aufruf zusammenpassen und jede Suite genau einem Teil zugeordnet ist. Messwerte nach größeren Änderungen der Suiten aus CI-Protokollen erneuern: `gh run view <lauf> --log > lauf.log`, dann `node scripts/e2e-laufzeiten-aktualisieren.mjs lauf.log`.
 
 **Keine Testanzahlen** in dieser Datei oder im Canonical Context festschreiben; sie altern sofort.
 
@@ -186,13 +188,14 @@ Gilt zusätzlich zu allen Sicherheits-, Provider-, Datenbank- und Go-Live-Regeln
 
 1. **Keine Doppelanalysen:** Bereits verifizierte Erkenntnisse wiederverwenden; nur das konkret betroffene Problem untersuchen.
 2. **Kleinste wirksame Änderung:** Keine zusätzlichen Features, Refactorings oder Änderungen außerhalb des Auftrags.
-3. **Risikobasierte Tests:** Bei kleinen Frontend-Änderungen lokal nur die betroffenen Unit-/Vertragstests, gezielte Browser-Suiten und `npm run build`. Die vollständigen Läufe übernimmt CI.
+3. **Risikobasierte Tests:** nach Canonical Context §17.1 (Vorrangliste, Ausnahme bei größerer Systemwirkung, Rechnerschonung); frontendseitig die betroffenen Unit-/Vertragstests, gezielte Browser-Suiten der geänderten Ansichten und `npm run build`. Die vollständigen Läufe übernimmt CI.
 4. **Keine pauschalen E2E-Gesamtläufe:** Nicht alle Browser-Suiten manuell starten, wenn nur einzelne Formulare geändert wurden. Breitere lokale Läufe nur bei konkret begründetem Risiko oder fehlender CI-Abdeckung.
 5. **Bekannte Fehler nicht endlos wiederholen:** Belegte Windows-Baseline-Probleme dokumentieren statt sie in jeder Sitzung neu zu untersuchen.
 6. **Parallele Sitzungen schützen:** Eigene Worktrees, Ports und Prozesse sauber verwalten. Niemals pauschal fremde Node-, Vite- oder Terminalprozesse beenden.
-7. **Direkter Entwicklungsabschluss:** Ursache prüfen → minimal implementieren → gezielt testen → Build → Diff-Review → Commit → Push → PR → CI prüfen. Kein eigenständiger Merge, kein Deployment.
+7. **Direkter Entwicklungsabschluss:** Ursache prüfen → minimal implementieren → gezielt testen → Build → Diff-Review → Commit → Push → PR → CI prüfen. Eigenständiger Merge nur mit ausdrücklichem Auftrag (Git / PR, Betreiberentscheidung 2026-10-23), nie ein manuelles Deployment. Zusammengehörige Backend-/Frontend-Änderungen: beide PRs früh öffnen, CI parallel im Hintergrund abwarten, nach fachlicher Abhängigkeit nacheinander mergen (Canonical Context §18.2).
 8. **Probleme gezielt eskalieren:** Hängt ein Test oder entsteht eine unerwartete Blockade, Ursache isolieren und das Vorgehen ändern — nicht minutenlang dieselben Befehle wiederholen.
 9. **Kurzer Abschlussbericht:** Nur Änderungen, tatsächlich ausgeführte Tests, CI, PR und offene Risiken nennen (Pflichtangaben des Abschlussberichts bleiben).
+10. **Sitzungsgrenze:** Größere Aufträge in einer frischen Sitzung beginnen; vorher Übergabe im Projektgedächtnis (Canonical Context §18.1).
 
 ---
 

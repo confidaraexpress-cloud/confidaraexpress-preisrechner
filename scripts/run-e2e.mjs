@@ -92,11 +92,83 @@ if (dateien.length === 0) {
   process.exit(0);
 }
 
-/* --test-concurrency=1: jede Suite belegt einen festen Port für ihren
-   Dev-Server. Parallel gestartet kollidieren sie (`--strictPort`). */
-const kind = spawn(
-  process.execPath,
-  ["--test", "--test-concurrency=1", ...dateien],
-  { cwd: WURZEL, stdio: "inherit" }
-);
-kind.on("exit", (code, signal) => process.exit(signal ? 1 : code ?? 1));
+/* ── Ausführung je Suite (seit 2026-10-24) ────────────────────────────────────
+ * Jede Suite läuft in einem EIGENEN `node --test`-Aufruf, nacheinander: jede
+ * belegt einen festen Port für ihren Dev-Server, parallel gestartet kollidieren
+ * sie (`--strictPort`). Danach steht je Suite eine Zeile
+ *     E2E-Laufzeit <datei> <sekunden> s · <n> Tests, …
+ * im Protokoll — die Messgrundlage der Laufzeitverteilung — und am Ende eine
+ * Zusammenfassung des Teils.
+ *
+ * Eine Suite gilt nur als bestanden, wenn ihr Prozess mit 0 endet, mindestens
+ * ein Test bestanden ist und kein Test rot oder abgebrochen ist. Bewusst
+ * übersprungene Tests (etwa bei abgeschalteter Zolloberfläche) bleiben erlaubt,
+ * stehen aber je Suite sichtbar im Protokoll. Eine rote Suite verdeckt die
+ * übrigen nicht: es laufen immer alle zugeteilten Suiten. */
+function fuehreSuiteAus(datei) {
+  return new Promise((resolve) => {
+    const kind = spawn(process.execPath, ["--test", "--test-concurrency=1", datei], {
+      cwd: WURZEL,
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    });
+    const zaehler = { tests: 0, pass: 0, fail: 0, skipped: 0, cancelled: 0 };
+    let rest = "";
+    const lies = (stueck) => {
+      rest += stueck;
+      const zeilen = rest.split("\n");
+      rest = zeilen.pop();
+      for (const z of zeilen) {
+        // TAP („# tests 3", Node 22 ohne Terminal, CI) und spec („ℹ tests 3", Node 24 lokal).
+        const m = /^(?:#|ℹ) (tests|pass|fail|skipped|cancelled) (\d+)\s*$/.exec(z);
+        if (m) zaehler[m[1]] = Number(m[2]);
+      }
+    };
+    kind.stdout.setEncoding("utf8");
+    kind.stderr.setEncoding("utf8");
+    kind.stdout.on("data", (s) => { process.stdout.write(s); lies(s); });
+    kind.stderr.on("data", (s) => process.stderr.write(s));
+    kind.on("error", (e) => resolve({ code: 1, ...zaehler, fehler: e.message }));
+    kind.on("close", (code, signal) => {
+      if (rest) lies(rest + "\n");
+      resolve({ code: signal ? 1 : code ?? 1, ...zaehler });
+    });
+  });
+}
+
+function befundFuer(r) {
+  if (r.fehler) return `nicht gestartet: ${r.fehler}`;
+  if (r.code !== 0) return `Exit ${r.code}`;
+  if (r.fail > 0 || r.cancelled > 0) return `${r.fail} rot, ${r.cancelled} abgebrochen trotz Exit 0`;
+  if (r.tests === 0) return "0 Tests ausgeführt";
+  if (r.pass === 0) return "kein Test bestanden";
+  return null;
+}
+
+const ergebnisse = [];
+const beginnGesamt = Date.now();
+for (const datei of dateien) {
+  const beginn = Date.now();
+  const r = await fuehreSuiteAus(datei);
+  const sekunden = (Date.now() - beginn) / 1000;
+  const befund = befundFuer(r);
+  ergebnisse.push({ datei, sekunden, befund, ...r });
+  console.log(`E2E-Laufzeit ${datei} ${sekunden.toFixed(1)} s · ${r.tests} Tests, ${r.pass} bestanden, `
+    + `${r.fail} rot, ${r.skipped} übersprungen${befund ? ` · ROT: ${befund}` : ""}`);
+}
+
+const summe = (k) => ergebnisse.reduce((s, e) => s + e[k], 0);
+const rot = ergebnisse.filter((e) => e.befund);
+console.log(`\nE2E ${kopf}: ${ergebnisse.length} von ${dateien.length} Suiten gelaufen · ${summe("tests")} Tests, `
+  + `${summe("pass")} bestanden, ${summe("fail")} rot, ${summe("skipped")} übersprungen · `
+  + `${((Date.now() - beginnGesamt) / 60000).toFixed(1)} min`);
+if (ergebnisse.length !== dateien.length) {
+  console.error("❌ Nicht jede zugeteilte Suite ist gelaufen.");
+  process.exit(1);
+}
+if (rot.length > 0) {
+  console.error(`❌ ${rot.length} von ${ergebnisse.length} Suite(n) rot:`);
+  for (const e of rot) console.error(`   ${e.datei}: ${e.befund}`);
+  process.exit(1);
+}
+console.log(`✅ Alle ${ergebnisse.length} Suiten bestanden.`);

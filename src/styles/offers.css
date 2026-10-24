@@ -1261,6 +1261,18 @@
 .ps-trigger:hover { background: var(--ce-color-brand-soft); }
 .ps-trigger:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 @media (pointer: coarse) { .ps-trigger { min-height: var(--ce-size-touch-target); } }
+/* Gewählter Paketshop (verbindliche Auswahl) am Einstieg der Karte: „Gewählt:“ leise, der Name in Textfarbe
+   und notfalls gekürzt, „ändern“ bleibt als Aktion lesbar. Die Breite bleibt unter der Kartenbreite auch bei
+   360 px; am Desktop passt ein üblicher Shopname ungekürzt. */
+.ps-trigger--chosen { max-width: 100%; }
+.ps-trigger-chosen {
+  min-width: 0; max-width: min(22em, 52vw);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--ce-color-text-primary);
+}
+.ps-trigger-chosen-label { color: var(--ce-color-text-muted); font-weight: 500; }
+.ps-trigger-change { flex: none; }
+.ps-trigger-change::before { content: "·"; margin-right: 6px; color: var(--ce-color-text-muted); }
 
 /* Gemeinsame Feld- und Zustandsregeln — vom Fenster benutzt. Material wie
    `.field-input` (forms.css): 40 px, 1-px-Kante, Radius 8, Standardfokus.
@@ -1504,6 +1516,44 @@
 .ap-list-select:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 .ap-list-select--chosen,
 .ap-list-select--chosen:hover { background: var(--ce-color-brand-soft); border-color: var(--ce-color-brand); color: var(--ce-color-brand-ink); }
+/* Die GEWÄHLTE Zeile (verbindliche Auswahl) trägt eine eigene Kennzeichnung: Kante in der Markenfarbe plus
+   Akzent am linken Rand — die Kartenhervorhebung (.ap-list-item--focused) bleibt die Flächentönung. So ist
+   „ausgewählt" nie mit „auf der Karte hervorgehoben" zu verwechseln. */
+.ap-list-item--chosen { border-color: var(--ce-color-brand); box-shadow: inset 3px 0 0 var(--ce-color-brand); }
+.ap-map-popup-select { margin: 8px 0 0; max-width: 100%; }
+
+/* ── Profil „Verbindliche Auswahl" (2026-10-24) ──────────────────────────────
+   Nur die PLZ: Feld und Suchknopf nebeneinander, auf jeder Breite — fünf leere
+   Spalten wären Scheinfelder, und eine Zeile mehr schöbe den ersten Treffer aus
+   dem ersten Bildschirm. Der Pflichthinweis steht in Textfarbe statt leise. */
+.ap-modal-search.ap-modal-search--postcode { grid-template-columns: minmax(0, 12rem) auto; justify-content: start; }
+.ap-modal-search--postcode .ap-modal-search-btn { grid-column: auto; }
+.ap-modal-note--binding { color: var(--ce-color-text-primary); font-weight: 600; }
+/* Ohne Kartenposition keine Kartenspalte: die Treffer nehmen die Fläche ein — auf breiten Fenstern als Raster
+   gleich hoher Karten (die Nummer trägt die Reihenfolge), auf schmalen einspaltig. */
+.ap-modal-split--listonly { grid-template-columns: minmax(0, 1fr); }
+.ap-modal-split--listonly .ap-modal-listcol { border-right: none; }
+.ap-modal-split--listonly .ap-list {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: 8px 12px; align-items: stretch;
+}
+.ap-modal-split--listonly .ap-list-item { display: flex; flex-direction: column; }
+.ap-modal-split--listonly .ap-list-select { margin-top: auto; }
+/* Ohne Karte ist die Zeile reiner Inhalt (kein Fokusknopf). */
+/* Quellenangabe der Kartenpositionen (P3): eine leise Zeile unter dem Suchkontext statt der
+   Fußzeile einer Vorschlagsliste. */
+.ap-modal-bar-text .addr-suggest-attr.ap-modal-attr {
+  padding: 0;
+  border-top: 0;
+  background: none;
+  text-align: left;
+}
+
+.ap-list-hit--static { cursor: default; }
+.ap-list-hit--static:hover { background: none; }
+@media (max-width: 767px) {
+  .ap-modal-search.ap-modal-search--postcode { grid-template-columns: minmax(0, 1fr) auto; }
+}
 
 /* Karte — ergänzend, nie autoritativ.
 

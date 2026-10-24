@@ -30,6 +30,8 @@ const s = (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : (typeof 
 /**
  * Normalisiert eine Shopauswahl (aus der TG124-Suche) auf die zulässige, buchungskompatible Form.
  * Fehlt eine Pflichtangabe (parcelShopId, pickupLocationCode, name, postcode, city) → `null` (fail-closed).
+ * `searchPostcode` (optional, genau fünf Ziffern) ist die Postleitzahl, mit der der Kunde gesucht hat: Die
+ * Buchung wiederholt genau diese Suche und prüft den Shop gegen deren Treffer (Backend, Canonical 15 v2.74).
  */
 export function normalizeDropoffParcelShop(shop) {
   if (!shop || typeof shop !== "object") return null;
@@ -39,10 +41,12 @@ export function normalizeDropoffParcelShop(shop) {
   const postcode = s(shop.postcode ?? shop.postCode);
   const city = s(shop.city);
   if (!parcelShopId || !pickupLocationCode || !name || !postcode || !city) return null;
+  const suchPlz = typeof shop.searchPostcode === "string" ? shop.searchPostcode.trim() : "";
   return {
     parcelShopId, pickupLocationCode, name, postcode, city,
     street: s(shop.street), houseNumber: s(shop.houseNumber), town: s(shop.town),
     countryCode: s(shop.countryCode) || "DE",
+    ...(/^\d{5}$/.test(suchPlz) ? { searchPostcode: suchPlz } : {}),
   };
 }
 

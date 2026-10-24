@@ -19,9 +19,15 @@ import { offerSupportsAccessPointSearch, publicCarrierDisplay, publicServiceName
 
    Reine Textaktion (Redesign 2026-10): kein Standortsymbol. Eine externe
    Iconbibliothek wird hier NICHT eingeführt; das Projekt hat lucide-react
-   bewusst entfernt und verbietet es über mehrere Tests. */
+   bewusst entfernt und verbietet es über mehrere Tests.
 
-export function ParcelShopFinderTrigger({ tariff, senderPrefill, className = "" }) {
+   Verbindliche Auswahl (TG124, 2026-10-24): Ist für das Angebot ein Shop gewählt,
+   sagt der Einstieg das. Auf der Angebotskarte (`showChosen`) steht der Name mit
+   „ändern“ — sonst bliebe nach dem Schließen des Fensters offen, ob die Wahl
+   gilt. Auf der Buchungsseite steht der Shop schon darüber; dort heißt der
+   Einstieg „Paketshop ändern“. Bei der Orientierung gibt es keine Wahl. */
+
+export function ParcelShopFinderTrigger({ tariff, senderPrefill, className = "", showChosen = false }) {
   const finder = useParcelShopFinder();
   const knopfRef = useRef(null);
 
@@ -32,13 +38,21 @@ export function ParcelShopFinderTrigger({ tariff, senderPrefill, className = "" 
   // suchen“ statt viermal identisch „Paketshops suchen“ auf einer Seite.
   const carrier = publicCarrierDisplay(tariff).name;
   const service = publicServiceName(tariff);
-  const beschriftung = ["Paketshops für", carrier, service, "suchen"].filter(Boolean).join(" ");
+  const gewaehlt = typeof finder.selectedShopFor === "function" ? finder.selectedShopFor(tariff) : null;
+  const angebot = [carrier, service].filter(Boolean).join(" ");
+  const shopText = gewaehlt
+    ? [gewaehlt.name, [gewaehlt.street, gewaehlt.houseNumber].filter(Boolean).join(" "),
+       [gewaehlt.postcode, gewaehlt.city].filter(Boolean).join(" ")].filter(Boolean).join(", ")
+    : "";
+  const beschriftung = gewaehlt
+    ? `Gewählter Paketshop${angebot ? ` für ${angebot}` : ""}: ${shopText} – ändern`
+    : ["Paketshops für", carrier, service, "suchen"].filter(Boolean).join(" ");
 
   return (
     <button
       type="button"
       ref={knopfRef}
-      className={`ps-trigger${className ? ` ${className}` : ""}`}
+      className={`ps-trigger${gewaehlt ? " ps-trigger--chosen" : ""}${className ? ` ${className}` : ""}`}
       aria-label={beschriftung}
       onClick={(e) => {
         // Die Angebotskarte selbst ist klickbar (Angebot auswählen) — dieser
@@ -47,7 +61,16 @@ export function ParcelShopFinderTrigger({ tariff, senderPrefill, className = "" 
         finder.openFinder({ tariff, senderPrefill, triggerEl: knopfRef.current });
       }}
     >
-      <span>Paketshops suchen</span>
+      {!gewaehlt && <span>Paketshops suchen</span>}
+      {gewaehlt && !showChosen && <span>Paketshop ändern</span>}
+      {gewaehlt && showChosen && (
+        <>
+          <span className="ps-trigger-chosen" title={shopText}>
+            <span className="ps-trigger-chosen-label">Gewählt:</span> {gewaehlt.name}
+          </span>
+          <span className="ps-trigger-change">ändern</span>
+        </>
+      )}
     </button>
   );
 }

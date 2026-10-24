@@ -24,6 +24,8 @@ import { accessPointBounds, formatDistance } from "../../utils/accessPointView";
 export function AccessPointMap({
   markers, activeKey, onSelect, searchLabel,
   countryCode, // eslint-disable-line no-unused-vars -- Signaturteil, bewusst ungenutzt
+  // Verbindliche Auswahl (TG124 mit Kartenpositionen): dieselbe Auswahlaktion wie in der Liste. Sonst null.
+  onSelectShop = null, selectedShopKey = null,
 }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -158,8 +160,10 @@ export function AccessPointMap({
       )}
 
       {/* Popup-Inhalt als echtes JSX in den von der Karte gehaltenen Knoten.
-          Kein „Buchen“/„Auswählen“: eine verbindliche Shopauswahl ist nicht
-          Teil des Buchungsflusses (siehe Hinweis im Modalkopf). */}
+          Orientierung (JUMiNGO): kein „Buchen“/„Auswählen“ — die Suche ist dort
+          nicht Teil des Buchungsflusses. Verbindliche Auswahl (TG124): dieselbe
+          Auswahl wie in der Liste. Status und Zeiten nur, wenn die Quelle sie
+          liefert. */}
       {popupReady && aktiv && popupHostRef.current && createPortal(
         <div className="ap-map-popup-card">
           <p className="ap-map-popup-name">
@@ -169,15 +173,32 @@ export function AccessPointMap({
           {aktiv.shop.name && aktiv.shop.address && (
             <p className="ap-map-popup-addr">{aktiv.shop.address}</p>
           )}
-          <p className="ap-map-popup-meta">
-            {aktiv.shop.distance != null && (
-              <span className="ap-map-popup-dist">
-                {formatDistance(aktiv.shop.distance, aktiv.shop.distanceCode)}
-              </span>
-            )}
-            <span className={aktiv.shop.status.badgeClass}>{aktiv.shop.status.label}</span>
-          </p>
+          {(aktiv.shop.distance != null || aktiv.shop.status) && (
+            <p className="ap-map-popup-meta">
+              {aktiv.shop.distance != null && (
+                <span className="ap-map-popup-dist">
+                  {formatDistance(aktiv.shop.distance, aktiv.shop.distanceCode)}
+                </span>
+              )}
+              {aktiv.shop.status && <span className={aktiv.shop.status.badgeClass}>{aktiv.shop.status.label}</span>}
+            </p>
+          )}
           {aktiv.shop.hours && <p className="ap-map-popup-hours">{aktiv.shop.hours}</p>}
+          {typeof onSelectShop === "function" && aktiv.shop.dropoffShop && (() => {
+            const gewaehlt = Boolean(selectedShopKey) && aktiv.shop.dropoffShop.pickupLocationCode === selectedShopKey;
+            const beschreibung = [aktiv.shop.name, aktiv.shop.address].filter(Boolean).join(", ");
+            return (
+              <button
+                type="button"
+                className={`ap-list-select ap-map-popup-select${gewaehlt ? " ap-list-select--chosen" : ""}`}
+                aria-pressed={gewaehlt}
+                onClick={() => onSelectShop(aktiv.shop.dropoffShop)}
+              >
+                {gewaehlt ? "Ausgewählt" : "Diesen Paketshop wählen"}
+                {beschreibung && <span className="sr-only"> – {beschreibung}</span>}
+              </button>
+            );
+          })()}
         </div>,
         popupHostRef.current,
       )}

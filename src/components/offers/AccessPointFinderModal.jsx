@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDialog } from "../../hooks/useDialog";
 import { AccessPointList } from "./AccessPointList";
 import { AccessPointMap } from "./AccessPointMap";
+import { AddressAttribution } from "../address/AddressAttribution";
 import {
   filterAccessPointsByOpening,
   accessPointMarkers,
@@ -13,6 +14,7 @@ import {
   OPENING_FILTER_ALL,
   OPENING_FILTER_OPTIONS,
 } from "../../utils/accessPointView";
+import { parcelShopSearchProfile } from "../../utils/parcelShopSearchProfile.mjs";
 
 /* ── Großes Paketshop-Finder-Fenster ─────────────────────────────────────────
    Ein Arbeitsfenster, kein Bestätigungsdialog: links die vollständige,
@@ -20,15 +22,20 @@ import {
    Filterfelder bleiben im Kopf bedienbar, damit Radius und Öffnungszeiten
    geändert werden können, ohne das Fenster zu schließen.
 
-   BEWUSSTE GRENZEN
-     • Es gibt keine verbindliche Shopauswahl — das ist nicht Teil des
-       Buchungsflusses. Der Zustand heißt deshalb `focusedKey`: er steuert
-       ausschließlich Kartenfokus und Hervorhebung. Kein „Buchen“, kein
-       „Auswählen“, kein Feld im /book-Payload.
-     • Die Liste ist autoritativ. Fällt die Karte aus, ändert sich an ihr nichts.
-     • Der 5er-Anzeigeschnitt der früheren Inline-Liste entfällt hier: die
-       Liste scrollt selbst, und JUMiNGO liefert höchstens ~20 Treffer. Ein
-       „Weitere anzeigen“ wäre eine Hürde ohne Zweck.
+   ZWEI SUCHPROFILE (2026-10-24, utils/parcelShopSearchProfile.mjs) — dasselbe
+   Fenster, dieselbe Liste, dieselbe Karte:
+     • „Orientierung" (JUMiNGO): alle Felder und Filter, Karte, Öffnungszeiten,
+       Status, der Hinweis „Orientierung“. Der Zustand `focusedKey` steuert
+       ausschließlich Kartenfokus und Hervorhebung — kein Feld im /book-Payload.
+     • „Verbindliche Auswahl" (TG124): nur die PLZ, der Pflichthinweis und je
+       Zeile „Diesen Paketshop wählen“ — DIESE Wahl fließt in die Buchung. Ohne
+       Kartenposition gibt es keine Karte und keinen Kartenumschalter: die
+       Liste nimmt die Fläche ein, statt neben einer leeren Deutschlandkarte
+       zu stehen. Öffnungszeiten und Status erscheinen nur, wenn die Quelle sie
+       liefert.
+   In beiden ist die Liste autoritativ. Fällt die Karte aus, ändert sich an ihr
+   nichts. Der 5er-Anzeigeschnitt der früheren Inline-Liste entfällt: die Liste
+   scrollt selbst.
 
    Fokus, Fokusrückgabe und Escape kommen aus dem gemeinsamen useDialog-Hook —
    kein zweites Dialogsystem.
@@ -39,6 +46,7 @@ import {
    als funktionale Ausnahme (AccessPointMap). */
 
 const MOBILE_BREAKPOINT = 860;
+const ORIENTIERUNG = parcelShopSearchProfile(null, false);
 
 export function AccessPointFinderModal({
   open, onClose, titleId, returnFocusTo,
@@ -51,6 +59,10 @@ export function AccessPointFinderModal({
   loading, error, results, countryCode,
   // Aus welchem Angebot heraus geöffnet wurde — nur zur Beschriftung.
   carrierName,
+  // Das Suchprofil des Angebots; ohne Angabe „Orientierung“.
+  profile = ORIENTIERUNG,
+  // Verbindliche Auswahl: die PLZ, zu der die gezeigten Treffer gehören.
+  searchedPostCode = "",
   // TG124: verbindliche Shopauswahl (nur bei der Portalsuche gesetzt). onSelectShop(key) | null.
   onSelectShop, selectedShopKey,
 }) {
@@ -65,6 +77,7 @@ export function AccessPointFinderModal({
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== "undefined" && window.innerWidth <= MOBILE_BREAKPOINT,
   );
+  const felder = profile.fields;
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth <= MOBILE_BREAKPOINT);
@@ -74,9 +87,12 @@ export function AccessPointFinderModal({
 
   // ── Öffnungszeitenfilter: einzige Auswahlstufe nach der Sortierung ─────────
   // `results` bleibt vollständig erhalten; bei „Alle Öffnungszeiten“ passiert
-  // hier nichts. workState entscheidet an KEINER Stelle über Sichtbarkeit.
+  // hier nichts. workState entscheidet an KEINER Stelle über Sichtbarkeit. Im
+  // Profil ohne Öffnungszeitenfilter wirkt eine früher gewählte Präferenz nicht
+  // auf Treffer ohne Zeiten.
+  const wirksamerFilter = felder.opening ? openingFilter : OPENING_FILTER_ALL;
   const { matching: sichtbar, excluded: ausgeschlossen, filtered: filterAktiv } =
-    filterAccessPointsByOpening(results || [], openingFilter);
+    filterAccessPointsByOpening(results || [], wirksamerFilter);
 
   // Stabile Schlüssel und Listennummern. Die Nummer ist die Position in der
   // sichtbaren Liste — dieselbe Zahl trägt der Marker.
@@ -118,33 +134,56 @@ export function AccessPointFinderModal({
   if (!open) return null;
 
   const hatAntwort = !loading && !error && results !== null;
+  // Verbindliche Auswahl: eine Karte nur mit mindestens einer Shopposition. Orientierung: unverändert.
+  const zeigeKarte = !profile.binding || markers.length > 0;
+  // Status und Öffnungszeiten je Zeile nur, wenn die Quelle sie liefert (Orientierung: wie bisher immer).
+  const zeigeZeiten = !profile.binding || shops.some((s) => s.status || s.hoursOfOperation);
   const zaehler = !hatAntwort
     ? null
     : filterAktiv
       ? openingFilterCountLabel(shops.length, shops.length)
       : accessPointCountLabel(shops.length, shops.length);
   const randnotiz = hatAntwort && filterAktiv ? openingFilterExcludedLabel(ausgeschlossen.length) : null;
-  const kartenhinweis = hatAntwort ? mapCoverageLabel(markers.length, shops.length) : null;
+  const kartenhinweis = hatAntwort && zeigeKarte ? mapCoverageLabel(markers.length, shops.length) : null;
+  const ausAdresse = profile.binding && markers.some((m) => m.shop.positionSource === "address");
 
-  const suchkontext = [
-    [street, [postCode, city].filter(Boolean).join(" ")].filter(Boolean).join(", "),
-    `Umkreis ${radius} km`,
-  ].filter(Boolean).join(" · ");
+  const suchkontext = profile.binding
+    ? [
+      searchedPostCode ? `Paketshops zur PLZ ${searchedPostCode}` : null,
+      hatAntwort && shops.some((s) => s.distance != null) ? "Entfernung jeweils zum Gebiet der PLZ" : null,
+      ausAdresse ? "Kartenpositionen aus der Shopadresse ermittelt" : null,
+    ].filter(Boolean).join(" · ")
+    : [
+      [street, [postCode, city].filter(Boolean).join(" ")].filter(Boolean).join(", "),
+      `Umkreis ${radius} km`,
+    ].filter(Boolean).join(" · ");
 
-  const karte = (
+  const unterzeile = profile.binding
+    ? (carrierName
+      ? `Abgabestellen von ${carrierName} zur gesuchten Postleitzahl.`
+      : "Abgabestellen zur gesuchten Postleitzahl.")
+    : (carrierName
+      ? `Abgabestellen von ${carrierName} in der Nähe Ihrer Absenderadresse.`
+      : "Finden Sie passende Abgabestellen für Ihren Versand.");
+
+  const karte = zeigeKarte ? (
     <AccessPointMap
       markers={markers}
       activeKey={focusedKey}
       onSelect={(key) => fokussiere(key, { scroll: true })}
       searchLabel={kartenhinweis}
       countryCode={countryCode}
+      onSelectShop={profile.binding ? onSelectShop : null}
+      selectedShopKey={profile.binding ? selectedShopKey : null}
     />
-  );
+  ) : null;
+
+  const geteilt = zeigeKarte ? `ap-modal-split${isMobile ? ` ap-modal-split--${mobileView}` : ""}` : "ap-modal-split ap-modal-split--listonly";
 
   return (
     <div className="ce-dialog-overlay ap-modal-overlay" onClick={onClose}>
       <div
-        className="ap-modal"
+        className={`ap-modal${profile.binding ? " ap-modal--binding" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -159,11 +198,7 @@ export function AccessPointFinderModal({
                 der einzelnen Angebotskarte, und die Ergebnisse gelten nur für
                 deren Versanddienstleister. Ohne diese Zeile wäre nach dem
                 Wechsel von UPS zu DPD nicht erkennbar, wessen Shops man sieht. */}
-            <p className="ap-modal-sub">
-              {carrierName
-                ? `Abgabestellen von ${carrierName} in der Nähe Ihrer Absenderadresse.`
-                : "Finden Sie passende Abgabestellen für Ihren Versand."}
-            </p>
+            <p className="ap-modal-sub">{unterzeile}</p>
           </div>
           <button
             type="button"
@@ -175,9 +210,9 @@ export function AccessPointFinderModal({
           </button>
         </header>
 
-        {/* ── Such- und Filterbereich ── */}
+        {/* ── Such- und Filterbereich: nur die Eingaben, die das Profil wirklich auswertet ── */}
         <form
-          className="ap-modal-search"
+          className={`ap-modal-search${profile.binding ? " ap-modal-search--postcode" : ""}`}
           onSubmit={(e) => { e.preventDefault(); onSearch(); }}
         >
           <div className="ap-modal-field">
@@ -185,51 +220,59 @@ export function AccessPointFinderModal({
             <input
               id="apm-zip" className="ap-finder-input" value={postCode}
               onChange={(e) => onPostCodeChange(e.target.value)}
-              inputMode="numeric" autoComplete="off" maxLength={10}
+              inputMode="numeric" autoComplete="off" maxLength={profile.binding ? 5 : 10}
             />
           </div>
-          <div className="ap-modal-field">
-            <label className="ap-finder-label" htmlFor="apm-city">
-              Ort {cityRequired && <span className="ap-finder-required">(erforderlich)</span>}
-            </label>
-            <input
-              id="apm-city" className="ap-finder-input" value={city}
-              onChange={(e) => onCityChange(e.target.value)}
-              autoComplete="off" maxLength={100}
-            />
-          </div>
-          <div className="ap-modal-field ap-modal-field--street">
-            <label className="ap-finder-label" htmlFor="apm-street">
-              Straße {streetRequired
-                ? <span className="ap-finder-required">(erforderlich)</span>
-                : <span className="ap-finder-optional">(optional)</span>}
-            </label>
-            <input
-              id="apm-street" className="ap-finder-input" value={street}
-              onChange={(e) => onStreetChange(e.target.value)}
-              autoComplete="off" maxLength={200}
-            />
-          </div>
-          <div className="ap-modal-field">
-            <label className="ap-finder-label" htmlFor="apm-radius">Umkreis</label>
-            <select
-              id="apm-radius" className="ap-finder-select" value={radius}
-              onChange={(e) => onRadiusChange(Number(e.target.value))}
-            >
-              {radiusOptions.map((km) => <option key={km} value={km}>{km} km</option>)}
-            </select>
-          </div>
-          <div className="ap-modal-field">
-            <label className="ap-finder-label" htmlFor="apm-opening">Öffnungszeiten</label>
-            <select
-              id="apm-opening" className="ap-finder-select" value={openingFilter}
-              onChange={(e) => onOpeningFilterChange(e.target.value)}
-            >
-              {OPENING_FILTER_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </div>
+          {felder.city && (
+            <div className="ap-modal-field">
+              <label className="ap-finder-label" htmlFor="apm-city">
+                Ort {cityRequired && <span className="ap-finder-required">(erforderlich)</span>}
+              </label>
+              <input
+                id="apm-city" className="ap-finder-input" value={city}
+                onChange={(e) => onCityChange(e.target.value)}
+                autoComplete="off" maxLength={100}
+              />
+            </div>
+          )}
+          {felder.street && (
+            <div className="ap-modal-field ap-modal-field--street">
+              <label className="ap-finder-label" htmlFor="apm-street">
+                Straße {streetRequired
+                  ? <span className="ap-finder-required">(erforderlich)</span>
+                  : <span className="ap-finder-optional">(optional)</span>}
+              </label>
+              <input
+                id="apm-street" className="ap-finder-input" value={street}
+                onChange={(e) => onStreetChange(e.target.value)}
+                autoComplete="off" maxLength={200}
+              />
+            </div>
+          )}
+          {felder.radius && (
+            <div className="ap-modal-field">
+              <label className="ap-finder-label" htmlFor="apm-radius">Umkreis</label>
+              <select
+                id="apm-radius" className="ap-finder-select" value={radius}
+                onChange={(e) => onRadiusChange(Number(e.target.value))}
+              >
+                {radiusOptions.map((km) => <option key={km} value={km}>{km} km</option>)}
+              </select>
+            </div>
+          )}
+          {felder.opening && (
+            <div className="ap-modal-field">
+              <label className="ap-finder-label" htmlFor="apm-opening">Öffnungszeiten</label>
+              <select
+                id="apm-opening" className="ap-finder-select" value={openingFilter}
+                onChange={(e) => onOpeningFilterChange(e.target.value)}
+              >
+                {OPENING_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <button type="submit" className="ap-modal-search-btn" disabled={!canSearch}>
             {loading
               ? <><span className="spinner" /> Suchen …</>
@@ -237,23 +280,27 @@ export function AccessPointFinderModal({
           </button>
         </form>
 
-        {/* Fachliche Grenze — dieselbe Aussage wie auf der Hauptseite. */}
-        <p className="ap-modal-note">
-          <span>
-            Die Paketshop-Suche dient der Orientierung – eine verbindliche Auswahl
-            eines Shops ist nicht erforderlich.
-          </span>
+        {/* Fachliche Grenze bzw. Pflicht — je Profil genau eine Aussage, nie beide. */}
+        <p className={`ap-modal-note${profile.binding ? " ap-modal-note--binding" : ""}`}>
+          <span>{profile.note}</span>
         </p>
 
         {/* ── Ergebniszeile + mobiler Umschalter ── */}
         <div className="ap-modal-bar">
           <div className="ap-modal-bar-text">
-          {/* Suchkontext: der Radius gehört hierher, nicht an jeden Shop. Die
-              Felder darüber sind zwar änderbar, aber diese Zeile fasst zusammen,
-              worauf sich die gezeigte Menge bezieht. */}
-          <p className="ap-modal-context-line">{suchkontext}</p>
+          {/* Suchkontext: worauf sich die gezeigte Menge bezieht — bei der
+              Orientierung Adresse und Umkreis, bei der verbindlichen Auswahl die
+              gesuchte Postleitzahl (dort gibt es keinen Umkreis). */}
+          {suchkontext && <p className="ap-modal-context-line">{suchkontext}</p>}
+          {/* Positionen aus dem Adressdienst (P3) tragen dessen Pflicht-Quellenangabe. */}
+          {ausAdresse && <AddressAttribution className="ap-modal-attr" />}
           <p className="ap-modal-count" role="status">
-            {loading ? "Paketshops werden gesucht …" : (
+            {loading ? (
+              <>
+                Paketshops werden gesucht …
+                {profile.loadingNote && <span className="ap-modal-note-inline"> {profile.loadingNote}</span>}
+              </>
+            ) : (
               <>
                 {zaehler}
                 {randnotiz && <span className="ap-modal-note-inline"> · {randnotiz}</span>}
@@ -261,7 +308,7 @@ export function AccessPointFinderModal({
             )}
           </p>
           </div>
-          {isMobile && hatAntwort && shops.length > 0 && (
+          {isMobile && zeigeKarte && hatAntwort && shops.length > 0 && (
             <div className="ap-modal-toggle" role="group" aria-label="Darstellung">
               <button
                 type="button"
@@ -295,19 +342,21 @@ export function AccessPointFinderModal({
 
           {hatAntwort && results.length === 0 && (
             <div className="ap-modal-state ap-finder-empty">
-              Keine Paketshops gefunden. Passen Sie PLZ, Straße oder Umkreis an.
+              {profile.binding
+                ? "Zu dieser Postleitzahl wurden keine Paketshops gefunden. Bitte prüfen Sie die Postleitzahl."
+                : "Keine Paketshops gefunden. Passen Sie PLZ, Straße oder Umkreis an."}
             </div>
           )}
 
           {hatAntwort && results.length > 0 && shops.length === 0 && (
             <div className="ap-modal-state ap-finder-empty">
-              {openingFilterEmptyText(openingFilter)} Wählen Sie „Alle Öffnungszeiten“,
+              {openingFilterEmptyText(wirksamerFilter)} Wählen Sie „Alle Öffnungszeiten“,
               um wieder alle {results.length} Paketshops zu sehen.
             </div>
           )}
 
           {hatAntwort && shops.length > 0 && (
-            <div className={`ap-modal-split${isMobile ? ` ap-modal-split--${mobileView}` : ""}`}>
+            <div className={geteilt}>
               <div className="ap-modal-listcol">
                 <AccessPointList
                   shops={shops}
@@ -319,9 +368,11 @@ export function AccessPointFinderModal({
                   countryCode={countryCode}
                   onSelect={onSelectShop}
                   selectedShopKey={selectedShopKey}
+                  showStatusAndHours={zeigeZeiten}
+                  mapFocusable={zeigeKarte}
                 />
               </div>
-              <div className="ap-modal-mapcol">{karte}</div>
+              {karte && <div className="ap-modal-mapcol">{karte}</div>}
             </div>
           )}
         </div>

@@ -854,7 +854,7 @@ function OfferCardBase({
                 beauftragt werden kann. Das ist kein neuer Sonderfall, sondern dieselbe
                 Grenze wie beim CTA — was nicht auswählbar ist, bekommt auch keinen
                 Folgeschritt. */}
-            {!unavailable && <ParcelShopFinderTrigger tariff={t} senderPrefill={senderPrefill} />}
+            {!unavailable && <ParcelShopFinderTrigger tariff={t} senderPrefill={senderPrefill} showChosen />}
             <button
               className="offer-details-link"
               onClick={toggleDetails}

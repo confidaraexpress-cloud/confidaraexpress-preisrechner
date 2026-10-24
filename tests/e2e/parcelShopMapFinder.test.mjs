@@ -331,7 +331,7 @@ test("10 — jeder Listeneintrag zeigt Name, Adresse, Entfernung, Status und heu
   assert.match(adresse, /Marktstr\. 4-6/, "Straße");
   assert.match(adresse, /73207/, "PLZ");
   assert.match(adresse, /Plochingen/, "Stadt");
-  assert.equal((await ersteKarte.locator(".ap-list-dist").innerText()).trim(), "0,6 KM");
+  assert.equal((await ersteKarte.locator(".ap-list-dist").innerText()).trim(), "0,6 km");
   assert.equal((await ersteKarte.locator(".ap-list-status").innerText()).trim(), "Geschlossen");
   assert.equal((await ersteKarte.locator(".ap-list-hours").innerText()).trim(), "Heute: 10:00–17:00");
 
@@ -474,7 +474,7 @@ test("16 — Klick auf einen Listeneintrag hebt den Marker hervor und zeigt das 
   const popup = page.locator(".ap-map-popup-card");
   await popup.waitFor({ timeout: 5000 });
   assert.match(await popup.innerText(), /DPD-Paketstation/);
-  assert.match(await popup.innerText(), /2,6 KM/);
+  assert.match(await popup.innerText(), /2,6 km/);
   assert.match(await popup.innerText(), /Geöffnet/);
   await page.close();
 });

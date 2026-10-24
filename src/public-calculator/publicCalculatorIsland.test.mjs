@@ -183,7 +183,11 @@ test("6 — keine Versprechen ohne Beleg und keine Einkaufsquelle", () => {
   // Kontakt aus der bestehenden Quelle (seit Schritt 3 src/config/companyProfile.js, die das Impressum liest).
   const profil = lies(path.join(SRC, "config", "companyProfile.js"));
   assert.ok(profil.includes("support@confidaraexpress.de") && HTML_OHNE.includes("support@confidaraexpress.de"));
-  assert.ok(profil.includes("015118003775") && HTML_OHNE.includes(">015118003775<"));
+  // Gesamtauftrag C (2026-10-24): neue Telefonnummer und der Ansprechpartner — dieselben Werte wie im Profil.
+  assert.ok(profil.includes('phone: "016092717124"') && HTML_OHNE.includes('<a href="tel:+4916092717124">016092717124</a>'));
+  assert.ok(!HTML_OHNE.includes("015118003775"), "die alte Telefonnummer steht noch auf der Seite");
+  assert.ok(profil.includes('contactPerson: "Miguel Vance"') && HTML_OHNE.includes("Ansprechpartner: Miguel Vance"));
+  assert.ok(!HTML_OHNE.includes("Patrick Werner") && !/Geschäftsführ/.test(HTML_OHNE), "nur der Ansprechpartner, kein Geschäftsführer");
 });
 
 function skelettVorab() {

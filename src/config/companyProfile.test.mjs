@@ -18,11 +18,33 @@ test("2 — Impressum: liest das Profil, nennt keine GbR und keine Gesellschafte
   const seite = ohneKommentare(lies("../pages/ImpressumPage.jsx"));
   assert.match(seite, /from "\.\.\/config\/companyProfile"/);
   assert.doesNotMatch(seite, /GbR|Gesellschafter|Gesellschaft ist/, "das Impressum nennt eine Gesellschaft, die es nicht gibt");
-  for (const feld of ["CP.brand", "CP.formationStatus", "CP.operators", "CP.registerNote", "CP.vatIdNote", "CP.email", "CP.phone"]) {
+  for (const feld of ["CP.brand", "CP.formationStatus", "CP.operators", "CP.registerNote", "CP.vatIdNote", "CP.email", "CP.phone",
+                      "CP.contactPerson", "CP.contentResponsible"]) {
     assert.ok(seite.includes(feld), `das Impressum liest ${feld} nicht aus dem Profil`);
   }
   // Keine zweite, hart codierte Fassung der Stammdaten in der Seite.
-  assert.doesNotMatch(seite, /Weiherstraße|015118003775|support@confidaraexpress\.de/);
+  assert.doesNotMatch(seite, /Weiherstraße|015118003775|Anna-Fischer-Weg|016092717124|Miguel Vance|support@confidaraexpress\.de/);
+});
+
+test("2b — Gesamtauftrag C (2026-10-24): neue Anschrift und Telefonnummer, Ansprechpartner, MStV mit einer Person", async () => {
+  const { COMPANY_PROFILE } = await import("./companyProfile.js");
+  assert.deepEqual({ ...COMPANY_PROFILE.address },
+    { street: "Anna-Fischer-Weg 11", zip: "70794", city: "Filderstadt-Bernhausen", country: "Deutschland" });
+  assert.equal(COMPANY_PROFILE.phone, "016092717124");
+  assert.equal(COMPANY_PROFILE.contactPerson, "Miguel Vance");
+  assert.equal(COMPANY_PROFILE.contentResponsible, "Miguel Vance");
+  // Vor der Gründung bleiben beide Betreiber die Diensteanbieter — der zweite erscheint sonst nirgends.
+  assert.deepEqual([...COMPANY_PROFILE.operators], ["Miguel Vance", "Patrick Werner"]);
+  const seite = ohneKommentare(lies("../pages/ImpressumPage.jsx"));
+  // Ansprechpartner nur in der Vorbereitungsdarstellung — mit freigegebenem Aussteller gelten dessen Angaben.
+  assert.match(seite, /const ansprechpartner = profil \? null : CP\.contactPerson;/);
+  assert.match(seite, /Ansprechpartner: \{ansprechpartner\}/);
+  // Der MStV-Abschnitt nennt vor der Gründung genau eine Person, nicht beide Betreiber.
+  const mstv = seite.slice(seite.indexOf("§ 18 Abs. 2 MStV"), seite.indexOf("Datenquellen und Lizenzhinweise"));
+  assert.ok(mstv.includes("CP.contentResponsible") && !mstv.includes("CP.operators"), "MStV-Abschnitt");
+  // Keine Bezeichnung als Geschäftsführer vor der Beurkundung — weder im Profil noch in der Vorbereitungsdarstellung.
+  const vorbereitung = seite.slice(seite.indexOf(") : ("), seite.indexOf("Umsatzsteuer-Identifikationsnummer"));
+  assert.doesNotMatch(vorbereitung, /Geschäftsführ/);
 });
 
 test("3 — veröffentlichte Rechtsfassungen bleiben wortgleich (keine rückwirkende Änderung)", () => {

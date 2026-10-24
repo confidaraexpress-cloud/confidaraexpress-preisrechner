@@ -496,14 +496,17 @@ export function toDistanceNumber(value) {
 }
 
 /**
- * Entfernung deutsch formatiert, Einheit aus JUMiNGOs distanceCode (verbatim,
- * ohne Umrechnung), sonst „km“. Immer eine Nachkommastelle: 2,570787 und
- * 2,957714 dürfen nicht beide als „3 km“ erscheinen.
+ * Entfernung deutsch formatiert, Einheit aus JUMiNGOs distanceCode (ohne Umrechnung), sonst „km“. Die
+ * bekannten Einheiten stehen in deutscher Schreibweise: JUMiNGO sendet „KM“, gezeigt wird „km“ (2026-10-24);
+ * eine unbekannte Einheit bleibt wörtlich. Immer eine Nachkommastelle: 2,570787 und 2,957714 dürfen nicht
+ * beide als „3 km“ erscheinen.
  */
+const EINHEITEN = Object.freeze({ km: "km", mi: "mi" });
 export function formatDistance(value, code) {
   const n = toDistanceNumber(value);
   if (n == null) return null;
-  const unit = typeof code === "string" && code.trim() ? code.trim() : "km";
+  const roh = typeof code === "string" && code.trim() ? code.trim() : "km";
+  const unit = EINHEITEN[roh.toLowerCase()] || roh;
   return `${n.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${unit}`;
 }
 

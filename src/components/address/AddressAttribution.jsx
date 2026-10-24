@@ -10,9 +10,12 @@ import { EXTERNAL_LINK_REL, EXTERNAL_LINK_TARGET } from "../../utils/externalLin
 //
 // Bewusst eine eigene Komponente: das Vorschlagsfeld selbst kennt keinen Anbieter und keine
 // fremde URL (addressValidationUx Test 18); die Quellenangabe ist Anzeige, kein Aufruf.
-export function AddressAttribution() {
+//
+// `className` ergänzt die Fußzeilenform für andere Orte — etwa die Kartenpositionen des
+// Paketshop-Finders (TG124, aus der Shopadresse ermittelt).
+export function AddressAttribution({ className = "" } = {}) {
   return (
-    <p className="addr-suggest-attr">
+    <p className={className ? `addr-suggest-attr ${className}` : "addr-suggest-attr"}>
       <a href="https://www.openstreetmap.org/copyright" target={EXTERNAL_LINK_TARGET} rel={EXTERNAL_LINK_REL}>
         © OpenStreetMap-Mitwirkende
       </a>

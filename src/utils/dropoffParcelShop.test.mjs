@@ -43,6 +43,16 @@ test("dropoffShopBlocksBooking: sperrt nur, wenn nötig UND kein gültiger Shop"
   assert.strictEqual(dropoffShopBlocksBooking(dropoffQuoteOnly, null, true), false, "quote_only nie durch Shop gesperrt");
 });
 
+test("searchPostcode: die PLZ der Kundensuche begleitet die Auswahl nur mit genau fünf Ziffern", () => {
+  assert.deepStrictEqual(normalizeDropoffParcelShop({ ...SHOP, searchPostcode: "63808" }), { ...SHOP, searchPostcode: "63808" });
+  assert.deepStrictEqual(normalizeDropoffParcelShop({ ...SHOP, searchPostcode: " 63808 " }), { ...SHOP, searchPostcode: "63808" });
+  for (const ungueltig of ["6380", "6380A", "", null, 63808]) {
+    assert.deepStrictEqual(normalizeDropoffParcelShop({ ...SHOP, searchPostcode: ungueltig }), SHOP, String(ungueltig));
+  }
+  assert.deepStrictEqual(dropoffParcelShopBookPayload(dropoffBookbar, { ...SHOP, searchPostcode: "63808" }, true),
+    { dropoffParcelShop: { ...SHOP, searchPostcode: "63808" } });
+});
+
 test("dropoffParcelShopBookPayload: {dropoffParcelShop} nur bei Bedarf + gültiger Auswahl", () => {
   assert.deepStrictEqual(dropoffParcelShopBookPayload(dropoffBookbar, SHOP, true), { dropoffParcelShop: SHOP });
   assert.deepStrictEqual(dropoffParcelShopBookPayload(dropoffBookbar, null, true), {}, "kein Shop → nichts (Server sperrt fail-closed)");

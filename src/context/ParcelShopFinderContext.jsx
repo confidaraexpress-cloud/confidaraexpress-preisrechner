@@ -2,9 +2,11 @@ import React, { createContext, Suspense, useCallback, useContext, useId, useRef,
 import { searchAccessPoints, searchDropoffParcelShops } from "../api/client";
 import { normalizeAccessPointList } from "../utils/accessPointResponse.mjs";
 import { resolveAccessPointCarrierCode, offerSupportsAccessPointSearch } from "../utils/carrierMap";
-import { OPENING_FILTER_ALL, normalizeAccessPointWorkState } from "../utils/accessPointView";
+import { OPENING_FILTER_ALL } from "../utils/accessPointView";
 import { offerKey } from "../utils/offerIdentity.mjs";
-import { offerRequiresDropoffParcelShop, normalizeDropoffParcelShop } from "../utils/dropoffParcelShop.mjs";
+import { normalizeDropoffParcelShop } from "../utils/dropoffParcelShop.mjs";
+import { parcelShopSearchProfile, bindingPostcodeValid } from "../utils/parcelShopSearchProfile.mjs";
+import { mapPortalShopsToList } from "../utils/portalParcelShops.mjs";
 
 /* ── Ein Paketshop-Finder für die ganze Anwendung ────────────────────────────
    Der Einstieg sitzt seit diesem Paket direkt am Angebot („Paketshops suchen“),
@@ -19,12 +21,17 @@ import { offerRequiresDropoffParcelShop, normalizeDropoffParcelShop } from "../u
    Also: EIN Provider, EIN Modal, EIN Zustand. Die Angebotskarte reicht beim
    Klick nur ihren Kontext herein (Tarif + Absenderadresse).
 
-   BEWUSSTE GRENZEN — unverändert gegenüber den bisherigen Paketen:
-     • Keine verbindliche Shopauswahl. Nichts hiervon fließt in /book.
-     • workState ist reine Darstellung, kein Sichtbarkeits-Gate.
-     • onlyOpen geht fest als false raus; die vier Öffnungszeitenmerkmale
-       filtern rein lokal (der Requestvertrag kennt dafür keinen Parameter).
-     • Es wird nichts geokodiert und nichts gerechnet. */
+   ZWEI SUCHPROFILE (2026-10-24, utils/parcelShopSearchProfile.mjs) — abgeleitet aus den Serverfeldern:
+     • „Orientierung" (JUMiNGO-Abgaben): keine verbindliche Shopauswahl, nichts
+       hiervon fließt in /book. workState ist reine Darstellung, kein
+       Sichtbarkeits-Gate. onlyOpen geht fest als false raus; die vier
+       Öffnungszeitenmerkmale filtern rein lokal.
+     • „Verbindliche Auswahl" (parcelShopSearch === "server", heute TG124): Suche
+       nur mit PLZ und Land, die gewählte Zeile ist die Abgabestelle der Buchung
+       (`selectedShops`, fließt mit `searchPostcode` in /book; der Server prüft
+       sie gegen dieselbe Suche). Kein Umkreis, keine Öffnungszeiten — die
+       Portalsuche kennt sie nicht.
+     • In keinem Profil wird etwas geokodiert oder gerechnet. */
 
 const RADIUS_OPTIONS = [5, 10, 15, 25];
 const DEFAULT_RADIUS = 10;
@@ -48,36 +55,22 @@ export function useParcelShopFinder() {
 /* Die Identität einer Suche. Der CARRIER gehört ausdrücklich dazu: Der Kunde
    kann den Finder bei UPS öffnen, schließen und sofort bei DPD öffnen. Ohne
    den Carrier in der Identität würde die verspätete UPS-Antwort als „passend“
-   gelten und die DPD-Ergebnisse überschreiben. */
-const sucheSchluessel = (p) =>
-  [p.portal ? "portal" : p.carrierCode, p.countryCode, p.postCode, p.city, p.street, p.radius].join("|");
+   gelten und die DPD-Ergebnisse überschreiben. Die Portalsuche (verbindliche
+   Auswahl) sucht nur mit PLZ und Land — Ort, Straße und Umkreis gehören dort
+   NICHT zur Identität, sonst löste ein Umkreiswechsel eine zweite, identische
+   Portalsuche mit neuer Anmeldung aus. */
+const sucheSchluessel = (p) => (p.portal
+  ? ["portal", p.countryCode, p.postCode].join("|")
+  : [p.carrierCode, p.countryCode, p.postCode, p.city, p.street, p.radius].join("|"));
 
-/* TG124: die serverseitig gekapselten DPD-Portalshops auf die Trefferlistenform des Finders abbilden.
-   Die Liste zeigt Name + Adresse (keine Entfernung/Öffnungszeiten — die liefert die Portalsuche nicht);
-   `dropoffShop` trägt die BUCHUNGSKOMPATIBLEN Kennungen für die verbindliche Auswahl. */
-function mapPortalShopsToList(shops) {
-  // Neutraler Öffnungsstatus: die Portalsuche liefert keinen workState — „nicht verfügbar" ist ehrlich,
-  // und die Liste rendert `status` immer (kein Absturz durch fehlendes Feld).
-  const statusUnbekannt = normalizeAccessPointWorkState(null);
-  return (Array.isArray(shops) ? shops : []).map((s) => {
-    const dropoffShop = normalizeDropoffParcelShop(s);
-    const strasse = [s.street, s.houseNumber].filter(Boolean).join(" ");
-    return {
-      // Der Schlüssel wird im Modal ohnehin neu vergeben; hier reicht ein stabiler Wert.
-      key: s.pickupLocationCode || null,
-      name: s.name || null,
-      address: [strasse, [s.postcode, s.city].filter(Boolean).join(" ")].filter(Boolean).join(", "),
-      postCode: s.postcode || null,
-      city: s.city || null,
-      countryCode: s.countryCode || "DE",
-      status: statusUnbekannt,
-      hours: null,
-      hoursOfOperation: null,
-      distance: null,
-      distanceCode: null,
-      dropoffShop, // { parcelShopId, pickupLocationCode, … } | null — trägt die verbindliche Auswahl
-    };
-  }).filter((x) => x.dropoffShop); // nur gültige, auswählbare Shops
+const NICHT_VERFUEGBAR = "Die Paketshop-Suche ist momentan nicht verfügbar. Bitte versuchen Sie es später erneut.";
+/* Verbindliche Auswahl: Eingabefehler, Ratenbegrenzung und Zeitüberschreitung sehen nicht wie ein Ausfall aus
+   (früher stand für alles „nicht verfügbar"). Es wird nie automatisch wiederholt. */
+function portalSuchFehler(status, fehler) {
+  if (fehler && fehler.code === "API_TIMEOUT") return "Die Paketshop-Suche hat zu lange gedauert. Bitte versuchen Sie es erneut.";
+  if (status === 400) return "Bitte geben Sie eine gültige fünfstellige Postleitzahl an.";
+  if (status === 429) return "Zu viele Suchanfragen in kurzer Zeit. Bitte warten Sie einen Moment und versuchen Sie es dann erneut.";
+  return NICHT_VERFUEGBAR;
 }
 
 export function ParcelShopFinderProvider({ children }) {
@@ -108,9 +101,14 @@ export function ParcelShopFinderProvider({ children }) {
   // Schließen und Angebotswechsel und fließt — anders als der reine Kartenfokus — in /book. Nur für Angebote,
   // die einen Abgabe-Shop brauchen (offerRequiresDropoffParcelShop); sonst bleibt sie leer.
   const [selectedShops, setSelectedShops] = useState({});
-  // Nutzt das aktuell geöffnete Angebot die serverseitig gekapselte TG124-Portalsuche (statt der
-  // JUMiNGO-Access-Point-Suche)? Genau dann trägt die Trefferliste buchungskompatible Shop-Kennungen.
-  const usesPortalSearch = offerRequiresDropoffParcelShop(tariff, offerSupportsAccessPointSearch(tariff));
+  // Das Suchprofil des aktuell geöffneten Angebots. „Verbindliche Auswahl" = die serverseitig gekapselte
+  // TG124-Portalsuche (statt der JUMiNGO-Access-Point-Suche); genau dann trägt die Trefferliste
+  // buchungskompatible Shop-Kennungen.
+  const profile = parcelShopSearchProfile(tariff, offerSupportsAccessPointSearch(tariff));
+  const usesPortalSearch = profile.binding;
+  // Die Postleitzahl, zu der die angezeigten Portaltreffer gehören — sie begleitet die Auswahl in die Buchung
+  // (`searchPostcode`), damit der Server genau diese Suche wiederholt.
+  const [searchedPostCode, setSearchedPostCode] = useState("");
 
   // Laufende Suchen durchnummerieren: nur die jüngste darf schreiben. Sonst
   // überschriebe eine langsame ältere Antwort das frische Ergebnis.
@@ -124,15 +122,18 @@ export function ParcelShopFinderProvider({ children }) {
   const triggerRef = useRef(null);
 
   const carrierCode = resolveAccessPointCarrierCode(tariff);
-  // Der Backend-Guard verlangt zusätzlich zur PLZ die Stadt (sonst 400).
-  const cityRequired = Boolean(carrierCode);
+  // Orientierung: der Backend-Guard verlangt zusätzlich zur PLZ die Stadt (sonst 400). Die verbindliche
+  // Portalsuche kennt keinen Ort — dort ist er weder Pflicht noch Eingabe.
+  const cityRequired = !profile.binding && Boolean(carrierCode);
   const cityMissing = cityRequired && city.trim().length < 2;
   // GLS verlangt backendseitig ZUSÄTZLICH eine Straße; ohne street → 400.
   // Gesendet wird sie für JEDEN Carrier, sobald sie vorliegt: JUMiNGO
   // geokodiert den Suchmittelpunkt aus der übergebenen Adresse.
-  const streetRequired = carrierCode === "gls";
+  const streetRequired = !profile.binding && carrierCode === "gls";
   const streetMissing = streetRequired && street.trim().length < 1;
-  const canSearch = postCode.trim().length >= 3 && !cityMissing && !streetMissing && !loading;
+  const canSearch = profile.binding
+    ? bindingPostcodeValid(postCode) && !loading
+    : postCode.trim().length >= 3 && !cityMissing && !streetMissing && !loading;
 
   /* Eine Suche ausführen. Die Parameter werden übergeben statt aus dem State
      gelesen, damit der Öffnungspfad mit der frisch übernommenen Adresse suchen
@@ -140,13 +141,15 @@ export function ParcelShopFinderProvider({ children }) {
   const sucheAus = useCallback(async (p) => {
     // ── TG124-Portalsuche: nur PLZ+Land, serverseitig gekapselt, buchungskompatible Kennungen ──────────
     if (p.portal) {
-      if (p.postCode.trim().length < 3) return;
+      // Ohne gültige PLZ wird nicht gesucht — das Feld steht im Fenster, „Suchen" ist bis dahin gesperrt.
+      if (!bindingPostcodeValid(p.postCode)) return;
+      const plz = p.postCode.trim();
       const lauf = ++laufRef.current;
       const aktuell = () => lauf === laufRef.current;
       setLoading(true);
       setError("");
       try {
-        const r = await searchDropoffParcelShops({ postcode: p.postCode.trim(), countryCode: p.countryCode });
+        const r = await searchDropoffParcelShops({ postcode: plz, countryCode: p.countryCode });
         if (!aktuell()) return;
         if (r.status === 401 || r.status === 403) { setLoading(false); return; }
         let d = null;
@@ -154,16 +157,17 @@ export function ParcelShopFinderProvider({ children }) {
         if (!aktuell()) return;
         if (!r.ok || !d || !Array.isArray(d.shops)) {
           setResults(null);
-          setError("Die Paketshop-Suche ist momentan nicht verfügbar. Bitte versuchen Sie es später erneut.");
+          setError(portalSuchFehler(r.status, null));
           setLoading(false);
           return;
         }
         setResults(mapPortalShopsToList(d.shops));
+        setSearchedPostCode(plz);
         schluesselRef.current = sucheSchluessel(p);
-      } catch {
+      } catch (e) {
         if (!aktuell()) return;
         setResults(null);
-        setError("Die Paketshop-Suche ist momentan nicht verfügbar. Bitte versuchen Sie es später erneut.");
+        setError(portalSuchFehler(null, e));
       }
       if (aktuell()) setLoading(false);
       return;
@@ -229,8 +233,8 @@ export function ParcelShopFinderProvider({ children }) {
   const openFinder = useCallback(({ tariff: t, senderPrefill, triggerEl }) => {
     const code = resolveAccessPointCarrierCode(t);
     if (!code) return; // ohne Suchcode gibt es nichts zu öffnen
-    // TG124: ein buchbares Abgabe-Angebot nutzt die serverseitig gekapselte Portalsuche.
-    const portal = offerRequiresDropoffParcelShop(t, offerSupportsAccessPointSearch(t));
+    // TG124: ein buchbares Abgabe-Angebot nutzt die serverseitig gekapselte Portalsuche (Profil „Verbindliche Auswahl").
+    const portal = parcelShopSearchProfile(t, offerSupportsAccessPointSearch(t)).binding;
     const land = (senderPrefill?.country || "DE").toUpperCase();
     const p = {
       carrierCode: code,
@@ -273,14 +277,15 @@ export function ParcelShopFinderProvider({ children }) {
   }, [carrierCode, usesPortalSearch, countryCode, postCode, city, street, radius, sucheAus]);
 
   // TG124: einen Trefferzeilen-Shop verbindlich als Abgabe-Shop des aktiven Angebots wählen (fließt in /book).
-  // Die Liste reicht den `dropoffShop` der Zeile herein (bleibt durch das `...s`-Spread des Modals erhalten).
+  // Die Liste reicht den `dropoffShop` der Zeile herein (bleibt durch das `...s`-Spread des Modals erhalten);
+  // dazu kommt die Postleitzahl der Suche, aus der er stammt.
   const selectShop = useCallback((shop) => {
     const k = offerKey(tariff);
-    const normalisiert = normalizeDropoffParcelShop(shop);
+    const normalisiert = normalizeDropoffParcelShop(shop ? { ...shop, searchPostcode: searchedPostCode } : shop);
     if (!k || !normalisiert) return;
     setSelectedShops((prev) => ({ ...prev, [k]: normalisiert }));
     setOpen(false);
-  }, [tariff]);
+  }, [tariff, searchedPostCode]);
   // Der gebundene Abgabe-Shop eines Angebots (oder null).
   const selectedShopFor = useCallback((t) => {
     const k = offerKey(t);
@@ -316,6 +321,8 @@ export function ParcelShopFinderProvider({ children }) {
         results={results}
         countryCode={countryCode}
         carrierName={tariff?.publicCarrierName || null}
+        profile={profile}
+        searchedPostCode={usesPortalSearch ? searchedPostCode : ""}
         onSelectShop={usesPortalSearch ? selectShop : null}
         selectedShopKey={usesPortalSearch ? (selectedShopFor(tariff)?.pickupLocationCode || null) : null}
       />

@@ -339,7 +339,12 @@ test("35 — die Entfernung wird deutsch formatiert, die Einheit kommt von JUMiN
   assert.equal(formatDistance(2.957714, "km"), "3,0 km");
   assert.equal(formatDistance(3.462022, "km"), "3,5 km");
   assert.equal(formatDistance(1234.5, "km"), "1.234,5 km");
-  assert.equal(formatDistance(1.5, "mi"), "1,5 mi", "distanceCode wird verbatim übernommen");
+  assert.equal(formatDistance(1.5, "mi"), "1,5 mi", "distanceCode wird übernommen, ohne Umrechnung");
+  // 2026-10-24: JUMiNGO sendet „KM“ — gezeigt wird die deutsche Schreibweise „km“; Unbekanntes bleibt wörtlich.
+  assert.equal(formatDistance(0.6, "KM"), "0,6 km");
+  assert.equal(formatDistance(0.6, " Km "), "0,6 km");
+  assert.equal(formatDistance(1.5, "MI"), "1,5 mi");
+  assert.equal(formatDistance(1.5, "NM"), "1,5 NM", "unbekannte Einheit wörtlich");
   assert.equal(formatDistance(1.5, null), "1,5 km", "sinnvoller Default ohne distanceCode");
   assert.equal(formatDistance(null, "km"), null);
 });

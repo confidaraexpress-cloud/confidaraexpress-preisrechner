@@ -390,9 +390,13 @@ export function deleteDraft(id) {
 // noetigen, buchungskompatiblen Shopdaten. Nur aktiv, wenn der Abgabe-Buchungsweg serverseitig
 // freigeschaltet ist (sonst 404). Kein zweiter API-Layer — derselbe apiFetch-Vertrag wie sonst.
 // Der Pfad ist bewusst anbieterneutral: kein Einkaufsanbieter, keine ServiceID im Frontend.
+// Frist (2026-10-24): der Server meldet sich beim Portal an und sucht dann — beides zusammen innerhalb von
+// 60 s (gemessen auf Staging 9,4 s + 26,0 s). Wie bei jedem Anbieteraufruf liegt die Frist des Browsers darüber
+// (siehe Kopf dieser Datei), damit eine noch laufende Serverantwort ankommt. Kein automatischer Neuversuch.
+export const DROPOFF_PARCELSHOP_SEARCH_TIMEOUT_MS = 70000;
 export function searchDropoffParcelShops({ postcode, countryCode = "DE", signal } = {}) {
   const q = new URLSearchParams({ postcode: String(postcode ?? "").trim(), countryCode: String(countryCode ?? "DE").trim() });
-  return apiFetch(`/api/dropoff/parcelshops?${q.toString()}`, { auth: true, signal });
+  return apiFetch(`/api/dropoff/parcelshops?${q.toString()}`, { auth: true, signal, timeoutMs: DROPOFF_PARCELSHOP_SEARCH_TIMEOUT_MS });
 }
 
 export function getShipmentDocuments(shipmentId, { signal } = {}) {

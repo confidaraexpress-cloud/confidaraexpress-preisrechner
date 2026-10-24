@@ -242,7 +242,7 @@ test("4 — bei „Alle Öffnungszeiten“ stehen ALLE 20 Shops aufsteigend nach
   assert.deepEqual(await namen(page), DPD_EXPECTED_SORTED);
 
   const distanzen = await page.locator(".ap-modal .ap-list-dist").allInnerTexts();
-  assert.deepEqual(distanzen.slice(0, 5), ["0,6 KM", "0,9 KM", "2,6 KM", "2,7 KM", "2,9 KM"]);
+  assert.deepEqual(distanzen.slice(0, 5), ["0,6 km", "0,9 km", "2,6 km", "2,7 km", "2,9 km"]);
   await page.close();
 });
 

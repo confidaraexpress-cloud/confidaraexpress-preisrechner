@@ -441,6 +441,7 @@
    unbekannte Zahl erscheint nie als 0. */
 .adm-todo-line {
   margin: var(--ce-space-3) 0 0;
+  max-width: 64ch; /* Gesamtauftrag D: Lesemaß — vorher bis 163 Zeichen je Zeile (64ch ≈ 87 Zeichen dieser Zeile) */
   font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
   color: var(--ce-color-text-secondary);
 }
@@ -748,7 +749,8 @@
 .adm-addr-str { font-size: var(--ce-text-body-size); line-height: var(--ce-text-body-line); color: var(--ce-color-text-primary); white-space: pre-line; }
 
 .adm-support { display: flex; flex-wrap: wrap; gap: var(--ce-space-2); }
-.adm-support-hint { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted); margin-top: var(--ce-space-2); }
+.adm-support-hint { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted); margin-top: var(--ce-space-2);
+  max-width: 72ch; /* Gesamtauftrag D: Lesemaß — vorher bis 147 Zeichen je Zeile */ }
 /* Rhythmus im Detail: Aktionen unter einem Kennwertraster oder Hinweis stehen
    mit demselben Abstand wie die Links unter einer Karte (.adm-track-link),
    nicht auf Tuchfühlung mit dem letzten Wert. Eine Zwischenzeile vor einem

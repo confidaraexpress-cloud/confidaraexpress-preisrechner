@@ -366,6 +366,34 @@
   padding: 0 var(--shell-gutter, var(--ce-page-gutter)) var(--ce-space-9);
 }
 .booking-wrap > * { max-width: var(--ce-size-booking); }
+/* Gesamtauftrag D (2026-10-24): ab 1600 px zweispaltig — die Arbeitsspalte bleibt 800 px und im normalen Fluss
+   (Abstände unverändert), daneben steht die vorhandene Live-Zusammenfassung samt Netto/Brutto-Umschalter als
+   ruhige, mitlaufende Seitenspalte. Sie liegt absolut neben der Spalte und klebt innen (sticky); die kompakte
+   Leiste bleibt damit verborgen, weil die Zusammenfassung sichtbar bleibt. Ohne Seitenspalte (Schritt 3) und
+   unter 1600 px: unverändert eine Spalte. */
+@media (min-width: 1600px) {
+  .booking-wrap:has(> .booking-side) {
+    position: relative;
+    max-width: calc(var(--ce-size-booking) + var(--ce-space-7) + var(--ce-size-booking-side)
+      + 2 * var(--shell-gutter, var(--ce-page-gutter)));
+  }
+  .booking-wrap > .booking-side {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(var(--shell-gutter, var(--ce-page-gutter)) + var(--ce-size-booking) + var(--ce-space-7));
+    width: var(--ce-size-booking-side);
+    max-width: none;
+  }
+  .booking-side-inner { position: sticky; top: var(--ce-space-6); }
+  .booking-side .booking-vat-row { justify-content: flex-start; }
+  /* In der schmalen Spalte gestapelt — dieselben Zonen, dieselben Werte. */
+  .booking-side .booking-livesum { grid-template-columns: 1fr; }
+  .booking-side .blsum-zone + .blsum-zone { border-left: none; border-top: 1px solid var(--border); }
+  .booking-side .blsum-price { align-items: flex-start; text-align: left; }
+  .booking-side .blsum-price-box { align-items: flex-start; }
+  .booking-side .blsum-ins-note { text-align: left; }
+}
 .booking-carrier-name { font-size: var(--ce-text-title-section-size); font-weight: 600; line-height: 1.3; color: var(--ce-color-text-primary); }
 .booking-carrier-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .booking-carrier-logo { height: 22px; width: auto; object-fit: contain; display: block; flex-shrink: 0; }

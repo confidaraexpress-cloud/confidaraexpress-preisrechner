@@ -34,6 +34,7 @@
 .pwa-card-text {
   flex: 1 1 220px;
   min-width: 0;
+  max-width: 72ch; /* Gesamtauftrag D: Lesemaß — auf breiten Bildschirmen sonst über 140 Zeichen je Zeile */
   margin: 0;
   font-size: var(--ce-text-body-s-size);
   line-height: var(--ce-text-body-s-line);

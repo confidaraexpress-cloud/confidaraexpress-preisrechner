@@ -19,7 +19,10 @@
      Mobile behalten damit unverändert die volle Breite.
      Die Begrenzung sitzt auf der SEKTION, nicht auf .offer-card: Ergebniskopf,
      Filterleiste und Karten müssen dieselbe Kante halten. */
-  max-width: 1080px;
+  /* Gesamtauftrag D (2026-10-24): an den Rahmen gebunden statt fest — 120 px schmaler als der Inhalt, höchstens
+     1280 px. Bis 1679 px bleibt es damit bei 1080 px (Rahmen 1200); im 1440er-Rahmen 1280 px, darüber nicht
+     breiter, damit der Vergleich nicht zerdehnt. */
+  max-width: min(calc(var(--ce-size-content) - 120px), 1280px);
   margin-inline: auto;
   background: var(--ce-color-surface);
   border: 1px solid var(--ce-color-border-subtle);

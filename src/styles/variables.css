@@ -386,6 +386,9 @@
   /* Arbeitsspalte der Buchung (/booking): breit genug für zwei Absicherungs-
      karten nebeneinander; Spalte und Seitenkopf hängen an diesem einen Wert. */
   --ce-size-booking: 800px;
+  /* Seitenspalte der Buchung ab 1600 px (Gesamtauftrag D): mit Arbeitsspalte und Abstand (--ce-space-7) genau
+     der Grundrahmen — 800 + 32 + 368 = 1200 —, damit Titel, Schritte und beide Spalten auf einer Kante stehen. */
+  --ce-size-booking-side: 368px;
   --ce-size-prose: 720px;
   --ce-size-sidebar: 248px;
   --ce-size-sidebar-admin: 248px;
@@ -551,4 +554,16 @@
   --auth-radius-sm: 8px;
   --auth-radius: 14px;
   --auth-radius-xl: 28px;
+}
+
+/* ── Rahmen in Stufen (Gesamtauftrag D, 2026-10-24) ──
+   Bis 1679 px unverändert 1200 px Inhalt. Darüber wächst der Rahmen in zwei Stufen mit, statt als schmale
+   Insel in einer großen Fläche zu stehen: ab 1680 px 1440, ab 2240 px 1680 px. Seitenkopf, Inhalt,
+   Hinweisleiste, Fuß und Tracking folgen über denselben Token. Admin eigene Stufen: 1440 / 1680 / 1920 px.
+   Formulare, Lesetext und die Buchungsspalte behalten ihre eigenen Maße. */
+@media (min-width: 1680px) {
+  :root { --ce-size-content: 1440px; --ce-size-content-admin: 1680px; }
+}
+@media (min-width: 2240px) {
+  :root { --ce-size-content: 1680px; --ce-size-content-admin: 1920px; }
 }

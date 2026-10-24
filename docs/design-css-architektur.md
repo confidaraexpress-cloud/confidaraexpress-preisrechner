@@ -44,4 +44,48 @@ Einzige lokale Ausnahme (Betreiberentscheidung 2026-10-04): der Carrier-Bereich 
 
 `min-height: 100dvh` statt `100vh` bei Vollbildlayouts.
 
-`/booking` ist **eine** zentrierte Arbeitsspalte (`--ce-size-booking`, `.booking-wrap`); Titel und Untertitel stehen über `.ce-page-header--booking` auf derselben Achse, die Utility-Zeile (Mitteilungen, Benutzerchip) bleibt am gemeinsamen Rahmen.
+`/booking` ist unter 1600 px **eine** zentrierte Arbeitsspalte (`--ce-size-booking`, `.booking-wrap`); Titel und Untertitel stehen über `.ce-page-header--booking` auf derselben Achse, die Utility-Zeile (Mitteilungen, Benutzerchip) bleibt am gemeinsamen Rahmen.
+
+### Rahmenstufen und Seitenspalte (Gesamtauftrag D, 2026-10-24)
+
+Wenige zentrale Regeln statt seitenweiser Sonderbreiten.
+
+**Rahmen** (`styles/variables.css`, Stufen am Dateiende):
+
+| Bereich | bis 1679 px | ab 1680 px | ab 2240 px |
+|---|---|---|---|
+| Kundenseiten (`--ce-size-content`) | 1200 px | 1440 px | 1680 px |
+| Admin (`--ce-size-content-admin`) | 1440 px | 1680 px | 1920 px |
+
+- Seitenkopf, Inhalt, Hinweisleiste, Fuß und Tracking folgen über denselben Token und stehen auf einer Kante.
+- Formulare (`--ce-size-form`), Lesetext (`--ce-size-prose`) und die Buchungsspalte behalten ihre Maße.
+- Weitere Stufen nur bewusst und dort; `designTokens` 1b schreibt sie fest.
+
+**Angebotssektion** (`offers.css`):
+
+- `min(calc(var(--ce-size-content) - 120px), 1280px)`.
+- Im Grundrahmen sind das unverändert 1080 px (Karte 1022 px), ab 1680 px 1280 px. So wird der Vergleich nicht zerdehnt.
+
+**Buchung ab 1600 px** (`calculator.css`, `.booking-side` in `BookingPage.jsx`):
+
+- Die Arbeitsspalte bleibt 800 px und im normalen Fluss; die Abstände sind unverändert.
+- Netto/Brutto-Umschalter und Live-Zusammenfassung stehen als Seitenspalte daneben (`--ce-size-booking-side` 368 px, Abstand `--ce-space-7`). Zusammen füllen sie genau den Grundrahmen von 1200 px.
+- Die Seitenspalte liegt absolut neben der Arbeitsspalte und klebt innen (sticky). Die kompakte Leiste bleibt verborgen, weil die Zusammenfassung sichtbar bleibt.
+- Der Titel wandert nur mit Seitenspalte mit: `.main-content:has(.booking-side)` in `patterns.css`.
+- Unter 1600 px und in Schritt 3 sind die Wrapper reine Blöcke; die Seite ist pixelgleich mit dem Stand davor.
+
+**Lesemaß:**
+
+| Element | Maß |
+|---|---|
+| `.auth-sub-2` | 62ch, zentriert, `text-wrap: balance` |
+| `.pwa-card-text`, `.adm-support-hint` | 72ch |
+| `.adm-todo-line` | 64ch |
+
+Gemessen bleiben alle bei höchstens 90 Zeichen je Zeile, vorher bis 163.
+
+**Bedienziel:** `.auth-field-link` („Vergessen?“) hat mindestens 24 px Trefferhöhe (WCAG 2.5.8), ohne die Zeile höher zu machen.
+
+**Nicht berührt:** die Lieferzeitfilter (Dropdowns, Uhrzeitliste). Sie sind abgenommen und bleiben unverändert.
+
+**Browserprüfung:** `tests/e2e/responsiveFrameTiers.test.mjs` (R1–R6, darunter überlauffrei in zehn Breiten von 320 bis 2560 px).

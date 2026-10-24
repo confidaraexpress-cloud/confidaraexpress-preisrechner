@@ -12,7 +12,7 @@ test("die zehn Shops der Staging-Antwort 63808: Name, Anschrift, Entfernung in k
   assert.equal(liste[0].address, "Würzburger Str. 116, 63808 Haibach");
   assert.equal(liste[2].address, "Am Hügel 7, 63768 Hösbach");
   assert.deepEqual(liste.map((s) => formatDistance(s.distance, s.distanceCode)),
-    ["0,2 km", "3,1 km", "3,3 km", "5,2 km", "5,8 km", "6,2 km", "6,3 km", "6,4 km", "6,9 km", "7,0 km"]);
+    ["0,1 km", "1,9 km", "2,1 km", "3,3 km", "3,6 km", "3,9 km", "3,9 km", "4,0 km", "4,3 km", "4,4 km"]);
   assert.deepEqual(liste[0].dropoffShop, { parcelShopId: "262668", pickupLocationCode: "DE19321", name: "Lotto Shop Lange",
     postcode: "63808", city: "Haibach", street: "Würzburger Str.", houseNumber: "116", town: "Haibach", countryCode: "DE" });
 });

@@ -1,0 +1,17 @@
+// TG124 mit Kartenpositionen: die Antwort von GET /api/dropoff/parcelshops?postcode=63808, wie das Backend sie bei
+// TG124_SHOP_POSITIONS_ENABLED=true liefert — erzeugt durch das echte lib/parcelShopPositions.js (Gebäudeschranke,
+// Plausibilität) aus der freigegebenen, einmaligen Geoapify-Prüfung vom 2026-10-24 (11 Credits, EU-Endpunkt) zu den
+// zehn gespeicherten Shopanschriften der Staging-Suche 63808. Nur geprüfte Positionen tragen latitude/longitude;
+// Daten © OpenStreetMap-Mitwirkende, Geocoding Geoapify.
+export const TG124_SHOPS_63808_POSITIONS = Object.freeze([
+  Object.freeze({"parcelShopId":"262668","pickupLocationCode":"DE19321","name":"Lotto Shop Lange","street":"Würzburger Str.","houseNumber":"116","postcode":"63808","city":"Haibach","town":"Haibach","countryCode":"DE","distanceKm":0.14,"latitude":49.9645,"longitude":9.20349,"positionSource":"address"}),
+  Object.freeze({"parcelShopId":"587748","pickupLocationCode":"DE49809","name":"Myflexbox - DPD Pickup Paketstation","street":"Bayreuther Str.","houseNumber":"5","postcode":"63743","city":"Aschaffenburg","town":"Innenstadt","countryCode":"DE","distanceKm":1.91,"latitude":49.96403,"longitude":9.17565,"positionSource":"address"}),
+  Object.freeze({"parcelShopId":"519166","pickupLocationCode":"DE43619","name":"Landhotel Klingerhof GmbH","street":"Am Hügel","houseNumber":"7","postcode":"63768","city":"Hösbach","town":"Winzenhohl","countryCode":"DE","distanceKm":2.06,"latitude":49.96959,"longitude":9.23005,"positionSource":"address"}),
+  Object.freeze({"parcelShopId":"577910","pickupLocationCode":"DE49106","name":"Rosis-toys","street":"Würzburger Str.","houseNumber":"25","postcode":"63856","city":"Bessenbach","town":"Straßbessenbach","countryCode":"DE","distanceKm":3.26}),
+  Object.freeze({"parcelShopId":"382002","pickupLocationCode":"DE35010","name":"NKD Deutschland GmbH","street":"Bayernstr.","houseNumber":"9","postcode":"63773","city":"Goldbach","town":"Goldbach","countryCode":"DE","distanceKm":3.62,"latitude":49.99404,"longitude":9.17915,"positionSource":"address"}),
+  Object.freeze({"parcelShopId":"542519","pickupLocationCode":"DE45903","name":"DPD-Paketstation","street":"Auhofstr.","houseNumber":"25","postcode":"63741","city":"Aschaffenburg","town":"Damm","countryCode":"DE","distanceKm":3.88}),
+  Object.freeze({"parcelShopId":"520889","pickupLocationCode":"DE43984","name":"Media Markt City Galerie","street":"Goldbacher Str.","houseNumber":"2","postcode":"63739","city":"Aschaffenburg","town":"Innenstadt","countryCode":"DE","distanceKm":3.9}),
+  Object.freeze({"parcelShopId":"304274","pickupLocationCode":"DE25204","name":"City Markt","street":"Sandgasse","houseNumber":"26","postcode":"63739","city":"Aschaffenburg","town":"Innenstadt","countryCode":"DE","distanceKm":3.96,"latitude":49.97437,"longitude":9.14842,"positionSource":"address"}),
+  Object.freeze({"parcelShopId":"494191","pickupLocationCode":"DE42212","name":"Kiox","street":"Landingstr.","houseNumber":"32","postcode":"63739","city":"Aschaffenburg","town":"Innenstadt","countryCode":"DE","distanceKm":4.27,"latitude":49.97571,"longitude":9.14453,"positionSource":"address"}),
+  Object.freeze({"parcelShopId":"429339","pickupLocationCode":"DE38111","name":"i-Mobile","street":"Frohsinnstr.","houseNumber":"30","postcode":"63739","city":"Aschaffenburg","town":"Innenstadt","countryCode":"DE","distanceKm":4.36,"latitude":49.97952,"longitude":9.14525,"positionSource":"address"}),
+]);

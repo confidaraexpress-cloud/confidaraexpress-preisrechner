@@ -120,13 +120,30 @@ Ein Fenster, eine Liste, eine Karte (`AccessPointFinderModal`, `AccessPointList`
 
 - **Orientierung (JUMiNGO, unverändert):** PLZ, Ort, Straße, Umkreis, „Jetzt geöffnet“, Karte, Status und Öffnungszeiten aus der Anbieterantwort, der bisherige Hinweissatz (`ORIENTATION_NOTE`). Einzige Änderung: Entfernungen heißen „km“ statt „KM“ (`formatDistance`, unbekannte Einheiten bleiben wörtlich).
 - **Verbindliche Auswahl (TG124):** nur die fünfstellige PLZ (DE); kein Ort, keine Straße, kein Umkreis, kein Öffnungsfilter — die Portalsuche kennt sie nicht. Pflichthinweis `BINDING_NOTE` („Für diesen Versand müssen Sie vor der Buchung einen Paketshop auswählen.“), beim Laden `BINDING_LOADING_NOTE`. Der Orientierungssatz erscheint hier nie.
-- **Liste:** `mapPortalShopsToList` (`utils/portalParcelShops.mjs`) übernimmt Name, Anschrift und `distanceKm` (in km, Reihenfolge des Servers). Status, Öffnungszeiten und „Öffnungszeiten“-Knopf entfallen (`showStatusAndHours = false`) — die Quelle liefert sie nicht, Platzhalter werden nicht erfunden. Die Kontextzeile nennt die gesuchte PLZ und dass die Entfernung zum Gebiet der PLZ gemessen ist.
-- **Karte nur mit Positionen:** Ohne mindestens eine Kartenposition gibt es keine Karte und keinen mobilen Umschalter; die Liste nimmt die Fläche ein (`ap-modal-split--listonly`, Desktop als Raster), die Zeile ist reiner Inhalt. Liefert der Server später geprüfte Positionen (P3, `latitude`/`longitude`/`positionSource`), erscheinen sie mit Markern in Listennummerierung, Herkunftshinweis und derselben Auswahl im Popup. Eine Position ist nie Buchungskennung.
+- **Liste:** `mapPortalShopsToList` (`utils/portalParcelShops.mjs`) übernimmt Name, Anschrift und `distanceKm` (in km, Reihenfolge des Servers; die Portalzahl ist Kilometer, obwohl das Portal „mi“ schreibt — Backend §7.59, seit 2026-10-24 ohne Meilenfaktor). Status, Öffnungszeiten und „Öffnungszeiten“-Knopf entfallen (`showStatusAndHours = false`) — die Quelle liefert sie nicht, Platzhalter werden nicht erfunden. Die Kontextzeile nennt die gesuchte PLZ und dass die Entfernung zum Gebiet der PLZ gemessen ist.
+- **Karte nur mit Positionen:** Ohne mindestens eine Kartenposition gibt es keine Karte und keinen mobilen Umschalter; die Liste nimmt die Fläche ein (`ap-modal-split--listonly`, Desktop als Raster), die Zeile ist reiner Inhalt. Liefert der Server geprüfte Positionen (P3, `latitude`/`longitude`/`positionSource: "address"`, Backend §7.60), ist es **dieselbe Karte wie bei JUMiNGO**:
+  - derselbe lokale Ausschnitt (`fitBounds` über die Marker, ein einzelner Marker mit Zoom 15);
+  - dieselben blauen Marker mit der Nummer des Listeneintrags (Shops ohne Position überspringen ihre Nummer);
+  - dieselbe Bedienung: Marker ↔ Liste und Popup;
+  - auf dem Handy derselbe Umschalter Liste/Karte;
+  - dieselben Stile.
+
+  Zusätzlich gibt es nur das technisch Nötige: die Auswahl im Popup, den Herkunftshinweis und die Pflicht-Quellenangabe (© OpenStreetMap-Mitwirkende · Powered by Geoapify). Fehlt ein Teil der Positionen, nennt der Abdeckungshinweis „N von 10 Paketshops haben eine Kartenposition.“. Eine Position ist nie Buchungskennung und geht nie in `/book`.
 - **Auswahl:** je Zeile „Diesen Paketshop wählen“; der zugängliche Name nennt Shop und Anschrift („Diesen Paketshop wählen – Lotto Shop Lange, Würzburger Str. 116, 63808 Haibach“). Wählen schließt das Fenster; die gewählte Zeile trägt „Ausgewählt“ und `ap-list-item--chosen`. Danach sagt der Einstieg, welcher Shop gilt: auf der Angebotskarte „Gewählt: <Name> · ändern“ (Name notfalls gekürzt, vollständig im zugänglichen Namen „Gewählter Paketshop für … – ändern“), auf der Buchungsseite — wo der Shop schon darüber steht — „Paketshop ändern“ (`ParcelShopFinderTrigger`, `showChosen`). Die Wahl gilt je `offerKey` bis zur Buchung, ein anderes Angebot hat seine eigene.
-- **Suche:** genau eine Anfrage je Suchschlüssel (`portal`, Land, PLZ), Ergebnisse je Schlüssel zwischengespeichert, späte Antworten einer älteren Suche verworfen (`laufRef`). Zeitlimit `DROPOFF_PARCELSHOP_SEARCH_TIMEOUT_MS = 70000` (`api/client.js`) über dem Serverbudget von 60 s; nur dieser Aufruf, alle anderen behalten 30 s. Kein automatisches Wiederholen. Fehlertexte: Zeitüberschreitung, ungültige PLZ (400), zu viele Anfragen (429), sonst „nicht verfügbar“ — nie ein Anbieterfehler.
+- **Suche:** genau eine Anfrage je Suchschlüssel (`portal`, Land, PLZ), späte Antworten einer älteren Suche verworfen (`laufRef`). Erfolgreiche Portalsuchen merkt sich der Finder je Schlüssel für 30 Minuten (`portalErgebnisseRef`), damit ein Wechsel zu einer anderen Abgabe und zurück keine zweite Anmeldung beim Anbieter auslöst. Fehler werden nicht gemerkt. Orientierungssuchen tragen tageszeitabhängige Öffnungsstatus und laden weiter neu. Zeitlimit `DROPOFF_PARCELSHOP_SEARCH_TIMEOUT_MS = 70000` (`api/client.js`) über dem Serverbudget von 60 s; nur dieser Aufruf, alle anderen behalten 30 s. Kein automatisches Wiederholen. Fehlertexte: Zeitüberschreitung, ungültige PLZ (400), zu viele Anfragen (429), sonst „nicht verfügbar“ — nie ein Anbieterfehler.
 - **Buchung:** `dropoffParcelShopBookPayload` sendet Kennungen und Texte des gewählten Shops plus `searchPostcode` (nur fünf Ziffern). Der Server bleibt Autorität: Er sucht vor dem Warenkorb einmal mit dieser PLZ, verlangt genau einen Treffer mit gleichen Kennungen und Daten und bindet die Anbieterdaten (Backend `docs/BACKEND_ARCHITECTURE.md` §7.59).
 
-Browserprüfung: `tests/e2e/parcelShopPortalFinder.test.mjs` (Fälle 1–12: Profil, Zeichen und km, Liste ohne Karte, Auswahl und Namen, `/book`-Payload, lange Suche, Fehler ohne Wiederholung, PLZ-Wechsel, Wechsel zur JUMiNGO-Abgabe mit später Antwort, Positionen aus P3, 390/360 px mit Touch, Tastatur); Orientierung weiter `parcelShopMapFinder`, `parcelShopParity`.
+Browserprüfung: `tests/e2e/parcelShopPortalFinder.test.mjs` (Fälle 1–12: Profil, Zeichen und km, Liste ohne Karte, Auswahl und Namen, `/book`-Payload, lange Suche, Fehler ohne Wiederholung, PLZ-Wechsel, Wechsel zur JUMiNGO-Abgabe mit später Antwort, Positionen aus P3, 390/360 px mit Touch, Tastatur); Orientierung weiter `parcelShopMapFinder`, `parcelShopParity`. Karte mit geprüften Positionen: `tests/e2e/parcelShopTg124Map.test.mjs` (Fälle 1–8):
+- Marker = Listennummern, lokaler Ausschnitt;
+- Marker ↔ Liste;
+- Auswahl im Popup und Wechsel bis `/book`, ohne Koordinaten;
+- Anbieterwechsel ohne zweite Portalsuche;
+- 390/768 px wie JUMiNGO;
+- unvollständige, fehlende Positionen und Ladefehler;
+- keine Anfragen an fremde Hosts;
+- gleiche berechnete Stile.
+
+Die Fixture `tg124ParcelShops63808Positions.mjs` entsteht aus der freigegebenen Geoapify-Prüfung durch das echte Backend.
 
 ### Expressversand (TG23) — aktueller Vertrag
 

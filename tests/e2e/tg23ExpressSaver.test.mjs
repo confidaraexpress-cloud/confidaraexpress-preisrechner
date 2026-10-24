@@ -630,7 +630,7 @@ test("D — Abholung am selben Tag: Zuschlag, wirksamer Abholschluss, frische un
   await detail.waitFor({ timeout: 10000 });
   assert.equal(await inhalt(detail.locator(".offer-detail-value")), "+3,27 € netto · +3,89 € brutto");
   assert.equal(await inhalt(page.locator(`#offer-details-${TG_HEUTE.offerId} .offer-sameday-until`)),
-    "Abholung heute möglich bis 16:45 Uhr");
+    "Abholung heute bei Buchung bis 16:45 Uhr");
   // Der Abholschluss des Anbieters bleibt intern — sichtbar ist nur der wirksame, auch in den Details.
   assert.doesNotMatch(await inhalt(karte), /17:00/, "der Abholschluss des Anbieters ist sichtbar");
 
@@ -640,7 +640,7 @@ test("D — Abholung am selben Tag: Zuschlag, wirksamer Abholschluss, frische un
   assert.match(await inhalt(privatKarte), /\+ 4,10 € brutto/);
   assert.match(await inhalt(privatKarte), /3,45 € netto/);
   assert.equal(await inhalt(page.locator("#booking-live-sameday-note")), "inkl. Zuschlag für Abholung am selben Tag 3,89 €");
-  assert.equal(await inhalt(page.locator("#offer-summary-sameday-until")), "Abholung heute möglich bis 16:45 Uhr");
+  assert.equal(await inhalt(page.locator("#offer-summary-sameday-until")), "Abholung heute bei Buchung bis 16:45 Uhr");
   assert.match(await inhalt(page.locator(".offsum-facts")), /bereit ab 11:30 Uhr/);
 
   await waehleLieferadresse(page, false);

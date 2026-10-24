@@ -379,7 +379,7 @@ test("C — Abholung am selben Tag: Zuschlag in der Preisaufschlüsselung und au
   assert.equal(await inhalt(karte.locator(".offer-tl-node--start .offer-tl-title")), "Abholung heute");
 
   const panel = await oeffneDetails(page, TG_HEUTE);
-  assert.equal(await inhalt(panel.locator(".offer-sameday-until")), "Abholung heute möglich bis 16:45 Uhr");
+  assert.equal(await inhalt(panel.locator(".offer-sameday-until")), "Abholung heute bei Buchung bis 16:45 Uhr");
   assert.equal(await abschnittVon(panel, "main").count(), 1, "das Profil fehlt neben der Abholung heute");
   const zuschlag = panel.locator('.offer-detail-row:has(.offer-detail-label:text-is("Zuschlag für Abholung am selben Tag"))');
   assert.equal(await inhalt(zuschlag.locator(".offer-detail-value")), "+3,02 € netto · +3,60 € brutto");

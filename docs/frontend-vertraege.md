@@ -39,7 +39,7 @@ Die Art der Lieferadresse ist **keine Formularangabe** mehr. „Neue Sendung" er
 
 Ob ein Angebot **heute** abgeholt werden kann, bis wann und mit welchem Zuschlag, sagt ausschließlich der Server. Die Oberfläche vergleicht kein Datum, liest keine Uhr und rechnet nichts (`utils/sameDayCollectionView.mjs`).
 
-- **Karte:** nur mit `pickupToday: true`, `pickupTodayUntil` („HH:MM") **und** beiden Beträgen `sameDaySurchargeNet`/`sameDaySurchargeGross` erscheinen in den Angebotsdetails „Zuschlag für Abholung am selben Tag" mit beiden Beträgen (Preisaufschlüsselung) und „Abholung heute möglich bis HH:MM Uhr" (Termin & Abholung); die Kartenfläche selbst zeigt „Abholung heute" und den Kartenpreis (seit 2026-10-04 keine Zuschlagszeile mehr darauf). Der Kartenpreis **enthält** den Zuschlag — nichts wird addiert. Ein Tarif mit `pickupToday`, aber ohne diese Angaben, bekommt keine Zeile. Das ist der **Normalfall** für die gebührenfreien Abholverträge (TNT, DHL): `pickupToday: true` sagt nur, dass heute abgeholt wird — der Timeline-Knoten heißt „Abholung heute", der Filter greift, und es entsteht trotzdem weder eine Zuschlagszeile noch ein „+ 0,00 €". Die Oberfläche entscheidet darüber nichts: kein Datumsvergleich, keine Uhr, keine ServiceID.
+- **Karte:** nur mit `pickupToday: true`, `pickupTodayUntil` („HH:MM") **und** beiden Beträgen `sameDaySurchargeNet`/`sameDaySurchargeGross` erscheinen in den Angebotsdetails „Zuschlag für Abholung am selben Tag" mit beiden Beträgen (Preisaufschlüsselung) und „Abholung heute bei Buchung bis HH:MM Uhr" (Termin & Abholung; seit dem Einheitlichen Abholtermin 2026-10-24 — die Uhrzeit ist der Buchungsschluss, kein Abholende; derselbe Satz aus `sameDayBookByText` auf Karte, Zusammenfassung und im Abschnitt „Abholtermin"); die Kartenfläche selbst zeigt „Abholung heute" und den Kartenpreis (seit 2026-10-04 keine Zuschlagszeile mehr darauf). Der Kartenpreis **enthält** den Zuschlag — nichts wird addiert. Ein Tarif mit `pickupToday`, aber ohne diese Angaben, bekommt keine Zeile. Das ist der **Normalfall** für die gebührenfreien Abholverträge (TNT, DHL): `pickupToday: true` sagt nur, dass heute abgeholt wird — der Timeline-Knoten heißt „Abholung heute", der Filter greift, und es entsteht trotzdem weder eine Zuschlagszeile noch ein „+ 0,00 €". Die Oberfläche entscheidet darüber nichts: kein Datumsvergleich, keine Uhr, keine ServiceID.
 - **Gesperrte Abholung heute** — drei Gründe, sichtbar mit Preis, nicht auswählbar; der Knopf sagt den Satz, die Angebotsdetails (Zusatzhinweise) immer „Bitte wählen Sie einen späteren Abholtag.":
   - `same_day_unavailable` (Abholschluss vorbei): „Abholung heute nicht mehr möglich."
   - `same_day_unconfirmed` (kein bestätigter Abholschluss): „Abholung heute für dieses Angebot nicht verfügbar."
@@ -51,6 +51,33 @@ Ob ein Angebot **heute** abgeholt werden kann, bis wann und mit welchem Zuschlag
 - **`/book` sendet keine Same-Day-Angabe.** Der Erfolg nennt die tatsächlich gesendete Abholzeit ausschließlich aus `booking.sameDayCollection` — nie aus dem Angebot.
 - **`SAME_DAY_COLLECTION_UNAVAILABLE`** (Optionen, Bindung, Neubepreisung, `/book`): der Satz zu `sameDayUnavailableKind` (`expired` / `unconfirmed` / `unverifiable`, über `sameDayUnavailableBookingText`) mit dem Hinweis und „Angebote neu berechnen" — nie „erneut versuchen". Fehlt die Art oder ist sie unbekannt, gilt „kann derzeit nicht bestätigt werden". Eine Änderung des Zuschlags kommt als `PRICE_CHANGED` mit `priceInputsRebindRequired` und läuft über den bestehenden Neubestätigungsweg.
 - Ein Datumswechsel verwirft die Angebote (`resetResults`); Entwürfe und Vorgang speichern keine Same-Day-Angabe.
+
+### Abholtermin auf der Buchungsseite (Einheitlicher Abholtermin, Betreiberentscheidung 2026-10-24) — aktueller Vertrag
+
+Jede **Fahrerabholung** bekommt denselben Abschnitt (`components/booking/PickupWindowModule.jsx`). Die Variante
+entscheidet allein `pickupTimeProfileOf` (`utils/pickupContractView.mjs`) an den Feldern des Angebots — kein Provider,
+keine ServiceID. Gleiche Klassen, Zeilen und Typografie wie bisher (`calc-panel`, `summary-detail-row`, `pw-*`).
+
+| Profil | Felder | Abschnitt |
+|---|---|---|
+| `window_adjustable` | `pickupTimeFrom`/`pickupTimeUntil` + `pickupWindowAdjustable: true` | „Gewünschter Abholtermin“: Datum, Zeit, Zwei-Griff-Regler (15-Minuten-Schritte, Mindestdauer des Servers, mindestens 2 Std.), „Verfügbar … · Mindestdauer …“, Speicherhinweis |
+| `window_fixed` | dieselben Fensterfelder ohne Wahl (JUMiNGO ohne Verstellbarkeit, Portalzeitraum GLS 110 / DPD 137) | „Abholtermin“: Datum, „Abholzeitfenster 09:00–17:00 Uhr“, „Vom Versanddienstleister vorgegeben … eine genaue Uhrzeit wird nicht zugesagt.“ |
+| `ready_from` | `collectionReadyFrom` (Transglobal-Direktbuchung) | „Abholtermin“: Datum, „Sendung bereit ab 09:00 Uhr“, „… Ein festes Abholzeitfenster nennt der Versanddienstleister für diesen Tarif nicht.“ |
+| `date_only` | nur der Tag | „Abholtermin“: Datum, „Die Uhrzeit der Abholung legt der Versanddienstleister fest.“ |
+| `none` | Paketshopabgabe oder nichts zu zeigen | kein Abschnitt |
+
+- **Abholung heute:** zusätzlich „Abholung heute bei Buchung bis HH:MM Uhr“ aus `pickupTodayUntil` (`sameDayBookByText`).
+  Die Uhrzeit ist der Buchungsschluss, kein Abholende.
+- **Der Entwurf wird nur bei einer Wahl gelesen oder beschrieben.** `GET`/`POST /api/jumingo/draft/pickup-window`
+  tragen `offerId` des Angebots (`api/client.js`). Der Server zeigt und bucht einen Wunsch nur für das Angebot, an das er
+  gebunden ist. Ein Tarifwechsel übernimmt deshalb kein Fenster.
+- **Ohne Wahl:** Ein Angebot ohne Wahl liest und schreibt den Entwurf nicht und sperrt die Buchung nicht. Es verwirft
+  eine noch im Seitenzustand liegende Auswahl; `pickupSummaryOf` übernimmt eine Auswahl nur an einem verstellbaren
+  Fenster.
+- **409 `PICKUP_WINDOW_CHANGED`:** Der Dialog nennt ein neues Fenster nur, wenn der Server eines nennt; bei
+  `adjustable: false` heißt es fest vorgegeben.
+- **Tests:** `src/utils/pickupTimeProfile.test.mjs`, E2E `tests/e2e/pickupScheduleProfiles.test.mjs` (A–L: alle Varianten,
+  120/180 Minuten, Wiederherstellung, 409, Same-Day, Tarifwechsel, 768/390 px, Tastatur und Touch).
 
 ### Frühzeiten auf der Tarifkarte — aktueller Vertrag
 

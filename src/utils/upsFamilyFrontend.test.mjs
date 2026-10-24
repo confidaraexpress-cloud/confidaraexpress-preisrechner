@@ -127,7 +127,7 @@ test("B1 — nach der Freigabe genügen dieselben Felder wie bei 23: Auswahl, Ad
   assert.equal(offerSurchargeHint(TG29_FREI), "Bei einer privaten Lieferadresse kann ein Zuschlag anfallen.");
   const heute = sameDayOfferView(TG29_HEUTE);
   assert.deepEqual([heute.until, heute.untilText, heute.surchargeNet, heute.surchargeGross],
-    ["16:45", "Abholung heute möglich bis 16:45 Uhr", 3.27, 3.89]);
+    ["16:45", "Abholung heute bei Buchung bis 16:45 Uhr", 3.27, 3.89]);
   const absicherung = offerCardInsurance(TG29_GEBUNDEN);
   assert.deepEqual([absicherung.insurable, absicherung.coverModel, absicherung.excessValue], [true, true, 20]);
   assert.equal(offerSelectable(TG29_GEBUNDEN), true);

@@ -215,10 +215,10 @@ test("4 — netto oder brutto wie der Kartenpreis; die Preisaufschlüsselung nen
   assert.match(details, /\{sameDay && <DetailRow label=\{SAME_DAY_TEXT\.surchargeLabel\} value=\{sameDayDetailValue\(sameDay\)\} \/>\}/);
 });
 
-test("5 — „Abholung heute möglich bis HH:MM Uhr“ nennt die Uhrzeit des Servers — unbrauchbar heißt keine Zeile", () => {
-  assert.equal(sameDayOfferView(TG22_HEUTE).untilText, "Abholung heute möglich bis 16:45 Uhr");
-  assert.equal(sameDayUntilText(TG22_HEUTE), "Abholung heute möglich bis 16:45 Uhr");
-  assert.equal(sameDayUntilText({ ...TG22_HEUTE, pickupTodayUntil: "15:30" }), "Abholung heute möglich bis 15:30 Uhr");
+test("5 — „Abholung heute bei Buchung bis HH:MM Uhr“ nennt die Uhrzeit des Servers — unbrauchbar heißt keine Zeile", () => {
+  assert.equal(sameDayOfferView(TG22_HEUTE).untilText, "Abholung heute bei Buchung bis 16:45 Uhr");
+  assert.equal(sameDayUntilText(TG22_HEUTE), "Abholung heute bei Buchung bis 16:45 Uhr");
+  assert.equal(sameDayUntilText({ ...TG22_HEUTE, pickupTodayUntil: "15:30" }), "Abholung heute bei Buchung bis 15:30 Uhr");
   for (const kaputt of [
     { pickupTodayUntil: "16:45:00" }, { pickupTodayUntil: "24:00" }, { pickupTodayUntil: "" }, { pickupTodayUntil: null },
     { sameDaySurchargeNet: null }, { sameDaySurchargeGross: "3.60" }, { sameDaySurchargeNet: 0 },

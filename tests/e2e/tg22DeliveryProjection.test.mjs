@@ -323,7 +323,7 @@ test("D — Abholung am selben Tag: Zuschlag, Abholschluss und Prognose nebenein
   assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(ende.locator(".offer-tl-primary")), `${kurz(HEUTE_MIN)} – ${kurz(HEUTE_MAX)}`);
   const panel = await oeffneDetails(page, TG_HEUTE);
-  assert.equal(await inhalt(panel.locator(".offer-sameday-until")), "Abholung heute möglich bis 16:45 Uhr");
+  assert.equal(await inhalt(panel.locator(".offer-sameday-until")), "Abholung heute bei Buchung bis 16:45 Uhr");
   const zuschlag = panel.locator('.offer-detail-row:has(.offer-detail-label:text-is("Zuschlag für Abholung am selben Tag"))');
   assert.equal(await inhalt(zuschlag.locator(".offer-detail-value")), "+3,02 € netto · +3,60 € brutto");
   assert.deepEqual(fehler, []);

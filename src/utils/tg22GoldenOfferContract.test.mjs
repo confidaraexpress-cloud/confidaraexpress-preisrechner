@@ -408,9 +408,14 @@ test("F1 — TG22: Tag und „bereit ab 09:00 Uhr“; eine Fensterwahl gilt dort
 test("F2 — mit echtem Fenster: Carrierfenster, nach Wahl das gewählte Fenster", () => {
   assert.deepEqual({ ...pickupSummaryOf(JUMINGO, null) },
     { day: "2026-09-15T00:00:00Z", time: "09:00–17:00 Uhr", dayAdjusted: false, handover: "pickup" });
-  assert.deepEqual({ ...pickupSummaryOf(JUMINGO, { from: "10:00", until: "12:00" }) },
+  // Einheitlicher Abholtermin (2026-10-24): gewählt werden kann nur an einem verstellbaren Fenster
+  // (`pickupWindowAdjustable: true` vom Server); ohne Kennzeichen bleibt das Fenster fest.
+  const VERSTELLBAR = { ...JUMINGO, pickupWindowAdjustable: true, pickupWindowMinMinutes: 120 };
+  assert.deepEqual({ ...pickupSummaryOf(VERSTELLBAR, { from: "10:00", until: "12:00" }) },
     { day: "2026-09-15T00:00:00Z", time: "10:00–12:00 Uhr", dayAdjusted: false, handover: "pickup" });
-  assert.equal(pickupSummaryOf(JUMINGO, { from: "10:00" }).time, "09:00–17:00 Uhr", "ein halbes Fenster wurde übernommen");
+  assert.equal(pickupSummaryOf(JUMINGO, { from: "10:00", until: "12:00" }).time, "09:00–17:00 Uhr",
+    "eine Auswahl veränderte ein festes Fenster");
+  assert.equal(pickupSummaryOf(VERSTELLBAR, { from: "10:00" }).time, "09:00–17:00 Uhr", "ein halbes Fenster wurde übernommen");
   assert.deepEqual({ ...pickupSummaryOf(null, null) }, { day: null, time: null, dayAdjusted: false, handover: null });
 });
 

@@ -207,9 +207,15 @@ test("(11) Buchungsflächen: ein gewähltes Fenster gilt nur, wo das Angebot ein
     "aus einer Wahl entstand bei „bereit ab\" eine Endzeit");
   assert.deepEqual({ ...pickupSummaryOf(MIT_FENSTER, null) },
     { day: "2026-09-16", time: "09:00–17:00 Uhr", dayAdjusted: false, handover: "pickup" });
-  assert.deepEqual({ ...pickupSummaryOf(MIT_FENSTER, { from: "11:00", until: "15:00" }) },
+  // Einheitlicher Abholtermin (2026-10-24): eine Wahl gibt es nur an einem VERSTELLBAREN Fenster (der Server nennt
+  // `pickupWindowAdjustable: true`). Ein fester Zeitraum — etwa der Portalzeitraum 09:00–17:00 — bleibt fest, auch
+  // wenn noch eine Auswahl im Seitenzustand liegt.
+  const VERSTELLBAR = { ...MIT_FENSTER, pickupWindowAdjustable: true, pickupWindowMinMinutes: 120 };
+  assert.deepEqual({ ...pickupSummaryOf(VERSTELLBAR, { from: "11:00", until: "15:00" }) },
     { day: "2026-09-16", time: "11:00–15:00 Uhr", dayAdjusted: false, handover: "pickup" });
-  assert.equal(pickupSummaryOf(MIT_FENSTER, { from: "11:00" }).time, "09:00–17:00 Uhr", "ein halbes Fenster galt");
+  assert.equal(pickupSummaryOf(MIT_FENSTER, { from: "11:00", until: "15:00" }).time, "09:00–17:00 Uhr",
+    "eine Auswahl veränderte einen festen Zeitraum");
+  assert.equal(pickupSummaryOf(VERSTELLBAR, { from: "11:00" }).time, "09:00–17:00 Uhr", "ein halbes Fenster galt");
   assert.deepEqual({ ...pickupSummaryOf(TG_DROPOFF, null) }, { day: null, time: null, dayAdjusted: false, handover: "dropoff" });
 });
 

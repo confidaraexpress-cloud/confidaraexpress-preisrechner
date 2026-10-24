@@ -134,16 +134,24 @@ export function searchAccessPoints({ carrierCodes, countryCode, postCode, city, 
 // Adressiert wird über den ConfidaraExpress-Sendungshandle `ceShipmentId` (shipments.id) —
 // dieselbe Kennung wie Label, Tracking und Stornoanfrage. Eine Providerreferenz kennt der
 // Client nicht.
-export function getDraftPickupWindow(ceShipmentId) {
+// Einheitlicher Abholtermin (2026-10-24): `offerId` nennt das Angebot, für das der Kunde das Fenster
+// einstellt. Der Server bindet den Wunsch daran — nach einem Tarifwechsel erscheint er am neuen Tarif
+// nicht und wird dort nicht gebucht. Ohne Kennung wird nichts mitgeschickt (kein leerer Parameter).
+const angebotsKennung = (offerId) => (typeof offerId === "string" && offerId.trim() !== "" ? offerId.trim() : null);
+
+export function getDraftPickupWindow(ceShipmentId, offerId) {
   const id = encodeURIComponent(String(ceShipmentId ?? "").trim());
-  return apiFetch(`/api/jumingo/draft/pickup-window?ceShipmentId=${id}`, { auth: true });
+  const angebot = angebotsKennung(offerId);
+  const zusatz = angebot ? `&offerId=${encodeURIComponent(angebot)}` : "";
+  return apiFetch(`/api/jumingo/draft/pickup-window?ceShipmentId=${id}${zusatz}`, { auth: true });
 }
 
-export function saveDraftPickupWindow({ ceShipmentId, pickupTimeFrom, pickupTimeUntil }) {
+export function saveDraftPickupWindow({ ceShipmentId, offerId, pickupTimeFrom, pickupTimeUntil }) {
+  const angebot = angebotsKennung(offerId);
   return apiFetch(`/api/jumingo/draft/pickup-window`, {
     method: "POST",
     auth: true,
-    body: JSON.stringify({ ceShipmentId, pickupTimeFrom, pickupTimeUntil }),
+    body: JSON.stringify({ ceShipmentId, ...(angebot ? { offerId: angebot } : {}), pickupTimeFrom, pickupTimeUntil }),
   });
 }
 

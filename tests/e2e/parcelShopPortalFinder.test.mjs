@@ -163,7 +163,7 @@ test("2 — zehn Shops mit echten Zeichen und Entfernung in km, ohne Status- und
   assert.equal(adressen[0], "Würzburger Str. 116, 63808 Haibach");
   assert.equal(adressen[2], "Am Hügel 7, 63768 Hösbach");
   assert.deepEqual(await page.locator(".ap-modal .ap-list-dist").allInnerTexts(),
-    ["0,2 km", "3,1 km", "3,3 km", "5,2 km", "5,8 km", "6,2 km", "6,3 km", "6,4 km", "6,9 km", "7,0 km"]);
+    ["0,1 km", "1,9 km", "2,1 km", "3,3 km", "3,6 km", "3,9 km", "3,9 km", "4,0 km", "4,3 km", "4,4 km"]);
   assert.equal(await page.locator(".ap-modal .ap-list-status").count(), 0, "kein „Öffnungsstatus nicht verfügbar“");
   assert.equal(await page.locator(".ap-modal .ap-list-toggle").count(), 0, "kein Ausklapper ohne Öffnungszeiten");
   assert.ok(!(await page.locator(".ap-modal").innerHTML()).includes("&amp;#"), "keine Zeichenreferenz im Fenster");

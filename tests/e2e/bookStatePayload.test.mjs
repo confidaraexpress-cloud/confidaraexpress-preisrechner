@@ -151,7 +151,7 @@ test("1 — DE→USA: der finale /book-Payload trägt recipient.state === \"NY\"
   // hier stehen wir bereits auf der Buchungsseite und messen nur den Payload.
   const payload = await bucheUndLiesPayload(page);
   assert.equal(payload.recipient?.country, "US");
-  assert.equal(payload.recipient?.state, "NY",
+  assert.equal(payload.recipient?.state, "NJ", // FEHLERPROBE (nicht mergen)
     "GENAU HIER ging der Bundesstaat live verloren — /book erhielt kein state");
   assert.notEqual(payload.recipient?.state, "New York", "gesendet wird der Code, nie der Anzeigename");
   // Die übrige Adresse ist unverändert:

@@ -63,6 +63,7 @@ const sucheSchluessel = (p) => (p.portal
   ? ["portal", p.countryCode, p.postCode].join("|")
   : [p.carrierCode, p.countryCode, p.postCode, p.city, p.street, p.radius].join("|"));
 
+const PORTAL_ERGEBNIS_MS = 30 * 60 * 1000;
 const NICHT_VERFUEGBAR = "Die Paketshop-Suche ist momentan nicht verfügbar. Bitte versuchen Sie es später erneut.";
 /* Verbindliche Auswahl: Eingabefehler, Ratenbegrenzung und Zeitüberschreitung sehen nicht wie ein Ausfall aus
    (früher stand für alles „nicht verfügbar"). Es wird nie automatisch wiederholt. */
@@ -118,6 +119,11 @@ export function ParcelShopFinderProvider({ children }) {
   // alten Ergebnisse SOFORT weg — es darf nie eine fremde Carrier-Liste
   // stehen bleiben, auch nicht für den Moment des Ladens.
   const schluesselRef = useRef(null);
+  // Verbindliche Auswahl: die teure Portalsuche (Anmeldung + Suche beim Anbieter, bis zu einer Minute) wird je
+  // Suchschlüssel für die Sitzung gemerkt — ein Wechsel zu einer anderen Abgabe und zurück sucht nicht erneut.
+  // Nur Erfolge, höchstens 30 Minuten; Orientierungssuchen tragen tageszeitabhängige Öffnungsstatus und werden
+  // weiterhin neu geladen.
+  const portalErgebnisseRef = useRef(new Map());
   // Auslöser für die Fokusrückgabe beim Schließen.
   const triggerRef = useRef(null);
 
@@ -146,6 +152,16 @@ export function ParcelShopFinderProvider({ children }) {
       const plz = p.postCode.trim();
       const lauf = ++laufRef.current;
       const aktuell = () => lauf === laufRef.current;
+      const schluessel = sucheSchluessel(p);
+      const gemerkt = portalErgebnisseRef.current.get(schluessel);
+      if (gemerkt && Date.now() - gemerkt.at < PORTAL_ERGEBNIS_MS) {
+        setError("");
+        setResults(gemerkt.results);
+        setSearchedPostCode(gemerkt.postCode);
+        schluesselRef.current = schluessel;
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       setError("");
       try {
@@ -161,9 +177,11 @@ export function ParcelShopFinderProvider({ children }) {
           setLoading(false);
           return;
         }
-        setResults(mapPortalShopsToList(d.shops));
+        const liste = mapPortalShopsToList(d.shops);
+        portalErgebnisseRef.current.set(schluessel, { results: liste, postCode: plz, at: Date.now() });
+        setResults(liste);
         setSearchedPostCode(plz);
-        schluesselRef.current = sucheSchluessel(p);
+        schluesselRef.current = schluessel;
       } catch (e) {
         if (!aktuell()) return;
         setResults(null);

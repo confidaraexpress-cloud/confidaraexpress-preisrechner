@@ -25,6 +25,11 @@ import { getFormDraft, createFormDraft, updateFormDraft } from "../api/formDraft
 import { normalizeApiError, normalizeThrownError, summaryMessage } from "../utils/apiError.mjs";
 import { sourceCoverageNotice } from "../utils/sourceCoverageView.mjs";
 import { focusFirstError } from "../utils/focusField";
+// Gesamtauftrag B: Firmenpflicht — eine Regelquelle für Karte und Seite.
+import {
+  offerKey, offerSelectable, offerBusinessRequirement, offerAwaitsBusinessDetails, offerBusinessConfirmId,
+  OFFER_BUSINESS_COMPANY_FIELD_MESSAGE, OFFER_BUSINESS_NOT_FOUND_NOTICE,
+} from "../utils/offerIdentity.mjs";
 import { visibleFieldErrors, markFieldTouched, withoutFieldError, keepFocusOnMouseDown } from "../utils/fieldTouchState.mjs";
 import { Field } from "../components/ui/Field";
 import { useShippingFlow } from "../context/ShippingFlowContext";
@@ -104,7 +109,7 @@ import {
   buildResumeInitialState, resumeSourceFromDraft, isValidResumeDraft, buildResumePayload,
   isValidShipmentResumeDraft,
   classifyFormDraftTransition, mapFormDraftStartError, SHIPMENT_PERSISTENCE_FAILED_MESSAGE,
-  RESUME_PAST_DATE_NOTICE,
+  RESUME_PAST_DATE_NOTICE, RESUME_ECONOMY_FILTER_NOTICE,
 } from "../utils/formDraftsView.mjs";
 import { PROFILE_DASHBOARD_TARGET } from "../utils/bookingSuccessView.mjs";
 import { bookingProfileNotice } from "../utils/bookingProfileView.mjs";
@@ -250,11 +255,13 @@ const SERVICE_OPTIONS = [
   { id: "pickup_today", icon: "zap",       label: "Abholung heute",        desc: "Tarife mit Abholung noch heute anzeigen" },
 ];
 
+// Gesamtauftrag F (2026-10-24): drei Optionen. „Economy" ist keine Filteroption mehr — Economy-Produkte (etwa
+// TNT Economy Express, DHL Economy Select) bleiben angeboten und erscheinen unter „Alle Versandarten". Ein
+// gespeichertes „economy" fällt zentral auf „all" (utils/formDraftsView.mjs: FORM_SHIPPING_MODES).
 const SHIPPING_MODE_OPTIONS = [
-  { id: "all",      icon: "package", label: "Alle Versandarten", desc: "Standard, Express und Economy anzeigen" },
+  { id: "all",      icon: "package", label: "Alle Versandarten", desc: "Alle Tarife anzeigen, auch Economy-Produkte" },
   { id: "standard", icon: "truck",   label: "Standard",          desc: "Regulärer Versand ohne Aufpreis"        },
   { id: "express",  icon: "zap",     label: "Express",           desc: "Schnellste verfügbare Zustellung"       },
-  { id: "economy",  icon: "clock",   label: "Economy",           desc: "Günstigster Tarif, längere Laufzeit"    },
 ];
 
 export default function NewShipmentPage({ prefillAddress, onPrefillApplied, prefillInventory, onInventoryPrefillApplied, resumeDraft, onResumeApplied, registerLeaveGuard, commitLeave } = {}) {
@@ -486,6 +493,20 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const [serverErrors, setServerErrors] = useState({});
   // Fokusauftrag für das erste Fehlerfeld — ausgeführt NACH dem Rendern (Effekt unten).
   const [focusRequest, setFocusRequest] = useState(null);
+  // ─── Firmenpflicht (Gesamtauftrag B, 2026-10-24) ────────────────────────────────────────
+  // Bestätigungen je Angebot (offerKey → true) — nur im Seitenzustand, nie im Vorgang oder Entwurf; sie fallen mit
+  // jeder neuen Angebotsliste (resetResults, neuer Vergleich). Dazu die Karte, deren Bestätigung beim Klick fehlte,
+  // und der Fokusauftrag für ihr Bestätigungsfeld (ausgeführt nach dem Rendern).
+  const [firmenBestaetigt, setFirmenBestaetigt] = useState({});
+  const [firmenBestaetigungFehlt, setFirmenBestaetigungFehlt] = useState(null);
+  const [bestaetigungsFokus, setBestaetigungsFokus] = useState(null);
+  const firmenBestaetigtRef = useRef(firmenBestaetigt);
+  firmenBestaetigtRef.current = firmenBestaetigt;
+  // Die gemerkte Auswahl, die nur auf einen Firmennamen wartet: { productKey, sender, recipient, vergleichGestartet }.
+  // Sie überlebt das Verwerfen der Angebote beim Tippen und wird vom nächsten erfolgreichen Vergleich aufgelöst.
+  const firmenAbsichtRef = useRef(null);
+  // Ehrlicher Hinweis, wenn das gemerkte Angebot nach dem neuen Vergleich fehlt oder nicht auswählbar ist.
+  const [firmenHinweis, setFirmenHinweis] = useState("");
   // Dasselbe gilt für eine Übergabe aus dem Preisrechner: Route, Paket und Datum stehen da, Straße,
   // Kontakt und Sendungsangaben fehlen. Einmalig beim Mount und nur mit offener Absicht; die
   // Vorrangkette des Initialisierers darüber bleibt unberührt.
@@ -506,6 +527,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // nicht blockierender Hinweis. TG22 Paket B: startet ein Entwurf mit vergangenem Versanddatum,
   // sagt er sofort, warum das Datum leer ist und die Berechnung auf eine Wahl wartet.
   const [resumeNotice, setResumeNotice]       = useState(() => (resumeInit && resumeInit.shippingDateExpired ? RESUME_PAST_DATE_NOTICE : ""));
+  // Gesamtauftrag F: ein fortgesetzter Entwurf mit dem entfallenen Filter „Economy" zeigt „Alle Versandarten" und sagt es.
+  // Eigener Hinweis neben dem Datumshinweis — beide können zugleich gelten. Er fällt, sobald eine Versandart gewählt wird.
+  const [modeResetNotice, setModeResetNotice] = useState(() => (resumeInit && resumeInit.shippingModeReset ? RESUME_ECONOMY_FILTER_NOTICE : ""));
   const [resumeConflict, setResumeConflict]   = useState(false);  // 409 Konflikt → „Aktuelle Version laden"
   const [reloadingResume, setReloadingResume] = useState(false);
 
@@ -703,6 +727,16 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   useEffect(() => {
     if (focusRequest && focusRequest.field) focusFirstError(focusRequest.field);
   }, [focusRequest]);
+  // Gesamtauftrag B: fehlt beim Klick auf „Angebot auswählen" die Bestätigung, kommt ihr Feld ins Bild und bekommt
+  // den Fokus — weich, bei reduzierter Bewegung ohne Animation (dieselbe Regel wie focusFirstError).
+  useEffect(() => {
+    if (!bestaetigungsFokus || !bestaetigungsFokus.id) return;
+    const el = document.getElementById(bestaetigungsFokus.id);
+    if (!el) return;
+    const ruhig = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    try { el.scrollIntoView({ behavior: ruhig ? "instant" : "smooth", block: "center" }); } catch { el.scrollIntoView(); }
+    try { el.focus({ preventScroll: true }); } catch { el.focus(); }
+  }, [bestaetigungsFokus]);
   const requestFocus = (field) => { if (field) setFocusRequest({ field, at: Date.now() }); };
   // Hinweis zur Angebotsabsicht aus dem Preisrechner — offen, ausgewählt oder nicht zuzuordnen.
   // Abgeleitet, keine eigene Wahrheit; ohne Übergabe ist er leer und erscheint nicht.
@@ -727,6 +761,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     setError("");
     calculatedAtRef.current = null;
     setFlowNotice(null); // ein neuer Anlauf beginnt ohne alten Ablaufhinweis
+    // Gesamtauftrag B: mit der Liste fallen ihre Bestätigungen; die gemerkte Auswahl (Ref) bleibt bewusst stehen.
+    setFirmenBestaetigt({});
+    setFirmenBestaetigungFehlt(null);
+    setFirmenHinweis("");
   };
 
   // Verwirft ein vorhandenes Ergebnis nur, wenn überhaupt eines existiert.
@@ -1137,6 +1175,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       const init = buildResumeInitialState(payload.formData, { today: businessTodayISO() });
       const nextDate = init.shippingDate;
       setResumeNotice(init.shippingDateExpired ? RESUME_PAST_DATE_NOTICE : "");
+      setModeResetNotice(init.shippingModeReset ? RESUME_ECONOMY_FILTER_NOTICE : "");
       setForm(init.form);
       setShippingDate(nextDate);
       setServiceFilter(init.serviceFilter);
@@ -1242,7 +1281,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   }, [form.latestDeliveryDate, form.latestDeliveryTime]);
 
   const handleServiceFilter = (id) => { setServiceFilter(id); setServiceFilterOpen(false); resetResults(); };
-  const handleShippingMode  = (id) => { setShippingModeFilter(id); setShippingModeOpen(false); resetResults(); };
+  const handleShippingMode  = (id) => { setShippingModeFilter(id); setShippingModeOpen(false); setModeResetNotice(""); resetResults(); };
   const handleDateChange    = (iso) => {
     if (!iso || iso < todayISO()) return;
     setShippingDate(iso); setDatePickerOpen(false);
@@ -1503,6 +1542,30 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         setCalculatorIntentResolution(aufloesung);
         setCalculatorIntent(null);
       }
+      // Gesamtauftrag B: eine neue Angebotsliste trägt keine alte Bestätigung. Eine gemerkte Auswahl mit Firmenpflicht
+      // wird GENAU hier aufgelöst: dasselbe Produkt (productKey), genau ein auswählbarer Treffer, der nicht mehr auf
+      // einen Firmennamen wartet — dann ist er ausgewählt, und sein Bestätigungsfeld bekommt nach dem Laden den Fokus.
+      // Sonst ein ehrlicher Hinweis; ein ähnliches Angebot wird nie gewählt.
+      setFirmenBestaetigt({});
+      setFirmenBestaetigungFehlt(null);
+      let firmenFokusId = null;
+      const firmenAbsicht = firmenAbsichtRef.current;
+      firmenAbsichtRef.current = null;
+      if (firmenAbsicht) {
+        const liste = Array.isArray(d.tariffs) ? d.tariffs : [];
+        const treffer = firmenAbsicht.productKey ? liste.filter((x) => x && x.productKey === firmenAbsicht.productKey) : [];
+        const angebot = treffer.length === 1 && offerSelectable(treffer[0]) && !offerAwaitsBusinessDetails(treffer[0])
+          ? treffer[0] : null;
+        if (angebot) {
+          setSelected(angebot);
+          setFirmenHinweis("");
+          firmenFokusId = offerBusinessConfirmId(angebot);
+        } else {
+          setFirmenHinweis(OFFER_BUSINESS_NOT_FOUND_NOTICE);
+        }
+      } else {
+        setFirmenHinweis("");
+      }
       // Zoll-Felder additiv übernehmen (Backend entscheidet customsRequired).
       setCustoms({
         customsRequired:   d.customsRequired === true,
@@ -1516,8 +1579,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       // Request oben bereits verworfen.
       lastCalcKeyRef.current = reqKey;
       // Alle Angebote erscheinen gemeinsam; danach rückt der Bereich ins Bild
-      // und der Fokus geht auf die Ergebniszeile (erst nach dem Laden).
-      fokusNachVergleich("angebote");
+      // und der Fokus geht auf die Ergebniszeile (erst nach dem Laden) — nach einer geführten Ergänzung des
+      // Firmennamens auf das Bestätigungsfeld des wiedergefundenen Angebots (fehlt es, wie bisher).
+      if (firmenFokusId) fokusNachVergleich("element", firmenFokusId);
+      else fokusNachVergleich("angebote");
       setHasResults(true);
       setLoading(false);
     } catch (e) {
@@ -1568,6 +1633,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       resetResults();                                  // frische Grundlage → alte Ergebnisse verwerfen
       setResumeSource(resumeSourceFromDraft(payload)); // aktualisierte Revision
       setResumeConflict(false); setResumeNotice(init.shippingDateExpired ? RESUME_PAST_DATE_NOTICE : "");
+      setModeResetNotice(init.shippingModeReset ? RESUME_ECONOMY_FILTER_NOTICE : "");
     } catch (e) {
       if (mountedRef.current) setError(e?.message || "Die aktuelle Version konnte nicht geladen werden. Bitte versuchen Sie es erneut.");
     }
@@ -1579,7 +1645,51 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // solange sich diese Werte nicht ändern → memoisierte OfferCards rendern durch
   // onBook nicht unnötig neu (bei reinen Angebots-Interaktionen ändern sie sich
   // nicht). setSelected ist als State-Setter stabil.
+  // Gesamtauftrag B: das Bestätigungsfeld einer Karte. Stabil (keine Abhängigkeit), damit die memoisierten Karten
+  // durch den Rückruf nicht neu rendern; neu rendert nur die Karte, deren Wahrheitswert sich ändert.
+  const handleBusinessConfirm = useCallback((tariff, checked) => {
+    const k = offerKey(tariff);
+    if (!k) return;
+    setFirmenBestaetigt((p) => {
+      const n = { ...p };
+      if (checked) n[k] = true; else delete n[k];
+      return n;
+    });
+    if (checked) setFirmenBestaetigungFehlt((f) => (f === k ? null : f));
+  }, []);
+
   const handleBook = useCallback((tariff) => {
+    // Gesamtauftrag B: Firmenpflicht — erst der Firmenname, dann die Bestätigung, dann unverändert weiter. Fehlt der
+    // Name, steht die Meldung genau an diesem Feld (Serverfehlerweg), das Feld kommt weich ins Bild und bekommt den
+    // Fokus, und die Auswahl wird gemerkt. Der Server bleibt die Autorität: /book prüft unverändert.
+    const pflicht = offerBusinessRequirement(tariff);
+    if (pflicht.party) {
+      const fehltAbsender = pflicht.sender && !String(form.s_company || "").trim();
+      const fehltEmpfaenger = pflicht.recipient && !String(form.r_company || "").trim();
+      if (fehltAbsender || fehltEmpfaenger) {
+        setSelected(tariff);
+        firmenAbsichtRef.current = {
+          productKey: typeof tariff.productKey === "string" ? tariff.productKey : null,
+          sender: pflicht.sender, recipient: pflicht.recipient, vergleichGestartet: false,
+        };
+        setFirmenHinweis("");
+        setServerErrors((p) => ({
+          ...p,
+          ...(fehltAbsender ? { s_company: OFFER_BUSINESS_COMPANY_FIELD_MESSAGE.sender } : {}),
+          ...(fehltEmpfaenger ? { r_company: OFFER_BUSINESS_COMPANY_FIELD_MESSAGE.recipient } : {}),
+        }));
+        setFocusRequest({ field: fehltAbsender ? "s_company" : "r_company", at: Date.now() });
+        return;
+      }
+      const k = offerKey(tariff);
+      if (!k || firmenBestaetigtRef.current[k] !== true) {
+        setSelected(tariff);
+        setFirmenBestaetigungFehlt(k);
+        setBestaetigungsFokus({ id: offerBusinessConfirmId(tariff), at: Date.now() });
+        return;
+      }
+    }
+    firmenAbsichtRef.current = null;
     setSelected(tariff);
     if (authed) {
       // Vorgang festhalten, BEVOR der Teilbaum abgehängt wird: Auswahl,
@@ -1682,6 +1792,19 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const autofill = (p, key) => (AUTOFILL_TOKEN[key]
     ? `section-${p === "s" ? "absender" : "empfaenger"} ${AUTOFILL_TOKEN[key]}` : undefined);
 
+  // Gesamtauftrag B: verlässt der Kunde ein ergänztes Firmenfeld und wartet eine Auswahl auf genau diesen Namen,
+  // startet GENAU EIN neuer Vergleich (normaler Ladezustand). Ohne gemerkte Auswahl, mit noch fehlendem Namen oder
+  // während eines laufenden Vergleichs geschieht nichts — „Angebote vergleichen" bleibt der normale Weg.
+  const firmenfeldVerlassen = () => {
+    const absicht = firmenAbsichtRef.current;
+    if (!absicht || absicht.vergleichGestartet) return;
+    const fehlt = (absicht.sender && !String(form.s_company || "").trim())
+      || (absicht.recipient && !String(form.r_company || "").trim());
+    if (fehlt || loading || calcInFlight.current) return;
+    absicht.vergleichGestartet = true;
+    calculate();
+  };
+
   const addrField = (p, key, label, type = "text", optional = false) => {
     const fk = `${p}_${key}`;
     return (
@@ -1695,7 +1818,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         type={type}
         value={form[fk]}
         onChange={(v) => upd(fk, v)}
-        onBlur={() => markTouched(fk)}
+        onBlur={() => { markTouched(fk); if (key === "company") firmenfeldVerlassen(); }}
         autoComplete={autofill(p, key)}
         error={errors[fk]}
         // Paket A: unter dem Telefonfeld steht, was an die Anbieter geht, sobald es von der Schreibweise
@@ -1845,6 +1968,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
           {resumeNotice && (
             <div className="dft-resume-info" role="status">
               <span>{resumeNotice}</span>
+            </div>
+          )}
+          {modeResetNotice && (
+            <div className="dft-resume-info" role="status">
+              <span>{modeResetNotice}</span>
             </div>
           )}
           {/* Herkunftshinweis eines Vorgangs aus Lager oder Auftrag. Bewusst
@@ -2286,6 +2414,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
             Scrollposition wird gezielt hierher gescrollt — kein Pixelwert. */}
         {(hasResults || loading) && (
           <div ref={offersRef} id="angebotsbereich" className={kartenVollLayouten ? "offers-cv-voll" : undefined}>
+          {firmenHinweis && !loading && (
+            <div className="dft-resume-info" role="status" id="ns-firmen-hinweis">
+              <span>{firmenHinweis}</span>
+            </div>
+          )}
           <OffersList
             sorted={sorted}
             filtered={filtered}
@@ -2312,6 +2445,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
             vatMode={vatMode}
             onVatToggle={setVatMode}
             senderPrefill={senderPrefill}
+            businessConfirmations={firmenBestaetigt}
+            businessConfirmError={firmenBestaetigungFehlt}
+            onBusinessConfirm={handleBusinessConfirm}
           />
           </div>
         )}

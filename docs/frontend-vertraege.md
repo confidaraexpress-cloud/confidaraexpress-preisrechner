@@ -9,7 +9,7 @@ Diese Regeln sind Frontend-spezifisch. Die **projektweiten** Provider-, Preis- u
 - `offerKey(tariff)` (`utils/offerIdentity.mjs`) ist die **einzige** Antwort auf „welches Angebot ist das?": `offerId` zuerst, Tarif-ID nur als Rückfall, sonst `null`.
 - `sameOffer()` vergleicht zwei `null` ausdrücklich als **verschieden**. Ohne diese Regel gälte `undefined === undefined` — jede kennungslose Karte wäre „ausgewählt", teilte sich ein Badge und eine DOM-Kennung.
 - `offerBlocked(t)` ist wahr **nur** bei einer ausdrücklichen Serveraussage (`bookable === false` oder `availableForDate === false`). Ein **fehlendes** Feld sperrt nichts — `!t.bookable` würde jedes Angebot aus einer älteren Antwort sperren.
-- `offerBookable()` sagt, ob ein Angebot beauftragt werden kann (Auszeichnungen). Die **Aktionen** (CTA, Kartenklick, Weg zur Buchungsseite) hängen an `offerSelectable()`: buchbar **oder** nur noch auf die Art der Lieferadresse wartend (`unavailableReason: "price_inputs_required"`). Keines von beiden steuert die optische Wertigkeit — ein nicht bestellbares Angebot bleibt eine vollwertige Preisauskunft und wird nicht blass gezeichnet; sein Preis bleibt sichtbar.
+- `offerBookable()` sagt, ob ein Angebot beauftragt werden kann (Auszeichnungen). Die **Aktionen** (CTA, Kartenklick, Weg zur Buchungsseite) hängen an `offerSelectable()`: buchbar **oder** nur noch auf die Art der Lieferadresse wartend (`unavailableReason: "price_inputs_required"`) **oder** — seit Gesamtauftrag B — nur noch auf einen Firmennamen wartend (`business_sender_required`/`business_recipient_required`, `offerAwaitsBusinessDetails`). Keines von beiden steuert die optische Wertigkeit — ein nicht bestellbares Angebot bleibt eine vollwertige Preisauskunft und wird nicht blass gezeichnet; sein Preis bleibt sichtbar.
 - Der Grund wird **übersetzt**, nie durchgereicht; ein unbekannter Grund ergibt den neutralen Satz. Kein Einkaufsprovider im sichtbaren Text.
 
 ### Sendungshandle
@@ -92,6 +92,27 @@ Beide Bedienflächen — oben das Formularfeld „Späteste Lieferzeit", unten d
 - **„Zu spät"** (`too_late`): frühester Tag nach der Frist, ein Zeitraum über die Frist hinaus oder am Fristtag eine spätere Uhrzeit — eingeklappt hinter „n Angebote stellen nach Ihrer Frist zu – anzeigen" (`aria-expanded`), mit jeder neuen Frist wieder zu; die Preisgrenze gilt auch dort (`lateResultOffers`).
 
 Ohne Frist bleibt die Liste ungegliedert. Die Überschrift zählt die sichtbaren Angebote (ohne „Zu spät"), jeder Gruppenkopf seine eigenen. Auszeichnungen („Günstigste", „Schnellste") nur unter „Passend" und „Voraussichtlich passend". Hält kein Angebot die Frist, steht „Kein Angebot hält Ihre Frist nach den verfügbaren Daten ein." über den übrigen Gruppen, darunter „Filter zurücksetzen". Fällt die Auswahl durch eine neue Frist unter „Zu spät", wird sie gelöst — eine bewusste Wahl in der aufgeklappten Gruppe bleibt. Die Karten tragen keinen Fristhinweis mehr (der frühere „Zustelltermin nicht bewertbar" ist entfallen). Die Uhrzeitliste hängt als Portal an `document.body`; ein Druck auf ihren Scrollbalken, Innenabstand oder Rand gilt für das Lieferungs-Dropdown als Druck nach innen (Filterzone in `OffersList.jsx` erkennt das Ereignis im React-Baum) und schließt es nicht — nur ein Druck außerhalb der Zone schließt. Browserprüfungen: `tests/e2e/tgL2DeliveryGroups.test.mjs`, `tests/e2e/tariffPresentation.test.mjs` (D), `tests/e2e/deliveryFilterPortalClick.test.mjs` (Scrollbalken, Innenabstand, Mausrad, Tastatur, Touch, Außenklick).
+
+### Firmenpflicht auf der Angebotskarte (Gesamtauftrag B, Betreiberentscheidung 2026-10-24) — aktueller Vertrag
+
+Ein Produkt mit Firmenpflicht (TNT 41/44/49 aus der Policy, JUMiNGO `from_company_only`/`to_company_only`) bleibt eine **auswählbare** Karte. Die Regeln und Texte stehen einmal in `utils/offerIdentity.mjs`:
+
+- **Welche Partei:** `offerBusinessRequirement(t)` liest die Produkteigenschaften `senderRequirement`/`recipientRequirement` (= `"business"`, auch bei schon eingetragener Firma) **oder** den Grund, solange der Firmenname fehlt. Ergebnis `party`: `sender` | `recipient` | `both` | `null`. Ohne `senderRequirement` (älteres Backend) zählt allein der Grund.
+- **Karte** (`OfferCard.jsx`, links in der Folgezeile): „Angebot auswählen", die Anforderung je Partei („Nur für Geschäftsempfänger: Zugestellt wird ausschließlich an Unternehmen." usw.) und — nur wenn die Seite `onBusinessConfirm` hereinreicht — ein Bestätigungsfeld („Der Empfänger ist ein Unternehmen."). Ein Klick in diesen Block wählt die Karte nicht aus.
+- **„Neue Sendung"** (`NewShipmentPage.jsx`, `handleBook`):
+  1. Fehlt der Firmenname der Partei, steht die Meldung am Firmenfeld (Serverfehlerweg `serverErrors`, nur dieses Feld). Das Feld kommt weich ins Bild (bei reduzierter Bewegung `"instant"`), bekommt den Fokus, und die Auswahl wird gemerkt (`productKey`, Partei).
+  2. Verlässt der Kunde das ergänzte Feld, startet **genau ein** neuer Vergleich. Danach wird das Angebot über den `productKey` wiedergefunden: genau ein auswählbarer Treffer, der nicht mehr auf den Namen wartet. Es wird ausgewählt, und sein Bestätigungsfeld bekommt über `useComparisonLoadingFocus` (Ziel `"element"`) den Fokus. Fehlt es, steht der Hinweis `#ns-firmen-hinweis`, und nichts wird gewählt.
+  3. Fehlt die Bestätigung, gibt es eine Meldung und den Fokus am Feld. Erst mit Name und Bestätigung geht es zur Buchungsseite.
+- **Lebensdauer:** Bestätigungen gelten nur im Seitenzustand je `offerKey`. Sie fallen mit jeder neuen Angebotsliste (`resetResults`, neuer Vergleich), also auch bei jeder Namensänderung. Sie gehen nie in Vorgang, Entwurf oder Request.
+- **Versandkostenrechner im Portal:** Hinweis ohne Bestätigungsfeld; „Angebot auswählen" übergibt wie bisher an „Neue Sendung".
+- **Öffentlicher Preisrechner:** unverändert (eigene Karte).
+- **Server bleibt Autorität:** `/book` und die Revalidierung sind unverändert. Transglobal bucht mit den beim Vergleich gespeicherten Adressen — deshalb ist ein neuer Vergleich Pflicht.
+
+Browserprüfung: `tests/e2e/businessRequirementOffers.test.mjs` (B1–B6).
+
+### Versandartfilter ohne „Economy" (Gesamtauftrag F, 2026-10-24) — aktueller Vertrag
+
+Drei Optionen: „Alle Versandarten", „Standard", „Express". Economy-Produkte (TNT Economy Express, DHL Economy Select …) bleiben angeboten und erscheinen unter „Alle Versandarten"; die Tarifklassifizierung (`shippingMode` des Servers) ist unverändert. `FORM_SHIPPING_MODES` (`utils/formDraftsView.mjs`) kennt kein `economy` mehr — Entwurf, Sitzung, Übergabe und Snapshot landen damit an einer Stelle auf `all`; beim Fortsetzen eines Entwurfs mit „Economy" steht `RESUME_ECONOMY_FILTER_NOTICE`. Der öffentliche Preisrechner fällt über seine Optionsliste ebenso auf `all`.
 
 ### Expressversand (TG23) — aktueller Vertrag
 

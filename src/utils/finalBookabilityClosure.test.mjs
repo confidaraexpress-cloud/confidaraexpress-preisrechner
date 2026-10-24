@@ -124,8 +124,15 @@ test("F4 — P1-03: 409 COLLECTION_DATE_CHANGED nennt den neuen Tag und führt z
 
 test("F5 — Sperrgründe: jeder neue Servergrund hat einen eigenen Text; Hinweise nur, wo der Kunde etwas tun kann", () => {
   const karte = (unavailableReason) => ({ bookable: false, unavailableReason, availableForDate: true });
+  // Gesamtauftrag B (2026-10-24): business_sender_required ist auswählbar (Hinweis, Bestätigung, geführte Nachtragung)
+  // und trägt keinen Sperrtext mehr; die Texte bleiben für andere Flächen erhalten.
+  const absender = karte("business_sender_required");
+  assert.equal(offerSelectable(absender), true, "business_sender_required ist nicht auswählbar");
+  assert.equal(offerBlockedLabel(absender), null);
+  assert.equal(offerBlockedHint(absender), null);
+  assert.equal(OFFER_BUSINESS_SENDER_TEXT, "Nur für Geschäftsabsender verfügbar.");
+  assert.equal(OFFER_BUSINESS_SENDER_HINT, "Bitte hinterlegen Sie beim Absender einen Firmennamen.");
   const erwartet = [
-    ["business_sender_required", OFFER_BUSINESS_SENDER_TEXT, OFFER_BUSINESS_SENDER_HINT],
     ["content_description_required", OFFER_CONTENT_DESCRIPTION_TEXT, OFFER_CONTENT_DESCRIPTION_HINT],
     ["package_dimensions_unverified", OFFER_DIMENSIONS_UNVERIFIED_TEXT, null],
     ["area_surcharge_unconfirmed", OFFER_AREA_SURCHARGE_TEXT, null],

@@ -47,6 +47,9 @@ export default function ImpressumPage() {
   }, []);
   const telefon = profil ? profil.phone : CP.phone;
   const email = profil ? profil.email : CP.email;
+  // Gesamtauftrag C: der Ansprechpartner steht in der Vorbereitungsdarstellung. Mit freigegebenem Aussteller
+  // nennt das Impressum genau dessen Angaben (dort die Geschäftsführung) und keine zweite Quelle.
+  const ansprechpartner = profil ? null : CP.contactPerson;
   return (
     <div className="page-with-navbar">
       <div className="legal-wrap">
@@ -81,7 +84,8 @@ export default function ImpressumPage() {
 
             <div className="legal-section">
               <h2 className="legal-h2">Kontakt</h2>
-              <p className="legal-p">
+              <p className="legal-p" id="impressum-kontakt">
+                {ansprechpartner && <>Ansprechpartner: {ansprechpartner}<br /></>}
                 {telefon && <>Telefon: {telefon}<br /></>}
                 E-Mail:{" "}
                 <a href={`mailto:${email}`}>
@@ -111,7 +115,7 @@ export default function ImpressumPage() {
               <p className="legal-p">
                 {profil
                   ? <>{profil.managingDirectors || companyNameLine(profil)}<br /></>
-                  : CP.operators.map((n) => <React.Fragment key={n}>{n}<br /></React.Fragment>)}
+                  : <>{CP.contentResponsible}<br /></>}
                 <Anschrift profil={profil} />
               </p>
             </div>

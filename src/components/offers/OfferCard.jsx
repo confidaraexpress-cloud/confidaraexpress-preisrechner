@@ -4,7 +4,11 @@ import { money, fmtDelivery } from "../../utils/formatters";
 import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../../utils/carrierMap";
 import { ParcelShopFinderTrigger } from "./ParcelShopFinderTrigger";
 import { handoverMode, handoverLabel, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "../../utils/handoverMode.mjs";
-import { offerKey, offerSelectable, offerBlockedLabel, offerBlockedHint } from "../../utils/offerIdentity.mjs";
+import {
+  offerKey, offerSelectable, offerBlockedLabel, offerBlockedHint,
+  offerBusinessRequirement, offerBusinessConfirmId,
+  OFFER_BUSINESS_PARTY_TEXT, OFFER_BUSINESS_CONFIRM_LABEL, OFFER_BUSINESS_CONFIRM_ERROR,
+} from "../../utils/offerIdentity.mjs";
 import { offerSurchargeHint } from "../../utils/residentialPriceInputs.mjs";
 import {
   sameDayOfferView, sameDayDetailValue, SAME_DAY_TEXT,
@@ -547,7 +551,12 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
 // löst weiterhin normal ein Re-Render genau dieser Karte aus. Voraussetzung für
 // den Nutzen: OffersList/Pages reichen stabile Callbacks & senderPrefill herein.
 // `abgabeTag` (TG-L2) ist das gewählte Versanddatum („YYYY-MM-DD") — der Tag, ab dem eine Abgabe möglich ist.
-function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, vatMode, senderPrefill, abgabeTag }) {
+// Gesamtauftrag B (2026-10-24): `onBusinessConfirm` (stabil) schaltet das Bestätigungsfeld der Firmenpflicht ein —
+// nur „Neue Sendung" reicht es herein; `businessConfirmed`/`businessConfirmError` sind Wahrheitswerte je Karte.
+function OfferCardBase({
+  tariff: t, badge, isTop, selected, onSelect, onBook, vatMode, senderPrefill, abgabeTag,
+  businessConfirmed = false, businessConfirmError = false, onBusinessConfirm,
+}) {
   const { name: carrierName, logo: carrierLogo } = publicCarrierDisplay(t);
   const [detailsOpen, setDetailsOpen]       = useState(false);
   const [detailsMounted, setDetailsMounted] = useState(false);
@@ -596,6 +605,16 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
   // vorläufigen und einem vollständig berechneten Preis desselben Angebots gemessen
   // identische Werte.
   const indicativePrice = isIndicativePrice(t);
+
+  // ─── FIRMENPFLICHT (Gesamtauftrag B) ──────────────────────────────────────────────
+  // Verlangt das Produkt einen Geschäftsabsender oder -empfänger, steht die Anforderung auf der Karte — auch wenn
+  // der Firmenname schon eingetragen ist — und in „Neue Sendung" ein Bestätigungsfeld. Die Karte bleibt auswählbar;
+  // ob ein Firmenname fehlt, prüft die Seite beim Klick (sie führt dann zum Feld). Die Bestätigung ersetzt nie den
+  // Firmennamen, und der Klick auf das Feld wählt die Karte nicht aus.
+  const firmenpflicht = offerBusinessRequirement(t);
+  const bestaetigungsId = offerBusinessConfirmId(t);
+  const bestaetigungsFehlerId = bestaetigungsId ? `${bestaetigungsId}-fehler` : undefined;
+  const mitBestaetigung = firmenpflicht.party !== null && typeof onBusinessConfirm === "function";
 
   const toggleDetails = (e) => {
     e.stopPropagation();
@@ -804,6 +823,27 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
             (Sendungsverfolgung, Drucker, Versandlabel) gibt es seit 2026-10-04 nicht mehr:
             sie stehen in den Details, und die Zeile ist auf jeder Karte gleich. */}
         <div className="offer-zone-4">
+          {firmenpflicht.party && (
+            <div className="offer-business" onClick={(e) => e.stopPropagation()}>
+              <p className="offer-business-note">{OFFER_BUSINESS_PARTY_TEXT[firmenpflicht.party]}</p>
+              {mitBestaetigung && (
+                <label className="offer-business-confirm">
+                  <input
+                    id={bestaetigungsId || undefined}
+                    type="checkbox"
+                    checked={businessConfirmed === true}
+                    onChange={(e) => onBusinessConfirm(t, e.target.checked)}
+                    aria-invalid={businessConfirmError ? "true" : undefined}
+                    aria-describedby={businessConfirmError ? bestaetigungsFehlerId : undefined}
+                  />
+                  <span>{OFFER_BUSINESS_CONFIRM_LABEL[firmenpflicht.party]}</span>
+                </label>
+              )}
+              {mitBestaetigung && businessConfirmError && (
+                <p className="offer-business-error" id={bestaetigungsFehlerId}>{OFFER_BUSINESS_CONFIRM_ERROR}</p>
+              )}
+            </div>
+          )}
           <div className="offer-actions">
             {/* Sekundärer Einstieg in den Paketshop-Finder — nur bei Angeboten, die ihn
                 tatsächlich anbieten können. Bewusst eine leise Textaktion neben „Details

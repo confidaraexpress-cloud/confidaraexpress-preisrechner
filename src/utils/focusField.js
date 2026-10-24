@@ -36,7 +36,10 @@ export function focusFirstError(fieldKey, { root, preventScroll = false } = {}) 
 
   if (!preventScroll && typeof el.scrollIntoView === "function") {
     try {
-      el.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
+      // "instant", nicht "auto": `html { scroll-behavior: smooth }` (globals.css) gilt unbedingt, und "auto" heißt
+      // laut Spezifikation „nimm den CSS-Wert" — bei reduzierter Bewegung lief der Sprung sonst trotzdem animiert
+      // (dieselbe Regel wie utils/revealOffers.mjs; Gesamtauftrag B, 2026-10-24).
+      el.scrollIntoView({ behavior: reduced ? "instant" : "smooth", block: "center" });
     } catch {
       el.scrollIntoView();   // ältere Implementierungen ohne Options-Objekt
     }

@@ -3,11 +3,14 @@
    ausschließlich Foundation-Tokens — keine eigenen Hex-Werte, keine Verläufe.
 
    Seit Paket G (Master-Implementierungsauftrag 2026-10-23, Betreiberentscheidung
-   D9) steht auf jeder Seite dasselbe Glockensymbol: auf dem Desktop als 40-px-Knopf
-   auf der Soft-Button-Fläche (neben „Neue Sendung" klar schwächer als die Haupt-
-   aktion), in der mobilen Topbar als 44-px-Ziel ohne Fläche. Ungelesene Meldungen
-   zeigt ein roter Punkt ohne Zahl; die Zahl steht im zugänglichen Namen und im
-   Tooltip. Die Klassennamen .ntf-bell* bleiben als Aufrufweg bestehen.
+   D9) steht auf jeder Seite dasselbe Glockensymbol: auf dem Desktop als 40-px-Knopf,
+   in der mobilen Topbar als 44-px-Ziel ohne Fläche. Ungelesene Meldungen zeigt ein
+   roter Punkt ohne Zahl; die Zahl steht im zugänglichen Namen und im Tooltip. Die
+   Klassennamen .ntf-bell* bleiben als Aufrufweg bestehen.
+
+   Seit dem Gesamtauftrag E (2026-10-24) ist die Glocke auch auf dem Desktop neutral
+   dunkel wie mobil — Symbol in der Textfarbe auf neutraler Fläche statt in der
+   Markentinte auf der Soft-Button-Fläche. Rot ist allein der Punkt.
 
    Bewusst KEINE Animation und kein pulsierender Punkt: Bewegung gibt es nur als
    kurze Zustandsreaktion (Hover/Fokus), nie als Ambiente. */
@@ -45,27 +48,31 @@
   margin-right: calc(-1 * var(--ce-space-2));
 }
 
-/* Desktop — Utility-Zeile der Übersicht und der Unterseiten: die Soft-Button-
-   Fläche (Brand-Soft, leise Markenkante, Symbol in der Markentinte), 40 px wie
-   „Neue Sendung". Kein Schatten. */
+/* Desktop — Utility-Zeile der Übersicht und der Unterseiten: neutrale Fläche mit
+   neutraler Kante, Symbol in der Textfarbe (Gesamtauftrag E), 40 px wie „Neue
+   Sendung". Hover und geöffnetes Fenster bleiben neutral. Kein Schatten. */
 .ntf-bell-overview,
 .ntf-bell-page {
-  border-color: var(--ce-color-brand-border-soft);
-  background: var(--ce-color-brand-soft);
-  color: var(--ce-color-brand-ink);
+  border-color: var(--ce-color-border-default);
+  background: var(--ce-color-surface);
+  color: var(--ce-color-text-primary);
 }
 .ntf-bell-overview:hover,
-.ntf-bell-page:hover,
+.ntf-bell-page:hover {
+  background: var(--ce-color-surface-hover);
+  border-color: var(--ce-color-border-strong);
+}
 .ntf-bell-overview[aria-expanded="true"],
 .ntf-bell-page[aria-expanded="true"] {
-  background: var(--ce-color-brand-soft-hover);
-  border-color: var(--ce-color-brand-border);
+  background: var(--ce-color-surface-pressed);
+  border-color: var(--ce-color-border-strong);
 }
 
 /* ── Punkt (D9) ──
-   Rot aus dem Statustoken, ohne Zahl, oben rechts an der Glocke. Die Kante in der
-   Farbe der Knopffläche trennt ihn vom Symbol — auf dem Desktop die Soft-Fläche
-   (auch im Hover), in der Topbar die Seitenfläche. aria-hidden im Markup. */
+   Rot aus dem Statustoken, ohne Zahl, oben rechts an der Glocke — nur bei ungelesenen
+   Meldungen. Die Kante in der Farbe der Knopffläche trennt ihn vom Symbol — auf dem
+   Desktop die neutrale Fläche (auch im Hover und geöffnet), in der Topbar die
+   Seitenfläche. aria-hidden im Markup. */
 .ntf-dot {
   position: absolute;
   top: 7px;
@@ -80,11 +87,11 @@
 }
 .ntf-bell-topbar .ntf-dot { top: 9px; right: 9px; }
 .ntf-bell-overview .ntf-dot,
-.ntf-bell-page .ntf-dot { border-color: var(--ce-color-brand-soft); }
+.ntf-bell-page .ntf-dot { border-color: var(--ce-color-surface); }
 .ntf-bell-overview:hover .ntf-dot,
-.ntf-bell-page:hover .ntf-dot,
+.ntf-bell-page:hover .ntf-dot { border-color: var(--ce-color-surface-hover); }
 .ntf-bell-overview[aria-expanded="true"] .ntf-dot,
-.ntf-bell-page[aria-expanded="true"] .ntf-dot { border-color: var(--ce-color-brand-soft-hover); }
+.ntf-bell-page[aria-expanded="true"] .ntf-dot { border-color: var(--ce-color-surface-pressed); }
 
 /* ── Overlay ──
    Fängt Klicks außerhalb ab. Als Button umgesetzt (nicht als div), damit es kein

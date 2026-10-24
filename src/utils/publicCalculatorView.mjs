@@ -51,11 +51,12 @@ export const SERVICE_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ id: "dropoff", label: "Nur Abgabe", desc: "Abgabe in einem Paketshop" }),
   Object.freeze({ id: "pickup_today", label: "Abholung heute", desc: "Tarife mit Abholung noch heute" }),
 ]);
+// Gesamtauftrag F (2026-10-24): ohne „Economy" — Economy-Produkte erscheinen unter „Alle Versandarten"; ein
+// gespeichertes „economy" fällt über MODE_IDS auf „all".
 export const SHIPPING_MODE_OPTIONS = Object.freeze([
   Object.freeze({ id: "all", label: "Alle Versandarten" }),
   Object.freeze({ id: "standard", label: "Standard" }),
   Object.freeze({ id: "express", label: "Express" }),
-  Object.freeze({ id: "economy", label: "Economy" }),
 ]);
 // Dieselben vier Ordnungen wie im Portal (CalculatorPage). „Standardreihenfolge" ist die Reihenfolge
 // des Servers — keine Empfehlung und keine Rangfolge.

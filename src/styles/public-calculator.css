@@ -373,6 +373,13 @@
   text-transform: uppercase;
 }
 
+/* Gesamtauftrag C: der Ansprechpartner — eine eigene Zeile über den beiden Kontaktwegen. */
+.pc-hero-contact-person {
+  width: 100%;
+  color: var(--ce-color-text-primary);
+  font-weight: 500;
+}
+
 .pc-hero-contact a {
   display: inline-flex;
   align-items: center;
@@ -1586,6 +1593,7 @@
   .pc-hero-points span { color: var(--ce-color-text-inverse-soft); }
   .pc-hero-contact { border-top-color: rgba(255, 255, 255, 0.16); }
   .pc-hero-contact-label { color: var(--ce-color-text-inverse-soft); }
+  .pc-hero-contact-person { color: var(--ce-color-text-inverse); }
   .pc-page .pc-hero-contact a { color: var(--ce-color-text-inverse); }
   .pc-page .pc-hero-body a:focus-visible { outline-color: var(--ce-color-text-inverse); }
   .pc-calculator-card { padding: var(--ce-space-7); }

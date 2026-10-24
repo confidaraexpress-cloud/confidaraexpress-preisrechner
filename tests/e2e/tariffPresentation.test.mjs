@@ -6,7 +6,8 @@
 // unverändert zeigt — und dass der rein clientseitige Lieferzeitfilter K2 einhält.
 //
 //   A  DE→DE, Versandart Express  → Anfrage „express"; JUMiNGO- und Transglobal-Expressangebote mit ihren Namen
-//   B  DE→FR, Versandart Economy  → Anfrage „economy"; JUMiNGO „Economy Express", TG „Economy Select"/„Economy Express"
+//   B  DE→FR, Alle Versandarten   → drei Optionen ohne „Economy" (Gesamtauftrag F); Anfrage „all"; JUMiNGO
+//                                    „Economy Express", TG „Economy Select"/„Economy Express" erscheinen darunter
 //   C  Nur Abgabe                  → Anfrage „dropoff"; JUMiNGO-Shoptarif und TG 124 „PaketShop" als Shopabgabe
 //   D  Späteste Lieferzeit (TG-L2) → Gruppen „Passend" / „Voraussichtlich passend" / „Frist nicht bestätigt",
 //                                    „Zu spät" eingeklappt und aufklappbar; DHL 12:00 passt zu 12:00, nicht zu 10:00;
@@ -190,7 +191,7 @@ test("A — DE→DE, Versandart Express: Anfrage „express“, kuratierte Namen
   await page.close();
 });
 
-test("B — DE→FR, Versandart Economy: JUMiNGO 3144 und TG 107/41 als Economy", async () => {
+test("B — DE→FR, Alle Versandarten: keine Economy-Option, JUMiNGO 3144 und TG 107/41 erscheinen unter „Alle“", async () => {
   const { page, fehler } = await neueSeite();
   const tarife = [
     J(3144, TNT, "Economy Express", "economy", 21), J(3072, DHL, "Economy", "economy", 19, { serviceType: "dropoff" }),
@@ -200,8 +201,23 @@ test("B — DE→FR, Versandart Economy: JUMiNGO 3144 und TG 107/41 als Economy"
     publicCarriers: [DHL, TNT], fromCountryCode: "DE", toCountryCode: "FR" });
   const empfaenger = { ...STANDARD_EMPFAENGER, country: "FR", zip: "75001", city: "Paris", street: "Rue de Rivoli 1",
                        phone: "+33140000000" };
-  await zuDenAngeboten(page, { empfaenger, filter: [["Versandart", "Economy"]] });
-  assert.equal(p.bodies[0].shippingModeFilter, "economy", "die Versandart wurde nicht gesendet");
+  // Gesamtauftrag F (2026-10-24): die Versandart kennt nur noch drei Optionen. Die Economy-Produkte bleiben
+  // angeboten — sie erscheinen unter „Alle Versandarten" (die Tarifklassifizierung ist unverändert).
+  await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".offers-form-section", { timeout: 20000 });
+  await fuelleVersandformular(page, { empfaenger, paket: { ...STANDARD_PAKET, packageCount: "1" } });
+  await page.locator(".service-filter-trigger",
+    { has: page.locator(".service-filter-trigger-title", { hasText: /^Versandart$/ }) }).click();
+  const optionen = page.locator('[role="radiogroup"][aria-label="Versandart"]');
+  await optionen.waitFor({ state: "visible", timeout: 10000 });
+  assert.deepEqual((await optionen.locator(".service-filter-option-label").allTextContents()).map(norm),
+    ["Alle Versandarten", "Standard", "Express"], "die Versandart bietet noch eine Economy-Option an");
+  await optionen.locator(".service-filter-option",
+    { has: page.locator(".service-filter-option-label", { hasText: /^Alle Versandarten$/ }) }).click();
+  await optionen.waitFor({ state: "detached", timeout: 10000 });
+  await page.locator(".offers-calc-cta button").first().click();
+  await page.waitForSelector(".offer-card", { timeout: 20000 });
+  assert.equal(p.bodies[0].shippingModeFilter, "all", "die Versandart wurde nicht als „all“ gesendet");
   assert.equal(p.bodies[0].recipient && p.bodies[0].recipient.country, "FR");
   assert.deepEqual((await kartenIds(page)).sort(), tarife.map((t) => t.offerId).sort());
   assert.deepEqual(await namen(page), ["Economy", "Economy Express", "Economy Express", "Economy Select"]);

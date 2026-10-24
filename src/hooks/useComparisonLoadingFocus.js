@@ -19,6 +19,9 @@ const nurBewegung = (q) => (typeof window.matchMedia === "function" ? window.mat
  *   "feld"      — Serverfehler mit Feld: das Feld (wie bisher focusFirstError)
  *   "ausloeser" — jeder andere Fehler: zurück auf „Angebote vergleichen",
  *                 Knopf und bestehende Meldung ins Bild
+ *   "element"   — Erfolg mit einem bestimmten Ziel im Ergebnis (Gesamtauftrag B: das
+ *                 Bestätigungsfeld des wiedergefundenen Angebots, DOM-Kennung in `feld`):
+ *                 das Ziel ins Bild und fokussiert; fehlt es, wie "angebote"
  * Gesetzt wird er im Commit, der `loading` beendet: dann ist das Overlay weg
  * und der Inhalt wieder bedienbar. Hat der Nutzer den Fokus inzwischen selbst
  * woandershin gesetzt (Seitenleiste, Dialog), bleibt er dort — nur ein durch
@@ -34,7 +37,15 @@ export function useComparisonLoadingFocus(loading, { offersRef, triggerRef }) {
     if (!ziel) return;
     const aktiv = document.activeElement;
     const fokusVerloren = !aktiv || aktiv === document.body;
-    if (ziel.art === "angebote") {
+    if (ziel.art === "element") {
+      const el = ziel.feld ? document.getElementById(ziel.feld) : null;
+      if (el) {
+        el.scrollIntoView({ behavior: offersScrollBehavior(nurBewegung), block: "center" });
+        if (fokusVerloren) el.focus({ preventScroll: true });
+        return;
+      }
+    }
+    if (ziel.art === "angebote" || ziel.art === "element") {
       revealOffers(offersRef.current, undefined, { sofort: true });
       if (fokusVerloren) focusOffersResult(offersRef.current);
       return;

@@ -265,6 +265,12 @@ for (const [name, quelle] of SEITEN) {
     // Der Erfolg meldet sein Ziel VOR dem Ende des Ladens.
     const erfolg = calc.indexOf('fokusNachVergleich("angebote")');
     assert.ok(erfolg !== -1 && erfolg < calc.indexOf("setHasResults(true)", erfolg), `${name}: Reihenfolge`);
+    // Gesamtauftrag B: nach einer geführten Ergänzung des Firmennamens ist das Bestätigungsfeld des wiedergefundenen
+    // Angebots das Ziel — über denselben Hook und ebenfalls vor dem Ende des Ladens.
+    if (name === "NewShipmentPage") {
+      const element = calc.indexOf('if (firmenFokusId) fokusNachVergleich("element", firmenFokusId);');
+      assert.ok(element !== -1 && element < calc.indexOf("setHasResults(true)", element), "Neue Sendung: Firmenfokus");
+    }
   });
 }
 

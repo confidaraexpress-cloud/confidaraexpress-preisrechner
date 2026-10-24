@@ -455,12 +455,22 @@ test("33 — das Stylesheet nutzt Layout-Tokens statt eigener Farbwerte", () => 
   assert.deepEqual(literals, [], `zu viele Farbliterale: ${literals.join(", ")}`);
   assert.match(css, /var\(--ce-color-surface\)/);
   assert.match(css, /var\(--ce-color-border-subtle\)/);
-  // Der Akzent läuft über die Foundation-Markenrollen: die Glockenfläche über
-  // --ce-color-brand-soft, Text in Textgröße über die dunklere -ink-Rolle (AA auf
-  // heller Fläche). Der Ungelesen-Punkt (Paket G, D9) kommt aus dem Statustoken.
+  // Der Akzent des Panels läuft über die Foundation-Markenrollen (Fläche über
+  // --ce-color-brand-soft, Text in Textgröße über die dunklere -ink-Rolle, AA auf heller
+  // Fläche). Der Ungelesen-Punkt (Paket G, D9) kommt aus dem Statustoken.
   assert.match(css, /var\(--ce-color-brand-soft\)/);
   assert.match(css, /var\(--ce-color-brand-ink\)/);
   assert.match(css, /var\(--ce-color-danger-solid\)/);
+  // Gesamtauftrag E (2026-10-24): die Glocke selbst ist auf dem Desktop neutral dunkel wie mobil —
+  // Symbol in der Textfarbe, neutrale Fläche und Kante, neutraler Hover; keine Markentinte, keine
+  // Soft-Fläche am Knopf. Rot ist allein der Punkt.
+  const desktopBloecke = [...css.matchAll(/\.ntf-bell-(?:overview|page)[^{]*\{[^}]*\}/g)].map((m) => m[0]).join("\n");
+  assert.ok(desktopBloecke.length > 0, "keine Desktopregeln der Glocke gefunden");
+  assert.match(desktopBloecke, /color:\s*var\(--ce-color-text-primary\)/);
+  assert.match(desktopBloecke, /border-color:\s*var\(--ce-color-border-default\)/);
+  assert.match(desktopBloecke, /background:\s*var\(--ce-color-surface-hover\)/);
+  assert.doesNotMatch(desktopBloecke, /brand-(?:soft|ink|border)/, "die Desktopglocke trägt noch eine Markenrolle");
+  assert.doesNotMatch(desktopBloecke, /background:\s*var\(--ce-color-danger/, "Rot gehört nur dem Punkt");
 });
 
 test("34 — das Stylesheet ist in die Importkette aufgenommen", () => {

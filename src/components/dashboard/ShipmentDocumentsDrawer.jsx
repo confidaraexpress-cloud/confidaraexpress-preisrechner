@@ -2,6 +2,7 @@ import React from "react";
 import { useDialog } from "../../hooks/useDialog";
 import { getShipmentDocuments } from "../../api/client";
 import { downloadDocument } from "../../utils/downloadDocument";
+import { packageLabelHintText } from "../../utils/packageLabelHint.mjs";
 import {
   DOC_STATUS, DOCUMENTS_TEXT, groupShipmentDocuments, shipmentDocumentsPrintNotice,
   documentViewState, documentDownloadPath, documentRetrievePath,
@@ -109,6 +110,8 @@ export function ShipmentDocumentsDrawer({ shipmentId, contextNumber, onClose }) 
   const [groups, setGroups] = React.useState(null);   // null = noch nichts geladen
   // Der Druckhinweis des Servers zu mehrseitigen Belegen. `null` = keiner nötig.
   const [printNotice, setPrintNotice] = React.useState(null);
+  // Der Klebehinweis bei unterschiedlichen Paketen (Canonical v2.79). `null` = keiner.
+  const [labelHint, setLabelHint] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState(false);
   const [downloadError, setDownloadError] = React.useState("");
@@ -136,7 +139,11 @@ export function ShipmentDocumentsDrawer({ shipmentId, contextNumber, onClose }) 
         const r = await getShipmentDocuments(shipmentId);
         if (r.ok) {
           const d = await r.json().catch(() => null);
-          antwort = { gruppen: groupShipmentDocuments(d), druckhinweis: shipmentDocumentsPrintNotice(d) };
+          antwort = {
+            gruppen: groupShipmentDocuments(d),
+            druckhinweis: shipmentDocumentsPrintNotice(d),
+            klebehinweis: packageLabelHintText(d && d.packageLabelHint),
+          };
         }
       } catch { /* still bleiben — der Fehlerzustand entsteht unten, genau einmal */ }
       if (abgebrochen) return;
@@ -145,6 +152,7 @@ export function ShipmentDocumentsDrawer({ shipmentId, contextNumber, onClose }) 
         gezeigt = true;
         setGroups(antwort.gruppen);
         setPrintNotice(antwort.druckhinweis);
+        setLabelHint(antwort.klebehinweis);
         setLoadError(false);
         setLoading(false);
         // Nachgeladen wird NUR, solange tatsächlich noch ein Beleg entsteht.
@@ -282,6 +290,9 @@ export function ShipmentDocumentsDrawer({ shipmentId, contextNumber, onClose }) 
                     Seite wohin gehört, druckt der Carrier auf das Dokument selbst. */}
                 {printNotice && gruppe.key === "SHIPPING" && (
                   <p className="sdoc-group-note">{printNotice}</p>
+                )}
+                {labelHint && gruppe.key === "SHIPPING" && (
+                  <p className="sdoc-group-note sdoc-group-note--hint" id="sdoc-label-hint">{labelHint}</p>
                 )}
               </section>
             ))

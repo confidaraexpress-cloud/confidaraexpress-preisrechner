@@ -35,6 +35,8 @@ import { FORM_SERVICE_FILTERS, FORM_SHIPPING_MODES } from "./formDraftsView.mjs"
 import { normalizeInventoryContext } from "./inventoryView.mjs";
 // Die Angebotsabsicht aus dem Preisrechner — kanonisch in calculatorShipmentHandoff.mjs.
 import { normalizeCalculatorIntent } from "./calculatorShipmentHandoff.mjs";
+// Weitere Paketzeilen (Canonical v2.79) — bereinigt im Paketzeilenmodul.
+import { normalizeExtraPackageLines, EXTRA_PACKAGE_LINES_KEY } from "./packageLines.mjs";
 export { normalizeInventoryContext };
 
 export const FLOW_SCHEMA_VERSION = 1;
@@ -241,6 +243,11 @@ export function normalizeForm(raw, scope) {
   const src = plainObjectOrNull(raw) || {};
   const out = {};
   for (const k of keys) out[k] = str(src[k]);
+  // Individuelle Mehrpaketsendungen (Canonical v2.79): die Zeilen 2 bis 20 — als einziger Listenwert
+  // des Formulars, bereinigt auf die fünf Paketfelder als Text. Additiv ohne Versionssprung: ein
+  // Vorgang aus der Zeit davor (oder ohne weitere Zeilen) bekommt den Schlüssel gar nicht.
+  const weitere = normalizeExtraPackageLines(src[EXTRA_PACKAGE_LINES_KEY]);
+  if (weitere.length) out[EXTRA_PACKAGE_LINES_KEY] = weitere;
   return out;
 }
 
@@ -260,7 +267,7 @@ export function formHasInput(form, scope) {
     if (k === "packageCount" && v === "1") return false;
     if ((k === "r_country" || k === "to_country") && v === "DE") return false;
     return true;
-  });
+  }) || normalizeExtraPackageLines(form[EXTRA_PACKAGE_LINES_KEY]).length > 0;
 }
 
 /* ══════════ Bereichszustand ══════════════════════════════════════════════ */

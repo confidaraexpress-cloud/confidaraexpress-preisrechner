@@ -26,6 +26,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { CUSTOMS_UI_ENABLED } from "../config/launchMode.mjs";
+import { packageLinesSummaryText } from "./packageLines.mjs";
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 const str = (v) => (v === null || v === undefined ? "" : String(v).trim());
@@ -50,6 +51,8 @@ export function shipmentFields(row) {
     toCountry: str(firstDefined(r.to_country, r.toCountry)),
     priceFinal: numOrNull(firstDefined(r.price_final, r.priceFinal)),
     packageCount: numOrNull(firstDefined(r.package_count, r.packageCount)),
+    // Individuelle Mehrpaketsendungen (Canonical v2.79): die Zeilen unterschiedlicher Pakete, sonst null.
+    packageLines: Array.isArray(r.package_lines) && r.package_lines.length > 1 ? r.package_lines : null,
     createdAt: firstDefined(r.created_at, r.createdAt) ?? null,
     trackingStatus: str(firstDefined(r.tracking_status, r.trackingStatus)),
     hasTracking: firstDefined(r.has_tracking, r.hasTracking) === true,
@@ -153,7 +156,10 @@ export function routeLabel(row) {
 }
 
 export function packageLabel(row) {
-  const n = shipmentFields(row).packageCount;
+  const f = shipmentFields(row);
+  // Unterschiedliche Pakete: die Summe („3 Pakete · 31 kg gesamt“).
+  if (f.packageLines) return packageLinesSummaryText(f.packageLines) || "";
+  const n = f.packageCount;
   if (n === null) return "";
   return n === 1 ? "1 Paket" : `${n} Pakete`;
 }

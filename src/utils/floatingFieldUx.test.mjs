@@ -327,13 +327,20 @@ test("17 — alle Adress- und Paketfelder laufen über <Field /> bzw. den Picker
   assert.ok(!/<input\s/.test(seite), "es steht noch ein rohes <input> auf der Seite");
   assert.ok(!/<select\s/.test(seite), "es steht noch ein rohes <select> auf der Seite");
 
-  // Die fünf Paketfelder samt Einheiten.
-  for (const [id, label] of [["ns-packageCount", "Anzahl"], ["ns-weight", "Gewicht"],
-                             ["ns-length", "Länge"], ["ns-width", "Breite"], ["ns-height", "Höhe"]])
-    assert.match(seite, new RegExp(`id="${id}"[\\s\\S]{0,200}label="${label}"`), `${id} fehlt`);
-  assert.match(seite, /unit="kg" unitLabel="in Kilogramm"/);
-  assert.equal([...seite.matchAll(/unit="cm" unitLabel="in Zentimetern"/g)].length, 3,
+  // Die fünf Paketfelder samt Einheiten — seit Canonical v2.79 im gemeinsamen Paketeditor, den die
+  // Seite mit ihrem ID-Präfix einbindet (Zeile 1 behält ns-packageCount … ns-height, siehe
+  // packageLineFieldId in packageLines.test.mjs).
+  assert.match(seite, /<PackageLinesEditor\s+variant="app"\s+idBase="ns-"/, "der Paketeditor fehlt auf der Seite");
+  const editor = ohneKommentare(lies("src/components/shipping/PackageLinesEditor.jsx"));
+  const appFelder = editor.slice(editor.indexOf("app: Object.freeze(["), editor.indexOf("public: Object.freeze(["));
+  for (const [key, label] of [["packageCount", "Anzahl"], ["weight", "Gewicht"],
+                              ["length", "Länge"], ["width", "Breite"], ["height", "Höhe"]])
+    assert.match(appFelder, new RegExp(`key: "${key}", label: "${label}"`), `${key} fehlt`);
+  assert.match(appFelder, /unit: "kg", unitLabel: "in Kilogramm"/);
+  assert.equal([...appFelder.matchAll(/unit: "cm", unitLabel: "in Zentimetern"/g)].length, 3,
     "Länge, Breite und Höhe brauchen alle drei ihre Einheit");
+  assert.match(editor, /<Field\b[\s\S]{0,400}labelMode=\{variant === "app" \? "floating" : "stacked"\}/,
+    "die Paketfelder laufen über <Field />, im Portal schwebend");
 
   // Adressvalidierung und Adressbuch unverändert eingebunden.
   assert.match(seite, /useAddressValidation\(\{/);

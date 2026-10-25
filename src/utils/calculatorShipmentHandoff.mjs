@@ -39,6 +39,8 @@
    der Neuberechnung steht der Kundenpreis daneben, nie still an seiner Stelle. */
 
 import { createEmptyShipmentForm } from "./newShipmentForm.mjs";
+// Individuelle Mehrpaketsendungen (Canonical v2.79): weitere Zeilen reisen mit.
+import { normalizeExtraPackageLines, formPatchFromServerPackageLines, EXTRA_PACKAGE_LINES_KEY } from "./packageLines.mjs";
 import { offerSelectable, sameOffer } from "./offerIdentity.mjs";
 // Dieselben Wertelisten wie Formularentwurf und Vorgang — keine zweite Aufzählung.
 import { FORM_SERVICE_FILTERS, FORM_SHIPPING_MODES } from "./formDraftsView.mjs";
@@ -129,6 +131,9 @@ export function calculatorSelectionToShipmentTransfer({ calculator, tariff, labe
     // Die Paketanzahl behält ihre Vorgabe, wenn der Preisrechner keine trägt.
     if (wert !== "" || k !== "packageCount") form[k] = wert;
   }
+  // Weitere Paketzeilen (Canonical v2.79): unverändert mit — die Übergabe verliert keine Zeile.
+  const weitere = normalizeExtraPackageLines(f[EXTRA_PACKAGE_LINES_KEY]);
+  if (weitere.length) form[EXTRA_PACKAGE_LINES_KEY] = weitere;
   const t = tariff && typeof tariff === "object" ? tariff : {};
   return {
     form,
@@ -170,9 +175,12 @@ export function calculatorSelectionToShipmentTransfer({ calculator, tariff, labe
 export function publicQuoteToShipmentTransfer({ input, selection, label } = {}) {
   const i = input && typeof input === "object" ? input : {};
   const auswahl = selection && typeof selection === "object" ? selection : {};
+  // Unterschiedliche Pakete (Canonical v2.79) reisen als `packageLines` (Zahlen, Vertrag der API) —
+  // im Formular werden daraus Zeile 1 und `extraPackageLines`.
+  const paketzeilen = formPatchFromServerPackageLines(i.packageLines);
   const patch = calculatorSelectionToShipmentTransfer({
     calculator: {
-      form: i,
+      form: paketzeilen ? { ...i, ...paketzeilen } : i,
       shippingDate: i.shippingDate,
       serviceFilter: i.serviceFilter,
       shippingModeFilter: i.shippingModeFilter,

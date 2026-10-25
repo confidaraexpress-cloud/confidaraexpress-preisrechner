@@ -23,6 +23,10 @@ import { focusFirstError } from "../utils/focusField";
 import { visibleFieldErrors, markFieldTouched, withoutFieldError, keepFocusOnMouseDown } from "../utils/fieldTouchState.mjs";
 import { Field } from "../components/ui/Field";
 import { DEFAULT_ORIGIN_COUNTRY } from "../utils/newShipmentForm.mjs";
+import {
+  formPackageLines, formPatchFromPackageLines, hasExtraPackageLines, hasMixedPackageLines, packageLinesKey, packageLinesPayload,
+} from "../utils/packageLines.mjs";
+import { PackageLinesEditor } from "../components/shipping/PackageLinesEditor";
 import { postalCodeHint, postalCodeInputMode, postalCodeMaxLength } from "../utils/postalCode";
 import { useShippingFlow } from "../context/ShippingFlowContext";
 import { formHasInput, droppedNotice } from "../utils/shippingFlowState.mjs";
@@ -276,6 +280,14 @@ export default function CalculatorPage() {
     if (!FILTER_ONLY_FIELDS.has(k)) invalidateResults();
   };
 
+  // Paketzeilen (Canonical v2.79) — wie in „Neue Sendung“: Zeile 1 in die flachen Felder, weitere unter
+  // `extraPackageLines`; die Serverfehler der geänderten Felder fallen weg, alte Angebote verfallen.
+  const updPakete = (zeilen, { changedKeys = [] } = {}) => {
+    setForm(p => ({ ...p, ...formPatchFromPackageLines(zeilen) }));
+    setServerErrors(p => changedKeys.reduce((rest, k) => withoutFieldError(rest, k), p));
+    invalidateResults();
+  };
+
   // Die frühere Prüfung lief über EIN landesunabhängiges Regex und lieferte EINEN
   // Sammeltext. Dadurch bestand „4444" als deutsche PLZ, wurde ans Backend
   // geschickt, dort korrekt mit 422 abgelehnt — und die Ablehnung ging im Client
@@ -297,7 +309,8 @@ export default function CalculatorPage() {
     if (toCityHelp.cityOptions.length === 1 && !String(form.to_city || "").trim()) upd("to_city", toCityHelp.cityOptions[0]);
   }, [toCityHelp.cityOptions]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const volWeight = form.length && form.width && form.height
+  // Das Volumengewicht ist ein Wert für EIN Paket — es steht deshalb nur bei einer Paketzeile.
+  const volWeight = !hasExtraPackageLines(form) && form.length && form.width && form.height
     ? ((Number(form.length) * Number(form.width) * Number(form.height)) / 5000).toFixed(2) : null;
   const chargeWeight = volWeight && form.weight
     ? Math.max(Number(form.weight), Number(volWeight)).toFixed(2) : form.weight || null;
@@ -483,6 +496,8 @@ export default function CalculatorPage() {
     to_country:   form.to_country,   to_zip:   form.to_zip,
     packageCount: form.packageCount, weight:   form.weight,
     length:       form.length,       width:    form.width, height: form.height,
+    // Weitere Paketzeilen (Canonical v2.79) — leer, solange es nur eine Zeile gibt.
+    pakete: hasExtraPackageLines(form) ? packageLinesKey(form) : "",
     serviceFilter, shippingModeFilter, shippingDate, publicCarrierIds: selectedPublicCarrierIds,
   });
 
@@ -550,15 +565,13 @@ export default function CalculatorPage() {
           to_country:         form.to_country,
           to_zip:             form.to_zip,
           to_city:            String(form.to_city ?? "").trim(),
-          packageCount:       Number(form.packageCount),
-          weight:             Number(form.weight),
-          // Genau die eingegebenen Maße — kein Ersatzwert. Hier stand
+          // Genau die eingegebenen Werte — kein Ersatzwert. Hier stand
           // `Number(form.length) || 30` (und 20/15): `Number("")` ist 0 und
           // damit falsy, ein leeres Feld wurde also zu 30 cm. Die Vorprüfung
           // oben lässt einen unvollständigen Request gar nicht mehr zu.
-          length:             Number(form.length),
-          width:              Number(form.width),
-          height:             Number(form.height),
+          // Paketzeilen (Canonical v2.79): eine Paketart geht flach wie bisher
+          // (Anzahl, Gewicht, Länge, Breite, Höhe), unterschiedliche Pakete als `packageLines`.
+          ...packageLinesPayload(formPackageLines(form)),
           serviceFilter:      serviceFilter,
           shippingModeFilter: shippingModeFilter,
           shippingDate:       shippingDate,
@@ -796,33 +809,16 @@ export default function CalculatorPage() {
                   nur an /calculate-price. Dieselbe Feldsprache wie „Neue Sendung": schwebende
                   Beschriftung, Einheit rechts im Feld (dekorativ, vorgelesen über unitLabel),
                   kein Beispielplatzhalter; eine unvollständige Zahl hält die Beschriftung oben. */}
-              <div className="field-row field-row-5">
-                {[
-                  { key: "packageCount", label: "Anzahl",  hint: "Identische Pakete", extra: { min: "1", max: "99", step: "1" } },
-                  { key: "weight",       label: "Gewicht", unit: "kg", unitLabel: "in Kilogramm" },
-                  { key: "length",       label: "Länge",   unit: "cm", unitLabel: "in Zentimetern" },
-                  { key: "width",        label: "Breite",  unit: "cm", unitLabel: "in Zentimetern" },
-                  { key: "height",       label: "Höhe",    unit: "cm", unitLabel: "in Zentimetern" },
-                ].map(({ key, label, unit, unitLabel, hint, extra }) => (
-                  <Field
-                    key={key}
-                    id={`calc-${key}`}
-                    fieldKey={key}
-                    labelMode="floating"
-                    label={label}
-                    required
-                    type="number"
-                    unit={unit}
-                    unitLabel={unitLabel}
-                    value={form[key]}
-                    onChange={(v) => upd(key, v)}
-                    onBlur={() => markTouched(key)}
-                    error={fieldErrors[key]}
-                    hint={hint}
-                    {...(extra || {})}
-                  />
-                ))}
-              </div>
+              {/* Der gemeinsame Paketeditor (Canonical v2.79, §15) — dieselben Felder, IDs (calc-…)
+                  und Schlüssel wie bisher; weitere Zeilen tragen calc-weight-2 usw. */}
+              <PackageLinesEditor
+                variant="app"
+                idBase="calc-"
+                lines={formPackageLines(form)}
+                onLinesChange={updPakete}
+                errors={fieldErrors}
+                onFieldBlur={markTouched}
+              />
               <p className="pkg-count-note">
                 <span>Gewicht und Maße gelten je Paket. Der Preis gilt für alle Pakete zusammen.</span>
               </p>
@@ -867,6 +863,7 @@ export default function CalculatorPage() {
           <div ref={offersRef}>
           <OffersList
             sorted={sorted}
+            mixedPackages={hasMixedPackageLines(formPackageLines(form))}
             filtered={filtered}
             lateOffers={spaet}
             tariffs={tariffs}

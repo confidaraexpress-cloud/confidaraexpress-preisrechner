@@ -18,6 +18,11 @@
 // NICHT name — das ist das Adressbuch-Shape, ein ANDERES Datenmodell). Defensiv
 // werden contactName/name dennoch als Fallback geprüft (Aufgabenstellung nennt
 // beide als Möglichkeit), aber fullName hat Priorität als belegter Wert.
+//
+// Individuelle Mehrpaketsendungen (Canonical v2.79): additiv `packageLines` — bei unterschiedlichen
+// Paketen die Zeilen [{ quantity, weight, length, width, height }], sonst null.
+import { packageLinesSummaryText } from "./packageLines.mjs";
+
 export const DRAFT_STATUS = "draft";
 
 // ── Requestparameter (Pagination) ────────────────────────────────────────────
@@ -93,6 +98,10 @@ export function formatRoute(draft) {
 // ── Anzeige: Paketdaten ──────────────────────────────────────────────────────
 // { countLine: "2 Pakete · 8,5 kg" | null, dimsLine: "40 × 30 × 25 cm" | null }
 export function formatPackageSummary(draft) {
+  // Unterschiedliche Pakete: die Summe („3 Pakete · 31 kg gesamt“), keine gemeinsamen Maße.
+  if (Array.isArray(draft?.packageLines) && draft.packageLines.length > 1) {
+    return { countLine: packageLinesSummaryText(draft.packageLines), dimsLine: null };
+  }
   const countNum = Number(draft?.packageCount);
   const countLabel = Number.isFinite(countNum) && countNum > 0
     ? `${countNum} Paket${countNum === 1 ? "" : "e"}` : null;

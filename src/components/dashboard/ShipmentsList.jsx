@@ -10,6 +10,7 @@ import { ShipmentDocumentsDrawer } from "./ShipmentDocumentsDrawer";
 import { DOCUMENTS_TEXT } from "../../utils/shipmentDocumentsView.mjs";
 import { customerShipmentNumbers, NO_ORDER_CONFIRMATION_TEXT, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
+import { packageLinesSummaryText } from "../../utils/packageLines.mjs";
 import { shipmentServiceNameOf, SHIPMENT_SERVICE_LABEL } from "../../utils/shipmentServiceNameView.mjs";
 import {
   multiTrackingReferencesOf, trackingReferencesSummary, TRACKING_REFERENCES_TEXT,
@@ -27,6 +28,11 @@ import {
 import { BOOKING_IN_REVIEW_TEXT, isBookingInReview } from "../../utils/customerBookingStatus.mjs";
 // Block C: der beim Buchen gebundene Abgabe-Paketshop — nur aus dem Serverfeld `dropoff_location`.
 import { boundDropoffLocationLine, DROPOFF_LOCATION_LABEL } from "../../utils/dropoffParcelShop.mjs";
+
+// Die Gewichtsangabe einer Sendung — bei unterschiedlichen Paketen die Summe („3 Pakete · 31 kg gesamt“,
+// Canonical v2.79; die API liefert dann `package_lines`), sonst wie bisher das Gewicht.
+const gewichtText = (s) => (Array.isArray(s.package_lines) && s.package_lines.length > 1
+  ? packageLinesSummaryText(s.package_lines) : null) || (s.weight ? `${s.weight} kg` : "—");
 
 const TRACKING_ERROR_MESSAGES = {
   400: "Bitte geben Sie eine gültige Trackingnummer ein.",
@@ -380,7 +386,7 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                             )}
                           </div>
                         </td>
-                        <td className="shipment-weight ce-num">{s.weight ? `${s.weight} kg` : "—"}</td>
+                        <td className="shipment-weight ce-num">{gewichtText(s)}</td>
                         <td className="shipment-price ce-num">{money(s.price_final)}</td>
                         <td className="shipment-status"><StatusBadge status={s.status} /></td>
                         <td className="ce-col-actions">
@@ -527,7 +533,7 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                   </div>
                   <div className="ce-list-card-row">
                     <span className="ce-list-card-key">Gewicht</span>
-                    <span className="ce-list-card-val ce-num">{s.weight ? `${s.weight} kg` : "—"}</span>
+                    <span className="ce-list-card-val ce-num">{gewichtText(s)}</span>
                   </div>
                   <div className="ce-list-card-row">
                     <span className="ce-list-card-key">Preis</span>

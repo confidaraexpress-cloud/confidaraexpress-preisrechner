@@ -8,6 +8,7 @@
 // wie utils/adminShipmentView.mjs daneben, nur für die Detailseite.
 import { trackingLinkOrNull } from "./adminShipmentView.mjs";
 import { trackingLegsOf } from "./trackingLegsView.mjs";
+import { packageLineText, packageLinesTotalWeight } from "./packageLines.mjs";
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
@@ -85,6 +86,20 @@ const lengthOf = (s) => firstDefined(s.length, s.length_cm, s.l);
 const widthOf = (s) => firstDefined(s.width, s.width_cm, s.b, s.w);
 const heightOf = (s) => firstDefined(s.height, s.height_cm, s.h);
 const pkgOf = (s) => firstDefined(s.package_count, s.packageCount, s.packages, s.parcel_count);
+// Individuelle Mehrpaketsendungen (Canonical v2.79): die Zeilen unterschiedlicher Pakete — oder null.
+const packageLinesOf = (s) => {
+  const z = firstDefined(s.package_lines, s.packageLines);
+  return Array.isArray(z) && z.length > 1 ? z : null;
+};
+// Je Zeile ein Text („2 × 8 kg · 40 × 30 × 25 cm“) und das Gesamtgewicht („31 kg gesamt“).
+const packageLineTextsOf = (s) => {
+  const z = packageLinesOf(s);
+  return z ? z.map((l) => packageLineText(l) || "—") : null;
+};
+const packageLinesWeightText = (s) => {
+  const gesamt = packageLinesTotalWeight(packageLinesOf(s) || []);
+  return gesamt === null ? "—" : `${String(gesamt).replace(".", ",")} kg gesamt`;
+};
 const refOf = (s) => firstDefined(s.reference_number, s.reference, s.customer_reference);
 
 const jumingoOf = (s) => firstDefined(s.jumingo_shipment_id, s.jumingoShipmentId, s.jumingo_id, s.jumingo_shipment_id_masked);
@@ -166,6 +181,6 @@ export {
   trackStatusMeta, selectTracking, selectShipment,
   idOf, userIdOf, statusOf, carrierOf, serviceOf, dateOf, labelAvailOf,
   fromCountryOf, toCountryOf, fromZipOf, toZipOf, weightOf, lengthOf, widthOf, heightOf,
-  pkgOf, refOf, jumingoOf, orderOf, invoiceOf, emailDeliveriesOf,
+  pkgOf, packageLinesOf, packageLineTextsOf, packageLinesWeightText, refOf, jumingoOf, orderOf, invoiceOf, emailDeliveriesOf,
   fmtDateTime, fmtDate, asStr, dash, refDisplay, dimensions, routeStr, buildAddress,
 };

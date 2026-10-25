@@ -6,6 +6,7 @@ import {
   sortPublicOffers,
 } from "../utils/publicCalculatorView.mjs";
 import { PublicOfferCard } from "./PublicOfferCard.jsx";
+import { OFFERS_MIXED_PACKAGES_NOTE, OFFERS_MIXED_PACKAGES_EMPTY_HINT } from "../utils/offerIdentity.mjs";
 
 // ── Ergebnisbereich (Portal in #pc-results, direkt unter dem Rechner) ─────────
 // Es gibt ihn erst ab der ersten Berechnung — vorher belegt er keinen Platz. Kopf mit der
@@ -111,6 +112,9 @@ export function PublicResults({ host, phase, ergebnis, anfrage, langsam, sekunde
   // Den Beginn sagt das Formular an (#pc-submit-status); hier nur das Ergebnis.
   const ansage = phase === "done" ? resultAnnouncement(ausgang, anzahl) : "";
   const zusammenfassung = requestSummary(phase === "loading" ? anfrage : (ergebnis && ergebnis.request) || anfrage);
+  // Unterschiedliche Pakete (Canonical v2.79): derselbe Satz über der Liste und derselbe Zusatz im
+  // Leerzustand wie im Portal.
+  const gemischt = !!(ergebnis && ergebnis.request && Array.isArray(ergebnis.request.packageLines));
 
   let inhalt = null;
   if (phase === "loading") {
@@ -121,12 +125,14 @@ export function PublicResults({ host, phase, ergebnis, anfrage, langsam, sekunde
       inhalt = (
         <>
           {ausgang === OUTCOME.PARTIAL && <Hinweis ton="warning" titel={t.title} text={t.message} id="pc-partial" />}
+          {gemischt && <p className="pc-packages-note" id="pc-packages-note">{OFFERS_MIXED_PACKAGES_NOTE}</p>}
           <Liste key={ergebnis.request ? JSON.stringify(ergebnis.request) : "liste"} ergebnis={ergebnis} />
         </>
       );
     } else if (ausgang === OUTCOME.NO_OFFERS || ausgang === OUTCOME.PARTIAL) {
       inhalt = <Hinweis ton="info" titel={OUTCOME_TEXT[OUTCOME.NO_OFFERS].title}
-        text={ausgang === OUTCOME.PARTIAL ? t.message : OUTCOME_TEXT[OUTCOME.NO_OFFERS].message} id="pc-empty" />;
+        text={`${ausgang === OUTCOME.PARTIAL ? t.message : OUTCOME_TEXT[OUTCOME.NO_OFFERS].message}${gemischt ? ` ${OFFERS_MIXED_PACKAGES_EMPTY_HINT}` : ""}`}
+        id="pc-empty" />;
     } else if (t) {
       inhalt = (
         <Hinweis ton={ausgang === OUTCOME.INVALID ? "warning" : "error"} titel={t.title} text={ergebnis.message || t.message} id={`pc-outcome-${ausgang}`} role="alert">

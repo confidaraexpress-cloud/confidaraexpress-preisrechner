@@ -27,6 +27,8 @@
 // demselben Grund von jeher NICHT Teil des Snapshots. publicCarrierIds war die
 // verbliebene Ausnahme; hier wird sie beim Fortsetzen konsistent behandelt.
 
+import { PACKAGE_LINES_MAX, PACKAGE_LINES_KEY, packageLineFieldKey } from "./packageLines.mjs";
+
 // Snapshot-/Resume-Felder, die ergebnisabhängig sind und deshalb beim
 // Fortsetzen neutralisiert werden. Bewusst als Liste geführt, damit ein
 // künftiges weiteres Feld hier sichtbar ergänzt wird statt still mitzulaufen.
@@ -84,6 +86,11 @@ const FIELD_LABELS = Object.assign(Object.create(null), {
   length:       "Länge",
   width:        "Breite",
   height:       "Höhe",
+  // Weitere Paketzeilen (Canonical v2.79): „Paket 2 – Gewicht“ usw., zuletzt die Summengrenze.
+  ...Object.fromEntries(Array.from({ length: PACKAGE_LINES_MAX - 1 }, (_, i) => [
+    ["packageCount", "Anzahl"], ["weight", "Gewicht"], ["length", "Länge"], ["width", "Breite"], ["height", "Höhe"],
+  ].map(([feld, name]) => [packageLineFieldKey(i + 1, feld), `Paket ${i + 2} – ${name}`])).flat()),
+  [PACKAGE_LINES_KEY]: "Anzahl Pakete gesamt",
   // Die beiden Sendungsangaben, die vor dem Angebotsvergleich erhoben werden.
   declaredContent:         "Inhalt der Sendung",
   declaredGoodsValue:      "Warenwert",

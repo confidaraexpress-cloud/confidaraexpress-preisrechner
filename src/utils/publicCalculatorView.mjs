@@ -31,6 +31,11 @@ import {
 import { carrierAppliesLabel, LABEL_HANDLING_TEXT } from "./labelHandling.mjs";
 import { deliveryTimeLabel, earlyDeliveryNote } from "./deliveryTimeView.mjs";
 import { vatDisplay } from "./vatDisplayView.mjs";
+// Individuelle Mehrpaketsendungen (Canonical v2.79): derselbe Paketeditor wie im Portal.
+import {
+  formPackageLines, normalizeExtraPackageLines, packageLinesPayload, packageLinesSummaryText,
+  mapPackageLinesServerField, EXTRA_PACKAGE_LINES_KEY,
+} from "./packageLines.mjs";
 
 // ─── Feste Ziele auf der Hauptdomain ─────────────────────────────────────────
 // Konstanten, kein Parameter: der Preisrechner kennt keinen Redirect-Wunsch.
@@ -99,6 +104,14 @@ function normalisiert(form) {
   const f = { ...emptyPublicForm(), ...(form && typeof form === "object" ? form : {}) };
   for (const k of DEZIMALFELDER) f[k] = normalizeDecimalInput(f[k]);
   f.packageCount = typeof f.packageCount === "string" ? f.packageCount.trim() : f.packageCount;
+  // Weitere Paketzeilen: dieselbe Dezimalkomma-Regel je Zeile (Canonical v2.79).
+  const weitere = normalizeExtraPackageLines(f[EXTRA_PACKAGE_LINES_KEY]).map((z) => {
+    const zeile = { ...z, packageCount: z.packageCount.trim() };
+    for (const k of DEZIMALFELDER) zeile[k] = normalizeDecimalInput(z[k]);
+    return zeile;
+  });
+  if (weitere.length) f[EXTRA_PACKAGE_LINES_KEY] = weitere;
+  else delete f[EXTRA_PACKAGE_LINES_KEY];
   return f;
 }
 
@@ -125,6 +138,8 @@ export function shippingDateAllowed(iso, now) {
 /**
  * Der Anfragekörper — genau die 15 Felder des Kundenrechners, in seiner Schreibweise.
  * Die Carrierauswahl geschieht im Browser; gesendet wird deshalb eine leere Liste.
+ * Unterschiedliche Pakete (Canonical v2.79): statt der fünf Paketfelder `packageLines` — wie im
+ * Kundenrechner, an derselben Stelle; eine Paketart bleibt bytegleich der flache Körper.
  */
 export function buildPublicQuoteRequest(form, { serviceFilter = "all", shippingModeFilter = "all", shippingDate } = {}) {
   const f = normalisiert(form);
@@ -135,11 +150,13 @@ export function buildPublicQuoteRequest(form, { serviceFilter = "all", shippingM
     to_country: f.to_country,
     to_zip: String(f.to_zip ?? "").trim(),
     to_city: String(f.to_city ?? "").trim(),
-    packageCount: Number(f.packageCount),
-    weight: Number(f.weight),
-    length: Number(f.length),
-    width: Number(f.width),
-    height: Number(f.height),
+    ...(packageLinesPayload(formPackageLines(f)) || {
+      packageCount: Number(f.packageCount),
+      weight: Number(f.weight),
+      length: Number(f.length),
+      width: Number(f.width),
+      height: Number(f.height),
+    }),
     serviceFilter: SERVICE_IDS.includes(serviceFilter) ? serviceFilter : "all",
     shippingModeFilter: MODE_IDS.includes(shippingModeFilter) ? shippingModeFilter : "all",
     shippingDate,
@@ -169,6 +186,12 @@ export function requestSummary(body) {
   const von = ort(b.from_country, b.from_zip, b.from_city);
   const nach = ort(b.to_country, b.to_zip, b.to_city);
   if (von && nach) teile.push(`${von} → ${nach}`);
+  // Unterschiedliche Pakete: die Summe wie im Portal („3 Pakete · 31 kg gesamt“).
+  if (Array.isArray(b.packageLines)) {
+    const summe = packageLinesSummaryText(b.packageLines);
+    if (summe) teile.push(summe);
+    return teile.length ? teile.join(" · ") : null;
+  }
   const anzahl = Number.isInteger(b.packageCount) && b.packageCount > 0 ? b.packageCount : null;
   if (anzahl !== null) teile.push(anzahl === 1 ? "1 Paket" : `${anzahl} Pakete`);
   const gewicht = zahlText(b.weight);
@@ -450,7 +473,8 @@ export function quoteOutcomeFromResponse(status, body) {
   }
   if (status === 422 && b.code === "ROUTE_NOT_SUPPORTED") return { outcome: OUTCOME.ROUTE, message: launchRouteBlockedText(b) };
   if (status === 400 || status === 422) {
-    const field = typeof b.field === "string" && FELD[b.field] ? FELD[b.field] : null;
+    // Paketzeilen: `packageLines[i].<feld>` an Zeile i, `packageLines` an der Summe (Canonical v2.79).
+    const field = typeof b.field === "string" && FELD[b.field] ? FELD[b.field] : mapPackageLinesServerField(b.field);
     return { outcome: OUTCOME.INVALID, field, fieldMessage: field ? text(b.error) : null };
   }
   if (status === 429) return { outcome: OUTCOME.RATE_LIMITED };

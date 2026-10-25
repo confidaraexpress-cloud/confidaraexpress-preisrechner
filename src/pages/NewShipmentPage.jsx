@@ -39,9 +39,13 @@ import {
 } from "../utils/calculatorShipmentHandoff.mjs";
 import {
   createEmptyShipmentForm, partyHasInput,
-  packageErrors, packagePayload,
+  shipmentPackageErrors, shipmentPackagePayload,
   buildPartyPayload, shippingContactErrors,
 } from "../utils/newShipmentForm.mjs";
+import {
+  formPackageLines, formPatchFromPackageLines, hasExtraPackageLines, hasMixedPackageLines, packageLinesKey, PACKAGE_LINE_ERROR_ORDER,
+} from "../utils/packageLines.mjs";
+import { PackageLinesEditor } from "../components/shipping/PackageLinesEditor";
 
 // Backend-Feldpfad → Formularschlüssel dieser Seite. Damit landet ein
 // serverseitiger Feldfehler am richtigen Eingabefeld, statt nur im Banner.
@@ -95,7 +99,9 @@ const SHIPMENT_FIELD_ORDER = [
   "s_zip", "s_city", "s_phone", "s_email",
   "r_company", "r_firstName", "r_lastName", "r_fullName", "r_country", "r_state", "r_street", "r_addition",
   "r_zip", "r_city", "r_phone", "r_email",
-  "packageCount", "weight", "length", "width", "height",
+  // Paketdaten: Zeile 1 mit den flachen Schlüsseln, danach jede weitere Paketzeile und zuletzt die
+  // Summe (Canonical v2.79) — wieder genau die Reihenfolge der Darstellung.
+  ...PACKAGE_LINE_ERROR_ORDER,
   // Die Sendungsangaben stehen ANS ENDE: sie sind im Formular unterhalb der Paketdaten,
   // und der Sprung zum ersten Fehler soll der Leserichtung folgen.
   "declaredContent", "declaredGoodsValue",
@@ -115,7 +121,7 @@ import { PROFILE_DASHBOARD_TARGET } from "../utils/bookingSuccessView.mjs";
 import { bookingProfileNotice } from "../utils/bookingProfileView.mjs";
 import { draftBookingOptionsToFlow, hasAnyDraftBookingOption } from "../utils/draftBookingOptions.mjs";
 import { declarationErrors, declarationsPayload, DECLARED_CONTENT_MAX } from "../utils/shipmentDeclarations.mjs";
-import { getShipmentFormSnapshot, isShipmentFormDirty, hasMeaningfulShipmentInput } from "../utils/shipmentFormSnapshot.mjs";
+import { getShipmentFormSnapshot, isShipmentFormDirty, hasMeaningfulShipmentInput, formDraftSchemaVersion } from "../utils/shipmentFormSnapshot.mjs";
 import { AddressPickerButton } from "../components/addressbook/AddressPickerButton";
 import { AddressSuggestInput } from "../components/address/AddressSuggestInput";
 import { AddressStatusLine } from "../components/address/AddressStatusLine";
@@ -235,7 +241,10 @@ function getErrors(form) {
   // Feld kam damit ohne Beanstandung durch den Knopf „Angebote vergleichen",
   // und das Backend ersetzte es still durch 30/20/15 cm. Der Kunde bekam einen
   // Preis für Maße, die er nie eingegeben hat.
-  Object.assign(e, packageErrors(form));
+  //
+  // Individuelle Mehrpaketsendungen (Canonical v2.79): jede Paketzeile mit denselben Regeln, ab zwei
+  // Zeilen mit „Paket k: “ und der Summengrenze. Eine Zeile: exakt die bisherigen Fehler.
+  Object.assign(e, shipmentPackageErrors(form));
 
   // Die beiden Sendungsangaben (Inhalt, Warenwert). Sie sind Pflicht,
   // weil aus ihnen ein abschliessend bepreisbarer Sendungskontext entsteht: ohne sie
@@ -697,7 +706,17 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     if (!FILTER_ONLY_FIELDS.has(k)) invalidateResults();
   };
 
-  const volWeight = form.length && form.width && form.height
+  // Paketzeilen (Canonical v2.79): der Editor meldet die ganze Liste. Zeile 1 landet in den flachen
+  // Feldern, weitere unter `extraPackageLines`. Wie bei `upd` fallen die Serverfehler der geänderten
+  // Felder weg, und Paketdaten sind buchungsrelevant: vorhandene Angebote verfallen.
+  const updPakete = (zeilen, { changedKeys = [] } = {}) => {
+    setForm(p => ({ ...p, ...formPatchFromPackageLines(zeilen) }));
+    setServerErrors(p => changedKeys.reduce((rest, k) => withoutFieldError(rest, k), p));
+    invalidateResults();
+  };
+
+  // Das Volumengewicht ist ein Wert für EIN Paket — es steht deshalb nur bei einer Paketzeile.
+  const volWeight = !hasExtraPackageLines(form) && form.length && form.width && form.height
     ? ((Number(form.length) * Number(form.width) * Number(form.height)) / 5000).toFixed(2) : null;
   const chargeWeight = volWeight && form.weight
     ? Math.max(Number(form.weight), Number(volWeight)).toFixed(2) : form.weight || null;
@@ -1102,10 +1121,13 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     const snapshot = getShipmentFormSnapshot({ form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds, inventoryContext });
     const source = resumeSource;
     const isPatch = !!(source && hasSavableShipmentId(source.id));
+    // Die Fassung folgt dem Inhalt (Canonical v2.79): unterschiedliche Pakete speichern Fassung 2,
+    // alles andere Fassung 1 — auch beim Aktualisieren (der Server übernimmt die gesendete Fassung).
+    const schemaVersion = formDraftSchemaVersion(snapshot);
     try {
       const r = isPatch
-        ? await updateFormDraft(source.id, { schemaVersion: source.schemaVersion ?? 1, revision: source.revision, formData: snapshot })
-        : await createFormDraft({ schemaVersion: 1, formData: snapshot });
+        ? await updateFormDraft(source.id, { schemaVersion, revision: source.revision, formData: snapshot })
+        : await createFormDraft({ schemaVersion, formData: snapshot });
       if (!mountedRef.current) return { ok: false };
       if (r.status === 401 || r.status === 403) { setSaving(false); return { ok: false }; } // zentraler Auth-Redirect übernimmt
       if (isPatch && r.status === 409) { setSaveMode("conflict"); setSaving(false); return { ok: false }; }
@@ -1336,6 +1358,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     // Die Art der Lieferadresse gehoert NICHT hierher: sie wird erst nach der
     // Angebotsauswahl auf der Buchungsseite gefragt und aendert keine Angebotsliste.
     declarations: [form.declaredContent, form.declaredGoodsValue],
+    // Weitere Paketzeilen (Canonical v2.79) — leer, solange es nur eine Zeile gibt.
+    pakete: hasExtraPackageLines(form) ? packageLinesKey(form) : "",
   });
 
   const calculate = async () => {
@@ -1422,9 +1446,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
           // diesem Paket `Number(form.length) || 30` (und 20/15): `Number("")`
           // ist 0 und damit falsy, ein leeres Feld wurde also zu 30 cm. Der
           // Kunde bekam einen Preis für Maße, die er nie eingegeben hat.
-          // `packagePayload()` liefert null, sobald etwas fehlt — dieser Zweig
-          // ist dann durch getErrors() oben ohnehin schon abgebrochen.
-          ...packagePayload(form),
+          // `shipmentPackagePayload()` liefert null, sobald etwas fehlt — dieser Zweig
+          // ist dann durch getErrors() oben ohnehin schon abgebrochen. Eine Paketart geht
+          // flach wie bisher, unterschiedliche Pakete als `packageLines` (Canonical v2.79).
+          ...shipmentPackagePayload(form),
           sender:             buildParty("s"),
           recipient:          buildParty("r"),
           serviceFilter:      serviceFilter,
@@ -2225,28 +2250,17 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                   Kilogramm", nicht doppelt. Schwebende Beschriftung, keine Beispiel-
                   Platzhalter mehr (Auftrag 1, P11); eine unvollständige Zahl
                   („1e", „-") hält die Beschriftung oben (Field, badInput). */}
-              <div className="field-row field-row-5">
-                <Field id="ns-packageCount" fieldKey="packageCount" labelMode="floating"
-                       label="Anzahl" required type="number" min="1" max="99" step="1"
-                       value={form.packageCount} onChange={(v) => upd("packageCount", v)} onBlur={() => markTouched("packageCount")}
-                       error={errors.packageCount} hint="Identische Pakete" />
-                <Field id="ns-weight" fieldKey="weight" labelMode="floating"
-                       label="Gewicht" required type="number" unit="kg" unitLabel="in Kilogramm"
-                       value={form.weight} onChange={(v) => upd("weight", v)} onBlur={() => markTouched("weight")}
-                       error={errors.weight} />
-                <Field id="ns-length" fieldKey="length" labelMode="floating"
-                       label="Länge" required type="number" unit="cm" unitLabel="in Zentimetern"
-                       value={form.length} onChange={(v) => upd("length", v)} onBlur={() => markTouched("length")}
-                       error={errors.length} />
-                <Field id="ns-width" fieldKey="width" labelMode="floating"
-                       label="Breite" required type="number" unit="cm" unitLabel="in Zentimetern"
-                       value={form.width} onChange={(v) => upd("width", v)} onBlur={() => markTouched("width")}
-                       error={errors.width} />
-                <Field id="ns-height" fieldKey="height" labelMode="floating"
-                       label="Höhe" required type="number" unit="cm" unitLabel="in Zentimetern"
-                       value={form.height} onChange={(v) => upd("height", v)} onBlur={() => markTouched("height")}
-                       error={errors.height} />
-              </div>
+              {/* Der gemeinsame Paketeditor (Canonical v2.79, §15): Startansicht wie bisher — eine
+                  Zeile, IDs ns-packageCount … ns-height, dieselben Schlüssel und Prüfungen; darunter
+                  „Paket hinzufügen“. Weitere Zeilen tragen ns-weight-2 usw. */}
+              <PackageLinesEditor
+                variant="app"
+                idBase="ns-"
+                lines={formPackageLines(form)}
+                onLinesChange={updPakete}
+                errors={errors}
+                onFieldBlur={markTouched}
+              />
               <p className="pkg-count-note">
                 <span>Gewicht und Maße gelten je Paket. Der Preis gilt für alle Pakete zusammen.</span>
               </p>
@@ -2421,6 +2435,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
           )}
           <OffersList
             sorted={sorted}
+            mixedPackages={hasMixedPackageLines(formPackageLines(form))}
             filtered={filtered}
             lateOffers={spaet}
             tariffs={tariffs}

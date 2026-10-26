@@ -472,6 +472,12 @@ export function quoteOutcomeFromResponse(status, body) {
     return { outcome: result.status === "partial" ? OUTCOME.PARTIAL : OUTCOME.OK, result };
   }
   if (status === 422 && b.code === "ROUTE_NOT_SUPPORTED") return { outcome: OUTCOME.ROUTE, message: launchRouteBlockedText(b) };
+  // Unterschiedliche Pakete ohne Angebot (Canonical v2.79) sind kein Eingabefehler — kein Feld wäre markiert —,
+  // sondern der Leerzustand einer leeren Liste: „Keine direkt buchbaren Angebote“ mit dem Paketzusatz, wie im
+  // Portal (apiError.mjs).
+  if (status === 422 && b.code === "PACKAGE_COMBINATION_UNAVAILABLE") {
+    return { outcome: OUTCOME.NO_OFFERS, result: { status: "no_offers", quotedAt: null, offers: [], publicCarriers: [], availableShippingModes: [] } };
+  }
   if (status === 400 || status === 422) {
     // Paketzeilen: `packageLines[i].<feld>` an Zeile i, `packageLines` an der Summe (Canonical v2.79).
     const field = typeof b.field === "string" && FELD[b.field] ? FELD[b.field] : mapPackageLinesServerField(b.field);

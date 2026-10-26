@@ -11,6 +11,11 @@
 import { FORM_SERVICE_FILTERS, FORM_SHIPPING_MODES } from "./formDraftsView.mjs";
 import { normalizeInventoryContext } from "./inventoryView.mjs";
 import { declarationsSnapshot } from "./shipmentDeclarations.mjs";
+import { formPackageLines, packageLinesSnapshot, draftQuantity } from "./packageLines.mjs";
+
+// Formularentwurf Fassung 2 (Canonical v2.79): nur bei UNTERSCHIEDLICHEN Paketen.
+export const FORM_DRAFT_SCHEMA_VERSION = 1;
+export const FORM_DRAFT_SCHEMA_VERSION_PACKAGE_LINES = 2;
 
 // ── Normalisierung (stabil, deterministisch) ────────────────────────────────
 function trimStr(v) {
@@ -74,6 +79,37 @@ function party(form, p) {
   };
 }
 
+// Die Paketangaben des Entwurfs. Eine Paketart (auch mehrere gleiche Zeilen): Fassung 1 —
+// bytegleich zu vorher, die Anzahl ist die Summe der Mengen. Unterschiedliche Pakete (Canonical
+// v2.79): Fassung 2 mit `packageLines` in Formularreihenfolge; daneben tragen die flachen Werte
+// nichts (null), die Anzahl ist die Summe — genau die Form, die der Server speichert.
+function packagesSnapshot(form) {
+  const zeilen = formPackageLines(form);
+  const gemischt = packageLinesSnapshot(zeilen);
+  if (gemischt) {
+    return {
+      packageCount: gemischt.reduce((summe, z) => summe + z.quantity, 0),
+      weight: null, length: null, width: null, height: null,
+      packageLines: gemischt,
+    };
+  }
+  return {
+    packageCount: zeilen.length > 1
+      ? zeilen.reduce((summe, z) => summe + draftQuantity(z.packageCount), 0)
+      : posInt(form.packageCount, 1),
+    weight: numOrNull(form.weight),
+    length: numOrNull(form.length),
+    width: numOrNull(form.width),
+    height: numOrNull(form.height),
+  };
+}
+
+/** Die Entwurfsfassung zu einem Snapshot: 2 nur mit Paketzeilen, sonst 1. */
+export function formDraftSchemaVersion(snapshot) {
+  const p = snapshot && snapshot.packages;
+  return p && Array.isArray(p.packageLines) ? FORM_DRAFT_SCHEMA_VERSION_PACKAGE_LINES : FORM_DRAFT_SCHEMA_VERSION;
+}
+
 // state: { form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds,
 //          inventoryContext }
 // Rückgabe: kanonischer formData-Snapshot (feste Key-Reihenfolge). Reine Funktion.
@@ -91,13 +127,7 @@ export function getShipmentFormSnapshot(state) {
   return {
     sender: party(form, "s"),
     recipient: party(form, "r"),
-    packages: {
-      packageCount: posInt(form.packageCount, 1),
-      weight: numOrNull(form.weight),
-      length: numOrNull(form.length),
-      width: numOrNull(form.width),
-      height: numOrNull(form.height),
-    },
+    packages: packagesSnapshot(form),
     shippingOptions: {
       shippingDate: trimStr(s.shippingDate) || null,
       serviceFilter: FORM_SERVICE_FILTERS.includes(s.serviceFilter) ? s.serviceFilter : "all",

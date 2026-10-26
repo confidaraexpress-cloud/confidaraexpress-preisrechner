@@ -24,6 +24,7 @@ import { downloadDeliveryNote } from "../../utils/downloadDeliveryNote";
 import { downloadOrderConfirmation } from "../../utils/downloadOrderConfirmation";
 import { downloadProforma } from "../../utils/downloadProforma";
 import { orderConfirmationNumberOf } from "../../utils/businessNumbers.mjs";
+import { packageLabelHintText } from "../../utils/packageLabelHint.mjs";
 import {
   PROFORMA_VIEW, PROFORMA_TEXT, proformaViewState,
   proformaDownloadPath, proformaDownloadLabel,
@@ -48,6 +49,12 @@ export function BookingSuccessDocuments({ booking, proformaEntry }) {
   // der gerade lädt.
   const versanddokumente = bookingShippingDocuments(booking);
   const druckhinweis = bookingShippingPrintNotice(booking);
+  // Unterschiedliche Pakete (Canonical v2.79): welches Etikett auf welches Paket gehört — der Satz zum
+  // Etikettenprofil, das der Server nennt. Ohne Hinweis kein Satz.
+  const klebehinweis = packageLabelHintText(booking && booking.packageLabelHint);
+  // Er steht direkt bei den Etiketten — unter ihren Knöpfen bzw. unter dem Labelstand.
+  const klebehinweisZeile = klebehinweis
+    ? <p className="text-sm mb-16 booking-label-hint" id="booking-label-hint">{klebehinweis}</p> : null;
   const [versandPfad, setVersandPfad] = useState("");
   // P2-01 / EXTRA: was ohne gemeldete Versandbelege zum Label angeboten werden darf — aus dem Stand,
   // den der Server nennt (utils/bookingShippingDocuments.mjs), nie aus der Annahme „es gibt eins".
@@ -159,6 +166,9 @@ export function BookingSuccessDocuments({ booking, proformaEntry }) {
           {druckhinweis && (
             <p className="text-muted text-sm mb-16">{druckhinweis}</p>
           )}
+          {/* Unterschiedliche Pakete (Canonical v2.79): welches Etikett auf welches Paket gehört — direkt
+              unter den Etiketten, vor dem Hinweis auf die dauerhafte Ablage. */}
+          {klebehinweisZeile}
           {/* Mehrere Belege: der Kunde erfährt, wo er sie dauerhaft wiederfindet — die
               Dokumentübersicht der Sendung lädt sie jederzeit neu vom Server. */}
           {versanddokumente.length > 1 && (
@@ -166,9 +176,12 @@ export function BookingSuccessDocuments({ booking, proformaEntry }) {
           )}
         </>
       ) : !booking?.ceShipmentId ? null : labelAnsicht.mode === BOOKING_LABEL_MODE.DOWNLOAD ? (
-        <button className="btn btn-primary btn-full mb-16" onClick={handleDownloadLabel} disabled={labelLoading}>
-          {labelLoading ? <><span className="spinner" /> Label wird geladen…</> : "Label herunterladen"}
-        </button>
+        <>
+          <button className="btn btn-primary btn-full mb-16" onClick={handleDownloadLabel} disabled={labelLoading}>
+            {labelLoading ? <><span className="spinner" /> Label wird geladen…</> : "Label herunterladen"}
+          </button>
+          {klebehinweisZeile}
+        </>
       ) : (
         /* P2-01 / EXTRA: das Label liegt (noch) nicht in ConfidaraExpress, wurde gesondert
            bereitgestellt oder sein Stand ist nicht belegt — dann KEIN Downloadknopf, sondern der
@@ -186,6 +199,7 @@ export function BookingSuccessDocuments({ booking, proformaEntry }) {
                 : BOOKING_LABEL_TEXT.retrieve}
             </button>
           )}
+          {klebehinweisZeile}
         </>
       )}
       {/* Auftragsbestätigung — erscheint NUR, wenn die Buchungsantwort tatsächlich

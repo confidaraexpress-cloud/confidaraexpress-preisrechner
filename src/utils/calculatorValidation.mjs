@@ -17,12 +17,18 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { validatePostalCode, postalCodeExample, describePostalFormat } from "./postalCode.mjs";
 import { countries } from "./countries.js";
+// Individuelle Mehrpaketsendungen (Canonical v2.79): weitere Paketzeilen, Zeilenbezug und Summengrenze.
+import {
+  formPackageLines, packageLineFieldKey, packageLineErrorText, packageLinesTotalExceeded,
+  PACKAGE_LINE_ERROR_ORDER, PACKAGE_LINES_KEY, PACKAGE_TOTAL_LIMIT_TEXT,
+} from "./packageLines.mjs";
 
 // Reihenfolge der Felder im Formular — bestimmt, welches Feld bei mehreren
 // Fehlern angesprungen wird (immer das oberste sichtbare).
 export const CALCULATOR_FIELD_ORDER = [
   "from_country", "from_zip", "from_city", "to_country", "to_zip", "to_city",
-  "packageCount", "weight", "length", "width", "height",
+  // Zeile 1 mit den flachen Schlüsseln, danach jede weitere Paketzeile, zuletzt die Summe.
+  ...PACKAGE_LINE_ERROR_ORDER,
 ];
 
 // Backend-Feldpfad → Formularschlüssel des Preisrechners. Wird an
@@ -183,6 +189,31 @@ export function getCalculatorErrors(form = {}) {
       setBanner({ title: ort.title, message: ort.message });
     }
   }
+
+  // ── Paketzeilen (Canonical v2.79) ──
+  // Jede Zeile mit genau den bisherigen Texten; ab zwei Zeilen mit „Paket k: “ (Feld und Banner)
+  // und unter den Zeilenschlüsseln. Eine Zeile: exakt die bisherige Prüfung.
+  const zeilen = formPackageLines(form);
+  zeilen.forEach((zeile, i) => {
+    const pruefung = packageLineCalculatorErrors(zeile);
+    for (const [feld, text] of Object.entries(pruefung.fieldErrors))
+      fieldErrors[packageLineFieldKey(i, feld)] = packageLineErrorText(i, zeilen.length, text);
+    if (pruefung.banner)
+      setBanner({ ...pruefung.banner, message: packageLineErrorText(i, zeilen.length, pruefung.banner.message) });
+  });
+  if (packageLinesTotalExceeded(zeilen)) {
+    fieldErrors[PACKAGE_LINES_KEY] = PACKAGE_TOTAL_LIMIT_TEXT;
+    setBanner({ title: "Paketanzahl prüfen", message: PACKAGE_TOTAL_LIMIT_TEXT });
+  }
+
+  return { fieldErrors, banner };
+}
+
+// Die Paketprüfung EINER Zeile (Schlüssel wie im flachen Formular) — Texte und Banner unverändert.
+function packageLineCalculatorErrors(form) {
+  const fieldErrors = {};
+  let banner = null;
+  const setBanner = (b) => { if (!banner) banner = b; };
 
   // ── Paketanzahl ──
   const pc = num(form.packageCount);

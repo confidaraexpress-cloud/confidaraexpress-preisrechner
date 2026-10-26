@@ -274,8 +274,10 @@ test("Verdrahtung: Payload-Felder der Preisberechnung sind unverändert", () => 
     // Anzahl, Gewicht und die drei Maße kommen seit dem Paket „verpflichtende
     // Paketmaße" gebündelt aus packagePayload(form) — ohne die früheren
     // `|| 30/20/15`-Ersatzwerte. Die gesendeten SCHLÜSSEL sind unverändert;
-    // ein eigener Test unten prüft sie am erzeugten Objekt.
-    "...packagePayload(form)",
+    // ein eigener Test unten prüft sie am erzeugten Objekt. Seit Canonical v2.79 über die
+    // Paketzeilen (shipmentPackagePayload): eine Paketart bytegleich, unterschiedliche Pakete
+    // als `packageLines` (packageLines.test.mjs).
+    "...shipmentPackagePayload(form)",
     "sender:             buildParty(\"s\")", "recipient:          buildParty(\"r\")",
     "serviceFilter:      serviceFilter", "shippingModeFilter: shippingModeFilter",
     "shippingDate:       shippingDate", "publicCarrierIds:   selectedPublicCarrierIds",

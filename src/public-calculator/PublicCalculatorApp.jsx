@@ -10,6 +10,9 @@ import {
   quoteOutcomeFromError, quoteOutcomeFromResponse, requestKey,
 } from "../utils/publicCalculatorView.mjs";
 import { PublicResults } from "./PublicResults.jsx";
+// Der gemeinsame Paketeditor (Canonical v2.79, §15) — dieselbe Komponente wie im Portal.
+import { PackageLinesEditor } from "../components/shipping/PackageLinesEditor.jsx";
+import { formPackageLines, formPatchFromPackageLines, PACKAGE_LINES_KEY } from "../utils/packageLines.mjs";
 
 // ── Öffentlicher Preisrechner: Formular und Ablauf ───────────────────────────
 // Bewusst schmal (Betreiberentscheidung 2026-10-16): Absender und Empfänger mit Land, PLZ und
@@ -136,8 +139,19 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
     loescheFehler(feld);
   }, [loescheFehler]);
 
+  // Paketzeilen: der Editor meldet die ganze Liste — Zeile 1 in die flachen Felder, weitere unter
+  // `extraPackageLines`; die Fehler der geänderten Felder fallen weg.
+  const setzePakete = useCallback((zeilen, { changedKeys = [] } = {}) => {
+    setForm((f) => ({ ...f, ...formPatchFromPackageLines(zeilen) }));
+    for (const k of changedKeys) loescheFehler(k);
+  }, [loescheFehler]);
+
+  // Ein Feld der ersten Zeile über seine feste ID, jedes weitere Paketfeld (und die Summe) über
+  // seinen Feldschlüssel (`data-field`).
+  const feldElement = (feld) => document.getElementById(FELD_ID[feld])
+    || document.querySelector(`[data-field="${CSS.escape(String(feld))}"]`);
   const fokussiere = (feld) => {
-    const el = document.getElementById(FELD_ID[feld]);
+    const el = feldElement(feld);
     if (el) el.focus();
   };
 
@@ -159,7 +173,8 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
     if (abbruch.current !== ac) return;
     abbruch.current = null;
     if (!ausgang) { setPhase("idle"); return; }
-    if (ausgang.outcome === OUTCOME.INVALID && ausgang.field && ausgang.fieldMessage && FELD_ID[ausgang.field]) {
+    if (ausgang.outcome === OUTCOME.INVALID && ausgang.field && ausgang.fieldMessage
+      && (FELD_ID[ausgang.field] || String(ausgang.field).startsWith(PACKAGE_LINES_KEY))) {
       setFieldErrors({ [ausgang.field]: ausgang.fieldMessage });
     }
     letzterSchluessel.current = ERGEBNISZUSTAENDE.has(ausgang.outcome) ? schluessel : null;
@@ -243,24 +258,15 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
 
         <div className="pc-row" role="group" aria-labelledby="pc-row-package" aria-describedby="pc-package-hint">
           <span className="pc-row-label" id="pc-row-package">Paket</span>
-          <div className="pc-row-fields pc-row-fields--package">
-            <Field id={FELD_ID.packageCount} fieldKey="packageCount" label="Anzahl" required value={form.packageCount}
-              error={fieldErrors.packageCount} onChange={(v) => setze("packageCount", v)}
-              inputMode="numeric" autoComplete="off" maxLength={2} aria-describedby="pc-package-hint" />
-            <Field id={FELD_ID.weight} fieldKey="weight" label="Gewicht" unit="kg" unitLabel="je Paket in Kilogramm" required
-              value={form.weight} error={fieldErrors.weight} onChange={(v) => setze("weight", v)}
-              inputMode="decimal" autoComplete="off" maxLength={8} />
-            <Field id={FELD_ID.length} fieldKey="length" label="Länge" unit="cm" unitLabel="in Zentimetern" required
-              value={form.length} error={fieldErrors.length} onChange={(v) => setze("length", v)}
-              inputMode="decimal" autoComplete="off" maxLength={6} />
-            <Field id={FELD_ID.width} fieldKey="width" label="Breite" unit="cm" unitLabel="in Zentimetern" required
-              value={form.width} error={fieldErrors.width} onChange={(v) => setze("width", v)}
-              inputMode="decimal" autoComplete="off" maxLength={6} />
-            <Field id={FELD_ID.height} fieldKey="height" label="Höhe" unit="cm" unitLabel="in Zentimetern" required
-              value={form.height} error={fieldErrors.height} onChange={(v) => setze("height", v)}
-              inputMode="decimal" autoComplete="off" maxLength={6} />
-          </div>
-          <p className="pc-row-hint" id="pc-package-hint">Gewicht und Maße je Paket — bei mehreren Paketen gleich.</p>
+          <PackageLinesEditor
+            variant="public"
+            idBase={FELD_ID}
+            lines={formPackageLines(form)}
+            onLinesChange={setzePakete}
+            errors={fieldErrors}
+            firstLineProps={{ packageCount: { "aria-describedby": "pc-package-hint" } }}
+          />
+          <p className="pc-row-hint" id="pc-package-hint">Gewicht und Maße je Paket.</p>
         </div>
 
         <div className="pc-submit-row">

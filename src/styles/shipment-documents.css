@@ -50,6 +50,12 @@
   line-height: var(--ce-text-label-line);
   color: var(--ce-color-text-muted);
 }
+/* Der Klebehinweis bei unterschiedlichen Paketen (Canonical v2.79) ist eine Handlungsanweisung — eine
+   Stufe deutlicher als der Druckhinweis, aber ebenso ohne Warnfläche. */
+.sdoc-group-note--hint {
+  color: var(--ce-color-text-secondary);
+  font-weight: 500;
+}
 
 .sdoc-list { display: flex; flex-direction: column; }
 .sdoc-row {

@@ -249,6 +249,19 @@ export const OFFER_CONTENT_DESCRIPTION_TEXT = "Nur mit Angabe des Inhalts buchba
 export const OFFER_CONTENT_DESCRIPTION_HINT = "Bitte geben Sie den Inhalt der Sendung an.";
 export const OFFER_DIMENSIONS_UNVERIFIED_TEXT = "Für diese Maße nicht bestätigt.";
 export const OFFER_AREA_SURCHARGE_TEXT = "Gebietszuschlag nicht bestätigt.";
+// Individuelle Mehrpaketsendungen (Canonical v2.79, §15): die beiden Gründe der Kuration — nie ein
+// Anbietername, nie eine Stückgrenze als Anbieterregel. Dazu der Satz über der Angebotsliste und der
+// Zusatz im Leerzustand, solange unterschiedliche Pakete gerechnet wurden. Der Knopf trägt nur den Grund;
+// warum die Etiketten nicht zuzuordnen wären, steht als Hinweis im Detailbereich — so bleiben alle Karten
+// einer Stufe gleich hoch (Betreiberentscheidung 2026-10-04).
+export const OFFER_PACKAGE_COMBINATION_UNVERIFIED_REASON = "package_combination_unverified";
+export const OFFER_PACKAGE_COMBINATION_UNVERIFIED_TEXT = "Für unterschiedliche Pakete derzeit nicht direkt buchbar.";
+export const OFFER_PACKAGE_LABELS_INDISTINGUISHABLE_REASON = "package_labels_indistinguishable";
+export const OFFER_PACKAGE_LABELS_INDISTINGUISHABLE_TEXT = "Für diese Paketkombination nicht direkt buchbar.";
+export const OFFER_PACKAGE_LABELS_INDISTINGUISHABLE_HINT = "Die Versandlabels wären nicht eindeutig zuzuordnen.";
+export const OFFERS_MIXED_PACKAGES_NOTE =
+  "Für unterschiedliche Pakete werden nur Versandarten angezeigt, die alle Pakete befördern können.";
+export const OFFERS_MIXED_PACKAGES_EMPTY_HINT = "Weniger oder gleich große Pakete erweitern die Auswahl.";
 const GRUND_TEXTE = {
   quote_only: "Derzeit nicht direkt buchbar",
   date_unavailable: "Für dieses Abholdatum nicht verfügbar.",
@@ -261,6 +274,8 @@ const GRUND_TEXTE = {
   [OFFER_CONTENT_DESCRIPTION_REASON]: OFFER_CONTENT_DESCRIPTION_TEXT,
   package_dimensions_unverified: OFFER_DIMENSIONS_UNVERIFIED_TEXT,
   area_surcharge_unconfirmed: OFFER_AREA_SURCHARGE_TEXT,
+  [OFFER_PACKAGE_COMBINATION_UNVERIFIED_REASON]: OFFER_PACKAGE_COMBINATION_UNVERIFIED_TEXT,
+  [OFFER_PACKAGE_LABELS_INDISTINGUISHABLE_REASON]: OFFER_PACKAGE_LABELS_INDISTINGUISHABLE_TEXT,
 };
 // Die ältere Datumsaussage (`availableForDate === false`) bleibt wortgleich.
 const DATUM_NICHT_VERFUEGBAR = "Nicht verfügbar für dieses Datum";
@@ -289,6 +304,8 @@ export function offerBlockedHint(tariff) {
   }
   if (t.unavailableReason === OFFER_BUSINESS_SENDER_REASON) return OFFER_BUSINESS_SENDER_HINT;
   if (t.unavailableReason === OFFER_CONTENT_DESCRIPTION_REASON) return OFFER_CONTENT_DESCRIPTION_HINT;
+  // Unterschiedliche Pakete: die Begründung zum Grund auf dem Knopf (siehe oben).
+  if (t.unavailableReason === OFFER_PACKAGE_LABELS_INDISTINGUISHABLE_REASON) return OFFER_PACKAGE_LABELS_INDISTINGUISHABLE_HINT;
   return t.unavailableReason === "date_unavailable" ? OFFER_DATE_UNAVAILABLE_HINT : null;
 }
 

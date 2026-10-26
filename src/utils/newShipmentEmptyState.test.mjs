@@ -304,7 +304,11 @@ test("19 — kein `|| 30/20/15`-Ersatzwert mehr im Frontend", () => {
     assert.ok(!/\|\|\s*(30|20|15)\b/.test(code), `${name}: Maß-Ersatzwert übrig`);
     assert.ok(!/\?\?\s*(30|20|15)\b/.test(code), `${name}: Maß-Ersatzwert (??) übrig`);
   }
-  assert.ok(seite.includes("...packagePayload(form)"), "der Payload kommt nicht aus packagePayload");
+  // Seit Canonical v2.79 über die Paketzeilen: eine Paketart bytegleich wie packagePayload (siehe
+  // packageLines.test.mjs), unterschiedliche Pakete als packageLines — ebenfalls ohne Ersatzwert.
+  assert.ok(seite.includes("...shipmentPackagePayload(form)"), "der Payload kommt nicht aus shipmentPackagePayload");
+  assert.ok(rechner.includes("...packageLinesPayload(formPackageLines(form))"),
+    "der Preisrechner bildet die Paketwerte nicht über die Paketzeilen");
 });
 
 test("20 — der Preisrechner verlangt die Maße ebenfalls", () => {
@@ -361,14 +365,21 @@ test("26 — die Anzahl bleibt frei editierbar (Vorgabe, kein Festwert)", () => 
     assert.equal(packagePayload(form).packageCount, Number(wert),
       `${wert} kommt nicht im Payload an`);
   }
-  // Im Markup: ein kontrolliertes Feld am gemeinsamen upd(), ohne Sperre.
-  const bis = schnitt(seite, 'id="ns-packageCount"', "/>", "Anzahl-Feld (26)");
-  assert.ok(/value=\{form\.packageCount\}/.test(bis), "die Anzahl ist kein kontrolliertes Feld mehr");
-  assert.ok(/onChange=\{\(v\) => upd\("packageCount", v\)\}/.test(bis), "die Eingabe läuft nicht mehr über upd()");
-  assert.ok(!/readOnly|disabled/.test(bis), "die Anzahl wurde gesperrt — sie ist eine Vorgabe, kein Festwert");
+  // Im Markup (seit Canonical v2.79 im gemeinsamen Paketeditor): ein kontrolliertes Feld, dessen
+  // Eingabe als neue Zeilenliste in das Formular der Seite zurückläuft — ohne Sperre.
+  const editor = ohneKommentare(lies("../components/shipping/PackageLinesEditor.jsx"));
+  const anzahl = schnitt(editor, '{ key: "packageCount", label: "Anzahl"', "},", "Anzahl-Feld (26)");
+  assert.ok(!/readOnly|disabled/.test(anzahl), "die Anzahl wurde gesperrt — sie ist eine Vorgabe, kein Festwert");
   // Und die Grenzen sind unverändert.
-  assert.ok(/min="1"/.test(bis) && /max="99"/.test(bis) && /step="1"/.test(bis),
+  assert.ok(/min: "1"/.test(anzahl) && /max: "99"/.test(anzahl) && /step: "1"/.test(anzahl),
     "die Eingabegrenzen der Anzahl haben sich geändert");
+  const feld = schnitt(editor, "<Field", "/>", "Feld des Editors (26)");
+  assert.ok(/value=\{zeile\[key\]\}/.test(feld), "die Anzahl ist kein kontrolliertes Feld mehr");
+  assert.ok(/onChange=\{\(v\) => aendern\(index, key, v\)\}/.test(feld), "die Eingabe läuft nicht mehr über den Editor");
+  assert.ok(/<PackageLinesEditor[\s\S]{0,200}onLinesChange=\{updPakete\}/.test(seite),
+    "die Zeilen laufen nicht in das Formular der Seite zurück");
+  assert.ok(/const updPakete = [\s\S]{0,120}formPatchFromPackageLines\(zeilen\)/.test(seite),
+    "Zeile 1 landet nicht mehr in den flachen Feldern");
 });
 
 test("27 — ein gespeicherter Entwurf behält seine eigene Anzahl", () => {

@@ -135,6 +135,8 @@ export const VOUCHER_PRICE_RELEVANT_KEYS = [
   "tariffId", "shipperTariffId", "serviceType",
   "insuranceType", "insuranceValue", "goodsValue",
   "weight", "length", "width", "height", "packageCount",
+  // Weitere Paketzeilen (Canonical v2.79): der Werteschlüssel aller Zeilen, leer bei einer Zeile.
+  "packageLines",
   "senderCountry", "senderZip", "recipientCountry", "recipientZip",
   "shippingDate", "pickupWindow",
 ];

@@ -47,6 +47,7 @@ import {
   trackStatusMeta, selectTracking, selectShipment,
   idOf, userIdOf, statusOf, carrierOf, serviceOf, dateOf, labelAvailOf,
   fromCountryOf, toCountryOf, fromZipOf, toZipOf, weightOf, pkgOf, refOf,
+  packageLineTextsOf, packageLinesWeightText,
   jumingoOf, orderOf, invoiceOf, emailDeliveriesOf,
   fmtDateTime, fmtDate, dash, refDisplay, dimensions, routeStr, buildAddress,
   firstDefined,
@@ -458,9 +459,17 @@ export default function AdminShipmentDetailPage() {
               [SHIPMENT_SERVICE_LABEL, shipmentServiceNameOf(s) || "—"],
               ["Route", routeStr(s)],
               ["PLZ (Von → Bis)", (fromZipOf(s) || toZipOf(s)) ? `${dash(fromZipOf(s))} → ${dash(toZipOf(s))}` : "—"],
-              ["Gewicht", weightOf(s) != null ? `${weightOf(s)} kg` : "—"],
-              ["Maße (L × B × H)", dimensions(s)],
-              ["Pakete", pkgOf(s) != null ? String(pkgOf(s)) : "—"],
+              // Unterschiedliche Pakete (Canonical v2.79): Gesamtgewicht, Zahl und jede Paketzeile —
+              // gemeinsame Maße gibt es dann nicht.
+              ...(packageLineTextsOf(s) ? [
+                ["Gewicht", packageLinesWeightText(s)],
+                ["Pakete", pkgOf(s) != null ? String(pkgOf(s)) : "—"],
+                ...packageLineTextsOf(s).map((text, i) => [`Paketzeile ${i + 1}`, text]),
+              ] : [
+                ["Gewicht", weightOf(s) != null ? `${weightOf(s)} kg` : "—"],
+                ["Maße (L × B × H)", dimensions(s)],
+                ["Pakete", pkgOf(s) != null ? String(pkgOf(s)) : "—"],
+              ]),
               // Block C: nur bei einer Paketshopabgabe mit gebundenem Shop — sonst keine Zeile.
               ...(boundDropoffLocationLine(s) ? [[DROPOFF_LOCATION_LABEL, boundDropoffLocationLine(s)]] : []),
               // Gewähltes Labeldruckformat. „Nicht erfasst" ist ausdrücklich NICHT dasselbe wie

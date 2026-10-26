@@ -206,7 +206,12 @@ test("7 — Formularskelett: dieselben Zeilen und Felder wie die Insel, nicht be
   // Die Ortsfelder baut `ortFelder` — einmal für den Absender, einmal für den Empfänger.
   const hilfe = app.slice(app.indexOf("const ortFelder = "), app.indexOf("return (", app.indexOf("const ortFelder = ") + 40) + 2000);
   const ort = zeilen(hilfe.slice(0, hilfe.indexOf("</div>")), /<Field [^>]*?label="([^"]+)"/g);
-  const paket = zeilen(app.slice(app.indexOf('pc-row-fields pc-row-fields--package')), /<Field [^>]*?label="([^"]+)"/g);
+  // Die Paketfelder baut seit Canonical v2.79 der gemeinsame Paketeditor (Variante „public“).
+  assert.match(app, /<PackageLinesEditor\s+variant="public"/, "der Paketeditor fehlt in der Insel");
+  const editor = lies(path.join(SRC, "components", "shipping", "PackageLinesEditor.jsx"));
+  const oeffentlich = editor.slice(editor.indexOf("public: Object.freeze(["),
+    editor.indexOf("]),", editor.indexOf("public: Object.freeze([")));
+  const paket = zeilen(oeffentlich, /label: "([^"]+)"/g);
   assert.deepEqual(app.match(/\{ortFelder\("(from|to)"\)\}/g), ['{ortFelder("from")}', '{ortFelder("to")}']);
   const appFelder = [...ort, ...ort, ...paket];
   assert.deepEqual(appZeilen, ["Absender", "Empfänger", "Paket"], "Anker in PublicCalculatorApp.jsx nicht gefunden");
@@ -219,9 +224,16 @@ test("7 — Formularskelett: dieselben Zeilen und Felder wie die Insel, nicht be
   assert.deepEqual(zeilen(skelett, /<label class="field-label">([^<]+?)(?:<span> \*<\/span>)?<\/label>/g), appFelder);
   assert.deepEqual(zeilen(skelett, /class="pc-row-fields (pc-row-fields--\w+)"/g),
     ["pc-row-fields--place", "pc-row-fields--place", "pc-row-fields--package"]);
-  assert.deepEqual(zeilen(app, /className="pc-row-fields (pc-row-fields--\w+)"/g), ["pc-row-fields--place", "pc-row-fields--package"]);
+  assert.deepEqual(zeilen(app, /className="pc-row-fields (pc-row-fields--\w+)"/g), ["pc-row-fields--place"]);
+  assert.match(editor, /public: \{ row: "pc-row-fields pc-row-fields--package"/, "die Paketreihe des Editors trägt andere Klassen");
   // Einheiten an denselben Feldern.
-  assert.deepEqual(zeilen(skelett, /<span class="ce-field-unit">(\w+)<\/span>/g), zeilen(app, /unit="(\w+)"/g));
+  assert.deepEqual(zeilen(skelett, /<span class="ce-field-unit">(\w+)<\/span>/g),
+    [...zeilen(app, /unit="(\w+)"/g), ...zeilen(oeffentlich, /unit: "(\w+)"/g)]);
+  // „Paket hinzufügen“ steht in der Startansicht — das Skelett trägt dieselbe Aktion (nicht bedienbar)
+  // in derselben Klasse, damit beide gleich hoch bleiben (B5 in publicCalculatorBuild).
+  assert.match(skelett, /<div class="pkg-lines-foot"><span class="pc-line-action pc-line-action--add">Paket hinzufügen<\/span><\/div>/);
+  assert.match(editor, /add: "pc-line-action pc-line-action--add"/);
+  assert.match(editor, />\s*Paket hinzufügen\s*</);
   // Nicht bedienbar: keine ids (keine Doppelungen mit der Insel), keine Namen, nichts im Tabulatorweg.
   assert.doesNotMatch(skelett, /\sid="|\sname="|<form|<button/);
   for (const feld of skelett.match(/<(input|select)[^>]*>/g)) assert.match(feld, /tabindex="-1"/, feld);

@@ -2,7 +2,9 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDialog } from "../hooks/useDialog";
 import { useShippingFlow } from "../context/ShippingFlowContext";
-import { packageSummaryLine, buildPartyPayload } from "../utils/newShipmentForm.mjs";
+import { packageSummaryLine, packageSummaryLineTexts, buildPartyPayload } from "../utils/newShipmentForm.mjs";
+import { hasExtraPackageLines, packageLinesKey } from "../utils/packageLines.mjs";
+import { PackageLinesDisclosure } from "../components/booking/PackageLinesDisclosure";
 import { bookingBillingNotice, BILLING_MODE_TEXT, BILLING_MODE_UNAVAILABLE_CODE } from "../utils/billingModeView.mjs";
 import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher, loadPriceInputOptions, bindPriceInputs } from "../api/client";
 import { FormAlert } from "../components/ui/FormAlert";
@@ -607,6 +609,8 @@ export default function BookingPage() {
   // getestet in newShipmentForm.mjs. Kein erzwungener Platzhalter: null, wenn
   // nichts vorliegt.
   const packageInfo = packageSummaryLine(bookingData?.form);
+  // Unterschiedliche Pakete (Canonical v2.79): die Zeilen für „Pakete anzeigen“ — bei gleichen Paketen null.
+  const packageLineTexts = packageSummaryLineTexts(bookingData?.form);
 
   // ── Versicherung: abgeleitete Werte, Validierung, Repricing ────────────────
   const asNum = (v) => { const n = typeof v === "number" ? v : Number(String(v).replace(",", ".")); return Number.isFinite(n) ? n : null; };
@@ -695,6 +699,8 @@ export default function BookingPage() {
     weight: bookingData?.form?.weight, length: bookingData?.form?.length,
     width: bookingData?.form?.width, height: bookingData?.form?.height,
     packageCount: bookingData?.form?.packageCount,
+    // Weitere Paketzeilen (Canonical v2.79) sind ebenso preisbildend — leer, solange es keine gibt.
+    packageLines: hasExtraPackageLines(bookingData?.form) ? packageLinesKey(bookingData?.form) : "",
     senderCountry: form.s_country, senderZip: form.s_zip,
     recipientCountry: form.r_country, recipientZip: form.r_zip,
     shippingDate: bookingData?.form?.shippingDate,
@@ -2271,6 +2277,7 @@ export default function BookingPage() {
               senderAddr={fmtAddr("s")}
               recipientAddr={fmtAddr("r")}
               packageInfo={packageInfo}
+              packageLines={packageLineTexts}
             />
 
             {/* Art der Lieferadresse — preisrelevant, deshalb VOR den optionalen Zusatzangaben. Nur für
@@ -2480,9 +2487,10 @@ export default function BookingPage() {
                     <span className="text-sm font-bold booking-confirm-val">{fmtAddr("r")}</span>
                   </div>
                   {packageInfo && (
-                    <div className="booking-confirm-row mb-16">
+                    <div className={`booking-confirm-row mb-16${packageLineTexts ? " booking-confirm-row--extra" : ""}`}>
                       <span className="text-sm text-muted">Paket</span>
                       <span className="text-sm font-bold booking-confirm-val">{packageInfo}</span>
+                      {packageLineTexts && <PackageLinesDisclosure lines={packageLineTexts} />}
                     </div>
                   )}
                   <PriceSummaryModule

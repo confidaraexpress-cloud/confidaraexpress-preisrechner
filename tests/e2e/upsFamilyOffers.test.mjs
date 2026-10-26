@@ -10,7 +10,7 @@
 //      Sendungsverfolgung, Drucker und der Servergrenze von zwei Packstücken; keine Prognose, kein „nicht verfügbar"
 //   D  Neue Sendung mit zwei Packstücken: Anzahl und Maße je Paket in der Anfrage; das Mehrpaketprodukt ist auswählbar
 //      („Vorläufiger Preis", Zuschlagshinweis) — die Adressfrage entsteht erst auf der Buchungsseite
-//   E  Preisrechner mit zwei Packstücken: „Identische Pakete", Hinweis je Paket, Mehrpaketprodukt auswählbar
+//   E  Preisrechner mit zwei Packstücken: „Gleiche Pakete", Hinweis je Paket, Mehrpaketprodukt auswählbar
 //   F  Mehrpaketbuchung nach dem GEMESSENEN Fall: Paketzeile, Privatadresse, Absicherung 1:1, zwei Belege
 //      („Versandlabel (A4)", „Versandlabel (Thermodruck)") mit einer Nummer, kein Abholetikett
 //   G  Meine Sendungen: die Mehrpaketsendung mit einer Nummer und zwei Belegen; GENERISCH eine Sendung mit zwei Nummern,
@@ -703,7 +703,7 @@ test("D — Neue Sendung, zwei Packstücke: Anzahl und Maße je Paket in der Anf
 
 /* ══════════ E — Preisrechner mit zwei Packstücken ══════════ */
 
-test("E — Preisrechner, zwei Packstücke: „Identische Pakete“, Hinweis je Paket, Mehrpaketprodukt auswählbar", async () => {
+test("E — Preisrechner, zwei Packstücke: „Gleiche Pakete“, Hinweis je Paket, Mehrpaketprodukt auswählbar", async () => {
   const { page, fehler } = await neueSeite();
   const p = await setup(page, { tariffs: VERGLEICH_ZWEI_PAKETE });
   await page.goto(`${BASE}/calculator`, { waitUntil: "domcontentloaded" });
@@ -718,7 +718,8 @@ test("E — Preisrechner, zwei Packstücke: „Identische Pakete“, Hinweis je 
   await page.fill("#calc-width", "20");
   await page.fill("#calc-height", "15");
   const feld = page.locator(".field:has(#calc-packageCount)");
-  assert.equal(await inhalt(feld.locator(".field-hint")), "Identische Pakete");
+  // Seit Canonical v2.79 (Paketeditor) heißt der Hinweis „Gleiche Pakete“ — die Anzahl gleicher Pakete einer Zeile.
+  assert.equal(await inhalt(feld.locator(".field-hint")), "Gleiche Pakete");
   assert.equal(await inhalt(page.locator(".pkg-count-note")), "Gewicht und Maße gelten je Paket. Der Preis gilt für alle Pakete zusammen.");
 
   await page.getByRole("button", { name: /Angebote vergleichen/i }).first().click();

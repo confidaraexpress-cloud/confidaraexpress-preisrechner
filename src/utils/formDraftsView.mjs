@@ -23,6 +23,7 @@
 import { normalizeInventoryContext } from "./inventoryView.mjs";
 import { normalizeStateCode } from "./stateCodes.mjs";
 import { declarationsFromSnapshot, blankDeclarations } from "./shipmentDeclarations.mjs";
+import { formPatchFromServerPackageLines } from "./packageLines.mjs";
 
 export const FORM_DRAFT_KIND = "form";
 export const SHIPMENT_DRAFT_KIND = "shipment";
@@ -164,6 +165,13 @@ export function formatFormPackage(draft) {
   const p = draft?.summary?.packages;
   const count = Number(p?.packageCount);
   const countLabel = Number.isFinite(count) && count > 0 ? `${count} Paket${count === 1 ? "" : "e"}` : null;
+  // Unterschiedliche Pakete (Fassung 2, Canonical v2.79): das Gesamtgewicht — „31 kg gesamt“.
+  if (Number.isInteger(p?.packageLineCount) && p.packageLineCount >= 2) {
+    const gesamt = Number(p?.totalWeight);
+    const weightLabel = p?.totalWeight != null && Number.isFinite(gesamt) && gesamt > 0
+      ? `${gesamt.toLocaleString("de-DE")} kg gesamt` : null;
+    return { countLabel, weightLabel };
+  }
   const weightNum = Number(p?.weight);
   const weightLabel = p?.weight != null && Number.isFinite(weightNum) && weightNum > 0
     ? `${weightNum.toLocaleString("de-DE")} kg` : null;
@@ -269,6 +277,11 @@ export function buildResumeInitialState(formData, { today = null } = {}) {
   form.length = toNumString(pkg.length);
   form.width = toNumString(pkg.width);
   form.height = toNumString(pkg.height);
+  // Individuelle Mehrpaketsendungen (Canonical v2.79): Formularentwurf Fassung 2 und Sendungsentwurf
+  // mit unterschiedlichen Paketen tragen `packages.packageLines` — Zeile 1 kommt in die flachen
+  // Felder, jede weitere nach `extraPackageLines`. Eine unlesbare Liste ersetzt nichts.
+  const paketzeilen = formPatchFromServerPackageLines(pkg.packageLines);
+  if (paketzeilen) Object.assign(form, paketzeilen);
 
   const opt = fd.shippingOptions && typeof fd.shippingOptions === "object" ? fd.shippingOptions : {};
 

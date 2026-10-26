@@ -23,6 +23,15 @@
 import { blankDeclarations } from "./shipmentDeclarations.mjs";
 // Paket A (2026-10-23): der zentrale Telefonvertrag — Schreibweisen, Durchwahl, Grenzen, gespiegelt aus dem Backend.
 import { parsePhoneNumber, PHONE_INPUT_MAX } from "./phoneNumber.mjs";
+// Individuelle Mehrpaketsendungen (Canonical v2.79): Feldliste, Höchstzahl und Vorgabemenge stehen im
+// abhängigkeitsfreien Paketzeilenmodul (der öffentliche Preisrechner bündelt es mit) — hier unverändert
+// unter denselben Namen erreichbar.
+import {
+  PACKAGE_FIELDS, PACKAGE_COUNT_MAX, PACKAGE_COUNT_DEFAULT,
+  formPackageLines, hasExtraPackageLines, packageLinesFieldErrors, packageLinesPayload,
+  canonicalPackageLines, packageLinesSummaryText, packageLineText,
+} from "./packageLines.mjs";
+export { PACKAGE_FIELDS, PACKAGE_COUNT_MAX, PACKAGE_COUNT_DEFAULT };
 
 // Absenderland neuer Versandvorgänge (Auftrag 1, P11, 2026-10-17): Deutschland ist vorausgewählt.
 // Keine neue Regel — der Server erlaubt als Ursprung nur DE (Launch-Scope `originCountries`,
@@ -30,7 +39,6 @@ import { parsePhoneNumber, PHONE_INPUT_MAX } from "./phoneNumber.mjs";
 // bleibt leer und wird frei gewählt; gespeicherte Entwürfe behalten ihr Land.
 export const DEFAULT_ORIGIN_COUNTRY = "DE";
 
-export const PACKAGE_FIELDS = Object.freeze(["packageCount", "weight", "length", "width", "height"]);
 export const PARTY_PREFIXES = Object.freeze(["s", "r"]);
 
 /** Der Adresspayload EINER Partei ("s" = Absender, "r" = Empfänger) aus dem Formular.
@@ -101,10 +109,9 @@ export const WEIGHT_MIN_KG = 0.1;
 export const WEIGHT_MAX_KG = 1000;
 export const DIMENSION_MIN_CM = 0.1;
 export const DIMENSION_MAX_CM = 300;
-export const PACKAGE_COUNT_MAX = 99;
 
-// Vorbelegung der Paketanzahl. EIN Wert, EINE Quelle — der leere Ausgangszustand und der
-// Zurücksetzen-Pfad lesen beide hier.
+// Vorbelegung der Paketanzahl (PACKAGE_COUNT_DEFAULT, definiert in packageLines.mjs). EIN Wert, EINE
+// Quelle — der leere Ausgangszustand, der Zurücksetzen-Pfad und jede neue Paketzeile lesen sie.
 //
 // Warum die Anzahl als EINZIGES Paketfeld vorbelegt ist: sie hat einen echten Normalfall.
 // Eine Sendung besteht aus mindestens einem Paket, und „1" ist der mit Abstand häufigste
@@ -114,7 +121,6 @@ export const PACKAGE_COUNT_MAX = 99;
 //
 // Es bleibt ein VORGABEwert, kein Festwert: das Feld ist unverändert editierbar, und die
 // Prüfregeln (ganzzahlig, 1…99) sind unberührt.
-export const PACKAGE_COUNT_DEFAULT = "1";
 
 // Beispielwerte. Sie sind PLACEHOLDER und niemals Formularwerte — das „z. B."
 // steht bewusst davor: eine nackte „5" in einem Zahlenfeld ist von einer echten
@@ -280,8 +286,32 @@ export function packageHint(form) {
  *
  * Bei mehreren Paketen wird „je" vorangestellt: Gewicht und Maße gelten laut
  * Formular PRO Paket, und ohne dieses Wort läse sich die Zeile als Gesamtgewicht.
+ *
+ * Individuelle Mehrpaketsendungen (Canonical v2.79): bei UNTERSCHIEDLICHEN Paketen die Summe
+ * („3 Pakete · 31 kg gesamt“; die Zeilen liefert packageSummaryLineTexts). Mehrere gleiche Zeilen
+ * sind eine Paketart und behalten den bisherigen Text mit der Summe der Mengen.
  */
 export function packageSummaryLine(form) {
+  if (hasExtraPackageLines(form)) {
+    const zeilen = formPackageLines(form);
+    const kanonisch = canonicalPackageLines(zeilen);
+    if (!kanonisch) return packageLinesSummaryText(zeilen);
+    if (kanonisch.length > 1) return packageLinesSummaryText(kanonisch);
+    const { quantity, ...paket } = kanonisch[0];
+    return flachePaketzeile({ packageCount: String(quantity), ...paket });
+  }
+  return flachePaketzeile(form);
+}
+
+/** Die Zeilen unterschiedlicher Pakete für „Pakete anzeigen“ („1 × 15 kg · 20 × 20 × 20 cm“) — sonst null. */
+export function packageSummaryLineTexts(form) {
+  if (!hasExtraPackageLines(form)) return null;
+  const kanonisch = canonicalPackageLines(formPackageLines(form));
+  if (!kanonisch || kanonisch.length < 2) return null;
+  return kanonisch.map(packageLineText);
+}
+
+function flachePaketzeile(form) {
   const f = form || {};
   const anzahl = Number(f.packageCount);
   const mehrere = Number.isInteger(anzahl) && anzahl > 1;
@@ -317,6 +347,23 @@ export function packagePayload(form) {
     width: Number(form.width),
     height: Number(form.height),
   };
+}
+
+/**
+ * Paketfehler ALLER Zeilen von „Neue Sendung“ (Canonical v2.79). Eine Zeile: exakt packageErrors();
+ * ab zwei Zeilen mit „Paket k: “, Zeilenschlüsseln und der Summengrenze (packageLines.mjs).
+ */
+export function shipmentPackageErrors(form) {
+  return packageLinesFieldErrors(formPackageLines(form), packageFieldError);
+}
+
+/**
+ * Die Paketwerte des Requests für alle Zeilen — eine Paketart flach (bytegleich zu packagePayload),
+ * unterschiedliche Pakete als `packageLines`. `null`, solange etwas fehlt.
+ */
+export function shipmentPackagePayload(form) {
+  const zeilen = formPackageLines(form);
+  return packageLinesPayload(zeilen, packageLinesFieldErrors(zeilen, packageFieldError));
 }
 
 /* ── Der Versandkontakt ───────────────────────────────────────────────────────────────

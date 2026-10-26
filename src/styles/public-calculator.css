@@ -523,6 +523,134 @@
   line-height: 18px;
 }
 
+/* Unterschiedliche Pakete (Canonical v2.79): ein ruhiger Satz über der Angebotsliste. */
+.pc-packages-note {
+  margin-bottom: var(--ce-space-3);
+  color: var(--ce-color-text-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* Paketeditor (Canonical v2.79, §15) — dieselbe Komponente wie im Portal, in den Tokens dieser Seite.
+   Eine Zeile: die bisherige Paketreihe, darunter „Paket hinzufügen“ als Textaktion auf der Feldkante
+   (das Skelett in preisrechner/index.html trägt sie ebenso). Ab zwei Zeilen: je Zeile ein Kopf über
+   der Feldreihe, feine Linien, die Summe unter einer Linie; in einer schmalen Karte wird jede Zeile
+   eine Karte. Jede Aktion erreicht 44 px. */
+.pc-page .pkg-lines {
+  display: grid;
+  gap: var(--ce-space-2);
+  min-width: 0;
+}
+
+.pc-page .pkg-lines--multi {
+  gap: var(--ce-space-3);
+}
+
+.pc-page .pkg-line {
+  display: grid;
+  gap: var(--ce-space-2);
+  min-width: 0;
+}
+
+.pc-page .pkg-line + .pkg-line {
+  padding-top: var(--ce-space-3);
+  border-top: 1px solid var(--ce-color-border-subtle);
+}
+
+.pc-page .pkg-line-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ce-space-2);
+}
+
+.pc-page .pkg-line-title {
+  color: var(--ce-color-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.pc-page .pkg-line-actions {
+  display: flex;
+  gap: var(--ce-space-1);
+  margin-inline-end: calc(-1 * var(--ce-space-3));
+}
+
+.pc-line-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding-inline: var(--ce-space-3);
+  border: 1px solid transparent;
+  border-radius: var(--ce-radius-sm);
+  background: transparent;
+  color: var(--ce-color-brand-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pc-line-action:hover:not(:disabled) {
+  background: var(--ce-color-brand-soft);
+}
+
+.pc-line-action:disabled {
+  color: var(--ce-color-text-disabled);
+  cursor: not-allowed;
+}
+
+.pc-line-action--add {
+  margin-inline-start: calc(-1 * var(--ce-space-3));
+}
+
+.pc-page .pkg-lines-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ce-space-1) var(--ce-space-3);
+}
+
+.pc-page .pkg-lines-limit {
+  color: var(--ce-color-text-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.pc-page .pkg-lines-sum-wrap {
+  padding-top: var(--ce-space-3);
+  border-top: 1px solid var(--ce-color-border-subtle);
+}
+
+.pc-page .pkg-lines-sum {
+  color: var(--ce-color-text-primary);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.pc-page .pkg-lines-sum.is-error {
+  color: var(--ce-color-status-error-fg);
+}
+
+@container pc-form (max-width: 459px) {
+  .pc-page .pkg-lines--multi .pkg-line {
+    padding: var(--ce-space-3);
+    border: 1px solid var(--ce-color-border-subtle);
+    border-radius: var(--ce-radius-md);
+    background: var(--ce-color-surface-subtle);
+  }
+  .pc-page .pkg-line-actions {
+    margin-inline-end: calc(-1 * var(--ce-space-2));
+  }
+}
+
 /* Breite Karte: Absender und Empfänger nebeneinander, dazwischen der Pfeil auf der Höhe des
    Landfelds (Zeilenbeschriftung 18 + Abstand 8 + Feldlabel 20 + Abstand 4 + halbe Feldhöhe 24
    − halber Pfeil 16 = 58). Das Paket in einer Zeile. */

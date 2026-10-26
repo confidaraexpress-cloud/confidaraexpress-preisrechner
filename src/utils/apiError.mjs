@@ -28,6 +28,7 @@
 
 import { launchRouteBlockedText, ROUTE_NOT_SUPPORTED_TITLE } from "./launchRouteText.mjs";
 import { creditLimitExceededText, CREDIT_LIMIT_EXCEEDED_CODE, CREDIT_TEXT } from "./creditLimitView.mjs";
+import { mapPackageLinesServerField } from "./packageLines.mjs";
 
 export const ERROR_TYPE = {
   VALIDATION: "validation",
@@ -74,6 +75,19 @@ const CODE_MAP = {
     message: "Bitte geben Sie Länge, Breite und Höhe vollständig ein.", fieldMessage: "Bitte vollständig ausfüllen." },
   PACKAGE_COUNT_INVALID:{ type: ERROR_TYPE.VALIDATION, title: "Paketanzahl prüfen", retryable: false,
     message: "Die Paketanzahl muss zwischen 1 und 99 liegen.", fieldMessage: "Zwischen 1 und 99." },
+  // Individuelle Mehrpaketsendungen (Canonical v2.79): die Codes der Paketzeilen — Feldpfad
+  // `packageLines[i].<feld>`, zugeordnet über mapServerField.
+  PACKAGE_QUANTITY_REQUIRED: { type: ERROR_TYPE.VALIDATION, title: "Paketanzahl fehlt", retryable: false,
+    message: "Bitte geben Sie für jede Paketzeile die Anzahl an.", fieldMessage: "Anzahl ist ein Pflichtfeld." },
+  PACKAGE_QUANTITY_INVALID:  { type: ERROR_TYPE.VALIDATION, title: "Paketanzahl prüfen", retryable: false,
+    message: "Die Anzahl je Paketzeile muss zwischen 1 und 99 liegen.", fieldMessage: "Anzahl muss zwischen 1 und 99 liegen." },
+  PACKAGE_LINES_INVALID:     { type: ERROR_TYPE.VALIDATION, title: "Paketangaben prüfen", retryable: false,
+    message: "Bitte prüfen Sie die Paketangaben — höchstens 20 Paketzeilen und 99 Pakete je Sendung.",
+    fieldMessage: "Bitte prüfen Sie diese Angabe." },
+  PACKAGE_INPUT_AMBIGUOUS:   { type: ERROR_TYPE.VALIDATION, title: "Paketangaben prüfen", retryable: false,
+    message: "Die Paketangaben konnten nicht eindeutig gelesen werden. Bitte prüfen Sie sie und versuchen Sie es erneut." },
+  PACKAGE_COMBINATION_UNAVAILABLE: { type: ERROR_TYPE.BUSINESS, title: "Keine Angebote für diese Pakete", retryable: false,
+    message: "Für diese Paketkombination sind derzeit keine Angebote verfügbar. Weniger oder gleich große Pakete erweitern die Auswahl." },
   COUNTRY_INVALID:      { type: ERROR_TYPE.VALIDATION, title: "Land prüfen", retryable: false,
     message: "Bitte wählen Sie ein gültiges Land aus.", fieldMessage: "Bitte wählen Sie ein Land aus." },
   SHIPPING_DATE_INVALID:{ type: ERROR_TYPE.VALIDATION, title: "Versanddatum prüfen", retryable: false,
@@ -200,6 +214,9 @@ export function mapServerField(serverField, fieldMap) {
   if (!serverField || !fieldMap) return null;
   const key = String(serverField).trim();
   if (Object.prototype.hasOwnProperty.call(fieldMap, key)) return fieldMap[key];
+  // Paketzeilen (Canonical v2.79): `packageLines[1].weight` gehört an Zeile 2 — nie an das flache
+  // `weight` der ersten Zeile, auf das die Kurzform unten zusammenfiele.
+  if (/^(?:packages\.)?packageLines(?:\[|$)/.test(key)) return mapPackageLinesServerField(key);
   // Auch den letzten Pfadabschnitt versuchen (z. B. "recipient.postalCode" →
   // "postalCode"), falls der Aufrufer nur Kurzschlüssel pflegt.
   const short = key.includes(".") ? key.slice(key.lastIndexOf(".") + 1) : null;

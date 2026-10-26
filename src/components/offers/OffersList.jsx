@@ -1,7 +1,7 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { OfferCard } from "./OfferCard";
 import { assignBadges } from "../../utils/offerBadges";
-import { offerKey, sameOffer } from "../../utils/offerIdentity.mjs";
+import { offerKey, sameOffer, OFFERS_MIXED_PACKAGES_NOTE, OFFERS_MIXED_PACKAGES_EMPTY_HINT } from "../../utils/offerIdentity.mjs";
 import { money } from "../../utils/formatters";
 import { DateCalendar } from "../common/DateCalendar";
 import { fmtDE } from "../../utils/date";
@@ -50,6 +50,9 @@ export function OffersList({
   // Gesamtauftrag B: Bestätigungen der Firmenpflicht je Angebot (offerKey → true), die Karte mit fehlender
   // Bestätigung (offerKey) und der stabile Rückruf. Ohne Rückruf (Versandkostenrechner) zeigt die Karte nur den Hinweis.
   businessConfirmations = null, businessConfirmError = null, onBusinessConfirm,
+  // Individuelle Mehrpaketsendungen (Canonical v2.79): gerechnet wurde mit unterschiedlichen Paketen —
+  // ein Satz über der Liste, ein Zusatz im Leerzustand.
+  mixedPackages = false,
 }) {
   // Aktives Filter-Dropdown: "price" | "delivery" | null. Es ist immer höchstens
   // eines offen; das Öffnen des einen schließt das andere. Ersetzt den früheren
@@ -469,12 +472,17 @@ export function OffersList({
           </div>
         )}
 
+        {!loading && hasResults && mixedPackages && tariffs.length > 0 && (
+          <p className="offers-packages-note" id="offers-packages-note">{OFFERS_MIXED_PACKAGES_NOTE}</p>
+        )}
+
         {!loading && hasResults && tariffs.length === 0 && (
           <div className="offers-empty">
             <p className="offers-empty-title">Keine Tarife gefunden</p>
             <p className="offers-empty-sub">
               Für diese Route und das gewählte Datum wurden keine Tarife gefunden.
               Ändern Sie das Datum oder wählen Sie „Alle Dienstleistungen".
+              {mixedPackages ? ` ${OFFERS_MIXED_PACKAGES_EMPTY_HINT}` : null}
             </p>
           </div>
         )}

@@ -5,8 +5,8 @@ import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../
 import { ParcelShopFinderTrigger } from "./ParcelShopFinderTrigger";
 import { handoverMode, handoverLabel, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "../../utils/handoverMode.mjs";
 import {
-  offerKey, offerSelectable, offerBlockedLabel, offerBlockedHint,
-  offerBusinessRequirement, offerBusinessConfirmId,
+  offerKey, offerSelectableFor, offerBlockedLabel, offerBlockedHint,
+  offerBusinessRequirement, offerBusinessConfirmId, offerCustomerCorrection,
   OFFER_BUSINESS_PARTY_TEXT, OFFER_BUSINESS_CONFIRM_LABEL, OFFER_BUSINESS_CONFIRM_ERROR,
 } from "../../utils/offerIdentity.mjs";
 import { offerSurchargeHint } from "../../utils/residentialPriceInputs.mjs";
@@ -556,6 +556,8 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
 function OfferCardBase({
   tariff: t, badge, isTop, selected, onSelect, onBook, vatMode, senderPrefill, abgabeTag,
   businessConfirmed = false, businessConfirmError = false, onBusinessConfirm,
+  // 2026-10-26: die Auswahlstufe (utils/offerIdentity.mjs) — der Preisrechner wählt VOR den Sendungsangaben.
+  selectionStage,
 }) {
   const { name: carrierName, logo: carrierLogo } = publicCarrierDisplay(t);
   const [detailsOpen, setDetailsOpen]       = useState(false);
@@ -566,7 +568,7 @@ function OfferCardBase({
   // oder „nur Preisauskunft". Ein FEHLENDES Feld sperrt nichts.
   // TG22 Residential: ein Angebot, das nur noch auf die Art der Lieferadresse wartet, ist
   // AUSWÄHLBAR (Karte, Knopf, Buchungsseite) — gebucht wird erst nach der Bindung dort.
-  const unavailable = !offerSelectable(t);
+  const unavailable = !offerSelectableFor(t, selectionStage);
   // Der Grund wird ÜBERSETZT, nie durchgereicht — ein roher Backendcode im
   // sichtbaren Text wäre dieselbe Fehlerklasse wie ein roher Status, und er
   // nennt den Einkaufsprovider nicht.
@@ -615,6 +617,8 @@ function OfferCardBase({
   const bestaetigungsId = offerBusinessConfirmId(t);
   const bestaetigungsFehlerId = bestaetigungsId ? `${bestaetigungsId}-fehler` : undefined;
   const mitBestaetigung = firmenpflicht.party !== null && typeof onBusinessConfirm === "function";
+  // Kundenlösbare Angabe (2026-10-26): auswählbar; die kurze Notiz steht hier, der genaue Hinweis in den Details.
+  const korrektur = offerCustomerCorrection(t);
 
   const toggleDetails = (e) => {
     e.stopPropagation();
@@ -842,6 +846,11 @@ function OfferCardBase({
               {mitBestaetigung && businessConfirmError && (
                 <p className="offer-business-error" id={bestaetigungsFehlerId}>{OFFER_BUSINESS_CONFIRM_ERROR}</p>
               )}
+            </div>
+          )}
+          {korrektur && (
+            <div className="offer-business">
+              <p className="offer-business-note offer-correction-note">{korrektur.note}</p>
             </div>
           )}
           <div className="offer-actions">

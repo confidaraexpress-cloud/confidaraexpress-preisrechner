@@ -87,9 +87,11 @@ test("(pp2) Abholung vs. Abgabe und Paketshop — nur aus `serviceType` und `par
   assert.equal(offerSupportsAccessPointSearch(TNT47), false);
   assert.equal(offerSupportsAccessPointSearch(GLS110), false);
   assert.equal(offerSupportsAccessPointSearch(DPD124), true);
-  // Paketshop-Pflicht nur für die Abgabe mit Serversuche — und nur, solange das Angebot auswählbar ist.
+  // Paketshop-Pflicht nur für die Abgabe mit Serversuche — und nur, solange das Angebot auswählbar ist. Seit 2026-10-26
+  // ist auch ein Angebot mit zu langer Adressangabe auswählbar (kundenlösbar): die Pflicht gilt dann ebenso.
   assert.equal(offerRequiresDropoffParcelShop(DPD124, offerSupportsAccessPointSearch(DPD124)), true);
-  assert.equal(offerRequiresDropoffParcelShop(zuLang(DPD124), offerSupportsAccessPointSearch(DPD124)), false);
+  assert.equal(offerRequiresDropoffParcelShop(zuLang(DPD124), offerSupportsAccessPointSearch(DPD124)), true);
+  assert.equal(offerRequiresDropoffParcelShop({ ...DPD124, bookable: false, unavailableReason: "quote_only" }, true), false);
   assert.equal(offerRequiresDropoffParcelShop(GLS110, offerSupportsAccessPointSearch(GLS110)), false);
 });
 
@@ -101,14 +103,15 @@ test("(pp3) Abholtag und „bereit ab“ — der Tag des Angebots, bei der Abgab
   assert.equal(pickupContractOf(DPD124).day, null);
 });
 
-test("(pp4) Buchbarkeit und Auswahl: 110, 47 und 124 direkt (seit Paket B ohne Adressartwahl); zu lange Angaben sperren alle drei", () => {
+test("(pp4) Buchbarkeit und Auswahl: 110, 47 und 124 direkt (seit Paket B ohne Adressartwahl); zu lange Angaben: auswählbar, nicht buchbar (2026-10-26)", () => {
   for (const t of [TNT47, GLS110, DPD124]) {
     assert.deepEqual([offerBookable(t), offerSelectable(t), offerAwaitsPriceInputs(t), offerRequiresResidentialChoice(t)],
       [true, true, false, false], t.offerId);
   }
   for (const t of [TNT47, GLS110, DPD124].map(zuLang)) {
-    assert.deepEqual([offerBookable(t), offerSelectable(t)], [false, false], t.offerId);
-    assert.equal(offerBlockedLabel(t), "Für diese Adressangaben nicht verfügbar.");
+    // Kundenlösbar: die Karte zeigt „Angebot auswählen“ und führt in „Neue Sendung“ zum Feld — keine graue Karte.
+    assert.deepEqual([offerBookable(t), offerSelectable(t)], [false, true], t.offerId);
+    assert.equal(offerBlockedLabel(t), null);
     assert.equal(offerBlockedHint(t), "Bitte kürzen Sie Vor- und Nachname, Firmenname oder Adresszeilen von Absender oder Empfänger.");
   }
 });

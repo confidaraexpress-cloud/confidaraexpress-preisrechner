@@ -114,9 +114,33 @@ export function offerAwaitsPriceInputs(tariff) {
  *
  * Gesamtauftrag B (2026-10-24): auch ein Angebot, das nur auf einen Firmennamen wartet
  * (`offerAwaitsBusinessDetails`), ist auswählbar. Die Seite führt dann zum Firmenfeld, statt die Karte zu
- * sperren; gebucht wird erst nach einem neuen Vergleich mit Firmenname (Server, `/book` unverändert). */
+ * sperren; gebucht wird erst nach einem neuen Vergleich mit Firmenname (Server, `/book` unverändert).
+ *
+ * Betreiberentscheidung 2026-10-26 („nur buchbare Tarife sichtbar“): dasselbe gilt für die beiden übrigen
+ * kundenlösbaren Angaben — eine zu lange Adressangabe und die fehlende Inhaltsangabe
+ * (`offerAwaitsCustomerCorrection`). Der Server liefert ohnehin nur noch buchbare und kundenlösbare Angebote; eine
+ * graue, gesperrte Karte gibt es damit nicht mehr. */
 export function offerSelectable(tariff) {
-  return !offerBlocked(tariff) || offerAwaitsPriceInputs(tariff) || offerAwaitsBusinessDetails(tariff);
+  return !offerBlocked(tariff) || offerAwaitsPriceInputs(tariff) || offerAwaitsBusinessDetails(tariff)
+    || offerAwaitsCustomerCorrection(tariff);
+}
+
+/* Die Stufe, in der ein Angebot gewählt wird — dieselbe Unterscheidung wie der Server (lib/offers/
+   customerOfferVisibility.js): „Neue Sendung“ vergleicht MIT Sendungsangaben (strenge Auswahl, `offerSelectable`),
+   der angemeldete Preisrechner VOR ihnen. Dort ist jedes Angebot auswählbar, das der Server „buchbar mit
+   Sendungsangaben“ nennt (`availableWithShipmentDetails`): die Auswahl übergibt es nach „Neue Sendung“, wo der
+   volle Vergleich Preis und Buchbarkeit bindet. Gebucht wird nie aus dem Preisrechner heraus. */
+export const OFFER_SELECTION_STAGE = Object.freeze({
+  WITH_SHIPMENT_DETAILS: "with_shipment_details",
+  BEFORE_SHIPMENT_DETAILS: "before_shipment_details",
+});
+
+export function offerSelectableFor(tariff, stage = OFFER_SELECTION_STAGE.WITH_SHIPMENT_DETAILS) {
+  const t = tariff && typeof tariff === "object" ? tariff : {};
+  if (stage === OFFER_SELECTION_STAGE.BEFORE_SHIPMENT_DETAILS) {
+    return t.availableForDate !== false && (offerSelectable(t) || t.availableWithShipmentDetails === true);
+  }
+  return offerSelectable(t);
 }
 
 /* ── Warum nicht auswählbar? ─────────────────────────────────────────────────
@@ -247,6 +271,44 @@ export function offerBusinessConfirmId(tariff) {
 export const OFFER_CONTENT_DESCRIPTION_REASON = "content_description_required";
 export const OFFER_CONTENT_DESCRIPTION_TEXT = "Nur mit Angabe des Inhalts buchbar.";
 export const OFFER_CONTENT_DESCRIPTION_HINT = "Bitte geben Sie den Inhalt der Sendung an.";
+
+// ─── Kundenlösbare Angaben: auswählbar statt grau (Betreiberentscheidung 2026-10-26) ─────────────────────
+// Eine zu lange Adressangabe und die fehlende Inhaltsangabe behebt der Kunde im bestehenden Ablauf. Die Karte zeigt
+// „Angebot auswählen“ und eine kurze Notiz; die Auswahl führt in „Neue Sendung“ zum betroffenen Feld (mit dem genauen
+// Hinweis) und setzt nach der Korrektur mit genau einem neuen Vergleich fort — wie bei der Firmenpflicht. Gebucht wird
+// erst, wenn der Server das Angebot danach buchbar nennt (`/book` unverändert).
+export const OFFER_ADDRESS_CORRECTION_NOTE = "Nur mit gekürzter Adressangabe buchbar.";
+// Die Felder des Adressvertrags (`unavailableDetail.field`) → das Formularfeld in „Neue Sendung“ (ohne Parteipräfix).
+const ADRESSFELD_IM_FORMULAR = Object.freeze({
+  name: "firstName", forename: "firstName", surname: "lastName", company: "company", phone: "phone",
+  email: "email", addressLine1: "street", addressLine2: "addition", postcode: "zip", city: "city",
+});
+
+/** Wartet dieses Angebot ausschließlich auf eine Korrektur oder Ergänzung des Kunden (Adresse kürzen, Inhalt angeben)? */
+export function offerAwaitsCustomerCorrection(tariff) {
+  const t = tariff && typeof tariff === "object" ? tariff : {};
+  return t.bookable === false && t.availableForDate !== false
+    && (t.unavailableReason === OFFER_ADDRESS_DETAILS_TOO_LONG_REASON || t.unavailableReason === OFFER_CONTENT_DESCRIPTION_REASON);
+}
+
+/** Wohin führt die Auswahl eines solchen Angebots? `{ field, message, note }` — `field` ist das Formularfeld in
+ *  „Neue Sendung“ (`null`, wenn der Server keine Einzelheit nennt), `message` der genaue Hinweis am Feld, `note` die
+ *  kurze Notiz auf der Karte. Sonst `null`. */
+export function offerCustomerCorrection(tariff) {
+  const t = tariff && typeof tariff === "object" ? tariff : {};
+  if (!offerAwaitsCustomerCorrection(t)) return null;
+  if (t.unavailableReason === OFFER_CONTENT_DESCRIPTION_REASON) {
+    return { field: "declaredContent", message: OFFER_CONTENT_DESCRIPTION_HINT, note: OFFER_CONTENT_DESCRIPTION_TEXT };
+  }
+  const d = t.unavailableDetail && typeof t.unavailableDetail === "object" ? t.unavailableDetail : null;
+  const partei = d && d.party === "sender" ? "s" : d && d.party === "recipient" ? "r" : null;
+  const feld = d ? ADRESSFELD_IM_FORMULAR[d.field] : undefined;
+  return {
+    field: partei && feld ? `${partei}_${feld}` : null,
+    message: addressDetailsTooLongHint(d) || OFFER_ADDRESS_DETAILS_TOO_LONG_HINT,
+    note: OFFER_ADDRESS_CORRECTION_NOTE,
+  };
+}
 export const OFFER_DIMENSIONS_UNVERIFIED_TEXT = "Für diese Maße nicht bestätigt.";
 export const OFFER_AREA_SURCHARGE_TEXT = "Gebietszuschlag nicht bestätigt.";
 // Individuelle Mehrpaketsendungen (Canonical v2.79, §15): die beiden Gründe der Kuration — nie ein
@@ -295,7 +357,8 @@ export function offerBlockedLabel(tariff) {
 /** Handlungshinweis zum Sperrgrund — nur, wenn ein anderer Abholtermin tatsächlich hilft. */
 export function offerBlockedHint(tariff) {
   const t = tariff && typeof tariff === "object" ? tariff : {};
-  if (offerSelectable(t) || t.availableForDate === false) return null;
+  // Eine kundenlösbare Korrektur ist auswählbar — ihr genauer Hinweis steht trotzdem in den Details.
+  if ((offerSelectable(t) && !offerAwaitsCustomerCorrection(t)) || t.availableForDate === false) return null;
   if (OFFER_SAME_DAY_REASONS.includes(t.unavailableReason)) return OFFER_SAME_DAY_UNAVAILABLE_HINT;
   // Die Hinweise, die keine Terminwahl betreffen: hier hilft eine Angabe an der Adresse oder zur Sendung.
   if (t.unavailableReason === OFFER_BUSINESS_RECIPIENT_REASON) return OFFER_BUSINESS_RECIPIENT_HINT;

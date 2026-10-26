@@ -73,7 +73,8 @@ test("3 — der Hinweis unter dem Telefonfeld: nichts geschieht still", () => {
 
 test("4 — der Handlungshinweis an der Karte nennt Partei, Feld und Grenze aus `unavailableDetail`", () => {
   const karte = (detail) => ({ bookable: false, unavailableReason: "address_details_too_long", unavailableDetail: detail, availableForDate: true });
-  assert.equal(offerBlockedLabel(karte(null)), "Für diese Adressangaben nicht verfügbar.");
+  // Seit 2026-10-26 auswählbar (kundenlösbar): kein Sperrtext im Knopf — der Hinweis steht weiter in den Details.
+  assert.equal(offerBlockedLabel(karte(null)), null);
   assert.equal(offerBlockedHint(karte(null)), OFFER_ADDRESS_DETAILS_TOO_LONG_HINT);
   assert.equal(offerBlockedHint(karte({ party: "recipient", field: "phone", max: 15 })),
     "Die Telefonnummer des Empfängers ist für dieses Angebot zu lang (höchstens 15 Zeichen). Bitte kürzen Sie sie, etwa ohne Durchwahl oder Landesvorwahl.");

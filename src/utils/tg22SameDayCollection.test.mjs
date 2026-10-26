@@ -253,7 +253,7 @@ test("7 — nach dem Abholschluss nicht auswählbar und nicht buchbar", () => {
   assert.equal(offerSurchargeHint(TG22_HEUTE_VORBEI), null);
   const karte = code(KARTE);
   assert.ok(karte.includes("const handleSelect = () => { if (!unavailable) onSelect(t); };"));
-  assert.match(karte, /const unavailable = !offerSelectable\(t\);/);
+  assert.match(karte, /const unavailable = !offerSelectableFor\(t, selectionStage\);/);
   assert.match(karte, /disabled=\{unavailable\}/);
 });
 

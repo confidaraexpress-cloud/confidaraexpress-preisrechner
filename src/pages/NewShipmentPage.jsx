@@ -28,6 +28,7 @@ import { focusFirstError } from "../utils/focusField";
 // Gesamtauftrag B: Firmenpflicht — eine Regelquelle für Karte und Seite.
 import {
   offerKey, offerSelectable, offerBusinessRequirement, offerAwaitsBusinessDetails, offerBusinessConfirmId,
+  offerAwaitsCustomerCorrection, offerCustomerCorrection,
   OFFER_BUSINESS_COMPANY_FIELD_MESSAGE, OFFER_BUSINESS_NOT_FOUND_NOTICE,
 } from "../utils/offerIdentity.mjs";
 import { visibleFieldErrors, markFieldTouched, withoutFieldError, keepFocusOnMouseDown } from "../utils/fieldTouchState.mjs";
@@ -512,6 +513,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const firmenBestaetigtRef = useRef(firmenBestaetigt);
   firmenBestaetigtRef.current = firmenBestaetigt;
   // Die gemerkte Auswahl, die nur auf einen Firmennamen wartet: { productKey, sender, recipient, vergleichGestartet }.
+  // Seit 2026-10-26 ebenso auf eine Korrektur (zu lange Adressangabe, Inhalt): dann mit `feld` und `ausgangswert`.
   // Sie überlebt das Verwerfen der Angebote beim Tippen und wird vom nächsten erfolgreichen Vergleich aufgelöst.
   const firmenAbsichtRef = useRef(null);
   // Ehrlicher Hinweis, wenn das gemerkte Angebot nach dem neuen Vergleich fehlt oder nicht auswählbar ist.
@@ -1580,11 +1582,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         const liste = Array.isArray(d.tariffs) ? d.tariffs : [];
         const treffer = firmenAbsicht.productKey ? liste.filter((x) => x && x.productKey === firmenAbsicht.productKey) : [];
         const angebot = treffer.length === 1 && offerSelectable(treffer[0]) && !offerAwaitsBusinessDetails(treffer[0])
-          ? treffer[0] : null;
+          && !offerAwaitsCustomerCorrection(treffer[0]) ? treffer[0] : null;
         if (angebot) {
           setSelected(angebot);
           setFirmenHinweis("");
-          firmenFokusId = offerBusinessConfirmId(angebot);
+          if (firmenAbsicht.sender || firmenAbsicht.recipient) firmenFokusId = offerBusinessConfirmId(angebot);
         } else {
           setFirmenHinweis(OFFER_BUSINESS_NOT_FOUND_NOTICE);
         }
@@ -1684,6 +1686,26 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   }, []);
 
   const handleBook = useCallback((tariff) => {
+    // Betreiberentscheidung 2026-10-26: eine kundenlösbare Korrektur (zu lange Adressangabe, fehlender Inhalt) — die
+    // Karte ist auswählbar; die Seite führt zum betroffenen Feld (genauer Hinweis dort), merkt die Auswahl und setzt nach
+    // der Korrektur mit genau einem neuen Vergleich fort. Gebucht wird erst, wenn der Server das Angebot buchbar nennt.
+    const korrektur = offerCustomerCorrection(tariff);
+    if (korrektur) {
+      setSelected(tariff);
+      firmenAbsichtRef.current = {
+        productKey: typeof tariff.productKey === "string" ? tariff.productKey : null,
+        sender: false, recipient: false, korrektur: true, feld: korrektur.field,
+        ausgangswert: korrektur.field ? String(form[korrektur.field] ?? "") : null, vergleichGestartet: false,
+      };
+      if (korrektur.field) {
+        setFirmenHinweis("");
+        setServerErrors((p) => ({ ...p, [korrektur.field]: korrektur.message }));
+        setFocusRequest({ field: korrektur.field, at: Date.now() });
+      } else {
+        setFirmenHinweis(korrektur.message);
+      }
+      return;
+    }
     // Gesamtauftrag B: Firmenpflicht — erst der Firmenname, dann die Bestätigung, dann unverändert weiter. Fehlt der
     // Name, steht die Meldung genau an diesem Feld (Serverfehlerweg), das Feld kommt weich ins Bild und bekommt den
     // Fokus, und die Auswahl wird gemerkt. Der Server bleibt die Autorität: /book prüft unverändert.
@@ -1820,9 +1842,15 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // Gesamtauftrag B: verlässt der Kunde ein ergänztes Firmenfeld und wartet eine Auswahl auf genau diesen Namen,
   // startet GENAU EIN neuer Vergleich (normaler Ladezustand). Ohne gemerkte Auswahl, mit noch fehlendem Namen oder
   // während eines laufenden Vergleichs geschieht nichts — „Angebote vergleichen" bleibt der normale Weg.
-  const firmenfeldVerlassen = () => {
+  // 2026-10-26: dasselbe für eine gemerkte Korrektur — verlässt der Kunde GENAU dieses Feld mit einem geänderten Wert.
+  const firmenfeldVerlassen = (fk = null) => {
     const absicht = firmenAbsichtRef.current;
     if (!absicht || absicht.vergleichGestartet) return;
+    // Ohne genanntes Feld (der Server nannte keine Einzelheit) startet kein Feld den Vergleich — „Angebote
+    // vergleichen" bleibt der Weg.
+    if (absicht.korrektur) {
+      if (!absicht.feld || fk !== absicht.feld || String(form[absicht.feld] ?? "") === absicht.ausgangswert) return;
+    } else if (fk !== null && !fk.endsWith("_company")) return;
     const fehlt = (absicht.sender && !String(form.s_company || "").trim())
       || (absicht.recipient && !String(form.r_company || "").trim());
     if (fehlt || loading || calcInFlight.current) return;
@@ -1843,7 +1871,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         type={type}
         value={form[fk]}
         onChange={(v) => upd(fk, v)}
-        onBlur={() => { markTouched(fk); if (key === "company") firmenfeldVerlassen(); }}
+        onBlur={() => { markTouched(fk); firmenfeldVerlassen(fk); }}
         autoComplete={autofill(p, key)}
         error={errors[fk]}
         // Paket A: unter dem Telefonfeld steht, was an die Anbieter geht, sobald es von der Schreibweise
@@ -2294,7 +2322,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                        label="Inhalt der Sendung" required type="text"
                        maxLength={DECLARED_CONTENT_MAX}
                        value={form.declaredContent} onChange={(v) => upd("declaredContent", v)}
-                       onBlur={() => markTouched("declaredContent")}
+                       onBlur={() => { markTouched("declaredContent"); firmenfeldVerlassen("declaredContent"); }}
                        error={errors.declaredContent}
                        hint="Kurze Beschreibung des Inhalts." />
                 <Field id="ns-declaredGoodsValue" fieldKey="declaredGoodsValue" labelMode="floating"

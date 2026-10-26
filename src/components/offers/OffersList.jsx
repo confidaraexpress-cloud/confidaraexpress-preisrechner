@@ -53,6 +53,8 @@ export function OffersList({
   // Individuelle Mehrpaketsendungen (Canonical v2.79): gerechnet wurde mit unterschiedlichen Paketen —
   // ein Satz über der Liste, ein Zusatz im Leerzustand.
   mixedPackages = false,
+  // 2026-10-26: die Auswahlstufe der Karten (utils/offerIdentity.mjs, OFFER_SELECTION_STAGE); ohne Angabe die strenge.
+  selectionStage,
 }) {
   // Aktives Filter-Dropdown: "price" | "delivery" | null. Es ist immer höchstens
   // eines offen; das Öffnen des einen schließt das andere. Ersetzt den früheren
@@ -149,6 +151,7 @@ export function OffersList({
       businessConfirmed={!!(businessConfirmations && offerKey(t) && businessConfirmations[offerKey(t)])}
       businessConfirmError={!!(businessConfirmError && businessConfirmError === offerKey(t))}
       onBusinessConfirm={onBusinessConfirm}
+      selectionStage={selectionStage}
     />
   );
 
@@ -478,9 +481,11 @@ export function OffersList({
 
         {!loading && hasResults && tariffs.length === 0 && (
           <div className="offers-empty">
-            <p className="offers-empty-title">Keine Tarife gefunden</p>
+            {/* Betreiberentscheidung 2026-10-26: der Server liefert nur direkt buchbare (oder kundenlösbare) Tarife —
+                eine leere Liste heißt deshalb „kein direkt buchbarer Tarif“, nicht „keine Preise“. */}
+            <p className="offers-empty-title">Keine direkt buchbaren Tarife</p>
             <p className="offers-empty-sub">
-              Für diese Route und das gewählte Datum wurden keine Tarife gefunden.
+              Für diese Sendung ist derzeit kein Tarif direkt buchbar.
               Ändern Sie das Datum oder wählen Sie „Alle Dienstleistungen".
               {mixedPackages ? ` ${OFFERS_MIXED_PACKAGES_EMPTY_HINT}` : null}
             </p>

@@ -404,8 +404,8 @@ export const OUTCOME_TEXT = Object.freeze({
     message: "Die Liste zeigt die Angebote, die rechtzeitig vorlagen. Eine erneute Berechnung kann weitere Angebote ergeben.",
   },
   [OUTCOME.NO_OFFERS]: {
-    title: "Keine Angebote für diese Angaben",
-    message: "Für diese Strecke, dieses Datum und diese Paketdaten liegt derzeit kein Angebot vor. Ändern Sie zum Beispiel das Versanddatum oder die Auswahl „Abholung / Abgabe“.",
+    title: "Keine direkt buchbaren Angebote",
+    message: "Für diese Strecke, dieses Datum und diese Paketdaten ist derzeit kein Angebot direkt buchbar. Ändern Sie zum Beispiel das Versanddatum oder die Auswahl „Abholung / Abgabe“.",
   },
   [OUTCOME.INVALID]: { title: "Angaben prüfen", message: "Bitte prüfen Sie die markierten Angaben." },
   // Paket C (2026-10-23): die Antwort nennt Grund, Seite und erkanntes Gebiet; `quoteOutcomeFromResponse`

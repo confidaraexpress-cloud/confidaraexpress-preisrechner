@@ -31,6 +31,7 @@ import { postalCodeHint, postalCodeInputMode, postalCodeMaxLength } from "../uti
 import { useShippingFlow } from "../context/ShippingFlowContext";
 import { formHasInput, droppedNotice } from "../utils/shippingFlowState.mjs";
 import { calculatorSelectionToShipmentTransfer } from "../utils/calculatorShipmentHandoff.mjs";
+import { OFFER_SELECTION_STAGE } from "../utils/offerIdentity.mjs";
 import { AddressSuggestInput } from "../components/address/AddressSuggestInput";
 import { useAddressValidation } from "../hooks/useAddressValidation";
 import { cityFromSuggestion } from "../utils/addressValidationView.mjs";
@@ -862,6 +863,8 @@ export default function CalculatorPage() {
         {(hasResults || loading) && (
           <div ref={offersRef}>
           <OffersList
+            /* Der Preisrechner wählt VOR den Sendungsangaben: auswählbar ist, was mit ihnen buchbar wird. */
+            selectionStage={OFFER_SELECTION_STAGE.BEFORE_SHIPMENT_DETAILS}
             sorted={sorted}
             mixedPackages={hasMixedPackageLines(formPackageLines(form))}
             filtered={filtered}

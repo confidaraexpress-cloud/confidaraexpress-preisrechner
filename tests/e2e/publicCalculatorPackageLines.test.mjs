@@ -155,11 +155,14 @@ test("Q2 — zwei Paketarten per Tastatur: packageLines, Summe, Satz über den A
   await page.close();
 });
 
-test("Q3 — Serverfehler an Zeile 2; Leerzustand mit Zusatz", async () => {
+test("Q3 — Serverfehler an Zeile 2; Leerzustand mit Zusatz, auch für die Paketkombination ohne Angebot (422)", async () => {
   const { page, fehler } = await neueSeite();
-  await setup(page, { quote: (n) => (n === 1
-    ? { status: 400, body: { error: "packageLines[1].weight: Pflichtfeld", code: "WEIGHT_INVALID", field: "packageLines[1].weight" } }
-    : { offers: [] }) });
+  const p = await setup(page, { quote: (n) => {
+    if (n === 1) return { status: 400, body: { error: "packageLines[1].weight: Pflichtfeld", code: "WEIGHT_INVALID", field: "packageLines[1].weight" } };
+    if (n === 3) return { status: 422, body: { code: "PACKAGE_COMBINATION_UNAVAILABLE",
+      error: "Für diese Paketkombination sind derzeit keine Angebote verfügbar. Bitte prüfen Sie die Paketangaben." } };
+    return { offers: [] };
+  } });
   await oeffne(page);
   await addKnopf(page).click();
   for (const [feld, v] of [["package-count", "2"], ["weight", "8"], ["length", "40"], ["width", "30"], ["height", "25"]])
@@ -171,6 +174,16 @@ test("Q3 — Serverfehler an Zeile 2; Leerzustand mit Zusatz", async () => {
   await page.click("#pc-submit");
   await page.waitForSelector("#pc-empty", { timeout: 20000 });
   assert.match(norm(await page.locator("#pc-empty").textContent()), /Weniger oder gleich große Pakete erweitern die Auswahl\.$/);
+  // Die echte Serverantwort für eine Paketkombination ohne Angebot ist 422 PACKAGE_COMBINATION_UNAVAILABLE:
+  // derselbe Leerzustand, kein „Angaben prüfen“ ohne markiertes Feld.
+  await page.fill("#pc-package-count-2", "5");
+  await page.click("#pc-submit");
+  await page.waitForFunction(() => /6 Pakete/.test(document.getElementById("pc-results-summary")?.textContent || ""), null, { timeout: 20000 });
+  await page.waitForSelector("#pc-empty", { timeout: 20000 });
+  assert.equal(p.quotes.length, 3);
+  assert.match(norm(await page.locator("#pc-empty").textContent()), /^Keine direkt buchbaren Angebote.*Weniger oder gleich große Pakete erweitern die Auswahl\.$/);
+  assert.equal(await page.locator("#pc-outcome-invalid").count(), 0, "kein Eingabefehler ohne markiertes Feld");
+  assert.equal(await page.locator('[aria-invalid="true"]').count(), 0);
   assert.deepEqual(fehler, []);
   await page.close();
 });

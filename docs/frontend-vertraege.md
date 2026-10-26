@@ -160,7 +160,10 @@ Filterregel**: sie zeigt jedes gelieferte Angebot (`utils/offerVisibilityContrac
   „Neue Sendung" bleibt bei der strengen Stufe.
 - **Leerzustand:** „Keine direkt buchbaren Tarife" / „Für diese Sendung ist derzeit kein Tarif direkt buchbar. Ändern
   Sie das Datum oder wählen Sie „Alle Dienstleistungen"." (bei unterschiedlichen Paketen dazu „Weniger oder gleich große
-  Pakete erweitern die Auswahl."); öffentlicher Preisrechner „Keine direkt buchbaren Angebote".
+  Pakete erweitern die Auswahl."); öffentlicher Preisrechner „Keine direkt buchbaren Angebote". Dorthin führt im
+  öffentlichen Rechner auch die Serverantwort 422 `PACKAGE_COMBINATION_UNAVAILABLE` (unterschiedliche Pakete ohne
+  Angebot, z. B. sechs Packstücke) — mit demselben Paketzusatz, nie als „Angaben prüfen" ohne markiertes Feld
+  (`quoteOutcomeFromResponse`, seit 2026-10-26; Portal: `apiError.mjs`).
 - **Altzustand:** ein dennoch geliefertes, nicht buchbares Angebot (Sitzungswiederherstellung, alter Server) erscheint wie
   bisher gesperrt mit Grund — die Darstellung „Preisauskunft bleibt lesbar" (UPS-Familie unten) gilt nur noch dafür.
 

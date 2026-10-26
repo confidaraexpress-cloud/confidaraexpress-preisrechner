@@ -166,6 +166,10 @@ test("(10) Antwortzustände: ok, partial, no_offers, 400 am Feld, 422, 429, 503,
   assert.deepEqual([feld.outcome, feld.field], [OUTCOME.INVALID, "to_zip"]);
   assert.equal(quoteOutcomeFromResponse(400, { error: "x", code: "UNKNOWN_FIELD", field: "sender" }).field, null, "fremde Felder nie markieren");
   assert.equal(quoteOutcomeFromResponse(422, { code: "ROUTE_NOT_SUPPORTED" }).outcome, OUTCOME.ROUTE);
+  // Unterschiedliche Pakete ohne Angebot: Leerzustand, kein Eingabefehler ohne markiertes Feld.
+  const kombi = quoteOutcomeFromResponse(422, { error: "x", code: "PACKAGE_COMBINATION_UNAVAILABLE" });
+  assert.deepEqual([kombi.outcome, kombi.result.offers, kombi.field], [OUTCOME.NO_OFFERS, [], undefined]);
+  assert.equal(quoteOutcomeFromResponse(422, { error: "x", code: "PACKAGE_LINES_INVALID" }).outcome, OUTCOME.INVALID);
   assert.equal(quoteOutcomeFromResponse(429, {}).outcome, OUTCOME.RATE_LIMITED);
   assert.equal(quoteOutcomeFromResponse(503, { code: "PUBLIC_CALCULATOR_UNAVAILABLE" }).outcome, OUTCOME.UNAVAILABLE);
   assert.equal(quoteOutcomeFromResponse(502, {}).outcome, OUTCOME.UPSTREAM);

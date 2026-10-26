@@ -132,8 +132,14 @@ test("F5 — Sperrgründe: jeder neue Servergrund hat einen eigenen Text; Hinwei
   assert.equal(offerBlockedHint(absender), null);
   assert.equal(OFFER_BUSINESS_SENDER_TEXT, "Nur für Geschäftsabsender verfügbar.");
   assert.equal(OFFER_BUSINESS_SENDER_HINT, "Bitte hinterlegen Sie beim Absender einen Firmennamen.");
+  // Betreiberentscheidung 2026-10-26: auch content_description_required ist auswählbar (kundenlösbar) — die Karte nennt
+  // die kurze Notiz, der Hinweis steht in den Details, die Auswahl führt in „Neue Sendung“ zum Inhaltsfeld.
+  const inhalt = karte("content_description_required");
+  assert.equal(offerSelectable(inhalt), true, "content_description_required ist nicht auswählbar");
+  assert.equal(offerBlockedLabel(inhalt), null);
+  assert.equal(offerBlockedHint(inhalt), OFFER_CONTENT_DESCRIPTION_HINT);
+  assert.equal(OFFER_CONTENT_DESCRIPTION_TEXT, "Nur mit Angabe des Inhalts buchbar.");
   const erwartet = [
-    ["content_description_required", OFFER_CONTENT_DESCRIPTION_TEXT, OFFER_CONTENT_DESCRIPTION_HINT],
     ["package_dimensions_unverified", OFFER_DIMENSIONS_UNVERIFIED_TEXT, null],
     ["area_surcharge_unconfirmed", OFFER_AREA_SURCHARGE_TEXT, null],
     ["quote_only", "Derzeit nicht direkt buchbar", null],

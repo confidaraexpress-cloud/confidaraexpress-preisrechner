@@ -1,11 +1,15 @@
-/* Beide Providerangebote bleiben sichtbar (Betreiberentscheidung 2026-10-02).
+/* Was angeboten wird, entscheidet der Server — die Oberfläche blendet nichts selbst aus.
    Kein Netz, kein Browser, keine Buchung.
 
-   Ein Angebot wird NIE wegen eines konkurrierenden Providerpreises verborgen. Bis 2026-10-02 blendete die
-   Oberfläche die Kombination UPS · „Expressversand" · `quote_only` aus (utils/offerSuppression.mjs, 2026-09-23);
-   diese historische Sonderunterdrückung ist entfernt. Was angeboten wird, entscheidet der Server — die Oberfläche
-   zeigt jedes gelieferte Angebot und KENNZEICHNET ein nicht buchbares („Derzeit nicht direkt buchbar"), statt es
-   zu verbergen. Kundenfilter (Versandart, Carrier, Preis, Lieferung) bleiben unberührt.
+   Ein Angebot wird NIE wegen eines konkurrierenden Providerpreises verborgen (Betreiberentscheidung 2026-10-02). Bis
+   2026-10-02 blendete die Oberfläche die Kombination UPS · „Expressversand" · `quote_only` aus
+   (utils/offerSuppression.mjs, 2026-09-23); diese historische Sonderunterdrückung ist entfernt.
+
+   Seit der Betreiberentscheidung 2026-10-26 („nur buchbare Tarife sichtbar“) liefert der SERVER nur noch Angebote,
+   die für die Sendung buchbar sind oder es nach einer kundenlösbaren Angabe werden (lib/offers/
+   customerOfferVisibility.js im Backend). Die Oberfläche bleibt dabei bewusst ohne eigene Filterregel: sie zeigt
+   jedes gelieferte Angebot; ein dennoch geliefertes, nicht buchbares (Altzustand, Sitzungswiederherstellung) erscheint
+   gesperrt mit Grund. Kundenfilter (Versandart, Carrier, Preis, Lieferung) bleiben unberührt.
 
    Gemessen auf kommentarfreiem Code: die Begründungen an den Stellen nennen die alten Namen. */
 import test from "node:test";
@@ -55,7 +59,7 @@ test("2 — beide Berechnungen übernehmen die Serverliste unverändert", () => 
   }
 });
 
-test("3 — `quote_only` ist eine Kennzeichnung, keine Ausblendung", () => {
+test("3 — `quote_only` ist eine Kennzeichnung, keine Ausblendung der Oberfläche (der Server liefert es seit 2026-10-26 nicht mehr)", () => {
   // Genau eine Produktionsquelle kennt den Grund: die Übersetzung in einen Kundensatz.
   const kenner = quellen().filter((d) => ohneKommentar(lies(d)).includes("quote_only"));
   assert.deepEqual(kenner, ["utils/offerIdentity.mjs"]);

@@ -17,7 +17,8 @@ import { offerBookable, offerBlocked, offerBlockedLabel, offerBlockedHint, offer
          OFFER_BUSINESS_RECIPIENT_HINT, OFFER_ADDRESS_DETAILS_TOO_LONG_REASON,
          OFFER_ADDRESS_DETAILS_TOO_LONG_TEXT, OFFER_ADDRESS_DETAILS_TOO_LONG_HINT,
          offerAwaitsBusinessDetails, offerBusinessRequirement, OFFER_BUSINESS_PARTY_TEXT, OFFER_BUSINESS_CONFIRM_LABEL,
-         OFFER_BUSINESS_COMPANY_FIELD_MESSAGE, OFFER_BUSINESS_CONFIRM_ERROR, OFFER_BUSINESS_NOT_FOUND_NOTICE } from "./offerIdentity.mjs";
+         OFFER_BUSINESS_COMPANY_FIELD_MESSAGE, OFFER_BUSINESS_CONFIRM_ERROR, OFFER_BUSINESS_NOT_FOUND_NOTICE,
+         offerAwaitsCustomerCorrection, offerCustomerCorrection, OFFER_ADDRESS_CORRECTION_NOTE } from "./offerIdentity.mjs";
 import { handoverMode, handoverLabelForTariff, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "./handoverMode.mjs";
 import { fmtDelivery } from "./formatters.js";
 import { deliveryContractOf } from "./deliveryContractView.mjs";
@@ -322,10 +323,10 @@ test("(H1) ohne Buchbarkeit kein Klick, keine Auswahl, keine Folgeaktion", () =>
 
 test("(H2) der Grundtext nennt keinen Provider", () => {
   // Gesamtauftrag B: business_recipient_required ist seit 2026-10-24 auswählbar und trägt keinen Grundtext mehr
-  // (siehe H3) — an seiner Stelle steht hier ein weiterhin gesperrter kundenlösbarer Grund.
+  // (siehe H3); seit 2026-10-26 ebenso address_details_too_long (siehe H3b) — es nennt seine kurze Notiz.
   const texte = [offerBlockedLabel(TG_DROPOFF), offerBlockedLabel({ availableForDate: false }),
                  offerBlockedLabel({ bookable: false, unavailableReason: "unbekannt" }),
-                 offerBlockedLabel({ bookable: false, unavailableReason: OFFER_ADDRESS_DETAILS_TOO_LONG_REASON })];
+                 offerCustomerCorrection({ bookable: false, unavailableReason: OFFER_ADDRESS_DETAILS_TOO_LONG_REASON }).note];
   for (const t of texte) {
     assert.ok(typeof t === "string" && t.length > 0);
     assert.ok(!/transglobal|jumingo/i.test(t), `Providername im Grundtext: ${t}`);
@@ -364,7 +365,8 @@ test("(H4) der Rohcode erreicht die Oberfläche nie — und nennt keinen Anbiete
     assert.ok(!/\d{2,}/.test(s), `eine ServiceID oder Grenze im Text: ${s}`);
   }
   for (const grund of [OFFER_ADDRESS_DETAILS_TOO_LONG_REASON]) {
-    const text = offerBlockedLabel({ bookable: false, unavailableReason: grund });
+    // Seit 2026-10-26 auswählbar: die Karte nennt die kurze Notiz statt eines Sperrtexts.
+    const text = offerCustomerCorrection({ bookable: false, unavailableReason: grund }).note;
     const hinweis = offerBlockedHint({ bookable: false, unavailableReason: grund });
     for (const s of [text, hinweis]) {
       assert.ok(!s.includes(grund), `Rohcode im Text: ${s}`);
@@ -376,15 +378,26 @@ test("(H4) der Rohcode erreicht die Oberfläche nie — und nennt keinen Anbiete
 
 /* ── Zu lange Adressangaben: ein kundenlösbarer Grund, den nur der Server kennt ─────── */
 
-test("(H3b) address_details_too_long: neutraler Text, Handlungshinweis, NICHT auswählbar — keine Zahl, keine eigene Prüfung", () => {
+test("(H3b) address_details_too_long: seit 2026-10-26 AUSWÄHLBAR (kundenlösbar), nicht buchbar — Notiz, Handlungshinweis, keine Zahl, keine eigene Prüfung", () => {
   const t = { bookable: false, unavailableReason: OFFER_ADDRESS_DETAILS_TOO_LONG_REASON };
-  assert.equal(offerBlockedLabel(t), OFFER_ADDRESS_DETAILS_TOO_LONG_TEXT);
-  assert.equal(offerBlockedLabel(t), "Für diese Adressangaben nicht verfügbar.");
+  // Betreiberentscheidung 2026-10-26: keine graue Karte — die Auswahl führt in „Neue Sendung“ zum Feld.
+  assert.equal(offerSelectable(t), true, "das Angebot ist gesperrt geblieben");
+  assert.equal(offerAwaitsCustomerCorrection(t), true);
+  assert.equal(offerBlockedLabel(t), null, "ein auswählbares Angebot trägt keinen Sperrtext im Knopf");
+  assert.equal(offerCustomerCorrection(t).note, OFFER_ADDRESS_CORRECTION_NOTE);
+  assert.equal(offerCustomerCorrection(t).note, "Nur mit gekürzter Adressangabe buchbar.");
+  assert.equal(offerCustomerCorrection(t).field, null, "ohne Einzelheit kein geratenes Feld");
   assert.equal(offerBlockedHint(t), OFFER_ADDRESS_DETAILS_TOO_LONG_HINT);
   assert.equal(offerBlockedHint(t), "Bitte kürzen Sie Vor- und Nachname, Firmenname oder Adresszeilen von Absender oder Empfänger.");
-  assert.equal(offerSelectable(t), false, "das Angebot ist auswählbar geblieben");
+  // Der öffentliche Preisrechner nutzt den bisherigen Satz weiterhin (eigene Karte, unverändert).
+  assert.equal(OFFER_ADDRESS_DETAILS_TOO_LONG_TEXT, "Für diese Adressangaben nicht verfügbar.");
   assert.equal(offerBookable(t), false);
   assert.equal(offerBlocked(t), true);
+  // Mit Einzelheit: genau das Formularfeld der Partei.
+  assert.equal(offerCustomerCorrection({ ...t, unavailableDetail: { party: "recipient", field: "phone", max: 15 } }).field, "r_phone");
+  assert.equal(offerCustomerCorrection({ ...t, unavailableDetail: { party: "sender", field: "addressLine2", max: 30 } }).field, "s_addition");
+  // Ein Angebot, das an diesem Datum nicht verfügbar ist, bleibt gesperrt — die Korrektur hilft dort nicht.
+  assert.equal(offerSelectable({ ...t, availableForDate: false }), false);
   // Die Oberfläche prüft keine Namenslänge selbst: die Grenze steht ausschließlich im Server.
   const quelle = ohneKommentar("utils/offerIdentity.mjs");
   assert.ok(!/\b21\b/.test(quelle), "eine Namensgrenze im Frontend");

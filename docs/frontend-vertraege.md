@@ -137,6 +137,36 @@ Ein Produkt mit Firmenpflicht (TNT 41/44/49 aus der Policy, JUMiNGO `from_compan
 
 Browserprüfung: `tests/e2e/businessRequirementOffers.test.mjs` (B1–B6).
 
+### Nur buchbare Tarife sichtbar (Betreiberentscheidung 2026-10-26, Canonical v2.80) — aktueller Vertrag
+
+Der **Server** liefert nur noch Angebote, die für die Sendung buchbar sind oder es nach einer kundenlösbaren Angabe
+werden (Backend `lib/offers/customerOfferVisibility.js`, Canonical 6.4a). Die Oberfläche hat **keine eigene
+Filterregel**: sie zeigt jedes gelieferte Angebot (`utils/offerVisibilityContract.test.mjs`). Daraus folgt:
+
+- **Keine graue Karte.** Kundenlösbare Fälle sind auswählbar (`offerSelectable`): Art der Lieferadresse und
+  Firmenpflicht wie bisher; neu eine zu lange Adressangabe und die fehlende Inhaltsangabe
+  (`offerAwaitsCustomerCorrection`). Die Karte nennt in der Folgezeile die kurze Notiz
+  (`offerCustomerCorrection(t).note`: „Nur mit gekürzter Adressangabe buchbar." / „Nur mit Angabe des Inhalts
+  buchbar."), der genaue Hinweis steht in den Details.
+- **„Neue Sendung"** (`handleBook`): die Auswahl einer solchen Karte führt zum Feld aus `offerCustomerCorrection(t).field`
+  (aus `unavailableDetail` — Partei und Feld; ohne Einzelheit kein geratenes Feld, dann der allgemeine Hinweis über den
+  Angeboten), mit dem genauen Hinweis am Feld (Serverfehlerweg) und dem Fokus. Verlässt der Kunde **genau dieses** Feld
+  mit einem geänderten Wert, startet **genau ein** neuer Vergleich; das Angebot wird über den `productKey`
+  wiedergefunden und gewählt, sobald es auf keine Angabe mehr wartet. Gebucht wird nur, was der Server danach buchbar
+  nennt.
+- **Angemeldeter Preisrechner** wählt **vor** den Sendungsangaben (`OFFER_SELECTION_STAGE.BEFORE_SHIPMENT_DETAILS`,
+  `offerSelectableFor`): auswählbar ist, was der Server „buchbar mit Sendungsangaben" nennt
+  (`availableWithShipmentDetails`); die Auswahl übergibt wie bisher nach „Neue Sendung", wo der volle Vergleich bindet.
+  „Neue Sendung" bleibt bei der strengen Stufe.
+- **Leerzustand:** „Keine direkt buchbaren Tarife" / „Für diese Sendung ist derzeit kein Tarif direkt buchbar. Ändern
+  Sie das Datum oder wählen Sie „Alle Dienstleistungen"." (bei unterschiedlichen Paketen dazu „Weniger oder gleich große
+  Pakete erweitern die Auswahl."); öffentlicher Preisrechner „Keine direkt buchbaren Angebote".
+- **Altzustand:** ein dennoch geliefertes, nicht buchbares Angebot (Sitzungswiederherstellung, alter Server) erscheint wie
+  bisher gesperrt mit Grund — die Darstellung „Preisauskunft bleibt lesbar" (UPS-Familie unten) gilt nur noch dafür.
+
+Browserprüfung: `tests/e2e/onlyBookableOffers.test.mjs` (B1 Leerzustand 1440/768/375, B2 Feldführung mit genau einem
+neuen Vergleich, B3 Preisrechner-Übergabe). Einheitstests: `utils/offerSelectionStage.test.mjs`.
+
 ### Versandartfilter ohne „Economy" (Gesamtauftrag F, 2026-10-24) — aktueller Vertrag
 
 Drei Optionen: „Alle Versandarten", „Standard", „Express". Economy-Produkte (TNT Economy Express, DHL Economy Select …) bleiben angeboten und erscheinen unter „Alle Versandarten"; die Tarifklassifizierung (`shippingMode` des Servers) ist unverändert. `FORM_SHIPPING_MODES` (`utils/formDraftsView.mjs`) kennt kein `economy` mehr — Entwurf, Sitzung, Übergabe und Snapshot landen damit an einer Stelle auf `all`; beim Fortsetzen eines Entwurfs mit „Economy" steht `RESUME_ECONOMY_FILTER_NOTICE`. Der öffentliche Preisrechner fällt über seine Optionsliste ebenso auf `all`.

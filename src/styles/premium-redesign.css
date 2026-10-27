@@ -640,7 +640,9 @@
    Der Inhalt einer neuen Seite blendet in 180 ms ein: Bewegung als Antwort auf die Navigation, nur Deckkraft
    (kein Versatz, keine Layoutwirkung). Kopfleiste und Seitenleiste bleiben stehen. */
 [data-ce-bereich="kunde"] .main-content > :is(.page-body, .page-with-navbar) {
-  animation: ce-pr-seite 180ms var(--ce-motion-ease-standard) both;
+  /* „backwards“, nicht „both“: eine nach dem Ende weiter wirkende Opazitätsanimation hielte einen eigenen
+     Stapelkontext offen — feste Dialoge der Seite (Preisänderung u. a.) lägen dann unter der Seitenleiste. */
+  animation: ce-pr-seite 180ms var(--ce-motion-ease-standard) backwards;
 }
 @keyframes ce-pr-seite { from { opacity: 0; } }
 /* Solange eine Seite lädt, steht der Fuß unsichtbar am unteren Rand: kommt der Inhalt, rückt er ohne sichtbaren
@@ -650,7 +652,7 @@
 /* Kennzahlen der Übersicht: beim Öffnen der Übersicht setzen sie sich gestaffelt ein (Konzept B) — ein kurzer
    Einstieg mit der Seite, kein Dauereffekt. */
 [data-ce-bereich="kunde"] .ov-kpis .ov-kpi {
-  animation: ce-pr-kennzahl 560ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation: ce-pr-kennzahl 560ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
 }
 [data-ce-bereich="kunde"] .ov-kpis .ov-kpi:nth-child(2) { animation-delay: 60ms; }
 [data-ce-bereich="kunde"] .ov-kpis .ov-kpi:nth-child(3) { animation-delay: 120ms; }

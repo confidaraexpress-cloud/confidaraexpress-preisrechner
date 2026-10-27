@@ -712,10 +712,10 @@ test("D1 — Geometrie von 320 bis 1920 px, auch quer: zentriert, kein waagerech
     } else if (!(g.t >= 0 && g.overlayScrollt)) {
       fehler.push(`zu hoch und nicht erreichbar (${g.t}–${g.b} bei ${g.vh})`);
     }
-    // Premium-Redesign Etappe 1 (E13): im Kundenbereich misst die Abschnittstitel-
-    // Stufe 20 px, bis 480 px Breite die mobile Stufe mit 18 px
-    // (--ce-text-title-section-size und -mobile in rem); vorher überall 18 px.
-    if (g.titel !== (w <= 480 ? 18 : 20)) fehler.push(`Titel ${g.titel}px`);
+    // Premium-Redesign: im Kundenbereich misst die Abschnittstitel-Stufe seit dem
+    // Abschluss (2026-10-27) 22 px, bis 480 px Breite die mobile Stufe mit 20 px
+    // (--ce-text-title-section-size und -mobile in rem); Etappe 1: 20/18 px, davor 18 px.
+    if (g.titel !== (w <= 480 ? 20 : 22)) fehler.push(`Titel ${g.titel}px`);
     if (fehler.length) befunde.push(`${w}×${h}: ${fehler.join("; ")}`);
   }
   assert.deepEqual(befunde, []);

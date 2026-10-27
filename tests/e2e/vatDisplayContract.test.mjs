@@ -478,7 +478,9 @@ test("N5 — Versandkostenrechner: neue Berechnung netto, Einblenden behält bru
 });
 
 test("N6 — Buchung netto ohne Absicherung: Leisten, ausgewähltes Angebot, Aufstellung und Erfolg mit beiden Gesamtbeträgen", async () => {
-  const { page, fehler } = await neueSeite({ width: 1440, height: 640 });
+  // 1366: die einspaltige Buchung mit kompakter Sticky-Leiste. Ab 1440 px steht die Zusammenfassung als Seitenspalte
+  // daneben (Premium-Redesign 2026-10-27, responsiveFrameTiers R3) — die Sticky-Leiste bleibt dort verborgen.
+  const { page, fehler } = await neueSeite({ width: 1366, height: 640 });
   const p = await setup(page);
   await zuDenAngeboten(page);
   await waehle(page, JM);

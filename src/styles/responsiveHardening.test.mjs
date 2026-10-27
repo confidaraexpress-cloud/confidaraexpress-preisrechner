@@ -198,7 +198,12 @@ test("8 — keine globale min-width-0-, anywhere- oder break-all-Regel", () => {
   const gesamt = Object.entries(css)
     .filter(([f]) => f !== "auth.css")
     .reduce((n, [, t]) => n + (t.match(/overflow-wrap:\s*anywhere/g) || []).length, 0);
-  assert.ok(gesamt <= 37, `overflow-wrap:anywhere breitet sich wieder aus (${gesamt} Vorkommen, erlaubt 37)`);
+  //
+  // +1 (38) für `.pc-service-lines a` (UX-Korrektur A, 2026-10-27): die Support-E-Mail-Adresse im Fragenbereich des
+  // öffentlichen Preisrechners — der sanktionierte technische String ohne Trennstelle. Bei 200 % Browserschrift schob
+  // sie die Spalte auf 360 px über den Rand. Lokal an EINEM Element (dem Link), nicht auf der Zeile; Überschriften und
+  // Fließtext derselben Seite brechen mit break-word.
+  assert.ok(gesamt <= 38, `overflow-wrap:anywhere breitet sich wieder aus (${gesamt} Vorkommen, erlaubt 38)`);
 });
 
 /* ══════════ 9 — Toolbar-Falle bleibt geschlossen ═════════════════════════ */

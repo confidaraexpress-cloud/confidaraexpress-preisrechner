@@ -258,6 +258,10 @@ test("7 — Formularskelett: dieselben Zeilen und Felder wie die Insel, nicht be
   assert.match(skelett, /<figure class="ce-paket ce-paket--public" data-paket-zustand="beispiel" aria-hidden="true">\s*<svg class="ce-paket-svg" viewBox="0 0 320 232" focusable="false">/);
   assert.match(skelett, /<span class="ce-paket-titel">Maße eingeben – das Paket nimmt Form an<\/span><span class="ce-paket-hinweis">Beispielpaket<\/span>/);
   assert.match(editor, />\s*Paket hinzufügen\s*</);
+  // „Gewicht und Maße je Paket.“ steht direkt unter der Zeilenbeschriftung „Paket“, vor den Feldern — in Insel und
+  // Skelett an derselben Stelle (UX-Korrektur A, 2026-10-27; vorher zwischen „Paket hinzufügen“ und Paketbühne).
+  assert.match(skelett, /<span class="pc-row-label">Paket<\/span>\s*<p class="pc-row-hint">Gewicht und Maße je Paket\.<\/p>\s*<div class="pkg-lines">/);
+  assert.match(app, /<span className="pc-row-label" id="pc-row-package">Paket<\/span>\s*<p className="pc-row-hint" id="pc-package-hint">Gewicht und Maße je Paket\.<\/p>\s*<PackageLinesEditor/);
   // Nicht bedienbar: keine ids (keine Doppelungen mit der Insel), keine Namen, nichts im Tabulatorweg.
   assert.doesNotMatch(skelett, /\sid="|\sname="|<form|<button/);
   for (const feld of skelett.match(/<(input|select)[^>]*>/g)) assert.match(feld, /tabindex="-1"/, feld);
@@ -277,7 +281,16 @@ test("8 — Kundenbereich-Vorschau (G3): ein Link auf die Demo, innen aria-hidde
   // Genau ein Link, auf die bestehende Demo der Hauptdomain — keine zweite Demo.
   assert.deepEqual([...figur.matchAll(/<a [^>]*href="([^"]+)"/g)].map((m) => m[1]), ["https://confidaraexpress.de/demo"]);
   assert.match(figur, /<a class="pc-vorschau" href="https:\/\/confidaraexpress\.de\/demo" aria-describedby="pc-vorschau-hinweis">\s*<span class="pc-sr-only">Kundenbereich-Demo öffnen<\/span>\s*<span class="pcv" aria-hidden="true">/);
-  assert.match(figur, /<figcaption class="pc-vorschau-hinweis" id="pc-vorschau-hinweis">Beispielansicht mit erfundenen Daten/);
+  assert.match(figur, /<figcaption class="pc-vorschau-hinweis" id="pc-vorschau-hinweis">Beispielansicht mit erfundenen Daten\. Die Demo öffnet sich ohne Anmeldung — nichts wird gebucht\.<\/figcaption>/);
+  // UX-Korrektur D (Betreiberentscheidung 2026-10-27): die Vorschau ist der eine Weg in die Demo neben ihr — der Knopf
+  // „Kundenbereich ausprobieren“ ist entfallen. Die Marke „Demo öffnen“ steht dauerhaft im Link (auch auf Touch
+  // erkennbar), selbst aria-hidden: der zugängliche Name des Links enthält ihren sichtbaren Text (WCAG 2.5.3).
+  assert.doesNotMatch(HTML_OHNE, /pc-demo-cta|pc-demo-text|class="pc-demo"|Kundenbereich ausprobieren/, "der doppelte Demo-Knopf ist zurück");
+  assert.match(figur, /<\/span>\s*<span class="pc-vorschau-oeffnen" aria-hidden="true">Demo öffnen<\/span>\s*<\/a>/);
+  assert.ok("Kundenbereich-Demo öffnen".includes("Demo öffnen"), "der Linkname enthält die sichtbare Beschriftung nicht");
+  // Der eigene Navigationslink im Kopf bleibt (ab 720 px).
+  assert.match(HTML_OHNE, /<a class="pc-header-demo" href="https:\/\/confidaraexpress\.de\/demo">Demo ansehen<\/a>/);
+  assert.equal([...HTML_OHNE.matchAll(/href="https:\/\/confidaraexpress\.de\/demo"/g)].length, 2, "genau Kopf-Link und Vorschau führen in die Demo");
   // Keine Bilder, keine Bedienelemente, keine Inline-Stile, keine Einkaufsquelle in der Miniatur.
   assert.doesNotMatch(figur, /<img|<svg|<button|<input|style=|tabindex/);
   assert.doesNotMatch(figur, /jumingo|transglobal/i);
@@ -289,4 +302,22 @@ test("8 — Kundenbereich-Vorschau (G3): ein Link auf die Demo, innen aria-hidde
   const bewegung = css.slice(css.indexOf("@media (prefers-reduced-motion: no-preference)"));
   assert.match(bewegung, /\.pc-vorschau \{\s*transition:/);
   assert.doesNotMatch(css, /\.pcv[\w-]* \{[^}]*animation/);
+});
+
+test("8b — Zeigen nur mit echtem Zeiger: auf Touch bleibt nach dem Tippen kein Zeige-Zustand stehen (UX-Korrektur E2)", () => {
+  // Jede :hover-Regel des Preisrechners steht in @media (hover: hover) — außer den Eingabefeldern, deren Fokus ohnehin
+  // gewinnt. Fokus und Drücken bleiben außerhalb und zeigen den Zustand auf jedem Gerät.
+  const css = lies(path.join(SRC, "styles", "public-calculator.css")).replace(/\/\*[\s\S]*?\*\//g, "");
+  const ausserhalb = [];
+  let tiefe = 0;
+  let inHover = [];
+  for (const zeile of css.split(/\r?\n/)) {
+    if (/@media \(hover: hover\)/.test(zeile)) inHover.push(tiefe);
+    const vorher = tiefe;
+    tiefe += (zeile.match(/\{/g) || []).length - (zeile.match(/\}/g) || []).length;
+    if (/:hover/.test(zeile) && !/field-input/.test(zeile) && inHover.length === 0) ausserhalb.push(zeile.trim());
+    while (inHover.length && tiefe <= inHover[inHover.length - 1] && vorher > tiefe) inHover.pop();
+  }
+  assert.deepEqual(ausserhalb, [], `:hover außerhalb von @media (hover: hover): ${ausserhalb.join(" | ")}`);
+  assert.match(css, /\.pc-page \.pc-button--offer:focus-visible,\s*\.pc-page \.pc-button--offer:active \{/, "Fokus und Drücken füllen die Kartenaktion");
 });

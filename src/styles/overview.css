@@ -300,49 +300,188 @@
 }
 .ov-trust-item { display: flex; flex-direction: column; gap: var(--ce-space-1); min-width: 0; }
 
-/* ══════════ Ihre Versanddienstleister (G2, 2026-10-27) ══════════
-   Ersetzt den Navy-Werbebanner mit fester Liste und erfundenen Laufzeiten (Audit B.5).
-   Eine ruhige Zeile auf dem weißen Blatt: Logos gleicher optischer Höhe, der Name
-   darunter, ein Satz Einordnung. Kein Hover-Effekt — die Logos sind keine Aktion. */
-.ov-carrier-liste {
+/* ══════════ Ihre Versanddienstleister (G2; Navy-Fläche seit der UX-Korrektur C, 2026-10-27) ══════════
+   Betreiberentscheidung 2026-10-27: die Navy-Fläche mit feinen geschwungenen Linien ist zurück — in den Farben der
+   freigegebenen Navy-Bühne (--ce-pr-*), die Daten weiter ausschließlich aus GET /kunde/carriers (G2). Die Linien
+   sind keine Seitenebene: sie liegen nur in dieser Fläche, statisch, hinter dem Inhalt und an der Rundung
+   beschnitten (design-css-architektur.md, App-Shell). Die Logokacheln sind keine Aktion — kein Hover. Das Raster
+   verteilt jede Anzahl gleichmäßig: ab vier Carriern füllen die Kacheln die Zeile, darunter stehen sie in fester
+   Breite links; schmal drei je Reihe, die letzte Reihe mittig. Radien und Tiefen aus der Foundation (--ce-radius-*,
+   --ce-elevation-*) wie jede Fläche der Übersicht. */
+.ov-carrier-zeile {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin-top: var(--ce-space-7);
+  padding: var(--ce-space-8);
+  border: 1px solid var(--ce-color-surface-inverse-edge);
+  border-radius: var(--ce-radius-lg);
+  background: var(--ce-pr-stage);
+  box-shadow: var(--ce-elevation-2);
+  color: var(--ce-pr-on-navy);
+}
+.ov-carrier-linien {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.ov-carrier-routen path {
+  fill: none;
+  stroke: var(--ce-pr-on-navy-line);
+  stroke-opacity: 0.6;
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+.ov-carrier-routen .ov-carrier-route-hell {
+  stroke: var(--ce-pr-signal-on-navy);
+  stroke-opacity: 0.4;
+  stroke-width: 1.4;
+}
+.ov-carrier-knoten circle {
+  fill: var(--ce-pr-signal-on-navy);
+  fill-opacity: 0.5;
+}
+.ov-carrier-kopf {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--ce-space-5) var(--ce-space-6);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ce-space-4) var(--ce-space-7);
+}
+.ov-carrier-intro {
+  flex: 1 1 22rem;
+  min-width: 0;
+}
+.ov-carrier-titel {
   margin: 0;
+  color: var(--ce-color-text-inverse);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 2rem;
+  letter-spacing: -0.015em;
+}
+.ov-carrier-hinweis {
+  max-width: 40rem;
+  margin: var(--ce-space-2) 0 0;
+  color: var(--ce-pr-on-navy-2);
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+/* Die Vergleichsaktion als heller Knopf der Navy-Bühne (Konzept A): Papier, Navy-Schrift, feine Innenkante. */
+.ov-carrier-zeile .ov-carrier-aktion {
+  flex: none;
+  min-height: 44px;
+  padding-inline: var(--ce-space-5);
+  border: 1px solid var(--ce-pr-paper);
+  border-radius: var(--ce-radius-md);
+  background: var(--ce-pr-paper);
+  color: var(--ce-pr-navy-800);
+  box-shadow: var(--ce-elevation-1);
+}
+@media (hover: hover) {
+  .ov-carrier-zeile .ov-carrier-aktion:hover {
+    border-color: var(--ce-color-surface);
+    background: var(--ce-color-surface);
+    color: var(--ce-pr-navy-800);
+  }
+}
+.ov-carrier-zeile .ov-carrier-aktion:focus-visible {
+  outline: 2px solid var(--ce-pr-signal-on-navy);
+  outline-offset: 3px;
+}
+.ov-carrier-liste {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  gap: var(--ce-space-4);
+  margin: var(--ce-space-7) 0 0;
   padding: 0;
   list-style: none;
+}
+/* Bis drei Carrier: Kacheln fester Breite links, statt sie über die ganze Fläche zu dehnen. */
+.ov-carrier-liste:not(:has(> :nth-child(4))) {
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 11rem));
 }
 .ov-carrier-eintrag {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--ce-space-2);
-  min-width: 88px;
+  min-width: 0;
   text-align: center;
 }
 .ov-carrier-logo {
   display: grid;
   place-items: center;
-  width: 88px;
-  height: 48px;
+  width: 100%;
+  height: 72px;
+  border-radius: var(--ce-radius-md);
+  background: var(--ce-pr-paper);
+  box-shadow: var(--ce-elevation-1);
+  color: var(--ce-pr-navy-800);
 }
 .ov-carrier-logo img {
   display: block;
-  height: 32px;
+  height: 34px;
   width: auto;
-  max-width: 76px;
+  max-width: 72%;
   object-fit: contain;
+  transform: scale(var(--ov-logo-optik, 1));
 }
+/* Optisch gleiche Logogröße: die Dateien stehen in einem gemeinsamen 48 × 30-Rahmen mit unterschiedlichem
+   Innenrand (das UPS-Schild ist darin schmal, DHL füllt die Breite). Angeglichen wird nur hier — dieselben Dateien
+   stehen unverändert in Tarifkarten und Listen. */
+.ov-carrier-eintrag[data-carrier="ups"] { --ov-logo-optik: 1.3; }
+.ov-carrier-eintrag[data-carrier="dpd"] { --ov-logo-optik: 1.15; }
+.ov-carrier-eintrag[data-carrier="tnt"] { --ov-logo-optik: 1.25; }
+.ov-carrier-eintrag[data-carrier="trans-o-flex"] { --ov-logo-optik: 1.3; }
 .ov-carrier-name {
-  font-size: var(--ce-text-label-size);
+  max-width: 100%;
+  color: var(--ce-pr-on-navy);
+  font-size: 0.875rem;
   font-weight: 600;
-  line-height: var(--ce-text-label-line);
-  color: var(--ce-color-text-primary);
+  line-height: 1.25rem;
+  overflow-wrap: break-word;
 }
-.ov-carrier-hinweis {
-  margin-top: var(--ce-space-5);
-  padding-top: var(--ce-space-4);
-  border-top: 1px solid var(--border-hairline);
+/* Ohne Logodatei (ein künftiger Carrier): der Name selbst als Kachel, in Navy auf Papier. */
+.ov-carrier-eintrag--ohne-logo .ov-carrier-name {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 72px;
+  padding-inline: var(--ce-space-3);
+  border-radius: var(--ce-radius-md);
+  background: var(--ce-pr-paper);
+  box-shadow: var(--ce-elevation-1);
+  color: var(--ce-pr-navy-800);
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+@media (max-width: 720px) {
+  .ov-carrier-zeile {
+    padding: var(--ce-space-7) var(--ce-space-5);
+  }
+  .ov-carrier-zeile .ov-carrier-aktion {
+    width: 100%;
+  }
+  .ov-carrier-liste {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--ce-space-3);
+    margin-top: var(--ce-space-6);
+  }
+  .ov-carrier-eintrag {
+    flex: 0 1 calc((100% - 2 * var(--ce-space-3)) / 3);
+  }
+  .ov-carrier-logo {
+    height: 60px;
+  }
+  .ov-carrier-eintrag--ohne-logo .ov-carrier-name {
+    min-height: 60px;
+  }
 }
 
 /* ══════════ Lager und Aufträge (G1/D7, 2026-10-27) ══════════

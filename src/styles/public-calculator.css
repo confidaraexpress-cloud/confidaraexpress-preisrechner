@@ -9,13 +9,12 @@
                  Fünf Bereiche: Hero mit Rechner · Ergebnisse (erst nach der ersten Berechnung) ·
                  Kundenbereich (Versand und Logistik) mit klickbarer Vorschau · Ablauf in drei
                  Schritten · Fragen mit persönlichem Kontakt, dann der Fuß.
-     Band        Kopf und Hero liegen auf dem dunklen Band (--ce-color-surface-inverse) mit zwei
-                 ruhenden Lichtflächen in Markenfarben. Es ist ein Rasterelement des Heros
-                 (.pc-hero-grid::before), ohne feste Höhen: einspaltig endet es nach der
-                 Positionierung und die Rechnerkarte ragt darüber hinaus, zweispaltig deckt es den
-                 ganzen Hero.
+     Band        Kopf und Hero liegen auf dem dunklen Band (--ce-pr-stage) mit ruhenden Lichtflächen in
+                 Markenfarben. Es ist ein Rasterelement des Heros (.pc-hero-grid::before), ohne feste
+                 Höhen, und trägt in jeder Breite den ganzen Hero samt Rechnerkarte (UX-Korrektur A,
+                 2026-10-27: einspaltig endete es vorher fest 112 px in der Karte, quer durch das Formular).
      Hero        ab 1080 px zweispaltig (Botschaft mit Nachtkarte | Rechnerkarte bis 680 px), darunter
-                 einspaltig Headline → Karte → Rechner. Headline 36 / 48 / 56 / 60 px — ein Satz, der
+                 einspaltig Headline → Karte → Rechner. Headline 28 (unter 360 px) / 32 / 48 / 56 / 60 px — ein Satz, der
                  sagt, was das Produkt ist; keine Häkchenleiste (Komplettabschluss 2026-10-27).
      Formular    nur Route und Paket. Ist die Karte breit genug (Container Query), stehen Absender und
                  Empfänger nebeneinander, dazwischen der Routenpfeil. Felder 48 px, Eingabe 16 px.
@@ -32,7 +31,8 @@
                  data-ce-bereich="preisrechner" und bekommt damit den Bereichsblock aus
                  variables.css (Navy, Signal #004AFC, Markenstreifen). Primäraktion auf dem Papier
                  Navy, auf der Bühne der Papierknopf; Signal nur für Fokus, Links und Streifen.
-     Tiefe       Rechnerkarte Stufe 3, Tarifkarten leise (--ce-pr-shadow-card, Hover etwas mehr).
+     Tiefe       Rechnerkarte Stufe 3, Tarifkarten leise (--ce-pr-shadow-card, Hover etwas mehr). Tarifkarten
+                 stehen als Liste, eine je Zeile (UX-Korrektur B, 2026-10-27).
      Bewegung    Übergänge höchstens 200 ms (der Markenstreifen der Tarifkarte 220 ms), aus bei
                  reduzierter Bewegung. Keine Daueranimation, auch nicht beim Laden. Einzige
                  Animation: die Strecke auf der Nachtkarte zeichnet sich einmal als Antwort auf die
@@ -156,16 +156,20 @@
   z-index: 1;
 }
 
+/* Bricht um, statt abzuschneiden: bei großer Browserschrift steht die Navigation unter dem Logo (UX-Korrektur A,
+   2026-10-27 — vorher schrumpfte das Logo bei 200 % Schrift auf 0 px, und „Registrieren“ lief über den Rand). */
 .pc-header-inner {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--ce-space-4);
+  gap: var(--ce-space-2) var(--ce-space-4);
   min-height: 72px;
   padding-block: var(--ce-space-3);
 }
 
 .pc-brand {
+  flex: none;
   display: inline-flex;
   align-items: center;
   min-height: 44px;
@@ -173,7 +177,7 @@
 }
 
 /* Ein Logomaß je Kontext (Audit C, Marke): öffentlicher Kopf 128 px. Unter 534 px schrumpft es mit der Breite
-   (24vw, mindestens 88 px), damit Logo, „Anmelden“ und „Registrieren“ bei 360 px in eine Zeile passen. */
+   (24vw, mindestens 88 px; unter 340 px 80 px, siehe unten) — nie weiter: die Marke ist kein Flex-Puffer. */
 .pc-brand-img {
   display: block;
   width: clamp(88px, 24vw, 128px);
@@ -182,8 +186,11 @@
 
 .pc-header-nav {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--ce-space-2);
+  margin-left: auto;
 }
 
 /* Kopfaktionen auf der Navy-Bühne (Konzept A): „Registrieren“ als Papierknopf, „Anmelden“ als Kontur. */
@@ -207,9 +214,11 @@
   color: var(--ce-pr-navy-800);
 }
 
-.pc-page .pc-link-button:hover {
-  border-color: var(--ce-color-surface);
-  background: var(--ce-color-surface);
+@media (hover: hover) {
+  .pc-page .pc-link-button:hover {
+    border-color: var(--ce-color-surface);
+    background: var(--ce-color-surface);
+  }
 }
 
 .pc-page .pc-link-button--ghost {
@@ -218,9 +227,11 @@
   color: var(--ce-pr-on-navy);
 }
 
-.pc-page .pc-link-button--ghost:hover {
-  border-color: var(--ce-pr-on-navy-2);
-  background: transparent;
+@media (hover: hover) {
+  .pc-page .pc-link-button--ghost:hover {
+    border-color: var(--ce-pr-on-navy-2);
+    background: transparent;
+  }
 }
 
 .pc-page .pc-header a:focus-visible {
@@ -228,7 +239,7 @@
 }
 
 /* Der Weg in die Kundenbereich-Demo (Premium-Redesign 2026-10-27): ein ruhiger Textlink vor den beiden Knöpfen —
-   ab 720 px; schmaler steht der Einstieg im Abschnitt „Alles in einem Kundenbereich". */
+   ab 720 px; schmaler führt die Vorschau im Abschnitt „Versand und Logistik in einem Kundenbereich“ in die Demo. */
 .pc-header-demo {
   display: none;
   align-items: center;
@@ -248,13 +259,28 @@
   text-underline-offset: 4px;
 }
 
-.pc-page .pc-header-demo:hover {
-  color: var(--ce-pr-on-navy);
-  text-decoration-color: currentColor;
+@media (hover: hover) {
+  .pc-page .pc-header-demo:hover {
+    color: var(--ce-pr-on-navy);
+    text-decoration-color: currentColor;
+  }
 }
 
 @media (min-width: 720px) {
   .pc-header-demo { display: inline-flex; }
+}
+
+/* Schmale Telefone: Logo, „Anmelden“ und „Registrieren“ bleiben bei normaler Schrift in einer Zeile, ohne dass das
+   Logo schrumpft (UX-Korrektur A, 2026-10-27: bei 320 px vorher auf 46 px gedrückt). */
+@media (max-width: 374px) {
+  .pc-header-inner { column-gap: var(--ce-space-2); }
+  .pc-page .pc-header .pc-link-button { padding-inline: var(--ce-space-3); }
+}
+
+@media (max-width: 339px) {
+  .pc-brand-img { width: 80px; }
+  .pc-header-nav { gap: var(--ce-space-1); }
+  .pc-page .pc-header .pc-link-button { padding-inline: 10px; font-size: 0.8125rem; }
 }
 
 /* ── Bereich 1: Hero mit Rechner ─────────────────────────────────────────── */
@@ -266,26 +292,27 @@
 }
 
 .pc-hero-grid {
-  --pc-band-into-card: 112px;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "head" "card";
   row-gap: var(--ce-space-6);
 }
 
-/* Das dunkle Band: ein Rasterelement in der Zeile der Positionierung. Nach oben verlängert es
-   sich hinter den Kopf (der liegt mit z-index 1 darüber), seitlich bis an den Fensterrand (den
-   Überstand um die halbe Bildlaufleiste schneidet .pc-hero ab), nach unten ein Stück in die
-   Rechnerkarte hinein. z-index -1 gilt im eigenen Stapelkontext des Heros (isolation). Zwei
-   ruhende Lichtflächen in Markenfarben geben ihm Tiefe — keine Bewegung, kein Bild. */
+/* Das dunkle Band: ein Rasterelement über alle Zeilen des Heros. Nach oben verlängert es sich hinter den Kopf
+   (der liegt mit z-index 1 darüber), seitlich bis an den Fensterrand (den Überstand um die halbe Bildlaufleiste
+   schneidet .pc-hero ab), nach unten bis an den unteren Rand des Heros — es trägt die ganze Rechnerkarte, in
+   jeder Breite (UX-Korrektur A, 2026-10-27: einspaltig endete es vorher fest 112 px in der Karte und lief quer
+   durch das Formular, darunter stand die weiße Karte auf weißem Grund). Der untere Überstand entspricht dem
+   Innenrand des Heros je Stufe. z-index -1 gilt im eigenen Stapelkontext des Heros (isolation). Ruhende
+   Lichtflächen in Markenfarben geben ihm Tiefe — keine Bewegung, kein Bild. */
 .pc-hero-grid::before {
   content: "";
   grid-column: 1 / -1;
-  grid-row: 1 / 2;
+  grid-row: 1 / -1;
   align-self: stretch;
   z-index: -1;
   margin-top: -400px;
-  margin-bottom: calc(-1 * (var(--ce-space-6) + var(--pc-band-into-card)));
+  margin-bottom: calc(-1 * var(--ce-space-7));
   margin-inline: calc(50% - 50vw);
   border-bottom: 1px solid var(--ce-color-surface-inverse-edge);
   background: var(--ce-pr-stage);
@@ -318,6 +345,19 @@
   letter-spacing: -0.026em;
   hyphens: manual;
   text-wrap: balance;
+}
+
+/* Unter 360 px etwas kleiner: die Headline steht in drei Zeilen ohne Trennung (vorher vier, „Versand-“ allein und
+   „Logistik-“ getrennt; UX-Korrektur A). */
+@media (max-width: 359px) {
+  .pc-display { font-size: 1.75rem; }
+}
+
+/* Einspaltig ab 40em hat „Logistikmanagement“ immer Platz: dort trennt das bedingte Trennzeichen nicht mehr
+   (vorher „Logistik-│management“ auf dem Tablet). Die Grenze steht in em — bei großer Browserschrift greift sie
+   später, und das Trennzeichen schützt weiter vor Überlauf. */
+@media (min-width: 40em) and (max-width: 1079px) {
+  .pc-display { hyphens: none; }
 }
 
 
@@ -520,10 +560,18 @@
   }
 }
 
-/* Kleine Telefone: ein flacheres Band, damit die Rechnerkarte mit ihrer ersten Zeile im ersten Bild beginnt. */
+/* Kleine Telefone: ein flacheres Band und ein etwas engerer Lead — die Rechnerkarte beginnt früher (UX-Korrektur A,
+   2026-10-27). Die Legende bleibt unter dem Band: in seiner Unterkante läge sie auf den Lichtern. */
 @media (max-width: 479px) {
+  .pc-hero-map {
+    margin-top: var(--ce-space-4);
+  }
   .pc-hero-map-frame {
-    aspect-ratio: 2;
+    aspect-ratio: 2.4;
+  }
+  .pc-page .pc-lead {
+    margin-top: var(--ce-space-5);
+    line-height: 1.5;
   }
 }
 
@@ -552,7 +600,7 @@
   min-width: 0;
   overflow: hidden;
   scroll-margin-top: var(--ce-space-4);
-  padding: var(--ce-space-5) var(--ce-space-4);
+  padding: var(--ce-space-5);
   border: 1px solid var(--ce-color-border-subtle);
   border-radius: var(--ce-radius-lg);
   background: var(--ce-color-surface);
@@ -566,6 +614,11 @@
   inset: 0 0 auto;
   height: 3px;
   background: var(--ce-pr-stripe);
+}
+
+/* Ab 360 px 20 px ringsum (UX-Korrektur A); darunter seitlich 16 px, damit die Felder breit genug bleiben. */
+@media (max-width: 359px) {
+  .pc-calculator-card { padding: var(--ce-space-5) var(--ce-space-4); }
 }
 
 .pc-card-head {
@@ -662,15 +715,13 @@
   grid-column: 1 / -1;
 }
 
+/* Schmale Karte: ein Dreierraster für das ganze Paket — Anzahl über der Länge, Gewicht über Breite und Höhe
+   (UX-Korrektur A, 2026-10-27; vorher Anzahl und Gewicht je zur Hälfte, darunter Drittel). */
 .pc-row-fields--package {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.pc-row-fields--package > :nth-child(-n + 2) {
-  grid-column: span 3;
-}
-
-.pc-row-fields--package > :nth-child(n + 3) {
+.pc-row-fields--package > :nth-child(2) {
   grid-column: span 2;
 }
 
@@ -752,8 +803,10 @@
   cursor: pointer;
 }
 
-.pc-line-action:hover:not(:disabled) {
-  background: var(--ce-color-brand-soft);
+@media (hover: hover) {
+  .pc-line-action:hover:not(:disabled) {
+    background: var(--ce-color-brand-soft);
+  }
 }
 
 .pc-line-action:disabled {
@@ -841,6 +894,20 @@
   .pc-row-fields--package {
     grid-template-columns: minmax(0, 0.75fr) repeat(4, minmax(0, 1fr));
   }
+  .pc-row-fields--package > :nth-child(n) {
+    grid-column: auto;
+  }
+}
+
+/* Sehr schmal im Verhältnis zur Schrift (große Browserschrift auf dem Telefon): jedes Feld eine eigene Zeile, statt
+   Beschriftungen und Einheiten abzuschneiden. Die Grenze steht in rem und wandert mit der Schrift — bei normaler
+   Schrift greift sie auf keinem Telefon. */
+@container pc-form (max-width: 13rem) {
+  .pc-row-fields--place,
+  .pc-row-fields--package {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pc-row-fields--place > .pc-field-country,
   .pc-row-fields--package > :nth-child(n) {
     grid-column: auto;
   }
@@ -983,10 +1050,12 @@
   box-shadow: var(--ce-pr-btn-shadow);
 }
 
-.pc-button--primary:hover {
-  border-color: var(--ce-pr-navy-700);
-  background: var(--ce-pr-navy-700);
-  box-shadow: var(--ce-pr-btn-shadow-hover);
+@media (hover: hover) {
+  .pc-button--primary:hover {
+    border-color: var(--ce-pr-navy-700);
+    background: var(--ce-pr-navy-700);
+    box-shadow: var(--ce-pr-btn-shadow-hover);
+  }
 }
 
 .pc-button--primary:active {
@@ -1006,13 +1075,17 @@
 }
 
 
+/* Zweitaktionen („Angaben ändern“, „Erneut versuchen“, „Auswahl zurücksetzen“) in derselben Navy-Kontur wie die
+   Aktion der Tarifkarte in Ruhe (UX-Korrektur E3, 2026-10-27; vorher Signalblau). */
 .pc-button--secondary {
-  border-color: var(--ce-color-brand-border);
-  color: var(--ce-color-brand-ink);
+  border-color: var(--ce-pr-navy-800);
+  color: var(--ce-pr-navy-800);
 }
 
-.pc-button--secondary:hover {
-  background: var(--ce-color-brand-soft);
+@media (hover: hover) {
+  .pc-button--secondary:hover {
+    background: var(--ce-pr-signal-soft);
+  }
 }
 
 /* Ausgeschaltet: der Hinweis steht an der Stelle des Knopfs, in dessen Höhe. */
@@ -1114,6 +1187,7 @@
 
 .pc-results-head-text {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--ce-space-1);
   min-width: 0;
 }
@@ -1221,8 +1295,10 @@
   cursor: pointer;
 }
 
-.pc-chip:hover {
-  border-color: var(--ce-color-border-strong);
+@media (hover: hover) {
+  .pc-chip:hover {
+    border-color: var(--ce-color-border-strong);
+  }
 }
 
 .pc-chip--on {
@@ -1232,8 +1308,10 @@
   font-weight: 600;
 }
 
-.pc-chip--on:hover {
-  border-color: var(--ce-color-brand-hover);
+@media (hover: hover) {
+  .pc-chip--on:hover {
+    border-color: var(--ce-color-brand-hover);
+  }
 }
 
 .pc-chip-input {
@@ -1274,59 +1352,39 @@
   cursor: pointer;
 }
 
+/* Breit mindestens 220 px; bei großer Browserschrift auf dem Telefon schrumpft die Auswahl auf die Zeilenbreite
+   (der Text endet dann mit „…“), statt über den Rand zu laufen (UX-Korrektur A, 2026-10-27). */
 .pc-sort {
-  flex: 0 0 auto;
-  min-width: 220px;
+  flex: 0 1 auto;
+  min-width: min(220px, 100%);
+  max-width: 100%;
 }
 
-/* Mindestbreiten in rem: bei größerer Browserschrift werden die Karten breiter statt die Werte
-   ineinanderzuschieben (E13). Bei 16 px Grundgröße 300 px. */
-/* Höchstens drei Spalten (jede Spalte mindestens ein Drittel): so bleibt jede Karte breit genug, dass Preis und
-   Knopf in einer Zeile stehen; schmaler als 21,25rem wird es einspaltig bzw. zweispaltig. */
+/* Eine Tarifkarte je Zeile — auf jedem Gerät (Betreiberentscheidung 2026-10-27, UX-Korrektur B; vorher bis zu drei
+   Spalten). Aufbau wie die Tarifkarte des Kundenbereichs und die freigegebene Vorschau A: Identität · Ablauf ·
+   Preisspalte. Jede Karte ist ihr eigener Größencontainer (pc-karte): wo die Zonen stehen, entscheidet ihre
+   Breite, nicht das Fenster — die Stufen stehen in rem und wechseln bei großer Browserschrift früher. */
 .pc-offers {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, max(21.25rem, calc((100% - 2 * var(--ce-space-5)) / 3))), 1fr));
-  gap: var(--ce-space-5);
-}
-
-/* Keine einzelne Karte in der letzten Reihe bei vier Angeboten (Audit: 3 + 1): in der Dreierbreite stehen sie
-   2 + 2. Ab 66,25rem (bei 16 px 1060 px) passen drei Spalten zu 21,25rem. Fünf stehen 3 + 2, sechs 3 + 3. */
-@container pc-ergebnis (min-width: 66.25rem) {
-  .pc-offers:has(> .pc-offers-item:nth-child(4):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ce-space-4);
 }
 
 .pc-offers-item {
-  display: flex;
+  display: block;
   min-width: 0;
-}
-
-/* Tarifkarten einer Reihe teilen ihre Zeilen (Kopf, Eckdaten, Hinweise, Abschluss mit Preis und Aktion): Preise
-   und Aktionen stehen nebeneinander auf einer Höhe. Ohne subgrid bleibt es bei der Spalte je Karte. */
-@supports (grid-template-rows: subgrid) {
-  .pc-offers--list .pc-offers-item {
-    display: grid;
-    grid-row: span 4;
-    grid-template-rows: subgrid;
-  }
-  .pc-offers--list .pc-offer {
-    display: grid;
-    grid-row: 1 / -1;
-    grid-template-rows: subgrid;
-    row-gap: var(--ce-space-4);
-  }
-  .pc-offers--list .pc-offer-head { grid-row: 1; }
-  .pc-offers--list .pc-offer-facts { grid-row: 2; }
-  .pc-offers--list .pc-offer-hints { grid-row: 3; align-self: start; }
-  .pc-offers--list .pc-offer-abschluss { grid-row: 4; align-self: start; margin-top: 0; }
+  container: pc-karte / inline-size;
 }
 
 /* ── Tarifkarte ──────────────────────────────────────────────────────────── */
 /* Helle Tarifkarte (E9, Audit B7): der Markenstreifen sitzt 3 px hoch an der Unterkante, innerhalb der
    Rundung, und läuft beim Zeigen und bei Tastaturfokus in der Karte von links ein. Auf Touch beim Drücken. */
 .pc-offer {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ce-space-4);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "head" "ablauf" "hints" "abschluss";
+  align-items: start;
+  row-gap: var(--ce-space-4);
   width: 100%;
   min-width: 0;
   padding: var(--ce-space-5);
@@ -1353,16 +1411,28 @@
   background-size: 100% 3px;
 }
 
-.pc-offer--quiet,
-.pc-offer--quiet:hover {
+/* Ohne Übernahme: ruhige Fläche ohne Streifen — der Zeige-Zustand der Karte schließt sie aus (oben). */
+.pc-offer--quiet {
   border-color: var(--ce-pr-hairline);
   background: var(--ce-color-surface-subtle);
   box-shadow: none;
 }
 
+/* Platzhalter in der Höhe der Zeilenkarte je Stufe: schmal gestapelt, breit eine Zeile. */
 .pc-offer--skeleton {
-  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ce-space-4);
+  min-height: 22rem;
   box-shadow: none;
+}
+
+@container pc-karte (min-width: 40rem) {
+  .pc-offer--skeleton { min-height: 19rem; }
+}
+
+@container pc-karte (min-width: 52rem) {
+  .pc-offer--skeleton { min-height: 11.5rem; }
 }
 
 .pc-skeleton-line,
@@ -1383,10 +1453,11 @@
 
 .pc-skeleton-block {
   flex: 1;
-  min-height: 160px;
+  min-height: 3rem;
 }
 
 .pc-offer-head {
+  grid-area: head;
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr);
   align-items: center;
@@ -1448,12 +1519,75 @@
   color: var(--ce-color-status-neutral-fg);
 }
 
+/* Ablauf wie in der Tarifkarte des Kundenbereichs: eine ruhende Achse von der Abholung bzw. Abgabe (Startpunkt im
+   Markenblau) zur Zustellung (Zielpunkt grün), darunter links der Start, rechts die Laufzeit. Spalten 2 : 3, damit
+   „Voraussichtliche Laufzeit“ und „laut Versanddienstleister“ auch auf dem Telefon einzeilig bleiben. */
+.pc-offer-ablauf {
+  grid-area: ablauf;
+  display: grid;
+  gap: var(--ce-space-2);
+  min-width: 0;
+}
+
+.pc-offer-achse {
+  position: relative;
+  display: block;
+  height: 10px;
+  background: linear-gradient(var(--ce-color-border-default), var(--ce-color-border-default)) center / calc(100% - 20px) 2px no-repeat;
+}
+
+.pc-offer-achse::before,
+.pc-offer-achse::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--ce-radius-full);
+}
+
+.pc-offer-achse::before {
+  left: 0;
+  background: var(--ce-color-brand);
+  box-shadow: 0 0 0 3px var(--ce-color-brand-soft);
+}
+
+.pc-offer-achse::after {
+  right: 0;
+  background: var(--ce-color-success-solid);
+  box-shadow: 0 0 0 3px var(--ce-color-success-ring);
+}
+
 .pc-offer-facts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7.5rem), 1fr));
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   gap: var(--ce-space-3);
-  padding-block: var(--ce-space-3);
-  border-block: 1px solid var(--ce-color-border-subtle);
+}
+
+.pc-offer-facts > .pc-fact:last-child {
+  justify-items: end;
+  text-align: right;
+}
+
+.pc-offer-facts > .pc-fact:last-child dd {
+  justify-items: end;
+}
+
+/* Sehr schmale Karte im Verhältnis zur Schrift (große Browserschrift auf dem Telefon): Start und Zustellung
+   untereinander, ohne Achse — Daten und Uhrzeiten brechen nie mitten im Wert. Die Grenze steht in rem; bei
+   normaler Schrift greift sie auf keinem Telefon. */
+@container pc-karte (max-width: 17.5rem) {
+  .pc-offer-achse {
+    display: none;
+  }
+  .pc-offer-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pc-offer-facts > .pc-fact:last-child,
+  .pc-offer-facts > .pc-fact:last-child dd {
+    justify-items: start;
+    text-align: left;
+  }
 }
 
 .pc-fact {
@@ -1494,6 +1628,7 @@
 }
 
 .pc-offer-hints {
+  grid-area: hints;
   display: grid;
   gap: var(--ce-space-1);
 }
@@ -1517,15 +1652,14 @@
   background: var(--ce-color-text-muted);
 }
 
-/* Abschluss der Karte (Audit C, Tarifkarten): Preis und ein kompakter Knopf in einer Zeile, darunter bei „ab“ die
-   Erklärung über die ganze Breite. Schmale Karten stapeln. Die Container Query hängt am Abschluss, nicht an der
-   Karte — eine Karte als Größencontainer verlöre ihr subgrid. So wird die Karte niedriger, und sechs Karten
-   stehen nicht mehr als Wand aus gleich schweren Vollbreiten-Knöpfen da. */
+/* Abschluss der Karte: der Preis und die Aktion, darunter bei „ab“ die Erklärung. Schmal unter dem Ablauf mit
+   feiner Linie, breiter als Preisspalte rechts (siehe pc-karte unten). Ob Preis und Knopf nebeneinander stehen,
+   entscheidet die Breite des Abschlusses selbst (Container pc-abschluss). */
 .pc-offer-abschluss {
+  grid-area: abschluss;
   container: pc-abschluss / inline-size;
   display: grid;
   gap: var(--ce-space-2);
-  margin-top: auto;
   padding-top: var(--ce-space-4);
   border-top: 1px solid var(--ce-color-border-subtle);
 }
@@ -1544,8 +1678,9 @@
 
 .pc-price-main {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: baseline;
+  white-space: nowrap;
   gap: 0 var(--ce-space-2);
   font-size: 1.125rem;
   font-weight: 600;
@@ -1591,7 +1726,8 @@
   white-space: nowrap;
 }
 
-.pc-page .pc-button--offer:hover,
+/* Gefüllt beim Tastaturfokus und beim Drücken; beim Zeigen nur mit echtem Zeiger — auf Touch bleibt nach dem
+   Tippen kein gefüllter Knopf stehen (UX-Korrektur E2, 2026-10-27). */
 .pc-page .pc-button--offer:focus-visible,
 .pc-page .pc-button--offer:active {
   background: var(--ce-pr-navy-800);
@@ -1600,6 +1736,7 @@
 }
 
 @media (hover: hover) {
+  .pc-page .pc-button--offer:hover,
   .pc-page .pc-offer:hover .pc-button--offer {
     background: var(--ce-pr-navy-800);
     color: var(--ce-color-text-inverse);
@@ -1622,18 +1759,70 @@
   text-align: center;
 }
 
-/* Breit genug (ab 20rem): Preis links, Aktion rechts in fester Breite. */
-@container pc-abschluss (min-width: 20rem) {
+/* Breit genug (ab 18rem, auf dem Telefon ab 360 px): Preis links, Aktion rechts in fester Breite. In der Preisspalte
+   breiter Karten ist der Abschluss schmaler — dort stehen Preis und Knopf untereinander. */
+@container pc-abschluss (min-width: 18rem) {
   .pc-offer-zeile {
     grid-template-columns: minmax(0, 1fr) auto;
     column-gap: var(--ce-space-4);
   }
   .pc-page .pc-button--offer {
     width: auto;
-    min-width: 11.25rem;
+    min-width: 10.5rem;
   }
   .pc-offer-unavailable {
     max-width: 13.5rem;
+  }
+}
+
+/* Mittlere Karte (ab 40rem, etwa Tablet): oben Identität und Hinweise neben der Preisspalte, darunter der Ablauf
+   über die ganze Breite. Ist die Preisspalte höher (Erklärung zu „ab“), nimmt die Zeile der Hinweise den Rest — die
+   Hinweise bleiben direkt unter dem Carrier. */
+@container pc-karte (min-width: 40rem) {
+  .pc-offer {
+    grid-template-columns: minmax(0, 1fr) 14.5rem;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas: "head abschluss" "hints abschluss" "ablauf ablauf";
+    column-gap: var(--ce-space-6);
+    row-gap: var(--ce-space-3);
+  }
+  .pc-offer-ablauf {
+    padding-top: var(--ce-space-4);
+    border-top: 1px solid var(--ce-color-border-subtle);
+  }
+  .pc-offer-abschluss {
+    align-self: stretch;
+    align-content: center;
+    padding: 0 0 0 var(--ce-space-6);
+    border-top: 0;
+    border-left: 1px solid var(--ce-color-border-subtle);
+  }
+  .pc-offer-price {
+    justify-items: end;
+    text-align: right;
+  }
+  .pc-price-main {
+    justify-content: flex-end;
+  }
+  .pc-price-note {
+    text-align: right;
+  }
+}
+
+/* Breite Karte (ab 52rem, Desktop): eine Zeile — Identität mit Hinweisen · Ablauf · Preisspalte. Die Preise aller
+   Karten stehen in einer Spalte und lassen sich auf einen Blick vergleichen. */
+@container pc-karte (min-width: 52rem) {
+  .pc-offer {
+    grid-template-columns: minmax(13rem, 1fr) minmax(0, 28rem) 14.5rem;
+    grid-template-rows: auto 1fr;
+    grid-template-areas: "head ablauf abschluss" "hints ablauf abschluss";
+    column-gap: var(--ce-space-7);
+    padding: var(--ce-space-5) var(--ce-space-6);
+  }
+  .pc-offer-ablauf {
+    align-self: center;
+    padding-top: 0;
+    border-top: 0;
   }
 }
 
@@ -1668,6 +1857,9 @@
   line-height: 1.12;
   letter-spacing: -0.028em;
   text-wrap: balance;
+  /* Große Browserschrift auf dem Telefon: ein langes Wort („Versandoptionen“) bricht im Notfall, statt über den Rand
+     zu laufen (UX-Korrektur A, 2026-10-27). Bei normaler Schrift passt jedes Wort — dort ändert sich nichts. */
+  overflow-wrap: break-word;
 }
 
 .pc-page .pc-platform-lead {
@@ -1681,6 +1873,7 @@
 .pc-platform-gruppen {
   grid-area: gruppen;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--ce-space-8);
   min-width: 0;
 }
@@ -1705,13 +1898,15 @@
 
 .pc-features {
   display: grid;
-  /* Höchstens zwei Spalten; eine, sobald eine Spalte schmaler als 10rem würde (große Browserschrift). */
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, max(10rem, calc((100% - var(--ce-space-5)) / 2))), 1fr));
+  /* Höchstens zwei Spalten; eine, sobald eine Spalte schmaler als 12rem würde (Telefon, große Browserschrift — vorher
+     bei 390 px zwei Spalten zu je etwa 150 px mit drei- bis vierzeiligen Texten). */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, max(12rem, calc((100% - var(--ce-space-5)) / 2))), 1fr));
   gap: var(--ce-space-4) var(--ce-space-5);
 }
 
 .pc-feature {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: 2px;
   padding-left: var(--ce-space-3);
@@ -1720,6 +1915,7 @@
 
 .pc-step-title,
 .pc-feature-title {
+  overflow-wrap: break-word;
   font-size: 1rem;
   font-weight: 600;
   line-height: 1.5rem;
@@ -1727,6 +1923,7 @@
 
 .pc-step-text,
 .pc-feature-text {
+  overflow-wrap: break-word;
   color: var(--ce-color-text-secondary);
   font-size: 0.9375rem;
   line-height: 1.375rem;
@@ -1736,29 +1933,6 @@
    .pc-features und nahm ihr den vorgesehenen Abstand. */
 .pc-page .pc-features {
   margin-top: var(--ce-space-4);
-}
-
-/* Der Weg in die Kundenbereich-Demo: Knopf und Satz in einer Zeile, sobald Platz ist. */
-.pc-demo {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--ce-space-3) var(--ce-space-5);
-  margin-top: var(--ce-space-7);
-}
-
-.pc-demo-text {
-  flex: 1 1 14rem;
-  max-width: 24rem;
-  color: var(--ce-color-text-secondary);
-  font-size: 0.9375rem;
-  line-height: 1.375rem;
-}
-
-/* Ein Link im Kleid der Primäraktion: die Linkfarbe der Seite (.pc-page a) darf ihn nicht einfärben. */
-.pc-page .pc-demo-cta,
-.pc-page .pc-demo-cta:hover {
-  color: var(--ce-color-text-inverse);
 }
 
 /* ── Kundenbereich-Vorschau (G3, Audit D5) ───────────────────────────────────
@@ -1802,21 +1976,60 @@
   transform-origin: left center;
 }
 
-.pc-vorschau:hover,
 .pc-vorschau:focus-visible {
   box-shadow: var(--ce-pr-shadow-card-hover);
   transform: translateY(-2px);
 }
 
-.pc-vorschau:hover::after,
 .pc-vorschau:focus-visible::after {
   transform: scaleX(1);
+}
+
+@media (hover: hover) {
+  .pc-vorschau:hover {
+    box-shadow: var(--ce-pr-shadow-card-hover);
+    transform: translateY(-2px);
+  }
+  .pc-vorschau:hover::after {
+    transform: scaleX(1);
+  }
 }
 
 .pc-page .pc-vorschau-hinweis {
   color: var(--ce-color-text-secondary);
   font-size: 0.875rem;
   line-height: 1.25rem;
+}
+
+/* Die Vorschau ist der eine Weg in die Demo (UX-Korrektur D, 2026-10-27: der Knopf daneben ist entfallen). Die Marke
+   „Demo öffnen“ steht dauerhaft in der Ecke — auch ohne Zeiger, also auf Touch, erkennbar. Sie ist Teil des Links,
+   aber aria-hidden: sein zugänglicher Name „Kundenbereich-Demo öffnen“ enthält den sichtbaren Text. */
+.pc-vorschau-oeffnen {
+  position: absolute;
+  right: var(--ce-space-4);
+  bottom: var(--ce-space-4);
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding-inline: var(--ce-space-4);
+  border-radius: var(--ce-pr-radius-control);
+  background: var(--ce-pr-navy-800);
+  color: var(--ce-color-text-inverse);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  box-shadow: var(--ce-pr-btn-shadow), var(--ce-pr-shadow-card-hover);
+}
+
+.pc-vorschau:focus-visible .pc-vorschau-oeffnen {
+  background: var(--ce-pr-signal);
+}
+
+@media (hover: hover) {
+  .pc-vorschau:hover .pc-vorschau-oeffnen {
+    background: var(--ce-pr-signal);
+  }
 }
 
 .pcv {
@@ -2111,9 +2324,14 @@
 }
 
 /* Die Antwort auf Zeigen und Fokus: die erste Sendung ist markiert wie unter dem Zeiger im Kundenbereich. */
-.pc-vorschau:hover .pcv-zeile:nth-child(2),
 .pc-vorschau:focus-visible .pcv-zeile:nth-child(2) {
   background: var(--ce-pr-signal-soft);
+}
+
+@media (hover: hover) {
+  .pc-vorschau:hover .pcv-zeile:nth-child(2) {
+    background: var(--ce-pr-signal-soft);
+  }
 }
 
 /* Schmal (unter 520 px Breite der Vorschau): weniger Inhalt in größerer Schrift — die Leiste nur als Navy-Kante
@@ -2159,6 +2377,17 @@
   .pcv-zeile {
     grid-template-columns: minmax(0, 1fr) auto auto;
   }
+  /* Drei statt vier Sendungen, und die Bedienmarke steht als Leiste unter der Miniatur statt über ihr — sie verdeckt
+     keine Zeile. Sie bleibt Teil desselben Links: keine zweite Aktion. */
+  .pcv-sendungen .pcv-zeile:nth-child(5) {
+    display: none;
+  }
+  .pc-vorschau-oeffnen {
+    position: static;
+    display: flex;
+    justify-content: center;
+    margin: 0 var(--ce-space-3) var(--ce-space-3);
+  }
 }
 
 /* ── Bereich 4: der Weg zur ersten Buchung ──────────────────────────────────── */
@@ -2175,6 +2404,7 @@
 
 .pc-steps {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--ce-space-5);
 }
 
@@ -2207,6 +2437,7 @@
 
 .pc-step-body {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px;
   padding-top: 6px;
 }
@@ -2214,10 +2445,14 @@
 /* ── Bereich 5: Fragen, persönlicher Kontakt und Fuß ─────────────────────── */
 .pc-faq-section {
   padding-block: var(--ce-space-8);
+  /* Große Browserschrift auf schmalen Telefonen: lange Wörter brechen im Notfall (UX-Korrektur A). */
+  overflow-wrap: break-word;
 }
 
+/* Einspaltig minmax(0, 1fr): eine implizite auto-Spalte wüchse bei großer Schrift mit dem längsten Wort über den Rand. */
 .pc-faq-grid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--ce-space-5);
 }
 
@@ -2262,24 +2497,34 @@
   align-items: center;
   min-height: 44px;
   font-weight: 500;
+  /* Die E-Mail-Adresse hat keine Trennstelle: bei großer Schrift bricht sie im Notfall um (UX-Korrektur A). */
+  overflow-wrap: anywhere;
 }
 
 /* Auf dem hellen Serviceblock trägt der Registrierknopf eine Navy-Kontur — der Papierknopf des Kopfs ist für die
    Navy-Bühne gedacht und stand hier als blasse Fläche auf Weiß. */
 .pc-page .pc-service-cta {
+  max-width: 100%;
   border-color: var(--ce-pr-navy-800);
   background: var(--ce-color-surface);
   color: var(--ce-pr-navy-800);
+  /* Bei großer Browserschrift bricht die Beschriftung um, statt die Spalte über den Rand zu schieben (UX-Korrektur
+     A, 2026-10-27: vorher bei 200 % Schrift 86 px Querscrollen auf dem Telefon). */
+  white-space: normal;
+  text-align: center;
 }
 
-.pc-page .pc-service-cta:hover {
-  border-color: var(--ce-pr-navy-800);
-  background: var(--ce-pr-navy-800);
-  color: var(--ce-color-text-inverse);
+@media (hover: hover) {
+  .pc-page .pc-service-cta:hover {
+    border-color: var(--ce-pr-navy-800);
+    background: var(--ce-pr-navy-800);
+    color: var(--ce-color-text-inverse);
+  }
 }
 
 .pc-faq {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   border-top: 1px solid var(--ce-color-border-default);
 }
@@ -2405,6 +2650,7 @@
 /* ── Breiten ─────────────────────────────────────────────────────────────── */
 @media (min-width: 640px) {
   .pc-hero { padding-block: var(--ce-space-4) var(--ce-space-8); }
+  .pc-hero-grid::before { margin-bottom: calc(-1 * var(--ce-space-8)); }
   .pc-calculator-card { padding: var(--ce-space-6); }
   .pc-card-title { font-size: 1.5rem; line-height: 2rem; }
   .pc-page .pc-lead { font-size: 1.125rem; }
@@ -2504,6 +2750,9 @@
   .pcv-zeile {
     transition: background-color var(--ce-motion-standard) ease;
   }
+  .pc-vorschau-oeffnen {
+    transition: background-color var(--ce-motion-fast) ease;
+  }
   .pc-skip {
     transition: transform var(--ce-motion-fast) ease;
   }
@@ -2521,7 +2770,7 @@
   padding: var(--ce-space-2) var(--ce-space-4) var(--ce-space-2) var(--ce-space-3);
 }
 .pc-page .ce-paket--public .ce-paket-svg { max-height: 124px; }
-.pc-page .ce-paket--public .ce-paket-text { text-align: left; }
+.pc-page .ce-paket--public .ce-paket-text { grid-template-columns: minmax(0, 1fr); text-align: left; overflow-wrap: break-word; }
 /* Breite Karte: ein kompakter Streifen — „Versandpreise berechnen“ bleibt auf 1366 × 768 ohne Scrollen
    erreichbar (publicCalculator.test.mjs, G). */
 @container pc-form (min-width: 560px) {

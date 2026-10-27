@@ -266,6 +266,7 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost, ma
 
         <div className="pc-row" role="group" aria-labelledby="pc-row-package" aria-describedby="pc-package-hint">
           <span className="pc-row-label" id="pc-row-package">Paket</span>
+          <p className="pc-row-hint" id="pc-package-hint">Gewicht und Maße je Paket.</p>
           <PackageLinesEditor
             variant="public"
             idBase={FELD_ID}
@@ -274,7 +275,6 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost, ma
             errors={fieldErrors}
             firstLineProps={{ packageCount: { "aria-describedby": "pc-package-hint" } }}
           />
-          <p className="pc-row-hint" id="pc-package-hint">Gewicht und Maße je Paket.</p>
           <Paketbuehne variant="public" lines={paketzeilen} von={form.from_city} nach={form.to_city} />
         </div>
 

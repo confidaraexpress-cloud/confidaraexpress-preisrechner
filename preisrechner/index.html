@@ -86,6 +86,7 @@
                 </div>
                 <div class="pc-row">
                   <span class="pc-row-label">Paket</span>
+                  <p class="pc-row-hint">Gewicht und Maße je Paket.</p>
                   <div class="pkg-lines">
                     <div class="pc-row-fields pc-row-fields--package">
                       <div class="field"><label class="field-label">Anzahl<span> *</span></label><input class="field-input" tabindex="-1" value="1" /></div>
@@ -96,7 +97,6 @@
                     </div>
                     <div class="pkg-lines-foot"><span class="pc-line-action pc-line-action--add">Paket hinzufügen</span></div>
                   </div>
-                  <p class="pc-row-hint">Gewicht und Maße je Paket.</p>
                   <!-- Paketbühne (Konzept B) im Ausgangszustand: dieselbe Hülle wie Paketbuehne.jsx, die Flächen als feste
                        Polygone (die CSP dieser Domain erlaubt keine Inline-Styles im HTML). -->
                   <figure class="ce-paket ce-paket--public" data-paket-zustand="beispiel" aria-hidden="true">
@@ -128,17 +128,14 @@
 
       <!-- Bereich 3: der Kundenbereich — Versand UND Logistik (G1, D7), daneben die klickbare Vorschau des echten
            Kundenbereichs (G3): eine Miniatur aus HTML und CSS mit erfundenen Beispieldaten, kein Bild, kein Skript.
-           Ein Klick öffnet die Demo auf der Hauptdomain (/demo). Lager meint die Software für den EIGENEN Bestand
-           des Kunden — ConfidaraExpress lagert nicht ein. -->
+           Ein Klick öffnet die Demo auf der Hauptdomain (/demo). Die Vorschau ist hier der eine Weg in die Demo
+           (UX-Korrektur D, 2026-10-27: der Knopf daneben ist entfallen, die Marke „Demo öffnen“ zeigt die Aktion).
+           Lager meint die Software für den EIGENEN Bestand des Kunden — ConfidaraExpress lagert nicht ein. -->
       <section class="pc-platform" aria-labelledby="pc-platform-title">
         <div class="pc-wrap pc-platform-grid">
           <div class="pc-platform-intro">
             <h2 class="pc-section-title" id="pc-platform-title">Versand und Logistik in einem Kundenbereich</h2>
             <p class="pc-platform-lead">Nach der Freischaltung arbeiten Sie in Ihrem Kundenbereich: Sendungen vom Preisvergleich bis zur Zustellung — und Bestand und Aufträge Ihres eigenen Lagers am selben Ort.</p>
-            <div class="pc-demo">
-              <a class="pc-button pc-button--primary pc-demo-cta" href="https://confidaraexpress.de/demo">Kundenbereich ausprobieren</a>
-              <p class="pc-demo-text">Mit Beispieldaten und ohne Anmeldung — nichts wird gebucht.</p>
-            </div>
           </div>
 
           <figure class="pc-vorschau-figur">
@@ -187,15 +184,16 @@
                   </span>
                 </span>
               </span>
+              <span class="pc-vorschau-oeffnen" aria-hidden="true">Demo öffnen</span>
             </a>
-            <figcaption class="pc-vorschau-hinweis" id="pc-vorschau-hinweis">Beispielansicht mit erfundenen Daten — öffnet die Demo des Kundenbereichs.</figcaption>
+            <figcaption class="pc-vorschau-hinweis" id="pc-vorschau-hinweis">Beispielansicht mit erfundenen Daten. Die Demo öffnet sich ohne Anmeldung — nichts wird gebucht.</figcaption>
           </figure>
 
           <div class="pc-platform-gruppen">
             <div class="pc-platform-gruppe" role="group" aria-labelledby="pc-gruppe-versand">
               <p class="pc-gruppe-titel" id="pc-gruppe-versand">Versand</p>
               <ul class="pc-features">
-                <li class="pc-feature"><h3 class="pc-feature-title">Tarifvergleich</h3><p class="pc-feature-text">Angebote mehrerer Versanddienstleister nebeneinander.</p></li>
+                <li class="pc-feature"><h3 class="pc-feature-title">Tarifvergleich</h3><p class="pc-feature-text">Angebote mehrerer Versanddienstleister im direkten Vergleich.</p></li>
                 <li class="pc-feature"><h3 class="pc-feature-title">Buchung</h3><p class="pc-feature-text">Absender, Empfänger und Sendungsangaben an einem Ort.</p></li>
                 <li class="pc-feature"><h3 class="pc-feature-title">Versanddokumente</h3><p class="pc-feature-text">Versandlabel und Sendungsdokumente abrufen.</p></li>
                 <li class="pc-feature"><h3 class="pc-feature-title">Tracking</h3><p class="pc-feature-text">Den Status Ihrer Sendungen verfolgen.</p></li>

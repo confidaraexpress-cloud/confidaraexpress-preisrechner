@@ -23,7 +23,7 @@ import { deliveryContractOf, DELIVERY_ON_REQUEST } from "./deliveryContractView.
 import { projectedDeliveryText } from "./deliveryProjectionView.mjs";
 import { pickupContractOf, pickupTimeText, pickupAdjustedNote } from "./pickupContractView.mjs";
 import { handoverMode, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "./handoverMode.mjs";
-import { offerBlockedLabel, OFFER_BUSINESS_RECIPIENT_TEXT } from "./offerIdentity.mjs";
+import { offerBlockedLabel, offerReasonText, OFFER_BUSINESS_RECIPIENT_TEXT } from "./offerIdentity.mjs";
 import { launchRouteBlockedText, ROUTE_NOT_SUPPORTED_TITLE } from "./launchRouteText.mjs";
 import {
   offerRequiresResidentialChoice, offerResidentialSurchargeFree, RESIDENTIAL_TEXT,
@@ -381,14 +381,23 @@ export function offerCanContinue(offer) {
   return o.availableWithShipmentDetails === true && typeof o.handoffToken === "string" && TOKEN_RE.test(o.handoffToken);
 }
 
+/** Der Satz an der Stelle der Aktion, wenn ein kundenlösbarer Grund schon als Hinweis auf der Karte steht. */
+export const PUBLIC_NOT_DIRECT_TEXT = "Derzeit nicht direkt buchbar";
+
 /**
  * Warum keine Übernahme? Der Grundtext des Portals (offerIdentity.mjs) zum Grund des Servers — die Karte bleibt
  * sichtbar wie im Portal, nur ohne Aktion. Ohne bekannten Grund der neutrale Satz des Portals.
+ * Ein kundenlösbarer Grund (im Portal auswählbar, z. B. Geschäftsempfänger) hat dort keinen Sperrtext; hier gibt
+ * es aber keine Übernahme — dann steht der Grund selbst da oder, wenn er schon als Hinweis steht, der Satz der
+ * Preisauskunft. Nie eine leere Fläche (UX-Korrektur E1, 2026-10-27).
  */
 export function offerUnavailableText(offer) {
   if (offerCanContinue(offer)) return null;
   const o = istAngebot(offer) ? offer : {};
-  return offerBlockedLabel({ unavailableReason: o.unavailableReason ?? null, bookable: false });
+  const portal = offerBlockedLabel({ unavailableReason: o.unavailableReason ?? null, bookable: false });
+  if (portal) return portal;
+  const grund = offerReasonText(o.unavailableReason);
+  return grund && !offerHints(o).includes(grund) ? grund : PUBLIC_NOT_DIRECT_TEXT;
 }
 
 /** Die feste Übernahmeadresse auf der Hauptdomain — das Token nur im Fragment. */

@@ -12,8 +12,10 @@
 //
 // Komplettabschluss (Betreiberentscheidungen G1/G2, Audit B.4/B.5/B.10,
 // 2026-10-27): die feste Navy-Werbefläche „Fünf Carrier. Eine zentrale
-// Plattform.“ mit Laufzeiten ohne Beleg ist durch eine ruhige Logozeile aus
-// GET /kunde/carriers ersetzt (keine feste Liste); „Lager und Aufträge“ zeigt
+// Plattform.“ mit Laufzeiten ohne Beleg ist durch die Carrier aus
+// GET /kunde/carriers ersetzt (keine feste Liste) — seit der UX-Korrektur C
+// (Betreiberentscheidung 2026-10-27) wieder auf einer Navy-Fläche mit feinen
+// Linien, ohne erfundene Angaben; „Lager und Aufträge“ zeigt
 // den Stand des eigenen Lagers; die Onboarding-Abschnitte („Ablauf“ und die
 // Funktionen Versand und Logistik) stehen ausschließlich für Konten OHNE
 // operative Daten, als ruhiger Text ohne Symbole — die Zusicherungen ohne
@@ -214,24 +216,40 @@ test("13 — Onboarding ist ruhiger Text: keine Symbole, keine dunklen Flächen,
 
 // ══════════ Carrier-Bereich ══════════
 
-test("14 — „Ihre Versanddienstleister“: nur aus GET /kunde/carriers, ruhige Logozeile mit der Vergleichsaktion (G2)", () => {
+test("14 — „Ihre Versanddienstleister“: Navy-Fläche mit Linien, nur aus GET /kunde/carriers, mit der Vergleichsaktion (G2, UX-Korrektur C)", () => {
   // Betreiberentscheidung G2 (2026-10-27): alle aktuell angebotenen Carrier, keine feste Liste, nicht nur die
-  // bisher gebuchten; keine Laufzeiten, keine Dienstnamen, keine Zahl im Titel, kein Banner. Die frühere
-  // Navy-Fläche mit Routenlinien und „Fünf Carrier. Eine zentrale Plattform.“ ist entfallen (Audit B.5, D8).
+  // bisher gebuchten; keine Laufzeiten, keine Dienstnamen, keine Zahl im Titel. UX-Korrektur C (Betreiberentscheidung
+  // 2026-10-27): die Fläche trägt wieder Navy mit feinen geschwungenen Linien — in den Farben der Navy-Bühne
+  // (--ce-pr-*), nicht der früheren Familie --ce-net-*, und ohne „Fünf Carrier. Eine zentrale Plattform.“ samt
+  // erfundenen Diensten und Laufzeiten (Audit B.5, D8).
   assert.ok(!/const CARRIERS = \[|assets\/carriers\//.test(code), "die feste Carrierliste ist zurück");
-  for (const tot of ["Fünf Carrier", "Eine zentrale Plattform", "CarrierRoutes", "ov-carriers-net", "ov-carrier-time", "--ce-net-"]) {
-    assert.ok(!(code + modules).includes(tot), `${tot}: der frühere Carrier-Bereich ist zurück`);
+  for (const tot of ["Fünf Carrier", "Eine zentrale Plattform", "ov-carrier-time", "ov-carrier-service", "--ce-net-"]) {
+    assert.ok(!(code + modules).includes(tot), `${tot}: der frühere Carrier-Bereich mit erfundenen Angaben ist zurück`);
   }
   assert.ok(!/--ce-net-/.test(cssBare), "die Farbfamilie der früheren Navy-Fläche lebt noch in overview.css");
   assert.match(code, /<CarrierPortfolio carriers=\{carriers\} onCompare=\{\(\) => navigate\("\/calculator"\)\} \/>/,
     "die Vergleichsaktion führt nicht zum Versandkostenrechner");
   const block = modules.slice(modules.indexOf("export function CarrierPortfolio"));
   assert.match(block, /if \(!Array\.isArray\(carriers\) \|\| carriers\.length === 0\) return null;/,
-    "ohne Serverliste darf keine Zeile stehen");
+    "ohne Serverliste darf keine Fläche stehen");
   assert.match(block, /resolvePublicCarrier\(c\.id\)\.logo/, "das Logo kommt nicht aus der öffentlichen Carrierzuordnung");
   assert.match(block, /<span className="ov-carrier-name">\{c\.name\}<\/span>/, "der Name fehlt");
-  assert.match(block, /actionLabel=\{CARRIER_PORTFOLIO_TEXT\.action\}/);
-  assert.ok(!/service|Laufzeit|Tage|time/.test(block), "Laufzeiten oder Dienste in der Carrierzeile");
+  assert.match(block, /data-carrier=\{c\.id\}/, "die optische Logoangleichung braucht die öffentliche Carrier-ID");
+  assert.match(block, /onClick=\{onCompare\}>\s*\{CARRIER_PORTFOLIO_TEXT\.action\}/, "die Vergleichsaktion fehlt");
+  assert.ok(!/service|Laufzeit|Tage|time/.test(block), "Laufzeiten oder Dienste in der Carrierfläche");
+  // Die Linien: dekorativ, statisch, nur in der Fläche und hinter dem Inhalt.
+  const linien = modules.slice(modules.indexOf("function CarrierLinien"), modules.indexOf("export function CarrierPortfolio"));
+  assert.match(linien, /<svg className="ov-carrier-linien" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">/);
+  assert.match(block, /<CarrierLinien \/>/);
+  assert.match(rule(".ov-carrier-zeile"), /background:\s*var\(--ce-pr-stage\)/, "die Fläche ist nicht Navy");
+  assert.match(rule(".ov-carrier-zeile"), /overflow:\s*hidden/, "die Linien laufen über die Fläche hinaus");
+  assert.match(rule(".ov-carrier-linien"), /position:\s*absolute;[\s\S]*z-index:\s*-1;[\s\S]*pointer-events:\s*none/);
+  assert.match(rule(".ov-carrier-routen path"), /vector-effect:\s*non-scaling-stroke/, "die Linien werden mit der Fläche dicker");
+  assert.match(rule(".ov-carrier-titel"), /color:\s*var\(--ce-color-text-inverse\)/);
+  assert.match(rule(".ov-carrier-zeile .ov-carrier-aktion:focus-visible"), /outline:\s*2px solid var\(--ce-pr-signal-on-navy\)/,
+    "der Fokus ist auf Navy nicht sichtbar");
+  // Die Kacheln sind keine Aktion — kein Hover.
+  assert.doesNotMatch(cssBare, /\.ov-carrier-(eintrag|logo|liste)[^{]*:hover/, "Hover auf einer Kachel ohne Aktion");
   // Das Laden liegt bei DashboardPage — die Übersicht und ihre Module laden nichts.
   const dash = src("../../pages/DashboardPage.jsx");
   assert.match(dash, /fetchCarrierPortfolio\(\),/);

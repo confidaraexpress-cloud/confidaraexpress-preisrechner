@@ -316,7 +316,7 @@
   [data-ce-bereich="kunde"] .offers-segment .offers-segment-item { min-height: var(--ce-size-touch-target); }
 }
 
-/* ═══════════ 4 · STATUS (E8, Form 2026-10-28) ════════════════════════════
+/* ═══════════ 4 · STATUS (E8, Form 2026-10-27) ════════════════════════════
    Fachbedeutung, Zuordnung und Helfer bleiben unverändert. Die Form ist ruhig
    (Audit C, „Status“): ein 8-px-Punkt im Ton und das Wort in Tinte, 13/18 600
    — keine Kapsel, keine Kontur. So bleibt eine Liste scanbar, und kein
@@ -588,7 +588,7 @@
 }
 
 /* Das ausgewählte Angebot führt das Blatt an: Carrier groß, darunter Dienst und Übergabeart. Den Preis als größte
-   Zahl der Seite trägt seit G6/M9 (2026-10-28) der Beleg. */
+   Zahl der Seite trägt seit G6/M9 (2026-10-27) der Beleg. */
 [data-ce-bereich="kunde"] .booking-blatt .booking-carrier-name { font-size: 1.375rem; font-weight: 650; letter-spacing: -0.018em; line-height: 1.2727; }
 [data-ce-bereich="kunde"] .booking-blatt .offsum-service-name { font-size: 1rem; font-weight: 600; }
 [data-ce-bereich="kunde"] .booking-blatt .offsum-meta { border-top-color: var(--ce-pr-hairline); }
@@ -884,7 +884,7 @@
 [data-ce-bereich="kunde"] .ce-state-text { max-width: 60ch; }
 [data-ce-bereich="kunde"] .ce-state--error { background: var(--ce-color-status-error-surface); }
 
-/* ═══════════ 10 · ANMELDUNG (Konzept A, Abschnitt 5 2026-10-28) ═══════════════
+/* ═══════════ 10 · ANMELDUNG (Konzept A, Abschnitt 5 2026-10-27) ═══════════════
    Navy-Bühne mit derselben gerahmten Nachtkarte wie der öffentliche Preisrechner: links Marke, Satz, Karte und
    Ansprechpartner, rechts das Papierblatt mit dem Formular des Schritts. Dieselbe Bühne in jedem Schritt (Anmelden,
    Registrieren, Passwort vergessen/zurücksetzen, E-Mail-Bestätigung) — nur das Blatt wechselt.
@@ -1446,7 +1446,7 @@
   [data-ce-bereich="kunde"] .ce-suche { display: none; }
 }
 
-/* ═══════════ 15 · TABELLEN UND LISTEN (Audit B.4, Typo-Skala 2026-10-28) ═══════════
+/* ═══════════ 15 · TABELLEN UND LISTEN (Audit B.4, Typo-Skala 2026-10-27) ═══════════
    Ein System für alle Listen des Kundenbereichs: Kopf 13/600 in Satzschreibung, Zellen 15/400, Kennungen
    15/600 tabellarisch und ohne Umbruch, Zahlen rechtsbündig. Spalten bekommen die Breite ihres Inhalts,
    Freitext (Empfänger, Adresse) den Rest. Aktionen stehen auf festen Plätzen. */
@@ -1657,7 +1657,7 @@
   [data-ce-bereich="kunde"] .bsx-aktionen { flex-direction: column; align-items: stretch; }
 }
 
-/* ═══════════ 18 · SCHRIFTGRÖSSEN NACH ROLLE (Typo-Skala 2026-10-28, Audit B.2) ═══════════
+/* ═══════════ 18 · SCHRIFTGRÖSSEN NACH ROLLE (Typo-Skala 2026-10-27, Audit B.2) ═══════════
    Die gemeinsamen Stylesheets tragen viele feste Kleinschriften (11–13 px), die auch Admin und Partner lesen.
    Im Kundenbereich gelten stattdessen Rollen auf der rem-Skala — sie wachsen mit der Browserschrift:
      Hinweise und Nebenangaben 14 · Beschriftungen und kleine Titel 14/600 · Namen und Werte 15–16 · Preise 28–32.
@@ -1711,7 +1711,7 @@
   [data-ce-bereich="kunde"] .offer-tl-title { font-size: var(--ce-text-label-size); white-space: nowrap; }
 }
 
-/* ── Zugänglichkeit: Trefferflächen und Links im Text (Sichtprüfung Komplettabschluss, 2026-10-28) ──
+/* ── Zugänglichkeit: Trefferflächen und Links im Text (Sichtprüfung Komplettabschluss, 2026-10-27) ──
    Auf Touch-Geräten erreicht jede Aktion 44 × 44 px — auch die kurzen Rechtslinks („AGB“) und der Wechsel zwischen
    Anmeldung und Registrierung. Links im Fließtext sind unterstrichen, nicht nur farbig (axe link-in-text-block). */
 @media (pointer: coarse) {
@@ -1723,7 +1723,7 @@
 /* Trackingnummer in der Sendungstabelle: ein Block, der als Ganzes in die nächste Zeile rückt (ShipmentsList). */
 [data-ce-bereich="kunde"] .shipment-id-nr { display: inline-block; max-width: 100%; }
 
-/* ── Versandkostenrechner: Route und Paket nebeneinander (Audit B.7, Komplettabschluss 2026-10-28) ──
+/* ── Versandkostenrechner: Route und Paket nebeneinander (Audit B.7, Komplettabschluss 2026-10-27) ──
    Bis hier stand das Formular in einer 760-px-Spalte, rechts blieben bei 1440 px ≈ 370 px leer. Ab 1040 px
    Inhaltsbreite stehen Versandroute und Paketdaten nebeneinander; Filterleiste und Aktion laufen über die ganze
    Breite, die Angebotsliste darunter ist unverändert breit. Die Breite des Inhalts entscheidet, nicht das Fenster. */

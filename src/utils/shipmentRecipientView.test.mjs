@@ -1,4 +1,4 @@
-// Empfänger einer Sendung in Listen (Audit B.4, Komplettabschluss 2026-10-28) — wer und wohin, nur aus vorhandenen
+// Empfänger einer Sendung in Listen (Audit B.4, Komplettabschluss 2026-10-27) — wer und wohin, nur aus vorhandenen
 // Feldern. Sendungsliste und „Letzte Sendungen“ der Übersicht lesen dieselbe Abbildung.
 //
 // Run: node --test src/utils/shipmentRecipientView.test.mjs

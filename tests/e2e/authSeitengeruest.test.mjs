@@ -1,4 +1,4 @@
-// E2E: der Ladeweg der Kunden-Anmeldung (Komplettabschluss, Abschnitt 5, 2026-10-28) — im Produktionsbuild.
+// E2E: der Ladeweg der Kunden-Anmeldung (Komplettabschluss, Abschnitt 5, 2026-10-27) — im Produktionsbuild.
 //
 //   A1  Erstes Bild = Endlayout: ohne JavaScript zeigt /login bzw. /register das statische Seitengerüst (Navy-Bühne,
 //       Satz, gerahmte Nachtkarte, Blatt). Mit JavaScript stehen Überschrift, Karte und Blatt an DERSELBEN Stelle

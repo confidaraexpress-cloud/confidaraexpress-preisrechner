@@ -86,7 +86,7 @@ createRoot(document.getElementById("root")).render(
 );
 }
 
-/* Kunden-Anmeldung (Abschnitt 5, 2026-10-28): auf /login und /register steht das statische Seitengerüst schon im
+/* Kunden-Anmeldung (Abschnitt 5, 2026-10-27): auf /login und /register steht das statische Seitengerüst schon im
    Bild (login.html, register.html). Damit React es OHNE Zwischenbild ersetzt, wird die Seite vor dem ersten Rendern
    geladen — sonst legte der Seitenwechsel seine Ladefläche zwischen Gerüst und Seite. Schlägt das Laden fehl, rendert
    die Anwendung trotzdem; die Fehlergrenze des Bereichs übernimmt. Alle anderen Pfade rendern sofort. */

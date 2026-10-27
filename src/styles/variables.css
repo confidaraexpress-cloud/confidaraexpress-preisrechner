@@ -621,7 +621,7 @@
   --ce-color-text-placeholder: #697590; /* 4,62:1 */
 
   /* ── Flächen ──
-     Betreiberentscheidung G4 (2026-10-28, ersetzt „Weiß auf Weiß“ im Kundenbereich): die Arbeitsfläche der
+     Betreiberentscheidung G4 (2026-10-27, ersetzt „Weiß auf Weiß“ im Kundenbereich): die Arbeitsfläche der
      App-Shell ist Papier, Inhalte stehen auf weißen Blättern mit Haarlinie — Materialhierarchie ohne neue
      Farbe. Die Seitengründe (Preisrechner, Anmeldung) bleiben weiß bzw. Navy. */
   --ce-color-bg-canvas-top: #ffffff;
@@ -665,7 +665,7 @@
      abgeschnitten wird — höchstens ein Drittel des Fensters. Bei 16 px Grundgröße unverändert 248 px. */
   --sidebar-width: min(15.5rem, 32vw);
 
-  /* ── Typografie (Betreiberentscheidung 2026-10-27, ersetzt E4 im Bereich; Skala G-Typo 2026-10-28) ──
+  /* ── Typografie (Betreiberentscheidung 2026-10-27, ersetzt E4 im Bereich; Skala G-Typo 2026-10-27) ──
      Instrument Sans für alles: eine Familie mit innerer Spannung über Gewicht (400–700) und Breite.
      Skala nach Rollen (Audit C): Inhaltstext 16, Tabellenzellen und Listenzeilen 15, Beschriftungen 14,
      Tabellenköpfe, Status und Kleinstschrift 13 — nichts Lesbares unter 13. Titel 600 mit offener Laufweite

@@ -17,7 +17,7 @@ const modalSrc = read("components/dashboard/InvoicePdfPreviewModal.jsx");
 const viewSrc = read("utils/customerInvoiceView.mjs");
 
 test("1 — fünf fachliche Spalten mit scope, echte <caption>; Dokument und Aktion in EINER Spalte", () => {
-  // Komplettabschluss (Audit B.4, 2026-10-28): ist das PDF bereit, stehen „Ansehen“ und „PDF herunterladen“ in der
+  // Komplettabschluss (Audit B.4, 2026-10-27): ist das PDF bereit, stehen „Ansehen“ und „PDF herunterladen“ in der
   // Dokumentspalte, statt dass „PDF bereit“ daneben die Aktion doppelt; sonst stehen dort Status und Grund.
   for (const col of ["Rechnung", "Zeitraum", "Betrag", "Zahlungsstatus", "Dokument"]) {
     assert.match(listSrc, new RegExp(`<th scope="col">${col}</th>`), `Spalte fehlt: ${col}`);

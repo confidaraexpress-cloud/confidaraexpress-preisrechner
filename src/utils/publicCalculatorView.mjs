@@ -91,7 +91,7 @@ export function emptyPublicForm() {
   };
 }
 
-/* Platzhalter für Ort und PLZ (Audit B.9, 2026-10-28): PLZ und Stadt gehören zusammen — bisher stand „z. B. 26133“
+/* Platzhalter für Ort und PLZ (Audit B.9, 2026-10-27): PLZ und Stadt gehören zusammen — bisher stand „z. B. 26133“
    (Oldenburg, das Beispiel der Adressregeln) neben „z. B. Stuttgart“ und „z. B. Berlin“. Für Deutschland ein echtes
    Paar je Seite; für andere Länder das Beispiel der Adressregeln ohne erfundene Stadt. Reine Beschriftung. */
 const ORT_BEISPIELE_DE = Object.freeze({

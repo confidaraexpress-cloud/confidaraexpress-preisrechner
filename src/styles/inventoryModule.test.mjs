@@ -117,7 +117,7 @@ test("3 — alle drei Gruppen teilen sich EIN Klappsystem und sagen ihren Zustan
   assert.match(dashboardCss, /\.pp-nav-group-items \{[^}]*visibility:\s*hidden/,
     "eingeklappte Einträge sind nicht aus dem Fokusfluss genommen");
 
-  // Standard seit G5 (Betreiberentscheidung 2026-10-28): offen ist die Gruppe der aktuellen Seite — abgeleitet
+  // Standard seit G5 (Betreiberentscheidung 2026-10-27): offen ist die Gruppe der aktuellen Seite — abgeleitet
   // aus der Seite, nicht gespeichert; auf Seiten der ersten Ebene der Sitzungswert dieser Seitenladung (nach
   // einem Reload null). Kein Effekt setzt den Klappzustand.
   assert.match(code, /^let sitzungsOffeneGruppe = null;$/m, "der Sitzungswert startet nicht bei null");

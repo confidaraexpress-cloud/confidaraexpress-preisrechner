@@ -431,7 +431,7 @@ test("32 Adressbuch, Profil und Partnerabrechnung sperren das Speichern nicht", 
 test("33 die bestehende PLZ-Formatprüfung bleibt unangetastet", () => {
   assert.ok(!/postalCodeRules|isPostalCodeRequired/.test(viewSrc), "die Formatregeln werden nicht direkt gelesen");
   assert.ok(newShipSrc.includes("isPostalCodeRequired"), "die Formatprüfung ist noch verdrahtet");
-  assert.ok(drawerSrc.includes("postalCodePlaceholder("), "die Beispielanzeige bleibt erhalten (seit 2026-10-28 als Paar mit dem Ort)");
+  assert.ok(drawerSrc.includes("postalCodePlaceholder("), "die Beispielanzeige bleibt erhalten (seit 2026-10-27 als Paar mit dem Ort)");
 });
 
 test("34 keine technischen Begriffe in Kundentexten", () => {
@@ -583,7 +583,7 @@ test("44 PLZ und Ort: Platzhalter und Eingabemodus folgen dem Land", () => {
   assert.equal(postalCodeInputMode("DE"), "numeric");
   assert.equal(postalCodeInputMode("NL"), "text");
   assert.ok(!/inputMode="numeric"/.test(registerSrc), "die Registrierung erzwingt keine Zifferntastatur mehr");
-  // Komplettabschluss (Audit B.9, 2026-10-28): im Kundenbereich gehört die Beispiel-PLZ zum Beispielort daneben —
+  // Komplettabschluss (Audit B.9, 2026-10-27): im Kundenbereich gehört die Beispiel-PLZ zum Beispielort daneben —
   // „10115“ neben „Berlin“, nicht mehr „26133“ (Oldenburg). Jede Beispiel-PLZ besteht die Formatprüfung ihres
   // Landes. Das Partnerportal bleibt unverändert beim Beispiel der Formatregeln.
   assert.equal(postalCodePlaceholder("DE"), "10115");

@@ -458,7 +458,7 @@
 .booking-no-tariff { display: flex; align-items: center; justify-content: center; }
 
 /* ── Karte „Ausgewähltes Angebot" — kompakte Auswahl-Zusammenfassung (Karte 1) ──
-   Nur für diese Komponente (OfferSummaryModule). Seit G6/M9 (2026-10-28) zwei Zonen:
+   Nur für diese Komponente (OfferSummaryModule). Seit G6/M9 (2026-10-27) zwei Zonen:
    Identität · Hinweise — Preis, Abholung und Zustellung stehen einmal, im Beleg
    (BookingLiveSummary, .blsum-*). Teilt keine Klassen mit anderen Karten. */
 .offsum-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }

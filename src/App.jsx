@@ -18,7 +18,7 @@ import { AuthSeite, EmailBestaetigungSeite } from "./pages/authSeite";
 import { statischeAuthSeite } from "./utils/kundenAuthPfad.mjs";
 
 // Die Kunden-Anmeldung: eigener Codeabschnitt wie jede Seite, aber vorladbar (pages/authSeite.js) — main.jsx lädt
-// sie vor dem ersten Rendern, damit sie das statische Seitengerüst ohne Ladefläche ersetzt (Abschnitt 5, 2026-10-28).
+// sie vor dem ersten Rendern, damit sie das statische Seitengerüst ohne Ladefläche ersetzt (Abschnitt 5, 2026-10-27).
 const AuthPage        = AuthSeite;
 const EmailChangeConfirmPage = EmailBestaetigungSeite;
 const CalculatorPage  = React.lazy(() => import("./pages/CalculatorPage"));

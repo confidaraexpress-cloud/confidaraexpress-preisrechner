@@ -228,7 +228,7 @@ test("13 — Live- und Sticky-Leiste: Brutto-Element trägt immer brutto, Netto-
 
 test("14 — ausgewähltes Angebot: kein zweiter Preis (G6/M9) — der MwSt.-Hinweis steht am Preis im Beleg", () => {
   // Bis 2026-10-27 zeigte die Karte „Ausgewähltes Angebot“ Netto und Brutto in der Reihenfolge des Modus. Seit G6/M9
-  // (Betreiberentscheidung 2026-10-28) steht der Preis an EINER Stelle: im Beleg (Live-Zusammenfassung, Test 13) samt
+  // (Betreiberentscheidung 2026-10-27) steht der Preis an EINER Stelle: im Beleg (Live-Zusammenfassung, Test 13) samt
   // Kurzleiste. Dorthin wanderte der Hinweis „inkl. 19 % MwSt.“ bzw. „… auf Versand“ / „exkl. MwSt.“ — derselbe
   // Wortlaut, jetzt aus vatIncludedNote.
   const q = code(AUSWAHL);

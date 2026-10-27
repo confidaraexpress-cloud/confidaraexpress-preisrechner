@@ -11,7 +11,7 @@
 // Aufträge neben vorhandenen Meldungen, darunter „Ihre Versanddienstleister“.
 //
 // Komplettabschluss (Betreiberentscheidungen G1/G2, Audit B.4/B.5/B.10,
-// 2026-10-28): die feste Navy-Werbefläche „Fünf Carrier. Eine zentrale
+// 2026-10-27): die feste Navy-Werbefläche „Fünf Carrier. Eine zentrale
 // Plattform.“ mit Laufzeiten ohne Beleg ist durch eine ruhige Logozeile aus
 // GET /kunde/carriers ersetzt (keine feste Liste); „Lager und Aufträge“ zeigt
 // den Stand des eigenen Lagers; die Onboarding-Abschnitte („Ablauf“ und die
@@ -79,7 +79,7 @@ test("2 — der Seitenkopf begrüßt persönlich, nennt Datum und Einordnung, GE
   assert.match(code, /Guten Tag, <span className="ov-greeting-name">\{greetingName\}<\/span>/, "die Begrüßung mit Namen fehlt");
   assert.match(code, /: "Guten Tag"\}/, "ohne Namen fehlt die neutrale Begrüßung");
   assert.ok(!/Guten (Morgen|Abend)|getHours|"Kunde"/.test(code), "Tageszeitlogik oder Platzhaltername in der Begrüßung");
-  // Komplettabschluss (G1, 2026-10-28): die Übersicht umfasst Versand UND Logistik — die Einordnung sagt beides.
+  // Komplettabschluss (G1, 2026-10-27): die Übersicht umfasst Versand UND Logistik — die Einordnung sagt beides.
   assert.match(code, /`\$\{todayLabel\} · Versand und Logistik im Überblick`/, "Datum und Einordnung fehlen in der Kontextzeile");
   assert.ok(!/Ihr Versand im Überblick/.test(code), "die Einordnung nennt nur den Versand");
   assert.equal(zaehle(code, /btn btn-primary/g), 1, "genau eine Hauptaktion erwartet");
@@ -112,7 +112,7 @@ test("4 — jedes Modul ist über aria-labelledby mit seiner Überschrift verbun
 test("5 — Letzte Sendungen: Nummer/Datum, Empfänger, Carrier, Status, Preis — keine redundante „Öffnen“-Aktion", () => {
   const block = modules.slice(modules.indexOf("export function RecentShipments"), modules.indexOf("export function OpenInvoices"));
   assert.match(block, /recentShipments\(shipments, 4\)/, "die Auswahl der letzten vier Sendungen hat sich geändert");
-  // Audit B.4 (2026-10-28): der Empfänger steht mit in der Zeile — aus recipient_address der Kundenliste
+  // Audit B.4 (2026-10-27): der Empfänger steht mit in der Zeile — aus recipient_address der Kundenliste
   // (utils/shipmentRecipientView.mjs), ohne Angabe „—“; der Carrier mit Logo (CarrierMarke).
   for (const teil of ["orderConfirmationNumber", "<CarrierMarke raw={s.selected_carrier} />", "dateDE(s.created_at)",
     "<StatusBadge status={s.status} />", "money(s.price_final)", "shipmentRecipient(s)", 'empfaenger?.name || "—"']) {
@@ -175,7 +175,7 @@ test("10 — alle vier Prozessschritte bleiben inhaltlich erhalten, als echte Re
 });
 
 test("11 — Funktionen statt Werbezeilen: Versand, Rechnungen und Adressbuch, Lager und Aufträge (G1)", () => {
-  // Komplettabschluss (G1, Audit B.10, 2026-10-28): „Weniger Aufwand. Mehr Kontrolle.“ mit vier Werbezeilen ist
+  // Komplettabschluss (G1, Audit B.10, 2026-10-27): „Weniger Aufwand. Mehr Kontrolle.“ mit vier Werbezeilen ist
   // durch die tatsächlichen Funktionen ersetzt — Versand UND Logistik, aus EINER Datenquelle.
   for (const t of ["Versand", "Rechnungen und Adressbuch", "Lager und Aufträge"]) {
     assert.ok(FUNKTIONEN.includes(`title: "${t}"`), `Funktion „${t}“ fehlt`);
@@ -190,7 +190,7 @@ test("11 — Funktionen statt Werbezeilen: Versand, Rechnungen und Adressbuch, L
 });
 
 test("12 — keine Zusicherungen ohne Beleg; keine Preisgarantie, keine Konformitäts- oder Echtzeitbehauptung", () => {
-  // Komplettabschluss (Audit B.10, 2026-10-28): die drei Zusicherungen („Verschlüsselte Übertragung“, „Persönlicher
+  // Komplettabschluss (Audit B.10, 2026-10-27): die drei Zusicherungen („Verschlüsselte Übertragung“, „Persönlicher
   // Support — schnell und zuverlässig“, „Preise im Vergleich“) sind entfallen — Behauptung statt Beweis. Go-Live
   // (Paket E): weder „Tiefpreisgarantie“ noch „DSGVO-konform“ noch „in Echtzeit“.
   assert.ok(!/const TRUST = \[|ov-trust|schnell und zuverlässig/.test(code), "die Zusicherungen sind zurück");
@@ -215,7 +215,7 @@ test("13 — Onboarding ist ruhiger Text: keine Symbole, keine dunklen Flächen,
 // ══════════ Carrier-Bereich ══════════
 
 test("14 — „Ihre Versanddienstleister“: nur aus GET /kunde/carriers, ruhige Logozeile mit der Vergleichsaktion (G2)", () => {
-  // Betreiberentscheidung G2 (2026-10-28): alle aktuell angebotenen Carrier, keine feste Liste, nicht nur die
+  // Betreiberentscheidung G2 (2026-10-27): alle aktuell angebotenen Carrier, keine feste Liste, nicht nur die
   // bisher gebuchten; keine Laufzeiten, keine Dienstnamen, keine Zahl im Titel, kein Banner. Die frühere
   // Navy-Fläche mit Routenlinien und „Fünf Carrier. Eine zentrale Plattform.“ ist entfallen (Audit B.5, D8).
   assert.ok(!/const CARRIERS = \[|assets\/carriers\//.test(code), "die feste Carrierliste ist zurück");

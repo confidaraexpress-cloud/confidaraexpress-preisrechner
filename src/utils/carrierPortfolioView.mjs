@@ -1,4 +1,4 @@
-/* ── Ihre Versanddienstleister (Betreiberentscheidung G2, 2026-10-28) ─────────────────────────────────────
+/* ── Ihre Versanddienstleister (Betreiberentscheidung G2, 2026-10-27) ─────────────────────────────────────
    Die Übersicht nennt die Carrier, die ConfidaraExpress aktuell anbietet — ausschließlich aus der Antwort von
    GET /kunde/carriers (Backend: lib/carrierPortfolio.js). Keine feste Liste im Frontend, keine Laufzeiten,
    keine Dienstnamen, keine Zahl im Titel: was der Server nicht nennt, steht nicht da.

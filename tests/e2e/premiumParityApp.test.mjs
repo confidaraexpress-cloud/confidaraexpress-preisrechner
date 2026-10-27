@@ -74,7 +74,7 @@ test("V4 — Anmeldung: Lichter auf der Karte, gleitende Reitermarke, kein Weg z
       .catch(() => {});
     const l = await lichter(page, ".nk-lichter .nk-licht");
     assert.ok(l.length >= 20, `zu wenige Lichter: ${l.length}`);
-    // Seit Abschnitt 5 (2026-10-28) läuft auf der Anmeldung zuerst eine Lichtwelle (nk-aufglimmen), danach funkeln
+    // Seit Abschnitt 5 (2026-10-27) läuft auf der Anmeldung zuerst eine Lichtwelle (nk-aufglimmen), danach funkeln
     // die Städte einzeln weiter (nk-funkeln) — beide Animationen stehen in der Liste.
     assert.ok(l.every((x) => x.animation.split(/,\s*/).includes("nk-funkeln")), "nicht jedes Licht funkelt");
     // Die Karte steht ab dem ersten Bild (statisches Seitengerüst): EIN Kartenbild, keine nachgeladene Wellenmaske

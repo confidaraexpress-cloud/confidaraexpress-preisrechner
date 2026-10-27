@@ -1,4 +1,4 @@
-/* ── Sendungsverfolgung im Kundenbereich: Schnellwahl der laufenden Sendungen (Audit B.7, 2026-10-28) ──────
+/* ── Sendungsverfolgung im Kundenbereich: Schnellwahl der laufenden Sendungen (Audit B.7, 2026-10-27) ──────
    Die Seite stand mit einem einzigen Feld auf leerer Fläche. Im Kundenbereich nennt sie darunter die eigenen
    laufenden Sendungen — aus der bereits geladenen Sendungsliste (GET /kunde/shipments), keine neue Abfrage. Ein
    Klick verfolgt genau die Trackingnummer, die die Liste trägt; die Abfrage selbst ist unverändert.

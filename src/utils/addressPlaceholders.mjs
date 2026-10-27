@@ -21,7 +21,7 @@ export function cityPlaceholder(country) {
   return BEISPIELORT[String(country || "").trim().toUpperCase()] || "";
 }
 
-// Die PLZ des Platzhalters gehört zum Beispielort daneben (Audit B.9, Komplettabschluss 2026-10-28): bisher stand
+// Die PLZ des Platzhalters gehört zum Beispielort daneben (Audit B.9, Komplettabschluss 2026-10-27): bisher stand
 // das Beispiel der Formatregeln neben dem Ort — „26133“ (Oldenburg) neben „Berlin“, „33380“ neben „Paris“. Je Land
 // ein Paar aus demselben Ort, im Format des Landes (addressValidationUx 44 prüft beides). Reine Anzeige:
 // Prüfung und Fehlermeldungen nutzen weiter die Formatregeln (postalCode.mjs). Ohne Eintrag deren Beispiel.

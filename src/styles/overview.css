@@ -300,7 +300,7 @@
 }
 .ov-trust-item { display: flex; flex-direction: column; gap: var(--ce-space-1); min-width: 0; }
 
-/* ══════════ Ihre Versanddienstleister (G2, 2026-10-28) ══════════
+/* ══════════ Ihre Versanddienstleister (G2, 2026-10-27) ══════════
    Ersetzt den Navy-Werbebanner mit fester Liste und erfundenen Laufzeiten (Audit B.5).
    Eine ruhige Zeile auf dem weißen Blatt: Logos gleicher optischer Höhe, der Name
    darunter, ein Satz Einordnung. Kein Hover-Effekt — die Logos sind keine Aktion. */
@@ -345,7 +345,7 @@
   border-top: 1px solid var(--border-hairline);
 }
 
-/* ══════════ Lager und Aufträge (G1/D7, 2026-10-28) ══════════
+/* ══════════ Lager und Aufträge (G1/D7, 2026-10-27) ══════════
    Zwei Spalten — offene Aufträge, Artikel unter Mindestbestand —, je Zahl, die ersten
    Einträge und ein Weg zur Liste; darunter zwei Fakten. Kein eigener Farbton, keine Kachel. */
 .ov-lager-raster {

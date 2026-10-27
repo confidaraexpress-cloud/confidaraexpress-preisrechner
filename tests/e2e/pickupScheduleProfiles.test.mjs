@@ -264,7 +264,7 @@ test("A — JUMiNGO verstellbar: Regler mit 120 Minuten, Tastatur, Speichern fü
   assert.deepEqual([post.offerId, post.pickupTimeFrom, post.pickupTimeUntil, String(post.ceShipmentId)],
     [J_A.offerId, "10:00", "12:00", String(CE_ID)]);
   await page.waitForSelector(".pw-saved", { timeout: 5000 });
-  // Dieselbe Zeit im Beleg (Live-Leiste) — das ausgewählte Angebot wiederholt sie seit G6/M9 (2026-10-28) nicht.
+  // Dieselbe Zeit im Beleg (Live-Leiste) — das ausgewählte Angebot wiederholt sie seit G6/M9 (2026-10-27) nicht.
   await warteBis(async () => (await inhalt(page.locator(".blsum-handover"))).includes("10:00–12:00 Uhr"));
   assert.match(await inhalt(page.locator(".blsum-handover")), /10:00–12:00 Uhr/);
   assert.deepEqual(fehler, []);

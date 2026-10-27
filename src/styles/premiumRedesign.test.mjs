@@ -131,7 +131,7 @@ test("5 — Partnerregistrierung behält die Aurora, die Kunden-Anmeldung trägt
   assert.doesNotMatch(auth, /AuthAurora/, "die Kunden-Anmeldung rendert noch die Aurora");
   const bestaetigung = lies(path.join(SRC, "pages/EmailChangeConfirmPage.jsx"));
   assert.doesNotMatch(bestaetigung, /AuthAurora/, "die E-Mail-Bestätigung rendert noch die Aurora");
-  // Komplettabschluss (Abschnitt 5, 2026-10-28): Anmeldung und E-Mail-Bestätigung tragen DIESELBE gerahmte Karte —
+  // Komplettabschluss (Abschnitt 5, 2026-10-27): Anmeldung und E-Mail-Bestätigung tragen DIESELBE gerahmte Karte —
   // eine Komponente; ihre Lichter starten erst, wenn das Bild dekodiert ist.
   const karte = lies(path.join(SRC, "components/auth/AuthKarte.jsx"));
   assert.match(karte, /import nachtkarte from "\.\.\/\.\.\/assets\/illustrations\/nachtkarte-eu\.svg";/);
@@ -208,7 +208,7 @@ test("10 — die Demo-Leiste lebt nur in der Demo-Welt und nutzt ausschließlich
 });
 
 test("11 — die Kopfleiste schneidet ihre Aufklapper nicht ab (Mitteilungen, Suche, Benutzermenü)", () => {
-  // Regression 2026-10-28: ein clip-path auf der Leiste (für das seitliche Weiß) schnitt das Mitteilungspanel
+  // Regression 2026-10-27: ein clip-path auf der Leiste (für das seitliche Weiß) schnitt das Mitteilungspanel
   // vollständig ab — es lag unsichtbar unter den Kennzahlen der Übersicht.
   const leiste = REGELN.filter(({ sel }) => teile(sel).some((t) => /\.ce-page-header-utility$/.test(t)));
   assert.ok(leiste.length > 0, "die Regel der Kopfleiste fehlt");

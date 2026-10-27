@@ -18,7 +18,7 @@ const ohneKommentare = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:
 const quelle = (p) => ohneKommentare(fs.readFileSync(path.join(here, p), "utf8"));
 const VERBOTEN = /garantier|Tiefpreis|DSGVO-konform|Echtzeit|Nachhaltig|umweltfreundlich|klimaneutral|jederzeit erreichbar|rund um die Uhr|24\/7/i;
 
-// Die Anmelde-Vertrauensleiste (auth/TrustBar.jsx) ist seit G1 (2026-10-28) entfallen: die Anmeldung zeigt statt
+// Die Anmelde-Vertrauensleiste (auth/TrustBar.jsx) ist seit G1 (2026-10-27) entfallen: die Anmeldung zeigt statt
 // Kacheln die Botschaft, die Karte und den namentlichen Ansprechpartner. Geprüft werden deren Texte.
 const DATEIEN = ["dashboard/Overview.jsx", "offers/OffersList.jsx", "../pages/AuthPage.jsx", "../utils/authSeitenText.mjs",
   "dashboard/OverviewModules.jsx", "../utils/carrierPortfolioView.mjs"];

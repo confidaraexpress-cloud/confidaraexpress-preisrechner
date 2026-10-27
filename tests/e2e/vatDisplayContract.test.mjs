@@ -288,7 +288,7 @@ async function bucheUndWarte(page, p) {
 }
 
 /* Die Preisflächen der Buchungsseite, wie der Kunde sie liest: der Beleg (Live-Zusammenfassung) und die
-   Sticky-Leiste. Seit G6/M9 (2026-10-28) zeigt das ausgewählte Angebot keinen eigenen Preis mehr. */
+   Sticky-Leiste. Seit G6/M9 (2026-10-27) zeigt das ausgewählte Angebot keinen eigenen Preis mehr. */
 async function flaechen(page) {
   const lese = async (s) => ((await page.locator(s).count()) ? inhalt(page.locator(s)) : null);
   assert.equal(await page.locator(".offsum-price-net, .offsum-price-gross").count(), 0,

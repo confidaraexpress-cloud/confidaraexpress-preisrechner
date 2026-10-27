@@ -1,4 +1,4 @@
-// Kleine Abbildungen des Komplettabschlusses (2026-10-28) — je eine reine Funktion, ohne React-Render:
+// Kleine Abbildungen des Komplettabschlusses (2026-10-27) — je eine reine Funktion, ohne React-Render:
 //   • trackingQuickPick     — Schnellwahl der laufenden Sendungen auf der Sendungsverfolgung (Audit B.7)
 //   • parseCarrierPortfolio — „Ihre Versanddienstleister“ aus GET /kunde/carriers (G2)
 //   • snapshotRows          — Vorschauzeilen des Lagermoduls der Übersicht (G1/D7)

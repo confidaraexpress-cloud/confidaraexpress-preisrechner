@@ -260,7 +260,7 @@ async function warteAufText(page, selektor, teil, timeout = 10000) {
 }
 
 /* Die Preisflächen als Text: Label, Brutto, Netto — der Beleg (Live-Zusammenfassung) und die Sticky-Leiste. Seit
-   G6/M9 (2026-10-28) zeigt das ausgewählte Angebot keinen eigenen Preis; `ohneZweitpreis` hält das fest. */
+   G6/M9 (2026-10-27) zeigt das ausgewählte Angebot keinen eigenen Preis; `ohneZweitpreis` hält das fest. */
 async function preisflaechen(page) {
   const lese = async (sel) => ((await page.locator(sel).count()) > 0 ? inhalt(page.locator(sel)) : null);
   return {

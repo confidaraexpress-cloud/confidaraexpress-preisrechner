@@ -299,7 +299,7 @@ export async function zurBuchung(page, { warteAuf, ...rest } = {}) {
 
 /* ── Sidebar-Navigation ───────────────────────────────────────────────────
    Die Sidebar hat ZWEI Ebenen: Einträge der ersten Ebene (Übersicht, Neue
-   Sendung und Sendungen seit G5 2026-10-28, Adressbuch, Rechnungen) und drei
+   Sendung und Sendungen seit G5 2026-10-27, Adressbuch, Rechnungen) und drei
    aufklappbare Gruppen (Versand, Lager & Aufträge, Konto). Die Gruppe der
    aktuellen Seite öffnet sich von selbst, alle anderen starten geschlossen.
 

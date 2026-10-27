@@ -252,7 +252,7 @@ test("7 — Zahlen- und Betragsspalten sind rechtsbündig", () => {
   assert.match(patterns, /\.ce-col-actions,[\s\S]*?text-align:\s*right/);
 
   // Die Geldspalten der Haupttabellen tragen den Marker auf Kopf UND Zelle. In „Sendungen“ steht das Gewicht seit
-  // dem Komplettabschluss (Audit B.4, 2026-10-28) in der Versandzelle; die Zahlenspalte ist der Preis.
+  // dem Komplettabschluss (Audit B.4, 2026-10-27) in der Versandzelle; die Zahlenspalte ist der Preis.
   const sendungen = read("../components/dashboard/ShipmentsList.jsx");
   assert.match(sendungen, /<th[^>]*className="ce-num"[^>]*>Preis<\/th>/);
   assert.match(sendungen, /<td className="shipment-price ce-num">/);

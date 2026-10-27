@@ -110,7 +110,7 @@ export function hasOperationalData({ shipments, invoices, ready = true } = {}) {
   return s.length > 0 || i.length > 0;
 }
 
-// ── Lager und Aufträge in der Übersicht (G1/D7, 2026-10-28) ─────────────────
+// ── Lager und Aufträge in der Übersicht (G1/D7, 2026-10-27) ─────────────────
 // Die Übersicht nennt den operativen Stand des eigenen Lagers aus derselben
 // Antwort wie die Lagerübersicht (GET /api/kunde/inventory/overview): offene
 // Aufträge und Artikel unter Mindestbestand, je mit den ersten Einträgen der

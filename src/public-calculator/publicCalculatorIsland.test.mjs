@@ -131,7 +131,7 @@ test("3 — Anfragevertrag: prepare als Simple-Request, Preisabfrage 75 s, Scope
 });
 
 test("4 — Seitengerüst: Kopf, Hero, Ergebnisse, Kundenbereich mit Vorschau, Ablauf, FAQ mit Service, Fuß in dieser Reihenfolge", async () => {
-  // Komplettabschluss 2026-10-28: unter dem Rechner zuerst der Kundenbereich (Versand und Logistik, daneben die
+  // Komplettabschluss 2026-10-27: unter dem Rechner zuerst der Kundenbereich (Versand und Logistik, daneben die
   // Vorschau), danach der Ablauf in drei Schritten.
   const marken = [
     'class="pc-skip"', 'class="pc-header"', 'id="pc-hero-title"', 'id="pc-calculator-card"', 'id="pc-calculator"',
@@ -144,7 +144,7 @@ test("4 — Seitengerüst: Kopf, Hero, Ergebnisse, Kundenbereich mit Vorschau, A
     assert.ok(i > letzte, `${m} fehlt oder steht an falscher Stelle`);
     letzte = i;
   }
-  // G1 (Komplettabschluss 2026-10-28): ein Satz, der sagt, was das Produkt ist — wortgleich mit der Anmeldung
+  // G1 (Komplettabschluss 2026-10-27): ein Satz, der sagt, was das Produkt ist — wortgleich mit der Anmeldung
   // (AUTH_TEXT, das bedingte Trennzeichen dort als \u00ad, hier als &shy;). Keine Versal-Augenbraue, keine
   // Häkchenleiste; darunter die Nachtkarte mit ihrer Legende.
   const { AUTH_TEXT } = await import(pathToFileURL(path.join(SRC, "utils", "authSeitenText.mjs")).href);

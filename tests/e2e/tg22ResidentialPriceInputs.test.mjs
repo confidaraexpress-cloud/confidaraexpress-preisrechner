@@ -372,7 +372,7 @@ test("B — Buchungsseite: Laden, Serverbeträge, Sperre ohne Wahl, Privatadress
   await warteAufText(page, ".blsum-price-gross", "18,47");
   assert.equal(await inhalt(page.locator(".blsum-price-label")), "Gesamt");
   assert.equal(await inhalt(page.locator("#booking-live-surcharge-note")), "inkl. Zuschlag Privatadresse 3,79 €");
-  // G6/M9 (2026-10-28): Preis und Zuschlagshinweis stehen einmal, im Beleg.
+  // G6/M9 (2026-10-27): Preis und Zuschlagshinweis stehen einmal, im Beleg.
   assert.equal(await page.locator("#offer-summary-surcharge-note").count(), 0);
   assert.equal(await inhalt(page.locator(".blsum-price-gross")), "18,47 € brutto");
   assert.equal(await page.locator(".alert-error").count(), 0, "der Hinweis blieb nach der Wahl stehen");

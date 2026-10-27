@@ -23,10 +23,10 @@ import { UserChip } from "../ui/UserChip";
      Kennzahlen  ein kompaktes Band mit vier gleich breiten Zellen
      Arbeit      Letzte Sendungen (≈ 2/3) · Offene Rechnungen (≈ 1/3)
      Lager       Lager und Aufträge aus der Lagerübersicht (offene Aufträge,
-                 Artikel unter Mindestbestand) — G1/D7, 2026-10-28
+                 Artikel unter Mindestbestand) — G1/D7, 2026-10-27
      Meldungen   höchstens drei vorhandene Benachrichtigungen
      Carrier     „Ihre Versanddienstleister“ aus GET /kunde/carriers (G2,
-                 2026-10-28): ruhige Logozeile, keine feste Liste, keine Laufzeiten
+                 2026-10-27): ruhige Logozeile, keine feste Liste, keine Laufzeiten
 
    Feinkorrektur 2026-10: Begrüßung und Carrier-Bereich sind inhaltlich
    zurück — im neuen Designsystem (DM Sans, keine Symbole). Der Carrier-
@@ -60,7 +60,7 @@ const STEPS = [
   { title: "Versand buchen",       desc: "Wählen Sie das beste Angebot und buchen Sie Ihren Versand." },
   { title: "Tracking verfolgen",   desc: "Behalten Sie den Status Ihrer Sendung im Blick." },
 ];
-/* Was der Kundenbereich tatsächlich kann (G1, 2026-10-28) — Versand UND Logistik, jede Zeile durch eine
+/* Was der Kundenbereich tatsächlich kann (G1, 2026-10-27) — Versand UND Logistik, jede Zeile durch eine
    vorhandene Funktion belegt (Canonical §2, §12). Ersetzt die Werbezeilen „Weniger Aufwand. Mehr Kontrolle.“
    und die Zusicherungen ohne Beleg („schnell und zuverlässig“), Audit B.10. */
 const FUNKTIONEN = [
@@ -81,7 +81,7 @@ export function Overview({
   onNewShipment, onAllShipments, onAllInvoices, onProfile, onNotificationNav,
   // G1/D7: Navigation in die Lagerbereiche (page-Wert, Filter) — derselbe Weg wie die Seitenleiste.
   onNavigate = null,
-  // G2 und G1/D7 (2026-10-28): die angebotenen Versanddienstleister und der Lagerstand — beides lädt DashboardPage;
+  // G2 und G1/D7 (2026-10-27): die angebotenen Versanddienstleister und der Lagerstand — beides lädt DashboardPage;
   // die Übersicht lädt keine eigenen Daten.
   carriers = null, lagerStand = null, onLagerRetry = null,
   // Premium-Redesign: die Kopfsuche des Kundenbereichs (components/layout/KundenSuche.jsx), von DashboardPage gebaut.

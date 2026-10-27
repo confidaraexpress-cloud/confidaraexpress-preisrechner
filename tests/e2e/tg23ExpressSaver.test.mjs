@@ -601,7 +601,7 @@ test("C — Art der Lieferadresse: vorläufiger Preis, Serverbeträge, Sperre oh
   await warteAufText(page, ".blsum-price-gross", "35,33");
   assert.equal(await inhalt(page.locator(".blsum-price-label")), "Gesamt");
   assert.equal(await inhalt(page.locator("#booking-live-surcharge-note")), "inkl. Zuschlag Privatadresse 4,09 €");
-  // G6/M9 (2026-10-28): Preis und Zuschlagshinweis stehen einmal, im Beleg.
+  // G6/M9 (2026-10-27): Preis und Zuschlagshinweis stehen einmal, im Beleg.
   assert.equal(await page.locator("#offer-summary-surcharge-note").count(), 0);
   assert.equal(await inhalt(page.locator(".blsum-price-gross")), "35,33 € brutto");
   await keinAnbieter(page, "Buchungsseite nach der Bindung");
@@ -816,7 +816,7 @@ test("G — Buchungsseite: UPS · Expressversand, Lieferprognose, Abholtag, Labe
   assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-label")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-val")), lang(DIENSTAG));
   assert.equal(await page.locator(".blsum-delivery .blsum-sub").count(), 0, "eine Uhrzeit an der Prognose");
-  // G6/M9 (2026-10-28): Zustellung und Abholung stehen einmal, im Beleg — das ausgewählte Angebot wiederholt sie nicht.
+  // G6/M9 (2026-10-27): Zustellung und Abholung stehen einmal, im Beleg — das ausgewählte Angebot wiederholt sie nicht.
   assert.equal(await page.locator(".offsum-fact, .offsum-facts").count(), 0);
 
   // Abholtag und „bereit ab"-Zeit — kein Zeitfenster.

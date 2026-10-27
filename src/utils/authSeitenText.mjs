@@ -1,4 +1,4 @@
-/* ── Texte der Kunden-Anmeldung (Betreiberentscheidung G1, 2026-10-28) ─────────────────────────────────────
+/* ── Texte der Kunden-Anmeldung (Betreiberentscheidung G1, 2026-10-27) ─────────────────────────────────────
    Eine Quelle für die React-Seite (pages/AuthPage.jsx) und das statische Seitengerüst (login.html, register.html),
    das dieselben Sätze vor dem ersten Rendern zeigt — authSeitenGeruest.test.mjs hält beide gleich.
 

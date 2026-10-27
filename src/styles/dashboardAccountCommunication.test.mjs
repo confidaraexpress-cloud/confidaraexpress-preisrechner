@@ -75,7 +75,7 @@ test("1 — die Übersicht zeigt bei vorhandenen Daten die operativen Module", (
 
 test("2 — ohne operative Daten führt Onboarding statt bedeutungsloser Nullkarten", () => {
   // Ablauf und Funktionen erscheinen NUR ohne operative Daten … Die Zusicherungen ohne Beleg („schnell und
-  // zuverlässig“) sind seit dem Komplettabschluss (Audit B.10, 2026-10-28) entfallen; der zweite Block nennt die
+  // zuverlässig“) sind seit dem Komplettabschluss (Audit B.10, 2026-10-27) entfallen; der zweite Block nennt die
   // tatsächlichen Funktionen — Versand UND Logistik (G1).
   const code = stripJs(overview);
   assert.equal((code.match(/\{!operational && \(/g) || []).length, 2,

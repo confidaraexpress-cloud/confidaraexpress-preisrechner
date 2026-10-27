@@ -55,7 +55,7 @@ const DRAWER_BIS_PX = 860;
 
 const OVERVIEW_ITEM = { id: "overview", label: "Übersicht", icon: "dashboard" };
 // Die beiden häufigsten Ziele stehen in der ersten Ebene, direkt unter der Übersicht (Betreiberentscheidung G5,
-// 2026-10-28): „Neue Sendung“ und „Sendungen“ sind ein Klick, nicht zwei. page-Werte und Routen sind unverändert.
+// 2026-10-27): „Neue Sendung“ und „Sendungen“ sind ein Klick, nicht zwei. page-Werte und Routen sind unverändert.
 const NEW_SHIPMENT_ITEM = { id: "new", label: "Neue Sendung", icon: "plus" };
 const SHIPMENTS_ITEM = { id: "shipments", label: "Sendungen", icon: "truck" };
 const ADDRESSBOOK_ITEM = { id: "addressbook", label: "Adressbuch", icon: "idcard" };
@@ -179,7 +179,7 @@ function NavItem({ item, page, onNavigate, variant }) {
 // Browser, statt es zu behaupten.
 function SidebarGroup({ group, page, open, onToggle, onNavigate }) {
   const itemsId = `pp-nav-group-${group.id}-items`;
-  // Zwei getrennte Aussagen (Betreiberentscheidung G5, 2026-10-28): „offen“ folgt dem Klappzustand, „aktiv“
+  // Zwei getrennte Aussagen (Betreiberentscheidung G5, 2026-10-27): „offen“ folgt dem Klappzustand, „aktiv“
   // der Seite. Die Gruppe der aktuellen Seite öffnet sich von selbst (DashboardSidebar); klappt der Nutzer sie
   // zu, trägt ihr Kopf weiter die Marke der aktuellen Seite — „Wo bin ich?“ bleibt beantwortet.
   const aktiv = gruppeVonSeite(page) === group.id;
@@ -228,7 +228,7 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
   // durchgesetzt werden müsste, sondern eine Eigenschaft des Datentyps — drei
   // Booleans könnten einen ungültigen Zustand überhaupt erst darstellen.
   //
-  // Startwert (Betreiberentscheidung G5, 2026-10-28, ersetzt „öffnet nichts von selbst“): die Gruppe der
+  // Startwert (Betreiberentscheidung G5, 2026-10-27, ersetzt „öffnet nichts von selbst“): die Gruppe der
   // aktuellen Seite ist offen — auch nach einem Reload, abgeleitet aus der Seite, nicht gespeichert. Ohne Gruppe
   // (Übersicht, Neue Sendung, Sendungen …) gilt die zuletzt in dieser Seitenladung geöffnete Gruppe (Modulwert,
   // nach F5 null).

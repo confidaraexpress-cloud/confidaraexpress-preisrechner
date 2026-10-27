@@ -78,7 +78,7 @@ function ShipmentRowActions({ s, expanded, onTrack, onDocuments, onCancel }) {
       </div>
     );
   }
-  /* Feste Plätze (Audit B.4, 2026-10-28): Tracking, Dokumente und Stornierung stehen in jeder Zeile an derselben
+  /* Feste Plätze (Audit B.4, 2026-10-27): Tracking, Dokumente und Stornierung stehen in jeder Zeile an derselben
      Stelle — fehlt eine Aktion, bleibt ihr Platz frei, statt dass die folgenden nach links rutschen. */
   return (
     <div className="ce-row-actions stn-actions stn-actions--plaetze">

@@ -368,7 +368,7 @@ test("15 — jede Fläche wählt Variante und Tonlage nach ihrer echten Größe"
   }
   assert.match(rufe(holen("AdminSidebar.jsx"))[0], /tone="standard"/, "AdminSidebar: helle Fläche braucht standard");
   // Flache Leisten der EINGELOGGTEN App (Topbar, Ladebildschirm) bleiben beim Signet. Der Ladebildschirm steht hell
-  // (standard) — nur auf dem dunklen Grund der Anmeldeseiten (`dunkel`, Komplettabschluss 2026-10-28) in Reverse.
+  // (standard) — nur auf dem dunklen Grund der Anmeldeseiten (`dunkel`, Komplettabschluss 2026-10-27) in Reverse.
   for (const d of ["DashboardLayout.jsx", "DashboardPage.jsx", "LoadingScreen.jsx"]) {
     for (const r of rufe(holen(d))) {
       assert.match(r, /variant="signet"/, `${d}: braucht das Signet`);

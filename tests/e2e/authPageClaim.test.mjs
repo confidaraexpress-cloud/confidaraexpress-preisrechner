@@ -1,4 +1,4 @@
-// Browser-Smokes: die Botschaft der Anmeldeseite (Komplettabschluss G1, 2026-10-28; vorher Auftrag 1, P3).
+// Browser-Smokes: die Botschaft der Anmeldeseite (Komplettabschluss G1, 2026-10-27; vorher Auftrag 1, P3).
 //
 // Überschrift „Versand- und Logistikmanagement für Unternehmen.“ — wortgleich mit dem öffentlichen Preisrechner
 // (utils/authSeitenText.mjs) — und darunter der Satz, was der Kundenbereich kann. Geprüft werden Wortlaut,

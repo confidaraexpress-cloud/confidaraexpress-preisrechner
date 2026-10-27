@@ -1,4 +1,4 @@
-// G6/M9 (Betreiberentscheidung 2026-10-28): der MwSt.-Hinweis am Preis des Belegs (Live-Zusammenfassung).
+// G6/M9 (Betreiberentscheidung 2026-10-27): der MwSt.-Hinweis am Preis des Belegs (Live-Zusammenfassung).
 //
 // Bis 2026-10-27 stand der Satz unter dem Preis der Karte „Ausgewähltes Angebot“; seit Preis, Übergabe und
 // Zustellung auf der Buchungsseite an EINER Stelle stehen, liest ihn der Beleg aus vatIncludedNote — derselbe

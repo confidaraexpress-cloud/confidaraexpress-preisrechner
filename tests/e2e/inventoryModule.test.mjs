@@ -438,7 +438,7 @@ test("8 — „Versand vorbereiten“ füllt das BESTEHENDE Formular „Neue Sen
   await page.waitForTimeout(700);
 
   // Es ist wirklich das bestehende Formular (dieselben Feld-IDs), kein zweites.
-  /* Geprüft wird, WELCHER Eintrag als aktiv markiert ist. „Neue Sendung" steht seit G5 (2026-10-28) in der
+  /* Geprüft wird, WELCHER Eintrag als aktiv markiert ist. „Neue Sendung" steht seit G5 (2026-10-27) in der
      ersten Ebene und trägt dort ein Symbol (`.pp-nav-icon`) vor der Beschriftung — gelesen wird die
      Beschriftung. `textContent` bleibt, damit auch ein Eintrag einer zugeklappten Gruppe lesbar wäre. */
   assert.equal((await page.locator(".pp-nav .nitem.on span:not(.pp-nav-icon)").textContent()).trim(), "Neue Sendung");

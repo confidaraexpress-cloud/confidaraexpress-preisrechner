@@ -72,7 +72,7 @@
   [data-ce-bereich] .nk-licht { animation: none; opacity: 0; }
 }
 
-/* ── Lichtwelle der Anmeldung (Abschnitt 5, 2026-10-28) ──
+/* ── Lichtwelle der Anmeldung (Abschnitt 5, 2026-10-27) ──
    Das Kartenbild steht ab dem ersten Bild (statisches Seitengerüst). Sobald es dekodiert ist (AuthKarte), läuft eine
    Lichtwelle von Stuttgart aus: jedes Licht glimmt einmal auf, wenn die Welle seinen Ort erreicht — danach funkeln
    die Städte einzeln weiter. Keine Maske über dem Bild, nichts verschwindet und erscheint neu. Bis das Bild bereit

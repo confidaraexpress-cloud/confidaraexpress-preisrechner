@@ -344,7 +344,7 @@ export default function AuthPage() {
   return (
     <div className="auth-page">
       <div className="auth-shell">
-        {/* Die Bühne steht in JEDEM Schritt gleich (Betreiberentscheidung G1/Abschnitt 5, 2026-10-28): Marke, Satz,
+        {/* Die Bühne steht in JEDEM Schritt gleich (Betreiberentscheidung G1/Abschnitt 5, 2026-10-27): Marke, Satz,
             die gerahmte Nachtkarte und der Ansprechpartner. Nur das Blatt rechts wechselt — Anmelden, Registrieren,
             Passwort vergessen oder zurücksetzen. Das statische Seitengerüst (login.html, register.html) zeigt
             dieselbe Bühne vor dem ersten Rendern; ohne Wechsel der Komposition springt nichts. */}
@@ -354,7 +354,7 @@ export default function AuthPage() {
           <BrandLogo variant="lockup" tone="reverse" className="auth-brand" />
         </header>
         <div className="auth-hero">
-          {/* Wortlaut: Betreiberentscheidung G1 (2026-10-28) — dieselbe Botschaft wie der öffentliche Preisrechner.
+          {/* Wortlaut: Betreiberentscheidung G1 (2026-10-27) — dieselbe Botschaft wie der öffentliche Preisrechner.
               Ersetzt „Europa verbinden. Versand vereinfachen.“ (P3, 2026-10-17). Keine Zusage, kein Superlativ;
               Lager meint die Software für den eigenen Bestand des Kunden, kein Fulfillment. */}
           <h1 className="auth-title">{AUTH_TEXT.titel}</h1>

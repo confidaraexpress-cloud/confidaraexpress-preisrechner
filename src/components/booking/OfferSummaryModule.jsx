@@ -4,7 +4,7 @@ import { publicCarrierDisplay, publicServiceName } from "../../utils/carrierMap"
 import { handoverInfo, priceInfo } from "../../utils/bookingSummaryView.mjs";
 import { sameDayUntilText } from "../../utils/sameDayCollectionView.mjs";
 
-// Step 1 — „Ausgewähltes Angebot“ (Betreiberentscheidung G6/M9, 2026-10-28).
+// Step 1 — „Ausgewähltes Angebot“ (Betreiberentscheidung G6/M9, 2026-10-27).
 //
 // Preis, Übergabe und Zustellung stehen auf der Buchungsseite an GENAU EINER Stelle: im Beleg — der
 // Live-Zusammenfassung (ab 1440 px die Seitenspalte, schmaler über dem Blatt) samt klebender Kurzleiste beim

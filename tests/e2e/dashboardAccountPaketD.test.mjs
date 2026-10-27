@@ -30,7 +30,7 @@ const SHIPMENTS = [
   { id: 2, status: "label_ready", weight: 2, price_final: 12.5, selected_carrier: "ups", created_at: "2026-08-06T09:00:00Z", order_number: "CE-1002" },
 ];
 const INVOICES = [{ id: 1, invoice_number: "RE-2026-0001", status: "open", is_overdue: true, gross_amount: 42.5, currency: "EUR", issued_at: "2026-08-01T00:00:00Z", due_date: "2026-07-20", document_status: "ready", download_available: true }];
-// GET /kunde/carriers (G2, 2026-10-28): der neutrale Rückfall und Doppelte erscheinen nicht.
+// GET /kunde/carriers (G2, 2026-10-27): der neutrale Rückfall und Doppelte erscheinen nicht.
 const CARRIERS = [{ id: "dhl", name: "DHL" }, { id: "ups", name: "UPS" }, { id: "other", name: "Versanddienstleister" }, { id: "dhl", name: "DHL" }];
 const SUMMARY = { open_count: 1, open_amount: 42.5, overdue_count: 1, next_due_date: "2026-07-20", currency: "EUR" };
 const NTF = {
@@ -97,7 +97,7 @@ test("die Übersicht ist bei vorhandenen Daten eine operative Arbeitsfläche", a
   assert.equal(await page.locator(".ov-facts").count(), 0, "„Vorteile\" steht noch auf der Arbeitsfläche");
   assert.equal(await page.locator(".ov-trust").count(), 0, "der Trust-Block steht noch auf der Arbeitsfläche");
   // … die frühere dunkle Carrier-Bühne bleibt entfallen; „Ihre Versanddienstleister“ zeigt ausschließlich die
-  // Liste des Servers (GET /kunde/carriers, G2 2026-10-28) — ohne den neutralen Rückfall, ohne Doppelte, nie eine
+  // Liste des Servers (GET /kunde/carriers, G2 2026-10-27) — ohne den neutralen Rückfall, ohne Doppelte, nie eine
   // feste Liste — und die Vergleichsaktion.
   assert.equal(await page.locator(".pp-net").count(), 0, "die dunkle Carrier-Bühne ist zurück");
   assert.deepEqual(await page.locator(".ov-carrier-liste .ov-carrier-name").allInnerTexts(), ["DHL", "UPS"],

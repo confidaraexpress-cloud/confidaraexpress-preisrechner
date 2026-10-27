@@ -77,7 +77,7 @@ test("2 — die Trackingaktion heißt „Tracking“ und hängt am CE-Handle", (
 
 test("3 — Sendungsdetail nutzt die Muted Card statt eines Inline-Style-Hintergrunds", () => {
   assert.ok(!/style=\{\{ background: "var\(--gray50\)"/.test(shipmentsList), "der alte Inline-Style-Hintergrund darf nicht mehr vorkommen");
-  // Komplettabschluss (Audit B.4, 2026-10-28): sechs Spalten (Sendung · Empfänger · Versand · Status · Preis ·
+  // Komplettabschluss (Audit B.4, 2026-10-27): sechs Spalten (Sendung · Empfänger · Versand · Status · Preis ·
   // Aktionen) — Carrier, Dienst und Gewicht stehen in der Versandzelle.
   assert.match(shipmentsList, /<td colSpan=\{6\} className="shipment-detail-cell">/);
   assert.match(shipmentsList, /<div className="ce-card-muted shipment-detail-card">/);

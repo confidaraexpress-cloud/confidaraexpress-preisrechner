@@ -330,7 +330,7 @@ test("9 — Zusammenfassungen: vorläufig aus dem Angebot, bestätigt aus dem Se
   assert.equal(sameDaySummaryNote(ohneZuschlag, gebunden), null);
   assert.equal(sameDaySummaryNote(null, null), null);
 
-  // G6/M9 (2026-10-28): der Zuschlagshinweis steht am Preis im Beleg; das ausgewählte Angebot nennt nur noch, bis
+  // G6/M9 (2026-10-27): der Zuschlagshinweis steht am Preis im Beleg; das ausgewählte Angebot nennt nur noch, bis
   // wann die Abholung heute möglich ist — eine Angabe, die sonst nirgends steht.
   const summary = code(SUMMARY);
   assert.match(summary, /import \{ sameDayUntilText \} from "\.\.\/\.\.\/utils\/sameDayCollectionView\.mjs";/);

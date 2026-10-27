@@ -153,7 +153,7 @@ async function zuNeueSendung(page) {
 /**
  * Über die SIDEBAR — das ist der Weg, den Test S3 tatsächlich prüft.
  *
- * „Neue Sendung“ steht seit G5 (2026-10-28) in der ersten Ebene der Seitenleiste,
+ * „Neue Sendung“ steht seit G5 (2026-10-27) in der ersten Ebene der Seitenleiste,
  * ohne Gruppe — ein Klick genügt.
  */
 async function ueberSidebarZuNeueSendung(page) {

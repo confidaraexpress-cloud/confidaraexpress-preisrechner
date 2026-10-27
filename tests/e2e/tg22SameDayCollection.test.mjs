@@ -458,7 +458,7 @@ test("C — Buchung heute + Privatadresse + Absicherung: Zeilen auf allen Fläch
   assert.equal(await inhalt(page.locator(".blsum-price-label")), "Vorläufiger Preis");
   assert.match(await inhalt(page.locator(".blsum-price-gross")), /18,28 €/);
   assert.equal(await inhalt(page.locator("#booking-live-sameday-note")), "inkl. Zuschlag für Abholung am selben Tag 3,60 €");
-  // G6/M9 (2026-10-28): der Zuschlagshinweis steht einmal, im Beleg; das ausgewählte Angebot nennt den Abholschluss.
+  // G6/M9 (2026-10-27): der Zuschlagshinweis steht einmal, im Beleg; das ausgewählte Angebot nennt den Abholschluss.
   assert.equal(await page.locator("#offer-summary-sameday-note").count(), 0);
   assert.equal(await inhalt(page.locator("#offer-summary-sameday-until")), "Abholung heute bei Buchung bis 16:45 Uhr");
   assert.match(await inhalt(page.locator(".blsum-handover")), /bereit ab 11:30 Uhr/);

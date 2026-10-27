@@ -446,7 +446,7 @@ test("9 — Smoke: zuvor saubere Bereiche bleiben ohne Overflow, Fehler und Badg
 });
 
 test("10 — Rechnungen @1440: die Mailangabe „Per E-Mail versendet am …\" ist einzeilig", async () => {
-  // Komplettabschluss (2026-10-28): Dokument und Aktionen teilen sich eine Spalte; der Mailversand steht darunter
+  // Komplettabschluss (2026-10-27): Dokument und Aktionen teilen sich eine Spalte; der Mailversand steht darunter
   // als ruhiger Text (.inv-doc-note, „Per E-Mail versendet am <Datum>“) — keine zweite Badgefläche.
   // Der Vertrag bleibt: die Angabe passt in ihre Spalte, ohne umzubrechen.
   const { ctx, page } = await seite(1440);

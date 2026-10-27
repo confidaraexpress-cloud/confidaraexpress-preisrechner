@@ -10,7 +10,7 @@
 
 [data-ce-demo] body { padding-bottom: calc(var(--demo-leiste-hoehe, 5rem) + env(safe-area-inset-bottom, 0px)); }
 
-/* Kompakt (Audit D4, 2026-10-28): auf dem Desktop schwebt die Leiste rechts der Seitenleiste — sie verdeckt weder
+/* Kompakt (Audit D4, 2026-10-27): auf dem Desktop schwebt die Leiste rechts der Seitenleiste — sie verdeckt weder
    „Abmelden“ noch den Fuß der Navigation — und steht in einer Zeile: Marke, Erklärung (ab 1280 px), zwei Aktionen.
    Mobil bleibt sie am unteren Rand in voller Breite. Kennzeichnung und Aktionen sind unverändert. */
 [data-ce-demo] .demo-leiste {

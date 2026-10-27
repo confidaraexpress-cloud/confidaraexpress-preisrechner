@@ -11,7 +11,7 @@ import {
 // Spalten Abholtag bzw. Abgabe und Laufzeit „laut Versanddienstleister", dann die
 // Hinweise und der Abschluss: der Preis — netto groß, darunter klein „zzgl. MwSt."
 // (Betreiberentscheidung 2026-10-16: öffentlich nur der Nettopreis) — mit der Aktion
-// in einer Zeile (Komplettabschluss 2026-10-28: kompakter Knopf statt Vollbreite),
+// in einer Zeile (Komplettabschluss 2026-10-27: kompakter Knopf statt Vollbreite),
 // bei nicht exaktem Preis darunter „ab" mit Erklärung. „Angebot auswählen" nur, wenn der Server
 // das Angebot mit vollständigen Sendungsangaben als buchbar kennzeichnet; sie führt
 // über die Übernahmeseite der Hauptdomain direkt in die Registrierung (angemeldete

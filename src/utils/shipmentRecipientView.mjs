@@ -1,4 +1,4 @@
-/* ── Empfänger einer Sendung in Listen (Audit B.4, 2026-10-28) ─────────────────────────────────────────────
+/* ── Empfänger einer Sendung in Listen (Audit B.4, 2026-10-27) ─────────────────────────────────────────────
    Die Kundenliste GET /kunde/shipments trägt `recipient_address` (Firma, Name, PLZ, Ort, Land) und `to_country` —
    die Kopfsuche liest dieselben Felder (utils/kundenSuche.mjs). Sendungsliste und „Letzte Sendungen“ zeigen den
    Empfänger deshalb als eigene Angabe: wer (Firma, sonst Name) und wohin (PLZ Ort, Land).

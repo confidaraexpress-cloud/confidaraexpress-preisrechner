@@ -1,4 +1,4 @@
-/* ── Die Pfade der Kunden-Anmeldung (Abschnitt 5, 2026-10-28) ──────────────────────────────────────────────
+/* ── Die Pfade der Kunden-Anmeldung (Abschnitt 5, 2026-10-27) ──────────────────────────────────────────────
    Für diese Pfade liefert nginx ein statisches Seitengerüst (login.html, register.html), und die Anwendung
    rendert die Anmeldeseite sofort — ohne den globalen Ladebildschirm der Sitzungsprüfung und ohne Ladefläche des
    Seitenwechsels (main.jsx lädt die Seite vor dem ersten Rendern). Partnerregistrierung, Admin und Partnerportal

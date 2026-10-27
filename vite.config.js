@@ -1,7 +1,7 @@
 // Hauptbuild der Anwendung (confidaraexpress.de).
 //
 // Bis 2026-10-27 lief dieser Build ohne Konfiguration (Standardwerte von Vite, Einstieg index.html). Seit dem
-// statischen Seitengerüst der Kunden-Anmeldung (Abschnitt 5, 2026-10-28) entstehen zusätzlich login.html und
+// statischen Seitengerüst der Kunden-Anmeldung (Abschnitt 5, 2026-10-27) entstehen zusätzlich login.html und
 // register.html: dieselbe Anwendung mit einem Seitengerüst, das vor dem ersten Rendern das Endlayout der Anmeldung
 // zeigt. Alles andere bleibt bei den Standardwerten — dieselbe Ausgabe nach dist/.
 //

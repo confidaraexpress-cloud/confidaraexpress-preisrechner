@@ -1,4 +1,4 @@
-// Statische Seitengerüste der Kunden-Anmeldung (Komplettabschluss, Abschnitt 5, 2026-10-28).
+// Statische Seitengerüste der Kunden-Anmeldung (Komplettabschluss, Abschnitt 5, 2026-10-27).
 //
 // login.html und register.html zeigen vor dem ersten Rendern das Endlayout der Anmeldung. Weil ein statisches
 // Dokument nichts importieren kann, hält dieser Test die Gerüste mit ihren Quellen gleich:

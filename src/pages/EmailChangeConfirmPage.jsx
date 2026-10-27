@@ -101,7 +101,7 @@ export default function EmailChangeConfirmPage() {
 
   return (
     <div className="auth-page">
-      {/* Premium-Redesign (Abschnitt 5, 2026-10-28): dieselbe Bühne wie die Anmeldung — Marke und gerahmte Nachtkarte
+      {/* Premium-Redesign (Abschnitt 5, 2026-10-27): dieselbe Bühne wie die Anmeldung — Marke und gerahmte Nachtkarte
           links, das Blatt rechts. Die Überschrift der Seite ist der Titel des Blatts. */}
       <div className="auth-shell auth-shell--bestaetigung">
         <header className="auth-kopf">

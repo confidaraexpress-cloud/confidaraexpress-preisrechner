@@ -467,7 +467,7 @@ test("S10 — „Meine Sendungen“: Summe in der Liste, Klebehinweis des Server
   await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
   const dokumente = page.getByRole("button", { name: "Dokumente" }).first();
   await dokumente.waitFor({ timeout: 20000 });
-  // Seit dem Komplettabschluss (2026-10-28) steht das Gewicht in der Spalte „Versand“ unter dem Carrier, nach dem
+  // Seit dem Komplettabschluss (2026-10-27) steht das Gewicht in der Spalte „Versand“ unter dem Carrier, nach dem
   // Dienst: „<Dienst> · 3 Pakete · 31 kg gesamt“ — die Summe bleibt die Angabe der Liste.
   assert.match(norm(await page.locator(".shipment-versand-detail").first().textContent()), /(^|· )3 Pakete · 31 kg gesamt$/);
   await dokumente.click();

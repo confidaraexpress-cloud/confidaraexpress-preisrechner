@@ -3,7 +3,7 @@ import nachtkarte from "../../assets/illustrations/nachtkarte-eu.svg";
 import { NachtkartenLichter } from "../ui/NachtkartenLichter";
 import { AUTH_TEXT } from "../../utils/authSeitenText.mjs";
 
-/* Die gerahmte Nachtkarte der Anmeldung (Betreiberentscheidung, Abschnitt 5, 2026-10-28) — dieselbe Karte wie im
+/* Die gerahmte Nachtkarte der Anmeldung (Betreiberentscheidung, Abschnitt 5, 2026-10-27) — dieselbe Karte wie im
    öffentlichen Preisrechner, unter dem Satz statt als maskierter Hintergrund („Sternenstaub“, Audit B.1).
 
    Das Kartenbild steht ab dem ersten Bild (statisches Seitengerüst, gleiche Maße). Die Lichter starten erst, wenn

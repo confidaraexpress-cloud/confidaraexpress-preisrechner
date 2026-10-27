@@ -221,7 +221,7 @@ export function OverviewNotifications({ items, onSelect }) {
   );
 }
 
-/* ── Lager und Aufträge (G1/D7, 2026-10-28) ────────────────────────────────
+/* ── Lager und Aufträge (G1/D7, 2026-10-27) ────────────────────────────────
    Der operative Stand des eigenen Lagers in der Übersicht: offene Aufträge und
    Artikel unter Mindestbestand mit ihren ersten Einträgen, dazu zwei Zahlen.
    Reine Darstellung: den Stand ({ status: "laden" | "fehler" | "bereit", stats,
@@ -321,7 +321,7 @@ export function InventorySnapshot({ stand: standProp = null, onRetry = null, onN
   );
 }
 
-/* ── Ihre Versanddienstleister (G2, 2026-10-28) ─────────────────────────────
+/* ── Ihre Versanddienstleister (G2, 2026-10-27) ─────────────────────────────
    Die Carrier, die ConfidaraExpress aktuell anbietet — ausschließlich aus
    GET /kunde/carriers (geladen von DashboardPage, hier nur dargestellt). Logos
    gleicher optischer Höhe auf Weiß, Namen darunter,

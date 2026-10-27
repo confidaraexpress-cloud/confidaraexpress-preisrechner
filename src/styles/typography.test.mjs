@@ -399,7 +399,7 @@ test("10 — Zahlenspalten in Tabellen sind rechtsbündig", () => {
     "die Betragsspalte der Kundenrechnungen fehlt");
 
   // Die Geldspalten der Haupttabellen tragen den Marker auf Kopf UND Zelle. Sendungen (Audit B.4, Komplettabschluss
-  // 2026-10-28): Sendung · Empfänger · Versand (Carrier, Dienst und Gewicht) · Status · Preis · Aktionen — das
+  // 2026-10-27): Sendung · Empfänger · Versand (Carrier, Dienst und Gewicht) · Status · Preis · Aktionen — das
   // Gewicht steht in der Versandzelle, die einzige Zahlenspalte ist der Preis.
   const sendungen = read("../components/dashboard/ShipmentsList.jsx");
   assert.match(sendungen, /<th scope="col">Status<\/th>\s*<th[^>]*className="ce-num"[^>]*>Preis<\/th>/,

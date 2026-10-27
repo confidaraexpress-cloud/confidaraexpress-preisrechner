@@ -131,7 +131,7 @@ export function BookingLiveSummary({ tariff, priceView, pickupWindow, vatMode })
             {preis.net != null && <span className="blsum-price-net">{money(preis.net)} netto</span>}
           </span>
         )}
-        {/* G6/M9 (2026-10-28): der MwSt.-Hinweis steht am Preis des Belegs — vorher nur in der Karte „Ausgewähltes
+        {/* G6/M9 (2026-10-27): der MwSt.-Hinweis steht am Preis des Belegs — vorher nur in der Karte „Ausgewähltes
             Angebot“, die Preis und Termine doppelte. Derselbe Wortlaut (vatIncludedNote). */}
         {vatHinweis && <span className="blsum-vat-note" id="booking-live-vat-note">{vatHinweis}</span>}
         {insNote && (

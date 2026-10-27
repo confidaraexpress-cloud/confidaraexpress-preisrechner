@@ -1,4 +1,4 @@
-// api/carriersApi.js — die aktuell angebotenen Versanddienstleister (GET /kunde/carriers, G2 2026-10-28).
+// api/carriersApi.js — die aktuell angebotenen Versanddienstleister (GET /kunde/carriers, G2 2026-10-27).
 //
 // Rein lesend, nur für den Kundenbereich (die Übersicht). Liefert die geprüfte Liste oder `null`, wenn sie nicht
 // bekannt ist (Fehler, Netz, ältere Serverfassung) — wirft nie: die Übersicht zeigt dann schlicht keine Carrierzeile.

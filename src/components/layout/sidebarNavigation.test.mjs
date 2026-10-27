@@ -14,11 +14,11 @@
 // Regeln, an denen sie schon einmal gescheitert ist:
 //   1. Reihenfolge und Zusammensetzung (Übersicht · Neue Sendung · Sendungen ·
 //      Versand · Adressbuch · Rechnungen · Lager & Aufträge · Konto · Abmelden;
-//      „Neue Sendung“ und „Sendungen“ seit G5, 2026-10-28, in der ersten Ebene)
+//      „Neue Sendung“ und „Sendungen“ seit G5, 2026-10-27, in der ersten Ebene)
 //   2. Rechnungen sind ein eigenständiger Hauptpunkt — aber die Route bleibt
 //   3. Keine Gruppe „Verwaltung", keine Gruppe „Abrechnung"
 //   4. Accordion: EIN Wert trägt den Klappzustand; die Gruppe der aktuellen
-//      Seite öffnet sich (G5, 2026-10-28 — vorher öffnete sich nichts von
+//      Seite öffnet sich (G5, 2026-10-27 — vorher öffnete sich nichts von
 //      selbst), ohne Effekt und ohne Speicher; „offen“ und „aktiv“ sind zwei
 //      getrennte Aussagen
 //   5. Keine zweite optische Sidebar (keine Box um eine Gruppe)
@@ -48,7 +48,7 @@ const regel = (sel) => {
 
 test("1 — genau fünf direkte Einträge und drei Gruppen", () => {
   assert.ok(/OVERVIEW_ITEM = \{ id: "overview"/.test(code), "Übersicht fehlt als direkter Eintrag");
-  // G5 (Betreiberentscheidung 2026-10-28): die beiden häufigsten Ziele in der ersten Ebene — page-Werte unverändert.
+  // G5 (Betreiberentscheidung 2026-10-27): die beiden häufigsten Ziele in der ersten Ebene — page-Werte unverändert.
   assert.ok(/NEW_SHIPMENT_ITEM = \{ id: "new", label: "Neue Sendung"/.test(code), "Neue Sendung fehlt als direkter Eintrag");
   assert.ok(/SHIPMENTS_ITEM = \{ id: "shipments", label: "Sendungen"/.test(code), "Sendungen fehlt als direkter Eintrag");
   assert.equal((code.match(/<NavItem item=\{[A-Z_]+_ITEM\}/g) || []).length, 5, "es müssen genau fünf direkte Einträge sein");
@@ -84,7 +84,7 @@ test("2 — die Reihenfolge ist Übersicht → Neue Sendung → Sendungen → Ve
 });
 
 test("3 — der Versandblock trägt genau drei Einträge in fester Reihenfolge", () => {
-  // G5 (2026-10-28): „Neue Sendung“ und „Sendungen“ stehen in der ersten Ebene; im Block bleiben Rechner,
+  // G5 (2026-10-27): „Neue Sendung“ und „Sendungen“ stehen in der ersten Ebene; im Block bleiben Rechner,
   // Entwürfe und Sendungsverfolgung.
   const start = code.indexOf('id: "shipping"');
   const block = code.slice(start, code.indexOf("],", start));
@@ -182,7 +182,7 @@ test("7 — ein Wert trägt den gesamten Klappzustand (Accordion by construction
 });
 
 test("8 — „offen“ folgt dem Klappzustand, „aktiv“ der Seite — zwei getrennte Aussagen (G5)", () => {
-  // G5 (Betreiberentscheidung 2026-10-28): die Gruppe der aktuellen Seite öffnet sich; klappt der Nutzer sie zu,
+  // G5 (Betreiberentscheidung 2026-10-27): die Gruppe der aktuellen Seite öffnet sich; klappt der Nutzer sie zu,
   // trägt ihr Kopf weiter die Marke der Seite. Kein Effekt setzt den Klappzustand — der Abgleich mit der vorigen
   // Seite läuft beim Rendern.
   assert.ok(!/useEffect/.test(code), "die Sidebar darf keinen Klappzustand per Effekt setzen");
@@ -326,7 +326,7 @@ test("14 — unter 860 px erreicht jedes Bedienelement 44 px", () => {
 });
 
 test("15 — Icons nur an den acht Hauptpunkten (E7, G5), aus der eigenen Komponente; die Klappmarke ist eine CSS-Form", () => {
-  // Betreiberentscheidung 2026-10-27 (E7): die Punkte der ersten Ebene — seit G5 (2026-10-28) Übersicht, Neue
+  // Betreiberentscheidung 2026-10-27 (E7): die Punkte der ersten Ebene — seit G5 (2026-10-27) Übersicht, Neue
   // Sendung, Sendungen, Adressbuch, Rechnungen und die drei Gruppenköpfe — tragen ein dekoratives Icon vor dem
   // Text. Unterpunkte und sekundäre Aktionen bleiben reiner Text; lucide-react bleibt verboten.
   assert.ok(!/from\s+["']lucide-react["']/.test(sidebar), "lucide-react darf nicht zurückkehren");

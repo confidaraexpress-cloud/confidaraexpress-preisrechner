@@ -16,7 +16,7 @@
                  ganzen Hero.
      Hero        ab 1080 px zweispaltig (Botschaft mit Nachtkarte | Rechnerkarte bis 680 px), darunter
                  einspaltig Headline → Karte → Rechner. Headline 36 / 48 / 56 / 60 px — ein Satz, der
-                 sagt, was das Produkt ist; keine Häkchenleiste (Komplettabschluss 2026-10-28).
+                 sagt, was das Produkt ist; keine Häkchenleiste (Komplettabschluss 2026-10-27).
      Formular    nur Route und Paket. Ist die Karte breit genug (Container Query), stehen Absender und
                  Empfänger nebeneinander, dazwischen der Routenpfeil. Felder 48 px, Eingabe 16 px.
                  Das Seitengerüst trägt dieselbe Struktur als statisches Skelett — keine reservierte
@@ -1638,7 +1638,7 @@
 }
 
 /* ── Bereich 3: der Kundenbereich — Versand und Logistik, daneben die Vorschau ── */
-/* G1/D7 (Komplettabschluss 2026-10-28): was der Kundenbereich kann, in zwei Gruppen. „Logistik“ meint die
+/* G1/D7 (Komplettabschluss 2026-10-27): was der Kundenbereich kann, in zwei Gruppen. „Logistik“ meint die
    Software für den eigenen Bestand des Kunden — ConfidaraExpress lagert nicht ein. */
 .pc-platform {
   padding-block: var(--ce-space-10);

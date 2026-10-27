@@ -163,10 +163,10 @@ export default function DashboardPage() {
   const [invoiceSummary, setInvoiceSummary] = useState(null);
   // Paket F: der Buchungsrahmen des Kontos (GET /kunde/credit) — null ohne Antwort.
   const [credit, setCredit] = useState(null);
-  // G2 (2026-10-28): die aktuell angebotenen Versanddienstleister (GET /kunde/carriers) — null ohne Antwort; die
+  // G2 (2026-10-27): die aktuell angebotenen Versanddienstleister (GET /kunde/carriers) — null ohne Antwort; die
   // Übersicht zeigt dann keine Carrierzeile, nie eine feste Liste.
   const [carrierPortfolio, setCarrierPortfolio] = useState(null);
-  // G1/D7 (2026-10-28): Lager und Aufträge in der Übersicht — dieselbe Abfrage wie die Lagerübersicht, geladen,
+  // G1/D7 (2026-10-27): Lager und Aufträge in der Übersicht — dieselbe Abfrage wie die Lagerübersicht, geladen,
   // sobald die Übersicht offen ist (siehe ladeLagerStand).
   const [lagerStand, setLagerStand] = useState({ status: "laden", stats: null, fehler: "" });
   const [loading, setLoading] = useState(true);
@@ -277,7 +277,7 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // ── Lager und Aufträge der Übersicht (G1/D7, 2026-10-28) ──────────────────
+  // ── Lager und Aufträge der Übersicht (G1/D7, 2026-10-27) ──────────────────
   // Dieselbe Abfrage wie die Lagerübersicht (GET /api/kunde/inventory/overview), jedes Mal, wenn die Übersicht
   // geöffnet wird — die Module der Übersicht laden selbst nichts. Eine verspätete Antwort nach dem Verlassen
   // verwirft der AbortController; der Fehlertext kommt aus derselben Übersetzung wie im Lager.

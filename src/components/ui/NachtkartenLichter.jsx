@@ -8,7 +8,7 @@ import { nachtkartenLichter } from "../../utils/nachtkarteLichter.mjs";
 const LICHTER = nachtkartenLichter();
 
 /* welle  — zuerst eine Lichtwelle von Stuttgart aus (jedes Licht glimmt einmal auf, wenn die Welle es erreicht),
-             danach das freie Funkeln (Anmeldung, 2026-10-28).
+             danach das freie Funkeln (Anmeldung, 2026-10-27).
    aktiv  — false hält alle Lichter an, bis das Kartenbild dekodiert ist (AuthKarte); ohne Angabe laufen sie sofort. */
 export function NachtkartenLichter({ className = "", welle = false, aktiv = true }) {
   const klassen = ["nk-lichter", welle ? "nk-lichter--welle" : "", aktiv ? "" : "nk-lichter--wartet", className].filter(Boolean).join(" ");

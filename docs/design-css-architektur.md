@@ -23,7 +23,7 @@ Ausgelagert aus der Regeldatei (Stand origin/main, 2026-10-19). Wird nicht autom
 - **Kundenbereich-Demo:** `styles/demo.css` hängt an `[data-ce-demo]` (setzt `demo/DemoApp.jsx`), Werte `--ce-demo-*` in `variables.css`. Vertrag: `docs/frontend-vertraege.md`, „Kundenbereich-Demo“.
 - **Kopfsuche:** `.ce-suche` in `premium-redesign.css` (Abschnitt 14) — Feld im Utility-Cluster ab 1024 px, Trefferblatt mit `--ce-elevation-3`, Treffer in der Liste als `.ce-suche-fokus` (Signalkante, Signalfläche). Das Lupensymbol im Feld ist eine funktionale Ausnahme der Icon-Regel (es kennzeichnet das Feld, wie in der Vorschau). Vertrag: `docs/frontend-vertraege.md`, „Kopfsuche des Kundenbereichs“.
 
-### Premium-Komplettabschluss (Betreiberentscheidungen G1–G7, 2026-10-28, Canonical v2.82)
+### Premium-Komplettabschluss (Betreiberentscheidungen G1–G7, 2026-10-27, Canonical v2.82)
 
 - **Typografie im Bereich:** Fließtext 16 px, Tabellen 15 px, Tabellenköpfe und Status 13 px — alles in rem im Bereichsblock von `variables.css`, große Browserschrift skaliert mit. Rollenbezogen, keine pauschale Vergrößerung; die Skala der Foundation (unten) gilt für Admin und Partner unverändert.
 - **Seitenleiste (G5):** „Neue Sendung“ und „Sendungen“ in der ersten Ebene (acht Punkte mit Icon), `.pp-nav-group--aktiv` markiert die Gruppe der aktuellen Seite getrennt von `.pp-nav-group--open`; die Gruppe öffnet sich beim Rendern (kein Effekt, kein Speicher). Einträge brechen um statt abzuschneiden; die Breite der Leiste folgt der Schrift. Der Ansprechpartner trägt seine Initialen in einem Ring in rem.
@@ -72,7 +72,7 @@ Eine Skala aus `--ce-text-*` (Seitentitel 28/36, mobil 24/32 · Abschnitt 18/26 
 
 `.app-shell` ist der einzige Layoutrahmen des eingeloggten Bereichs — keine seitenabhängigen Theme-Klassen, keine zweite Hintergrundebene, keine Muster oder Formen im Hintergrund. Der Grund ist EINE gemeinsame Atmosphäre (`--ce-color-bg-atmosphere`, in der Shell über `--ce-app-bg`) für Admin und öffentliche Seiten (im Bereich `kunde` seit dem Premium-Redesign eine weiße Arbeitsfläche ohne Atmosphäre): kühle Rampe aus den Flächentönen der Farbwelt mit genau zwei Lichtflächen (Markenindigo, Markenviolett), deren Deckkraft so bemessen ist, dass Sekundärtext auch im Lichtzentrum WCAG AA hält. Die Navigation hat genau zwei Ebenen; höchstens eine Gruppe ist offen, und der Klappzustand ist ein Wert, keine Booleanmenge. Die Kunden-Sidebar trägt die Deep-Navy-Fläche der ConfidaraExpress-Farbwelt (im Bereich `kunde` flach in der Navy des Logos, `--ce-sidebar-*` aus dem Bereichsblock) mit Textnavigation und Icons an den Hauptpunkten (E7) und der Originalmarke (`BrandLogo variant="lockup" tone="reverse"`) samt Unterzeile „B2B Logistik- und Versandplattform"; die Admin-Sidebar ist hell (Standardfassung). Es gibt keine weitere Markenvariante.
 
-Die frühere lokale Ausnahme der Übersicht (Navy-Carrierfläche mit Routenlinien, `--ce-net-*`, Betreiberentscheidung 2026-10-04) ist seit dem Komplettabschluss (G2, 2026-10-28) entfallen: „Ihre Versanddienstleister“ ist eine ruhige Zeile auf Weiß aus Serverdaten.
+Die frühere lokale Ausnahme der Übersicht (Navy-Carrierfläche mit Routenlinien, `--ce-net-*`, Betreiberentscheidung 2026-10-04) ist seit dem Komplettabschluss (G2, 2026-10-27) entfallen: „Ihre Versanddienstleister“ ist eine ruhige Zeile auf Weiß aus Serverdaten.
 
 `min-height: 100dvh` statt `100vh` bei Vollbildlayouts.
 

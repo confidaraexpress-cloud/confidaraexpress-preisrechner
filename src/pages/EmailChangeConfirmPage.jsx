@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import nachtkarte from "../assets/illustrations/nachtkarte-eu.svg";
 import { Icon } from "../components/ui/Icon";
+import { NachtkartenLichter } from "../components/ui/NachtkartenLichter";
 import { useAuth } from "../context/AuthContext";
 import { confirmEmailChange } from "../api/client";
 import { classifyEmailChangeConfirm, isRetryableConfirmState, hasUsableToken } from "../utils/emailChangeView.mjs";
@@ -102,7 +103,8 @@ export default function EmailChangeConfirmPage() {
     <div className="auth-page">
       {/* Premium-Redesign (Konzept A): dieselbe Navy-Bühne mit Nachtkarte wie die Anmeldung. Dekorativ. */}
       <div className="auth-karte" aria-hidden="true">
-        <img src={nachtkarte} alt="" width="536" height="497" decoding="async" />
+        <img className="nk-welle" src={nachtkarte} alt="" width="536" height="497" decoding="async" />
+        <NachtkartenLichter />
       </div>
       <div className="auth-shell">
         <div className="auth-card email-change-confirm">

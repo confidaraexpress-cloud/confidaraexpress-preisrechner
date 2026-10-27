@@ -161,3 +161,43 @@ test("8 — Touch-Ziele (R9): mit grobem Zeiger bleiben die Kontrollkästchen-Ze
   assert.ok(grob.some((b) => /\[data-ce-bereich="auth"\] \.auth-check[^{]*\{\s*min-height: var\(--ce-size-touch-target\);/.test(b)),
     "die Kontrollkästchen-Zeilen der Anmeldung verlieren mit grobem Zeiger die 44 px");
 });
+
+// ── Premium-Redesign, Abschluss (Betreiberentscheidung 2026-10-27): Paketbühne, Lichter der Nachtkarte, Demo ──
+test("9 — Paketbühne und Nachtkarte gehören zur Bereichsebene: jede Regel am Bereichsattribut, Farben nur als Token", () => {
+  for (const datei of ["paketbuehne.css", "nachtkarte.css"]) {
+    const css = ohneKommentare(lies(path.join(HIER, datei))).replace(/@property[^{]+\{[^}]*\}/g, "").replace(/@container[^{]+\{/g, "");
+    const r = regeln(css);
+    assert.ok(r.length > 5, `${datei}: keine Regeln gelesen`);
+    const frei = [];
+    const literale = [];
+    for (const { sel, koerper } of r) {
+      for (const teil of teile(sel)) if (!/^\[data-ce-bereich\]/.test(teil)) frei.push(`${datei}: ${teil}`);
+      for (const dekl of koerper.split(";")) {
+        if (/^\s*(-webkit-)?mask-image\s*:/.test(dekl)) continue;
+        if (/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i.test(dekl)) literale.push(`${datei}: ${dekl.trim()}`);
+      }
+    }
+    assert.deepEqual(frei, [], `Regeln ohne Bereich:\n  ${frei.join("\n  ")}`);
+    assert.deepEqual(literale, [], `Farbliterale:\n  ${literale.join("\n  ")}`);
+    // Bewegung nur mit Ausweg: reduzierte Bewegung schaltet sie ab.
+    assert.match(lies(path.join(HIER, datei)), /@media \(prefers-reduced-motion: reduce\)/, `${datei}: ohne Reduced Motion`);
+  }
+  // Beide Dateien stehen in beiden Bündeln: Kundenbereich (index.css) und öffentlicher Preisrechner.
+  for (const buendel of ["index.css", "public-calculator.css"]) {
+    const src = lies(path.join(HIER, buendel));
+    assert.match(src, /@import '\.\/paketbuehne\.css';/, `${buendel}: Paketbühne fehlt`);
+    assert.match(src, /@import '\.\/nachtkarte\.css';/, `${buendel}: Nachtkarte fehlt`);
+  }
+});
+
+test("10 — die Demo-Leiste lebt nur in der Demo-Welt und nutzt ausschließlich Tokens", () => {
+  const css = ohneKommentare(lies(path.join(HIER, "demo.css")));
+  const r = regeln(css);
+  const frei = [];
+  for (const { sel, koerper } of r) {
+    for (const teil of teile(sel)) if (!/^(\[data-ce-demo\]|\.demo-ende)/.test(teil)) frei.push(teil);
+    if (/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i.test(koerper)) frei.push(`${sel}: Farbliteral`);
+  }
+  assert.deepEqual(frei, [], `außerhalb der Demo oder mit Farbliteral:\n  ${frei.join("\n  ")}`);
+  assert.match(lies(path.join(HIER, "index.css")), /@import '\.\/demo\.css';/);
+});

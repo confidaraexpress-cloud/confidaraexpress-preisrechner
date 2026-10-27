@@ -12,6 +12,17 @@ Ausgelagert aus der Regeldatei (Stand origin/main, 2026-10-19). Wird nicht autom
 - **Umbruch:** Überschriften ausgewogen, alle übrigen Texte ohne Einzelwort in der letzten Zeile, ausschließlich über die Langform `text-wrap-style`. Die Kurzform `text-wrap` setzt auch `text-wrap-mode` zurück und hebt damit jedes `white-space: nowrap` geringerer Spezifität auf (Tabellenspalten, Routen, Beträge; premiumRedesign.test.mjs, 7).
 - **Nachtkarte (Konzept A):** `assets/illustrations/nachtkarte-eu.svg` (eigene Zeichnung, flächentreue Azimutalprojektion), auf der Anmeldung als Bühne, im Preisrechner mit der eingegebenen Strecke (`NachtkartenRoute.jsx`, `utils/nachtkarteRoute.mjs`, Orte `utils/nachtkarteOrte.mjs` im selben Ausschnitt). Ein Ortsname steht nur bei genau bekanntem Ort.
 
+### Premium-Redesign Abschluss: Vorschau-Parität (Betreiberentscheidung 2026-10-27, Canonical v2.81)
+
+- **Schrift:** Instrument Sans (SIL OFL 1.1, Lizenz `docs/lizenzen/OFL-InstrumentSans.txt`), variabel 400–700 und Breite 75–100, selbst gehostet (`assets/fonts/instrumentsans-var*.woff2`, `fonts.css`, latin-ext zuerst). Sie gilt nur über den Bereichsblock (`--ce-font-sans`, `--ce-pr-font-display`, `--ce-pr-display-stretch`); Admin, Partnerportal und Partnerregistrierung behalten DM Sans und Cormorant. In den Dateien des Bereichs (`premium-redesign.css`, `public-calculator.css`, `paketbuehne.css`, `nachtkarte.css`, `demo.css`) sind Gewichte bis 700 erlaubt, sonst höchstens 600 (typography.test.mjs 4, designSystemClosure.test.mjs 6).
+- **Lichter der Nachtkarte:** `components/ui/NachtkartenLichter.jsx` mit `utils/nachtkarteLichter.mjs` (Hauptstädte und weitere Orte, fester Zufallsgenerator, je Licht eigene Dauer und eigener Einsatz) und `styles/nachtkarte.css`: eine Einstiegswelle (`.nk-welle`, Maske nur in den Keyframes, damit die Randmasken der Karte bleiben), danach funkelt jedes Licht für sich. Auf der Anmeldung, der E-Mail-Bestätigung und im Preisrechner (dort per Portal in die Karte des Seitengerüsts).
+- **Lichtpunkt der Strecke:** 13 Stützpunkte je Strecke (Bogenlänge, Zeitverlauf der Linie) aus `lichtpunktStuetzen` als CSS-Variablen `--pc-l{i}x/y`; die Bewegung ist eine CSS-Animation in `public-calculator.css`. Läuft eine Strecke, treten Karte und Lichter leicht zurück.
+- **Paketbühne:** `components/shipping/Paketbuehne.jsx`, Geometrie `utils/paketSzene.mjs` (isometrische Flächen als Matrix je Einheitsquadrat, gemeinsame Kanten bleiben bei jedem Übergang deckungsgleich), Stil `styles/paketbuehne.css`. Höchstens drei Größen, Anzahl als Stapel von höchstens zwei, Etikett mit Von/Nach. Rein darstellend (`aria-hidden`), „nicht maßstabsgetreu“. Im Preisrechner auf breiter Karte ein kompakter Streifen (Absenden bleibt auf 1366 × 768 ohne Scrollen erreichbar), im Kundenbereich neben den Paketfeldern (`.ce-paket-raster` ab 820 px). Das Seitengerüst des Preisrechners trägt eine statische Fassung (publicCalculatorIsland.test.mjs, 7).
+- **Buchungsseite:** je Schritt ein Blatt (`.booking-blatt`) statt gestapelter Karten, Abschnitte durch Haarlinien getrennt, Aktionen in `.booking-blatt-fuss`. Ab 1440 px steht der Beleg als Seitenspalte neben dem Blatt (1440–1599 px 296 px, ab 1600 px 368 px), die Live-Zusammenfassung trägt dort den Markenstreifen.
+- **Bewegung:** nur CSS. Bei reduzierter Bewegung keine Welle, keine Lichter, kein Lichtpunkt, keine Paketübergänge — jede Szene steht in ihrem Endzustand (tests/e2e/premiumParityPublic.test.mjs, V3).
+- **Kundenbereich-Demo:** `styles/demo.css` hängt an `[data-ce-demo]` (setzt `demo/DemoApp.jsx`), Werte `--ce-demo-*` in `variables.css`. Vertrag: `docs/frontend-vertraege.md`, „Kundenbereich-Demo“.
+- **Kopfsuche:** `.ce-suche` in `premium-redesign.css` (Abschnitt 14) — Feld im Utility-Cluster ab 1024 px, Trefferblatt mit `--ce-elevation-3`, Treffer in der Liste als `.ce-suche-fokus` (Signalkante, Signalfläche). Das Lupensymbol im Feld ist eine funktionale Ausnahme der Icon-Regel (es kennzeichnet das Feld, wie in der Vorschau). Vertrag: `docs/frontend-vertraege.md`, „Kopfsuche des Kundenbereichs“.
+
 ### Getrennte Tokenfamilien — nicht vermischen
 
 | Familie | Gilt für |
@@ -32,7 +43,7 @@ Optionslisten (Filter-Dropdowns von „Neue Sendung"/Versandkostenrechner, Uhrze
 
 ### Importreihenfolge (`styles/index.css`) — tragend
 
-`primitives.css` steht **nach** `buttons.css`/`forms.css` (der Fokusstandard soll dort greifen) und **vor** allen Bereichs-Stylesheets (deren höher spezifische Sonderfälle bleiben wirksam). `dashboard-premium.css` steht **nach** `dashboard.css`. `patterns.css` wird als einzige Datei **nach** den Bereichs-Stylesheets importiert.
+`primitives.css` steht **nach** `buttons.css`/`forms.css` (der Fokusstandard soll dort greifen) und **vor** allen Bereichs-Stylesheets (deren höher spezifische Sonderfälle bleiben wirksam). `dashboard-premium.css` steht **nach** `dashboard.css`. `paketbuehne.css`, `nachtkarte.css` und `demo.css` folgen auf `comparison-loading.css`. `patterns.css` wird **nach** den Bereichs-Stylesheets importiert, `premium-redesign.css` als letzte Datei.
 
 ### Primitives und Muster zuerst benutzen
 
@@ -44,7 +55,7 @@ Buttons (`.btn` + Varianten), Eingaben (`.field-*`), `Switch`, Badges, Karten, `
 
 ### Typografie
 
-Eine Skala aus `--ce-text-*` (Seitentitel 28/36, mobil 24/32 · Abschnitt 18/26 · Karte 16/24 · Fließtext 14/22 · klein 13/20 · Label 13/18 · Caption/Tabellenkopf 12/18 · Kennzahl 32/38). Die Kunden-Sidebar hat eine eigene Stufe (`--ce-sidebar-nav-*`: 15/22, Hauptpunkte 600, Unterpunkte und sekundäre Aktionen 500, jede Zeile 44 px); die allgemeine Navigationsrolle (`--ce-text-nav-*`, Admin, öffentlicher Drawer) bleibt 14/20, 500. DM Sans für alles außerhalb des Auth-Bereichs, auch für Seitentitel und alle Zahlen; Cormorant nur noch im (unveränderten) Auth-Bereich — einzige Ausnahme (Betreiberentscheidung 2026-10-16): Headline und Abschnittstitel der eigenständigen Preisrechnerseite (`.pc-display`, `.pc-section-title`; typography.test.mjs). Keine Halbpixel, nichts unter 12 px außerhalb von Auth, höchstes Gewicht 600. Zahlen tabellarisch und in Zahlenspalten rechtsbündig. Im Bereichs-Scope (Kunde, Auth, Preisrechner) stehen Schriftgrößen in rem (E13), damit sie der Schriftgröße des Browsers folgen; bei 16 px Grundgröße ergeben sie ganze Pixel auf der Skala (typography.test.mjs zählt rem mit ihrem Pixelwert). Admin bleibt in px.
+Eine Skala aus `--ce-text-*` (Seitentitel 28/36, mobil 24/32 · Abschnitt 18/26 · Karte 16/24 · Fließtext 14/22 · klein 13/20 · Label 13/18 · Caption/Tabellenkopf 12/18 · Kennzahl 32/38). Die Kunden-Sidebar hat eine eigene Stufe (`--ce-sidebar-nav-*`: 15/22, Hauptpunkte 600, Unterpunkte und sekundäre Aktionen 500, jede Zeile 44 px); die allgemeine Navigationsrolle (`--ce-text-nav-*`, Admin, öffentlicher Drawer) bleibt 14/20, 500. DM Sans für alles außerhalb des Auth-Bereichs, auch für Seitentitel und alle Zahlen; Cormorant nur noch im Titel der Partnerregistrierung (`.auth-title`; typography.test.mjs). Keine Halbpixel, nichts unter 12 px außerhalb von Auth, höchstes Gewicht 600. Im Bereichs-Scope (Kunde, Kundenanmeldung, Preisrechner) gilt seit dem Premium-Redesign Instrument Sans mit eigener Skala aus dem Bereichsblock und Gewichten bis 700 (Abschnitt oben); Seitentitel, Headline und Abschnittstitel des Preisrechners stehen dort in Instrument Sans, nicht mehr in Cormorant. Zahlen tabellarisch und in Zahlenspalten rechtsbündig. Im Bereichs-Scope (Kunde, Auth, Preisrechner) stehen Schriftgrößen in rem (E13), damit sie der Schriftgröße des Browsers folgen; bei 16 px Grundgröße ergeben sie ganze Pixel auf der Skala (typography.test.mjs zählt rem mit ihrem Pixelwert). Admin bleibt in px.
 
 ### App-Shell und Sidebar
 
@@ -54,7 +65,7 @@ Einzige lokale Ausnahme (Betreiberentscheidung 2026-10-04): der Carrier-Bereich 
 
 `min-height: 100dvh` statt `100vh` bei Vollbildlayouts.
 
-`/booking` ist unter 1600 px **eine** zentrierte Arbeitsspalte (`--ce-size-booking`, `.booking-wrap`); Titel und Untertitel stehen über `.ce-page-header--booking` auf derselben Achse, die Utility-Zeile (Mitteilungen, Benutzerchip) bleibt am gemeinsamen Rahmen.
+`/booking` ist unter 1440 px **eine** zentrierte Arbeitsspalte (`--ce-size-booking`, `.booking-wrap`; bis 2026-10-27 unter 1600 px — seitdem steht der Beleg im Kundenbereich ab 1440 px als schmale Seitenspalte daneben, `--ce-pr-booking-seite`); Titel und Untertitel stehen über `.ce-page-header--booking` auf derselben Achse, die Utility-Zeile (Mitteilungen, Benutzerchip) bleibt am gemeinsamen Rahmen.
 
 ### Rahmenstufen und Seitenspalte (Gesamtauftrag D, 2026-10-24)
 
@@ -83,6 +94,7 @@ Wenige zentrale Regeln statt seitenweiser Sonderbreiten.
 - Die Seitenspalte liegt absolut neben der Arbeitsspalte und klebt innen (sticky). Die kompakte Leiste bleibt verborgen, weil die Zusammenfassung sichtbar bleibt.
 - Der Titel wandert nur mit Seitenspalte mit: `.main-content:has(.booking-side)` in `patterns.css`.
 - Unter 1600 px und in Schritt 3 sind die Wrapper reine Blöcke; die Seite ist pixelgleich mit dem Stand davor.
+- **Kundenbereich ab 1440 px** (Premium-Redesign 2026-10-27, `premium-redesign.css`): dieselbe Seitenspalte schon zwischen 1440 und 1599 px, schmal mit `--ce-pr-booking-seite` (296 px) — Arbeitsspalte 800 px, Abstand `--ce-space-7`, Seitenspalte und Seitenränder füllen die Inhaltsbreite neben der Navigation genau. Darunter bleibt es bei einer Spalte (tests/e2e/responsiveFrameTiers.test.mjs, R3).
 
 **Lesemaß:**
 

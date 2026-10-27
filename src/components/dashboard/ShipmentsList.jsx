@@ -10,7 +10,7 @@ import { ShipmentDocumentsDrawer } from "./ShipmentDocumentsDrawer";
 import { DOCUMENTS_TEXT } from "../../utils/shipmentDocumentsView.mjs";
 import { customerShipmentNumbers, NO_ORDER_CONFIRMATION_TEXT, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
-import { packageLinesSummaryText } from "../../utils/packageLines.mjs";
+import { dezimal, packageLinesSummaryText } from "../../utils/packageLines.mjs";
 import { shipmentServiceNameOf, SHIPMENT_SERVICE_LABEL } from "../../utils/shipmentServiceNameView.mjs";
 import {
   multiTrackingReferencesOf, trackingReferencesSummary, TRACKING_REFERENCES_TEXT,
@@ -28,11 +28,14 @@ import {
 import { BOOKING_IN_REVIEW_TEXT, isBookingInReview } from "../../utils/customerBookingStatus.mjs";
 // Block C: der beim Buchen gebundene Abgabe-Paketshop — nur aus dem Serverfeld `dropoff_location`.
 import { boundDropoffLocationLine, DROPOFF_LOCATION_LABEL } from "../../utils/dropoffParcelShop.mjs";
+import { listeMitFokus } from "../../utils/kundenSuche.mjs";
 
 // Die Gewichtsangabe einer Sendung — bei unterschiedlichen Paketen die Summe („3 Pakete · 31 kg gesamt“,
 // Canonical v2.79; die API liefert dann `package_lines`), sonst wie bisher das Gewicht.
+// Das Gewicht deutsch geschrieben: der Server liefert es als Dezimalzahl („2.50“), die Liste zeigt „2,5 kg“.
+const kg = (w) => { const n = Number(w); return Number.isFinite(n) ? dezimal(n) : String(w); };
 const gewichtText = (s) => (Array.isArray(s.package_lines) && s.package_lines.length > 1
-  ? packageLinesSummaryText(s.package_lines) : null) || (s.weight ? `${s.weight} kg` : "—");
+  ? packageLinesSummaryText(s.package_lines) : null) || (s.weight ? `${kg(s.weight)} kg` : "—");
 
 const TRACKING_ERROR_MESSAGES = {
   400: "Bitte geben Sie eine gültige Trackingnummer ein.",
@@ -202,7 +205,16 @@ function ShipmentTrackingDetail({ tracking, loading, onRefresh }) {
 
 const SHIPMENTS_LOAD_ERROR_TITLE = "Die Sendungen konnten nicht geladen werden.";
 
-export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShipment, onCancellationRequested, hasMore, loadingMore, loadMoreError, onLoadMore }) {
+export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShipment, onCancellationRequested, hasMore, loadingMore, loadMoreError, onLoadMore, fokus = null }) {
+  // Kopfsuche (Premium-Redesign): der gesuchte Eintrag steht hervorgehoben in der Liste — stand er nicht in den
+  // geladenen Seiten, vorn. Zeile und Karte tragen data-suche-fokus; die sichtbare scrollt in den Blick.
+  const anzeige = React.useMemo(() => listeMitFokus(shipments, fokus), [shipments, fokus]);
+  const fokusId = fokus && fokus.id != null ? String(fokus.id) : null;
+  React.useEffect(() => {
+    if (!fokusId) return;
+    const ziel = [...document.querySelectorAll("[data-suche-fokus]")].find((e) => e.getAttribute("data-suche-fokus") === fokusId && e.offsetParent !== null);
+    if (ziel && typeof ziel.scrollIntoView === "function") ziel.scrollIntoView({ block: "center" });
+  }, [fokusId]);
   const [trackingId, setTrackingId] = React.useState(null);
   const [tracking, setTracking] = React.useState(null);
   const [trackLoading, setTrackLoading] = React.useState(false);
@@ -363,14 +375,15 @@ export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShi
                   </tr>
                 </thead>
                 <tbody>
-                  {shipments.map((s) => {
+                  {anzeige.map((s) => {
                     const nums = customerShipmentNumbers(s);
                     // TG-F6: mehrere Trackingnummern — nur dann ändert sich die Anzeige.
                     const alleNummern = multiTrackingReferencesOf(s);
                     const carrier = s.selected_carrier ? resolveCarrierName(s.selected_carrier) : null;
+                    const gesucht = fokusId !== null && String(s.id) === fokusId;
                     return (
                     <React.Fragment key={s.id}>
-                      <tr>
+                      <tr className={gesucht ? "ce-suche-fokus" : undefined} data-suche-fokus={gesucht ? fokusId : undefined}>
                         {/* Die Auftragsbestätigungsnummer (CE-AB…) ist die primäre sichtbare
                             Vorgangsnummer und steht daher zuerst und optisch hervorgehoben.
                             Sendungen aus der Zeit vor CE-AB zeigen einen neutralen Hinweis —
@@ -493,12 +506,13 @@ export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShi
               Textaktionen. TG22 Paket B: „Tracking" zeigt den Stand auch hier —
               dieselbe Trackingansicht wie in der Detailzeile der Tabelle. */}
           <ul className="ce-list-cards shipment-cards" aria-label="Sendungen">
-            {shipments.map((s) => {
+            {anzeige.map((s) => {
               const nums = customerShipmentNumbers(s);
               // TG-F6: mehrere Trackingnummern — nur dann ändert sich die Anzeige.
               const alleNummern = multiTrackingReferencesOf(s);
+              const gesucht = fokusId !== null && String(s.id) === fokusId;
               return (
-                <li className="ce-list-card shipment-card" key={`card-${s.id}`}>
+                <li className={`ce-list-card shipment-card${gesucht ? " ce-suche-fokus" : ""}`} key={`card-${s.id}`} data-suche-fokus={gesucht ? fokusId : undefined}>
                   {/* Nur Nummer und Status teilen sich die Kopfzeile; die Trackingangabe
                       steht darunter über die volle Kartenbreite — neben dem Status würde
                       eine lange Nummer schon bei 320 px mitten in der Ziffernfolge brechen. */}

@@ -79,6 +79,12 @@
    Sendung, Preisrechner). Reine Zusatzklassen auf den Foundation-Tokens, kein
    zweites Dialogsystem. Steht wie alle Bereichs-Stylesheets VOR patterns.css. */
 @import './comparison-loading.css';
+/* Premium-Redesign (Betreiberentscheidung 2026-10-27): die Paketbühne (Konzept B) und die Lichter der
+   Nachtkarte (Konzept A). Beide gemeinsam mit dem öffentlichen Preisrechner; jede Regel hängt am
+   Bereichsattribut. Stehen wie alle Bereichs-Stylesheets VOR patterns.css. */
+@import './paketbuehne.css';
+@import './nachtkarte.css';
+@import './demo.css';
 /* Partnerportal der Vertriebspartner — isolierter spp-Scope (Kopfleiste ohne
    Sidebar, Kennzahlkacheln, Linkliste). Reine Zusatzklassen auf den
    Foundation-Tokens, Karten/Tabs/Listen aus den gemeinsamen Mustern. Steht wie

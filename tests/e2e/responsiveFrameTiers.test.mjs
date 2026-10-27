@@ -3,8 +3,9 @@
 //
 //   R1  Rahmenstufen: Kunden 1200 / 1440 / 1680, Admin 1440 / 1680 / 1920 — Kopf und Inhalt auf einer Kante
 //   R2  Angebotssektion: im Grundrahmen 1080 px, ab 1680 px 1280 px, zentriert
-//   R3  Buchung: unter 1600 px eine Spalte (unverändert), ab 1600 px Seitenspalte neben der Arbeitsspalte,
-//       Titel auf der Kante, Seitenspalte läuft beim Scrollen mit
+//   R3  Buchung: unter 1440 px eine Spalte (unverändert), ab 1440 px Seitenspalte neben der Arbeitsspalte
+//       (Premium-Redesign 2026-10-27: 1440–1599 px schmal mit 296 px, ab 1600 px 368 px), Titel auf der Kante,
+//       Seitenspalte läuft beim Scrollen mit
 //   R4  Lesemaß: die vier vormals überlangen Textstellen höchstens 90 Zeichen je Zeile
 //   R5  Bedienziel „Vergessen?" mindestens 24 px hoch
 //   R6  Kein waagerechter Überlauf in zehn Breiten (Übersicht, Angebote, Buchung)
@@ -141,8 +142,8 @@ test("R2 — Angebotssektion: im Grundrahmen 1080 px, ab 1680 px 1280 px, zentri
   }
 });
 
-test("R3 — Buchung: unter 1600 px eine Spalte, ab 1600 px Seitenspalte neben der Arbeitsspalte, die beim Scrollen mitläuft", async () => {
-  for (const w of [1440, 1600, 1920]) {
+test("R3 — Buchung: unter 1440 px eine Spalte, ab 1440 px Seitenspalte neben der Arbeitsspalte, die beim Scrollen mitläuft", async () => {
+  for (const w of [1366, 1440, 1600, 1920]) {
     const { page, fehler } = await neueSeite({ width: w, height: 800 });
     await zurBuchung(page);
     await page.locator("button.offer-cta-btn").first().click();
@@ -153,13 +154,13 @@ test("R3 — Buchung: unter 1600 px eine Spalte, ab 1600 px Seitenspalte neben d
       return { seite: r(".booking-side-inner"), schritte: r(".steps-bar"), modul: r(".booking-wrap > div:not(.booking-side):not(.steps-bar)"),
         titel: r(".ce-page-header--booking .ce-page-header-main"), position: getComputedStyle(document.querySelector(".booking-side")).position };
     });
-    if (w < 1600) {
-      assert.equal(m.position, "static", `${w}: unter 1600 px keine Seitenspalte`);
+    if (w < 1440) {
+      assert.equal(m.position, "static", `${w}: unter 1440 px keine Seitenspalte`);
       assert.ok(m.seite.top < m.modul.top, `${w}: die Zusammenfassung steht nicht über den Modulen`);
     } else {
       assert.equal(m.position, "absolute", `${w}: keine Seitenspalte`);
       assert.equal(Math.round(m.seite.left), Math.round(m.schritte.left + 800 + 32), `${w}: Seitenspalte nicht neben der Arbeitsspalte`);
-      assert.equal(Math.round(m.seite.width), 368, `${w}: Breite der Seitenspalte`);
+      assert.equal(Math.round(m.seite.width), w < 1600 ? 296 : 368, `${w}: Breite der Seitenspalte`);
       assert.equal(Math.round(m.titel.left), Math.round(m.schritte.left), `${w}: Titel nicht auf der Kante der Arbeitsspalte`);
       const vorher = Math.round(m.seite.top);
       await page.evaluate(() => window.scrollTo(0, 600));

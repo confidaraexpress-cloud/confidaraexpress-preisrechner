@@ -26,6 +26,7 @@ import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 function chromiumExecutablePath() {
@@ -40,7 +41,8 @@ function chromiumExecutablePath() {
 
 const PORT = 5223;
 const BASE = `http://127.0.0.1:${PORT}`;
-const REPO_ROOT = new URL("../..", import.meta.url).pathname;
+// fileURLToPath statt .pathname: unter Windows ergäbe .pathname „/C:/…“ — als cwd ungültig (spawn ENOENT).
+const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
 const USER = {
   id: 1, email: "max@example.com", company_name: "Muster GmbH", name: "Max Mustermann",
@@ -205,7 +207,9 @@ test("die live gerenderte Schrittnummer 01 der Übersicht zeigt eine normale Nul
   });
   assert.equal(domInfo.text, "1");
   assert.doesNotMatch(domInfo.fontFamily, /DM Mono/, "die Schrittnummer darf nicht mehr DM Mono referenzieren");
-  assert.match(domInfo.fontFamily, /DM Sans/, "die Schrittnummer muss DM Sans referenzieren");
+  // Seit dem Premium-Redesign (Betreiberentscheidung 2026-10-27) trägt der Kundenbereich Instrument Sans; die Prüfung
+  // darunter misst die Null in genau dieser, tatsächlich geladenen Schrift.
+  assert.match(domInfo.fontFamily, /Instrument Sans/, "die Schrittnummer muss die Schrift des Kundenbereichs referenzieren");
 
   const result = await page.evaluate(() => {
     const el = document.querySelectorAll(".ov-step-no")[0];

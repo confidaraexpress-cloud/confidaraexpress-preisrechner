@@ -146,7 +146,8 @@ test("4 — Seitengerüst: Kopf, Hero, Ergebnisse, Ablauf, Plattform, FAQ mit Se
   // Akzentzeile, keine Versal-Augenbraue; darunter die Nachtkarte mit ihrer Legende.
   assert.match(HTML_OHNE, /<h1 class="pc-display" id="pc-hero-title"><span class="pc-display-line">Versand für Unternehmen\.<\/span> <span class="pc-display-line">Einfach vergleichen\.<\/span><\/h1>/);
   assert.doesNotMatch(HTML_OHNE, /pc-eyebrow|pc-display-line--soft/);
-  assert.match(HTML_OHNE, /<div class="pc-hero-map-canvas" id="pc-hero-map-canvas">\s*<img class="pc-hero-map-img" src="\.\.\/src\/assets\/illustrations\/nachtkarte-eu\.svg" alt="" width="536" height="497" decoding="async" \/>/);
+  // Premium-Redesign (Betreiberentscheidung 2026-10-27): die Karte trägt die Einstiegswelle der Lichter (nachtkarte.css).
+  assert.match(HTML_OHNE, /<div class="pc-hero-map-canvas nk-welle" id="pc-hero-map-canvas">\s*<img class="pc-hero-map-img" src="\.\.\/src\/assets\/illustrations\/nachtkarte-eu\.svg" alt="" width="536" height="497" decoding="async" \/>/);
   assert.match(HTML_OHNE, /<figcaption class="pc-hero-map-legend"><span class="pc-hero-map-dot" aria-hidden="true"><\/span>Versand ab Deutschland in die Länder der EU<\/figcaption>/);
   assert.match(HTML_OHNE, /<p class="pc-lead">Mehrere Versanddienstleister auf einer Plattform: transparente Nettopreise für Ihre Sendung, effizient gebucht im Kundenbereich — mit persönlichem Ansprechpartner\.<\/p>/);
   // Bereich 2 gibt es erst nach der ersten Berechnung: vorher steht dort nichts, auch keine Überschrift.
@@ -159,10 +160,11 @@ test("4 — Seitengerüst: Kopf, Hero, Ergebnisse, Ablauf, Plattform, FAQ mit Se
   assert.match(HTML_OHNE, /<html lang="de" data-ce-bereich="preisrechner">/);
 });
 
-test("5 — Kopf: preconnect zur API, genau zwei vorgeladene Schriftschnitte, nur Marken-Lockups", () => {
+test("5 — Kopf: preconnect zur API, genau ein vorgeladener Schriftschnitt, nur Marken-Lockups", () => {
   assert.match(HTML_OHNE, /<link rel="preconnect" href="https:\/\/api\.confidaraexpress\.de" crossorigin \/>/);
   const preloads = [...HTML_OHNE.matchAll(/<link rel="preload" href="([^"]+)" as="font" type="font\/woff2" crossorigin \/>/g)].map((m) => m[1]);
-  assert.deepEqual(preloads, ["../src/assets/fonts/dmsans-300.woff2", "../src/assets/fonts/cormorantgaramond-400.woff2"]);
+  // Premium-Redesign (Betreiberentscheidung 2026-10-27): Instrument Sans trägt Headline, Text und Formular.
+  assert.deepEqual(preloads, ["../src/assets/fonts/instrumentsans-var.woff2"]);
   const bilder = [...HTML_OHNE.matchAll(/<img [^>]*src="([^"]+)"/g)].map((m) => m[1]);
   // Kopf und Fuß liegen auf dunklem Grund: zweimal das helle Lockup. Dazwischen die Nachtkarte des Heros
   // (Konzept A, eigene Zeichnung) — die einzige Illustration, kein Markenasset.
@@ -238,6 +240,11 @@ test("7 — Formularskelett: dieselben Zeilen und Felder wie die Insel, nicht be
   // in derselben Klasse, damit beide gleich hoch bleiben (B5 in publicCalculatorBuild).
   assert.match(skelett, /<div class="pkg-lines-foot"><span class="pc-line-action pc-line-action--add">Paket hinzufügen<\/span><\/div>/);
   assert.match(editor, /add: "pc-line-action pc-line-action--add"/);
+  // Die Paketbühne (Konzept B) steht in Insel und Skelett an derselben Stelle, im Skelett als Beispielpaket mit
+  // derselben Hülle und Unterzeile — sonst spränge die Karte beim Austausch (B5 in publicCalculatorBuild).
+  assert.match(app, /<Paketbuehne variant="public" lines=\{paketzeilen\}/, "die Paketbühne fehlt in der Insel");
+  assert.match(skelett, /<figure class="ce-paket ce-paket--public" data-paket-zustand="beispiel" aria-hidden="true">\s*<svg class="ce-paket-svg" viewBox="0 0 320 232" focusable="false">/);
+  assert.match(skelett, /<span class="ce-paket-titel">Maße eingeben – das Paket nimmt Form an<\/span><span class="ce-paket-hinweis">Beispielpaket<\/span>/);
   assert.match(editor, />\s*Paket hinzufügen\s*</);
   // Nicht bedienbar: keine ids (keine Doppelungen mit der Insel), keine Namen, nichts im Tabulatorweg.
   assert.doesNotMatch(skelett, /\sid="|\sname="|<form|<button/);

@@ -1,0 +1,166 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKETBÜHNE (Premium-Redesign, Konzept B, Betreiberentscheidung 2026-10-27)
+   ───────────────────────────────────────────────────────────────────────────
+   Ein Karton aus Kraftpapier, der die eingegebenen Maße annimmt
+   (components/shipping/Paketbuehne.jsx, Geometrie utils/paketSzene.mjs).
+   Gemeinsam für den Kundenbereich (index.css) und den öffentlichen
+   Preisrechner (public-calculator.css). Jede Regel hängt am Bereichsattribut;
+   Farben ausschließlich aus dem Bereichsblock von variables.css.
+
+   Bewegung: Jede Fläche ist ein Einheitsquadrat mit einer CSS-Matrix. Ein neues
+   Maß überblendet in 420 ms mit leichtem Nachfedern (Antwort auf die Eingabe,
+   keine Daueranimation). Reduzierte Bewegung: sofort im Endzustand.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Grundform: ein Streifen — links der Karton, rechts die Werte. Neben breiten Formularen steht die Bühne
+   aufrecht (Abschnitt unten, .ce-paket-raster). */
+[data-ce-bereich] .ce-paket {
+  container: ce-paket / inline-size;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(104px, 38%) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--ce-space-2) var(--ce-space-4);
+  margin: 0;
+  padding: var(--ce-space-2) var(--ce-space-4) var(--ce-space-2) var(--ce-space-3);
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-radius-panel);
+  /* Die helle Werkbank: feines Raster wie eine Schneidematte, ohne Bild. */
+  background-color: var(--ce-pr-paket-buehne);
+  background-image:
+    linear-gradient(var(--ce-pr-paket-raster) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ce-pr-paket-raster) 1px, transparent 1px);
+  background-size: 22px 22px;
+  background-position: -1px -1px;
+  overflow: hidden;
+}
+
+[data-ce-bereich] .ce-paket-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 140px;
+  overflow: visible;
+}
+
+/* Alle bewegten Teile: Einheitsquadrate bzw. Gruppen mit Matrix, Ursprung oben links. */
+[data-ce-bereich] .ce-paket-form,
+[data-ce-bereich] .ce-paket-mass {
+  transform-box: view-box;
+  transform-origin: 0 0;
+  transition: transform 420ms cubic-bezier(0.25, 1.12, 0.4, 1);
+}
+
+[data-ce-bereich] .ce-paket-schatten .ce-paket-form { fill: var(--ce-pr-paket-schatten); }
+[data-ce-bereich] .ce-paket-oben,
+[data-ce-bereich] .ce-paket-links,
+[data-ce-bereich] .ce-paket-rechts {
+  stroke: var(--ce-pr-kraft-kante);
+  stroke-width: 0.75px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+[data-ce-bereich] .ce-paket-oben { fill: var(--ce-pr-kraft-oben); }
+[data-ce-bereich] .ce-paket-links { fill: var(--ce-pr-kraft-links); }
+[data-ce-bereich] .ce-paket-rechts { fill: var(--ce-pr-kraft-rechts); }
+[data-ce-bereich] .ce-paket-band { fill: var(--ce-pr-band); }
+[data-ce-bereich] .ce-paket-band--seite { fill: var(--ce-pr-band-seite); }
+
+[data-ce-bereich] .ce-paket-etikett-grund {
+  fill: var(--ce-pr-etikett);
+  stroke: var(--ce-pr-etikett-kante);
+  stroke-width: 0.5px;
+  vector-effect: non-scaling-stroke;
+}
+[data-ce-bereich] .ce-paket-etikett-kopf { fill: var(--ce-pr-etikett-kopf); }
+[data-ce-bereich] .ce-paket-etikett text {
+  font-family: var(--ce-font-sans);
+  fill: var(--ce-pr-etikett-tinte);
+}
+[data-ce-bereich] .ce-paket-etikett-klein { font-weight: 600; letter-spacing: 0.06em; }
+[data-ce-bereich] .ce-paket-etikett-ort { font-weight: 600; }
+[data-ce-bereich] .ce-paket-etikett-leer { fill: var(--ce-pr-etikett-leer); }
+[data-ce-bereich] .ce-paket-etikett-code { fill: var(--ce-pr-etikett-tinte); }
+
+/* Kantenmaße: Werte des Formulars an ihren Kanten, mit hellem Hof für die Lesbarkeit. */
+[data-ce-bereich] .ce-paket-mass {
+  font-family: var(--ce-font-sans);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  fill: var(--ce-color-text-secondary);
+  paint-order: stroke;
+  stroke: var(--ce-pr-paket-buehne);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+/* Beispiel und unvollständige Maße: gestrichelt und hell, ohne Band — es ist noch nicht „Ihr“ Paket. */
+[data-ce-bereich] .ce-paket[data-paket-zustand="beispiel"] :is(.ce-paket-oben, .ce-paket-links, .ce-paket-rechts) {
+  fill: var(--ce-pr-kraft-beispiel);
+  stroke: var(--ce-pr-kraft-beispiel-kante);
+  stroke-dasharray: 4 3;
+}
+[data-ce-bereich] .ce-paket[data-paket-zustand="beispiel"] :is(.ce-paket-band, .ce-paket-etikett) { opacity: 0; }
+[data-ce-bereich] .ce-paket[data-paket-zustand="beispiel"] .ce-paket-schatten { opacity: 0.35; }
+[data-ce-bereich] .ce-paket[data-paket-zustand="teilweise"] :is(.ce-paket-oben, .ce-paket-links, .ce-paket-rechts) { fill-opacity: 0.55; }
+[data-ce-bereich] .ce-paket :is(.ce-paket-band, .ce-paket-etikett, .ce-paket-schatten) {
+  transition: transform 420ms cubic-bezier(0.25, 1.12, 0.4, 1), opacity 240ms var(--ce-motion-ease-standard);
+}
+
+[data-ce-bereich] .ce-paket-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  text-align: left;
+}
+
+/* Im Formular: das Raster aus Eingaben und Bühne. Breit steht die Bühne aufrecht neben den Feldern (Konzept B),
+   schmal als Streifen darunter. Die Breite des Formulars entscheidet, nicht das Fenster. */
+[data-ce-bereich] .ce-paket-raster { container: ce-paket-raster / inline-size; }
+[data-ce-bereich] .ce-paket-raster-innen { display: grid; gap: var(--ce-space-4); }
+[data-ce-bereich] .ce-paket-raster-eingaben { min-width: 0; }
+@container ce-paket-raster (min-width: 820px) {
+  [data-ce-bereich] .ce-paket-raster-innen {
+    grid-template-columns: minmax(0, 1fr) 272px;
+    align-items: stretch;
+    column-gap: var(--ce-space-6);
+  }
+  [data-ce-bereich] .ce-paket-raster .ce-paket {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    align-content: center;
+    padding: var(--ce-space-4) var(--ce-space-4) var(--ce-space-4);
+  }
+  [data-ce-bereich] .ce-paket-raster .ce-paket-svg { max-height: 200px; }
+  [data-ce-bereich] .ce-paket-raster .ce-paket-text { text-align: center; }
+}
+[data-ce-bereich] .ce-paket-titel {
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  font-weight: 600;
+  color: var(--ce-color-text-primary);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+[data-ce-bereich] .ce-paket-hinweis {
+  font-size: var(--ce-text-micro-size);
+  line-height: 1.5;
+  color: var(--ce-color-text-muted);
+}
+
+/* Kantenmaße nur, wo die Zeichnung groß genug ist (breiter Streifen, aufrechte Bühne). Schmal stehen die Maße
+   allein in der Unterzeile — an den Kanten wären sie zu klein. */
+[data-ce-bereich] .ce-paket-mass { display: none; }
+@container ce-paket (min-width: 520px) {
+  [data-ce-bereich] .ce-paket-mass { display: inline; }
+}
+@container ce-paket-raster (min-width: 820px) {
+  [data-ce-bereich] .ce-paket-raster .ce-paket-mass { display: inline; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-ce-bereich] .ce-paket-form,
+  [data-ce-bereich] .ce-paket-mass,
+  [data-ce-bereich] .ce-paket :is(.ce-paket-band, .ce-paket-etikett, .ce-paket-schatten) { transition: none; }
+}

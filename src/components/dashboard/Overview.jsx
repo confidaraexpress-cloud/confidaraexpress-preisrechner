@@ -125,6 +125,8 @@ export function Overview({
   // Paket F: der Buchungsrahmen (GET /kunde/credit) — null, solange nichts geladen ist.
   credit = null,
   onNewShipment, onAllShipments, onAllInvoices, onProfile, onNotificationNav,
+  // Premium-Redesign: die Kopfsuche des Kundenbereichs (components/layout/KundenSuche.jsx), von DashboardPage gebaut.
+  suche = null,
 }) {
   const navigate = useNavigate();
 
@@ -193,6 +195,7 @@ export function Overview({
         subtitle={todayLabel ? `${todayLabel} · Ihr Versand im Überblick` : "Ihr Versand im Überblick"}
         utility={(
           <UtilityCluster>
+            {suche}
             {/* Zustand und Polling kommen aus dem Shell-Provider; hier entsteht
                 keine zweite Abfrageschleife. */}
             <NotificationBell variant="overview" navigateTo={onNotificationNav} />

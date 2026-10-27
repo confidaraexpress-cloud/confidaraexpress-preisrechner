@@ -27,7 +27,7 @@ Widersprechen sich Canonical Context und aktueller `origin/main`: **nicht still 
 
 Nicht automatisch geladen; bei fachlichem Bezug **vor** der Änderung lesen:
 
-- `docs/frontend-vertraege.md` – Offer- und Booking-Verträge (Angebotsidentität, Sendungshandle, dreiwertige Angaben, Adressart, Same-Day, Frühzeiten, Produktprofil, voraussichtliche Lieferung, Express, UPS-Familie, Preisänderung, Preisprojektion, Labelformat, Absicherung, Buchungsfehler, Sendungsverfolgung, Fehlerdarstellung). Pflicht bei Arbeit an Angebot, Buchung, Sendung, Adresse.
+- `docs/frontend-vertraege.md` – Offer- und Booking-Verträge (Angebotsidentität, Sendungshandle, dreiwertige Angaben, Adressart, Same-Day, Frühzeiten, Produktprofil, voraussichtliche Lieferung, Express, UPS-Familie, Preisänderung, Preisprojektion, Labelformat, Absicherung, Buchungsfehler, Sendungsverfolgung, Fehlerdarstellung, Kundenbereich-Demo). Pflicht bei Arbeit an Angebot, Buchung, Sendung, Adresse und an `src/demo/`.
 - `docs/design-css-architektur.md` – Tokenfamilien, Importreihenfolge, Primitives, Typografie, App-Shell. Pflicht bei Stylesheet-Arbeit.
 - `docs/pwa.md` – Manifest, Service Worker, Offline-Seite, Installationszugang, Updates, nginx. Pflicht bei PWA-Bezug.
 
@@ -111,9 +111,10 @@ Logische Schichten unter `src/`:
 | `routes/` | Routenschutz |
 | `styles/` | Stylesheets + Designsystem-Governance-Tests |
 | `testing/` | Testhilfen des Produktionsbaums |
+| `demo/` | öffentliche Kundenbereich-Demo unter `/demo` (eigene Seitenladung, Beispieldaten, keine Serververbindung) |
 | `assets/` | Bilder, Icons, Schriften |
 
-**Keine zweite API-Abstraktion anlegen.** Backend-Kommunikation gehört in den bestehenden `src/api/`-Vertrag — insbesondere keine Verzeichnisse `services/` oder `lib/`.
+**Keine zweite API-Abstraktion anlegen.** Backend-Kommunikation gehört in den bestehenden `src/api/`-Vertrag — insbesondere keine Verzeichnisse `services/` oder `lib/`. `src/demo/demoBackend.mjs` ist kein Backendzugriff, sondern die Beispieldatenquelle der Demo: sie hängt sich ausschließlich über `setzeDemoTransport` (nur `demoStart.mjs`) in `apiFetch` ein und erreicht nie den Server.
 
 Alle Seiten sind `React.lazy`-geladen; neue Seiten ebenso einbinden.
 

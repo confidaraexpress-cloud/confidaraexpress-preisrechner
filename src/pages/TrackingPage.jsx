@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { API } from "../api/client";
+import { apiFetch } from "../api/client";
 import { EmptyState } from "../components/ui/StateView";
 import { resolveCarrierName } from "../utils/carrierMap";
 import { TRACKING_NOT_FOUND } from "../utils/trackingMessages";
@@ -44,7 +44,9 @@ export default function TrackingPage({ utility = null } = {}) {
     setError(""); setLoading(true); setResult(null); setSearchedKey(trackingKey);
     let r;
     try {
-      r = await fetch(`${API}/api/tracking/public/${encodeURIComponent(trackingKey)}`);
+      // Über den zentralen Zugang (öffentlich, ohne Zeitlimit wie bisher): so beantwortet in der Kundenbereich-Demo
+      // die Datenquelle des Browsers die Abfrage, und keine Anfrage verlässt die Demo.
+      r = await apiFetch(`/api/tracking/public/${encodeURIComponent(trackingKey)}`, { timeoutMs: 0 });
     } catch {
       setError("Tracking aktuell nicht verfügbar.");
       setLoading(false);

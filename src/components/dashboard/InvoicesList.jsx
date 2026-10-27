@@ -16,6 +16,7 @@ import {
   FILTER_EMPTY_TEXT, LIST_EMPTY_TITLE, LIST_EMPTY_TEXT, LOADING_TEXT, LOAD_ERROR_TEXT,
   customerInvoiceSummary,
 } from "../../utils/customerInvoiceView.mjs";
+import { listeMitFokus } from "../../utils/kundenSuche.mjs";
 
 // Rechnungsliste (Kunde) — Phase 5: Forderungsklassifizierung, sechs fachliche
 // Bereiche, Premium-Statussystem, mobile Kartenansicht, lokale Filter.
@@ -183,13 +184,13 @@ function ActionButtons({ inv, downloadingId, onView, onDownload }) {
 // ── Mobilkarte ───────────────────────────────────────────────────────────────
 // Reihenfolge nach Bedeutung: Nummer und Zahlungsstatus, dann der Betrag, dann
 // die Daten — Dokument- und Versandinformation zuletzt als leiser Text.
-function InvoiceCard({ inv, downloadingId, onView, onDownload }) {
+function InvoiceCard({ inv, downloadingId, onView, onDownload, gesucht = false }) {
   const [payTone, payLabel] = paymentStatus(inv);
   const p = invoicePeriod(inv);
   const [docTone, docLabel] = documentStatusMeta(inv);
   const mail = emailDeliveryMeta(inv);
   return (
-    <li className="inv-card">
+    <li className={`inv-card${gesucht ? " ce-suche-fokus" : ""}`} data-suche-fokus={gesucht ? String(inv.id) : undefined}>
       <div className="inv-card-head">
         <InvoiceNumberBlock inv={inv} />
         <StatusPill tone={payTone} label={payLabel} />
@@ -210,7 +211,7 @@ function InvoiceCard({ inv, downloadingId, onView, onDownload }) {
   );
 }
 
-export function InvoicesList({ invoices, summary, loading, error, onReload, onRetry, refreshError, hasMore, loadingMore, loadMoreError, onLoadMore }) {
+export function InvoicesList({ invoices, summary, loading, error, onReload, onRetry, refreshError, hasMore, loadingMore, loadMoreError, onLoadMore, fokus = null }) {
   const { refresh: refreshNotifications } = useNotifications();
   const [filter, setFilter] = useState("");
   const [downloadingId, setDownloadingId] = useState(null);
@@ -285,7 +286,16 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
   }, [previewInvoice, refreshNotifications]);
 
   const list = Array.isArray(invoices) ? invoices : [];
-  const filtered = list.filter((inv) => matchesInvoiceFilter(inv, filter));
+  // Kopfsuche (Premium-Redesign): der gesuchte Beleg steht hervorgehoben in der Liste — stand er nicht in den
+  // geladenen Seiten, vorn. Die Zusammenfassung rechnet weiter nur mit den geladenen Rechnungen.
+  const anzeige = listeMitFokus(list, fokus);
+  const fokusId = fokus && fokus.id != null ? String(fokus.id) : null;
+  const filtered = anzeige.filter((inv) => matchesInvoiceFilter(inv, filter) || (fokusId !== null && String(inv.id) === fokusId));
+  useEffect(() => {
+    if (!fokusId) return;
+    const ziel = [...document.querySelectorAll("[data-suche-fokus]")].find((e) => e.getAttribute("data-suche-fokus") === fokusId && e.offsetParent !== null);
+    if (ziel && typeof ziel.scrollIntoView === "function") ziel.scrollIntoView({ block: "center" });
+  }, [fokusId]);
 
   return (
     <>
@@ -353,7 +363,11 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
                 </thead>
                 <tbody>
                   {filtered.map((inv) => (
-                    <tr key={inv.id}>
+                    <tr
+                      key={inv.id}
+                      className={fokusId !== null && String(inv.id) === fokusId ? "ce-suche-fokus" : undefined}
+                      data-suche-fokus={fokusId !== null && String(inv.id) === fokusId ? fokusId : undefined}
+                    >
                       <td><InvoiceNumberBlock inv={inv} /></td>
                       <td><PeriodBlock inv={inv} /></td>
                       <td><AmountBlock inv={inv} /></td>
@@ -371,6 +385,7 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
               {filtered.map((inv) => (
                 <InvoiceCard
                   key={inv.id} inv={inv} downloadingId={downloadingId}
+                  gesucht={fokusId !== null && String(inv.id) === fokusId}
                   onView={(i) => setPreviewInvoice({ id: i.id, invoice_number: i.invoice_number })}
                   onDownload={handleDownload}
                 />

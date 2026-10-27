@@ -14,6 +14,7 @@ import {
   resolveNewShipmentRole, mapAddressToShipmentFormPatch, applyAddressMutation, applyPromotedDefaultSender,
   ADDRESS_OPERATIONS, addressFailureMessage, addressExceptionMessage, addressServerFieldErrors,
 } from "../utils/addressBookView.mjs";
+import { adressSucheStart } from "../utils/kundenSuche.mjs";
 
 // Fehlerantwort lesen, ohne je einen Rohwert weiterzugeben: nur Status, Code und Feldname.
 async function fehlerAusAntwort(r) {
@@ -27,10 +28,19 @@ const PAGE_LIMIT = 20;
 // Adressbuch — Hauptseite. Hält den gesamten Seiten-State (Tab/Filter/Suche,
 // geladene Adressen + Cursor, Drawer-/Dialogzustand). Alle API-Aufrufe laufen
 // über addressBookApi.js (zentrales apiFetch, Auth/401-Handling unverändert).
-export default function AddressBookPage({ onUseForNewShipment, utility }) {
-  const [tab, setTab] = useState(TAB_SENDER);
-  const [q, setQ] = useState("");
-  const [debouncedQ, setDebouncedQ] = useState("");
+export default function AddressBookPage({ onUseForNewShipment, utility, sucheFokus = null }) {
+  // Kopfsuche (Premium-Redesign): ein Adresstreffer öffnet das Adressbuch im Reiter seiner Rolle, mit seiner Firma
+  // (sonst dem Namen) als Suche — dieselbe Suche wie über das Feld der Seite.
+  const sucheStart = adressSucheStart(sucheFokus);
+  const [tab, setTab] = useState(sucheStart ? sucheStart.tab : TAB_SENDER);
+  const [q, setQ] = useState(sucheStart ? sucheStart.q : "");
+  const [debouncedQ, setDebouncedQ] = useState(sucheStart ? sucheStart.q.trim() : "");
+  useEffect(() => {
+    const start = adressSucheStart(sucheFokus);
+    if (!start) return;
+    setTab(start.tab);
+    setQ(start.q);
+  }, [sucheFokus]);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
 
   const [items, setItems] = useState([]);

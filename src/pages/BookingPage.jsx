@@ -2245,8 +2245,11 @@ export default function BookingPage() {
         )}
 
         {/* ── Step 1: Übersicht ── */}
+        {/* Premium-Redesign (2026-10-27): die Abschnitte eines Schritts stehen auf EINEM Blatt, getrennt durch
+            Haarlinien statt vieler einzelner Karten; die Aktionen bilden den Fuß des Blatts. Nur Gestalt — Module,
+            Reihenfolge, Texte und Bedingungen sind unverändert. */}
         {step === 1 && (
-          <div>
+          <div className="booking-blatt booking-blatt--uebersicht">
             <OfferSummaryModule tariff={tariff} priceView={priceView} pickupWindow={pickupWindow} vatMode={vatMode} />
 
             {tariff.serviceType === "dropoff" && (
@@ -2400,7 +2403,7 @@ export default function BookingPage() {
               onSaved={clearFlow}
             />
 
-            <div className="flex gap-12">
+            <div className="flex gap-12 booking-blatt-fuss">
               <button className="btn btn-outline" onClick={goBackToOffers}>Zurück</button>
               <button className="btn btn-primary btn-grow" onClick={goToStep2}>
                 Weiter: Buchung
@@ -2411,7 +2414,7 @@ export default function BookingPage() {
 
         {/* ── Step 2: Buchung ── */}
         {step === 2 && (
-          <div>
+          <div className="booking-blatt booking-blatt--buchung">
             <div className="calc-panel booking-confirm-panel mb-16">
               <div className="calc-panel-header booking-confirm-header">
                 <h3>Verbindliche Bestellung</h3>
@@ -2579,7 +2582,7 @@ export default function BookingPage() {
                 />
               </div>
             </div>
-            <button className="btn btn-outline btn-full" onClick={() => setStep(1)} disabled={loading}>Zurück zur Übersicht</button>
+            <button className="btn btn-outline btn-full booking-blatt-zurueck" onClick={() => setStep(1)} disabled={loading}>Zurück zur Übersicht</button>
           </div>
         )}
 

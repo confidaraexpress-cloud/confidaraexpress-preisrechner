@@ -421,8 +421,10 @@ test("12 — Phase 3 fasst weder Routing noch API noch Businesslogik an", () => 
   // /preisrechner-uebernahme im öffentlichen Rahmen und /admin/public-calculator am Adminrahmen.
   // Manuell erstellte Rechnungen (Auftrag 2 / P1, dokumentierte Ankeränderung): +1 —
   // /admin/invoices/manual/:draftId am bestehenden Adminrahmen; keine neue Layoutroute.
-  assert.equal(mitPfad + indexRt, 46,
-    "46 Routen einschliesslich der Admin-Rechtstextvorschau, der Seitenvorschau, des öffentlichen Preisrechners und des Rechnungseditors");
+  // Öffentliche Kundenbereich-Demo (Betreiberentscheidung 2026-10-27, dokumentierte Ankeränderung): +1 — /demo/* lädt
+  // die Seite neu; die Demo selbst läuft in einer eigenen Seitenladung mit eigenem Router (src/demo/DemoApp.jsx).
+  assert.equal(mitPfad + indexRt, 47,
+    "47 Routen einschliesslich der Admin-Rechtstextvorschau, der Seitenvorschau, des öffentlichen Preisrechners, des Rechnungseditors und der Demo");
   assert.equal(pfadlos, 4,
     "die Zahl der pfadlosen Layoutrouten ist unverändert (4: Dashboard, öffentlich, Admin, Auth)");
 

@@ -22,6 +22,8 @@ import { AppStatusNotice } from "../components/common/AppStatusNotice";
 import { updateNoticeSuppressed } from "../utils/appVersionCheck.mjs";
 import { useShippingFlow } from "../context/ShippingFlowContext";
 import { useCeBereich } from "../hooks/useCeBereich";
+import { KundenSuche } from "../components/layout/KundenSuche";
+import { sucheUebernehmen } from "../utils/kundenSuche.mjs";
 
 // Takt der reinen Monatsbeobachtung (siehe Effekt unten). Bewusst ein LOKALER
 // Vergleich ohne Netzwerkzugriff — 60 s sind billig und lassen den Wechsel
@@ -131,6 +133,9 @@ export default function DashboardPage() {
   // dadurch schlicht `/dashboard`, und ein Browser-Zurück von `/booking` landete
   // auf der Übersicht statt auf „Neue Sendung".
   const [page, setPage] = useState(() => waehleStartbereich(location));
+  // Kopfsuche (Premium-Redesign): der gesuchte Eintrag, den der Zielbereich hervorhebt — auch, wenn die Suche auf
+  // einer Seite außerhalb des Dashboards begann (DashboardLayout übergibt ihn; im Router-State steht nur der Verweis).
+  const [sucheFokus, setSucheFokus] = useState(() => sucheUebernehmen(location.state?.sucheFokus));
   // Beenden eines laufenden Vorgangs beim bewussten Start einer neuen Sendung.
   const { clearFlow } = useShippingFlow();
   // Remount-Schlüssel für „Neue Sendung": jeder Klick auf den Navigationseintrag
@@ -465,7 +470,9 @@ export default function DashboardPage() {
     // sonst später fälschlich ein Replace statt eines Push auslösen.
     const { returnTarget, ...rest } = aktuell || {};   // eslint-disable-line no-unused-vars
     const naechster = page === "new" && returnTarget ? { ...rest, returnTarget, page } : { ...rest, page };
-    navigate(window.location.pathname, { replace: true, state: naechster });
+    // Der Pfad aus dem Router (relativ zu dessen Basis), nicht aus window.location: unter einer Router-Basis
+    // (die Kundenbereich-Demo läuft unter /demo) setzte navigate die Basis sonst ein zweites Mal davor.
+    navigate(location.pathname, { replace: true, state: naechster });
   }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Navigate from calculator route back into dashboard pages
@@ -521,6 +528,8 @@ export default function DashboardPage() {
     if (target.type === "logout") { logout(); navigate("/login"); return; }
     if (target.type === "route") { navigate(target.path, target.state ? { state: target.state } : undefined); return; }
     if (target.page === "calculator") { navigate("/calculator"); return; }
+    // Eine Navigation räumt die Hervorhebung eines Suchtreffers ab; die Kopfsuche setzt sie über ihr onCommit neu.
+    setSucheFokus(null);
     setPage(target.page);
     // Folgeaktion, die an GENAU dieses Ziel gebunden ist (App-Eintrag → Karte).
     // Sie läuft erst hier, wenn die Navigation wirklich stattfindet — auch nach
@@ -603,8 +612,17 @@ export default function DashboardPage() {
 
   // EIN Utility-Cluster für alle Seitenköpfe des Kundenbereichs — Glocke und
   // Benutzerchip stehen dadurch auf jeder Unterseite an derselben Stelle.
+  // Ein Treffer der Kopfsuche führt in seinen Bereich — über denselben Weg (und denselben Verlassen-Dialog) wie die
+  // Navigation; hervorgehoben wird er erst, wenn die Navigation wirklich stattfindet.
+  const sucheOeffnen = (fokus, ziel) => {
+    if (!fokus || !ziel) return;
+    navigateTo(ziel, null, () => setSucheFokus(fokus));
+  };
+  const kopfSuche = <KundenSuche nutzerId={user?.id ?? null} onOeffnen={sucheOeffnen} />;
+
   const utilityCluster = (
     <UtilityCluster>
+      {kopfSuche}
       <NotificationBell variant="page" navigateTo={navigateFromNotification} />
       <UserChip user={user} onClick={() => navigateTo("profile")} />
     </UtilityCluster>
@@ -702,6 +720,7 @@ export default function DashboardPage() {
             onAllInvoices={() => navigateTo("invoices")}
             onProfile={() => navigateTo("profile")}
             onNotificationNav={navigateFromNotification}
+            suche={kopfSuche}
           />
         )}
 
@@ -728,6 +747,7 @@ export default function DashboardPage() {
             <AddressBookPage
               utility={utilityCluster}
               onUseForNewShipment={(patch) => { setAddressPrefill(patch); navigateTo("new"); }}
+              sucheFokus={sucheFokus?.art === "adresse" ? sucheFokus : null}
             />
           </Suspense>
         )}
@@ -754,6 +774,7 @@ export default function DashboardPage() {
             loadingMore={shipmentsMoreLoading}
             loadMoreError={shipmentsMoreError}
             onLoadMore={loadMoreShipments}
+            fokus={sucheFokus?.art === "sendung" ? sucheFokus : null}
           />
         )}
 
@@ -785,6 +806,7 @@ export default function DashboardPage() {
             loadingMore={invoicesMoreLoading}
             loadMoreError={invoicesMoreError}
             onLoadMore={loadMoreInvoices}
+            fokus={sucheFokus?.art === "rechnung" ? sucheFokus : null}
           />
         )}
         {page === "support" && (

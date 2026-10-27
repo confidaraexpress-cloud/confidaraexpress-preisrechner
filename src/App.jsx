@@ -13,6 +13,7 @@ import { landingPathFor } from "./utils/roleLanding.mjs";
 import { NavbarLayout } from "./components/layout/NavbarLayout";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { AdminLayout } from "./components/layout/AdminLayout";
+import { demoAusgangsziel } from "./demo/demoModus.mjs";
 
 const AuthPage        = React.lazy(() => import("./pages/AuthPage"));
 const EmailChangeConfirmPage = React.lazy(() => import("./pages/EmailChangeConfirmPage"));
@@ -97,6 +98,17 @@ function AuthAreaBoundary() {
 function RegistrierenAlias() {
   const { search, hash } = useLocation();
   return <Navigate to={{ pathname: "/register", search, hash }} replace />;
+}
+
+/* Öffentliche Kundenbereich-Demo: sie läuft nur in einer EIGENEN Seitenladung (main.jsx, demo/demoStart.mjs), mit
+   abgeschirmtem Speicher und ohne Netz. Führt ein Link innerhalb der Anwendung nach /demo, lädt diese Route die
+   Seite deshalb neu, statt die Demo in der laufenden (womöglich angemeldeten) Anwendung zu öffnen. */
+function DemoNeuLaden() {
+  const { pathname, search, hash } = useLocation();
+  React.useEffect(() => {
+    window.location.replace(demoAusgangsziel(pathname, search, hash, window.location.origin));
+  }, [pathname, search, hash]);
+  return <LoadingScreen />;
 }
 
 export default function App() {
@@ -208,6 +220,8 @@ export default function App() {
           <Route path="/admin/public-calculator" element={<AdminPublicCalculatorPage />} />
           <Route path="/admin/audit-logs"   element={<AuditLogPage />} />
         </Route>
+
+        <Route path="/demo/*" element={<DemoNeuLaden />} />
 
         {/* Startziel rollenabhängig: Vertriebspartner ins Partnerportal,
             alle anderen unverändert in den Kundenbereich. */}

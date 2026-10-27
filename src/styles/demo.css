@@ -1,0 +1,97 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   ÖFFENTLICHE KUNDENBEREICH-DEMO (Betreiberentscheidung 2026-10-27)
+   ───────────────────────────────────────────────────────────────────────────
+   Nur in der Demo-Welt unter /demo: <html data-ce-demo> setzt demo/DemoApp.jsx.
+   Die Demo-Leiste steht fest am unteren Rand jeder Seite — Navy wie die
+   Seitenleiste, darüber der Markenstreifen. Sie verdeckt nichts: der Inhalt
+   bekommt ihre Höhe als unteren Abstand. Werte: --ce-demo-* (variables.css).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+[data-ce-demo] body { padding-bottom: calc(var(--demo-leiste-hoehe, 72px) + env(safe-area-inset-bottom, 0px)); }
+
+[data-ce-demo] .demo-leiste {
+  position: fixed;
+  z-index: 400;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--ce-demo-flaeche);
+  color: var(--ce-demo-text);
+  box-shadow: var(--ce-elevation-3);
+}
+[data-ce-demo] .demo-leiste::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--ce-demo-streifen);
+}
+[data-ce-demo] .demo-leiste-innen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  max-width: 1440px;
+  min-height: 69px;
+  margin: 0 auto;
+  padding: 10px 24px;
+}
+[data-ce-demo] .demo-leiste-text { display: grid; gap: 2px; min-width: 0; margin: 0; }
+[data-ce-demo] .demo-leiste-marke { font-size: 0.9375rem; font-weight: 650; letter-spacing: -0.005em; }
+[data-ce-demo] .demo-leiste-zusatz { font-size: 0.8125rem; line-height: 1.4; color: var(--ce-demo-text-2); }
+[data-ce-demo] .demo-leiste-aktionen { display: flex; flex: none; flex-wrap: wrap; gap: 8px; }
+[data-ce-demo] .demo-leiste-knopf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--ce-demo-linie);
+  border-radius: var(--ce-radius-md);
+  color: var(--ce-demo-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+[data-ce-demo] .demo-leiste-knopf:hover { background: var(--ce-demo-hover); border-color: var(--ce-demo-fokus); }
+[data-ce-demo] .demo-leiste-knopf:focus-visible { outline: 2px solid var(--ce-demo-fokus); outline-offset: 2px; }
+[data-ce-demo] .demo-leiste-knopf--primaer { border-color: var(--ce-demo-knopf); background: var(--ce-demo-knopf); color: var(--ce-demo-knopf-text); }
+[data-ce-demo] .demo-leiste-knopf--primaer:hover { border-color: var(--ce-demo-knopf-hover); background: var(--ce-demo-knopf-hover); }
+
+@media (max-width: 720px) {
+  [data-ce-demo] { --demo-leiste-hoehe: 112px; }
+  [data-ce-demo] .demo-leiste-innen { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 16px; }
+  [data-ce-demo] .demo-leiste-zusatz { display: none; }
+  [data-ce-demo] .demo-leiste-aktionen { display: grid; grid-template-columns: 1fr 1fr; }
+  [data-ce-demo] .demo-leiste-knopf { padding: 0 10px; font-size: 0.8125rem; }
+}
+@media (prefers-reduced-motion: reduce) { [data-ce-demo] .demo-leiste-knopf { transition: none; } }
+
+/* Die simulierte Buchungsbestätigung: der Hinweis steht in voller Breite unter dem Titel. */
+[data-ce-demo] .bsx-demo-hinweis { align-self: stretch; margin: var(--ce-space-2) 0 0; }
+
+/* Die Ausstiegsseite (nach „Abmelden" in der Demo) und der Hinweis, falls der Browser die Demo nicht zulässt. */
+.demo-ende {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 24px 16px;
+  background: var(--ce-demo-buehne);
+}
+.demo-ende-blatt {
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+  width: min(100%, 560px);
+  padding: 32px;
+  border-radius: var(--ce-radius-lg);
+  background: var(--ce-demo-blatt);
+  box-shadow: var(--ce-elevation-3);
+}
+.demo-ende-marke .ce-brandmark-img { width: 120px; }
+.demo-ende-titel { margin: 8px 0 0; font-size: 1.75rem; font-weight: 650; letter-spacing: -0.025em; line-height: 1.2; color: var(--ce-demo-tinte); }
+.demo-ende-text { margin: 0; font-size: 1rem; line-height: 1.6; color: var(--ce-demo-tinte-2); }
+.demo-ende-aktionen { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }

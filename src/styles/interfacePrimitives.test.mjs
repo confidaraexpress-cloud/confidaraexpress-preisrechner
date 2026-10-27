@@ -516,10 +516,13 @@ test("12 — die Primitive-Regeln nutzen kein font-weight 700", () => {
     `für DM Sans darf keine 700er-Instanz deklariert werden (gefunden: ${dmSansGewichte.join(", ")})`);
   // Keine neue oder ersetzte Schriftdatei.
   const dateien = [...fonts.matchAll(/url\('\.\.\/assets\/fonts\/([^']+)'\)/g)].map((m) => m[1]);
+  // Premium-Redesign (Betreiberentscheidung 2026-10-27): Instrument Sans kam bewusst hinzu (variabel, Latin und
+  // Latin-Erweiterung, SIL OFL 1.1, docs/lizenzen/OFL-InstrumentSans.txt). Ersetzt wurde keine Datei.
   assert.deepEqual([...new Set(dateien)].sort(), [
     "cormorantgaramond-400-italic.woff2", "cormorantgaramond-400.woff2",
     "dmsans-300-italic.woff2", "dmsans-300.woff2",
-  ], "es wird keine Schriftdatei hinzugefügt und keine ersetzt");
+    "instrumentsans-var-latin-ext.woff2", "instrumentsans-var.woff2",
+  ], "es wird keine Schriftdatei ohne Entscheidung hinzugefügt und keine ersetzt");
   // Und keine @font-face-Regel verweist auf eine Datei, die es nicht gibt.
   for (const d of new Set(dateien)) {
     assert.ok(existsSync(new URL(`../assets/fonts/${d}`, import.meta.url)),

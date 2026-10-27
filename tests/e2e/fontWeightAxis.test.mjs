@@ -34,10 +34,18 @@ import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
-const REPO_ROOT = new URL("../..", import.meta.url).pathname;
-const FONT_DATEI = path.join(REPO_ROOT, "src/assets/fonts/dmsans-300.woff2");
+// fileURLToPath statt .pathname: unter Windows ergäbe .pathname „/C:/…“ und mit path.join einen doppelten
+// Laufwerksbuchstaben.
+const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
+// Beide ausgelieferten Textschriften sind variabel: DM Sans (Admin, Partner) und Instrument Sans (Kundenbereich,
+// Anmeldung und öffentlicher Preisrechner seit dem Premium-Redesign, Betreiberentscheidung 2026-10-27).
+const SCHRIFTEN = [
+  ["DM Sans", path.join(REPO_ROOT, "src/assets/fonts/dmsans-300.woff2")],
+  ["Instrument Sans", path.join(REPO_ROOT, "src/assets/fonts/instrumentsans-var.woff2")],
+];
 
 function chromiumExecutablePath() {
   if (process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE) return process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
@@ -93,14 +101,14 @@ let browser = null;
 before(async () => { browser = await chromium.launch({ executablePath: chromiumExecutablePath() }); });
 after(async () => { if (browser) await browser.close(); });
 
-test("1 — die ausgelieferte DM-Sans-Datei ist ein echter Variable Font (fvar + gvar)", () => {
-  assert.ok(existsSync(FONT_DATEI), "dmsans-300.woff2 fehlt");
+for (const [name, FONT_DATEI] of SCHRIFTEN) test(`1 — die ausgelieferte ${name}-Datei ist ein echter Variable Font (fvar + gvar)`, () => {
+  assert.ok(existsSync(FONT_DATEI), `${path.basename(FONT_DATEI)} fehlt`);
   const tags = woff2Tabellen(FONT_DATEI);
   assert.ok(tags.includes("fvar"), `keine Variationsachsen (fvar) in der Datei — Tabellen: ${tags.join(" ")}`);
   assert.ok(tags.includes("gvar"), `keine variablen Glyphen (gvar) in der Datei — Tabellen: ${tags.join(" ")}`);
 });
 
-test("2 — die Gewichtsachse rendert 400/500/600/700 als eigenständige Schnitte", async () => {
+for (const [name, FONT_DATEI] of SCHRIFTEN) test(`2 — ${name}: die Gewichtsachse rendert 400/500/600/700 als eigenständige Schnitte`, async () => {
   const page = await browser.newPage();
   await page.goto("about:blank");
   const dataUri = `data:font/woff2;base64,${readFileSync(FONT_DATEI).toString("base64")}`;
@@ -178,11 +186,12 @@ test("3 — keine externe Schriftquelle, keine zusätzliche Schriftdatei", () =>
   const erwartet = [
     "cormorantgaramond-400-italic.woff2", "cormorantgaramond-400.woff2",
     "dmsans-300-italic.woff2", "dmsans-300.woff2",
+    "instrumentsans-var-latin-ext.woff2", "instrumentsans-var.woff2",
   ];
   const vorhanden = readdirSync(path.join(REPO_ROOT, "src/assets/fonts"))
     .filter((f) => f.endsWith(".woff2")).sort();
   assert.deepEqual(vorhanden, [...erwartet].sort(), "der Bestand an Schriftdateien hat sich verändert");
-  // Und fonts.css lädt genau die beiden Familien, die das Produkt benutzt.
+  // Und fonts.css lädt genau die drei Familien, die das Produkt benutzt.
   const familien = [...new Set([...fonts.matchAll(/font-family:\s*'([^']+)'/g)].map((m) => m[1]))].sort();
-  assert.deepEqual(familien, ["Cormorant Garamond", "DM Sans"]);
+  assert.deepEqual(familien, ["Cormorant Garamond", "DM Sans", "Instrument Sans"]);
 });

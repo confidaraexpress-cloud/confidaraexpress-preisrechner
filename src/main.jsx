@@ -1,4 +1,7 @@
-import React from "react";
+// Öffentliche Kundenbereich-Demo: MUSS der erste Import bleiben. Unter /demo schirmt er Speicher und Netz ab, bevor
+// irgendein anderes Modul sie berührt (demo/demoStart.mjs); sonst tut er nichts.
+import { DEMO_ZUSTAND } from "./demo/demoStart.mjs";
+import React, { Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import "./styles/index.css";
@@ -10,6 +13,27 @@ import { startReferralCapture } from "./utils/referralCapture.mjs";
 import { captureHandoffFromLocation } from "./utils/publicQuoteHandoffStore.mjs";
 import { loadSalesPartnerPublicConfig } from "./api/partnerApi";
 import App from "./App";
+import { LoadingScreen } from "./components/common/LoadingScreen";
+
+// Die Demo lädt ihren eigenen Teil nur unter /demo (eigener Chunk, keine Last für den Kundenbereich).
+const DemoApp = React.lazy(() => import("./demo/DemoApp.jsx"));
+
+/* Unter /demo, falls der Browser den Speicher nicht abschirmen lässt: ein ruhiger Hinweis statt einer Demo, die in
+   die echte Sitzung schreiben könnte. */
+function DemoNichtVerfuegbar() {
+  return (
+    <main className="demo-ende" aria-labelledby="demo-aus-titel">
+      <div className="demo-ende-blatt">
+        <h1 className="demo-ende-titel" id="demo-aus-titel">Die Demo ist in diesem Browser nicht verfügbar</h1>
+        <p className="demo-ende-text">Bitte öffnen Sie sie in einem aktuellen Browser oder registrieren Sie direkt ein Geschäftskonto.</p>
+        <div className="demo-ende-aktionen">
+          <a className="btn btn-primary btn-lg" href="/register">Geschäftskonto registrieren</a>
+          <a className="btn btn-outline btn-lg" href="https://preisrechner.confidaraexpress.de/">Zum Preisrechner</a>
+        </div>
+      </div>
+    </main>
+  );
+}
 
 /* ConfidaraExpress als App: das Installationsereignis des Browsers kann früh
    kommen — lange bevor die Kontoeinstellungen gerendert sind. Es wird deshalb
@@ -25,13 +49,13 @@ registerServiceWorker();
    bei abgelaufenem Token) verliert. Der Parameter verschwindet sofort aus der
    Adresse; gespeichert wird erst nach ausdrücklicher Freigabe durch die
    öffentliche Konfiguration (utils/referralCapture.mjs). */
-startReferralCapture({ loadConfig: loadSalesPartnerPublicConfig });
+if (!DEMO_ZUSTAND.aktiv) startReferralCapture({ loadConfig: loadSalesPartnerPublicConfig });
 
 /* Öffentlicher Preisrechner: die Tarifwahl kommt als Übergabetoken im Fragment von
    /preisrechner-uebernahme. Es wird HIER gelesen — vor dem ersten Rendern, damit es weder der
    Router noch die Anmeldung verliert —, verschwindet sofort aus der Adresse und liegt danach
    nur im Modulspeicher (utils/publicQuoteHandoffStore.mjs), nie im Storage. */
-captureHandoffFromLocation();
+if (!DEMO_ZUSTAND.aktiv) captureHandoffFromLocation();
 
 /* Die äußerste Fehlergrenze. Sie liegt bewusst ÜBER Router und AuthProvider:
    die Bereichsgrenzen weiter innen hängen selbst am Router und können einen
@@ -40,13 +64,20 @@ captureHandoffFromLocation();
    gebaut ist.
 
    Sie ist die LETZTE Auffanglinie, nicht die erste: alles, was hier ankommt,
-   hat schon eine Bereichsgrenze passiert (oder lag außerhalb aller). */
+   hat schon eine Bereichsgrenze passiert (oder lag außerhalb aller). Unter /demo umschließt sie die Demo-Welt
+   (eigener Router mit der Basis /demo, demo/DemoApp.jsx). */
 createRoot(document.getElementById("root")).render(
   <ContentErrorBoundary bereich="wurzel">
-    <BrowserRouter>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </BrowserRouter>
+    {DEMO_ZUSTAND.aktiv ? (
+      <Suspense fallback={<LoadingScreen />}>
+        {DEMO_ZUSTAND.abgeschirmt ? <DemoApp /> : <DemoNichtVerfuegbar />}
+      </Suspense>
+    ) : (
+      <BrowserRouter>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </BrowserRouter>
+    )}
   </ContentErrorBoundary>
 );

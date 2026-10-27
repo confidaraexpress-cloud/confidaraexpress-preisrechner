@@ -119,7 +119,9 @@ test("(10) track() setzt result vor dem fetch zurück (kein Stale-Ergebnis)", ()
   const src = readFileSync(join(__dirname, "TrackingPage.jsx"), "utf8");
   const trackFn = src.slice(src.indexOf("const track = async"), src.indexOf("const [searchParams]"));
   const resetIdx = trackFn.indexOf("setResult(null)");
-  const fetchIdx = trackFn.indexOf("await fetch(");
+  // Seit dem Premium-Redesign (Kundenbereich-Demo) läuft die öffentliche Abfrage über apiFetch — derselbe Abruf,
+  // ohne Zeitlimit; in der Demo beantwortet ihn die Datenquelle des Browsers.
+  const fetchIdx = trackFn.search(/await (api)?[fF]etch\(/);
   assert.ok(resetIdx > 0, "setResult(null) muss im track-Handler vorhanden sein");
   assert.ok(fetchIdx > resetIdx, "setResult(null) muss VOR dem fetch stehen (altes Ergebnis verworfen)");
 });

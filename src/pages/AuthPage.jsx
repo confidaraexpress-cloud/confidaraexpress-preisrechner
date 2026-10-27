@@ -10,6 +10,7 @@ import { COMPANY_PROFILE } from "../config/companyProfile";
 import { TrustBar } from "../components/auth/TrustBar";
 import { Icon } from "../components/ui/Icon";
 import { BrandLogo } from "../components/ui/BrandLogo";
+import { NachtkartenLichter } from "../components/ui/NachtkartenLichter";
 import { useAuth } from "../context/AuthContext";
 import { partnerReturnTarget, safeReturnTarget } from "../utils/loginReturnTarget.mjs";
 import { useCeBereich } from "../hooks/useCeBereich";
@@ -347,7 +348,10 @@ export default function AuthPage() {
           als Lichter, eigene Zeichnung (assets/illustrations/nachtkarte-eu.svg) — ersetzt hier die Aurora. Rein
           dekorativ. Die Partnerregistrierung behält die Aurora unverändert. */}
       <div className="auth-karte" aria-hidden="true">
-        <img src={nachtkarte} alt="" width="536" height="497" decoding="async" />
+        {/* Die Lichter gehen von Stuttgart aus an (Welle), danach leuchten Städte abwechselnd leicht auf
+            (Betreiberentscheidung 2026-10-27). Reine CSS-Animation, bei reduzierter Bewegung ruhig. */}
+        <img className="nk-welle" src={nachtkarte} alt="" width="536" height="497" decoding="async" />
+        <NachtkartenLichter />
       </div>
 
       <div className="auth-shell">
@@ -410,8 +414,10 @@ export default function AuthPage() {
               </p>
             </div>
 
-            <div className="auth-card auth-anim delay-3">
-              <div className="auth-tabs">
+            <div className={`auth-card auth-anim delay-3 auth-card--${tab}`}>
+              {/* Umschalter mit gleitender Marke (Konzept A): die Marke liegt unter dem gewählten Reiter. */}
+              <div className={`auth-tabs auth-tabs--${tab}`}>
+                <span className="auth-tabs-marke" aria-hidden="true" />
                 <button
                   type="button"
                   className={`auth-tab ${tab === "login" ? "active" : ""}`}
@@ -428,6 +434,11 @@ export default function AuthPage() {
                   <span className="auth-tab-ico"><Icon n="userPlus" s={16} /></span>
                   <span>Registrieren</span>
                 </button>
+              </div>
+
+              <div className="auth-card-kopf">
+                <h2 className="auth-card-head">{tab === "login" ? "Willkommen zurück" : "Geschäftskonto beantragen"}</h2>
+                {tab === "login" && <p className="auth-card-lead">Melden Sie sich mit Ihrem Geschäftskonto an.</p>}
               </div>
 
               {sessionExpired && (
@@ -479,6 +490,17 @@ export default function AuthPage() {
                   declarationsMissingOnly={regFieldsValid && !regDeclarationsOk}
                 />
               )}
+
+              <p className="auth-card-wechsel">
+                {tab === "login" ? "Noch kein Geschäftskonto?" : "Bereits freigeschaltet?"}{" "}
+                <button
+                  type="button"
+                  className="auth-card-wechsel-btn"
+                  onClick={() => { setTab(tab === "login" ? "register" : "login"); clearMessages(); }}
+                >
+                  {tab === "login" ? "Jetzt registrieren" : "Zur Anmeldung"}
+                </button>
+              </p>
             </div>
 
             {/* Der persönliche Ansprechpartner, wie auf dem öffentlichen Preisrechner — alle Angaben aus

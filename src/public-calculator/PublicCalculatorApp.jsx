@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Field } from "../components/ui/Field";
 import { countries } from "../utils/countries.js";
 import { scopedCountries, scopedOriginCountries } from "../utils/launchScopeView.mjs";
@@ -13,6 +14,10 @@ import { PublicResults } from "./PublicResults.jsx";
 import { NachtkartenRoute } from "./NachtkartenRoute.jsx";
 // Der gemeinsame Paketeditor (Canonical v2.79, §15) — dieselbe Komponente wie im Portal.
 import { PackageLinesEditor } from "../components/shipping/PackageLinesEditor.jsx";
+// Premium-Redesign (Betreiberentscheidung 2026-10-27): das Paket nimmt die eingegebenen Maße an (Konzept B), die
+// Städte der Nachtkarte leuchten abwechselnd leicht auf (Konzept A). Beides rein darstellend.
+import { Paketbuehne } from "../components/shipping/Paketbuehne.jsx";
+import { NachtkartenLichter } from "../components/ui/NachtkartenLichter.jsx";
 import { formPackageLines, formPatchFromPackageLines, PACKAGE_LINES_KEY } from "../utils/packageLines.mjs";
 
 // ── Öffentlicher Preisrechner: Formular und Ablauf ───────────────────────────
@@ -215,6 +220,7 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost, ma
 
   const ausgeschaltet = verfuegbar === false;
   const laedt = phase === "loading";
+  const paketzeilen = useMemo(() => formPackageLines(form), [form]);
 
   const ortFelder = (seite) => {
     const land = `${seite}_country`, plz = `${seite}_zip`, stadt = `${seite}_city`;
@@ -268,6 +274,7 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost, ma
             firstLineProps={{ packageCount: { "aria-describedby": "pc-package-hint" } }}
           />
           <p className="pc-row-hint" id="pc-package-hint">Gewicht und Maße je Paket.</p>
+          <Paketbuehne variant="public" lines={paketzeilen} von={form.from_city} nach={form.to_city} />
         </div>
 
         <div className="pc-submit-row">
@@ -293,7 +300,8 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost, ma
         </p>
       </form>
 
-      {/* Konzept A: die eingegebene Strecke auf der Nachtkarte des Heros (dekorativ). */}
+      {/* Konzept A: die Lichter und die eingegebene Strecke auf der Nachtkarte des Heros (dekorativ). */}
+      {mapHost && createPortal(<NachtkartenLichter className="pc-karte-lichter" />, mapHost)}
       <NachtkartenRoute host={mapHost} form={form} />
 
       <PublicResults

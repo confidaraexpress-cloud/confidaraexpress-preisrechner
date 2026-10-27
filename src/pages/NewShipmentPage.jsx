@@ -44,9 +44,11 @@ import {
   buildPartyPayload, shippingContactErrors,
 } from "../utils/newShipmentForm.mjs";
 import {
-  formPackageLines, formPatchFromPackageLines, hasExtraPackageLines, hasMixedPackageLines, packageLinesKey, PACKAGE_LINE_ERROR_ORDER,
+  dezimal, formPackageLines, formPatchFromPackageLines, hasExtraPackageLines, hasMixedPackageLines, packageLinesKey, PACKAGE_LINE_ERROR_ORDER,
 } from "../utils/packageLines.mjs";
 import { PackageLinesEditor } from "../components/shipping/PackageLinesEditor";
+// Premium-Redesign (Konzept B, Betreiberentscheidung 2026-10-27): das Paket nimmt die eingegebenen Maße an.
+import { Paketbuehne } from "../components/shipping/Paketbuehne";
 
 // Backend-Feldpfad → Formularschlüssel dieser Seite. Damit landet ein
 // serverseitiger Feldfehler am richtigen Eingabefeld, statt nur im Banner.
@@ -2281,23 +2283,32 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
               {/* Der gemeinsame Paketeditor (Canonical v2.79, §15): Startansicht wie bisher — eine
                   Zeile, IDs ns-packageCount … ns-height, dieselben Schlüssel und Prüfungen; darunter
                   „Paket hinzufügen“. Weitere Zeilen tragen ns-weight-2 usw. */}
-              <PackageLinesEditor
-                variant="app"
-                idBase="ns-"
-                lines={formPackageLines(form)}
-                onLinesChange={updPakete}
-                errors={errors}
-                onFieldBlur={markTouched}
-              />
-              <p className="pkg-count-note">
-                <span>Gewicht und Maße gelten je Paket. Der Preis gilt für alle Pakete zusammen.</span>
-              </p>
-              {volWeight && (
-                <div className="vol-weight-box">
-                  <span className="vol-weight-label">Volumengewicht: {volWeight} kg</span>
-                  <span className="vol-weight-value">Abrechn.: {chargeWeight} kg</span>
+              {/* Paketbühne (Konzept B): breit neben den Feldern, schmal als Streifen darunter. Rein darstellend. */}
+              <div className="ce-paket-raster">
+                <div className="ce-paket-raster-innen">
+                  <div className="ce-paket-raster-eingaben">
+                    <PackageLinesEditor
+                      variant="app"
+                      idBase="ns-"
+                      lines={formPackageLines(form)}
+                      onLinesChange={updPakete}
+                      errors={errors}
+                      onFieldBlur={markTouched}
+                    />
+                    <p className="pkg-count-note">
+                      <span>Gewicht und Maße gelten je Paket. Der Preis gilt für alle Pakete zusammen.</span>
+                    </p>
+                    {volWeight && (
+                      <div className="vol-weight-box">
+                        {/* Deutsch geschrieben („115,2 kg“); „Abrechn.“ erst, wenn ein Gewicht feststeht. */}
+                        <span className="vol-weight-label">Volumengewicht: {dezimal(Number(volWeight))} kg</span>
+                        {chargeWeight && <span className="vol-weight-value">Abrechn.: {dezimal(Number(chargeWeight))} kg</span>}
+                      </div>
+                    )}
+                  </div>
+                  <Paketbuehne lines={formPackageLines(form)} von={form.s_city} nach={form.r_city} />
                 </div>
-              )}
+              </div>
             </div>
           </div>
 

@@ -19,8 +19,9 @@
                  Empfänger nebeneinander, dazwischen der Routenpfeil. Felder 48 px, Eingabe 16 px.
                  Das Seitengerüst trägt dieselbe Struktur als statisches Skelett — keine reservierte
                  Mindesthöhe; die Karte hat ab dem ersten Bild ihre Höhe.
-     Schrift     Cormorant Garamond ausschließlich für die Headline (.pc-display) und die
-                 Abschnittstitel (.pc-section-title). Alles andere DM Sans auf der Skala:
+     Schrift     Instrument Sans für alles (Betreiberentscheidung 2026-10-27, statt Cormorant und
+                 DM Sans): Headline (.pc-display) und Abschnittstitel (.pc-section-title) leicht schmal
+                 und eng gesetzt, 650. Alles andere auf der Skala:
                  Text 16 · Labels 14 · Hinweise 13 · Kleinstes 12.
      Farbrollen  Grund --ce-color-bg-canvas-top, Flächen --ce-color-surface(-subtle), Tinte
                  --ce-color-text-*, Hinweise --ce-color-status-*, dunkle Flächen in Navy
@@ -37,6 +38,10 @@
 
 @import './fonts.css';
 @import './variables.css';
+/* Premium-Redesign: die Paketbühne im Rechnerblatt und die Lichter der Nachtkarte — dieselben Dateien wie im
+   Kundenbereich, ohne index.css. */
+@import './paketbuehne.css';
+@import './nachtkarte.css';
 
 /* ── Grundlage (nur diese Seite) ─────────────────────────────────────────── */
 /* Werte (Uhrzeit, Maße, Datum, Postleitzahl) brechen nie mitten im Wert um (Premium-Redesign B9,
@@ -217,6 +222,36 @@
   outline-color: var(--ce-color-text-inverse);
 }
 
+/* Der Weg in die Kundenbereich-Demo (Premium-Redesign 2026-10-27): ein ruhiger Textlink vor den beiden Knöpfen —
+   ab 720 px; schmaler steht der Einstieg im Abschnitt „Alles in einem Kundenbereich". */
+.pc-header-demo {
+  display: none;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: var(--ce-space-2);
+  border-radius: var(--ce-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  white-space: nowrap;
+}
+
+.pc-page .pc-header-demo {
+  color: var(--ce-pr-on-navy-2);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+}
+
+.pc-page .pc-header-demo:hover {
+  color: var(--ce-pr-on-navy);
+  text-decoration-color: currentColor;
+}
+
+@media (min-width: 720px) {
+  .pc-header-demo { display: inline-flex; }
+}
+
 /* ── Bereich 1: Hero mit Rechner ─────────────────────────────────────────── */
 .pc-hero {
   position: relative;
@@ -267,11 +302,12 @@
 }
 
 .pc-display {
-  font-family: var(--ce-font-display);
-  font-size: 2.25rem;
-  font-weight: 500;
-  line-height: 1.06;
-  letter-spacing: -0.012em;
+  font-family: var(--ce-pr-font-display);
+  font-size: 2.5rem;
+  font-weight: 650;
+  font-stretch: var(--ce-pr-display-stretch);
+  line-height: 1.02;
+  letter-spacing: -0.036em;
   text-wrap: balance;
 }
 
@@ -407,6 +443,44 @@
   to { stroke-dashoffset: 0; }
 }
 
+/* Der Lichtpunkt läuft mit der Spitze der Linie (Stützpunkte aus utils/nachtkarteRoute.mjs, dieselbe Kurve
+   wie die Zeichnung) und verglimmt am Ziel. Zwischen den Stützen linear — die Kurve steckt in ihren Lagen. */
+.pc-route-licht {
+  transform-box: view-box;
+  transform-origin: 0 0;
+  opacity: 0;
+  animation: pc-route-licht 1100ms linear forwards;
+}
+.pc-route-licht-schein { fill: url(#pc-route-licht-schein); }
+.pc-route-licht-kern { fill: var(--ce-pr-route); }
+.pc-route-licht-stop-kern { stop-color: var(--ce-pr-route); stop-opacity: 0.85; }
+.pc-route-licht-stop-rand { stop-color: var(--ce-pr-route-ring); stop-opacity: 0; }
+@keyframes pc-route-licht {
+  0% { transform: translate(var(--pc-l0x, 0px), var(--pc-l0y, 0px)); opacity: 1; }
+  8.333% { transform: translate(var(--pc-l1x, 0px), var(--pc-l1y, 0px)); }
+  16.667% { transform: translate(var(--pc-l2x, 0px), var(--pc-l2y, 0px)); }
+  25% { transform: translate(var(--pc-l3x, 0px), var(--pc-l3y, 0px)); }
+  33.333% { transform: translate(var(--pc-l4x, 0px), var(--pc-l4y, 0px)); }
+  41.667% { transform: translate(var(--pc-l5x, 0px), var(--pc-l5y, 0px)); }
+  50% { transform: translate(var(--pc-l6x, 0px), var(--pc-l6y, 0px)); }
+  58.333% { transform: translate(var(--pc-l7x, 0px), var(--pc-l7y, 0px)); }
+  66.667% { transform: translate(var(--pc-l8x, 0px), var(--pc-l8y, 0px)); }
+  75% { transform: translate(var(--pc-l9x, 0px), var(--pc-l9y, 0px)); }
+  83.333% { transform: translate(var(--pc-l10x, 0px), var(--pc-l10y, 0px)); }
+  91.667% { transform: translate(var(--pc-l11x, 0px), var(--pc-l11y, 0px)); opacity: 1; }
+  100% { transform: translate(var(--pc-l12x, 0px), var(--pc-l12y, 0px)); opacity: 0; }
+}
+
+/* Mit einer Strecke treten die übrigen Lichter zurück: die eigene Verbindung ist das Hellste auf der Karte. */
+.pc-hero-map-img,
+.pc-karte-lichter {
+  transition: opacity 600ms var(--ce-motion-ease-standard);
+}
+.pc-hero-map-canvas:has(> .pc-route-overlay) .pc-hero-map-img { opacity: 0.55; }
+.pc-hero-map-canvas:has(> .pc-route-overlay) .pc-karte-lichter { opacity: 0.35; }
+.pc-karte-lichter { z-index: 0; }
+.pc-route-overlay { z-index: 1; }
+
 /* Einspaltig (unter 1080 px): die Karte als flaches Band in voller Breite unter dem Satz, Ausschnitt Mitte
    Europas, oben und unten ausgeblendet — Kopf und erste Zeile des Rechners bleiben im ersten Bild. */
 @media (max-width: 1079px) {
@@ -455,6 +529,9 @@
     animation: none;
     stroke-dashoffset: 0;
   }
+  .pc-route-licht { display: none; }
+  .pc-hero-map-img,
+  .pc-karte-lichter { transition: none; }
 }
 
 .pc-hero-body {
@@ -1601,11 +1678,12 @@
 }
 
 .pc-section-title {
-  font-family: var(--ce-font-display);
-  font-size: 1.5rem;
-  font-weight: 500;
-  line-height: 1.15;
-  letter-spacing: -0.005em;
+  font-family: var(--ce-pr-font-display);
+  font-size: 1.75rem;
+  font-weight: 650;
+  font-stretch: var(--ce-pr-display-stretch);
+  line-height: 1.12;
+  letter-spacing: -0.028em;
   text-wrap: balance;
 }
 
@@ -1672,6 +1750,36 @@
   gap: 2px;
   padding-left: var(--ce-space-3);
   border-left: 2px solid var(--ce-color-brand-border);
+}
+
+/* Die Kundenbereich-Demo: derselbe Bereich mit Beispieldaten, ohne Anmeldung (Hauptdomain /demo). */
+.pc-demo {
+  display: grid;
+  justify-items: start;
+  gap: var(--ce-space-3);
+  margin-top: var(--ce-space-6);
+  padding-top: var(--ce-space-5);
+  border-top: 1px solid var(--ce-color-border-subtle);
+}
+
+.pc-demo-text {
+  max-width: 34rem;
+  color: var(--ce-color-text-secondary);
+  font-size: 0.9375rem;
+  line-height: 1.375rem;
+}
+
+/* Ein Link im Kleid der Primäraktion: die Linkfarbe der Seite (.pc-page a) darf ihn nicht einfärben. */
+.pc-page .pc-demo-cta,
+.pc-page .pc-demo-cta:hover {
+  color: var(--ce-color-text-inverse);
+}
+
+/* Abstand zwischen Abschnittstitel und Liste: die Grundregel .pc-page ul/ol (margin: 0) ist spezifischer als
+   .pc-steps/.pc-features und nahm ihnen den vorgesehenen Abstand. */
+.pc-page .pc-steps,
+.pc-page .pc-features {
+  margin-top: var(--ce-space-5);
 }
 
 /* ── Bereich 4: Fragen, persönlicher Kontakt und Fuß ─────────────────────── */
@@ -1859,11 +1967,11 @@
   .pc-calculator-card { padding: var(--ce-space-6); }
   .pc-card-title { font-size: 1.5rem; line-height: 2rem; }
   .pc-page .pc-lead { font-size: 1.125rem; }
-  .pc-section-title { font-size: 1.75rem; }
+  .pc-section-title { font-size: 2rem; }
 }
 
 @media (min-width: 640px) {
-  .pc-display { font-size: 2.75rem; }
+  .pc-display { font-size: 3rem; }
 }
 
 @media (min-width: 720px) {
@@ -1914,7 +2022,7 @@
 }
 
 @media (min-width: 1366px) {
-  .pc-display { font-size: 3rem; }
+  .pc-display { font-size: 3.5rem; }
 }
 
 @media (min-width: 1366px) {
@@ -1922,7 +2030,7 @@
 }
 
 @media (min-width: 1440px) {
-  .pc-display { font-size: 3.25rem; }
+  .pc-display { font-size: 3.75rem; }
 }
 
 @media (pointer: coarse) {
@@ -1951,4 +2059,26 @@
   .pc-skip {
     transition: transform var(--ce-motion-fast) ease;
   }
+}
+
+/* ── Paketbühne im Rechnerblatt (Premium-Redesign, Konzept B) ──────────────────────────────────────
+   Unter den Paketfeldern ein Streifen: links der Karton, der die Maße annimmt, rechts die Werte. Das
+   Seitengerüst trägt denselben Streifen mit dem Beispielpaket, damit beim Austausch nichts springt. */
+.pc-page .ce-paket--public {
+  grid-template-columns: minmax(104px, 36%) minmax(0, 1fr);
+  grid-template-rows: none;
+  align-items: center;
+  column-gap: var(--ce-space-4);
+  margin-top: var(--ce-space-1);
+  padding: var(--ce-space-2) var(--ce-space-4) var(--ce-space-2) var(--ce-space-3);
+}
+.pc-page .ce-paket--public .ce-paket-svg { max-height: 124px; }
+.pc-page .ce-paket--public .ce-paket-text { text-align: left; }
+/* Breite Karte: ein kompakter Streifen — „Versandpreise berechnen“ bleibt auf 1366 × 768 ohne Scrollen
+   erreichbar (publicCalculator.test.mjs, G). */
+@container pc-form (min-width: 560px) {
+  .pc-page .ce-paket--public { grid-template-columns: 116px minmax(0, 1fr); padding-block: var(--ce-space-1); }
+  .pc-page .ce-paket--public .ce-paket-svg { max-height: 84px; }
+  /* Die Kantenmaße wären in dieser Größe unlesbar — die Beschriftung daneben nennt die Maße. */
+  .pc-page .ce-paket--public .ce-paket-mass { display: none; }
 }

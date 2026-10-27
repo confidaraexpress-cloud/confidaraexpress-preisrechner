@@ -193,15 +193,22 @@ test("1 — die Kunden-Sidebar trägt die Originalkomposition, hell auf dunkel",
     const r = el.getBoundingClientRect();
     const bild = document.querySelector(".pp-logo .ce-brandmark-img").getBoundingClientRect();
     const spalte = document.querySelector(".pp-side-in").getBoundingClientRect();
+    // Die Caption-Stufe des Bereichs, gemessen an einer Probe in derselben Spalte: im Kundenbereich setzt das
+    // Premium-Redesign (Betreiberentscheidung 2026-10-27) die Skala neu — die Stufe gilt, nicht ein fester Pixelwert.
+    const probe = document.createElement("span");
+    probe.style.fontSize = "var(--ce-text-caption-size)";
+    el.parentElement.appendChild(probe);
+    const caption = getComputedStyle(probe).fontSize;
+    probe.remove();
     return {
-      text: el.textContent, groesse: getComputedStyle(el).fontSize, hoehe: r.height,
+      text: el.textContent, groesse: getComputedStyle(el).fontSize, caption, hoehe: r.height,
       unterDerMarke: r.top >= bild.bottom - 0.5, linksBuendig: Math.abs(r.left - bild.left) <= 1,
       inDerSpalte: r.right <= spalte.right + 0.5,
     };
   });
   assert.ok(unterzeile, "die Unterzeile fehlt");
   assert.equal(unterzeile.text, "B2B Logistik- und Versandplattform");
-  assert.equal(unterzeile.groesse, "12px", "die Unterzeile steht nicht in der Caption-Stufe");
+  assert.equal(unterzeile.groesse, unterzeile.caption, "die Unterzeile steht nicht in der Caption-Stufe");
   assert.ok(unterzeile.hoehe <= 20, `die Unterzeile bricht um (${unterzeile.hoehe}px hoch)`);
   assert.ok(unterzeile.unterDerMarke && unterzeile.linksBuendig, "die Unterzeile steht nicht bündig unter der Marke");
   assert.ok(unterzeile.inDerSpalte, "die Unterzeile ragt aus der Sidebarspalte");

@@ -331,7 +331,8 @@ test("25 — auf der Übersicht erscheint KEINE zweite Glocke", () => {
   // gemeinsamen Seitenkopfs statt in einem freischwebenden Mount darüber.
   // Der Kopf rendert nur für die vier Unterseiten in PAGE_HEADERS — die
   // Übersicht ist keine davon und bringt ihre Glocke selbst mit.
-  assert.match(dashPage, /const utilityCluster = \(\s*<UtilityCluster>\s*<NotificationBell variant="page"/,
+  // Seit dem Premium-Redesign steht die Kopfsuche (Vorschau A/B) vor der Glocke im selben Cluster.
+  assert.match(dashPage, /const utilityCluster = \(\s*<UtilityCluster>\s*(\{kopfSuche\}\s*)?<NotificationBell variant="page"/,
     "die Seiten-Glocke steht nicht im Utility-Cluster");
   assert.match(dashPage, /utility=\{utilityCluster\}/,
     "der Cluster wird nicht in den Seitenkopf gereicht");

@@ -42,6 +42,7 @@ import {
 import { NUMBER_LABELS, orderConfirmationNumberOf } from "../../utils/businessNumbers.mjs";
 import { sameDaySuccessPickupText, SAME_DAY_TEXT } from "../../utils/sameDayCollectionView.mjs";
 import { boundDropoffLocationLine, DROPOFF_LOCATION_LABEL } from "../../utils/dropoffParcelShop.mjs";
+import { DEMO_TEXTE, istDemo } from "../../demo/demoModus.mjs";
 
 export function BookingSuccessStep({
   booking, bookingData, tariff, priceView, user, invoiceDeliveryMode, proformaEntry,
@@ -57,14 +58,27 @@ export function BookingSuccessStep({
   const abholungHeute = sameDaySuccessPickupText(booking);
   // Block C: der beim Buchen gebundene Abgabe-Paketshop — aus der Buchungsantwort, nie aus der lokalen Auswahl.
   const abgabeShop = boundDropoffLocationLine(booking);
+  // Öffentliche Kundenbereich-Demo: dieselbe Bestätigung, eindeutig als Simulation gekennzeichnet — nichts wurde
+  // beauftragt und keine E-Mail versendet (demo/demoModus.mjs). Außerhalb der Demo unverändert.
+  const demo = istDemo();
   return (
       <div className="booking-success-wrap bsx">
         {/* Premium-Redesign B8 — die digitale Versandbestätigung. Reihenfolge in jeder Breite: Kopf, Dokumente,
             Beleg, „So geht es weiter", Aktionen. Kein Häkchen-Medaillon: die Bestätigung trägt der Titel, die
             Marke „Gebucht" nennt den Zustand als Wort. Jede Zeile behält ihre bisherige Bedingung. */}
         <header className="bsx-kopf">
-          <span className="badge badge--success bsx-status">Gebucht</span>
-          <h2 className="booking-success-title">Sendung erfolgreich gebucht!</h2>
+          {demo ? (
+            <>
+              <span className="badge badge--info bsx-status">{DEMO_TEXTE.buchungMarke}</span>
+              <h2 className="booking-success-title">{DEMO_TEXTE.buchungTitel}</h2>
+              <p className="alert alert-info bsx-demo-hinweis" role="note">{DEMO_TEXTE.buchungSimuliert}</p>
+            </>
+          ) : (
+            <>
+              <span className="badge badge--success bsx-status">Gebucht</span>
+              <h2 className="booking-success-title">Sendung erfolgreich gebucht!</h2>
+            </>
+          )}
         </header>
 
         {/* Dokumente zuerst: das Label ist der nächste Handgriff nach der Buchung. Label,
@@ -156,7 +170,9 @@ export function BookingSuccessStep({
 
           {/* Klare Trennung: Auftragsbestätigung (wird per E-Mail versendet) ≠ spätere Rechnung/Rechnungs-E-Mail. */}
           <div className="booking-success-delivery">
-            <p className="text-muted mb-4">{BOOKING_CONFIRMATION_LINE}{user?.email ? ` (an ${user.email})` : ""}</p>
+            <p className="text-muted mb-4">
+              {demo ? DEMO_TEXTE.keineEmail : <>{BOOKING_CONFIRMATION_LINE}{user?.email ? ` (an ${user.email})` : ""}</>}
+            </p>
             {/* Der Standardsatz zur automatischen Rechnungserstellung gilt nur für die
                 Einzelabrechnung; bei Sammelabrechnung tritt der Sammelhinweis an seine
                 Stelle, statt beide nebeneinander zu behaupten. */}

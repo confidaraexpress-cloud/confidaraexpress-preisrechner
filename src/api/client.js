@@ -60,6 +60,13 @@ export const isApiTimeout = (e) => !!e && e.name === "ApiTimeoutError";
 
 export const DEFAULT_TIMEOUT_MS = 30000;
 
+// ── Öffentliche Kundenbereich-Demo (src/demo/) ───────────────────────────────
+// In der Demo-Welt (/demo, eigene Seitenladung) beantwortet eine Datenquelle im Browser jede Anfrage — apiFetch ruft
+// dann fetch NIE auf, setzt keinen Bearer-Header und löst keine Abmeldung aus. Gesetzt wird der Transport
+// ausschließlich von demo/demoStart.mjs, bevor die Anwendung startet; außerhalb von /demo bleibt er null.
+let demoTransport = null;
+export const setzeDemoTransport = (fn) => { demoTransport = typeof fn === "function" ? fn : null; };
+
 // ── Minimal central fetch wrapper (no dependency, no global fetch patch) ─────
 // apiFetch("/path", { auth, method, body, headers, timeoutMs, signal, ... })
 //   - auth: true  → adds Authorization (Bearer) + JSON Content-Type via authH()
@@ -71,6 +78,7 @@ export const DEFAULT_TIMEOUT_MS = 30000;
 //   - timeoutMs: Limit bis zu den Antwortkopfzeilen (Default 30 s; 0/null = aus).
 //     Ein Aufrufer-Signal bleibt voll wirksam (beides bricht denselben fetch ab).
 export async function apiFetch(pathOrUrl, options = {}) {
+  if (demoTransport) return demoTransport(pathOrUrl, options);
   const { auth = false, headers, timeoutMs = DEFAULT_TIMEOUT_MS, signal, ...rest } = options;
   const url = /^https?:\/\//.test(pathOrUrl) ? pathOrUrl : `${API}${pathOrUrl}`;
   // FormData (Multipart-Upload): der Browser MUSS den Content-Type inklusive

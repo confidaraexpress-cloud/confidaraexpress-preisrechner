@@ -15,6 +15,8 @@ import { AppStatusNotice } from "../common/AppStatusNotice";
 import { updateNoticeSuppressed } from "../../utils/appVersionCheck.mjs";
 import { dashboardRouteTarget } from "../../utils/dashboardRouteTarget.mjs";
 import { useCeBereich } from "../../hooks/useCeBereich";
+import { KundenSuche } from "./KundenSuche";
+import { sucheUebergeben } from "../../utils/kundenSuche.mjs";
 
 // Seitenköpfe der beiden route-basierten Versandseiten (Paket B) — dasselbe
 // Prinzip wie PAGE_HEADERS in DashboardPage.jsx, nur für die zwei Seiten, die
@@ -64,6 +66,15 @@ export function DashboardLayout() {
     if (onCommit) onCommit();
   };
 
+  // Kopfsuche (Premium-Redesign): ein Treffer öffnet seinen Bereich im Dashboard und wird dort hervorgehoben. Im
+  // Router-State steht nur der Verweis (Art, Kennung); das Objekt übergibt utils/kundenSuche.mjs im Arbeitsspeicher.
+  const sucheOeffnen = (fokus, ziel) => {
+    if (!fokus || !ziel) return;
+    setSidebarOpen(false);
+    navigate("/dashboard", { state: { page: ziel, sucheFokus: sucheUebergeben(fokus) } });
+  };
+  const kopfSuche = <KundenSuche nutzerId={user?.id ?? null} onOeffnen={sucheOeffnen} />;
+
   return (
     // Der Provider umschließt die gesamte Shell: Zustand und Polling des
     // Benachrichtigungscenters laufen dadurch genau EINMAL, unabhängig davon,
@@ -109,6 +120,7 @@ export function DashboardLayout() {
             className={ROUTE_HEADERS[activePage].className}
             utility={(
               <UtilityCluster>
+                {kopfSuche}
                 <NotificationBell variant="page" navigateTo={navigateTo} />
                 <UserChip user={user} onClick={() => navigateTo("profile")} />
               </UtilityCluster>
@@ -125,6 +137,7 @@ export function DashboardLayout() {
           navigateTo,
           utility: (
             <UtilityCluster>
+              {kopfSuche}
               <NotificationBell variant="page" navigateTo={navigateTo} />
               <UserChip user={user} onClick={() => navigateTo("profile")} />
             </UtilityCluster>

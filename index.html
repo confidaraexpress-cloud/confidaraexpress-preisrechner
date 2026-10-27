@@ -23,6 +23,10 @@
          nicht auf die Markenfarbe mit. Stand zuvor auf #0B1F4D — einem Navy,
          den es sonst nirgends im Produkt gab. -->
     <meta name="theme-color" content="#111A33" />
+    <!-- Premium-Redesign: Instrument Sans trägt Anmeldung und Kundenbereich. Früh geladen steht sie vor dem ersten
+         Rendern bereit — ohne Vorladen tauschte der Browser die Schrift nach dem Rendern aus, und Titel, Karte und
+         Texte sprangen (CLS). Dieselbe Datei wie in fonts.css, gleicher gehashter Name; latin-ext folgt bei Bedarf. -->
+    <link rel="preload" href="/src/assets/fonts/instrumentsans-var.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="canonical" href="https://confidaraexpress.de/login" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="ConfidaraExpress" />

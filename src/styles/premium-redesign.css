@@ -78,6 +78,61 @@
   outline-offset: -2px;
 }
 
+/* ── Der persönliche Ansprechpartner in der Seitenleiste (Konzepte A und B) ──
+   Initialen im Ring, Name, Rolle und Telefon. Ruhig auf Navy, ohne Karte und ohne Bewegung. */
+[data-ce-bereich="kunde"] .pp-ansprech {
+  display: flex;
+  align-items: center;
+  gap: var(--ce-space-3);
+  margin: var(--ce-space-5) var(--ce-space-3) var(--ce-space-3);
+  padding: var(--ce-space-3);
+  border: 1px solid var(--ce-sidebar-border);
+  border-radius: var(--ce-pr-radius-panel);
+}
+[data-ce-bereich="kunde"] .pp-ansprech-zeichen {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--ce-pr-on-navy-line);
+  border-radius: var(--ce-radius-full);
+  color: var(--ce-sidebar-text-strong);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+[data-ce-bereich="kunde"] .pp-ansprech-text { display: grid; min-width: 0; }
+[data-ce-bereich="kunde"] .pp-ansprech-name {
+  margin: 0;
+  color: var(--ce-sidebar-text-strong);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4286;
+}
+[data-ce-bereich="kunde"] .pp-ansprech-rolle {
+  margin: 0;
+  color: var(--ce-sidebar-text-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+[data-ce-bereich="kunde"] .pp-ansprech-tel {
+  justify-self: start;
+  margin-top: 2px;
+  color: var(--ce-pr-signal-on-navy);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.5385;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  text-decoration: none;
+}
+[data-ce-bereich="kunde"] .pp-ansprech-tel:hover { text-decoration: underline; text-underline-offset: 3px; }
+[data-ce-bereich="kunde"] .pp-ansprech-tel:focus-visible { outline: 2px solid var(--ce-pr-signal-on-navy); outline-offset: 2px; border-radius: var(--ce-radius-xs); }
+@media (pointer: coarse) {
+  [data-ce-bereich="kunde"] .pp-ansprech-tel { display: inline-flex; align-items: center; min-height: var(--ce-size-touch-target); margin-top: -8px; margin-bottom: -10px; }
+}
+
 /* ── Helle Kopfleiste (E3) ──
    Die bestehende Utility-Zeile des Seitenkopfs (Glocke, Benutzerchip) wird
    zur Kopfleiste: feste Höhe, Haarlinie über die ganze Inhaltsbreite. Keine
@@ -424,6 +479,153 @@
 [data-ce-bereich="kunde"] .offer-cta-btn--disabled { border-radius: var(--ce-pr-radius-control); }
 [data-ce-bereich="kunde"] .offer-cta-btn:focus-visible { outline: 2px solid var(--ce-pr-signal); outline-offset: 2px; }
 
+/* ═══════════ 5b · BUCHUNG: EIN BLATT JE SCHRITT (Betreiberentscheidung 2026-10-27) ══════════════════════
+   Die Abschnitte eines Schritts (Angebot, Abholtermin, Sendungsdetails, Optionen, Absicherung, Preis,
+   Bedingungen) stehen auf einem Papierblatt, getrennt durch Haarlinien — statt einer Ansammlung einzelner
+   Karten. Klare Hierarchie: Abschnittstitel 18 px, Werte 15 px, der Preis als größte Zahl. Die Aktionen sind
+   der Fuß des Blatts. Ab 1440 px steht die Zusammenfassung als mitlaufender Beleg neben dem Blatt (bisher erst
+   ab 1600 px): keine leeren Seitenränder mehr. Module, Texte, IDs und Bedingungen bleiben unverändert. */
+[data-ce-bereich="kunde"] .booking-blatt {
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-radius-card);
+  background: var(--ce-color-surface);
+  box-shadow: var(--ce-pr-shadow-card);
+}
+[data-ce-bereich="kunde"] .booking-blatt > .calc-panel {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+[data-ce-bereich="kunde"] .booking-blatt :is(.calc-panel-header, .booking-confirm-header) {
+  padding: var(--ce-space-6) var(--ce-space-7) 0;
+  border-bottom: 0;
+  background: transparent;
+}
+[data-ce-bereich="kunde"] .booking-blatt .calc-panel-header h3 {
+  font-size: 1.125rem;
+  font-weight: 650;
+  line-height: 1.3333;
+  letter-spacing: -0.014em;
+  color: var(--ce-color-text-primary);
+}
+[data-ce-bereich="kunde"] .booking-blatt .calc-panel-body { padding: var(--ce-space-4) var(--ce-space-7) var(--ce-space-6); }
+/* Haarlinie zwischen den Abschnitten (nach der Kartenregel, damit sie gilt). */
+[data-ce-bereich="kunde"] .booking-blatt > :not(:first-child) { border-top: 1px solid var(--ce-pr-hairline); }
+/* Der Fuß des Blatts: Zurück und Weiter, auf ruhigem Grund. */
+[data-ce-bereich="kunde"] .booking-blatt > .booking-blatt-fuss {
+  margin: 0;
+  padding: var(--ce-space-5) var(--ce-space-7) var(--ce-space-6);
+  border-radius: 0 0 var(--ce-pr-radius-card) var(--ce-pr-radius-card);
+  background: var(--ce-pr-inset);
+}
+[data-ce-bereich="kunde"] .booking-blatt-fuss .btn { min-height: 48px; border-radius: var(--ce-pr-radius-control-lg); font-size: 0.9375rem; }
+/* Entwurf speichern: eine leise Zeile im Blatt, keine graue Box. */
+[data-ce-bereich="kunde"] .booking-blatt > .bk-savedraft {
+  margin: 0;
+  padding: var(--ce-space-4) var(--ce-space-7);
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  background: transparent;
+}
+/* Schritt 2: „Zurück zur Übersicht" ist die Nebenaktion — als Textaktion unter dem Blatt. */
+[data-ce-bereich="kunde"] .booking-blatt > .booking-blatt-zurueck {
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  padding: 0 var(--ce-space-7);
+  border-width: 1px 0 0;
+  border-style: solid;
+  border-color: var(--ce-pr-hairline);
+  border-radius: 0 0 var(--ce-pr-radius-card) var(--ce-pr-radius-card);
+  background: var(--ce-pr-inset);
+  box-shadow: none;
+  color: var(--ce-pr-signal-ink);
+  justify-content: flex-start;
+}
+[data-ce-bereich="kunde"] .booking-blatt > .booking-blatt-zurueck:hover:not(:disabled) {
+  border-color: var(--ce-pr-hairline);
+  background: var(--ce-pr-signal-soft);
+}
+
+/* Das ausgewählte Angebot führt das Blatt an: Carrier groß, Preis als größte Zahl der Seite. */
+[data-ce-bereich="kunde"] .booking-blatt .booking-carrier-name { font-size: 1.375rem; font-weight: 650; letter-spacing: -0.018em; line-height: 1.2727; }
+[data-ce-bereich="kunde"] .booking-blatt .offsum-service-name { font-size: 1rem; font-weight: 600; }
+[data-ce-bereich="kunde"] .booking-blatt .offsum-price-label { font-size: 0.8125rem; }
+[data-ce-bereich="kunde"] .booking-blatt .offsum-price-net { font-size: 2rem; font-weight: 650; letter-spacing: -0.022em; line-height: 1.125; color: var(--ce-pr-navy-800); }
+[data-ce-bereich="kunde"] .booking-blatt .offsum-price-unit { font-size: 0.875rem; }
+[data-ce-bereich="kunde"] .booking-blatt .offsum-price-gross { font-size: 0.875rem; }
+[data-ce-bereich="kunde"] .booking-blatt .offsum-price-vat { font-size: 0.8125rem; }
+[data-ce-bereich="kunde"] .booking-blatt .offsum-price--gross .offsum-price-net { font-size: 0.875rem; }
+[data-ce-bereich="kunde"] .booking-blatt .offsum-fact dt { font-size: 0.8125rem; }
+[data-ce-bereich="kunde"] .booking-blatt .offsum-fact dd { font-size: 0.9375rem; }
+[data-ce-bereich="kunde"] .booking-blatt .offsum-meta { border-top-color: var(--ce-pr-hairline); }
+
+/* Wertezeilen (Abholtermin, Sendungsdetails, Bestellübersicht): Beschriftung 14 px, Wert 15 px. */
+[data-ce-bereich="kunde"] .booking-blatt .summary-detail-row { font-size: 0.875rem; line-height: 1.5; padding: 11px 0; }
+[data-ce-bereich="kunde"] .booking-blatt .summary-detail-row-border { border-bottom-color: var(--ce-pr-hairline); }
+[data-ce-bereich="kunde"] .booking-blatt .summary-detail-row > :first-child { color: var(--ce-color-text-secondary); }
+[data-ce-bereich="kunde"] .booking-blatt .summary-detail-row > :last-child { font-size: 0.9375rem; font-weight: 600; color: var(--ce-color-text-primary); }
+
+/* Schrittanzeige: ruhige Spur, Nummern in Instrument Sans, Beschriftung lesbar. */
+[data-ce-bereich="kunde"] .booking-wrap .steps-bar .step-circle { width: 30px; height: 30px; border-width: 1.5px; font-size: 0.8125rem; font-weight: 650; }
+[data-ce-bereich="kunde"] .booking-wrap .steps-bar .step-label { margin-top: 6px; font-size: 0.8125rem; font-weight: 600; }
+[data-ce-bereich="kunde"] .booking-wrap .steps-bar .step-line { height: 1.5px; }
+
+/* Beleg neben dem Blatt ab 1440 px: dieselbe Live-Zusammenfassung, gestapelt, mit dem Markenstreifen oben. */
+@media (min-width: 1440px) and (max-width: 1599px) {
+  [data-ce-bereich="kunde"] .booking-wrap:has(> .booking-side) {
+    position: relative;
+    max-width: calc(var(--ce-size-booking) + var(--ce-space-7) + var(--ce-pr-booking-seite) + 2 * var(--shell-gutter, var(--ce-page-gutter)));
+  }
+  [data-ce-bereich="kunde"] .booking-wrap > .booking-side {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(var(--shell-gutter, var(--ce-page-gutter)) + var(--ce-size-booking) + var(--ce-space-7));
+    width: var(--ce-pr-booking-seite);
+    max-width: none;
+  }
+  [data-ce-bereich="kunde"] .booking-side-inner { position: sticky; top: var(--ce-space-6); }
+  [data-ce-bereich="kunde"] .booking-side .booking-vat-row { justify-content: flex-start; }
+  [data-ce-bereich="kunde"] .booking-side .booking-livesum { grid-template-columns: 1fr; }
+  [data-ce-bereich="kunde"] .booking-side .blsum-zone + .blsum-zone { border-left: none; border-top: 1px solid var(--ce-pr-hairline); }
+  [data-ce-bereich="kunde"] .booking-side .blsum-price { align-items: flex-start; text-align: left; }
+  [data-ce-bereich="kunde"] .booking-side .blsum-price-box { align-items: flex-start; }
+  [data-ce-bereich="kunde"] .booking-side .blsum-ins-note { text-align: left; }
+  [data-ce-bereich="kunde"] .main-content:has(.booking-side) .ce-page-header--booking .ce-page-header-main {
+    max-width: calc(var(--ce-size-booking) + var(--ce-space-7) + var(--ce-pr-booking-seite));
+  }
+}
+@media (min-width: 1440px) {
+  [data-ce-bereich="kunde"] .booking-side .booking-livesum {
+    position: relative;
+    overflow: hidden;
+    border-color: var(--ce-pr-hairline);
+    border-radius: var(--ce-pr-radius-card);
+    box-shadow: var(--ce-pr-shadow-card);
+  }
+  [data-ce-bereich="kunde"] .booking-side .booking-livesum::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+    background: var(--ce-pr-stripe);
+  }
+}
+@media (max-width: 640px) {
+  [data-ce-bereich="kunde"] .booking-blatt :is(.calc-panel-header, .booking-confirm-header) { padding: var(--ce-space-5) var(--ce-space-4) 0; }
+  [data-ce-bereich="kunde"] .booking-blatt .calc-panel-body { padding: var(--ce-space-3) var(--ce-space-4) var(--ce-space-5); }
+  [data-ce-bereich="kunde"] .booking-blatt > :is(.booking-blatt-fuss, .bk-savedraft) { padding-left: var(--ce-space-4); padding-right: var(--ce-space-4); }
+  [data-ce-bereich="kunde"] .booking-blatt > .booking-blatt-zurueck { padding: 0 var(--ce-space-4); }
+  [data-ce-bereich="kunde"] .booking-blatt .offsum-price-net { font-size: 1.75rem; }
+}
+
 /* ── Buchung: Ersatzflächen statt des Bestellknopfs (nichts beauftragt, Ausgang offen, Rahmen) ──
    Hinweisband nach B8: weiß, Haarlinie, Tonkante links in der Warnfarbe — keine blaue Infofläche für
    einen gescheiterten Auftrag. Text, Handlungen und Reihenfolge bleiben. */
@@ -432,6 +634,33 @@
   border-left: 3px solid var(--ce-color-status-warning-fg);
   border-radius: var(--ce-pr-radius-control);
   background: var(--ce-color-surface);
+}
+
+/* ── Seitenwechsel im Kundenbereich ──
+   Der Inhalt einer neuen Seite blendet in 180 ms ein: Bewegung als Antwort auf die Navigation, nur Deckkraft
+   (kein Versatz, keine Layoutwirkung). Kopfleiste und Seitenleiste bleiben stehen. */
+[data-ce-bereich="kunde"] .main-content > :is(.page-body, .page-with-navbar) {
+  /* „backwards“, nicht „both“: eine nach dem Ende weiter wirkende Opazitätsanimation hielte einen eigenen
+     Stapelkontext offen — feste Dialoge der Seite (Preisänderung u. a.) lägen dann unter der Seitenleiste. */
+  animation: ce-pr-seite 180ms var(--ce-motion-ease-standard) backwards;
+}
+@keyframes ce-pr-seite { from { opacity: 0; } }
+/* Solange eine Seite lädt, steht der Fuß unsichtbar am unteren Rand: kommt der Inhalt, rückt er ohne sichtbaren
+   Sprung aus dem Bild (vorher wanderte er sichtbar nach unten, CLS 0,12 gedrosselt bei 390 px). */
+[data-ce-bereich="kunde"] .main-content:has(.loading-center) > .app-footer { visibility: hidden; }
+
+/* Kennzahlen der Übersicht: beim Öffnen der Übersicht setzen sie sich gestaffelt ein (Konzept B) — ein kurzer
+   Einstieg mit der Seite, kein Dauereffekt. */
+[data-ce-bereich="kunde"] .ov-kpis .ov-kpi {
+  animation: ce-pr-kennzahl 560ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+[data-ce-bereich="kunde"] .ov-kpis .ov-kpi:nth-child(2) { animation-delay: 60ms; }
+[data-ce-bereich="kunde"] .ov-kpis .ov-kpi:nth-child(3) { animation-delay: 120ms; }
+[data-ce-bereich="kunde"] .ov-kpis .ov-kpi:nth-child(4) { animation-delay: 180ms; }
+@keyframes ce-pr-kennzahl { from { opacity: 0; transform: translateY(10px); } }
+@media (prefers-reduced-motion: reduce) {
+  [data-ce-bereich="kunde"] .main-content > :is(.page-body, .page-with-navbar),
+  [data-ce-bereich="kunde"] .ov-kpis .ov-kpi { animation: none; }
 }
 
 /* ── Übersicht ──
@@ -631,10 +860,12 @@
 
 /* ═══════════ 10 · ANMELDUNG (Konzept A) ═════════════════════════════════
    Navy-Bühne mit der Nachtkarte: links Marke, Satz, Ansprechpartner und
-   Vertrauenspunkte, rechts das Papierblatt mit dem Formular. Nur AuthPage und
-   EmailChangeConfirmPage setzen den Bereich; die Partnerregistrierung nutzt
-   dieselben Klassen und bleibt unverändert. Ein Einstiegsmoment: die Karte
-   blendet einmal ein; die gestaffelten Einblendungen entfallen. */
+   Vertrauenspunkte, rechts das Papierblatt mit dem Formular, senkrecht zur
+   Bühne mittig. Nur AuthPage und EmailChangeConfirmPage setzen den Bereich;
+   die Partnerregistrierung nutzt dieselben Klassen und bleibt unverändert.
+   Bewegung (Betreiberentscheidung 2026-10-27): die Lichter gehen von
+   Stuttgart aus an und leuchten danach abwechselnd leicht auf
+   (nachtkarte.css); der Reiter gleitet; das Blatt hebt sich einmal. */
 [data-ce-bereich="auth"] body { background-color: var(--ce-pr-navy-950); }
 [data-ce-bereich="auth"] .auth-page {
   isolation: isolate;
@@ -644,18 +875,19 @@
 [data-ce-bereich="auth"] .auth-karte {
   position: absolute;
   z-index: 0;
-  top: 72px;
-  left: max(0px, calc(50% - 600px));
-  width: min(900px, 66vw);
+  top: 40px;
+  left: max(0px, calc(50% - 560px));
+  width: min(980px, 72vw);
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.16) 0%, rgba(0, 0, 0, 0.24) 52%, #000 78%), radial-gradient(ellipse 60% 60% at 52% 52%, #000 50%, transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.18) 0%, rgba(0, 0, 0, 0.3) 46%, #000 72%), radial-gradient(ellipse 62% 62% at 52% 52%, #000 52%, transparent 100%);
   -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.16) 0%, rgba(0, 0, 0, 0.24) 52%, #000 78%), radial-gradient(ellipse 60% 60% at 52% 52%, #000 50%, transparent 100%);
+  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.18) 0%, rgba(0, 0, 0, 0.3) 46%, #000 72%), radial-gradient(ellipse 62% 62% at 52% 52%, #000 52%, transparent 100%);
   mask-composite: intersect;
-  animation: ce-pr-einblenden 900ms var(--ce-motion-ease-standard) both;
 }
 [data-ce-bereich="auth"] .auth-karte img { display: block; width: 100%; height: auto; }
-@keyframes ce-pr-einblenden { from { opacity: 0; } }
+/* Das Blatt hebt sich einmal (Konzept A), danach Ruhe. Kein Deckkraftwechsel des Formulars. */
+[data-ce-bereich="auth"] .auth-card { animation: ce-pr-blatt 760ms cubic-bezier(0.2, 0.7, 0.2, 1) 120ms backwards; }
+@keyframes ce-pr-blatt { from { transform: translateY(18px); } }
 
 /* Zweispaltig nur auf der Anmelde- und Registrierungsansicht (mit Bühnentext). */
 [data-ce-bereich="auth"] .auth-shell:has(> .auth-hero) {
@@ -670,6 +902,9 @@
   margin: 0 auto;
   padding: 48px 40px 28px;
 }
+/* Das Blatt steht senkrecht mittig neben dem Bühnentext: keine leere Fläche unter einem kurzen Formular.
+   Ist das Formular länger (Registrierung), wachsen die Reihen mit, der Text bleibt oben. */
+[data-ce-bereich="auth"] .auth-shell:has(> .auth-hero) > .auth-card { align-self: center; }
 [data-ce-bereich="auth"] .auth-shell:has(> .auth-hero) > .auth-hero { grid-area: hero; }
 [data-ce-bereich="auth"] .auth-shell:has(> .auth-hero) > .auth-card { grid-area: card; }
 [data-ce-bereich="auth"] .auth-shell:has(> .auth-hero) > .auth-kontakt { grid-area: kontakt; }
@@ -677,18 +912,26 @@
 [data-ce-bereich="auth"] .auth-shell:has(> .auth-hero) > .auth-legal { grid-area: legal; justify-content: flex-start; }
 
 [data-ce-bereich="auth"] .auth-hero {
-  max-width: 560px;
+  max-width: 640px;
   margin: 0;
   padding-top: 8px;
   text-align: left;
 }
-[data-ce-bereich="auth"] .auth-brand { align-items: flex-start; margin: 0 0 44px; }
-[data-ce-bereich="auth"] .auth-brand .ce-brandmark-img { width: 168px; }
+[data-ce-bereich="auth"] .auth-brand { align-items: flex-start; margin: 0 0 40px; }
+/* Seitenverhältnis des Lockups (viewBox 1176 × 613): die Höhe steht fest, bevor das Bild geladen ist — sonst
+   rückten Titel und Karte nach dem Laden um rund 70 px nach unten (CLS 0,076 gedrosselt bei 390 px). */
+[data-ce-bereich="auth"] .auth-brand .ce-brandmark-img { width: 136px; height: auto; aspect-ratio: 1176 / 613; }
+/* Die Stimme der Bühne in Instrument Sans (Betreiberentscheidung 2026-10-27, statt Cormorant): leicht schmal,
+   eng gesetzt, 650 — modern statt klassisch. Die Partnerregistrierung behält ihre Schrift. */
 [data-ce-bereich="auth"] .auth-title {
   margin: 0;
-  font-size: clamp(2.75rem, 5vw, 4.125rem);
-  line-height: 0.98;
-  letter-spacing: -0.01em;
+  font-family: var(--ce-pr-font-display);
+  font-size: clamp(2.75rem, 4.6vw, 4rem);
+  font-weight: 650;
+  font-style: normal;
+  font-stretch: var(--ce-pr-display-stretch);
+  line-height: 1;
+  letter-spacing: -0.035em;
   color: var(--ce-pr-on-navy);
 }
 [data-ce-bereich="auth"] .auth-sub-1 {
@@ -768,11 +1011,53 @@
 [data-ce-bereich="auth"] .auth-card::before,
 [data-ce-bereich="auth"] .auth-card::after { content: none; }
 [data-ce-bereich="auth"] .auth-card-title { font-size: 1.5rem; letter-spacing: -0.02em; color: var(--ce-color-text-primary); }
+/* Kopf des Blatts: wo man ist und was man tut. */
+[data-ce-bereich="auth"] .auth-card-kopf { margin: 0 0 20px; }
+[data-ce-bereich="auth"] .auth-card-head {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.022em;
+  color: var(--ce-color-text-primary);
+}
+[data-ce-bereich="auth"] .auth-card-lead {
+  margin: 6px 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--ce-color-text-secondary);
+}
+/* Wechsel zwischen Anmeldung und Registrierung am Ende des Blatts. */
+[data-ce-bereich="auth"] .auth-card-wechsel {
+  margin: 22px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--ce-pr-hairline);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--ce-color-text-secondary);
+}
+[data-ce-bereich="auth"] .auth-card-wechsel-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ce-pr-signal-ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-underline-offset: 3px;
+}
+[data-ce-bereich="auth"] .auth-card-wechsel-btn:hover { text-decoration: underline; }
+[data-ce-bereich="auth"] .auth-card-wechsel-btn:focus-visible { outline: 2px solid var(--ce-pr-signal); outline-offset: 2px; border-radius: var(--ce-radius-xs); }
 [data-ce-bereich="auth"] .auth-card-desc { font-size: 0.9375rem; color: var(--ce-color-text-secondary); }
 [data-ce-bereich="auth"] .auth-card-icon { color: var(--ce-pr-navy-800); }
 
-/* Umschalter Anmelden / Registrieren: dieselbe Spur wie die Segmente im Kundenbereich. */
+/* Umschalter Anmelden / Registrieren: eine ruhige Spur, der gewählte Reiter als weiße Marke, die beim Wechsel
+   hinübergleitet (Konzept A). Die Knöpfe selbst bleiben unverändert bedienbar. */
 [data-ce-bereich="auth"] .auth-tabs {
+  position: relative;
   gap: 2px;
   margin-bottom: 22px;
   padding: 3px;
@@ -780,7 +1065,24 @@
   border-radius: var(--ce-pr-radius-control-lg);
   background: var(--ce-color-surface-muted);
 }
+[data-ce-bereich="auth"] .auth-tabs-marke {
+  position: absolute;
+  z-index: 0;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 4px);
+  border: 1px solid var(--ce-color-border-default);
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-surface);
+  box-shadow: var(--ce-pr-btn-shadow-secondary);
+  transition: transform 320ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  pointer-events: none;
+}
+[data-ce-bereich="auth"] .auth-tabs--register .auth-tabs-marke { transform: translateX(calc(100% + 2px)); }
 [data-ce-bereich="auth"] .auth-tab {
+  position: relative;
+  z-index: 1;
   min-height: 40px;
   padding: 8px 14px;
   border-radius: var(--ce-radius-sm);
@@ -788,13 +1090,15 @@
   font-size: 0.875rem;
   font-weight: 600;
   letter-spacing: 0;
+  transition: color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
 [data-ce-bereich="auth"] .auth-tab:hover { color: var(--ce-color-text-primary); }
-[data-ce-bereich="auth"] .auth-tab.active {
-  border-color: var(--ce-color-border-default);
-  background: var(--ce-color-surface);
+[data-ce-bereich="auth"] .auth-tab.active,
+[data-ce-bereich="auth"] .auth-tabs .auth-tab.active {
+  border-color: transparent;
+  background: transparent;
   color: var(--ce-pr-navy-800);
-  box-shadow: var(--ce-pr-btn-shadow-secondary);
+  box-shadow: none;
 }
 [data-ce-bereich="auth"] .auth-tab-ico { display: none; }
 
@@ -990,7 +1294,9 @@
   [data-ce-bereich="auth"] .auth-trust-row { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-ce-bereich="auth"] .auth-karte { animation: none; }
+  [data-ce-bereich="auth"] .auth-card { animation: none; }
+  [data-ce-bereich="auth"] .auth-tabs-marke,
+  [data-ce-bereich="auth"] .auth-tab { transition: none; }
 }
 
 /* ═══════════ 9 · FOKUS PROGRAMMATISCH FOKUSSIERTER ÜBERSCHRIFTEN ═════════
@@ -1013,4 +1319,102 @@
   [data-ce-bereich] .btn,
   [data-ce-bereich="kunde"] .pp-nav-icon,
   [data-ce-bereich="kunde"] .offer-card { transition: none; }
+}
+
+/* ═══════════ 14 · KOPFSUCHE (Vorschau A/B) ═══════════════════════════════
+   components/layout/KundenSuche.jsx: ein ruhiges Feld in der Utility-Zeile vor
+   „Mitteilungen“, die Treffer als Blatt darunter. Ab 1024 px; schmaler trägt
+   die Kopfzeile nur Mitteilungen (wie in der Vorschau). Ein geöffneter Treffer
+   steht in seiner Liste hervorgehoben (.ce-suche-fokus). */
+[data-ce-bereich="kunde"] .ce-suche {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--ce-space-2);
+  width: clamp(220px, 24vw, 340px);
+  height: 40px;
+  padding: 0 var(--ce-space-3);
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-radius-control);
+  background: var(--ce-color-surface-subtle);
+  color: var(--ce-color-text-secondary);
+}
+[data-ce-bereich="kunde"] .ce-suche:focus-within {
+  border-color: var(--ce-pr-signal);
+  background: var(--ce-color-surface);
+  box-shadow: 0 0 0 3px var(--ce-pr-signal-soft);
+}
+[data-ce-bereich="kunde"] .ce-suche-lupe { display: inline-flex; flex: none; }
+[data-ce-bereich="kunde"] .ce-suche-feld {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ce-color-text-primary);
+  font: inherit;
+  font-size: var(--ce-text-body-s-size);
+  outline: none;
+}
+[data-ce-bereich="kunde"] .ce-suche-feld::placeholder { color: var(--ce-color-text-secondary); }
+[data-ce-bereich="kunde"] .ce-suche-panel {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + var(--ce-space-2));
+  right: 0;
+  width: max(100%, 380px);
+  padding: var(--ce-space-2);
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-radius-card);
+  background: var(--ce-color-surface);
+  box-shadow: var(--ce-elevation-3);
+  text-align: left;
+}
+[data-ce-bereich="kunde"] .ce-suche-panel[hidden] { display: none; }
+[data-ce-bereich="kunde"] .ce-suche-liste { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+[data-ce-bereich="kunde"] .ce-suche-liste:empty { display: none; }
+[data-ce-bereich="kunde"] .ce-suche-treffer {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  grid-template-areas: "art titel" "art text";
+  column-gap: var(--ce-space-3);
+  padding: var(--ce-space-2) var(--ce-space-3);
+  border-radius: var(--ce-radius-md);
+  cursor: pointer;
+}
+[data-ce-bereich="kunde"] .ce-suche-treffer--aktiv { background: var(--ce-pr-signal-soft); }
+[data-ce-bereich="kunde"] .ce-suche-art {
+  grid-area: art;
+  padding-top: 2px;
+  color: var(--ce-color-text-secondary);
+  font-size: var(--ce-text-caption-size);
+}
+[data-ce-bereich="kunde"] .ce-suche-titel {
+  grid-area: titel;
+  min-width: 0;
+  color: var(--ce-color-text-primary);
+  font-size: var(--ce-text-body-s-size);
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+[data-ce-bereich="kunde"] .ce-suche-text {
+  grid-area: text;
+  min-width: 0;
+  color: var(--ce-color-text-secondary);
+  font-size: var(--ce-text-body-s-size);
+}
+[data-ce-bereich="kunde"] .ce-suche-status,
+[data-ce-bereich="kunde"] .ce-suche-hinweis {
+  margin: 0;
+  padding: var(--ce-space-2) var(--ce-space-3);
+  color: var(--ce-color-text-secondary);
+  font-size: var(--ce-text-body-s-size);
+}
+[data-ce-bereich="kunde"] .ce-suche-hinweis { border-top: 1px solid var(--ce-pr-hairline); margin-top: var(--ce-space-1); }
+[data-ce-bereich="kunde"] tr.ce-suche-fokus > td { background: var(--ce-pr-signal-soft); }
+[data-ce-bereich="kunde"] tr.ce-suche-fokus > td:first-child { box-shadow: inset 3px 0 0 var(--ce-pr-signal); }
+[data-ce-bereich="kunde"] li.ce-suche-fokus { box-shadow: inset 3px 0 0 var(--ce-pr-signal); background: var(--ce-pr-signal-soft); }
+@media (max-width: 1023px) {
+  [data-ce-bereich="kunde"] .ce-suche { display: none; }
 }

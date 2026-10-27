@@ -1,0 +1,73 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   NACHTKARTE: EINSTIEGSWELLE UND LICHTER (Premium-Redesign, Konzept A,
+   Betreiberentscheidung 2026-10-27)
+   ───────────────────────────────────────────────────────────────────────────
+   Die Karte der Anmeldung und des öffentlichen Preisrechners.
+   - Einstieg: die Lichter gehen von Stuttgart aus an — eine weiche Welle über
+     das Kartenbild (Maske), einmal beim Öffnen der Seite, 1,4 s.
+   - Danach leuchten ausgewählte Städte abwechselnd leicht auf
+     (components/ui/NachtkartenLichter.jsx, utils/nachtkarteLichter.mjs): jede
+     mit eigener Periode von 6 bis 11 s, nie im Gleichtakt, nur Deckkraft und
+     Größe (Compositor, keine Layoutarbeit).
+   - Reduzierte Bewegung: keine Welle, keine Lichter — das Kartenbild steht.
+   Ursprung der Welle: Stuttgart, 51,2 % / 50,4 % des Kartenbilds
+   (nachtkarteLichter.mjs, wellenUrsprung; Test in nachtkarteLichter.test.mjs).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@property --nk-welle {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 170%;
+}
+
+/* Die Maske steht nur in den Schlüsselbildern: nach der Welle trägt das Element wieder genau seine eigene
+   Maske (etwa den Randverlauf des Kartenbilds) — nichts bleibt dauerhaft maskiert. */
+[data-ce-bereich] .nk-welle {
+  animation: nk-welle 1400ms cubic-bezier(0.3, 0.6, 0.3, 1) 120ms backwards;
+}
+@keyframes nk-welle {
+  from {
+    --nk-welle: 0%;
+    -webkit-mask-image: radial-gradient(circle at 51.2% 50.4%, #000 var(--nk-welle), transparent calc(var(--nk-welle) + 18%));
+            mask-image: radial-gradient(circle at 51.2% 50.4%, #000 var(--nk-welle), transparent calc(var(--nk-welle) + 18%));
+  }
+  to {
+    --nk-welle: 170%;
+    -webkit-mask-image: radial-gradient(circle at 51.2% 50.4%, #000 var(--nk-welle), transparent calc(var(--nk-welle) + 18%));
+            mask-image: radial-gradient(circle at 51.2% 50.4%, #000 var(--nk-welle), transparent calc(var(--nk-welle) + 18%));
+  }
+}
+
+[data-ce-bereich] .nk-lichter {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 600ms var(--ce-motion-ease-standard);
+}
+[data-ce-bereich] .nk-licht {
+  position: absolute;
+  width: var(--nk-groesse, 18px);
+  height: var(--nk-groesse, 18px);
+  margin: calc(var(--nk-groesse, 18px) / -2) 0 0 calc(var(--nk-groesse, 18px) / -2);
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--ce-pr-licht-kern) 0%, var(--ce-pr-licht-schein) 26%, var(--ce-pr-licht-hof) 68%);
+  opacity: 0;
+  transform: scale(0.5);
+  animation: nk-funkeln var(--nk-dauer, 8000ms) cubic-bezier(0.45, 0, 0.55, 1) var(--nk-einsatz, 0ms) infinite;
+}
+[data-ce-bereich] .nk-licht--hell {
+  background: radial-gradient(circle, var(--ce-pr-licht-kern) 0%, var(--ce-pr-licht-schein-hell) 24%, var(--ce-pr-licht-hof) 66%);
+}
+/* Aufglühen, kurz halten, ausklingen — danach Ruhe bis zum nächsten Einsatz. */
+@keyframes nk-funkeln {
+  0% { opacity: 0; transform: scale(0.5); }
+  16% { opacity: 0.9; transform: scale(1); }
+  26% { opacity: 0.6; transform: scale(0.9); }
+  44% { opacity: 0; transform: scale(0.62); }
+  100% { opacity: 0; transform: scale(0.5); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-ce-bereich] .nk-welle { animation: none; }
+  [data-ce-bereich] .nk-licht { animation: none; opacity: 0; }
+}

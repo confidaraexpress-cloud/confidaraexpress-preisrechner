@@ -191,12 +191,17 @@ test("3 — jede Schriftgröße liegt auf einer definierten Stufe der Skala", ()
 
 /* ══════════ 4 — Gewicht ══════════════════════════════════════════════════ */
 
-test("4 — kein font-weight über 600 außerhalb der @font-face-Deklarationen", () => {
+// Premium-Redesign (Betreiberentscheidung 2026-10-27, ersetzt E4 im Bereich): Instrument Sans trägt in Kunde,
+// Anmeldung und Preisrechner Titel und Preise bis 700. Diese Dateien hängen vollständig am Bereichsattribut
+// (premiumRedesign.test.mjs); Admin, Partnerportal und Partnerregistrierung bleiben bei höchstens 600.
+const BEREICHS_DATEIEN = new Set(["premium-redesign.css", "public-calculator.css", "paketbuehne.css", "nachtkarte.css", "demo.css"]);
+
+test("4 — kein font-weight über 600 außerhalb der @font-face-Deklarationen (im Premium-Bereich höchstens 700)", () => {
   const treffer = [];
   for (const [datei, text] of Object.entries(css)) {
     for (const m of text.matchAll(/font-weight:\s*(\d+|bold|bolder)/g)) {
       const wert = m[1] === "bold" || m[1] === "bolder" ? 700 : Number(m[1]);
-      if (wert > 600) treffer.push(`${datei}:${text.slice(0, m.index).split("\n").length} (${m[1]})`);
+      if (wert > (BEREICHS_DATEIEN.has(datei) ? 700 : 600)) treffer.push(`${datei}:${text.slice(0, m.index).split("\n").length} (${m[1]})`);
     }
   }
   assert.deepEqual(treffer, [], `zu fette Schrift:\n  ${treffer.join("\n  ")}`);
@@ -211,9 +216,11 @@ test("4 — kein font-weight über 600 außerhalb der @font-face-Deklarationen",
   }
   assert.deepEqual(jsx, [], `zu fette Inline-Gewichte: ${jsx.join(", ")}`);
 
-  // Die Skala selbst bleibt bei höchstens 600.
+  // Die Skala selbst bleibt bei höchstens 600 — im Bereichsblock (Premium-Redesign) bei höchstens 700.
+  const bereich = variables.indexOf(':root[data-ce-bereich="kunde"]');
   for (const m of variables.matchAll(/--ce-text-[\w-]+-weight:\s*(\d+)/g)) {
-    assert.ok(Number(m[1]) <= 600, `Skalengewicht ${m[1]} überschreitet 600`);
+    const grenze = bereich >= 0 && m.index > bereich ? 700 : 600;
+    assert.ok(Number(m[1]) <= grenze, `Skalengewicht ${m[1]} überschreitet ${grenze}`);
   }
   // Kein künstlicher Fettdruck.
   for (const [datei, text] of Object.entries(css)) {
@@ -261,11 +268,11 @@ const CORMORANT_ERLAUBT = new Set([
   // bleibt allein im eingefrorenen Auth-Bereich. Die beiden früheren
   // Erlaubnisse sind entfallen — eine Erlaubnis für etwas Nichtvorhandenes
   // erlaubt still auch seine Wiedereinführung (siehe unten).
-  ".auth-title",           // Auth-Bereich (eigene Welt)
-  // Öffentlicher Preisrechner (Betreiberentscheidung 2026-10-16): Cormorant sparsam für die
-  // Headlines dieser eigenen Seite — die Headline und die Abschnittstitel, sonst nichts.
-  ".pc-display",
-  ".pc-section-title",
+  ".auth-title",           // Auth-Bereich (eigene Welt) — die Partnerregistrierung; die Kunden-Anmeldung setzt
+                           // ihre Stimme seit dem Premium-Redesign in Instrument Sans (premium-redesign.css).
+  // Der öffentliche Preisrechner trug bis 2026-10-27 Cormorant in Headline und Abschnittstiteln; seit dem
+  // Premium-Redesign (Betreiberentscheidung 2026-10-27) Instrument Sans. Die Erlaubnis ist entfallen — eine
+  // Erlaubnis für etwas Nichtvorhandenes erlaubt still auch seine Wiedereinführung.
 ]);
 // Abschlusspaket: `.auth-hero-title` stand hier als Erlaubnis, obwohl die Klasse
 // weder in einem Stylesheet noch in einem Markup existiert. Eine Erlaubnis für
@@ -489,8 +496,10 @@ test("12 — Phase 2.5 fasst nur Typografie an", () => {
   // /preisrechner-uebernahme im öffentlichen Rahmen und /admin/public-calculator am Adminrahmen.
   // Manuell erstellte Rechnungen (Auftrag 2 / P1, dokumentierte Ankeränderung): +1 —
   // /admin/invoices/manual/:draftId am bestehenden Adminrahmen; keine neue Layoutroute.
-  assert.equal(mitPfad + indexRt, 46,
-    "46 Routen einschliesslich der Admin-Rechtstextvorschau, der Seitenvorschau, des öffentlichen Preisrechners und des Rechnungseditors");
+  // Öffentliche Kundenbereich-Demo (Betreiberentscheidung 2026-10-27, dokumentierte Ankeränderung): +1 — /demo/* lädt
+  // die Seite neu; die Demo selbst läuft in einer eigenen Seitenladung mit eigenem Router (src/demo/DemoApp.jsx).
+  assert.equal(mitPfad + indexRt, 47,
+    "47 Routen einschliesslich der Admin-Rechtstextvorschau, der Seitenvorschau, des öffentlichen Preisrechners, des Rechnungseditors und der Demo");
   assert.equal(pfadlos, 4,
     "die Zahl der pfadlosen Layoutrouten ist unverändert (4: Dashboard, öffentlich, Admin, Auth)");
 });

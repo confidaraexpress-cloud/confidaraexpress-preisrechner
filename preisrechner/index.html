@@ -10,9 +10,8 @@
     <link rel="icon" type="image/svg+xml" href="/favicon-v2.svg" />
     <!-- Die API früh verbinden: das Aufwärmen ist die erste Anfrage der Seite. -->
     <link rel="preconnect" href="https://api.confidaraexpress.de" crossorigin />
-    <!-- Genau die zwei Schnitte oberhalb der Falz: DM Sans (Text, Formular) und Cormorant Garamond (Headline). -->
-    <link rel="preload" href="../src/assets/fonts/dmsans-300.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="../src/assets/fonts/cormorantgaramond-400.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- Genau ein Schnitt oberhalb der Falz: Instrument Sans (variabel, Headline, Text und Formular). -->
+    <link rel="preload" href="../src/assets/fonts/instrumentsans-var.woff2" as="font" type="font/woff2" crossorigin />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="ConfidaraExpress" />
     <meta property="og:locale" content="de_DE" />
@@ -29,6 +28,7 @@
           <img class="pc-brand-img" src="../src/assets/brand/lockup-reverse.svg" alt="ConfidaraExpress" width="92" height="48" />
         </a>
         <nav class="pc-header-nav" aria-label="Kundenbereich">
+          <a class="pc-header-demo" href="https://confidaraexpress.de/demo">Demo ansehen</a>
           <a class="pc-link-button pc-link-button--ghost" href="https://confidaraexpress.de/login">Anmelden</a>
           <a class="pc-link-button" href="https://confidaraexpress.de/register">Registrieren</a>
         </nav>
@@ -47,7 +47,7 @@
                  eingegebene Strecke darauf (NachtkartenRoute.jsx, Portal in #pc-hero-map-canvas). Dekorativ. -->
             <figure class="pc-hero-map">
               <div class="pc-hero-map-frame">
-                <div class="pc-hero-map-canvas" id="pc-hero-map-canvas">
+                <div class="pc-hero-map-canvas nk-welle" id="pc-hero-map-canvas">
                   <img class="pc-hero-map-img" src="../src/assets/illustrations/nachtkarte-eu.svg" alt="" width="536" height="497" decoding="async" />
                 </div>
               </div>
@@ -97,6 +97,18 @@
                     <div class="pkg-lines-foot"><span class="pc-line-action pc-line-action--add">Paket hinzufügen</span></div>
                   </div>
                   <p class="pc-row-hint">Gewicht und Maße je Paket.</p>
+                  <!-- Paketbühne (Konzept B) im Ausgangszustand: dieselbe Hülle wie Paketbuehne.jsx, die Flächen als feste
+                       Polygone (die CSP dieser Domain erlaubt keine Inline-Styles im HTML). -->
+                  <figure class="ce-paket ce-paket--public" data-paket-zustand="beispiel" aria-hidden="true">
+                  <svg class="ce-paket-svg" viewBox="0 0 320 232" focusable="false">
+                  <g class="ce-paket-karton">
+                  <polygon class="ce-paket-form ce-paket-links" points="170.8,196 84.6,146.3 84.6,86.6 170.8,136.3" />
+                  <polygon class="ce-paket-form ce-paket-rechts" points="235.3,158.7 170.8,196 170.8,136.3 235.3,99.1" />
+                  <polygon class="ce-paket-form ce-paket-oben" points="149.2,49.3 235.4,99.1 170.8,136.3 84.7,86.6" />
+                  </g></svg>
+                  <figcaption class="ce-paket-text"><span class="ce-paket-titel">Maße eingeben – das Paket nimmt Form an</span><span class="ce-paket-hinweis">Beispielpaket</span></figcaption>
+                  </figure>
+
                 </div>
                 <div class="pc-submit-row">
                   <span class="pc-button pc-button--primary pc-button--submit">Versandpreise berechnen</span>
@@ -166,6 +178,10 @@
               <li class="pc-feature"><h3 class="pc-feature-title">Rechnungen</h3><p class="pc-feature-text">Rechnungen zu Ihren Sendungen gesammelt.</p></li>
               <li class="pc-feature"><h3 class="pc-feature-title">Adressbuch</h3><p class="pc-feature-text">Häufige Absender und Empfänger wiederverwenden.</p></li>
             </ul>
+            <div class="pc-demo">
+              <p class="pc-demo-text">Probieren Sie den Kundenbereich ohne Anmeldung aus: Sendung anlegen, Angebote vergleichen und eine Buchung bis zur Bestätigung durchspielen. Mit Beispieldaten — nichts wird gebucht.</p>
+              <a class="pc-button pc-button--primary pc-demo-cta" href="https://confidaraexpress.de/demo">Kundenbereich ausprobieren</a>
+            </div>
           </div>
         </div>
       </section>

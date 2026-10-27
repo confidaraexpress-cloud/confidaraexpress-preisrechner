@@ -56,3 +56,29 @@ test("5 — der Bogen wölbt sich nach Norden (kleinere y) und hat den Ausschnit
   assert.ok(svg.includes(`viewBox="${KARTE_VB.x} ${KARTE_VB.y} ${KARTE_VB.w} ${KARTE_VB.h}"`),
     "Kartenbild und Ortsdaten haben nicht denselben Ausschnitt");
 });
+
+test("6 — der Lichtpunkt läuft auf dem Bogen, mit der Kurve der Linie, von Start bis Ziel", async () => {
+  const { lichtpunktStuetzen, kubischeKurve, LICHTPUNKT_STUETZEN } = await import("./nachtkarteRoute.mjs");
+  const a = { x: -32.4, y: 20.7 }, b = { x: 50.8, y: 29.8 };
+  const p = lichtpunktStuetzen(a, b);
+  assert.equal(p.length, LICHTPUNKT_STUETZEN);
+  assert.deepEqual(p[0], { x: -32.4, y: 20.7 });
+  assert.deepEqual(p[p.length - 1], { x: 50.8, y: 29.8 });
+  // Nach Norden gewölbt: der Bogen verläuft nördlich (kleineres y) der Verbindungslinie.
+  assert.ok(Math.min(...p.map((q) => q.y)) < Math.min(a.y, b.y));
+  // Gleiche Zeitabstände, aber früh große Schritte: nach einem Viertel der Zeit ist mehr als die Hälfte geschafft.
+  const weg = (q) => Math.hypot(q.x - a.x, q.y - a.y);
+  assert.ok(weg(p[3]) > weg(b) * 0.4);
+  // Die Kurve der Linie (cubic-bezier(0.2, 0.7, 0.3, 1)): früh schnell, dann ausrollend.
+  const kurve = kubischeKurve(0.2, 0.7, 0.3, 1);
+  assert.equal(kurve(0), 0);
+  assert.equal(kurve(1), 1);
+  assert.ok(kurve(0.25) > 0.5, "die Linie hat nach einem Viertel der Zeit mehr als die Hälfte erreicht");
+  assert.deepEqual(lichtpunktStuetzen(a, a), []);
+  // Die Strecke trägt die Stützpunkte, und das Stylesheet hat genau so viele Schlüsselbilder.
+  const s = kartenStrecke({ from_country: "DE", from_city: "Stuttgart", to_country: "AT", to_city: "Wien" });
+  assert.equal(s.licht.length, LICHTPUNKT_STUETZEN);
+  const css = readFileSync(path.join(hier, "../styles/public-calculator.css"), "utf8");
+  const stuetzen = [...css.matchAll(/translate\(var\(--pc-l(\d+)x, 0px\), var\(--pc-l\1y, 0px\)\)/g)].map((m) => Number(m[1]));
+  assert.deepEqual(stuetzen, Array.from({ length: LICHTPUNKT_STUETZEN }, (_, i) => i));
+});

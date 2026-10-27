@@ -568,6 +568,29 @@
   :root { --ce-size-content: 1680px; --ce-size-content-admin: 1920px; }
 }
 
+/* ── Öffentliche Kundenbereich-Demo (Betreiberentscheidung 2026-10-27) ──────
+   Die Demo-Leiste (styles/demo.css) steht auf jeder Seite der Demo, auch in dem
+   Augenblick, in dem eine Seite lädt und noch kein Bereich gesetzt ist. Ihre
+   Werte gelten deshalb ohne Bereichsattribut — dieselben Töne wie die Navy-
+   Seitenleiste des Kundenbereichs. Kontraste wie dort (Text 15,90:1, Zweitton
+   8,80:1 auf #0a1636). */
+:root {
+  --ce-demo-flaeche: #0a1636;
+  --ce-demo-text: #eef2ff;
+  --ce-demo-text-2: #aab6d8;
+  --ce-demo-linie: rgba(143, 176, 255, 0.3);
+  --ce-demo-fokus: #8fb0ff;
+  --ce-demo-hover: rgba(255, 255, 255, 0.06);
+  --ce-demo-knopf: #f7f8fc;
+  --ce-demo-knopf-hover: #ffffff;
+  --ce-demo-knopf-text: #011b55;
+  --ce-demo-streifen: linear-gradient(90deg, #4d84ff 0%, #8fb0ff 100%);
+  --ce-demo-buehne: radial-gradient(ellipse 55% 65% at 28% 60%, rgba(28, 58, 150, 0.34), transparent 70%), linear-gradient(180deg, #0a1636 0%, #081230 100%);
+  --ce-demo-blatt: #ffffff;
+  --ce-demo-tinte: #0b1532;
+  --ce-demo-tinte-2: #4e5a73;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    PREMIUM-REDESIGN 2026-10 · ETAPPE 1 — BEREICHS-SCOPE KUNDE, AUTH, PREISRECHNER
    ───────────────────────────────────────────────────────────────────────────
@@ -666,22 +689,36 @@
   --ce-sidebar-scroll-thumb: rgba(255, 255, 255, 0.14);
   --ce-sidebar-scroll-thumb-hover: rgba(255, 255, 255, 0.26);
 
-  /* ── Typografie in rem (E13), Höchstgewicht 600 (E4) ── */
-  --ce-text-display-xl-size: 2rem;      --ce-text-display-xl-size-mobile: 1.625rem;  --ce-text-display-xl-line: 1.25;
-  --ce-text-display-l-size: 2rem;       --ce-text-display-l-size-mobile: 1.625rem;   --ce-text-display-l-line: 1.25;
-  --ce-text-title-page-size: 2rem;      --ce-text-title-page-size-mobile: 1.625rem;
-  --ce-text-title-page-line: 1.25;      --ce-text-title-page-line-mobile: 1.2308;    --ce-text-title-page-tracking: -0.022em;
-  --ce-text-title-section-size: 1.25rem; --ce-text-title-section-size-mobile: 1.125rem; --ce-text-title-section-line: 1.4;
-  --ce-text-title-card-size: 1rem;      --ce-text-title-card-size-mobile: 1rem;
-  --ce-text-body-l-size: 1rem;          --ce-text-body-l-size-mobile: 1rem;          --ce-text-body-l-line: 1.5;
-  --ce-text-body-size: 0.9375rem;       --ce-text-body-size-mobile: 0.9375rem;       --ce-text-body-line: 1.6;
-  --ce-text-body-s-size: 0.8125rem;     --ce-text-body-s-size-mobile: 0.8125rem;
-  --ce-text-label-size: 0.8125rem;      --ce-text-label-size-mobile: 0.8125rem;
-  --ce-text-micro-size: 0.75rem;        --ce-text-micro-size-mobile: 0.75rem;
-  --ce-text-numeric-display-size: 2.25rem; --ce-text-numeric-display-size-mobile: 1.875rem; --ce-text-numeric-display-line: 1.1111;
-  --ce-text-caption-size: 0.75rem;
+  /* ── Typografie (Betreiberentscheidung 2026-10-27, ersetzt E4 im Bereich) ──
+     Instrument Sans für alles: eine Familie mit innerer Spannung über Gewicht (400–700) und Breite.
+     Titel 650 mit enger Laufweite, Text 400, Beschriftungen 500, Zahlen tabellarisch. Größen in rem (E13);
+     bei 16 px Grundgröße ganze Pixel. Admin und Partner lesen diesen Block nie (DM Sans, höchstens 600). */
+  --ce-font-sans: 'Instrument Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ce-font-numeric: 'Instrument Sans', system-ui, sans-serif;
+  --ce-pr-font-display: 'Instrument Sans', system-ui, sans-serif;
+  --ce-pr-display-stretch: 92%;         /* Display und Seitentitel: leicht schmaler, mehr Spannung */
+  --ce-text-display-xl-size: 2.5rem;    --ce-text-display-xl-size-mobile: 2rem;      --ce-text-display-xl-line: 1.1;
+  --ce-text-display-xl-weight: 650;     --ce-text-display-xl-tracking: -0.032em;
+  --ce-text-display-l-size: 2.25rem;    --ce-text-display-l-size-mobile: 1.75rem;    --ce-text-display-l-line: 1.1667;
+  --ce-text-display-l-weight: 650;      --ce-text-display-l-tracking: -0.03em;
+  --ce-text-title-page-size: 2.25rem;   --ce-text-title-page-size-mobile: 1.75rem;   --ce-text-title-page-weight: 650;
+  --ce-text-title-page-line: 1.1667;    --ce-text-title-page-line-mobile: 1.2143;    --ce-text-title-page-tracking: -0.03em;
+  --ce-text-title-page-tracking-mobile: -0.025em;
+  --ce-text-title-section-size: 1.375rem; --ce-text-title-section-size-mobile: 1.25rem; --ce-text-title-section-line: 1.3636;
+  --ce-text-title-section-weight: 620;  --ce-text-title-section-tracking: -0.016em;
+  --ce-text-title-card-size: 1.0625rem; --ce-text-title-card-size-mobile: 1.0625rem; --ce-text-title-card-line: 1.4118;
+  --ce-text-title-card-weight: 600;     --ce-text-title-card-tracking: -0.006em;
+  --ce-text-body-l-size: 1.0625rem;     --ce-text-body-l-size-mobile: 1rem;          --ce-text-body-l-line: 1.5294;
+  --ce-text-body-size: 1rem;            --ce-text-body-size-mobile: 1rem;            --ce-text-body-line: 1.5;
+  --ce-text-body-s-size: 0.875rem;      --ce-text-body-s-size-mobile: 0.875rem;      --ce-text-body-s-line: 1.5714;
+  --ce-text-label-size: 0.875rem;       --ce-text-label-size-mobile: 0.875rem;       --ce-text-label-line: 1.4286;
+  --ce-text-label-tracking: 0.002em;
+  --ce-text-micro-size: 0.75rem;        --ce-text-micro-size-mobile: 0.75rem;        --ce-text-micro-tracking: 0.01em;
+  --ce-text-numeric-display-size: 2.5rem; --ce-text-numeric-display-size-mobile: 2rem; --ce-text-numeric-display-line: 1.1;
+  --ce-text-numeric-display-weight: 650; --ce-text-numeric-display-tracking: -0.03em;
+  --ce-text-caption-size: 0.8125rem;    --ce-text-caption-line: 1.5385;
   --ce-text-badge-size: 0.75rem;        --ce-text-badge-weight: 600;                 --ce-text-badge-line: 1.3333;
-  --ce-text-button-size: 0.9375rem;     --ce-text-button-line: 1.3333;
+  --ce-text-button-size: 0.9375rem;     --ce-text-button-line: 1.3333;               --ce-text-button-weight: 600;
   --ce-text-nav-size: 0.9375rem;
   --ce-sidebar-nav-size: 0.9375rem;
 
@@ -691,6 +728,7 @@
   --ce-pr-radius-panel: 14px;           /* Abschnitte, Tabellenrahmen */
   --ce-pr-radius-card: 16px;            /* Objekte: Angebot, Beleg, Bestätigung */
   --ce-pr-radius-status: 6px;           /* Statusmarke: eckig, denn Kapseln sind Auswahl */
+  --ce-pr-booking-seite: 296px;         /* Beleg neben dem Buchungsblatt von 1440 bis 1599 px (800 + 32 + 296 = Rahmen) */
   --ce-pr-shadow-card: 0 1px 2px rgba(10, 22, 54, 0.04), 0 2px 10px -4px rgba(10, 22, 54, 0.08);
   --ce-pr-shadow-card-hover: 0 2px 4px rgba(10, 22, 54, 0.05), 0 12px 28px -12px rgba(10, 22, 54, 0.18);
   /* E5: feine Innenkante oben und zurückhaltender neutraler Schatten. Kein Glow,
@@ -717,4 +755,27 @@
   --ce-pr-route-halo: rgba(95, 134, 255, 0.35);
   --ce-pr-route-ring: #9fbaff;
   --ce-pr-stadtlicht: #ffd9a3;
+  /* Lichter der Nachtkarte: warmer Kern, goldener Schein (Funkeln, Einstieg). */
+  --ce-pr-licht-kern: rgba(255, 246, 226, 0.95);
+  --ce-pr-licht-schein: rgba(255, 200, 122, 0.5);
+  --ce-pr-licht-hof: rgba(255, 176, 92, 0);
+  --ce-pr-licht-schein-hell: rgba(255, 228, 182, 0.42);
+
+  /* ── Paketbühne (Konzept B): Kraftpapier, Klebeband im Logo-Blau, weißes Etikett ── */
+  --ce-pr-kraft-oben: #e8cfa8;
+  --ce-pr-kraft-links: #d6b386;
+  --ce-pr-kraft-rechts: #c29a66;
+  --ce-pr-kraft-kante: rgba(120, 82, 40, 0.30);
+  --ce-pr-kraft-beispiel: rgba(13, 20, 48, 0.035);
+  --ce-pr-kraft-beispiel-kante: #b4bccb;
+  --ce-pr-band: #1f55f0;
+  --ce-pr-band-seite: #0a3fcf;
+  --ce-pr-etikett: #ffffff;
+  --ce-pr-etikett-kante: rgba(13, 20, 48, 0.14);
+  --ce-pr-etikett-kopf: #011b55;
+  --ce-pr-etikett-tinte: #0d1430;
+  --ce-pr-etikett-leer: #e4e7ed;
+  --ce-pr-paket-schatten: rgba(13, 20, 48, 0.26);
+  --ce-pr-paket-buehne: #f6f7fa;        /* die helle Werkbank unter dem Paket */
+  --ce-pr-paket-raster: rgba(11, 21, 50, 0.05);
 }

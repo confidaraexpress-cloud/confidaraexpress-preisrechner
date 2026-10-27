@@ -282,11 +282,10 @@ test("9 — die Zeile wirkt als kleine Überschrift des Prozessbereichs", async 
     };
   });
 
-  // Typografie: Body-Stufe statt Label — im Kundenbereich seit dem Premium-
-  // Redesign (E13) 15 px (0,9375 rem, vorher 14 px). Gewicht bleibt bei 600, dem
-  // global höchsten zulässigen UI-Gewicht (typography.test.mjs lässt nichts
-  // darüber zu).
-  assert.equal(mass.groesse, 15);
+  // Typografie: Body-Stufe statt Label — im Kundenbereich seit dem Abschluss des
+  // Premium-Redesigns (2026-10-27) 16 px (1 rem; Etappe 1: 15 px, davor 14 px).
+  // Gewicht bleibt bei 600.
+  assert.equal(mass.groesse, 16);
   assert.equal(mass.gewicht, "600");
   assert.equal(mass.transform, "none", "die Zeile darf nicht versalisiert werden");
   assert.equal(mass.spacing, "normal", "die Laufweite muss auf normal stehen");

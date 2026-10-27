@@ -153,21 +153,25 @@ test("5 — es gibt genau einen Overlayton", () => {
 
 /* ══════════ 6 — Schrift ═════════════════════════════════════════════════ */
 
-test("6 — es werden nur die beiden benutzten Schriftfamilien geladen", () => {
+test("6 — es werden nur die drei benutzten Schriftfamilien geladen", () => {
   const fonts = ohneKommentare(read("./fonts.css"));
   const familien = [...new Set([...fonts.matchAll(/font-family:\s*'([^']+)'/g)].map((m) => m[1]))].sort();
-  assert.deepEqual(familien, ["Cormorant Garamond", "DM Sans"]);
+  // Premium-Redesign (Betreiberentscheidung 2026-10-27): Instrument Sans für Kunde, Anmeldung und Preisrechner;
+  // DM Sans und Cormorant bleiben für Admin, Partnerportal und Partnerregistrierung.
+  assert.deepEqual(familien, ["Cormorant Garamond", "DM Sans", "Instrument Sans"]);
   // Jede geladene Datei existiert, und es liegt keine ungenutzte Datei herum.
   const geladen = new Set([...fonts.matchAll(/url\('\.\.\/assets\/fonts\/([^']+)'\)/g)].map((m) => m[1]));
   const vorhanden = new Set(readdirSync(new URL("../assets/fonts/", import.meta.url)));
   for (const d of geladen) assert.ok(vorhanden.has(d), `fonts.css lädt ${d}, die Datei fehlt`);
   for (const d of vorhanden) assert.ok(geladen.has(d), `${d} liegt ungenutzt im Repository`);
-  // Kein UI-Gewicht über 600.
+  // Kein UI-Gewicht über 600 — außer in den Dateien des Premium-Bereichs (Instrument Sans, Betreiberentscheidung
+  // 2026-10-27: Titel und Preise bis 700). Deren Regeln hängen am Bereichsattribut; Admin und Partner lesen sie nie.
+  const BEREICH = new Set(["premium-redesign.css", "public-calculator.css", "paketbuehne.css", "nachtkarte.css", "demo.css"]);
   for (const f of ALLE_CSS) {
     for (const m of css[f].matchAll(/font-weight:\s*(\d+|bold|bolder)/g)) {
       if (f === "fonts.css") continue;
       const w = m[1] === "bold" || m[1] === "bolder" ? 700 : Number(m[1]);
-      assert.ok(w <= 600, `${f}: font-weight ${m[1]}`);
+      assert.ok(w <= (BEREICH.has(f) ? 700 : 600), `${f}: font-weight ${m[1]}`);
     }
   }
 });
@@ -289,6 +293,9 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
                   // Leseseite neben den Rechtsseiten, verlinkt aus dem
                   // Versicherungsdetails-Dialog. Kein Sidebar-Eintrag.
                   "/versicherungsinformationen", "/dashboard",
+                  // Öffentliche Kundenbereich-Demo (Betreiberentscheidung 2026-10-27): lädt die Seite neu, die
+                  // Demo selbst läuft in einer eigenen Seitenladung (src/demo/).
+                  "/demo/*",
                   "/admin", "/admin/users", "/admin/users/:id",
                   "/admin/shipments", "/admin/shipments/:id",
                   "/admin/invoices", "/admin/invoices/backfill", "/admin/legal-drafts", "/admin/invoices/:id",

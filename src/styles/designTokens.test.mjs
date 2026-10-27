@@ -365,6 +365,9 @@ test("10 — es gibt genau EINE Radienfamilie im Produkt", () => {
       // Premium-Redesign Konzept A: der Preisrechner trägt den Bereichsblock (data-ce-bereich="preisrechner")
       // und damit die Radien der Bereichsebene.
       if (f === "public-calculator.css" && /^var\(--ce-pr-radius-[\w-]+\)$/.test(v)) continue;
+      // Die Paketbühne (Konzept B) gehört zur Bereichsebene: jede ihrer Regeln hängt am Bereichsattribut
+      // (premiumRedesign.test.mjs, 9) — sie trägt deshalb dieselben Radien.
+      if (f === "paketbuehne.css" && /^var\(--ce-pr-radius-[\w-]+\)$/.test(v)) continue;
       // Der Griff einer Bildlaufleiste ist Browser-Chrome, keine Fläche des
       // Designsystems: er ist 4 px breit, ein 8-px-Radius wäre größer als das
       // Element. Das ist die EINZIGE zugelassene Ausnahme.

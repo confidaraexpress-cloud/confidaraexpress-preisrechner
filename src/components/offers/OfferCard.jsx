@@ -33,6 +33,7 @@ import { projectedDeliveryText, projectedDeliveryDateText, projectedDeliveryTime
 import { ServiceProfileDetails } from "./ServiceProfileDetails";
 import { carrierAppliesLabel, LABEL_HANDLING_TEXT } from "../../utils/labelHandling.mjs";
 import { vatDisplay, vatSuffixText, isGrossVatMode } from "../../utils/vatDisplayView.mjs";
+import { Werte } from "../ui/Werte";
 
 const fmtDE = (iso) => {
   if (!iso) return "";
@@ -741,17 +742,17 @@ function OfferCardBase({
               <div className="offer-tl-labels">
                 <div className="offer-tl-node offer-tl-node--start">
                   <span className="offer-tl-title">{start.title}</span>
-                  {start.primary && <span className="offer-tl-primary">{start.primary}</span>}
+                  {start.primary && <span className="offer-tl-primary"><Werte>{start.primary}</Werte></span>}
                   {/* Genau EINE Unterzeile (2026-10-04) — die erste ist die wichtigste: ein
                       verschobener Tag („frühester Abholtag") vor der Zeit. Die Zeit steht dann
                       vollständig unter „Termin & Abholung" (Abholung, Zeitfenster); die Karte
                       wird davon nicht höher. */}
-                  {start.secondary.length > 0 && <span className="offer-tl-sub">{start.secondary[0]}</span>}
+                  {start.secondary.length > 0 && <span className="offer-tl-sub"><Werte>{start.secondary[0]}</Werte></span>}
                 </div>
                 <div className="offer-tl-node offer-tl-node--end">
                   <span className="offer-tl-title">{end.title}</span>
-                  {end.primary && <span className="offer-tl-primary">{end.primary}</span>}
-                  {end.secondary.map((s, i) => <span key={i} className="offer-tl-sub">{s}</span>)}
+                  {end.primary && <span className="offer-tl-primary"><Werte>{end.primary}</Werte></span>}
+                  {end.secondary.map((s, i) => <span key={i} className="offer-tl-sub"><Werte>{s}</Werte></span>)}
                   {/* Zusätzliches Hinweisfeld für besonders frühe Zustellzeiten — seit dem
                       Feinschliff (2026-10) IM Endknoten, direkt unter dem Lieferdatum, zu dem
                       es gehört. Vorher hing es als Geschwister unter beiden Knoten und stand
@@ -760,7 +761,7 @@ function OfferCardBase({
                       Spalte nicht mehr aufweiten, Timeline und Preisspalte verziehen sich
                       nicht. Ohne Symbol — die Aussage steht vollständig im Text. */}
                   {earlyNote && (
-                    <p className="offer-early-note">{earlyNote}</p>
+                    <p className="offer-early-note"><Werte>{earlyNote}</Werte></p>
                   )}
                   {/* Die Einordnung gegen eine gesetzte Lieferfrist steht seit TG-L2 nicht mehr auf der Karte
                       („Zustelltermin nicht bewertbar"), sondern als Gruppe der Liste mit Kopf und Satz

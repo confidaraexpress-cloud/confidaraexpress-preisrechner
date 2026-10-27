@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="de">
+<html lang="de" data-ce-bereich="preisrechner">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Versandpreise für Unternehmen vergleichen | ConfidaraExpress</title>
     <meta name="description" content="Versand für Unternehmen: Nettopreise mehrerer Versanddienstleister vergleichen — ohne Anmeldung. Buchung, Versanddokumente und Sendungsverfolgung im Kundenbereich von ConfidaraExpress, mit persönlichem Ansprechpartner." />
     <link rel="canonical" href="https://preisrechner.confidaraexpress.de/" />
-    <meta name="theme-color" content="#111A33" />
+    <meta name="theme-color" content="#0A1636" />
     <link rel="icon" type="image/svg+xml" href="/favicon-v2.svg" />
     <!-- Die API früh verbinden: das Aufwärmen ist die erste Anfrage der Seite. -->
     <link rel="preconnect" href="https://api.confidaraexpress.de" crossorigin />
@@ -41,9 +41,18 @@
       <section class="pc-hero" aria-labelledby="pc-hero-title">
         <div class="pc-wrap pc-hero-grid">
           <div class="pc-hero-head">
-            <p class="pc-eyebrow">Digitale Versand- und Logistikplattform</p>
-            <h1 class="pc-display" id="pc-hero-title"><span class="pc-display-line">Versand für Unternehmen.</span> <span class="pc-display-line pc-display-line--soft">Einfach vergleichen.</span></h1>
+            <h1 class="pc-display" id="pc-hero-title"><span class="pc-display-line">Versand für Unternehmen.</span> <span class="pc-display-line">Einfach vergleichen.</span></h1>
             <p class="pc-lead">Mehrere Versanddienstleister auf einer Plattform: transparente Nettopreise für Ihre Sendung, effizient gebucht im Kundenbereich — mit persönlichem Ansprechpartner.</p>
+            <!-- Konzept A: die Nachtkarte — die Städte der EU als Lichter, eigene Zeichnung. Die Insel zeichnet die
+                 eingegebene Strecke darauf (NachtkartenRoute.jsx, Portal in #pc-hero-map-canvas). Dekorativ. -->
+            <figure class="pc-hero-map">
+              <div class="pc-hero-map-frame">
+                <div class="pc-hero-map-canvas" id="pc-hero-map-canvas">
+                  <img class="pc-hero-map-img" src="../src/assets/illustrations/nachtkarte-eu.svg" alt="" width="536" height="497" decoding="async" />
+                </div>
+              </div>
+              <figcaption class="pc-hero-map-legend"><span class="pc-hero-map-dot" aria-hidden="true"></span>Versand ab Deutschland in die Länder der EU</figcaption>
+            </figure>
           </div>
 
           <div class="pc-calculator-card" id="pc-calculator-card">

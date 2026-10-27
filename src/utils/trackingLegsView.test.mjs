@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
-  trackingLegsOf, trackingStatusLabel, eventWhenText, latestTrackingLegEvent, trackingLegEventCount,
+  trackingLegsOf, trackingStatusLabel, trackingStatusBadgeClass, eventWhenText, latestTrackingLegEvent, trackingLegEventCount,
   trackingLegHeading, hasTrackingLegs, TRACKING_LEGS_TEXT,
 } from "./trackingLegsView.mjs";
 import { buildTrackingView } from "../pages/trackingView.mjs";
@@ -22,6 +22,19 @@ const ohneKommentare = (q) => q
   .split("\n").map((l) => l.replace(/(^|\s)\/\/.*$/, "$1")).join("\n");
 
 const A = "1ZF7TEST0000000001";
+
+// Premium-Redesign E8: Die Statusmarke der Kundenliste trägt den Ton des Stands (zwei Stufen), nicht pauschal Info.
+test("E8 — trackingStatusBadgeClass: ruhig für Vorbereitung, Transport, Zustellung; hervorgehoben nur die Ausnahme", () => {
+  assert.equal(trackingStatusBadgeClass("pending"), "badge--neutral");
+  assert.equal(trackingStatusBadgeClass("in_transit"), "badge--progress");
+  assert.equal(trackingStatusBadgeClass("delivered"), "badge--success");
+  assert.equal(trackingStatusBadgeClass("exception"), "badge--warning", "Warnfarbe wie das neueste Ereignis der Ausnahme");
+  assert.equal(trackingStatusBadgeClass("toString"), "badge--neutral", "nur eigene Schlüssel zählen");
+  assert.equal(trackingStatusBadgeClass(undefined), "badge--neutral");
+  const liste = ohneKommentare(lies("../components/dashboard/ShipmentsList.jsx"));
+  assert.match(liste, /\{statusLabel && <span className=\{`badge \$\{trackingStatusBadgeClass\(tracking\?\.trackingStatus\)\}`\}>\{statusLabel\}<\/span>\}/);
+  assert.doesNotMatch(liste, /<span className="badge badge--info">\{statusLabel\}/, "die Marke ist wieder pauschal Info");
+});
 const B = "1ZF7TEST0000000002";
 // Neutraler Kundenvertrag (TG22 Paket A): kein Eventcode, kein Rohdatum, keine Leg-Rolle.
 const EV = (status, description, location, date, time) =>

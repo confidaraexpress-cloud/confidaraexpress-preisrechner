@@ -191,3 +191,12 @@ export function invoiceDeliveryHint(mode) {
       return { tone: "info", text: "Das Rechnungsdokument wird derzeit erstellt und erscheint gleich im Bereich Rechnungen." };
   }
 }
+
+// Meldungsklasse zum Ton des Hinweises (F3): Der Warnton der Testphase erscheint als Warnung, nicht als Info.
+// Ein unbekannter Ton fällt auf den ruhigen Infoton zurück.
+const HINT_ALERT_CLASS = Object.freeze({
+  success: "alert-success", warning: "alert-warning", error: "alert-error", info: "alert-info",
+});
+export function hintAlertClass(tone) {
+  return HINT_ALERT_CLASS[tone] || "alert-info";
+}

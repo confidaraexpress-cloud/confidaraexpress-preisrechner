@@ -177,12 +177,13 @@ test("7c — das Frühzeit-Hinweisfeld nutzt Foundation-Tokens und trägt sichtb
   const karte = read("../components/offers/OfferCard.jsx");
   assert.ok(!/offer-tl-time-early/.test(karte), "die Karte darf die Inline-Klasse nicht mehr setzen");
   // Die normale Hauptzeile trägt wieder ausschließlich das Datum.
-  assert.match(karte, /\{end\.primary && <span className="offer-tl-primary">\{end\.primary\}<\/span>\}/);
+  // Premium-Redesign B9: die Werte der Zeile brechen nicht mitten im Wert um (Werte, Text unverändert).
+  assert.match(karte, /\{end\.primary && <span className="offer-tl-primary"><Werte>\{end\.primary\}<\/Werte><\/span>\}/);
   // Farbe ist nie der alleinige Träger: der Text steht vollständig im Feld.
   assert.match(karte, /\{earlyNote\}/);
   // Redesign 2026-10: das Hinweisfeld trägt kein Symbol mehr — die Aussage steht
   // vollständig im Text; es gibt kein dekoratives Element, das verborgen werden müsste.
-  assert.match(karte, /<p className="offer-early-note">\{earlyNote\}<\/p>/);
+  assert.match(karte, /<p className="offer-early-note"><Werte>\{earlyNote\}<\/Werte><\/p>/);
   assert.ok(!/offer-early-note-icon/.test(karte), "das Hinweisfeld trägt wieder ein Symbol");
 });
 

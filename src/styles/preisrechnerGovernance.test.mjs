@@ -170,7 +170,7 @@ test("10 — die 404-Seite: eigener Eintrag im Build, ohne Skript, nicht indexie
   const html = lies("preisrechner/404.html").replace(/<!--[\s\S]*?-->/g, "");
   assert.doesNotMatch(html, /<script|style="|<style/, "kein Skript (keine Aufwärmmeldung), nichts inline (CSP)");
   assert.match(html, /<meta name="robots" content="noindex" \/>/);
-  assert.match(html, /<html lang="de">/);
+  assert.match(html, /<html lang="de" data-ce-bereich="preisrechner">/);
   assert.match(html, /href="\/"/, "Weg zurück zum Rechner");
   assert.match(html, /href="https:\/\/confidaraexpress\.de\/"/, "Weg zur Hauptdomain");
   assert.doesNotMatch(html.replace(/<[^>]+>/g, " "), /jumingo|transglobal/i);

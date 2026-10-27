@@ -342,7 +342,10 @@ test("30 — der Support-Einstieg der Sidebar bleibt eine Textaktion ohne Postfa
   assert.ok(!/Live Support/.test(code), "„Live Support“ ist zurück");
   assert.ok(!/ce-live/.test(code), "der Statuspunkt ist zurück");
   assert.ok(!/mailto:/.test(code), "der mailto-Einstieg ist zurück");
-  assert.ok(!/<Icon\b/.test(code), "die Sidebar trägt wieder ein Symbol");
+  // E7 (2026-10-27): Icons tragen nur die Hauptpunkte; die sekundären Aktionen bleiben reiner Text.
+  const aktionen = code.slice(code.indexOf('<div className="pp-side-actions">'), code.indexOf('<div className="pp-foot">'));
+  assert.ok(aktionen.length > 0, "der Bereich der sekundären Aktionen fehlt");
+  assert.ok(!/<Icon\b/.test(aktionen), "die Support-Aktion trägt ein Symbol");
 });
 
 test("31 — die bestehende Stornierungsfunktion ist unberührt", () => {

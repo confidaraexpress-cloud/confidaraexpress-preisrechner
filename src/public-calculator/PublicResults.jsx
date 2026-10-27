@@ -6,6 +6,7 @@ import {
   sortPublicOffers,
 } from "../utils/publicCalculatorView.mjs";
 import { PublicOfferCard } from "./PublicOfferCard.jsx";
+import { Werte } from "../components/ui/Werte.jsx";
 import { OFFERS_MIXED_PACKAGES_NOTE, OFFERS_MIXED_PACKAGES_EMPTY_HINT } from "../utils/offerIdentity.mjs";
 
 // ── Ergebnisbereich (Portal in #pc-results, direkt unter dem Rechner) ─────────
@@ -150,7 +151,7 @@ export function PublicResults({ host, phase, ergebnis, anfrage, langsam, sekunde
         <header className="pc-results-head">
           <div className="pc-results-head-text">
             <h2 className="pc-section-title pc-results-title" id="pc-results-title" tabIndex={-1}>Ihre Versandoptionen</h2>
-            {zusammenfassung && <p className="pc-results-summary" id="pc-results-summary">{zusammenfassung}</p>}
+            {zusammenfassung && <p className="pc-results-summary" id="pc-results-summary"><Werte>{zusammenfassung}</Werte></p>}
           </div>
           <button type="button" className="pc-button pc-button--secondary pc-results-edit" id="pc-edit" onClick={onEdit}>
             Angaben ändern

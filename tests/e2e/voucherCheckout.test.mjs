@@ -332,14 +332,14 @@ test("Smoke 5 — Referenznummer behält den Gutschein, eine Preisänderung verw
 
   // (b) Preisrelevante Änderung: zurück in „Neue Sendung", Gewicht ändern, neu berechnen.
   //
-  // Der Weg zurück läuft über den SICHTBAREN „← Zurück"-Button, NICHT über page.goto().
+  // Der Weg zurück läuft über den SICHTBAREN „Zurück"-Button, NICHT über page.goto().
   // Seit „Neue Sendung startet leer" lebt der Vorgang ausschließlich im Arbeitsspeicher:
   // ein vollständiger Seitenaufbau (goto/Reload) verwirft ihn samt Formular, und der Test
   // hätte danach ein leeres Formular vor sich statt einer preisrelevanten ÄNDERUNG.
   // Die SPA-Navigation erhält den Vorgang — genau wie beim echten Nutzer.
   await page.getByRole("button", { name: /Zurück zur Übersicht/ }).click();
   await page.waitForSelector("#booking-reference-toggle", { timeout: 20000 });
-  await page.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
+  await page.locator("button").filter({ hasText: /^Zurück$/ }).first().click();
   await page.waitForSelector(".offers-form-section", { timeout: 20000 });
   await page.locator("#ns-weight").fill("9.5");
   await page.locator(".offers-calc-cta button").first().click();

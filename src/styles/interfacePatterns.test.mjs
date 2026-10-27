@@ -362,8 +362,10 @@ test("11 — Tokens, Primitives und Typografie bleiben eingehalten", () => {
 
   // … und steht als letzte Ebene der Importkette.
   const reihenfolge = [...indexCss.matchAll(/@import '\.\/([\w-]+\.css)'/g)].map((m) => m[1]);
-  assert.equal(reihenfolge[reihenfolge.length - 1], "patterns.css",
-    "die Musterebene muss zuletzt importiert werden");
+  // Premium-Redesign Etappe 1: Die Bereichsebene (premium-redesign.css) steht als einzige Datei NACH der
+  // Musterebene. Jede ihrer Regeln hängt am Bereichsattribut (premiumRedesign.test.mjs).
+  assert.deepEqual(reihenfolge.slice(-2), ["patterns.css", "premium-redesign.css"],
+    "die Musterebene steht zuletzt vor der Bereichsebene des Redesigns");
   assert.equal(reihenfolge.filter((f) => f === "patterns.css").length, 1);
 
   // Die Governance der Vorphasen läuft weiterhin mit. Gemessen wird seit der

@@ -4,6 +4,7 @@ import { apiFetch } from "../api/client";
 import { normalizeCountryCode } from "../utils/countries";
 import { useLaunchScope } from "../hooks/useLaunchScope";
 import { publicCarrierChipLabel, publicCarrierDisplay, publicServiceName } from "../utils/carrierMap";
+import { carrierServiceLabel } from "../utils/carrierServiceLabel.mjs";
 import { applyResultFilters, lateResultOffers, deliveryDeadlineAssessment, DELIVERY_DEADLINE }
   from "../utils/offersFilterView.mjs";
 import { deliveryDeadlineOptions } from "../utils/deliveryTimeView.mjs";
@@ -665,7 +666,7 @@ export default function CalculatorPage() {
     const uebergabe = calculatorSelectionToShipmentTransfer({
       calculator: uebergabeRef.current,
       tariff,
-      label: `${publicCarrierDisplay(tariff).name} · ${publicServiceName(tariff)}`,
+      label: carrierServiceLabel(publicCarrierDisplay(tariff).name, publicServiceName(tariff)),
     });
     // Der eigene Bereich merkt sich Auswahl und Scrollposition — ein Browser-Zurück findet den
     // Preisrechner so vor, wie er verlassen wurde (dieselbe Geste wie in „Neue Sendung").

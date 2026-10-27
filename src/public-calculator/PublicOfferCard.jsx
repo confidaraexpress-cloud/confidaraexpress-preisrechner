@@ -1,5 +1,6 @@
 import React from "react";
 import { publicCarrierDisplay, publicServiceName } from "../utils/carrierMap.js";
+import { Werte } from "../components/ui/Werte.jsx";
 import {
   PRICE_TEXT, handoffUrl, offerCanContinue, offerDeliveryView, offerHints, offerPickupView, offerPriceView,
   offerUnavailableText,
@@ -53,17 +54,17 @@ export function PublicOfferCard({ offer, index }) {
         <div className="pc-fact">
           <dt>{abholung.dayLabel}</dt>
           <dd>
-            <span className="pc-fact-main">{abholung.day || "—"}</span>
-            {abholung.time && <span className="pc-fact-sub">{abholung.time}</span>}
-            {abholung.adjustedNote && <span className="pc-fact-sub">{abholung.adjustedNote}</span>}
+            <span className="pc-fact-main"><Werte>{abholung.day || "—"}</Werte></span>
+            {abholung.time && <span className="pc-fact-sub"><Werte>{abholung.time}</Werte></span>}
+            {abholung.adjustedNote && <span className="pc-fact-sub"><Werte>{abholung.adjustedNote}</Werte></span>}
           </dd>
         </div>
         <div className="pc-fact">
           <dt>{zustellung.label}</dt>
           <dd>
-            <span className="pc-fact-main">{zustellung.value}</span>
-            {zustellung.time && <span className="pc-fact-sub">{zustellung.time}</span>}
-            {zustellung.note && <span className="pc-fact-sub pc-fact-note">{zustellung.note}</span>}
+            <span className="pc-fact-main"><Werte>{zustellung.value}</Werte></span>
+            {zustellung.time && <span className="pc-fact-sub"><Werte>{zustellung.time}</Werte></span>}
+            {zustellung.note && <span className="pc-fact-sub pc-fact-note"><Werte>{zustellung.note}</Werte></span>}
           </dd>
         </div>
       </dl>

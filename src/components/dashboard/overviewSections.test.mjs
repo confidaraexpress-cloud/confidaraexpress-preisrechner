@@ -8,7 +8,7 @@
 // ist eine Arbeitsübersicht — Seitenkopf mit persönlicher Begrüßung „Guten
 // Tag, [Name]", Datum/Einordnung und EINER Hauptaktion, Kennzahlenband,
 // letzte Sendungen und offene Rechnungen (≈ 2 : 1), vorhandene Meldungen und
-// der Carrier-Bereich: die acht Carrier mit „Carrier-Angebote vergleichen" —
+// der Carrier-Bereich: die fünf Carrier des Launchportfolios (E10) mit „Carrier-Angebote vergleichen" —
 // seit der Betreiberentscheidung 2026-10-04 wieder in der Optik vor dem
 // Redesign (Navy-Fläche mit Routenlinien, weiße Logo-Kacheln), ausschließlich
 // in diesem Block und ohne die alten pp-*-Klassen; die Onboarding-Abschnitte („Ablauf",
@@ -201,15 +201,19 @@ test("13 — Onboarding ist ruhiger Text: keine Symbole, keine dunklen Flächen,
 
 // ══════════ Carrier-Bereich ══════════
 
-test("14 — der Carrier-Bereich: acht Carrier auf Navy mit Routenlinien, mit der Vergleichsaktion", () => {
+test("14 — der Carrier-Bereich: die fünf Carrier des Launchportfolios auf Navy mit Routenlinien, mit der Vergleichsaktion", () => {
   // Feinkorrektur 2026-10: inhaltlich zurück (Logos, Botschaft, Vergleich). Betreiberentscheidung
   // 2026-10-04: dazu wieder die Optik vor dem Redesign (Stand 2c4cf1b) — nur in diesem Block, mit
   // Klassen im ov-Namensraum statt der alten pp-*-Klassen.
   const carriers = array("CARRIERS");
-  assert.equal(zaehle(carriers, /logo:/g), 8, "genau acht Carrier erwartet");
-  assert.match(code, /Acht Carrier\. Eine zentrale Plattform\./, "der Titel nennt die Zahl nicht als Wort");
-  for (const c of ["dhl", "ups", "dpd", "gls", "fedex", "tnt", "emons", "trans-o-flex"]) {
+  // Betreiberentscheidung E10 (2026-10-27): nur das Launchportfolio (Canonical: UPS, DPD, GLS, DHL, TNT).
+  assert.equal(zaehle(carriers, /logo:/g), 5, "genau fünf Carrier erwartet");
+  assert.match(code, /Fünf Carrier\. Eine zentrale Plattform\./, "der Titel nennt die Zahl nicht als Wort");
+  for (const c of ["dhl", "ups", "dpd", "gls", "tnt"]) {
     assert.ok(overview.includes(`assets/carriers/${c}.svg`), `das Logo ${c} fehlt`);
+  }
+  for (const c of ["fedex", "emons", "trans-o-flex"]) {
+    assert.ok(!overview.includes(`assets/carriers/${c}.svg`), `${c} gehört nicht zum Launchportfolio`);
   }
   assert.match(code,
     /<button type="button" className="btn btn-outline ov-carriers-cta" onClick=\{\(\) => navigate\("\/calculator"\)\}>\s*Carrier-Angebote vergleichen/,
@@ -254,12 +258,12 @@ test("14 — der Carrier-Bereich: acht Carrier auf Navy mit Routenlinien, mit de
   const netzRegeln = (cssBare.match(/[^{}]+\{[^}]*--ce-net-[^}]*\}/g) || []).map((r) => r.split("{")[0].trim());
   assert.ok(netzRegeln.length > 0 && netzRegeln.every((s) => s.split(",").every((t) => /\.ov-carrier/.test(t))),
     `Navy-Werte außerhalb des Carrier-Bereichs: ${netzRegeln.filter((s) => !/\.ov-carrier/.test(s)).join(" | ")}`);
-  // Kompakt: breit eine Reihe zu acht, sonst vier, auf dem Telefon zwei.
-  assert.match(rule(".ov-carrier-grid"), /grid-template-columns:\s*repeat\(8, minmax\(0, 1fr\)\)/);
-  assert.match(cssBare, /@media \(max-width: 1359px\) \{\s*\.ov-carrier-grid \{ grid-template-columns: repeat\(4, minmax\(0, 1fr\)\); \}/,
-    "unterhalb von 1360 px stehen die Carrier nicht zu viert");
-  assert.match(cssBare, /@media \(max-width: 600px\) \{[\s\S]*?\.ov-carrier-grid \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/,
-    "auf dem Telefon stehen die Carrier nicht zu zweit");
+  // Kompakt: eine Reihe zu fünft, auf dem Telefon drei und zwei, die zweite Reihe mittig (kein Einzelstück).
+  assert.match(rule(".ov-carrier-grid"), /grid-template-columns:\s*repeat\(5, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(cssBare, /\.ov-carrier-grid \{ grid-template-columns: repeat\(4, minmax\(0, 1fr\)\); \}/,
+    "die Viererreihe stammt aus der Zeit der acht Carrier");
+  assert.match(cssBare, /@media \(max-width: 600px\) \{[\s\S]*?\.ov-carrier-grid \{ grid-template-columns: repeat\(6, minmax\(0, 1fr\)\);[\s\S]*?\.ov-carrier \{ grid-column: span 2; \}\s*\.ov-carrier:nth-child\(4\) \{ grid-column: 2 \/ span 2; \}/,
+    "auf dem Telefon stehen die Carrier nicht zu dritt und zu zweit");
   // Logos in Originalproportion — eingepasst, nie verzerrt.
   assert.match(rule(".ov-carrier-logo img"), /object-fit:\s*contain/, "Logos werden nicht eingepasst");
 });

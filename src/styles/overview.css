@@ -366,7 +366,7 @@
 .ov-carriers .ov-carriers-cta:focus-visible { outline: 2px solid var(--ce-net-focus); outline-offset: 2px; }
 .ov-carrier-grid {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--ce-space-3);
   list-style: none;
   margin: var(--ce-space-7) 0 0;
@@ -377,7 +377,7 @@
   min-width: 0;
   text-align: center;
 }
-/* Die weiße Logo-Kachel: gleiche Maße für alle acht Marken, das Logo selbst
+/* Die weiße Logo-Kachel: gleiche Maße für alle Marken, das Logo selbst
    bleibt in seiner Originalproportion. Die Assets sind meist 48 × 30 mit
    eigenem Innenrand — deshalb eine feste Logohöhe statt einer Maximalhöhe,
    sonst blieben sie winzig. Die Breitengrenze hält ein Querformat (Emons,
@@ -416,11 +416,8 @@
 /* ══════════ Responsive ══════════
    Ab 1200 px: vier Kennzahlzellen, darunter 2 : 1. Darunter stapeln die
    Module; das Kennzahlband wird 2 × 2, sobald die Zellen zu schmal würden. */
-/* Acht Carrier in einer Reihe nur, wenn jede Kachel Platz für ihr Logo hat;
-   darunter zwei Reihen zu vier. */
-@media (max-width: 1359px) {
-  .ov-carrier-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-}
+/* Die fünf Carrier stehen bis zum Telefon in einer Reihe (E10); die frühere
+   Viererreihe unter 1360 px stammt aus der Zeit der acht Carrier. */
 @media (max-width: 1120px) {
   .ov-mod-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .ov-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -447,9 +444,11 @@
   .ov-fact + .ov-fact { border-top: 1px solid var(--border-hairline); }
 }
 @media (max-width: 600px) {
-  /* Carrier: zwei je Reihe, die Vergleichsaktion als volle Trefferfläche. */
+  /* Carrier: drei und zwei, die zweite Reihe mittig; die Vergleichsaktion als volle Trefferfläche. */
   .ov-carriers { padding: var(--ce-space-6) var(--ce-space-5); }
-  .ov-carrier-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: var(--ce-space-6); }
+  .ov-carrier-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); margin-top: var(--ce-space-6); }
+  .ov-carrier { grid-column: span 2; }
+  .ov-carrier:nth-child(4) { grid-column: 2 / span 2; }
   .ov-carriers-cta { flex: 1 1 100%; }
   /* KPI 2 × 2, kompakt: kein vierfach gestapelter Satz großer Zahlen. */
   .ov-kpi { padding: var(--ce-space-4); }
@@ -466,10 +465,10 @@
   .pp-uchip { transition: none; }
 }
 
-/* ── Buchungsrahmen (Paket F, 2026-10-23) ──
-   Unter den offenen Rechnungen: Betrag in der Ziffernschrift wie der Rechnungsbetrag, darunter
-   eine schmale Linie als belegter Anteil (Zierde — die Zahlen stehen daneben als Text) und ein
-   Satz mit Rahmen und belegtem Betrag. Ausgeschöpft steht als Wort im Badge, nie nur als Farbe. */
+/* ── Buchungsrahmen (Paket F, 2026-10-23; Premium-Redesign B11) ──
+   Unter den offenen Rechnungen: Kopf mit dem Rahmen, darunter der Balken mit zwei beschrifteten
+   Teilen — links belegt (gefüllt), rechts verfügbar (Rest). Die Beträge stehen als Text unter
+   ihrem Teil; der Balken ist Zierde. Ausgeschöpft steht als Wort im Badge, nie nur als Farbe. */
 .ov-credit {
   margin-top: var(--ce-space-5);
   padding-top: var(--ce-space-4);
@@ -480,19 +479,20 @@
 }
 .ov-credit-label {
   font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
-  color: var(--ce-color-text-secondary);
+  font-weight: 600;
+  color: var(--ce-color-text-primary);
 }
-.ov-credit-value {
-  margin-top: var(--ce-space-1);
+.ov-credit-limit {
+  margin-left: auto;
   font-family: var(--ce-font-numeric);
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
-  font-size: var(--ce-text-title-card-size);
-  font-weight: var(--ce-text-numeric-display-weight);
-  line-height: 1.2;
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  font-weight: 600;
+  white-space: nowrap;
   color: var(--ce-color-text-primary);
 }
 .ov-credit-bar {
-  position: relative; height: 4px; margin-top: var(--ce-space-3);
+  position: relative; height: 6px; margin-top: var(--ce-space-3);
   border-radius: var(--ce-radius-full); background: var(--ce-color-border-subtle); overflow: hidden;
 }
 .ov-credit-bar-fill {
@@ -500,9 +500,32 @@
   background: var(--ce-color-text-primary);
 }
 .ov-credit--exhausted .ov-credit-bar-fill { background: var(--ce-color-status-warning-fg); }
-.ov-credit-meta {
+/* Zwei Teile unter dem Balken: links belegt mit der Farbe der Füllung, rechts verfügbar mit
+   der Farbe der Bahn. Bricht nur als Ganzes um, nie mitten im Betrag. */
+.ov-credit-parts {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--ce-space-1) var(--ce-space-4);
   margin: var(--ce-space-2) 0 0;
+}
+.ov-credit-part { display: flex; align-items: baseline; gap: var(--ce-space-2); min-width: 0; }
+.ov-credit-part--available { margin-left: auto; text-align: right; }
+.ov-credit-part dt {
+  display: inline-flex; align-items: center; gap: 6px;
   font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
   color: var(--ce-color-text-secondary);
+}
+.ov-credit-part dt::before {
+  content: ""; flex: none; width: 8px; height: 8px; border-radius: var(--ce-radius-full);
+  background: var(--ce-color-border-subtle);
+}
+.ov-credit-part--used dt::before { background: var(--ce-color-text-primary); }
+.ov-credit--exhausted .ov-credit-part--used dt::before { background: var(--ce-color-status-warning-fg); }
+.ov-credit-part dd {
+  margin: 0;
+  font-family: var(--ce-font-numeric);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--ce-color-text-primary);
 }
 .ov-credit-note { margin-top: var(--ce-space-3); font-size: var(--ce-text-body-s-size); }

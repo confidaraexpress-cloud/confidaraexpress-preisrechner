@@ -1,5 +1,6 @@
 import React from "react";
 import { PackageLinesDisclosure } from "./PackageLinesDisclosure";
+import { Werte } from "../ui/Werte";
 
 // Step 1 — „Sendungsdetails": kompakte, reine Read-only-Zusammenfassung von
 // Absender/Empfänger/Paket. Die Adress-/Paket-Strings kommen aus dem Orchestrator
@@ -32,7 +33,7 @@ export function ShipmentSummaryModule({ senderAddr, recipientAddr, packageInfo, 
             className={`summary-detail-row${zusatz ? " summary-detail-row--extra" : ""}${i < rows.length - 1 ? " summary-detail-row-border" : ""}`}
           >
             <span className="text-sm text-muted summary-detail-key">{k}</span>
-            <span className="text-sm font-bold summary-detail-val">{v}</span>
+            <span className="text-sm font-bold summary-detail-val"><Werte>{v}</Werte></span>
             {zusatz}
           </div>
         ))}

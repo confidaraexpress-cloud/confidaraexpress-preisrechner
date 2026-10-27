@@ -5,6 +5,7 @@ import { listSupportRequests } from "../../api/supportApi";
 import { SupportThread } from "./SupportThread";
 import { SupportRequestDialog } from "./SupportRequestDialog";
 import { statusFallback } from "../../utils/statusFallback.mjs";
+import { Werte } from "../ui/Werte";
 import {
   supportCategoryDisplay, SUPPORT_LIST_EMPTY_TITLE, SUPPORT_LIST_EMPTY_TEXT,
   SUPPORT_CUSTOMER_LIST_ERROR,
@@ -159,7 +160,7 @@ export function SupportRequestsView({ initialTicketId = null, onTicketConsumed, 
                 <button type="button" className="sup-list-item" onClick={() => setOpenId(row.id)}>
                   <span className="sup-list-main">
                     {/* Betreff ist Kundeneingabe und wird als reiner Text gerendert. */}
-                    <span className="sup-list-subject">{row.subject}</span>
+                    <span className="sup-list-subject"><Werte>{row.subject}</Werte></span>
                     <span className="sup-list-meta">
                       <span className="sup-ticket">{row.ticketNumber}</span>
                       {" · "}

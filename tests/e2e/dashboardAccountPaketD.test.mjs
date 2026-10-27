@@ -94,10 +94,11 @@ test("die Übersicht ist bei vorhandenen Daten eine operative Arbeitsfläche", a
   assert.equal(await page.locator(".ov-facts").count(), 0, "„Vorteile\" steht noch auf der Arbeitsfläche");
   assert.equal(await page.locator(".ov-trust").count(), 0, "der Trust-Block steht noch auf der Arbeitsfläche");
   // … die frühere dunkle Carrier-Bühne bleibt entfallen; der Carrier-Bereich
-  // steht als helle, kompakte Fläche mit acht Carriern und der Vergleichsaktion
-  // da (Feinkorrektur 2026-10).
+  // steht als helle, kompakte Fläche mit den fünf Carriern des Launchportfolios
+  // und der Vergleichsaktion da (Betreiberentscheidung E10, 2026-10-27; vorher acht).
   assert.equal(await page.locator(".pp-net").count(), 0, "die dunkle Carrier-Bühne ist zurück");
-  assert.equal(await page.locator(".ov-carriers .ov-carrier").count(), 8, "der Carrier-Bereich zeigt nicht acht Carrier");
+  assert.deepEqual(await page.locator(".ov-carriers .ov-carrier img").evaluateAll((els) => els.map((e) => e.alt)),
+    ["DHL", "UPS", "DPD", "GLS", "TNT"], "der Carrier-Bereich zeigt nicht das Launchportfolio");
   assert.ok(await page.getByRole("button", { name: "Carrier-Angebote vergleichen" }).isVisible(),
     "die Vergleichsaktion fehlt");
   await page.close();

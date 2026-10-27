@@ -55,7 +55,12 @@ const css = roh.replace(/\/\*[\s\S]*?\*\//g, "");
 const STUFEN_RE = /@media \(min-width: (\d+)px\) \{\s*:root \{([^}]*)\}\s*\}/g;
 const stufen = [...css.matchAll(STUFEN_RE)].map(([, ab, rumpf]) => [Number(ab),
   Object.fromEntries([...rumpf.matchAll(/--([\w-]+):\s*([^;]+);/g)].map(([, n, w]) => [n, w.trim()]))]);
-const cssOhneStufen = css.replace(STUFEN_RE, "");
+// Premium-Redesign Etappe 1 (Betreiberentscheidung 2026-10-27): Der Bereichs-Scope Kunde/Auth ist die zweite
+// bewusste Neudefinition. Er besteht aus genau EINEM Block am Dateiende, hat den eigenen Prüffall 1c, und seine
+// Komponentenregeln stehen in premium-redesign.css (premiumRedesign.test.mjs). Admin und Partner lesen ihn nie.
+const BEREICH_RE = /:root\[data-ce-bereich="kunde"\],\s*:root\[data-ce-bereich="auth"\],\s*:root\[data-ce-bereich="preisrechner"\]\s*\{([^}]*)\}/g;
+const bereichsBloecke = [...css.matchAll(BEREICH_RE)];
+const cssOhneStufen = css.replace(STUFEN_RE, "").replace(BEREICH_RE, "");
 
 // Alle Deklarationen einsammeln (Werte dürfen mehrzeilig sein, etwa Verläufe).
 const deklarationen = [...cssOhneStufen.matchAll(/--([\w-]+):\s*([^;]+);/g)]
@@ -94,6 +99,19 @@ test("1b — Rahmenstufen (Gesamtauftrag D): Kunden 1200 / 1440 / 1680, Admin 14
   assert.equal(px("ce-size-booking") + px("ce-space-7") + px("ce-size-booking-side"), px("ce-size-content"));
   // Keine weitere Stufe in der Tokendatei — Stufen wachsen nur hier und nur bewusst.
   assert.equal((css.match(/@media/g) || []).length, stufen.length);
+});
+
+test("1c — Bereichs-Scope (Premium-Redesign Etappe 1): ein Block, nur Kunde, Auth und Preisrechner, nur vorhandene oder eigene Tokens", () => {
+  assert.equal(bereichsBloecke.length, 1, "genau ein Bereichsblock :root[data-ce-bereich=kunde|auth|preisrechner]");
+  const namen = [...bereichsBloecke[0][1].matchAll(/--([\w-]+):\s*([^;]+);/g)].map(([, n]) => n);
+  // Er überschreibt nur Tokens, die es außerhalb schon gibt, oder führt eigene --ce-pr-* ein.
+  const fremd = namen.filter((n) => !n.startsWith("ce-pr-") && !werte.has(n));
+  assert.deepEqual(fremd, [], `Bereichsblock überschreibt unbekannte Tokens: ${fremd.join(", ")}`);
+  // Rahmen, Abstände und die Admin-Familie bleiben unberührt; das Layout ändert sich nicht über Tokens.
+  const tabu = namen.filter((n) => /^(ce-size-|ce-space-|ce-page-gutter|adm-)/.test(n));
+  assert.deepEqual(tabu, [], `Bereichsblock darf diese Familien nicht berühren: ${tabu.join(", ")}`);
+  // Ohne Attribut gilt nichts davon: der Block hängt nie an :root allein.
+  assert.doesNotMatch(bereichsBloecke[0][0], /:root\s*\{/);
 });
 
 test("2 — die Farb-Foundation ist vollständig", () => {
@@ -334,7 +352,9 @@ test("10 — es gibt genau EINE Radienfamilie im Produkt", () => {
   //   dashboard-premium.css — Shell-Chrome (appShellChrome.test.mjs)
   // overview.css ist seit dem Redesign 2026-10 keine Ausnahme mehr — die
   // Übersicht nutzt ausschließlich die Radienskala.
-  const EIGENMATERIAL = ["auth.css", "dashboard-premium.css"];
+  // premium-redesign.css — Bereichsebene des Premium-Redesigns (premiumRedesign.test.mjs): eigene Radien
+  //                          --ce-pr-radius-* nur unter dem Bereichsattribut.
+  const EIGENMATERIAL = ["auth.css", "dashboard-premium.css", "premium-redesign.css"];
   const fremd = [];
   for (const f of readdirSync(new URL("./", import.meta.url))) {
     if (!f.endsWith(".css") || f === "variables.css" || EIGENMATERIAL.includes(f)) continue;
@@ -342,6 +362,9 @@ test("10 — es gibt genau EINE Radienfamilie im Produkt", () => {
     for (const m of css.matchAll(/border-radius:\s*([^;}]+)/g)) {
       const v = m[1].trim();
       if (SKALA.has(v) || v.startsWith("var(--auth")) continue;
+      // Premium-Redesign Konzept A: der Preisrechner trägt den Bereichsblock (data-ce-bereich="preisrechner")
+      // und damit die Radien der Bereichsebene.
+      if (f === "public-calculator.css" && /^var\(--ce-pr-radius-[\w-]+\)$/.test(v)) continue;
       // Der Griff einer Bildlaufleiste ist Browser-Chrome, keine Fläche des
       // Designsystems: er ist 4 px breit, ein 8-px-Radius wäre größer als das
       // Element. Das ist die EINZIGE zugelassene Ausnahme.

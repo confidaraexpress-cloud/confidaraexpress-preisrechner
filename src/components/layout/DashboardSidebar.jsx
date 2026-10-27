@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { SupportRequestDialog } from "../support/SupportRequestDialog";
 import { SUPPORT_CARD } from "../../utils/supportRequest.mjs";
 import { BrandLogo } from "../ui/BrandLogo";
+import { Icon, ICON_SIZE } from "../ui/Icon";
 import { usePwaInstall } from "../../hooks/usePwaInstall";
 import { useNavigationDrawer } from "../../hooks/useNavigationDrawer";
 import {
@@ -36,10 +37,11 @@ import { INSTALL_STATE } from "../../utils/pwaInstallView.mjs";
 // ConfidaraExpress ist primär eine Versandplattform. Das Lagermodul ist ein
 // optionales Zusatzmodul und soll die Kernnavigation nicht anführen.
 //
-// Die Navigation ist reiner Text (Redesign 2026-10): keine Symbole vor den
-// Einträgen, keine Iconleiste. Orientierung tragen Beschriftung, Einrückung
-// und die aktive Fläche. Es gibt deshalb auch keine Iconzuordnung mehr in
-// dieser Konfiguration — lucide-react bleibt als Abhängigkeit verboten.
+// Icons nur an den sechs Hauptpunkten (Betreiberentscheidung E7, 2026-10-27):
+// Übersicht, Adressbuch, Rechnungen und die drei Gruppenköpfe tragen ein
+// dekoratives Icon der eigenen Icon-Komponente vor dem Text. Unterpunkte und
+// sekundäre Aktionen bleiben reiner Text. Eine Iconleiste (Symbole ohne Text)
+// gibt es nicht; lucide-react bleibt als Abhängigkeit verboten.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Kennung der Sidebar — Ziel von aria-controls am Menüknopf der mobilen Kopfleiste
@@ -50,14 +52,14 @@ export const SIDEBAR_NAV_ID = "ce-kundennavigation";
 // (dashboard-premium.css, `@media (max-width: 860px)`).
 const DRAWER_BIS_PX = 860;
 
-const OVERVIEW_ITEM = { id: "overview", label: "Übersicht" };
-const ADDRESSBOOK_ITEM = { id: "addressbook", label: "Adressbuch" };
+const OVERVIEW_ITEM = { id: "overview", label: "Übersicht", icon: "dashboard" };
+const ADDRESSBOOK_ITEM = { id: "addressbook", label: "Adressbuch", icon: "idcard" };
 // Rechnungen sind ein EIGENSTÄNDIGER Produktbereich, kein Unterpunkt des
 // Versands. Der Name ist bewusst neutral: der Bereich soll später auch
 // Abo- und andere Confidara-Abrechnungen aufnehmen können, ohne dass die
 // Navigation dann falsch beschriftet wäre. Der page-Wert bleibt „invoices" —
 // Route, Seite und Rechnungslogik sind unverändert.
-const INVOICES_ITEM = { id: "invoices", label: "Rechnungen" };
+const INVOICES_ITEM = { id: "invoices", label: "Rechnungen", icon: "invoice" };
 
 // Gruppen-ids sind KEINE page-Werte: sie adressieren nur den Klappzustand und
 // die aria-controls-Ziele. „warehouse" statt „inventory", damit die id nicht
@@ -66,6 +68,7 @@ const NAV_GROUPS = [
   {
     id: "shipping",
     label: "Versand",
+    icon: "truck",
     items: [
       { id: "new",         label: "Neue Sendung"         },
       // „Preisrechner" war zu unspezifisch — der Rechner berechnet
@@ -79,6 +82,7 @@ const NAV_GROUPS = [
   {
     id: "warehouse",
     label: "Lager & Aufträge",
+    icon: "package",
     items: [
       { id: "inventory", label: "Lagerübersicht" },
       { id: "products",  label: "Artikel"        },
@@ -90,6 +94,7 @@ const NAV_GROUPS = [
   {
     id: "account",
     label: "Konto",
+    icon: "user",
     items: [
       // „Unternehmen & Konto" unter der Gruppe „Konto" war eine sprachliche
       // Dopplung. Der page-Wert bleibt „profile".
@@ -140,6 +145,7 @@ function NavItem({ item, page, onNavigate, variant }) {
       aria-current={aktiv ? "page" : undefined}
       onClick={() => onNavigate(item)}
     >
+      {item.icon && <span className="pp-nav-icon" aria-hidden="true"><Icon n={item.icon} s={ICON_SIZE.md} /></span>}
       <span>{item.label}</span>
     </button>
   );
@@ -180,6 +186,7 @@ function SidebarGroup({ group, page, open, onToggle, onNavigate }) {
         aria-controls={itemsId}
         onClick={onToggle}
       >
+        <span className="pp-nav-icon" aria-hidden="true"><Icon n={group.icon} s={ICON_SIZE.md} /></span>
         <span className="pp-nav-group-label">{group.label}</span>
         <span className="pp-nav-group-chevron" aria-hidden="true" />
       </button>
@@ -312,8 +319,8 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
           <div className="pp-side-scroll">
             {/* Reihenfolge: Übersicht → Versand → Adressbuch · Rechnungen →
                 Lager & Aufträge → Konto. Die Hierarchie entsteht aus Abstand,
-                Einrückung und Schriftgewicht — nicht aus Symbolen, Rahmen oder
-                Karten. */}
+                Einrückung und Schriftgewicht; das Icon (E7) markiert nur die
+                erste Ebene — keine Rahmen, keine Karten. */}
             <nav className="pp-nav" aria-label="Hauptnavigation">
               <NavItem item={OVERVIEW_ITEM} page={page} onNavigate={handleNav} />
 

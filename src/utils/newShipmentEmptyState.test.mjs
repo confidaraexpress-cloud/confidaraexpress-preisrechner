@@ -292,6 +292,9 @@ test("18 — die Buchungsübersicht zeigt Gewicht UND L × B × H", () => {
   assert.equal(packageSummaryLine({ ...VOLL, length: "" }), "5 kg");
   assert.equal(packageSummaryLine({ weight: "", length: "", width: "", height: "" }), null);
   assert.equal(packageSummaryLine(null), null);
+  // M8 (Premium-Redesign Etappe 1): Dezimalkomma wie in der Auftragsbestätigung, nie die rohe Eingabe mit Punkt.
+  assert.equal(packageSummaryLine({ ...VOLL, weight: "5.5", length: "30.5" }), "5,5 kg · 30,5 × 20 × 15 cm");
+  assert.equal(packageSummaryLine({ ...VOLL, packageCount: "2", weight: "2.25" }), "2 Pakete · je 2,25 kg · 30 × 20 × 15 cm");
   // Und die Seite benutzt genau diese Ableitung.
   assert.ok(buchung.includes("packageSummaryLine(bookingData?.form)"),
     "die Buchungsseite leitet die Paketzeile anders ab");

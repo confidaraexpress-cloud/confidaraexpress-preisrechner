@@ -23,16 +23,26 @@
                  Abschnittstitel (.pc-section-title). Alles andere DM Sans auf der Skala:
                  Text 16 · Labels 14 · Hinweise 13 · Kleinstes 12.
      Farbrollen  Grund --ce-color-bg-canvas-top, Flächen --ce-color-surface(-subtle), Tinte
-                 --ce-color-text-*, Aktion --ce-color-brand, Hinweise --ce-color-status-*,
-                 dunkle Flächen --ce-color-surface-inverse mit --ce-color-text-inverse(-soft).
-     Tiefe       Rechnerkarte Stufe 3, Tarifkarten Stufe 1 (Hover Stufe 2).
-     Bewegung    Übergänge nur über opacity/transform, höchstens 200 ms, aus bei reduzierter
-                 Bewegung. Keine Daueranimation, auch nicht beim Laden. */
+                 --ce-color-text-*, Hinweise --ce-color-status-*, dunkle Flächen in Navy
+                 (--ce-pr-stage, --ce-color-surface-inverse) mit --ce-color-text-inverse(-soft).
+                 Premium-Redesign Konzept A (2026-10-27): das Seitengerüst setzt
+                 data-ce-bereich="preisrechner" und bekommt damit den Bereichsblock aus
+                 variables.css (Navy, Signal #004AFC, Markenstreifen). Primäraktion auf dem Papier
+                 Navy, auf der Bühne der Papierknopf; Signal nur für Fokus, Links und Streifen.
+     Tiefe       Rechnerkarte Stufe 3, Tarifkarten leise (--ce-pr-shadow-card, Hover etwas mehr).
+     Bewegung    Übergänge höchstens 200 ms (der Markenstreifen der Tarifkarte 220 ms), aus bei
+                 reduzierter Bewegung. Keine Daueranimation, auch nicht beim Laden. Einzige
+                 Animation: die Strecke auf der Nachtkarte zeichnet sich einmal als Antwort auf die
+                 Eingabe (Konzept A, Premium-Redesign 2026-10-27). */
 
 @import './fonts.css';
 @import './variables.css';
 
 /* ── Grundlage (nur diese Seite) ─────────────────────────────────────────── */
+/* Werte (Uhrzeit, Maße, Datum, Postleitzahl) brechen nie mitten im Wert um (Premium-Redesign B9,
+   components/ui/Werte.jsx). Kein pauschales nowrap: nur das markierte Wertelement. */
+.pc-page .ce-wert { white-space: nowrap; }
+
 .pc-page,
 .pc-page *,
 .pc-page *::before,
@@ -42,10 +52,12 @@
 
 .pc-page {
   --pc-gutter: clamp(16px, 4vw, 48px);
+  /* Kein einzelnes Wort in der letzten Zeile, wo der Browser es vermeiden kann (Premium-Redesign). */
+  text-wrap-style: pretty;
   margin: 0;
   min-height: 100dvh;
   font-family: var(--ce-font-sans);
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.6;
   color: var(--ce-color-text-primary);
   background-color: var(--ce-color-bg-canvas-top);
@@ -164,39 +176,41 @@
   gap: var(--ce-space-2);
 }
 
+/* Kopfaktionen auf der Navy-Bühne (Konzept A): „Registrieren“ als Papierknopf, „Anmelden“ als Kontur. */
 .pc-link-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 44px;
   padding-inline: var(--ce-space-4);
-  border: 1px solid var(--ce-color-brand);
-  border-radius: var(--ce-radius-sm);
-  background: var(--ce-color-brand);
-  font-size: 14px;
+  border: 1px solid var(--ce-pr-paper);
+  border-radius: var(--ce-pr-radius-control);
+  background: var(--ce-pr-paper);
+  font-size: 0.875rem;
   font-weight: 600;
-  line-height: 20px;
+  line-height: 1.25rem;
   text-decoration: none;
   white-space: nowrap;
 }
 
 .pc-page .pc-link-button {
-  color: var(--ce-color-text-inverse);
+  color: var(--ce-pr-navy-800);
 }
 
 .pc-page .pc-link-button:hover {
-  border-color: var(--ce-color-brand-hover);
-  background: var(--ce-color-brand-hover);
+  border-color: var(--ce-color-surface);
+  background: var(--ce-color-surface);
 }
 
 .pc-page .pc-link-button--ghost {
-  border-color: rgba(255, 255, 255, 0.34);
+  border-color: var(--ce-pr-on-navy-line);
   background: transparent;
+  color: var(--ce-pr-on-navy);
 }
 
 .pc-page .pc-link-button--ghost:hover {
-  border-color: rgba(255, 255, 255, 0.64);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--ce-pr-on-navy-2);
+  background: transparent;
 }
 
 .pc-page .pc-header a:focus-visible {
@@ -234,10 +248,7 @@
   margin-bottom: calc(-1 * (var(--ce-space-6) + var(--pc-band-into-card)));
   margin-inline: calc(50% - 50vw);
   border-bottom: 1px solid var(--ce-color-surface-inverse-edge);
-  background:
-    radial-gradient(ellipse 60% 55% at 88% 18%, var(--ce-color-brand-border), transparent 70%),
-    radial-gradient(ellipse 45% 50% at 6% 92%, var(--ce-color-surface-inverse-edge), transparent 72%),
-    var(--ce-color-surface-inverse);
+  background: var(--ce-pr-stage);
 }
 
 .pc-hero-head {
@@ -246,34 +257,18 @@
   color: var(--ce-color-text-inverse);
 }
 
-.pc-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ce-space-2);
-  margin-bottom: var(--ce-space-4);
-  padding: var(--ce-space-1) var(--ce-space-3);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: var(--ce-radius-full);
-  background: rgba(255, 255, 255, 0.06);
+/* Kennzeile (nur noch auf der 404-Seite): Satzschreibung, keine Kapsel (Audit: Versal-Augenbraue). */
+.pc-page .pc-eyebrow {
+  margin-bottom: var(--ce-space-3);
   color: var(--ce-color-text-inverse-soft);
-  font-size: 12px;
+  font-size: 0.875rem;
   font-weight: 600;
-  line-height: 18px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.pc-eyebrow::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: var(--ce-radius-full);
-  background: var(--ce-color-brand);
+  line-height: 1.25rem;
 }
 
 .pc-display {
   font-family: var(--ce-font-display);
-  font-size: 36px;
+  font-size: 2.25rem;
   font-weight: 500;
   line-height: 1.06;
   letter-spacing: -0.012em;
@@ -285,16 +280,181 @@
   display: block;
 }
 
-.pc-display-line--soft {
+
+.pc-page .pc-lead {
+  max-width: 34em;
+  margin-top: var(--ce-space-6);
   color: var(--ce-color-text-inverse-soft);
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
-.pc-lead {
-  max-width: 34em;
-  margin-top: var(--ce-space-5);
+/* ── Nachtkarte (Konzept A): die Städte der EU als Lichter, darauf die eingegebene Strecke ── */
+.pc-hero-map {
+  position: relative;
+  margin: var(--ce-space-6) 0 0;
+}
+
+.pc-hero-map-frame {
+  position: relative;
+  width: min(100%, 472px);
+}
+
+.pc-hero-map-canvas {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 536 / 497;
+}
+
+.pc-hero-map-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  -webkit-mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, #000 58%, transparent 100%);
+  mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, #000 58%, transparent 100%);
+}
+
+.pc-hero-map-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ce-space-2);
+  margin-top: var(--ce-space-2);
   color: var(--ce-color-text-inverse-soft);
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+/* Zweispaltig steht die Legende in der ausgeblendeten Unterkante der Karte, wie in der Vorschau. */
+@media (min-width: 1080px) {
+  .pc-hero-map-legend {
+    position: absolute;
+    left: 0;
+    bottom: 5%;
+  }
+}
+
+.pc-hero-map-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-pr-stadtlicht);
+}
+
+.pc-route-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.pc-route-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Die Strecke zeichnet sich einmal als Antwort auf die Eingabe; bei reduzierter Bewegung steht sie sofort. */
+.pc-route-halo,
+.pc-route-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: pc-route-zeichnen 1100ms var(--ce-motion-ease-standard) forwards;
+}
+
+.pc-route-halo {
+  stroke: var(--ce-pr-route-halo);
+  stroke-width: 5;
+}
+
+.pc-route-line {
+  stroke: var(--ce-pr-route);
+  stroke-width: 1.8;
+}
+
+.pc-route-dot {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-surface);
+}
+
+.pc-route-dot--ziel {
+  box-shadow: 0 0 0 4px var(--ce-pr-navy-900), 0 0 0 5.5px var(--ce-pr-route-ring);
+}
+
+.pc-route-name {
+  position: absolute;
+  transform: translate(10px, calc(-100% - 6px));
+  color: var(--ce-pr-on-navy);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1rem;
+  white-space: nowrap;
+  text-shadow: 0 0 4px var(--ce-pr-navy-900), 0 0 2px var(--ce-pr-navy-900);
+}
+
+.pc-route-name--links {
+  transform: translate(calc(-100% - 10px), calc(-100% - 6px));
+}
+
+@keyframes pc-route-zeichnen {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Einspaltig (unter 1080 px): die Karte als flaches Band in voller Breite unter dem Satz, Ausschnitt Mitte
+   Europas, oben und unten ausgeblendet — Kopf und erste Zeile des Rechners bleiben im ersten Bild. */
+@media (max-width: 1079px) {
+  .pc-hero-map {
+    margin-top: var(--ce-space-5);
+  }
+
+  .pc-hero-map-frame {
+    width: calc(100% + 2 * var(--pc-gutter));
+    max-width: 720px;
+    margin-inline: calc(-1 * var(--pc-gutter));
+    aspect-ratio: 1.64;
+    overflow: hidden;
+  }
+
+  .pc-hero-map-canvas {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: min(100%, 640px);
+    transform: translate(-50%, -50%);
+  }
+
+  .pc-hero-map-img {
+    -webkit-mask-image: linear-gradient(180deg, transparent 12%, #000 30%, #000 72%, transparent 88%), linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(180deg, transparent 12%, #000 30%, #000 72%, transparent 88%), linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+    mask-composite: intersect;
+  }
+
+  .pc-hero-map-legend {
+    margin-top: 0;
+  }
+}
+
+/* Tablet: ein flacheres Band, damit die erste Zeile des Rechners auch quer im ersten Bild steht. */
+@media (min-width: 640px) and (max-width: 1079px) {
+  .pc-hero-map-frame {
+    aspect-ratio: 2.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pc-route-halo,
+  .pc-route-line {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
 }
 
 .pc-hero-body {
@@ -341,15 +501,15 @@
 }
 
 .pc-hero-points strong {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 600;
-  line-height: 22px;
+  line-height: 1.375rem;
 }
 
 .pc-hero-points span {
   color: var(--ce-color-text-secondary);
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 }
 
 .pc-hero-contact {
@@ -359,18 +519,16 @@
   gap: 0 var(--ce-space-5);
   padding-top: var(--ce-space-3);
   border-top: 1px solid var(--ce-color-border-subtle);
-  font-size: 15px;
-  line-height: 22px;
+  font-size: 0.9375rem;
+  line-height: 1.375rem;
 }
 
 .pc-hero-contact-label {
   width: 100%;
   color: var(--ce-color-text-muted);
-  font-size: 12px;
+  font-size: 0.8125rem;
   font-weight: 600;
-  line-height: 18px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  line-height: 1.25rem;
 }
 
 /* Gesamtauftrag C: der Ansprechpartner — eine eigene Zeile über den beiden Kontaktwegen. */
@@ -401,13 +559,13 @@
   box-shadow: var(--ce-elevation-3);
 }
 
-/* Markenlinie an der Oberkante der Karte. */
+/* Der Markenstreifen (Navy → Signal) an der Oberkante der Karte. */
 .pc-calculator-card::before {
   content: "";
   position: absolute;
   inset: 0 0 auto;
   height: 3px;
-  background: linear-gradient(90deg, var(--ce-color-brand), var(--ce-color-brand-violet));
+  background: var(--ce-pr-stripe);
 }
 
 .pc-card-head {
@@ -420,9 +578,9 @@
 }
 
 .pc-card-title {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
-  line-height: 26px;
+  line-height: 1.625rem;
   letter-spacing: -0.005em;
 }
 
@@ -434,9 +592,9 @@
   border-radius: var(--ce-radius-full);
   background: var(--ce-color-brand-soft);
   color: var(--ce-color-brand-ink);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
-  line-height: 18px;
+  line-height: 1.125rem;
 }
 
 /* Die Formularbreite steuert das Zeilenlayout (Container Query), nicht die Fensterbreite. */
@@ -471,16 +629,15 @@
   min-width: 0;
 }
 
+/* Zeilenkopf in Satzschreibung (Audit: Versal-Labels), mit der Haarlinie als Führung. */
 .pc-row-label {
   display: flex;
   align-items: center;
   gap: var(--ce-space-3);
-  color: var(--ce-color-brand-ink);
-  font-size: 12px;
+  color: var(--ce-color-text-primary);
+  font-size: 0.875rem;
   font-weight: 600;
-  line-height: 18px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  line-height: 1.25rem;
 }
 
 .pc-row-label::after {
@@ -519,16 +676,16 @@
 
 .pc-row-hint {
   color: var(--ce-color-text-muted);
-  font-size: 13px;
-  line-height: 18px;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
 }
 
 /* Unterschiedliche Pakete (Canonical v2.79): ein ruhiger Satz über der Angebotsliste. */
 .pc-packages-note {
   margin-bottom: var(--ce-space-3);
   color: var(--ce-color-text-muted);
-  font-size: 13px;
-  line-height: 18px;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
 }
 
 /* Paketeditor (Canonical v2.79, §15) — dieselbe Komponente wie im Portal, in den Tokens dieser Seite.
@@ -566,9 +723,9 @@
 
 .pc-page .pkg-line-title {
   color: var(--ce-color-text-primary);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
-  line-height: 18px;
+  line-height: 1.125rem;
 }
 
 .pc-page .pkg-line-actions {
@@ -588,9 +745,9 @@
   background: transparent;
   color: var(--ce-color-brand-ink);
   font: inherit;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
-  line-height: 20px;
+  line-height: 1.25rem;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -617,8 +774,8 @@
 
 .pc-page .pkg-lines-limit {
   color: var(--ce-color-text-muted);
-  font-size: 13px;
-  line-height: 18px;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
 }
 
 .pc-page .pkg-lines-sum-wrap {
@@ -628,9 +785,9 @@
 
 .pc-page .pkg-lines-sum {
   color: var(--ce-color-text-primary);
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 600;
-  line-height: 22px;
+  line-height: 1.375rem;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
@@ -701,9 +858,9 @@
 .pc-page .field-label {
   overflow: hidden;
   color: var(--ce-color-text-secondary);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
-  line-height: 20px;
+  line-height: 1.25rem;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -717,8 +874,8 @@
   background-color: var(--ce-color-surface);
   color: var(--ce-color-text-primary);
   font: inherit;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 1rem;
+  line-height: 1.5rem;
 }
 
 .pc-page .field-input::placeholder {
@@ -776,21 +933,21 @@
   position: absolute;
   right: var(--ce-space-3);
   color: var(--ce-color-text-muted);
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
   pointer-events: none;
 }
 
 .pc-page .field-hint {
   color: var(--ce-color-text-muted);
-  font-size: 13px;
-  line-height: 18px;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
 }
 
 .pc-page .field-error {
   color: var(--ce-color-status-error-fg);
-  font-size: 13px;
-  line-height: 18px;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
 }
 
 .pc-submit-row {
@@ -810,51 +967,44 @@
   background: var(--ce-color-surface);
   color: var(--ce-color-text-primary);
   font: inherit;
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 600;
-  line-height: 22px;
+  line-height: 1.375rem;
   text-align: center;
   text-decoration: none;
   cursor: pointer;
 }
 
+/* Primäraktion auf dem Papier: Navy mit feiner Innenkante (E1, E5). */
 .pc-button--primary {
-  border-color: var(--ce-color-brand);
-  background: var(--ce-color-brand);
+  border-color: var(--ce-pr-navy-800);
+  background: var(--ce-pr-navy-800);
   color: var(--ce-color-text-inverse);
+  box-shadow: var(--ce-pr-btn-shadow);
 }
 
 .pc-button--primary:hover {
-  border-color: var(--ce-color-brand-hover);
-  background: var(--ce-color-brand-hover);
+  border-color: var(--ce-pr-navy-700);
+  background: var(--ce-pr-navy-700);
+  box-shadow: var(--ce-pr-btn-shadow-hover);
 }
 
 .pc-button--primary:active {
-  background: var(--ce-color-brand-active);
+  background: var(--ce-pr-navy-600);
 }
 
 .pc-button--primary:disabled {
   cursor: progress;
-  border-color: var(--ce-color-brand-active);
-  background: var(--ce-color-brand-active);
+  border-color: var(--ce-pr-navy-700);
+  background: var(--ce-pr-navy-700);
 }
 
 .pc-button--submit {
   width: 100%;
   min-height: 56px;
-  font-size: 16px;
+  font-size: 1rem;
 }
 
-/* Pfeil nach rechts hinter dem Absendetext — gezeichnet, keine Schriftzeichen. */
-.pc-button--submit::after {
-  content: "";
-  width: 8px;
-  height: 8px;
-  margin-left: var(--ce-space-1);
-  border-top: 2px solid currentColor;
-  border-right: 2px solid currentColor;
-  transform: rotate(45deg);
-}
 
 .pc-button--secondary {
   border-color: var(--ce-color-brand-border);
@@ -878,14 +1028,14 @@
 }
 
 .pc-unavailable-title {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 600;
-  line-height: 20px;
+  line-height: 1.25rem;
 }
 
 .pc-unavailable-text {
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 }
 
 .pc-page .pc-unavailable a {
@@ -895,8 +1045,8 @@
 
 .pc-form-note {
   color: var(--ce-color-text-muted);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
 }
 
 /* ── Hinweise ────────────────────────────────────────────────────────────── */
@@ -921,15 +1071,15 @@
 }
 
 .pc-notice-title {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 600;
-  line-height: 22px;
+  line-height: 1.375rem;
 }
 
 .pc-notice-text {
   margin-top: 2px;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 }
 
 .pc-notice .pc-button {
@@ -947,6 +1097,7 @@
 }
 
 .pc-results {
+  container: pc-ergebnis / inline-size;
   display: grid;
   gap: var(--ce-space-5);
 }
@@ -969,8 +1120,8 @@
 
 .pc-results-summary {
   color: var(--ce-color-text-secondary);
-  font-size: 15px;
-  line-height: 22px;
+  font-size: 0.9375rem;
+  line-height: 1.375rem;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
   overflow-wrap: break-word;
@@ -983,8 +1134,8 @@
 .pc-results-foot {
   max-width: 62em;
   color: var(--ce-color-text-muted);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
 }
 
 .pc-loading {
@@ -1005,14 +1156,14 @@
 }
 
 .pc-loading-title {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 600;
-  line-height: 22px;
+  line-height: 1.375rem;
 }
 
 .pc-loading-time {
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
@@ -1020,8 +1171,8 @@
 .pc-loading-slow {
   width: 100%;
   color: var(--ce-color-text-secondary);
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 }
 
 .pc-toolbar {
@@ -1035,9 +1186,9 @@
   display: flex;
   align-items: center;
   min-height: 48px;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
-  line-height: 24px;
+  line-height: 1.5rem;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
@@ -1064,9 +1215,9 @@
   border-radius: var(--ce-radius-full);
   background: var(--ce-color-surface);
   color: var(--ce-color-text-primary);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
-  line-height: 20px;
+  line-height: 1.25rem;
   cursor: pointer;
 }
 
@@ -1115,9 +1266,9 @@
   background: transparent;
   color: var(--ce-color-brand-ink);
   font: inherit;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
-  line-height: 20px;
+  line-height: 1.25rem;
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
@@ -1128,10 +1279,23 @@
   min-width: 220px;
 }
 
+/* Mindestbreiten in rem: bei größerer Browserschrift werden die Karten breiter statt die Werte
+   ineinanderzuschieben (E13). Bei 16 px Grundgröße 300 px. */
 .pc-offers {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18.75rem), 1fr));
   gap: var(--ce-space-5);
+}
+
+/* Keine einzelne Karte in der letzten Reihe bei den häufigen Mengen (Audit: 3 + 1 bei 1440/1920 px):
+   vier Angebote in der Dreierbreite stehen 2 + 2, fünf in der Viererbreite 3 + 2. Die Schwellen folgen
+   der Spaltenbreite oben (bei 16 px: 940 bzw. 1260 px). */
+@container pc-ergebnis (min-width: 58.75rem) and (max-width: 78.6875rem) {
+  .pc-offers:has(> .pc-offers-item:nth-child(4):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@container pc-ergebnis (min-width: 78.75rem) {
+  .pc-offers:has(> .pc-offers-item:nth-child(5):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 .pc-offers-item {
@@ -1161,6 +1325,8 @@
 }
 
 /* ── Tarifkarte ──────────────────────────────────────────────────────────── */
+/* Helle Tarifkarte (E9, Audit B7): der Markenstreifen sitzt 3 px hoch an der Unterkante, innerhalb der
+   Rundung, und läuft beim Zeigen und bei Tastaturfokus in der Karte von links ein. Auf Touch beim Drücken. */
 .pc-offer {
   display: flex;
   flex-direction: column;
@@ -1168,20 +1334,32 @@
   width: 100%;
   min-width: 0;
   padding: var(--ce-space-5);
-  border: 1px solid var(--ce-color-border-subtle);
-  border-radius: var(--ce-radius-lg);
-  background: var(--ce-color-surface);
-  box-shadow: var(--ce-elevation-1);
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-radius-card);
+  background-color: var(--ce-color-surface);
+  background-image: var(--ce-pr-stripe);
+  background-repeat: no-repeat;
+  background-position: left bottom;
+  background-size: 0% 3px;
+  box-shadow: var(--ce-pr-shadow-card);
 }
 
-.pc-offer:hover {
-  border-color: var(--ce-color-brand-border);
-  box-shadow: var(--ce-elevation-2);
+@media (hover: hover) {
+  .pc-offer:not(.pc-offer--quiet):not(.pc-offer--skeleton):hover {
+    border-color: var(--ce-color-border-default);
+    background-size: 100% 3px;
+    box-shadow: var(--ce-pr-shadow-card-hover);
+  }
+}
+
+.pc-offer:not(.pc-offer--quiet):not(.pc-offer--skeleton):focus-within,
+.pc-offer:not(.pc-offer--quiet):not(.pc-offer--skeleton):active {
+  background-size: 100% 3px;
 }
 
 .pc-offer--quiet,
 .pc-offer--quiet:hover {
-  border-color: var(--ce-color-border-subtle);
+  border-color: var(--ce-pr-hairline);
   background: var(--ce-color-surface-subtle);
   box-shadow: none;
 }
@@ -1241,16 +1419,16 @@
 }
 
 .pc-offer-carrier {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
-  line-height: 22px;
+  line-height: 1.375rem;
   overflow-wrap: break-word;
 }
 
 .pc-offer-service {
   color: var(--ce-color-text-secondary);
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
   overflow-wrap: break-word;
 }
 
@@ -1264,9 +1442,9 @@
   border-radius: var(--ce-radius-full);
   background: var(--ce-color-brand-soft);
   color: var(--ce-color-brand-ink);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
-  line-height: 18px;
+  line-height: 1.125rem;
 }
 
 .pc-offer-tag--dropoff {
@@ -1276,7 +1454,7 @@
 
 .pc-offer-facts {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7.5rem), 1fr));
   gap: var(--ce-space-3);
   padding-block: var(--ce-space-3);
   border-block: 1px solid var(--ce-color-border-subtle);
@@ -1291,9 +1469,9 @@
 
 .pc-fact dt {
   color: var(--ce-color-text-muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 500;
-  line-height: 18px;
+  line-height: 1.125rem;
 }
 
 .pc-fact dd {
@@ -1304,15 +1482,15 @@
 }
 
 .pc-fact-main {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 600;
-  line-height: 22px;
+  line-height: 1.375rem;
 }
 
 .pc-fact-sub {
   color: var(--ce-color-text-secondary);
-  font-size: 13px;
-  line-height: 18px;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
 }
 
 .pc-fact-note {
@@ -1329,16 +1507,16 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0 var(--ce-space-2);
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
-  line-height: 26px;
+  line-height: 1.625rem;
 }
 
 .pc-price-amount {
   font-family: var(--ce-font-numeric);
-  font-size: 28px;
+  font-size: 1.75rem;
   font-weight: 600;
-  line-height: 34px;
+  line-height: 2.125rem;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
@@ -1347,15 +1525,15 @@
 /* „zzgl. MwSt." klein direkt unter dem Nettopreis. */
 .pc-price-vat {
   color: var(--ce-color-text-secondary);
-  font-size: 13px;
-  line-height: 18px;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
 }
 
 .pc-price-note {
   margin-top: var(--ce-space-1);
   color: var(--ce-color-text-muted);
-  font-size: 13px;
-  line-height: 18px;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
 }
 
 .pc-offer-hints {
@@ -1367,8 +1545,8 @@
   position: relative;
   padding-left: var(--ce-space-4);
   color: var(--ce-color-text-secondary);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
 }
 
 .pc-offer-hints li::before {
@@ -1401,8 +1579,8 @@
   border-radius: var(--ce-radius-sm);
   background: var(--ce-color-status-neutral-surface);
   color: var(--ce-color-status-neutral-fg);
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
   text-align: center;
 }
 
@@ -1424,7 +1602,7 @@
 
 .pc-section-title {
   font-family: var(--ce-font-display);
-  font-size: 24px;
+  font-size: 1.5rem;
   font-weight: 500;
   line-height: 1.15;
   letter-spacing: -0.005em;
@@ -1453,7 +1631,7 @@
   border-radius: var(--ce-radius-full);
   background: var(--ce-color-brand);
   color: var(--ce-color-text-inverse);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -1468,21 +1646,22 @@
 
 .pc-step-title,
 .pc-feature-title {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
-  line-height: 24px;
+  line-height: 1.5rem;
 }
 
 .pc-step-text,
 .pc-feature-text {
   color: var(--ce-color-text-secondary);
-  font-size: 15px;
-  line-height: 22px;
+  font-size: 0.9375rem;
+  line-height: 1.375rem;
 }
 
 .pc-features {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* Höchstens zwei Spalten; eine, sobald eine Spalte schmaler als 10rem würde (große Browserschrift). */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, max(10rem, calc((100% - var(--ce-space-5)) / 2))), 1fr));
   gap: var(--ce-space-4) var(--ce-space-5);
   margin-top: var(--ce-space-5);
 }
@@ -1522,23 +1701,23 @@
 }
 
 .pc-service-title {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
-  line-height: 24px;
+  line-height: 1.5rem;
 }
 
 .pc-service-text {
   color: var(--ce-color-text-secondary);
-  font-size: 15px;
-  line-height: 22px;
+  font-size: 0.9375rem;
+  line-height: 1.375rem;
 }
 
 .pc-service-lines {
   display: flex;
   flex-wrap: wrap;
   gap: 0 var(--ce-space-5);
-  font-size: 15px;
-  line-height: 22px;
+  font-size: 0.9375rem;
+  line-height: 1.375rem;
 }
 
 .pc-service-lines a {
@@ -1564,9 +1743,9 @@
   align-items: center;
   min-height: 56px;
   padding: var(--ce-space-3) var(--ce-space-8) var(--ce-space-3) 0;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
-  line-height: 24px;
+  line-height: 1.5rem;
   list-style: none;
   cursor: pointer;
 }
@@ -1597,8 +1776,8 @@
   max-width: 62ch;
   padding-bottom: var(--ce-space-4);
   color: var(--ce-color-text-secondary);
-  font-size: 15px;
-  line-height: 24px;
+  font-size: 0.9375rem;
+  line-height: 1.5rem;
 }
 
 .pc-footer {
@@ -1619,8 +1798,8 @@
 }
 
 .pc-footer-note {
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 }
 
 .pc-footer-nav {
@@ -1634,7 +1813,7 @@
   align-items: center;
   min-height: 44px;
   color: var(--ce-color-text-inverse);
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .pc-page .pc-footer a:focus-visible {
@@ -1678,13 +1857,13 @@
 @media (min-width: 640px) {
   .pc-hero { padding-block: var(--ce-space-4) var(--ce-space-8); }
   .pc-calculator-card { padding: var(--ce-space-6); }
-  .pc-card-title { font-size: 24px; line-height: 32px; }
-  .pc-lead { font-size: 18px; }
-  .pc-section-title { font-size: 28px; }
+  .pc-card-title { font-size: 1.5rem; line-height: 2rem; }
+  .pc-page .pc-lead { font-size: 1.125rem; }
+  .pc-section-title { font-size: 1.75rem; }
 }
 
 @media (min-width: 640px) {
-  .pc-display { font-size: 44px; }
+  .pc-display { font-size: 2.75rem; }
 }
 
 @media (min-width: 720px) {
@@ -1735,7 +1914,7 @@
 }
 
 @media (min-width: 1366px) {
-  .pc-display { font-size: 48px; }
+  .pc-display { font-size: 3rem; }
 }
 
 @media (min-width: 1366px) {
@@ -1743,7 +1922,7 @@
 }
 
 @media (min-width: 1440px) {
-  .pc-display { font-size: 52px; }
+  .pc-display { font-size: 3.25rem; }
 }
 
 @media (pointer: coarse) {
@@ -1759,11 +1938,12 @@
   .pc-offer {
     transition: opacity var(--ce-motion-fast) ease, transform var(--ce-motion-fast) ease;
   }
-  .pc-button:active:not(:disabled) {
-    transform: translateY(1px);
-  }
-  .pc-offer:not(.pc-offer--quiet):not(.pc-offer--skeleton):hover {
-    transform: translateY(-2px);
+  /* Keine Bewegung der Knöpfe und Karten (E5): Zustände über Fläche, Kante und Streifen. */
+  .pc-offer {
+    transition:
+      border-color var(--ce-motion-fast) ease,
+      box-shadow var(--ce-motion-fast) ease,
+      background-size 220ms var(--ce-motion-ease-standard);
   }
   .pc-faq-item summary::after {
     transition: transform var(--ce-motion-standard) var(--ce-motion-ease-standard);

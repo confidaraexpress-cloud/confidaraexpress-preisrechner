@@ -263,11 +263,16 @@ test("9 — die Firmenkarte bleibt entfernt; zwischen Marke und Navigation steht
   assert.equal(block(premium, ".pp-identity"), null, "die CSS-Regel der Firmenkarte lebt noch");
 });
 
-test("10 — die Navigation ist reiner Text: keine Symbole, keine Iconleiste", () => {
+test("10 — die Navigation: Icons nur vor dem Text der Hauptpunkte (E7), keine Iconleiste", () => {
   const code = stripJsxComments(sidebarJsx);
-  assert.doesNotMatch(code, /<Icon\b/, "die Sidebar rendert wieder ein Symbol");
-  assert.doesNotMatch(code, /from ["']\.\.\/ui\/Icon["']/, "Icon-Import in der Sidebar ist überflüssig");
-  assert.doesNotMatch(code, /icon:\s*"/, "die Navigationskonfiguration trägt wieder Iconnamen");
+  // Betreiberentscheidung 2026-10-27 (E7) löst die reine Textnavigation ab. Jedes Icon steht vor einer
+  // Beschriftung; Symbole ohne Text (Iconleiste) gibt es nicht.
+  assert.match(code, /from "\.\.\/ui\/Icon"/, "Icons kommen nur aus der eigenen Icon-Komponente");
+  assert.equal((code.match(/<Icon\b/g) || []).length, 2, "Icons nur im Eintrag der ersten Ebene und im Gruppenkopf");
+  assert.match(code, /<Icon n=\{item\.icon\} s=\{ICON_SIZE\.md\} \/><\/span>\}\s*<span>\{item\.label\}<\/span>/,
+    "das Icon des Eintrags steht nicht vor seiner Beschriftung");
+  assert.match(code, /<Icon n=\{group\.icon\} s=\{ICON_SIZE\.md\} \/><\/span>\s*<span className="pp-nav-group-label">\{group\.label\}<\/span>/,
+    "das Icon des Gruppenkopfs steht nicht vor seiner Beschriftung");
   assert.doesNotMatch(code, /lucide-react/, "lucide-react ist im Projekt nicht zulässig");
   // Die Klappmarke der Gruppen ist eine reine CSS-Form ohne Glyphe.
   assert.match(code, /<span className="pp-nav-group-chevron" aria-hidden="true" \/>/,

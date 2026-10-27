@@ -185,8 +185,8 @@ async function waehle(page, tarif) {
 }
 
 async function zurueckZuDenAngeboten(page) {
-  // Das sichtbare „← Zurück" der Buchungsseite führt immer zum Angebotsvergleich (derselbe Vorgang).
-  await page.getByRole("button", { name: "← Zurück", exact: true }).click();
+  // Das sichtbare „Zurück" der Buchungsseite führt immer zum Angebotsvergleich (derselbe Vorgang).
+  await page.getByRole("button", { name: "Zurück", exact: true }).click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
 }
 

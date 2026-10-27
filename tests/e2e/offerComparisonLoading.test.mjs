@@ -712,9 +712,10 @@ test("D1 — Geometrie von 320 bis 1920 px, auch quer: zentriert, kein waagerech
     } else if (!(g.t >= 0 && g.overlayScrollt)) {
       fehler.push(`zu hoch und nicht erreichbar (${g.t}–${g.b} bei ${g.vh})`);
     }
-    // Redesign 2026-10: die Abschnittstitel-Stufe misst auf allen Breiten 18 px
-    // (--ce-text-title-section-size und -mobile); vorher 20/18.
-    if (g.titel !== 18) fehler.push(`Titel ${g.titel}px`);
+    // Premium-Redesign Etappe 1 (E13): im Kundenbereich misst die Abschnittstitel-
+    // Stufe 20 px, bis 480 px Breite die mobile Stufe mit 18 px
+    // (--ce-text-title-section-size und -mobile in rem); vorher überall 18 px.
+    if (g.titel !== (w <= 480 ? 18 : 20)) fehler.push(`Titel ${g.titel}px`);
     if (fehler.length) befunde.push(`${w}×${h}: ${fehler.join("; ")}`);
   }
   assert.deepEqual(befunde, []);
@@ -760,7 +761,7 @@ for (const sprung of ["weich", "sofort"]) test(`D3 — Rückkehr aus der Buchung
   });
   await page.locator(".offer-card").nth(30).locator("button", { hasText: /Auswählen|Weiter|Buchen|wählen/i }).first().click();
   await page.waitForURL(/\/booking/, { timeout: 10000 });
-  await page.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
+  await page.locator("button").filter({ hasText: /^Zurück$/ }).first().click();
   await page.waitForURL(/\/dashboard/, { timeout: 10000 });
   await page.waitForSelector(".offer-card", { timeout: 10000 });
   await page.waitForFunction(() => {

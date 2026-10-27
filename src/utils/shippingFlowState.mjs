@@ -93,7 +93,7 @@ const CLIENT_FILTER_KEYS = ["max_price", "latestDeliveryDate", "latestDeliveryTi
 /* Die Sendungsangaben (Inhalt, Warenwert). Sie sind PFLICHT vor dem Angebotsvergleich —
    und sie gehören damit zwingend in den laufenden Vorgang.
 
-   Ohne sie ging beim Weg zurück von der Buchungsseite („← Zurück") genau das
+   Ohne sie ging beim Weg zurück von der Buchungsseite („Zurück") genau das
    verloren, was den Vergleich überhaupt erst freigibt: der Kunde stand vor einem
    dauerhaft deaktivierten „Angebote vergleichen" und musste Inhalt und Warenwert
    erneut eintragen, um eine einzige Zahl zu ändern.

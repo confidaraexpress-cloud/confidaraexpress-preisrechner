@@ -1,6 +1,7 @@
 import React from "react";
 import { carrierAppliesLabel, LABEL_HANDLING_TEXT } from "../../utils/labelHandling.mjs";
 import { Switch } from "../ui/Switch";
+import { Werte } from "../ui/Werte";
 
 // Zusätzliche Optionen — REINE DARSTELLUNG. Bündelt die optionale Referenznummer
 // (Wert/Sanitizing bleiben im Orchestrator: BookingPage.form.reference +
@@ -36,7 +37,7 @@ function EmailOption({ id, label, enabled, onEnabledChange, value, onChange, err
   const errorId = `${id}-error`;
   return (
     <div className="addopt-option">
-      <Switch id={id} checked={enabled} onChange={onEnabledChange} label={label} />
+      <Switch id={id} checked={enabled} onChange={onEnabledChange} label={<Werte>{label}</Werte>} />
       {enabled && (
         <div className="addopt-reveal">
           <div className="field">

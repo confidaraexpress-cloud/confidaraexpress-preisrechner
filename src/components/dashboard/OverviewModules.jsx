@@ -97,25 +97,30 @@ export function RecentShipments({ shipments, loading, onAll }) {
    unverändert aus der bestehenden Serversummary (overviewInvoiceFacts →
    customerInvoiceSummary). Überfälligkeit trägt das globale Overdue-Badge —
    ruhig, aber eindeutig und nicht allein farblich. Keine Zahlungslogik. */
-/* ── Buchungsrahmen (Paket F, 2026-10-23) ──
-   Ein ruhiger Block unter den offenen Rechnungen: der verfügbare Rahmen als Betrag, darunter
-   ein Satz mit Rahmen und belegtem Anteil, dazu eine schmale Linie als Anteil. Alle Werte kommen
-   vom Server (GET /kunde/credit, utils/creditLimitView.mjs); ohne Antwort (altes Backend)
-   steht hier nichts. Ausgeschöpft steht als Wort da, nie nur als Farbe. */
+/* ── Buchungsrahmen (Paket F, 2026-10-23; Premium-Redesign B11, 2026-10-27) ──
+   Ein ruhiger Block unter den offenen Rechnungen. Kopf: „Buchungsrahmen“ mit dem Rahmen als
+   Betrag. Darunter der Balken, beide Teile beschriftet: links der gefüllte Teil „Belegt“, rechts
+   der Rest „Verfügbar“. Vorher stand groß „Verfügbarer Buchungsrahmen“ über einem Balken, der den
+   BELEGTEN Anteil zeigt — Beschriftung und Balken widersprachen sich (Audit B6). Alle Werte kommen
+   unverändert vom Server (GET /kunde/credit, utils/creditLimitView.mjs); ohne Antwort (altes
+   Backend) steht hier nichts. Ausgeschöpft steht als Wort da, nie nur als Farbe. */
 export function CreditFrame({ credit }) {
   const f = creditFacts(credit);
   if (!f.show) return null;
   return (
     <div className={`ov-credit${f.exhausted ? " ov-credit--exhausted" : ""}`} id="ov-credit" role="group" aria-label={`${CREDIT_TEXT.title}: ${f.summary}`}>
       <div className="ov-credit-head">
-        <span className="ov-credit-label">{CREDIT_TEXT.availableLabel}</span>
+        <span className="ov-credit-label">{CREDIT_TEXT.title}</span>
         {f.exhausted && <span className="badge badge--warning">{CREDIT_TEXT.exhaustedBadge}</span>}
+        <span className="ov-credit-limit">{f.limitText}</span>
       </div>
-      <div className="ov-credit-value">{f.availableText}</div>
       <div className="ov-credit-bar" aria-hidden="true">
         <span className="ov-credit-bar-fill" style={{ width: `${f.usedPercent}%` }} />
       </div>
-      <p className="ov-credit-meta">von {f.limitText} · {f.usedText} belegt</p>
+      <dl className="ov-credit-parts">
+        <div className="ov-credit-part ov-credit-part--used"><dt>{CREDIT_TEXT.usedLabel}</dt><dd>{f.usedText}</dd></div>
+        <div className="ov-credit-part ov-credit-part--available"><dt>{CREDIT_TEXT.availablePartLabel}</dt><dd>{f.availableText}</dd></div>
+      </dl>
       {f.exhausted && <p className="ov-quiet ov-credit-note">{CREDIT_TEXT.exhaustedNote}</p>}
     </div>
   );

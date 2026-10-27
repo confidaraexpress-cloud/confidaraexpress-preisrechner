@@ -346,7 +346,7 @@ test("F — zurück zu den Angeboten und wieder hinein: die Privatwahl ohne Zusc
   await waehleLieferadresse(page, true);
   const berechnungen = p.calc.length;
 
-  await page.getByRole("button", { name: "← Zurück", exact: true }).click();
+  await page.getByRole("button", { name: "Zurück", exact: true }).click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
   assert.equal(p.calc.length, berechnungen, "der Rückweg hat neu berechnet");
   const karte = karteVon(page, DHL);

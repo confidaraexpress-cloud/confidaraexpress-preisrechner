@@ -74,16 +74,17 @@ const istAuth = (g) => g.datei === AUTH_DATEI
 const PREISRECHNER_DATEI = "public-calculator.css";
 const istPreisrechnerDisplay = (g) => g.datei === PREISRECHNER_DATEI && g.selektor.trim() === ".pc-display";
 
-// Alle font-size-Vorkommen als { datei, zeile, wert, media, selektor }.
+// Alle font-size-Vorkommen als { datei, zeile, wert, media, selektor }. Premium-Redesign (E13): rem-Werte
+// zählen mit ihrem Pixelwert bei 16 px Grundgröße — sie unterliegen derselben Skala und denselben Grenzen.
 function alleGroessen() {
   const out = [];
   for (const [datei, text] of Object.entries(css)) {
     const bereiche = medienbereiche(text);
-    for (const m of text.matchAll(/font-size:\s*([0-9]+(?:\.[0-9]+)?)px/g)) {
+    for (const m of text.matchAll(/font-size:\s*([0-9]+(?:\.[0-9]+)?)(px|rem)/g)) {
       out.push({
         datei,
         zeile: text.slice(0, m.index).split("\n").length,
-        wert: parseFloat(m[1]),
+        wert: m[2] === "rem" ? Math.round(parseFloat(m[1]) * 16 * 1000) / 1000 : parseFloat(m[1]),
         media: bereiche.some(([a, b]) => a <= m.index && m.index <= b),
         selektor: selektorVor(text, m.index),
       });
@@ -94,9 +95,11 @@ function alleGroessen() {
 const GROESSEN = alleGroessen();
 
 // Die zulässigen Stufen sind exakt die Werte der --ce-text-*-size(-mobile)-Tokens.
-const SKALA = new Set(
-  [...variables.matchAll(/--ce-text-[\w-]+-size(?:-mobile)?:\s*(\d+)px/g)].map((m) => Number(m[1])),
-);
+const SKALA = new Set([
+  ...[...variables.matchAll(/--ce-text-[\w-]+-size(?:-mobile)?:\s*(\d+)px/g)].map((m) => Number(m[1])),
+  // Premium-Redesign (E13): die Stufen des Bereichsblocks stehen in rem und zählen mit ihrem Pixelwert.
+  ...[...variables.matchAll(/--ce-text-[\w-]+-size(?:-mobile)?:\s*(\d+(?:\.\d+)?)rem/g)].map((m) => Number(m[1]) * 16),
+]);
 
 /* ══════════ 1 — keine Halb-Pixel ═════════════════════════════════════════ */
 
@@ -106,7 +109,10 @@ test("1 — es gibt keine Halb-Pixel-Schriftgrößen mehr", () => {
   assert.deepEqual(treffer, [], `Halb-Pixel-Größen:\n  ${treffer.join("\n  ")}`);
   // Auch die Skala selbst enthält keine.
   for (const [, v] of variables.matchAll(/--ce-text-[\w-]+-size(?:-mobile)?:\s*([^;]+);/g)) {
-    assert.match(v.trim(), /^\d+px$/, `Skalenwert ist keine ganze Pixelzahl: ${v}`);
+    // Premium-Redesign Etappe 1 (E13): im Bereichs-Scope in rem, bei 16 px Grundgröße weiterhin ganze Pixel.
+    const rem = v.trim().match(/^(\d+(?:\.\d+)?)rem$/);
+    if (rem) assert.ok(Number.isInteger(Number(rem[1]) * 16), `rem-Wert ergibt keine ganze Pixelzahl: ${v}`);
+    else assert.match(v.trim(), /^\d+px$/, `Skalenwert ist keine ganze Pixelzahl: ${v}`);
   }
   // Inline-Styles im JSX ebenfalls.
   const jsx = [];

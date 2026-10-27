@@ -12,10 +12,7 @@ import dhlLogo        from "../../assets/carriers/dhl.svg";
 import upsLogo        from "../../assets/carriers/ups.svg";
 import dpdLogo        from "../../assets/carriers/dpd.svg";
 import glsLogo        from "../../assets/carriers/gls.svg";
-import fedexLogo      from "../../assets/carriers/fedex.svg";
 import tntLogo        from "../../assets/carriers/tnt.svg";
-import emonsLogo      from "../../assets/carriers/emons.svg";
-import transOFlexLogo from "../../assets/carriers/trans-o-flex.svg";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ÜBERSICHT — die Designreferenz der Plattform (Redesign 2026-10)
@@ -31,8 +28,8 @@ import transOFlexLogo from "../../assets/carriers/trans-o-flex.svg";
      Kennzahlen  ein kompaktes Band mit vier gleich breiten Zellen
      Arbeit      Letzte Sendungen (≈ 2/3) · Offene Rechnungen (≈ 1/3)
      Meldungen   höchstens drei vorhandene Benachrichtigungen
-     Carrier     die acht Carrier auf der Navy-Fläche mit Routenlinien und
-                 „Carrier-Angebote vergleichen"
+     Carrier     die fünf Carrier des Launchportfolios auf der Navy-Fläche mit
+                 Routenlinien und „Carrier-Angebote vergleichen"
 
    Feinkorrektur 2026-10: Begrüßung und Carrier-Bereich sind inhaltlich
    zurück — im neuen Designsystem (DM Sans, keine Symbole). Der Carrier-
@@ -51,18 +48,18 @@ function getTodayLabel() {
 }
 
 /* ── Carrier-Bereich ──
-   Dieselben acht Carrier mit Leistung und typischer Laufzeit wie vor dem
-   Redesign. Der Titel nennt die Zahl als Wort — dass „Acht" und
-   CARRIERS.length übereinstimmen, hält overviewSections.test.mjs fest. */
+   Die Carrier des Launchportfolios (Betreiberentscheidung E10, 2026-10-27;
+   Canonical: erste Welle mit UPS, DPD, GLS, DHL und TNT) mit Leistung und
+   typischer Laufzeit wie bisher. FedEx, Emons und trans-o-flex sind nicht
+   buchbar und stehen deshalb nicht mehr hier. Der Titel nennt die Zahl als
+   Wort — dass „Fünf" und CARRIERS.length übereinstimmen, hält
+   overviewSections.test.mjs fest. */
 const CARRIERS = [
-  { key: "dhl",          logo: dhlLogo,        alt: "DHL",          service: "Express",  time: "1–2 Tage" },
-  { key: "ups",          logo: upsLogo,        alt: "UPS",          service: "Standard", time: "1–3 Tage" },
-  { key: "dpd",          logo: dpdLogo,        alt: "DPD",          service: "Classic",  time: "1–2 Tage" },
-  { key: "gls",          logo: glsLogo,        alt: "GLS",          service: "Standard", time: "1–2 Tage" },
-  { key: "fedex",        logo: fedexLogo,      alt: "FedEx",        service: "Express",  time: "1–2 Tage" },
-  { key: "tnt",          logo: tntLogo,        alt: "TNT",          service: "Economy",  time: "2–3 Tage" },
-  { key: "emons",        logo: emonsLogo,      alt: "Emons",        service: "Standard", time: "2–4 Tage" },
-  { key: "trans-o-flex", logo: transOFlexLogo, alt: "trans-o-flex", service: "Express",  time: "1–2 Tage" },
+  { key: "dhl", logo: dhlLogo, alt: "DHL", service: "Express",  time: "1–2 Tage" },
+  { key: "ups", logo: upsLogo, alt: "UPS", service: "Standard", time: "1–3 Tage" },
+  { key: "dpd", logo: dpdLogo, alt: "DPD", service: "Classic",  time: "1–2 Tage" },
+  { key: "gls", logo: glsLogo, alt: "GLS", service: "Standard", time: "1–2 Tage" },
+  { key: "tnt", logo: tntLogo, alt: "TNT", service: "Economy",  time: "2–3 Tage" },
 ];
 
 /* ── Routenlinien des Carrier-Bereichs ──
@@ -303,7 +300,7 @@ export function Overview({
         {/* ── Carrier-Bereich ──
             Navy-Fläche mit den Routenlinien (Optik vor dem Redesign,
             Betreiberentscheidung 2026-10-04): Titel, ein Satz und die
-            Vergleichsaktion, darunter die acht Carrier als weiße Logo-Kacheln mit
+            Vergleichsaktion, darunter die fünf Carrier als weiße Logo-Kacheln mit
             Leistung und Laufzeit. Inhalt, Aktion und Ziel unverändert — die
             Aktion führt wie bisher zum Versandkostenrechner (/calculator). */}
         <section className="ov-carriers" aria-labelledby="ov-car-title">
@@ -311,7 +308,7 @@ export function Overview({
           <div className="ov-carriers-in">
             <div className="ov-carriers-head">
               <div className="ov-carriers-intro">
-                <h2 className="ov-carriers-title" id="ov-car-title">Acht Carrier. Eine zentrale Plattform.</h2>
+                <h2 className="ov-carriers-title" id="ov-car-title">Fünf Carrier. Eine zentrale Plattform.</h2>
                 <p className="ov-carriers-desc">Preise und Laufzeiten führender Versanddienstleister direkt vergleichen.</p>
               </div>
               <button type="button" className="btn btn-outline ov-carriers-cta" onClick={() => navigate("/calculator")}>

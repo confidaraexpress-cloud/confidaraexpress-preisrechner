@@ -445,22 +445,22 @@ test("9 — Smoke: zuvor saubere Bereiche bleiben ohne Overflow, Fehler und Badg
   }
 });
 
-test("10 — Rechnungen @1440: die Dokumentangabe „Per E-Mail versendet\" ist einzeilig", async () => {
-  // Redesign 2026-10: Dokument- und Mailangaben stehen als ruhiger Text
-  // (.inv-doc-line) neben dem einen Zahlungsstatus — keine zweite Badgefläche.
+test("10 — Rechnungen @1440: die Mailangabe „Per E-Mail versendet am …\" ist einzeilig", async () => {
+  // Komplettabschluss (2026-10-28): Dokument und Aktionen teilen sich eine Spalte; der Mailversand steht darunter
+  // als ruhiger Text (.inv-doc-note, „Per E-Mail versendet am <Datum>“) — keine zweite Badgefläche.
   // Der Vertrag bleibt: die Angabe passt in ihre Spalte, ohne umzubrechen.
   const { ctx, page } = await seite(1440);
   await page.goto(`${BASE}/dashboard?page=invoices`, { waitUntil: "networkidle" });
   await page.waitForTimeout(900);
   const zeile = await page.evaluate(() => {
-    const el = [...document.querySelectorAll(".inv-doc-line")]
-      .find((e) => e.getClientRects().length && e.textContent.trim() === "Per E-Mail versendet");
+    const el = [...document.querySelectorAll(".inv-doc-note")]
+      .find((e) => e.getClientRects().length && /^Per E-Mail versendet am \d/.test(e.textContent.trim()));
     if (!el) return null;
     const cs = getComputedStyle(el);
     const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.4;
     return { zeilen: Math.max(1, Math.round(el.getBoundingClientRect().height / lh)) };
   });
   assert.ok(zeile, "die Dokumentangabe wurde nicht gefunden");
-  assert.equal(zeile.zeilen, 1, `„Per E-Mail versendet" ist ${zeile.zeilen}-zeilig (Spalte zu schmal)`);
+  assert.equal(zeile.zeilen, 1, `„Per E-Mail versendet am …" ist ${zeile.zeilen}-zeilig (Spalte zu schmal)`);
   await ctx.close();
 });

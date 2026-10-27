@@ -7,13 +7,15 @@
 //       Bereichsfarbe steht ab dem ersten Dokument fest, CLS < 0,01. Die Lichter starten erst nach dem Bild.
 //   A3  Mit gespeichertem Token wartet die Anwendung auf die Sitzungsprüfung (keine Anmeldung neben einer offenen
 //       Prüfung) — auf dem dunklen Grund des Gerüsts, nie auf hellem; ein abgelaufenes Token wird verworfen.
+//   A4  Ein Einstieg: index.html lädt genau ein /assets/index-<hash>.js (die Versionsprüfung liest es), und die
+//       Gerüste laden dieselben Dateien — kein zweiter JavaScript-Einstieg.
 //
 // Kein echtes Backend: jede Anfrage außerhalb des Vorschauservers wird mit 404 beantwortet (die Seite braucht für die
 // Darstellung keine Serverantwort; die Registrierung zeigt dann ihre Rückfälle).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -143,6 +145,20 @@ test("A2 — kein weißer Ladebildschirm, kein Sprung, die Lichter nach dem Bild
   assert.ok(m.lichter > 0, "die Städte leuchten nicht");
   assert.equal(m.wartet, false, "die Lichter warten nach dem Laden noch auf das Bild");
   await ctx.close();
+});
+
+test("A4 — ein Einstieg: alle drei Seiten laden dasselbe /assets/index-<hash>.js (Versionsprüfung)", () => {
+  const tags = (datei) => readFileSync(path.join(OUT, datei), "utf8")
+    .match(/<script type="module"[^>]*>|<link rel="modulepreload"[^>]*>|<link rel="stylesheet"[^>]*>/g) || [];
+  const index = tags("index.html");
+  const skripte = index.filter((t) => t.startsWith("<script"));
+  assert.equal(skripte.length, 1, `index.html lädt ${skripte.length} Modulskripte statt eines Einstiegs`);
+  assert.match(skripte[0], /src="\/assets\/index-[A-Za-z0-9_-]+\.js"/, "der Einstieg heißt nicht index-<hash>.js — die Versionsprüfung bliebe still");
+  assert.ok(index.some((t) => /rel="modulepreload"/.test(t)), "die modulepreloads fehlen");
+  for (const geruest of ["login.html", "register.html"]) {
+    assert.deepEqual(tags(geruest), index, `${geruest} lädt andere Dateien als index.html`);
+    assert.doesNotMatch(readFileSync(path.join(OUT, geruest), "utf8"), /\/src\//, `${geruest} verweist noch auf Quelldateien`);
+  }
 });
 
 test("A3 — mit gespeichertem Token: Sitzungsprüfung auf dunklem Grund, danach die Anmeldung", async () => {

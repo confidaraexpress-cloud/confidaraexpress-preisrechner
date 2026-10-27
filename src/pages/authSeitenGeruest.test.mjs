@@ -122,6 +122,11 @@ test("4 — die Pfade: kundenAuthPfad ↔ nginx (vollständiger Headerblock) ↔
   }
   // Nur Seitenaufrufe (Accept: text/html), nie Dateien oder API-Pfade.
   assert.match(vite, /const html = String\(req\.headers\?\.accept \|\| ""\)\.includes\("text\/html"\);/);
+  // EIN Einstieg (Versionsprüfung, utils/appVersionCheck.mjs): die Gerüste verlieren ihr Modulskript im Build und
+  // tragen danach die Einstiegs-Tags der gebauten index.html — kein zweiter JavaScript-Einstieg.
+  for (const anker of ['enforce: "post"', 'order: "pre"', 'html.replace(MODULSKRIPT, "")', 'order: "post"', "einstiege.length !== 1"]) {
+    assert.ok(vite.includes(anker), `vite.config.js: ${anker} fehlt (ein Einstieg für die Versionsprüfung)`);
+  }
 });
 
 test("5 — main.jsx, App.jsx, AuthContext: ohne Token kein Ladebildschirm, mit Token die Prüfung auf dunklem Grund, die Seite ist vorgeladen", () => {

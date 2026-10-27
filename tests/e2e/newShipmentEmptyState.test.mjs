@@ -153,16 +153,12 @@ async function zuNeueSendung(page) {
 /**
  * Über die SIDEBAR — das ist der Weg, den Test S3 tatsächlich prüft.
  *
- * Die Gruppen sind nach jedem Reload zu, und eingeklappte Einträge tragen
- * `visibility: hidden` (bewusst: sie sollen weder fokussierbar noch klickbar
- * sein). Der Gruppenkopf ist ein echtes `<button.pp-nav-group-head>` — er muss
- * also zuerst geöffnet werden.
+ * „Neue Sendung“ steht seit G5 (2026-10-27) in der ersten Ebene der Seitenleiste,
+ * ohne Gruppe — ein Klick genügt.
  */
 async function ueberSidebarZuNeueSendung(page) {
   await verlassenBestaetigen(page);
-  const kopf = page.locator("button.pp-nav-group-head", { hasText: "Versand" }).first();
-  if ((await kopf.getAttribute("aria-expanded")) !== "true") await kopf.click();
-  const eintrag = page.locator(".pp-nav-group-items .nitem", { hasText: "Neue Sendung" }).first();
+  const eintrag = page.locator(".pp-nav .nitem", { hasText: "Neue Sendung" }).first();
   await eintrag.click();
   await page.waitForSelector("#ns-weight", { timeout: 15000 });
 }

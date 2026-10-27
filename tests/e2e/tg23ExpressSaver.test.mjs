@@ -601,8 +601,9 @@ test("C — Art der Lieferadresse: vorläufiger Preis, Serverbeträge, Sperre oh
   await warteAufText(page, ".blsum-price-gross", "35,33");
   assert.equal(await inhalt(page.locator(".blsum-price-label")), "Gesamt");
   assert.equal(await inhalt(page.locator("#booking-live-surcharge-note")), "inkl. Zuschlag Privatadresse 4,09 €");
-  assert.equal(await inhalt(page.locator("#offer-summary-surcharge-note")), "inkl. Zuschlag Privatadresse 4,09 €");
-  assert.equal(await inhalt(page.locator(".offsum-price-gross")), "35,33 € brutto");
+  // G6/M9 (2026-10-27): Preis und Zuschlagshinweis stehen einmal, im Beleg.
+  assert.equal(await page.locator("#offer-summary-surcharge-note").count(), 0);
+  assert.equal(await inhalt(page.locator(".blsum-price-gross")), "35,33 € brutto");
   await keinAnbieter(page, "Buchungsseite nach der Bindung");
   assert.deepEqual(fehler, []);
   await page.close();
@@ -641,12 +642,12 @@ test("D — Abholung am selben Tag: Zuschlag, wirksamer Abholschluss, frische un
   assert.match(await inhalt(privatKarte), /3,45 € netto/);
   assert.equal(await inhalt(page.locator("#booking-live-sameday-note")), "inkl. Zuschlag für Abholung am selben Tag 3,89 €");
   assert.equal(await inhalt(page.locator("#offer-summary-sameday-until")), "Abholung heute bei Buchung bis 16:45 Uhr");
-  assert.match(await inhalt(page.locator(".offsum-facts")), /bereit ab 11:30 Uhr/);
+  assert.match(await inhalt(page.locator(".blsum-handover")), /bereit ab 11:30 Uhr/);
 
   await waehleLieferadresse(page, false);
   await warteAufText(page, ".blsum-price-gross", "35,13");
   // Die Bindung nennt die „bereit ab"-Zeit, die JETZT gälte.
-  await warteAufText(page, ".offsum-facts", "bereit ab 11:45 Uhr");
+  await warteAufText(page, ".blsum-handover", "bereit ab 11:45 Uhr");
   assert.equal(await inhalt(page.locator("#booking-live-sameday-note")), "inkl. Zuschlag für Abholung am selben Tag 3,89 €");
   for (const sel of [".booking-livesum", ".offsum-meta", "#residential-price-inputs"]) {
     assert.doesNotMatch(await inhalt(page.locator(sel)), /17:00/, `${sel}: der Abholschluss des Anbieters ist sichtbar`);
@@ -815,14 +816,12 @@ test("G — Buchungsseite: UPS · Expressversand, Lieferprognose, Abholtag, Labe
   assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-label")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-val")), lang(DIENSTAG));
   assert.equal(await page.locator(".blsum-delivery .blsum-sub").count(), 0, "eine Uhrzeit an der Prognose");
-  const fakten = page.locator(".offsum-fact");
-  assert.equal(await inhalt(fakten.nth(0).locator("dt")), "Voraussichtliche Zustellung");
-  assert.equal(await inhalt(fakten.nth(0).locator("dd")), lang(DIENSTAG));
+  // G6/M9 (2026-10-27): Zustellung und Abholung stehen einmal, im Beleg — das ausgewählte Angebot wiederholt sie nicht.
+  assert.equal(await page.locator(".offsum-fact, .offsum-facts").count(), 0);
 
   // Abholtag und „bereit ab"-Zeit — kein Zeitfenster.
-  assert.equal(await inhalt(fakten.nth(1).locator("dt")), "Abholung");
-  assert.equal(await inhalt(fakten.nth(1).locator("dd")), `${lang(MONTAG)} · bereit ab 09:00 Uhr`);
   const uebergabe = await inhalt(page.locator(".blsum-handover"));
+  assert.match(uebergabe, new RegExp(`Abholung\\s*${lang(MONTAG)}\\s*bereit ab 09:00 Uhr`));
   assert.ok(uebergabe.includes(lang(MONTAG)), `die Live-Leiste nennt den Abholtag nicht: ${uebergabe}`);
   assert.doesNotMatch(uebergabe, /\bbis\b|–/, "aus der bereit-ab-Zeit wurde ein Zeitfenster");
   assert.match(await inhalt(page.locator(".offsum-meta")), /Drucker erforderlich/);

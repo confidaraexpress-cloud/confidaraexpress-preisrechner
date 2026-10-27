@@ -130,11 +130,13 @@ test("3 — Anfragevertrag: prepare als Simple-Request, Preisabfrage 75 s, Scope
   assert.equal(client.abmeldungen, 1, "401 meldet über den zentralen Handler ab");
 });
 
-test("4 — Seitengerüst: Kopf, Hero, Ergebnisse, Ablauf, Plattform, FAQ mit Service, Fuß in dieser Reihenfolge", () => {
+test("4 — Seitengerüst: Kopf, Hero, Ergebnisse, Kundenbereich mit Vorschau, Ablauf, FAQ mit Service, Fuß in dieser Reihenfolge", async () => {
+  // Komplettabschluss 2026-10-27: unter dem Rechner zuerst der Kundenbereich (Versand und Logistik, daneben die
+  // Vorschau), danach der Ablauf in drei Schritten.
   const marken = [
     'class="pc-skip"', 'class="pc-header"', 'id="pc-hero-title"', 'id="pc-calculator-card"', 'id="pc-calculator"',
-    'id="pc-results"', 'id="pc-steps-title"', 'id="pc-platform-title"', 'id="pc-faq-title"', 'id="pc-service-title"',
-    'class="pc-footer"',
+    'id="pc-results"', 'id="pc-platform-title"', 'id="pc-vorschau-hinweis"', 'id="pc-gruppe-versand"',
+    'id="pc-gruppe-logistik"', 'id="pc-steps-title"', 'id="pc-faq-title"', 'id="pc-service-title"', 'class="pc-footer"',
   ];
   let letzte = -1;
   for (const m of marken) {
@@ -142,14 +144,19 @@ test("4 — Seitengerüst: Kopf, Hero, Ergebnisse, Ablauf, Plattform, FAQ mit Se
     assert.ok(i > letzte, `${m} fehlt oder steht an falscher Stelle`);
     letzte = i;
   }
-  // Premium-Redesign Konzept A (Betreiberentscheidung 2026-10-27): zwei gleichwertige Zeilen ohne hellere
-  // Akzentzeile, keine Versal-Augenbraue; darunter die Nachtkarte mit ihrer Legende.
-  assert.match(HTML_OHNE, /<h1 class="pc-display" id="pc-hero-title"><span class="pc-display-line">Versand für Unternehmen\.<\/span> <span class="pc-display-line">Einfach vergleichen\.<\/span><\/h1>/);
-  assert.doesNotMatch(HTML_OHNE, /pc-eyebrow|pc-display-line--soft/);
+  // G1 (Komplettabschluss 2026-10-27): ein Satz, der sagt, was das Produkt ist — wortgleich mit der Anmeldung
+  // (AUTH_TEXT, das bedingte Trennzeichen dort als \u00ad, hier als &shy;). Keine Versal-Augenbraue, keine
+  // Häkchenleiste; darunter die Nachtkarte mit ihrer Legende.
+  const { AUTH_TEXT } = await import(pathToFileURL(path.join(SRC, "utils", "authSeitenText.mjs")).href);
+  const titel = AUTH_TEXT.titel.replace("\u00ad", "&shy;");
+  assert.equal(titel, "Versand- und Logistik&shy;management für Unternehmen.");
+  assert.ok(HTML_OHNE.includes(`<h1 class="pc-display" id="pc-hero-title">${titel}</h1>`), "H1 weicht von der Anmeldung ab");
+  assert.doesNotMatch(HTML_OHNE, /pc-eyebrow|pc-display-line|pc-hero-points|pc-hero-body/);
   // Premium-Redesign (Betreiberentscheidung 2026-10-27): die Karte trägt die Einstiegswelle der Lichter (nachtkarte.css).
   assert.match(HTML_OHNE, /<div class="pc-hero-map-canvas nk-welle" id="pc-hero-map-canvas">\s*<img class="pc-hero-map-img" src="\.\.\/src\/assets\/illustrations\/nachtkarte-eu\.svg" alt="" width="536" height="497" decoding="async" \/>/);
   assert.match(HTML_OHNE, /<figcaption class="pc-hero-map-legend"><span class="pc-hero-map-dot" aria-hidden="true"><\/span>Versand ab Deutschland in die Länder der EU<\/figcaption>/);
-  assert.match(HTML_OHNE, /<p class="pc-lead">Mehrere Versanddienstleister auf einer Plattform: transparente Nettopreise für Ihre Sendung, effizient gebucht im Kundenbereich — mit persönlichem Ansprechpartner\.<\/p>/);
+  assert.match(HTML_OHNE, /<p class="pc-lead">Preise mehrerer Versanddienstleister vergleichen, Sendungen buchen und verfolgen, Bestand und Aufträge Ihres Lagers führen – in einem Kundenbereich, mit persönlichem Ansprechpartner\.<\/p>/);
+  assert.match(HTML, /<title>Versand- und Logistikmanagement für Unternehmen \| ConfidaraExpress<\/title>/);
   // Bereich 2 gibt es erst nach der ersten Berechnung: vorher steht dort nichts, auch keine Überschrift.
   assert.match(HTML_OHNE, /<div id="pc-results"><\/div>/);
   assert.doesNotMatch(HTML_OHNE, /id="pc-results-title"|id="pc-results-section"/);
@@ -183,10 +190,15 @@ test("6 — keine Versprechen ohne Beleg und keine Einkaufsquelle", () => {
     /jumingo|transglobal/i,
   ];
   for (const muster of verboten) assert.doesNotMatch(text, muster, String(muster));
-  // Die sechs Plattformvorteile stehen in Canonical §2.
-  for (const titel of ["Tarifvergleich", "Buchung", "Versanddokumente", "Tracking", "Rechnungen", "Adressbuch"]) {
-    assert.ok(HTML_OHNE.includes(`<h3 class="pc-feature-title">${titel}</h3>`), titel);
-  }
+  // Die sechs Plattformvorteile stehen in Canonical §2; dazu die Logistik (G1, D7: Lager- und Auftragsverwaltung
+  // sind aktiv, Canonical §12). In genau dieser Reihenfolge, je Gruppe unter ihrem Titel.
+  const titel = [...HTML_OHNE.matchAll(/<h3 class="pc-feature-title">([^<]+)<\/h3>/g)].map((m) => m[1]);
+  assert.deepEqual(titel, ["Tarifvergleich", "Buchung", "Versanddokumente", "Tracking", "Rechnungen", "Adressbuch",
+    "Artikel und Bestand", "Einbuchungen und Korrekturen", "Aufträge"]);
+  assert.ok(HTML_OHNE.indexOf('id="pc-gruppe-logistik"') > HTML_OHNE.indexOf("<h3 class=\"pc-feature-title\">Adressbuch</h3>"));
+  // Ehrlichkeitsgrenze (D6): Lager meint die Software für den EIGENEN Bestand — ConfidaraExpress lagert nicht ein.
+  assert.doesNotMatch(text, /Fulfillment|einlager|Einlagerung|Lagerhaltung für|lagern für Sie|wir lagern|Kommissionier/i);
+  assert.match(text, /Bestand Ihres eigenen Lagers/);
   // Kontakt aus der bestehenden Quelle (seit Schritt 3 src/config/companyProfile.js, die das Impressum liest).
   const profil = lies(path.join(SRC, "config", "companyProfile.js"));
   assert.ok(profil.includes("support@confidaraexpress.de") && HTML_OHNE.includes("support@confidaraexpress.de"));
@@ -199,14 +211,14 @@ test("6 — keine Versprechen ohne Beleg und keine Einkaufsquelle", () => {
 
 function skelettVorab() {
   const start = HTML_OHNE.indexOf('<div class="pc-form pc-form--skeleton" aria-hidden="true" inert>');
-  return HTML_OHNE.slice(start, HTML_OHNE.indexOf('<div class="pc-hero-body">'));
+  return HTML_OHNE.slice(start, HTML_OHNE.indexOf('<div id="pc-results">'));
 }
 
 test("7 — Formularskelett: dieselben Zeilen und Felder wie die Insel, nicht bedienbar, ohne reservierte Höhe", () => {
   const app = lies(path.join(HIER, "PublicCalculatorApp.jsx"));
   const start = HTML_OHNE.indexOf('<div class="pc-form pc-form--skeleton" aria-hidden="true" inert>');
   assert.ok(start > HTML_OHNE.indexOf('id="pc-calculator"'), "Skelett fehlt oder steht nicht in #pc-calculator");
-  const skelett = HTML_OHNE.slice(start, HTML_OHNE.indexOf('<div class="pc-hero-body">'));
+  const skelett = HTML_OHNE.slice(start, HTML_OHNE.indexOf('<div id="pc-results">'));
   // Zeilen und Feldbeschriftungen in derselben Reihenfolge.
   const zeilen = (src, re) => [...src.matchAll(re)].map((m) => m[1]);
   const appZeilen = zeilen(app, /<span className="pc-row-label" id="[^"]+">([^<]+)<\/span>/g);
@@ -255,4 +267,26 @@ test("7 — Formularskelett: dieselben Zeilen und Felder wie die Insel, nicht be
   assert.ok(wurzel, ".pc-calculator-root fehlt");
   assert.doesNotMatch(wurzel[1], /min-height|height:/);
   assert.doesNotMatch(css, /\.pc-calculator-root \{[^}]*min-height/);
+});
+
+test("8 — Kundenbereich-Vorschau (G3): ein Link auf die Demo, innen aria-hidden, ohne Bild und Skript, gekennzeichnet", () => {
+  const start = HTML_OHNE.indexOf('<figure class="pc-vorschau-figur">');
+  const ende = HTML_OHNE.indexOf("</figure>", start);
+  assert.ok(start > 0 && ende > start, "Vorschau fehlt");
+  const figur = HTML_OHNE.slice(start, ende);
+  // Genau ein Link, auf die bestehende Demo der Hauptdomain — keine zweite Demo.
+  assert.deepEqual([...figur.matchAll(/<a [^>]*href="([^"]+)"/g)].map((m) => m[1]), ["https://confidaraexpress.de/demo"]);
+  assert.match(figur, /<a class="pc-vorschau" href="https:\/\/confidaraexpress\.de\/demo" aria-describedby="pc-vorschau-hinweis">\s*<span class="pc-sr-only">Kundenbereich-Demo öffnen<\/span>\s*<span class="pcv" aria-hidden="true">/);
+  assert.match(figur, /<figcaption class="pc-vorschau-hinweis" id="pc-vorschau-hinweis">Beispielansicht mit erfundenen Daten/);
+  // Keine Bilder, keine Bedienelemente, keine Inline-Stile, keine Einkaufsquelle in der Miniatur.
+  assert.doesNotMatch(figur, /<img|<svg|<button|<input|style=|tabindex/);
+  assert.doesNotMatch(figur, /jumingo|transglobal/i);
+  // Die Miniatur skaliert als Ganzes mit ihrer Breite (cqw) — kein Bild, das nachlädt, kein Layoutsprung.
+  const css = lies(path.join(SRC, "styles", "public-calculator.css")).replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.match(css, /\.pc-vorschau \{[^}]*container: pc-vorschau \/ inline-size;/);
+  assert.match(css, /\.pcv \{[^}]*font-size: [\d.]+cqw;/);
+  // Bewegung nur als Antwort auf Zeigen und Fokus und nur ohne Wunsch nach reduzierter Bewegung.
+  const bewegung = css.slice(css.indexOf("@media (prefers-reduced-motion: no-preference)"));
+  assert.match(bewegung, /\.pc-vorschau \{\s*transition:/);
+  assert.doesNotMatch(css, /\.pcv[\w-]* \{[^}]*animation/);
 });

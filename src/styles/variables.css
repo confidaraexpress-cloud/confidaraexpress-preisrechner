@@ -506,37 +506,6 @@
   --ce-kpi-label: #4a5670;                            /* weiß 7,35:1 */
   --ce-kpi-context: #5a6780;                          /* weiß 5,70:1 */
 
-  /* ── Carrier-Bereich der Übersicht ───────────────────────────────────────
-     Betreiberentscheidung 2026-10-04: der Carrier-Bereich trägt wieder die
-     Optik unmittelbar vor dem Redesign (Stand 2c4cf1b) — Werte unverändert
-     übernommen. Eigene Familie für GENAU diesen Block: Navy als Verbindung zur
-     Sidebar, sehr schwache Routenlinien, weiße Logo-Kacheln, Aktion hell auf
-     Navy. Weiß auf der Fläche ≥ 14:1, die gedämpfte Schrift ≥ 7:1. */
-  --ce-net-surface: linear-gradient(
-    148deg,
-    #1c2650 0%,
-    #17203f 40%,
-    #121a33 100%);
-  --ce-net-border: rgba(122, 92, 230, 0.24);
-  --ce-net-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.09),
-    0 28px 54px -28px rgba(17, 26, 51, 0.55);
-  --ce-net-ink: #ffffff;
-  --ce-net-ink-soft: rgba(226, 232, 246, 0.76);
-  /* Logofläche: nahezu weiß, damit die Carrier-Marken exakt in ihren eigenen
-     Farben stehen (keine Verfremdung durch Tönung oder Mischung). */
-  --ce-net-chip: rgba(255, 255, 255, 0.95);
-  --ce-net-chip-hover: #ffffff;
-  --ce-net-chip-shadow: 0 4px 14px -6px rgba(6, 10, 24, 0.5);
-  /* Dekorative Routenlinien — bewusst sehr schwach, statisch, ohne Filter. */
-  --ce-net-line: rgba(159, 180, 255, 0.16);
-  --ce-net-node: rgba(159, 180, 255, 0.3);
-  /* Die Vergleichsaktion auf dunklem Grund. */
-  --ce-net-cta-face: rgba(255, 255, 255, 0.1);
-  --ce-net-cta-face-hover: rgba(255, 255, 255, 0.16);
-  --ce-net-cta-edge: rgba(255, 255, 255, 0.24);
-  --ce-net-focus: #9fb4ff;
-
   /* ── AUTH Premium-Tokens (isoliertes --auth-* Präfix) ─────────────────────
      Unverändert: der Auth-Bereich ist vom Redesign ausdrücklich ausgenommen. */
   --auth-card-fill: rgba(8, 14, 32, 0.55);
@@ -651,14 +620,18 @@
   --ce-color-text-muted: #5f6b83;       /* 5,36:1 */
   --ce-color-text-placeholder: #697590; /* 4,62:1 */
 
-  /* ── Flächen: weiße Arbeitsfläche statt Werkbankgrau ── */
+  /* ── Flächen ──
+     Betreiberentscheidung G4 (2026-10-27, ersetzt „Weiß auf Weiß“ im Kundenbereich): die Arbeitsfläche der
+     App-Shell ist Papier, Inhalte stehen auf weißen Blättern mit Haarlinie — Materialhierarchie ohne neue
+     Farbe. Die Seitengründe (Preisrechner, Anmeldung) bleiben weiß bzw. Navy. */
   --ce-color-bg-canvas-top: #ffffff;
   --ce-color-bg-canvas-mid: #ffffff;
   --ce-color-bg-canvas-bottom: #ffffff;
   --ce-color-bg-atmosphere: none;
   --ce-app-bg: none;
-  --ce-app-bg-mid: #ffffff;
-  --ce-app-bg-bottom: #ffffff;
+  --ce-pr-papier: #f4f6fa;              /* Text primär 16,9:1, sekundär 6,45:1, gedämpft 5,0:1 */
+  --ce-app-bg-mid: var(--ce-pr-papier);
+  --ce-app-bg-bottom: var(--ce-pr-papier);
   --ce-app-divider: #e6e9f0;
   --ce-color-surface: #ffffff;
   --ce-color-surface-subtle: #f7f8fb;
@@ -688,36 +661,41 @@
   --ce-sidebar-section: #8c99be;        /* 6,28:1 */
   --ce-sidebar-scroll-thumb: rgba(255, 255, 255, 0.14);
   --ce-sidebar-scroll-thumb-hover: rgba(255, 255, 255, 0.26);
+  /* Breite in rem statt fest 248 px (Audit B.3): sie wächst mit der Schriftgröße des Browsers, damit kein Eintrag
+     abgeschnitten wird — höchstens ein Drittel des Fensters. Bei 16 px Grundgröße unverändert 248 px. */
+  --sidebar-width: min(15.5rem, 32vw);
 
-  /* ── Typografie (Betreiberentscheidung 2026-10-27, ersetzt E4 im Bereich) ──
+  /* ── Typografie (Betreiberentscheidung 2026-10-27, ersetzt E4 im Bereich; Skala G-Typo 2026-10-27) ──
      Instrument Sans für alles: eine Familie mit innerer Spannung über Gewicht (400–700) und Breite.
-     Titel 650 mit enger Laufweite, Text 400, Beschriftungen 500, Zahlen tabellarisch. Größen in rem (E13);
-     bei 16 px Grundgröße ganze Pixel. Admin und Partner lesen diesen Block nie (DM Sans, höchstens 600). */
+     Skala nach Rollen (Audit C): Inhaltstext 16, Tabellenzellen und Listenzeilen 15, Beschriftungen 14,
+     Tabellenköpfe, Status und Kleinstschrift 13 — nichts Lesbares unter 13. Titel 600 mit offener Laufweite
+     (−0,02 em statt −0,03), Zahlen tabellarisch. Größen in rem (E13), bei 16 px Grundgröße ganze Pixel; sie
+     wachsen mit der Schriftgröße des Browsers. Admin und Partner lesen diesen Block nie (DM Sans, höchstens 600). */
   --ce-font-sans: 'Instrument Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --ce-font-numeric: 'Instrument Sans', system-ui, sans-serif;
   --ce-pr-font-display: 'Instrument Sans', system-ui, sans-serif;
-  --ce-pr-display-stretch: 92%;         /* Display und Seitentitel: leicht schmaler, mehr Spannung */
+  --ce-pr-display-stretch: 96%;         /* Display und Seitentitel: kaum schmaler — präzise statt gepresst */
   --ce-text-display-xl-size: 2.5rem;    --ce-text-display-xl-size-mobile: 2rem;      --ce-text-display-xl-line: 1.1;
-  --ce-text-display-xl-weight: 650;     --ce-text-display-xl-tracking: -0.032em;
+  --ce-text-display-xl-weight: 600;     --ce-text-display-xl-tracking: -0.024em;
   --ce-text-display-l-size: 2.25rem;    --ce-text-display-l-size-mobile: 1.75rem;    --ce-text-display-l-line: 1.1667;
-  --ce-text-display-l-weight: 650;      --ce-text-display-l-tracking: -0.03em;
-  --ce-text-title-page-size: 2.25rem;   --ce-text-title-page-size-mobile: 1.75rem;   --ce-text-title-page-weight: 650;
-  --ce-text-title-page-line: 1.1667;    --ce-text-title-page-line-mobile: 1.2143;    --ce-text-title-page-tracking: -0.03em;
-  --ce-text-title-page-tracking-mobile: -0.025em;
+  --ce-text-display-l-weight: 600;      --ce-text-display-l-tracking: -0.02em;
+  --ce-text-title-page-size: 2.25rem;   --ce-text-title-page-size-mobile: 1.75rem;   --ce-text-title-page-weight: 600;
+  --ce-text-title-page-line: 1.1667;    --ce-text-title-page-line-mobile: 1.2143;    --ce-text-title-page-tracking: -0.02em;
+  --ce-text-title-page-tracking-mobile: -0.018em;
   --ce-text-title-section-size: 1.375rem; --ce-text-title-section-size-mobile: 1.25rem; --ce-text-title-section-line: 1.3636;
-  --ce-text-title-section-weight: 620;  --ce-text-title-section-tracking: -0.016em;
-  --ce-text-title-card-size: 1.0625rem; --ce-text-title-card-size-mobile: 1.0625rem; --ce-text-title-card-line: 1.4118;
-  --ce-text-title-card-weight: 600;     --ce-text-title-card-tracking: -0.006em;
+  --ce-text-title-section-weight: 600;  --ce-text-title-section-tracking: -0.012em;
+  --ce-text-title-card-size: 1.125rem;  --ce-text-title-card-size-mobile: 1.0625rem; --ce-text-title-card-line: 1.4444;
+  --ce-text-title-card-weight: 600;     --ce-text-title-card-tracking: -0.008em;
   --ce-text-body-l-size: 1.0625rem;     --ce-text-body-l-size-mobile: 1rem;          --ce-text-body-l-line: 1.5294;
   --ce-text-body-size: 1rem;            --ce-text-body-size-mobile: 1rem;            --ce-text-body-line: 1.5;
-  --ce-text-body-s-size: 0.875rem;      --ce-text-body-s-size-mobile: 0.875rem;      --ce-text-body-s-line: 1.5714;
+  --ce-text-body-s-size: 0.9375rem;     --ce-text-body-s-size-mobile: 0.9375rem;     --ce-text-body-s-line: 1.5333;
   --ce-text-label-size: 0.875rem;       --ce-text-label-size-mobile: 0.875rem;       --ce-text-label-line: 1.4286;
   --ce-text-label-tracking: 0.002em;
-  --ce-text-micro-size: 0.75rem;        --ce-text-micro-size-mobile: 0.75rem;        --ce-text-micro-tracking: 0.01em;
+  --ce-text-micro-size: 0.8125rem;      --ce-text-micro-size-mobile: 0.8125rem;      --ce-text-micro-tracking: 0.006em;
   --ce-text-numeric-display-size: 2.5rem; --ce-text-numeric-display-size-mobile: 2rem; --ce-text-numeric-display-line: 1.1;
-  --ce-text-numeric-display-weight: 650; --ce-text-numeric-display-tracking: -0.03em;
+  --ce-text-numeric-display-weight: 600; --ce-text-numeric-display-tracking: -0.024em;
   --ce-text-caption-size: 0.8125rem;    --ce-text-caption-line: 1.5385;
-  --ce-text-badge-size: 0.75rem;        --ce-text-badge-weight: 600;                 --ce-text-badge-line: 1.3333;
+  --ce-text-badge-size: 0.8125rem;      --ce-text-badge-weight: 600;                 --ce-text-badge-line: 1.3846;
   --ce-text-button-size: 0.9375rem;     --ce-text-button-line: 1.3333;               --ce-text-button-weight: 600;
   --ce-text-nav-size: 0.9375rem;
   --ce-sidebar-nav-size: 0.9375rem;
@@ -766,8 +744,6 @@
   --ce-pr-kraft-links: #d6b386;
   --ce-pr-kraft-rechts: #c29a66;
   --ce-pr-kraft-kante: rgba(120, 82, 40, 0.30);
-  --ce-pr-kraft-beispiel: rgba(13, 20, 48, 0.035);
-  --ce-pr-kraft-beispiel-kante: #b4bccb;
   --ce-pr-band: #1f55f0;
   --ce-pr-band-seite: #0a3fcf;
   --ce-pr-etikett: #ffffff;

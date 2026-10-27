@@ -2,19 +2,24 @@
    ÖFFENTLICHE KUNDENBEREICH-DEMO (Betreiberentscheidung 2026-10-27)
    ───────────────────────────────────────────────────────────────────────────
    Nur in der Demo-Welt unter /demo: <html data-ce-demo> setzt demo/DemoApp.jsx.
-   Die Demo-Leiste steht fest am unteren Rand jeder Seite — Navy wie die
-   Seitenleiste, darüber der Markenstreifen. Sie verdeckt nichts: der Inhalt
-   bekommt ihre Höhe als unteren Abstand. Werte: --ce-demo-* (variables.css).
+   Die Demo-Leiste steht auf jeder Seite unten — Navy wie die Seitenleiste, oben
+   der Markenstreifen; auf dem Desktop schwebend rechts der Seitenleiste. Sie
+   verdeckt nichts: der Inhalt bekommt ihre Höhe als unteren Abstand. Werte:
+   --ce-demo-* (variables.css).
    ═══════════════════════════════════════════════════════════════════════════ */
 
-[data-ce-demo] body { padding-bottom: calc(var(--demo-leiste-hoehe, 72px) + env(safe-area-inset-bottom, 0px)); }
+[data-ce-demo] body { padding-bottom: calc(var(--demo-leiste-hoehe, 5rem) + env(safe-area-inset-bottom, 0px)); }
 
+/* Kompakt (Audit D4, 2026-10-27): auf dem Desktop schwebt die Leiste rechts der Seitenleiste — sie verdeckt weder
+   „Abmelden“ noch den Fuß der Navigation — und steht in einer Zeile: Marke, Erklärung (ab 1280 px), zwei Aktionen.
+   Mobil bleibt sie am unteren Rand in voller Breite. Kennzeichnung und Aktionen sind unverändert. */
 [data-ce-demo] .demo-leiste {
   position: fixed;
   z-index: 400;
   left: 0;
   right: 0;
   bottom: 0;
+  overflow: hidden;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   background: var(--ce-demo-flaeche);
   color: var(--ce-demo-text);
@@ -31,26 +36,25 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px 24px;
-  max-width: 1440px;
-  min-height: 69px;
+  gap: 8px 20px;
+  min-height: 52px;
   margin: 0 auto;
-  padding: 10px 24px;
+  padding: 7px 8px 7px 18px;
 }
-[data-ce-demo] .demo-leiste-text { display: grid; gap: 2px; min-width: 0; margin: 0; }
-[data-ce-demo] .demo-leiste-marke { font-size: 0.9375rem; font-weight: 650; letter-spacing: -0.005em; }
+[data-ce-demo] .demo-leiste-text { display: flex; align-items: baseline; gap: 4px 12px; min-width: 0; margin: 0; flex-wrap: wrap; }
+[data-ce-demo] .demo-leiste-marke { font-size: 0.875rem; font-weight: 650; letter-spacing: -0.005em; white-space: nowrap; }
 [data-ce-demo] .demo-leiste-zusatz { font-size: 0.8125rem; line-height: 1.4; color: var(--ce-demo-text-2); }
-[data-ce-demo] .demo-leiste-aktionen { display: flex; flex: none; flex-wrap: wrap; gap: 8px; }
+[data-ce-demo] .demo-leiste-aktionen { display: flex; flex: none; flex-wrap: wrap; gap: 6px; }
 [data-ce-demo] .demo-leiste-knopf {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
-  padding: 0 16px;
+  min-height: 36px;
+  padding: 0 14px;
   border: 1px solid var(--ce-demo-linie);
   border-radius: var(--ce-radius-md);
   color: var(--ce-demo-text);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
@@ -60,13 +64,28 @@
 [data-ce-demo] .demo-leiste-knopf:focus-visible { outline: 2px solid var(--ce-demo-fokus); outline-offset: 2px; }
 [data-ce-demo] .demo-leiste-knopf--primaer { border-color: var(--ce-demo-knopf); background: var(--ce-demo-knopf); color: var(--ce-demo-knopf-text); }
 [data-ce-demo] .demo-leiste-knopf--primaer:hover { border-color: var(--ce-demo-knopf-hover); background: var(--ce-demo-knopf-hover); }
-
-@media (max-width: 720px) {
-  [data-ce-demo] { --demo-leiste-hoehe: 112px; }
-  [data-ce-demo] .demo-leiste-innen { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 16px; }
+@media (pointer: coarse) {
+  [data-ce-demo] .demo-leiste-knopf { min-height: 44px; }
+}
+@media (min-width: 861px) {
+  [data-ce-demo] { --demo-leiste-hoehe: 5.25rem; }
+  [data-ce-demo] .demo-leiste {
+    left: calc(var(--sidebar-width, 248px) + 16px);
+    right: 16px;
+    bottom: 16px;
+    border-radius: var(--ce-radius-lg);
+  }
+}
+/* In em: bei großer Browserschrift (Einstellung des Nutzers) bleibt die Leiste kompakt — der Zusatz erscheint erst,
+   wenn genug Platz für eine Zeile ist. */
+@media (max-width: 79.9375em) {
   [data-ce-demo] .demo-leiste-zusatz { display: none; }
+}
+@media (max-width: 720px) {
+  [data-ce-demo] { --demo-leiste-hoehe: 6.25rem; }
+  [data-ce-demo] .demo-leiste-innen { flex-direction: column; align-items: stretch; gap: 6px; padding: 9px 12px; }
   [data-ce-demo] .demo-leiste-aktionen { display: grid; grid-template-columns: 1fr 1fr; }
-  [data-ce-demo] .demo-leiste-knopf { padding: 0 10px; font-size: 0.8125rem; }
+  [data-ce-demo] .demo-leiste-knopf { padding: 0 10px; }
 }
 @media (prefers-reduced-motion: reduce) { [data-ce-demo] .demo-leiste-knopf { transition: none; } }
 

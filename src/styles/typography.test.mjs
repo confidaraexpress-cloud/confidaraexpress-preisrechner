@@ -398,12 +398,15 @@ test("10 — Zahlenspalten in Tabellen sind rechtsbündig", () => {
     /\.inv-table th:nth-child\(3\), \.inv-table td:nth-child\(3\) \{ text-align: right; \}/,
     "die Betragsspalte der Kundenrechnungen fehlt");
 
-  // Die Geldspalten der Haupttabellen tragen den Marker auf Kopf UND Zelle.
+  // Die Geldspalten der Haupttabellen tragen den Marker auf Kopf UND Zelle. Sendungen (Audit B.4, Komplettabschluss
+  // 2026-10-27): Sendung · Empfänger · Versand (Carrier, Dienst und Gewicht) · Status · Preis · Aktionen — das
+  // Gewicht steht in der Versandzelle, die einzige Zahlenspalte ist der Preis.
   const sendungen = read("../components/dashboard/ShipmentsList.jsx");
-  assert.match(sendungen, /<th[^>]*className="ce-num"[^>]*>Gewicht<\/th><th[^>]*className="ce-num"[^>]*>Preis<\/th>/,
-    "Gewicht/Preis müssen als Zahlenspalten markiert sein");
-  assert.equal((sendungen.match(/<td className="[^"]*ce-num"/g) || []).length, 2,
-    "genau die beiden Zahlenzellen tragen den Marker");
+  assert.match(sendungen, /<th scope="col">Status<\/th>\s*<th[^>]*className="ce-num"[^>]*>Preis<\/th>/,
+    "Preis muss als Zahlenspalte markiert sein");
+  assert.doesNotMatch(sendungen, /<th[^>]*>Gewicht<\/th>/, "das Gewicht steht in der Versandzelle");
+  assert.equal((sendungen.match(/<td className="[^"]*ce-num"/g) || []).length, 1,
+    "genau die Preiszelle trägt den Marker");
 
   const admShip = read("../pages/admin/AdminShipmentsPage.jsx");
   assert.match(admShip, /<th scope="col" className="adm-num">Preis<\/th>/);

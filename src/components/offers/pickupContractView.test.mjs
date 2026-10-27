@@ -152,10 +152,10 @@ test("(7) das Fenster hat Vorrang vor der „bereit ab\"-Zeit", () => {
   const iAb      = helfer.indexOf("collectionReadyFrom");
   assert.ok(iFenster !== -1 && iAb !== -1, `${HELFER} kennt eine der beiden Formen nicht`);
   assert.ok(iFenster < iAb, `${HELFER} prueft die „bereit ab\"-Zeit VOR dem Fenster`);
-  for (const datei of [SUMMARY, LIVE]) {
-    assert.match(ohneKommentar(lies(datei)), /pickupSummaryOf\(tariff, pickupWindow\)/,
-      `${datei} liest den gemeinsamen Abholvertrag nicht`);
-  }
+  assert.match(ohneKommentar(lies(LIVE)), /pickupSummaryOf\(tariff, pickupWindow\)/,
+    `${LIVE} liest den gemeinsamen Abholvertrag nicht`);
+  // G6/M9 (2026-10-27): das ausgewählte Angebot zeigt die Abholung nicht mehr — sie steht einmal, im Beleg.
+  assert.ok(!/pickupSummaryOf/.test(ohneKommentar(lies(SUMMARY))), `${SUMMARY} wiederholt die Abholung`);
 });
 
 test("(8) das Abholdatum wird weiterhin zuerst aus `pickupDate` gelesen", () => {
@@ -188,15 +188,16 @@ test("(9) Timeline UND Detailbereich der Karte lesen denselben Helfer", () => {
   assert.ok(helfer.includes("collectionDate"), `${HELFER} zeigt den Abholtag nicht`);
   assert.ok(helfer.includes("collectionReadyFrom"), `${HELFER} zeigt die Abholzeit nicht`);
   assert.ok(helfer.includes("bereit ab"), `${HELFER} benennt die „bereit ab\"-Zeit nicht`);
-  // TG22 Golden Offer Contract: ausgewähltes Angebot und Live-Leiste lesen DENSELBEN Vertrag wie die
-  // Karte — keine eigene Ableitung aus den Rohfeldern mehr.
+  // TG22 Golden Offer Contract: die Live-Leiste (der Beleg) liest DENSELBEN Vertrag wie die Karte — keine eigene
+  // Ableitung aus den Rohfeldern. Das ausgewählte Angebot zeigt die Abholung seit G6/M9 (2026-10-27) nicht mehr.
+  const live = ohneKommentar(lies(LIVE));
+  assert.ok(/from "\.\.\/\.\.\/utils\/pickupContractView\.mjs"/.test(live), `${LIVE} importiert den Helfer nicht`);
+  assert.ok(live.includes("pickupSummaryOf(tariff, pickupWindow)"), `${LIVE} liest den Abholvertrag nicht`);
   for (const datei of [SUMMARY, LIVE]) {
-    const code = ohneKommentar(lies(datei));
-    assert.ok(/from "\.\.\/\.\.\/utils\/pickupContractView\.mjs"/.test(code), `${datei} importiert den Helfer nicht`);
-    assert.ok(code.includes("pickupSummaryOf(tariff, pickupWindow)"), `${datei} liest den Abholvertrag nicht`);
-    assert.ok(!/collectionReadyFrom|collectionDate|pickupTimeFrom|pickupTimeUntil/.test(code),
+    assert.ok(!/collectionReadyFrom|collectionDate|pickupTimeFrom|pickupTimeUntil/.test(ohneKommentar(lies(datei))),
       `${datei} liest Abholfelder wieder direkt statt ueber den Helfer`);
   }
+  assert.ok(!/pickupContractView/.test(ohneKommentar(lies(SUMMARY))), `${SUMMARY} wiederholt die Abholung`);
 });
 
 test("(11) Buchungsflächen: ein gewähltes Fenster gilt nur, wo das Angebot ein Fenster trägt", () => {
@@ -282,7 +283,7 @@ test("(13) die Aussage ist neutral: kein Grund, kein Wunschtag, kein Anbieter", 
   }
 });
 
-test("(14) alle drei Flaechen zeigen die Verschiebung — ueber denselben Helfer", () => {
+test("(14) Karte und Beleg zeigen die Verschiebung — ueber denselben Helfer", () => {
   // Die Zusammenfassung reicht sie durch, damit Karte und Buchungsflaechen nicht auseinanderlaufen.
   assert.equal(pickupSummaryOf(VERSCHOBEN, null).dayAdjusted, true);
   assert.equal(pickupSummaryOf(TG_PICKUP, null).dayAdjusted, false);
@@ -295,7 +296,8 @@ test("(14) alle drei Flaechen zeigen die Verschiebung — ueber denselben Helfer
   assert.ok(start.includes("pickupAdjustedNote(abholung)"), "die Timeline zeigt den fruehesten Abholtag nicht");
   const details = karte.slice(karte.indexOf("function DetailsPanel"), karte.indexOf("function OfferCardBase"));
   assert.ok(details.includes("pickupDayLabel(abholung)"), "der Detailbereich beschriftet den Tag nicht neu");
-  assert.ok(ohneKommentar(lies(SUMMARY)).includes("pickupDayLabel(abholung"), `${SUMMARY} ohne Hinweis`);
+  // G6/M9 (2026-10-27): das ausgewählte Angebot zeigt den Abholtag nicht mehr — der Beleg trägt den Hinweis.
+  assert.ok(!/pickupDayLabel|pickupAdjustedNote/.test(ohneKommentar(lies(SUMMARY))), `${SUMMARY} wiederholt die Abholung`);
   assert.ok(ohneKommentar(lies(LIVE)).includes("pickupAdjustedNote(abholung)"), `${LIVE} ohne Hinweis`);
 
   // Die Formulierung steht AUSSCHLIESSLICH im Helfer — keine Flaeche schreibt sie selbst.

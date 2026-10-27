@@ -339,8 +339,8 @@ test("E — Privatadresse: die Buchungsseite zeigt die Prognose; Wahl der Liefer
   assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-label")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-val")), `${lang(MO_MIN)} – ${lang(MO_MAX)}`);
   assert.equal(await page.locator(".blsum-delivery .blsum-sub").count(), 0, "eine Uhrzeit auf der Buchungsseite");
-  assert.equal(await inhalt(page.locator(".offsum-fact dt").first()), "Voraussichtliche Zustellung");
-  assert.equal(await inhalt(page.locator(".offsum-fact dd").first()), `${lang(MO_MIN)} – ${lang(MO_MAX)}`);
+  // G6/M9 (2026-10-27): die Zustellung steht einmal, im Beleg — das ausgewählte Angebot wiederholt sie nicht.
+  assert.equal(await page.locator(".offsum-fact, .offsum-facts").count(), 0);
   await waehleLieferadresse(page, true);
   await warteAufText(page, ".blsum-price-gross", "18,94");
   assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-val")), `${lang(MO_MIN)} – ${lang(MO_MAX)}`,

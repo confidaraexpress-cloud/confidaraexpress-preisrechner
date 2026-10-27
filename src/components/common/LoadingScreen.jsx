@@ -7,13 +7,16 @@ import { BrandLogo } from "../ui/BrandLogo";
 
    Das Signet steht hier bewusst DEKORATIV (alt=""): der Container ist eine
    Live-Region, ein alt-Text würde bei jedem Routenwechsel den Markennamen
-   mit vorlesen. Die Statusmeldung darunter sagt bereits, was passiert. */
-export function LoadingScreen() {
+   mit vorlesen. Die Statusmeldung darunter sagt bereits, was passiert.
+
+   `dunkel`: auf den Anmeldeseiten mit statischem Gerüst (Navy-Bühne) derselbe dunkle Grund mit hellem Signet und
+   Ladepunkt — kein heller Zwischenbildschirm, während ein gespeichertes Token geprüft wird (App.jsx). */
+export function LoadingScreen({ dunkel = false }) {
   return (
-    <div className="loading-screen" role="status" aria-live="polite">
+    <div className={`loading-screen${dunkel ? " loading-screen--dunkel" : ""}`} role="status" aria-live="polite">
       <div className="text-center">
-        <BrandLogo variant="signet" tone="standard" alt="" className="loading-screen-mark" />
-        <div className="spinner spinner-dark" />
+        <BrandLogo variant="signet" tone={dunkel ? "reverse" : "standard"} alt="" className="loading-screen-mark" />
+        <div className={dunkel ? "spinner" : "spinner spinner-dark"} />
         <span className="sr-only">Die Seite wird geladen …</span>
       </div>
     </div>

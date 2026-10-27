@@ -11,8 +11,8 @@ import { AddressSuggestInput } from "../address/AddressSuggestInput";
 import { AddressStatusLine } from "../address/AddressStatusLine";
 import { useAddressValidation } from "../../hooks/useAddressValidation";
 import { applyAddressSuggestion, cityFromSuggestion, streetFieldHint } from "../../utils/addressValidationView.mjs";
-import { cityPlaceholder } from "../../utils/addressPlaceholders.mjs";
-import { postalCodeExample, postalCodeInputMode } from "../../utils/postalCode.mjs";
+import { cityPlaceholder, postalCodePlaceholder } from "../../utils/addressPlaceholders.mjs";
+import { postalCodeInputMode } from "../../utils/postalCode.mjs";
 import {
   ORDER_RECIPIENT_LIMITS, emptyOrderRecipient, postalCodeRequirement,
   validateOrderRecipient, normalizeOrderRecipient, reservationPreview,
@@ -313,7 +313,7 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
           {plzRegel.shown && (
             <Feld id="o-zip" label={plzRegel.required ? "PLZ *" : "PLZ"} value={recipient.postalCode} onChange={set("postalCode")}
                   error={errs.postalCode} maxLength={ORDER_RECIPIENT_LIMITS.postalCode} autoComplete="postal-code"
-                  placeholder={postalCodeExample(recipient.country)} inputMode={postalCodeInputMode(recipient.country)} />
+                  placeholder={postalCodePlaceholder(recipient.country)} inputMode={postalCodeInputMode(recipient.country)} />
           )}
           <AddressSuggestInput
             id="o-city" label="Ort" required

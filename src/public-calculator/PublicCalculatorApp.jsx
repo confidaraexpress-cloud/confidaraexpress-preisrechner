@@ -8,7 +8,7 @@ import { businessTodayISO } from "../utils/businessDate.mjs";
 import { requestPublicPriceQuote } from "../api/publicCalculatorApi.js";
 import {
   LOGIN_URL, OUTCOME, SLOW_HINT_AFTER_MS, buildPublicQuoteRequest, emptyPublicForm, localIsoDate, publicFormErrors,
-  quoteOutcomeFromError, quoteOutcomeFromResponse, requestKey,
+  ortBeispiel, quoteOutcomeFromError, quoteOutcomeFromResponse, requestKey,
 } from "../utils/publicCalculatorView.mjs";
 import { PublicResults } from "./PublicResults.jsx";
 import { NachtkartenRoute } from "./NachtkartenRoute.jsx";
@@ -225,6 +225,7 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost, ma
   const ortFelder = (seite) => {
     const land = `${seite}_country`, plz = `${seite}_zip`, stadt = `${seite}_city`;
     const liste = seite === "from" ? herkunftsliste : zielliste;
+    const ort = ortBeispiel(form[land], seite, postalCodeExample(form[land]));
     return (
       <div className="pc-row-fields pc-row-fields--place">
         <Field as="select" id={FELD_ID[land]} fieldKey={land} label="Land" value={form[land]} className="pc-field-country"
@@ -233,10 +234,10 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost, ma
         </Field>
         <Field id={FELD_ID[plz]} fieldKey={plz} label="PLZ" required value={form[plz]} error={fieldErrors[plz]}
           onChange={(v) => setze(plz, v)} autoComplete={seite === "from" ? "postal-code" : "off"}
-          maxLength={postalCodeMaxLength()} placeholder={beispiel(postalCodeExample(form[land]))} />
+          maxLength={postalCodeMaxLength()} placeholder={beispiel(ort.plz)} />
         <Field id={FELD_ID[stadt]} fieldKey={stadt} label="Stadt" required value={form[stadt]} error={fieldErrors[stadt]}
           onChange={(v) => setze(stadt, v)} autoComplete={seite === "from" ? "address-level2" : "off"} maxLength={100}
-          placeholder={seite === "from" ? "z. B. Stuttgart" : "z. B. Berlin"} />
+          placeholder={beispiel(ort.stadt)} />
       </div>
     );
   };

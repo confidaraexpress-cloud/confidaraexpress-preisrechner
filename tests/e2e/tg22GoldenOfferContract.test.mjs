@@ -236,7 +236,7 @@ async function zuSchritt2(page) {
 
 async function zuSchritt1(page) {
   await page.getByRole("button", { name: /Zurück zur Übersicht/ }).click();
-  await page.waitForSelector(".offsum-price", { timeout: 20000 });
+  await page.waitForSelector(".offsum-identity", { timeout: 20000 });
 }
 
 async function absichern(page) {
@@ -259,14 +259,19 @@ async function warteAufText(page, selektor, teil, timeout = 10000) {
   }, { s: selektor, t: teil }, { timeout });
 }
 
-/* Die drei Preisflächen als Text: Label, Brutto, Netto. */
+/* Die Preisflächen als Text: Label, Brutto, Netto — der Beleg (Live-Zusammenfassung) und die Sticky-Leiste. Seit
+   G6/M9 (2026-10-27) zeigt das ausgewählte Angebot keinen eigenen Preis; `ohneZweitpreis` hält das fest. */
 async function preisflaechen(page) {
   const lese = async (sel) => ((await page.locator(sel).count()) > 0 ? inhalt(page.locator(sel)) : null);
   return {
     kopf:    { label: await lese(".blsum-price-label"),  brutto: await lese(".blsum-price-gross"),  netto: await lese(".blsum-price-net") },
     sticky:  { label: await lese(".bsum-price-label"),   brutto: await lese(".bsum-price-gross"),   netto: await lese(".bsum-price-net") },
-    auswahl: { label: await lese(".offsum-price-label"), brutto: await lese(".offsum-price-gross"), netto: await lese(".offsum-price-net") },
   };
+}
+
+async function ohneZweitpreis(page) {
+  assert.equal(await page.locator(".offsum-price, .offsum-price-label, .offsum-price-net, .offsum-price-gross, .offsum-facts").count(), 0,
+    "das ausgewählte Angebot wiederholt Preis oder Termine (G6/M9: nur im Beleg)");
 }
 
 async function ohneEinkaufsspur(page, wo) {
@@ -342,7 +347,7 @@ test("A — Angebotsliste: TG22 und Vergleichsangebot in einer Sprache, Tarif-ID
   await page.close();
 });
 
-test("B — TG22 mit Absicherung: eine Preisprojektion auf Kopf, Sticky, Aufstellung und ausgewähltem Angebot", async () => {
+test("B — TG22 mit Absicherung: eine Preisprojektion auf Beleg, Sticky und Aufstellung (G6/M9)", async () => {
   const { page, fehler } = await neueSeite();
   const protokoll = neuesProtokoll();
   await setupRoutes(page, protokoll, { betrag: 28.24 });
@@ -351,17 +356,15 @@ test("B — TG22 mit Absicherung: eine Preisprojektion auf Kopf, Sticky, Aufstel
 
   // Schritt 1, ohne Absicherung: „Gesamt 15,33 netto / 18,24 brutto" — überall derselbe Stand.
   let f = await preisflaechen(page);
-  assert.deepEqual(f.auswahl, { label: "Gesamt", brutto: "18,24 € brutto", netto: "15,33 € netto" });
+  await ohneZweitpreis(page);
   assert.deepEqual(f.kopf, { label: "Gesamt", brutto: "18,24 € brutto", netto: "15,33 € netto" });
   assert.deepEqual(f.sticky, f.kopf, "die Sticky-Leiste weicht vom Kopf ab");
 
-  // Zustellung, Abholung, Label — dieselben Worte wie auf der Karte.
-  assert.equal(await inhalt(page.locator(".offsum-fact dt").first()), "Voraussichtliche Laufzeit");
-  assert.equal(await inhalt(page.locator(".offsum-fact dd").first()), "1–2 Tage");
+  // Zustellung, Abholung, Label — dieselben Worte wie auf der Karte, einmal im Beleg.
   assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-label")), "Voraussichtliche Laufzeit");
+  assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-val")), "1–2 Tage");
   assert.equal(await inhalt(page.locator(".bsum-delivery-label")), "Voraussichtliche Laufzeit");
-  assert.match(await inhalt(page.locator(".offsum-facts")), new RegExp(`Abholung\\s*${deDatum(ABHOLTAG)} · bereit ab 09:00 Uhr`));
-  assert.match(await inhalt(page.locator(".blsum-handover")), /bereit ab 09:00 Uhr/);
+  assert.match(await inhalt(page.locator(".blsum-handover")), new RegExp(`Abholung\\s*${deDatum(ABHOLTAG)}\\s*bereit ab 09:00 Uhr`));
   assert.equal(await page.locator(".pw-slider").count(), 0, "ein Angebot mit „bereit ab“ bekam einen Fensterregler");
   assert.equal(await page.locator("#booking-labelformat-toggle").count(), 0);
   assert.equal(await inhalt(page.locator("#booking-label-delivery-info")), "Versandlabel verfügbar als DIN A4 und Thermodruck");
@@ -382,13 +385,13 @@ test("B — TG22 mit Absicherung: eine Preisprojektion auf Kopf, Sticky, Aufstel
   assert.match(aufstellung, /Gesamtbetrag brutto\s*28,24 €/);
   assert.ok(await querUeberlauf(page) <= 0, "Schritt 2: horizontaler Überlauf");
 
-  // Zurück in Schritt 1: das ausgewählte Angebot zeigt DENSELBEN Gesamtbetrag wie Kopf und Sticky.
+  // Zurück in Schritt 1: Beleg und Sticky zeigen denselben Gesamtbetrag; der MwSt.-Hinweis steht am Preis im Beleg.
   await zuSchritt1(page);
   f = await preisflaechen(page);
-  assert.deepEqual(f.auswahl, { label: "Gesamt", brutto: "28,24 € brutto", netto: "25,33 € netto" });
-  assert.deepEqual(f.kopf, f.auswahl);
-  assert.deepEqual(f.sticky, f.auswahl);
-  assert.equal(await inhalt(page.locator(".offsum-price-vat")), "inkl. 19 % MwSt. auf Versand");
+  await ohneZweitpreis(page);
+  assert.deepEqual(f.kopf, { label: "Gesamt", brutto: "28,24 € brutto", netto: "25,33 € netto" });
+  assert.deepEqual(f.sticky, f.kopf);
+  assert.equal(await inhalt(page.locator("#booking-live-vat-note")), "inkl. 19 % MwSt. auf Versand");
 
   // Buchung: der Erfolgsbetrag kommt vom Server.
   await zuSchritt2(page);
@@ -500,7 +503,7 @@ test("D — TG-Preisänderung: geschlossen bleibt gesperrt; übernommen aktualis
   // Schritt 1: das ausgewählte Angebot zeigt den neuen Stand.
   await zuSchritt1(page);
   f = await preisflaechen(page);
-  assert.deepEqual(f.auswahl, { label: "Gesamt", brutto: "30,24 € brutto", netto: "27,01 € netto" });
+  assert.deepEqual(f.kopf, { label: "Gesamt", brutto: "30,24 € brutto", netto: "27,01 € netto" });
 
   // Ohne Absicherung gilt der NEUE Versandpreis — nicht der alte des Angebots.
   await zuSchritt2(page);
@@ -536,13 +539,12 @@ test("E — Vergleichsangebot versichert + Drift ohne Neubindung: nur „Angebot
 
   // Zustellung mit den Daten des Angebots, Abholfenster mit Regler.
   const zeitraum = `${deDatum(ZUSTELL_MIN)} – ${deDatum(ZUSTELL_MAX)}`;
-  assert.equal(await inhalt(page.locator(".offsum-fact dt").first()), "Zustellung");
-  assert.equal(await inhalt(page.locator(".offsum-fact dd").first()), `${zeitraum} · bis 18:00 Uhr`);
   assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-label")), "Zustellung");
   assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-val")), zeitraum);
+  assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-sub")), "bis 18:00 Uhr");
   assert.equal(await inhalt(page.locator(".bsum-delivery-label")), "Zustellung");
   await page.locator(".pw-slider").waitFor({ timeout: 10000 });
-  assert.match(await inhalt(page.locator(".offsum-facts")), /Abholung\s*\d{2}\.\d{2}\.\d{4} · \d{2}:\d{2}–\d{2}:\d{2} Uhr/);
+  assert.match(await inhalt(page.locator(".blsum-handover")), /Abholung\s*\d{2}\.\d{2}\.\d{4}\s*\d{2}:\d{2}–\d{2}:\d{2} Uhr/);
 
   // Versichert: Gesamt 19,84 / 17,39 netto aus der Serverantwort.
   await zuSchritt2(page);
@@ -628,7 +630,7 @@ for (const [name, viewport] of [["Tablet 834", { width: 834, height: 1112 }], ["
     assert.ok(await querUeberlauf(page) <= 0, "Angebote: horizontaler Überlauf");
     await waehle(page, TG22_KLASSISCH());
     assert.ok(await querUeberlauf(page) <= 0, "Schritt 1: horizontaler Überlauf");
-    assert.ok(await page.locator(".offsum-price-label").isVisible(), "das Preislabel des ausgewählten Angebots fehlt");
+    assert.ok(await page.locator(".blsum-price-label").isVisible(), "das Preislabel des Belegs fehlt");
     await zuSchritt2(page);
     await absichern(page);
     await warteAufText(page, ".blsum-price-gross", "28,24");

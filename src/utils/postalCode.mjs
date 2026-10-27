@@ -105,7 +105,12 @@ export function postalCodeMaxLength() {
 }
 
 // Short human hint, e.g. "Beispiel: 100096" — empty when no example is known.
+// Der Hinweis unter dem PLZ-Feld beschreibt das Format (Audit B.9, 2026-10-27): „Fünfstellige PLZ“ statt einer
+// fremden Beispielnummer — „Beispiel: 26133“ stand sonst unter einer bereits eingetragenen „70173“. Nur wo sich
+// das Format nicht in Worten sagen lässt (NL, GB, PL …), bleibt das Beispiel der Regeln.
 export function postalCodeHint(country) {
+  const worte = describePostalFormat(country);
+  if (worte) return `${worte.charAt(0).toUpperCase()}${worte.slice(1)} PLZ`;
   const ex = postalCodeExample(country);
   return ex ? `Beispiel: ${ex}` : "";
 }

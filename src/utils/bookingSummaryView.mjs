@@ -91,6 +91,19 @@ export function priceInfo(priceView) {
     : { confirmed: false, changed: false, label: "Versand", gross: v.baseShippingGross ?? null, net: v.baseShippingNet ?? null };
 }
 
+// ── MwSt.-Hinweis am Preis (Buchung, eine Stelle seit G6/M9 2026-10-27) ─────────
+// Der Satz, der bisher unter dem Preis des ausgewählten Angebots stand und jetzt im Beleg (Live-Zusammenfassung)
+// steht: mit Bruttobetrag „inkl. 19 % MwSt.“ — enthält der bestätigte Gesamtbetrag eine steuerfreie Absicherung,
+// „inkl. 19 % MwSt. auf Versand“ —, ohne Bruttobetrag „exkl. MwSt.“, ohne Betrag nichts. Ein Text, keine Rechnung.
+export function vatIncludedNote(priceView) {
+  const preis = priceInfo(priceView);
+  if (preis.gross != null) {
+    const mitAbsicherung = preis.confirmed && Number(priceView?.insuranceGross) > 0;
+    return mitAbsicherung ? "inkl. 19 % MwSt. auf Versand" : "inkl. 19 % MwSt.";
+  }
+  return preis.net != null ? "exkl. MwSt." : null;
+}
+
 // ── Zuschlag Privatadresse (TG22 Residential) ────────────────────────────────
 // Trägt der BESTÄTIGTE Preis einen Zuschlag für die Privatadresse, nennen die Zusammenfassungen
 // ihn als kurze Zeile unter dem Preis. Bezeichnung und Betrag stammen aus dem Serverbestandteil —

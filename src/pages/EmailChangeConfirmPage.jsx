@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import nachtkarte from "../assets/illustrations/nachtkarte-eu.svg";
 import { Icon } from "../components/ui/Icon";
-import { NachtkartenLichter } from "../components/ui/NachtkartenLichter";
+import { AuthKarte } from "../components/auth/AuthKarte";
+import { BrandLogo } from "../components/ui/BrandLogo";
 import { useAuth } from "../context/AuthContext";
 import { confirmEmailChange } from "../api/client";
 import { classifyEmailChangeConfirm, isRetryableConfirmState, hasUsableToken } from "../utils/emailChangeView.mjs";
@@ -101,12 +101,14 @@ export default function EmailChangeConfirmPage() {
 
   return (
     <div className="auth-page">
-      {/* Premium-Redesign (Konzept A): dieselbe Navy-Bühne mit Nachtkarte wie die Anmeldung. Dekorativ. */}
-      <div className="auth-karte" aria-hidden="true">
-        <img className="nk-welle" src={nachtkarte} alt="" width="536" height="497" decoding="async" />
-        <NachtkartenLichter />
-      </div>
-      <div className="auth-shell">
+      {/* Premium-Redesign (Abschnitt 5, 2026-10-27): dieselbe Bühne wie die Anmeldung — Marke und gerahmte Nachtkarte
+          links, das Blatt rechts. Die Überschrift der Seite ist der Titel des Blatts. */}
+      <div className="auth-shell auth-shell--bestaetigung">
+        <header className="auth-kopf">
+          <BrandLogo variant="lockup" tone="reverse" className="auth-brand" />
+        </header>
+        <AuthKarte />
+        <div className="auth-card-bereich">
         <div className="auth-card email-change-confirm">
           <div className="auth-card-top">
             <div className="auth-card-icon email-change-confirm-icon" aria-hidden="true">
@@ -136,6 +138,7 @@ export default function EmailChangeConfirmPage() {
               </button>
             </div>
           )}
+        </div>
         </div>
 
         <nav className="auth-legal" aria-label="Rechtliche Informationen">

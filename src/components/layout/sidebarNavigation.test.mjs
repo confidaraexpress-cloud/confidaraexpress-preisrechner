@@ -12,12 +12,15 @@
 //
 // Geprüft wird die fachliche Struktur, die diese Sidebar tragen soll, und die
 // Regeln, an denen sie schon einmal gescheitert ist:
-//   1. Reihenfolge und Zusammensetzung (Übersicht · Versand · Adressbuch ·
-//      Rechnungen · Lager & Aufträge · Konto · Abmelden)
+//   1. Reihenfolge und Zusammensetzung (Übersicht · Neue Sendung · Sendungen ·
+//      Versand · Adressbuch · Rechnungen · Lager & Aufträge · Konto · Abmelden;
+//      „Neue Sendung“ und „Sendungen“ seit G5, 2026-10-27, in der ersten Ebene)
 //   2. Rechnungen sind ein eigenständiger Hauptpunkt — aber die Route bleibt
 //   3. Keine Gruppe „Verwaltung", keine Gruppe „Abrechnung"
-//   4. Accordion: EIN Wert trägt den Klappzustand, nichts öffnet sich von
-//      selbst, der aktive Bereich wird nur markiert
+//   4. Accordion: EIN Wert trägt den Klappzustand; die Gruppe der aktuellen
+//      Seite öffnet sich (G5, 2026-10-27 — vorher öffnete sich nichts von
+//      selbst), ohne Effekt und ohne Speicher; „offen“ und „aktiv“ sind zwei
+//      getrennte Aussagen
 //   5. Keine zweite optische Sidebar (keine Box um eine Gruppe)
 //   6. Typografie zweier Ebenen, Trefferflächen, Icons, Fokus
 //   7. Weiches Öffnen ohne height:auto-Falle, ohne Bedienbarkeitsverlust
@@ -43,8 +46,12 @@ const regel = (sel) => {
 
 /* ══════════ 1 — Struktur und Reihenfolge ═════════════════════════════════ */
 
-test("1 — genau drei direkte Einträge und drei Gruppen", () => {
+test("1 — genau fünf direkte Einträge und drei Gruppen", () => {
   assert.ok(/OVERVIEW_ITEM = \{ id: "overview"/.test(code), "Übersicht fehlt als direkter Eintrag");
+  // G5 (Betreiberentscheidung 2026-10-27): die beiden häufigsten Ziele in der ersten Ebene — page-Werte unverändert.
+  assert.ok(/NEW_SHIPMENT_ITEM = \{ id: "new", label: "Neue Sendung"/.test(code), "Neue Sendung fehlt als direkter Eintrag");
+  assert.ok(/SHIPMENTS_ITEM = \{ id: "shipments", label: "Sendungen"/.test(code), "Sendungen fehlt als direkter Eintrag");
+  assert.equal((code.match(/<NavItem item=\{[A-Z_]+_ITEM\}/g) || []).length, 5, "es müssen genau fünf direkte Einträge sein");
   assert.ok(/ADDRESSBOOK_ITEM = \{ id: "addressbook"/.test(code), "Adressbuch fehlt als direkter Eintrag");
   assert.ok(/INVOICES_ITEM = \{ id: "invoices"/.test(code), "Rechnungen fehlt als direkter Eintrag");
   assert.equal((code.match(/<SidebarGroup/g) || []).length, 3, "es müssen genau drei Gruppen sein");
@@ -62,9 +69,10 @@ test("1 — genau drei direkte Einträge und drei Gruppen", () => {
   }
 });
 
-test("2 — die Reihenfolge ist Übersicht → Versand → Adressbuch → Rechnungen → Lager → Konto, Abmelden darunter", () => {
+test("2 — die Reihenfolge ist Übersicht → Neue Sendung → Sendungen → Versand → Adressbuch → Rechnungen → Lager → Konto, Abmelden darunter", () => {
   const nav = code.slice(code.indexOf('<nav className="pp-nav"'), code.indexOf("</nav>"));
-  const marken = ["OVERVIEW_ITEM", '"shipping"', "ADDRESSBOOK_ITEM", "INVOICES_ITEM", '"warehouse"', '"account"'];
+  const marken = ["OVERVIEW_ITEM", "NEW_SHIPMENT_ITEM", "SHIPMENTS_ITEM", '"shipping"', "ADDRESSBOOK_ITEM", "INVOICES_ITEM",
+    '"warehouse"', '"account"'];
   const pos = marken.map((m) => nav.indexOf(m));
   assert.ok(pos.every((v) => v >= 0), `nicht alle Bausteine gefunden: ${JSON.stringify(marken.map((m, i) => [m, pos[i]]))}`);
   assert.deepEqual([...pos].sort((a, b) => a - b), pos, "die Reihenfolge im <nav> stimmt nicht");
@@ -75,11 +83,13 @@ test("2 — die Reihenfolge ist Übersicht → Versand → Adressbuch → Rechnu
   assert.ok(nachNav.indexOf("handleLogout") > 0, "Abmelden fehlt unter der Navigation");
 });
 
-test("3 — der Versandblock trägt genau fünf Einträge in fester Reihenfolge", () => {
+test("3 — der Versandblock trägt genau drei Einträge in fester Reihenfolge", () => {
+  // G5 (2026-10-27): „Neue Sendung“ und „Sendungen“ stehen in der ersten Ebene; im Block bleiben Rechner,
+  // Entwürfe und Sendungsverfolgung.
   const start = code.indexOf('id: "shipping"');
   const block = code.slice(start, code.indexOf("],", start));
   const ids = [...block.matchAll(/id: "([a-z]+)"/g)].map((m) => m[1]).filter((id) => id !== "shipping");
-  assert.deepEqual(ids, ["new", "calculator", "drafts", "shipments", "tracking"],
+  assert.deepEqual(ids, ["calculator", "drafts", "tracking"],
     "Bestand oder Reihenfolge des Versandblocks stimmt nicht");
   // Rechnungen sind hier ausdrücklich NICHT mehr enthalten.
   assert.ok(!block.includes('"invoices"'), "Rechnungen dürfen nicht mehr im Versandblock stehen");
@@ -171,15 +181,17 @@ test("7 — ein Wert trägt den gesamten Klappzustand (Accordion by construction
     "das Accordion-Umschalten fehlt");
 });
 
-test("8 — die Hervorhebung folgt AUSSCHLIESSLICH dem Klappzustand", () => {
-  // Es öffnet sich nichts von selbst, UND aus der Route wird keine
-  // Gruppen-Hervorhebung abgeleitet: hervorgehoben ist, was der Nutzer geöffnet hat.
+test("8 — „offen“ folgt dem Klappzustand, „aktiv“ der Seite — zwei getrennte Aussagen (G5)", () => {
+  // G5 (Betreiberentscheidung 2026-10-27): die Gruppe der aktuellen Seite öffnet sich; klappt der Nutzer sie zu,
+  // trägt ihr Kopf weiter die Marke der Seite. Kein Effekt setzt den Klappzustand — der Abgleich mit der vorigen
+  // Seite läuft beim Rendern.
   assert.ok(!/useEffect/.test(code), "die Sidebar darf keinen Klappzustand per Effekt setzen");
-  assert.ok(!/activeGroupId/.test(code),
-    "aus dem page-Wert darf keine Gruppenmarkierung mehr abgeleitet werden");
-  assert.ok(!/pp-nav-group--active/.test(code), "die routenabhängige Gruppenklasse ist noch vorhanden");
-  assert.match(code, /"pp-nav-group" \+ \(open \? " pp-nav-group--open" : ""\)/,
-    "die Gruppenklasse hängt nicht allein am Klappzustand");
+  assert.match(code, /const aktiv = gruppeVonSeite\(page\) === group\.id;/, "die Seitenmarke der Gruppe fehlt");
+  assert.ok(!/pp-nav-group--active\b/.test(code), "die frühere routenabhängige Gruppenklasse ist wieder da");
+  assert.match(code, /"pp-nav-group" \+ \(open \? " pp-nav-group--open" : ""\) \+ \(aktiv \? " pp-nav-group--aktiv" : ""\)/,
+    "offen und aktiv sind nicht getrennt");
+  assert.match(code, /if \(seitenGruppe !== vorigeSeitenGruppe\) \{\s*setVorigeSeitenGruppe\(seitenGruppe\);\s*if \(seitenGruppe\) setOpenGroup\(seitenGruppe\);\s*\}/,
+    "die Gruppe der Seite öffnet sich nicht beim Seitenwechsel");
 
   // Kein Ruhezustand des Kopfes trägt eine eigene Fläche — Fläche gibt es nur
   // beim Hover. Den WERT prüfen, nicht per Lookahead überspringen.
@@ -214,7 +226,9 @@ test("9 — der Klappzustand wird nicht persistiert und überlebt keinen Reload"
   // wertet das Modul neu aus und setzt ihn zwangsläufig auf null.
   assert.match(code, /^let sitzungsOffeneGruppe = null;$/m,
     "der Sitzungswert fehlt oder startet nicht bei null");
-  assert.match(code, /useState\(sitzungsOffeneGruppe\)/, "der Startwert kommt nicht aus dem Sitzungswert");
+  // G5: der Startwert ist die Gruppe der aktuellen Seite (aus der Seite abgeleitet, nicht gespeichert), sonst der
+  // Sitzungswert dieser Seitenladung.
+  assert.match(code, /useState\(\(\) => seitenGruppe \?\? sitzungsOffeneGruppe\)/, "der Startwert folgt nicht Seite und Sitzungswert");
 });
 
 /* ══════════ 5 — Keine zweite optische Sidebar ═══════════════════════════ */
@@ -311,16 +325,16 @@ test("14 — unter 860 px erreicht jedes Bedienelement 44 px", () => {
     "die Klappköpfe fallen nicht unter die Touch-Regel");
 });
 
-test("15 — Icons nur an den sechs Hauptpunkten (E7), aus der eigenen Komponente; die Klappmarke ist eine CSS-Form", () => {
-  // Betreiberentscheidung 2026-10-27 (E7): Übersicht, Adressbuch, Rechnungen und die drei Gruppenköpfe tragen
-  // ein dekoratives Icon vor dem Text. Unterpunkte und sekundäre Aktionen bleiben reiner Text; lucide-react
-  // bleibt verboten.
+test("15 — Icons nur an den acht Hauptpunkten (E7, G5), aus der eigenen Komponente; die Klappmarke ist eine CSS-Form", () => {
+  // Betreiberentscheidung 2026-10-27 (E7): die Punkte der ersten Ebene — seit G5 (2026-10-27) Übersicht, Neue
+  // Sendung, Sendungen, Adressbuch, Rechnungen und die drei Gruppenköpfe — tragen ein dekoratives Icon vor dem
+  // Text. Unterpunkte und sekundäre Aktionen bleiben reiner Text; lucide-react bleibt verboten.
   assert.ok(!/from\s+["']lucide-react["']/.test(sidebar), "lucide-react darf nicht zurückkehren");
   assert.match(code, /import \{ Icon, ICON_SIZE \} from "\.\.\/ui\/Icon";/, "das Icon kommt nicht aus der eigenen Komponente");
   assert.equal((code.match(/<Icon\b/g) || []).length, 2, "genau zwei Renderstellen: Eintrag der ersten Ebene und Gruppenkopf");
   assert.equal((code.match(/<span className="pp-nav-icon" aria-hidden="true"><Icon /g) || []).length, 2,
     "jedes Icon sitzt dekorativ im festen Slot");
-  assert.equal((code.match(/icon: "/g) || []).length, 6, "Icons gehören genau an die sechs Hauptpunkte");
+  assert.equal((code.match(/icon: "/g) || []).length, 8, "Icons gehören genau an die acht Hauptpunkte");
   for (const gruppe of ["shipping", "warehouse", "account"]) {
     const start = code.indexOf(`id: "${gruppe}"`);
     const eintraege = code.slice(code.indexOf("items: [", start), code.indexOf("],", start));

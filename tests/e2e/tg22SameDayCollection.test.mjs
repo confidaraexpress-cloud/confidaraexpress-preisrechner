@@ -458,18 +458,18 @@ test("C — Buchung heute + Privatadresse + Absicherung: Zeilen auf allen Fläch
   assert.equal(await inhalt(page.locator(".blsum-price-label")), "Vorläufiger Preis");
   assert.match(await inhalt(page.locator(".blsum-price-gross")), /18,28 €/);
   assert.equal(await inhalt(page.locator("#booking-live-sameday-note")), "inkl. Zuschlag für Abholung am selben Tag 3,60 €");
-  assert.equal(await inhalt(page.locator("#offer-summary-sameday-note")), "inkl. Zuschlag für Abholung am selben Tag 3,60 €");
+  // G6/M9 (2026-10-27): der Zuschlagshinweis steht einmal, im Beleg; das ausgewählte Angebot nennt den Abholschluss.
+  assert.equal(await page.locator("#offer-summary-sameday-note").count(), 0);
   assert.equal(await inhalt(page.locator("#offer-summary-sameday-until")), "Abholung heute bei Buchung bis 16:45 Uhr");
-  assert.match(await inhalt(page.locator(".offsum-facts")), /bereit ab 11:30 Uhr/);
+  assert.match(await inhalt(page.locator(".blsum-handover")), /bereit ab 11:30 Uhr/);
 
   await waehleLieferadresse(page, true);
   await warteAufText(page, ".blsum-price-gross", "22,06");
   assert.equal(await inhalt(page.locator(".blsum-price-label")), "Gesamt");
   assert.equal(await inhalt(page.locator("#booking-live-surcharge-note")), "inkl. Zuschlag Privatadresse 3,78 €");
   assert.equal(await inhalt(page.locator("#booking-live-sameday-note")), "inkl. Zuschlag für Abholung am selben Tag 3,60 €");
-  assert.equal(await inhalt(page.locator("#offer-summary-sameday-note")), "inkl. Zuschlag für Abholung am selben Tag 3,60 €");
   // Die Bindung nennt die „bereit ab"-Zeit, die JETZT gälte.
-  await warteAufText(page, ".offsum-facts", "bereit ab 11:45 Uhr");
+  await warteAufText(page, ".blsum-handover", "bereit ab 11:45 Uhr");
 
   await zuSchritt2(page);
   assert.match(await inhalt(page.locator('[data-component="shipping_base"]')), /Versand netto\s*12,34 €/);
@@ -662,7 +662,7 @@ for (const breite of [1440, 834, 390]) {
 
     await waehle(page, TG);
     await waehleLieferadresse(page, true);
-    for (const sel of ["#booking-live-sameday-note", "#offer-summary-sameday-note", "#offer-summary-sameday-until"]) {
+    for (const sel of ["#booking-live-sameday-note", "#offer-summary-sameday-until"]) {
       assert.ok(await page.locator(sel).isVisible(), `${breite}px: ${sel} ist nicht sichtbar`);
     }
     await liegtInnerhalb(page.locator(".offsum-meta"), page.locator("#offer-summary-sameday-until"),

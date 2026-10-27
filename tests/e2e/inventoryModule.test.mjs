@@ -438,14 +438,10 @@ test("8 — „Versand vorbereiten“ füllt das BESTEHENDE Formular „Neue Sen
   await page.waitForTimeout(700);
 
   // Es ist wirklich das bestehende Formular (dieselben Feld-IDs), kein zweites.
-  /* `textContent`, nicht `innerText`: „Neue Sendung" liegt in der Gruppe
-     „Versand", und die startet eingeklappt. Eingeklappte Einträge bleiben im
-     DOM (sonst gäbe es nichts zu animieren), sind aber `visibility: hidden` —
-     `innerText` liefert dafür einen leeren String. Geprüft wird hier, WELCHER
-     Eintrag als aktiv markiert ist, nicht ob er gerade sichtbar ist; dass eine
-     zugeklappte Gruppe ihre Einträge verbirgt, ist eigene, gewollte Logik und
-     wird von sidebarNavigation.test.mjs geprüft. */
-  assert.equal((await page.locator(".pp-nav .nitem.on span").textContent()).trim(), "Neue Sendung");
+  /* Geprüft wird, WELCHER Eintrag als aktiv markiert ist. „Neue Sendung" steht seit G5 (2026-10-27) in der
+     ersten Ebene und trägt dort ein Symbol (`.pp-nav-icon`) vor der Beschriftung — gelesen wird die
+     Beschriftung. `textContent` bleibt, damit auch ein Eintrag einer zugeklappten Gruppe lesbar wäre. */
+  assert.equal((await page.locator(".pp-nav .nitem.on span:not(.pp-nav-icon)").textContent()).trim(), "Neue Sendung");
   // Die Anschrift des Auftrags kommt vollständig an. Vor- und Nachname NICHT: ein
   // Auftrag führt einen einzelnen Empfängernamen, und der wird seit dem
   // Versandkontaktvertrag nicht mehr zerlegt. Der Kunde ergänzt ihn bewusst —

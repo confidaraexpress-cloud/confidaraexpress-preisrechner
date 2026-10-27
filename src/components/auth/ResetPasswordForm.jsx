@@ -41,7 +41,7 @@ export function ResetPasswordForm({ password, confirmPassword, onPasswordChange,
                 value={confirmPassword}
                 onChange={(e) => onConfirmChange(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && onSubmit()}
-                placeholder="••••••••••"
+                placeholder="Passwort erneut eingeben"
               />
             </div>
           </div>

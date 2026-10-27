@@ -380,7 +380,12 @@ test("C11 — Verlassen-Guard: Abbruch markiert nichts und hinterlässt keinen F
   const { ctx, page } = await neueSeite({ userAgent: UA.safariMac });
   const dialog = page.locator('.dft-dialog-card[role="dialog"]');
   const eintrag = navEintrag(page, "Als App nutzen");
+  // Ohne Gruppe: ein Eintrag der ersten Ebene („Neue Sendung“ seit G5, 2026-10-27).
   const bereich = async (gruppe, name) => {
+    if (!gruppe) {
+      await page.locator(".pp-nav .nitem", { hasText: name }).first().click();
+      return;
+    }
     const kopf = page.locator("button.pp-nav-group-head", { hasText: gruppe });
     if ((await kopf.getAttribute("aria-expanded")) !== "true") await kopf.click();
     await page.locator(".pp-nav-group-items .nitem", { hasText: name }).click();
@@ -419,7 +424,7 @@ test("C11 — Verlassen-Guard: Abbruch markiert nichts und hinterlässt keinen F
   assert.equal(await eintrag.count(), 1);
 
   // 3. Bestätigen: der Wunsch reist mit dem Ziel durch den Dialog und wird eingelöst.
-  await bereich("Versand", "Neue Sendung");
+  await bereich(null, "Neue Sendung");
   await ungespeichert();
   await eintrag.click();
   await dialog.waitFor();

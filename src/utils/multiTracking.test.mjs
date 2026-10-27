@@ -77,7 +77,10 @@ test("5 — Liste und Mobilkarte: kompakte Anzahl bei mehreren, sonst unverände
   // Die bisherige Einzelanzeige bleibt wörtlich — als Zweig für genau eine Nummer.
   assert.equal((liste.match(/\) : nums\.trackingNumber && \(/g) || []).length, 3,
     "die Einzelanzeige ist nicht mehr der Rückfall");
-  assert.equal((liste.match(/\{NUMBER_LABELS\.tracking\}: \{nums\.trackingNumber\}/g) || []).length, 2);
+  // In der Karte wörtlich; in der Tabelle steht die Nummer seit dem Komplettabschluss (Audit B.4, umbrechende IDs) als
+  // eigener Block hinter der Beschriftung — sie rückt als Ganzes in die nächste Zeile, statt mitten im Wert zu brechen.
+  assert.equal((liste.match(/\{NUMBER_LABELS\.tracking\}: \{nums\.trackingNumber\}/g) || []).length, 1);
+  assert.match(liste, /\{NUMBER_LABELS\.tracking\}:\{" "\}\s*<span className="shipment-id-nr mono" style=\{\{ wordBreak: "break-all" \}\}>\{nums\.trackingNumber\}<\/span>/);
 });
 
 test("6 — Sendungsdetail und Mobilkarte zeigen ALLE Nummern, die Live-Ansicht ebenfalls", () => {

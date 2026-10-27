@@ -137,22 +137,6 @@ function DocumentInfo({ tone, label }) {
   return <span className={`inv-doc-line inv-doc-line--${tone}`}>{label}</span>;
 }
 
-function DocumentCell({ inv }) {
-  const [docTone, docLabel] = documentStatusMeta(inv);
-  // Nur der abgeschlossene Versand wird gezeigt. Ein fehlgeschlagener oder noch laufender
-  // Mailversand ist ein interner Betriebszustand und erscheint hier bewusst gar nicht —
-  // die Rechnung selbst bleibt gültig, sichtbar und herunterladbar.
-  const mail = emailDeliveryMeta(inv);
-  const sentAt = mail ? formatEmailSentAt(inv.email_sent_at) : "";
-  return (
-    <div className="inv-doc-cell">
-      <DocumentInfo tone={docTone} label={docLabel} />
-      {mail && <DocumentInfo tone={mail[0]} label={mail[1]} />}
-      {sentAt && <span className="inv-doc-note">{sentAt}</span>}
-    </div>
-  );
-}
-
 function ActionButtons({ inv, downloadingId, onView, onDownload }) {
   const busy = downloadingId === inv.id;
   if (canDownloadInvoice(inv)) {
@@ -179,6 +163,23 @@ function ActionButtons({ inv, downloadingId, onView, onDownload }) {
   }
   const reason = unavailableActionReason(inv);
   return <div className="inv-actions">{reason && <span className="inv-action-reason">{reason}</span>}</div>;
+}
+
+// Dokument und Aktion in einer Zelle (Desktop-Tabelle): bereit → die beiden Aktionen in einer Zeile; sonst der
+// Dokumentstatus und der Grund. Der abgeschlossene Mailversand steht darunter. Dieselben Helfer wie bisher —
+// keine Information entfällt, nur die Doppelung „PDF bereit“ neben den Aktionen.
+function DocumentActionsCell({ inv, downloadingId, onView, onDownload }) {
+  const bereit = canDownloadInvoice(inv);
+  const [docTone, docLabel] = documentStatusMeta(inv);
+  const mail = emailDeliveryMeta(inv);
+  const sentAt = mail ? formatEmailSentAt(inv.email_sent_at) : "";
+  return (
+    <div className="inv-doc-cell inv-doc-cell--aktionen">
+      {!bereit && <DocumentInfo tone={docTone} label={docLabel} />}
+      <ActionButtons inv={inv} downloadingId={downloadingId} onView={onView} onDownload={onDownload} />
+      {mail && <span className="inv-doc-note">{sentAt ? `${mail[1]} ${sentAt.replace(/^Versendet /, "")}` : mail[1]}</span>}
+    </div>
+  );
 }
 
 // ── Mobilkarte ───────────────────────────────────────────────────────────────
@@ -345,11 +346,14 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
           />
         ) : (
           <>
-            {/* Desktop: sechs Bereiche mit relativen/festen Breiten — kein horizontales Scrollen. */}
-            <div className="table-card inv-table">
+            {/* Desktop: fünf Bereiche — Dokument und Aktion stehen in EINER Spalte (Audit B.4): ist das PDF
+                bereit, stehen „Ansehen“ und „PDF herunterladen“ in einer Zeile, und „PDF bereit“ doppelt die
+                Aktion nicht mehr; sonst steht dort der Dokumentstatus mit seiner Erklärung. Der Mailversand bleibt
+                als Zusatzzeile. Kein horizontales Scrollen. */}
+            <div className="table-card inv-table inv-table--dokument">
               <table>
                 <caption className="sr-only">
-                  Rechnungen — Rechnung, Zeitraum, Betrag, Zahlungsstatus, Dokument und Aktion.
+                  Rechnungen — Rechnung, Zeitraum, Betrag, Zahlungsstatus und Dokument mit Aktionen.
                 </caption>
                 <thead>
                   <tr>
@@ -358,7 +362,6 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
                     <th scope="col">Betrag</th>
                     <th scope="col">Zahlungsstatus</th>
                     <th scope="col">Dokument</th>
-                    <th scope="col">Aktion</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -372,8 +375,7 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
                       <td><PeriodBlock inv={inv} /></td>
                       <td><AmountBlock inv={inv} /></td>
                       <td><PaymentStatusCell inv={inv} /></td>
-                      <td><DocumentCell inv={inv} /></td>
-                      <td><ActionButtons inv={inv} downloadingId={downloadingId} onView={(i) => setPreviewInvoice({ id: i.id, invoice_number: i.invoice_number })} onDownload={handleDownload} /></td>
+                      <td><DocumentActionsCell inv={inv} downloadingId={downloadingId} onView={(i) => setPreviewInvoice({ id: i.id, invoice_number: i.invoice_number })} onDownload={handleDownload} /></td>
                     </tr>
                   ))}
                 </tbody>

@@ -226,12 +226,19 @@ test("13 — Live- und Sticky-Leiste: Brutto-Element trägt immer brutto, Netto-
   assert.ok(!/<button|VatModeToggle/.test(code(STICKY)));
 });
 
-test("14 — ausgewähltes Angebot: netto vorn (bisher), in der Bruttoanzeige brutto vorn — Hinweise bleiben beim Brutto", () => {
+test("14 — ausgewähltes Angebot: kein zweiter Preis (G6/M9) — der MwSt.-Hinweis steht am Preis im Beleg", () => {
+  // Bis 2026-10-27 zeigte die Karte „Ausgewähltes Angebot“ Netto und Brutto in der Reihenfolge des Modus. Seit G6/M9
+  // (Betreiberentscheidung 2026-10-27) steht der Preis an EINER Stelle: im Beleg (Live-Zusammenfassung, Test 13) samt
+  // Kurzleiste. Dorthin wanderte der Hinweis „inkl. 19 % MwSt.“ bzw. „… auf Versand“ / „exkl. MwSt.“ — derselbe
+  // Wortlaut, jetzt aus vatIncludedNote.
   const q = code(AUSWAHL);
-  assert.match(q, /const bruttoZuerst = isGrossVatMode\(vatMode\) && preis\.gross != null;/);
-  assert.match(q, /\{!bruttoZuerst && nettoZeile\}/);
-  assert.match(q, /\{bruttoZuerst && nettoZeile\}/);
-  assert.match(q, /<div className="offsum-price-gross">\{money\(preis\.gross\)\} brutto<\/div>/);
+  assert.doesNotMatch(q, /isGrossVatMode|vatMode|money\(|offsum-price-(net|gross|vat)/);
+  const live = code(LIVE);
+  assert.match(live, /const vatHinweis = vatIncludedNote\(v\);/);
+  assert.match(live, /\{vatHinweis && <span className="blsum-vat-note" id="booking-live-vat-note">\{vatHinweis\}<\/span>\}/);
+  const hilfe = code("./bookingSummaryView.mjs");
+  assert.match(hilfe, /return mitAbsicherung \? "inkl\. 19 % MwSt\. auf Versand" : "inkl\. 19 % MwSt\.";/);
+  assert.match(hilfe, /return preis\.net != null \? "exkl\. MwSt\." : null;/);
 });
 
 test("15 — Aufstellung: „Gesamtbetrag netto“ nur aus totalNet, vor „Gesamtbetrag brutto“, nur in der Nettoanzeige", () => {

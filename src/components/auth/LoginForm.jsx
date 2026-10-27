@@ -27,7 +27,6 @@ export function LoginForm({ form, onChange, onLogin, onForgot, loading, remember
       <div className="auth-field">
         <div className="auth-field-row">
           <label className="auth-field-label" htmlFor="auth-password">Passwort</label>
-          <button type="button" className="auth-field-link" onClick={onForgot}>Vergessen?</button>
         </div>
         <div className="auth-input-wrap">
           <span className="auth-input-ico"><Icon n="lock" s={18} /></span>
@@ -37,9 +36,14 @@ export function LoginForm({ form, onChange, onLogin, onForgot, loading, remember
             value={form.password}
             onChange={(e) => onChange("password", e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && onLogin()}
-            placeholder="••••••••••"
             autoComplete="current-password"
+            placeholder=""
           />
+        </div>
+        {/* Nach dem Passwortfeld, nicht neben der Beschriftung (Audit B.9): die Tabulatorreihenfolge ist E-Mail →
+            Passwort → „Passwort vergessen?“, wie man liest. Kein Schein-Passwort als Platzhalter mehr. */}
+        <div className="auth-field-foot">
+          <button type="button" className="auth-field-link" onClick={onForgot}>Passwort vergessen?</button>
         </div>
       </div>
 

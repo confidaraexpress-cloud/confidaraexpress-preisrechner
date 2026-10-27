@@ -39,8 +39,8 @@ import { AddressSuggestInput } from "../address/AddressSuggestInput";
 import { AddressStatusLine } from "../address/AddressStatusLine";
 import { useAddressValidation } from "../../hooks/useAddressValidation";
 import { applyAddressSuggestion, cityFromSuggestion, countryFirstHint } from "../../utils/addressValidationView.mjs";
-import { cityPlaceholder } from "../../utils/addressPlaceholders.mjs";
-import { postalCodeExample, postalCodeInputMode } from "../../utils/postalCode.mjs";
+import { cityPlaceholder, postalCodePlaceholder } from "../../utils/addressPlaceholders.mjs";
+import { postalCodeInputMode } from "../../utils/postalCode.mjs";
 
 // Benötigt Backend: PATCH /kunde/profil — bereichsweise Teilupdates:
 //   Unternehmensdaten → { company_name, vat_id, eori_number, street, zip, city, country }
@@ -331,7 +331,7 @@ export function Profile({ user, utility }) {
                 <label className="field-label" htmlFor="pf-zip">PLZ</label>
                 <input id="pf-zip" className="field-input" value={companyForm.zip}
                   onChange={e => updCompany("zip", e.target.value)} autoComplete="postal-code"
-                  placeholder={postalCodeExample(companyForm.country)} inputMode={postalCodeInputMode(companyForm.country)} />
+                  placeholder={postalCodePlaceholder(companyForm.country)} inputMode={postalCodeInputMode(companyForm.country)} />
               </div>
               <div className="field">
                 <label className="field-label" htmlFor="pf-city">Stadt</label>

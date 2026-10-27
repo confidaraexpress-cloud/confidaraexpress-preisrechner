@@ -16,11 +16,19 @@ const cssSrc = read("styles/dashboard.css");
 const modalSrc = read("components/dashboard/InvoicePdfPreviewModal.jsx");
 const viewSrc = read("utils/customerInvoiceView.mjs");
 
-test("1 — sechs fachliche Spalten mit scope, echte <caption>", () => {
-  for (const col of ["Rechnung", "Zeitraum", "Betrag", "Zahlungsstatus", "Dokument", "Aktion"]) {
+test("1 — fünf fachliche Spalten mit scope, echte <caption>; Dokument und Aktion in EINER Spalte", () => {
+  // Komplettabschluss (Audit B.4, 2026-10-27): ist das PDF bereit, stehen „Ansehen“ und „PDF herunterladen“ in der
+  // Dokumentspalte, statt dass „PDF bereit“ daneben die Aktion doppelt; sonst stehen dort Status und Grund.
+  for (const col of ["Rechnung", "Zeitraum", "Betrag", "Zahlungsstatus", "Dokument"]) {
     assert.match(listSrc, new RegExp(`<th scope="col">${col}</th>`), `Spalte fehlt: ${col}`);
   }
-  assert.equal((listSrc.match(/<th scope="col">/g) || []).length, 6, "genau sechs Spalten erwartet");
+  assert.equal((listSrc.match(/<th scope="col">/g) || []).length, 5, "genau fünf Spalten erwartet");
+  assert.ok(!/<th scope="col">Aktion<\/th>/.test(listSrc), "die Aktion steht wieder in einer eigenen Spalte");
+  assert.match(listSrc, /<td><DocumentActionsCell inv=\{inv\} /, "Dokument und Aktionen stehen nicht in einer Zelle");
+  const zelle = listSrc.slice(listSrc.indexOf("function DocumentActionsCell"), listSrc.indexOf("// ── Mobilkarte"));
+  assert.match(zelle, /\{!bereit && <DocumentInfo tone=\{docTone\} label=\{docLabel\} \/>\}/, "ohne PDF fehlt der Dokumentstatus");
+  assert.match(zelle, /<ActionButtons inv=\{inv\} /, "die Aktionen fehlen in der Dokumentzelle");
+  assert.match(zelle, /emailDeliveryMeta\(inv\)/, "der Mailversand fehlt in der Dokumentzelle");
   assert.match(listSrc, /<caption className="sr-only">/);
 });
 

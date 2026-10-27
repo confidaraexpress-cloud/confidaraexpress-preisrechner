@@ -367,11 +367,13 @@ test("15 — jede Fläche wählt Variante und Tonlage nach ihrer echten Größe"
     for (const r of rufe(holen(d))) assert.match(r, /tone="reverse"/, `${d}: dunkle Fläche braucht reverse`);
   }
   assert.match(rufe(holen("AdminSidebar.jsx"))[0], /tone="standard"/, "AdminSidebar: helle Fläche braucht standard");
-  // Flache Leisten der EINGELOGGTEN App (Topbar, Ladebildschirm) bleiben beim Signet.
+  // Flache Leisten der EINGELOGGTEN App (Topbar, Ladebildschirm) bleiben beim Signet. Der Ladebildschirm steht hell
+  // (standard) — nur auf dem dunklen Grund der Anmeldeseiten (`dunkel`, Komplettabschluss 2026-10-27) in Reverse.
   for (const d of ["DashboardLayout.jsx", "DashboardPage.jsx", "LoadingScreen.jsx"]) {
     for (const r of rufe(holen(d))) {
       assert.match(r, /variant="signet"/, `${d}: braucht das Signet`);
-      assert.match(r, /tone="standard"/, `${d}: braucht standard`);
+      const ton = d === "LoadingScreen.jsx" ? /tone=\{dunkel \? "reverse" : "standard"\}/ : /tone="standard"/;
+      assert.match(r, ton, `${d}: braucht standard (auf dunklem Grund reverse)`);
     }
   }
   // Die öffentliche Navigation: flache helle Leiste → reine Wortmarke; hoher

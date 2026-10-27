@@ -2,11 +2,14 @@ import React from "react";
 import { StatusBadge } from "../ui/StatusBadge";
 import { EmptyState } from "../ui/StateView";
 import { money, dateDE } from "../../utils/formatters";
-import { resolveCarrierName } from "../../utils/carrierMap";
+import { resolveCarrier, resolvePublicCarrier } from "../../utils/carrierMap";
 import { customerShipmentNumbers, NO_ORDER_CONFIRMATION_TEXT } from "../../utils/businessNumbers.mjs";
 import { notificationSubline, relativeTime } from "../../utils/notificationsView.mjs";
-import { recentShipments, overviewInvoiceFacts, topNotifications } from "../../utils/overviewModules.mjs";
+import { recentShipments, overviewInvoiceFacts, topNotifications, INVENTORY_SNAPSHOT_TEXT, snapshotRows } from "../../utils/overviewModules.mjs";
 import { creditFacts, CREDIT_TEXT } from "../../utils/creditLimitView.mjs";
+import { shipmentRecipient } from "../../utils/shipmentRecipientView.mjs";
+import { CARRIER_PORTFOLIO_TEXT } from "../../utils/carrierPortfolioView.mjs";
+import { formatUnits, overviewPreviewRows, isInventoryEmpty } from "../../utils/inventoryView.mjs";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    OPERATIVE ÜBERSICHTSMODULE (Paket D, Redesign 2026-10)
@@ -42,9 +45,20 @@ function ModuleHead({ title, actionLabel, onAction }) {
 /* ── Letzte Sendungen ───────────────────────────────────────────────────────
    Kompakte Auswahl, KEINE zweite Sendungsliste: keine Pagination, keine Suche,
    kein Filter, keine eigene Abfrage. Gezeigt werden ausschließlich Felder, die
-   die bestehende Sendungsantwort bereits enthält (Nummer, Carrier, Datum,
-   Status, Preis). Bewusst OHNE Empfänger-/Zielspalte: die Kundenantwort
-   /kunde/shipments führt keine Empfängerdaten. */
+   die bestehende Sendungsantwort bereits enthält: Nummer und Datum, Empfänger
+   (recipient_address — dieselben Felder wie die Kopfsuche), Carrier mit Logo,
+   Status, Preis. Fehlt der Empfänger (ältere Sendung), steht „—“. */
+function CarrierMarke({ raw }) {
+  if (!raw) return <span className="ov-list-carrier ov-quiet">Carrier offen</span>;
+  const c = resolveCarrier(raw);
+  return (
+    <span className="ov-list-carrier">
+      {c.logo && <img className="ov-list-carrier-logo" src={c.logo} alt="" />}
+      <span>{c.name}</span>
+    </span>
+  );
+}
+
 export function RecentShipments({ shipments, loading, onAll }) {
   const rows = recentShipments(shipments, 4);
   return (
@@ -65,21 +79,23 @@ export function RecentShipments({ shipments, loading, onAll }) {
             text="Sobald Sie einen Versandauftrag gebucht haben, erscheint er hier."
           />
         ) : (
-          <ul className="ov-list">
+          <ul className="ov-list ov-list--sendungen">
             {rows.map((s) => {
               const nums = customerShipmentNumbers(s);
+              const empfaenger = shipmentRecipient(s);
               return (
                 <li className="ov-list-row" key={s.id}>
                   <div className="ov-list-main">
-                    <span className="ov-list-primary mono">
+                    <span className="ov-list-primary mono ce-wert">
                       {nums.orderConfirmationNumber || NO_ORDER_CONFIRMATION_TEXT}
                     </span>
-                    <span className="ov-list-secondary">
-                      {s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "Carrier offen"}
-                      {" · "}
-                      {dateDE(s.created_at)}
-                    </span>
+                    <span className="ov-list-secondary">{dateDE(s.created_at)}</span>
                   </div>
+                  <div className="ov-list-empfaenger">
+                    <span className="ov-list-empfaenger-name">{empfaenger?.name || "—"}</span>
+                    {empfaenger?.wohin && <span className="ov-list-secondary">{empfaenger.wohin}</span>}
+                  </div>
+                  <CarrierMarke raw={s.selected_carrier} />
                   <span className="ov-list-status"><StatusBadge status={s.status} /></span>
                   <span className="ov-list-num ce-num">{money(s.price_final)}</span>
                 </li>
@@ -200,6 +216,136 @@ export function OverviewNotifications({ items, onSelect }) {
             </li>
           ))}
         </ul>
+      </div>
+    </section>
+  );
+}
+
+/* ── Lager und Aufträge (G1/D7, 2026-10-27) ────────────────────────────────
+   Der operative Stand des eigenen Lagers in der Übersicht: offene Aufträge und
+   Artikel unter Mindestbestand mit ihren ersten Einträgen, dazu zwei Zahlen.
+   Reine Darstellung: den Stand ({ status: "laden" | "fehler" | "bereit", stats,
+   fehler }) lädt DashboardPage mit derselben Abfrage wie die Lagerübersicht —
+   Module rufen keine API. Alle Texte und Vorschauzeilen aus utils/
+   (overviewModules.mjs, inventoryView.mjs). Ohne Artikel steht der Einstieg da; ein
+   Ladefehler sagt es und bietet die Wiederholung an (`onRetry`). */
+// Der Leertext steht nur, wenn der Server 0 meldet — nennt er eine Zahl ohne Vorschauzeilen (ältere Antwort), führt
+// der Link zur Liste, statt der Zahl zu widersprechen.
+function SnapshotSpalte({ titel, zahl, anzahl, zeilen, leer, onAlle, alleLabel }) {
+  const keine = anzahl === 0;
+  return (
+    <div className="ov-lager-spalte">
+      <div className="ov-lager-kopf">
+        <span className="ov-lager-titel">{titel}</span>
+        <span className="ov-lager-zahl">{zahl}</span>
+      </div>
+      {zeilen.length === 0 ? (
+        keine && <p className="ov-quiet ov-lager-leer">{leer}</p>
+      ) : (
+        <ul className="ov-lager-liste">
+          {zeilen.map((z) => (
+            <li className="ov-lager-zeile" key={z.id}>
+              <span className="ov-lager-primaer">{z.primary}</span>
+              {z.secondary && <span className="ov-lager-sekundaer">{z.secondary}</span>}
+              {z.value && <span className="ov-lager-wert">{z.value}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {onAlle && !keine && (
+        <button type="button" className="btn btn-link btn-sm ov-lager-alle" onClick={onAlle}>{alleLabel}</button>
+      )}
+    </div>
+  );
+}
+
+export function InventorySnapshot({ stand: standProp = null, onRetry = null, onNavigate }) {
+  const stand = standProp || { status: "laden", stats: null, fehler: "" };
+  const T = INVENTORY_SNAPSHOT_TEXT;
+  const stats = stand.stats;
+  const previews = stats?.previews || null;
+  const gehe = (ziel, filter) => () => onNavigate && onNavigate(ziel, filter || null);
+
+  return (
+    <section className="ov-mod ov-lager" aria-labelledby="ov-lager-title" aria-busy={stand.status === "laden" ? "true" : undefined}>
+      <ModuleHead title={<span id="ov-lager-title">{T.title}</span>} actionLabel={T.action} onAction={gehe("inventory")} />
+      <div className="ce-card ov-card ov-card--pad">
+        {stand.status === "laden" && (
+          <div className="loading-center" role="status" aria-live="polite">
+            <span className="spinner spinner-dark" /> Lagerdaten werden geladen …
+          </div>
+        )}
+        {stand.status === "fehler" && (
+          <div className="ov-lager-fehler">
+            <p className="ov-quiet">{stand.fehler}</p>
+            {onRetry && <button type="button" className="btn btn-outline btn-sm" onClick={() => onRetry()}>{T.retry}</button>}
+          </div>
+        )}
+        {stand.status === "bereit" && stats && isInventoryEmpty(stats) && (
+          <div className="ov-lager-einstieg">
+            <p className="ov-lager-einstieg-titel">{T.emptyTitle}</p>
+            <p className="ov-quiet">{T.emptyText}</p>
+            <button type="button" className="btn btn-outline btn-sm" onClick={gehe("inventory")}>{T.emptyAction}</button>
+          </div>
+        )}
+        {stand.status === "bereit" && stats && !isInventoryEmpty(stats) && (
+          <>
+            <div className="ov-lager-raster">
+              <SnapshotSpalte
+                titel={T.openOrders}
+                zahl={formatUnits(stats.openOrders)}
+                anzahl={stats.openOrders}
+                zeilen={snapshotRows(overviewPreviewRows("openOrders", previews))}
+                leer={T.openOrdersEmpty}
+                onAlle={gehe("orders", "open")}
+                alleLabel="Alle offenen Aufträge"
+              />
+              <SnapshotSpalte
+                titel={T.lowStock}
+                zahl={formatUnits(stats.lowStockCount)}
+                anzahl={stats.lowStockCount}
+                zeilen={snapshotRows(overviewPreviewRows("lowStockCount", previews))}
+                leer={T.lowStockEmpty}
+                onAlle={gehe("stock", "low")}
+                alleLabel="Alle betroffenen Artikel"
+              />
+            </div>
+            <dl className="ov-lager-fakten">
+              <div><dt>{T.available}</dt><dd>{formatUnits(stats.availableUnits)}</dd></div>
+              <div><dt>{T.shippedToday}</dt><dd>{formatUnits(stats.shippedToday)}</dd></div>
+            </dl>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/* ── Ihre Versanddienstleister (G2, 2026-10-27) ─────────────────────────────
+   Die Carrier, die ConfidaraExpress aktuell anbietet — ausschließlich aus
+   GET /kunde/carriers (geladen von DashboardPage, hier nur dargestellt). Logos
+   gleicher optischer Höhe auf Weiß, Namen darunter,
+   eine Aktion „Preise vergleichen“. Keine Laufzeiten, keine Dienstnamen, keine
+   Zahl im Titel, kein Banner. Ohne Antwort (Fehler, ältere Serverfassung) oder
+   ohne Carrier erscheint das Modul nicht — nie eine feste Liste. */
+export function CarrierPortfolio({ carriers, onCompare }) {
+  if (!Array.isArray(carriers) || carriers.length === 0) return null;
+  return (
+    <section className="ov-mod ov-carrier-zeile" aria-labelledby="ov-car-title">
+      <ModuleHead title={<span id="ov-car-title">{CARRIER_PORTFOLIO_TEXT.title}</span>} actionLabel={CARRIER_PORTFOLIO_TEXT.action} onAction={onCompare} />
+      <div className="ce-card ov-card ov-card--pad">
+        <ul className="ov-carrier-liste">
+          {carriers.map((c) => {
+            const logo = resolvePublicCarrier(c.id).logo;
+            return (
+              <li className="ov-carrier-eintrag" key={c.id}>
+                <span className="ov-carrier-logo" aria-hidden="true">{logo ? <img src={logo} alt="" /> : null}</span>
+                <span className="ov-carrier-name">{c.name}</span>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="ov-quiet ov-carrier-hinweis">{CARRIER_PORTFOLIO_TEXT.hint}</p>
       </div>
     </section>
   );

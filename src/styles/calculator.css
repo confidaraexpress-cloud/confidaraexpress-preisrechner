@@ -446,7 +446,7 @@
   .booking-side .blsum-zone + .blsum-zone { border-left: none; border-top: 1px solid var(--border); }
   .booking-side .blsum-price { align-items: flex-start; text-align: left; }
   .booking-side .blsum-price-box { align-items: flex-start; }
-  .booking-side .blsum-ins-note { text-align: left; }
+  .booking-side :is(.blsum-ins-note, .blsum-vat-note) { text-align: left; }
 }
 .booking-carrier-name { font-size: var(--ce-text-title-section-size); font-weight: 600; line-height: 1.3; color: var(--ce-color-text-primary); }
 .booking-carrier-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
@@ -458,9 +458,9 @@
 .booking-no-tariff { display: flex; align-items: center; justify-content: center; }
 
 /* ── Karte „Ausgewähltes Angebot" — kompakte Auswahl-Zusammenfassung (Karte 1) ──
-   Nur für diese Komponente (OfferSummaryModule). Drei Zonen: Identität · Meta ·
-   Preis. Ersetzt die frühere vollbreite Detailtabelle durch eine ruhige,
-   verdichtete Struktur; teilt keine Klassen mit anderen Karten. */
+   Nur für diese Komponente (OfferSummaryModule). Seit G6/M9 (2026-10-27) zwei Zonen:
+   Identität · Hinweise — Preis, Abholung und Zustellung stehen einmal, im Beleg
+   (BookingLiveSummary, .blsum-*). Teilt keine Klassen mit anderen Karten. */
 .offsum-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
 .offsum-identity { min-width: 0; }
 .offsum-service { margin-top: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -472,25 +472,8 @@
   background: var(--ce-color-status-neutral-surface); color: var(--ce-color-status-neutral-fg);
   font-size: var(--ce-text-badge-size); font-weight: var(--ce-text-badge-weight); line-height: var(--ce-text-badge-line);
 }
-.offsum-price { text-align: right; flex-shrink: 0; }
-/* Was der Betrag ist („Gesamt" / „Versand") — dieselbe Beschriftung wie in beiden Leisten. */
-.offsum-price-label { font-size: var(--ce-text-caption-size); font-weight: 500; line-height: var(--ce-text-caption-line); color: var(--ce-color-text-secondary); margin-bottom: 2px; }
-.offsum-price-net { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 24px; font-weight: 600; color: var(--navy); line-height: 1.15; white-space: nowrap; }
-.offsum-price-unit { font-family: var(--ce-font-sans); font-size: 13px; font-weight: 600; color: var(--ce-color-text-muted); }
-.offsum-price-gross { font-size: 13px; font-weight: 600; color: var(--ce-color-text-secondary); margin-top: 3px; white-space: nowrap; }
-.offsum-price-vat { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-secondary); margin-top: 2px; }
 .offsum-price-na { font-size: 15px; font-weight: 600; color: var(--ce-color-text-muted); }
-/* Netto/Brutto (2026-10-02): in der Bruttoanzeige ist der Bruttobetrag die Hauptzahl, netto steht darunter. */
-.offsum-price--gross .offsum-price-gross {
-  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
-  font-size: 24px; color: var(--navy); line-height: 1.15; margin-top: 0;
-}
-.offsum-price--gross .offsum-price-net { font-size: 13px; color: var(--ce-color-text-secondary); line-height: 1.4; margin-top: 3px; }
 .offsum-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ce-color-border-subtle); }
-.offsum-facts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0; }
-.offsum-fact { display: flex; align-items: baseline; gap: 6px; }
-.offsum-fact dt { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-secondary); margin: 0; }
-.offsum-fact dd { font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-primary); margin: 0; }
 /* Hinweis-Badge („Drucker erforderlich", Abholschluss) — Warnton, Radius 8,
    ohne Symbol. */
 .offsum-flag {
@@ -502,8 +485,6 @@
 
 @media (max-width: 600px) {
   .offsum-top { flex-direction: column; gap: 12px; }
-  .offsum-price { text-align: left; }
-  .offsum-price-net, .offsum-price-gross { white-space: normal; }
 }
 
 /* Step-Bestätigungspanel (Paket B): dasselbe Base-Card-Material wie jedes
@@ -806,6 +787,7 @@
 .blsum-price-unit { font-size: var(--ce-text-caption-size); font-weight: 600; color: var(--ce-color-text-secondary); font-family: var(--font, inherit); letter-spacing: 0; }
 .blsum-ins-note { display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; font-size: var(--ce-text-caption-size); font-weight: 600; color: var(--ce-color-brand-ink); text-align: right; }
 .blsum-ins-note--error { color: var(--danger); }
+.blsum-vat-note { margin-top: 2px; font-size: var(--ce-text-caption-size); color: var(--ce-color-text-secondary); text-align: right; }
 /* Netto/Brutto (2026-10-02): in der Nettoanzeige ist der Nettobetrag die Hauptzahl; der zahlbare Bruttobetrag
    steht darunter, behält seine Klasse und trägt „zahlbar". Nur Gewichtung und Reihenfolge ändern sich. */
 .blsum-price-box--net .blsum-price-net { font-size: var(--ce-text-title-section-size); font-weight: 600; color: var(--ce-color-text-primary); letter-spacing: -0.01em; }
@@ -823,7 +805,7 @@
   .blsum-handover { border-right: 1px solid var(--border); }
   .blsum-price { grid-column: 1 / -1; align-items: flex-start; text-align: left; border-top: 1px solid var(--border); }
   .blsum-price-box { flex-direction: row; align-items: baseline; gap: 10px; }
-  .blsum-ins-note { text-align: left; }
+  .blsum-ins-note, .blsum-vat-note { text-align: left; }
 }
 /* ≤380px → gestapelt, kein Überlauf, keine Schrift < 12px. */
 @media (max-width: 380px) {

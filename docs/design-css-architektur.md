@@ -23,6 +23,18 @@ Ausgelagert aus der Regeldatei (Stand origin/main, 2026-10-19). Wird nicht autom
 - **Kundenbereich-Demo:** `styles/demo.css` hängt an `[data-ce-demo]` (setzt `demo/DemoApp.jsx`), Werte `--ce-demo-*` in `variables.css`. Vertrag: `docs/frontend-vertraege.md`, „Kundenbereich-Demo“.
 - **Kopfsuche:** `.ce-suche` in `premium-redesign.css` (Abschnitt 14) — Feld im Utility-Cluster ab 1024 px, Trefferblatt mit `--ce-elevation-3`, Treffer in der Liste als `.ce-suche-fokus` (Signalkante, Signalfläche). Das Lupensymbol im Feld ist eine funktionale Ausnahme der Icon-Regel (es kennzeichnet das Feld, wie in der Vorschau). Vertrag: `docs/frontend-vertraege.md`, „Kopfsuche des Kundenbereichs“.
 
+### Premium-Komplettabschluss (Betreiberentscheidungen G1–G7, 2026-10-27, Canonical v2.82)
+
+- **Typografie im Bereich:** Fließtext 16 px, Tabellen 15 px, Tabellenköpfe und Status 13 px — alles in rem im Bereichsblock von `variables.css`, große Browserschrift skaliert mit. Rollenbezogen, keine pauschale Vergrößerung; die Skala der Foundation (unten) gilt für Admin und Partner unverändert.
+- **Seitenleiste (G5):** „Neue Sendung“ und „Sendungen“ in der ersten Ebene (acht Punkte mit Icon), `.pp-nav-group--aktiv` markiert die Gruppe der aktuellen Seite getrennt von `.pp-nav-group--open`; die Gruppe öffnet sich beim Rendern (kein Effekt, kein Speicher). Einträge brechen um statt abzuschneiden; die Breite der Leiste folgt der Schrift. Der Ansprechpartner trägt seine Initialen in einem Ring in rem.
+- **Tabellen:** Sendungen sechs Spalten mit festen Aktionsplätzen (`.stn-actions--plaetze`); die Trackingnummer ist ein eigener Block (`.shipment-id-nr`), der als Ganzes umbricht. Rechnungen fünf Spalten (`.inv-table--dokument`, Dokument mit Aktionen). Lagerlisten (`.inv-list-table`) unter 1360 px als Karten; Artikelnamen dürfen an Wortgrenzen umbrechen, Kennungen nie.
+- **Übersicht (`overview.css`):** Modul „Lager und Aufträge“ (`.ov-lager-*`), Carrierzeile „Ihre Versanddienstleister“ (`.ov-carrier-liste`, Logos `object-fit: contain`), Empfänger in den letzten Sendungen. Die frühere Familie `--ce-net-*` (Navy-Carrierfläche) ist entfernt.
+- **Versandkostenrechner:** Container `ce-rechner` an `.calc-page-wrap--calculator`; ab 1040 px Route und Paket nebeneinander, ab 1100 px die fünf Filter in einer Zeile.
+- **Anmeldung:** statische Seitengerüste `login.html`/`register.html` mit denselben Klassen wie `AuthPage` (`.auth-kopf`, `.auth-hero`, `AuthKarte` als `.auth-map`, `.auth-card-bereich`); das Gerüstblatt trägt `.auth-geruest`. Zweispaltig ab 1024 px mit der Marke als Kopfzeile; das Blatt steht oben bündig mit dem Satz und wächst nur nach unten. Auf Touch-Geräten erreichen Rechtslinks und der Wechsel Anmelden/Registrieren 44 × 44 px.
+- **Öffentlicher Preisrechner (`public-calculator.css`):** fünf Bereiche (Hero · Ergebnisse · `.pc-platform` mit Vorschau `.pc-vorschau`/`.pcv-*` · `.pc-ablauf` · Fragen). Die Miniatur misst in em auf einer Grundgröße in cqw (Container `pc-vorschau`), schmal unter 520 px eine reduzierte Fassung. Tarifkarte: Abschluss `.pc-offer-abschluss` mit Preis und kompaktem Knopf `.pc-button--offer` (Kontur, gefüllt bei Zeigen und Fokus; Container `pc-abschluss` ab 20 rem), höchstens drei Spalten. Logo `clamp(88px, 24vw, 128px)`.
+- **Demo-Leiste (`demo.css`):** ab 861 px schwebend neben der Seitenleiste; Höhe und Umschaltpunkt des Zusatztexts in rem/em, damit große Schrift sie nicht über den Inhalt wachsen lässt.
+- **Paketbühne:** der Zustand `beispiel` zeigt das Kraftpapier-Paket mit Band; nur Etikett und Schatten fehlen (das Seitengerüst des Preisrechners zeichnet dasselbe Paket ohne Filter).
+
 ### Getrennte Tokenfamilien — nicht vermischen
 
 | Familie | Gilt für |
@@ -30,7 +42,6 @@ Ausgelagert aus der Regeldatei (Stand origin/main, 2026-10-19). Wird nicht autom
 | `--ce-app-*`, `--ce-sidebar-*` | App-Chrome des eingeloggten Bereichs |
 | `--surface*`, `--border-*`, `--text-*`, `--shadow-card*` | Inhaltsflächen im eingeloggten Bereich |
 | `--ce-kpi-*` | ausschließlich das Kennzahlenband der Übersicht |
-| `--ce-net-*` | ausschließlich der Carrier-Bereich der Übersicht |
 | `--auth-*` | ausschließlich Auth-Bereich |
 | `--adm-*` / `.adm-*` | ausschließlich Adminbereich |
 | Legacy (`--navy`, `--gray*`, `--blue*`) | Booking, Legal, Angebots-/Preisrechnerkarten |
@@ -61,7 +72,7 @@ Eine Skala aus `--ce-text-*` (Seitentitel 28/36, mobil 24/32 · Abschnitt 18/26 
 
 `.app-shell` ist der einzige Layoutrahmen des eingeloggten Bereichs — keine seitenabhängigen Theme-Klassen, keine zweite Hintergrundebene, keine Muster oder Formen im Hintergrund. Der Grund ist EINE gemeinsame Atmosphäre (`--ce-color-bg-atmosphere`, in der Shell über `--ce-app-bg`) für Admin und öffentliche Seiten (im Bereich `kunde` seit dem Premium-Redesign eine weiße Arbeitsfläche ohne Atmosphäre): kühle Rampe aus den Flächentönen der Farbwelt mit genau zwei Lichtflächen (Markenindigo, Markenviolett), deren Deckkraft so bemessen ist, dass Sekundärtext auch im Lichtzentrum WCAG AA hält. Die Navigation hat genau zwei Ebenen; höchstens eine Gruppe ist offen, und der Klappzustand ist ein Wert, keine Booleanmenge. Die Kunden-Sidebar trägt die Deep-Navy-Fläche der ConfidaraExpress-Farbwelt (im Bereich `kunde` flach in der Navy des Logos, `--ce-sidebar-*` aus dem Bereichsblock) mit Textnavigation und Icons an den Hauptpunkten (E7) und der Originalmarke (`BrandLogo variant="lockup" tone="reverse"`) samt Unterzeile „B2B Logistik- und Versandplattform"; die Admin-Sidebar ist hell (Standardfassung). Es gibt keine weitere Markenvariante.
 
-Einzige lokale Ausnahme (Betreiberentscheidung 2026-10-04): der Carrier-Bereich der Übersicht (`.ov-carriers`) trägt die Optik vor dem Redesign — Navy-Fläche, drei Routenlinien mit Knoten als `aria-hidden`-SVG hinter dem Inhalt, an der Karte beschnitten, weiße Logo-Kacheln, Schrift und Vergleichsaktion hell auf Navy (`--ce-net-*`). Das ist keine Seitenebene; kein anderes Modul übernimmt sie.
+Die frühere lokale Ausnahme der Übersicht (Navy-Carrierfläche mit Routenlinien, `--ce-net-*`, Betreiberentscheidung 2026-10-04) ist seit dem Komplettabschluss (G2, 2026-10-27) entfallen: „Ihre Versanddienstleister“ ist eine ruhige Zeile auf Weiß aus Serverdaten.
 
 `min-height: 100dvh` statt `100vh` bei Vollbildlayouts.
 

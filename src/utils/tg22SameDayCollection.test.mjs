@@ -330,18 +330,19 @@ test("9 — Zusammenfassungen: vorläufig aus dem Angebot, bestätigt aus dem Se
   assert.equal(sameDaySummaryNote(ohneZuschlag, gebunden), null);
   assert.equal(sameDaySummaryNote(null, null), null);
 
+  // G6/M9 (2026-10-27): der Zuschlagshinweis steht am Preis im Beleg; das ausgewählte Angebot nennt nur noch, bis
+  // wann die Abholung heute möglich ist — eine Angabe, die sonst nirgends steht.
   const summary = code(SUMMARY);
-  assert.match(summary, /import \{ sameDaySummaryNote, sameDayUntilText \} from "\.\.\/\.\.\/utils\/sameDayCollectionView\.mjs";/);
-  assert.match(summary, /const sameDayHinweis = sameDaySummaryNote\(priceView, tariff\);/);
+  assert.match(summary, /import \{ sameDayUntilText \} from "\.\.\/\.\.\/utils\/sameDayCollectionView\.mjs";/);
   assert.match(summary, /const sameDayBis = sameDayUntilText\(tariff\);/);
-  assert.match(summary, /\{sameDayHinweis && \(\s*<div className="offsum-price-vat" id="offer-summary-sameday-note">\{sameDayHinweis\}<\/div>\s*\)\}/);
   assert.match(summary, /id="offer-summary-sameday-until"/);
+  assert.doesNotMatch(summary, /sameDaySummaryNote|offer-summary-sameday-note/, "der Zuschlagshinweis steht doppelt");
   const live = code(LIVE);
   assert.match(live, /const sameDayHinweis = sameDaySummaryNote\(v, tariff\);/);
   assert.match(live, /\{sameDayHinweis && \(\s*<span className="blsum-ins-note" id="booking-live-sameday-note">\{sameDayHinweis\}<\/span>\s*\)\}/);
-  // Beide Flächen lesen weiterhin den gemeinsamen Abholvertrag und keine Abholfelder direkt.
+  // Der Beleg liest den gemeinsamen Abholvertrag; keine der beiden Flächen liest Abholfelder direkt.
+  assert.ok(live.includes("pickupSummaryOf(tariff, pickupWindow)"));
   for (const q of [summary, live]) {
-    assert.ok(q.includes("pickupSummaryOf(tariff, pickupWindow)"));
     assert.doesNotMatch(q, /collectionReadyFrom|collectionDate|pickupTodayUntil|sameDaySurcharge/);
   }
 });

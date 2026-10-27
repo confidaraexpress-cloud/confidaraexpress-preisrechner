@@ -6,15 +6,17 @@
 
    Gestaltung (Go-Live-Abschluss 2026-10-16):
      Raster      Inhaltsbreite --ce-size-content-wide (1420 px), Seitenrand 16–48 px (--pc-gutter).
-                 Vier Bereiche: Hero mit Rechner · Ergebnisse (erst nach der ersten Berechnung) ·
-                 Ablauf und Plattform in einem Band · Fragen mit persönlichem Kontakt, dann der Fuß.
+                 Fünf Bereiche: Hero mit Rechner · Ergebnisse (erst nach der ersten Berechnung) ·
+                 Kundenbereich (Versand und Logistik) mit klickbarer Vorschau · Ablauf in drei
+                 Schritten · Fragen mit persönlichem Kontakt, dann der Fuß.
      Band        Kopf und Hero liegen auf dem dunklen Band (--ce-color-surface-inverse) mit zwei
                  ruhenden Lichtflächen in Markenfarben. Es ist ein Rasterelement des Heros
                  (.pc-hero-grid::before), ohne feste Höhen: einspaltig endet es nach der
                  Positionierung und die Rechnerkarte ragt darüber hinaus, zweispaltig deckt es den
                  ganzen Hero.
-     Hero        ab 1080 px zweispaltig (Botschaft | Rechnerkarte bis 680 px), darunter einspaltig
-                 in der Reihenfolge Headline → Rechner → Vorteile. Headline 36 / 44 / 48 / 52 px.
+     Hero        ab 1080 px zweispaltig (Botschaft mit Nachtkarte | Rechnerkarte bis 680 px), darunter
+                 einspaltig Headline → Karte → Rechner. Headline 36 / 48 / 56 / 60 px — ein Satz, der
+                 sagt, was das Produkt ist; keine Häkchenleiste (Komplettabschluss 2026-10-27).
      Formular    nur Route und Paket. Ist die Karte breit genug (Container Query), stehen Absender und
                  Empfänger nebeneinander, dazwischen der Routenpfeil. Felder 48 px, Eingabe 16 px.
                  Das Seitengerüst trägt dieselbe Struktur als statisches Skelett — keine reservierte
@@ -34,7 +36,8 @@
      Bewegung    Übergänge höchstens 200 ms (der Markenstreifen der Tarifkarte 220 ms), aus bei
                  reduzierter Bewegung. Keine Daueranimation, auch nicht beim Laden. Einzige
                  Animation: die Strecke auf der Nachtkarte zeichnet sich einmal als Antwort auf die
-                 Eingabe (Konzept A, Premium-Redesign 2026-10-27). */
+                 Eingabe (Konzept A, Premium-Redesign 2026-10-27). Die Kundenbereich-Vorschau antwortet
+                 auf Zeigen und Fokus (Streifen, 2 px Anheben, eine markierte Zeile). */
 
 @import './fonts.css';
 @import './variables.css';
@@ -169,9 +172,11 @@
   border-radius: var(--ce-radius-sm);
 }
 
+/* Ein Logomaß je Kontext (Audit C, Marke): öffentlicher Kopf 128 px. Unter 534 px schrumpft es mit der Breite
+   (24vw, mindestens 88 px), damit Logo, „Anmelden“ und „Registrieren“ bei 360 px in eine Zeile passen. */
 .pc-brand-img {
   display: block;
-  width: 84px;
+  width: clamp(88px, 24vw, 128px);
   height: auto;
 }
 
@@ -264,7 +269,7 @@
   --pc-band-into-card: 112px;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "head" "card" "body";
+  grid-template-areas: "head" "card";
   row-gap: var(--ce-space-6);
 }
 
@@ -301,19 +306,18 @@
   line-height: 1.25rem;
 }
 
+/* Die Headline (G1): „Versand- und Logistikmanagement für Unternehmen.“ — länger als die frühere Formel, deshalb
+   etwas leichter und weniger eng. Das bedingte Trennzeichen im Seitengerüst trennt „Logistik-management“ nur,
+   wenn das Wort sonst nicht passt. */
 .pc-display {
   font-family: var(--ce-pr-font-display);
-  font-size: 2.5rem;
-  font-weight: 650;
+  font-size: 2rem;
+  font-weight: 620;
   font-stretch: var(--ce-pr-display-stretch);
-  line-height: 1.02;
-  letter-spacing: -0.036em;
+  line-height: 1.05;
+  letter-spacing: -0.026em;
+  hyphens: manual;
   text-wrap: balance;
-}
-
-/* Die Headline bricht an der Satzgrenze — nie „Unternehmen. Einfach“ in einer Zeile. */
-.pc-display-line {
-  display: block;
 }
 
 
@@ -516,6 +520,13 @@
   }
 }
 
+/* Kleine Telefone: ein flacheres Band, damit die Rechnerkarte mit ihrer ersten Zeile im ersten Bild beginnt. */
+@media (max-width: 479px) {
+  .pc-hero-map-frame {
+    aspect-ratio: 2;
+  }
+}
+
 /* Tablet: ein flacheres Band, damit die erste Zeile des Rechners auch quer im ersten Bild steht. */
 @media (min-width: 640px) and (max-width: 1079px) {
   .pc-hero-map-frame {
@@ -532,94 +543,6 @@
   .pc-route-licht { display: none; }
   .pc-hero-map-img,
   .pc-karte-lichter { transition: none; }
-}
-
-.pc-hero-body {
-  grid-area: body;
-  display: grid;
-  gap: var(--ce-space-5);
-  align-content: start;
-}
-
-.pc-hero-points {
-  display: grid;
-  gap: var(--ce-space-4) var(--ce-space-5);
-}
-
-.pc-hero-points li {
-  position: relative;
-  display: grid;
-  gap: 2px;
-  padding-left: var(--ce-space-8);
-}
-
-/* Häkchen in einem ruhigen Kreis, aus zwei Kanten gezeichnet. */
-.pc-hero-points li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--ce-radius-full);
-  background: var(--ce-color-brand-soft);
-}
-
-.pc-hero-points li::after {
-  content: "";
-  position: absolute;
-  left: 11px;
-  top: 7px;
-  width: 6px;
-  height: 11px;
-  border-right: 2px solid var(--ce-color-brand-ink);
-  border-bottom: 2px solid var(--ce-color-brand-ink);
-  transform: rotate(45deg);
-}
-
-.pc-hero-points strong {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  line-height: 1.375rem;
-}
-
-.pc-hero-points span {
-  color: var(--ce-color-text-secondary);
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-}
-
-.pc-hero-contact {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0 var(--ce-space-5);
-  padding-top: var(--ce-space-3);
-  border-top: 1px solid var(--ce-color-border-subtle);
-  font-size: 0.9375rem;
-  line-height: 1.375rem;
-}
-
-.pc-hero-contact-label {
-  width: 100%;
-  color: var(--ce-color-text-muted);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  line-height: 1.25rem;
-}
-
-/* Gesamtauftrag C: der Ansprechpartner — eine eigene Zeile über den beiden Kontaktwegen. */
-.pc-hero-contact-person {
-  width: 100%;
-  color: var(--ce-color-text-primary);
-  font-weight: 500;
-}
-
-.pc-hero-contact a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  font-weight: 500;
 }
 
 /* ── Rechnerkarte ────────────────────────────────────────────────────────── */
@@ -1358,21 +1281,18 @@
 
 /* Mindestbreiten in rem: bei größerer Browserschrift werden die Karten breiter statt die Werte
    ineinanderzuschieben (E13). Bei 16 px Grundgröße 300 px. */
+/* Höchstens drei Spalten (jede Spalte mindestens ein Drittel): so bleibt jede Karte breit genug, dass Preis und
+   Knopf in einer Zeile stehen; schmaler als 21,25rem wird es einspaltig bzw. zweispaltig. */
 .pc-offers {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18.75rem), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, max(21.25rem, calc((100% - 2 * var(--ce-space-5)) / 3))), 1fr));
   gap: var(--ce-space-5);
 }
 
-/* Keine einzelne Karte in der letzten Reihe bei den häufigen Mengen (Audit: 3 + 1 bei 1440/1920 px):
-   vier Angebote in der Dreierbreite stehen 2 + 2, fünf in der Viererbreite 3 + 2. Die Schwellen folgen
-   der Spaltenbreite oben (bei 16 px: 940 bzw. 1260 px). */
-@container pc-ergebnis (min-width: 58.75rem) and (max-width: 78.6875rem) {
+/* Keine einzelne Karte in der letzten Reihe bei vier Angeboten (Audit: 3 + 1): in der Dreierbreite stehen sie
+   2 + 2. Ab 66,25rem (bei 16 px 1060 px) passen drei Spalten zu 21,25rem. Fünf stehen 3 + 2, sechs 3 + 3. */
+@container pc-ergebnis (min-width: 66.25rem) {
   .pc-offers:has(> .pc-offers-item:nth-child(4):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-@container pc-ergebnis (min-width: 78.75rem) {
-  .pc-offers:has(> .pc-offers-item:nth-child(5):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 .pc-offers-item {
@@ -1380,12 +1300,12 @@
   min-width: 0;
 }
 
-/* Tarifkarten einer Reihe teilen ihre Zeilen (Kopf, Eckdaten, Preis, Hinweise, Aktion): Preise und
-   Aktionen stehen nebeneinander auf einer Höhe. Ohne subgrid bleibt es bei der Spalte je Karte. */
+/* Tarifkarten einer Reihe teilen ihre Zeilen (Kopf, Eckdaten, Hinweise, Abschluss mit Preis und Aktion): Preise
+   und Aktionen stehen nebeneinander auf einer Höhe. Ohne subgrid bleibt es bei der Spalte je Karte. */
 @supports (grid-template-rows: subgrid) {
   .pc-offers--list .pc-offers-item {
     display: grid;
-    grid-row: span 5;
+    grid-row: span 4;
     grid-template-rows: subgrid;
   }
   .pc-offers--list .pc-offer {
@@ -1396,9 +1316,8 @@
   }
   .pc-offers--list .pc-offer-head { grid-row: 1; }
   .pc-offers--list .pc-offer-facts { grid-row: 2; }
-  .pc-offers--list .pc-offer-price { grid-row: 3; align-self: start; }
-  .pc-offers--list .pc-offer-hints { grid-row: 4; align-self: start; }
-  .pc-offers--list .pc-offer-action { grid-row: 5; }
+  .pc-offers--list .pc-offer-hints { grid-row: 3; align-self: start; }
+  .pc-offers--list .pc-offer-abschluss { grid-row: 4; align-self: start; margin-top: 0; }
 }
 
 /* ── Tarifkarte ──────────────────────────────────────────────────────────── */
@@ -1442,7 +1361,7 @@
 }
 
 .pc-offer--skeleton {
-  min-height: 340px;
+  min-height: 300px;
   box-shadow: none;
 }
 
@@ -1496,16 +1415,16 @@
 }
 
 .pc-offer-carrier {
-  font-size: 1rem;
+  font-size: 1.0625rem;
   font-weight: 600;
-  line-height: 1.375rem;
+  line-height: 1.5rem;
   overflow-wrap: break-word;
 }
 
 .pc-offer-service {
   color: var(--ce-color-text-secondary);
-  font-size: 0.875rem;
-  line-height: 1.25rem;
+  font-size: 0.9375rem;
+  line-height: 1.375rem;
   overflow-wrap: break-word;
 }
 
@@ -1545,10 +1464,10 @@
 }
 
 .pc-fact dt {
-  color: var(--ce-color-text-muted);
-  font-size: 0.8125rem;
+  color: var(--ce-color-text-secondary);
+  font-size: 0.875rem;
   font-weight: 500;
-  line-height: 1.125rem;
+  line-height: 1.25rem;
 }
 
 .pc-fact dd {
@@ -1559,24 +1478,68 @@
 }
 
 .pc-fact-main {
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 600;
-  line-height: 1.375rem;
+  line-height: 1.5rem;
 }
 
 .pc-fact-sub {
   color: var(--ce-color-text-secondary);
-  font-size: 0.8125rem;
-  line-height: 1.125rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 }
 
 .pc-fact-note {
   color: var(--ce-color-text-muted);
 }
 
+.pc-offer-hints {
+  display: grid;
+  gap: var(--ce-space-1);
+}
+
+.pc-offer-hints li {
+  position: relative;
+  padding-left: var(--ce-space-4);
+  color: var(--ce-color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.375rem;
+}
+
+.pc-offer-hints li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 9px;
+  width: 5px;
+  height: 5px;
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-text-muted);
+}
+
+/* Abschluss der Karte (Audit C, Tarifkarten): Preis und ein kompakter Knopf in einer Zeile, darunter bei „ab“ die
+   Erklärung über die ganze Breite. Schmale Karten stapeln. Die Container Query hängt am Abschluss, nicht an der
+   Karte — eine Karte als Größencontainer verlöre ihr subgrid. So wird die Karte niedriger, und sechs Karten
+   stehen nicht mehr als Wand aus gleich schweren Vollbreiten-Knöpfen da. */
+.pc-offer-abschluss {
+  container: pc-abschluss / inline-size;
+  display: grid;
+  gap: var(--ce-space-2);
+  margin-top: auto;
+  padding-top: var(--ce-space-4);
+  border-top: 1px solid var(--ce-color-border-subtle);
+}
+
+.pc-offer-zeile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: var(--ce-space-3);
+}
+
 .pc-offer-price {
   display: grid;
-  gap: 2px;
+  min-width: 0;
 }
 
 .pc-price-main {
@@ -1602,48 +1565,46 @@
 /* „zzgl. MwSt." klein direkt unter dem Nettopreis. */
 .pc-price-vat {
   color: var(--ce-color-text-secondary);
-  font-size: 0.8125rem;
-  line-height: 1.125rem;
-}
-
-.pc-price-note {
-  margin-top: var(--ce-space-1);
-  color: var(--ce-color-text-muted);
-  font-size: 0.8125rem;
-  line-height: 1.125rem;
-}
-
-.pc-offer-hints {
-  display: grid;
-  gap: var(--ce-space-1);
-}
-
-.pc-offer-hints li {
-  position: relative;
-  padding-left: var(--ce-space-4);
-  color: var(--ce-color-text-secondary);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.25rem;
 }
 
-.pc-offer-hints li::before {
-  content: "";
-  position: absolute;
-  left: 2px;
-  top: 8px;
-  width: 5px;
-  height: 5px;
-  border-radius: var(--ce-radius-full);
-  background: var(--ce-color-text-muted);
+.pc-price-note {
+  color: var(--ce-color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 }
 
 .pc-offer-action {
-  margin-top: auto;
-  padding-top: var(--ce-space-1);
+  min-width: 0;
 }
 
-.pc-offer-continue {
+/* Die Aktion der Karte: kompakt und in Kontur, gefüllt erst unter dem Zeiger, beim Fokus und beim Drücken. So
+   bleibt „Versandpreise berechnen“ die eine gefüllte Primäraktion der Seite. */
+.pc-page .pc-button--offer {
   width: 100%;
+  min-height: 44px;
+  padding-inline: var(--ce-space-5);
+  border-color: var(--ce-pr-navy-800);
+  background: var(--ce-color-surface);
+  color: var(--ce-pr-navy-800);
+  white-space: nowrap;
+}
+
+.pc-page .pc-button--offer:hover,
+.pc-page .pc-button--offer:focus-visible,
+.pc-page .pc-button--offer:active {
+  background: var(--ce-pr-navy-800);
+  color: var(--ce-color-text-inverse);
+  box-shadow: var(--ce-pr-btn-shadow);
+}
+
+@media (hover: hover) {
+  .pc-page .pc-offer:hover .pc-button--offer {
+    background: var(--ce-pr-navy-800);
+    color: var(--ce-color-text-inverse);
+    box-shadow: var(--ce-pr-btn-shadow);
+  }
 }
 
 /* In der Höhe des Knopfs, damit Aktionen einer Reihe oben und unten bündig stehen. */
@@ -1651,7 +1612,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 48px;
+  min-height: 44px;
   padding: var(--ce-space-2) var(--ce-space-3);
   border-radius: var(--ce-radius-sm);
   background: var(--ce-color-status-neutral-surface);
@@ -1661,19 +1622,41 @@
   text-align: center;
 }
 
-/* ── Bereich 3: Ablauf und Plattform ─────────────────────────────────────── */
+/* Breit genug (ab 20rem): Preis links, Aktion rechts in fester Breite. */
+@container pc-abschluss (min-width: 20rem) {
+  .pc-offer-zeile {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--ce-space-4);
+  }
+  .pc-page .pc-button--offer {
+    width: auto;
+    min-width: 11.25rem;
+  }
+  .pc-offer-unavailable {
+    max-width: 13.5rem;
+  }
+}
+
+/* ── Bereich 3: der Kundenbereich — Versand und Logistik, daneben die Vorschau ── */
+/* G1/D7 (Komplettabschluss 2026-10-27): was der Kundenbereich kann, in zwei Gruppen. „Logistik“ meint die
+   Software für den eigenen Bestand des Kunden — ConfidaraExpress lagert nicht ein. */
 .pc-platform {
-  padding-block: var(--ce-space-8);
+  padding-block: var(--ce-space-10);
   border-block: 1px solid var(--ce-color-border-subtle);
   background: var(--ce-color-surface);
 }
 
+/* Einspaltig: Einleitung, Vorschau, die beiden Gruppen. Ab 1080 px Einleitung und Vorschau nebeneinander, die
+   Gruppen darunter über die ganze Breite (Zielskizze Audit C, mit ausgewogener Höhe). */
 .pc-platform-grid {
   display: grid;
-  gap: var(--ce-space-8);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "intro" "vorschau" "gruppen";
+  gap: var(--ce-space-9);
 }
 
-.pc-platform-col {
+.pc-platform-intro {
+  grid-area: intro;
   min-width: 0;
 }
 
@@ -1687,39 +1670,52 @@
   text-wrap: balance;
 }
 
-.pc-steps {
-  display: grid;
-  gap: var(--ce-space-4);
-  margin-top: var(--ce-space-5);
+.pc-page .pc-platform-lead {
+  max-width: 36rem;
+  margin-top: var(--ce-space-4);
+  color: var(--ce-color-text-secondary);
+  font-size: 1.0625rem;
+  line-height: 1.65;
 }
 
-.pc-step {
+.pc-platform-gruppen {
+  grid-area: gruppen;
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
-  align-items: start;
-  gap: var(--ce-space-3);
+  gap: var(--ce-space-8);
+  min-width: 0;
 }
 
-.pc-step-number {
-  display: inline-flex;
+/* Der Gruppentitel: ein Wort über einer feinen Linie — keine Versalien, keine Kapsel. */
+.pc-page .pc-gruppe-titel {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--ce-radius-full);
-  background: var(--ce-color-brand);
-  color: var(--ce-color-text-inverse);
-  font-size: 0.875rem;
-  font-weight: 600;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
+  gap: var(--ce-space-3);
+  color: var(--ce-pr-navy-800);
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.375rem;
 }
 
-.pc-step-body {
+.pc-gruppe-titel::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--ce-pr-hairline);
+}
+
+.pc-features {
   display: grid;
+  /* Höchstens zwei Spalten; eine, sobald eine Spalte schmaler als 10rem würde (große Browserschrift). */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, max(10rem, calc((100% - var(--ce-space-5)) / 2))), 1fr));
+  gap: var(--ce-space-4) var(--ce-space-5);
+}
+
+.pc-feature {
+  display: grid;
+  align-content: start;
   gap: 2px;
-  padding-top: var(--ce-space-1);
+  padding-left: var(--ce-space-3);
+  border-left: 2px solid var(--ce-color-brand-border);
 }
 
 .pc-step-title,
@@ -1736,34 +1732,24 @@
   line-height: 1.375rem;
 }
 
-.pc-features {
-  display: grid;
-  /* Höchstens zwei Spalten; eine, sobald eine Spalte schmaler als 10rem würde (große Browserschrift). */
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, max(10rem, calc((100% - var(--ce-space-5)) / 2))), 1fr));
-  gap: var(--ce-space-4) var(--ce-space-5);
-  margin-top: var(--ce-space-5);
+/* Abstand zwischen Gruppentitel und Liste: die Grundregel .pc-page ul/ol (margin: 0) ist spezifischer als
+   .pc-features und nahm ihr den vorgesehenen Abstand. */
+.pc-page .pc-features {
+  margin-top: var(--ce-space-4);
 }
 
-.pc-feature {
-  display: grid;
-  align-content: start;
-  gap: 2px;
-  padding-left: var(--ce-space-3);
-  border-left: 2px solid var(--ce-color-brand-border);
-}
-
-/* Die Kundenbereich-Demo: derselbe Bereich mit Beispieldaten, ohne Anmeldung (Hauptdomain /demo). */
+/* Der Weg in die Kundenbereich-Demo: Knopf und Satz in einer Zeile, sobald Platz ist. */
 .pc-demo {
-  display: grid;
-  justify-items: start;
-  gap: var(--ce-space-3);
-  margin-top: var(--ce-space-6);
-  padding-top: var(--ce-space-5);
-  border-top: 1px solid var(--ce-color-border-subtle);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ce-space-3) var(--ce-space-5);
+  margin-top: var(--ce-space-7);
 }
 
 .pc-demo-text {
-  max-width: 34rem;
+  flex: 1 1 14rem;
+  max-width: 24rem;
   color: var(--ce-color-text-secondary);
   font-size: 0.9375rem;
   line-height: 1.375rem;
@@ -1775,14 +1761,457 @@
   color: var(--ce-color-text-inverse);
 }
 
-/* Abstand zwischen Abschnittstitel und Liste: die Grundregel .pc-page ul/ol (margin: 0) ist spezifischer als
-   .pc-steps/.pc-features und nahm ihnen den vorgesehenen Abstand. */
-.pc-page .pc-steps,
-.pc-page .pc-features {
-  margin-top: var(--ce-space-5);
+/* ── Kundenbereich-Vorschau (G3, Audit D5) ───────────────────────────────────
+   Eine Miniatur des echten Kundenbereichs aus HTML und CSS: kein Bild, kein Skript, scharf in jeder
+   Pixeldichte. Alle Maße stehen in em auf einer Grundgröße in cqw — die Miniatur skaliert als Ganzes mit ihrer
+   Breite, ihre Höhe folgt daraus; nichts lädt nach, nichts springt. Innen aria-hidden, der Link heißt
+   „Kundenbereich-Demo öffnen“. Zeigen und Fokus: der Streifen läuft an der Unterkante ein, die Miniatur hebt
+   sich um 2 px, und die erste Sendung ist markiert wie unter dem Zeiger im Kundenbereich — die einzige
+   Bewegung, aus bei reduzierter Bewegung. */
+.pc-vorschau-figur {
+  grid-area: vorschau;
+  display: grid;
+  align-content: start;
+  gap: var(--ce-space-3);
+  min-width: 0;
 }
 
-/* ── Bereich 4: Fragen, persönlicher Kontakt und Fuß ─────────────────────── */
+.pc-vorschau {
+  container: pc-vorschau / inline-size;
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--ce-color-border-default);
+  border-radius: var(--ce-pr-radius-card);
+  background: var(--ce-pr-papier);
+  box-shadow: var(--ce-pr-shadow-card);
+}
+
+.pc-page .pc-vorschau {
+  color: var(--ce-color-text-primary);
+  text-decoration: none;
+}
+
+.pc-vorschau::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 3px;
+  background: var(--ce-pr-stripe);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.pc-vorschau:hover,
+.pc-vorschau:focus-visible {
+  box-shadow: var(--ce-pr-shadow-card-hover);
+  transform: translateY(-2px);
+}
+
+.pc-vorschau:hover::after,
+.pc-vorschau:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.pc-page .pc-vorschau-hinweis {
+  color: var(--ce-color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.pcv {
+  display: grid;
+  grid-template-columns: 21% minmax(0, 1fr);
+  font-size: 1.45cqw;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.pcv-leiste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+  min-width: 0;
+  padding: 1.5em 0.8em 1.2em;
+  background: var(--ce-pr-navy-900);
+  color: var(--ce-pr-on-navy-2);
+}
+
+.pcv-marke {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin: 0 0.4em 1.4em;
+  color: var(--ce-pr-on-navy);
+  font-weight: 650;
+}
+
+.pcv-signet {
+  flex: none;
+  width: 1.6em;
+  height: 1.6em;
+  border-radius: var(--ce-pr-radius-status);
+  background: var(--ce-pr-stripe-on-navy);
+}
+
+.pcv-wortmarke,
+.pcv-nav,
+.pcv-kontakt-text,
+.pcv-kpi-label,
+.pcv-name,
+.pcv-ort {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pcv-nav {
+  display: block;
+  padding: 0.5em 0.7em;
+  border-radius: var(--ce-pr-radius-status);
+  font-weight: 500;
+}
+
+.pcv-nav--aktiv {
+  position: relative;
+  background: var(--ce-pr-navy-850);
+  color: var(--ce-pr-on-navy);
+  font-weight: 600;
+}
+
+.pcv-nav--aktiv::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.45em;
+  bottom: 0.45em;
+  width: 0.2em;
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-pr-signal-on-navy);
+}
+
+.pcv-kontakt {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin-top: auto;
+  padding: 0.9em 0.4em 0;
+  border-top: 1px solid var(--ce-pr-on-navy-line);
+}
+
+.pcv-initialen,
+.pcv-nutzer {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 2.2em;
+  height: 2.2em;
+  border-radius: var(--ce-radius-full);
+  font-size: 0.85em;
+  font-weight: 650;
+}
+
+.pcv-initialen {
+  background: var(--ce-pr-navy-850);
+  color: var(--ce-pr-on-navy);
+}
+
+.pcv-nutzer {
+  background: var(--ce-pr-signal-soft);
+  color: var(--ce-pr-navy-800);
+}
+
+.pcv-haupt {
+  display: grid;
+  align-content: start;
+  gap: 1.1em;
+  min-width: 0;
+  padding: 1.2em 1.6em 1.6em;
+}
+
+.pcv-kopf,
+.pcv-titelzeile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+}
+
+.pcv-suche {
+  width: 44%;
+  padding: 0.45em 0.8em;
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-radius-status);
+  background: var(--ce-color-surface);
+  color: var(--ce-color-text-muted);
+}
+
+.pcv-titel {
+  font-size: 1.55em;
+  font-weight: 650;
+  letter-spacing: -0.012em;
+}
+
+.pcv-knopf {
+  flex: none;
+  padding: 0.55em 1em;
+  border-radius: var(--ce-pr-radius-status);
+  background: var(--ce-pr-navy-800);
+  color: var(--ce-color-text-inverse);
+  font-weight: 600;
+}
+
+.pcv-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8em;
+}
+
+.pcv-kpi,
+.pcv-blatt {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-radius-status);
+  background: var(--ce-color-surface);
+}
+
+.pcv-kpi {
+  gap: 0.25em;
+  padding: 0.8em 0.9em;
+}
+
+.pcv-kpi-label,
+.pcv-text,
+.pcv-ort,
+.pcv-datum,
+.pcv-fakt {
+  color: var(--ce-color-text-secondary);
+}
+
+.pcv-kpi-wert,
+.pcv-summe {
+  font-size: 1.75em;
+  font-weight: 650;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.pcv-raster {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 0.8em;
+}
+
+.pcv-blatt {
+  gap: 0.35em;
+  padding: 0.9em 1em 0.6em;
+}
+
+.pcv-blatt-titel {
+  margin-bottom: 0.25em;
+  font-weight: 650;
+}
+
+.pcv-zeile {
+  display: grid;
+  grid-template-columns: 3.4em minmax(0, 1fr) 5.9em 6.2em 4.4em;
+  align-items: center;
+  gap: 0.6em;
+  margin-inline: -0.5em;
+  padding: 0.5em;
+  border-top: 1px solid var(--ce-pr-hairline);
+}
+
+.pcv-datum,
+.pcv-betrag {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  white-space: nowrap;
+}
+
+.pcv-empf {
+  display: grid;
+  min-width: 0;
+}
+
+.pcv-name {
+  font-weight: 600;
+}
+
+.pcv-ort {
+  font-weight: 400;
+}
+
+.pcv-carrier {
+  justify-self: start;
+  padding: 0.15em 0.5em;
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-radius-status);
+  font-size: 0.85em;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+/* Status wie im Kundenbereich: Punkt und Wort, Text in Tinte (Premium-Redesign, Abschnitt Status). */
+.pcv-status {
+  --pcv-punkt: var(--ce-color-status-neutral-fg);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pcv-status::before {
+  content: "";
+  flex: none;
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: var(--ce-radius-full);
+  background: var(--pcv-punkt);
+}
+
+.pcv-status--gebucht { --pcv-punkt: var(--ce-color-status-info-fg); }
+.pcv-status--unterwegs { --pcv-punkt: var(--ce-color-status-progress-fg); }
+.pcv-status--zugestellt { --pcv-punkt: var(--ce-color-status-success-fg); }
+.pcv-status--verzoegert { --pcv-punkt: var(--ce-color-status-warning-fg); }
+
+.pcv-betrag {
+  text-align: right;
+}
+
+.pcv-spalte {
+  display: grid;
+  align-content: start;
+  gap: 0.8em;
+  min-width: 0;
+}
+
+.pcv-fakt {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5em;
+  padding-block: 0.35em;
+  border-top: 1px solid var(--ce-pr-hairline);
+}
+
+.pcv-fakt-wert {
+  color: var(--ce-color-text-primary);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.pcv-fakt-wert--hinweis {
+  color: var(--ce-color-status-warning-fg);
+}
+
+/* Die Antwort auf Zeigen und Fokus: die erste Sendung ist markiert wie unter dem Zeiger im Kundenbereich. */
+.pc-vorschau:hover .pcv-zeile:nth-child(2),
+.pc-vorschau:focus-visible .pcv-zeile:nth-child(2) {
+  background: var(--ce-pr-signal-soft);
+}
+
+/* Schmal (unter 520 px Breite der Vorschau): weniger Inhalt in größerer Schrift — die Leiste nur als Navy-Kante
+   mit Signet, zwei Kennzahlen, die Sendungen ohne Nummer und Versanddienst, ohne Seitenspalte. */
+@container pc-vorschau (max-width: 519px) {
+  .pcv {
+    grid-template-columns: 11% minmax(0, 1fr);
+    font-size: 2.55cqw;
+  }
+  .pcv-leiste {
+    align-items: center;
+    padding-inline: 0;
+  }
+  .pcv-marke {
+    margin-inline: 0;
+  }
+  .pcv-wortmarke,
+  .pcv-nav,
+  .pcv-kontakt-text,
+  .pcv-kpi:nth-child(n + 3),
+  .pcv-spalte,
+  .pcv-datum,
+  .pcv-carrier,
+  .pcv-suche {
+    display: none;
+  }
+  .pcv-kontakt {
+    padding-inline: 0;
+    border-top: 0;
+  }
+  .pcv-haupt {
+    padding: 1em 1.1em 1.2em;
+  }
+  .pcv-kopf {
+    justify-content: flex-end;
+  }
+  .pcv-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pcv-raster {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pcv-zeile {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+}
+
+/* ── Bereich 4: der Weg zur ersten Buchung ──────────────────────────────────── */
+.pc-ablauf {
+  padding-block: var(--ce-space-9);
+  border-bottom: 1px solid var(--ce-color-border-subtle);
+  background: var(--ce-pr-papier);
+}
+
+.pc-ablauf-grid {
+  display: grid;
+  gap: var(--ce-space-6);
+}
+
+.pc-steps {
+  display: grid;
+  gap: var(--ce-space-5);
+}
+
+.pc-page .pc-steps {
+  margin-top: 0;
+}
+
+.pc-step {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--ce-space-3);
+}
+
+.pc-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-pr-navy-800);
+  color: var(--ce-color-text-inverse);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.pc-step-body {
+  display: grid;
+  gap: 2px;
+  padding-top: 6px;
+}
+
+/* ── Bereich 5: Fragen, persönlicher Kontakt und Fuß ─────────────────────── */
 .pc-faq-section {
   padding-block: var(--ce-space-8);
 }
@@ -1833,6 +2262,20 @@
   align-items: center;
   min-height: 44px;
   font-weight: 500;
+}
+
+/* Auf dem hellen Serviceblock trägt der Registrierknopf eine Navy-Kontur — der Papierknopf des Kopfs ist für die
+   Navy-Bühne gedacht und stand hier als blasse Fläche auf Weiß. */
+.pc-page .pc-service-cta {
+  border-color: var(--ce-pr-navy-800);
+  background: var(--ce-color-surface);
+  color: var(--ce-pr-navy-800);
+}
+
+.pc-page .pc-service-cta:hover {
+  border-color: var(--ce-pr-navy-800);
+  background: var(--ce-pr-navy-800);
+  color: var(--ce-color-text-inverse);
 }
 
 .pc-faq {
@@ -1901,7 +2344,7 @@
 }
 
 .pc-footer-brand {
-  width: 84px;
+  width: 112px;
   height: auto;
 }
 
@@ -1919,6 +2362,8 @@
 .pc-page .pc-footer-nav a {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-width: 44px;
   min-height: 44px;
   color: var(--ce-color-text-inverse);
   font-size: 0.875rem;
@@ -1958,10 +2403,6 @@
 }
 
 /* ── Breiten ─────────────────────────────────────────────────────────────── */
-@media (min-width: 480px) {
-  .pc-hero-points { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
 @media (min-width: 640px) {
   .pc-hero { padding-block: var(--ce-space-4) var(--ce-space-8); }
   .pc-calculator-card { padding: var(--ce-space-6); }
@@ -1975,12 +2416,12 @@
 }
 
 @media (min-width: 720px) {
-  .pc-hero-points { column-gap: var(--ce-space-7); }
   .pc-footer-inner { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: var(--ce-space-6); }
 }
 
 @media (min-width: 900px) {
-  .pc-platform-grid { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); column-gap: clamp(40px, 6vw, 112px); }
+  .pc-features { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--ce-space-7); }
+  .pc-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--ce-space-7); }
   .pc-faq-grid { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.6fr); column-gap: clamp(40px, 6vw, 112px); }
 }
 
@@ -1991,8 +2432,7 @@
      auseinanderzuziehen. Das Band deckt hier den ganzen Hero bis zu seinem unteren Rand. */
   .pc-hero-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, min(680px, 56%));
-    grid-template-areas: "head card" "body card";
-    grid-template-rows: auto 1fr;
+    grid-template-areas: "head card";
     align-items: start;
     column-gap: var(--ce-space-9);
     row-gap: 0;
@@ -2002,23 +2442,22 @@
     margin-bottom: calc(-1 * var(--ce-space-9));
   }
   .pc-hero-head { padding-top: var(--ce-space-7); }
-  .pc-hero-body { margin-top: var(--ce-space-7); color: var(--ce-color-text-inverse); }
-  .pc-hero-points li::before { background: rgba(255, 255, 255, 0.1); }
-  .pc-hero-points li::after { border-color: var(--ce-color-text-inverse); }
-  .pc-hero-points span { color: var(--ce-color-text-inverse-soft); }
-  .pc-hero-contact { border-top-color: rgba(255, 255, 255, 0.16); }
-  .pc-hero-contact-label { color: var(--ce-color-text-inverse-soft); }
-  .pc-hero-contact-person { color: var(--ce-color-text-inverse); }
-  .pc-page .pc-hero-contact a { color: var(--ce-color-text-inverse); }
-  .pc-page .pc-hero-body a:focus-visible { outline-color: var(--ce-color-text-inverse); }
   .pc-calculator-card { padding: var(--ce-space-7); }
-}
-
-/* Kleine Laptops: die linke Spalte ist für zwei Vorteilsspalten zu schmal — eine Spalte, Titel und
-   Zusatz in einer Zeile. Ab 1440 px wieder das Raster aus zwei Spalten. */
-@media (min-width: 1080px) and (max-width: 1439px) {
-  .pc-hero-points { grid-template-columns: minmax(0, 1fr); row-gap: var(--ce-space-3); }
-  .pc-hero-points li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--ce-space-2); min-height: 28px; padding-top: 3px; }
+  .pc-section-title { font-size: 2.25rem; }
+  /* Kundenbereich: Einleitung und Vorschau nebeneinander, die Gruppen darunter über die ganze Breite. */
+  .pc-platform-grid {
+    grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+    grid-template-areas: "intro vorschau" "gruppen gruppen";
+    align-items: center;
+    column-gap: clamp(48px, 5vw, 96px);
+    row-gap: var(--ce-space-10);
+  }
+  /* Ablauf: Titel links, die drei Schritte rechts. */
+  .pc-ablauf-grid {
+    grid-template-columns: minmax(0, 0.3fr) minmax(0, 1fr);
+    align-items: start;
+    column-gap: clamp(48px, 5vw, 96px);
+  }
 }
 
 @media (min-width: 1366px) {
@@ -2055,6 +2494,15 @@
   }
   .pc-faq-item summary::after {
     transition: transform var(--ce-motion-standard) var(--ce-motion-ease-standard);
+  }
+  .pc-vorschau {
+    transition: transform var(--ce-motion-standard) var(--ce-motion-ease-standard), box-shadow var(--ce-motion-standard) ease;
+  }
+  .pc-vorschau::after {
+    transition: transform 220ms var(--ce-motion-ease-standard);
+  }
+  .pcv-zeile {
+    transition: background-color var(--ce-motion-standard) ease;
   }
   .pc-skip {
     transition: transform var(--ce-motion-fast) ease;

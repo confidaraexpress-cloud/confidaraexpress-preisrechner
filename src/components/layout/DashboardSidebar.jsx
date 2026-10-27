@@ -54,6 +54,10 @@ export const SIDEBAR_NAV_ID = "ce-kundennavigation";
 const DRAWER_BIS_PX = 860;
 
 const OVERVIEW_ITEM = { id: "overview", label: "Übersicht", icon: "dashboard" };
+// Die beiden häufigsten Ziele stehen in der ersten Ebene, direkt unter der Übersicht (Betreiberentscheidung G5,
+// 2026-10-27): „Neue Sendung“ und „Sendungen“ sind ein Klick, nicht zwei. page-Werte und Routen sind unverändert.
+const NEW_SHIPMENT_ITEM = { id: "new", label: "Neue Sendung", icon: "plus" };
+const SHIPMENTS_ITEM = { id: "shipments", label: "Sendungen", icon: "truck" };
 const ADDRESSBOOK_ITEM = { id: "addressbook", label: "Adressbuch", icon: "idcard" };
 // Rechnungen sind ein EIGENSTÄNDIGER Produktbereich, kein Unterpunkt des
 // Versands. Der Name ist bewusst neutral: der Bereich soll später auch
@@ -69,14 +73,12 @@ const NAV_GROUPS = [
   {
     id: "shipping",
     label: "Versand",
-    icon: "truck",
+    icon: "routeArrow",
     items: [
-      { id: "new",         label: "Neue Sendung"         },
       // „Preisrechner" war zu unspezifisch — der Rechner berechnet
       // Versandkosten. Route (/calculator) und page-Wert sind unverändert.
       { id: "calculator",  label: "Versandkostenrechner" },
       { id: "drafts",      label: "Entwürfe"             },
-      { id: "shipments",   label: "Sendungen"            },
       { id: "tracking",    label: "Sendungsverfolgung"   },
     ],
   },
@@ -125,6 +127,12 @@ const NAV_GROUPS = [
 // Tab hinaus entsteht dabei nicht.
 let sitzungsOffeneGruppe = null;
 
+// Die Gruppe, zu der ein page-Wert gehört — oder null (Übersicht, Neue Sendung, Sendungen, Adressbuch und
+// Rechnungen stehen in der ersten Ebene).
+export function gruppeVonSeite(page) {
+  return NAV_GROUPS.find((g) => g.items.some((item) => item.id === page))?.id ?? null;
+}
+
 // Folgeaktion des App-Eintrags (iPhone/iPad, Safari am Mac), sobald die
 // Navigation zu den Kontoeinstellungen ausgeführt ist: Hinweis gilt als
 // benutzt, die Karte springt ins Bild und öffnet die Anleitung.
@@ -171,15 +179,12 @@ function NavItem({ item, page, onNavigate, variant }) {
 // Browser, statt es zu behaupten.
 function SidebarGroup({ group, page, open, onToggle, onNavigate }) {
   const itemsId = `pp-nav-group-${group.id}-items`;
-  // Die Hervorhebung des Kopfes folgt AUSSCHLIESSLICH dem Klappzustand, nicht
-  // der Route. Vorher leuchtete „Lager & Aufträge" auch auf /stock, während die
-  // Gruppe nach einem Reload zu war — die Sidebar behauptete damit einen
-  // geöffneten Bereich, den es nicht gab. Es gibt jetzt genau EINE Aussage:
-  // hervorgehoben ist die Gruppe, die der Nutzer selbst geöffnet hat, und
-  // höchstens eine. Wo er sich innerhalb der Gruppe befindet, sagt weiterhin
-  // der aktive Eintrag (.nitem.on) — sichtbar, sobald die Gruppe offen ist.
+  // Zwei getrennte Aussagen (Betreiberentscheidung G5, 2026-10-27): „offen“ folgt dem Klappzustand, „aktiv“
+  // der Seite. Die Gruppe der aktuellen Seite öffnet sich von selbst (DashboardSidebar); klappt der Nutzer sie
+  // zu, trägt ihr Kopf weiter die Marke der aktuellen Seite — „Wo bin ich?“ bleibt beantwortet.
+  const aktiv = gruppeVonSeite(page) === group.id;
   return (
-    <div className={"pp-nav-group" + (open ? " pp-nav-group--open" : "")}>
+    <div className={"pp-nav-group" + (open ? " pp-nav-group--open" : "") + (aktiv ? " pp-nav-group--aktiv" : "")}>
       <button
         type="button"
         className="pp-nav-group-head"
@@ -223,10 +228,12 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
   // durchgesetzt werden müsste, sondern eine Eigenschaft des Datentyps — drei
   // Booleans könnten einen ungültigen Zustand überhaupt erst darstellen.
   //
-  // Startwert ist der Modulwert, also nach einem Reload zwingend null: die
-  // Sidebar öffnet NICHTS von selbst, auch nicht die Gruppe des aktuellen
-  // Bereichs. Der geschlossene Zustand ist der Normalfall.
-  const [openGroup, setOpenGroupState] = useState(sitzungsOffeneGruppe);
+  // Startwert (Betreiberentscheidung G5, 2026-10-27, ersetzt „öffnet nichts von selbst“): die Gruppe der
+  // aktuellen Seite ist offen — auch nach einem Reload, abgeleitet aus der Seite, nicht gespeichert. Ohne Gruppe
+  // (Übersicht, Neue Sendung, Sendungen …) gilt die zuletzt in dieser Seitenladung geöffnete Gruppe (Modulwert,
+  // nach F5 null).
+  const seitenGruppe = gruppeVonSeite(page);
+  const [openGroup, setOpenGroupState] = useState(() => seitenGruppe ?? sitzungsOffeneGruppe);
 
   const setOpenGroup = (naechste) => setOpenGroupState((aktuell) => {
     const wert = typeof naechste === "function" ? naechste(aktuell) : naechste;
@@ -234,13 +241,19 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
     return wert;
   });
 
+  // Wechselt die Seite in eine Gruppe, öffnet sich diese Gruppe (die bisherige schließt — höchstens eine ist
+  // offen); Seiten der ersten Ebene lassen den Klappzustand, wie er ist. Ohne Effekt: der Vergleich mit der
+  // vorigen Seite läuft beim Rendern (React: Informationen aus vorherigen Renderings speichern) — kein
+  // Zwischenbild mit falsch geklappter Gruppe, und die Sidebar bleibt ohne useEffect (mobileNavigationIcons 4).
+  const [vorigeSeitenGruppe, setVorigeSeitenGruppe] = useState(seitenGruppe);
+  if (seitenGruppe !== vorigeSeitenGruppe) {
+    setVorigeSeitenGruppe(seitenGruppe);
+    if (seitenGruppe) setOpenGroup(seitenGruppe);
+  }
+
   // Ein Klick auf die offene Gruppe schließt sie (dann ist keine offen), ein
   // Klick auf eine andere schließt die bisherige und öffnet die neue.
   const toggleGroup = (id) => setOpenGroup((aktuell) => (aktuell === id ? null : id));
-
-  // Aus dem page-Wert wird KEIN Gruppenzustand mehr abgeleitet — weder der
-  // Klappzustand noch die Hervorhebung. Der page-Wert markiert ausschließlich
-  // den einzelnen aktiven Eintrag (siehe NavItem).
 
   const handleNav = (item) => {
     if (item.route) { setSidebarOpen(false); navigate(item.route); }
@@ -318,12 +331,14 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
               mittendrin abgeschnitten (genau der Fehler, der diese Konstruktion
               einmal ersetzt hat). Die Marke bleibt als Kopf darüber stehen. */}
           <div className="pp-side-scroll">
-            {/* Reihenfolge: Übersicht → Versand → Adressbuch · Rechnungen →
-                Lager & Aufträge → Konto. Die Hierarchie entsteht aus Abstand,
-                Einrückung und Schriftgewicht; das Icon (E7) markiert nur die
-                erste Ebene — keine Rahmen, keine Karten. */}
+            {/* Reihenfolge (G5): Übersicht → Neue Sendung → Sendungen → Versand → Adressbuch · Rechnungen →
+                Lager & Aufträge → Konto. Die häufigsten Ziele zuerst; die Hierarchie entsteht aus Abstand,
+                Einrückung und Schriftgewicht; das Icon (E7) markiert nur die erste Ebene — keine Rahmen,
+                keine Karten. */}
             <nav className="pp-nav" aria-label="Hauptnavigation">
               <NavItem item={OVERVIEW_ITEM} page={page} onNavigate={handleNav} />
+              <NavItem item={NEW_SHIPMENT_ITEM} page={page} onNavigate={handleNav} />
+              <NavItem item={SHIPMENTS_ITEM} page={page} onNavigate={handleNav} />
 
               <SidebarGroup
                 group={gruppe("shipping")}

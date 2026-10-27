@@ -14,6 +14,8 @@ import { captureHandoffFromLocation } from "./utils/publicQuoteHandoffStore.mjs"
 import { loadSalesPartnerPublicConfig } from "./api/partnerApi";
 import App from "./App";
 import { LoadingScreen } from "./components/common/LoadingScreen";
+import { AuthSeite, EmailBestaetigungSeite } from "./pages/authSeite";
+import { istKundenAuthPfad } from "./utils/kundenAuthPfad.mjs";
 
 // Die Demo lädt ihren eigenen Teil nur unter /demo (eigener Chunk, keine Last für den Kundenbereich).
 const DemoApp = React.lazy(() => import("./demo/DemoApp.jsx"));
@@ -66,6 +68,7 @@ if (!DEMO_ZUSTAND.aktiv) captureHandoffFromLocation();
    Sie ist die LETZTE Auffanglinie, nicht die erste: alles, was hier ankommt,
    hat schon eine Bereichsgrenze passiert (oder lag außerhalb aller). Unter /demo umschließt sie die Demo-Welt
    (eigener Router mit der Basis /demo, demo/DemoApp.jsx). */
+function starten() {
 createRoot(document.getElementById("root")).render(
   <ContentErrorBoundary bereich="wurzel">
     {DEMO_ZUSTAND.aktiv ? (
@@ -81,3 +84,16 @@ createRoot(document.getElementById("root")).render(
     )}
   </ContentErrorBoundary>
 );
+}
+
+/* Kunden-Anmeldung (Abschnitt 5, 2026-10-27): auf /login und /register steht das statische Seitengerüst schon im
+   Bild (login.html, register.html). Damit React es OHNE Zwischenbild ersetzt, wird die Seite vor dem ersten Rendern
+   geladen — sonst legte der Seitenwechsel seine Ladefläche zwischen Gerüst und Seite. Schlägt das Laden fehl, rendert
+   die Anwendung trotzdem; die Fehlergrenze des Bereichs übernimmt. Alle anderen Pfade rendern sofort. */
+const pfad = window.location.pathname;
+if (!DEMO_ZUSTAND.aktiv && istKundenAuthPfad(pfad)) {
+  const seite = pfad.startsWith("/confirm-email-change") ? EmailBestaetigungSeite : AuthSeite;
+  seite.vorladen().then(starten, starten);
+} else {
+  starten();
+}

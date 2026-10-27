@@ -7,14 +7,18 @@
 // Freigegebener Vertrag (Audit G/H01, Feinkorrektur 2026-10): Die Übersicht
 // ist eine Arbeitsübersicht — Seitenkopf mit persönlicher Begrüßung „Guten
 // Tag, [Name]", Datum/Einordnung und EINER Hauptaktion, Kennzahlenband,
-// letzte Sendungen und offene Rechnungen (≈ 2 : 1), vorhandene Meldungen und
-// der Carrier-Bereich: die fünf Carrier des Launchportfolios (E10) mit „Carrier-Angebote vergleichen" —
-// seit der Betreiberentscheidung 2026-10-04 wieder in der Optik vor dem
-// Redesign (Navy-Fläche mit Routenlinien, weiße Logo-Kacheln), ausschließlich
-// in diesem Block und ohne die alten pp-*-Klassen; die Onboarding-Abschnitte („Ablauf",
-// „Vorteile", Zusicherungen) bleiben mit unverändertem Inhalt — aber
-// ausschließlich für Konten OHNE operative Daten und als ruhiger Text ohne
-// Symbole.
+// letzte Sendungen (mit Empfänger) und offene Rechnungen (≈ 2 : 1), Lager und
+// Aufträge neben vorhandenen Meldungen, darunter „Ihre Versanddienstleister“.
+//
+// Komplettabschluss (Betreiberentscheidungen G1/G2, Audit B.4/B.5/B.10,
+// 2026-10-27): die feste Navy-Werbefläche „Fünf Carrier. Eine zentrale
+// Plattform.“ mit Laufzeiten ohne Beleg ist durch eine ruhige Logozeile aus
+// GET /kunde/carriers ersetzt (keine feste Liste); „Lager und Aufträge“ zeigt
+// den Stand des eigenen Lagers; die Onboarding-Abschnitte („Ablauf“ und die
+// Funktionen Versand und Logistik) stehen ausschließlich für Konten OHNE
+// operative Daten, als ruhiger Text ohne Symbole — die Zusicherungen ohne
+// Beleg sind entfallen. Alle Daten lädt DashboardPage; Übersicht und Module
+// laden nichts selbst.
 //
 // Geprüft wird weiterhin, was bei einer Umgestaltung tatsächlich kaputtgehen
 // kann: Inhalte gehen verloren, die Vergleichsaktion verliert ihr Ziel, die
@@ -47,19 +51,20 @@ function array(name) {
   return code.slice(start, ende);
 }
 const STEPS = array("STEPS");
-const WHY = array("WHY");
-const TRUST = array("TRUST");
+const FUNKTIONEN = array("FUNKTIONEN");
 const zaehle = (block, re) => (block.match(re) || []).length;
 
 // ══════════ Seitenaufbau ══════════
 
-test("1 — Reihenfolge: Seitenkopf → Kennzahlen → Sendungen/Rechnungen → Meldungen → Carrier", () => {
+test("1 — Reihenfolge: Seitenkopf → Kennzahlen → Sendungen/Rechnungen → Lager und Meldungen → Versanddienstleister", () => {
   const pos = [
     code.indexOf("<PageHeader"),
     code.indexOf('<section className="ov-kpis"'),
     code.indexOf('<div className="ov-mod-grid">'),
+    code.indexOf('<div className="ov-mod-grid ov-mod-grid--lager">'),
+    code.indexOf("<InventorySnapshot"),
     code.indexOf("<OverviewNotifications"),
-    code.indexOf('<section className="ov-carriers"'),
+    code.indexOf("<CarrierPortfolio"),
   ];
   assert.ok(pos.every((p) => p > -1), `ein Baustein fehlt: ${JSON.stringify(pos)}`);
   assert.deepEqual([...pos].sort((a, b) => a - b), pos, "die Reihenfolge der Übersicht stimmt nicht");
@@ -74,7 +79,9 @@ test("2 — der Seitenkopf begrüßt persönlich, nennt Datum und Einordnung, GE
   assert.match(code, /Guten Tag, <span className="ov-greeting-name">\{greetingName\}<\/span>/, "die Begrüßung mit Namen fehlt");
   assert.match(code, /: "Guten Tag"\}/, "ohne Namen fehlt die neutrale Begrüßung");
   assert.ok(!/Guten (Morgen|Abend)|getHours|"Kunde"/.test(code), "Tageszeitlogik oder Platzhaltername in der Begrüßung");
-  assert.match(code, /`\$\{todayLabel\} · Ihr Versand im Überblick`/, "Datum und Einordnung fehlen in der Kontextzeile");
+  // Komplettabschluss (G1, 2026-10-27): die Übersicht umfasst Versand UND Logistik — die Einordnung sagt beides.
+  assert.match(code, /`\$\{todayLabel\} · Versand und Logistik im Überblick`/, "Datum und Einordnung fehlen in der Kontextzeile");
+  assert.ok(!/Ihr Versand im Überblick/.test(code), "die Einordnung nennt nur den Versand");
   assert.equal(zaehle(code, /btn btn-primary/g), 1, "genau eine Hauptaktion erwartet");
   assert.match(code, /onClick=\{onNewShipment\}>\s*Neue Sendung/, "„Neue Sendung“ nutzt nicht den bestehenden Handler");
   // Kein Serifengruß, keine Chips: der Name ist nur über die Markentinte
@@ -94,7 +101,7 @@ test("3 — Sendungen und Rechnungen stehen ≈ 2 : 1 nebeneinander, darunter ei
 });
 
 test("4 — jedes Modul ist über aria-labelledby mit seiner Überschrift verbunden", () => {
-  for (const id of ["ov-ship-title", "ov-inv-title", "ov-ntf-title"]) {
+  for (const id of ["ov-ship-title", "ov-inv-title", "ov-ntf-title", "ov-lager-title", "ov-car-title"]) {
     assert.ok(modules.includes(`aria-labelledby="${id}"`), `aria-labelledby ${id} fehlt`);
     assert.ok(modules.includes(`id="${id}"`), `Überschrift mit id ${id} fehlt`);
   }
@@ -102,10 +109,13 @@ test("4 — jedes Modul ist über aria-labelledby mit seiner Überschrift verbun
 
 // ══════════ Letzte Sendungen ══════════
 
-test("5 — Letzte Sendungen: Nummer, Carrier/Datum, Status, Preis — keine redundante „Öffnen“-Aktion", () => {
+test("5 — Letzte Sendungen: Nummer/Datum, Empfänger, Carrier, Status, Preis — keine redundante „Öffnen“-Aktion", () => {
   const block = modules.slice(modules.indexOf("export function RecentShipments"), modules.indexOf("export function OpenInvoices"));
   assert.match(block, /recentShipments\(shipments, 4\)/, "die Auswahl der letzten vier Sendungen hat sich geändert");
-  for (const teil of ["orderConfirmationNumber", "resolveCarrierName", "dateDE(s.created_at)", "<StatusBadge status={s.status} />", "money(s.price_final)"]) {
+  // Audit B.4 (2026-10-27): der Empfänger steht mit in der Zeile — aus recipient_address der Kundenliste
+  // (utils/shipmentRecipientView.mjs), ohne Angabe „—“; der Carrier mit Logo (CarrierMarke).
+  for (const teil of ["orderConfirmationNumber", "<CarrierMarke raw={s.selected_carrier} />", "dateDE(s.created_at)",
+    "<StatusBadge status={s.status} />", "money(s.price_final)", "shipmentRecipient(s)", 'empfaenger?.name || "—"']) {
     assert.ok(block.includes(teil), `${teil} fehlt in der Zeile`);
   }
   // Die frühere Zeilenaktion führte zur ganzen Liste — dasselbe Ziel wie
@@ -113,8 +123,8 @@ test("5 — Letzte Sendungen: Nummer, Carrier/Datum, Status, Preis — keine red
   assert.ok(!/Öffnen/.test(block), "die redundante „Öffnen“-Aktion ist zurück");
   assert.ok(!/onOpen/.test(block), "eine Zeilenaktion ohne eigenes Ziel ist zurück");
   assert.match(block, /actionLabel="Alle Sendungen"/, "„Alle Sendungen“ fehlt");
-  // Keine Empfänger-/Zielspalte — das Feld gibt es im Kundendatensatz nicht.
-  assert.ok(!/recipient|empfaenger|Empfänger:/i.test(block), "eine erfundene Empfängerangabe ist hinzugekommen");
+  // Kein eigener Empfängertext: die Zeile liest nur die gemeinsame Abbildung, nie die Rohfelder.
+  assert.ok(!/recipient_address|recipientAddress/.test(block), "die Zeile liest die Empfängerfelder wieder direkt");
 });
 
 test("6 — Status und Betrag stehen als ganze Einheiten (kein Umbruch im Wort)", () => {
@@ -164,24 +174,27 @@ test("10 — alle vier Prozessschritte bleiben inhaltlich erhalten, als echte Re
   assert.match(code, /<span className="ov-step-no">\{i \+ 1\}<\/span>/, "die Schrittnummer fehlt");
 });
 
-test("11 — alle vier Vorteile bleiben erhalten, aus EINER Datenquelle; kein Superlativ", () => {
-  for (const t of ["Für Geschäftskunden entwickelt", "Konditionen direkt vergleichen", "Express & Standard", "Vollständige Transparenz"]) {
-    assert.ok(WHY.includes(`title: "${t}"`), `Vorteil „${t}“ fehlt`);
+test("11 — Funktionen statt Werbezeilen: Versand, Rechnungen und Adressbuch, Lager und Aufträge (G1)", () => {
+  // Komplettabschluss (G1, Audit B.10, 2026-10-27): „Weniger Aufwand. Mehr Kontrolle.“ mit vier Werbezeilen ist
+  // durch die tatsächlichen Funktionen ersetzt — Versand UND Logistik, aus EINER Datenquelle.
+  for (const t of ["Versand", "Rechnungen und Adressbuch", "Lager und Aufträge"]) {
+    assert.ok(FUNKTIONEN.includes(`title: "${t}"`), `Funktion „${t}“ fehlt`);
   }
-  assert.equal(zaehle(WHY, /title:/g), 4);
-  assert.ok(!/Beste Preise|für das beste Angebot/.test(code), "die unbelegte Superlativ-Werbung ist zurück");
-  assert.match(code, /\{WHY\.map\(\(w\) => \(/, "die Vorteile laufen nicht über EINE Datenquelle");
+  assert.equal(zaehle(FUNKTIONEN, /title:/g), 3);
+  assert.match(code, /\{FUNKTIONEN\.map\(\(w\) => \(/, "die Funktionen laufen nicht über EINE Datenquelle");
+  assert.match(code, /<h2 className="ov-section-title" id="ov-sec-why">Versand und Logistik in Ihrem Kundenbereich<\/h2>/);
+  assert.ok(!/Beste Preise|für das beste Angebot|Weniger Aufwand\. Mehr Kontrolle\./.test(code), "die Werbezeilen sind zurück");
+  // Ehrlichkeitsgrenze: das eigene Lager des Kunden — ConfidaraExpress lagert nicht ein.
+  assert.ok(FUNKTIONEN.includes("Ihres eigenen Lagers"), "die Lagerfunktion nennt nicht das eigene Lager");
+  assert.ok(!/Fulfillment|einlager|Lagerhaltung für/i.test(code), "ein Fulfillment-Versprechen ist entstanden");
 });
 
-test("12 — drei Aussagen mit Systembeleg; keine Preisgarantie, keine Konformitäts- oder Echtzeitbehauptung", () => {
-  // Go-Live (Paket E): Die frühere „Tiefpreisgarantie" („Wir garantieren Ihnen die besten Versandpreise.")
-  // hatte weder in den AGB noch im System eine Grundlage, „DSGVO-konform" war eine Konformitäts-
-  // behauptung ohne Nachweis, „in Echtzeit" beschreibt die Abfrage beim Carrier nicht.
-  for (const t of ["Verschlüsselte Übertragung", "Persönlicher Support", "Preise im Vergleich"]) {
-    assert.ok(TRUST.includes(`title: "${t}"`), `Aussage „${t}“ fehlt`);
-  }
-  assert.equal(zaehle(TRUST, /title:/g), 3);
-  for (const block of [STEPS, WHY, TRUST]) {
+test("12 — keine Zusicherungen ohne Beleg; keine Preisgarantie, keine Konformitäts- oder Echtzeitbehauptung", () => {
+  // Komplettabschluss (Audit B.10, 2026-10-27): die drei Zusicherungen („Verschlüsselte Übertragung“, „Persönlicher
+  // Support — schnell und zuverlässig“, „Preise im Vergleich“) sind entfallen — Behauptung statt Beweis. Go-Live
+  // (Paket E): weder „Tiefpreisgarantie“ noch „DSGVO-konform“ noch „in Echtzeit“.
+  assert.ok(!/const TRUST = \[|ov-trust|schnell und zuverlässig/.test(code), "die Zusicherungen sind zurück");
+  for (const block of [STEPS, FUNKTIONEN]) {
     assert.ok(!/garantier|Tiefpreis|DSGVO-konform|Echtzeit|aller führenden/i.test(block), `unbelegte Werbeaussage zurück: ${block.slice(0, 80)}`);
   }
 });
@@ -201,100 +214,45 @@ test("13 — Onboarding ist ruhiger Text: keine Symbole, keine dunklen Flächen,
 
 // ══════════ Carrier-Bereich ══════════
 
-test("14 — der Carrier-Bereich: die fünf Carrier des Launchportfolios auf Navy mit Routenlinien, mit der Vergleichsaktion", () => {
-  // Feinkorrektur 2026-10: inhaltlich zurück (Logos, Botschaft, Vergleich). Betreiberentscheidung
-  // 2026-10-04: dazu wieder die Optik vor dem Redesign (Stand 2c4cf1b) — nur in diesem Block, mit
-  // Klassen im ov-Namensraum statt der alten pp-*-Klassen.
-  const carriers = array("CARRIERS");
-  // Betreiberentscheidung E10 (2026-10-27): nur das Launchportfolio (Canonical: UPS, DPD, GLS, DHL, TNT).
-  assert.equal(zaehle(carriers, /logo:/g), 5, "genau fünf Carrier erwartet");
-  assert.match(code, /Fünf Carrier\. Eine zentrale Plattform\./, "der Titel nennt die Zahl nicht als Wort");
-  for (const c of ["dhl", "ups", "dpd", "gls", "tnt"]) {
-    assert.ok(overview.includes(`assets/carriers/${c}.svg`), `das Logo ${c} fehlt`);
+test("14 — „Ihre Versanddienstleister“: nur aus GET /kunde/carriers, ruhige Logozeile mit der Vergleichsaktion (G2)", () => {
+  // Betreiberentscheidung G2 (2026-10-27): alle aktuell angebotenen Carrier, keine feste Liste, nicht nur die
+  // bisher gebuchten; keine Laufzeiten, keine Dienstnamen, keine Zahl im Titel, kein Banner. Die frühere
+  // Navy-Fläche mit Routenlinien und „Fünf Carrier. Eine zentrale Plattform.“ ist entfallen (Audit B.5, D8).
+  assert.ok(!/const CARRIERS = \[|assets\/carriers\//.test(code), "die feste Carrierliste ist zurück");
+  for (const tot of ["Fünf Carrier", "Eine zentrale Plattform", "CarrierRoutes", "ov-carriers-net", "ov-carrier-time", "--ce-net-"]) {
+    assert.ok(!(code + modules).includes(tot), `${tot}: der frühere Carrier-Bereich ist zurück`);
   }
-  for (const c of ["fedex", "emons", "trans-o-flex"]) {
-    assert.ok(!overview.includes(`assets/carriers/${c}.svg`), `${c} gehört nicht zum Launchportfolio`);
-  }
-  assert.match(code,
-    /<button type="button" className="btn btn-outline ov-carriers-cta" onClick=\{\(\) => navigate\("\/calculator"\)\}>\s*Carrier-Angebote vergleichen/,
-    "„Carrier-Angebote vergleichen“ führt nicht zum Versandkostenrechner");
-  // Die alten Klassen kommen nicht zurück — die Optik lebt im ov-Namensraum.
-  for (const tot of ["pp-net", "NetworkPattern", "pp-cars", "pp-car-chip"]) {
-    assert.ok(!code.includes(tot), `${tot}: eine alte pp-Klasse ist zurück`);
-  }
-  // Jede Kachel: Logo mit Markennamen als alt-Text, Leistung, Laufzeit.
-  assert.match(code, /<img src=\{c\.logo\} alt=\{c\.alt\} \/>/, "das Logo trägt keinen alt-Text");
-  assert.match(code, /className="ov-carrier-service">\{c\.service\}/, "die Leistung fehlt");
-  assert.match(code, /className="ov-carrier-time">\{c\.time\}/, "die Laufzeit fehlt");
-  // Die Routenlinien: rein dekorativ, als erstes Kind DIESES Blocks, der Inhalt liegt darüber.
-  const block = code.slice(code.indexOf('<section className="ov-carriers"'), code.indexOf("</section>", code.indexOf('<section className="ov-carriers"')));
-  assert.match(block, /<section className="ov-carriers" aria-labelledby="ov-car-title">\s*<CarrierRoutes \/>\s*<div className="ov-carriers-in">/,
-    "die Routenlinien stehen nicht hinter dem Inhalt des Carrier-Bereichs");
-  assert.match(code, /<svg className="ov-carriers-net" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">/,
-    "die Routenlinien sind nicht rein dekorativ");
-  assert.equal(zaehle(code, /<path d="/g), 3, "drei Routen erwartet");
-  assert.equal(zaehle(code, /<circle cx="/g), 5, "fünf Knoten erwartet");
-  assert.equal(zaehle(code, /<CarrierRoutes \/>/g), 1, "die Routenlinien gehören ausschließlich in den Carrier-Bereich");
-  // Die Fläche: Navy aus der eigenen Familie, an der Rundung beschnitten; Linien hinter, Inhalt vor.
-  const flaeche = rule(".ov-carriers");
-  assert.match(flaeche, /position:\s*relative;\s*overflow:\s*hidden/, "die Linien werden nicht an der Karte beschnitten");
-  assert.match(flaeche, /background:\s*var\(--ce-net-surface\)/, "die Navy-Fläche fehlt");
-  assert.match(flaeche, /border:\s*1px solid var\(--ce-net-border\)/, "die Kante der Navy-Fläche fehlt");
-  assert.match(flaeche, /box-shadow:\s*var\(--ce-net-shadow\)/, "die Tiefe der Navy-Fläche fehlt");
-  assert.match(rule(".ov-carriers-net"), /position:\s*absolute;\s*inset:\s*0;[\s\S]*z-index:\s*0;\s*pointer-events:\s*none/);
-  assert.match(rule(".ov-carriers-in"), /position:\s*relative;\s*z-index:\s*1/);
-  assert.match(rule(".ov-carriers-route"), /stroke:\s*var\(--ce-net-line\)/);
-  assert.match(rule(".ov-carriers-node"), /fill:\s*var\(--ce-net-node\)/);
-  // Weiße Logo-Kacheln, Schrift und Aktion hell auf Navy — die Aktion bleibt der Secondary-Button.
-  assert.match(rule(".ov-carrier-logo"), /background:\s*var\(--ce-net-chip\)/, "die weiße Logo-Kachel fehlt");
-  assert.match(rule(".ov-carriers-title"), /color:\s*var\(--ce-net-ink\)/);
-  assert.match(rule(".ov-carriers-desc"), /color:\s*var\(--ce-net-ink-soft\)/);
-  assert.match(rule(".ov-carriers .ov-carriers-cta"), /color:\s*var\(--ce-net-ink\);\s*background:\s*var\(--ce-net-cta-face\);\s*border-color:\s*var\(--ce-net-cta-edge\)/);
-  assert.match(rule(".ov-carriers .ov-carriers-cta:focus-visible"), /outline:\s*2px solid var\(--ce-net-focus\)/, "der Fokus ist auf Navy nicht sichtbar");
-  // Die Familie --ce-net-* wird ausschließlich hier benutzt — keine globale Farb- oder Hintergrundänderung.
-  for (const [name, inhalt] of [["Overview.jsx", code], ["OverviewModules.jsx", modules]]) {
-    assert.ok(!/--ce-net-/.test(inhalt), `${name} setzt Navy-Werte inline`);
-  }
-  const netzRegeln = (cssBare.match(/[^{}]+\{[^}]*--ce-net-[^}]*\}/g) || []).map((r) => r.split("{")[0].trim());
-  assert.ok(netzRegeln.length > 0 && netzRegeln.every((s) => s.split(",").every((t) => /\.ov-carrier/.test(t))),
-    `Navy-Werte außerhalb des Carrier-Bereichs: ${netzRegeln.filter((s) => !/\.ov-carrier/.test(s)).join(" | ")}`);
-  // Kompakt: eine Reihe zu fünft, auf dem Telefon drei und zwei, die zweite Reihe mittig (kein Einzelstück).
-  assert.match(rule(".ov-carrier-grid"), /grid-template-columns:\s*repeat\(5, minmax\(0, 1fr\)\)/);
-  assert.doesNotMatch(cssBare, /\.ov-carrier-grid \{ grid-template-columns: repeat\(4, minmax\(0, 1fr\)\); \}/,
-    "die Viererreihe stammt aus der Zeit der acht Carrier");
-  assert.match(cssBare, /@media \(max-width: 600px\) \{[\s\S]*?\.ov-carrier-grid \{ grid-template-columns: repeat\(6, minmax\(0, 1fr\)\);[\s\S]*?\.ov-carrier \{ grid-column: span 2; \}\s*\.ov-carrier:nth-child\(4\) \{ grid-column: 2 \/ span 2; \}/,
-    "auf dem Telefon stehen die Carrier nicht zu dritt und zu zweit");
+  assert.ok(!/--ce-net-/.test(cssBare), "die Farbfamilie der früheren Navy-Fläche lebt noch in overview.css");
+  assert.match(code, /<CarrierPortfolio carriers=\{carriers\} onCompare=\{\(\) => navigate\("\/calculator"\)\} \/>/,
+    "die Vergleichsaktion führt nicht zum Versandkostenrechner");
+  const block = modules.slice(modules.indexOf("export function CarrierPortfolio"));
+  assert.match(block, /if \(!Array\.isArray\(carriers\) \|\| carriers\.length === 0\) return null;/,
+    "ohne Serverliste darf keine Zeile stehen");
+  assert.match(block, /resolvePublicCarrier\(c\.id\)\.logo/, "das Logo kommt nicht aus der öffentlichen Carrierzuordnung");
+  assert.match(block, /<span className="ov-carrier-name">\{c\.name\}<\/span>/, "der Name fehlt");
+  assert.match(block, /actionLabel=\{CARRIER_PORTFOLIO_TEXT\.action\}/);
+  assert.ok(!/service|Laufzeit|Tage|time/.test(block), "Laufzeiten oder Dienste in der Carrierzeile");
+  // Das Laden liegt bei DashboardPage — die Übersicht und ihre Module laden nichts.
+  const dash = src("../../pages/DashboardPage.jsx");
+  assert.match(dash, /fetchCarrierPortfolio\(\),/);
+  assert.match(dash, /carriers=\{carrierPortfolio\}/);
   // Logos in Originalproportion — eingepasst, nie verzerrt.
   assert.match(rule(".ov-carrier-logo img"), /object-fit:\s*contain/, "Logos werden nicht eingepasst");
 });
 
-test("14b — die Schrift auf der Navy-Fläche erfüllt WCAG AA an jeder Stelle des Verlaufs", () => {
-  const vars = src("../../styles/variables.css");
-  const wert = (name) => {
-    const m = vars.match(new RegExp(`--${name}:\\s*([^;]+);`));
-    assert.ok(m, `--${name} fehlt in variables.css`);
-    return m[1].trim();
-  };
-  const farbe = (s) => {
-    const hex = s.match(/^#([0-9a-f]{6})$/i);
-    if (hex) return [0, 2, 4].map((i) => parseInt(hex[1].slice(i, i + 2), 16)).concat(1);
-    const r = s.match(/^rgba?\(([^)]+)\)$/i);
-    assert.ok(r, `unlesbare Farbe: ${s}`);
-    const t = r[1].split(",").map((x) => Number(x.trim()));
-    return [t[0], t[1], t[2], t.length > 3 ? t[3] : 1];
-  };
-  const mische = ([r, g, b, a], [R, G, B]) => [r * a + R * (1 - a), g * a + G * (1 - a), b * a + B * (1 - a)];
-  const kanal = (c) => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
-  const leuchte = ([r, g, b]) => 0.2126 * kanal(r) + 0.7152 * kanal(g) + 0.0722 * kanal(b);
-  const kontrast = (a, b) => { const [x, y] = [leuchte(a), leuchte(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
-  const stellen = [...wert("ce-net-surface").matchAll(/#[0-9a-f]{6}/gi)].map((m) => farbe(m[0]).slice(0, 3));
-  assert.equal(stellen.length, 3, "der Navy-Verlauf hat nicht drei Stellen");
-  for (const stelle of stellen) {
-    for (const rolle of ["ce-net-ink", "ce-net-ink-soft"]) {
-      const c = kontrast(mische(farbe(wert(rolle)), stelle), stelle);
-      assert.ok(c >= 4.5, `${rolle} auf ${stelle.join(",")}: ${c.toFixed(2)}:1 unterschreitet 4,5:1`);
-    }
+test("14b — Lager und Aufträge (G1/D7): Stand aus DashboardPage, Einstieg ohne Artikel, Fehler mit Wiederholung", () => {
+  const block = modules.slice(modules.indexOf("export function InventorySnapshot"), modules.indexOf("export function CarrierPortfolio"));
+  assert.match(block, /export function InventorySnapshot\(\{ stand: standProp = null, onRetry = null, onNavigate \}\)/);
+  for (const teil of ['stand.status === "laden"', 'stand.status === "fehler"', "isInventoryEmpty(stats)",
+    'gehe("orders", "open")', 'gehe("stock", "low")', 'gehe("inventory")']) {
+    assert.ok(block.includes(teil), `${teil} fehlt im Lagermodul`);
   }
+  assert.match(code, /<InventorySnapshot stand=\{lagerStand\} onRetry=\{onLagerRetry\} onNavigate=\{onNavigate\} \/>/);
+  // Geladen wird mit derselben Abfrage wie die Lagerübersicht — jedes Mal, wenn die Übersicht geöffnet wird.
+  const dash = src("../../pages/DashboardPage.jsx");
+  assert.match(dash, /if \(page !== "overview"\) return undefined;/);
+  assert.match(dash, /getInventoryOverview\(\{ signal \}\)/);
+  assert.match(dash, /lagerStand=\{lagerStand\}/);
 });
 
 // ══════════ Ruhe und Daten ══════════

@@ -320,7 +320,7 @@ export function formPatchFromServerPackageLines(raw) {
 /* ══════════ Anzeige ══════════════════════════════════════════════════════════════════════ */
 
 // Wie die Auftragsbestätigung (lib/orderConfirmationPdf.js): Dezimalkomma, keine Tausendertrennung.
-const dezimal = (v) => String(v).replace(".", ",");
+export const dezimal = (v) => String(v).replace(".", ",");
 
 /** Eine Zeile als Text, wie Buchungsübersicht und Auftragsbestätigung sie zeigen: „2 × 8 kg · 40 × 30 × 25 cm“. */
 export function packageLineText(line) {

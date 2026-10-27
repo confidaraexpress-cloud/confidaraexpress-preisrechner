@@ -29,7 +29,7 @@ import { parsePhoneNumber, PHONE_INPUT_MAX } from "./phoneNumber.mjs";
 import {
   PACKAGE_FIELDS, PACKAGE_COUNT_MAX, PACKAGE_COUNT_DEFAULT,
   formPackageLines, hasExtraPackageLines, packageLinesFieldErrors, packageLinesPayload,
-  canonicalPackageLines, packageLinesSummaryText, packageLineText,
+  canonicalPackageLines, packageLinesSummaryText, packageLineText, dezimal,
 } from "./packageLines.mjs";
 export { PACKAGE_FIELDS, PACKAGE_COUNT_MAX, PACKAGE_COUNT_DEFAULT };
 
@@ -316,9 +316,10 @@ function flachePaketzeile(form) {
   const anzahl = Number(f.packageCount);
   const mehrere = Number.isInteger(anzahl) && anzahl > 1;
 
-  const gewicht = istAngegeben(f.weight) ? `${f.weight} kg` : null;
+  // Dezimalkomma wie Paketzeilen und Auftragsbestätigung (M8): „5.5“ aus dem Zahlenfeld erscheint als „5,5“.
+  const gewicht = istAngegeben(f.weight) ? `${dezimal(f.weight)} kg` : null;
   const masse = (istAngegeben(f.length) && istAngegeben(f.width) && istAngegeben(f.height))
-    ? `${f.length} × ${f.width} × ${f.height} cm`
+    ? `${dezimal(f.length)} × ${dezimal(f.width)} × ${dezimal(f.height)} cm`
     : null;
   if (!gewicht && !masse) return null;
 

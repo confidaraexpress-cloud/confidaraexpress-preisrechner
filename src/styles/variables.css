@@ -567,3 +567,154 @@
 @media (min-width: 2240px) {
   :root { --ce-size-content: 1680px; --ce-size-content-admin: 1920px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PREMIUM-REDESIGN 2026-10 · ETAPPE 1 — BEREICHS-SCOPE KUNDE, AUTH, PREISRECHNER
+   ───────────────────────────────────────────────────────────────────────────
+   Betreiberentscheidungen 2026-10-27 (E1–E13): Navy des Logos trägt Rahmen und
+   Primäraktion, Weiß ist die Arbeitsfläche, Confidara-Blau (#004AFC) ist das
+   einzige Signal für Fokus, Auswahl, Links und den Markenstreifen.
+
+   Diese Werte gelten NUR, wenn <html data-ce-bereich> gesetzt ist:
+   Kundenbereich („kunde“) und Auth-Ansichten („auth“) über
+   hooks/useCeBereich.js, der öffentliche Preisrechner („preisrechner“)
+   statisch im eigenen Seitengerüst (preisrechner/index.html, 404.html).
+   Admin, Partnerportal und Partnerregistrierung setzen das Attribut nie und
+   behalten unverändert die Werte oben.
+
+   Die Komponentenregeln dazu stehen in premium-redesign.css (Kunde, Auth),
+   bzw. in public-calculator.css (Preisrechner), ohne Farbliterale.
+   Schriftgrößen in rem (E13): Sie folgen der Schriftgröße, die Nutzer im
+   Browser einstellen. Bei 16 px Standard sind die Werte unten genau die
+   genannten px-Werte.
+   Kontraste berechnet nach WCAG 2.x, gegen Weiß, wenn nichts anderes steht.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root[data-ce-bereich="kunde"],
+:root[data-ce-bereich="auth"],
+:root[data-ce-bereich="preisrechner"] {
+  /* ── Markenfarben aus dem Logo ── */
+  --ce-pr-navy-950: #070f28;
+  --ce-pr-navy-900: #0a1636;            /* Seitenleiste, Bühne · Weiß darauf 17,78:1 */
+  --ce-pr-navy-850: #0f1d45;            /* Fläche auf der Bühne */
+  --ce-pr-navy-800: #011b55;            /* Logo-Navy, Primäraktion · Weiß darauf 16,29:1 */
+  --ce-pr-navy-700: #0b2c7c;            /* Primär Hover · Weiß darauf 12,61:1 */
+  --ce-pr-navy-600: #001341;            /* Primär gedrückt */
+  --ce-pr-signal: #004afc;              /* Logo-Blau · 6,20:1 */
+  --ce-pr-signal-hover: #003fd6;        /* 7,83:1 */
+  --ce-pr-signal-ink: #0041de;          /* Textlinks · 7,47:1, auf Signal-Soft 6,72:1 */
+  --ce-pr-signal-soft: #eef3ff;         /* Signal darauf 5,58:1 */
+  --ce-pr-signal-soft-hover: #e1eaff;
+  --ce-pr-signal-on-navy: #8fb0ff;      /* auf #0a1636 8,32:1 */
+  --ce-pr-paper: #f7f8fc;               /* Primärknopf auf der Navy-Bühne */
+  /* Der Markenstreifen: Navy → Signal. Auf Navy beginnt er im hellen Signal. */
+  --ce-pr-stripe: linear-gradient(90deg, #011b55 0%, #004afc 64%, #4d84ff 100%);
+  --ce-pr-stripe-on-navy: linear-gradient(90deg, #4d84ff 0%, #8fb0ff 100%);
+
+  /* ── Semantik: Signal statt Indigo ── */
+  --ce-color-brand: #004afc;
+  --ce-color-brand-hover: #003fd6;
+  --ce-color-brand-active: #0035b8;
+  --ce-color-brand-ink: #0041de;
+  --ce-color-brand-soft: #eef3ff;
+  --ce-color-brand-soft-hover: #e1eaff;
+  --ce-color-brand-border: rgba(0, 74, 252, 0.30);
+  --ce-color-brand-border-soft: rgba(0, 74, 252, 0.16);
+  --ce-color-border-focus: #004afc;
+  --ce-color-focus-ring: rgba(0, 74, 252, 0.28);
+
+  /* ── Text ── */
+  --ce-color-text-primary: #0b1532;     /* 17,99:1 */
+  --ce-color-text-secondary: #4e5a73;   /* 6,92:1, auf #f7f8fb 6,52:1 */
+  --ce-color-text-muted: #5f6b83;       /* 5,36:1 */
+  --ce-color-text-placeholder: #697590; /* 4,62:1 */
+
+  /* ── Flächen: weiße Arbeitsfläche statt Werkbankgrau ── */
+  --ce-color-bg-canvas-top: #ffffff;
+  --ce-color-bg-canvas-mid: #ffffff;
+  --ce-color-bg-canvas-bottom: #ffffff;
+  --ce-color-bg-atmosphere: none;
+  --ce-app-bg: none;
+  --ce-app-bg-mid: #ffffff;
+  --ce-app-bg-bottom: #ffffff;
+  --ce-app-divider: #e6e9f0;
+  --ce-color-surface: #ffffff;
+  --ce-color-surface-subtle: #f7f8fb;
+  --ce-color-surface-muted: #f1f3f7;
+  --ce-color-surface-hover: #f5f7fb;
+  --ce-color-surface-pressed: #eceff5;
+  --ce-color-border-subtle: #e6e9f0;
+  --ce-color-border-default: #d6dce6;
+  --border-hairline: #edf0f5;
+  --ce-color-overlay-drawer: rgba(7, 15, 40, 0.55);
+  --ce-pr-inset: #f6f8fb;               /* Einschübe für Nebeninformation, sparsam */
+  --ce-pr-hairline: #e4e8ef;
+
+  /* ── Seitenleiste: Navy aus Konzept A ── */
+  --ce-sidebar-bg: #0a1636;
+  --ce-sidebar-edge: rgba(255, 255, 255, 0.06);
+  --ce-sidebar-shadow: none;
+  --ce-sidebar-border: rgba(255, 255, 255, 0.08);
+  --ce-sidebar-divider: rgba(255, 255, 255, 0.08);
+  --ce-sidebar-hover: rgba(255, 255, 255, 0.06);
+  --ce-sidebar-active-bg: rgba(143, 176, 255, 0.13);
+  --ce-sidebar-active-accent: #6f9bff;  /* 6,61:1 auf #0a1636 */
+  --ce-sidebar-active-icon: #b5cbff;    /* 10,97:1 */
+  --ce-sidebar-text: #e3e9f6;           /* 14,61:1 */
+  --ce-sidebar-text-strong: #ffffff;
+  --ce-sidebar-text-muted: #a9b6d6;     /* 8,76:1 */
+  --ce-sidebar-section: #8c99be;        /* 6,28:1 */
+  --ce-sidebar-scroll-thumb: rgba(255, 255, 255, 0.14);
+  --ce-sidebar-scroll-thumb-hover: rgba(255, 255, 255, 0.26);
+
+  /* ── Typografie in rem (E13), Höchstgewicht 600 (E4) ── */
+  --ce-text-display-xl-size: 2rem;      --ce-text-display-xl-size-mobile: 1.625rem;  --ce-text-display-xl-line: 1.25;
+  --ce-text-display-l-size: 2rem;       --ce-text-display-l-size-mobile: 1.625rem;   --ce-text-display-l-line: 1.25;
+  --ce-text-title-page-size: 2rem;      --ce-text-title-page-size-mobile: 1.625rem;
+  --ce-text-title-page-line: 1.25;      --ce-text-title-page-line-mobile: 1.2308;    --ce-text-title-page-tracking: -0.022em;
+  --ce-text-title-section-size: 1.25rem; --ce-text-title-section-size-mobile: 1.125rem; --ce-text-title-section-line: 1.4;
+  --ce-text-title-card-size: 1rem;      --ce-text-title-card-size-mobile: 1rem;
+  --ce-text-body-l-size: 1rem;          --ce-text-body-l-size-mobile: 1rem;          --ce-text-body-l-line: 1.5;
+  --ce-text-body-size: 0.9375rem;       --ce-text-body-size-mobile: 0.9375rem;       --ce-text-body-line: 1.6;
+  --ce-text-body-s-size: 0.8125rem;     --ce-text-body-s-size-mobile: 0.8125rem;
+  --ce-text-label-size: 0.8125rem;      --ce-text-label-size-mobile: 0.8125rem;
+  --ce-text-micro-size: 0.75rem;        --ce-text-micro-size-mobile: 0.75rem;
+  --ce-text-numeric-display-size: 2.25rem; --ce-text-numeric-display-size-mobile: 1.875rem; --ce-text-numeric-display-line: 1.1111;
+  --ce-text-caption-size: 0.75rem;
+  --ce-text-badge-size: 0.75rem;        --ce-text-badge-weight: 600;                 --ce-text-badge-line: 1.3333;
+  --ce-text-button-size: 0.9375rem;     --ce-text-button-line: 1.3333;
+  --ce-text-nav-size: 0.9375rem;
+  --ce-sidebar-nav-size: 0.9375rem;
+
+  /* ── Form und Tiefe ── */
+  --ce-pr-radius-control: 10px;         /* Knöpfe 40 px, Felder */
+  --ce-pr-radius-control-lg: 12px;      /* Knöpfe 48 px */
+  --ce-pr-radius-panel: 14px;           /* Abschnitte, Tabellenrahmen */
+  --ce-pr-radius-card: 16px;            /* Objekte: Angebot, Beleg, Bestätigung */
+  --ce-pr-radius-status: 6px;           /* Statusmarke: eckig, denn Kapseln sind Auswahl */
+  --ce-pr-shadow-card: 0 1px 2px rgba(10, 22, 54, 0.04), 0 2px 10px -4px rgba(10, 22, 54, 0.08);
+  --ce-pr-shadow-card-hover: 0 2px 4px rgba(10, 22, 54, 0.05), 0 12px 28px -12px rgba(10, 22, 54, 0.18);
+  /* E5: feine Innenkante oben und zurückhaltender neutraler Schatten. Kein Glow,
+     kein farbiger Schatten, kein Verlauf, keine Bewegung. */
+  --ce-pr-btn-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 1px 2px rgba(10, 22, 54, 0.20);
+  --ce-pr-btn-shadow-hover: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 2px 6px -1px rgba(10, 22, 54, 0.24);
+  --ce-pr-btn-shadow-secondary: inset 0 -1px 0 rgba(10, 22, 54, 0.05), 0 1px 2px rgba(10, 22, 54, 0.06);
+  --ce-pr-btn-disabled-bg: #eef1f5;
+  --ce-pr-btn-disabled-fg: #566177;     /* 5,50:1 auf #eef1f5 — lesbar, auch wenn gesperrt */
+
+  /* ── Navy-Bühne (Anmeldung, Konzept A) ── */
+  --ce-pr-stage: radial-gradient(ellipse 55% 65% at 28% 60%, rgba(28, 58, 150, 0.34), transparent 70%), linear-gradient(180deg, #0a1636 0%, #081230 100%);
+  --ce-pr-on-navy: #eef2ff;             /* 15,90:1 auf #0a1636 */
+  --ce-pr-on-navy-2: #aab6d8;           /* 8,80:1 */
+  --ce-pr-on-navy-3: #8a97bd;           /* 6,13:1 */
+  --ce-pr-on-navy-line: rgba(143, 176, 255, 0.30);
+  --ce-pr-shadow-sheet: 0 1px 2px rgba(2, 8, 30, 0.30), 0 30px 80px -24px rgba(2, 8, 30, 0.60);
+  /* Dunkle Flächen in Navy statt Indigo und Violett (Preisrechner-Band und -Fuß, .ce-card-inverse). */
+  --ce-color-surface-inverse: linear-gradient(180deg, #0a1636 0%, #081230 100%);
+  --ce-color-surface-inverse-edge: rgba(143, 176, 255, 0.14);
+  --ce-color-text-inverse-soft: #aab6d8;     /* 8,80:1 auf #0a1636 */
+  /* Strecke auf der Nachtkarte (öffentlicher Preisrechner). */
+  --ce-pr-route: #dfe7ff;
+  --ce-pr-route-halo: rgba(95, 134, 255, 0.35);
+  --ce-pr-route-ring: #9fbaff;
+  --ce-pr-stadtlicht: #ffd9a3;
+}

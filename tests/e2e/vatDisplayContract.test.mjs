@@ -581,7 +581,7 @@ test("N8 — Rückweg: der auf der Buchungsseite gewählte Modus gilt im Verglei
   await zuDenAngeboten(page);
   await waehle(page, JM);
   await schalte(page, p, BRUTTO, "Schritt 1");
-  await page.getByRole("button", { name: "← Zurück", exact: true }).click();
+  await page.getByRole("button", { name: "Zurück", exact: true }).click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
   assert.equal(p.calc.length, 1, "der Rückweg hat neu berechnet");
   assert.equal(await gedrueckt(page, BRUTTO), true, "der Vergleich hat die Wahl der Buchungsseite verloren");

@@ -5,12 +5,14 @@ import { LoginForm } from "../components/auth/LoginForm";
 import { RegisterForm } from "../components/auth/RegisterForm";
 import { ForgotPasswordForm } from "../components/auth/ForgotPasswordForm";
 import { ResetPasswordForm } from "../components/auth/ResetPasswordForm";
-import { AuthAurora } from "../components/auth/AuthAurora";
+import nachtkarte from "../assets/illustrations/nachtkarte-eu.svg";
+import { COMPANY_PROFILE } from "../config/companyProfile";
 import { TrustBar } from "../components/auth/TrustBar";
 import { Icon } from "../components/ui/Icon";
 import { BrandLogo } from "../components/ui/BrandLogo";
 import { useAuth } from "../context/AuthContext";
 import { partnerReturnTarget, safeReturnTarget } from "../utils/loginReturnTarget.mjs";
+import { useCeBereich } from "../hooks/useCeBereich";
 // Vertriebspartner landen im Partnerportal; der Empfehlungscode des
 // Kundenlinks wird bei der Kundenregistrierung mitgesendet (nur Art „customer").
 import { isSalesPartner, landingPathFor } from "../utils/roleLanding.mjs";
@@ -59,6 +61,9 @@ async function readJson(r) {
 }
 
 export default function AuthPage() {
+  // Premium-Redesign Etappe 1: Bereichs-Scope der Kunden-Anmeldung. Die Partnerregistrierung nutzt dieselben
+  // auth-Bausteine, setzt den Bereich aber nicht und bleibt dadurch unverändert.
+  useCeBereich("auth");
   const { login, sessionExpired } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -338,7 +343,12 @@ export default function AuthPage() {
 
   return (
     <div className="auth-page">
-      <AuthAurora />
+      {/* Premium-Redesign (Konzept A, Betreiberentscheidung 2026-10-27): die Nachtkarte — die Städte der EU
+          als Lichter, eigene Zeichnung (assets/illustrations/nachtkarte-eu.svg) — ersetzt hier die Aurora. Rein
+          dekorativ. Die Partnerregistrierung behält die Aurora unverändert. */}
+      <div className="auth-karte" aria-hidden="true">
+        <img src={nachtkarte} alt="" width="536" height="497" decoding="async" />
+      </div>
 
       <div className="auth-shell">
 
@@ -387,16 +397,12 @@ export default function AuthPage() {
                   Claim, kein zweites Signet, kein Wasserzeichen. Das Formular
                   darunter bleibt unverändert. */}
               <BrandLogo variant="lockup" tone="reverse" className="auth-brand auth-anim" />
-              <div className="auth-badge auth-anim">
-                <span className="auth-badge-ico"><Icon n="cube" s={16} /></span>
-                <span>Ihr verlässlicher Partner</span>
-              </div>
               {/* Wortlaut: Betreiberentscheidung Auftrag 1 (P3, 2026-10-17). Keine Geschwindigkeits-
                   zusage, kein Superlativ — „Versand ab Deutschland in die Länder der EU“ entspricht
                   dem Launch-Scope (Canonical). */}
               <h1 className="auth-title auth-anim delay-1">
                 Europa verbinden.<br />
-                Versand <em>vereinfachen.</em>
+                Versand vereinfachen.
               </h1>
               <div className="auth-sub-1 auth-anim delay-2">Vergleichen. Buchen. Persönlich betreut.</div>
               <p className="auth-sub-2 auth-anim delay-2">
@@ -473,6 +479,21 @@ export default function AuthPage() {
                   declarationsMissingOnly={regFieldsValid && !regDeclarationsOk}
                 />
               )}
+            </div>
+
+            {/* Der persönliche Ansprechpartner, wie auf dem öffentlichen Preisrechner — alle Angaben aus
+                config/companyProfile.js. */}
+            <div className="auth-kontakt">
+              <span className="auth-kontakt-zeichen" aria-hidden="true">
+                {COMPANY_PROFILE.contactPerson.split(/\s+/).map((w) => w[0]).join("")}
+              </span>
+              <div className="auth-kontakt-text">
+                <p className="auth-kontakt-name">{COMPANY_PROFILE.contactPerson}, Ihr Ansprechpartner</p>
+                <p className="auth-kontakt-wege">
+                  <a href={`mailto:${COMPANY_PROFILE.email}`}>{COMPANY_PROFILE.email}</a>
+                  <a href={`tel:${COMPANY_PROFILE.phone}`}>{COMPANY_PROFILE.phone}</a>
+                </p>
+              </div>
             </div>
 
             <TrustBar />

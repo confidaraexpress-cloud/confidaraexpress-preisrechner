@@ -55,6 +55,7 @@ if (ziel) {
         availability={verfuegbarkeit}
         launchScope={laenderScope}
         resultsHost={document.getElementById("pc-results")}
+        mapHost={document.getElementById("pc-hero-map-canvas")}
       />
     </ContentErrorBoundary>,
   );

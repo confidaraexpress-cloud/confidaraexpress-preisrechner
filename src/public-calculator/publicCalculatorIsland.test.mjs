@@ -142,8 +142,12 @@ test("4 — Seitengerüst: Kopf, Hero, Ergebnisse, Ablauf, Plattform, FAQ mit Se
     assert.ok(i > letzte, `${m} fehlt oder steht an falscher Stelle`);
     letzte = i;
   }
-  assert.match(HTML_OHNE, /<h1 class="pc-display" id="pc-hero-title"><span class="pc-display-line">Versand für Unternehmen\.<\/span> <span class="pc-display-line pc-display-line--soft">Einfach vergleichen\.<\/span><\/h1>/);
-  assert.match(HTML_OHNE, /<p class="pc-eyebrow">Digitale Versand- und Logistikplattform<\/p>/);
+  // Premium-Redesign Konzept A (Betreiberentscheidung 2026-10-27): zwei gleichwertige Zeilen ohne hellere
+  // Akzentzeile, keine Versal-Augenbraue; darunter die Nachtkarte mit ihrer Legende.
+  assert.match(HTML_OHNE, /<h1 class="pc-display" id="pc-hero-title"><span class="pc-display-line">Versand für Unternehmen\.<\/span> <span class="pc-display-line">Einfach vergleichen\.<\/span><\/h1>/);
+  assert.doesNotMatch(HTML_OHNE, /pc-eyebrow|pc-display-line--soft/);
+  assert.match(HTML_OHNE, /<div class="pc-hero-map-canvas" id="pc-hero-map-canvas">\s*<img class="pc-hero-map-img" src="\.\.\/src\/assets\/illustrations\/nachtkarte-eu\.svg" alt="" width="536" height="497" decoding="async" \/>/);
+  assert.match(HTML_OHNE, /<figcaption class="pc-hero-map-legend"><span class="pc-hero-map-dot" aria-hidden="true"><\/span>Versand ab Deutschland in die Länder der EU<\/figcaption>/);
   assert.match(HTML_OHNE, /<p class="pc-lead">Mehrere Versanddienstleister auf einer Plattform: transparente Nettopreise für Ihre Sendung, effizient gebucht im Kundenbereich — mit persönlichem Ansprechpartner\.<\/p>/);
   // Bereich 2 gibt es erst nach der ersten Berechnung: vorher steht dort nichts, auch keine Überschrift.
   assert.match(HTML_OHNE, /<div id="pc-results"><\/div>/);
@@ -152,7 +156,7 @@ test("4 — Seitengerüst: Kopf, Hero, Ergebnisse, Ablauf, Plattform, FAQ mit Se
     assert.ok(HTML_OHNE.includes(`href="https://confidaraexpress.de/${ziel}"`), `Link auf /${ziel} der Hauptdomain fehlt`);
   }
   assert.match(HTML_OHNE, /<main id="pc-main">/);
-  assert.match(HTML_OHNE, /<html lang="de">/);
+  assert.match(HTML_OHNE, /<html lang="de" data-ce-bereich="preisrechner">/);
 });
 
 test("5 — Kopf: preconnect zur API, genau zwei vorgeladene Schriftschnitte, nur Marken-Lockups", () => {
@@ -160,9 +164,10 @@ test("5 — Kopf: preconnect zur API, genau zwei vorgeladene Schriftschnitte, nu
   const preloads = [...HTML_OHNE.matchAll(/<link rel="preload" href="([^"]+)" as="font" type="font\/woff2" crossorigin \/>/g)].map((m) => m[1]);
   assert.deepEqual(preloads, ["../src/assets/fonts/dmsans-300.woff2", "../src/assets/fonts/cormorantgaramond-400.woff2"]);
   const bilder = [...HTML_OHNE.matchAll(/<img [^>]*src="([^"]+)"/g)].map((m) => m[1]);
-  // Kopf und Fuß liegen auf dunklem Grund: zweimal das helle Lockup.
-  assert.deepEqual(bilder, ["../src/assets/brand/lockup-reverse.svg", "../src/assets/brand/lockup-reverse.svg"],
-    "keine Logo-Wand der Carrier, kein Master-SVG");
+  // Kopf und Fuß liegen auf dunklem Grund: zweimal das helle Lockup. Dazwischen die Nachtkarte des Heros
+  // (Konzept A, eigene Zeichnung) — die einzige Illustration, kein Markenasset.
+  assert.deepEqual(bilder, ["../src/assets/brand/lockup-reverse.svg", "../src/assets/illustrations/nachtkarte-eu.svg",
+    "../src/assets/brand/lockup-reverse.svg"], "keine Logo-Wand der Carrier, kein Master-SVG");
   assert.doesNotMatch(HTML_OHNE, /<style|style="|<script(?![^>]*src="\/main\.js")/, "CSP: nichts inline");
 });
 

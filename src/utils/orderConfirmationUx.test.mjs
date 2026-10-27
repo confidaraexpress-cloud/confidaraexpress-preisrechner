@@ -113,7 +113,10 @@ test("8 der Knopf erscheint NUR, wenn die Buchungsantwort eine Bestätigung meld
 });
 
 test("9 der Erfolgsbildschirm nennt die Nummer im Knopftext", () => {
-  assert.ok(/Auftragsbestätigung \{orderConfirmationNumberOf\(booking\)\} herunterladen/.test(docsSrc),
+  // Premium-Redesign B9: die Nummer bricht als Einheit um (.ce-wert), der Knopftext bleibt derselbe. Die
+  // Beschriftung steht in EINEM Element: der Knopf ist ein Flex-Container, sonst würden Text und Nummer zu
+  // getrennten Spalten.
+  assert.ok(/<span>Auftragsbestätigung <span className="ce-wert">\{orderConfirmationNumberOf\(booking\)\}<\/span> herunterladen<\/span>/.test(docsSrc),
     "die Nummer steht nicht im Knopf");
 });
 

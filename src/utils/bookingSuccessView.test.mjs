@@ -12,7 +12,7 @@ import {
   INVOICE_DELIVERY_MODE, INVOICES_DASHBOARD_PAGE, INVOICES_DASHBOARD_TARGET, SHIPMENTS_DASHBOARD_TARGET,
   findInvoiceByNumber, resolveInvoiceDeliveryMode, isTerminalDeliveryMode, invoiceDeliveryHint,
   BOOKING_CONFIRMATION_LINE, INVOICE_AUTOCREATE_LINE, BOOKING_AMOUNT_MISSING_HINT,
-  DOCUMENT_WORDING, resolveDocumentWording, bookingDocumentWording,
+  DOCUMENT_WORDING, resolveDocumentWording, bookingDocumentWording, hintAlertClass,
 } from "./bookingSuccessView.mjs";
 
 // ── Trennung Auftragsbestätigung ↔ Rechnung ──────────────────────────────────
@@ -194,6 +194,24 @@ test("P2d — ohne Phase und ohne Beleg bleibt die Seite neutral: „Beleg“, w
     assert.match(w.autocreateLine, /Beleg/);
     assert.equal(w.documentsButton, "Zu meinen Belegen");
   }
+});
+
+// F3 (Premium-Redesign Etappe 1): Jeder Ton des Hinweises hat seine eigene Meldungsklasse; der Warnton der
+// Testphase erscheint als Warnung statt als Info.
+test("F3 — hintAlertClass: Warnton als Warnung, unbekannter Ton ruhig als Info", () => {
+  assert.equal(hintAlertClass("success"), "alert-success");
+  assert.equal(hintAlertClass("warning"), "alert-warning");
+  assert.equal(hintAlertClass("error"), "alert-error");
+  assert.equal(hintAlertClass("info"), "alert-info");
+  assert.equal(hintAlertClass("unbekannt"), "alert-info");
+  assert.equal(hintAlertClass(undefined), "alert-info");
+  for (const mode of Object.values(INVOICE_DELIVERY_MODE)) {
+    const { tone } = invoiceDeliveryHint(mode);
+    if (tone !== "info") assert.notEqual(hintAlertClass(tone), "alert-info", `Ton ${tone} fällt auf Info zurück`);
+  }
+  const hier = path.dirname(fileURLToPath(import.meta.url));
+  const erfolg = fs.readFileSync(path.join(hier, "../components/booking/BookingSuccessStep.jsx"), "utf8");
+  assert.match(erfolg, /className=\{`alert \$\{hintAlertClass\(hint\.tone\)\}`\}/, "der Erfolg nutzt die Tonzuordnung nicht");
 });
 
 test("P2e — der Beleg entscheidet gegen eine widersprüchliche Phase nie zugunsten einer Rechnungszusage", () => {

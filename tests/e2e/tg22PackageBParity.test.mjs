@@ -472,8 +472,8 @@ test("K/L — Absicherung an A; B startet neutral ohne Neubepreisung; zurück zu
   assert.equal(protokoll.reprice.at(-1).offerId, TG_A.offerId);
 
   // Zurück zum Vergleich, Angebot B.
-  await page.getByRole("button", { name: "← Zurück zur Übersicht" }).click();
-  await page.getByRole("button", { name: "← Zurück", exact: true }).click();
+  await page.getByRole("button", { name: "Zurück zur Übersicht" }).click();
+  await page.getByRole("button", { name: "Zurück", exact: true }).click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
   await waehle(page, TG_B);
   const nachB = protokoll.reprice.length;
@@ -486,8 +486,8 @@ test("K/L — Absicherung an A; B startet neutral ohne Neubepreisung; zurück zu
   assert.equal(protokoll.reprice.length, nachB, "B hat beim Öffnen neu bepreist");
 
   // Zurück zu A: derselbe Stand, und ein autoritativer Preis vor der Buchung.
-  await page.getByRole("button", { name: "← Zurück zur Übersicht" }).click();
-  await page.getByRole("button", { name: "← Zurück", exact: true }).click();
+  await page.getByRole("button", { name: "Zurück zur Übersicht" }).click();
+  await page.getByRole("button", { name: "Zurück", exact: true }).click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
   await waehle(page, TG_A);
   await zuSchritt2(page);
@@ -495,8 +495,8 @@ test("K/L — Absicherung an A; B startet neutral ohne Neubepreisung; zurück zu
   // Genau das ist die Regel — der Schlüssel des ZULETZT gespiegelten Angebots entscheidet.
   assert.equal(await page.locator('.ins-card input[value="none"]').isChecked(), true);
   await absichern(page);
-  await page.getByRole("button", { name: "← Zurück zur Übersicht" }).click();
-  await page.getByRole("button", { name: "← Zurück", exact: true }).click();
+  await page.getByRole("button", { name: "Zurück zur Übersicht" }).click();
+  await page.getByRole("button", { name: "Zurück", exact: true }).click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
   const vorRueckkehr = protokoll.reprice.length;
   await waehle(page, TG_A);

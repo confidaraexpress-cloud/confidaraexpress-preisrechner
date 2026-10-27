@@ -5,6 +5,7 @@ import { getSupportRequest, replySupportRequest, confirmSupportViewed } from "..
 import { newIdempotencyKey } from "../../utils/idempotencyKey.mjs";
 import { useNotifications } from "../../context/NotificationsContext";
 import { statusFallback } from "../../utils/statusFallback.mjs";
+import { Werte } from "../ui/Werte";
 import {
   supportReplyState, supportAuthorLabel, SUPPORT_REPLY_MAX,
   SUPPORT_REPLY_PLACEHOLDER, SUPPORT_REPLY_SUBMIT, SUPPORT_REPLY_ERROR,
@@ -182,7 +183,7 @@ export function SupportThread({ requestId, onBack }) {
           <span className="sup-ticket">{req.ticketNumber}</span>
           <span className={`badge ${badgeClass}`}>{req.statusLabel || statusLabel}</span>
         </div>
-        <h2 className="sup-subject">{req.subject}</h2>
+        <h2 className="sup-subject"><Werte>{req.subject}</Werte></h2>
         <p className="sup-thread-meta">
           <span title={kategorieRoh ? `Serverwert: ${kategorieRoh}` : undefined}>{kategorie}</span>
           {" · "}Eingegangen am {fmt(req.createdAt)}

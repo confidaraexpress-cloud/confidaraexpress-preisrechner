@@ -196,7 +196,8 @@ test("C5 — die normale Datumszeile trägt den früheren Inline-Stil nicht mehr
   const karte = lies(OFFER_CARD);
   assert.ok(!/offer-tl-time-early/.test(karte));
   // Datum ist wieder allein die primäre Information …
-  assert.match(karte, /\{end\.primary && <span className="offer-tl-primary">\{end\.primary\}<\/span>\}/);
+  // Premium-Redesign B9: Werte halten zusammen (Werte, Text unverändert).
+  assert.match(karte, /\{end\.primary && <span className="offer-tl-primary"><Werte>\{end\.primary\}<\/Werte><\/span>\}/);
   // … und die Unterzeile entfällt GENAU dann, wenn das grüne Feld erscheint.
   assert.match(karte, /if \(zeitText && !earlyNote\) secondary\.push\(zeitText\);/);
   // Entscheidend: derselbe Wert steuert beides — earlyNote wird hereingereicht,

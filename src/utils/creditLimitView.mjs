@@ -69,7 +69,9 @@ export function creditFacts(credit) {
 
 export const CREDIT_TEXT = Object.freeze({
   title: "Buchungsrahmen",
-  availableLabel: "Verfügbarer Buchungsrahmen",
+  // Die beiden Teile des Balkens (Übersicht): der gefüllte Teil ist belegt, der Rest verfügbar.
+  usedLabel: "Belegt",
+  availablePartLabel: "Verfügbar",
   exhaustedBadge: "ausgeschöpft",
   // Übersicht: warum der Rahmen ausgeschöpft ist und was hilft — ohne Zahlen im Satz.
   exhaustedNote: "Ihr Buchungsrahmen ist derzeit ausgeschöpft. Neue Buchungen sind erst wieder möglich, wenn offene Rechnungen beglichen sind oder wir den Rahmen anpassen.",

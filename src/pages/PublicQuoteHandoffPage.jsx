@@ -9,6 +9,7 @@ import {
 } from "../utils/publicQuoteHandoffStore.mjs";
 import { publicQuoteToShipmentTransfer } from "../utils/calculatorShipmentHandoff.mjs";
 import { publicCarrierDisplay, publicServiceName } from "../utils/carrierMap";
+import { carrierServiceLabel } from "../utils/carrierServiceLabel.mjs";
 import {
   HANDOFF_PAGE_TEXT, HANDOFF_STATE, PUBLIC_CALCULATOR_URL, handoffVerifyOutcome, isCustomerAccount, ownHomeFor,
 } from "../utils/publicQuoteHandoffView.mjs";
@@ -54,7 +55,7 @@ export default function PublicQuoteHandoffPage() {
     if (naechster.kind === "transfer") {
       takePendingHandoff();
       const auswahl = naechster.selection;
-      const label = `${publicCarrierDisplay(auswahl).name} · ${publicServiceName(auswahl)}`;
+      const label = carrierServiceLabel(publicCarrierDisplay(auswahl).name, publicServiceName(auswahl));
       clearScope("shipment");
       setScope("shipment", publicQuoteToShipmentTransfer({ input: naechster.input, selection: auswahl, label }));
       navigate("/dashboard?page=new", { replace: true });

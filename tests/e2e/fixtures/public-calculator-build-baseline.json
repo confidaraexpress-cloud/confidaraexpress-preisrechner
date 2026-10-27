@@ -2,9 +2,9 @@
   "hinweis": "Komprimierte Größen je Asset des Preisrechner-Builds (gzip Stufe 9, brotli Stufe 11). Bewusst aktualisieren: PREISRECHNER_BASELINE_WRITE=1 node --test tests/e2e/publicCalculatorBuild.test.mjs",
   "assets": {
     "404.html": {
-      "raw": 2315,
-      "gzip": 933,
-      "brotli": 783
+      "raw": 2346,
+      "gzip": 947,
+      "brotli": 782
     },
     "assets/cormorantgaramond-400.woff2": {
       "raw": 37640,
@@ -52,19 +52,24 @@
       "brotli": 2653
     },
     "assets/index.js": {
-      "raw": 259835,
-      "gzip": 81979,
-      "brotli": 70828
+      "raw": 287681,
+      "gzip": 92259,
+      "brotli": 79786
     },
     "assets/lockup-reverse.svg": {
       "raw": 11224,
       "gzip": 3942,
       "brotli": 2531
     },
+    "assets/nachtkarte-eu.svg": {
+      "raw": 109146,
+      "gzip": 18727,
+      "brotli": 16226
+    },
     "assets/public-calculator.css": {
-      "raw": 39868,
-      "gzip": 7907,
-      "brotli": 7060
+      "raw": 49946,
+      "gzip": 9863,
+      "brotli": 8793
     },
     "assets/tnt.svg": {
       "raw": 13707,
@@ -82,9 +87,9 @@
       "brotli": 1282
     },
     "index.html": {
-      "raw": 14849,
-      "gzip": 3667,
-      "brotli": 3199
+      "raw": 15803,
+      "gzip": 3934,
+      "brotli": 3430
     },
     "robots.txt": {
       "raw": 23,

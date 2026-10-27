@@ -29,6 +29,9 @@
 // ── Premium-Statussystem — vier Familien, ausschließlich für Rechnungen ─────
 // (inv-status--neutral/positive/attention/critical in dashboard.css). KEINE
 // globale .badge-*-Migration — bewusst auf dieses Modul begrenzt.
+// Unbekannte Werte erscheinen nach der projektweiten Regel nie roh (docs/frontend-vertraege.md, Fehlerdarstellung).
+import { UNBEKANNTER_STATUS, STATUS_LEER } from "./statusFallback.mjs";
+
 export const TONE = Object.freeze({
   NEUTRAL: "neutral",
   POSITIVE: "positive",
@@ -105,7 +108,8 @@ const DOCUMENT_STATUS_META = {
 };
 export function documentStatusMeta(inv) {
   const s = inv && inv.document_status;
-  return DOCUMENT_STATUS_META[s] || [TONE.NEUTRAL, s || "—"];
+  // Ein unbekannter Wert erscheint nie roh (F2): der Wortlaut der zentralen Regel (statusFallback.mjs).
+  return DOCUMENT_STATUS_META[s] || [TONE.NEUTRAL, s ? UNBEKANNTER_STATUS : STATUS_LEER];
 }
 
 // ── E-Mail-Zustand — nur die abgeschlossene Tatsache, kein Betriebszustand ──

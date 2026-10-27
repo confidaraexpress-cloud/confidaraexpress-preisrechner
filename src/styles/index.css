@@ -85,3 +85,8 @@
    alle Bereichs-Stylesheets VOR patterns.css. */
 @import './partner.css';
 @import './patterns.css';
+/* Premium-Redesign 2026-10, Etappe 1: Kundenbereich und Auth. Jede Regel hängt am
+   Bereichsattribut <html data-ce-bereich> (hooks/useCeBereich.js); Admin, Partnerportal und
+   Partnerregistrierung setzen es nie. Steht als einzige Datei NACH patterns.css: Bei gleicher
+   Spezifität gewinnt der Bereich gegen die Musterebene. */
+@import './premium-redesign.css';

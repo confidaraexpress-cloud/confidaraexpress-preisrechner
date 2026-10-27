@@ -122,9 +122,15 @@ test("A — Übersicht: der Rahmen steht unter den offenen Rechnungen; ohne Serv
   await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("#ov-credit", { timeout: 20000 });
   const text = norm(await page.locator("#ov-credit").innerText());
-  assert.match(text, /Verfügbarer Buchungsrahmen/);
-  assert.match(text, /1\.450,00 €/);
-  assert.match(text, /von 2\.000,00 € · 550,00 € belegt/);
+  // Premium-Redesign B11: Kopf mit dem Rahmen, beide Teile des Balkens beschriftet — der gefüllte Teil
+  // ist belegt, der Rest verfügbar. Die frühere Beschriftung „Verfügbarer Buchungsrahmen“ über dem
+  // Balken des belegten Anteils widersprach ihm (Audit B6).
+  assert.match(text, /Buchungsrahmen\s*2\.000,00 €/);
+  assert.match(text, /Belegt\s*550,00 €/);
+  assert.match(text, /Verfügbar\s*1\.450,00 €/);
+  assert.doesNotMatch(text, /Verfügbarer Buchungsrahmen/, "die widersprüchliche Beschriftung ist zurück");
+  assert.equal(norm(await page.locator("#ov-credit").getAttribute("aria-label")),
+    "Buchungsrahmen: 1.450,00 € von 2.000,00 € verfügbar · 550,00 € belegt", "der Satz für Screenreader hat sich geändert");
   assert.doesNotMatch(text, /ausgeschöpft/);
   assert.equal(await page.locator("#ov-credit .ov-credit-bar-fill").evaluate((el) => el.style.width), "28%");
   assert.ok(await page.locator(".ov-inv-amount").isVisible(), "die offenen Rechnungen fehlen");

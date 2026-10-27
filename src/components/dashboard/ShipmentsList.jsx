@@ -1,6 +1,6 @@
 import React from "react";
 import { StatusBadge } from "../ui/StatusBadge";
-import { EmptyState } from "../ui/StateView";
+import { EmptyState, ErrorState } from "../ui/StateView";
 import { money, dateDE, isoDayDE } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import { getTracking, requestShipmentCancellation } from "../../api/client";
@@ -16,7 +16,7 @@ import {
   multiTrackingReferencesOf, trackingReferencesSummary, TRACKING_REFERENCES_TEXT,
 } from "../../utils/trackingReferencesView.mjs";
 import {
-  trackingLegsOf, trackingStatusLabel, eventWhenText, trackingLegHeading, trackingEventTone, TRACKING_LEGS_TEXT,
+  trackingLegsOf, trackingStatusLabel, trackingStatusBadgeClass, eventWhenText, trackingLegHeading, trackingEventTone, TRACKING_LEGS_TEXT,
 } from "../../utils/trackingLegsView.mjs";
 import {
   canRequestCancellation,
@@ -161,7 +161,7 @@ function ShipmentTrackingDetail({ tracking, loading, onRefresh }) {
               Trackingnummer: <strong>{number}</strong>
             </span>
           )}
-          {statusLabel && <span className="badge badge--info">{statusLabel}</span>}
+          {statusLabel && <span className={`badge ${trackingStatusBadgeClass(tracking?.trackingStatus)}`}>{statusLabel}</span>}
           {carrierUrl && (
             <a className="shipment-track-link" href={carrierUrl} target="_blank" rel="noopener noreferrer">
               Beim Versanddienstleister verfolgen
@@ -200,7 +200,9 @@ function ShipmentTrackingDetail({ tracking, loading, onRefresh }) {
   );
 }
 
-export function ShipmentsList({ shipments, loading, onCancellationRequested, hasMore, loadingMore, loadMoreError, onLoadMore }) {
+const SHIPMENTS_LOAD_ERROR_TITLE = "Die Sendungen konnten nicht geladen werden.";
+
+export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShipment, onCancellationRequested, hasMore, loadingMore, loadMoreError, onLoadMore }) {
   const [trackingId, setTrackingId] = React.useState(null);
   const [tracking, setTracking] = React.useState(null);
   const [trackLoading, setTrackLoading] = React.useState(false);
@@ -326,8 +328,20 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
         )}
         {loading ? (
           <div className="loading-center"><span className="spinner spinner-dark" /></div>
+        ) : shipments.length === 0 && loadError ? (
+          // F5: Ein Ladefehler ist kein Leerzustand. Der Kunde sieht, dass die Liste nicht geladen wurde, und kann
+          // es erneut versuchen (derselbe Weg wie bei den Rechnungen).
+          <ErrorState
+            title={SHIPMENTS_LOAD_ERROR_TITLE}
+            action={<button type="button" className="btn btn-primary btn-sm" id="shipments-retry" onClick={onRetry}>Erneut versuchen</button>}
+          />
         ) : shipments.length === 0 ? (
-          <EmptyState title="Noch keine Sendungen" />
+          // Leerzustand nach B8: Titel, ein Satz, eine Aktion — der bestehende Weg zu „Neue Sendung“.
+          <EmptyState
+            title="Noch keine Sendungen"
+            text="Gebuchte Sendungen erscheinen hier mit Status, Dokumenten und Sendungsverfolgung."
+            action={onNewShipment ? <button type="button" className="btn btn-primary btn-sm" id="shipments-empty-new" onClick={onNewShipment}>Neue Sendung</button> : null}
+          />
         ) : (
           <>
           {/* Desktop: Identität links (Auftragsbestätigung, darunter Carrier · Datum

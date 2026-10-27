@@ -512,7 +512,7 @@ test("D — TG-Preisänderung: geschlossen bleibt gesperrt; übernommen aktualis
   // Zurück zum Angebotsvergleich: die Karte trägt den übernommenen Versandpreis.
   const berechnungen = protokoll.calc.length;
   await zuSchritt1(page);
-  await page.getByRole("button", { name: "← Zurück", exact: true }).click();
+  await page.getByRole("button", { name: "Zurück", exact: true }).click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
   const karte = await inhalt(karteVon(page, TG22()));
   assert.equal(protokoll.calc.length, berechnungen, "der Rückweg hat neu berechnet");

@@ -1,6 +1,6 @@
 // Sidebar-Informationsarchitektur — Quelltextprüfung.
 //
-// Redesign 2026-10: Die Sidebar ist Deep Navy und reiner Text (keine Icons),
+// Redesign 2026-10: Die Sidebar ist Deep Navy; seit E7 (2026-10-27) tragen nur die Hauptpunkte ein Icon,
 // der aktive Eintrag trägt Fläche und blaue Akzentkante. Feinkorrektur
 // 2026-10: Navigation 15/22 (Hauptpunkte 600, Unterpunkte 500), EIN
 // 44-px-Zeilenrhythmus mit 4 px Abstand, Unterzeile unter der Marke, leise
@@ -311,12 +311,21 @@ test("14 — unter 860 px erreicht jedes Bedienelement 44 px", () => {
     "die Klappköpfe fallen nicht unter die Touch-Regel");
 });
 
-test("15 — die Sidebar ist symbolfrei; die Klappmarke ist eine CSS-Form", () => {
-  // Redesign 2026-10: keine Iconleiste, keine Symbole vor Einträgen. Damit
-  // entfällt auch die Icon-Komponente in dieser Datei; lucide-react bleibt verboten.
+test("15 — Icons nur an den sechs Hauptpunkten (E7), aus der eigenen Komponente; die Klappmarke ist eine CSS-Form", () => {
+  // Betreiberentscheidung 2026-10-27 (E7): Übersicht, Adressbuch, Rechnungen und die drei Gruppenköpfe tragen
+  // ein dekoratives Icon vor dem Text. Unterpunkte und sekundäre Aktionen bleiben reiner Text; lucide-react
+  // bleibt verboten.
   assert.ok(!/from\s+["']lucide-react["']/.test(sidebar), "lucide-react darf nicht zurückkehren");
-  assert.ok(!/<Icon\b/.test(code), "die Sidebar rendert wieder ein Symbol");
-  assert.ok(!/import \{ Icon \}/.test(code), "der Icon-Import ist überflüssig");
+  assert.match(code, /import \{ Icon, ICON_SIZE \} from "\.\.\/ui\/Icon";/, "das Icon kommt nicht aus der eigenen Komponente");
+  assert.equal((code.match(/<Icon\b/g) || []).length, 2, "genau zwei Renderstellen: Eintrag der ersten Ebene und Gruppenkopf");
+  assert.equal((code.match(/<span className="pp-nav-icon" aria-hidden="true"><Icon /g) || []).length, 2,
+    "jedes Icon sitzt dekorativ im festen Slot");
+  assert.equal((code.match(/icon: "/g) || []).length, 6, "Icons gehören genau an die sechs Hauptpunkte");
+  for (const gruppe of ["shipping", "warehouse", "account"]) {
+    const start = code.indexOf(`id: "${gruppe}"`);
+    const eintraege = code.slice(code.indexOf("items: [", start), code.indexOf("],", start));
+    assert.doesNotMatch(eintraege, /icon:/, `Unterpunkte der Gruppe ${gruppe} tragen ein Icon`);
+  }
   // Keine Emojis oder Textzeichen als Klappmarke.
   assert.ok(!/[˅›▸▾]/.test(code), "Textzeichen als Klappmarke gefunden");
   assert.match(code, /<span className="pp-nav-group-chevron" aria-hidden="true" \/>/,

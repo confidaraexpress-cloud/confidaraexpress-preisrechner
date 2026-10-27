@@ -25,6 +25,10 @@ export function BookingActionModule({
   const bookingAllowed = canSubmitBooking({ agbAccepted, prohibitedGoodsAccepted, loading, insuranceBlocksBooking, pickupBlocksBooking, dropoffShopBlocksBooking })
     && voucherChecking !== true
     && legalBlocksBooking !== true;
+  // Steht statt des Bestellknopfs eine Ersatzfläche (nichts beauftragt oder Ausgang offen), entfällt der Satz
+  // über die Bestätigung nach der Buchung: neben „Die Buchung wurde nicht durchgeführt“ widerspräche er
+  // (Audit, Zustände). Dieselbe Reihenfolge wie die Kette unten.
+  const ersatzflaeche = Boolean(creditNotice || conflict || priceChangeNotice || inventoryNotice || recalcNotice || addressError);
   return (
     <>
       {/* ─── CE-19: der Fehlerzustand trägt ZWEI Formen ────────────────────────────────
@@ -178,9 +182,11 @@ export function BookingActionModule({
       {creditHint && !creditNotice && (
         <p className="booking-credit-hint" id="booking-credit-hint" role="status">{creditHint}</p>
       )}
-      <p className="booking-email-note">
-        Nach der Buchung erhalten Sie eine Bestätigung per E-Mail an {userEmail}
-      </p>
+      {!ersatzflaeche && (
+        <p className="booking-email-note">
+          Nach der Buchung erhalten Sie eine Bestätigung per <span className="ce-wert">E-Mail</span> an {userEmail}
+        </p>
+      )}
     </>
   );
 }

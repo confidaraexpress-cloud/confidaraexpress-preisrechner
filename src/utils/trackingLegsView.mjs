@@ -55,6 +55,21 @@ export function trackingStatusLabel(status) {
   return s && Object.prototype.hasOwnProperty.call(STATUS_LABELS, s) ? STATUS_LABELS[s] : null;
 }
 
+// Ton der Statusmarke (Premium-Redesign E8, zwei Stufen): Vorbereitung neutral, Transport als Fortschritt,
+// Zustellung als Erfolg — alle ruhig; hervorgehoben nur die Ausnahme, in der Warnfarbe wie ihr neuestes
+// Ereignis (trackingEventTone, docs/frontend-vertraege.md). Aus dem normalisierten Stand allein, nie aus
+// Beschreibungen. Ein unbekannter Stand trägt keine Marke (trackingStatusLabel liefert dann null).
+const STATUS_BADGE_CLASS = Object.freeze({
+  pending: "badge--neutral",
+  in_transit: "badge--progress",
+  delivered: "badge--success",
+  exception: "badge--warning",
+});
+export function trackingStatusBadgeClass(status) {
+  const s = text(status);
+  return s && Object.prototype.hasOwnProperty.call(STATUS_BADGE_CLASS, s) ? STATUS_BADGE_CLASS[s] : "badge--neutral";
+}
+
 /** Trägt die Antwort überhaupt Transportabschnitte? */
 export function hasTrackingLegs(result) {
   return Boolean(result) && typeof result === "object" && Array.isArray(result.trackingLegs);

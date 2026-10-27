@@ -13,6 +13,8 @@ import { Icon, ICON_SIZE } from "../ui/Icon";
 import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
 import { AppStatusNotice } from "../common/AppStatusNotice";
 import { updateNoticeSuppressed } from "../../utils/appVersionCheck.mjs";
+import { dashboardRouteTarget } from "../../utils/dashboardRouteTarget.mjs";
+import { useCeBereich } from "../../hooks/useCeBereich";
 
 // Seitenköpfe der beiden route-basierten Versandseiten (Paket B) — dasselbe
 // Prinzip wie PAGE_HEADERS in DashboardPage.jsx, nur für die zwei Seiten, die
@@ -39,6 +41,8 @@ export function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Premium-Redesign Etappe 1: Bereichs-Scope des Kundenbereichs (hooks/useCeBereich.js).
+  useCeBereich("kunde");
 
 
   // Sidebar-Markierung für die route-basierten Seiten. Die beiden Detailseiten
@@ -52,14 +56,11 @@ export function DashboardLayout() {
     location.pathname.startsWith("/inventory/orders")   ? "orders"   : "";
 
   // Dieselbe Signatur wie DashboardPage.navigateTo. Einen Verlassen-Guard gibt
-  // es auf diesen Routen nicht — die Folgeaktion des Ziels läuft sofort.
+  // es auf diesen Routen nicht — die Folgeaktion des Ziels läuft sofort. Die
+  // Ticket-ID einer Supportmitteilung reist in der Adresse mit (F1).
   const navigateTo = (id, filter = null, onCommit = null) => {
     setSidebarOpen(false);
-    if (id === "calculator") {
-      navigate("/calculator");
-    } else {
-      navigate(`/dashboard?page=${id}`);
-    }
+    navigate(dashboardRouteTarget(id, filter));
     if (onCommit) onCommit();
   };
 

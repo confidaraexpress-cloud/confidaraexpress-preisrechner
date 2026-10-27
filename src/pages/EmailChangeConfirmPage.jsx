@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AuthAurora } from "../components/auth/AuthAurora";
+import nachtkarte from "../assets/illustrations/nachtkarte-eu.svg";
 import { Icon } from "../components/ui/Icon";
 import { useAuth } from "../context/AuthContext";
 import { confirmEmailChange } from "../api/client";
 import { classifyEmailChangeConfirm, isRetryableConfirmState, hasUsableToken } from "../utils/emailChangeView.mjs";
+import { useCeBereich } from "../hooks/useCeBereich";
 
 // Öffentliche Bestätigungsseite /confirm-email-change?token=… (ohne Login
 // erreichbar, NICHT im Dashboard eingebettet — eigene Auth-/Reset-Ästhetik).
@@ -17,6 +18,8 @@ import { classifyEmailChangeConfirm, isRetryableConfirmState, hasUsableToken } f
 // State derselben Instanz). Nach Erfolg: rein lokale Sitzungsbereinigung (kein
 // Backendrequest), danach Weiterleitung zur Anmeldung.
 export default function EmailChangeConfirmPage() {
+  // Premium-Redesign Etappe 1: dieselbe Auth-Gestaltung wie Anmeldung und Registrierung.
+  useCeBereich("auth");
   const navigate = useNavigate();
   const { logout } = useAuth();
 
@@ -97,7 +100,10 @@ export default function EmailChangeConfirmPage() {
 
   return (
     <div className="auth-page">
-      <AuthAurora />
+      {/* Premium-Redesign (Konzept A): dieselbe Navy-Bühne mit Nachtkarte wie die Anmeldung. Dekorativ. */}
+      <div className="auth-karte" aria-hidden="true">
+        <img src={nachtkarte} alt="" width="536" height="497" decoding="async" />
+      </div>
       <div className="auth-shell">
         <div className="auth-card email-change-confirm">
           <div className="auth-card-top">

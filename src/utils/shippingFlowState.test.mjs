@@ -77,7 +77,7 @@ test("2 — die Formularschlüssel decken genau die Felder der jeweiligen Seite 
                    "packageCount", "weight", "length", "width", "height",
                    "max_price", "latestDeliveryDate", "latestDeliveryTime",
                    // Die Sendungsangaben aus Paket 9A (Inhalt, Warenwert). Sie sind Pflicht VOR
-                   // dem Vergleich — fehlen sie hier, steht der Kunde nach „← Zurück" vor
+                   // dem Vergleich — fehlen sie hier, steht der Kunde nach „Zurück" vor
                    // einem dauerhaft gesperrten „Angebote vergleichen". Genau der Fall,
                    // den der Kommentar oben beschreibt; er war real eingetreten.
                    "declaredContent", "declaredGoodsValue"]) {

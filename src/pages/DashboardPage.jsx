@@ -21,6 +21,7 @@ import { ContentErrorBoundary } from "../components/common/ContentErrorBoundary"
 import { AppStatusNotice } from "../components/common/AppStatusNotice";
 import { updateNoticeSuppressed } from "../utils/appVersionCheck.mjs";
 import { useShippingFlow } from "../context/ShippingFlowContext";
+import { useCeBereich } from "../hooks/useCeBereich";
 
 // Takt der reinen Monatsbeobachtung (siehe Effekt unten). Bewusst ein LOKALER
 // Vergleich ohne Netzwerkzugriff — 60 s sind billig und lassen den Wechsel
@@ -111,6 +112,8 @@ const PAGE_HEADERS = {
 };
 
 export default function DashboardPage() {
+  // Premium-Redesign Etappe 1: Bereichs-Scope des Kundenbereichs (hooks/useCeBereich.js).
+  useCeBereich("kunde");
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -656,7 +659,9 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {loadError && (
+        {/* F5: Auf der Sendungsseite ohne Liste trägt der Fehlerzustand der Liste die Meldung samt „Erneut
+            versuchen“; das Band stünde sonst doppelt da. */}
+        {loadError && !(page === "shipments" && shipments.length === 0) && (
           <div className="alert-wrapper">
             <div className="alert alert-error">
               {loadError}
@@ -741,6 +746,9 @@ export default function DashboardPage() {
           <ShipmentsList
             shipments={shipments}
             loading={loading}
+            loadError={loadError}
+            onRetry={fetchData}
+            onNewShipment={() => navigateTo("new")}
             onCancellationRequested={handleCancellationRequested}
             hasMore={!!shipmentsCursor}
             loadingMore={shipmentsMoreLoading}

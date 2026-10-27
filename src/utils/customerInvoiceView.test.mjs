@@ -84,6 +84,12 @@ test("7 — documentStatusMeta: kompakte Labels ohne Fließtext", () => {
   assert.deepEqual(documentStatusMeta(inv({ document_status: "pending_document" })), [TONE.NEUTRAL, "PDF wird erstellt"]);
   assert.deepEqual(documentStatusMeta(inv({ document_status: "document_failed" })), [TONE.CRITICAL, "PDF-Erstellung fehlgeschlagen"]);
 });
+// F2 (Premium-Redesign Etappe 1): ein unbekannter Dokumentstatus erscheint nie als Rohwert.
+test("7b — documentStatusMeta: unbekannter Wert neutral benannt, fehlender Wert als Strich", () => {
+  assert.deepEqual(documentStatusMeta(inv({ document_status: "archived_v2" })), [TONE.NEUTRAL, "Unbekannter Status"]);
+  assert.deepEqual(documentStatusMeta(inv({ document_status: null })), [TONE.NEUTRAL, "—"]);
+  assert.deepEqual(documentStatusMeta(inv({ document_status: undefined })), [TONE.NEUTRAL, "—"]);
+});
 // R3: Der Kunde sieht NUR die abgeschlossene Tatsache — nie einen internen Betriebszustand.
 // „Versand fehlgeschlagen" neben einer gültigen, herunterladbaren Rechnung liest sich wie ein
 // Rechnungs- oder Zahlungsfehler; der Kunde kann daran ohnehin nichts ändern.

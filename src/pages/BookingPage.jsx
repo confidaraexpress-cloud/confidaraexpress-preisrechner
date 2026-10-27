@@ -44,6 +44,7 @@ import {
 import { countries } from "../utils/countries";
 import { money } from "../utils/formatters";
 import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../utils/carrierMap";
+import { carrierServiceLabel } from "../utils/carrierServiceLabel.mjs";
 import { useAuth } from "../context/AuthContext";
 // Nur die Formatprüfung des Kontofelds — die Buchungsentscheidung selbst trifft
 // ausschließlich das Backend (422 EORI_REQUIRED). Hier wird nur entschieden, ob die
@@ -106,6 +107,7 @@ import { BookingSuccessStep } from "../components/booking/BookingSuccessStep";
 import { VatModeToggle } from "../components/offers/VatModeToggle";
 import { normalizeVatMode, VAT_TEXT } from "../utils/vatDisplayView.mjs";
 import { CopyableNumber } from "../components/ui/CopyableNumber";
+import { Werte } from "../components/ui/Werte";
 
 // Serverseitige /book-Guard-Codes der Zollrechnung → klare deutsche Meldungen
 // (keine Backend-Rohtexte/Stacks). Verhalten je Code steuert doBook (zurück zum
@@ -2399,7 +2401,7 @@ export default function BookingPage() {
             />
 
             <div className="flex gap-12">
-              <button className="btn btn-outline" onClick={goBackToOffers}>← Zurück</button>
+              <button className="btn btn-outline" onClick={goBackToOffers}>Zurück</button>
               <button className="btn btn-primary btn-grow" onClick={goToStep2}>
                 Weiter: Buchung
               </button>
@@ -2468,7 +2470,7 @@ export default function BookingPage() {
                 <div className="booking-confirm-box">
                   <div className="booking-confirm-row">
                     <span className="text-sm text-muted">Carrier</span>
-                    <span className="text-sm font-bold booking-confirm-val">{publicCarrierDisplay(tariff).name} — {publicServiceName(tariff)}</span>
+                    <span className="text-sm font-bold booking-confirm-val">{carrierServiceLabel(publicCarrierDisplay(tariff).name, publicServiceName(tariff), " — ")}</span>
                   </div>
                   {tariff.serviceType && (
                     <div className="booking-confirm-row">
@@ -2489,7 +2491,7 @@ export default function BookingPage() {
                   {packageInfo && (
                     <div className={`booking-confirm-row mb-16${packageLineTexts ? " booking-confirm-row--extra" : ""}`}>
                       <span className="text-sm text-muted">Paket</span>
-                      <span className="text-sm font-bold booking-confirm-val">{packageInfo}</span>
+                      <span className="text-sm font-bold booking-confirm-val"><Werte>{packageInfo}</Werte></span>
                       {packageLineTexts && <PackageLinesDisclosure lines={packageLineTexts} />}
                     </div>
                   )}
@@ -2577,7 +2579,7 @@ export default function BookingPage() {
                 />
               </div>
             </div>
-            <button className="btn btn-outline btn-full" onClick={() => setStep(1)} disabled={loading}>← Zurück zur Übersicht</button>
+            <button className="btn btn-outline btn-full" onClick={() => setStep(1)} disabled={loading}>Zurück zur Übersicht</button>
           </div>
         )}
 

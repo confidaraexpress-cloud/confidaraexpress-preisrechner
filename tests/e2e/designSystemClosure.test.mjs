@@ -242,29 +242,40 @@ test("4 — Adressbuch und Entwürfe geben den Fokus an ihren Kebab zurück", as
 
 /* ══════════ 5 — ein Blau ════════════════════════════════════════════════ */
 
-test("5 — Marke, aktive Navigation und Fokus laufen auf dem ConfidaraExpress-Indigo", async () => {
+test("5 — Marke, aktive Navigation und Fokus laufen auf dem Confidara-Blau", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await setupRoutes(page);
   await dashboard(page, "overview");
 
-  const marke = await page.evaluate(() =>
-    getComputedStyle(document.documentElement).getPropertyValue("--ce-color-brand").trim());
-  assert.equal(marke, "#5367e8");
+  // Premium-Redesign Etappe 1 (E1): im Kundenbereich ist Confidara-Blau #004AFC
+  // aus dem Logo das einzige Signal (vorher Indigo #5367E8). Admin und Partner
+  // behalten das Indigo; sie setzen das Bereichsattribut nie.
+  const marke = await page.evaluate(() => ({
+    bereich: document.documentElement.getAttribute("data-ce-bereich"),
+    wert: getComputedStyle(document.documentElement).getPropertyValue("--ce-color-brand").trim(),
+  }));
+  assert.equal(marke.bereich, "kunde");
+  assert.equal(marke.wert, "#004afc");
 
-  // Der aktive Navigationseintrag der Navy-Sidebar: heller Text, Gewicht 600,
-  // die blaue Akzentkante links (#6197ff = rgb(97, 151, 255)).
+  // Der aktive Navigationseintrag der Navy-Sidebar: heller Text, Gewicht 600 und
+  // der Markenstreifen als 3-px-Kante links (::before, --ce-pr-stripe-on-navy
+  // #4D84FF → #8FB0FF) statt der früheren Schattenkante.
   const aktiv = await page.evaluate(() => {
     const el = document.querySelector(".pp-nav .nitem.on");
     if (!el) return null;
     const s = getComputedStyle(el);
-    return { farbe: s.color, gewicht: s.fontWeight, kante: s.boxShadow };
+    const kante = getComputedStyle(el, "::before");
+    return { farbe: s.color, gewicht: s.fontWeight, schatten: s.boxShadow, kante: kante.backgroundImage, breite: kante.width };
   });
   assert.ok(aktiv, "kein aktiver Navigationseintrag");
   assert.equal(aktiv.farbe, "rgb(255, 255, 255)", "der aktive Eintrag trägt keinen hellen Text");
   assert.equal(aktiv.gewicht, "600");
-  assert.match(aktiv.kante, /rgb\(97, 151, 255\)/, "die blaue Akzentkante fehlt");
+  assert.equal(aktiv.breite, "3px", "die Kante des aktiven Eintrags fehlt");
+  assert.match(aktiv.kante, /^linear-gradient\(90deg, rgb\(77, 132, 255\) 0%, rgb\(143, 176, 255\) 100%\)$/,
+    "die Kante des aktiven Eintrags ist nicht der Markenstreifen");
+  assert.equal(aktiv.schatten, "none", "die frühere Schattenkante ist zurück");
 
-  // Fokus im Inhaltsbereich: der Ring läuft im Markenindigo.
+  // Fokus im Inhaltsbereich: der Ring läuft im Confidara-Blau.
   await page.locator(".ce-page-header .btn-primary").first().focus();
   await page.keyboard.press("Shift+Tab");
   await page.keyboard.press("Tab");
@@ -272,7 +283,7 @@ test("5 — Marke, aktive Navigation und Fokus laufen auf dem ConfidaraExpress-I
     const el = document.activeElement;
     return el && el !== document.body ? getComputedStyle(el).outlineColor : null;
   });
-  assert.equal(fokus, "rgb(83, 103, 232)", "der Fokusring läuft nicht auf #5367E8");
+  assert.equal(fokus, "rgb(0, 74, 252)", "der Fokusring läuft nicht auf #004AFC");
 
   // Weder das Legacy-Blau #1d4ed8 = rgb(29, 78, 216) noch das zurückgenommene
   // Petrol #0b5d5b = rgb(11, 93, 91) darf in einer gerenderten Farbe auftauchen.

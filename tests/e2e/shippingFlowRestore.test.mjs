@@ -327,7 +327,7 @@ test("1 — sichtbares „Zurück\" erhält Formular, Angebote, Filter, Sortieru
   assert.equal(buchung.keinAngebot, false, "die Buchungsseite wurde nicht erreicht");
   assert.equal(calcCount - vorher, 1, "genau eine Preisberechnung");
 
-  await page.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
+  await page.locator("button").filter({ hasText: /^Zurück$/ }).first().click();
   await page.waitForTimeout(1400);
 
   const z = await zustand(page);
@@ -349,7 +349,7 @@ test("1 — sichtbares „Zurück\" erhält Formular, Angebote, Filter, Sortieru
 test("2 — die Scrollposition des Angebotsvergleichs kehrt zurück", async () => {
   const { ctx, page } = await neueSeite();
   await bisZurBuchung(page);
-  await page.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
+  await page.locator("button").filter({ hasText: /^Zurück$/ }).first().click();
   await page.waitForTimeout(1600);
   const y = await page.evaluate(() => Math.round(window.scrollY));
   assert.ok(y > 200, `Scrollposition nicht wiederhergestellt (scrollY = ${y})`);
@@ -380,7 +380,7 @@ test("3 — Browser-Zurück landet auf „Neue Sendung\" und erhält dieselben D
 test("4 — sichtbares „Zurück\" und Browser-Zurück führen zum selben Zustand", async () => {
   const { ctx: c1, page: p1 } = await neueSeite();
   await bisZurBuchung(p1);
-  await p1.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
+  await p1.locator("button").filter({ hasText: /^Zurück$/ }).first().click();
   await p1.waitForTimeout(1400);
   const a = await zustand(p1);
   await c1.close();
@@ -426,7 +426,7 @@ test("6 — der sichtbare Zurück-Button ersetzt den Buchungseintrag (kein Kreis
 
   // Zweimal Angebote → Buchung → Zurück. Die History darf dabei nicht wachsen.
   for (let i = 0; i < 2; i++) {
-    await page.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
+    await page.locator("button").filter({ hasText: /^Zurück$/ }).first().click();
     await page.waitForTimeout(1300);
     assert.equal((await zustand(page)).titel, "Neue Sendung", `Durchgang ${i + 1}: falsche Seite`);
     const wahl = page.locator(".offer-card button").filter({ hasText: /Auswählen|Weiter|Buchen|wählen/i }).first();
@@ -438,7 +438,7 @@ test("6 — der sichtbare Zurück-Button ersetzt den Buchungseintrag (kein Kreis
 
   // Und nach dem sichtbaren Zurück darf ein Browser-Zurück NICHT wieder
   // unmittelbar in der Buchung landen — der Eintrag wurde ersetzt, nicht gestapelt.
-  await page.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
+  await page.locator("button").filter({ hasText: /^Zurück$/ }).first().click();
   await page.waitForTimeout(1300);
   await page.goBack({ waitUntil: "networkidle" });
   await page.waitForTimeout(1200);
@@ -459,7 +459,7 @@ test("7 — Reload auf „Neue Sendung\" startet einen LEEREN Vorgang", async ()
   const { ctx, page } = await neueSeite();
   const vorher = calcCount;
   await bisZurBuchung(page);
-  await page.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
+  await page.locator("button").filter({ hasText: /^Zurück$/ }).first().click();
   await page.waitForTimeout(1300);
 
   await page.reload({ waitUntil: "networkidle" });
@@ -881,7 +881,7 @@ for (const [name, weg] of STARTWEGE) {
     await page.waitForTimeout(1300);
     assert.equal((await zustand(page)).url, "/booking");
 
-    await page.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
+    await page.locator("button").filter({ hasText: /^Zurück$/ }).first().click();
     await page.waitForTimeout(1500);
 
     const z = await zustand(page);
@@ -932,7 +932,7 @@ test("23 — ohne gemerkte Scrollposition wird der Angebotsbereich angesteuert",
   const wahl = page.locator(".offer-card button").filter({ hasText: /Auswählen|Weiter|Buchen|wählen/i }).first();
   await wahl.click();
   await page.waitForTimeout(1300);
-  await page.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
+  await page.locator("button").filter({ hasText: /^Zurück$/ }).first().click();
   await page.waitForTimeout(1800);
 
   // Der Angebotsbereich muss im sichtbaren Fenster liegen — geprüft am echten
@@ -956,7 +956,7 @@ test("24 — direkter Einstieg auf /booking: der Zurück-Button bleibt gefahrlos
   // Navigation ins Leere.
   const z = await zustand(page);
   assert.equal(z.keinAngebot, true);
-  const zurueck = page.locator("button").filter({ hasText: /^← Zurück$/ });
+  const zurueck = page.locator("button").filter({ hasText: /^Zurück$/ });
   assert.equal(await zurueck.count(), 0, "der Zurück-Button erscheint ohne Vorgang");
   await ctx.close();
 });
@@ -1251,11 +1251,11 @@ test("32 — der zweite Entwurfspfad (Buchungsseite) beendet den Vorgang nach er
   assert.equal(nach.url, "/booking");
   assert.equal(nach.keinAngebot, false, "die Buchungsseite verlor ihre Daten nach dem Löschen des Context");
 
-  // Der Rückweg läuft bewusst INNERHALB der SPA („← Zurück"), nicht über einen
+  // Der Rückweg läuft bewusst INNERHALB der SPA („Zurück"), nicht über einen
   // Reload: ein Reload baut den React-Baum neu auf und leert den Vorgang
   // ohnehin — er könnte den Unterschied zwischen „beendet" und „lebt" gar
   // nicht mehr zeigen. Test 33 ist die Gegenprobe auf demselben Weg.
-  await page.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
+  await page.locator("button").filter({ hasText: /^Zurück$/ }).first().click();
   await page.waitForTimeout(1200);
   const frisch = await zustand(page);
   assert.equal(frisch.empfaenger, null, "„Neue Sendung\" zeigt nach dem Sendungsentwurf noch die alte Sendung");
@@ -1285,7 +1285,7 @@ test("33 — ein Speicherfehler auf der Buchungsseite lässt den Vorgang unanget
   // Daten kommen primär aus `location.state` und überleben auch einen
   // gelöschten Context. Der belastbare Beleg ist der Rückweg innerhalb der
   // SPA: er zeigt den Vorgang selbst. Genau die Gegenprobe zu Test 32.
-  await page.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
+  await page.locator("button").filter({ hasText: /^Zurück$/ }).first().click();
   await page.waitForTimeout(1200);
   const zurueck = await zustand(page);
   assert.equal(zurueck.empfaenger, "Dora Beispiel", "der Vorgang ging trotz Speicherfehler verloren");

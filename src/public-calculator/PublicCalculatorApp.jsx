@@ -10,6 +10,7 @@ import {
   quoteOutcomeFromError, quoteOutcomeFromResponse, requestKey,
 } from "../utils/publicCalculatorView.mjs";
 import { PublicResults } from "./PublicResults.jsx";
+import { NachtkartenRoute } from "./NachtkartenRoute.jsx";
 // Der gemeinsame Paketeditor (Canonical v2.79, §15) — dieselbe Komponente wie im Portal.
 import { PackageLinesEditor } from "../components/shipping/PackageLinesEditor.jsx";
 import { formPackageLines, formPatchFromPackageLines, PACKAGE_LINES_KEY } from "../utils/packageLines.mjs";
@@ -66,7 +67,7 @@ export function zeigeFormular() {
   if (titel) titel.focus({ preventScroll: true });
 }
 
-export function PublicCalculatorApp({ availability, launchScope, resultsHost }) {
+export function PublicCalculatorApp({ availability, launchScope, resultsHost, mapHost = null }) {
   const [form, setForm] = useState(emptyPublicForm);
   const [scope, setScope] = useState(null);
   const [verfuegbar, setVerfuegbar] = useState(availability ? availability.wert : null);
@@ -291,6 +292,9 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost }) 
           <a href="https://confidaraexpress.de/datenschutz">Datenschutz</a>.
         </p>
       </form>
+
+      {/* Konzept A: die eingegebene Strecke auf der Nachtkarte des Heros (dekorativ). */}
+      <NachtkartenRoute host={mapHost} form={form} />
 
       <PublicResults
         host={resultsHost}

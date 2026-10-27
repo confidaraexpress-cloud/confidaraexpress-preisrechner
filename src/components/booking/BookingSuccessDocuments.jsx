@@ -211,7 +211,7 @@ export function BookingSuccessDocuments({ booking, proformaEntry }) {
         <button className="btn btn-outline btn-full mb-16" onClick={handleDownloadOrderConfirmation} disabled={orderConfirmationLoading}>
           {orderConfirmationLoading
             ? <><span className="spinner spinner-dark" /> Auftragsbestätigung wird geladen…</>
-            : <>Auftragsbestätigung {orderConfirmationNumberOf(booking)} herunterladen</>}
+            : <span>Auftragsbestätigung <span className="ce-wert">{orderConfirmationNumberOf(booking)}</span> herunterladen</span>}
         </button>
       )}
       {/* Lieferschein — erscheint NUR, wenn die Buchungsantwort tatsächlich einen
@@ -221,7 +221,7 @@ export function BookingSuccessDocuments({ booking, proformaEntry }) {
         <button className="btn btn-outline btn-full mb-16" onClick={handleDownloadDeliveryNote} disabled={deliveryNoteLoading}>
           {deliveryNoteLoading
             ? <><span className="spinner spinner-dark" /> Lieferschein wird geladen…</>
-            : <>Lieferschein {booking.deliveryNote.number} herunterladen</>}
+            : <span>Lieferschein <span className="ce-wert">{booking.deliveryNote.number}</span> herunterladen</span>}
         </button>
       )}
       {/* Proforma-Rechnung — das Zollbegleitdokument einer Drittlandsendung.

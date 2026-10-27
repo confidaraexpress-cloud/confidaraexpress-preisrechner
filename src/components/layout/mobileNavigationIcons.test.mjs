@@ -13,7 +13,8 @@
 //     unsichtbar — also nicht per Tab erreichbar; die feste Desktop-Spalte bleibt
 //     unberührt;
 //   • die Glocke ist nur in der mobilen Topbar ein Symbol, der Desktop behält das Wort;
-//   • die Navigation selbst bleibt reine Textnavigation.
+//   • die Navigation selbst ist Textnavigation; im Kundenbereich tragen nur die Hauptpunkte ein Icon vor dem
+//     Text (E7, 2026-10-27), die Admin-Navigation bleibt reiner Text.
 // Das Verhalten im echten Browser prüft tests/e2e/mobileNavigationIcons.test.mjs.
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -165,10 +166,12 @@ test("7 — die Symbolknöpfe sind quadratische 44-px-Ziele ohne Textpolster", (
   assert.match(block(premium, ".app-shell .hamburger-btn"), /min-height: var\(--ce-size-touch-target\);/);
 });
 
-test("8 — die Navigation selbst bleibt reine Textnavigation, ohne fremde Iconbibliothek", () => {
-  for (const [name, code] of [["DashboardSidebar", sidebar], ["AdminSidebar", adminSidebar]]) {
-    assert.doesNotMatch(code, /<Icon\b/, `${name}: Symbole in der Navigation`);
-  }
+test("8 — die Navigation bleibt Textnavigation, ohne fremde Iconbibliothek (Kunde: Icons nur vor Hauptpunkten, E7)", () => {
+  // Admin bleibt unverändert reiner Text.
+  assert.doesNotMatch(adminSidebar, /<Icon\b/, "AdminSidebar: Symbole in der Navigation");
+  // Kunde (E7): genau zwei Renderstellen, jede vor einer Beschriftung (sidebarNavigation.test.mjs, Test 15).
+  assert.equal((sidebar.match(/<Icon\b/g) || []).length, 2, "DashboardSidebar: Icons außerhalb der Hauptpunkte");
+  assert.match(sidebar, /import \{ Icon, ICON_SIZE \} from "\.\.\/ui\/Icon";/, "DashboardSidebar: Icon nicht aus dem eigenen System");
   for (const code of [dashPage, dashLayout, adminLayout, navbar, bell]) {
     assert.doesNotMatch(code, /lucide-react|react-icons|@heroicons/, "fremde Iconbibliothek");
     assert.match(code, /import \{ Icon, ICON_SIZE \} from "\.\.?\/(?:\.\.\/)?(?:components\/)?ui\/Icon";/, "Icon nicht aus dem eigenen System");

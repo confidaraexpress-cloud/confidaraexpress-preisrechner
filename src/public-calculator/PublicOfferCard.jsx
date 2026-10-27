@@ -7,16 +7,16 @@ import {
 } from "../utils/publicCalculatorView.mjs";
 
 // ── Tarifkarte des öffentlichen Preisrechners ────────────────────────────────
-// Kopf: Carrier, Service und die Übergabeart als Kennzeichnung. Darunter in zwei
-// Spalten Abholtag bzw. Abgabe und Laufzeit „laut Versanddienstleister", dann die
-// Hinweise und der Abschluss: der Preis — netto groß, darunter klein „zzgl. MwSt."
-// (Betreiberentscheidung 2026-10-16: öffentlich nur der Nettopreis) — mit der Aktion
-// in einer Zeile (Komplettabschluss 2026-10-27: kompakter Knopf statt Vollbreite),
-// bei nicht exaktem Preis darunter „ab" mit Erklärung. „Angebot auswählen" nur, wenn der Server
-// das Angebot mit vollständigen Sendungsangaben als buchbar kennzeichnet; sie führt
-// über die Übernahmeseite der Hauptdomain direkt in die Registrierung (angemeldete
-// Kundinnen und Kunden direkt in „Neue Sendung"). Sonst bleibt die Karte sichtbar wie
-// im Portal — mit dem Grundtext und ohne Aktion. Keine Auszeichnung, kein Rang.
+// Eine Karte je Zeile (Betreiberentscheidung 2026-10-27, UX-Korrektur B), aufgebaut wie die Tarifkarte des
+// Kundenbereichs: Identität (Carrier, Service, Übergabeart als Kennzeichnung, darunter die Hinweise) · Ablauf
+// (Achse von der Abholung bzw. Abgabe zur Laufzeit „laut Versanddienstleister") · Preisspalte. Der Preis steht
+// netto groß, darunter klein „zzgl. MwSt." (Betreiberentscheidung 2026-10-16: öffentlich nur der Nettopreis),
+// bei nicht exaktem Preis darunter „ab" mit Erklärung. Wo die Zonen stehen, entscheidet allein die Breite der
+// Karte (public-calculator.css, Container pc-karte). „Angebot auswählen" nur, wenn der Server das Angebot mit
+// vollständigen Sendungsangaben als buchbar kennzeichnet; sie führt über die Übernahmeseite der Hauptdomain
+// direkt in die Registrierung (angemeldete Kundinnen und Kunden direkt in „Neue Sendung"). Sonst bleibt die Karte
+// sichtbar wie im Portal — an der Stelle der Aktion steht ihr Grund, nie eine leere Fläche. Keine Auszeichnung,
+// kein Rang.
 
 export function PublicOfferCard({ offer, index }) {
   const carrier = publicCarrierDisplay(offer);
@@ -51,24 +51,27 @@ export function PublicOfferCard({ offer, index }) {
         )}
       </header>
 
-      <dl className="pc-offer-facts">
-        <div className="pc-fact">
-          <dt>{abholung.dayLabel}</dt>
-          <dd>
-            <span className="pc-fact-main"><Werte>{abholung.day || "—"}</Werte></span>
-            {abholung.time && <span className="pc-fact-sub"><Werte>{abholung.time}</Werte></span>}
-            {abholung.adjustedNote && <span className="pc-fact-sub"><Werte>{abholung.adjustedNote}</Werte></span>}
-          </dd>
-        </div>
-        <div className="pc-fact">
-          <dt>{zustellung.label}</dt>
-          <dd>
-            <span className="pc-fact-main"><Werte>{zustellung.value}</Werte></span>
-            {zustellung.time && <span className="pc-fact-sub"><Werte>{zustellung.time}</Werte></span>}
-            {zustellung.note && <span className="pc-fact-sub pc-fact-note"><Werte>{zustellung.note}</Werte></span>}
-          </dd>
-        </div>
-      </dl>
+      <div className="pc-offer-ablauf">
+        <span className="pc-offer-achse" aria-hidden="true" />
+        <dl className="pc-offer-facts">
+          <div className="pc-fact">
+            <dt>{abholung.dayLabel}</dt>
+            <dd>
+              <span className="pc-fact-main"><Werte>{abholung.day || "—"}</Werte></span>
+              {abholung.time && <span className="pc-fact-sub"><Werte>{abholung.time}</Werte></span>}
+              {abholung.adjustedNote && <span className="pc-fact-sub"><Werte>{abholung.adjustedNote}</Werte></span>}
+            </dd>
+          </div>
+          <div className="pc-fact">
+            <dt>{zustellung.label}</dt>
+            <dd>
+              <span className="pc-fact-main"><Werte>{zustellung.value}</Werte></span>
+              {zustellung.time && <span className="pc-fact-sub"><Werte>{zustellung.time}</Werte></span>}
+              {zustellung.note && <span className="pc-fact-sub pc-fact-note"><Werte>{zustellung.note}</Werte></span>}
+            </dd>
+          </div>
+        </dl>
+      </div>
 
       {hinweise.length > 0 && (
         <ul className="pc-offer-hints">
@@ -95,7 +98,7 @@ export function PublicOfferCard({ offer, index }) {
                 Angebot auswählen
               </button>
             ) : (
-              <p className="pc-offer-unavailable">{gesperrt}</p>
+              gesperrt && <p className="pc-offer-unavailable">{gesperrt}</p>
             )}
           </div>
         </div>

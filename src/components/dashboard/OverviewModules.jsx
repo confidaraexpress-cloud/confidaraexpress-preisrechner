@@ -321,32 +321,63 @@ export function InventorySnapshot({ stand: standProp = null, onRetry = null, onN
   );
 }
 
-/* ── Ihre Versanddienstleister (G2, 2026-10-27) ─────────────────────────────
+/* ── Ihre Versanddienstleister (G2, 2026-10-27; Navy-Fläche seit der UX-Korrektur C, 2026-10-27) ──────────
    Die Carrier, die ConfidaraExpress aktuell anbietet — ausschließlich aus
-   GET /kunde/carriers (geladen von DashboardPage, hier nur dargestellt). Logos
-   gleicher optischer Höhe auf Weiß, Namen darunter,
-   eine Aktion „Preise vergleichen“. Keine Laufzeiten, keine Dienstnamen, keine
-   Zahl im Titel, kein Banner. Ohne Antwort (Fehler, ältere Serverfassung) oder
-   ohne Carrier erscheint das Modul nicht — nie eine feste Liste. */
+   GET /kunde/carriers (geladen von DashboardPage, hier nur dargestellt). Keine
+   Laufzeiten, keine Dienstnamen, keine Zahl im Titel, keine Einkaufsquelle.
+   Ohne Antwort (Fehler, ältere Serverfassung) oder ohne Carrier erscheint das
+   Modul nicht — nie eine feste Liste.
+
+   Gestaltung (Betreiberentscheidung 2026-10-27): die Navy-Fläche mit den feinen
+   geschwungenen Linien der früheren Fläche (Geometrie aus 38d6f10), in den
+   Farben der freigegebenen Navy-Bühne (--ce-pr-*). Die Linien liegen nur in
+   dieser Fläche, sind statisch und rein dekorativ (aria-hidden). Darauf Titel,
+   der Hinweis zum Preisvergleich und die Vergleichsaktion als heller Knopf,
+   darunter je Carrier eine helle Logokachel mit dem Namen. Das Raster verteilt
+   jede Anzahl gleichmäßig (overview.css). Die Kacheln sind keine Aktion. Ohne
+   Logodatei steht der Name selbst in der Kachel — kein Symbol, nichts doppelt. */
+function CarrierLinien() {
+  return (
+    <svg className="ov-carrier-linien" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+      <g className="ov-carrier-routen">
+        <path d="M-40 318 C 220 250, 340 120, 620 150 S 1000 250, 1260 118" />
+        <path d="M-40 178 C 260 128, 420 300, 700 300 S 1020 158, 1260 212" />
+        <path className="ov-carrier-route-hell" d="M120 430 C 300 330, 560 380, 780 250 S 1080 60, 1240 38" />
+      </g>
+      <g className="ov-carrier-knoten">
+        <circle cx="620" cy="150" r="3" />
+        <circle cx="700" cy="300" r="3" />
+        <circle cx="780" cy="250" r="3.5" />
+      </g>
+    </svg>
+  );
+}
+
 export function CarrierPortfolio({ carriers, onCompare }) {
   if (!Array.isArray(carriers) || carriers.length === 0) return null;
   return (
-    <section className="ov-mod ov-carrier-zeile" aria-labelledby="ov-car-title">
-      <ModuleHead title={<span id="ov-car-title">{CARRIER_PORTFOLIO_TEXT.title}</span>} actionLabel={CARRIER_PORTFOLIO_TEXT.action} onAction={onCompare} />
-      <div className="ce-card ov-card ov-card--pad">
-        <ul className="ov-carrier-liste">
-          {carriers.map((c) => {
-            const logo = resolvePublicCarrier(c.id).logo;
-            return (
-              <li className="ov-carrier-eintrag" key={c.id}>
-                <span className="ov-carrier-logo" aria-hidden="true">{logo ? <img src={logo} alt="" /> : null}</span>
-                <span className="ov-carrier-name">{c.name}</span>
-              </li>
-            );
-          })}
-        </ul>
-        <p className="ov-quiet ov-carrier-hinweis">{CARRIER_PORTFOLIO_TEXT.hint}</p>
+    <section className="ov-carrier-zeile" aria-labelledby="ov-car-title">
+      <CarrierLinien />
+      <div className="ov-carrier-kopf">
+        <div className="ov-carrier-intro">
+          <h2 className="ov-carrier-titel" id="ov-car-title">{CARRIER_PORTFOLIO_TEXT.title}</h2>
+          <p className="ov-carrier-hinweis">{CARRIER_PORTFOLIO_TEXT.hint}</p>
+        </div>
+        <button type="button" className="btn ov-carrier-aktion" onClick={onCompare}>
+          {CARRIER_PORTFOLIO_TEXT.action}
+        </button>
       </div>
+      <ul className="ov-carrier-liste">
+        {carriers.map((c) => {
+          const logo = resolvePublicCarrier(c.id).logo;
+          return (
+            <li className={`ov-carrier-eintrag${logo ? "" : " ov-carrier-eintrag--ohne-logo"}`} key={c.id} data-carrier={c.id}>
+              {logo && <span className="ov-carrier-logo" aria-hidden="true"><img src={logo} alt="" /></span>}
+              <span className="ov-carrier-name">{c.name}</span>
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 }

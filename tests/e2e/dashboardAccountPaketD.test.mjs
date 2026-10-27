@@ -40,7 +40,7 @@ const NTF = {
 
 let server, browser;
 
-async function setupRoutes(page, { empty = false } = {}) {
+async function setupRoutes(page, { empty = false, carriers = CARRIERS } = {}) {
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const p = new URL(route.request().url()).pathname;
     const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
@@ -50,7 +50,7 @@ async function setupRoutes(page, { empty = false } = {}) {
     if (p.includes("/kunde/notifications/unread-count")) return json({ unreadCount: empty ? 0 : 1, snapshotAt: "2026-08-06T10:00:00Z" });
     if (p.includes("/kunde/notifications")) return json(empty ? { notifications: [], unreadCount: 0, snapshotAt: "", pagination: {} } : NTF);
     if (p.includes("/support")) return json({ supportRequests: [] });
-    if (p.endsWith("/kunde/carriers")) return json({ carriers: empty ? [] : CARRIERS });
+    if (p.endsWith("/kunde/carriers")) return json({ carriers: empty ? [] : carriers });
     if (p.includes("/api/kunde/")) return json({ items: [], drafts: [], nextCursor: null, pagination: { total: 0 } });
     return json({});
   });
@@ -96,16 +96,83 @@ test("die Übersicht ist bei vorhandenen Daten eine operative Arbeitsfläche", a
   assert.equal(await page.locator(".ov-steps").count(), 0, "„Ablauf\" steht noch auf der Arbeitsfläche");
   assert.equal(await page.locator(".ov-facts").count(), 0, "„Vorteile\" steht noch auf der Arbeitsfläche");
   assert.equal(await page.locator(".ov-trust").count(), 0, "der Trust-Block steht noch auf der Arbeitsfläche");
-  // … die frühere dunkle Carrier-Bühne bleibt entfallen; „Ihre Versanddienstleister“ zeigt ausschließlich die
-  // Liste des Servers (GET /kunde/carriers, G2 2026-10-27) — ohne den neutralen Rückfall, ohne Doppelte, nie eine
-  // feste Liste — und die Vergleichsaktion.
-  assert.equal(await page.locator(".pp-net").count(), 0, "die dunkle Carrier-Bühne ist zurück");
+  // … keine dunkle Seitenebene (.pp-net): die Navy-Fläche „Ihre Versanddienstleister“ (UX-Korrektur C, 2026-10-27)
+  // liegt nur in ihrer eigenen Sektion. Sie zeigt ausschließlich die Liste des Servers (GET /kunde/carriers, G2) —
+  // ohne den neutralen Rückfall, ohne Doppelte, nie eine feste Liste — und die Vergleichsaktion.
+  assert.equal(await page.locator(".pp-net").count(), 0, "eine dunkle Seitenebene ist zurück");
   assert.deepEqual(await page.locator(".ov-carrier-liste .ov-carrier-name").allInnerTexts(), ["DHL", "UPS"],
     "die Carrierzeile zeigt nicht die Liste des Servers");
   assert.ok(await page.locator(".ov-carrier-zeile").getByRole("button", { name: "Preise vergleichen" }).isVisible(),
     "die Vergleichsaktion fehlt");
   await page.close();
 });
+
+// UX-Korrektur C (Betreiberentscheidung 2026-10-27): „Ihre Versanddienstleister“ als Navy-Fläche mit feinen Linien —
+// für jede Anzahl, die der Server liefert. Die Kacheln einer Reihe sind gleich breit und bleiben in der Fläche;
+// schmal stehen höchstens drei je Reihe, die letzte Reihe mittig. Die Aktion führt zum Versandkostenrechner.
+const ALLE_CARRIER = [
+  { id: "ups", name: "UPS" }, { id: "dhl", name: "DHL Express" }, { id: "dpd", name: "DPD" }, { id: "gls", name: "GLS" },
+  { id: "tnt", name: "TNT" }, { id: "fedex", name: "FedEx" }, { id: "der-kurier", name: "DER KURIER" }, { id: "trans-o-flex", name: "trans-o-flex" },
+];
+for (const anzahl of [1, 3, 5, 8]) {
+  for (const [breite, hoehe] of [[1440, 1000], [390, 844]]) {
+    test(`Versanddienstleister: Navy-Fläche mit ${anzahl} Carrier(n) bei ${breite} px`, async () => {
+      const page = await browser.newPage({ viewport: { width: breite, height: hoehe } });
+      const liste = ALLE_CARRIER.slice(0, anzahl);
+      await setupRoutes(page, { carriers: liste });
+      await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
+      await page.waitForSelector(".ov-carrier-zeile .ov-carrier-eintrag", { timeout: 20000 });
+      await page.waitForFunction((n) => document.querySelectorAll(".ov-carrier-eintrag img").length === n
+        && [...document.querySelectorAll(".ov-carrier-eintrag img")].every((i) => i.complete), anzahl);
+      const m = await page.evaluate(() => {
+        const flaeche = document.querySelector(".ov-carrier-zeile");
+        const f = flaeche.getBoundingClientRect();
+        const l = document.querySelector(".ov-carrier-liste").getBoundingClientRect();
+        const kacheln = [...flaeche.querySelectorAll(".ov-carrier-eintrag")].map((e) => {
+          const r = e.getBoundingClientRect();
+          return { links: r.left, rechts: r.right, oben: Math.round(r.top), breite: Math.round(r.width) };
+        });
+        return {
+          hintergrund: getComputedStyle(flaeche).backgroundImage,
+          linien: flaeche.querySelector("svg.ov-carrier-linien")?.getAttribute("aria-hidden"),
+          namen: [...flaeche.querySelectorAll(".ov-carrier-name")].map((n) => n.textContent.trim()),
+          titel: getComputedStyle(flaeche.querySelector(".ov-carrier-titel")).color,
+          kacheln, fLinks: f.left, fRechts: f.right, lLinks: l.left, lRechts: l.right,
+          ueberlauf: document.documentElement.scrollWidth - innerWidth,
+        };
+      });
+      assert.match(m.hintergrund, /gradient/, "die Fläche trägt nicht die Navy-Bühne");
+      assert.equal(m.linien, "true", "die Linien fehlen oder sind nicht dekorativ");
+      assert.equal(m.titel, "rgb(255, 255, 255)", "der Titel steht nicht weiß auf Navy");
+      assert.deepEqual(m.namen, liste.map((c) => c.name), "die Fläche zeigt nicht die Liste des Servers");
+      assert.equal(m.ueberlauf, 0, "horizontales Scrollen");
+      const reihen = new Map();
+      for (const k of m.kacheln) {
+        assert.ok(k.links >= m.fLinks - 0.5 && k.rechts <= m.fRechts + 0.5, "eine Kachel ragt aus der Fläche");
+        if (!reihen.has(k.oben)) reihen.set(k.oben, []);
+        reihen.get(k.oben).push(k);
+      }
+      for (const reihe of reihen.values()) {
+        assert.ok(Math.max(...reihe.map((k) => k.breite)) - Math.min(...reihe.map((k) => k.breite)) <= 1, "ungleich breite Kacheln in einer Reihe");
+        if (breite < 700) assert.ok(reihe.length <= 3, "mehr als drei Kacheln je Reihe auf dem Telefon");
+      }
+      if (breite < 700) {
+        const letzte = [...reihen.values()].at(-1);
+        const mitte = (m.lLinks + m.lRechts) / 2;
+        const reiheMitte = (Math.min(...letzte.map((k) => k.links)) + Math.max(...letzte.map((k) => k.rechts))) / 2;
+        assert.ok(Math.abs(reiheMitte - mitte) <= 1.5, "die letzte Reihe steht nicht mittig");
+      } else if (anzahl >= 4 && reihen.size === 1) {
+        assert.ok(Math.abs(m.kacheln[0].links - m.lLinks) <= 1 && Math.abs(m.kacheln.at(-1).rechts - m.lRechts) <= 1,
+          "die Kacheln füllen die Zeile nicht");
+      }
+      if (anzahl === 5 && breite === 1440) {
+        await page.locator(".ov-carrier-zeile").getByRole("button", { name: "Preise vergleichen" }).click();
+        await page.waitForURL(/\/calculator$/, { timeout: 10000 });
+      }
+      await page.close();
+    });
+  }
+}
 
 test("ein leeres Konto wird geführt statt mit leeren Tabellen begrüßt", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });

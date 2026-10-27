@@ -12,7 +12,7 @@ import {
   HINT_TEXT, OUTCOME, OUTCOME_TEXT, PRICE_TEXT, PUBLIC_HANDOFF_URL, SORT_OPTIONS, SERVICE_FILTER_OPTIONS,
   SHIPPING_MODE_OPTIONS, availabilityFromPrepare, buildPublicQuoteRequest, carrierChoices, emptyPublicForm,
   filterOffersByCarrier, handoffUrl, localIsoDate, normalizeDecimalInput, offerCanContinue, offerDeliveryView,
-  offerHints, offerPickupView, offerPriceView, offerUnavailableText, publicFormErrors, quoteOutcomeFromError,
+  offerHints, offerPickupView, offerPriceView, offerUnavailableText, PUBLIC_NOT_DIRECT_TEXT, publicFormErrors, quoteOutcomeFromError,
   quoteOutcomeFromResponse, requestKey, requestSummary, resultAnnouncement, shippingDateAllowed, shortDay, sortPublicOffers,
 } from "./publicCalculatorView.mjs";
 import { getCalculatorErrors } from "./calculatorValidation.mjs";
@@ -151,6 +151,20 @@ test("(9) Aktion nur mit Serverzusage und gültigem Token; sonst Grundtext des P
   assert.equal(offerUnavailableText({ availableWithShipmentDetails: true, handoffToken: TOKEN }), null);
   assert.equal(offerUnavailableText({ availableWithShipmentDetails: false, unavailableReason: "quote_only" }), "Derzeit nicht direkt buchbar");
   assert.equal(offerUnavailableText({ availableWithShipmentDetails: false, unavailableReason: "unbekannt_xy" }), "Derzeit nicht buchbar");
+  // UX-Korrektur E1 (2026-10-27): ein kundenlösbarer Grund hat im Portal keinen Sperrtext. Ohne Übernahme steht hier
+  // trotzdem ein Satz — der Grund selbst oder, wenn er schon als Hinweis dasteht, der Satz der Preisauskunft.
+  assert.equal(offerUnavailableText({ availableWithShipmentDetails: false, unavailableReason: "business_recipient_required",
+    recipientRequirement: "business" }), PUBLIC_NOT_DIRECT_TEXT, "kein doppelter Grund neben dem Hinweis");
+  assert.equal(offerUnavailableText({ availableWithShipmentDetails: false, unavailableReason: "business_recipient_required" }),
+    "Nur für Geschäftsempfänger verfügbar.");
+  for (const grund of [null, "quote_only", "business_recipient_required", "business_sender_required", "address_details_too_long",
+    "content_description_required", "package_labels_indistinguishable", "date_unavailable", "unbekannt_xy"]) {
+    for (const angebot of [{ availableWithShipmentDetails: false, unavailableReason: grund },
+      { availableWithShipmentDetails: true, handoffToken: null, unavailableReason: grund }]) {
+      const text = offerUnavailableText(angebot);
+      assert.ok(typeof text === "string" && text.trim().length > 0, `leerer Sperrtext für ${JSON.stringify(angebot)}`);
+    }
+  }
   assert.equal(handoffUrl(TOKEN), `${PUBLIC_HANDOFF_URL}#t=${TOKEN}`);
   assert.equal(PUBLIC_HANDOFF_URL, "https://confidaraexpress.de/preisrechner-uebernahme");
   assert.equal(handoffUrl("javascript:alert(1)"), null);

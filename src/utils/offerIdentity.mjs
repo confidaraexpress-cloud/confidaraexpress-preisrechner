@@ -373,3 +373,10 @@ export function offerBlockedHint(tariff) {
 }
 
 export { GRUND_NEUTRAL as OFFER_BLOCKED_FALLBACK };
+
+/** Der Grundtext des Portals zu einem Servergrund, unabhängig davon, ob das Portal das Angebot auswählbar nennt —
+ *  `null` bei unbekanntem oder fehlendem Grund. Für Flächen ohne Übernahme (öffentlicher Preisrechner). */
+export function offerReasonText(reason) {
+  const text = GRUND_TEXTE[reason];
+  return typeof text === "string" ? text : null;
+}

@@ -177,24 +177,21 @@ for (const [breite, hoehe] of [[1440, 900], [390, 844]]) {
     assert.equal(await karten.nth(0).getByRole("button", { name: "Angebot auswählen" }).count(), 1);
     assert.equal(await page.locator(".pc-badge, .offer-badge").count(), 0, "keine Bestwahl-Markierung");
 
-    // Je Reihe gleich hohe Karten, und Preis wie Aktion stehen in einer Reihe auf derselben Höhe (subgrid).
-    // Einspaltig ist jede Karte ihre eigene Reihe und so hoch wie ihr Inhalt.
-    const reihen = await karten.evaluateAll((els) => {
-      const nachReihe = new Map();
-      for (const el of els) {
-        const r = el.getBoundingClientRect();
-        const oben = Math.round(r.top);
-        const lage = (sel) => { const t = el.querySelector(sel); return t ? Math.round(t.getBoundingClientRect().top) : null; };
-        if (!nachReihe.has(oben)) nachReihe.set(oben, []);
-        nachReihe.get(oben).push({ hoehe: Math.round(r.height), preis: lage(".pc-offer-price"), aktion: lage(".pc-offer-action") });
-      }
-      return [...nachReihe.values()];
-    });
-    assert.equal(reihen.length, breite >= 1100 ? 1 : 3, `Reihen: ${JSON.stringify(reihen)}`);
-    for (const reihe of reihen) {
-      for (const k of ["hoehe", "preis", "aktion"]) {
-        assert.equal(new Set(reihe.map((karte) => karte[k])).size, 1, `${k} je Reihe ungleich: ${JSON.stringify(reihe)}`);
-      }
+    // Eine Tarifkarte je Zeile — auf jedem Gerät (Betreiberentscheidung 2026-10-27, UX-Korrektur B; vorher bis zu drei
+    // Spalten). Breit steht die Preisspalte rechts: Preise und Aktionen aller Karten liegen bündig in einer Spalte.
+    const lage = await karten.evaluateAll((els) => els.map((el) => {
+      const r = el.getBoundingClientRect();
+      const box = (sel) => { const t = el.querySelector(sel); if (!t) return null; const b = t.getBoundingClientRect(); return { l: Math.round(b.left), r: Math.round(b.right), t: Math.round(b.top) }; };
+      return { links: Math.round(r.left), rechts: Math.round(r.right), oben: Math.round(r.top), unten: Math.round(r.bottom),
+        preis: box(".pc-offer-price"), aktion: box(".pc-offer-action"), ablauf: box(".pc-offer-ablauf") };
+    }));
+    assert.equal(new Set(lage.map((k) => k.oben)).size, lage.length, `mehrere Karten in einer Reihe: ${JSON.stringify(lage)}`);
+    assert.equal(new Set(lage.map((k) => k.links)).size, 1, "die Karten stehen nicht bündig untereinander");
+    for (let i = 1; i < lage.length; i++) assert.ok(lage[i].oben >= lage[i - 1].unten, "Karten überlappen");
+    if (breite >= 1100) {
+      assert.equal(new Set(lage.map((k) => k.preis.r)).size, 1, `Preise nicht in einer Spalte: ${JSON.stringify(lage.map((k) => k.preis))}`);
+      assert.equal(new Set(lage.map((k) => k.aktion.l)).size, 1, "Aktionen nicht in einer Spalte");
+      for (const k of lage) assert.ok(k.preis.l > k.ablauf.r, "die Preisspalte steht nicht rechts vom Ablauf");
     }
 
     assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.id), "pc-results-title");
@@ -205,6 +202,61 @@ for (const [breite, hoehe] of [[1440, 900], [390, 844]]) {
     assert.deepEqual(await page.evaluate(() => Object.keys(sessionStorage)), []);
     // Die Seite zeigt die Marke und ruft keine Ressource einer anderen Domain außer der API.
     assert.ok(await page.locator(".pc-brand-img").evaluate((img) => img.complete && img.naturalWidth > 0), "Marken-Lockup nicht geladen");
+    assert.deepEqual(fehler, []);
+    await page.close();
+  });
+}
+
+// H — Smartphone und große Schrift (UX-Korrektur A, 2026-10-27): das Navy-Band trägt die ganze Rechnerkarte, das Logo
+// wird nie gequetscht, der Kopf bricht um statt abzuschneiden, das Paket steht in einem Dreierraster.
+for (const [breite, hoehe, schrift] of [[320, 568, 100], [360, 780, 100], [390, 844, 100], [390, 844, 200]]) {
+  test(`H ${breite}px, Schrift ${schrift} % — Band trägt die Karte, Logo und Kopf vollständig, Paketraster`, async () => {
+    const { page, fehler } = await neueSeite({ width: breite, height: hoehe });
+    await setup(page);
+    await oeffne(page);
+    if (schrift !== 100) await page.addStyleTag({ content: `html { font-size: ${schrift}% !important; }` });
+    await page.waitForFunction(() => document.fonts.status === "loaded");
+    const m = await page.evaluate(() => {
+      const box = (el) => el.getBoundingClientRect();
+      const band = getComputedStyle(document.querySelector(".pc-hero-grid"), "::before");
+      const kopf = [...document.querySelectorAll(".pc-header .pc-brand-img, .pc-header-nav a")].filter((e) => e.offsetParent);
+      const feld = (id) => box(document.getElementById(id).closest(".field"));
+      return {
+        bandZeilen: `${band.gridRowStart} / ${band.gridRowEnd}`,
+        bandUnten: parseFloat(band.marginBottom),
+        heroInnenUnten: parseFloat(getComputedStyle(document.querySelector(".pc-hero")).paddingBottom),
+        logo: Math.round(box(document.querySelector(".pc-brand-img")).width),
+        kopfRechts: Math.max(...kopf.map((e) => box(e).right)),
+        kopfLinks: Math.min(...kopf.map((e) => box(e).left)),
+        kopfHoehe: Math.round(box(document.querySelector(".pc-header-inner")).height),
+        ueberlauf: document.documentElement.scrollWidth - innerWidth,
+        abgeschnitten: [...document.querySelectorAll("#pc-calculator .field-label")].filter((l) => l.scrollWidth > l.clientWidth + 1).map((l) => l.textContent.trim()),
+        anzahl: feld("pc-package-count"), gewicht: feld("pc-weight"), laenge: feld("pc-length"), breiteF: feld("pc-width"), hoehe: feld("pc-height"),
+        hinweisOben: Math.round(box(document.getElementById("pc-package-hint")).top),
+      };
+    });
+    // Das Band trägt die ganze Karte: es spannt alle Zeilen des Heros und endet an dessen unterem Rand.
+    assert.equal(m.bandZeilen, "1 / -1", "das Band endet nicht mit dem Hero");
+    assert.equal(m.bandUnten, -m.heroInnenUnten, "das Band reicht nicht bis an den unteren Rand des Heros");
+    // Das Logo wird nie gequetscht; nichts im Kopf läuft über den Rand.
+    assert.ok(m.logo >= (breite < 340 ? 80 : 88), `Logo ${m.logo} px`);
+    assert.ok(m.kopfRechts <= breite && m.kopfLinks >= 0, `Kopf über den Rand: ${m.kopfLinks}…${m.kopfRechts}`);
+    if (schrift === 100) assert.ok(m.kopfHoehe <= 80, `der Kopf bricht schon bei normaler Schrift um (${m.kopfHoehe} px)`);
+    assert.equal(m.ueberlauf, 0, "horizontales Scrollen");
+    assert.deepEqual(m.abgeschnitten, [], "abgeschnittene Feldbeschriftungen");
+    // „Gewicht und Maße je Paket.“ steht über den Paketfeldern.
+    assert.ok(m.hinweisOben < m.anzahl.top, "der Paket-Hinweis steht nicht beim Paketabschnitt");
+    if (schrift === 100) {
+      // Ein Dreierraster: Anzahl über der Länge, Gewicht über Breite und Höhe.
+      const r = (x) => Math.round(x);
+      assert.equal(r(m.anzahl.left), r(m.laenge.left), "Anzahl steht nicht über der Länge");
+      assert.equal(r(m.gewicht.left), r(m.breiteF.left), "Gewicht beginnt nicht über der Breite");
+      assert.equal(r(m.gewicht.right), r(m.hoehe.right), "Gewicht endet nicht über der Höhe");
+      assert.ok(m.anzahl.width < m.gewicht.width, "Anzahl ist nicht schmaler als Gewicht");
+    } else {
+      // Große Schrift auf dem Telefon: jedes Paketfeld in eigener Zeile statt abgeschnittener Beschriftungen.
+      assert.ok(m.gewicht.top > m.anzahl.top && m.laenge.top > m.gewicht.top, "die Paketfelder brechen nicht um");
+    }
     assert.deepEqual(fehler, []);
     await page.close();
   });

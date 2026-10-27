@@ -298,10 +298,10 @@ export async function zurBuchung(page, { warteAuf, ...rest } = {}) {
 }
 
 /* ── Sidebar-Navigation ───────────────────────────────────────────────────
-   Die Sidebar hat seit der Umstrukturierung ZWEI Ebenen: zwei direkte
-   Einträge (Übersicht, Adressbuch) plus Rechnungen, und drei aufklappbare
-   Gruppen (Versand, Lager & Aufträge, Konto). Alle Gruppen starten
-   GESCHLOSSEN — auch nach jedem Reload, das ist die dokumentierte Produktregel.
+   Die Sidebar hat ZWEI Ebenen: Einträge der ersten Ebene (Übersicht, Neue
+   Sendung und Sendungen seit G5 2026-10-28, Adressbuch, Rechnungen) und drei
+   aufklappbare Gruppen (Versand, Lager & Aufträge, Konto). Die Gruppe der
+   aktuellen Seite öffnet sich von selbst, alle anderen starten geschlossen.
 
    Eingeklappt bleiben die Einträge zwar im DOM (sonst gäbe es nichts zu
    animieren), sind aber per `visibility: hidden` aus Fokusreihenfolge UND
@@ -311,8 +311,7 @@ export async function zurBuchung(page, { warteAuf, ...rest } = {}) {
 
    Der echte Nutzerweg ist: Gruppe öffnen, dann Eintrag klicken. */
 const GRUPPE_JE_EINTRAG = {
-  "Neue Sendung": "Versand", "Versandkostenrechner": "Versand", "Entwürfe": "Versand",
-  "Sendungen": "Versand", "Sendungsverfolgung": "Versand",
+  "Versandkostenrechner": "Versand", "Entwürfe": "Versand", "Sendungsverfolgung": "Versand",
   "Lagerübersicht": "Lager & Aufträge", "Artikel": "Lager & Aufträge",
   "Bestand": "Lager & Aufträge", "Aufträge": "Lager & Aufträge",
   "Bewegungen": "Lager & Aufträge",
@@ -321,8 +320,8 @@ const GRUPPE_JE_EINTRAG = {
 
 /**
  * Navigiert über die Sidebar zu `eintrag` — inklusive Aufklappen seiner Gruppe.
- * Einträge der ersten Ebene (Übersicht, Adressbuch, Rechnungen) brauchen das
- * nicht und werden direkt geklickt.
+ * Einträge der ersten Ebene (Übersicht, Neue Sendung, Sendungen, Adressbuch,
+ * Rechnungen) brauchen das nicht und werden direkt geklickt.
  */
 export async function ueberSidebar(page, eintrag, { timeout = 20000 } = {}) {
   const gruppe = GRUPPE_JE_EINTRAG[eintrag];

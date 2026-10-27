@@ -2250,7 +2250,7 @@ export default function BookingPage() {
             Reihenfolge, Texte und Bedingungen sind unverändert. */}
         {step === 1 && (
           <div className="booking-blatt booking-blatt--uebersicht">
-            <OfferSummaryModule tariff={tariff} priceView={priceView} pickupWindow={pickupWindow} vatMode={vatMode} />
+            <OfferSummaryModule tariff={tariff} priceView={priceView} />
 
             {tariff.serviceType === "dropoff" && (
               <DropoffNoticeModule

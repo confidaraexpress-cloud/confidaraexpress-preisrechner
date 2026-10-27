@@ -5,14 +5,9 @@ import { useNotifications } from "../../context/NotificationsContext";
 import { computeKpis, kpisFromServerStats } from "../../utils/kpis";
 import { hasOperationalData } from "../../utils/overviewModules.mjs";
 import { notificationTarget } from "../../utils/notificationsView.mjs";
-import { RecentShipments, OpenInvoices, OverviewNotifications } from "./OverviewModules";
+import { RecentShipments, OpenInvoices, OverviewNotifications, InventorySnapshot, CarrierPortfolio } from "./OverviewModules";
 import { PageHeader, UtilityCluster } from "../ui/PageHeader";
 import { UserChip } from "../ui/UserChip";
-import dhlLogo        from "../../assets/carriers/dhl.svg";
-import upsLogo        from "../../assets/carriers/ups.svg";
-import dpdLogo        from "../../assets/carriers/dpd.svg";
-import glsLogo        from "../../assets/carriers/gls.svg";
-import tntLogo        from "../../assets/carriers/tnt.svg";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ÜBERSICHT — die Designreferenz der Plattform (Redesign 2026-10)
@@ -27,9 +22,11 @@ import tntLogo        from "../../assets/carriers/tnt.svg";
                  (Soft Button) und Konto als Utility
      Kennzahlen  ein kompaktes Band mit vier gleich breiten Zellen
      Arbeit      Letzte Sendungen (≈ 2/3) · Offene Rechnungen (≈ 1/3)
+     Lager       Lager und Aufträge aus der Lagerübersicht (offene Aufträge,
+                 Artikel unter Mindestbestand) — G1/D7, 2026-10-28
      Meldungen   höchstens drei vorhandene Benachrichtigungen
-     Carrier     die fünf Carrier des Launchportfolios auf der Navy-Fläche mit
-                 Routenlinien und „Carrier-Angebote vergleichen"
+     Carrier     „Ihre Versanddienstleister“ aus GET /kunde/carriers (G2,
+                 2026-10-28): ruhige Logozeile, keine feste Liste, keine Laufzeiten
 
    Feinkorrektur 2026-10: Begrüßung und Carrier-Bereich sind inhaltlich
    zurück — im neuen Designsystem (DM Sans, keine Symbole). Der Carrier-
@@ -48,46 +45,9 @@ function getTodayLabel() {
 }
 
 /* ── Carrier-Bereich ──
-   Die Carrier des Launchportfolios (Betreiberentscheidung E10, 2026-10-27;
-   Canonical: erste Welle mit UPS, DPD, GLS, DHL und TNT) mit Leistung und
-   typischer Laufzeit wie bisher. FedEx, Emons und trans-o-flex sind nicht
-   buchbar und stehen deshalb nicht mehr hier. Der Titel nennt die Zahl als
-   Wort — dass „Fünf" und CARRIERS.length übereinstimmen, hält
-   overviewSections.test.mjs fest. */
-const CARRIERS = [
-  { key: "dhl", logo: dhlLogo, alt: "DHL", service: "Express",  time: "1–2 Tage" },
-  { key: "ups", logo: upsLogo, alt: "UPS", service: "Standard", time: "1–3 Tage" },
-  { key: "dpd", logo: dpdLogo, alt: "DPD", service: "Classic",  time: "1–2 Tage" },
-  { key: "gls", logo: glsLogo, alt: "GLS", service: "Standard", time: "1–2 Tage" },
-  { key: "tnt", logo: tntLogo, alt: "TNT", service: "Economy",  time: "2–3 Tage" },
-];
-
-/* ── Routenlinien des Carrier-Bereichs ──
-   Betreiberentscheidung 2026-10-04: der Carrier-Bereich trägt wieder die Optik
-   unmittelbar vor dem Redesign (Stand 2c4cf1b) — dieselbe Geometrie: drei ruhige,
-   geschwungene Routen mit Knoten an ihren Kurvenpunkten. Rein dekorativ
-   (aria-hidden, nicht fokussierbar), statisch, ohne Filter und ohne Animation;
-   die Farben kommen aus --ce-net-line/--ce-net-node. Die Linien liegen
-   ausschließlich IN diesem Block, hinter dem Inhalt und an der Kartenrundung
-   beschnitten — keine zweite Hintergrundebene der Seite. */
-function CarrierRoutes() {
-  return (
-    <svg className="ov-carriers-net" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
-      <g className="ov-carriers-route">
-        <path d="M-40 318 C 220 250, 340 120, 620 150 S 1000 250, 1260 118" />
-        <path d="M-40 178 C 260 128, 420 300, 700 300 S 1020 158, 1260 212" />
-        <path d="M120 430 C 300 330, 560 380, 780 250 S 1080 60, 1240 38" />
-      </g>
-      <g className="ov-carriers-node">
-        <circle cx="620" cy="150" r="3" />
-        <circle cx="700" cy="300" r="3" />
-        <circle cx="780" cy="250" r="3" />
-        <circle cx="1260" cy="118" r="2" />
-        <circle cx="1240" cy="38" r="2" />
-      </g>
-    </svg>
-  );
-}
+   Bis 2026-10-27 stand hier eine feste Liste mit fünf Carriern und Laufzeiten ohne
+   Beleg („Fünf Carrier. Eine zentrale Plattform.“, Audit B.5). Seit G2 kommt die
+   Liste ausschließlich vom Server (CarrierPortfolio in OverviewModules.jsx). */
 
 /* ── Onboarding-Inhalte ──
    Go-Live (Paket E): Aussagen ohne Systembeleg sind ersetzt — „in Echtzeit" (Tracking wird beim
@@ -100,19 +60,13 @@ const STEPS = [
   { title: "Versand buchen",       desc: "Wählen Sie das beste Angebot und buchen Sie Ihren Versand." },
   { title: "Tracking verfolgen",   desc: "Behalten Sie den Status Ihrer Sendung im Blick." },
 ];
-/* „Beste Preise" ist zu „Konditionen direkt vergleichen" geworden: der
-   Superlativ war eine unbelegte Werbeaussage, der Vergleich selbst ist die
-   tatsächlich vorhandene Funktion. */
-const WHY = [
-  { key: "b2b",     title: "Für Geschäftskunden entwickelt", desc: "Speziell für Unternehmen entwickelt – mit Transparenz, einfacher Abwicklung und persönlichem Support." },
-  { key: "compare", title: "Konditionen direkt vergleichen", desc: "Wir vergleichen für Sie automatisch die Preise von führenden Versanddienstleistern." },
-  { key: "modes",   title: "Express & Standard",             desc: "Egal ob Express oder Standard – finden Sie die passende Versandart für Ihre Anforderungen." },
-  { key: "trans",   title: "Vollständige Transparenz",       desc: "Verfolgen Sie den Status jeder Sendung und behalten Sie alle wichtigen Informationen im Blick." },
-];
-const TRUST = [
-  { title: "Verschlüsselte Übertragung", desc: "Ihre Daten werden verschlüsselt übertragen (TLS)." },
-  { title: "Persönlicher Support",   desc: "Unser Team ist für Sie da – schnell und zuverlässig." },
-  { title: "Preise im Vergleich",    desc: "Sie sehen die verfügbaren Tarife für Ihre Sendung nebeneinander." },
+/* Was der Kundenbereich tatsächlich kann (G1, 2026-10-28) — Versand UND Logistik, jede Zeile durch eine
+   vorhandene Funktion belegt (Canonical §2, §12). Ersetzt die Werbezeilen „Weniger Aufwand. Mehr Kontrolle.“
+   und die Zusicherungen ohne Beleg („schnell und zuverlässig“), Audit B.10. */
+const FUNKTIONEN = [
+  { key: "versand",    title: "Versand",                  desc: "Preise mehrerer Versanddienstleister vergleichen, Sendungen buchen, Versanddokumente abrufen und Sendungen verfolgen." },
+  { key: "belege",     title: "Rechnungen und Adressbuch", desc: "Rechnungen zu Ihren Sendungen an einem Ort; häufige Absender und Empfänger wiederverwenden." },
+  { key: "lager",      title: "Lager und Aufträge",        desc: "Artikel und Bestand Ihres eigenen Lagers führen, Aufträge erfassen und direkt als Sendung vorbereiten." },
 ];
 
 // `kpisReady` sagt: „die Sendungen wurden mindestens EINMAL erfolgreich geladen".
@@ -125,6 +79,11 @@ export function Overview({
   // Paket F: der Buchungsrahmen (GET /kunde/credit) — null, solange nichts geladen ist.
   credit = null,
   onNewShipment, onAllShipments, onAllInvoices, onProfile, onNotificationNav,
+  // G1/D7: Navigation in die Lagerbereiche (page-Wert, Filter) — derselbe Weg wie die Seitenleiste.
+  onNavigate = null,
+  // G2 und G1/D7 (2026-10-28): die angebotenen Versanddienstleister und der Lagerstand — beides lädt DashboardPage;
+  // die Übersicht lädt keine eigenen Daten.
+  carriers = null, lagerStand = null, onLagerRetry = null,
   // Premium-Redesign: die Kopfsuche des Kundenbereichs (components/layout/KundenSuche.jsx), von DashboardPage gebaut.
   suche = null,
 }) {
@@ -172,7 +131,7 @@ export function Overview({
   // Zusatzangabe der ersten Kennzahl. `new24` ist eine echte Zahl aus computeKpis
   // (Sendungen mit created_at innerhalb der letzten 24 Stunden) — kein Trend,
   // keine Prozentangabe, kein Vergleichswert.
-  const activeNote = k.hasCreatedAt && k.new24 > 0 ? `${k.new24} neu in 24 h` : null;
+  const activeNote = k.hasCreatedAt && k.new24 > 0 ? `${k.new24} neu in 24\u00a0h` : null;
 
   // Vier Kennzahlen. Nur „Zugestellt" ist monatsbezogen — und diese Grenze zieht
   // ausschließlich der Server (delivered_this_month, Geschäftszeitzone
@@ -192,7 +151,7 @@ export function Overview({
         title={greetingName
           ? <>Guten Tag, <span className="ov-greeting-name">{greetingName}</span></>
           : "Guten Tag"}
-        subtitle={todayLabel ? `${todayLabel} · Ihr Versand im Überblick` : "Ihr Versand im Überblick"}
+        subtitle={todayLabel ? `${todayLabel} · Versand und Logistik im Überblick` : "Versand und Logistik im Überblick"}
         utility={(
           <UtilityCluster>
             {suche}
@@ -248,9 +207,11 @@ export function Overview({
           </div>
         )}
 
-        {operational && (
-          <OverviewNotifications items={notifications} onSelect={openNotification} />
-        )}
+        {/* Lager und Aufträge neben den Benachrichtigungen — gibt es keine Meldung, nimmt das Lager die Reihe ein. */}
+        <div className="ov-mod-grid ov-mod-grid--lager">
+          <InventorySnapshot stand={lagerStand} onRetry={onLagerRetry} onNavigate={onNavigate} />
+          {operational && <OverviewNotifications items={notifications} onSelect={openNotification} />}
+        </div>
 
         {/* ── Onboarding — nur für Konten OHNE operative Daten ──
             Für einen Neukunden ist die Ablauferklärung die richtige Führung, für
@@ -276,10 +237,9 @@ export function Overview({
 
         {!operational && (
           <section className="ov-section" aria-labelledby="ov-sec-why">
-            <h2 className="ov-section-title" id="ov-sec-why">Weniger Aufwand. Mehr Kontrolle.</h2>
-            <p className="ov-section-desc">Alles, was Geschäftskunden für einen zuverlässigen Versand benötigen.</p>
+            <h2 className="ov-section-title" id="ov-sec-why">Versand und Logistik in Ihrem Kundenbereich</h2>
             <ul className="ov-facts">
-              {WHY.map((w) => (
+              {FUNKTIONEN.map((w) => (
                 <li className="ov-fact" key={w.key}>
                   <span className="ov-fact-title">{w.title}</span>
                   <span className="ov-fact-desc">{w.desc}</span>
@@ -289,48 +249,10 @@ export function Overview({
           </section>
         )}
 
-        {!operational && (
-          <ul className="ov-trust" aria-label="Zusicherungen">
-            {TRUST.map((t) => (
-              <li className="ov-trust-item" key={t.title}>
-                <span className="ov-fact-title">{t.title}</span>
-                <span className="ov-fact-desc">{t.desc}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {/* ── Carrier-Bereich ──
-            Navy-Fläche mit den Routenlinien (Optik vor dem Redesign,
-            Betreiberentscheidung 2026-10-04): Titel, ein Satz und die
-            Vergleichsaktion, darunter die fünf Carrier als weiße Logo-Kacheln mit
-            Leistung und Laufzeit. Inhalt, Aktion und Ziel unverändert — die
-            Aktion führt wie bisher zum Versandkostenrechner (/calculator). */}
-        <section className="ov-carriers" aria-labelledby="ov-car-title">
-          <CarrierRoutes />
-          <div className="ov-carriers-in">
-            <div className="ov-carriers-head">
-              <div className="ov-carriers-intro">
-                <h2 className="ov-carriers-title" id="ov-car-title">Fünf Carrier. Eine zentrale Plattform.</h2>
-                <p className="ov-carriers-desc">Preise und Laufzeiten führender Versanddienstleister direkt vergleichen.</p>
-              </div>
-              <button type="button" className="btn btn-outline ov-carriers-cta" onClick={() => navigate("/calculator")}>
-                Carrier-Angebote vergleichen
-              </button>
-            </div>
-            <ul className="ov-carrier-grid">
-              {CARRIERS.map((c) => (
-                <li className="ov-carrier" key={c.key}>
-                  <span className="ov-carrier-logo">
-                    <img src={c.logo} alt={c.alt} />
-                  </span>
-                  <span className="ov-carrier-service">{c.service}</span>
-                  <span className="ov-carrier-time">{c.time}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
+        {/* ── Ihre Versanddienstleister (G2) ──
+            Ruhige Logozeile aus GET /kunde/carriers; die Aktion führt wie bisher zum
+            Versandkostenrechner (/calculator). */}
+        <CarrierPortfolio carriers={carriers} onCompare={() => navigate("/calculator")} />
       </div>
     </>
   );

@@ -71,3 +71,24 @@
   [data-ce-bereich] .nk-welle { animation: none; }
   [data-ce-bereich] .nk-licht { animation: none; opacity: 0; }
 }
+
+/* ── Lichtwelle der Anmeldung (Abschnitt 5, 2026-10-28) ──
+   Das Kartenbild steht ab dem ersten Bild (statisches Seitengerüst). Sobald es dekodiert ist (AuthKarte), läuft eine
+   Lichtwelle von Stuttgart aus: jedes Licht glimmt einmal auf, wenn die Welle seinen Ort erreicht — danach funkeln
+   die Städte einzeln weiter. Keine Maske über dem Bild, nichts verschwindet und erscheint neu. Bis das Bild bereit
+   ist, stehen die Lichter still (unsichtbar). */
+[data-ce-bereich] .nk-lichter--welle .nk-licht {
+  animation:
+    nk-aufglimmen 1300ms cubic-bezier(0.3, 0.6, 0.3, 1) var(--nk-welle-ms, 0ms) both,
+    nk-funkeln var(--nk-dauer, 8000ms) cubic-bezier(0.45, 0, 0.55, 1) calc(var(--nk-einsatz, 0ms) + 1300ms) infinite;
+}
+@keyframes nk-aufglimmen {
+  0% { opacity: 0; transform: scale(0.4); }
+  34% { opacity: 0.95; transform: scale(1.06); }
+  100% { opacity: 0; transform: scale(0.6); }
+}
+[data-ce-bereich] .nk-lichter--wartet .nk-licht { animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-ce-bereich] .nk-lichter--welle .nk-licht { animation: none; opacity: 0; }
+}

@@ -125,10 +125,13 @@ test("A5 — das View-Model enthält keine Preisaddition mehr", () => {
   assert.match(modul, /const totalNet\s+= num\(totals\.customerTotalNet\);/);
 });
 
-test("A6 — ausgewähltes Angebot, Live- und Sticky-Leiste lesen denselben Preis aus priceInfo", () => {
+test("A6 — Live- und Sticky-Leiste lesen denselben Preis aus priceInfo; das ausgewählte Angebot zeigt keinen zweiten", () => {
+  // G6/M9 (Betreiberentscheidung 2026-10-28): der Preis steht auf der Buchungsseite an EINER Stelle — im Beleg
+  // (Live-Zusammenfassung) samt klebender Kurzleiste. Das ausgewählte Angebot fragt priceInfo nur noch, ob ein
+  // Betrag fehlt, und zeigt selbst keinen.
   const auswahl = code(AUSWAHL);
   assert.match(auswahl, /const preis = priceInfo\(priceView\);/);
-  assert.match(auswahl, /\{preis\.label\}/, "das ausgewählte Angebot nennt nicht, WAS der Betrag ist");
+  assert.ok(!/money\(|preis\.label|offsum-price-(net|gross|vat)/.test(auswahl), "das ausgewählte Angebot zeigt wieder einen eigenen Preis");
   assert.ok(!/tariff\.(netPrice|finalPrice|vatAmount)/.test(auswahl), "das ausgewählte Angebot liest den Tarifpreis wieder direkt");
   const live = code(LIVE);
   assert.match(live, /const preis = priceInfo\(v\);/);
@@ -143,7 +146,8 @@ test("A7 — die Buchungsseite reicht DASSELBE priceView an alle Preisflächen",
   const seite = code(SEITE);
   for (const muster of [
     // Netto/Brutto (2026-10-02): dahinter steht zusätzlich `vatMode` — derselbe priceView bleibt die Quelle.
-    /<OfferSummaryModule tariff=\{tariff\} priceView=\{priceView\} pickupWindow=\{pickupWindow\}/,
+    // G6/M9: das ausgewählte Angebot braucht priceView nur noch für „Preis fehlt“ — kein Fenster, kein Modus.
+    /<OfferSummaryModule tariff=\{tariff\} priceView=\{priceView\} \/>/,
     /<BookingLiveSummary tariff=\{tariff\} priceView=\{priceView\}/,
     /<BookingStickySummary tariff=\{tariff\} priceView=\{priceView\}/,
     /<PriceSummaryModule\s+priceView=\{priceView\}/,
@@ -373,7 +377,7 @@ test("E4 — der Zustellvertrag rechnet kein Datum und kennt keine Einkaufsquell
   assert.ok(!/transglobal|jumingo|provider/i.test(modul));
 });
 
-test("E5 — Karte, ausgewähltes Angebot, Live- und Sticky-Leiste zeigen dieselbe Beschriftung", () => {
+test("E5 — Karte, Live- und Sticky-Leiste zeigen dieselbe Beschriftung; das ausgewählte Angebot wiederholt sie nicht", () => {
   const karte = code(KARTE);
   const ende = karte.slice(karte.indexOf("function buildEnd"), karte.indexOf("function DetailRow"));
   assert.match(ende, /const zustellung = deliveryContractOf\(t\);\s*const title = zustellung\.label;/);
@@ -384,7 +388,8 @@ test("E5 — Karte, ausgewähltes Angebot, Live- und Sticky-Leiste zeigen diesel
     assert.ok(details.includes(zeile), `Detailzeile ${zeile} fehlt`);
   }
   assert.ok(!/label="Liefer/.test(details), "im Detailbereich steht wieder eine „Liefer…“-Beschriftung");
-  assert.match(code(AUSWAHL), /<dt>\{zustellung\.label\}<\/dt>/);
+  // G6/M9 (2026-10-28): die Zustellung steht im Beleg — das ausgewählte Angebot wiederholt sie nicht mehr.
+  assert.ok(!/deliveryInfo|zustellung|offsum-fact/.test(code(AUSWAHL)), "das ausgewählte Angebot wiederholt die Zustellung");
   assert.match(code(LIVE), /<span className="blsum-label">\{zustellung\.label\}<\/span>/);
   assert.match(code(STICKY), /<span className="bsum-delivery-label">\{delivery\.label\}<\/span>/);
   for (const datei of [AUSWAHL, LIVE, STICKY]) {
@@ -419,11 +424,13 @@ test("F2 — mit echtem Fenster: Carrierfenster, nach Wahl das gewählte Fenster
   assert.deepEqual({ ...pickupSummaryOf(null, null) }, { day: null, time: null, dayAdjusted: false, handover: null });
 });
 
-test("F3 — ausgewähltes Angebot und Live-Leiste lesen den Abholvertrag, nicht die Rohfelder", () => {
+test("F3 — der Beleg liest den Abholvertrag, nicht die Rohfelder; das ausgewählte Angebot wiederholt die Abholung nicht", () => {
+  const live = code(LIVE);
+  assert.match(live, /pickupSummaryOf\(tariff, pickupWindow\)/, `${LIVE} liest den Abholvertrag nicht`);
+  // G6/M9 (2026-10-28): Abholtag und -zeit stehen im Beleg; das ausgewählte Angebot zeigt sie nicht ein zweites Mal.
+  assert.ok(!/pickupSummaryOf|pickupDayLabel/.test(code(AUSWAHL)), `${AUSWAHL} wiederholt die Abholung`);
   for (const datei of [AUSWAHL, LIVE]) {
-    const src = code(datei);
-    assert.match(src, /pickupSummaryOf\(tariff, pickupWindow\)/, `${datei} liest den Abholvertrag nicht`);
-    assert.ok(!/collectionReadyFrom|collectionDate|pickupTimeFrom|pickupTimeUntil|pickupDate/.test(src),
+    assert.ok(!/collectionReadyFrom|collectionDate|pickupTimeFrom|pickupTimeUntil|pickupDate/.test(code(datei)),
       `${datei} bildet die Abholzeile wieder selbst`);
   }
 });

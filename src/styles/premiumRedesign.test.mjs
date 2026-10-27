@@ -129,10 +129,15 @@ test("5 — Partnerregistrierung behält die Aurora, die Kunden-Anmeldung trägt
   const auth = lies(path.join(SRC, "pages/AuthPage.jsx"));
   assert.match(partner, /<AuthAurora \/>/, "die Partnerregistrierung hat ihre Aurora verloren");
   assert.doesNotMatch(auth, /AuthAurora/, "die Kunden-Anmeldung rendert noch die Aurora");
-  assert.match(auth, /import nachtkarte from "\.\.\/assets\/illustrations\/nachtkarte-eu\.svg";/);
   const bestaetigung = lies(path.join(SRC, "pages/EmailChangeConfirmPage.jsx"));
   assert.doesNotMatch(bestaetigung, /AuthAurora/, "die E-Mail-Bestätigung rendert noch die Aurora");
-  assert.match(bestaetigung, /<div className="auth-karte" aria-hidden="true">/);
+  // Komplettabschluss (Abschnitt 5, 2026-10-28): Anmeldung und E-Mail-Bestätigung tragen DIESELBE gerahmte Karte —
+  // eine Komponente; ihre Lichter starten erst, wenn das Bild dekodiert ist.
+  const karte = lies(path.join(SRC, "components/auth/AuthKarte.jsx"));
+  assert.match(karte, /import nachtkarte from "\.\.\/\.\.\/assets\/illustrations\/nachtkarte-eu\.svg";/);
+  assert.match(karte, /<NachtkartenLichter welle aktiv=\{bereit\} \/>/);
+  assert.match(karte, /bild\.decode\(\)\.then\(los, los\)/, "die Lichter warten nicht auf das dekodierte Bild");
+  for (const seite of [auth, bestaetigung]) assert.match(seite, /<AuthKarte \/>/);
   // Unternehmensangaben nur aus der zentralen Quelle.
   assert.match(auth, /import \{ COMPANY_PROFILE \} from "\.\.\/config\/companyProfile";/);
   assert.doesNotMatch(auth, /Miguel Vance|support@confidaraexpress\.de|016092717124/);
@@ -200,4 +205,17 @@ test("10 — die Demo-Leiste lebt nur in der Demo-Welt und nutzt ausschließlich
   }
   assert.deepEqual(frei, [], `außerhalb der Demo oder mit Farbliteral:\n  ${frei.join("\n  ")}`);
   assert.match(lies(path.join(HIER, "index.css")), /@import '\.\/demo\.css';/);
+});
+
+test("11 — die Kopfleiste schneidet ihre Aufklapper nicht ab (Mitteilungen, Suche, Benutzermenü)", () => {
+  // Regression 2026-10-28: ein clip-path auf der Leiste (für das seitliche Weiß) schnitt das Mitteilungspanel
+  // vollständig ab — es lag unsichtbar unter den Kennzahlen der Übersicht.
+  const leiste = REGELN.filter(({ sel }) => teile(sel).some((t) => /\.ce-page-header-utility$/.test(t)));
+  assert.ok(leiste.length > 0, "die Regel der Kopfleiste fehlt");
+  for (const { sel, koerper } of leiste) {
+    assert.doesNotMatch(koerper, /clip-path|(^|[\s;])overflow(-[xy])?\s*:\s*(hidden|clip|auto|scroll)|contain\s*:\s*(paint|strict|content)/,
+      `${sel} schneidet die Aufklapper ab`);
+  }
+  assert.ok(leiste.some(({ koerper }) => /border-image:[^;]*fill 0 \/ 0 \/ 0 100vmax/.test(koerper)),
+    "das Weiß der Leiste reicht nicht seitlich über die Inhaltsbreite");
 });

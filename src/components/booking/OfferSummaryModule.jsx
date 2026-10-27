@@ -1,65 +1,34 @@
 import React from "react";
 import { Icon } from "../ui/Icon";
-import { money, isoDayDE } from "../../utils/formatters";
 import { publicCarrierDisplay, publicServiceName } from "../../utils/carrierMap";
-import { handoverInfo, deliveryInfo, priceInfo, PRICE_CHANGED_HINT, surchargeSummaryNote } from "../../utils/bookingSummaryView.mjs";
-import { pickupSummaryOf, pickupDayLabel } from "../../utils/pickupContractView.mjs";
-import { sameDaySummaryNote, sameDayUntilText } from "../../utils/sameDayCollectionView.mjs";
-import { isGrossVatMode } from "../../utils/vatDisplayView.mjs";
+import { handoverInfo, priceInfo } from "../../utils/bookingSummaryView.mjs";
+import { sameDayUntilText } from "../../utils/sameDayCollectionView.mjs";
 
-// Step 1 — „Ausgewähltes Angebot". Kompakte, ruhige Zusammenfassung des gewählten
-// Tarifs in drei Zonen: Identität (Carrier/Service) · Zustellung & relevante
-// Bedingungen · Preis. REINE DARSTELLUNG — keine Logik, keine Neuberechnung.
+// Step 1 — „Ausgewähltes Angebot“ (Betreiberentscheidung G6/M9, 2026-10-28).
 //
-// TG22 Golden Offer Contract — dieselben Quellen wie Live- und Sticky-Leiste:
-//   • Preis      → priceInfo(priceView): „Gesamt" bei bestätigtem Preis, sonst
-//                  „Versand", nach einer gemeldeten Preisänderung KEIN Betrag. Bis
-//                  hierher las diese Karte tariff.netPrice/finalPrice und zeigte nach
-//                  einer bestätigten Absicherung einen anderen Betrag als die Leiste.
-//   • Zustellung → deliveryInfo(tariff): dieselbe Beschriftung wie die Angebotskarte.
-//   • Abholung   → pickupSummaryOf(tariff, pickupWindow): Fenster ODER „bereit ab".
-// Bewusst NICHT hier: Sendungsverfolgung und Abholzuschlag-Hinweis (redundant),
-// dominante MwSt.-Betragszeile (durch kompakten Hinweis ersetzt) sowie die
-// doppelte Lieferzeit-/Serviceart-Darstellung.
-export function OfferSummaryModule({ tariff, priceView, pickupWindow, vatMode }) {
+// Preis, Übergabe und Zustellung stehen auf der Buchungsseite an GENAU EINER Stelle: im Beleg — der
+// Live-Zusammenfassung (ab 1440 px die Seitenspalte, schmaler über dem Blatt) samt klebender Kurzleiste beim
+// Scrollen. Bis 2026-10-27 wiederholte diese Karte Preis, Zustellung und Abholung direkt daneben (Audit M9).
+//
+// Hier steht deshalb nur, was den Beleg ergänzt: welches Angebot gewählt ist (Carrier, Dienst, Übergabeart) und
+// die Bedingungen, die sonst nirgends stehen — „Drucker erforderlich“, bis wann die Abholung heute möglich ist,
+// und dass ein Preis fehlt. Der MwSt.-Hinweis steht seitdem am Preis im Beleg (vatIncludedNote). Keine Angabe
+// entfällt, keine Logik, keine Neuberechnung — dieselben Helfer wie zuvor.
+export function OfferSummaryModule({ tariff, priceView }) {
   const { name: carrierName, logo: carrierLogo } = publicCarrierDisplay(tariff);
   const handover = handoverInfo(tariff);
   const serviceMode = handover.isPickup || handover.isDropoff ? handover.label : null;
-
-  // Zustellung — EINE primäre Darstellung aus dem gemeinsamen Vertrag; die „bis"-Uhrzeit
-  // gehört zur selben Aussage und steht deshalb in derselben Zeile.
-  const zustellung = deliveryInfo(tariff);
-
-  // Abholtermin — nur wenn tatsächlich vorhanden (handlungsrelevant).
-  const abholung = pickupSummaryOf(tariff, pickupWindow);
-  const pickupValue = [abholung.day ? isoDayDE(abholung.day) : null, abholung.time]
-    .filter(Boolean).join(" · ") || null;
-
   const printerRequired = tariff.printerRequired === true;
-
-  const preis = priceInfo(priceView);
-  const hatBetrag = preis.net != null || preis.gross != null;
-  // Die Mehrwertsteuer betrifft nur den Versand. Enthält der bestätigte Gesamtbetrag eine
-  // steuerfreie Absicherung, sagt der Hinweis das — ein Text, keine Rechnung.
-  const mitAbsicherung = preis.confirmed && Number(priceView?.insuranceGross) > 0;
-  // TG22 Residential: ein bestätigter Zuschlag für die Privatadresse steht als eigene Zeile unter dem
-  // Preis — Bezeichnung und Betrag aus dem Serverbestandteil.
-  const zuschlagHinweis = surchargeSummaryNote(priceView);
-  // TG22 Same-Day: der Zuschlag der Abholung am selben Tag und bis wann sie heute möglich ist — vom Server.
-  const sameDayHinweis = sameDaySummaryNote(priceView, tariff);
+  // TG22 Same-Day: bis wann die Abholung heute möglich ist — vom Server.
   const sameDayBis = sameDayUntilText(tariff);
-  // Netto/Brutto (2026-10-02): netto steht wie bisher vorn; in der Bruttoanzeige rückt der Bruttobetrag samt
-  // MwSt.- und Zuschlagshinweisen nach vorn, der Nettobetrag folgt. Nur die Reihenfolge ändert sich.
-  const bruttoZuerst = isGrossVatMode(vatMode) && preis.gross != null;
-  const nettoZeile = preis.net != null && (
-    <div className="offsum-price-net">{money(preis.net)}<span className="offsum-price-unit"> netto</span></div>
-  );
+  const preis = priceInfo(priceView);
+  // Nach einer gemeldeten Preisänderung sagt der Beleg „Nicht mehr aktuell“; hier steht nur der Fall ohne Betrag.
+  const preisFehlt = preis.net == null && preis.gross == null && !preis.changed;
 
   return (
-    <div className="calc-panel mb-16">
+    <div className="calc-panel mb-16 offsum--kompakt">
       <div className="calc-panel-header"><h3>Ausgewähltes Angebot</h3></div>
       <div className="calc-panel-body">
-        {/* Zone 1 (Identität) links · Zone 3 (Preis) rechts */}
         <div className="offsum-top">
           <div className="offsum-identity">
             <div className="booking-carrier-wrap">
@@ -78,59 +47,23 @@ export function OfferSummaryModule({ tariff, priceView, pickupWindow, vatMode })
               {serviceMode && <span className="offsum-service-mode">{serviceMode}</span>}
             </div>
           </div>
+        </div>
 
-          <div className={`offsum-price${bruttoZuerst ? " offsum-price--gross" : ""}`}>
-            <div className="offsum-price-label">{preis.label}</div>
-            {hatBetrag ? (
-              <>
-                {!bruttoZuerst && nettoZeile}
-                {preis.gross != null ? (
-                  <>
-                    <div className="offsum-price-gross">{money(preis.gross)} brutto</div>
-                    <div className="offsum-price-vat">{mitAbsicherung ? "inkl. 19 % MwSt. auf Versand" : "inkl. 19 % MwSt."}</div>
-                    {zuschlagHinweis && (
-                      <div className="offsum-price-vat" id="offer-summary-surcharge-note">{zuschlagHinweis}</div>
-                    )}
-                    {sameDayHinweis && (
-                      <div className="offsum-price-vat" id="offer-summary-sameday-note">{sameDayHinweis}</div>
-                    )}
-                  </>
-                ) : (
-                  <div className="offsum-price-vat">exkl. MwSt.</div>
-                )}
-                {bruttoZuerst && nettoZeile}
-              </>
-            ) : (
-              <div className="offsum-price-na">{preis.changed ? PRICE_CHANGED_HINT : "Preis fehlt"}</div>
+        {(printerRequired || sameDayBis || preisFehlt) && (
+          <div className="offsum-meta">
+            {preisFehlt && <span className="offsum-flag offsum-price-na" role="note">Preis fehlt</span>}
+            {printerRequired && (
+              <span className="offsum-flag" role="note">
+                Drucker erforderlich
+              </span>
+            )}
+            {sameDayBis && (
+              <span className="offsum-flag" id="offer-summary-sameday-until" role="note">
+                {sameDayBis}
+              </span>
             )}
           </div>
-        </div>
-
-        {/* Zone 2 — Zustellung & relevante Bedingungen (nur vorhandene Angaben) */}
-        <div className="offsum-meta">
-          <dl className="offsum-facts">
-            <div className="offsum-fact">
-              <dt>{zustellung.label}</dt>
-              <dd>{zustellung.value}{zustellung.until ? ` · ${zustellung.until} Uhr` : ""}</dd>
-            </div>
-            {pickupValue && (
-              <div className="offsum-fact">
-                <dt>{pickupDayLabel(abholung, "Abholung")}</dt>
-                <dd>{pickupValue}</dd>
-              </div>
-            )}
-          </dl>
-          {printerRequired && (
-            <span className="offsum-flag" role="note">
-              Drucker erforderlich
-            </span>
-          )}
-          {sameDayBis && (
-            <span className="offsum-flag" id="offer-summary-sameday-until" role="note">
-              {sameDayBis}
-            </span>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );

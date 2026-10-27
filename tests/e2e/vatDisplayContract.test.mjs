@@ -287,16 +287,17 @@ async function bucheUndWarte(page, p) {
   return p.book[0];
 }
 
-/* Die drei Preisflächen der Buchungsseite, wie der Kunde sie liest. */
+/* Die Preisflächen der Buchungsseite, wie der Kunde sie liest: der Beleg (Live-Zusammenfassung) und die
+   Sticky-Leiste. Seit G6/M9 (2026-10-28) zeigt das ausgewählte Angebot keinen eigenen Preis mehr. */
 async function flaechen(page) {
   const lese = async (s) => ((await page.locator(s).count()) ? inhalt(page.locator(s)) : null);
+  assert.equal(await page.locator(".offsum-price-net, .offsum-price-gross").count(), 0,
+    "das ausgewählte Angebot zeigt wieder einen eigenen Preis");
   return {
     kopf: { netto: await lese(".blsum-price-net"), brutto: await lese(".blsum-price-gross"),
             nettoVorn: (await page.locator(".blsum-price-box--net").count()) === 1 },
     sticky: { netto: await lese(".bsum-price-net"), brutto: await lese(".bsum-price-gross"),
               nettoVorn: (await page.locator(".bsum-price--net").count()) === 1 },
-    auswahl: { netto: await lese(".offsum-price-net"), brutto: await lese(".offsum-price-gross"),
-               bruttoVorn: (await page.locator(".offsum-price--gross").count()) === 1 },
   };
 }
 
@@ -491,12 +492,10 @@ test("N6 — Buchung netto ohne Absicherung: Leisten, ausgewähltes Angebot, Auf
   assert.deepEqual(await flaechen(page), {
     kopf: { netto: "10,80 € netto", brutto: "12,85 € brutto", nettoVorn: true },
     sticky: { netto: "10,80 € netto", brutto: "12,85 € brutto", nettoVorn: true },
-    auswahl: { netto: "10,80 € netto", brutto: "12,85 € brutto", bruttoVorn: false },
   });
   assert.equal(await inhalt(page.locator(".blsum-price-payable")), "· zahlbar");
   assert.equal(await steht(page, ".blsum-price-net", ".blsum-price-gross"), true, "netto steht nicht vorn");
   assert.equal(await steht(page, ".bsum-price-net", ".bsum-price-gross"), true);
-  assert.equal(await steht(page, ".offsum-price-net", ".offsum-price-gross"), true);
   await beleg(page, "buchung-netto");
 
   // Die Sticky-Leiste erscheint erst, wenn die große Leiste herausgescrollt ist — dann netto vorn. Der Layer selbst
@@ -549,10 +548,8 @@ test("N7 — dieselbe Buchung mit Umschalten auf jeder Fläche: kein Request, id
   assert.deepEqual(await flaechen(page), {
     kopf: { netto: "10,80 € netto", brutto: "12,85 € brutto", nettoVorn: false },
     sticky: { netto: "10,80 € netto", brutto: "12,85 € brutto", nettoVorn: false },
-    auswahl: { netto: "10,80 € netto", brutto: "12,85 € brutto", bruttoVorn: true },
   });
   assert.equal(await steht(page, ".blsum-price-gross", ".blsum-price-net"), true, "brutto steht nicht vorn");
-  assert.equal(await steht(page, ".offsum-price-gross", ".offsum-price-net"), true);
   assert.equal(await page.locator(".blsum-price-payable").count(), 0);
   await beleg(page, "buchung-brutto");
 
@@ -592,7 +589,7 @@ test("N8 — Rückweg: der auf der Buchungsseite gewählte Modus gilt im Verglei
   // Wieder hinein: derselbe Modus.
   await waehle(page, JM);
   assert.equal(await gedrueckt(page, BRUTTO), true);
-  assert.equal((await flaechen(page)).auswahl.bruttoVorn, true);
+  assert.equal((await flaechen(page)).kopf.nettoVorn, false);
   assert.deepEqual(fehler, []);
   await page.close();
 });

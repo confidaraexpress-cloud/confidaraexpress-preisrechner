@@ -5,7 +5,7 @@ import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../
 import { isInsuredType } from "../../utils/bookingPriceView.mjs";
 import { INSURANCE_TYPE_TRANSIT_COVER } from "../../utils/coverInsuranceView.mjs";
 import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
-import { handoverInfo, deliveryInfo, priceInfo, PRICE_CHANGED_HINT, surchargeSummaryNote } from "../../utils/bookingSummaryView.mjs";
+import { handoverInfo, deliveryInfo, priceInfo, PRICE_CHANGED_HINT, surchargeSummaryNote, vatIncludedNote } from "../../utils/bookingSummaryView.mjs";
 import { pickupSummaryOf, pickupAdjustedNote } from "../../utils/pickupContractView.mjs";
 import { sameDaySummaryNote } from "../../utils/sameDayCollectionView.mjs";
 import { isGrossVatMode, VAT_TEXT } from "../../utils/vatDisplayView.mjs";
@@ -49,6 +49,8 @@ export function BookingLiveSummary({ tariff, priceView, pickupWindow, vatMode })
   const zuschlagHinweis = surchargeSummaryNote(v);
   // TG22 Same-Day: der Zuschlag der Abholung am selben Tag — Bezeichnung und Betrag vom Server.
   const sameDayHinweis = sameDaySummaryNote(v, tariff);
+  // G6/M9: der MwSt.-Hinweis am Preis — dieselbe Regel wie zuvor in der Karte „Ausgewähltes Angebot“.
+  const vatHinweis = vatIncludedNote(v);
   // Netto/Brutto (Betreiberentscheidung 2026-10-02): der Modus bestimmt nur, welcher der beiden Beträge aus
   // priceInfo vorn steht. Beide bleiben sichtbar, keiner wird gebildet; der Bruttobetrag behält seine Klasse
   // und trägt in der Nettoanzeige den Hinweis „zahlbar". Ohne Nettobetrag bleibt die Bruttoanzeige.
@@ -129,6 +131,9 @@ export function BookingLiveSummary({ tariff, priceView, pickupWindow, vatMode })
             {preis.net != null && <span className="blsum-price-net">{money(preis.net)} netto</span>}
           </span>
         )}
+        {/* G6/M9 (2026-10-28): der MwSt.-Hinweis steht am Preis des Belegs — vorher nur in der Karte „Ausgewähltes
+            Angebot“, die Preis und Termine doppelte. Derselbe Wortlaut (vatIncludedNote). */}
+        {vatHinweis && <span className="blsum-vat-note" id="booking-live-vat-note">{vatHinweis}</span>}
         {insNote && (
           <span className={`blsum-ins-note${insNoteError ? " blsum-ins-note--error" : ""}`}>
             {insNoteLoading && <span className="spinner spinner-dark" />}

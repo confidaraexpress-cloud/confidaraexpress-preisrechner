@@ -3,6 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { API, apiFetch, setAuthErrorHandler, token as getToken } from "../api/client";
 import { clearShippingFlowStorage } from "../utils/shippingFlowStorage";
 import { clearCompanyLogoCache } from "../api/companyLogoApi";
+import { AuthSeite } from "../pages/authSeite";
+
+// Die Anmeldeseite vorladen, bevor die Anwendung dorthin wechselt (Abmelden, abgelaufene Sitzung): so rendert sie
+// ohne Ladefläche des Seitenwechsels. Ein Fehler hier ist folgenlos — die Route lädt dann selbst.
+const anmeldungVorladen = () => { AuthSeite.vorladen().catch(() => {}); };
 
 const AuthContext = createContext(null);
 
@@ -43,7 +48,9 @@ export function AuthProvider({ children }) {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [authed, setAuthed] = useState(false);
-  const [loadingUser, setLoadingUser] = useState(true);
+  // Ohne gespeichertes Token gibt es nichts zu prüfen: dann startet die Anwendung ohne Ladezustand (Audit B.1 —
+  // vorher stand jeder Besucher der Anmeldung zuerst auf einem weißen Ladebildschirm). Mit Token wie bisher.
+  const [loadingUser, setLoadingUser] = useState(() => Boolean(getToken()));
   const [sessionExpired, setSessionExpired] = useState(false);
 
   // Central auth-error handler: a 401/403 on a protected request (blocked /
@@ -63,6 +70,7 @@ export function AuthProvider({ children }) {
       setAuthed(false);
       setUser(null);
       setSessionExpired(true);
+      anmeldungVorladen();
       const path = window.location.pathname;
       if (path !== "/login" && path !== "/confirm-email-change") {
         // Die gerade offene Adresse geht als Rücksprungwunsch mit; AuthPage
@@ -127,6 +135,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
+    anmeldungVorladen();
     localStorage.removeItem("ce_token");
     // Temporären Versandvorgang mit abräumen: er enthält Adress- und
     // Sendungsdaten. Der Speicherschlüssel wird hier SYNCHRON entfernt; den

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="de" data-ce-bereich="auth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Geschäftskonto registrieren | ConfidaraExpress</title>
+    <meta name="description" content="ConfidaraExpress – Versand- und Logistikmanagement für Unternehmen: Geschäftskonto beantragen, Preise vergleichen, Sendungen buchen, Bestand und Aufträge führen." />
+    <link rel="icon" type="image/svg+xml" href="/favicon-v2.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-v1.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0A1636" />
+    <!-- Statisches Seitengerüst der Registrierung (Abschnitt 5, 2026-10-28): nginx liefert es für /register und
+         /registrieren — der Einstieg aus dem öffentlichen Preisrechner. Dieselbe Bühne wie login.html, das Blatt im
+         Zustand „Registrieren“; React ersetzt es beim ersten Rendern ohne Zwischenbild. Das Blatt wächst nur nach
+         unten. Texte und Kontakt: utils/authSeitenText.mjs, utils/registrationValidation.mjs und
+         config/companyProfile.js (authSeitenGeruest.test.mjs gleicht ab). -->
+    <link rel="preload" href="/src/assets/fonts/instrumentsans-var.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/src/assets/illustrations/nachtkarte-eu.svg" as="image" type="image/svg+xml" />
+    <link rel="canonical" href="https://confidaraexpress.de/register" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ConfidaraExpress" />
+    <meta property="og:locale" content="de_DE" />
+    <meta property="og:url" content="https://confidaraexpress.de/register" />
+    <meta property="og:title" content="ConfidaraExpress | Geschäftskonto registrieren" />
+    <meta property="og:description" content="Versand- und Logistikmanagement für Unternehmen." />
+  </head>
+  <body>
+    <div id="root"><div class="auth-page">
+      <div class="auth-shell">
+        <header class="auth-kopf">
+          <span class="ce-brand ce-brand--reverse ce-brand--lockup auth-brand"><img class="ce-brandmark-img" src="/src/assets/brand/lockup-reverse.svg" alt="ConfidaraExpress" draggable="false" /></span>
+        </header>
+        <div class="auth-hero">
+          <h1 class="auth-title">Versand- und Logistik&shy;management für Unternehmen.</h1>
+          <p class="auth-sub-2">Preise mehrerer Versanddienstleister vergleichen, Sendungen buchen und verfolgen, Bestand und Aufträge Ihres Lagers führen – in einem Kundenbereich.</p>
+        </div>
+        <figure class="auth-map">
+          <div class="auth-map-frame"><div class="auth-map-canvas"><img class="auth-map-img" src="/src/assets/illustrations/nachtkarte-eu.svg" alt="" width="536" height="497" decoding="async" /></div></div>
+          <figcaption class="auth-map-legend"><span class="auth-map-dot" aria-hidden="true"></span>Versand ab Deutschland in die Länder der EU</figcaption>
+        </figure>
+        <div class="auth-card-bereich" aria-hidden="true" inert>
+          <div class="auth-card auth-card--register auth-geruest">
+            <div class="auth-tabs auth-tabs--register">
+              <span class="auth-tabs-marke"></span>
+              <button type="button" class="auth-tab" tabindex="-1"><span>Anmelden</span></button>
+              <button type="button" class="auth-tab active" tabindex="-1"><span>Registrieren</span></button>
+            </div>
+            <div class="auth-card-kopf">
+              <h2 class="auth-card-head">Geschäftskonto beantragen</h2>
+            </div>
+            <form class="auth-geruest-feld">
+              <div class="auth-alert auth-alert-info auth-b2b-notice">
+                <strong>ConfidaraExpress richtet sich ausschließlich an Unternehmen und Geschäftskunden.</strong>
+                <span class="auth-b2b-notice-sub">Nach Ihrer Registrierung prüfen und aktivieren wir Ihr Firmenkonto persönlich.</span>
+              </div>
+              <div class="field-row field-row-2">
+                <div class="auth-field">
+                  <div class="auth-field-row"><span class="auth-field-label">Ansprechpartner <span class="auth-req" aria-hidden="true">*</span></span></div>
+                  <div class="auth-input-wrap"><span class="auth-input-ico"></span><input class="auth-input" tabindex="-1" placeholder="Max Mustermann" /></div>
+                </div>
+                <div class="auth-field">
+                  <div class="auth-field-row"><span class="auth-field-label">Geschäftliche E-Mail <span class="auth-req" aria-hidden="true">*</span></span></div>
+                  <div class="auth-input-wrap"><span class="auth-input-ico"></span><input class="auth-input" tabindex="-1" placeholder="firma@beispiel.de" /></div>
+                </div>
+              </div>
+              <div class="auth-field">
+                <div class="auth-field-row"><span class="auth-field-label">Passwort (min. 8 Zeichen) <span class="auth-req" aria-hidden="true">*</span></span></div>
+                <div class="auth-input-wrap"><span class="auth-input-ico"></span><input class="auth-input" tabindex="-1" placeholder="Mind. 8 Zeichen" /></div>
+              </div>
+              <div class="auth-field">
+                <div class="auth-field-row"><span class="auth-field-label">Passwort wiederholen <span class="auth-req" aria-hidden="true">*</span></span></div>
+                <div class="auth-input-wrap"><span class="auth-input-ico"></span><input class="auth-input" tabindex="-1" placeholder="Passwort erneut eingeben" /></div>
+              </div>
+              <span class="auth-section-label">Unternehmen</span>
+              <div class="field-row field-row-2">
+                <div class="auth-field">
+                  <div class="auth-field-row"><span class="auth-field-label">Firmenname <span class="auth-req" aria-hidden="true">*</span></span></div>
+                  <div class="auth-input-wrap"><span class="auth-input-ico"></span><input class="auth-input" tabindex="-1" placeholder="Muster Logistik GmbH" /></div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="auth-kontakt">
+          <span class="auth-kontakt-zeichen" aria-hidden="true">MV</span>
+          <div class="auth-kontakt-text">
+            <p class="auth-kontakt-name">Miguel Vance, Ihr persönlicher Ansprechpartner</p>
+            <p class="auth-kontakt-wege"><a href="mailto:support@confidaraexpress.de">support@confidaraexpress.de</a><a href="tel:016092717124">016092717124</a></p>
+          </div>
+        </div>
+        <nav class="auth-legal" aria-label="Rechtliche Informationen">
+          <a href="/impressum" target="_blank" rel="noopener noreferrer">Impressum</a>
+          <a href="/datenschutz" target="_blank" rel="noopener noreferrer">Datenschutz</a>
+          <a href="/agb" target="_blank" rel="noopener noreferrer">AGB</a>
+          <a href="/widerruf" target="_blank" rel="noopener noreferrer">Widerruf</a>
+        </nav>
+      </div>
+    </div></div>
+    <noscript><p>Für den Kundenbereich wird JavaScript benötigt.</p></noscript>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

@@ -67,11 +67,21 @@ test("V4 — Anmeldung: Lichter auf der Karte, gleitende Reitermarke, kein Weg z
   page.on("pageerror", (e) => fehler.push(String(e)));
   try {
     await page.goto(`${BASE_APP}/login`, { waitUntil: "domcontentloaded" });
-    await page.waitForSelector(".auth-tabs-marke", { timeout: 60000 });
+    // Seit dem statischen Seitengerüst (Komplettabschluss, Abschnitt 5) steht die Reitermarke schon vor React im Bild:
+    // gewartet wird auf die gerenderte Seite (erst dort trägt das Formularfeld seine id) und auf ihre Lichter.
+    await page.waitForSelector("#auth-email", { timeout: 60000 });
+    await page.waitForFunction(() => document.querySelectorAll(".nk-lichter .nk-licht").length >= 20, null, { timeout: 10000 })
+      .catch(() => {});
     const l = await lichter(page, ".nk-lichter .nk-licht");
     assert.ok(l.length >= 20, `zu wenige Lichter: ${l.length}`);
-    assert.ok(l.every((x) => x.animation === "nk-funkeln"));
-    assert.equal(await page.locator("img.nk-welle").count(), 1);
+    // Seit Abschnitt 5 (2026-10-28) läuft auf der Anmeldung zuerst eine Lichtwelle (nk-aufglimmen), danach funkeln
+    // die Städte einzeln weiter (nk-funkeln) — beide Animationen stehen in der Liste.
+    assert.ok(l.every((x) => x.animation.split(/,\s*/).includes("nk-funkeln")), "nicht jedes Licht funkelt");
+    // Die Karte steht ab dem ersten Bild (statisches Seitengerüst): EIN Kartenbild, keine nachgeladene Wellenmaske
+    // (img.nk-welle entfiel mit Abschnitt 5) — die Welle laufen die Lichter selbst.
+    assert.equal(await page.locator(".auth-map img.auth-map-img").count(), 1);
+    assert.equal(await page.locator("img.nk-welle").count(), 0, "die nachgeladene Wellenmaske ist zurück");
+    assert.equal(await page.locator(".auth-map .nk-lichter--welle").count(), 1, "die Lichtwelle startet nicht");
     const links = await page.$eval(".auth-tabs-marke", (m) => m.getBoundingClientRect().left);
     await page.locator(".auth-tabs button").nth(1).click();
     await kurz(450);

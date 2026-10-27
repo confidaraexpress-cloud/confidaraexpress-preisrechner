@@ -11,8 +11,8 @@ import { PASSWORD_MIN_LEN } from "../../utils/passwordPolicy.mjs";
 import { AddressSuggestInput } from "../address/AddressSuggestInput";
 import { useAddressValidation } from "../../hooks/useAddressValidation";
 import { applyAddressSuggestion, cityFromSuggestion, countryFirstHint } from "../../utils/addressValidationView.mjs";
-import { cityPlaceholder } from "../../utils/addressPlaceholders.mjs";
-import { postalCodeExample, postalCodeInputMode } from "../../utils/postalCode.mjs";
+import { cityPlaceholder, postalCodePlaceholder } from "../../utils/addressPlaceholders.mjs";
+import { postalCodeInputMode } from "../../utils/postalCode.mjs";
 import { VAT_ID_TEXT, VAT_ID_ABSENT_TEXT, LEGAL_FORMS_WITHOUT_VAT_ID } from "../../utils/vatId.mjs";
 
 // Pflichtfeld-Markierung. Das Sternchen ist rein visuell (aria-hidden) — für
@@ -330,7 +330,7 @@ export function RegisterForm({
               value={form.zip}
               onChange={(e) => upd("zip", e.target.value)}
               autoComplete="postal-code"
-              placeholder={postalCodeExample(form.country)}
+              placeholder={postalCodePlaceholder(form.country)}
               inputMode={postalCodeInputMode(form.country)}
               aria-invalid={errors.zip ? "true" : undefined}
             />

@@ -5,6 +5,7 @@ import { EmptyState } from "../components/ui/StateView";
 import { resolveCarrierName } from "../utils/carrierMap";
 import { TRACKING_NOT_FOUND } from "../utils/trackingMessages";
 import { STATUS_STEPS, buildTrackingView } from "./trackingView";
+import { TRACKING_QUICKPICK_TEXT } from "../utils/trackingQuickPick.mjs";
 import {
   trackingLegsOf, trackingLegEventCount, latestTrackingLegEvent, eventWhenText, trackingLegHeading,
   trackingEventTone, TRACKING_LEGS_TEXT,
@@ -28,7 +29,7 @@ function nachTagen(liste) {
   return gruppen;
 }
 
-export default function TrackingPage({ utility = null } = {}) {
+export default function TrackingPage({ utility = null, schnellwahl = null } = {}) {
   const [id, setId] = useState("");
   const [searchedKey, setSearchedKey] = useState("");
   const [result, setResult] = useState(null);
@@ -169,6 +170,34 @@ export default function TrackingPage({ utility = null } = {}) {
             </div>
           )}
         </div>
+
+        {/* Kundenbereich (Audit B.7): die eigenen laufenden Sendungen als Schnellwahl — aus der bereits geladenen
+            Sendungsliste (utils/trackingQuickPick.mjs). Ein Klick verfolgt genau deren Trackingnummer über dieselbe
+            Abfrage wie das Feld. Öffentlich (/tracking) gibt es diese Liste nicht. */}
+        {Array.isArray(schnellwahl) && schnellwahl.length > 0 && (
+          <aside className="ce-card tracking-schnellwahl" aria-labelledby="tracking-schnellwahl-title">
+            <h2 className="tracking-schnellwahl-title" id="tracking-schnellwahl-title">{TRACKING_QUICKPICK_TEXT.title}</h2>
+            <p className="tracking-schnellwahl-hint">{TRACKING_QUICKPICK_TEXT.hint}</p>
+            <ul className="tracking-schnellwahl-liste">
+              {schnellwahl.map((e) => (
+                <li key={e.id}>
+                  <button
+                    type="button"
+                    className="tracking-schnellwahl-eintrag"
+                    aria-current={searchedKey === e.trackingNumber ? "true" : undefined}
+                    disabled={loading}
+                    onClick={() => { setId(e.trackingNumber); track(e.trackingNumber); }}
+                  >
+                    <span className="tracking-schnellwahl-nummer">{e.title}</span>
+                    <span className="tracking-schnellwahl-detail">
+                      {[e.detail, e.carrierRaw ? resolveCarrierName(e.carrierRaw) : ""].filter(Boolean).join(" — ")}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </aside>
+        )}
 
         {result && (
           <section className="ce-card tracking-result" aria-labelledby="tracking-result-title">

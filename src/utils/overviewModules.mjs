@@ -109,3 +109,29 @@ export function hasOperationalData({ shipments, invoices, ready = true } = {}) {
   const i = Array.isArray(invoices) ? invoices : [];
   return s.length > 0 || i.length > 0;
 }
+
+// ── Lager und Aufträge in der Übersicht (G1/D7, 2026-10-28) ─────────────────
+// Die Übersicht nennt den operativen Stand des eigenen Lagers aus derselben
+// Antwort wie die Lagerübersicht (GET /api/kunde/inventory/overview): offene
+// Aufträge und Artikel unter Mindestbestand, je mit den ersten Einträgen der
+// Vorschau. Keine eigene Zählung, keine zweite Abfrage je Kennzahl.
+export const INVENTORY_SNAPSHOT_TEXT = Object.freeze({
+  title: "Lager und Aufträge",
+  action: "Zur Lagerübersicht",
+  openOrders: "Offene Aufträge",
+  openOrdersEmpty: "Keine offenen Aufträge.",
+  lowStock: "Unter Mindestbestand",
+  lowStockEmpty: "Kein Artikel unter Mindestbestand.",
+  shippedToday: "Heute aus dem Lager versendet",
+  available: "Verfügbare Einheiten",
+  emptyTitle: "Noch keine Artikel im Lager",
+  emptyText: "Artikel, Bestand und Aufträge führen Sie im Bereich Lager und Aufträge — Aufträge lassen sich direkt als Sendung vorbereiten.",
+  emptyAction: "Lager einrichten",
+  loadError: "Die Lagerdaten konnten nicht geladen werden.",
+  retry: "Erneut laden",
+});
+
+// Höchstens `limit` Einträge einer Vorschau — Reihenfolge des Servers.
+export function snapshotRows(rows, limit = 3) {
+  return Array.isArray(rows) ? rows.slice(0, Math.max(0, limit)) : [];
+}

@@ -34,7 +34,8 @@ const ORT = new Map(KARTE_ORTE.map(([key, name, x, y, land]) => [key, { key, nam
 const prozent = (v) => Math.round(v * 1000) / 10;
 
 /**
- * Die Lichter: { key, left, top (Prozent des Kartenbilds), groesse (px), dauer, einsatz (ms), ton (0 | 1) }.
+ * Die Lichter: { key, left, top (Prozent des Kartenbilds), groesse (px), dauer, einsatz (ms), welle (ms), ton (0 | 1) }.
+ * `welle` ist der Zeitpunkt, an dem die Einstiegswelle den Ort erreicht (Lichtwelle der Anmeldung).
  * Hauptstädte etwas größer; jedes Licht hat eine eigene Periode (6–11 s), damit nie ein Takt entsteht.
  */
 export function nachtkartenLichter() {
@@ -58,6 +59,7 @@ export function nachtkartenLichter() {
       groesse: Math.round((haupt ? 22 : 15) + zufall() * 6),
       dauer,
       einsatz,
+      welle,
       ton: i % 3 === 0 ? 1 : 0,
     };
   });

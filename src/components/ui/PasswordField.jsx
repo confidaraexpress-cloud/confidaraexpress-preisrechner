@@ -29,7 +29,7 @@ export function PasswordField({ label, value, onChange, onKeyDown, onBlur, place
           onChange={onChange}
           onKeyDown={onKeyDown}
           onBlur={onBlur}
-          placeholder={placeholder || "••••••••"}
+          placeholder={placeholder ?? "••••••••"}
           autoComplete={autoComplete}
           required={required || undefined}
           aria-required={required ? "true" : undefined}
@@ -66,7 +66,7 @@ export function PasswordField({ label, value, onChange, onKeyDown, onBlur, place
           onChange={onChange}
           onKeyDown={onKeyDown}
           onBlur={onBlur}
-          placeholder={placeholder || "••••••••"}
+          placeholder={placeholder ?? "••••••••"}
           /* autoComplete wurde bisher nur im slim-Modus durchgereicht — im
              Standardmodus ging die Angabe der Aufrufer verloren, sodass
              Passwortmanager „aktuelles" und „neues" Passwort nicht

@@ -443,6 +443,9 @@ h1, h2, h3, h4 { font-family: var(--ce-font-sans); font-weight: 600; }
   background: var(--ce-app-bg-bottom);
 }
 .loading-screen .spinner { width: 28px; height: 28px; margin: 0 auto; }
+/* Auf den Anmeldeseiten mit statischem Gerüst (Navy-Bühne): derselbe dunkle Grund, damit zwischen Gerüst und Seite
+   kein heller Bildschirm aufblitzt — nur während ein gespeichertes Token geprüft wird (App.jsx). */
+.loading-screen--dunkel { background: var(--ce-pr-navy-950, var(--ce-sidebar-bg-bottom)); }
 
 /* Kleiner Ladepunkt in Buttons und Menütriggern. Dieser Wert stand fünfmal als
    identisches Inline-Style im JSX. */

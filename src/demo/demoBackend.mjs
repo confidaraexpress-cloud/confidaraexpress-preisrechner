@@ -417,6 +417,13 @@ function route(methode, pfad, query, optionen) {
     const offen = rechnungsSumme(st.rechnungen).open_amount;
     return json({ credit: { limit: 2000, open: offen, reserved: 0, available: runde(2000 - offen), exhausted: false, currency: "EUR" } });
   }
+  // „Ihre Versanddienstleister“ (G2): Beispieldaten in der Form der Serverantwort — die Carrier der Beispielsendungen.
+  if (pfad === "/kunde/carriers") {
+    return json({ carriers: [
+      { id: "ups", name: "UPS" }, { id: "dhl", name: "DHL Express" }, { id: "dpd", name: "DPD" },
+      { id: "gls", name: "GLS" }, { id: "tnt", name: "TNT" },
+    ] });
+  }
   if (pfad === "/kunde/consolidated-invoice/current") return json({ active: false });
 
   // Sendungen
@@ -552,9 +559,18 @@ function route(methode, pfad, query, optionen) {
   if (pfad === "/api/kunde/inventory/overview") {
     const bestand = lg.produkte.reduce((s, p) => s + p.stock.onHand, 0);
     const reserviert = lg.produkte.reduce((s, p) => s + p.stock.reserved, 0);
+    const offene = lg.auftraege.filter((a) => a.status === "open");
+    const knapp = lg.produkte.filter((p) => p.stock.available < p.minStock);
+    // Dieselbe Form wie der Server (Vorschauzeilen je Kennzahl, backend inventory-overview-previews) — sonst nennt die
+    // Übersicht eine Zahl ohne die Einträge dahinter.
     return json({ activeProducts: lg.produkte.length, activeWarehouses: lg.warehouses.length, onHandUnits: bestand, availableUnits: bestand - reserviert,
-      reservedUnits: reserviert, lowStockCount: lg.produkte.filter((p) => p.stock.available < p.minStock).length,
-      openOrders: lg.auftraege.filter((a) => a.status === "open").length, shippedToday: 0 });
+      reservedUnits: reserviert, lowStockCount: knapp.length, openOrders: offene.length, shippedToday: 0,
+      previews: {
+        openOrders: offene.map((a) => ({ orderId: a.id, orderNumber: a.orderNumber, recipientCompany: a.recipient.company,
+          recipientName: a.recipient.fullName, createdAt: a.createdAt, itemCount: a.itemCount })),
+        lowStockProducts: knapp.map((p) => ({ productId: p.id, name: p.name, sku: p.sku, warehouseName: lg.warehouses[0].name,
+          available: p.stock.available, minStock: p.minStock, missing: p.minStock - p.stock.available })),
+      } });
   }
   if (pfad === "/api/kunde/warehouses") return methode === "GET" ? json({ warehouses: lg.warehouses, nextCursor: null }) : nichtVerfuegbar();
   if ((m = pfad.match(/^\/api\/kunde\/warehouses\/(\d+)(\/locations)?$/))) {

@@ -2,6 +2,10 @@ import React, { useState, useEffect, useCallback, useRef, Suspense } from "react
 import { useNavigate, useLocation } from "react-router-dom";
 import { apiFetch } from "../api/client";
 import { selectCredit } from "../utils/creditLimitView.mjs";
+import { fetchCarrierPortfolio } from "../api/carriersApi";
+import { getInventoryOverview } from "../api/inventoryApi";
+import { inventoryErrorText } from "../utils/inventoryView.mjs";
+import { INVENTORY_SNAPSHOT_TEXT } from "../utils/overviewModules.mjs";
 import { Overview } from "../components/dashboard/Overview";
 import { ShipmentsList } from "../components/dashboard/ShipmentsList";
 import { InvoicesList } from "../components/dashboard/InvoicesList";
@@ -24,6 +28,7 @@ import { useShippingFlow } from "../context/ShippingFlowContext";
 import { useCeBereich } from "../hooks/useCeBereich";
 import { KundenSuche } from "../components/layout/KundenSuche";
 import { sucheUebernehmen } from "../utils/kundenSuche.mjs";
+import { trackingQuickPick } from "../utils/trackingQuickPick.mjs";
 
 // Takt der reinen Monatsbeobachtung (siehe Effekt unten). Bewusst ein LOKALER
 // Vergleich ohne Netzwerkzugriff — 60 s sind billig und lassen den Wechsel
@@ -158,6 +163,12 @@ export default function DashboardPage() {
   const [invoiceSummary, setInvoiceSummary] = useState(null);
   // Paket F: der Buchungsrahmen des Kontos (GET /kunde/credit) — null ohne Antwort.
   const [credit, setCredit] = useState(null);
+  // G2 (2026-10-28): die aktuell angebotenen Versanddienstleister (GET /kunde/carriers) — null ohne Antwort; die
+  // Übersicht zeigt dann keine Carrierzeile, nie eine feste Liste.
+  const [carrierPortfolio, setCarrierPortfolio] = useState(null);
+  // G1/D7 (2026-10-28): Lager und Aufträge in der Übersicht — dieselbe Abfrage wie die Lagerübersicht, geladen,
+  // sobald die Übersicht offen ist (siehe ladeLagerStand).
+  const [lagerStand, setLagerStand] = useState({ status: "laden", stats: null, fehler: "" });
   const [loading, setLoading] = useState(true);
   // „Die Sendungen wurden mindestens EINMAL erfolgreich geladen." Erst danach
   // dürfen die KPI-Karten Zahlen zeigen — eine 0 wäre sonst nicht von einem
@@ -236,8 +247,11 @@ export default function DashboardPage() {
       // Paket F: der Buchungsrahmen. Still bei jedem Fehler (altes Backend ohne die Route, Netz):
       // die Übersicht zeigt dann einfach keinen Rahmen — kein Fehlerbanner, keine Vermutung.
       apiFetch(`/kunde/credit`, { auth: true }).then(r => { if (!r.ok) throw toErr(r); return r.json(); }),
-    ]).then(([shipRes, invRes, creditRes]) => {
+      // G2: die angebotenen Versanddienstleister — fetchCarrierPortfolio wirft nie, ohne Antwort null.
+      fetchCarrierPortfolio(),
+    ]).then(([shipRes, invRes, creditRes, carrierRes]) => {
       setCredit(creditRes.status === "fulfilled" ? selectCredit(creditRes.value) : null);
+      setCarrierPortfolio(carrierRes.status === "fulfilled" ? carrierRes.value : null);
       if (shipRes.status === "fulfilled") {
         if (seq === shipmentsReq.current) {
           setShipments(shipRes.value.shipments || []);
@@ -262,6 +276,35 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // ── Lager und Aufträge der Übersicht (G1/D7, 2026-10-28) ──────────────────
+  // Dieselbe Abfrage wie die Lagerübersicht (GET /api/kunde/inventory/overview), jedes Mal, wenn die Übersicht
+  // geöffnet wird — die Module der Übersicht laden selbst nichts. Eine verspätete Antwort nach dem Verlassen
+  // verwirft der AbortController; der Fehlertext kommt aus derselben Übersetzung wie im Lager.
+  const ladeLagerStand = useCallback((signal) => {
+    setLagerStand((s) => ({ ...s, status: "laden", fehler: "" }));
+    getInventoryOverview({ signal })
+      .then(async (r) => {
+        if (signal?.aborted) return;
+        if (!r.ok) {
+          const fehler = inventoryErrorText(await r.json().catch(() => null), INVENTORY_SNAPSHOT_TEXT.loadError);
+          if (!signal?.aborted) setLagerStand({ status: "fehler", stats: null, fehler });
+          return;
+        }
+        const stats = await r.json().catch(() => null);
+        if (!signal?.aborted) setLagerStand({ status: "bereit", stats, fehler: "" });
+      })
+      .catch(() => {
+        if (!signal?.aborted) setLagerStand({ status: "fehler", stats: null, fehler: INVENTORY_SNAPSHOT_TEXT.loadError });
+      });
+  }, []);
+
+  useEffect(() => {
+    if (page !== "overview") return undefined;
+    const ac = new AbortController();
+    ladeLagerStand(ac.signal);
+    return () => ac.abort();
+  }, [page, ladeLagerStand]);
 
   // ── Gezielter Sendungs-Refetch (nur /kunde/shipments) ──────────────────────
   // Quelle der vier KPI-Karten. Bewusst OHNE die Rechnungen: ein KPI-Refresh hat
@@ -720,6 +763,10 @@ export default function DashboardPage() {
             onAllInvoices={() => navigateTo("invoices")}
             onProfile={() => navigateTo("profile")}
             onNotificationNav={navigateFromNotification}
+            onNavigate={navigateTo}
+            carriers={carrierPortfolio}
+            lagerStand={lagerStand}
+            onLagerRetry={() => ladeLagerStand()}
             suche={kopfSuche}
           />
         )}
@@ -789,7 +836,7 @@ export default function DashboardPage() {
             öffentlichen, nicht authentifizierten Endpunkt auf. */}
         {page === "tracking" && (
           <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
-            <TrackingPage utility={utilityCluster} />
+            <TrackingPage utility={utilityCluster} schnellwahl={trackingQuickPick(shipments)} />
           </Suspense>
         )}
 

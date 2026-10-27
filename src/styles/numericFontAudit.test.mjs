@@ -130,7 +130,8 @@ test("5 — bekannte Ziffern-/Geschäftsnummernselektoren verwenden var(--ce-fon
     ["offers.css", ".offer-feature-value--subtle"],
     ["calculator.css", ".vol-weight-value"],
     ["calculator.css", ".booking-price-display"],
-    ["calculator.css", ".offsum-price-net"],
+    // .offsum-price-net entfiel mit G6/M9 (2026-10-28): der Preis steht auf der Buchungsseite nur noch im Beleg
+    // (.blsum-price-net/.blsum-price-gross, unten).
     ["calculator.css", ".booking-total-amount"],
     ["calculator.css", ".ins-card-price-val"],
     ["calculator.css", ".blsum-price-net"],

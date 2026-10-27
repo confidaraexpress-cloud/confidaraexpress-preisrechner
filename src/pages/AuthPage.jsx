@@ -5,12 +5,11 @@ import { LoginForm } from "../components/auth/LoginForm";
 import { RegisterForm } from "../components/auth/RegisterForm";
 import { ForgotPasswordForm } from "../components/auth/ForgotPasswordForm";
 import { ResetPasswordForm } from "../components/auth/ResetPasswordForm";
-import nachtkarte from "../assets/illustrations/nachtkarte-eu.svg";
 import { COMPANY_PROFILE } from "../config/companyProfile";
-import { TrustBar } from "../components/auth/TrustBar";
 import { Icon } from "../components/ui/Icon";
 import { BrandLogo } from "../components/ui/BrandLogo";
-import { NachtkartenLichter } from "../components/ui/NachtkartenLichter";
+import { AuthKarte } from "../components/auth/AuthKarte";
+import { AUTH_TEXT } from "../utils/authSeitenText.mjs";
 import { useAuth } from "../context/AuthContext";
 import { partnerReturnTarget, safeReturnTarget } from "../utils/loginReturnTarget.mjs";
 import { useCeBereich } from "../hooks/useCeBereich";
@@ -344,18 +343,27 @@ export default function AuthPage() {
 
   return (
     <div className="auth-page">
-      {/* Premium-Redesign (Konzept A, Betreiberentscheidung 2026-10-27): die Nachtkarte — die Städte der EU
-          als Lichter, eigene Zeichnung (assets/illustrations/nachtkarte-eu.svg) — ersetzt hier die Aurora. Rein
-          dekorativ. Die Partnerregistrierung behält die Aurora unverändert. */}
-      <div className="auth-karte" aria-hidden="true">
-        {/* Die Lichter gehen von Stuttgart aus an (Welle), danach leuchten Städte abwechselnd leicht auf
-            (Betreiberentscheidung 2026-10-27). Reine CSS-Animation, bei reduzierter Bewegung ruhig. */}
-        <img className="nk-welle" src={nachtkarte} alt="" width="536" height="497" decoding="async" />
-        <NachtkartenLichter />
-      </div>
-
       <div className="auth-shell">
+        {/* Die Bühne steht in JEDEM Schritt gleich (Betreiberentscheidung G1/Abschnitt 5, 2026-10-28): Marke, Satz,
+            die gerahmte Nachtkarte und der Ansprechpartner. Nur das Blatt rechts wechselt — Anmelden, Registrieren,
+            Passwort vergessen oder zurücksetzen. Das statische Seitengerüst (login.html, register.html) zeigt
+            dieselbe Bühne vor dem ersten Rendern; ohne Wechsel der Komposition springt nichts. */}
+        {/* Der einzige Markenanker der Seite; Reverse-Variante auf Navy, kein Claim, kein zweites Signet. Eine eigene
+            Kopfzeile über beiden Spalten: das Blatt steht bündig neben dem Satz. */}
+        <header className="auth-kopf">
+          <BrandLogo variant="lockup" tone="reverse" className="auth-brand" />
+        </header>
+        <div className="auth-hero">
+          {/* Wortlaut: Betreiberentscheidung G1 (2026-10-28) — dieselbe Botschaft wie der öffentliche Preisrechner.
+              Ersetzt „Europa verbinden. Versand vereinfachen.“ (P3, 2026-10-17). Keine Zusage, kein Superlativ;
+              Lager meint die Software für den eigenen Bestand des Kunden, kein Fulfillment. */}
+          <h1 className="auth-title">{AUTH_TEXT.titel}</h1>
+          <p className="auth-sub-2">{AUTH_TEXT.lead}</p>
+        </div>
 
+        <AuthKarte />
+
+        <div className="auth-card-bereich">
         {step === "forgot" && (
           <ForgotPasswordForm
             email={forgotEmail}
@@ -393,28 +401,7 @@ export default function AuthPage() {
 
         {step === "credentials" && (
           <>
-            <div className="auth-hero">
-              {/* Der einzige Markenanker der Seite. Bis hierher trug die
-                  Anmeldung überhaupt kein Markenelement — die erste und vor dem
-                  Login einzige Fläche, die ein Kunde sieht, war unmarkiert.
-                  Reverse-Variante, weil der Grund nahezu schwarz ist; kein
-                  Claim, kein zweites Signet, kein Wasserzeichen. Das Formular
-                  darunter bleibt unverändert. */}
-              <BrandLogo variant="lockup" tone="reverse" className="auth-brand auth-anim" />
-              {/* Wortlaut: Betreiberentscheidung Auftrag 1 (P3, 2026-10-17). Keine Geschwindigkeits-
-                  zusage, kein Superlativ — „Versand ab Deutschland in die Länder der EU“ entspricht
-                  dem Launch-Scope (Canonical). */}
-              <h1 className="auth-title auth-anim delay-1">
-                Europa verbinden.<br />
-                Versand vereinfachen.
-              </h1>
-              <div className="auth-sub-1 auth-anim delay-2">Vergleichen. Buchen. Persönlich betreut.</div>
-              <p className="auth-sub-2 auth-anim delay-2">
-                Versand ab Deutschland in die Länder der EU – mit persönlichem Service und direkten Ansprechpartnern.
-              </p>
-            </div>
-
-            <div className={`auth-card auth-anim delay-3 auth-card--${tab}`}>
+            <div className={`auth-card auth-card--${tab}`}>
               {/* Umschalter mit gleitender Marke (Konzept A): die Marke liegt unter dem gewählten Reiter. */}
               <div className={`auth-tabs auth-tabs--${tab}`}>
                 <span className="auth-tabs-marke" aria-hidden="true" />
@@ -503,24 +490,25 @@ export default function AuthPage() {
               </p>
             </div>
 
-            {/* Der persönliche Ansprechpartner, wie auf dem öffentlichen Preisrechner — alle Angaben aus
-                config/companyProfile.js. */}
-            <div className="auth-kontakt">
-              <span className="auth-kontakt-zeichen" aria-hidden="true">
-                {COMPANY_PROFILE.contactPerson.split(/\s+/).map((w) => w[0]).join("")}
-              </span>
-              <div className="auth-kontakt-text">
-                <p className="auth-kontakt-name">{COMPANY_PROFILE.contactPerson}, Ihr Ansprechpartner</p>
-                <p className="auth-kontakt-wege">
-                  <a href={`mailto:${COMPANY_PROFILE.email}`}>{COMPANY_PROFILE.email}</a>
-                  <a href={`tel:${COMPANY_PROFILE.phone}`}>{COMPANY_PROFILE.phone}</a>
-                </p>
-              </div>
-            </div>
-
-            <TrustBar />
           </>
         )}
+        </div>
+
+        {/* Der persönliche Ansprechpartner, wie auf dem öffentlichen Preisrechner — alle Angaben aus
+            config/companyProfile.js. */}
+        <div className="auth-kontakt">
+          <span className="auth-kontakt-zeichen" aria-hidden="true">
+            {COMPANY_PROFILE.contactPerson.split(/\s+/).map((w) => w[0]).join("")}
+          </span>
+          <div className="auth-kontakt-text">
+            <p className="auth-kontakt-name">{COMPANY_PROFILE.contactPerson}, Ihr persönlicher Ansprechpartner</p>
+            <p className="auth-kontakt-wege">
+              <a href={`mailto:${COMPANY_PROFILE.email}`}>{COMPANY_PROFILE.email}</a>
+              <a href={`tel:${COMPANY_PROFILE.phone}`}>{COMPANY_PROFILE.phone}</a>
+            </p>
+          </div>
+        </div>
+
 
         <nav className="auth-legal" aria-label="Rechtliche Informationen">
           <Link to="/impressum"   target="_blank" rel="noopener noreferrer">Impressum</Link>

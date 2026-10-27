@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLaunchScope } from "../../hooks/useLaunchScope";
-import { postalCodeExample, postalCodeInputMode, postalCodeMaxLength, isPostalCodeRequired } from "../../utils/postalCode.mjs";
+import { postalCodeInputMode, postalCodeMaxLength, isPostalCodeRequired } from "../../utils/postalCode.mjs";
 import {
   UI_ROLE_OPTIONS, ROLE_SENDER, ROLE_RECIPIENT, ROLE_BOTH,
   validateAddressForm, normalizeAddressForm, canSetDefaultSender, canSetDefaultRecipient,
@@ -13,7 +13,7 @@ import { useAddressValidation } from "../../hooks/useAddressValidation";
 import { applyAddressSuggestion, cityFromSuggestion, shippingLengthHint, streetFieldHint } from "../../utils/addressValidationView.mjs";
 // Paket A (2026-10-23): derselbe Hinweis unter dem Telefonfeld wie im Versandformular.
 import { phoneTransmissionHint } from "../../utils/phoneNumber.mjs";
-import { cityPlaceholder } from "../../utils/addressPlaceholders.mjs";
+import { cityPlaceholder, postalCodePlaceholder } from "../../utils/addressPlaceholders.mjs";
 
 const TITLES = { create: "Neue Adresse", edit: "Adresse bearbeiten", duplicate: "Adresse duplizieren" };
 
@@ -276,7 +276,7 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
                   label="PLZ"
                   value={form.postalCode}
                   onChange={(v) => upd("postalCode", v)}
-                  placeholder={postalCodeExample(form.country) || "PLZ"}
+                  placeholder={postalCodePlaceholder(form.country) || "PLZ"}
                   inputMode={postalCodeInputMode(form.country)}
                   maxLength={postalCodeMaxLength()}
                   autoComplete="postal-code"

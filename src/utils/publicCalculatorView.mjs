@@ -91,6 +91,19 @@ export function emptyPublicForm() {
   };
 }
 
+/* Platzhalter für Ort und PLZ (Audit B.9, 2026-10-28): PLZ und Stadt gehören zusammen — bisher stand „z. B. 26133“
+   (Oldenburg, das Beispiel der Adressregeln) neben „z. B. Stuttgart“ und „z. B. Berlin“. Für Deutschland ein echtes
+   Paar je Seite; für andere Länder das Beispiel der Adressregeln ohne erfundene Stadt. Reine Beschriftung. */
+const ORT_BEISPIELE_DE = Object.freeze({
+  from: Object.freeze({ plz: "70173", stadt: "Stuttgart" }),
+  to: Object.freeze({ plz: "10115", stadt: "Berlin" }),
+});
+
+export function ortBeispiel(land, seite, regelBeispiel = "") {
+  if (land === "DE") return ORT_BEISPIELE_DE[seite === "to" ? "to" : "from"];
+  return { plz: regelBeispiel || "", stadt: "" };
+}
+
 const DEZIMALFELDER = Object.freeze(["weight", "length", "width", "height"]);
 
 /** „2,5" → „2.5": dieselbe Zahl, wie sie der Kundenrechner prüft und sendet. Sonst unverändert. */

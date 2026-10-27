@@ -1,10 +1,9 @@
-// Browser-Smokes: der neue Text der Anmeldeseite (Auftrag 1, P3, 2026-10-17).
+// Browser-Smokes: die Botschaft der Anmeldeseite (Komplettabschluss G1, 2026-10-28; vorher Auftrag 1, P3).
 //
-// Überschrift „Europa verbinden. Versand vereinfachen.", Unterzeile „Vergleichen. Buchen.
-// Persönlich betreut." und die Beschreibung „Versand ab Deutschland in die Länder der EU – mit
-// persönlichem Service und direkten Ansprechpartnern." Geprüft werden Wortlaut, Umbrüche und
-// Lesbarkeit auf Smartphone und Desktop — und dass Anmeldung und Registrierung unverändert
-// erreichbar sind.
+// Überschrift „Versand- und Logistikmanagement für Unternehmen.“ — wortgleich mit dem öffentlichen Preisrechner
+// (utils/authSeitenText.mjs) — und darunter der Satz, was der Kundenbereich kann. Geprüft werden Wortlaut,
+// Umbrüche und Lesbarkeit auf Smartphone und Desktop, der namentliche Ansprechpartner, dass es keinen
+// Preisrechner-Knopf gibt (Audit D2) — und dass Anmeldung und Registrierung unverändert erreichbar sind.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -12,6 +11,7 @@ import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { AUTH_TEXT } from "../../src/utils/authSeitenText.mjs";
 
 const PORT = 5279, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -50,12 +50,15 @@ for (const [name, viewport, touch] of [["390 px", { width: 390, height: 844 }, t
     await page.goto(`${BASE}/login`, { waitUntil: "networkidle" });
     await page.waitForSelector(".auth-title", { timeout: 20000 });
 
-    assert.equal(norm(await page.locator(".auth-title").innerText()), "Europa verbinden. Versand vereinfachen.");
-    assert.equal(norm(await page.locator(".auth-sub-1").innerText()), "Vergleichen. Buchen. Persönlich betreut.");
-    assert.equal(norm(await page.locator(".auth-sub-2").innerText()),
-      "Versand ab Deutschland in die Länder der EU – mit persönlichem Service und direkten Ansprechpartnern.");
+    const ohneTrennung = (s) => norm(String(s).replace(/\u00ad/g, ""));
+    assert.equal(ohneTrennung(await page.locator(".auth-title").innerText()), ohneTrennung(AUTH_TEXT.titel));
+    assert.equal(norm(await page.locator(".auth-sub-2").innerText()), AUTH_TEXT.lead);
+    assert.equal(await page.locator(".auth-sub-1").count(), 0, "die frühere Unterzeile steht noch da");
     const seite = norm(await page.locator("body").innerText());
-    assert.doesNotMatch(seite, /Wir verbinden Welten|Sie erreichen mehr|Exzellenz|Schnell\./, "der alte Claim ist noch sichtbar");
+    assert.doesNotMatch(seite, /Europa verbinden|Vergleichen\. Buchen\.|Wir verbinden Welten|Sie erreichen mehr|Exzellenz|Schnell\.|in besten Händen/,
+      "ein alter Claim ist noch sichtbar");
+    assert.match(seite, /Miguel Vance, Ihr persönlicher Ansprechpartner/, "der Ansprechpartner fehlt");
+    assert.equal(await page.getByRole("link", { name: /Preisrechner/ }).count(), 0, "auf der Anmeldung gibt es keinen Preisrechner-Knopf");
 
     const mass = await page.evaluate(() => {
       const zeilen = (el) => {
@@ -75,10 +78,10 @@ for (const [name, viewport, touch] of [["390 px", { width: 390, height: 844 }, t
     });
     assert.ok(mass.ueberlauf <= 0, `${mass.ueberlauf} px waagrechter Überlauf`);
     assert.ok(mass.h1Innen && mass.beschInnen, "Text ragt aus dem Bild");
-    // Zwei Zeilen dank Umbruch nach „verbinden."; auf schmalen Geräten darf „vereinfachen."
-    // eine dritte Zeile bekommen — mehr nicht.
-    assert.ok(mass.h1Zeilen >= 2 && mass.h1Zeilen <= 3, `Überschrift in ${mass.h1Zeilen} Zeilen`);
-    assert.ok(mass.beschZeilen <= 4, `Beschreibung in ${mass.beschZeilen} Zeilen`);
+    // Der Satz steht auf dem Desktop in drei Zeilen; schmal trennt „Logistik-management“ an der vorgesehenen Stelle —
+    // höchstens vier Zeilen.
+    assert.ok(mass.h1Zeilen >= 2 && mass.h1Zeilen <= 4, `Überschrift in ${mass.h1Zeilen} Zeilen`);
+    assert.ok(mass.beschZeilen <= 6, `Beschreibung in ${mass.beschZeilen} Zeilen`);
 
     // Anmelden und Registrieren sind unverändert bedienbar.
     await page.getByRole("button", { name: "Registrieren" }).first().click();

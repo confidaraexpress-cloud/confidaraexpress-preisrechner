@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="de" data-ce-bereich="auth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anmelden | ConfidaraExpress</title>
+    <meta name="description" content="ConfidaraExpress – Versand- und Logistikmanagement für Unternehmen: Preise vergleichen, Sendungen buchen und verfolgen, Bestand und Aufträge führen." />
+    <link rel="icon" type="image/svg+xml" href="/favicon-v2.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-v1.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0A1636" />
+    <!-- Statisches Seitengerüst der Kunden-Anmeldung (Abschnitt 5, 2026-10-28): nginx liefert es für /login. Das erste
+         Bild ist das Endlayout — Navy-Bühne, Satz, gerahmte Nachtkarte und ein Blatt gleicher Gestalt wie das Formular.
+         Schrift und Kartenbild laden sofort; React ersetzt das Blatt beim ersten Rendern (main.jsx lädt die Seite
+         vorher), ohne weißen Ladebildschirm und ohne Sprung. Texte und Kontakt: utils/authSeitenText.mjs und
+         config/companyProfile.js (authSeitenGeruest.test.mjs gleicht ab). -->
+    <link rel="preload" href="/src/assets/fonts/instrumentsans-var.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/src/assets/illustrations/nachtkarte-eu.svg" as="image" type="image/svg+xml" />
+    <link rel="canonical" href="https://confidaraexpress.de/login" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ConfidaraExpress" />
+    <meta property="og:locale" content="de_DE" />
+    <meta property="og:url" content="https://confidaraexpress.de/login" />
+    <meta property="og:title" content="ConfidaraExpress | Kundenbereich" />
+    <meta property="og:description" content="Versand- und Logistikmanagement für Unternehmen." />
+  </head>
+  <body>
+    <div id="root"><div class="auth-page">
+      <div class="auth-shell">
+        <header class="auth-kopf">
+          <span class="ce-brand ce-brand--reverse ce-brand--lockup auth-brand"><img class="ce-brandmark-img" src="/src/assets/brand/lockup-reverse.svg" alt="ConfidaraExpress" draggable="false" /></span>
+        </header>
+        <div class="auth-hero">
+          <h1 class="auth-title">Versand- und Logistik&shy;management für Unternehmen.</h1>
+          <p class="auth-sub-2">Preise mehrerer Versanddienstleister vergleichen, Sendungen buchen und verfolgen, Bestand und Aufträge Ihres Lagers führen – in einem Kundenbereich.</p>
+        </div>
+        <figure class="auth-map">
+          <div class="auth-map-frame"><div class="auth-map-canvas"><img class="auth-map-img" src="/src/assets/illustrations/nachtkarte-eu.svg" alt="" width="536" height="497" decoding="async" /></div></div>
+          <figcaption class="auth-map-legend"><span class="auth-map-dot" aria-hidden="true"></span>Versand ab Deutschland in die Länder der EU</figcaption>
+        </figure>
+        <div class="auth-card-bereich" aria-hidden="true" inert>
+          <div class="auth-card auth-card--login auth-geruest">
+            <div class="auth-tabs auth-tabs--login">
+              <span class="auth-tabs-marke"></span>
+              <button type="button" class="auth-tab active" tabindex="-1"><span>Anmelden</span></button>
+              <button type="button" class="auth-tab" tabindex="-1"><span>Registrieren</span></button>
+            </div>
+            <div class="auth-card-kopf">
+              <h2 class="auth-card-head">Willkommen zurück</h2>
+              <p class="auth-card-lead">Melden Sie sich mit Ihrem Geschäftskonto an.</p>
+            </div>
+            <form class="auth-geruest-feld">
+              <div class="auth-field">
+                <div class="auth-field-row"><span class="auth-field-label">E-Mail-Adresse</span></div>
+                <div class="auth-input-wrap"><span class="auth-input-ico"></span><input class="auth-input" tabindex="-1" placeholder="firma@beispiel.de" /></div>
+              </div>
+              <div class="auth-field">
+                <div class="auth-field-row"><span class="auth-field-label">Passwort</span></div>
+                <div class="auth-input-wrap"><span class="auth-input-ico"></span><input class="auth-input" tabindex="-1" /></div>
+                <div class="auth-field-foot"><span class="auth-field-link">Passwort vergessen?</span></div>
+              </div>
+              <div class="auth-row"><div class="auth-check"><span class="auth-checkbox"></span><span>30 Tage angemeldet bleiben</span></div></div>
+              <span class="auth-cta"><span>Anmelden</span></span>
+            </form>
+            <p class="auth-card-wechsel">Noch kein Geschäftskonto? <span class="auth-card-wechsel-btn">Jetzt registrieren</span></p>
+          </div>
+        </div>
+        <div class="auth-kontakt">
+          <span class="auth-kontakt-zeichen" aria-hidden="true">MV</span>
+          <div class="auth-kontakt-text">
+            <p class="auth-kontakt-name">Miguel Vance, Ihr persönlicher Ansprechpartner</p>
+            <p class="auth-kontakt-wege"><a href="mailto:support@confidaraexpress.de">support@confidaraexpress.de</a><a href="tel:016092717124">016092717124</a></p>
+          </div>
+        </div>
+        <nav class="auth-legal" aria-label="Rechtliche Informationen">
+          <a href="/impressum" target="_blank" rel="noopener noreferrer">Impressum</a>
+          <a href="/datenschutz" target="_blank" rel="noopener noreferrer">Datenschutz</a>
+          <a href="/agb" target="_blank" rel="noopener noreferrer">AGB</a>
+          <a href="/widerruf" target="_blank" rel="noopener noreferrer">Widerruf</a>
+        </nav>
+      </div>
+    </div></div>
+    <noscript><p>Für den Kundenbereich wird JavaScript benötigt.</p></noscript>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

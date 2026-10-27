@@ -2,7 +2,8 @@ import React from "react";
 import { StatusBadge } from "../ui/StatusBadge";
 import { EmptyState, ErrorState } from "../ui/StateView";
 import { money, dateDE, isoDayDE } from "../../utils/formatters";
-import { resolveCarrierName } from "../../utils/carrierMap";
+import { resolveCarrier, resolveCarrierName } from "../../utils/carrierMap";
+import { shipmentRecipient } from "../../utils/shipmentRecipientView.mjs";
 import { getTracking, requestShipmentCancellation } from "../../api/client";
 import { TRACKING_NOT_FOUND } from "../../utils/trackingMessages";
 import { CancellationRequestDialog } from "./CancellationRequestDialog";
@@ -77,23 +78,52 @@ function ShipmentRowActions({ s, expanded, onTrack, onDocuments, onCancel }) {
       </div>
     );
   }
+  /* Feste Plätze (Audit B.4, 2026-10-28): Tracking, Dokumente und Stornierung stehen in jeder Zeile an derselben
+     Stelle — fehlt eine Aktion, bleibt ihr Platz frei, statt dass die folgenden nach links rutschen. */
   return (
-    <div className="ce-row-actions stn-actions">
+    <div className="ce-row-actions stn-actions stn-actions--plaetze">
       {s.id && (
-        <button type="button" className="btn btn-ghost btn-sm" aria-expanded={expanded === true} onClick={() => onTrack(s.id)}>Tracking</button>
+        <button type="button" className="btn btn-ghost btn-sm stn-act stn-act--tracking" aria-expanded={expanded === true} onClick={() => onTrack(s.id)}>Tracking</button>
       )}
       {/* EINE dokumentbezogene Aktion statt wachsender Einzelknöpfe: welche
           Dokumente es gibt, sagt der Server im Drawer, nicht diese Liste.
           Tracking und Stornierung bleiben eigenständig — sie sind keine Dokumente. */}
       {s.id && (
-        <button type="button" className="btn btn-ghost btn-sm" onClick={() => onDocuments(s)}>
+        <button type="button" className="btn btn-ghost btn-sm stn-act stn-act--dokumente" onClick={() => onDocuments(s)}>
           {DOCUMENTS_TEXT.action}
         </button>
       )}
       {canRequestCancellation(s) && (
-        <button type="button" className="btn btn-ghost btn-sm stn-request-btn" onClick={() => onCancel(s)}>Stornierung anfragen</button>
+        <button type="button" className="btn btn-ghost btn-sm stn-act stn-act--storno stn-request-btn" onClick={() => onCancel(s)}>Stornierung anfragen</button>
       )}
-      {hasCancellationRequest(s) && <CancellationStatusPill status={s.cancellation_status} />}
+      {hasCancellationRequest(s) && <span className="stn-act stn-act--storno"><CancellationStatusPill status={s.cancellation_status} /></span>}
+    </div>
+  );
+}
+
+/* Empfänger einer Zeile: wer und wohin — aus recipient_address (utils/shipmentRecipientView.mjs). */
+function EmpfaengerZelle({ s }) {
+  const e = shipmentRecipient(s);
+  if (!e) return <span className="shipment-empfaenger shipment-empfaenger--leer">—</span>;
+  return (
+    <div className="shipment-empfaenger">
+      {e.name && <span className="shipment-empfaenger-name">{e.name}</span>}
+      {e.wohin && <span className="shipment-empfaenger-ort">{e.wohin}</span>}
+    </div>
+  );
+}
+
+/* Versand einer Zeile: Carrier mit Logo, darunter Dienst und Gewicht. */
+function VersandZelle({ s }) {
+  const carrier = s.selected_carrier ? resolveCarrier(s.selected_carrier) : null;
+  const dienst = shipmentServiceNameOf(s);
+  return (
+    <div className="shipment-versand">
+      <span className="shipment-versand-carrier">
+        {carrier?.logo && <img className="shipment-versand-logo" src={carrier.logo} alt="" />}
+        <span>{carrier ? carrier.name : "Carrier offen"}</span>
+      </span>
+      <span className="shipment-versand-detail">{[dienst, gewichtText(s)].filter((t) => t && t !== "—").join(" · ") || "—"}</span>
     </div>
   );
 }
@@ -369,8 +399,10 @@ export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShi
                       (.ce-num, rechtsbündig, tabellarisch). */}
                   <tr>
                     <th scope="col">Auftragsbestätigung</th>
-                    <th scope="col" className="ce-num">Gewicht</th><th scope="col" className="ce-num">Preis</th>
+                    <th scope="col">Empfänger</th>
+                    <th scope="col">Versand</th>
                     <th scope="col">Status</th>
+                    <th scope="col" className="ce-num">Preis</th>
                     <th scope="col" className="ce-col-actions"><span className="sr-only">Aktionen</span></th>
                   </tr>
                 </thead>
@@ -379,7 +411,6 @@ export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShi
                     const nums = customerShipmentNumbers(s);
                     // TG-F6: mehrere Trackingnummern — nur dann ändert sich die Anzeige.
                     const alleNummern = multiTrackingReferencesOf(s);
-                    const carrier = s.selected_carrier ? resolveCarrierName(s.selected_carrier) : null;
                     const gesucht = fokusId !== null && String(s.id) === fokusId;
                     return (
                     <React.Fragment key={s.id}>
@@ -392,11 +423,9 @@ export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShi
                         <td className="shipment-id-cell">
                           <div className="shipment-id">
                             {nums.orderConfirmationNumber
-                              ? <span className="shipment-id-number mono" style={{ wordBreak: "break-all" }}>{nums.orderConfirmationNumber}</span>
+                              ? <span className="shipment-id-number mono ce-wert">{nums.orderConfirmationNumber}</span>
                               : <span className="shipment-id-fallback">{NO_ORDER_CONFIRMATION_TEXT}</span>}
-                            <span className="shipment-id-meta">
-                              {carrier && <>{carrier} · </>}{dateDE(s.created_at)}
-                            </span>
+                            <span className="shipment-id-meta">{dateDE(s.created_at)}</span>
                             {/* TG-F6: in der Zeile nur die Anzahl — alle Nummern stehen im
                                 Sendungsdetail darunter. Eine Einzelnummer bleibt, wie sie war. */}
                             {alleNummern ? (
@@ -404,8 +433,11 @@ export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShi
                                 {trackingReferencesSummary(alleNummern)}
                               </span>
                             ) : nums.trackingNumber && (
-                              <span className="shipment-id-sub mono" style={{ wordBreak: "break-all" }}>
-                                {NUMBER_LABELS.tracking}: {nums.trackingNumber}
+                              <span className="shipment-id-sub">
+                                {NUMBER_LABELS.tracking}:{" "}
+                                {/* Die Nummer als Ganzes: passt sie nicht mehr hinter die Beschriftung, beginnt sie in der
+                                    nächsten Zeile; nur eine Nummer länger als die Spalte bricht (Audit B.4, umbrechende IDs). */}
+                                <span className="shipment-id-nr mono" style={{ wordBreak: "break-all" }}>{nums.trackingNumber}</span>
                               </span>
                             )}
                             {nums.customerReference && (
@@ -413,16 +445,17 @@ export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShi
                             )}
                           </div>
                         </td>
-                        <td className="shipment-weight ce-num">{gewichtText(s)}</td>
-                        <td className="shipment-price ce-num">{money(s.price_final)}</td>
+                        <td className="shipment-empfaenger-cell"><EmpfaengerZelle s={s} /></td>
+                        <td className="shipment-versand-cell"><VersandZelle s={s} /></td>
                         <td className="shipment-status"><StatusBadge status={s.status} /></td>
+                        <td className="shipment-price ce-num">{money(s.price_final)}</td>
                         <td className="ce-col-actions">
                           <ShipmentRowActions s={s} expanded={trackingId === s.id} onTrack={loadTracking} onDocuments={setDocumentsShipment} onCancel={openCancel} />
                         </td>
                       </tr>
                       {trackingId === s.id && (
                         <tr className="shipment-detail-row">
-                          <td colSpan={5} className="shipment-detail-cell">
+                          <td colSpan={6} className="shipment-detail-cell">
                           <div className="ce-card-muted shipment-detail-card">
                             {/* Sendungsdetail: die drei kundensichtbaren Werte GETRENNT benannt.
                                 Die interne shipments.id (Sendungshandle für Track/Label/Storno)
@@ -546,8 +579,17 @@ export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShi
                     </div>
                   )}
                   <div className="ce-list-card-row">
+                    <span className="ce-list-card-key">Empfänger</span>
+                    <span className="ce-list-card-val"><EmpfaengerZelle s={s} /></span>
+                  </div>
+                  <div className="ce-list-card-row">
                     <span className="ce-list-card-key">Carrier</span>
-                    <span className="ce-list-card-val">{s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "—"}</span>
+                    <span className="ce-list-card-val shipment-versand-carrier">
+                      {s.selected_carrier && resolveCarrier(s.selected_carrier).logo && (
+                        <img className="shipment-versand-logo" src={resolveCarrier(s.selected_carrier).logo} alt="" />
+                      )}
+                      <span>{s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "—"}</span>
+                    </span>
                   </div>
                   {shipmentServiceNameOf(s) && (
                     <div className="ce-list-card-row">

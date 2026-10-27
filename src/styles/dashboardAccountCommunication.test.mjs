@@ -74,10 +74,13 @@ test("1 — die Übersicht zeigt bei vorhandenen Daten die operativen Module", (
 /* ══════════ 2 — leerer Neukundenzustand ═════════════════════════════════ */
 
 test("2 — ohne operative Daten führt Onboarding statt bedeutungsloser Nullkarten", () => {
-  // Ablauf, Vorteile und Trust erscheinen NUR ohne operative Daten …
+  // Ablauf und Funktionen erscheinen NUR ohne operative Daten … Die Zusicherungen ohne Beleg („schnell und
+  // zuverlässig“) sind seit dem Komplettabschluss (Audit B.10, 2026-10-28) entfallen; der zweite Block nennt die
+  // tatsächlichen Funktionen — Versand UND Logistik (G1).
   const code = stripJs(overview);
-  assert.equal((code.match(/\{!operational && \(/g) || []).length, 3,
-    "erwartet: Ablauf, Vorteile und Trust hängen am Onboarding-Zweig");
+  assert.equal((code.match(/\{!operational && \(/g) || []).length, 2,
+    "erwartet: Ablauf und Funktionen hängen am Onboarding-Zweig");
+  assert.ok(!/TRUST|ov-trust|schnell und zuverlässig/.test(code), "die Zusicherungen ohne Beleg sind zurück");
   // Keine leere Tabelle: das Sendungsmodul erscheint gar nicht erst.
   assert.match(overview, /\{operational && \(\s*<div className="ov-mod-grid">/);
 });

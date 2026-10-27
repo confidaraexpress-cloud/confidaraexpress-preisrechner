@@ -14,9 +14,13 @@ import { NavbarLayout } from "./components/layout/NavbarLayout";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { AdminLayout } from "./components/layout/AdminLayout";
 import { demoAusgangsziel } from "./demo/demoModus.mjs";
+import { AuthSeite, EmailBestaetigungSeite } from "./pages/authSeite";
+import { statischeAuthSeite } from "./utils/kundenAuthPfad.mjs";
 
-const AuthPage        = React.lazy(() => import("./pages/AuthPage"));
-const EmailChangeConfirmPage = React.lazy(() => import("./pages/EmailChangeConfirmPage"));
+// Die Kunden-Anmeldung: eigener Codeabschnitt wie jede Seite, aber vorladbar (pages/authSeite.js) — main.jsx lädt
+// sie vor dem ersten Rendern, damit sie das statische Seitengerüst ohne Ladefläche ersetzt (Abschnitt 5, 2026-10-28).
+const AuthPage        = AuthSeite;
+const EmailChangeConfirmPage = EmailBestaetigungSeite;
 const CalculatorPage  = React.lazy(() => import("./pages/CalculatorPage"));
 const BookingPage     = React.lazy(() => import("./pages/BookingPage"));
 const DashboardPage   = React.lazy(() => import("./pages/DashboardPage"));
@@ -113,7 +117,12 @@ function DemoNeuLaden() {
 
 export default function App() {
   const { authed, loadingUser, user } = useAuth();
-  if (loadingUser) return <LoadingScreen />;
+  const { pathname } = useLocation();
+  // Die Sitzungsprüfung eines gespeicherten Tokens hält die Anwendung an — auf jedem Pfad, wie bisher: liefe die
+  // Anmeldung daneben, überschriebe eine verspätete Antwort eine neue Anmeldung oder die E-Mail-Bestätigung. Ohne
+  // Token gibt es keine Prüfung und keinen Ladebildschirm (AuthContext, Audit B.1). Auf den Seiten mit statischem
+  // Gerüst steht er auf dessen dunklem Grund statt auf hellem.
+  if (loadingUser) return <LoadingScreen dunkel={statischeAuthSeite(pathname) !== null} />;
 
   return (
     // ShippingFlowProvider steht bewusst AUSSERHALB von <Routes> und INNERHALB

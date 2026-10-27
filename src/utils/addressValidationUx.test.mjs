@@ -26,8 +26,8 @@ import {
   addressStatusTone, showsAddressStatus, shippingLengthHint, SHIPPING_LINE_HINT_LIMITS,
   countryFirstHint, highlightSegments,
 } from "./addressValidationView.mjs";
-import { cityPlaceholder } from "./addressPlaceholders.mjs";
-import { postalCodeInputMode } from "./postalCode.mjs";
+import { cityPlaceholder, postalCodePlaceholder } from "./addressPlaceholders.mjs";
+import { postalCodeExample, postalCodeInputMode, validatePostalCode } from "./postalCode.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (p) => fs.readFileSync(path.join(here, p), "utf8");
@@ -431,7 +431,7 @@ test("32 Adressbuch, Profil und Partnerabrechnung sperren das Speichern nicht", 
 test("33 die bestehende PLZ-Formatprüfung bleibt unangetastet", () => {
   assert.ok(!/postalCodeRules|isPostalCodeRequired/.test(viewSrc), "die Formatregeln werden nicht direkt gelesen");
   assert.ok(newShipSrc.includes("isPostalCodeRequired"), "die Formatprüfung ist noch verdrahtet");
-  assert.ok(drawerSrc.includes("postalCodeExample"), "die Beispielanzeige bleibt erhalten");
+  assert.ok(drawerSrc.includes("postalCodePlaceholder("), "die Beispielanzeige bleibt erhalten (seit 2026-10-28 als Paar mit dem Ort)");
 });
 
 test("34 keine technischen Begriffe in Kundentexten", () => {
@@ -583,9 +583,21 @@ test("44 PLZ und Ort: Platzhalter und Eingabemodus folgen dem Land", () => {
   assert.equal(postalCodeInputMode("DE"), "numeric");
   assert.equal(postalCodeInputMode("NL"), "text");
   assert.ok(!/inputMode="numeric"/.test(registerSrc), "die Registrierung erzwingt keine Zifferntastatur mehr");
-  for (const src of [registerSrc, profileSrc, partnerSrc, orderSrc]) {
-    assert.ok(/inputMode=\{postalCodeInputMode\(/.test(src) && /placeholder=\{postalCodeExample\(/.test(src));
+  // Komplettabschluss (Audit B.9, 2026-10-28): im Kundenbereich gehört die Beispiel-PLZ zum Beispielort daneben —
+  // „10115“ neben „Berlin“, nicht mehr „26133“ (Oldenburg). Jede Beispiel-PLZ besteht die Formatprüfung ihres
+  // Landes. Das Partnerportal bleibt unverändert beim Beispiel der Formatregeln.
+  assert.equal(postalCodePlaceholder("DE"), "10115");
+  assert.equal(postalCodePlaceholder("fr"), "75001");
+  assert.equal(postalCodePlaceholder("US"), postalCodeExample("US"), "außerhalb des Launch-Scope das Beispiel der Formatregeln");
+  for (const land of ["AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR", "GR", "HR", "HU", "IE", "IT",
+    "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SI", "SK"]) {
+    assert.ok(cityPlaceholder(land), `${land}: kein Beispielort`);
+    assert.equal(validatePostalCode(land, postalCodePlaceholder(land)).valid, true, `${land}: Beispiel-PLZ im falschen Format`);
   }
+  for (const src of [registerSrc, profileSrc, orderSrc]) {
+    assert.ok(/inputMode=\{postalCodeInputMode\(/.test(src) && /placeholder=\{postalCodePlaceholder\(/.test(src));
+  }
+  assert.ok(/inputMode=\{postalCodeInputMode\(/.test(partnerSrc) && /placeholder=\{postalCodeExample\(/.test(partnerSrc));
   assert.ok(!/placeholder="(Stuttgart|Zürich|Berlin)"/.test(newShipSrc + drawerSrc), "kein fester Beispielort mehr");
   // Die Zeile „Beispiel: …“ wiederholte nur den Platzhalter.
   assert.ok(!/Beispiel: \{postalCodeExample/.test(drawerSrc));

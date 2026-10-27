@@ -8,10 +8,11 @@ import {
 
 // ── Tarifkarte des öffentlichen Preisrechners ────────────────────────────────
 // Kopf: Carrier, Service und die Übergabeart als Kennzeichnung. Darunter in zwei
-// Spalten Abholtag bzw. Abgabe und Laufzeit „laut Versanddienstleister", dann der
-// Preis — netto groß, darunter klein „zzgl. MwSt." (Betreiberentscheidung
-// 2026-10-16: öffentlich nur der Nettopreis), bei nicht exaktem Preis mit „ab" und
-// Erklärung —, die Hinweise und die Aktion. „Angebot auswählen" nur, wenn der Server
+// Spalten Abholtag bzw. Abgabe und Laufzeit „laut Versanddienstleister", dann die
+// Hinweise und der Abschluss: der Preis — netto groß, darunter klein „zzgl. MwSt."
+// (Betreiberentscheidung 2026-10-16: öffentlich nur der Nettopreis) — mit der Aktion
+// in einer Zeile (Komplettabschluss 2026-10-28: kompakter Knopf statt Vollbreite),
+// bei nicht exaktem Preis darunter „ab" mit Erklärung. „Angebot auswählen" nur, wenn der Server
 // das Angebot mit vollständigen Sendungsangaben als buchbar kennzeichnet; sie führt
 // über die Übernahmeseite der Hauptdomain direkt in die Registrierung (angemeldete
 // Kundinnen und Kunden direkt in „Neue Sendung"). Sonst bleibt die Karte sichtbar wie
@@ -69,33 +70,36 @@ export function PublicOfferCard({ offer, index }) {
         </div>
       </dl>
 
-      <div className="pc-offer-price">
-        {preis.onRequest ? (
-          <p className="pc-price-main">{PRICE_TEXT.onRequest}</p>
-        ) : (
-          <>
-            <p className="pc-price-main"><span className="pc-price-amount">{preis.net}</span></p>
-            <p className="pc-price-vat">{PRICE_TEXT.vatNote}</p>
-            {preis.note && <p className="pc-price-note">{preis.note}</p>}
-          </>
-        )}
-      </div>
-
       {hinweise.length > 0 && (
         <ul className="pc-offer-hints">
           {hinweise.map((h) => <li key={h}>{h}</li>)}
         </ul>
       )}
 
-      <div className="pc-offer-action">
-        {weiter ? (
-          <button type="button" className="pc-button pc-button--primary pc-offer-continue" onClick={auswaehlen}
-            aria-describedby={titelId}>
-            Angebot auswählen
-          </button>
-        ) : (
-          <p className="pc-offer-unavailable">{gesperrt}</p>
-        )}
+      <div className="pc-offer-abschluss">
+        <div className="pc-offer-zeile">
+          <div className="pc-offer-price">
+            {preis.onRequest ? (
+              <p className="pc-price-main">{PRICE_TEXT.onRequest}</p>
+            ) : (
+              <>
+                <p className="pc-price-main"><span className="pc-price-amount">{preis.net}</span></p>
+                <p className="pc-price-vat">{PRICE_TEXT.vatNote}</p>
+              </>
+            )}
+          </div>
+          <div className="pc-offer-action">
+            {weiter ? (
+              <button type="button" className="pc-button pc-button--offer pc-offer-continue" onClick={auswaehlen}
+                aria-describedby={titelId}>
+                Angebot auswählen
+              </button>
+            ) : (
+              <p className="pc-offer-unavailable">{gesperrt}</p>
+            )}
+          </div>
+        </div>
+        {!preis.onRequest && preis.note && <p className="pc-price-note">{preis.note}</p>}
       </div>
     </article>
   );

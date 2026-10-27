@@ -117,16 +117,16 @@ test("3 — alle drei Gruppen teilen sich EIN Klappsystem und sagen ihren Zustan
   assert.match(dashboardCss, /\.pp-nav-group-items \{[^}]*visibility:\s*hidden/,
     "eingeklappte Einträge sind nicht aus dem Fokusfluss genommen");
 
-  // Standard: alle Gruppen ZU — auch die des aktuellen Bereichs. Das kehrt die
-  // erste Fassung um: der geschlossene Zustand ist der Normalfall, nichts
-  // klappt von selbst auf.
+  // Standard seit G5 (Betreiberentscheidung 2026-10-28): offen ist die Gruppe der aktuellen Seite — abgeleitet
+  // aus der Seite, nicht gespeichert; auf Seiten der ersten Ebene der Sitzungswert dieser Seitenladung (nach
+  // einem Reload null). Kein Effekt setzt den Klappzustand.
   assert.match(code, /^let sitzungsOffeneGruppe = null;$/m, "der Sitzungswert startet nicht bei null");
-  assert.ok(/useState\(sitzungsOffeneGruppe\)/.test(code), "der Startwert kommt nicht aus dem Sitzungswert");
+  assert.ok(/useState\(\(\) => seitenGruppe \?\? sitzungsOffeneGruppe\)/.test(code), "der Startwert folgt nicht Seite und Sitzungswert");
   assert.ok(!/useEffect/.test(code), "kein Effekt darf den Klappzustand setzen");
-  // Und die Route erzeugt auch keine Hervorhebung mehr: hervorgehoben ist
-  // ausschließlich die Gruppe, die der Nutzer selbst geöffnet hat.
-  assert.ok(!/activeGroupId|pp-nav-group--active/.test(code),
-    "aus dem page-Wert darf keine Gruppenmarkierung mehr abgeleitet werden");
+  // Die frühere routenabhängige Gruppenklasse (--active, activeGroupId) bleibt weg; die Seitenmarke seit G5 heißt
+  // --aktiv und ist vom Klappzustand getrennt (sidebarNavigation.test.mjs, 8).
+  assert.ok(!/activeGroupId|pp-nav-group--active\b/.test(code),
+    "die frühere routenabhängige Gruppenklasse ist zurück");
 
   // Kein persistierter Zustand: reiner UI-State dieser Komponente.
   assert.ok(!/localStorage|sessionStorage/.test(code), "der Klappzustand darf nicht persistiert werden");

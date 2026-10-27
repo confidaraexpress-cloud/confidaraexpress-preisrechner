@@ -2,7 +2,7 @@
 // der Genauigkeit, die das Angebot belegt. Echter Dev-Server, echter Browser, gemocktes Backend.
 //
 //   A  JUMiNGO verstellbar: Regler, Mindestdauer 120 Minuten, Tastatur (15-Minuten-Schritte), Speichern mit
-//      Angebotsbezug, dieselbe Zeit in Abschnitt, Angebotsauswahl und Live-Leiste           Pflicht 1/3/13/14
+//      Angebotsbezug, dieselbe Zeit in Abschnitt und Beleg (Live-Leiste; G6/M9)              Pflicht 1/3/13/14
 //   B  JUMiNGO mit längerer Mindestdauer des Anbieters (180 Minuten): sie gilt                Pflicht 3
 //   C  JUMiNGO ohne Wahl: fester Zeitraum, kein Regler, kein Entwurfsaufruf                   Pflicht 2
 //   D  Entwurf wiederherstellen: gespeicherter Wunsch DIESES Angebots erscheint, auch nach Neuladen  Pflicht 4
@@ -264,8 +264,8 @@ test("A — JUMiNGO verstellbar: Regler mit 120 Minuten, Tastatur, Speichern fü
   assert.deepEqual([post.offerId, post.pickupTimeFrom, post.pickupTimeUntil, String(post.ceShipmentId)],
     [J_A.offerId, "10:00", "12:00", String(CE_ID)]);
   await page.waitForSelector(".pw-saved", { timeout: 5000 });
-  // Dieselbe Zeit in der Angebotsauswahl und der Live-Leiste.
-  await warteBis(async () => (await inhalt(page.locator(".offsum-facts"))).includes("10:00–12:00 Uhr"));
+  // Dieselbe Zeit im Beleg (Live-Leiste) — das ausgewählte Angebot wiederholt sie seit G6/M9 (2026-10-28) nicht.
+  await warteBis(async () => (await inhalt(page.locator(".blsum-handover"))).includes("10:00–12:00 Uhr"));
   assert.match(await inhalt(page.locator(".blsum-handover")), /10:00–12:00 Uhr/);
   assert.deepEqual(fehler, []);
   await context.close();
@@ -364,7 +364,6 @@ test("F — GLS 110 und DPD 137: fester Zeitraum 09:00–17:00 auf Karte, Abschn
     assert.equal(await inhalt(tagZeile.locator(".summary-detail-val")), deDatum(ABHOLTAG));
     assert.equal(await inhalt(abschnitt(page).locator(".pw-fixed-val")), "09:00–17:00 Uhr");
     assert.equal(await abschnitt(page).locator(".pw-slider").count(), 0);
-    assert.match(await inhalt(page.locator(".offsum-facts")), /09:00–17:00 Uhr/);
     assert.match(await inhalt(page.locator(".blsum-handover")), /09:00–17:00 Uhr/);
     await kurz(500);
     assert.equal(protokoll.fenster.length, 0, `${tarif.publicServiceName}: JUMiNGO-Entwurf angefragt`);
@@ -387,7 +386,7 @@ test("G — Transglobal-Direktbuchung: „Sendung bereit ab 09:00 Uhr“, kein E
   assert.match(await inhalt(abschnitt(page).locator(".pw-note")), /Ein festes Abholzeitfenster nennt der Versanddienstleister/);
   assert.ok(!/\d{2}:\d{2}–\d{2}:\d{2}/.test(await inhalt(abschnitt(page))), "ein Ende wurde erfunden");
   assert.equal(await abschnitt(page).locator(".pw-slider").count(), 0);
-  assert.match(await inhalt(page.locator(".offsum-facts")), /bereit ab 09:00 Uhr/);
+  assert.match(await inhalt(page.locator(".blsum-handover")), /bereit ab 09:00 Uhr/);
   assert.equal(protokoll.fenster.length, 0);
   assert.deepEqual(fehler, []);
   await context.close();
@@ -453,7 +452,7 @@ test("K — Tarif- und Navigationswechsel: kein übernommenes Fenster, kein Entw
   await waehle(page, TG110);
   assert.equal(await profilVon(page), "window_fixed");
   assert.equal(await inhalt(abschnitt(page).locator(".pw-fixed-val")), "09:00–17:00 Uhr");
-  assert.ok(!(await inhalt(page.locator(".offsum-facts"))).includes("11:00"), "das Fenster des JUMiNGO-Tarifs wanderte mit");
+  assert.ok(!(await inhalt(page.locator(".blsum-handover"))).includes("11:00"), "das Fenster des JUMiNGO-Tarifs wanderte mit");
   await kurz(500);
   assert.equal(protokoll.fenster.length, vorher, "ein Transglobal-Angebot fragte den JUMiNGO-Entwurf an");
 

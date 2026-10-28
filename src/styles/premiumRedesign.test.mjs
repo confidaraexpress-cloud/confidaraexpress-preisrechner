@@ -365,3 +365,22 @@ test("14 — Auswahl: jede Gruppe trägt ihre Variante, die Bedienung bleibt nat
   assert.ok(zeigeBloecke.some((b) => /ce-wahl/.test(b.inhalt)) && zeigeBloecke.some((b) => /ce-segment-option/.test(b.inhalt)),
     "das Zeigen der Auswahl fehlt in (hover: hover)");
 });
+
+test("15 — Überlagerte Auswahl: unter dem unsichtbaren Radio steht kein weiteres Bedienelement", () => {
+  // Das Radio liegt unsichtbar über der ganzen Option (inset: 0, Abschnitte 21 und 22). Ein Link oder Knopf darin wäre
+  // nicht mehr erreichbar — ein Klick wählte die Option (Härtung aus dem Security-Review 2026-10-28). Absicherungs- und
+  // Adressartkarten haben keine Überlagerung (gezeichneter Punkt) und behalten ihre Details-Knöpfe.
+  const dateien = ["components/dashboard/BillingModeCard.jsx", "components/dashboard/DeliveryNoteCard.jsx",
+    "components/booking/CustomsInvoiceModeSection.jsx", "components/booking/InsuranceModule.jsx",
+    "components/booking/AdditionalOptionsModule.jsx", "components/addressbook/AddressFormDrawer.jsx"];
+  let geprueft = 0;
+  for (const datei of dateien) {
+    const quelle = lies(path.join(SRC, datei));
+    for (const m of quelle.matchAll(/<label\b[^>]*className=[^>]*(?:(?:dn|ci)-mode-option ce-wahl|ce-segment-option)[^>]*>([\s\S]*?)<\/label>/g)) {
+      geprueft++;
+      assert.match(m[1], /type="radio"/, `${datei}: überlagerte Option ohne natives Radio`);
+      assert.doesNotMatch(m[1], /<(a|button|Link)\b/, `${datei}: Bedienelement unter dem unsichtbaren Radio`);
+    }
+  }
+  assert.ok(geprueft >= 8, `nur ${geprueft} überlagerte Optionen gefunden — Anker verschoben?`);
+});

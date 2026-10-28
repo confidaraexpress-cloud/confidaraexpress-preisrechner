@@ -1029,6 +1029,14 @@
 }
 :root[data-ce-bereich="kunde"] :is(.abk-actions-trigger, .inv-actions-trigger):hover:not(:disabled),
 :root[data-ce-bereich="kunde"] :is(.abk-actions-trigger, .inv-actions-trigger)[aria-expanded="true"] { background: var(--ce-pr-inset); border-color: var(--ce-color-text-muted); }
+/* Grober Zeiger, Tablet und Telefon: die Menütaste als volles Bedienziel (44 px wie in den Entwurfskarten). */
+@media (pointer: coarse), (max-width: 860px) {
+  :root[data-ce-bereich="kunde"] :is(.abk-actions-trigger, .inv-actions-trigger) {
+    width: var(--ce-size-touch-target);
+    height: var(--ce-size-touch-target);
+    min-width: var(--ce-size-touch-target);
+  }
+}
 
 /* ═══════════ 17 · SENDUNGSVERFOLGUNG IM KUNDENBEREICH ═════════════════════
    Die Seite bringt ihren eigenen Kopf mit (dieselbe Komponente wie die öffentliche Verfolgung, die den Bereich

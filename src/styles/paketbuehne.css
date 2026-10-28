@@ -18,7 +18,8 @@
   container: ce-paket / inline-size;
   position: relative;
   display: grid;
-  grid-template-columns: minmax(104px, 38%) minmax(0, 1fr);
+  /* Die Unterzeile ist nie schmaler als ihr längster Wert („30 × 20 × 10 cm“ brach bei 320 px mitten im Wert). */
+  grid-template-columns: minmax(104px, 38%) minmax(min-content, 1fr);
   align-items: center;
   gap: var(--ce-space-2) var(--ce-space-4);
   margin: 0;

@@ -113,5 +113,6 @@ test("7 — CopyableNumber meldet Erfolg erst nach dem Kopieren und markiert bei
   // Barrierefreiheit unverändert (businessNumbers.test.mjs, Test 16).
   assert.match(src, /role="status"/);
   assert.match(src, /aria-live="polite"/);
-  assert.match(src, /wordBreak: "break-all"/);
+  // Die Nummer bricht nie mitten im Wert; reicht der Platz nicht, rückt die Aktion um (Responsive-Prüfung 2026-10-28).
+  assert.match(src, /whiteSpace: "nowrap"/);
 });

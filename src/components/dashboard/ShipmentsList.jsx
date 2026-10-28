@@ -1,5 +1,6 @@
 import React from "react";
 import { StatusBadge } from "../ui/StatusBadge";
+import { Werte } from "../ui/Werte";
 import { EmptyState, ErrorState } from "../ui/StateView";
 import { money, dateDE, isoDayDE } from "../../utils/formatters";
 import { resolveCarrier, resolveCarrierName } from "../../utils/carrierMap";
@@ -436,12 +437,12 @@ export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShi
                               <span className="shipment-id-sub">
                                 {NUMBER_LABELS.tracking}:{" "}
                                 {/* Die Nummer als Ganzes: passt sie nicht mehr hinter die Beschriftung, beginnt sie in der
-                                    nächsten Zeile; nur eine Nummer länger als die Spalte bricht (Audit B.4, umbrechende IDs). */}
-                                <span className="shipment-id-nr mono" style={{ wordBreak: "break-all" }}>{nums.trackingNumber}</span>
+                                    nächsten Zeile. Sie bricht nie — die Tabelle erscheint erst, wenn sie Platz hat. */}
+                                <span className="shipment-id-nr mono ce-wert">{nums.trackingNumber}</span>
                               </span>
                             )}
                             {nums.customerReference && (
-                              <span className="shipment-id-sub mono">Ref: {nums.customerReference}</span>
+                              <span className="shipment-id-sub mono">Ref: <Werte>{nums.customerReference}</Werte></span>
                             )}
                           </div>
                         </td>
@@ -489,7 +490,7 @@ export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShi
                               {nums.customerReference && (
                                 <div className="shipment-detail-item">
                                   <dt className="shipment-detail-label">{NUMBER_LABELS.customerReference}</dt>
-                                  <dd className="shipment-detail-value mono">{nums.customerReference}</dd>
+                                  <dd className="shipment-detail-value mono"><Werte>{nums.customerReference}</Werte></dd>
                                 </div>
                               )}
                               <div className="shipment-detail-item">
@@ -532,7 +533,7 @@ export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShi
             </div>
           </div>
 
-          {/* Kartenansicht (bis 1100 px statt einer quer gescrollten Tabelle) —
+          {/* Kartenansicht (wenn die Tabelle nicht in den Inhaltsrahmen passt, statt sie quer zu scrollen) —
               dasselbe Muster wie Rechnungen, Entwürfe, Adressbuch und die
               Adminlisten. Gleiche Daten, gleiche Aktionen, gleiche Bedingungen:
               Identität und Status zuerst, dann die beschrifteten Werte, dann die
@@ -552,7 +553,7 @@ export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShi
                   <div className="shipment-id shipment-card-ident">
                     <div className="ce-list-card-head">
                       {nums.orderConfirmationNumber
-                        ? <span className="shipment-id-number mono" style={{ wordBreak: "break-all" }}>{nums.orderConfirmationNumber}</span>
+                        ? <span className="shipment-id-number mono ce-wert">{nums.orderConfirmationNumber}</span>
                         : <span className="shipment-id-fallback">{NO_ORDER_CONFIRMATION_TEXT}</span>}
                       <span className="shipment-status"><StatusBadge status={s.status} /></span>
                     </div>
@@ -561,8 +562,8 @@ export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShi
                         {trackingReferencesSummary(alleNummern)}
                       </span>
                     ) : nums.trackingNumber && (
-                      <span className="shipment-id-sub mono" style={{ wordBreak: "break-all" }}>
-                        {NUMBER_LABELS.tracking}: {nums.trackingNumber}
+                      <span className="shipment-id-sub mono">
+                        {NUMBER_LABELS.tracking}: <span className="ce-wert">{nums.trackingNumber}</span>
                       </span>
                     )}
                   </div>

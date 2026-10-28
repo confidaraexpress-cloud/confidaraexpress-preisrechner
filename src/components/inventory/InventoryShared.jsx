@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Werte } from "../ui/Werte";
 import { useDialog } from "../../hooks/useDialog";
 import { formatUnits, isLowStock, stockLevelView } from "../../utils/inventoryView.mjs";
 import { getProducts } from "../../api/inventoryApi";
@@ -51,9 +52,9 @@ export function InventoryPreviewList({ rows, emptyText }) {
       {rows.map((r) => (
         <li key={r.id} className="inv-preview-item">
           <div className="inv-preview-main">
-            <span className="inv-preview-primary">{r.primary}</span>
-            {r.secondary && <span className="inv-preview-secondary">{r.secondary}</span>}
-            {r.meta && <span className="inv-preview-meta">{r.meta}</span>}
+            <span className="inv-preview-primary"><Werte>{r.primary}</Werte></span>
+            {r.secondary && <span className="inv-preview-secondary"><Werte>{r.secondary}</Werte></span>}
+            {r.meta && <span className="inv-preview-meta"><Werte>{r.meta}</Werte></span>}
           </div>
           <span className="inv-preview-value ce-num">{r.value}</span>
         </li>
@@ -349,7 +350,7 @@ export function ProductPicker({ products, loading, value, onChange, onSearch, di
               onClick={() => onChange(p)}
               disabled={disabled}
             >
-              <span className="inv-cell-sku inv-picker-sku">{p.sku}</span>
+              <span className="inv-cell-sku inv-picker-sku"><Werte>{p.sku}</Werte></span>
               <span className="inv-picker-name">{p.name}</span>
               {bereits
                 ? <span className="inv-picker-added">bereits im Auftrag</span>
@@ -433,7 +434,7 @@ export function ProductFilterField({ id, label, onSelect, disabled, placeholder 
           {!loading && items.map((p) => (
             <button key={p.id} type="button" role="option" aria-selected="false"
                     className="inv-picker-item" onClick={() => waehle(p)}>
-              <span className="inv-cell-sku inv-picker-sku">{p.sku}</span>
+              <span className="inv-cell-sku inv-picker-sku"><Werte>{p.sku}</Werte></span>
               <span className="inv-picker-name">{p.name}</span>
             </button>
           ))}

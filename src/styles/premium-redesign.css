@@ -131,7 +131,9 @@
   font-weight: 600;
   letter-spacing: 0.02em;
 }
-[data-ce-bereich="kunde"] .pp-ansprech-text { display: grid; min-width: 0; }
+/* Bei großer Schrift ist die Spalte auf 32vw gedeckelt: Passt der Text nicht neben das Zeichen, steht er darunter. */
+[data-ce-bereich="kunde"] .pp-ansprech { flex-wrap: wrap; }
+[data-ce-bereich="kunde"] .pp-ansprech-text { display: grid; flex: 1 1 0; min-width: auto; }
 [data-ce-bereich="kunde"] .pp-ansprech-name {
   margin: 0;
   color: var(--ce-sidebar-text-strong);
@@ -445,6 +447,19 @@
 @media (max-width: 560px) {
   [data-ce-bereich="kunde"] .calc-filter-bar { grid-template-columns: minmax(0, 1fr); }
 }
+/* Große Browserschrift: Eine Kachel braucht rund 10rem (Beschriftung „Dienstleistungen“, Innenabstand, Klappmarke). Die
+   fünf Spalten ab 1420 px nur bei mindestens 53rem Inhaltsbreite, sonst drei; unter 31.5rem eine — bei 16 px
+   Grundschrift greifen diese Grenzen nirgends anders als die Fensterstufen (vorher brachen Wörter bei 24 px mitten im
+   Wort). */
+@media (min-width: 1420px) {
+  @container ce-seite (width < 53rem) {
+    [data-ce-bereich="kunde"] .calc-page-wrap:not(.calc-page-wrap--calculator) .calc-filter-bar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+}
+@container ce-seite (width < 31.5rem) {
+  [data-ce-bereich="kunde"] .calc-filter-bar { grid-template-columns: minmax(0, 1fr); }
+  [data-ce-bereich="kunde"] .calc-page-wrap:not(.calc-page-wrap--calculator) .calc-filter-bar { grid-template-columns: minmax(0, 1fr); }
+}
 
 /* ── Angebotsliste: die Werkzeugleiste liegt auf Weiß, getrennt durch die Haarlinie ── */
 [data-ce-bereich="kunde"] .offers-toolbar {
@@ -604,8 +619,12 @@
 [data-ce-bereich="kunde"] .booking-wrap .steps-bar .step-label { margin-top: 6px; font-size: 0.8125rem; font-weight: 600; }
 [data-ce-bereich="kunde"] .booking-wrap .steps-bar .step-line { height: 1.5px; }
 
-/* Beleg neben dem Blatt ab 1440 px: dieselbe Live-Zusammenfassung, gestapelt, mit dem Markenstreifen oben. */
+/* Beleg neben dem Blatt ab 1440 px: dieselbe Live-Zusammenfassung, gestapelt, mit dem Markenstreifen oben — nur,
+   wenn der Inhaltsbereich das Blatt, den Abstand und den Beleg trägt (800 + 32 + 296 + 2 × 32 = 1192 px, Container
+   ce-buchung). Bei 16 px Grundschrift ist das ab 1440 px immer so; bei großer Schrift wird die Navigation breiter, und
+   der Beleg lief rechts aus dem Bild — dann steht er wie unter 1440 px über dem Blatt. */
 @media (min-width: 1440px) and (max-width: 1599px) {
+  @container ce-buchung (width >= 1192px) {
   [data-ce-bereich="kunde"] .booking-wrap:has(> .booking-side) {
     position: relative;
     max-width: calc(var(--ce-size-booking) + var(--ce-space-7) + var(--ce-pr-booking-seite) + 2 * var(--shell-gutter, var(--ce-page-gutter)));
@@ -625,11 +644,13 @@
   [data-ce-bereich="kunde"] .booking-side .blsum-price { align-items: flex-start; text-align: left; }
   [data-ce-bereich="kunde"] .booking-side .blsum-price-box { align-items: flex-start; }
   [data-ce-bereich="kunde"] .booking-side :is(.blsum-ins-note, .blsum-vat-note) { text-align: left; }
+  }
   [data-ce-bereich="kunde"] .main-content:has(.booking-side) .ce-page-header--booking .ce-page-header-main {
     max-width: calc(var(--ce-size-booking) + var(--ce-space-7) + var(--ce-pr-booking-seite));
   }
 }
 @media (min-width: 1440px) {
+  @container ce-buchung (width >= 1192px) {
   [data-ce-bereich="kunde"] .booking-side .booking-livesum {
     position: relative;
     overflow: hidden;
@@ -643,6 +664,7 @@
     inset: 0 0 auto;
     height: 3px;
     background: var(--ce-pr-stripe);
+  }
   }
 }
 @media (max-width: 640px) {
@@ -920,7 +942,8 @@
   align-items: start;
   column-gap: clamp(40px, 6vw, 88px);
   width: 100%;
-  max-width: 1240px;
+  /* 1240 px bei 16 px Grundschrift; mit großer Schrift wächst der Rahmen mit, sonst ragte der Satz aus seiner Spalte. */
+  max-width: 77.5rem;
   min-height: 100dvh;
   margin: 0 auto;
   padding: 40px 40px 28px;
@@ -1189,6 +1212,11 @@
 /* Trefferflächen (WCAG 2.5.8): Augenknopf 32 px, Kontrollkästchen-Zeile mindestens 24 px; mit grobem
    Zeiger wie bisher 44 px (R9). */
 [data-ce-bereich="auth"] .auth-eye-btn { right: 8px; width: 32px; height: 32px; border-radius: var(--ce-radius-sm); }
+/* Bis 860 px ist der Knopf 44 px breit (responsive.css, Trefferfläche): bündig am Rand, damit er neben dem
+   Schreibbereich des Felds (Innenabstand 44 px) liegt und nicht über getipptem Text. */
+@media (max-width: 860px) {
+  [data-ce-bereich="auth"] .auth-eye-btn { right: 0; }
+}
 [data-ce-bereich="auth"] .auth-check { min-height: 24px; }
 @media (pointer: coarse) {
   [data-ce-bereich="auth"] .auth-tab,
@@ -1295,8 +1323,10 @@
 [data-ce-bereich="auth"] .auth-geruest-feld { pointer-events: none; }
 
 /* Tablet und Telefon: eine Spalte; Satz, Karte als flaches Band, dann sofort das Formular. Die Karte ist in der
-   Höhe begrenzt, damit das Blatt auch auf niedrigen Bildschirmen im ersten Bild beginnt (Audit D2). */
-@media (max-width: 1023px) {
+   Höhe begrenzt, damit das Blatt auch auf niedrigen Bildschirmen im ersten Bild beginnt (Audit D2). Die Stufe steht in
+   em (1023 px bei 16 px): Bei großer Browserschrift bleibt es länger einspaltig, statt den Satz unter die Karte laufen
+   zu lassen. */
+@media (max-width: 63.9375em) {
   [data-ce-bereich="auth"] .auth-shell:has(> .auth-kopf),
   [data-ce-bereich="auth"] .auth-shell:has(> .auth-kopf):has(.auth-card--register) {
     grid-template-columns: minmax(0, 1fr);
@@ -1320,6 +1350,18 @@
 @media (max-width: 560px) {
   [data-ce-bereich="auth"] .auth-title { font-size: clamp(2rem, 8.6vw, 2.5rem); line-height: 1.08; }
   [data-ce-bereich="auth"] .auth-card { padding: 22px 18px 24px; }
+}
+/* Sehr schmal im Verhältnis zur Schrift (unter 20em, etwa 320 px mit 24 px Browserschrift): Die beiden Reiter stehen
+   untereinander, die Marke gleitet senkrecht; der Satz wird so groß, wie die Breite trägt; die E-Mail-Adresse des
+   Ansprechpartners bricht, statt die Seite zu verbreitern. Bei 16 px Grundschrift wirkt das erst unter 320 px. */
+@media (width < 20em) {
+  [data-ce-bereich="auth"] .auth-tabs { grid-template-columns: minmax(0, 1fr); }
+  [data-ce-bereich="auth"] .auth-tabs-marke { right: 3px; bottom: auto; width: auto; height: calc(50% - 4px); }
+  [data-ce-bereich="auth"] .auth-tabs--register .auth-tabs-marke { transform: translateY(calc(100% + 2px)); }
+  [data-ce-bereich="auth"] .auth-title { font-size: min(2rem, 12.5vw); }
+  [data-ce-bereich="auth"] :is(h2, .auth-card-lead, .auth-field-label, .auth-declarations) { hyphens: auto; }
+  [data-ce-bereich="auth"] .auth-kontakt-text { min-width: 0; }
+  [data-ce-bereich="auth"] .auth-kontakt-wege a { display: block; min-width: 0; max-width: 100%; overflow-wrap: break-word; }
 }
 @media (prefers-reduced-motion: reduce) {
   [data-ce-bereich="auth"] .auth-tabs-marke,
@@ -1509,8 +1551,10 @@
 [data-ce-bereich="kunde"] .shipment-table .stn-act--dokumente { grid-column: dokumente; }
 [data-ce-bereich="kunde"] .shipment-table .stn-act--storno { grid-column: storno; }
 [data-ce-bereich="kunde"] .shipment-table .stn-actions--plaetze .btn { padding-left: var(--ce-space-2); padding-right: var(--ce-space-2); }
-/* Bis 1439 px stehen die drei Aktionen untereinander — dieselbe Reihenfolge, keine gequetschten Spalten. */
-@media (max-width: 1439px) {
+/* Die drei Aktionen stehen untereinander, solange der Inhaltsrahmen (Container ce-seite, premium-editorial.css)
+   schmaler als 72rem ist — dieselbe Reihenfolge, keine gequetschten Spalten. Vorher galt die Fensterbreite bis
+   1439 px; darüber lief die Tabelle bei langen Inhalten bis rund 1500 px über den Rahmen. */
+@container ce-seite (width < 72rem) {
   [data-ce-bereich="kunde"] .shipment-table .stn-actions--plaetze { grid-template-columns: max-content; row-gap: 0; }
   [data-ce-bereich="kunde"] .shipment-table :is(.stn-act--tracking, .stn-act--dokumente, .stn-act--storno) { grid-column: 1; }
 }
@@ -1706,7 +1750,7 @@
 
 /* Angebotskarte: „Voraussichtliche Zustellung“ bricht auf breiten Karten nicht mehr um (Audit B.4) — der Endknoten
    bekommt den größeren Teil der Ablaufspalte, Titel in der Beschriftungsstufe. */
-@container offers (min-width: 950px) {
+@container offers (min-width: 59.375rem) {
   [data-ce-bereich="kunde"] .offer-tl-labels { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
   [data-ce-bereich="kunde"] .offer-tl-title { font-size: var(--ce-text-label-size); white-space: nowrap; }
 }
@@ -1739,16 +1783,12 @@
   [data-ce-bereich="kunde"] .calc-page-wrap--calculator .offers-form-section > :not(.calc-panel) { grid-column: 1 / -1; }
 }
 /* Breit genug für alle fünf Filter in einer Zeile — wie „Neue Sendung“. */
-@container ce-rechner (min-width: 1100px) {
+@container ce-rechner (min-width: 68.75rem) {
   [data-ce-bereich="kunde"] .calc-page-wrap--calculator .calc-filter-bar { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
-/* Lagerlisten (Artikel, Bestand, Aufträge, Bewegungen) bis 1359 px Fensterbreite als Karten: neben der Navigation
-   bleiben dort höchstens ≈ 1040 px, zu wenig für sieben bis neun Spalten — die Tabelle scrollte waagerecht und schnitt
-   die Aktionen ab (Audit B.4, Tabellenbreiten). Die Karten tragen dieselben Angaben und Aktionen. */
-@media (min-width: 1101px) and (max-width: 1359px) {
-  [data-ce-bereich="kunde"] .inv-list-table { display: none; }
-  [data-ce-bereich="kunde"] .inv-list-cards { display: flex; flex-direction: column; gap: var(--ce-space-3); list-style: none; margin: 0; padding: 0; }
-}
+/* Lagerlisten (Artikel, Bestand, Aufträge, Bewegungen): Tabelle oder Karten entscheidet seit der Responsive-Prüfung
+   2026-10-28 die Breite des Inhaltsrahmens (premium-editorial.css, Container ce-seite) — vorher hier die Fensterbreite
+   bis 1359 px, darüber schnitt die Tabelle bei langen Inhalten Spalten ab. */
 
 /* Labelformat der Buchung: mit 15/13 px Schrift bleibt das Auswahlfeld kompakt (höchstens 50 px hoch,
    bookingOptionControls.test.mjs) — knapperer Innen- und Zeilenabstand statt kleinerer Schrift. */

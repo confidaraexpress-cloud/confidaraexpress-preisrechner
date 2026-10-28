@@ -41,7 +41,10 @@
   margin: 0 auto;
   padding: 7px 8px 7px 18px;
 }
-[data-ce-demo] .demo-leiste-text { display: flex; align-items: baseline; gap: 4px 12px; min-width: 0; margin: 0; flex-wrap: wrap; }
+/* Die Marke ist nie schmaler als ihr Text; passen Marke und Aktionen nicht nebeneinander (große Schrift), rücken die
+   Aktionen in die nächste Zeile — bei normaler Schrift bleibt die Leiste einzeilig. */
+[data-ce-demo] .demo-leiste-innen { flex-wrap: wrap; }
+[data-ce-demo] .demo-leiste-text { display: flex; flex: 1 1 0; align-items: baseline; gap: 4px 12px; min-width: auto; margin: 0; flex-wrap: wrap; }
 [data-ce-demo] .demo-leiste-marke { font-size: 0.875rem; font-weight: 650; letter-spacing: -0.005em; white-space: nowrap; }
 [data-ce-demo] .demo-leiste-zusatz { font-size: 0.8125rem; line-height: 1.4; color: var(--ce-demo-text-2); }
 [data-ce-demo] .demo-leiste-aktionen { display: flex; flex: none; flex-wrap: wrap; gap: 6px; }
@@ -86,6 +89,12 @@
   [data-ce-demo] .demo-leiste-innen { flex-direction: column; align-items: stretch; gap: 6px; padding: 9px 12px; }
   [data-ce-demo] .demo-leiste-aktionen { display: grid; grid-template-columns: 1fr 1fr; }
   [data-ce-demo] .demo-leiste-knopf { padding: 0 10px; }
+}
+/* Sehr schmal (in em: auch bei großer Browserschrift): beide Knöpfe gleich breit, die Beschriftung bricht im Knopf
+   um, statt den zweiten Knopf aus der Leiste zu drücken. Die Höhe bleibt im Abstand der Seite. */
+@media (max-width: 22.4375em) {
+  [data-ce-demo] .demo-leiste-aktionen { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  [data-ce-demo] .demo-leiste-knopf { padding: 4px 10px; white-space: normal; text-align: center; line-height: 1.25; }
 }
 @media (prefers-reduced-motion: reduce) { [data-ce-demo] .demo-leiste-knopf { transition: none; } }
 

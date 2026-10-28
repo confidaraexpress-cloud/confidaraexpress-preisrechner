@@ -1082,7 +1082,9 @@
      („Voraussichtliche Lieferung") und das Hinweisfeld; so bleibt beides auch
      auf 390 px einzeilig (2026-10-04). */
   .offer-tl-labels {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    /* Beide Knoten sind nie schmaler als ihr längstes Wort oder ihr Wert („09:00–17:00 Uhr“, „Voraussichtliche“ — sie
+       liefen sonst bei 320 px heraus). */
+    grid-template-columns: minmax(min-content, 2fr) minmax(min-content, 3fr);
     gap: 8px;
     min-height: calc(2.6 * var(--ce-text-body-s-size) + 24px);
   }
@@ -1091,7 +1093,8 @@
      Datumsangaben mitten im Wort trennen durfte. */
   .offer-tl-node--start,
   .offer-tl-node--end { overflow-wrap: break-word; }
-  .offer-tl-title   { font-size: var(--ce-text-body-s-size); }
+  /* „Voraussichtliche Zustellung“ trennt an Silben, statt bei 320 px neben „09:00–17:00 Uhr“ über die Karte zu ragen. */
+  .offer-tl-title   { font-size: var(--ce-text-body-s-size); hyphens: auto; }
   .offer-tl-primary { font-size: var(--ce-text-body-s-size); }
   .offer-tl-sub     { font-size: var(--ce-text-caption-size); }
 

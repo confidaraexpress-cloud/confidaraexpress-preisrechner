@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { Werte } from "../../components/ui/Werte";
 import { EmptyState, NoResultsState, ListSkeleton } from "../../components/ui/StateView";
 import { InlineError, InlineSuccess, InventoryDialog, ProductPicker, QuantityField, RowActionsMenu } from "../../components/inventory/InventoryShared";
 import { getBalances, getProducts, postReceipt, postAdjustment, postBlock, postUnblock } from "../../api/inventoryApi";
@@ -320,7 +321,7 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
 
       {!loading && items.length > 0 && (
         <>
-          <div className="ce-table-container inv-list-table">
+          <div className="ce-table-container inv-list-table inv-list-table--bestand">
             <table className="ce-list-table">
               <caption className="sr-only">Bestand je Artikel und Lager</caption>
               <thead>
@@ -353,7 +354,7 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
                         <div className="inv-cell-stack">
                           <button type="button" className="btn btn-link inv-cell-link inv-cell-title"
                                   onClick={() => navigate(`/inventory/products/${b.productId}`)}>{b.productName}</button>
-                          <span className="inv-cell-meta"><span className="inv-cell-sku">{b.sku}</span></span>
+                          <span className="inv-cell-meta"><span className="inv-cell-sku"><Werte>{b.sku}</Werte></span></span>
                         </div>
                       </td>
                       <td>{b.warehouseName}</td>
@@ -379,7 +380,7 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
             </table>
           </div>
 
-          <ul className="ce-list-cards inv-list-cards">
+          <ul className="ce-list-cards inv-list-cards inv-list-cards--bestand">
             {items.map((b) => {
               const fehlt = lowStockInfo(b);
               return (
@@ -389,7 +390,7 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
                             onClick={() => navigate(`/inventory/products/${b.productId}`)}>{b.productName}</button>
                     {isLowStock(b) && <span className="badge badge--warning">Niedriger Bestand</span>}
                   </div>
-                  <div className="inv-cell-meta"><span className="inv-cell-sku">{b.sku}</span> · {b.warehouseName}</div>
+                  <div className="inv-cell-meta"><span className="inv-cell-sku"><Werte>{b.sku}</Werte></span> · {b.warehouseName}</div>
                   <dl className="inv-card-facts">
                     <div><dt>Physisch</dt><dd>{formatUnits(b.onHand)}</dd></div>
                     <div><dt>Reserviert</dt><dd>{formatUnits(b.reserved)}</dd></div>
@@ -442,7 +443,7 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
           ? (
             <div className="inv-dialog-picked">
               <div>
-                <span className="inv-cell-sku">{picked.sku}</span>
+                <span className="inv-cell-sku"><Werte>{picked.sku}</Werte></span>
                 <div className="inv-cell-meta">{picked.name}</div>
               </div>
               <button type="button" className="btn btn-sm btn-link" onClick={() => setPicked(null)} disabled={busy}>Anderen Artikel wählen</button>

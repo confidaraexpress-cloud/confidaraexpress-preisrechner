@@ -117,7 +117,7 @@
   top: calc(100% + 8px);
   right: 0;
   z-index: calc(var(--ce-z-dropdown) + 1);
-  width: min(380px, calc(100vw - 32px));
+  width: min(23.75rem, calc(100vw - 32px));
   max-height: min(520px, calc(100dvh - 120px));
   display: flex;
   flex-direction: column;

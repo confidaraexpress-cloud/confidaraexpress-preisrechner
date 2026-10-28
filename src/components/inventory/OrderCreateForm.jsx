@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { InlineError, ProductPicker, CollapsibleSection } from "./InventoryShared";
+import { Werte } from "../ui/Werte";
 import { AddressPicker } from "../addressbook/AddressPicker";
 import { getProduct, getProducts, getWarehouses } from "../../api/inventoryApi";
 import { formatUnits } from "../../utils/inventoryView.mjs";
@@ -361,7 +362,7 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
                   <div className="inv-position-main">
                     <span className="inv-position-name">{product.name}</span>
                     <span className="inv-cell-meta inv-position-sku">
-                      <span className="inv-cell-sku">{product.sku}</span>
+                      <span className="inv-cell-sku"><Werte>{product.sku}</Werte></span>
                       <span className="inv-position-avail">{formatUnits(product.stock?.available)} verfügbar</span>
                     </span>
                   </div>

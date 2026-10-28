@@ -197,7 +197,7 @@ test("C3 Grundstruktur und Positionstabelle bleiben erhalten", () => {
   for (const spalte of ["Artikel", "Bestellt", "Reserviert", "Versendet", "Stückgewicht"]) {
     assert.ok(detailPage.includes(`>${spalte}</th>`), `Positionsspalte ${spalte} fehlt`);
   }
-  assert.ok((detailPage.match(/<span className="inv-cell-sku">\{it\.sku\}<\/span>/g) || []).length >= 2,
+  assert.ok((detailPage.match(/<span className="inv-cell-sku"><Werte>\{it\.sku\}<\/Werte><\/span>/g) || []).length >= 2,
     "die SKU der Position fehlt in Tabelle oder Mobilkarte");
   assert.match(detailPage, /<dt>Lager<\/dt>/);
   assert.match(detailPage, /<dt>Erstellt<\/dt>/);

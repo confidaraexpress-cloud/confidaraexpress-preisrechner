@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { Werte } from "../ui/Werte";
 
 // Rechnungs-PDF-Vorschau (Phase 4, Fokusverhalten Phase 5) — wiederverwendbar
 // für Kunde UND Admin.
@@ -113,7 +114,7 @@ export function InvoicePdfPreviewModal({ title, fetchPdf, onDownload, onClose, p
         onClick={(e) => e.stopPropagation()}
       >
         <div className="pdfview-head">
-          <span className="pdfview-title">{title}</span>
+          <span className="pdfview-title"><Werte>{title}</Werte></span>
           <div className="pdfview-actions">
             {printable && (
               <button type="button" className="btn btn-outline btn-sm" onClick={handlePrint} disabled={loading || !!error}>

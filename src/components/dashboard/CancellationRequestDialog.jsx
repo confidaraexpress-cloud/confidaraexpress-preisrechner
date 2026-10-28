@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from "react";
+import { Werte } from "../ui/Werte";
 import {
   cancellationReasonState,
   CANCELLATION_REASON_MAX,
@@ -87,7 +88,7 @@ export function CancellationRequestDialog({ shipment, busy = false, error = "", 
         </p>
 
         {sendLabel && (
-          <p className="stn-dialog-target">Sendung: <strong>{sendLabel}</strong></p>
+          <p className="stn-dialog-target">Sendung: <strong><Werte>{sendLabel}</Werte></strong></p>
         )}
 
         <label className="stn-dialog-label" htmlFor={`stn-reason-${uid}`}>Stornierungsgrund</label>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { Werte } from "../../components/ui/Werte";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { InlineError, InlineSuccess, InventoryDialog, QuantityField, StockBadge } from "../../components/inventory/InventoryShared";
 import { ProductForm } from "../../components/inventory/ProductForm";
@@ -187,7 +188,7 @@ export default function ProductDetailPage() {
     <div className="page-body">
       <PageHeader
         title={p ? p.name : "Artikel"}
-        subtitle={p ? `SKU ${p.sku}` : undefined}
+        subtitle={p ? <>SKU <Werte>{p.sku}</Werte></> : undefined}
         backLink={zurueck}
         utility={ctx.utility}
         actions={p && (
@@ -309,7 +310,7 @@ export default function ProductDetailPage() {
             <div className="inv-detail-group">
               <h2 className="inv-section-title">Stammdaten</h2>
               <dl className="inv-detail-list">
-                <div><dt>SKU</dt><dd>{p.sku}</dd></div>
+                <div><dt>SKU</dt><dd><Werte>{p.sku}</Werte></dd></div>
                 <div><dt>EAN / GTIN</dt><dd>{p.ean || "—"}</dd></div>
                 <div><dt>Status</dt><dd>{p.status === "active" ? "Aktiv" : "Inaktiv"}</dd></div>
                 <div><dt>Beschreibung</dt><dd>{p.description || "—"}</dd></div>
@@ -514,7 +515,7 @@ export default function ProductDetailPage() {
         {p && (
           <>
             <p className="inv-dialog-lead">
-              <strong>{p.name}</strong> · {p.sku}<br />
+              <strong>{p.name}</strong> · <Werte>{p.sku}</Werte><br />
               Verfügbar: <span className="ce-num">{formatUnits(p.stock?.available)}</span>
             </p>
             <QuantityField id="inv-detail-ship-qty" label="Menge" value={shipQty} onChange={setShipQty} autoFocus

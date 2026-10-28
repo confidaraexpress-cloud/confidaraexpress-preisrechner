@@ -1558,10 +1558,13 @@
   box-shadow: 0 0 0 3px var(--ce-color-success-ring);
 }
 
+/* Start und Zustellung sind nie schmaler als ihr längstes Wort oder ihr Wert („09:00–17:00 Uhr“); lange Wörter
+   („Voraussichtliche“, „Versanddienstleister“) trennen an Silben, damit beide bei 320 px nebeneinander passen. */
 .pc-offer-facts {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  grid-template-columns: minmax(min-content, 2fr) minmax(min-content, 3fr);
   gap: var(--ce-space-3);
+  hyphens: auto;
 }
 
 .pc-offer-facts > .pc-fact:last-child {
@@ -1604,9 +1607,10 @@
   line-height: 1.25rem;
 }
 
+/* Mindestens so breit wie der längste Wert („09:00–17:00 Uhr“): Mit min-width 0 zählte er nicht zur Spaltenbreite. */
 .pc-fact dd {
   display: grid;
-  min-width: 0;
+  min-width: auto;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
@@ -1761,13 +1765,18 @@
 
 /* Breit genug (ab 18rem, auf dem Telefon ab 360 px): Preis links, Aktion rechts in fester Breite. In der Preisspalte
    breiter Karten ist der Abschluss schmaler — dort stehen Preis und Knopf untereinander. */
+/* Fließend statt fester Spalten: Preis links, Aktion rechts — passt ein langer Preis („ab 12.345,67 €“) nicht neben
+   den Knopf, steht der Knopf in voller Breite darunter, statt unter dem Preis zu liegen. */
 @container pc-abschluss (min-width: 18rem) {
   .pc-offer-zeile {
-    grid-template-columns: minmax(0, 1fr) auto;
+    display: flex;
+    flex-wrap: wrap;
     column-gap: var(--ce-space-4);
   }
+  .pc-offer-price { flex: 999 1 auto; }
+  .pc-offer-action { flex: 1 0 auto; display: flex; justify-content: flex-end; }
   .pc-page .pc-button--offer {
-    width: auto;
+    width: 100%;
     min-width: 10.5rem;
   }
   .pc-offer-unavailable {
@@ -2336,7 +2345,7 @@
 
 /* Schmal (unter 520 px Breite der Vorschau): weniger Inhalt in größerer Schrift — die Leiste nur als Navy-Kante
    mit Signet, zwei Kennzahlen, die Sendungen ohne Nummer und Versanddienst, ohne Seitenspalte. */
-@container pc-vorschau (max-width: 519px) {
+@container pc-vorschau (max-width: 32.4375rem) {
   .pcv {
     grid-template-columns: 11% minmax(0, 1fr);
     font-size: 2.55cqw;
@@ -2761,8 +2770,10 @@
 /* ── Paketbühne im Rechnerblatt (Premium-Redesign, Konzept B) ──────────────────────────────────────
    Unter den Paketfeldern ein Streifen: links der Karton, der die Maße annimmt, rechts die Werte. Das
    Seitengerüst trägt denselben Streifen mit dem Beispielpaket, damit beim Austausch nichts springt. */
+/* Die Unterzeile ist nie schmaler als ihre Werte („30 × 20 × 10 cm“ brach bei 320 px mitten im Wert); dafür darf der
+   Karton auf dem schmalsten Telefon kleiner werden (bis 30 % statt fest 104 px). */
 .pc-page .ce-paket--public {
-  grid-template-columns: minmax(104px, 36%) minmax(0, 1fr);
+  grid-template-columns: minmax(min(104px, 30%), 36%) minmax(min-content, 1fr);
   grid-template-rows: none;
   align-items: center;
   column-gap: var(--ce-space-4);
@@ -2770,7 +2781,7 @@
   padding: var(--ce-space-2) var(--ce-space-4) var(--ce-space-2) var(--ce-space-3);
 }
 .pc-page .ce-paket--public .ce-paket-svg { max-height: 124px; }
-.pc-page .ce-paket--public .ce-paket-text { grid-template-columns: minmax(0, 1fr); text-align: left; overflow-wrap: break-word; }
+.pc-page .ce-paket--public .ce-paket-text { grid-template-columns: minmax(min-content, 1fr); text-align: left; overflow-wrap: break-word; }
 /* Breite Karte: ein kompakter Streifen — „Versandpreise berechnen“ bleibt auf 1366 × 768 ohne Scrollen
    erreichbar (publicCalculator.test.mjs, G). */
 @container pc-form (min-width: 560px) {
@@ -2778,4 +2789,15 @@
   .pc-page .ce-paket--public .ce-paket-svg { max-height: 84px; }
   /* Die Kantenmaße wären in dieser Größe unlesbar — die Beschriftung daneben nennt die Maße. */
   .pc-page .ce-paket--public .ce-paket-mass { display: none; }
+}
+
+/* Sehr schmal im Verhältnis zur Schrift (unter 20em, etwa 320 px mit 24 px Browserschrift): Überschriften trennen an
+   Silben, der Preis wird so groß, wie die Karte trägt, die Paketbühne steht über ihren Angaben, Kennungen brechen nur
+   nach einem Bindestrich. Bei 16 px Grundschrift wirkt das erst unter 320 px (Responsive-Prüfung 2026-10-28). */
+@media (width < 20em) {
+  .pc-page :is(h1, h2, h3) { hyphens: auto; }
+  .pc-page .pc-price-amount { font-size: min(1.75rem, 10vw); }
+  .pc-page .ce-paket--public { grid-template-columns: minmax(0, 1fr); }
+  .pc-page .ce-paket--public .ce-paket-svg { justify-self: start; max-width: 10rem; }
+  .pc-page .ce-wert--kennung { white-space: normal; }
 }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { Werte } from "../../components/ui/Werte";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { InlineError, InventoryDialog } from "../../components/inventory/InventoryShared";
 import { getOrder, cancelOrder, getOrderShippingPrefill } from "../../api/inventoryApi";
@@ -30,8 +31,9 @@ import { multiTrackingReferencesOf } from "../../utils/trackingReferencesView.mj
 
    Aufbau (Redesign 2026-10): Zurück (Text) → Identität + Status → Positionen
    als zentrale Arbeitsfläche, Empfänger/Referenz sekundär daneben →
-   verbundene Sendungen mit Lieferscheinen. Unter 1100 px stehen Positionen
-   und Sendungen als beschriftete Karten untereinander — dieselben Daten,
+   verbundene Sendungen mit Lieferscheinen. Ist der Abschnitt zu schmal für
+   die Tabelle (Container inv-detail), stehen Positionen und Sendungen als
+   beschriftete Karten untereinander — dieselben Daten,
    dieselben Handler, jede Zahl bleibt erreichbar. */
 export default function OrderDetailPage() {
   const { id } = useParams();
@@ -161,8 +163,11 @@ export default function OrderDetailPage() {
   return (
     <div className="page-body">
       <PageHeader
-        title={o ? o.orderNumber : "Auftrag"}
-        subtitle={o?.customerReference ? `Ihre Referenz: ${o.customerReference}` : undefined}
+        title={o
+          // Die Auftragsnummer ist eine Kennung: Sie bricht nie und wird auf schmalen Geräten kleiner, bis sie passt.
+          ? <span className="ce-wert ce-titel-kennung" style={{ "--ce-kennung-zeichen": String(o.orderNumber).length }}>{o.orderNumber}</span>
+          : "Auftrag"}
+        subtitle={o?.customerReference ? <>Ihre Referenz: <Werte>{o.customerReference}</Werte></> : undefined}
         backLink={zurueck}
         utility={ctx.utility}
         meta={o && (
@@ -214,7 +219,7 @@ export default function OrderDetailPage() {
                       <td>
                         <div className="inv-cell-stack">
                           <button type="button" className="btn btn-link inv-cell-link inv-cell-title" onClick={() => navigate(`/inventory/products/${it.productId}`)}>{it.name}</button>
-                          <span className="inv-cell-meta"><span className="inv-cell-sku">{it.sku}</span></span>
+                          <span className="inv-cell-meta"><span className="inv-cell-sku"><Werte>{it.sku}</Werte></span></span>
                         </div>
                       </td>
                       <td className="ce-num">{formatUnits(it.quantity)}</td>
@@ -226,7 +231,7 @@ export default function OrderDetailPage() {
                 </tbody>
               </table>
             </div>
-            {/* Dieselben Positionen als beschriftete Karten unter 1100 px —
+            {/* Dieselben Positionen als beschriftete Karten, wenn die Tabelle nicht passt —
                 Bestellt, Reserviert, Versendet und Stückgewicht bleiben
                 vollständig lesbar, statt in einer abgeschnittenen Tabelle zu
                 verschwinden. */}
@@ -234,7 +239,7 @@ export default function OrderDetailPage() {
               {(data.items || []).map((it) => (
                 <li key={it.id} className="inv-detail-card">
                   <button type="button" className="btn btn-link inv-card-title" onClick={() => navigate(`/inventory/products/${it.productId}`)}>{it.name}</button>
-                  <span className="inv-cell-meta"><span className="inv-cell-sku">{it.sku}</span></span>
+                  <span className="inv-cell-meta"><span className="inv-cell-sku"><Werte>{it.sku}</Werte></span></span>
                   <dl className="inv-card-facts">
                     <div><dt>Bestellt</dt><dd>{formatUnits(it.quantity)}</dd></div>
                     <div><dt>Reserviert</dt><dd>{formatUnits(it.reservedQuantity)}</dd></div>

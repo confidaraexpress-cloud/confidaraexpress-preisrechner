@@ -206,6 +206,7 @@ a.adm-sup-cust-name:hover { text-decoration: underline; }
 }
 
 .sup-ticket {
+  white-space: nowrap;
   font-family: var(--ce-font-numeric);
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
   font-size: var(--ce-text-body-s-size);
@@ -306,10 +307,23 @@ a.adm-sup-cust-name:hover { text-decoration: underline; }
   }
   .sup-list-main { grid-area: main; }
   .sup-list-status { grid-area: status; }
-  .sup-list-date { grid-area: date; justify-self: end; }
+  /* Die Beschriftung bricht vor dem Datum um, statt über den Status zu laufen; das Datum bleibt ganz. */
+  .sup-list-date { grid-area: date; justify-self: end; white-space: normal; text-align: right; }
   .sup-thread-head,
   .sup-reply { padding: var(--ce-space-4); }
   .sup-reply-actions { flex-direction: column; align-items: stretch; }
+}
+/* Dieselbe gestapelte Liste, wenn der Inhaltsrahmen (Container ce-seite) unter 34rem schmal ist — bei großer Schrift
+   oder neben der Navigation. Bei 16 px Grundschrift greift das nur, wo die Regel darüber ohnehin gilt. */
+@container ce-seite (width < 34rem) {
+  .sup-list-item {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "main main" "status date";
+    padding: var(--ce-space-3) var(--ce-space-4);
+  }
+  .sup-list-main { grid-area: main; }
+  .sup-list-status { grid-area: status; }
+  .sup-list-date { grid-area: date; justify-self: end; white-space: normal; text-align: right; }
 }
 @media (prefers-reduced-motion: reduce) {
   .sup-list-item { transition: none; }

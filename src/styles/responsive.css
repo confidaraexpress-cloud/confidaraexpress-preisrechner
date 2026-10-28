@@ -149,5 +149,5 @@
   .auth-submit,
   .auth-btn-ghost,
   .auth-eye-btn { min-height: 44px; }
-  .auth-eye-btn { min-width: 44px; display: flex; align-items: center; justify-content: center; }
+  .auth-eye-btn { min-width: 44px; display: flex; align-items: center; justify-content: center; right: 0; }
 }

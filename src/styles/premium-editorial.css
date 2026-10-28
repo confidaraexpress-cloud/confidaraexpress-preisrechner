@@ -1623,6 +1623,8 @@
     overflow-wrap: break-word;
   }
   :root[data-ce-bereich="kunde"] :is(.ce-wert--kennung, .inv-cell-sku) { white-space: normal; }
+  /* Ein langer Status („Buchungsstatus wird geprüft“) bricht an Wortgrenzen, statt aus dem Kartenkopf zu ragen. */
+  :root[data-ce-bereich="kunde"] .shipment-status .badge { white-space: normal; }
   :root[data-ce-bereich="kunde"] .shipment-track-number strong { font-size: min(1em, 5.6vw); }
   :root[data-ce-bereich="kunde"] .sdoc-row-number { font-size: min(var(--ce-text-body-s-size), 5.6vw); }
   :root[data-ce-bereich="kunde"] :is(.ov-inv-amount, .inv-summary-amount) { font-size: min(var(--ce-text-numeric-display-size), 13vw); }

@@ -10,7 +10,9 @@
 //   • die Adminkarte stellt die Abrechnungsart um,
 //   • 390 px ohne horizontalen Überlauf,
 //   • die Sammelrechnung ist NEU nur mit Serverfähigkeit wählbar (fail-closed), ein
-//     Bestandskonto behält sie, und bei einer Ablehnung hat der Server das letzte Wort.
+//     Bestandskonto behält sie, und bei einer Ablehnung hat der Server das letzte Wort,
+//   • wer mit der Tastatur umstellt, behält beim Speichern den Fokus (Rechnungsstellung
+//     und Lieferschein).
 //
 // Der Mock bildet den Backendvertrag nach: /kundenbereich liefert `billingCapabilities`
 // TOP-LEVEL (fehlt das Feld, verhält er sich wie ein älteres Backend), und der Profil-PATCH
@@ -63,7 +65,7 @@ async function setupRoutes(ziel, opts) {
 
     if (p.endsWith("/kundenbereich")) {
       return json({
-        user: { ...BASE_USER, billing_mode: state.mode },
+        user: { ...BASE_USER, billing_mode: state.mode, delivery_note_mode: state.dnMode },
         ...(state.capabilities !== undefined ? { billingCapabilities: state.capabilities } : {}),
       });
     }
@@ -71,6 +73,8 @@ async function setupRoutes(ziel, opts) {
     if (p.endsWith("/kunde/profil") && method === "PATCH") {
       const body = JSON.parse(req.postData() || "{}");
       state.patches.push(body);
+      // Ein langsamer Server macht das Speicherfenster messbar (B12).
+      if (state.patchDelayMs) await new Promise((r) => setTimeout(r, state.patchDelayMs));
       if (body.billing_mode === "consolidated_7d" && state.mode !== "consolidated_7d" && !state.serverGateOpen) {
         return json({
           error: "Die Sammelrechnung ist derzeit nicht verfügbar. Ihre Sendungen werden weiter einzeln abgerechnet.",
@@ -78,7 +82,8 @@ async function setupRoutes(ziel, opts) {
         }, 409);
       }
       if (typeof body.billing_mode === "string") state.mode = body.billing_mode;
-      return json({ user: { ...BASE_USER, billing_mode: state.mode } });
+      if (typeof body.delivery_note_mode === "string") state.dnMode = body.delivery_note_mode;
+      return json({ user: { ...BASE_USER, billing_mode: state.mode, delivery_note_mode: state.dnMode } });
     }
 
     if (p.endsWith("/kunde/consolidated-invoice/current")) {
@@ -101,7 +106,10 @@ async function setupRoutes(ziel, opts) {
 async function neueSeite(mode, extra = {}, viewport = { width: 1280, height: 1000 }) {
   // `capabilities` undefined = älteres Backend ohne das Feld. Die Serverschranke folgt derselben
   // Regel wie die Fähigkeit, außer ein Test trennt beide ausdrücklich (`serverGateOpen`).
-  const state = { mode, patches: [], periodCalls: 0, periodFails: false, periodBody: null, capabilities: undefined, ...extra };
+  const state = {
+    mode, dnMode: BASE_USER.delivery_note_mode, patchDelayMs: 0,
+    patches: [], periodCalls: 0, periodFails: false, periodBody: null, capabilities: undefined, ...extra,
+  };
   if (!("serverGateOpen" in extra)) state.serverGateOpen = state.capabilities?.consolidated7dAvailable === true;
   const ctx = await browser.newContext({ viewport });
   await setupRoutes(ctx, { state });
@@ -289,6 +297,53 @@ test("B11 — Server lehnt ab (Lauf inzwischen aus): kein falscher Erfolg, die A
   assert.equal(await page.locator("#bm-mode-single").isChecked(), true, "die Anzeige muss auf die Serverwahrheit zurückfallen");
   assert.equal(await page.locator(".profile-saved").count(), 0, "keine Erfolgsmeldung bei einer Ablehnung");
   assert.equal(state.periodCalls, 0, "kein Sammelzeitraum ohne Sammelrechnung");
+  assert.deepEqual(fehler, []);
+  await ctx.close();
+});
+
+// ─── Tastatur: Fokus beim Speichern (Editorial Premium, 2026-10-28) ──────────────
+
+test("B12 — Tastatur: beim Speichern bleibt der Fokus auf der Auswahl (Rechnungsstellung und Lieferschein)", async () => {
+  // Vorher sperrte `fieldset disabled` die ganze Gruppe während des Speicherns. Das fokussierte
+  // Optionsfeld wurde mitgesperrt, der Browser nahm ihm den Fokus (document.body), und wer mit der
+  // Tastatur umstellte, begann nach jedem Speichern wieder am Seitenanfang.
+  const { ctx, page, state, fehler } = await neueSeite("single", {
+    capabilities: { consolidated7dAvailable: true }, patchDelayMs: 600,
+  });
+  await zumProfil(page);
+  const fokus = () => page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName);
+  const gesperrt = (ids) => Promise.all(ids.map((id) => page.locator(`#${id}`).isDisabled()));
+
+  const faelle = [
+    { start: "bm-mode-single", taste: "ArrowDown", ziel: "bm-mode-consolidated_7d", andere: ["bm-mode-single"],
+      body: { billing_mode: "consolidated_7d" } },
+    // Zurück, ohne die Gruppe zu verlassen: der Fokus steht noch auf der eben gespeicherten Option.
+    { start: null, taste: "ArrowUp", ziel: "bm-mode-single", andere: ["bm-mode-consolidated_7d"],
+      body: { billing_mode: "single" } },
+    { start: "dn-mode-none", taste: "ArrowUp", ziel: "dn-mode-external", andere: ["dn-mode-confidara", "dn-mode-none"],
+      body: { delivery_note_mode: "external" } },
+  ];
+  for (const f of faelle) {
+    if (f.start) await page.locator(`#${f.start}`).focus();
+    const vorher = state.patches.length;
+    await page.keyboard.press(f.taste);
+
+    // Während des Speicherns: Fokus und Auswahl auf der neuen Option, die übrigen bleiben gesperrt.
+    assert.equal(await fokus(), f.ziel, `${f.ziel}: Fokus während des Speicherns verloren`);
+    assert.equal(await page.locator(`#${f.ziel}`).isChecked(), true);
+    assert.deepEqual(await gesperrt(f.andere), f.andere.map(() => true),
+      `${f.ziel}: während des Speicherns darf keine zweite Umstellung möglich sein`);
+
+    await page.locator(".profile-section-body", { has: page.locator(`#${f.ziel}`) })
+      .locator(".profile-saved").waitFor({ timeout: 15000 });
+    assert.equal(await fokus(), f.ziel, `${f.ziel}: Fokus nach dem Speichern verloren`);
+    assert.equal(await page.locator(`#${f.ziel}`).isChecked(), true);
+    assert.deepEqual(await gesperrt(f.andere), f.andere.map(() => false), `${f.ziel}: Sperre bleibt hängen`);
+    assert.equal(state.patches.length, vorher + 1, `${f.ziel}: genau ein PATCH je Umstellung`);
+    assert.deepEqual(state.patches.at(-1), f.body);
+  }
+  assert.equal(state.mode, "single");
+  assert.equal(state.dnMode, "external");
   assert.deepEqual(fehler, []);
   await ctx.close();
 });

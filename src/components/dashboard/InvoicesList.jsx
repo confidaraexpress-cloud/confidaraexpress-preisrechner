@@ -309,12 +309,12 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
         )}
 
         {list.length > 0 && (
-          <div className="inv-filters" role="group" aria-label="Rechnungen filtern">
+          <div className="inv-filters ce-segment" role="group" aria-label="Rechnungen filtern">
             {INVOICE_FILTERS.map((f) => (
               <button
                 key={f.value || "all"}
                 type="button"
-                className={`inv-filter-chip${filter === f.value ? " inv-filter-chip--active" : ""}`}
+                className={`inv-filter-chip ce-segment-option${filter === f.value ? " inv-filter-chip--active" : ""}`}
                 aria-pressed={filter === f.value}
                 onClick={() => setFilter(f.value)}
               >

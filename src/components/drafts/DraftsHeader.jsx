@@ -17,7 +17,7 @@ export function DraftsHeader({ onNewShipment, utility, showCreate = true }) {
       subtitle="Gespeicherte Sendungen später weiterbearbeiten oder löschen."
       utility={utility}
       actions={showCreate ? (
-        <button type="button" className="btn btn-primary" onClick={onNewShipment}>
+        <button type="button" className="btn btn-primary ce-aktion-neu" onClick={onNewShipment}>
           Neue Sendung
         </button>
       ) : null}

@@ -187,9 +187,9 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
               {field("label", "Anzeigename / Label", { optional: true, placeholder: "z. B. Lager Berlin" })}
               <div className="field">
                 <span className="field-label">Typ</span>
-                <div className="abk-role-options" role="radiogroup" aria-label="Adresstyp">
+                <div className="abk-role-options ce-segment" role="radiogroup" aria-label="Adresstyp">
                   {UI_ROLE_OPTIONS.map((opt) => (
-                    <label key={opt.value} className={`abk-role-option${form.role === opt.value ? " abk-role-option--selected" : ""}`}>
+                    <label key={opt.value} className={`abk-role-option ce-segment-option${form.role === opt.value ? " abk-role-option--selected" : ""}`}>
                       <input type="radio" name="abk-role" checked={form.role === opt.value} onChange={() => upd("role", opt.value)} />
                       <span className="abk-role-option-label">{opt.label}</span>
                     </label>

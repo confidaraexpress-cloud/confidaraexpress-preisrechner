@@ -76,13 +76,16 @@ export function BillingModeCard({ user }) {
     setBmSaving(false);
   };
 
-  // Dieselben nativen Radios auf demselben forms.css-Primitive wie die
-  // Lieferscheinauswahl — kein zweites Auswahlbauteil, keine eigenen Klassen.
+  // Dieselben nativen Radios wie die Lieferscheinauswahl — kein zweites
+  // Auswahlbauteil. `ce-wahl` zeigt sie im Kundenbereich als Navy-Wahl
+  // (premium-editorial.css, Abschnitt 21); Wert, Sperre und Speichern bleiben.
+  // Während des Speicherns sind nur die übrigen Optionen gesperrt — die gewählte
+  // behält den Tastaturfokus (wie DeliveryNoteCard; tests/e2e/billingMode.test.mjs, B12).
   const period = periodData ? consolidatedPeriodView(periodData) : null;
   return (
     <SettingsSection title={BILLING_MODE_TEXT.title} subtitle={BILLING_MODE_TEXT.subtitle}>
       <div className="profile-section-body">
-        <fieldset className="dn-mode-fieldset" disabled={bmSaving}>
+        <fieldset className="dn-mode-fieldset">
           <legend className="field-label">{BILLING_MODE_TEXT.fieldLabel}</legend>
           {BILLING_MODES.map((mode) => {
             const opt = BILLING_MODE_TEXT.options[mode];
@@ -90,14 +93,14 @@ export function BillingModeCard({ user }) {
             // Die Sammelrechnung ist NEU nur wählbar, wenn der Server sie anbietet (fail-closed).
             const selectable = billingModeOptionSelectable(user, mode);
             return (
-              <label key={mode} className={`dn-mode-option${bmMode === mode ? " selected" : ""}`} htmlFor={id}>
+              <label key={mode} className={`dn-mode-option ce-wahl${bmMode === mode ? " selected" : ""}`} htmlFor={id}>
                 <input
                   id={id}
                   type="radio"
                   name="billingMode"
                   value={mode}
                   checked={bmMode === mode}
-                  disabled={!selectable}
+                  disabled={!selectable || (bmSaving && bmMode !== mode)}
                   onChange={() => saveBillingMode(mode)}
                 />
                 <span className="dn-mode-text">

@@ -162,7 +162,7 @@ export function Overview({
           </UtilityCluster>
         )}
         actions={(
-          <button type="button" className="btn btn-primary" onClick={onNewShipment}>
+          <button type="button" className="btn btn-primary ce-aktion-neu" onClick={onNewShipment}>
             Neue Sendung
           </button>
         )}
@@ -174,7 +174,7 @@ export function Overview({
             kein Symbol, kein eigener Farbton je Kennzahl. */}
         <section className="ov-kpis" aria-label="Betriebsüberblick">
           {KPIS.map((kpi) => (
-            <div className={`ov-kpi ov-kpi--${kpi.key}`} key={kpi.key}>
+            <div className={`ov-kpi ov-kpi--${kpi.key}`} key={kpi.key} data-null={ready && kpi.value === "0" ? "" : undefined}>
               <span className="ov-kpi-label">{kpi.label}</span>
               {/* Solange nichts erfolgreich geladen wurde, steht „—" statt einer
                   Zahl: weder beim ersten Laden noch nach einem Ladefehler darf

@@ -297,43 +297,58 @@ test("8 — die A4/A6-Felder sind kompakt statt kartenhaft", async () => {
   await page.close();
 });
 
-test("9 — die aktive Wahl ist erkennbar, aber nicht dominant", async () => {
+// Betreiberentscheidung 2026-10-28 (Editorial-Kundenbereich): Das Labelformat ist eine Segmentsteuerung — das gewählte
+// Segment Navy mit heller Schrift, das offene hell auf der Spur, kein runder Radiopunkt mehr. Bis dahin galt hier
+// „erkennbar, aber nicht dominant“ mit sehr heller Wahl und sichtbarem Punkt.
+const leuchtdichte = (farbe) => {
+  const [r, g, b] = farbe.match(/[\d.]+/g).slice(0, 3).map(Number).map((k) => {
+    const c = k / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const deckend = (farbe) => { const a = farbe.match(/[\d.]+/g); return a.length < 4 || Number(a[3]) > 0; };
+
+test("9 — die aktive Wahl ist eindeutig: Navy-Segment mit heller Schrift, die offene bleibt hell", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
   await setupRoutes(page);
   await zurBuchung(page);
   await schalte(page, FMT_TOGGLE, true);
+  await page.mouse.move(0, 0);
 
   const stil = (sel) => page.locator(sel).first().evaluate((el) => {
     const s = getComputedStyle(el);
-    return { bg: s.backgroundColor, borderBreite: s.borderTopWidth, borderFarbe: s.borderTopColor, schatten: s.boxShadow };
+    return { bg: s.backgroundColor, farbe: s.color, borderBreite: s.borderTopWidth, spur: getComputedStyle(el.parentElement).backgroundColor };
   });
 
   const gewaehlt = await stil(".labelfmt-card--selected");
-  assert.equal(gewaehlt.schatten, "none", "eine Nebeneinstellung braucht keine Erhöhung");
   assert.ok(parseFloat(gewaehlt.borderBreite) <= 1, `Kante ${gewaehlt.borderBreite} — zu kräftig`);
-  const bgSel = gewaehlt.bg.match(/\d+/g).map(Number);
-  assert.ok(bgSel.every(k => k > 225), `die aktive Fläche muss sehr hell bleiben, ist ${gewaehlt.bg}`);
+  assert.ok(leuchtdichte(gewaehlt.bg) < 0.05, `die aktive Fläche muss Navy sein, ist ${gewaehlt.bg}`);
+  const kontrast = (leuchtdichte(gewaehlt.farbe) + 0.05) / (leuchtdichte(gewaehlt.bg) + 0.05);
+  assert.ok(kontrast >= 7, `Schrift auf dem gewählten Segment ${kontrast.toFixed(1)}:1 — zu schwach`);
 
   const offen = await stil(".labelfmt-card:not(.labelfmt-card--selected)");
-  assert.equal(offen.schatten, "none");
-  const bgOff = offen.bg.match(/\d+/g).map(Number);
-  assert.ok(bgOff.every(k => k >= 250), `die inaktive Fläche muss ruhig bleiben, ist ${offen.bg}`);
-  // Die aktive Kante ist farbig, die inaktive nicht — die Wahl bleibt eindeutig.
-  assert.notEqual(gewaehlt.borderFarbe, offen.borderFarbe);
+  const flaeche = deckend(offen.bg) ? offen.bg : offen.spur;
+  assert.ok(leuchtdichte(flaeche) > 0.85, `die offene Fläche muss hell und ruhig bleiben, ist ${flaeche}`);
+  assert.notEqual(gewaehlt.bg, offen.bg, "die Wahl ist nicht von der offenen Option zu unterscheiden");
   await page.close();
 });
 
-test("10 — der Radio-Indikator bleibt sichtbar und gefüllt", async () => {
+test("10 — kein runder Radiopunkt mehr; das native Radio trägt weiter die Wahl", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
   await setupRoutes(page);
   await zurBuchung(page);
   await schalte(page, FMT_TOGGLE, true);
 
-  const punkt = await page.locator(".labelfmt-card--selected .labelfmt-radio").boundingBox();
-  assert.ok(punkt.width >= 12 && punkt.width <= 16, `Indikator ${punkt.width}px — lesbar zwischen 12 und 16`);
-  const gefuellt = await page.locator(".labelfmt-card--selected .labelfmt-radio").evaluate(
-    (el) => getComputedStyle(el, "::after").content !== "none");
-  assert.ok(gefuellt, "die aktive Auswahl braucht einen sichtbaren Punkt, nicht nur eine Kante");
+  for (const karte of await page.locator(".labelfmt-card").all()) {
+    assert.equal(await karte.locator(".labelfmt-radio").isVisible(), false, "der runde Radiopunkt ist noch sichtbar");
+  }
+  assert.equal(await page.locator('.labelfmt-card--selected input[type="radio"]').isChecked(), true);
+  // Die ganze Fläche des offenen Segments wählt — das unsichtbare Radio liegt über ihr und nimmt den Klick.
+  await page.locator(".labelfmt-card:not(.labelfmt-card--selected)").click();
+  await page.waitForFunction(() => document.querySelectorAll('.labelfmt-card input[type="radio"]:checked').length === 1
+    && document.querySelector(".labelfmt-card--selected input[type=radio]").checked);
+  assert.equal(await page.locator(".labelfmt-card--selected .labelfmt-name").innerText(), "DIN A6");
   await page.close();
 });
 

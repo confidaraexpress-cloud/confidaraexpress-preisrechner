@@ -96,3 +96,6 @@
    Partnerregistrierung setzen es nie. Steht als einzige Datei NACH patterns.css: Bei gleicher
    Spezifität gewinnt der Bereich gegen die Musterebene. */
 @import './premium-redesign.css';
+
+/* Editorial Business Premium (Betreiberentscheidung 2026-10-28): die letzte Ebene, nur am Kundenbereich. */
+@import './premium-editorial.css';

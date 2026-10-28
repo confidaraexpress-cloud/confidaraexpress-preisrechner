@@ -194,7 +194,7 @@ test("3 — jede Schriftgröße liegt auf einer definierten Stufe der Skala", ()
 // Premium-Redesign (Betreiberentscheidung 2026-10-27, ersetzt E4 im Bereich): Instrument Sans trägt in Kunde,
 // Anmeldung und Preisrechner Titel und Preise bis 700. Diese Dateien hängen vollständig am Bereichsattribut
 // (premiumRedesign.test.mjs); Admin, Partnerportal und Partnerregistrierung bleiben bei höchstens 600.
-const BEREICHS_DATEIEN = new Set(["premium-redesign.css", "public-calculator.css", "paketbuehne.css", "nachtkarte.css", "demo.css"]);
+const BEREICHS_DATEIEN = new Set(["premium-redesign.css", "premium-editorial.css", "public-calculator.css", "paketbuehne.css", "nachtkarte.css", "demo.css"]);
 
 test("4 — kein font-weight über 600 außerhalb der @font-face-Deklarationen (im Premium-Bereich höchstens 700)", () => {
   const treffer = [];

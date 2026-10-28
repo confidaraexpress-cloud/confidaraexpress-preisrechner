@@ -338,7 +338,7 @@ test("(H4) Bestandskonto mit Sammelrechnung: bleibt wählbar und sichtbar, der R
 
 test("(H5) die Karte sperrt die Option und sendet keinen Auswahlversuch, der abgelehnt würde", () => {
   assert.ok(/const selectable = billingModeOptionSelectable\(user, mode\);/.test(bmKarteSrc));
-  assert.ok(/disabled=\{!selectable\}/.test(bmKarteSrc), "die Option wird nicht gesperrt");
+  assert.ok(/disabled=\{!selectable \|\| \(bmSaving && bmMode !== mode\)\}/.test(bmKarteSrc), "die Option wird nicht gesperrt");
   assert.ok(/\{!selectable && <span className="field-hint">\{BILLING_MODE_TEXT\.consolidatedUnavailable\}<\/span>\}/.test(bmKarteSrc));
   const save = schnitt(bmKarteSrc, "const saveBillingMode", "const period = periodData", "(H5) BillingModeCard");
   assert.ok(/if \(bmSaving \|\| mode === serverBmMode \|\| !billingModeOptionSelectable\(user, mode\)\) return;/.test(save));
@@ -372,6 +372,23 @@ test("(H7) BEL-4: die 422 BILLING_MODE_UNAVAILABLE der Buchung führt ins Profil
   assert.ok(/Einzelrechnung/.test(BILLING_MODE_TEXT.bookingUnavailable));
   // Die Profilkarte sagt dem Bestandskonto dieselbe Folge, bevor es bucht.
   assert.ok(/erst nach einem Wechsel zur Einzelrechnung buchen/.test(BILLING_MODE_TEXT.consolidatedKeptNote));
+});
+
+test("(H8) Speichern sperrt nur die übrigen Optionen — die gewählte behält den Tastaturfokus", () => {
+  // Ein gesperrtes `fieldset` sperrte auch das fokussierte Optionsfeld; der Browser setzte den
+  // Fokus auf die Seite zurück (Browserbeleg: tests/e2e/billingMode.test.mjs, B12). Dasselbe
+  // Muster gilt für die Lieferscheinauswahl.
+  const dnKarteSrc = strip(src("components/dashboard/DeliveryNoteCard.jsx"));
+  for (const [name, karte, saving, wahl] of [
+    ["BillingModeCard", bmKarteSrc, "bmSaving", "bmMode"],
+    ["DeliveryNoteCard", dnKarteSrc, "dnSaving", "dnMode"],
+  ]) {
+    assert.ok(/<fieldset className="dn-mode-fieldset">/.test(karte), `${name}: das fieldset darf nicht gesperrt werden`);
+    assert.ok(!/<fieldset[^>]*disabled/.test(karte), `${name}: gesperrtes fieldset nimmt der Auswahl den Fokus`);
+    assert.ok(new RegExp(`disabled=\\{(?:!selectable \\|\\| )?\\(?${saving} && ${wahl} !== mode\\)?\\}`).test(karte),
+      `${name}: während des Speicherns müssen die übrigen Optionen gesperrt bleiben`);
+    assert.ok(new RegExp(`if \\(${saving} \\|\\|`).test(karte), `${name}: die Doppelspeichersperre im Handler fehlt`);
+  }
 });
 
 console.log(`\n${"═".repeat(50)}`);

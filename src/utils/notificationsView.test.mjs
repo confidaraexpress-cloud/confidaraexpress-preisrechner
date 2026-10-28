@@ -308,9 +308,10 @@ test("23 — die vorhandene Glocke der Übersicht ist jetzt eine echte Schaltfl�
   // Die Übersicht trägt genau EINE Hauptaktion: „Neue Sendung" (Audit G/H01) —
   // derselbe Handler wie in der Navigation, kein zweiter Einstieg daneben.
   assert.ok(!/pp-cta/.test(overview), "die alte Knopffamilie .pp-cta ist zurück");
-  const primaer = overview.match(/className="btn btn-primary"/g) || [];
+  // Editorial Premium (2026-10-28): Anlegen-Aktionen tragen zusätzlich die Klasse ce-aktion-neu (Pluszeichen).
+  const primaer = overview.match(/className="btn btn-primary(?: ce-aktion-neu)?"/g) || [];
   assert.equal(primaer.length, 1, "die Übersicht trägt mehr als eine Hauptaktion");
-  assert.match(overview, /className="btn btn-primary" onClick=\{onNewShipment\}>\s*Neue Sendung/,
+  assert.match(overview, /className="btn btn-primary ce-aktion-neu" onClick=\{onNewShipment\}>\s*Neue Sendung/,
     "die Hauptaktion „Neue Sendung“ nutzt nicht den bestehenden Handler");
   // Sie wurde NICHT in die Sidebar verschoben.
   const sidebar = read("components/layout/DashboardSidebar.jsx");

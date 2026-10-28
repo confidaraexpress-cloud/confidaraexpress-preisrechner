@@ -162,11 +162,11 @@ export function AdditionalOptionsModule({
             />
             {labelFormatEnabled && (
               <div className="addopt-reveal">
-                <div className="labelfmt-group" role="radiogroup" aria-label="Labelformat wählen">
+                <div className="labelfmt-group ce-segment" role="radiogroup" aria-label="Labelformat wählen">
                   {wahlformate.map(f => {
                     const selected = labelFormat === f.id;
                     return (
-                      <label key={f.id} className={`labelfmt-card${selected ? " labelfmt-card--selected" : ""}`}>
+                      <label key={f.id} className={`labelfmt-card ce-segment-option${selected ? " labelfmt-card--selected" : ""}`}>
                         <input
                           type="radio"
                           name="labelFormat"

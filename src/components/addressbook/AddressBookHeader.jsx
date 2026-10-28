@@ -20,7 +20,7 @@ export function AddressBookHeader({ onCreate, utility, showCreate = true }) {
       subtitle="Verwalten Sie wiederkehrende Absender- und Empfängeradressen zentral."
       utility={utility}
       actions={showCreate ? (
-        <button type="button" className="btn btn-primary" onClick={onCreate}>
+        <button type="button" className="btn btn-primary ce-aktion-neu" onClick={onCreate}>
           Neue Adresse
         </button>
       ) : null}

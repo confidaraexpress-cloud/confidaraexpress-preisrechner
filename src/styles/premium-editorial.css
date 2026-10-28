@@ -1,0 +1,1460 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   EDITORIAL BUSINESS PREMIUM — KUNDENBEREICH (Betreiberentscheidung 2026-10-28)
+   ───────────────────────────────────────────────────────────────────────────
+   Der Betreiber hat die lokale Editorial-Vorschau (Übersicht, Entwürfe) freigegeben
+   und für den ganzen Kundenbereich bestimmt. Zwei Korrekturen dazu: vier gleich
+   breite, gleichwertige Kennzahlen mit eigener Identität; der Betrag „Offene
+   Rechnungen“ bleibt in der bisherigen Größe.
+
+   These: Der Kundenbereich liest sich wie ein Geschäftsbericht. Eine Familie
+   (Instrument Sans) mit innerer Spannung — normale Breite für Text, schmaler
+   Schnitt für Kennzahlen und Beträge. Weißes Papier, Tintenlinien unter Köpfen,
+   Haarlinien zwischen Zeilen, Navy gezielt als Band und als Aktion, die
+   Markenkante (Navy und Signal) unter jedem Seitenkopf.
+
+   Diese Ebene steht als letzte im Bündel und hängt ausschließlich am Kunden-
+   bereich (:root[data-ce-bereich="kunde"]). Anmeldung, Preisrechner, Admin,
+   Partnerportal und Partnerregistrierung lesen sie nie. Farben, Größen und
+   Schatten kommen aus variables.css; Knöpfe ohne Bewegung, Verlauf und
+   Deckkraft (E5). Klassen und IDs der Komponenten bleiben unverändert.
+   Governance: premiumRedesign.test.mjs (Abschnitt Editorial).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════ 1 · ARBEITSFLÄCHE ═══════════════════════════════════════════
+   Weißes Papier statt der hellgrauen Fläche; Gliederung über Linien, Maßstab
+   und Abstand. */
+:root[data-ce-bereich="kunde"] :is(body, .app-shell, .main-content) { background: var(--ce-color-surface); }
+
+/* Kopfleiste: Werkzeuge ruhig auf Papier, eine Haarlinie. Die Suche als Kapsel in der Mulde. */
+:root[data-ce-bereich="kunde"] .ce-page-header-utility {
+  background: transparent;
+  border-image: none;
+  border-bottom: 1px solid var(--ce-pr-hairline);
+  box-shadow: none;
+}
+:root[data-ce-bereich="kunde"] .ce-suche {
+  border-color: transparent;
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-pr-inset);
+}
+:root[data-ce-bereich="kunde"] .ce-suche:hover { background: var(--ce-color-surface-muted); }
+:root[data-ce-bereich="kunde"] .ce-suche:focus-within {
+  border-color: var(--ce-pr-signal);
+  background: var(--ce-color-surface);
+}
+
+/* ═══════════ 2 · SEITENKOPF ═══════════════════════════════════════════════
+   Maßstab statt Dekor: der Titel in der Editorial-Skala (56 / 44 / 36 px), eine
+   Haarlinie unter dem Kopf und darauf die Markenkante aus Navy und Signal, hart
+   gestoßen. Untertitel ruhig, höchstens 60 Zeichen breit. */
+:root[data-ce-bereich="kunde"] .ce-page-header-main {
+  position: relative;
+  align-items: flex-end;
+  padding-top: var(--ce-space-6);
+  padding-bottom: var(--ce-space-6);
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--ce-pr-hairline);
+}
+:root[data-ce-bereich="kunde"] .ce-page-header-main::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: var(--ce-space-10);
+  height: 3px;
+  background: linear-gradient(90deg, var(--ce-pr-navy-800) 0 62%, var(--ce-pr-signal) 62% 100%);
+}
+:root[data-ce-bereich="kunde"] .ce-page-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ce-space-2);
+  min-width: 0;
+}
+:root[data-ce-bereich="kunde"] .ce-page-header-title {
+  margin: 0;
+  font-family: var(--ce-pr-font-display);
+  font-size: var(--ce-pr-ed-headline-size);
+  line-height: var(--ce-pr-ed-headline-line);
+  font-weight: 600;
+  letter-spacing: var(--ce-pr-ed-headline-tracking);
+  font-stretch: var(--ce-pr-ed-headline-stretch);
+  color: var(--ce-color-text-primary);
+  /* Lange Namen trennen an Silben (lang="de") statt mitten im Wort. */
+  hyphens: auto;
+  overflow-wrap: break-word;
+}
+:root[data-ce-bereich="kunde"] .ce-page-header-sub {
+  max-width: 60ch;
+  margin: 0;
+  font-size: var(--ce-text-body-size);
+  line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-secondary);
+}
+/* Übersicht: Die Datumszeile steht als Kopfzeile über dem Gruß; Gruß und Name sprechen mit einer Stimme. */
+:root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-sub {
+  order: -1;
+  font-size: var(--ce-text-label-size);
+  font-weight: 500;
+  color: var(--ce-color-text-muted);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+:root[data-ce-bereich="kunde"] .ce-page-header-title .ov-greeting-name { color: inherit; font-weight: inherit; }
+:root[data-ce-bereich="kunde"] .ce-page-header-meta { color: var(--ce-color-text-secondary); }
+
+/* Stufen in em: Sie greifen auch, wenn die Grundschrift des Browsers größer eingestellt ist (bei 16 px 1100 / 600 px). */
+@media (max-width: 68.75em) {
+  :root[data-ce-bereich="kunde"] .ce-page-header-title { font-size: var(--ce-pr-ed-headline-size-tablet); }
+}
+@media (max-width: 860px) {
+  :root[data-ce-bereich="kunde"] .ce-page-header-main { padding-top: var(--ce-space-3); padding-bottom: var(--ce-space-5); }
+}
+@media (max-width: 37.5em) {
+  :root[data-ce-bereich="kunde"] .ce-page-header-title { font-size: var(--ce-pr-ed-headline-size-mobile); }
+}
+
+/* ═══════════ 3 · KNÖPFE ═══════════════════════════════════════════════════
+   Handlungen als Kapseln: Navy gefüllt für die Hauptaktion, Navy-Kontur für die
+   Zweitaktion, Text mit Unterstreichung für leise Wege. Farbe und Schatten aus den
+   Knopf-Tokens (E5) — keine Bewegung, kein Verlauf, keine Deckkraft. Einzige Ausnahme:
+   das Pluszeichen der Anlegen-Aktionen dreht sich beim Zeigen (unten); der Knopf selbst
+   bleibt stehen. */
+/* Ausnahme: der Rückweg am Fuß eines Buchungsblatts ist die Unterkante des Blatts, kein Knopf (premium-redesign 5b). */
+:root[data-ce-bereich="kunde"] .btn:not(.booking-blatt-zurueck) { border-radius: var(--ce-radius-full); }
+:root[data-ce-bereich="kunde"] .btn-outline:not(.booking-blatt-zurueck) {
+  border-color: var(--ce-pr-navy-800);
+  color: var(--ce-pr-navy-800);
+}
+:root[data-ce-bereich="kunde"] .btn-outline:not(.booking-blatt-zurueck):hover:not(:disabled) {
+  background: var(--ce-pr-signal-soft);
+  border-color: var(--ce-pr-navy-800);
+  color: var(--ce-pr-navy-800);
+}
+:root[data-ce-bereich="kunde"] .ce-page-header-actions .btn {
+  min-height: var(--ce-size-control-lg);
+  padding-inline: var(--ce-space-6);
+}
+/* Anlegen-Aktionen („Neue Sendung“, „Neue Adresse“ …) tragen ein Pluszeichen vor dem Wort. Das Zeichen ist Schmuck:
+   Der leere Alternativtext hält den Namen der Aktion frei („Neue Sendung“, nicht „+ Neue Sendung“), Screenreader lesen
+   kein „plus“ vor. Browser ohne Alternativtext-Syntax verwerfen die zweite Zeile und behalten die erste. */
+:root[data-ce-bereich="kunde"] .btn.ce-aktion-neu::before {
+  content: "+";
+  content: "+" / "";
+  margin-right: var(--ce-space-2);
+  font-size: var(--ce-text-title-section-size);
+  font-weight: 400;
+  line-height: 1;
+}
+/* Plus-Drehung (Betreiberentscheidung 2026-10-28, Ausnahme zu E5 nur für dieses Zeichen): Beim Zeigen dreht sich
+   ausschließlich das Pluszeichen zweimal um seine Mitte — es fährt an und läuft sanft aus, einmal je Zeigen, nie
+   endlos. Nach zwei vollen Umdrehungen steht es genau wie in Ruhe; endet das Zeigen früher, kehrt es in die Ruhelage
+   zurück, und ein abgebrochener Zustand bleibt nie stehen. Nur mit echtem Zeiger — auf Touch-Geräten bleibt kein
+   Zeige-Zustand hängen; über die Tastatur dreht es einmal beim sichtbaren Fokus; bei reduzierter Bewegung gar
+   nicht. Die Tinte des Zeichens liegt 0,3 px neben der Kastenmitte (gemessen, Instrument Sans 22 px): kein Taumeln. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  :root[data-ce-bereich="kunde"] .btn.ce-aktion-neu:hover:not(:disabled)::before {
+    animation: ce-plus-drehung var(--ce-pr-ed-plus-dauer) var(--ce-pr-ed-plus-kurve) 1 both;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-ce-bereich="kunde"] .btn.ce-aktion-neu:focus-visible::before {
+    animation: ce-plus-drehung var(--ce-pr-ed-plus-dauer) var(--ce-pr-ed-plus-kurve) 1 both;
+  }
+}
+@keyframes ce-plus-drehung {
+  from { rotate: 0deg; }
+  to { rotate: 720deg; }
+}
+/* Leise Textwege in Modul- und Tabellenköpfen: unterstrichen, Signal bei Zeigen. */
+:root[data-ce-bereich="kunde"] :is(.ov-mod-head .btn-link, .ov-lager-alle) {
+  padding-inline: 0;
+  color: var(--ce-color-text-secondary);
+  font-size: var(--ce-text-micro-size);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--ce-color-border-default);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 5px;
+}
+:root[data-ce-bereich="kunde"] :is(.ov-mod-head .btn-link, .ov-lager-alle):hover {
+  background: transparent;
+  color: var(--ce-pr-signal-ink);
+  text-decoration-color: currentColor;
+}
+
+/* ═══════════ 4 · STATUS ═══════════════════════════════════════════════════
+   Bedeutung und Zuordnung unverändert (E8). Ruhig: Punkt und Wort in Tinte.
+   Hervorgehoben (Warnung, überfällig, Fehler, gesperrt): getönte Kapsel, Text im Ton. */
+:root[data-ce-bereich="kunde"] :is(.badge, .inv-status) {
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+:root[data-ce-bereich="kunde"] :is(.badge--warning, .badge-yellow, .badge--overdue, .inv-status--critical, .badge--error, .badge-red, .badge--blocked) {
+  border-radius: var(--ce-radius-full);
+}
+
+/* ═══════════ 5 · ÜBERSICHT ════════════════════════════════════════════════ */
+
+/* ── Lageband (Korrektur A): vier gleich breite, gleichwertige Kennzahlen im Navy der Wortmarke ──
+   Jede Kennzahl trägt ihre eigene Kennfarbe als Marke vor der Bezeichnung — wie eine Legende, nicht als
+   Warnung. Ein Subgrid hält Bezeichnung, Zahl und Kontext aller Spalten auf gemeinsamen Linien, auch wenn
+   eine Bezeichnung umbricht. Erst ein echter Wert über 0 bei „Verzögert“ färbt die Zahl (data-null kommt
+   aus Overview.jsx; ohne geladene Daten steht ohnehin „—“). Berechnung und Bedeutung unverändert. */
+:root[data-ce-bereich="kunde"] .ov-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: auto auto 1fr;
+  gap: 0;
+  margin: var(--ce-space-1) 0 var(--ce-space-8);
+  padding: 0;
+  border: 0;
+  border-radius: var(--ce-pr-radius-card);
+  background: var(--ce-pr-ed-band);
+  color: var(--ce-pr-on-navy);
+  box-shadow: var(--ce-pr-ed-shadow-band);
+  overflow: hidden;
+}
+:root[data-ce-bereich="kunde"] .ov-kpi {
+  position: relative;
+  display: grid;
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+  row-gap: 0;
+  min-width: 0;
+  padding: var(--ce-space-6) var(--ce-space-6) var(--ce-space-5);
+  border: 0;
+  background: transparent;
+}
+:root[data-ce-bereich="kunde"] .ov-kpi + .ov-kpi { border-left: 1px solid var(--ce-pr-ed-band-line); border-top: 0; }
+:root[data-ce-bereich="kunde"] .ov-kpi-label {
+  display: block;
+  min-width: 0;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  font-size: var(--ce-text-label-size);
+  line-height: var(--ce-text-label-line);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--ce-pr-on-navy);
+}
+/* Die Identität jeder Kennzahl: eine Akzentlinie an der Oberkante ihrer Spalte, wie die Markenkante unter dem
+   Seitenkopf — Blau für aktiv, Himmelblau für in Zustellung, Grün für zugestellt, Bernstein für verzögert. */
+:root[data-ce-bereich="kunde"] .ov-kpi::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: var(--ce-space-6);
+  width: var(--ce-space-8);
+  height: 3px;
+  background: var(--ce-pr-ed-mark-active);
+}
+:root[data-ce-bereich="kunde"] .ov-kpi--transit::before { background: var(--ce-pr-ed-mark-transit); }
+:root[data-ce-bereich="kunde"] .ov-kpi--delivered::before { background: var(--ce-pr-ed-mark-delivered); }
+:root[data-ce-bereich="kunde"] .ov-kpi--delayed::before { background: var(--ce-pr-ed-mark-delayed); }
+:root[data-ce-bereich="kunde"] .ov-kpi-value {
+  align-self: end;
+  margin: var(--ce-space-5) 0 var(--ce-space-3) -2px;
+  font-family: var(--ce-font-numeric);
+  font-size: var(--ce-pr-ed-figure-size);
+  line-height: 0.86;
+  font-weight: 600;
+  font-stretch: var(--ce-pr-ed-figure-stretch);
+  letter-spacing: -0.04em;
+  color: var(--ce-color-text-inverse);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+:root[data-ce-bereich="kunde"] .ov-kpi--delayed:not([data-null]) .ov-kpi-value { color: var(--ce-pr-ed-mark-delayed); }
+
+:root[data-ce-bereich="kunde"] .ov-kpi-context {
+  align-self: start;
+  font-size: var(--ce-text-micro-size);
+  line-height: 1.45;
+  color: var(--ce-pr-on-navy-2);
+}
+/* Der Zusatz bricht als Ganzes um (das geschützte Leerzeichen hält „24 h“ zusammen), nie in die Nachbarspalte. */
+:root[data-ce-bereich="kunde"] .ov-kpi-note { color: var(--ce-pr-on-navy); font-weight: 600; white-space: normal; }
+
+@media (max-width: 1120px) {
+  :root[data-ce-bereich="kunde"] .ov-kpi { padding: var(--ce-space-5) var(--ce-space-5) var(--ce-space-4); }
+  :root[data-ce-bereich="kunde"] .ov-kpi::before { left: var(--ce-space-5); }
+}
+/* Telefon: 2 × 2, alle vier gleich groß; die Linien trennen Spalten und Reihen. */
+@media (max-width: 600px) {
+  :root[data-ce-bereich="kunde"] .ov-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto auto 1fr auto auto 1fr;
+    margin-bottom: var(--ce-space-7);
+  }
+  :root[data-ce-bereich="kunde"] .ov-kpi { padding: var(--ce-space-4) var(--ce-space-4) var(--ce-space-4); }
+  :root[data-ce-bereich="kunde"] .ov-kpi::before { left: var(--ce-space-4); width: var(--ce-space-7); }
+  :root[data-ce-bereich="kunde"] .ov-kpi:nth-child(odd) { border-left: 0; }
+  :root[data-ce-bereich="kunde"] .ov-kpi:nth-child(n + 3) { border-top: 1px solid var(--ce-pr-ed-band-line); }
+  :root[data-ce-bereich="kunde"] .ov-kpi-value { margin-top: var(--ce-space-3); font-size: var(--ce-pr-ed-figure-size-mobile); }
+}
+
+/* ── Module: Kopf mit Tintenlinie, asymmetrisch 1,72 : 1 ── */
+:root[data-ce-bereich="kunde"] .ov-mod-grid {
+  grid-template-columns: minmax(0, 1.72fr) minmax(0, 1fr);
+  gap: 0 var(--ce-space-9);
+  margin-bottom: var(--ce-space-9);
+}
+:root[data-ce-bereich="kunde"] .ov-mod-head {
+  align-items: baseline;
+  min-height: var(--ce-size-touch-target);
+  margin-bottom: 0;
+  padding-bottom: var(--ce-space-3);
+  border-bottom: 2px solid var(--ce-color-text-primary);
+}
+:root[data-ce-bereich="kunde"] .ov-mod-title {
+  font-size: var(--ce-text-title-section-size);
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  color: var(--ce-color-text-primary);
+}
+
+/* ── Letzte Sendungen: offene Liste zwischen Linien statt Kartenkasten ──
+   Feste Spaltenbreiten, damit Nummer, Versand, Status und Betrag über alle Zeilen fluchten; der Empfänger
+   bekommt den Rest. Unter 1360 px rückt der Versand unter den Empfänger (wie im Bestand). */
+:root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:first-child > .ov-card {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+:root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row {
+  position: relative;
+  grid-template-columns: 8.25rem minmax(0, 1fr) 5rem 7.25rem 5.5rem;
+  grid-template-areas: "nr empf carrier status betrag";
+  column-gap: var(--ce-space-4);
+  padding: var(--ce-space-4) 2px var(--ce-space-4) 0;
+  border-bottom: 1px solid var(--ce-pr-hairline);
+}
+:root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-main { grid-area: nr; }
+:root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-empfaenger { grid-area: empf; }
+:root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-carrier { grid-area: carrier; }
+:root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-status { grid-area: status; }
+:root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-num { grid-area: betrag; text-align: right; }
+@media (max-width: 1360px) and (min-width: 721px) {
+  :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row {
+    grid-template-columns: 8.25rem minmax(0, 1fr) 7.25rem 5.5rem;
+    grid-template-areas: "nr empf status betrag" "nr carrier status betrag";
+    row-gap: var(--ce-space-1);
+  }
+}
+/* Die Signalkante links zeigt die Zeile unter dem Zeiger. */
+:root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row::before {
+  content: "";
+  position: absolute;
+  left: calc(-1 * var(--ce-space-3));
+  top: var(--ce-space-4);
+  bottom: var(--ce-space-4);
+  width: 2px;
+  border-radius: 2px;
+  background: var(--ce-pr-ed-row-mark);
+  opacity: 0;
+  transition: opacity var(--ce-motion-standard) var(--ce-motion-ease-standard);
+}
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row:hover::before { opacity: 1; }
+}
+:root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-primary {
+  font-size: var(--ce-text-body-s-size);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ce-color-text-primary);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+:root[data-ce-bereich="kunde"] .ov-list-secondary {
+  font-size: var(--ce-text-micro-size);
+  color: var(--ce-color-text-muted);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+:root[data-ce-bereich="kunde"] .ov-list-empfaenger-name { font-size: var(--ce-text-body-s-size); font-weight: 500; color: var(--ce-color-text-primary); }
+:root[data-ce-bereich="kunde"] .ov-list-carrier { font-size: var(--ce-text-label-size); color: var(--ce-color-text-secondary); }
+:root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-num {
+  font-size: var(--ce-text-body-l-size);
+  font-weight: 600;
+  font-stretch: var(--ce-pr-ed-amount-stretch);
+  letter-spacing: -0.01em;
+  color: var(--ce-color-text-primary);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ── Offene Rechnungen: das eine Blatt mit Betrag (Korrektur B: der Betrag behält die Größe des Bestands) ── */
+:root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:nth-child(2) > .ov-card {
+  margin-top: var(--ce-space-5);
+  padding: var(--ce-space-6);
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-radius-card);
+  background: var(--ce-color-surface);
+  box-shadow: var(--ce-pr-ed-shadow-sheet);
+}
+:root[data-ce-bereich="kunde"] .ov-inv-amount { color: var(--ce-color-text-primary); }
+:root[data-ce-bereich="kunde"] .ov-inv-meta { margin-top: var(--ce-space-3); gap: var(--ce-space-1); font-size: var(--ce-text-label-size); color: var(--ce-color-text-secondary); }
+:root[data-ce-bereich="kunde"] .ov-inv-meta > span:first-child { color: var(--ce-color-text-primary); font-weight: 600; }
+:root[data-ce-bereich="kunde"] .ov-inv-overdue { margin-top: var(--ce-space-3); }
+:root[data-ce-bereich="kunde"] .ov-credit { margin-top: var(--ce-space-6); padding-top: var(--ce-space-5); border-top: 1px solid var(--ce-pr-hairline); }
+:root[data-ce-bereich="kunde"] .ov-credit-label { font-size: var(--ce-text-label-size); font-weight: 600; color: var(--ce-color-text-primary); }
+:root[data-ce-bereich="kunde"] .ov-credit-limit { font-weight: 600; font-stretch: var(--ce-pr-ed-amount-stretch); color: var(--ce-color-text-primary); }
+:root[data-ce-bereich="kunde"] .ov-credit-bar { height: 6px; border-radius: var(--ce-radius-full); background: var(--ce-color-surface-muted); }
+:root[data-ce-bereich="kunde"] .ov-credit-bar-fill { min-width: 10px; border-radius: var(--ce-radius-full); background: var(--ce-pr-stripe); }
+
+/* ── Zweite Reihe: Lager und Mitteilungen als zurückgenommene Mulden ── */
+:root[data-ce-bereich="kunde"] .ov-mod-grid--lager .ov-mod-head { border-bottom-width: 1px; border-bottom-color: var(--ce-color-border-default); }
+:root[data-ce-bereich="kunde"] .ov-mod-grid--lager .ov-mod-title { font-size: var(--ce-text-title-card-size); }
+:root[data-ce-bereich="kunde"] .ov-mod-grid--lager .ov-card {
+  margin-top: var(--ce-space-4);
+  border: 0;
+  border-radius: var(--ce-pr-radius-card);
+  background: var(--ce-pr-inset);
+  box-shadow: none;
+}
+:root[data-ce-bereich="kunde"] .ov-lager-zahl {
+  font-weight: 600;
+  font-stretch: var(--ce-pr-ed-figure-stretch);
+  letter-spacing: -0.03em;
+  color: var(--ce-color-text-primary);
+}
+:root[data-ce-bereich="kunde"] .ov-lager-titel { font-weight: 600; color: var(--ce-color-text-secondary); }
+:root[data-ce-bereich="kunde"] .ov-lager-fakten dd { font-weight: 600; font-stretch: var(--ce-pr-ed-amount-stretch); color: var(--ce-color-text-primary); }
+:root[data-ce-bereich="kunde"] .ov-ntf-btn { border-radius: 0; }
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .ov-ntf-btn:hover { background: var(--ce-color-surface-muted); }
+}
+:root[data-ce-bereich="kunde"] .ov-mod-grid--lager .ov-list-row:first-child .ov-ntf-btn { border-radius: var(--ce-pr-radius-card) var(--ce-pr-radius-card) 0 0; }
+:root[data-ce-bereich="kunde"] .ov-mod-grid--lager .ov-list-row:last-child .ov-ntf-btn { border-radius: 0 0 var(--ce-pr-radius-card) var(--ce-pr-radius-card); }
+:root[data-ce-bereich="kunde"] .ov-ntf-new { border-radius: var(--ce-radius-full); background: var(--ce-pr-navy-800); color: var(--ce-color-text-inverse); }
+
+/* ── Versanddienstleister: die bestehende Navy-Bühne mit Linienzeichnung bleibt (Auftrag 2026-10-28); nur die
+   Rundung folgt dem Lageband. ── */
+:root[data-ce-bereich="kunde"] .ov-carrier-zeile { border-radius: var(--ce-pr-radius-card); }
+:root[data-ce-bereich="kunde"] .ov-carrier-titel { letter-spacing: -0.024em; }
+
+/* ── Übersicht schmaler ── */
+@media (max-width: 1280px) {
+  :root[data-ce-bereich="kunde"] .ov-mod-grid { gap: 0 var(--ce-space-7); }
+}
+@media (max-width: 1120px) {
+  :root[data-ce-bereich="kunde"] :is(.ov-mod-grid, .ov-mod-grid--lager) { grid-template-columns: minmax(0, 1fr); gap: 0; margin-bottom: 0; }
+  :root[data-ce-bereich="kunde"] .ov-mod-grid > .ov-mod { margin-bottom: var(--ce-space-9); }
+  /* Rechnungen quer: Betrag links, Buchungsrahmen rechts. */
+  :root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:nth-child(2) > .ov-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    grid-template-rows: auto auto 1fr;
+    column-gap: var(--ce-space-8);
+  }
+  :root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:nth-child(2) > .ov-card > .ov-credit {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: center;
+    margin-top: 0;
+    padding: 0 0 0 var(--ce-space-7);
+    border-top: 0;
+    border-left: 1px solid var(--ce-pr-hairline);
+  }
+}
+@media (max-width: 860px) {
+  :root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:nth-child(2) > .ov-card { display: block; }
+  :root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:nth-child(2) > .ov-card > .ov-credit {
+    margin-top: var(--ce-space-6);
+    padding: var(--ce-space-5) 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--ce-pr-hairline);
+  }
+}
+@media (max-width: 720px) {
+  :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "nr betrag" "empf empf" "carrier status";
+    row-gap: var(--ce-space-2);
+    padding: var(--ce-space-4) 0;
+  }
+  :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-status { justify-self: end; }
+  :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-num { align-self: start; }
+  :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row::before { display: none; }
+  :root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:nth-child(2) > .ov-card { padding: var(--ce-space-5); }
+}
+
+/* ═══════════ 6 · ENTWÜRFE ═════════════════════════════════════════════════
+   Die freigegebene Editorial-Tabelle: offen auf Papier, Tintenlinie unter dem Kopf, Haarlinien zwischen den
+   Zeilen, der Empfänger führt, die Route im schmalen Schnitt. „Fortsetzen“ als Navy-Kontur, die sich mit der
+   Zeile füllt; „Weitere Aktionen“ als runde Menütaste (der Name bleibt für Screenreader erhalten). Die Tabelle
+   steht schon ab 1001 px (Bestand: ab 1101 px), darunter die Einträge zwischen Linien. */
+/* Umschaltpunkt in em: bei größer eingestellter Grundschrift stehen die Einträge, bevor die Tabelle zu eng wird. */
+@media (min-width: 62.5625em) {
+  :root[data-ce-bereich="kunde"] .dft-table-card { display: block; overflow: visible; }
+  :root[data-ce-bereich="kunde"] .dft-cards { display: none; }
+}
+@media (max-width: 62.5em) {
+  :root[data-ce-bereich="kunde"] .dft-table-card { display: none; }
+  :root[data-ce-bereich="kunde"] .dft-cards { display: flex; }
+}
+:root[data-ce-bereich="kunde"] .dft-table-card {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+:root[data-ce-bereich="kunde"] .dft-table-card .table-scroll { overflow: visible; }
+:root[data-ce-bereich="kunde"] .dft-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+:root[data-ce-bereich="kunde"] .dft-table thead th {
+  padding: 0 var(--ce-space-4) var(--ce-space-3) 0;
+  background: transparent;
+  border-bottom: 2px solid var(--ce-color-text-primary);
+  font-size: var(--ce-text-micro-size);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ce-color-text-secondary);
+  white-space: nowrap;
+}
+:root[data-ce-bereich="kunde"] .dft-table tbody td {
+  position: relative;
+  padding: var(--ce-space-6) var(--ce-space-4) var(--ce-space-6) 0;
+  border-bottom: 1px solid var(--ce-pr-hairline);
+  vertical-align: middle;
+  background: transparent;
+  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+:root[data-ce-bereich="kunde"] :is(.dft-table tbody td:first-child, .dft-table thead th:first-child) { padding-left: var(--ce-space-5); }
+:root[data-ce-bereich="kunde"] .dft-table tbody td:last-child { padding-right: var(--ce-space-5); }
+:root[data-ce-bereich="kunde"] .dft-table tbody td:first-child::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: var(--ce-space-5);
+  bottom: var(--ce-space-5);
+  width: 3px;
+  border-radius: 2px;
+  background: var(--ce-pr-ed-row-mark);
+  opacity: 0;
+  transition: opacity var(--ce-motion-standard) var(--ce-motion-ease-standard);
+}
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .dft-table tbody tr:hover > td { background: var(--ce-color-surface-subtle); }
+  :root[data-ce-bereich="kunde"] .dft-table tbody tr:hover > td:first-child::before { opacity: 1; }
+}
+:root[data-ce-bereich="kunde"] .dft-table tbody tr:focus-within > td:first-child::before { opacity: 1; }
+:root[data-ce-bereich="kunde"] .dft-cell-recipient-name {
+  display: block;
+  font-size: var(--ce-text-title-card-size);
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.016em;
+  color: var(--ce-color-text-primary);
+}
+:root[data-ce-bereich="kunde"] .dft-cell-updated {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ce-space-1) var(--ce-space-3);
+  margin-top: var(--ce-space-2);
+  font-size: var(--ce-text-micro-size);
+  color: var(--ce-color-text-muted);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+:root[data-ce-bereich="kunde"] .dft-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ce-space-2);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ce-color-text-secondary);
+  font-size: var(--ce-text-micro-size);
+  font-weight: 600;
+}
+:root[data-ce-bereich="kunde"] .dft-badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--ce-pr-navy-800);
+}
+:root[data-ce-bereich="kunde"] .dft-cell-updated .dft-badge::after {
+  content: "";
+  width: 1px;
+  height: var(--ce-space-3);
+  margin-left: var(--ce-space-1);
+  background: var(--ce-color-border-default);
+}
+:root[data-ce-bereich="kunde"] .dft-cell-route {
+  font-size: var(--ce-text-title-card-size);
+  font-weight: 600;
+  font-stretch: var(--ce-pr-ed-amount-stretch);
+  letter-spacing: 0.02em;
+  word-spacing: 0.2em;
+  color: var(--ce-color-text-primary);
+  white-space: nowrap;
+}
+:root[data-ce-bereich="kunde"] .dft-cell-package { display: flex; flex-direction: column; gap: 2px; }
+:root[data-ce-bereich="kunde"] .dft-cell-package-count { font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-primary); }
+:root[data-ce-bereich="kunde"] .dft-cell-package > span:last-child { font-size: var(--ce-text-micro-size); color: var(--ce-color-text-muted); }
+:root[data-ce-bereich="kunde"] .dft-cell-date {
+  font-size: var(--ce-text-body-s-size);
+  font-weight: 500;
+  color: var(--ce-color-text-primary);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  white-space: nowrap;
+}
+
+/* Aktionen der Zeile */
+:root[data-ce-bereich="kunde"] .dft-cell-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--ce-space-2); flex-wrap: nowrap; }
+:root[data-ce-bereich="kunde"] .btn.dft-resume-btn {
+  min-height: var(--ce-size-control-md);
+  padding: 0 var(--ce-space-4) 0 var(--ce-space-5);
+  border-color: var(--ce-pr-navy-800);
+  background: var(--ce-color-surface);
+  color: var(--ce-pr-navy-800);
+  font-size: var(--ce-text-label-size);
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* Ein ruhender Winkel hinter dem Wort: „weiter“. Er bewegt sich nicht (E5). */
+:root[data-ce-bereich="kunde"] .dft-resume-btn::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: var(--ce-space-3);
+  border-top: 1.5px solid currentColor;
+  border-right: 1.5px solid currentColor;
+  rotate: 45deg;
+}
+:root[data-ce-bereich="kunde"] .btn.dft-resume-btn:hover:not(:disabled) {
+  background: var(--ce-pr-navy-700);
+  border-color: var(--ce-pr-navy-700);
+  color: var(--ce-color-text-inverse);
+}
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .dft-table tbody tr:hover .btn.dft-resume-btn:not(:disabled) {
+    background: var(--ce-pr-navy-800);
+    border-color: var(--ce-pr-navy-800);
+    color: var(--ce-color-text-inverse);
+  }
+}
+:root[data-ce-bereich="kunde"] .dft-actions-trigger {
+  position: relative;
+  width: var(--ce-size-control-md);
+  height: var(--ce-size-control-md);
+  min-width: var(--ce-size-control-md);
+  padding: 0;
+  border: 1px solid var(--ce-color-border-default);
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-surface);
+  color: var(--ce-color-text-primary);
+  font-size: 0;
+  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard), border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+/* Die Beschriftung „Weitere Aktionen“ bleibt im Zugänglichkeitsbaum, sichtbar stehen drei Punkte. */
+:root[data-ce-bereich="kunde"] .dft-actions-trigger > span:not(.spinner) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+:root[data-ce-bereich="kunde"] .dft-actions-trigger::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 18px;
+  height: 4px;
+  background: radial-gradient(circle, currentColor 0 1.9px, transparent 2.3px) 0 50% / 7px 4px repeat-x;
+}
+:root[data-ce-bereich="kunde"] .dft-actions-trigger:hover:not(:disabled),
+:root[data-ce-bereich="kunde"] .dft-actions-trigger[aria-expanded="true"] {
+  background: var(--ce-pr-inset);
+  border-color: var(--ce-color-text-muted);
+}
+:root[data-ce-bereich="kunde"] .dft-actions-menu {
+  padding: var(--ce-space-1);
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-3);
+}
+:root[data-ce-bereich="kunde"] .dft-actions-item { border-radius: var(--ce-radius-md); font-weight: 600; }
+
+/* Entwürfe zwischen 1001 und 1100 px: Aktionen bleiben einzeilig, die Metazeile bricht ohne Trennstrich um. */
+@media (max-width: 68.75em) and (min-width: 62.5625em) {
+  :root[data-ce-bereich="kunde"] :is(.dft-table tbody td, .dft-table thead th) { padding-right: var(--ce-space-3); }
+  :root[data-ce-bereich="kunde"] .dft-cell-updated .dft-badge::after { display: none; }
+  :root[data-ce-bereich="kunde"] .dft-cell-updated { flex-direction: column; align-items: flex-start; gap: 2px; }
+  :root[data-ce-bereich="kunde"] .btn.dft-resume-btn { padding: 0 var(--ce-space-3); }
+}
+
+/* ── Entwürfe schmal: Einträge zwischen Linien statt Kartenstapel ── */
+:root[data-ce-bereich="kunde"] .dft-cards { gap: 0; }
+:root[data-ce-bereich="kunde"] .dft-card {
+  display: grid;
+  gap: var(--ce-space-3);
+  padding: var(--ce-space-5) 0;
+  border: 0;
+  border-bottom: 1px solid var(--ce-pr-hairline);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+:root[data-ce-bereich="kunde"] .dft-card:first-child { padding-top: var(--ce-space-2); }
+:root[data-ce-bereich="kunde"] .dft-card-recipient {
+  font-size: var(--ce-text-title-card-size);
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.016em;
+  color: var(--ce-color-text-primary);
+}
+:root[data-ce-bereich="kunde"] .dft-card-route {
+  margin-top: 2px;
+  font-size: var(--ce-text-body-s-size);
+  font-weight: 600;
+  font-stretch: var(--ce-pr-ed-amount-stretch);
+  letter-spacing: 0.02em;
+  word-spacing: 0.2em;
+  color: var(--ce-color-text-secondary);
+}
+:root[data-ce-bereich="kunde"] .dft-card-info {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: 2px 0 0;
+  padding: var(--ce-space-3) 0;
+  border-top: 1px solid var(--ce-pr-hairline);
+  border-bottom: 1px solid var(--ce-pr-hairline);
+}
+:root[data-ce-bereich="kunde"] .dft-card-info-row { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+:root[data-ce-bereich="kunde"] .dft-card-info-row + .dft-card-info-row { padding-left: var(--ce-space-4); border-left: 1px solid var(--ce-pr-hairline); }
+:root[data-ce-bereich="kunde"] .dft-card-info dt { font-size: var(--ce-text-micro-size); font-weight: 600; color: var(--ce-color-text-muted); }
+:root[data-ce-bereich="kunde"] .dft-card-info dd {
+  margin: 0;
+  font-size: var(--ce-text-body-s-size);
+  font-weight: 600;
+  color: var(--ce-color-text-primary);
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+:root[data-ce-bereich="kunde"] .dft-card-meta {
+  font-size: var(--ce-text-micro-size);
+  color: var(--ce-color-text-muted);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+:root[data-ce-bereich="kunde"] .dft-card-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--ce-space-3); border-top: 0; padding-top: 0; }
+:root[data-ce-bereich="kunde"] .dft-card-actions .btn.dft-resume-btn { width: 100%; min-height: var(--ce-size-touch-target); justify-content: center; }
+:root[data-ce-bereich="kunde"] .dft-card-actions .dft-actions-trigger { width: var(--ce-size-touch-target); height: var(--ce-size-touch-target); min-width: var(--ce-size-touch-target); }
+
+/* ═══════════ 7 · TABELLEN UND LISTEN (alle Kundenseiten) ══════════════════
+   Wie die freigegebene Entwurfstabelle: offen auf Papier statt im Kasten, eine Tintenlinie unter dem Kopf,
+   Haarlinien zwischen den Zeilen, die Signalkante an der Zeile unter dem Zeiger und im Tastaturfokus.
+   Spalten, Inhalte und Aktionen bleiben, wie sie sind. */
+:root[data-ce-bereich="kunde"] :is(.table-card, .ce-table-container) {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+:root[data-ce-bereich="kunde"] :is(.table-card, .ce-table-container) thead th {
+  background: transparent;
+  border-bottom: 2px solid var(--ce-color-text-primary);
+  font-size: var(--ce-text-micro-size);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ce-color-text-secondary);
+}
+:root[data-ce-bereich="kunde"] :is(.table-card, .ce-table-container) tbody td { border-bottom: 1px solid var(--ce-pr-hairline); }
+:root[data-ce-bereich="kunde"] :is(.table-card, .ce-table-container) tbody tr:last-child > td { border-bottom: 1px solid var(--ce-pr-hairline); }
+:root[data-ce-bereich="kunde"] :is(.table-card, .ce-table-container):not(.dft-table-card) tbody td:first-child { position: relative; }
+:root[data-ce-bereich="kunde"] :is(.table-card, .ce-table-container):not(.dft-table-card) tbody td:first-child::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: var(--ce-space-4);
+  bottom: var(--ce-space-4);
+  width: 3px;
+  border-radius: 2px;
+  background: var(--ce-pr-ed-row-mark);
+  opacity: 0;
+  transition: opacity var(--ce-motion-standard) var(--ce-motion-ease-standard);
+}
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] :is(.table-card, .ce-table-container) tbody tr:hover > td { background: var(--ce-color-surface-subtle); }
+  :root[data-ce-bereich="kunde"] :is(.table-card, .ce-table-container):not(.dft-table-card) tbody tr:hover > td:first-child::before { opacity: 1; }
+}
+:root[data-ce-bereich="kunde"] :is(.table-card, .ce-table-container):not(.dft-table-card) tbody tr:focus-within > td:first-child::before { opacity: 1; }
+
+/* Schmale Breiten: Einträge zwischen Linien statt gestapelter Karten; die Liste beginnt mit der Tintenlinie. */
+:root[data-ce-bereich="kunde"] .ce-list-cards { gap: 0; border-top: 2px solid var(--ce-color-text-primary); }
+:root[data-ce-bereich="kunde"] .ce-list-card {
+  padding: var(--ce-space-5) 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--ce-pr-hairline);
+  border-radius: 0;
+  box-shadow: none;
+}
+:root[data-ce-bereich="kunde"] .ce-list-card-key { color: var(--ce-color-text-muted); }
+:root[data-ce-bereich="kunde"] .ce-list-card-val { font-weight: 500; }
+:root[data-ce-bereich="kunde"] .ce-list-card-actions { border-top-color: var(--ce-pr-hairline); }
+
+/* ═══════════ 8 · REITER, WERKZEUGLEISTEN, FILTER ══════════════════════════ */
+:root[data-ce-bereich="kunde"] .ce-tabs { border-bottom-color: var(--ce-pr-hairline); }
+:root[data-ce-bereich="kunde"] .ce-tab { color: var(--ce-color-text-secondary); font-weight: 600; }
+:root[data-ce-bereich="kunde"] .ce-tab:hover { color: var(--ce-color-text-primary); }
+:root[data-ce-bereich="kunde"] :is(.ce-tab[aria-selected="true"], .ce-tab.active, .ce-tab--active) {
+  border-bottom-color: var(--ce-pr-signal);
+  color: var(--ce-color-text-primary);
+}
+
+/* Einzelschalter „Nur Favoriten“: Kapsel; gewählt in Navy-Kontur auf Signal-Soft. Die Rechnungsfilter sind seit
+   2026-10-28 eine Segmentsteuerung (Abschnitt 22). */
+:root[data-ce-bereich="kunde"] .abk-filter-pill { border-radius: var(--ce-radius-full); }
+:root[data-ce-bereich="kunde"] .abk-filter-pill--active {
+  border-color: var(--ce-pr-navy-800);
+  background: var(--ce-pr-signal-soft);
+  color: var(--ce-pr-navy-800);
+}
+
+/* ═══════════ 9 · FORMULARE ════════════════════════════════════════════════
+   Felder weiß mit klarer Kante und 12 px Radius, Beschriftung in Tinte, Hinweise ruhig. Formulargruppen
+   (Abschnitte von „Neue Sendung“ und Versandkostenrechner) stehen offen auf dem Papier: ein Abschnittskopf
+   mit Tintenlinie statt eines Kastens je Gruppe. */
+:root[data-ce-bereich="kunde"] :is(.field-input, .field-select, .field-textarea) {
+  border-color: var(--ce-color-border-default);
+  border-radius: var(--ce-pr-radius-control-lg);
+}
+:root[data-ce-bereich="kunde"] :is(.field-input, .field-select, .field-textarea):hover:not(:focus):not(:disabled) { border-color: var(--ce-color-text-muted); }
+/* Nur stehende Beschriftungen; schwebende (Versandformulare) behalten ihren ruhigen Ruhezustand. */
+:root[data-ce-bereich="kunde"] .field-label:not(.ce-field--floating .field-label) { color: var(--ce-color-text-primary); font-weight: 600; }
+:root[data-ce-bereich="kunde"] .field-hint { color: var(--ce-color-text-muted); }
+
+:root[data-ce-bereich="kunde"] .calc-page-wrap .calc-panel:not(.calc-filter-bar .calc-panel) {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+/* Die Optionsleiste über dem Formular (Abholung, Versanddatum, Versanddienst …) bleibt eine Reihe von Feldern:
+   weiße Fläche, klare Kante, 12 px Radius — und der Fehlerrahmen des Versanddatums bleibt sichtbar. */
+:root[data-ce-bereich="kunde"] .calc-page-wrap .calc-filter-bar { margin-bottom: var(--ce-space-8); }
+:root[data-ce-bereich="kunde"] .calc-filter-bar .calc-panel {
+  border-color: var(--ce-color-border-default);
+  border-radius: var(--ce-pr-radius-control-lg);
+  box-shadow: none;
+}
+:root[data-ce-bereich="kunde"] .calc-filter-bar .calc-panel:hover { border-color: var(--ce-color-text-muted); }
+:root[data-ce-bereich="kunde"] .calc-filter-bar .calc-panel.calc-panel--error { border-color: var(--ce-color-status-error-fg); }
+:root[data-ce-bereich="kunde"] .calc-page-wrap .calc-panel-header {
+  padding: 0 0 var(--ce-space-3);
+  background: transparent;
+  border-bottom: 2px solid var(--ce-color-text-primary);
+}
+:root[data-ce-bereich="kunde"] .calc-page-wrap .calc-panel-header h3 {
+  font-size: var(--ce-text-title-section-size);
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+:root[data-ce-bereich="kunde"] .calc-page-wrap .calc-panel-body { padding: var(--ce-space-6) 0 var(--ce-space-2); }
+
+/* ═══════════ 10 · BLÄTTER, ZUSTÄNDE, HINWEISE ═════════════════════════════
+   Ein Blatt trägt ein abgeschlossenes Objekt (Profilabschnitt, Beleg, Bestätigung). Zustände stehen
+   linksbündig in der Mulde: Titel, ein Satz, eine Aktion. */
+:root[data-ce-bereich="kunde"] .ce-card {
+  border-color: var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-radius-card);
+}
+:root[data-ce-bereich="kunde"] :is(.ce-state, .empty) { border-radius: var(--ce-pr-radius-card); }
+:root[data-ce-bereich="kunde"] .ce-state-title {
+  font-size: var(--ce-text-title-card-size);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  color: var(--ce-color-text-primary);
+}
+:root[data-ce-bereich="kunde"] .alert { border-radius: var(--ce-pr-radius-control-lg); }
+
+/* ═══════════ 11 · DIALOGE UND SCHUBLADEN ══════════════════════════════════
+   Dieselbe Hand wie die Seiten: Titel in der Abschnittsstufe, die Markenkante an der Oberkante, Aktionen als
+   Kapseln. Fokusführung und Inhalte bleiben unverändert (useDialog). */
+:root[data-ce-bereich="kunde"] :is(.ce-dialog, .stn-dialog-card, .sup-dialog-card, .dft-dialog-card, .abk-dialog-card, .email-change-modal, .price-drift-card) {
+  position: relative;
+  padding: var(--ce-space-7);
+  border-color: var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-radius-card);
+}
+:root[data-ce-bereich="kunde"] :is(.ce-dialog, .stn-dialog-card, .sup-dialog-card, .dft-dialog-card, .abk-dialog-card, .email-change-modal, .price-drift-card)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: var(--ce-space-7);
+  width: var(--ce-space-9);
+  height: 3px;
+  background: linear-gradient(90deg, var(--ce-pr-navy-800) 0 62%, var(--ce-pr-signal) 62% 100%);
+}
+:root[data-ce-bereich="kunde"] :is(.ce-dialog-title, .stn-dialog-title, .sup-dialog-title, .dft-dialog-title, .abk-dialog-title, .email-change-modal-title, .price-drift-title) {
+  font-size: var(--ce-text-title-section-size);
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ce-color-text-primary);
+}
+:root[data-ce-bereich="kunde"] :is(.ce-drawer-head, .abk-drawer-header) { border-bottom: 2px solid var(--ce-color-text-primary); }
+:root[data-ce-bereich="kunde"] :is(.abk-drawer-title, .sdoc-title) {
+  font-size: var(--ce-text-title-section-size);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ce-color-text-primary);
+}
+:root[data-ce-bereich="kunde"] :is(.ce-drawer-foot, .abk-drawer-footer) { border-top-color: var(--ce-pr-hairline); }
+
+/* Mitteilungen: das Blatt im Seitenkopf. */
+:root[data-ce-bereich="kunde"] .ntf-panel { border-color: var(--ce-pr-hairline); border-radius: var(--ce-pr-radius-card); }
+:root[data-ce-bereich="kunde"] .ntf-head { border-bottom: 2px solid var(--ce-color-text-primary); }
+:root[data-ce-bereich="kunde"] .ntf-title { font-size: var(--ce-text-title-card-size); font-weight: 600; letter-spacing: -0.012em; }
+
+/* ═══════════ 12 · NEUE SENDUNG, VERSANDKOSTENRECHNER, ANGEBOTE ════════════
+   Alle Felder, Pflichtangaben, Optionen und die Paketbühne bleiben; nur Gliederung und Typografie ändern sich. */
+:root[data-ce-bereich="kunde"] .calc-section-title {
+  font-size: var(--ce-text-title-card-size);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  color: var(--ce-color-text-primary);
+}
+:root[data-ce-bereich="kunde"] .dft-cta-row {
+  margin-top: var(--ce-space-2);
+  padding-top: var(--ce-space-6);
+  border-top: 1px solid var(--ce-pr-hairline);
+}
+/* Das Ergebnisblatt der Angebote: Blatt mit Haarlinie, die Markenkante unter dem Kopf, Preise im schmalen Schnitt. */
+:root[data-ce-bereich="kunde"] .offers-section {
+  border-color: var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-radius-card);
+  box-shadow: var(--ce-pr-shadow-card);
+}
+:root[data-ce-bereich="kunde"] .offers-result-header { position: relative; }
+:root[data-ce-bereich="kunde"] .offers-result-header::after {
+  content: "";
+  position: absolute;
+  left: var(--ce-space-7);
+  bottom: -2px;
+  width: var(--ce-space-10);
+  height: 3px;
+  background: linear-gradient(90deg, var(--ce-pr-navy-800) 0 62%, var(--ce-pr-signal) 62% 100%);
+}
+:root[data-ce-bereich="kunde"] .offers-result-count { letter-spacing: -0.02em; }
+:root[data-ce-bereich="kunde"] .offer-price { font-stretch: var(--ce-pr-ed-amount-stretch); letter-spacing: -0.02em; }
+
+/* ═══════════ 13 · BUCHUNG UND BESTÄTIGUNG ═════════════════════════════════
+   Ein Blatt je Schritt (premium-redesign 5b) bleibt; Abschnittsköpfe in der Abschnittsstufe, Beträge im
+   schmalen Schnitt. Alle Prüfungen, Hinweise und Zustimmungen bleiben unverändert. */
+:root[data-ce-bereich="kunde"] .booking-blatt .calc-panel-header h3 {
+  font-size: var(--ce-text-title-section-size);
+  letter-spacing: -0.02em;
+}
+:root[data-ce-bereich="kunde"] :is(.booking-total-amount, .blsum-price-net, .bsum-price-net) {
+  font-stretch: var(--ce-pr-ed-amount-stretch);
+  letter-spacing: -0.02em;
+}
+
+/* ═══════════ 14 · SENDUNGEN ═══════════════════════════════════════════════
+   Die Trackingnummer im schmalen Schnitt der Kleinschrift: sie steht in der ersten Spalte auf einer Zeile. */
+:root[data-ce-bereich="kunde"] .shipment-id-nr {
+  font-size: var(--ce-text-micro-size);
+  font-stretch: var(--ce-pr-ed-amount-stretch);
+  letter-spacing: 0;
+}
+
+/* ═══════════ 15 · RECHNUNGEN ══════════════════════════════════════════════
+   Der offene Betrag als Kopf eines Kontoauszugs: offen auf dem Papier, Tintenlinie oben, Haarlinie unten.
+   Der Betrag behält seine Größe. */
+:root[data-ce-bereich="kunde"] .inv-summary {
+  padding: var(--ce-space-5) 0 var(--ce-space-6);
+  background: transparent;
+  border: 0;
+  border-top: 2px solid var(--ce-color-text-primary);
+  border-bottom: 1px solid var(--ce-pr-hairline);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* ═══════════ 16 · ADRESSBUCH UND SUPPORT: offene Listen zwischen Linien ═══ */
+:root[data-ce-bereich="kunde"] :is(.abk-desktop-list, .sup-list) {
+  background: transparent;
+  border: 0;
+  border-top: 2px solid var(--ce-color-text-primary);
+  border-bottom: 1px solid var(--ce-pr-hairline);
+  border-radius: 0;
+  box-shadow: none;
+}
+:root[data-ce-bereich="kunde"] .sup-list > li + li { border-top-color: var(--ce-pr-hairline); }
+:root[data-ce-bereich="kunde"] .sup-list-item { padding-inline: var(--ce-space-1); }
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .sup-list-item:hover { background: var(--ce-color-surface-subtle); }
+}
+:root[data-ce-bereich="kunde"] .sup-list-subject { font-size: var(--ce-text-body-l-size); font-weight: 600; letter-spacing: -0.008em; color: var(--ce-color-text-primary); }
+:root[data-ce-bereich="kunde"] .abk-row-name { font-size: var(--ce-text-body-l-size); font-weight: 600; letter-spacing: -0.008em; }
+/* „Weitere Aktionen“ wie in den Entwürfen: runde Menütaste, die Beschriftung bleibt für Screenreader. */
+:root[data-ce-bereich="kunde"] :is(.abk-actions-trigger, .inv-actions-trigger) {
+  position: relative;
+  width: var(--ce-size-control-md);
+  height: var(--ce-size-control-md);
+  min-width: var(--ce-size-control-md);
+  padding: 0;
+  border: 1px solid var(--ce-color-border-default);
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-surface);
+  color: var(--ce-color-text-primary);
+  font-size: 0;
+}
+:root[data-ce-bereich="kunde"] :is(.abk-actions-trigger, .inv-actions-trigger)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 18px;
+  height: 4px;
+  background: radial-gradient(circle, currentColor 0 1.9px, transparent 2.3px) 0 50% / 7px 4px repeat-x;
+}
+:root[data-ce-bereich="kunde"] :is(.abk-actions-trigger, .inv-actions-trigger):hover:not(:disabled),
+:root[data-ce-bereich="kunde"] :is(.abk-actions-trigger, .inv-actions-trigger)[aria-expanded="true"] { background: var(--ce-pr-inset); border-color: var(--ce-color-text-muted); }
+/* Grober Zeiger, Tablet und Telefon: die Menütaste als volles Bedienziel (44 px wie in den Entwurfskarten). */
+@media (pointer: coarse), (max-width: 860px) {
+  :root[data-ce-bereich="kunde"] :is(.abk-actions-trigger, .inv-actions-trigger) {
+    width: var(--ce-size-touch-target);
+    height: var(--ce-size-touch-target);
+    min-width: var(--ce-size-touch-target);
+  }
+}
+
+/* ═══════════ 17 · SENDUNGSVERFOLGUNG IM KUNDENBEREICH ═════════════════════
+   Die Seite bringt ihren eigenen Kopf mit (dieselbe Komponente wie die öffentliche Verfolgung, die den Bereich
+   nicht trägt). Im Kundenbereich bekommt er dieselbe Gestalt wie jeder Seitenkopf. */
+:root[data-ce-bereich="kunde"] .app-shell .tracking-head {
+  max-width: none;
+  position: relative;
+  margin-bottom: var(--ce-space-7);
+  padding: var(--ce-space-6) 0;
+  border-bottom: 1px solid var(--ce-pr-hairline);
+}
+:root[data-ce-bereich="kunde"] .tracking-head::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: var(--ce-space-10);
+  height: 3px;
+  background: linear-gradient(90deg, var(--ce-pr-navy-800) 0 62%, var(--ce-pr-signal) 62% 100%);
+}
+:root[data-ce-bereich="kunde"] .tracking-title {
+  font-family: var(--ce-pr-font-display);
+  font-size: var(--ce-pr-ed-headline-size);
+  line-height: var(--ce-pr-ed-headline-line);
+  letter-spacing: var(--ce-pr-ed-headline-tracking);
+  font-stretch: var(--ce-pr-ed-headline-stretch);
+  hyphens: auto;
+  overflow-wrap: break-word;
+}
+:root[data-ce-bereich="kunde"] .tracking-page-sub { margin-top: var(--ce-space-2); max-width: 60ch; }
+@media (max-width: 68.75em) {
+  :root[data-ce-bereich="kunde"] .tracking-title { font-size: var(--ce-pr-ed-headline-size-tablet); }
+}
+@media (max-width: 37.5em) {
+  :root[data-ce-bereich="kunde"] .tracking-title { font-size: var(--ce-pr-ed-headline-size-mobile); }
+}
+
+/* ═══════════ 18 · LAGER, ARTIKEL, BESTAND, AUFTRÄGE ═══════════════════════
+   Das Lagebild des Lagers in derselben Ledger-Sprache wie die Übersicht: Tintenlinie oben, Haarlinien
+   zwischen den Zellen, Zahlen im schmalen Schnitt. Funktionen und Daten unverändert. */
+:root[data-ce-bereich="kunde"] .inv-stat-band {
+  border: 0;
+  border-top: 2px solid var(--ce-color-text-primary);
+  border-bottom: 1px solid var(--ce-pr-hairline);
+  border-radius: 0;
+  background: var(--ce-pr-hairline);
+}
+:root[data-ce-bereich="kunde"] .inv-stat { padding: var(--ce-space-5) var(--ce-space-5) var(--ce-space-4); }
+:root[data-ce-bereich="kunde"] .inv-stat-value {
+  font-size: var(--ce-text-numeric-display-size);
+  line-height: 1;
+  font-stretch: var(--ce-pr-ed-figure-stretch);
+  letter-spacing: -0.03em;
+  margin-block: var(--ce-space-2);
+}
+:root[data-ce-bereich="kunde"] .inv-stat-label { font-weight: 600; color: var(--ce-color-text-primary); }
+/* Module des Lagers (Niedrige Bestände, Offene Aufträge, Lager): Kopf mit Tintenlinie statt Kartenkasten. */
+:root[data-ce-bereich="kunde"] :is(.ce-card.inv-ops, .ce-card.inv-warehouses) {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+:root[data-ce-bereich="kunde"] :is(.inv-ops-head, .inv-warehouses-head) {
+  align-items: baseline;
+  margin-bottom: var(--ce-space-4);
+  padding-bottom: var(--ce-space-3);
+  border-bottom: 2px solid var(--ce-color-text-primary);
+}
+:root[data-ce-bereich="kunde"] :is(.inv-ops-head, .inv-warehouses-head) .inv-section-title { margin-bottom: 0; }
+:root[data-ce-bereich="kunde"] :is(.inv-ops-head h2, .inv-ops-head h3, .inv-section-title) {
+  font-size: var(--ce-text-title-section-size);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ce-color-text-primary);
+}
+:root[data-ce-bereich="kunde"] .inv-section-head { border-bottom: 2px solid var(--ce-color-text-primary); }
+
+/* ═══════════ 19 · KONTOEINSTELLUNGEN ══════════════════════════════════════
+   Jeder Abschnitt (Firmendaten, Rechnungsadresse, Logo, Lieferschein, Sicherheit …) bleibt ein Blatt; sein
+   Kopf steht in der Abschnittsstufe über einer Haarlinie. */
+/* Die Abschnitte trennt weiterhin eine Haarlinie (die offene Tabellenregel oben nimmt .table-card den Rahmen). */
+:root[data-ce-bereich="kunde"] .profile-sections > .profile-card + .profile-card { border-top: 1px solid var(--ce-pr-hairline); }
+:root[data-ce-bereich="kunde"] .profile-card-head .table-card-title {
+  font-size: var(--ce-text-title-section-size);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ce-color-text-primary);
+}
+
+/* ═══════════ 20 · SCHMALE KARTENLISTEN UND SONDERZUSTÄNDE ═════════════════
+   Rechnungen, Adressen und Lagerlisten stehen schmal wie die Entwürfe: Einträge zwischen Linien, die Liste
+   beginnt mit der Tintenlinie. Inhalte und Aktionen jedes Eintrags bleiben. */
+:root[data-ce-bereich="kunde"] :is(.inv-cards, .abk-cards) { gap: 0; border-top: 2px solid var(--ce-color-text-primary); }
+:root[data-ce-bereich="kunde"] :is(.inv-card, .abk-card, .ce-card.inv-card) {
+  padding: var(--ce-space-5) 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--ce-pr-hairline);
+  border-radius: 0;
+  box-shadow: none;
+}
+/* Buchung ohne Angebot (oder mit unvollständigen Adressdaten): ein Zustand in der Mulde, auf der Achse der
+   Buchungsspalte, linksbündig — Satz und Aktion unverändert. */
+:root[data-ce-bereich="kunde"] .booking-no-tariff > .text-center {
+  width: 100%;
+  max-width: var(--ce-size-booking);
+  margin-inline: auto;
+  padding: var(--ce-space-6);
+  border-radius: var(--ce-pr-radius-card);
+  background: var(--ce-pr-inset);
+  text-align: left;
+}
+:root[data-ce-bereich="kunde"] .booking-no-tariff .text-muted {
+  font-size: var(--ce-text-title-card-size);
+  font-weight: 600;
+  color: var(--ce-color-text-primary);
+}
+
+/* ═══════════ 21 · AUSWAHL MIT ERKLÄRUNG — NAVY-WAHL (Variante B) ══════════
+   Betreiberentscheidung 2026-10-28: Trägt jede Option einen erklärenden Satz, steht sie als helle Karte; die gewählte
+   wird zur Navy-Fläche mit heller Schrift. Wo bisher der runde Radiopunkt stand, steht der Haken im hellen Signal —
+   an derselben Stelle, damit Titel, Preise und Einrückungen jeder Karte bleiben, wie sie freigegeben sind. Gilt für
+   jedes Element mit `.ce-wahl`: Rechnungsstellung und Lieferschein (Konto), Zollrechnung, Transportabsicherung und Art
+   der Lieferadresse (Buchung) sowie als Zeile im Aufklappfeld (`.ce-wahl--zeile`) „Abholung / Shopabgabe“ und
+   „Versandart“ (Neue Sendung, Versandkostenrechner).
+   Bedienung unverändert: Die Wahl bleibt das native Radio bzw. `role="radio"` mit `aria-checked`. Wo das Radio bisher
+   sichtbar war, liegt es jetzt unsichtbar über der ganzen Karte — Klick, Tastatur, Screenreader und Prüfwerkzeuge
+   treffen weiter das Eingabefeld. Gesperrte Optionen bleiben gesperrt und behalten ihre Erklärung.
+   `--ce-wahl-kante`/`--ce-wahl-grund` tragen den Ruhezustand, damit eine Zeige-Regel ohne echten Zeiger (Touch) ihn
+   nie verändert; `--ce-wahl-haken` ist die Farbe des Hakens (in Ruhe unsichtbar). */
+:root[data-ce-bereich="kunde"] .ce-wahl {
+  --ce-wahl-kante: var(--ce-color-border-default);
+  --ce-wahl-grund: var(--ce-color-surface);
+  --ce-wahl-kante-zeigen: var(--ce-color-border-strong);
+  --ce-wahl-haken: transparent;
+  position: relative;
+  border: 1px solid var(--ce-wahl-kante);
+  border-radius: var(--ce-pr-radius-control-lg);
+  background: var(--ce-wahl-grund);
+  box-shadow: none;
+  cursor: pointer;
+  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard), border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+/* Ruhezustand auch unter einem Zeiger ohne echtes Zeigen; das sichtbare Zeigen steht unten in (hover: hover). */
+:root[data-ce-bereich="kunde"] :where(.ce-wahl):hover {
+  border-color: var(--ce-wahl-kante);
+  background: var(--ce-wahl-grund);
+  box-shadow: none;
+}
+
+/* Karten mit nativem Radio (Rechnungsstellung, Lieferschein, Zollrechnung): Das Radio liegt unsichtbar über der Karte,
+   der Haken steht im Platz, den es freigibt (18 px plus Abstand wie bisher). */
+:root[data-ce-bereich="kunde"] :is(.dn-mode-option, .ci-mode-option).ce-wahl {
+  --ce-wahl-platz: 1.125rem;
+  --ce-wahl-zeilenmitte: calc(var(--ce-space-3) + 0.7143rem);
+  padding-block: var(--ce-space-3);
+  padding-inline: calc(var(--ce-space-4) + var(--ce-wahl-platz) + var(--ce-space-3)) var(--ce-space-4);
+}
+:root[data-ce-bereich="kunde"] :is(.dn-mode-option, .ci-mode-option).ce-wahl > input[type="radio"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+/* Karten und Zeilen mit gezeichnetem Punkt (Absicherung, Lieferadresse, Aufklappzeilen): Der Punkt wird zum Hakenplatz —
+   ohne Kreis, ohne eigenen Fokusschatten (der Ring liegt an der Karte). */
+:root[data-ce-bereich="kunde"] .ce-wahl:is(.ins-card, .res-card, .service-filter-option) :is(.ins-card-radio, .res-card-radio, .service-filter-radio) {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+}
+
+/* Der Haken: zwei Kanten eines gedrehten Rechtecks wie im Versanddienst-Filter, kein Symbol. */
+:root[data-ce-bereich="kunde"] :is(.dn-mode-option, .ci-mode-option).ce-wahl::before,
+:root[data-ce-bereich="kunde"] .ce-wahl:is(.ins-card, .res-card, .service-filter-option) :is(.ins-card-radio, .res-card-radio, .service-filter-radio)::after {
+  content: "";
+  position: absolute;
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  width: 0.5rem;
+  height: 0.875rem;
+  border: solid var(--ce-wahl-haken);
+  border-width: 0 2px 2px 0;
+  border-radius: 0 0 1px 0;
+  background: transparent;
+  translate: -50% -62%;
+  rotate: 45deg;
+  pointer-events: none;
+  transition: border-color var(--ce-motion-slow) var(--ce-motion-ease-standard);
+}
+:root[data-ce-bereich="kunde"] :is(.dn-mode-option, .ci-mode-option).ce-wahl::before {
+  top: var(--ce-wahl-zeilenmitte);
+  left: calc(var(--ce-space-4) + var(--ce-wahl-platz) / 2);
+}
+
+/* Gewählt: Navy-Fläche der Wortmarke, helle Schrift, der Haken im hellen Signal. */
+:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) {
+  --ce-wahl-haken: var(--ce-pr-signal-on-navy);
+  border-color: var(--ce-pr-navy-800);
+  background: var(--ce-pr-navy-800);
+  color: var(--ce-pr-on-navy);
+  box-shadow: var(--ce-pr-btn-shadow);
+}
+:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) :is(.dn-mode-label, .ci-mode-option-title, .ins-card-name, .ins-card-price-val, .ins-bullet-txt, .ins-card-calc, .res-card-name, .res-card-price-val, .service-filter-option-label) {
+  color: var(--ce-pr-on-navy);
+}
+:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) :is(.field-hint, .ins-card-desc, .ins-card-price-sub, .ins-card-provider, .ins-card-bullet--info .ins-bullet-txt, .res-card-price-sub, .service-filter-option-desc) {
+  color: var(--ce-pr-on-navy-2);
+}
+:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) .ins-card-bullet::before { background: var(--ce-pr-on-navy-3); }
+:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) .ins-card-badge {
+  border-color: var(--ce-pr-on-navy-line);
+  background: transparent;
+  color: var(--ce-pr-signal-on-navy);
+}
+:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) :is(.ins-card-details-btn, .ins-card-terms-link) {
+  border-bottom-color: var(--ce-pr-on-navy-line);
+  color: var(--ce-pr-on-navy);
+}
+:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) :is(.ins-card-details-btn, .ins-card-terms-link):focus-visible { outline-color: var(--ce-pr-signal-on-navy); }
+:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) .spinner {
+  border-color: var(--ce-pr-on-navy-line);
+  border-top-color: var(--ce-pr-on-navy);
+}
+
+/* Gesperrt und nicht gewählt: ruhige Mulde, Titel gedämpft, die Erklärung bleibt lesbar stehen. Eine gesperrte, aber
+   gewählte Option (bestehende Sammelrechnung) zeigt ihren wahren Zustand: gewählt. */
+:root[data-ce-bereich="kunde"] .ce-wahl:has(> input:disabled):not(:has(> input:checked)) {
+  --ce-wahl-kante: var(--ce-pr-hairline);
+  --ce-wahl-grund: var(--ce-pr-inset);
+  cursor: not-allowed;
+}
+:root[data-ce-bereich="kunde"] .ce-wahl:has(> input:disabled):not(:has(> input:checked)) :is(.dn-mode-label, .ci-mode-option-title) { color: var(--ce-color-text-secondary); }
+:root[data-ce-bereich="kunde"] .ce-wahl:has(> input:checked:disabled) { cursor: default; }
+
+/* Fokus über die Tastatur: der Ring der Foundation um die ganze Karte bzw. Zeile. */
+:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:focus-visible), :focus-visible) {
+  outline: var(--ce-focus-ring);
+  outline-offset: var(--ce-focus-ring-offset);
+}
+
+/* Zeigen nur mit echtem Zeiger: Die offene Option zeigt ihren Haken leise vor, die gewählte wird einen Ton heller. */
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .ce-wahl:not(:has(> input:checked), [aria-checked="true"], :has(> input:disabled)):hover {
+    --ce-wahl-haken: var(--ce-color-border-strong);
+    border-color: var(--ce-wahl-kante-zeigen);
+    background: var(--ce-pr-inset);
+  }
+  :root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]):not(:has(> input:disabled)):hover {
+    border-color: var(--ce-pr-navy-700);
+    background: var(--ce-pr-navy-700);
+  }
+  :root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) :is(.ins-card-details-btn, .ins-card-terms-link):hover { border-bottom-color: var(--ce-pr-signal-on-navy); }
+}
+
+/* Gruppen. Zollrechnung: Die Titel stehen kleiner als in den Kontokarten (Zeilenmitte entsprechend höher). */
+:root[data-ce-bereich="kunde"] .ci-mode-option.ce-wahl { --ce-wahl-zeilenmitte: calc(var(--ce-space-3) + 0.6125rem); }
+:root[data-ce-bereich="kunde"] .ci-mode:has(> .ce-wahl) { display: flex; flex-direction: column; gap: var(--ce-space-2); }
+/* Zeilen im Aufklappfeld: keine eigene Kante, Radius konzentrisch zum Feld (12 − 4 px Innenrand). */
+:root[data-ce-bereich="kunde"] .ce-wahl.ce-wahl--zeile {
+  --ce-wahl-kante: transparent;
+  --ce-wahl-grund: transparent;
+  --ce-wahl-kante-zeigen: transparent;
+  border-radius: var(--ce-radius-sm);
+}
+:root[data-ce-bereich="kunde"] .service-filter-dropdown:has(> .ce-wahl--zeile) { display: flex; flex-direction: column; gap: 2px; }
+
+/* ═══════════ 22 · KURZE AUSWAHL — SEGMENTSTEUERUNG (Variante C) ═══════════
+   Betreiberentscheidung 2026-10-28: Kurze Optionen ohne Erklärung stehen als zusammenhängende Spur; das gewählte
+   Segment ist Navy mit heller Schrift — das ersetzt im Kundenbereich den weißen Daumen aus premium-redesign.css
+   („kein Navy“). Spur `.ce-segment`, Segment `.ce-segment-option`: Sortierung und Preisanzeige (Angebote, Buchung),
+   Rechnungsfilter, Adresstyp, Labelformat, die Pflichtfragen zur Ware und die Datumsschnellwahl.
+   Der Zustand kommt aus der Bedienung, wie sie ist — natives Radio, `aria-pressed` oder `.active`; keine Rolle, kein
+   Handler und kein Wert ändert sich. Ein Radio im Segment liegt unsichtbar über dem ganzen Segment. Telefon: Die Spur
+   nimmt die Breite, Beschriftungen brechen um statt abgeschnitten zu werden; Bedienziele 44 px. */
+:root[data-ce-bereich="kunde"] .ce-segment {
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-radius-control-lg);
+  background: var(--ce-pr-inset);
+}
+:root[data-ce-bereich="kunde"] .ce-segment .ce-segment-option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: var(--ce-segment-hoehe, var(--ce-size-control-sm));
+  padding-block: 0;
+  padding-inline: var(--ce-segment-innen, var(--ce-space-3));
+  border: 1px solid transparent;
+  border-radius: var(--ce-radius-sm);
+  background: transparent;
+  box-shadow: none;
+  color: var(--ce-color-text-secondary);
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard), color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+:root[data-ce-bereich="kunde"] .ce-segment :where(.ce-segment-option):hover {
+  border-color: transparent;
+  background: transparent;
+  color: var(--ce-color-text-secondary);
+}
+:root[data-ce-bereich="kunde"] .ce-segment .ce-segment-option > input[type="radio"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+:root[data-ce-bereich="kunde"] .ce-segment .ce-segment-option :is(.abk-role-option-label, .labelfmt-name, .ci-mode-option-title) {
+  color: inherit;
+  font-weight: inherit;
+}
+/* Gewählt: Navy mit heller Schrift, auch unter dem Zeiger. */
+:root[data-ce-bereich="kunde"] .ce-segment .ce-segment-option:is([aria-pressed="true"], :has(> input:checked), .active) {
+  border-color: var(--ce-pr-navy-800);
+  background: var(--ce-pr-navy-800);
+  color: var(--ce-pr-on-navy);
+  box-shadow: var(--ce-pr-btn-shadow);
+}
+:root[data-ce-bereich="kunde"] .ce-segment .ce-segment-option:is([aria-pressed="true"], :has(> input:checked), .active) .labelfmt-desc { color: var(--ce-pr-on-navy-2); }
+:root[data-ce-bereich="kunde"] .ce-segment .ce-segment-option:is(:focus-visible, :has(> input:focus-visible)) {
+  outline: var(--ce-focus-ring);
+  outline-offset: var(--ce-focus-ring-offset);
+}
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .ce-segment .ce-segment-option:not([aria-pressed="true"], :has(> input:checked), .active):hover {
+    background: var(--ce-color-surface);
+    color: var(--ce-color-text-primary);
+  }
+  :root[data-ce-bereich="kunde"] .ce-segment .ce-segment-option:is([aria-pressed="true"], :has(> input:checked), .active):hover {
+    border-color: var(--ce-pr-navy-700);
+    background: var(--ce-pr-navy-700);
+  }
+}
+/* Grober Zeiger, Tablet und Telefon: jedes Segment ein volles Bedienziel. */
+@media (pointer: coarse), (max-width: 860px) {
+  :root[data-ce-bereich="kunde"] .ce-segment .ce-segment-option { min-height: var(--ce-size-touch-target); }
+}
+/* Ein einzelnes Segment (Lieferzeit „Beliebig“) braucht keine Spur: es steht als Kapsel mit eigener Kante. */
+:root[data-ce-bereich="kunde"] .ce-segment:has(> .ce-segment-option:only-child) {
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+}
+:root[data-ce-bereich="kunde"] .ce-segment > .ce-segment-option:only-child:not(.active) { border-color: var(--ce-color-border-default); }
+
+/* Gruppen: Form der Spur je Ort. Höhe und Innenrand der Segmente über --ce-segment-hoehe/--ce-segment-innen an der
+   Spur — so bleibt die 44-px-Regel für Touch oben die stärkere. */
+:root[data-ce-bereich="kunde"] .offers-segment.ce-segment { --ce-segment-innen: 0.875rem; }
+:root[data-ce-bereich="kunde"] :is(.inv-filters, .date-quick-options).ce-segment {
+  display: flex;
+  flex-wrap: wrap;
+  width: fit-content;
+  max-width: 100%;
+}
+/* Datumsschnellwahl im schmalen Aufklappfeld: eine Zeile, die Segmente geben Innenrand ab statt umzubrechen. */
+:root[data-ce-bereich="kunde"] .date-quick-options.ce-segment { --ce-segment-innen: 0.625rem; flex-wrap: nowrap; }
+:root[data-ce-bereich="kunde"] .date-quick-options.ce-segment .ce-segment-option { flex: 0 1 auto; }
+:root[data-ce-bereich="kunde"] .abk-role-options.ce-segment {
+  --ce-segment-hoehe: var(--ce-size-control-md);
+  --ce-segment-innen: var(--ce-space-2);
+  display: flex;
+}
+/* Nach Inhalt teilen: „Eigene Adresse“ bleibt bis 360 px einzeilig; bei großer Schrift bricht es im Segment um. */
+:root[data-ce-bereich="kunde"] .abk-role-options.ce-segment .ce-segment-option { flex: 1 1 auto; }
+:root[data-ce-bereich="kunde"] .ins-goods-question .ce-segment {
+  --ce-segment-hoehe: var(--ce-size-control-md);
+  display: flex;
+  align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
+}
+:root[data-ce-bereich="kunde"] .ins-goods-question .ce-segment .ce-segment-option { min-width: 5.5rem; }
+/* Unbeantwortete Pflichtfrage nach der Prüfung: die Spur trägt die Fehlerkante der Felder (forms.css), der Satz steht darunter. */
+:root[data-ce-bereich="kunde"] .ins-goods-question:has(> .field-error) .ce-segment { border-color: var(--ce-color-status-error-fg); }
+:root[data-ce-bereich="kunde"] .labelfmt-group.ce-segment { gap: 2px; }
+:root[data-ce-bereich="kunde"] .labelfmt-group .ce-segment-option {
+  flex-direction: column;
+  padding-block: var(--ce-space-1);
+  padding-inline: var(--ce-space-3);
+}
+:root[data-ce-bereich="kunde"] .labelfmt-group .ce-segment-option .labelfmt-radio { display: none; }
+:root[data-ce-bereich="kunde"] .labelfmt-group .ce-segment-option .labelfmt-main { align-items: center; }
+/* Telefon: Rechnungsfilter teilen sich die volle Breite zu gleichen Teilen. */
+@media (max-width: 37.5em) {
+  :root[data-ce-bereich="kunde"] .inv-filters.ce-segment { width: 100%; flex-wrap: nowrap; }
+  :root[data-ce-bereich="kunde"] .inv-filters.ce-segment .ce-segment-option { flex: 1 1 0; padding-inline: var(--ce-space-1); }
+}
+
+/* ═══════════ 23 · REDUZIERTE BEWEGUNG ═════════════════════════════════════
+   Die Ebene bewegt nur Deckkraft und Flächenfarbe (Signalkante, Zeilenton, Auswahl) und das Pluszeichen der
+   Anlegen-Aktionen (Abschnitt 3, nur ohne reduzierte Bewegung); bei reduzierter Bewegung steht alles sofort in
+   seinem Endzustand. */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ce-bereich="kunde"] :is(.dft-table tbody td, .dft-actions-trigger, .ce-wahl, .ce-segment .ce-segment-option) {
+    transition: none;
+  }
+  /* Pseudo-Elemente stehen außerhalb von :is() — darin wären sie ungültig und würden still übergangen. */
+  :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row::before,
+  :root[data-ce-bereich="kunde"] .dft-table tbody td:first-child::before,
+  :root[data-ce-bereich="kunde"] .table-card tbody td:first-child::before,
+  :root[data-ce-bereich="kunde"] .ce-table-container tbody td:first-child::before,
+  :root[data-ce-bereich="kunde"] :is(.dn-mode-option, .ci-mode-option).ce-wahl::before,
+  :root[data-ce-bereich="kunde"] .ce-wahl :is(.ins-card-radio, .res-card-radio, .service-filter-radio)::after {
+    transition: none;
+  }
+}

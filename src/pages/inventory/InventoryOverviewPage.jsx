@@ -118,7 +118,7 @@ export default function InventoryOverviewPage({ utility, onNavigate, onNewShipme
             <button type="button" className="btn btn-outline" onClick={() => onNavigate("stock")}>
               Bestand einbuchen
             </button>
-            <button type="button" className="btn btn-primary" onClick={() => onNavigate("products")}>
+            <button type="button" className="btn btn-primary ce-aktion-neu" onClick={() => onNavigate("products")}>
               Artikel anlegen
             </button>
           </>

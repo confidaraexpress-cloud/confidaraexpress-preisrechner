@@ -92,31 +92,35 @@ function CardPrice({ price, unknownText }) {
 // zur Adresse): `checked` vergleicht strikt gegen true/false, ein `null` markiert keine
 // der beiden Optionen. Ein Schalter wäre hier falsch — er stünde auf „aus" und behauptete
 // eine Antwort, die niemand gegeben hat.
+// Die Spur `ce-segment` hält nur beide Antworten zusammen (Segmentsteuerung im Kundenbereich,
+// premium-editorial.css Abschnitt 22) — ohne Antwort ist kein Segment gewählt.
 function GoodsQuestion({ feld, frage, wert, onChange, error }) {
   const errorId = `ins-${feld}-error`;
   return (
     <fieldset className="dn-mode-fieldset ins-goods-question" aria-describedby={error ? errorId : undefined}>
       <legend className="field-label">{frage}</legend>
-      <label className="ci-mode-option" htmlFor={`ins-${feld}-ja`}>
-        <input
-          type="radio" id={`ins-${feld}-ja`} name={`ins-${feld}`} className="ci-mode-radio"
-          checked={wert === true}
-          onChange={() => onChange(feld, true)}
-        />
-        <span className="ci-mode-option-text">
-          <span className="ci-mode-option-title">{COVER_INSURANCE_TEXT.answerYes}</span>
-        </span>
-      </label>
-      <label className="ci-mode-option" htmlFor={`ins-${feld}-nein`}>
-        <input
-          type="radio" id={`ins-${feld}-nein`} name={`ins-${feld}`} className="ci-mode-radio"
-          checked={wert === false}
-          onChange={() => onChange(feld, false)}
-        />
-        <span className="ci-mode-option-text">
-          <span className="ci-mode-option-title">{COVER_INSURANCE_TEXT.answerNo}</span>
-        </span>
-      </label>
+      <div className="ce-segment">
+        <label className="ci-mode-option ce-segment-option" htmlFor={`ins-${feld}-ja`}>
+          <input
+            type="radio" id={`ins-${feld}-ja`} name={`ins-${feld}`} className="ci-mode-radio"
+            checked={wert === true}
+            onChange={() => onChange(feld, true)}
+          />
+          <span className="ci-mode-option-text">
+            <span className="ci-mode-option-title">{COVER_INSURANCE_TEXT.answerYes}</span>
+          </span>
+        </label>
+        <label className="ci-mode-option ce-segment-option" htmlFor={`ins-${feld}-nein`}>
+          <input
+            type="radio" id={`ins-${feld}-nein`} name={`ins-${feld}`} className="ci-mode-radio"
+            checked={wert === false}
+            onChange={() => onChange(feld, false)}
+          />
+          <span className="ci-mode-option-text">
+            <span className="ci-mode-option-title">{COVER_INSURANCE_TEXT.answerNo}</span>
+          </span>
+        </label>
+      </div>
       {error && <p className="field-error" id={errorId} role="alert">{error}</p>}
     </fieldset>
   );
@@ -178,7 +182,7 @@ export function InsuranceModule({
             ? coverInsuranceCardCopy(c.id, excessValue)
             : (CARD_COPY[c.id] || { bullets: [] });
           return (
-            <label key={c.id} className={`ins-card${selected ? " ins-card--selected" : ""}`}>
+            <label key={c.id} className={`ins-card ce-wahl${selected ? " ins-card--selected" : ""}`}>
               <input
                 type="radio"
                 name="insuranceType"

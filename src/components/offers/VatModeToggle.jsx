@@ -14,12 +14,12 @@ export function VatModeToggle({ vatMode, onChange, labelledBy }) {
   const brutto = isGrossVatMode(vatMode);
   return (
     <div
-      className="offers-vat-toggle offers-segment offers-segment--secondary"
+      className="offers-vat-toggle offers-segment offers-segment--secondary ce-segment"
       role="group"
       aria-labelledby={labelledBy}
     >
       <button
-        className={`offers-sort-btn offers-segment-item${!brutto ? " active" : ""}`}
+        className={`offers-sort-btn offers-segment-item ce-segment-option${!brutto ? " active" : ""}`}
         onClick={() => onChange(VAT_MODE_NET)}
         type="button"
         aria-pressed={!brutto}
@@ -27,7 +27,7 @@ export function VatModeToggle({ vatMode, onChange, labelledBy }) {
         {VAT_TEXT.exclVat}
       </button>
       <button
-        className={`offers-sort-btn offers-segment-item${brutto ? " active" : ""}`}
+        className={`offers-sort-btn offers-segment-item ce-segment-option${brutto ? " active" : ""}`}
         onClick={() => onChange(VAT_MODE_GROSS)}
         type="button"
         aria-pressed={brutto}

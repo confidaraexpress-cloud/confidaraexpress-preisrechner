@@ -55,7 +55,7 @@ export function ShipmentFilterBar({
                   {SERVICE_OPTIONS.map(opt => (
                     <button
                       key={opt.id}
-                      className={`service-filter-option service-filter-option--radio ${serviceFilter === opt.id ? "selected" : ""}`}
+                      className={`service-filter-option service-filter-option--radio ce-wahl ce-wahl--zeile ${serviceFilter === opt.id ? "selected" : ""}`}
                       onClick={() => handleServiceFilter(opt.id)}
                       role="radio"
                       aria-checked={serviceFilter === opt.id}
@@ -92,10 +92,10 @@ export function ShipmentFilterBar({
               </button>
               {datePickerOpen && (
                 <div className="date-picker-body">
-                  <div className="date-quick-options">
-                    <button className={`date-quick-btn ${shippingDate === todayISO()    ? "active" : ""}`} onClick={() => handleDateChange(todayISO())}>Heute</button>
-                    <button className={`date-quick-btn ${shippingDate === addDaysISO(1) ? "active" : ""}`} onClick={() => handleDateChange(addDaysISO(1))}>Morgen</button>
-                    <button className={`date-quick-btn ${shippingDate === addDaysISO(2) ? "active" : ""}`} onClick={() => handleDateChange(addDaysISO(2))}>Übermorgen</button>
+                  <div className="date-quick-options ce-segment">
+                    <button className={`date-quick-btn ce-segment-option ${shippingDate === todayISO()    ? "active" : ""}`} onClick={() => handleDateChange(todayISO())}>Heute</button>
+                    <button className={`date-quick-btn ce-segment-option ${shippingDate === addDaysISO(1) ? "active" : ""}`} onClick={() => handleDateChange(addDaysISO(1))}>Morgen</button>
+                    <button className={`date-quick-btn ce-segment-option ${shippingDate === addDaysISO(2) ? "active" : ""}`} onClick={() => handleDateChange(addDaysISO(2))}>Übermorgen</button>
                   </div>
                   <DateCalendar
                     value={shippingDate}
@@ -128,8 +128,9 @@ export function ShipmentFilterBar({
               </button>
               {carrierDropdownOpen && (
                 <div className="carrier-dropdown" role="group" aria-label="Versanddienst">
-                  {/* Mehrfachauswahl: quadratisches Auswahlfeld statt des Kreises der
-                      Einfachauswahl (Feinschliff 2026-10, reine Darstellung). role="checkbox"
+                  {/* Mehrfachauswahl: quadratisches Auswahlfeld; die Einfachauswahl daneben
+                      („Abholung / Shopabgabe", „Versandart") ist im Kundenbereich eine Navy-Wahl
+                      mit Haken (`ce-wahl`, reine Darstellung). Bleibt bewusst so — role="checkbox"
                       trägt die Mehrfachauswahl-Semantik; Chip-Key = publicCarrier.id, Label =
                       publicCarrier.name („other" → „Versanddienstleister"). */}
                   <button
@@ -190,7 +191,7 @@ export function ShipmentFilterBar({
                   {SHIPPING_MODE_OPTIONS.map(opt => (
                     <button
                       key={opt.id}
-                      className={`service-filter-option service-filter-option--radio ${shippingModeFilter === opt.id ? "selected" : ""}`}
+                      className={`service-filter-option service-filter-option--radio ce-wahl ce-wahl--zeile ${shippingModeFilter === opt.id ? "selected" : ""}`}
                       onClick={() => handleShippingMode(opt.id)}
                       role="radio"
                       aria-checked={shippingModeFilter === opt.id}
@@ -226,8 +227,8 @@ export function ShipmentFilterBar({
               </button>
               {latestOpen && (
                 <div className="date-picker-body date-picker-body--latest">
-                  <div className="date-quick-options">
-                    <button className={`date-quick-btn ${!form.latestDeliveryDate ? "active" : ""}`} onClick={() => handleLatestDeliveryChange("")}>Beliebig</button>
+                  <div className="date-quick-options ce-segment">
+                    <button className={`date-quick-btn ce-segment-option ${!form.latestDeliveryDate ? "active" : ""}`} onClick={() => handleLatestDeliveryChange("")}>Beliebig</button>
                   </div>
                   <DateCalendar
                     value={form.latestDeliveryDate}

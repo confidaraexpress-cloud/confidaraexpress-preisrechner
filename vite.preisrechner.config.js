@@ -33,6 +33,9 @@ const ohneVergleichsmodusTokens = {
   postcssPlugin: "preisrechner-ohne-vergleichsmodus-tokens",
   Declaration(decl) {
     if (decl.prop.startsWith("--ce-debug-provider-")) decl.remove();
+    // Editorial Business Premium (2026-10-28): Diese Tokens liest nur der Kundenbereich (premium-editorial.css);
+    // der Preisrechner trägt den gemeinsamen Bereichsblock, braucht sie aber nicht.
+    if (decl.prop.startsWith("--ce-pr-ed-")) decl.remove();
   },
 };
 

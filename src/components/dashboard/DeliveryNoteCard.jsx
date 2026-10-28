@@ -55,24 +55,29 @@ export function DeliveryNoteCard({ user }) {
     setDnSaving(false);
   };
 
-  // Native Radios auf dem globalen forms.css-Primitive — dasselbe Muster wie die
-  // Zollrechnungsauswahl der Buchung. Kein zweites Auswahlbauteil.
+  // Native Radios — dasselbe Muster wie die Zollrechnungsauswahl der Buchung.
+  // Kein zweites Auswahlbauteil; `ce-wahl` zeigt sie im Kundenbereich als
+  // Navy-Wahl (premium-editorial.css, Abschnitt 21).
+  // Während des Speicherns sind nur die übrigen Optionen gesperrt: die gewählte
+  // behält den Tastaturfokus. Ein gesperrtes `fieldset` nahm ihn ihr, der Browser
+  // setzte ihn auf die Seite zurück (tests/e2e/billingMode.test.mjs, B12).
   return (
     <SettingsSection title={DELIVERY_NOTE_TEXT.title} subtitle={DELIVERY_NOTE_TEXT.subtitle}>
       <div className="profile-section-body">
-        <fieldset className="dn-mode-fieldset" disabled={dnSaving}>
+        <fieldset className="dn-mode-fieldset">
           <legend className="field-label">{DELIVERY_NOTE_TEXT.fieldLabel}</legend>
           {DELIVERY_NOTE_MODES.map((mode) => {
             const opt = DELIVERY_NOTE_TEXT.options[mode];
             const id = `dn-mode-${mode}`;
             return (
-              <label key={mode} className={`dn-mode-option${dnMode === mode ? " selected" : ""}`} htmlFor={id}>
+              <label key={mode} className={`dn-mode-option ce-wahl${dnMode === mode ? " selected" : ""}`} htmlFor={id}>
                 <input
                   id={id}
                   type="radio"
                   name="deliveryNoteMode"
                   value={mode}
                   checked={dnMode === mode}
+                  disabled={dnSaving && dnMode !== mode}
                   onChange={() => saveDeliveryNoteMode(mode)}
                 />
                 <span className="dn-mode-text">

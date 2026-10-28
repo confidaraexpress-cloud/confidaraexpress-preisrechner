@@ -67,7 +67,7 @@ export function ResidentialPriceInputModule({ view, onSelect, onRetry, onRecalcu
               <label
                 key={k.id}
                 htmlFor={k.id}
-                className={`res-card${k.checked ? " res-card--selected" : ""}${k.disabled ? " res-card--locked" : ""}`}
+                className={`res-card ce-wahl${k.checked ? " res-card--selected" : ""}${k.disabled ? " res-card--locked" : ""}`}
               >
                 <input
                   type="radio"

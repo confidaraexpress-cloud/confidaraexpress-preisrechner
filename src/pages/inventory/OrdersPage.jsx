@@ -154,7 +154,7 @@ export default function OrdersPage({ utility, onNavigate, onPrepareShipment, ini
         subtitle="Verwalten Sie Aufträge mit Artikeln und bereiten Sie daraus direkt Sendungen vor."
         utility={utility}
         actions={!leer && (
-          <button type="button" className="btn btn-primary" onClick={neuerAuftrag}>
+          <button type="button" className="btn btn-primary ce-aktion-neu" onClick={neuerAuftrag}>
             Auftrag erstellen
           </button>
         )}

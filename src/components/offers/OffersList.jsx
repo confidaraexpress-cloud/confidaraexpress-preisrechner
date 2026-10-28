@@ -270,11 +270,11 @@ export function OffersList({
               {/* ── Gruppe A · Sortierung (primäre Steuerung) ── */}
               <div className="offers-toolgroup">
                 <span className="offers-toolgroup-label" id={sortLabelId}>Sortierung</span>
-                <div className="offers-segment offers-segment--primary" role="group" aria-labelledby={sortLabelId}>
+                <div className="offers-segment offers-segment--primary ce-segment" role="group" aria-labelledby={sortLabelId}>
                   {SORT_OPTIONS.map(o => (
                     <button
                       key={o.id}
-                      className={`offers-sort-btn offers-segment-item${sortMode === o.id ? " active" : ""}`}
+                      className={`offers-sort-btn offers-segment-item ce-segment-option${sortMode === o.id ? " active" : ""}`}
                       onClick={() => onSortChange(o.id)}
                       type="button"
                       /* Die aktive Sortierung war bislang nur an der Fläche erkennbar.
@@ -417,10 +417,10 @@ export function OffersList({
                 </span>
               </div>
               <p className="offers-filter-dd-sub">Passende Angebote zuerst, zu späte eingeklappt</p>
-              <div className="date-quick-options">
+              <div className="date-quick-options ce-segment">
                 <button
                   type="button"
-                  className={`date-quick-btn ${!latestDeliveryDate ? "active" : ""}`}
+                  className={`date-quick-btn ce-segment-option ${!latestDeliveryDate ? "active" : ""}`}
                   onClick={() => onLatestDeliveryChange("")}
                 >
                   Beliebig

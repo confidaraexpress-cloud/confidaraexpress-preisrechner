@@ -354,7 +354,9 @@ test("10 — es gibt genau EINE Radienfamilie im Produkt", () => {
   // Übersicht nutzt ausschließlich die Radienskala.
   // premium-redesign.css — Bereichsebene des Premium-Redesigns (premiumRedesign.test.mjs): eigene Radien
   //                          --ce-pr-radius-* nur unter dem Bereichsattribut.
-  const EIGENMATERIAL = ["auth.css", "dashboard-premium.css", "premium-redesign.css"];
+  // premium-editorial.css — Editorial-Ebene (2026-10-28, premiumRedesign.test.mjs 12): dieselben Bereichsradien,
+  //                          nur unter dem Attribut des Kundenbereichs.
+  const EIGENMATERIAL = ["auth.css", "dashboard-premium.css", "premium-redesign.css", "premium-editorial.css"];
   const fremd = [];
   for (const f of readdirSync(new URL("./", import.meta.url))) {
     if (!f.endsWith(".css") || f === "variables.css" || EIGENMATERIAL.includes(f)) continue;

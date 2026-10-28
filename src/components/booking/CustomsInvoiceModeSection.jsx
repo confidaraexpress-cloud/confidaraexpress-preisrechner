@@ -26,7 +26,7 @@ export function CustomsInvoiceModeSection({
           Wählen Sie, ob wir eine Proforma-Rechnung erstellen oder Sie eine eigene Handelsrechnung hinterlegen.
         </p>
 
-        <label className="ci-mode-option" htmlFor="ci-mode-proforma">
+        <label className="ci-mode-option ce-wahl" htmlFor="ci-mode-proforma">
           <input
             type="radio"
             id="ci-mode-proforma"
@@ -47,7 +47,7 @@ export function CustomsInvoiceModeSection({
           </span>
         </label>
 
-        <label className="ci-mode-option" htmlFor="ci-mode-commercial">
+        <label className="ci-mode-option ce-wahl" htmlFor="ci-mode-commercial">
           <input
             type="radio"
             id="ci-mode-commercial"

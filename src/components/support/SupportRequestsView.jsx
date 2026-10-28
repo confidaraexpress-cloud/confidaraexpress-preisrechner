@@ -117,7 +117,7 @@ export function SupportRequestsView({ initialTicketId = null, onTicketConsumed, 
       subtitle={SEITENTEXT}
       utility={utility}
       actions={!leer ? (
-        <button type="button" className="btn btn-primary" onClick={() => setCreateOpen(true)}>
+        <button type="button" className="btn btn-primary ce-aktion-neu" onClick={() => setCreateOpen(true)}>
           Neue Anfrage
         </button>
       ) : null}

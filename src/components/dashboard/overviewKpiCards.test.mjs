@@ -82,7 +82,8 @@ test("1 — die Übersicht rendert genau VIER Kennzahlen in EINEM Band", () => {
   assert.deepEqual(labels, ["Aktive Sendungen", "In Zustellung", "Zugestellt", "Verzögert"]);
   // EIN Band (section mit Bezeichnung), darin je Kennzahl eine Zelle.
   assert.match(overviewCode, /<section className="ov-kpis" aria-label="Betriebsüberblick">/, "das Band fehlt");
-  assert.match(overviewCode, /\{KPIS\.map\(\(kpi\) => \(\s*<div className=\{`ov-kpi ov-kpi--\$\{kpi\.key\}`\} key=\{kpi\.key\}>/,
+  // Editorial Premium (2026-10-28): data-null kennzeichnet eine geladene 0 — nur dann bleibt die Zahl neutral.
+  assert.match(overviewCode, /\{KPIS\.map\(\(kpi\) => \(\s*<div className=\{`ov-kpi ov-kpi--\$\{kpi\.key\}`\} key=\{kpi\.key\} data-null=\{ready && kpi\.value === "0" \? "" : undefined\}>/,
     "jede Kennzahl ist eine Zelle des Bands");
   assert.ok(!/pp-kpi\b|pp-kpis\b/.test(overviewCode), "die alten Kartenklassen sind zurück");
 });

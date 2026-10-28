@@ -754,4 +754,33 @@
   --ce-pr-paket-schatten: rgba(13, 20, 48, 0.26);
   --ce-pr-paket-buehne: #f6f7fa;        /* die helle Werkbank unter dem Paket */
   --ce-pr-paket-raster: rgba(11, 21, 50, 0.05);
+
+  /* ── Editorial Business Premium (Betreiberentscheidung 2026-10-28) ──
+     Gelesen ausschließlich von premium-editorial.css, die nur am Kundenbereich hängt. Anmeldung und
+     Preisrechner tragen die Werte mit, verwenden sie aber nicht. Linien, Mulden und Tinte kommen aus den
+     vorhandenen Tokens (--ce-pr-hairline, --ce-pr-inset, --ce-color-text-primary). */
+  --ce-pr-ed-band: #011b55;                     /* Navy-Band der Kennzahlen · Weiß darauf 16,29:1 */
+  --ce-pr-ed-band-line: rgba(170, 182, 216, 0.22);
+  --ce-pr-ed-mark-active: #6f9bff;              /* Kennzahlmarken auf dem Band, je mindestens 5:1 */
+  --ce-pr-ed-mark-transit: #7fd0f5;
+  --ce-pr-ed-mark-delivered: #5cd49a;
+  --ce-pr-ed-mark-delayed: #ffb648;
+  --ce-pr-ed-shadow-band: 0 1px 2px rgba(1, 27, 85, 0.10), 0 24px 48px -34px rgba(1, 27, 85, 0.70);
+  --ce-pr-ed-shadow-sheet: 0 1px 0 rgba(11, 21, 50, 0.04), 0 12px 32px -18px rgba(11, 21, 50, 0.22);
+  --ce-pr-ed-row-mark: #004afc;                 /* Signalkante an der Zeile bei Zeigen und Fokus */
+  /* Editorial-Skala: Seitenkopf und Kennzahlen. Größen in rem (E13), bei 16 px Grundgröße ganze Pixel. */
+  --ce-pr-ed-headline-size: 3.5rem;             /* 56 px */
+  --ce-pr-ed-headline-size-tablet: 2.75rem;     /* 44 px */
+  --ce-pr-ed-headline-size-mobile: 2.25rem;     /* 36 px */
+  --ce-pr-ed-headline-line: 1.04;
+  --ce-pr-ed-headline-tracking: -0.034em;
+  --ce-pr-ed-headline-stretch: 94%;
+  --ce-pr-ed-figure-size: 3.25rem;              /* 52 px, Kennzahlen */
+  --ce-pr-ed-figure-size-mobile: 2.5rem;        /* 40 px */
+  --ce-pr-ed-figure-stretch: 78%;
+  --ce-pr-ed-amount-stretch: 88%;               /* Beträge und Kennungen in Tabellen */
+  /* Plus der Anlegen-Aktionen (Betreiberentscheidung 2026-10-28): zwei Umdrehungen, anfahren und lang
+     auslaufen. Spitze rund 28° je Bild bei 60 Hz — unter der Schwelle, ab der ein Plus rückwärts zu laufen scheint. */
+  --ce-pr-ed-plus-dauer: 1150ms;
+  --ce-pr-ed-plus-kurve: cubic-bezier(0.4, 0, 0.2, 1);
 }

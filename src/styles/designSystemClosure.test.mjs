@@ -166,7 +166,7 @@ test("6 — es werden nur die drei benutzten Schriftfamilien geladen", () => {
   for (const d of vorhanden) assert.ok(geladen.has(d), `${d} liegt ungenutzt im Repository`);
   // Kein UI-Gewicht über 600 — außer in den Dateien des Premium-Bereichs (Instrument Sans, Betreiberentscheidung
   // 2026-10-27: Titel und Preise bis 700). Deren Regeln hängen am Bereichsattribut; Admin und Partner lesen sie nie.
-  const BEREICH = new Set(["premium-redesign.css", "public-calculator.css", "paketbuehne.css", "nachtkarte.css", "demo.css"]);
+  const BEREICH = new Set(["premium-redesign.css", "premium-editorial.css", "public-calculator.css", "paketbuehne.css", "nachtkarte.css", "demo.css"]);
   for (const f of ALLE_CSS) {
     for (const m of css[f].matchAll(/font-weight:\s*(\d+|bold|bolder)/g)) {
       if (f === "fonts.css") continue;

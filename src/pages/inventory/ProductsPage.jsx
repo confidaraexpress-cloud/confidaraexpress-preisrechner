@@ -136,7 +136,7 @@ export default function ProductsPage({ utility, onShipProduct }) {
         subtitle="Ihre Artikelstammdaten mit Bestand, Versand- und Zollangaben."
         utility={utility}
         actions={!leer && (
-          <button type="button" className="btn btn-primary" onClick={neuAnlegen}>
+          <button type="button" className="btn btn-primary ce-aktion-neu" onClick={neuAnlegen}>
             Artikel anlegen
           </button>
         )}

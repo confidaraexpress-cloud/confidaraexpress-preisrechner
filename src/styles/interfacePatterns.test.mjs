@@ -366,8 +366,9 @@ test("11 — Tokens, Primitives und Typografie bleiben eingehalten", () => {
   const reihenfolge = [...indexCss.matchAll(/@import '\.\/([\w-]+\.css)'/g)].map((m) => m[1]);
   // Premium-Redesign Etappe 1: Die Bereichsebene (premium-redesign.css) steht als einzige Datei NACH der
   // Musterebene. Jede ihrer Regeln hängt am Bereichsattribut (premiumRedesign.test.mjs).
-  assert.deepEqual(reihenfolge.slice(-2), ["patterns.css", "premium-redesign.css"],
-    "die Musterebene steht zuletzt vor der Bereichsebene des Redesigns");
+  // Editorial Business Premium (2026-10-28): die Editorial-Ebene folgt als letzte; auch sie hängt nur am Kundenbereich.
+  assert.deepEqual(reihenfolge.slice(-3), ["patterns.css", "premium-redesign.css", "premium-editorial.css"],
+    "die Musterebene steht zuletzt vor der Bereichs- und der Editorial-Ebene des Redesigns");
   assert.equal(reihenfolge.filter((f) => f === "patterns.css").length, 1);
 
   // Die Governance der Vorphasen läuft weiterhin mit. Gemessen wird seit der

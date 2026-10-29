@@ -397,3 +397,50 @@ test("16 — Sehr schmal im Verhältnis zur Schrift: Kennungen brechen nur dort 
   assert.match(block[1], /\.ce-wert--kennung, \.inv-cell-sku\) \{ white-space: normal; \}/);
   assert.equal(EDITORIAL.replace(block[0], "").includes("ce-wert--kennung"), false, "eine Kennung bricht auch außerhalb des Blocks");
 });
+
+/* ══════════ 17 — Seitenkante und Menütaste (Betreiberentscheidung 2026-10-29) ══════════
+   Die kurze Kante unter Seitenkopf, Angebotsblatt und Sendungsverfolgung und an der Oberkante der Dialoge ist grau
+   (--ce-color-border-strong) — keine Kante aus Navy und Signal mehr. Die Menütaste „Weitere Aktionen“ ist ein Block
+   für Entwürfe, Adressbuch und Lager: Größe aus einer Variablen (so hoch wie die Kapsel daneben, Touch und schmal
+   44 px), drei Punkte auch im Kontrastmodus, Zeigen nur mit echtem Zeiger, keine Bewegung und keine Deckkraft.
+   Größe und Mitte im Browser: tests/e2e/premiumParityApp.test.mjs D8. */
+test("17 — Seitenkante grau; die Menütaste spricht die Sprache der Kapsel daneben", () => {
+  assert.doesNotMatch(EDITORIAL, /linear-gradient\([^;]*--ce-pr-navy-800[^;]*--ce-pr-signal/, "eine Kante aus Navy und Signal ist zurück");
+  for (const kante of [".ce-page-header-main::after", ".offers-result-header::after", ".tracking-head::after", ".price-drift-card)::before"]) {
+    const regel = EDITORIAL_REGELN.find(({ sel }) => sel.endsWith(kante));
+    assert.ok(regel, `die Kante ${kante} fehlt`);
+    assert.match(regel.koerper, /background:\s*var\(--ce-color-border-strong\);/, `${kante}: nicht grau`);
+  }
+
+  const K = ':root[data-ce-bereich="kunde"] ';
+  const TASTEN = ":is(.dft-actions-trigger, .abk-actions-trigger, .inv-actions-trigger)";
+  const basis = EDITORIAL_REGELN.find(({ sel }) => sel === K + TASTEN);
+  assert.ok(basis, "der gemeinsame Block der Menütaste fehlt");
+  for (const mass of ["width", "height", "min-width", "min-height"]) {
+    assert.match(basis.koerper, new RegExp(`(^|;)\\s*${mass}: var\\(--ce-menue-groesse\\);`), `${mass} nicht aus --ce-menue-groesse`);
+  }
+  assert.match(basis.koerper, /--ce-menue-groesse: var\(--ce-size-control-md\);/, "Entwurfstabelle: nicht so hoch wie „Fortsetzen“");
+  assert.match(basis.koerper, /border: 1px solid var\(--ce-pr-navy-800\);/, "keine Navy-Kontur wie die Kapsel");
+  assert.match(basis.koerper, /(^|;)\s*color: var\(--ce-pr-navy-800\);/, "die Punkte sind nicht Navy");
+  assert.ok(EDITORIAL_REGELN.some(({ sel, koerper }) => sel === K + ":is(.abk-actions-trigger, .inv-actions-trigger)"
+    && /--ce-menue-groesse: var\(--ce-size-control-sm\);/.test(koerper)), "Adressbuch und Lager: nicht so hoch wie die kleine Kapsel");
+  const grob = mediaBloecke(EDITORIAL).find((b) => b.bedingung === "(pointer: coarse), (max-width: 860px)" && /abk-actions-trigger, \.inv-actions-trigger/.test(b.inhalt));
+  assert.ok(grob && /--ce-menue-groesse: var\(--ce-size-touch-target\);/.test(grob.inhalt), "Touch und schmal: nicht 44 px");
+  assert.ok(EDITORIAL_REGELN.some(({ sel, koerper }) => sel === K + ".dft-card-actions .dft-actions-trigger"
+    && /--ce-menue-groesse: var\(--ce-size-touch-target\);/.test(koerper)), "Entwurfskarten: nicht 44 px");
+
+  const punkte = EDITORIAL_REGELN.find(({ sel }) => sel === K + TASTEN + "::before");
+  assert.ok(punkte, "die Punkte der Menütaste fehlen");
+  assert.equal((punkte.koerper.match(/radial-gradient\(/g) || []).length, 3, "nicht genau drei Punkte");
+  // Kontrastmodus: Die Punkte bleiben (none als Rückfall) und tragen die vom System erzwungene Schriftfarbe der Taste —
+  // Navy wäre auf einem dunklen Kontrastschema unsichtbar.
+  assert.match(punkte.koerper, /forced-color-adjust: none;\s*forced-color-adjust: preserve-parent-color;/, "im Kontrastmodus verschwänden die Punkte oder blieben Navy");
+
+  // Zeigen nur mit echtem Zeiger: außerhalb von (hover: hover) kein :hover an der Menütaste.
+  let ohneZeigen = EDITORIAL;
+  for (const b of mediaBloecke(EDITORIAL).filter((b) => b.bedingung === "(hover: hover)")) ohneZeigen = ohneZeigen.replace(b.inhalt, "");
+  assert.doesNotMatch(ohneZeigen, /actions-trigger[^{},]*:hover/, "Zeigen der Menütaste außerhalb von (hover: hover)");
+  for (const { sel, koerper } of EDITORIAL_REGELN.filter(({ sel }) => /actions-trigger/.test(sel))) {
+    assert.doesNotMatch(koerper, /(^|;)\s*(transform|animation|opacity)\s*:/, `${sel}: Bewegung oder Deckkraft`);
+  }
+});

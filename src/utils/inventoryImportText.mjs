@@ -35,7 +35,10 @@ const GRENZEN = Object.freeze({
 });
 
 const zahl = (n) => (typeof n === "number" && Number.isFinite(n) ? n : null);
-const zeilenListe = (rows) => (Array.isArray(rows) && rows.length ? rows.slice(0, 10).map((n) => formatUnits(n)).join(", ") : null);
+// „Zeile 9“ bzw. „Zeilen 9, 12“ (höchstens zehn Nummern).
+const zeilenListe = (rows) => (Array.isArray(rows) && rows.length
+  ? `${rows.length === 1 ? "Zeile" : "Zeilen"} ${rows.slice(0, 10).map((n) => formatUnits(n)).join(", ")}`
+  : null);
 
 /** Spaltenname aus der Datei, sonst die Feldbezeichnung. */
 export function columnLabel(field, columns) {
@@ -53,7 +56,7 @@ export function issueText(issue, columns) {
     case "ROW_SKU_MISSING": return "Die Artikelnummer fehlt.";
     case "ROW_SKU_DUPLICATE": {
       const andere = zeilenListe(p.rows);
-      return andere ? `Die Artikelnummer steht mehrfach in der Datei (auch Zeile ${andere}).` : "Die Artikelnummer steht mehrfach in der Datei.";
+      return andere ? `Die Artikelnummer steht mehrfach in der Datei (auch ${andere}).` : "Die Artikelnummer steht mehrfach in der Datei.";
     }
     case "ROW_FIELD_INVALID":
       if (!i.field) return "Die Zeile enthält ungültige Angaben.";
@@ -71,7 +74,7 @@ export function issueText(issue, columns) {
     }
     case "ROW_EAN_DUPLICATE": {
       const andere = zeilenListe(p.rows);
-      return andere ? `Dieselbe EAN steht auch in Zeile ${andere}.` : "Dieselbe EAN steht mehrfach in der Datei.";
+      return andere ? `Dieselbe EAN steht auch in ${andere}.` : "Dieselbe EAN steht mehrfach in der Datei.";
     }
     case "FORMULA": return `${spalte}: Formel statt festem Wert. Bitte speichern Sie die Datei mit Werten.`;
     case "NUMBER_AMBIGUOUS": return `${spalte}: Zahl nicht eindeutig lesbar.`;

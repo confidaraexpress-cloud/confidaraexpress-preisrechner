@@ -192,7 +192,8 @@ test("1 — CSV (Windows-1252, Gramm) bis zum Ergebnis: Dokument im Upload, Fehl
     assert.match(await d.innerText(), /Gewicht \(g\): bitte zwischen 0,1 und 1\.000 kg angeben\./);
     const uebernehmen = d.getByRole("button", { name: "2 Zeilen übernehmen" });
     assert.equal(await uebernehmen.isDisabled(), true, "ohne Bestätigung der Fehlerzeilen keine Übernahme");
-    await d.getByLabel(/1 fehlerhafte Zeilen überspringen/).check();
+    // Einzahl bei einer Zeile: „1 fehlerhafte Zeile“, nicht „1 fehlerhafte Zeilen“.
+    await d.getByLabel(/^1 fehlerhafte Zeile überspringen/).check();
     await uebernehmen.click();
     await d.getByText("Der Import ist abgeschlossen.").waitFor();
     assert.deepEqual(sz.applyBodies[0], { confirm: true, skipInvalidRows: true, confirmRepeat: false });
@@ -253,6 +254,7 @@ test("4 — XLSX: Formelzelle wird markiert, mehrdeutige Spalten tragen „bitte
     const d = dialog(page);
     await d.locator("#inv-import-file").setInputFiles({ name: "artikel.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: xlsxDatei() });
     await d.getByRole("heading", { name: "Spalten prüfen" }).waitFor();
+    assert.match(await d.locator(".inv-import-lead").first().innerText(), /· 1 Zeile unter der Kopfzeile/);
     assert.equal(await d.getByText("bitte prüfen", { exact: true }).count(), 2);
     assert.equal(await d.getByLabel("Übernehmen als (Spalte Nr)").inputValue(), "sku");
     assert.equal(await d.getByLabel("Übernehmen als (Spalte Menge)").inputValue(), "stock");

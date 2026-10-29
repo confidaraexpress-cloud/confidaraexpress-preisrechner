@@ -51,6 +51,9 @@ const MAX_FILE_BYTES = 15 * 1024 * 1024;
 const STEPS = { file: 1, mapping: 2, preview: 3, apply: 4, result: 4 };
 const STEP_TITLES = { file: "Datei auswählen", mapping: "Spalten prüfen", preview: "Vorschau", apply: "Übernahme", result: "Ergebnis" };
 
+// Zahl mit Einzahl oder Mehrzahl: „1 Zeile“, „2 Zeilen“.
+const anzahl = (n, eins, mehr) => `${formatUnits(n)} ${n === 1 ? eins : mehr}`;
+
 function speichereCsv(text, dateiname) {
   const url = URL.createObjectURL(new Blob([text], { type: "text/csv;charset=utf-8" }));
   try {
@@ -578,7 +581,7 @@ export function ProductImportDialog({ open, onClose, onImported }) {
     inhalt = (
       <>
         <p className="inv-import-lead">
-          <strong>{file.name}</strong> · {formatUnits(table.rows.length - table.headerIndex - 1)} Zeilen unter der Kopfzeile
+          <strong>{file.name}</strong> · {anzahl(table.rows.length - table.headerIndex - 1, "Zeile", "Zeilen")} unter der Kopfzeile
           {file.type === "csv" && file.encoding === "windows-1252" ? " · Zeichensatz Windows-1252 erkannt" : ""}
         </p>
         {file.type === "xlsx" && file.sheets.length > 1 && (
@@ -750,12 +753,12 @@ export function ProductImportDialog({ open, onClose, onImported }) {
       <>
         <p className="inv-import-lead">
           {imp.source && imp.source.name ? <><strong>{imp.source.name}</strong> · </> : null}
-          {formatUnits(imp.totalRows)} Zeilen geprüft. Noch wurde nichts geändert.
+          {anzahl(imp.totalRows, "Zeile", "Zeilen")} geprüft. Noch wurde nichts geändert.
         </p>
         {imp.repeat && (
           <div className="inv-import-notice" role="note">
             <p>
-              {imp.repeat.identical ? "Diese Wareneingänge wurden bereits gebucht" : `${formatUnits(imp.repeat.matches)} von ${formatUnits(imp.repeat.total)} Wareneingängen stimmen mit einem früheren Import überein`}
+              {imp.repeat.identical ? "Diese Wareneingänge wurden bereits gebucht" : `${formatUnits(imp.repeat.matches)} von ${anzahl(imp.repeat.total, "Wareneingang", "Wareneingängen")} ${imp.repeat.matches === 1 ? "stimmt" : "stimmen"} mit einem früheren Import überein`}
               {imp.repeat.createdAt ? ` (${new Date(imp.repeat.createdAt).toLocaleDateString("de-DE")}${imp.repeat.sourceName ? `, ${imp.repeat.sourceName}` : ""})` : ""}.
             </p>
             <label className="inv-toolbar-check">
@@ -775,7 +778,7 @@ export function ProductImportDialog({ open, onClose, onImported }) {
         {zeilenListe}
         <div className="inv-import-confirm">
           {imp.stockMode === "counted" && counts.stockChanges > 0 && (
-            <p className="field-hint">Der Bestand wird bei {formatUnits(counts.stockChanges)} Artikeln auf den gezählten Wert korrigiert.</p>
+            <p className="field-hint">Der Bestand wird bei {anzahl(counts.stockChanges, "Artikel", "Artikeln")} auf den gezählten Wert korrigiert.</p>
           )}
           {imp.stockMode === "receipt" && counts.stockChanges > 0 && (
             <p className="field-hint">Für {formatUnits(counts.stockChanges)} Artikel wird ein Wareneingang gebucht.</p>
@@ -783,7 +786,7 @@ export function ProductImportDialog({ open, onClose, onImported }) {
           {fehlerAnzahl > 0 && imp.status === "analyzed" && (
             <label className="inv-toolbar-check">
               <input type="checkbox" checked={skipInvalid} onChange={(e) => setSkipInvalid(e.target.checked)} />
-              <span>{formatUnits(fehlerAnzahl)} fehlerhafte Zeilen überspringen und die übrigen übernehmen</span>
+              <span>{anzahl(fehlerAnzahl, "fehlerhafte Zeile", "fehlerhafte Zeilen")} überspringen und die übrigen übernehmen</span>
             </label>
           )}
         </div>
@@ -800,7 +803,7 @@ export function ProductImportDialog({ open, onClose, onImported }) {
           <button type="button" className="btn btn-outline" disabled={busy} onClick={() => verwerfen({ danach: "datei" })}>Verwerfen</button>
         )}
         <button type="button" className="btn btn-primary" disabled={busy || (imp.status === "analyzed" && !kannUebernehmen)} onClick={uebernehmen}>
-          {offen > 0 ? `${formatUnits(offen)} Zeilen übernehmen` : "Abschließen"}
+          {offen > 0 ? `${anzahl(offen, "Zeile", "Zeilen")} übernehmen` : "Abschließen"}
         </button>
       </>
     );
@@ -812,10 +815,10 @@ export function ProductImportDialog({ open, onClose, onImported }) {
           <span className="inv-import-progress-bar" style={{ width: `${prozent}%` }} />
         </div>
         <p className="inv-import-lead" aria-live="polite">
-          {applying ? `${formatUnits(bearbeitet)} von ${formatUnits(zuBearbeiten)} Zeilen verarbeitet …`
+          {applying ? `${formatUnits(bearbeitet)} von ${anzahl(zuBearbeiten, "Zeile", "Zeilen")} verarbeitet …`
             : fertig ? "Der Import ist abgeschlossen."
-              : interrupted ? `Übernahme unterbrochen — ${formatUnits(progress.applied || 0)} von ${formatUnits(zuBearbeiten)} Zeilen übernommen. Fortsetzen ist sicher: keine Zeile wird doppelt gebucht.`
-                : `${formatUnits(bearbeitet)} von ${formatUnits(zuBearbeiten)} Zeilen verarbeitet.`}
+              : interrupted ? `Übernahme unterbrochen — ${formatUnits(progress.applied || 0)} von ${anzahl(zuBearbeiten, "Zeile", "Zeilen")} übernommen. Fortsetzen ist sicher: keine Zeile wird doppelt gebucht.`
+                : `${formatUnits(bearbeitet)} von ${anzahl(zuBearbeiten, "Zeile", "Zeilen")} verarbeitet.`}
         </p>
         <dl className="inv-import-result">
           <div><dt>Neu angelegt</dt><dd>{formatUnits(progress.appliedCreated || 0)}</dd></div>
@@ -826,7 +829,7 @@ export function ProductImportDialog({ open, onClose, onImported }) {
           {(progress.stale || 0) > 0 && <div><dt>Seit der Vorschau geändert</dt><dd>{formatUnits(progress.stale)}</dd></div>}
         </dl>
         {(progress.stale || 0) > 0 && !applying && (
-          <p className="field-hint">{formatUnits(progress.stale)} Zeilen wurden seit der Vorschau an anderer Stelle geändert und deshalb nicht überschrieben. Prüfen Sie sie neu oder schließen Sie den Import ohne sie ab.</p>
+          <p className="field-hint">{progress.stale === 1 ? "1 Zeile wurde" : `${formatUnits(progress.stale)} Zeilen wurden`} seit der Vorschau an anderer Stelle geändert und deshalb nicht überschrieben. Prüfen Sie sie neu oder schließen Sie den Import ohne sie ab.</p>
         )}
         {phase === "result" && !applying && zeilenListe}
       </>

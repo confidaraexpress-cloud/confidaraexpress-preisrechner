@@ -253,7 +253,9 @@ test("Fehlerliste und Vorlage sind gegen Formel-Injektion geschützt", () => {
 test("Kundentexte nennen Spalte und Grund, nie einen Rohcode", () => {
   const cols = { weightKg: "Gewicht (g)" };
   assert.equal(issueText({ field: "weightKg", code: "ROW_FIELD_INVALID" }, cols), "Gewicht (g): bitte zwischen 0,1 und 1.000 kg angeben.");
-  assert.equal(issueText({ field: "sku", code: "ROW_SKU_DUPLICATE", params: { rows: [9, 12] } }, {}), "Die Artikelnummer steht mehrfach in der Datei (auch Zeile 9, 12).");
+  assert.equal(issueText({ field: "sku", code: "ROW_SKU_DUPLICATE", params: { rows: [9, 12] } }, {}), "Die Artikelnummer steht mehrfach in der Datei (auch Zeilen 9, 12).");
+  assert.equal(issueText({ field: "sku", code: "ROW_SKU_DUPLICATE", params: { rows: [312] } }, {}), "Die Artikelnummer steht mehrfach in der Datei (auch Zeile 312).");
+  assert.equal(issueText({ field: "ean", code: "ROW_EAN_DUPLICATE", params: { rows: [4, 7] } }, {}), "Dieselbe EAN steht auch in Zeilen 4, 7.");
   assert.equal(issueText({ code: "ROW_STOCK_RESERVED", params: { reserved: 6, blocked: 2 } }), "Der Bestand kann nicht unter die reservierte und gesperrte Menge sinken (reserviert 6, gesperrt 2).");
   assert.equal(issueText({ code: "UNBEKANNT" }), "Die Zeile konnte nicht übernommen werden.");
   assert.equal(stockText({ value: 28, onHandBefore: 30, delta: -2 }, "counted"), "Bestand 30 → 28 (−2)");

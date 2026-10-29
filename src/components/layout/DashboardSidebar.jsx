@@ -91,6 +91,7 @@ const NAV_GROUPS = [
       { id: "products",  label: "Artikel"        },
       { id: "stock",     label: "Bestand"        },
       { id: "orders",    label: "Aufträge"       },
+      { id: "deliverynotes", label: "Lieferscheine" },
       { id: "movements", label: "Bewegungen"     },
     ],
   },

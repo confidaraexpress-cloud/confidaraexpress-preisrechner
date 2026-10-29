@@ -305,6 +305,10 @@ td.ce-col-actions,
   transition: color var(--ce-motion-fast) var(--ce-motion-ease-standard), border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
 .ce-tab:hover { color: var(--ce-color-text-primary); border-bottom-color: var(--ce-color-border-strong); }
+/* Die Leiste scrollt waagerecht (overflow-x) und schneidet damit alles ab, was über ihre Kante ragt — der globale
+   Fokusring (primitives.css, Abstand +2 px) blieb nur als senkrechter Strich sichtbar (Sichtprüfung 2026-10-29).
+   Innen liegend bleibt er vollständig sichtbar. */
+.ce-tab:focus-visible { outline-offset: -2px; }
 .ce-tab[aria-selected="true"],
 .ce-tab.is-active {
   color: var(--ce-color-brand-ink);

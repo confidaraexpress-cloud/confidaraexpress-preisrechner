@@ -26,6 +26,8 @@ export const LANG = Object.freeze({
   auftrag: "CE-AU-2026-000007",
   betreff: "Rückfrage zur Abholung der Sendung CE-AB-2026-000050 am Freitagnachmittag",
   ticket: "CE-SUP-2026-000012",
+  lieferschein: "CE-LS-2026-000123",
+  eigenerLieferschein: "LS-2026-10-28-KOSTENSTELLE-4711-EINKAUF-SUED",
 });
 
 // Vorgangsnummern reihum: fehlend, altes langes Format, heutiges Format.
@@ -35,7 +37,7 @@ const PREISE = [12345.67, 1234.56, 999.9, 23456.78, 87.5, 4321.09, 15.4];
 const BETRAEGE = [123456.78, 12345.67, 1999.99, 98765.43];
 
 export function verlaengere(pfad, daten) {
-  const zaehler = { sendung: 0, rechnung: 0 };
+  const zaehler = { sendung: 0, rechnung: 0, lieferschein: 0 };
   const lauf = (wert, schluessel) => {
     if (Array.isArray(wert)) return wert.map((w) => lauf(w, schluessel));
     if (!wert || typeof wert !== "object") return wert;
@@ -90,6 +92,14 @@ export function verlaengere(pfad, daten) {
     if ("code" in o && "isDefault" in o && "name" in o) o.name = LANG.lager;
     if ("orderNumber" in o) o.orderNumber = LANG.auftrag;
     if ("customerReference" in o && o.customerReference) o.customerReference = LANG.referenz;
+    // Lieferscheine (Übersicht, Verlauf, Dokumentliste): Vorgangsnummer reihum wie bei Sendungen, lange Nummern
+    if ("orderConfirmationNumber" in o && "effective" in o) {
+      const i = zaehler.lieferschein++;
+      o.orderConfirmationNumber = VORGANG[i % VORGANG.length];
+      if (o.confidaraNumber) o.confidaraNumber = LANG.lieferschein;
+    }
+    if ("source" in o && "origin" in o && o.number) o.number = o.source === "own" ? LANG.eigenerLieferschein : LANG.lieferschein;
+    if ("version" in o && "origin" in o && "withdrawnAt" in o && o.number) o.number = LANG.eigenerLieferschein;
     // Support und Mitteilungen
     if ("subject" in o) o.subject = LANG.betreff;
     if ("ticketNumber" in o) o.ticketNumber = LANG.ticket;

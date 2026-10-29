@@ -203,8 +203,13 @@ export function documentRetrievePath(doc) {
   return isSafeApiPath(doc.retrievePath) ? doc.retrievePath.trim() : null;
 }
 
-/** Sichtbarer Name: der Servertext, sonst die Ersatzbeschriftung des Typs. */
+/**
+ * Sichtbarer Name: der Servertext, sonst die Ersatzbeschriftung des Typs. Gilt für eine Sendung ein
+ * eigener Lieferschein (Server: `source: "own"`, Canonical v2.88), heißt er so — der Download liefert
+ * dann diese Fassung, nicht die Gestaltung von ConfidaraExpress.
+ */
 export function documentLabel(doc) {
+  if (doc && doc.type === "DELIVERY_NOTE" && doc.source === "own") return "Eigener Lieferschein";
   const l = doc && typeof doc.label === "string" ? doc.label.trim() : "";
   if (l) return l;
   return (doc && TYPE_FALLBACK_LABELS[doc.type]) || "Dokument";

@@ -370,7 +370,8 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
   const dash = read("../pages/DashboardPage.jsx");
   // Der bestehende Bestand ist unverändert; das Lagermodul hängt seine fünf
   // Listenbereiche additiv HINTEN an, statt einen bestehenden Wert zu ersetzen.
-  assert.match(dash, /\["overview", "new", "drafts", "addressbook", "shipments", "invoices", "profile", "tracking", "support",\s*\n?\s*"inventory", "products", "stock", "orders", "movements"\]/,
+  // Lieferscheinverwaltung (dokumentierte Ankeränderung, Canonical v2.88): +1 „deliverynotes“, ebenfalls hinten.
+  assert.match(dash, /\["overview", "new", "drafts", "addressbook", "shipments", "invoices", "profile", "tracking", "support",\s*\n?\s*"inventory", "products", "stock", "orders", "movements", "deliverynotes"\]/,
     "der page-State des Dashboards hat sich verändert");
   for (const p of ["drafts", "addressbook"]) {
     assert.ok(!app.includes(`path="/${p}"`), `${p} ist zu einer Route geworden`);

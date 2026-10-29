@@ -354,14 +354,115 @@ function trackingAntwort(sendung) {
 
 function dokumente(sendung) {
   const pfad = (n) => `/api/shipments/${sendung.id}/documents/${n}/download`;
+  const ls = lieferscheinZeile(sendung).effective;
   return {
     shipmentId: sendung.id,
     documents: [
       { type: "LABEL", category: "SHIPPING", status: "ready", label: "Versandlabel (A4)", downloadPath: pfad(1), carrierReference: sendung.tracking_number, labelSize: "a4" },
+      ...(ls ? [{ type: "DELIVERY_NOTE", category: "SHIPPING", status: "ready", label: "Lieferschein", number: ls.number, source: ls.source,
+        origin: ls.origin, downloadPath: `/api/shipments/${sendung.id}/delivery-note` }] : []),
       { type: "ORDER_CONFIRMATION", category: "BUSINESS", status: "ready", label: "Auftragsbestätigung", number: sendung.order_confirmation_number, downloadPath: pfad(2) },
     ],
   };
 }
+
+// ── Lieferscheine ────────────────────────────────────────────────────────────────────────────────────────────
+// Feste Beispielzustände je Sendung, damit die Übersicht jede Art zeigt: ConfidaraExpress-Lieferschein (nachträglich
+// erstellt — das Demokonto steht auf „Keine Lieferscheine“), eigene Fassung hochgeladen oder aus der Vorlage, ein
+// ersetzter und zurückgezogener Stand, keiner. Eine in der Demo gebuchte Sendung hat keinen. Form wie der Server
+// (Backend §21: Übersicht, Verlauf, Vorlage); welcher gilt, folgt derselben Regel — neueste eigene Fassung, die nicht
+// zurückgezogen ist, sonst ConfidaraExpress, sonst keiner.
+const LS_BEISPIELE = {
+  7007: { positionen: true, confidara: "SIM-LS26-00019" },
+  7006: { positionen: true, confidara: "SIM-LS26-00018", eigen: [{ version: 1, origin: "upload", number: "LS-58421", tage: 0 }] },
+  7005: { positionen: false },
+  7004: { positionen: true, eigen: [{ version: 1, origin: "template", number: "SIM-LS26-00017", tage: -2 }] },
+  7003: { positionen: true, confidara: "SIM-LS26-00016" },
+  7002: { positionen: false, eigen: [
+    { version: 1, origin: "upload", number: "LS-58390", tage: -8 },
+    { version: 2, origin: "upload", number: "LS-58390-B", tage: -7, zurueckgezogen: -6 },
+  ] },
+  7001: { positionen: true },
+};
+const LS_GRENZEN = Object.freeze({ maxVersions: 20, maxBytes: 5 * 1024 * 1024, maxPages: 20, numberMaxLength: 64 });
+
+function lieferscheinZeile(s) {
+  const b = LS_BEISPIELE[s.id] || { positionen: false };
+  const roh = (b.eigen || []).map((v) => ({
+    version: v.version, origin: v.origin, number: v.number || null, createdAt: zeitstempel(v.tage, 11), createdVia: "customer",
+    withdrawnAt: v.zurueckgezogen != null ? zeitstempel(v.zurueckgezogen, 15) : null, available: true,
+    pageCount: v.origin === "upload" ? 1 : null, sizeBytes: v.origin === "upload" ? 86 * 1024 : null,
+  }));
+  const gilt = [...roh].reverse().find((v) => !v.withdrawnAt) || null;
+  const effective = gilt
+    ? { source: "own", origin: gilt.origin, version: gilt.version, number: gilt.number, date: gilt.createdAt, createdVia: gilt.createdVia }
+    : b.confidara ? { source: "confidara", origin: "confidara", version: null, number: b.confidara, date: zeitstempel(-1, 16), createdVia: "customer" }
+      : null;
+  const platz = roh.length < LS_GRENZEN.maxVersions;
+  return {
+    b, effective,
+    versionen: roh.map((v) => ({ ...v, effective: Boolean(gilt && gilt.version === v.version) })),
+    actions: { canUpload: platz, canCreateConfidara: b.positionen && !b.confidara, canCreateFromTemplate: b.positionen && platz, hasItems: b.positionen },
+  };
+}
+
+function lieferscheinEmpfaenger(s) {
+  const a = s.recipient_address;
+  return a ? { company: a.company || null, fullName: a.fullName || null, city: a.city || null, country: a.country || null } : null;
+}
+
+function lieferscheinUebersicht(query) {
+  const q = String(query.get("q") || "").trim().toLowerCase();
+  const quelle = String(query.get("source") || "");
+  const items = z().sendungen.map((s) => {
+    const zl = lieferscheinZeile(s);
+    return {
+      shipmentId: String(s.id), status: s.status, bookedAt: s.created_at, orderConfirmationNumber: s.order_confirmation_number || null,
+      orderNumber: null, recipient: lieferscheinEmpfaenger(s), externalDeliveryNoteNumber: null, effective: zl.effective,
+      hasConfidara: Boolean(zl.b.confidara), confidaraNumber: zl.b.confidara || null, versionCount: zl.versionen.length, actions: zl.actions,
+    };
+  }).filter((r) => {
+    if (quelle === "own" && !(r.effective && r.effective.source === "own")) return false;
+    if (quelle === "confidara" && !(r.effective && r.effective.source === "confidara")) return false;
+    if (quelle === "none" && r.effective) return false;
+    if (!q) return true;
+    const zl = LS_BEISPIELE[r.shipmentId] || {};
+    const texte = [r.orderConfirmationNumber, r.confidaraNumber, r.recipient && r.recipient.company, r.recipient && r.recipient.fullName,
+      r.recipient && r.recipient.city, ...(zl.eigen || []).map((v) => v.number)];
+    return texte.some((t) => typeof t === "string" && t.toLowerCase().includes(q));
+  });
+  return { items, nextCursor: null, templateActive: true, limits: LS_GRENZEN };
+}
+
+function lieferscheinVerlauf(s) {
+  const zl = lieferscheinZeile(s);
+  return {
+    shipment: { id: String(s.id), status: s.status, bookedAt: s.created_at, orderConfirmationNumber: s.order_confirmation_number || null,
+      orderNumber: null, recipient: lieferscheinEmpfaenger(s), externalDeliveryNoteNumber: null },
+    effective: zl.effective,
+    confidara: zl.b.confidara ? { number: zl.b.confidara, issuedAt: zeitstempel(-1, 16), createdVia: "customer",
+      effective: Boolean(zl.effective && zl.effective.source === "confidara") } : null,
+    versions: zl.versionen,
+    actions: zl.actions,
+    limits: LS_GRENZEN,
+  };
+}
+
+function lieferscheinPdf(s, art, nummer) {
+  return pdf(`${art} (Beispiel)`, nummer || s.order_confirmation_number, [
+    `Sendung ${s.order_confirmation_number} · ${CARRIER_NAME[s.selected_carrier] || ""}`,
+    "Dieses Dokument ist ein Beispiel. Es ist kein gültiger Lieferschein.",
+  ]);
+}
+
+// Briefpapier-Vorlage des Demokontos: aktiv, zwei Seiten (Erst- und Folgeseite), Vorgabeabstände. Nur Metadaten.
+const LS_VORLAGE = () => ({
+  draft: null,
+  active: { pageCount: 2, sizeBytes: 184 * 1024, areas: { topFirstMm: 45, topNextMm: 30, bottomMm: 25 }, createdAt: zeitstempel(-20, 10),
+    activatedAt: zeitstempel(-20, 11), available: true },
+  limits: { maxBytes: 3 * 1024 * 1024, maxPages: 2, areas: { topFirstMm: { min: 15, max: 140 }, topNextMm: { min: 15, max: 140 },
+    bottomMm: { min: 10, max: 80 } }, defaults: { topFirstMm: 45, topNextMm: 30, bottomMm: 25 } },
+});
 
 function sendungZu(id) {
   return z().sendungen.find((s) => String(s.id) === String(id)) || null;
@@ -425,6 +526,40 @@ function route(methode, pfad, query, optionen) {
     ] });
   }
   if (pfad === "/kunde/consolidated-invoice/current") return json({ active: false });
+
+  // Lieferscheine: Übersicht, Verlauf, Fassungen und Vorlage lesen; Ansehen und Herunterladen liefern SIMULATION-PDFs.
+  // Hochladen, Erstellen, Zurückziehen und die Vorlage ändern gibt es in der Demo nicht — nie ein stiller Erfolg.
+  if (pfad === "/api/kunde/delivery-notes") return methode === "GET" ? json(lieferscheinUebersicht(query)) : nichtVerfuegbar();
+  if (pfad === "/api/kunde/delivery-note-template") return methode === "GET" ? json(LS_VORLAGE()) : nichtVerfuegbar();
+  if (pfad.startsWith("/api/kunde/delivery-note-template/")) {
+    if (methode === "GET" && /^\/api\/kunde\/delivery-note-template\/(active|draft)\/preview$/.test(pfad)) {
+      return pdf("Lieferschein auf Briefpapier (Muster)", "SIM-LS-MUSTER", [
+        "40 Musterpositionen auf dem Briefpapier des Demokontos.",
+        "Dieses Dokument ist ein Beispiel. Es ist kein gültiger Lieferschein.",
+      ]);
+    }
+    return methode === "GET" ? json({ error: DEMO_TEXTE.nichtVerfuegbar }, 404) : nichtVerfuegbar();
+  }
+  if ((m = pfad.match(/^\/api\/shipments\/(\d+)\/delivery-notes(\/confidara|\/versions\/\d{1,2}|\/.*)?$/))) {
+    const s = sendungZu(m[1]);
+    if (!s) return json({ error: "Nicht gefunden", code: "DELIVERY_NOTE_NOT_FOUND" }, 404);
+    if (methode !== "GET") return nichtVerfuegbar();
+    const zl = lieferscheinZeile(s);
+    if (!m[2]) return json(lieferscheinVerlauf(s));
+    if (m[2] === "/confidara") {
+      return zl.b.confidara ? lieferscheinPdf(s, "Lieferschein", zl.b.confidara) : json({ error: "Nicht gefunden", code: "DELIVERY_NOTE_NOT_FOUND" }, 404);
+    }
+    const v = m[2].startsWith("/versions/") ? zl.versionen.find((x) => String(x.version) === m[2].slice("/versions/".length)) : null;
+    if (!v) return json({ error: "Diese Fassung des Lieferscheins gibt es nicht.", code: "DELIVERY_NOTE_VERSION_NOT_FOUND" }, 404);
+    return lieferscheinPdf(s, v.origin === "template" ? "Lieferschein auf Briefpapier" : "Eigener Lieferschein", v.number);
+  }
+  // Der maßgebliche Lieferschein: gibt es keinen, antwortet die Demo wie der Server mit 404.
+  if ((m = pfad.match(/^\/api\/shipments\/(\d+)\/delivery-note$/))) {
+    const s = sendungZu(m[1]);
+    const eff = s ? lieferscheinZeile(s).effective : null;
+    if (!eff) return json({ error: "Für diese Sendung liegt kein Lieferschein vor.", code: "DELIVERY_NOTE_NOT_FOUND" }, 404);
+    return lieferscheinPdf(s, eff.source === "own" ? (eff.origin === "template" ? "Lieferschein auf Briefpapier" : "Eigener Lieferschein") : "Lieferschein", eff.number);
+  }
 
   // Sendungen
   if (pfad === "/kunde/shipments") return json({ shipments: st.sendungen, stats: statistik(st.sendungen), nextCursor: null });

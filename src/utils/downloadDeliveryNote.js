@@ -1,4 +1,5 @@
 import { apiFetch } from "../api/client";
+import { filenameFromContentDisposition } from "./invoiceView.mjs";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Lieferschein-Download.
@@ -12,6 +13,11 @@ import { apiFetch } from "../api/client";
 // `shipmentId` ist der ConfidaraExpress-Sendungshandle (shipments.id) — derselbe
 // Wert wie bei Label, Tracking und Stornoanfrage. Es gibt keinen zweiten
 // Adressierungsweg für Lieferscheine.
+//
+// Lieferscheinverwaltung (Canonical v2.88): Der Pfad liefert den MASSGEBLICHEN Lieferschein —
+// die neueste eigene Fassung, sonst den ConfidaraExpress-Lieferschein. Eine eigene Fassung kann
+// ohne Nummer sein; der Dateiname kommt deshalb bevorzugt vom Server (Content-Disposition,
+// `Lieferschein_<Nummer oder Auftragsbestätigung>_v<n>.pdf`), sonst wie bisher.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TEXT_NETZ = "Der Lieferschein konnte nicht geladen werden. Bitte prüfen Sie Ihre Verbindung.";
@@ -62,10 +68,12 @@ export async function downloadDeliveryNote(shipmentId, deliveryNoteNumber) {
     const a = document.createElement("a");
     a.href = url;
     // Bei einem Blob-Download entscheidet das download-Attribut, NICHT das
-    // serverseitige Content-Disposition — der Name muss deshalb vom Aufrufer
-    // mitkommen. Gleiche Bereinigung wie serverseitig.
+    // serverseitige Content-Disposition — der Name wird deshalb aus dessen Kopf
+    // übernommen; fehlt er, baut ihn der Aufrufer wie bisher (gleiche Bereinigung
+    // wie serverseitig).
     const base = String(deliveryNoteNumber ?? "").trim() || String(shipmentId ?? "").trim();
-    a.download = `Lieferschein_${base.replace(/[^a-zA-Z0-9\-_]/g, "_")}.pdf`;
+    const rueckfall = `Lieferschein_${base.replace(/[^a-zA-Z0-9\-_]/g, "_")}.pdf`;
+    a.download = filenameFromContentDisposition(r.headers.get("content-disposition"), rueckfall);
     a.click();
   } finally {
     URL.revokeObjectURL(url);

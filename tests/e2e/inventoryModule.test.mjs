@@ -262,9 +262,10 @@ test("1 — „Lager & Aufträge\u201c ist eine Gruppe derselben Sidebar, NICHT 
     `Reihenfolge der Sidebar stimmt nicht: Übersicht ${yUebersicht}, Versand ${yVersand}, ` +
     `Rechnungen ${yRechnungen}, Lager ${yLager}`);
 
-  // Fünf Einträge, in der geforderten Reihenfolge — auch eingeklappt im DOM.
+  // Sechs Einträge, in der geforderten Reihenfolge — auch eingeklappt im DOM. Lieferscheinverwaltung
+  // (Canonical v2.88): „Lieferscheine“ steht hinter „Aufträge“, aus denen die Sendungen entstehen.
   const labels = await page.locator("#pp-nav-group-warehouse-items .nitem span").allTextContents();
-  assert.deepEqual(labels, ["Lagerübersicht", "Artikel", "Bestand", "Aufträge", "Bewegungen"]);
+  assert.deepEqual(labels, ["Lagerübersicht", "Artikel", "Bestand", "Aufträge", "Lieferscheine", "Bewegungen"]);
   await page.close();
 });
 
@@ -313,11 +314,12 @@ test("2 — die Gruppe hat KEINE eigene Fläche; die Hierarchie kommt aus Abstan
 
 /* ══════════ Navigation ═══════════════════════════════════════════════════ */
 
-test("3 — jeder der fünf Bereiche lässt sich öffnen und zeigt genau einen Seitenkopf", async () => {
+test("3 — jeder der sechs Bereiche lässt sich öffnen und zeigt genau einen Seitenkopf", async () => {
   const page = await neueSeite(neueAufzeichnung());
   await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
   for (const [label, titel] of [["Lagerübersicht", "Lagerübersicht"], ["Artikel", "Artikel"],
-                                ["Bestand", "Bestand"], ["Aufträge", "Aufträge"], ["Bewegungen", "Bewegungen"]]) {
+                                ["Bestand", "Bestand"], ["Aufträge", "Aufträge"], ["Lieferscheine", "Lieferscheine"],
+                                ["Bewegungen", "Bewegungen"]]) {
     await ueberSidebar(page, label);
     await page.waitForTimeout(350);
     const koepfe = page.locator(".ce-page-header");

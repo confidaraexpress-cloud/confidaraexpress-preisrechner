@@ -437,10 +437,11 @@ test("12 — Phase 3 fasst weder Routing noch API noch Businesslogik an", () => 
 
   // Der page-State des Dashboards behält JEDEN bestehenden Wert in unveränderter
   // Reihenfolge; das Lagermodul hängt seine fünf Listenbereiche additiv hinten
-  // an, statt einen bestehenden Wert zu ersetzen oder umzusortieren.
+  // an, statt einen bestehenden Wert zu ersetzen oder umzusortieren. Lieferscheinverwaltung (Canonical v2.88):
+  // +1 „deliverynotes“, ebenfalls hinten.
   const dashPage = read("../pages/DashboardPage.jsx");
   assert.match(dashPage,
-    /\["overview", "new", "drafts", "addressbook", "shipments", "invoices", "profile", "tracking", "support",\s*\n?\s*"inventory", "products", "stock", "orders", "movements"\]/,
+    /\["overview", "new", "drafts", "addressbook", "shipments", "invoices", "profile", "tracking", "support",\s*\n?\s*"inventory", "products", "stock", "orders", "movements", "deliverynotes"\]/,
     "die Seitenliste des Dashboards hat sich geändert");
 
   const pkg = JSON.parse(read("../../package.json"));

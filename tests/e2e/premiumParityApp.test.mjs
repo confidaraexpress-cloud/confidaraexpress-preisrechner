@@ -129,7 +129,8 @@ async function demoBrowser(viewport = { width: 1440, height: 900 }) {
 const MENUE = [
   ["shipments", "Sendungen"], ["invoices", "Rechnungen"], ["addressbook", "Adressbuch"], ["drafts", "Entwürfe"],
   ["tracking", "Sendung verfolgen"], ["inventory", "Lagerübersicht"], ["products", "Artikel"], ["stock", "Bestand"],
-  ["orders", "Aufträge"], ["movements", "Bewegungen"], ["profile", "Kontoeinstellungen"], ["support", "Supportanfragen"],
+  ["orders", "Aufträge"], ["deliverynotes", "Lieferscheine"], ["movements", "Bewegungen"], ["profile", "Kontoeinstellungen"],
+  ["support", "Supportanfragen"],
   ["new", "Neue Sendung"],
 ];
 

@@ -457,7 +457,7 @@ test("12 — Phase 2.5 fasst nur Typografie an", () => {
   // Keine neue Abhängigkeit, kein verändertes Lockfile-Profil.
   const pkg = JSON.parse(read("../../package.json"));
   assert.deepEqual(Object.keys(pkg.dependencies).sort(),
-    ["@vitejs/plugin-react", "maplibre-gl", "react", "react-dom", "react-router-dom", "vite"]);
+    ["@vitejs/plugin-react", "fflate", "maplibre-gl", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen", "vite"]);
   assert.deepEqual(Object.keys(pkg.devDependencies), ["playwright"]);
   // Keine Routendefinition angefasst.
   const app = read("../App.jsx");

@@ -445,7 +445,7 @@ test("12 — Phase 3 fasst weder Routing noch API noch Businesslogik an", () => 
 
   const pkg = JSON.parse(read("../../package.json"));
   assert.deepEqual(Object.keys(pkg.dependencies).sort(),
-    ["@vitejs/plugin-react", "maplibre-gl", "react", "react-dom", "react-router-dom", "vite"]);
+    ["@vitejs/plugin-react", "fflate", "maplibre-gl", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen", "vite"]);
   assert.deepEqual(Object.keys(pkg.devDependencies), ["playwright"]);
 
   // Die neuen Bausteine sind reine Darstellung: kein Netzwerk, kein Token.

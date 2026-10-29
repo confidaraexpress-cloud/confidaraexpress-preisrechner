@@ -5,6 +5,7 @@ import { Werte } from "../../components/ui/Werte";
 import { EmptyState, NoResultsState, ListSkeleton } from "../../components/ui/StateView";
 import { InlineError, InlineSuccess, InventoryDialog, QuantityField, StockCells, StockBadge } from "../../components/inventory/InventoryShared";
 import { ProductForm } from "../../components/inventory/ProductForm";
+import { ProductImportDialog } from "../../components/inventory/ProductImportDialog";
 import { getProducts, createProduct, updateProduct, getWarehouses } from "../../api/inventoryApi";
 import { formatKg, formatUnits, inventoryErrorText, mapProductToShipment } from "../../utils/inventoryView.mjs";
 
@@ -48,6 +49,7 @@ export default function ProductsPage({ utility, onShipProduct }) {
   const [shipTarget, setShipTarget] = useState(null);
   const [shipQty, setShipQty] = useState("1");
   const [defaultWarehouseId, setDefaultWarehouseId] = useState(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const seq = useRef(0);
 
@@ -129,6 +131,15 @@ export default function ProductsPage({ utility, onShipProduct }) {
   // gleichwertige Dopplung. Der Handler ist in beiden Fällen derselbe.
   const leer = !loading && items.length === 0 && !hatFilter;
   const neuAnlegen = () => { setEditing(null); setFormError(""); setFormOpen(true); };
+  // Import: Kontur neben dem einen gefüllten Primärknopf; im Leerzustand der Weg für
+  // Kunden, die ihre Artikel schon in einer Tabelle führen.
+  const importieren = () => setImportOpen(true);
+  const importAbgeschlossen = (imp) => {
+    const p = (imp && imp.progress) || {};
+    const anzahl = (p.appliedCreated || 0) + (p.appliedUpdated || 0);
+    zeigeErfolg(anzahl > 0 ? `Import abgeschlossen: ${formatUnits(anzahl)} Artikel übernommen.` : "Import abgeschlossen.");
+    load(null);
+  };
 
   return (
     <div className="page-body">
@@ -137,9 +148,14 @@ export default function ProductsPage({ utility, onShipProduct }) {
         subtitle="Ihre Artikelstammdaten mit Bestand, Versand- und Zollangaben."
         utility={utility}
         actions={!leer && (
-          <button type="button" className="btn btn-primary ce-aktion-neu" onClick={neuAnlegen}>
-            Artikel anlegen
-          </button>
+          <>
+            <button type="button" className="btn btn-outline" onClick={importieren}>
+              Artikel importieren
+            </button>
+            <button type="button" className="btn btn-primary ce-aktion-neu" onClick={neuAnlegen}>
+              Artikel anlegen
+            </button>
+          </>
         )}
       />
 
@@ -172,7 +188,12 @@ export default function ProductsPage({ utility, onShipProduct }) {
         <EmptyState
           title="Noch keine Artikel"
           text="Legen Sie Ihre Artikel einmal an — Gewicht, Warenwert und Zollangaben stehen danach bei jedem Versand bereit."
-          action={<button type="button" className="btn btn-primary" onClick={neuAnlegen}>Artikel anlegen</button>}
+          action={
+            <>
+              <button type="button" className="btn btn-primary" onClick={neuAnlegen}>Artikel anlegen</button>
+              <button type="button" className="btn btn-outline" onClick={importieren}>Artikel importieren</button>
+            </>
+          }
         />
       )}
 
@@ -283,6 +304,12 @@ export default function ProductsPage({ utility, onShipProduct }) {
           onSubmit={speichern}
         />
       </InventoryDialog>
+
+      <ProductImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={importAbgeschlossen}
+      />
 
       <InventoryDialog
         open={Boolean(shipTarget)}

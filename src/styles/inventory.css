@@ -945,7 +945,173 @@
   .inv-lowstock .btn,
   .inv-productfilter-list .inv-picker-item,
   .inv-toolbar-reset,
-  .inv-toolbar-chip { min-height: 44px; }
+  .inv-toolbar-chip,
+  .inv-import-segment-option,
+  .inv-import-file .btn,
+  .inv-import-column-target .field-select { min-height: 44px; }
   /* Auf Mobil trägt die Karte den vollen Text — dort ist Platz in der Höhe. */
   .inv-mv-note { -webkit-line-clamp: none; max-width: none; display: block; }
+}
+
+/* ── Artikel importieren (ProductImportDialog) ───────────────────────────────
+   Vier Schritte im bestehenden Dialog. Auswahl über die vorhandenen Bausteine:
+   Segmentsteuerung (.ce-segment) für kurze Optionen, Navy-Wahl (.ci-mode-option.ce-wahl)
+   für die Bestandsmodi mit Erklärung. Listen offen zwischen Linien wie im Kundenbereich;
+   nur Tokens, keine Literale. */
+.inv-import { display: grid; gap: var(--ce-space-4); min-width: 0; align-content: start; }
+/* Im geteilten Dialog (scrollBody) scrollt der Importinhalt selbst — wie .inv-form-scroll im
+   Artikelformular. Sonst liefe er über den Fuß, und die unsichtbaren Radios der Auswahl
+   lägen über dessen Knöpfen. */
+.inv-dialog-split .inv-import {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  padding-right: var(--ce-space-2);
+}
+.inv-dialog-split > .ce-dialog-actions { flex: 0 0 auto; }
+.inv-import-head { display: grid; gap: var(--ce-space-1); }
+.inv-import-step {
+  margin: 0;
+  color: var(--ce-color-text-muted);
+  font-size: var(--ce-text-caption-size);
+  line-height: var(--ce-text-caption-line);
+}
+.inv-import-title {
+  margin: 0;
+  color: var(--ce-color-text-primary);
+  font-size: var(--ce-text-title-card-size);
+  line-height: var(--ce-text-title-card-line);
+  font-weight: var(--ce-text-title-card-weight);
+}
+.inv-import-title:focus { outline: none; }
+.inv-import-title:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+.inv-import-lead,
+.inv-import-note {
+  margin: 0;
+  max-width: 68ch;
+  color: var(--ce-color-text-secondary);
+  font-size: var(--ce-text-body-size);
+  line-height: var(--ce-text-body-line);
+}
+.inv-import-lead strong { color: var(--ce-color-text-primary); font-weight: 600; overflow-wrap: break-word; }
+.inv-import-file { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-3); }
+.inv-import-field { display: grid; gap: var(--ce-space-2); max-width: 28rem; }
+.inv-import-fieldset { display: grid; gap: var(--ce-space-2); min-width: 0; margin: 0; padding: 0; border: 0; }
+.inv-import-fieldset > legend { padding: 0; margin-bottom: var(--ce-space-2); }
+.inv-import-segment,
+.inv-import-filter { display: inline-flex; flex-wrap: wrap; justify-self: start; width: fit-content; max-width: 100%; }
+/* Schrift wie die Segmente der Lager- und Rechnungsfilter. */
+.inv-import-segment-option {
+  white-space: normal;
+  font-size: var(--ce-text-label-size);
+  line-height: var(--ce-text-label-line);
+}
+/* Sieben Filter mit Zahlen: engerer Innenrand hält sie am Desktop in einer Zeile. */
+.inv-import-filter { --ce-segment-innen: var(--ce-space-2); }
+.inv-import-filter .inv-import-segment-option { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+/* Navy-Wahl ohne den Rahmen des Zollformulars (calculator.css) — der Dialog gliedert selbst. */
+.inv-import-modes.ci-mode { border: 0; padding: 0; margin: 0; }
+
+.inv-import-columns {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--ce-color-border-subtle);
+}
+.inv-import-column {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem);
+  align-items: center;
+  gap: var(--ce-space-3);
+  padding: var(--ce-space-3) 0;
+  border-bottom: 1px solid var(--ce-color-border-subtle);
+}
+.inv-import-column-source { display: grid; gap: var(--ce-space-1); min-width: 0; }
+/* Der Erkennungshinweis steht beim Spaltennamen — so sind alle Auswahlfelder gleich breit. */
+.inv-import-column-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-1) var(--ce-space-2); min-width: 0; }
+.inv-import-column-name { color: var(--ce-color-text-primary); font-weight: 600; overflow-wrap: break-word; }
+.inv-import-column-examples {
+  color: var(--ce-color-text-muted);
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  overflow-wrap: break-word;
+}
+.inv-import-column-target { display: grid; min-width: 0; }
+.inv-import-column-target .field-select { min-width: 0; width: 100%; }
+
+.inv-import-problems,
+.inv-import-notice {
+  margin: 0;
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border: 1px solid var(--ce-color-status-warning-border);
+  border-radius: var(--ce-radius-md);
+  background: var(--ce-color-status-warning-surface);
+  color: var(--ce-color-text-primary);
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+}
+.inv-import-problems { list-style: disc; padding-left: var(--ce-space-6); }
+.inv-import-notice { display: grid; gap: var(--ce-space-2); }
+.inv-import-notice p { margin: 0; }
+
+.inv-import-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--ce-color-border-subtle);
+}
+.inv-import-row {
+  display: grid;
+  gap: var(--ce-space-1);
+  padding: var(--ce-space-3) 0;
+  border-bottom: 1px solid var(--ce-color-border-subtle);
+  min-width: 0;
+}
+.inv-import-row-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2) var(--ce-space-3); }
+.inv-import-row-ref { color: var(--ce-color-text-muted); font-size: var(--ce-text-body-s-size); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.inv-import-row-problem,
+.inv-import-row-hint,
+.inv-import-row-change {
+  margin: 0;
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  overflow-wrap: break-word;
+}
+.inv-import-row-problem { color: var(--ce-color-status-error-fg); }
+.inv-import-row-hint { color: var(--ce-color-text-secondary); }
+.inv-import-row-change { color: var(--ce-color-text-primary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.inv-import-confirm { display: grid; gap: var(--ce-space-2); }
+
+.inv-import-progress {
+  position: relative;
+  height: var(--ce-space-2);
+  overflow: hidden;
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-surface-subtle);
+}
+.inv-import-progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-brand);
+  transition: width var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+@media (prefers-reduced-motion: reduce) {
+  .inv-import-progress-bar { transition: none; }
+}
+.inv-import-result {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: var(--ce-space-3) var(--ce-space-4);
+  margin: 0;
+}
+/* Zweizeilige Bezeichnung: die Zahlen einer Reihe bleiben auf einer Linie. */
+.inv-import-result div { display: grid; gap: var(--ce-space-1); align-content: space-between; }
+.inv-import-result dt { color: var(--ce-color-text-muted); font-size: var(--ce-text-body-s-size); }
+.inv-import-result dd { margin: 0; color: var(--ce-color-text-primary); font-size: var(--ce-text-title-card-size); font-weight: 600; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
+/* Telefon: Dateiaktionen untereinander wie der Dialogfuß; Segmente teilen sich die Zeile, statt einzeln umzubrechen. */
+@media (max-width: 640px) {
+  .inv-import-column { grid-template-columns: minmax(0, 1fr); }
+  .inv-import-file { flex-direction: column; align-items: stretch; }
+  .inv-import-segment { width: 100%; }
+  .inv-import-segment .inv-import-segment-option { flex: 1 1 auto; }
 }

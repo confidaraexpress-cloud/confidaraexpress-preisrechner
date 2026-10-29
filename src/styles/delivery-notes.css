@@ -1,0 +1,158 @@
+/* ── Lieferscheine (Lager & Aufträge) ───────────────────────────────────────────
+   Seite, Upload-, Verlauf- und Vorlagenbereich. Bausteine wie die übrigen Lagerseiten:
+   Seitenkopf, Reiter (.ce-tabs), Werkzeugleiste (.inv-toolbar), offene Tabelle oder Einträge
+   (.inv-list-table/.inv-list-cards, Umschaltung in premium-editorial.css), Menütaste
+   „Weitere Aktionen“, Dialoge (.ce-dialog). Nur Tokens, keine Farbliterale, keine Bewegung. */
+
+.dn-tabs { margin-bottom: var(--ce-space-5); }
+
+/* Lieferschein-Zelle: Art, Nummer (eine lange eigene Nummer bricht nur am Bindestrich), Herkunft. */
+.dn-zelle { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dn-art { font-weight: 600; color: var(--ce-color-text-primary); }
+.dn-art--none { font-weight: 400; color: var(--ce-color-text-muted); }
+.dn-nummer-wert { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; color: var(--ce-color-text-secondary); }
+/* Vorgangs- und Auftragsnummer in der Tabelle: ganz, ohne Fugen (Werte erlaubt bei langen Kennungen den Umbruch am
+   Bindestrich — in der Spalte „Sendung“ sähe „CE-AU-“ / „2026-000007“ wie zwei Werte aus). */
+.dn-kennung { white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+/* Ein Fokusziel nach dem Zurückziehen (Meldung im Verlauf): Screenreader und Tastatur landen dort, ein Ring wäre ohne
+   Bedienelement — wie bei Überschriften mit tabindex="-1" (premium-redesign.css). */
+.dn-meldung[tabindex="-1"]:focus { outline: none; }
+.inv-list-cards--lieferscheine .dn-zelle { margin-top: var(--ce-space-2); }
+
+/* Dialoge: Ziel der Aktion als ruhige Faktenliste. */
+.dn-upload { display: flex; flex-direction: column; gap: var(--ce-space-5); }
+.dn-upload > p { margin: 0; }
+.dn-ziel,
+.dn-fakten {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  gap: var(--ce-space-3) var(--ce-space-5);
+  margin: 0;
+  padding: 0 0 var(--ce-space-4);
+  border-bottom: 1px solid var(--ce-color-border-subtle);
+}
+.dn-ziel > div,
+.dn-fakten > div { min-width: 0; }
+.dn-ziel dt,
+.dn-fakten dt {
+  font-size: var(--ce-text-label-size);
+  line-height: var(--ce-text-label-line);
+  color: var(--ce-color-text-muted);
+}
+.dn-ziel dd,
+.dn-fakten dd {
+  margin: 2px 0 0;
+  font-size: var(--ce-text-body-size);
+  line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-primary);
+  overflow-wrap: break-word;
+}
+.dn-feld { display: flex; flex-direction: column; gap: var(--ce-space-2); min-width: 0; }
+.dn-feld .field-hint,
+.dn-feld .field-error { margin: 0; }
+/* Dateiauswahl: Knopf statt nativem Feld (wie .inv-import-file), daneben die gewählte Datei. */
+.dn-datei-wahl { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2) var(--ce-space-4); min-width: 0; }
+@media (max-width: 860px) {
+  .dn-datei-wahl .btn { min-height: 44px; }
+}
+.dn-nummer { max-width: 24rem; }
+.dn-datei-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ce-space-1) var(--ce-space-3);
+  font-size: var(--ce-text-body-size);
+  color: var(--ce-color-text-primary);
+}
+.dn-datei-name { min-width: 0; overflow-wrap: anywhere; }
+.dn-datei-groesse { color: var(--ce-color-text-muted); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.dn-datei-vorschau {
+  width: 100%;
+  height: min(28rem, 55vh);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-surface-muted);
+}
+.dn-hinweis {
+  margin: 0;
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border-left: 2px solid var(--ce-color-border-strong);
+  background: var(--ce-color-surface-subtle);
+  color: var(--ce-color-text-secondary);
+  font-size: var(--ce-text-body-size);
+  line-height: var(--ce-text-body-line);
+}
+
+/* Verlauf: neueste Fassung zuerst, die geltende trägt eine Kante. */
+.dn-verlauf { display: flex; flex-direction: column; gap: var(--ce-space-4); }
+.dn-laden,
+.dn-leer { margin: 0; color: var(--ce-color-text-muted); }
+.dn-verlauf-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.dn-verlauf-eintrag {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ce-space-2);
+  padding: var(--ce-space-4) 0 var(--ce-space-4) var(--ce-space-4);
+  border-bottom: 1px solid var(--ce-color-border-subtle);
+  border-left: 2px solid transparent;
+}
+.dn-verlauf-eintrag--gilt { border-left-color: var(--ce-color-status-success-border); }
+.dn-verlauf-kopf { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ce-space-2) var(--ce-space-3); }
+.dn-verlauf-titel { font-weight: 600; color: var(--ce-color-text-primary); }
+.dn-verlauf-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ce-space-1) var(--ce-space-4);
+  font-size: var(--ce-text-label-size);
+  line-height: var(--ce-text-label-line);
+  color: var(--ce-color-text-secondary);
+}
+.dn-verlauf-aktionen { display: flex; flex-wrap: wrap; gap: var(--ce-space-2); }
+.dn-verlauf-bestaetigen { display: flex; flex-direction: column; gap: var(--ce-space-3); }
+.dn-verlauf-bestaetigen p { margin: 0; color: var(--ce-color-text-secondary); }
+
+/* Briefpapier-Vorlage: offene Blöcke zwischen Linien, Lesebreite begrenzt. */
+.dn-vorlage { display: flex; flex-direction: column; gap: var(--ce-space-5); max-width: 52rem; }
+.dn-vorlage-kopf { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--ce-space-2) var(--ce-space-4); }
+.dn-vorlage-titel { margin: 0; font-size: var(--ce-text-section-size, 1.125rem); line-height: var(--ce-text-section-line, 1.625rem); font-weight: 600; color: var(--ce-color-text-primary); }
+.dn-vorlage-status { margin: 0; color: var(--ce-color-text-secondary); font-size: var(--ce-text-body-size); }
+.dn-vorlage-text { margin: 0; color: var(--ce-color-text-primary); line-height: var(--ce-text-body-line); }
+.dn-vorlage-regeln { margin: 0; padding-left: 1.25rem; color: var(--ce-color-text-secondary); line-height: var(--ce-text-body-line); }
+.dn-vorlage-modus {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ce-space-2);
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border-left: 2px solid var(--ce-color-border-strong);
+  background: var(--ce-color-surface-subtle);
+}
+.dn-vorlage-modus p { margin: 0; color: var(--ce-color-text-secondary); line-height: var(--ce-text-body-line); }
+/* Der Textlink steht bündig unter dem Satz (der Knopf bringt sonst seinen Innenabstand mit). */
+.dn-vorlage-modus .btn-link { padding-inline: 0; min-width: 0; }
+.dn-vorlage-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ce-space-4);
+  padding-top: var(--ce-space-5);
+  border-top: 1px solid var(--ce-color-border-subtle);
+}
+.dn-vorlage-blocktitel { margin: 0; font-size: var(--ce-text-body-size); font-weight: 600; color: var(--ce-color-text-primary); }
+.dn-vorlage-aktionen { display: flex; flex-wrap: wrap; gap: var(--ce-space-2) var(--ce-space-3); }
+.dn-vorlage-aktionen .btn { min-width: auto; }
+.dn-abstaende {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: var(--ce-space-4) var(--ce-space-5);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.dn-abstaende > legend { grid-column: 1 / -1; padding: 0; margin-bottom: var(--ce-space-1); }
+.dn-abstand { display: flex; flex-direction: column; gap: var(--ce-space-2); min-width: 0; }
+.dn-abstand .field-hint,
+.dn-abstand .field-error { margin: 0; }
+.dn-abstand-eingabe { display: flex; align-items: center; gap: var(--ce-space-2); }
+.dn-abstand-eingabe .field-input { width: 6.5rem; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.dn-einheit { color: var(--ce-color-text-muted); }

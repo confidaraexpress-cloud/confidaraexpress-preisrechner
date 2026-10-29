@@ -620,6 +620,17 @@
   :root[data-ce-bereich="kunde"] .inv-list-table--bewegungen { display: block; }
   :root[data-ce-bereich="kunde"] .inv-list-cards--bewegungen { display: none; }
 }
+/* Lieferscheine: Sendung, Empfänger, Lieferschein (Art, Nummer, Herkunft), Datum, Herunterladen und Menü. Lange Inhalte
+   brauchen 52.3rem (gemessen 2026-10-29 mit ganzen Kennungen; bei 20 px Grundschrift 48.8rem); 55rem liegt unter dem Band 888–903 px,
+   in dem der Seitenrand ab 1200 px Fenster wächst — eine Schwelle darin schaltete beim Verbreitern zweimal um. */
+@container ce-seite (width < 55rem) {
+  :root[data-ce-bereich="kunde"] .inv-list-table--lieferscheine { display: none; }
+  :root[data-ce-bereich="kunde"] .inv-list-cards--lieferscheine { display: flex; flex-direction: column; gap: var(--ce-space-3); list-style: none; margin: 0; padding: 0; }
+}
+@container ce-seite (width >= 55rem) {
+  :root[data-ce-bereich="kunde"] .inv-list-table--lieferscheine { display: block; }
+  :root[data-ce-bereich="kunde"] .inv-list-cards--lieferscheine { display: none; }
+}
 
 /* Eine Kennung als Seitentitel (Auftragsnummer) bricht nie mitten im Wert: Der Titelblock ist mindestens so breit wie
    sie — die Aktionen rücken darunter —, und wo selbst die Zeile zu schmal ist (Telefon, große Schrift), wird sie

@@ -306,15 +306,15 @@ export const DELIVERY_NOTE_TEXT = {
   options: {
     confidara: {
       label: "Automatisch mit Confidara erstellen",
-      hint: "Für Sendungen aus Lagerartikeln oder Aufträgen erstellt Confidara nach erfolgreicher Buchung automatisch einen Lieferschein.",
+      hint: "Für Sendungen aus Lagerartikeln oder Aufträgen erstellt Confidara nach erfolgreicher Buchung automatisch einen Lieferschein — mit eingerichteter Briefpapier-Vorlage auf Ihrem Briefpapier.",
     },
     external: {
       label: "Eigenes Lieferscheinsystem",
-      hint: "Confidara erstellt keinen eigenen Lieferschein. Bei Bedarf können Sie Ihre eigene Lieferscheinnummer zur Sendung hinterlegen.",
+      hint: "Confidara erstellt keinen eigenen Lieferschein. Bei Bedarf hinterlegen Sie Ihre eigene Lieferscheinnummer zur Sendung und laden Ihren Lieferschein unter „Lieferscheine“ hoch.",
     },
     none: {
       label: "Keine Lieferscheine",
-      hint: "Der bisherige Versandprozess bleibt unverändert.",
+      hint: "Bei der Buchung entsteht kein Lieferschein. Unter „Lieferscheine“ können Sie je Sendung jederzeit einen hochladen oder erstellen.",
     },
   },
   externalFieldLabel: "Eigene Lieferscheinnummer",

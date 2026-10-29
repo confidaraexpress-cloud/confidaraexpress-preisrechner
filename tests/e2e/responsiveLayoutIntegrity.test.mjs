@@ -134,6 +134,7 @@ const LISTEN = {
   stock: [".inv-list-table--bestand tbody tr", ".inv-list-cards--bestand > li"],
   orders: [".inv-list-table--auftraege tbody tr", ".inv-list-cards--auftraege > li"],
   movements: [".inv-list-table--bewegungen tbody tr", ".inv-list-cards--bewegungen > li"],
+  deliverynotes: [".inv-list-table--lieferscheine tbody tr", ".inv-list-cards--lieferscheine > li"],
   drafts: [".dft-table-card tbody tr", ".dft-cards > li"],
   "/inventory/orders/501": [".inv-order-main .inv-detail-table--wide tbody tr", ".inv-order-main .inv-detail-cards > li"],
 };
@@ -217,7 +218,7 @@ test("L1 — „Letzte Sendungen“: keine Überschneidung von 320 bis 2560 px, 
 test("L2 — Kundenseiten mit langen Inhalten: kein Befund in den Prüfbreiten", async () => {
   const { ctx, page, fehler } = await kontext("lang");
   try {
-    for (const bereich of ["shipments", "invoices", "support", "inventory", "products", "stock", "orders", "movements", "drafts", "addressbook", "profile"]) {
+    for (const bereich of ["shipments", "invoices", "support", "inventory", "products", "stock", "orders", "movements", "deliverynotes", "drafts", "addressbook", "profile"]) {
       await oeffne(page, `/dashboard?page=${bereich}`);
       await kurz(600);
       await pruefe(page, KERN, bereich);

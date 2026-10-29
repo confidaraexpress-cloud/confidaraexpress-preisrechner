@@ -32,7 +32,7 @@ const ID = /^[1-9][0-9]{0,9}$/;
 // pages/DashboardPage.jsx (ein Paritätstest hält beide gleich). Alles andere
 // wäre dort ohnehin verworfen worden; hier wird es gar nicht erst übernommen.
 const DASHBOARD_BEREICHE = new Set(["overview", "new", "drafts", "addressbook", "shipments", "invoices", "profile",
-  "tracking", "support", "inventory", "products", "stock", "orders", "movements"]);
+  "tracking", "support", "inventory", "products", "stock", "orders", "movements", "deliverynotes"]);
 // Zusatzparameter gelten nur in ihrem Bereich: ein Vorgang gehört zu den
 // Supportanfragen (Glockenmeldung), ein Artikelfilter zu den Bewegungen
 // („Alle Bewegungen anzeigen"). Dieselbe Zuordnung wie in DashboardPage.

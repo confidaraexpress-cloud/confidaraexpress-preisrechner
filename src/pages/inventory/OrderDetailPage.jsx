@@ -70,7 +70,7 @@ export default function OrderDetailPage() {
   useEffect(() => { load(); }, [load]);
 
   const ladeLieferschein = async (s) => {
-    if (!s?.id || !s?.deliveryNote?.number || dnBusyId) return;
+    if (!s?.id || !s?.deliveryNote || dnBusyId) return;
     setDnBusyId(s.id); setDnError("");
     try {
       await downloadDeliveryNote(s.id, s.deliveryNote.number);
@@ -80,21 +80,27 @@ export default function OrderDetailPage() {
     setDnBusyId(null);
   };
 
-  // Drei Fälle, klar getrennt:
-  //   Confidara-Lieferschein → Nummer als Downloadaktion
-  //   eigener Lieferschein   → Nummer als Text (kein PDF in Confidara, also kein Knopf)
+  // Drei Fälle, klar getrennt (welcher Lieferschein gilt, entscheidet der Server — Canonical v2.88):
+  //   maßgeblicher Lieferschein in ConfidaraExpress (ConfidaraExpress oder eigene Fassung)
+  //                          → Nummer (eigene Fassung ohne Nummer: „Eigener Lieferschein“) als Downloadaktion
+  //   nur eine eigene Nummer → als Text (kein PDF in ConfidaraExpress, also kein Knopf)
   //   keiner                 → Gedankenstrich, keine leere Zeile
   const renderDeliveryNoteCell = (s) => {
-    if (s.deliveryNote?.number) {
+    if (s.deliveryNote) {
+      const eigen = s.deliveryNote.source === "own";
+      const text = s.deliveryNote.number || (eigen ? "Eigener Lieferschein" : "Lieferschein");
       return (
-        <button
-          type="button"
-          className="btn btn-link inv-cell-link"
-          onClick={() => ladeLieferschein(s)}
-          disabled={dnBusyId === s.id}
-        >
-          {dnBusyId === s.id ? "Wird geladen …" : s.deliveryNote.number}
-        </button>
+        <>
+          <button
+            type="button"
+            className="btn btn-link inv-cell-link"
+            onClick={() => ladeLieferschein(s)}
+            disabled={dnBusyId === s.id}
+          >
+            {dnBusyId === s.id ? "Wird geladen …" : text}
+          </button>
+          {eigen && s.deliveryNote.number && <div className="inv-cell-meta">Eigener Lieferschein</div>}
+        </>
       );
     }
     if (s.externalDeliveryNoteNumber) {

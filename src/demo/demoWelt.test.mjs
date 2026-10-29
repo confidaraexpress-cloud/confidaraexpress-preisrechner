@@ -281,3 +281,50 @@ test("16 — „/DEMO“ ist die Demo wie „/demo“ (die Route der Anwendung u
   for (const p of ["/DEMO", "/Demo/dashboard", "/demo/BOOKING"]) assert.equal(istDemoPfad(p), true, p);
   assert.equal(istDemoPfad("/DEMONSTRATION"), false);
 });
+
+test("17 — Lieferscheine in der Demo: jede Art sichtbar, Dokumente als SIMULATION, Ändern nie ein stiller Erfolg", async () => {
+  demoZuruecksetzen();
+  await ohneNetz(async () => {
+    const liste = await anfrage("/api/kunde/delivery-notes?limit=25");
+    assert.equal(liste.status, 200);
+    const arten = new Set(liste.daten.items.map((r) => (r.effective ? `${r.effective.source}/${r.effective.origin}` : "keiner")));
+    for (const art of ["confidara/confidara", "own/upload", "own/template", "keiner"]) assert.ok(arten.has(art), `Art fehlt: ${art}`);
+    for (const r of liste.daten.items) {
+      assert.match(r.orderConfirmationNumber, /^SIM-/);
+      if (r.confidaraNumber) assert.match(r.confidaraNumber, /^SIM-/);
+    }
+    const eigene = await anfrage("/api/kunde/delivery-notes?source=own");
+    assert.ok(eigene.daten.items.length > 0 && eigene.daten.items.every((r) => r.effective && r.effective.source === "own"));
+    const suche = await anfrage("/api/kunde/delivery-notes?q=LS-58421");
+    assert.equal(suche.daten.items.length, 1);
+
+    const mitVerlauf = liste.daten.items.find((r) => r.versionCount > 1);
+    const verlauf = await anfrage(`/api/shipments/${mitVerlauf.shipmentId}/delivery-notes`);
+    assert.equal(verlauf.status, 200);
+    assert.ok(verlauf.daten.versions.some((v) => v.withdrawnAt), "ein zurückgezogener Stand zeigt den Verlauf");
+    assert.equal(verlauf.daten.versions.filter((v) => v.effective).length, 1);
+
+    const mitLs = liste.daten.items.find((r) => r.effective);
+    const dok = await anfrage(`/api/shipments/${mitLs.shipmentId}/delivery-note`);
+    assert.equal(dok.typ, "application/pdf");
+    assert.ok(Buffer.from(dok.daten).toString("latin1").includes("SIMULATION"), "der Lieferschein trägt den Aufdruck SIMULATION");
+    const ohne = liste.daten.items.find((r) => !r.effective);
+    assert.equal((await anfrage(`/api/shipments/${ohne.shipmentId}/delivery-note`)).status, 404);
+
+    for (const [pfad, methode] of [
+      [`/api/shipments/${ohne.shipmentId}/delivery-notes/uploads`, "POST"],
+      [`/api/shipments/${mitLs.shipmentId}/delivery-notes/from-template`, "POST"],
+      [`/api/shipments/${mitVerlauf.shipmentId}/delivery-notes/versions/1/withdraw`, "POST"],
+      ["/api/kunde/delivery-note-template", "POST"],
+      ["/api/kunde/delivery-note-template/draft", "PATCH"],
+    ]) {
+      const r = await anfrage(pfad, { method: methode, body: "{}" });
+      assert.equal(r.status, 409, `${methode} ${pfad}`);
+      assert.equal(r.daten.code, "DEMO_NOT_AVAILABLE");
+    }
+    const vorlage = await anfrage("/api/kunde/delivery-note-template");
+    assert.equal(vorlage.daten.active.pageCount, 2);
+    const muster = await anfrage("/api/kunde/delivery-note-template/active/preview");
+    assert.ok(Buffer.from(muster.daten).toString("latin1").includes("SIMULATION"));
+  });
+});

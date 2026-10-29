@@ -44,7 +44,7 @@ const MONTH_WATCH_INTERVAL_MS = 60_000;
 // über echte Routen (/inventory/products/:id, /inventory/orders/:id), weil eine
 // Entitäts-ID nicht in einen page-String gehört.
 const DASHBOARD_PAGES = ["overview", "new", "drafts", "addressbook", "shipments", "invoices", "profile", "tracking", "support",
-  "inventory", "products", "stock", "orders", "movements"];
+  "inventory", "products", "stock", "orders", "movements", "deliverynotes"];
 
 // Startbereich eines Mounts: Query schlägt History-State schlägt Übersicht.
 // Bewusst als reine Funktion außerhalb der Komponente — sie wird an zwei
@@ -94,6 +94,7 @@ const ProductsPage          = React.lazy(() => import("./inventory/ProductsPage"
 const StockPage             = React.lazy(() => import("./inventory/StockPage"));
 const OrdersPage            = React.lazy(() => import("./inventory/OrdersPage"));
 const MovementsPage         = React.lazy(() => import("./inventory/MovementsPage"));
+const DeliveryNotesPage     = React.lazy(() => import("./inventory/DeliveryNotesPage"));
 
 // Übersicht und Profil haben keinen Eintrag: Die Übersicht nutzt den Overview-Hero,
 // das Profil rendert seinen eigenen Seitenkopf inkl. „Profil bearbeiten“-Button
@@ -911,6 +912,11 @@ export default function DashboardPage() {
               initialFilter={inventoryFilter?.page === "orders" ? inventoryFilter.filter : null}
               onFilterApplied={() => setInventoryFilter(null)}
             />
+          </Suspense>
+        )}
+        {page === "deliverynotes" && (
+          <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
+            <DeliveryNotesPage utility={utilityCluster} onNavigate={navigateTo} />
           </Suspense>
         )}
         {page === "movements" && (

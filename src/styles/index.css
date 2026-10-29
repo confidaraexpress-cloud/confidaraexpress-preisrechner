@@ -50,6 +50,9 @@
    Foundation-Tokens; kein zweites Karten-, Badge-, Button- oder Dialogsystem
    und keine Kollision mit bestehenden Scopes. */
 @import './inventory.css';
+/* Lieferscheine (Lager & Aufträge): Seite, Upload, Verlauf, Briefpapier-Vorlage. Baut auf den Bausteinen von
+   inventory.css auf und steht wie alle Bereichs-Stylesheets VOR patterns.css. */
+@import './delivery-notes.css';
 /* Gemeinsame Interface-Muster (Paket A, Phase 3): Seitenkopf, Utility-Cluster,
    Toolbar, Listenrahmen, Dialoge, Drawer und Zustandsflächen. Steht als
    EINZIGE Ebene NACH den Bereichs-Stylesheets — anders als primitives.css,

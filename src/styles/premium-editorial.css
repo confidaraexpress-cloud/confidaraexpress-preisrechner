@@ -9,8 +9,8 @@
    These: Der Kundenbereich liest sich wie ein Geschäftsbericht. Eine Familie
    (Instrument Sans) mit innerer Spannung — normale Breite für Text, schmaler
    Schnitt für Kennzahlen und Beträge. Weißes Papier, Tintenlinien unter Köpfen,
-   Haarlinien zwischen Zeilen, Navy gezielt als Band und als Aktion, die
-   Markenkante (Navy und Signal) unter jedem Seitenkopf.
+   Haarlinien zwischen Zeilen, Navy gezielt als Band und als Aktion, eine
+   ruhige graue Kante unter jedem Seitenkopf (Betreiberentscheidung 2026-10-29).
 
    Diese Ebene steht als letzte im Bündel und hängt ausschließlich am Kunden-
    bereich (:root[data-ce-bereich="kunde"]). Anmeldung, Preisrechner, Admin,
@@ -45,8 +45,8 @@
 
 /* ═══════════ 2 · SEITENKOPF ═══════════════════════════════════════════════
    Maßstab statt Dekor: der Titel in der Editorial-Skala (56 / 44 / 36 px), eine
-   Haarlinie unter dem Kopf und darauf die Markenkante aus Navy und Signal, hart
-   gestoßen. Untertitel ruhig, höchstens 60 Zeichen breit. */
+   Haarlinie unter dem Kopf und darauf eine kurze Kante in ruhigem Grau — dieselbe Linie, nur kräftiger; seit 2026-10-29
+   ohne Navy und Signal (Betreiberentscheidung). Untertitel ruhig, höchstens 60 Zeichen breit. */
 :root[data-ce-bereich="kunde"] .ce-page-header-main {
   position: relative;
   align-items: flex-end;
@@ -62,7 +62,7 @@
   bottom: -2px;
   width: var(--ce-space-10);
   height: 3px;
-  background: linear-gradient(90deg, var(--ce-pr-navy-800) 0 62%, var(--ce-pr-signal) 62% 100%);
+  background: var(--ce-color-border-strong);
 }
 :root[data-ce-bereich="kunde"] .ce-page-header-text {
   display: flex;
@@ -181,6 +181,82 @@
   color: var(--ce-pr-signal-ink);
   text-decoration-color: currentColor;
 }
+/* ── Menütaste „Weitere Aktionen“ (Entwürfe, Adressbuch, Lager; Betreiberentscheidung 2026-10-29) ──
+   Die Zweitaktion als Zeichen: rund, Navy-Kontur und drei Punkte in Navy wie die Kapsel daneben, genau so hoch wie
+   sie und auf ihrer Mitte (Entwurfstabelle 40 px, Adressbuch und Lager 32 px; mit grobem Zeiger und schmal 44 px).
+   Die Punkte liegen auf ganzen Pixeln und ganz in der Fläche — vorher schnitt sie den dritten an, und die Taste saß
+   auf der Grundlinie 3 px über „Fortsetzen“. Zeigen tönt die Fläche wie bei der Kapsel, Drücken und das geöffnete
+   Menü eine Stufe kräftiger; Fokusring des Bereichs; gesperrt grau; beim Löschen steht nur der Ladekreis. Keine
+   Bewegung, keine Deckkraft (E5). Die Beschriftung bleibt im Zugänglichkeitsbaum; im Kontrastmodus zeichnet das
+   System die Punkte in seiner Schriftfarbe. */
+:root[data-ce-bereich="kunde"] :is(.dft-actions, .abk-actions) { display: flex; }
+:root[data-ce-bereich="kunde"] :is(.dft-actions-trigger, .abk-actions-trigger, .inv-actions-trigger) {
+  --ce-menue-groesse: var(--ce-size-control-md);
+  --ce-menue-punkt: 2px;
+  --ce-menue-abstand: 7px;
+  position: relative;
+  flex: none;
+  width: var(--ce-menue-groesse);
+  height: var(--ce-menue-groesse);
+  min-width: var(--ce-menue-groesse);
+  min-height: var(--ce-menue-groesse);
+  padding: 0;
+  border: 1px solid var(--ce-pr-navy-800);
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-surface);
+  color: var(--ce-pr-navy-800);
+  font-size: 0;
+  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+:root[data-ce-bereich="kunde"] :is(.abk-actions-trigger, .inv-actions-trigger) {
+  --ce-menue-groesse: var(--ce-size-control-sm);
+  --ce-menue-punkt: 1.75px;
+  --ce-menue-abstand: 6px;
+}
+@media (pointer: coarse), (max-width: 860px) {
+  :root[data-ce-bereich="kunde"] :is(.abk-actions-trigger, .inv-actions-trigger) {
+    --ce-menue-groesse: var(--ce-size-touch-target);
+    --ce-menue-punkt: 2px;
+    --ce-menue-abstand: 7px;
+  }
+}
+:root[data-ce-bereich="kunde"] .dft-actions-trigger > span:not(.spinner) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* Drei Kacheln zu 6 px, je ein Punkt in der Mitte: links, Mitte, rechts — die Mitte fällt auf die Mitte der Taste.
+   Im Kontrastmodus bleiben die Punkte und tragen die Schriftfarbe, die das System der Taste gibt (preserve-parent-color,
+   gesperrt also dessen Grau); Browser ohne diesen Wert behalten none und zeichnen sie in Navy. */
+:root[data-ce-bereich="kunde"] :is(.dft-actions-trigger, .abk-actions-trigger, .inv-actions-trigger)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: calc(2 * var(--ce-menue-abstand) + 6px);
+  height: 6px;
+  background:
+    radial-gradient(circle, currentColor 0 var(--ce-menue-punkt), transparent calc(var(--ce-menue-punkt) + 0.6px)) 0 0 / 6px 6px no-repeat,
+    radial-gradient(circle, currentColor 0 var(--ce-menue-punkt), transparent calc(var(--ce-menue-punkt) + 0.6px)) 50% 0 / 6px 6px no-repeat,
+    radial-gradient(circle, currentColor 0 var(--ce-menue-punkt), transparent calc(var(--ce-menue-punkt) + 0.6px)) 100% 0 / 6px 6px no-repeat;
+  forced-color-adjust: none;
+  forced-color-adjust: preserve-parent-color;
+}
+:root[data-ce-bereich="kunde"] :is(.dft-actions-trigger, .abk-actions-trigger):has(> .spinner)::before { content: none; }
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] :is(.dft-actions-trigger, .abk-actions-trigger, .inv-actions-trigger):hover:not(:disabled) { background: var(--ce-pr-signal-soft); color: var(--ce-pr-navy-800); }
+}
+:root[data-ce-bereich="kunde"] :is(.dft-actions-trigger, .abk-actions-trigger, .inv-actions-trigger):is(:active, [aria-expanded="true"]):not(:disabled) { background: var(--ce-pr-signal-soft-hover); color: var(--ce-pr-navy-800); }
+:root[data-ce-bereich="kunde"] :is(.dft-actions-trigger, .abk-actions-trigger, .inv-actions-trigger):focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+:root[data-ce-bereich="kunde"] :is(.dft-actions-trigger, .abk-actions-trigger, .inv-actions-trigger):disabled {
+  border-color: var(--ce-color-border-default);
+  background: var(--ce-color-surface);
+  color: var(--ce-color-text-disabled);
+  cursor: not-allowed;
+}
 
 /* ═══════════ 4 · STATUS ═══════════════════════════════════════════════════
    Bedeutung und Zuordnung unverändert (E8). Ruhig: Punkt und Wort in Tinte.
@@ -238,8 +314,8 @@
   letter-spacing: 0;
   color: var(--ce-pr-on-navy);
 }
-/* Die Identität jeder Kennzahl: eine Akzentlinie an der Oberkante ihrer Spalte, wie die Markenkante unter dem
-   Seitenkopf — Blau für aktiv, Himmelblau für in Zustellung, Grün für zugestellt, Bernstein für verzögert. */
+/* Die Identität jeder Kennzahl: eine Akzentlinie an der Oberkante ihrer Spalte in ihrer Kennfarbe (die Kante unter dem
+   Seitenkopf bleibt grau) — Blau für aktiv, Himmelblau für in Zustellung, Grün für zugestellt, Bernstein für verzögert. */
 :root[data-ce-bereich="kunde"] .ov-kpi::before {
   content: "";
   position: absolute;
@@ -779,42 +855,6 @@
     color: var(--ce-color-text-inverse);
   }
 }
-:root[data-ce-bereich="kunde"] .dft-actions-trigger {
-  position: relative;
-  width: var(--ce-size-control-md);
-  height: var(--ce-size-control-md);
-  min-width: var(--ce-size-control-md);
-  padding: 0;
-  border: 1px solid var(--ce-color-border-default);
-  border-radius: var(--ce-radius-full);
-  background: var(--ce-color-surface);
-  color: var(--ce-color-text-primary);
-  font-size: 0;
-  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard), border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
-}
-/* Die Beschriftung „Weitere Aktionen“ bleibt im Zugänglichkeitsbaum, sichtbar stehen drei Punkte. */
-:root[data-ce-bereich="kunde"] .dft-actions-trigger > span:not(.spinner) {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-:root[data-ce-bereich="kunde"] .dft-actions-trigger::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 18px;
-  height: 4px;
-  background: radial-gradient(circle, currentColor 0 1.9px, transparent 2.3px) 0 50% / 7px 4px repeat-x;
-}
-:root[data-ce-bereich="kunde"] .dft-actions-trigger:hover:not(:disabled),
-:root[data-ce-bereich="kunde"] .dft-actions-trigger[aria-expanded="true"] {
-  background: var(--ce-pr-inset);
-  border-color: var(--ce-color-text-muted);
-}
 :root[data-ce-bereich="kunde"] .dft-actions-menu {
   padding: var(--ce-space-1);
   border: 1px solid var(--ce-pr-hairline);
@@ -887,9 +927,9 @@
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
-:root[data-ce-bereich="kunde"] .dft-card-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--ce-space-3); border-top: 0; padding-top: 0; }
+:root[data-ce-bereich="kunde"] .dft-card-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--ce-space-3); border-top: 0; padding-top: 0; }
 :root[data-ce-bereich="kunde"] .dft-card-actions .btn.dft-resume-btn { width: 100%; min-height: var(--ce-size-touch-target); justify-content: center; }
-:root[data-ce-bereich="kunde"] .dft-card-actions .dft-actions-trigger { width: var(--ce-size-touch-target); height: var(--ce-size-touch-target); min-width: var(--ce-size-touch-target); }
+:root[data-ce-bereich="kunde"] .dft-card-actions .dft-actions-trigger { --ce-menue-groesse: var(--ce-size-touch-target); }
 
 /* ═══════════ 7 · TABELLEN UND LISTEN (alle Kundenseiten) ══════════════════
    Wie die freigegebene Entwurfstabelle: offen auf Papier statt im Kasten, eine Tintenlinie unter dem Kopf,
@@ -1023,7 +1063,7 @@
 :root[data-ce-bereich="kunde"] .alert { border-radius: var(--ce-pr-radius-control-lg); }
 
 /* ═══════════ 11 · DIALOGE UND SCHUBLADEN ══════════════════════════════════
-   Dieselbe Hand wie die Seiten: Titel in der Abschnittsstufe, die Markenkante an der Oberkante, Aktionen als
+   Dieselbe Hand wie die Seiten: Titel in der Abschnittsstufe, die graue Kante an der Oberkante, Aktionen als
    Kapseln. Fokusführung und Inhalte bleiben unverändert (useDialog). */
 :root[data-ce-bereich="kunde"] :is(.ce-dialog, .stn-dialog-card, .sup-dialog-card, .dft-dialog-card, .abk-dialog-card, .email-change-modal, .price-drift-card) {
   position: relative;
@@ -1038,7 +1078,7 @@
   left: var(--ce-space-7);
   width: var(--ce-space-9);
   height: 3px;
-  background: linear-gradient(90deg, var(--ce-pr-navy-800) 0 62%, var(--ce-pr-signal) 62% 100%);
+  background: var(--ce-color-border-strong);
 }
 :root[data-ce-bereich="kunde"] :is(.ce-dialog-title, .stn-dialog-title, .sup-dialog-title, .dft-dialog-title, .abk-dialog-title, .email-change-modal-title, .price-drift-title) {
   font-size: var(--ce-text-title-section-size);
@@ -1078,7 +1118,7 @@
   padding-top: var(--ce-space-6);
   border-top: 1px solid var(--ce-pr-hairline);
 }
-/* Das Ergebnisblatt der Angebote: Blatt mit Haarlinie, die Markenkante unter dem Kopf, Preise im schmalen Schnitt. */
+/* Das Ergebnisblatt der Angebote: Blatt mit Haarlinie, die graue Kante unter dem Kopf, Preise im schmalen Schnitt. */
 :root[data-ce-bereich="kunde"] .offers-section {
   border-color: var(--ce-pr-hairline);
   border-radius: var(--ce-pr-radius-card);
@@ -1092,7 +1132,7 @@
   bottom: -2px;
   width: var(--ce-space-10);
   height: 3px;
-  background: linear-gradient(90deg, var(--ce-pr-navy-800) 0 62%, var(--ce-pr-signal) 62% 100%);
+  background: var(--ce-color-border-strong);
 }
 :root[data-ce-bereich="kunde"] .offers-result-count { letter-spacing: -0.02em; }
 :root[data-ce-bereich="kunde"] .offer-price { font-stretch: var(--ce-pr-ed-amount-stretch); letter-spacing: -0.02em; }
@@ -1146,38 +1186,6 @@
 }
 :root[data-ce-bereich="kunde"] .sup-list-subject { font-size: var(--ce-text-body-l-size); font-weight: 600; letter-spacing: -0.008em; color: var(--ce-color-text-primary); }
 :root[data-ce-bereich="kunde"] .abk-row-name { font-size: var(--ce-text-body-l-size); font-weight: 600; letter-spacing: -0.008em; }
-/* „Weitere Aktionen“ wie in den Entwürfen: runde Menütaste, die Beschriftung bleibt für Screenreader. */
-:root[data-ce-bereich="kunde"] :is(.abk-actions-trigger, .inv-actions-trigger) {
-  position: relative;
-  width: var(--ce-size-control-md);
-  height: var(--ce-size-control-md);
-  min-width: var(--ce-size-control-md);
-  padding: 0;
-  border: 1px solid var(--ce-color-border-default);
-  border-radius: var(--ce-radius-full);
-  background: var(--ce-color-surface);
-  color: var(--ce-color-text-primary);
-  font-size: 0;
-}
-:root[data-ce-bereich="kunde"] :is(.abk-actions-trigger, .inv-actions-trigger)::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 18px;
-  height: 4px;
-  background: radial-gradient(circle, currentColor 0 1.9px, transparent 2.3px) 0 50% / 7px 4px repeat-x;
-}
-:root[data-ce-bereich="kunde"] :is(.abk-actions-trigger, .inv-actions-trigger):hover:not(:disabled),
-:root[data-ce-bereich="kunde"] :is(.abk-actions-trigger, .inv-actions-trigger)[aria-expanded="true"] { background: var(--ce-pr-inset); border-color: var(--ce-color-text-muted); }
-/* Grober Zeiger, Tablet und Telefon: die Menütaste als volles Bedienziel (44 px wie in den Entwurfskarten). */
-@media (pointer: coarse), (max-width: 860px) {
-  :root[data-ce-bereich="kunde"] :is(.abk-actions-trigger, .inv-actions-trigger) {
-    width: var(--ce-size-touch-target);
-    height: var(--ce-size-touch-target);
-    min-width: var(--ce-size-touch-target);
-  }
-}
 
 /* ═══════════ 17 · SENDUNGSVERFOLGUNG IM KUNDENBEREICH ═════════════════════
    Die Seite bringt ihren eigenen Kopf mit (dieselbe Komponente wie die öffentliche Verfolgung, die den Bereich
@@ -1196,7 +1204,7 @@
   bottom: -2px;
   width: var(--ce-space-10);
   height: 3px;
-  background: linear-gradient(90deg, var(--ce-pr-navy-800) 0 62%, var(--ce-pr-signal) 62% 100%);
+  background: var(--ce-color-border-strong);
 }
 :root[data-ce-bereich="kunde"] .tracking-title {
   font-family: var(--ce-pr-font-display);
@@ -1595,7 +1603,7 @@
    Anlegen-Aktionen (Abschnitt 3, nur ohne reduzierte Bewegung); bei reduzierter Bewegung steht alles sofort in
    seinem Endzustand. */
 @media (prefers-reduced-motion: reduce) {
-  :root[data-ce-bereich="kunde"] :is(.dft-table tbody td, .dft-actions-trigger, .ce-wahl, .ce-segment .ce-segment-option) {
+  :root[data-ce-bereich="kunde"] :is(.dft-table tbody td, .dft-actions-trigger, .abk-actions-trigger, .inv-actions-trigger, .ce-wahl, .ce-segment .ce-segment-option) {
     transition: none;
   }
   /* Pseudo-Elemente stehen außerhalb von :is() — darin wären sie ungültig und würden still übergangen. */

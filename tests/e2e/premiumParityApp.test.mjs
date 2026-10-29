@@ -11,6 +11,8 @@
 //   D5  Kopfsuche (Vorschau A/B): Sendung, Rechnung und Adresse finden, per Tastatur und Maus öffnen, hervorgehoben.
 //   D6  Die Kopfsuche erscheint erst ab 1024 px.
 //   D7  Suche von einer Seite außerhalb des Dashboards: hervorgehoben, im Browserverlauf nur Art und Kennung.
+//   D8  Menütaste „Weitere Aktionen“ (Entwürfe, Adressbuch, Bestand): rund, so hoch wie die Kapsel daneben und auf
+//       ihrer Mitte, die Punkte ganz in der Fläche; auf dem Telefon 44 px.
 //
 // Der öffentliche Preisrechner steht in premiumParityPublic.test.mjs (je Suite genau ein Vite-Server).
 import { test } from "node:test";
@@ -326,4 +328,42 @@ test("D7 — Kopfsuche von einer Seite außerhalb des Dashboards: Treffer hervor
     assert.deepEqual(ausDerDemo, [], "die Demo hat den Server angefragt");
     assert.deepEqual(fehler, []);
   } finally { await ctx.close(); }
+});
+
+test("D8 — Menütaste „Weitere Aktionen“: rund, so hoch wie die Kapsel daneben und auf ihrer Mitte, Telefon 44 px", async () => {
+  // Betreiberentscheidung 2026-10-29: Entwurfstabelle neben „Fortsetzen“ (40 px), Adressbuch und Bestand neben der
+  // kleinen Kapsel (32 px); auf dem Telefon alle 44 px. Vorher saß die Taste in den Entwürfen 3 px über „Fortsetzen“,
+  // in Adressbuch und Lager war sie 40 px neben 32 px hohen Kapseln.
+  const FAELLE = [
+    ["drafts", ".dft-actions-trigger", ".dft-cell-actions, .dft-card-actions"],
+    ["addressbook", ".abk-actions-trigger", ".abk-row-actions, .abk-card-actions"],
+    ["stock", ".inv-actions-trigger", ".inv-row-actions, .inv-card-actions"],
+  ];
+  for (const [viewport, telefon] of [[{ width: 1648, height: 1000 }, false], [{ width: 390, height: 844 }, true]]) {
+    const { ctx, page, fehler, ausDerDemo } = await demoBrowser(viewport);
+    try {
+      for (const [bereich, taste, reihe] of FAELLE) {
+        await page.goto(`${BASE_APP}/demo/dashboard?page=${bereich}`, { waitUntil: "domcontentloaded" });
+        await page.waitForSelector(`${taste}:visible`, { timeout: 60000 });
+        await kurz(300);
+        const m = await page.evaluate(([t, r]) => {
+          const knopf = [...document.querySelectorAll(t)].find((e) => e.getClientRects().length);
+          const nachbar = [...knopf.closest(r).querySelectorAll(".btn")].find((b) => b !== knopf && b.getClientRects().length);
+          const a = knopf.getBoundingClientRect(), b = nachbar.getBoundingClientRect();
+          return {
+            breite: a.width, hoehe: a.height, mitte: a.top + a.height / 2, nachbarHoehe: b.height, nachbarMitte: b.top + b.height / 2,
+            punkte: parseFloat(getComputedStyle(knopf, "::before").width), innen: knopf.clientWidth,
+          };
+        }, [taste, reihe]);
+        const ort = `${bereich} @${viewport.width}`;
+        assert.equal(m.breite, m.hoehe, `${ort}: Menütaste nicht rund (${m.breite}×${m.hoehe})`);
+        assert.ok(Math.abs(m.hoehe - m.nachbarHoehe) < 0.5, `${ort}: Menütaste ${m.hoehe}px, Kapsel daneben ${m.nachbarHoehe}px`);
+        assert.ok(Math.abs(m.mitte - m.nachbarMitte) < 0.5, `${ort}: Mitte um ${(m.mitte - m.nachbarMitte).toFixed(1)}px versetzt`);
+        if (telefon) assert.equal(m.hoehe, 44, `${ort}: auf dem Telefon ${m.hoehe}px statt 44px`);
+        assert.ok(m.punkte + 4 <= m.innen, `${ort}: die Punkte (${m.punkte}px) reichen an den Rand (${m.innen}px)`);
+      }
+      assert.deepEqual(ausDerDemo, [], "die Demo hat den Server angefragt");
+      assert.deepEqual(fehler, []);
+    } finally { await ctx.close(); }
+  }
 });

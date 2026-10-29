@@ -170,7 +170,7 @@ export function SupportRequestsView({ initialTicketId = null, onTicketConsumed, 
                   <span className="sup-list-status">
                     <span className={`badge ${cls}`}>{row.statusLabel || fallback}</span>
                   </span>
-                  <span className="sup-list-date">Zuletzt aktualisiert {fmt(row.updatedAt || row.createdAt)}</span>
+                  <span className="sup-list-date">Zuletzt aktualisiert <span className="ce-wert">{fmt(row.updatedAt || row.createdAt)}</span></span>
                 </button>
               </li>
             );

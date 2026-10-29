@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { Werte } from "../../components/ui/Werte";
 import { EmptyState, NoResultsState, ListSkeleton } from "../../components/ui/StateView";
 import { InlineError, InlineSuccess, InventoryDialog } from "../../components/inventory/InventoryShared";
 import { OrderCreateForm } from "../../components/inventory/OrderCreateForm";
@@ -209,7 +210,7 @@ export default function OrdersPage({ utility, onNavigate, onPrepareShipment, ini
 
       {!loading && items.length > 0 && (
         <>
-          <div className="ce-table-container inv-list-table">
+          <div className="ce-table-container inv-list-table inv-list-table--auftraege">
             <table className="ce-list-table">
               <caption className="sr-only">Auftragsliste</caption>
               <thead>
@@ -235,7 +236,7 @@ export default function OrdersPage({ utility, onNavigate, onPrepareShipment, ini
                     <tr key={o.id}>
                       <td>
                         <button type="button" className="btn btn-link inv-cell-link" onClick={() => navigate(`/inventory/orders/${o.id}`)}>{o.orderNumber}</button>
-                        {o.customerReference && <div className="inv-cell-meta">{o.customerReference}</div>}
+                        {o.customerReference && <div className="inv-cell-meta"><Werte>{o.customerReference}</Werte></div>}
                       </td>
                       <td>
                         {o.recipient?.company || o.recipient?.fullName || "—"}
@@ -269,7 +270,7 @@ export default function OrdersPage({ utility, onNavigate, onPrepareShipment, ini
             </table>
           </div>
 
-          <ul className="ce-list-cards inv-list-cards">
+          <ul className="ce-list-cards inv-list-cards inv-list-cards--auftraege">
             {items.map((o) => {
               const [cls, text, roh] = orderStatusView(o.status);
               return (

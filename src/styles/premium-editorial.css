@@ -314,9 +314,23 @@
   color: var(--ce-color-text-primary);
 }
 
+/* ── Marke: Die Unterzeile „B2B Logistik- und Versandplattform“ ragte im Bereich (13 px statt 12 px) 8 px über die
+   Spalte der Marke hinaus. Der schmale Schnitt der Editorial-Überschriften hält sie einzeilig in der Spalte. ── */
+:root[data-ce-bereich="kunde"] .pp-brand-sub { font-stretch: var(--ce-pr-ed-headline-stretch); }
+/* In der Schublade (bis 860 px) steht „Schließen“ neben der Marke: Die Unterzeile bricht dort um, wie bisher schon
+   unter 775 px, statt unter die Aktion zu laufen. */
+@media (max-width: 860px) {
+  :root[data-ce-bereich="kunde"] .pp-brand-sub { white-space: normal; }
+}
+
+/* ── PDF-Vorschau: Der Titel („Rechnung CE-RE26-00047“) bricht um, statt hinter Auslassungspunkten zu verschwinden;
+   passt die Nummer nicht neben die Aktionen, stehen diese darunter. Admin behält seine Vorschau unverändert. ── */
+:root[data-ce-bereich="kunde"] .pdfview-head { flex-wrap: wrap; }
+:root[data-ce-bereich="kunde"] .pdfview-title { flex: 1 1 0; min-width: auto; overflow: visible; text-overflow: clip; white-space: normal; }
+
 /* ── Letzte Sendungen: offene Liste zwischen Linien statt Kartenkasten ──
-   Feste Spaltenbreiten, damit Nummer, Versand, Status und Betrag über alle Zeilen fluchten; der Empfänger
-   bekommt den Rest. Unter 1360 px rückt der Versand unter den Empfänger (wie im Bestand). */
+   Spalten und Umbau stehen in overview.css (Subgrid nach dem längsten Wert, Container ov-sendungen); hier nur die
+   Editorial-Gestaltung der Zeilen. */
 :root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:first-child > .ov-card {
   background: transparent;
   border: 0;
@@ -326,23 +340,16 @@
 }
 :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row {
   position: relative;
-  grid-template-columns: 8.25rem minmax(0, 1fr) 5rem 7.25rem 5.5rem;
-  grid-template-areas: "nr empf carrier status betrag";
-  column-gap: var(--ce-space-4);
   padding: var(--ce-space-4) 2px var(--ce-space-4) 0;
   border-bottom: 1px solid var(--ce-pr-hairline);
 }
-:root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-main { grid-area: nr; }
-:root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-empfaenger { grid-area: empf; }
-:root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-carrier { grid-area: carrier; }
-:root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-status { grid-area: status; }
-:root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-num { grid-area: betrag; text-align: right; }
-@media (max-width: 1360px) and (min-width: 721px) {
-  :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row {
-    grid-template-columns: 8.25rem minmax(0, 1fr) 7.25rem 5.5rem;
-    grid-template-areas: "nr empf status betrag" "nr carrier status betrag";
-    row-gap: var(--ce-space-1);
-  }
+@container ov-sendungen (min-width: 32.5rem) {
+  :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row { row-gap: var(--ce-space-1); }
+}
+/* Schmal (Einträge zwischen Linien): ohne Signalkante, ohne rechten Versatz. */
+@container ov-sendungen (width < 32.5rem) {
+  :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row { padding: var(--ce-space-4) 0; }
+  :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row::before { display: none; }
 }
 /* Die Signalkante links zeigt die Zeile unter dem Zeiger. */
 :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row::before {
@@ -443,21 +450,28 @@
 @media (max-width: 1120px) {
   :root[data-ce-bereich="kunde"] :is(.ov-mod-grid, .ov-mod-grid--lager) { grid-template-columns: minmax(0, 1fr); gap: 0; margin-bottom: 0; }
   :root[data-ce-bereich="kunde"] .ov-mod-grid > .ov-mod { margin-bottom: var(--ce-space-9); }
-  /* Rechnungen quer: Betrag links, Buchungsrahmen rechts. */
-  :root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:nth-child(2) > .ov-card {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-    grid-template-rows: auto auto 1fr;
-    column-gap: var(--ce-space-8);
-  }
-  :root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:nth-child(2) > .ov-card > .ov-credit {
-    grid-column: 2;
-    grid-row: 1 / span 3;
-    align-self: center;
-    margin-top: 0;
-    padding: 0 0 0 var(--ce-space-7);
-    border-top: 0;
-    border-left: 1px solid var(--ce-pr-hairline);
+}
+/* Rechnungen quer: Betrag links, Buchungsrahmen rechts — nur, wenn die Karte mindestens 35.3125rem breit ist (bei
+   16 px Grundschrift in dieser Fensterstufe immer, ab 861 px misst sie 565 px; bei großer Schrift stehen Betrag und
+   Rahmen sonst untereinander, statt dass „135.802,45 €“ aus seiner Spalte ragt). */
+:root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:nth-child(2) { container: ov-rechnungen / inline-size; }
+@media (max-width: 1120px) {
+  @container ov-rechnungen (width >= 35.3125rem) {
+    :root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:nth-child(2) > .ov-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+      grid-template-rows: auto auto 1fr;
+      column-gap: var(--ce-space-8);
+    }
+    :root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:nth-child(2) > .ov-card > .ov-credit {
+      grid-column: 2;
+      grid-row: 1 / span 3;
+      align-self: center;
+      margin-top: 0;
+      padding: 0 0 0 var(--ce-space-7);
+      border-top: 0;
+      border-left: 1px solid var(--ce-pr-hairline);
+    }
   }
 }
 @media (max-width: 860px) {
@@ -470,31 +484,154 @@
   }
 }
 @media (max-width: 720px) {
-  :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "nr betrag" "empf empf" "carrier status";
-    row-gap: var(--ce-space-2);
-    padding: var(--ce-space-4) 0;
-  }
-  :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-status { justify-self: end; }
-  :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-num { align-self: start; }
-  :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row::before { display: none; }
   :root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:nth-child(2) > .ov-card { padding: var(--ce-space-5); }
 }
+
+/* ═══════════ 5b · LISTEN NACH VERFÜGBARER BREITE ═════════════════════════
+   Der Inhaltsrahmen ist ein Größencontainer (ce-seite; volle Breite, damit eine schmale Seite ihn nicht schrumpft).
+   Eine Tabelle erscheint erst, wenn sie samt Aktionen und ungebrochenen Werten hineinpasst; darunter stehen die
+   Einträge mit denselben Angaben und Aktionen. Vorher entschied die Fensterbreite (Sendungen ab 1101 px, Lager ab
+   1360 px) — neben der Navigation liefen die Tabellen bei langen Inhalten quer, Aktionen und Spalten wurden
+   abgeschnitten. Die Schwellen sind die gemessenen Mindestbreiten mit langen Inhalten (tests/e2e/helpers/
+   langeInhalte.mjs) plus Reserve, in rem — große Browserschrift verschiebt sie mit. */
+:root[data-ce-bereich="kunde"] .page-body { width: 100%; container: ce-seite / inline-size; }
+/* Ob Tabelle oder Einträge, entscheidet allein ihre Hülle. Die innere Tabelle (.ce-list-table) bleibt eine Tabelle —
+   die allgemeine Fensterregel (patterns.css: bis 1100 px ausgeblendet) ließe sonst eine eingeblendete Hülle leer. */
+:root[data-ce-bereich="kunde"] :is(.inv-list-table, .inv-detail-table--wide) > table.ce-list-table { display: table; }
+/* Sendungen: Tabelle ab 57rem (lange Inhalte brauchen 55.5rem, wenn ein mehrwortiger Status an Wortgrenzen umbricht —
+   bei 16 px ab 1224 px Fenster). Nur unter 62rem darf der Status umbrechen; darüber bleibt er einzeilig. */
+@container ce-seite (width < 57rem) {
+  :root[data-ce-bereich="kunde"] .shipment-table.ce-list-table { display: none; }
+  :root[data-ce-bereich="kunde"] .shipment-cards.ce-list-cards { display: flex; }
+}
+@container ce-seite (width >= 57rem) {
+  :root[data-ce-bereich="kunde"] .shipment-table.ce-list-table { display: block; }
+  :root[data-ce-bereich="kunde"] .shipment-cards.ce-list-cards { display: none; }
+}
+@container ce-seite (width < 62rem) {
+  :root[data-ce-bereich="kunde"] .shipment-table td.shipment-status { width: auto; white-space: normal; }
+  :root[data-ce-bereich="kunde"] .shipment-table .shipment-status .badge { white-space: normal; }
+}
+@container ce-seite (width < 58rem) {
+  :root[data-ce-bereich="kunde"] .inv-list-table--artikel { display: none; }
+  :root[data-ce-bereich="kunde"] .inv-list-cards--artikel { display: flex; flex-direction: column; gap: var(--ce-space-3); list-style: none; margin: 0; padding: 0; }
+}
+@container ce-seite (width >= 58rem) {
+  :root[data-ce-bereich="kunde"] .inv-list-table--artikel { display: block; }
+  :root[data-ce-bereich="kunde"] .inv-list-cards--artikel { display: none; }
+}
+@container ce-seite (width < 65.5rem) {
+  :root[data-ce-bereich="kunde"] .inv-list-table--bestand { display: none; }
+  :root[data-ce-bereich="kunde"] .inv-list-cards--bestand { display: flex; flex-direction: column; gap: var(--ce-space-3); list-style: none; margin: 0; padding: 0; }
+}
+@container ce-seite (width >= 65.5rem) {
+  :root[data-ce-bereich="kunde"] .inv-list-table--bestand { display: block; }
+  :root[data-ce-bereich="kunde"] .inv-list-cards--bestand { display: none; }
+}
+@container ce-seite (width < 68rem) {
+  :root[data-ce-bereich="kunde"] .inv-list-table--auftraege { display: none; }
+  :root[data-ce-bereich="kunde"] .inv-list-cards--auftraege { display: flex; flex-direction: column; gap: var(--ce-space-3); list-style: none; margin: 0; padding: 0; }
+}
+@container ce-seite (width >= 68rem) {
+  :root[data-ce-bereich="kunde"] .inv-list-table--auftraege { display: block; }
+  :root[data-ce-bereich="kunde"] .inv-list-cards--auftraege { display: none; }
+}
+@container ce-seite (width < 62rem) {
+  :root[data-ce-bereich="kunde"] .inv-list-table--bewegungen { display: none; }
+  :root[data-ce-bereich="kunde"] .inv-list-cards--bewegungen { display: flex; flex-direction: column; gap: var(--ce-space-3); list-style: none; margin: 0; padding: 0; }
+}
+@container ce-seite (width >= 62rem) {
+  :root[data-ce-bereich="kunde"] .inv-list-table--bewegungen { display: block; }
+  :root[data-ce-bereich="kunde"] .inv-list-cards--bewegungen { display: none; }
+}
+
+/* Eine Kennung als Seitentitel (Auftragsnummer) bricht nie mitten im Wert: Der Titelblock ist mindestens so breit wie
+   sie — die Aktionen rücken darunter —, und wo selbst die Zeile zu schmal ist (Telefon, große Schrift), wird sie
+   kleiner, bis sie passt (Breite je Zeichen höchstens 0,6 em, gemessen am Inhaltsrahmen ce-seite). Vorher brach
+   „CE-AU-2026-000007“ am Bindestrich, schon bei 1120 px neben den Aktionen. */
+:root[data-ce-bereich="kunde"] .ce-page-header-text:has(.ce-titel-kennung) { min-width: auto; }
+:root[data-ce-bereich="kunde"] .ce-titel-kennung { font-size: min(1em, calc(100cqi / (var(--ce-kennung-zeichen, 16) * 0.6))); }
+
+/* Positionen und Sendungen eines Auftrags: Tabelle erst, wenn sie im Abschnitt Platz hat (gemessen mit langen
+   Inhalten 640 px), sonst die beschrifteten Zeilen — vorher entschied die Fensterbreite (ab 1101 px), und neben dem
+   Empfänger schnitt der Abschnitt die Spalten „Versendet“ und „Stückgewicht“ ab. */
+:root[data-ce-bereich="kunde"] .inv-detail-section:has(> .inv-detail-table--wide) { container: inv-detail / inline-size; }
+@container inv-detail (width < 41rem) {
+  :root[data-ce-bereich="kunde"] .inv-detail-table--wide { display: none; }
+  :root[data-ce-bereich="kunde"] .inv-detail-cards { display: flex; flex-direction: column; }
+}
+@container inv-detail (width >= 41rem) {
+  :root[data-ce-bereich="kunde"] .inv-detail-table--wide { display: block; }
+  :root[data-ce-bereich="kunde"] .inv-detail-cards { display: none; }
+}
+
+/* Weitere Stufen nach der verfügbaren Breite statt nach dem Fenster. Container Queries messen die Inhaltsbox: Fenster
+   − 248 px Navigation − 2 × Innenabstand von .page-body (24 px bis 1199, 32 px ab 1200 px Fenster). Bei 16 px
+   Grundschrift ergeben die Schwellen exakt die bisherigen Fensterstufen; bei großer Browserschrift greifen sie erst, wenn
+   der Inhalt hineinpasst — vorher fielen dort Rechnungs- und Entwurfsspalten zusammen, der Kontotitel lief unter die
+   Karte, der Betrag „Offene Rechnungen“ ragte aus seiner Spalte. Rechnungen als Tabelle ab 1200 px Fenster und 55.5rem
+   (ihre Spalten stehen schon in rem, Abschnitt 15 in premium-redesign.css; an der Stufe springt der Innenabstand, die
+   Fensterstufe bleibt deshalb); Konto zweispaltig ab 1024 px und 45.5rem; Übersicht 2 : 1 erst ab 51.5625rem (1121 px);
+   Sendungsverfolgung mit Schnellwahl daneben ab 64.5rem (1280 px; ihr Container hat keinen Innenabstand). */
+:root[data-ce-bereich="kunde"] .inv-table { display: none; }
+:root[data-ce-bereich="kunde"] .inv-cards { display: flex; }
+@media (min-width: 1200px) {
+  @container ce-seite (width >= 55.5rem) {
+    :root[data-ce-bereich="kunde"] .inv-table { display: block; }
+    :root[data-ce-bereich="kunde"] .inv-cards { display: none; }
+  }
+}
+:root[data-ce-bereich="kunde"] .profile-sections > .profile-card { grid-template-columns: minmax(0, 1fr); row-gap: var(--ce-space-4); }
+@media (min-width: 1024px) {
+  @container ce-seite (width >= 45.5rem) {
+    :root[data-ce-bereich="kunde"] .profile-sections > .profile-card { grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); row-gap: var(--ce-space-3); }
+  }
+}
+@container ce-seite (width < 51.5625rem) {
+  :root[data-ce-bereich="kunde"] :is(.ov-mod-grid, .ov-mod-grid--lager) { grid-template-columns: minmax(0, 1fr); gap: 0; margin-bottom: 0; }
+  :root[data-ce-bereich="kunde"] .ov-mod-grid > .ov-mod { margin-bottom: var(--ce-space-9); }
+}
+/* Die Sendungsverfolgung steht ohne .page-body direkt im Inhaltsbereich: derselbe Container ce-seite. */
+:root[data-ce-bereich="kunde"] .page-with-navbar.tracking-page { width: 100%; container: ce-seite / inline-size; }
+@container ce-seite (width < 64.5rem) {
+  :root[data-ce-bereich="kunde"] .app-shell .tracking-page-wrap:has(> .tracking-schnellwahl) { display: block; }
+  :root[data-ce-bereich="kunde"] .tracking-page-wrap:has(> .tracking-schnellwahl) > .tracking-schnellwahl { margin-top: var(--ce-space-5); }
+}
+/* Die Marke der Seitenleiste ist nie schmaler als das längste Wort ihrer Unterzeile; passen Marke und „Schließen“ der
+   Schublade nicht nebeneinander (große Schrift), rückt „Schließen“ rechtsbündig darunter. */
+:root[data-ce-bereich="kunde"] .pp-logo { flex-wrap: wrap; }
+:root[data-ce-bereich="kunde"] .pp-logo .ce-brand { min-width: auto; }
+:root[data-ce-bereich="kunde"] .pp-logo > .pp-close { flex: none; }
 
 /* ═══════════ 6 · ENTWÜRFE ═════════════════════════════════════════════════
    Die freigegebene Editorial-Tabelle: offen auf Papier, Tintenlinie unter dem Kopf, Haarlinien zwischen den
    Zeilen, der Empfänger führt, die Route im schmalen Schnitt. „Fortsetzen“ als Navy-Kontur, die sich mit der
    Zeile füllt; „Weitere Aktionen“ als runde Menütaste (der Name bleibt für Screenreader erhalten). Die Tabelle
    steht schon ab 1001 px (Bestand: ab 1101 px), darunter die Einträge zwischen Linien. */
-/* Umschaltpunkt in em: bei größer eingestellter Grundschrift stehen die Einträge, bevor die Tabelle zu eng wird. */
+/* Umschaltpunkt nach der Inhaltsbox (bei 16 px Grundschrift ab 1001 px wie bisher): bei größerer Schrift stehen die
+   Einträge, bevor die Tabelle zu eng wird. Feste Spalten ab 50.3125rem (1101 px), breite Aktionsspalte ab 60.5rem
+   (1280 px) — Breiten in rem, damit sie mit der Schrift wachsen. */
+:root[data-ce-bereich="kunde"] .dft-table-card { display: none; }
+:root[data-ce-bereich="kunde"] .dft-cards { display: flex; }
 @media (min-width: 62.5625em) {
-  :root[data-ce-bereich="kunde"] .dft-table-card { display: block; overflow: visible; }
-  :root[data-ce-bereich="kunde"] .dft-cards { display: none; }
+  @container ce-seite (width >= 44.0625rem) {
+    :root[data-ce-bereich="kunde"] .dft-table-card { display: block; overflow: visible; }
+    :root[data-ce-bereich="kunde"] .dft-cards { display: none; }
+  }
 }
-@media (max-width: 62.5em) {
-  :root[data-ce-bereich="kunde"] .dft-table-card { display: none; }
-  :root[data-ce-bereich="kunde"] .dft-cards { display: flex; }
+@container ce-seite (width < 50.3125rem) {
+  :root[data-ce-bereich="kunde"] .dft-table { table-layout: auto; }
+  :root[data-ce-bereich="kunde"] .dft-table :is(th, td) { width: auto; }
+}
+@container ce-seite (width >= 50.3125rem) {
+  :root[data-ce-bereich="kunde"] .dft-table { table-layout: fixed; width: 100%; }
+  :root[data-ce-bereich="kunde"] .dft-table :is(th, td):nth-child(2) { width: 9.75rem; }
+  :root[data-ce-bereich="kunde"] .dft-table :is(th, td):nth-child(3) { width: 9.375rem; }
+  :root[data-ce-bereich="kunde"] .dft-table :is(th, td):nth-child(4) { width: 8.25rem; }
+  :root[data-ce-bereich="kunde"] .dft-table :is(th, td):nth-child(5) { width: 11rem; }
+}
+@container ce-seite (width >= 60.5rem) {
+  :root[data-ce-bereich="kunde"] .dft-table :is(th, td):nth-child(5) { width: 17.5rem; }
 }
 :root[data-ce-bereich="kunde"] .dft-table-card {
   background: transparent;
@@ -921,6 +1058,10 @@
 
 /* Mitteilungen: das Blatt im Seitenkopf. */
 :root[data-ce-bereich="kunde"] .ntf-panel { border-color: var(--ce-pr-hairline); border-radius: var(--ce-pr-radius-card); }
+/* Am rechten Rand der Kopfzeile ausgerichtet statt an der Glocke: Ein langer Name im Benutzerchip schob die Glocke
+   nach links, und das Fenster lief dann unter die Navigation (bei 900 px abgeschnitten). */
+:root[data-ce-bereich="kunde"] .ce-utility { position: relative; }
+:root[data-ce-bereich="kunde"] .ce-utility > .ntf-wrap { position: static; }
 :root[data-ce-bereich="kunde"] .ntf-head { border-bottom: 2px solid var(--ce-color-text-primary); }
 :root[data-ce-bereich="kunde"] .ntf-title { font-size: var(--ce-text-title-card-size); font-weight: 600; letter-spacing: -0.012em; }
 
@@ -1435,10 +1576,19 @@
 :root[data-ce-bereich="kunde"] .labelfmt-group .ce-segment-option .labelfmt-radio { display: none; }
 :root[data-ce-bereich="kunde"] .labelfmt-group .ce-segment-option .labelfmt-main { align-items: center; }
 /* Telefon: Rechnungsfilter teilen sich die volle Breite zu gleichen Teilen. */
+/* Passen nicht alle vier in eine Zeile (große Schrift), bricht die Spur um, statt Segmente übereinanderzulegen. */
 @media (max-width: 37.5em) {
-  :root[data-ce-bereich="kunde"] .inv-filters.ce-segment { width: 100%; flex-wrap: nowrap; }
-  :root[data-ce-bereich="kunde"] .inv-filters.ce-segment .ce-segment-option { flex: 1 1 0; padding-inline: var(--ce-space-1); }
+  :root[data-ce-bereich="kunde"] .inv-filters.ce-segment { width: 100%; flex-wrap: wrap; }
+  :root[data-ce-bereich="kunde"] .inv-filters.ce-segment .ce-segment-option { flex: 1 1 0; min-width: auto; padding-inline: var(--ce-space-1); }
 }
+:root[data-ce-bereich="kunde"] .abk-role-options.ce-segment { flex-wrap: wrap; }
+:root[data-ce-bereich="kunde"] .abk-role-options.ce-segment .ce-segment-option { min-width: auto; }
+/* Reiter des Adressbuchs: bei Platzmangel zweizeilig statt seitlich verborgen. */
+:root[data-ce-bereich="kunde"] .abk-tabs { flex-wrap: wrap; overflow-x: visible; }
+/* Fuß des Buchungsblatts: Zurück und Weiter untereinander, wenn sie nicht nebeneinander passen. */
+:root[data-ce-bereich="kunde"] .booking-blatt > .booking-blatt-fuss { flex-wrap: wrap; }
+/* Lange Wörter in schmalen Kennzahl- und Titelflächen trennen an Silben. */
+:root[data-ce-bereich="kunde"] :is(.ov-kpi-context, .ov-carrier-titel) { hyphens: auto; overflow-wrap: break-word; }
 
 /* ═══════════ 23 · REDUZIERTE BEWEGUNG ═════════════════════════════════════
    Die Ebene bewegt nur Deckkraft und Flächenfarbe (Signalkante, Zeilenton, Auswahl) und das Pluszeichen der
@@ -1457,4 +1607,43 @@
   :root[data-ce-bereich="kunde"] .ce-wahl :is(.ins-card-radio, .res-card-radio, .service-filter-radio)::after {
     transition: none;
   }
+}
+
+/* ═══════════ 24 · SEHR SCHMAL IM VERHÄLTNIS ZUR SCHRIFT ═══════════════════
+   Unter 20em Fensterbreite — bei 16 px Grundschrift erst unter 320 px, bei 24 px Browserschrift unter 480 px (Telefon
+   mit großer Schrift). Dort passen manche Wörter, Kennungen und Beträge nicht mehr in die Zeile. Statt anzuschneiden:
+   Titel und Beschriftungen trennen an Silben, Kennungen brechen nur nach einem Bindestrich (Bruchstellen aus Werte),
+   Bezeichnung und Wert sowie Start und Ziel stehen untereinander, Knöpfe werden nie schmaler als ihre Beschriftung,
+   große Beträge und lange Trackingnummern so klein, dass sie in die Karte passen. In allen anderen Breiten wirkt
+   nichts davon (Responsive-Prüfung 2026-10-28). */
+@media (width < 20em) {
+  :root[data-ce-bereich="kunde"] :is(h1, h2, h3, h4, .table-card-title, .dn-mode-label, .field-hint, .profile-account-name,
+    .offer-service-type, .inv-stat-hint, .inv-detail-k, .dft-card-info-row dt, .blsum-label, .pp-brand-sub) {
+    hyphens: auto;
+    overflow-wrap: break-word;
+  }
+  :root[data-ce-bereich="kunde"] :is(.ce-wert--kennung, .inv-cell-sku) { white-space: normal; }
+  /* Ein langer Status („Buchungsstatus wird geprüft“) bricht an Wortgrenzen, statt aus dem Kartenkopf zu ragen. */
+  :root[data-ce-bereich="kunde"] .shipment-status .badge { white-space: normal; }
+  :root[data-ce-bereich="kunde"] .shipment-track-number strong { font-size: min(1em, 5.6vw); }
+  :root[data-ce-bereich="kunde"] .sdoc-row-number { font-size: min(var(--ce-text-body-s-size), 5.6vw); }
+  :root[data-ce-bereich="kunde"] :is(.ov-inv-amount, .inv-summary-amount) { font-size: min(var(--ce-text-numeric-display-size), 13vw); }
+  :root[data-ce-bereich="kunde"] .ov-lager-wert { white-space: normal; text-align: right; }
+
+  :root[data-ce-bereich="kunde"] .inv-card-kv-row { flex-wrap: wrap; }
+  :root[data-ce-bereich="kunde"] .inv-card-kv-row dd { min-width: auto; max-width: 100%; margin-left: auto; overflow-wrap: break-word; }
+  :root[data-ce-bereich="kunde"] .ov-ntf-btn { flex-wrap: wrap; row-gap: var(--ce-space-1); }
+  :root[data-ce-bereich="kunde"] .ov-ntf-btn > .ov-list-main { flex: 1 1 100%; }
+  :root[data-ce-bereich="kunde"] .sup-msg-head { flex-wrap: wrap; }
+  :root[data-ce-bereich="kunde"] .sdoc-drawer .ce-drawer-head { flex-wrap: wrap; }
+  :root[data-ce-bereich="kunde"] :is(.sdoc-head-text, .sdoc-row-text) { min-width: auto; max-width: 100%; }
+  :root[data-ce-bereich="kunde"] :is(.sdoc-subtitle, .sdoc-row-number) { overflow-wrap: break-word; }
+  :root[data-ce-bereich="kunde"] .booking-email-note { overflow-wrap: break-word; }
+
+  :root[data-ce-bereich="kunde"] .offer-tl-labels { grid-template-columns: minmax(0, 1fr); }
+  :root[data-ce-bereich="kunde"] .offer-tl-node--end { align-items: flex-start; text-align: left; }
+  :root[data-ce-bereich="kunde"] .offer-early-note { align-self: flex-start; }
+  :root[data-ce-bereich="kunde"] .ce-paket { grid-template-columns: minmax(0, 1fr); }
+  :root[data-ce-bereich="kunde"] .ce-paket-svg { justify-self: start; max-width: 10rem; }
+  :root[data-ce-bereich="kunde"] .booking-blatt > .booking-blatt-fuss > .btn { min-width: auto; }
 }

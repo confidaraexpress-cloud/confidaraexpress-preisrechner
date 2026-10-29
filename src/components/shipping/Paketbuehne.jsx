@@ -1,5 +1,6 @@
 import React, { useId, useMemo } from "react";
 import { PAKET_BUEHNE, paketBeschriftung, paketSzene } from "../../utils/paketSzene.mjs";
+import { Werte } from "../ui/Werte";
 
 /* ─────────────────────────────────────────────────────────────────────────────────────────────
    Die Paketbühne (Premium-Redesign, Konzept B, Betreiberentscheidung 2026-10-27): ein Karton aus
@@ -90,7 +91,7 @@ export function Paketbuehne({ lines, von = "", nach = "", variant = "app", class
         ))}
       </svg>
       <figcaption className="ce-paket-text">
-        <span className="ce-paket-titel">{text.titel}</span>
+        <span className="ce-paket-titel"><Werte>{text.titel}</Werte></span>
         <span className="ce-paket-hinweis">
           {szene.beispiel ? "Beispielpaket" : "Darstellung im Verhältnis Ihrer Maße, nicht maßstabsgetreu"}
           {text.details ? ` · ${text.details}` : ""}

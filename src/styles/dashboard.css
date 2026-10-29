@@ -230,7 +230,7 @@ tr:last-child td { border-bottom: none; }
    volle Breite — nichts wird gestaucht. */
 .tracking-search { padding: var(--ce-space-6); }
 .tracking-search-row { display: flex; align-items: flex-end; flex-wrap: wrap; gap: var(--ce-space-3); }
-.tracking-search-field { flex: 1 1 280px; min-width: 0; margin-bottom: 0; }
+.tracking-search-field { flex: 1 1 17.5rem; min-width: 0; margin-bottom: 0; }
 .app-shell .tracking-search-field { margin-bottom: 0; }
 .tracking-search-btn { flex: 0 0 auto; }
 .tracking-search-error { margin: var(--ce-space-3) 0 0; }

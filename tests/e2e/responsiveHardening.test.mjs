@@ -346,17 +346,28 @@ test("6 — Sendungen @900: Karten statt Querscroll, Status einzeilig, Aktionen 
   await ctx.close();
 });
 
-test("7 — Sendungen @1200 (Tabelle): Statusbadges ohne Zeichenzerlegung", async () => {
-  const { ctx, page } = await seite(1200);
+test("7 — Sendungen @1280 (Tabelle): Statusbadges ohne Zeichenzerlegung", async () => {
+  // Die Tabelle steht, sobald der Inhaltsrahmen sie samt Aktionen trägt (Container ce-seite ab 57rem Inhaltsbox,
+  // Responsive-Prüfung 2026-10-28): bei 16 px ab 1224 px Fensterbreite — bei 1200 px stehen noch die Einträge.
+  const { ctx, page } = await seite(1280);
   await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "networkidle" });
   await page.waitForTimeout(900);
   const tabelleSichtbar = await page.evaluate(() =>
     [...document.querySelectorAll(".ce-list-table")].some((el) => el.getClientRects().length > 0));
   assert.equal(tabelleSichtbar, true, "oberhalb des Umschalters muss die Tabelle stehen");
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await page.waitForTimeout(200);
+  const ansicht1200 = await page.evaluate(() => ({
+    tabelle: [...document.querySelectorAll(".shipment-table.ce-list-table")].some((el) => el.getClientRects().length > 0),
+    karten: [...document.querySelectorAll(".shipment-cards.ce-list-cards")].some((el) => el.getClientRects().length > 0),
+  }));
+  assert.deepEqual(ansicht1200, { tabelle: false, karten: true }, "bei 1200 px trägt der Inhaltsrahmen die Tabelle noch nicht");
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.waitForTimeout(200);
   const badges = await page.evaluate(BADGE_MESSUNG);
   const status = badges.filter((b) => /Gebucht|Label bereit|Zugestellt/.test(b.text));
   assert.ok(status.length >= 2, "Statusbadges nicht gefunden");
-  pruefeBadges(badges, "Sendungen @1200px");
+  pruefeBadges(badges, "Sendungen @1280px");
   await ctx.close();
 });
 

@@ -229,7 +229,7 @@ test("E1 die Tabelle trägt genau die acht Spalten", () => {
 
 test("E2 der Artikel ist verlinkt — Name führend, SKU darunter", () => {
   assert.match(code, /navigate\(`\/inventory\/products\/\$\{m\.productId\}`\)\}>\{m\.productName\}/);
-  assert.match(code, /<span className="inv-cell-sku">\{m\.sku\}<\/span>/);
+  assert.match(code, /<span className="inv-cell-sku"><Werte>\{m\.sku\}<\/Werte><\/span>/);
 });
 
 test("E3 „Bestand danach“ bleibt erhalten, „Bestand vorher“ kommt nicht dazu", () => {

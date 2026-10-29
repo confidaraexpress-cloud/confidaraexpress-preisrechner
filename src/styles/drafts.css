@@ -213,6 +213,9 @@
 .dft-cta-row { display: flex; gap: var(--ce-space-3); flex-wrap: wrap; align-items: stretch; }
 .dft-cta-row .dft-cta-primary { flex: 2 1 240px; }
 .dft-cta-row .dft-savedraft-cta { flex: 1 1 190px; }
+/* Nie schmaler als die Beschriftung (die Mindestbreite der Knöpfe ist sonst nur ihre Höhe): Passt ein Knopf nicht mehr
+   daneben, rückt er in die nächste Zeile, statt seinen Text überlaufen zu lassen. */
+.dft-cta-row .btn { min-width: auto; }
 .dft-savedraft-cta:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 
 .dft-save-status {

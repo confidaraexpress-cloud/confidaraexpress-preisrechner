@@ -110,13 +110,15 @@
   line-height: var(--ce-text-body-line); color: var(--ce-color-text-secondary);
 }
 .inv-preview-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+/* Kennungen (SKU, Auftragsnummer) brechen nie: Der Text ist mindestens so breit wie sein längster Wert; passt der
+   Zahlenanteil nicht mehr daneben, rückt er rechtsbündig in die nächste Zeile. */
 .inv-preview-item {
-  display: flex; align-items: baseline; justify-content: space-between;
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
   gap: var(--ce-space-3); padding: var(--ce-space-3) 0; min-width: 0;
   border-bottom: 1px solid var(--border-hairline);
 }
 .inv-preview-item:last-child { border-bottom: none; }
-.inv-preview-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.inv-preview-main { display: flex; flex-direction: column; gap: 2px; flex: 1 1 0; min-width: auto; }
 .inv-preview-primary {
   font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: 600;
   line-height: var(--ce-text-body-line); color: var(--ce-color-text-primary);
@@ -130,7 +132,7 @@
 .inv-preview-value {
   font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 600;
   line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary);
-  flex: 0 0 auto; text-align: right;
+  flex: 0 0 auto; margin-left: auto; text-align: right;
 }
 .inv-preview-empty, .inv-preview-note {
   margin: var(--ce-space-3) 0 0;
@@ -267,9 +269,9 @@
 .inv-cell-sku {
   font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 600;
   color: var(--ce-color-text-primary);
-  /* Technischer String: bricht LOKAL an beliebiger Stelle, damit eine lange
-     SKU die Spalte nicht sprengt. Bewusst nur hier, nie global. */
-  overflow-wrap: anywhere;
+  /* Eine Kennung bricht nie mitten im Wert (Kennungen brechen nie, Canonical 15). Platz schaffen die Listen: Die
+     Tabelle erscheint erst, wenn sie samt SKU hineinpasst, darunter stehen Einträge in voller Breite. */
+  white-space: nowrap;
 }
 .inv-cell-meta {
   font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
@@ -381,7 +383,7 @@
   justify-content: flex-start;
 }
 .inv-card-qty { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-weight: 600; }
-.inv-card-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: var(--ce-space-3); margin: 0; }
+.inv-card-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.875rem), 1fr)); gap: var(--ce-space-3); margin: 0; }
 .inv-card-facts > div { min-width: 0; }
 /* Beschriftung in Normalschrift (keine Versalien) — Label 13/18. */
 .inv-card-facts dt {
@@ -581,7 +583,7 @@
    dadurch 81 bis 194 px von ihrer eigenen Beschriftung entfernt, und der
    Versatz änderte sich mit der Fensterbreite. Die tabellarischen Ziffern
    kommen hier direkt aus `.inv-detail-v`. */
-.inv-detail-stock { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--ce-space-4); margin-bottom: var(--ce-space-3); }
+.inv-detail-stock { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.75rem), 1fr)); gap: var(--ce-space-4); margin-bottom: var(--ce-space-3); }
 .inv-detail-stock > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .inv-detail-k {
   font-family: var(--fs); font-size: var(--ce-text-label-size); font-weight: var(--ce-text-label-weight);
@@ -612,7 +614,9 @@
   .inv-detail-stock > div { display: grid; grid-template-rows: subgrid; grid-row: span 2; gap: 0; }
   .inv-detail-stock .inv-detail-v { padding-bottom: var(--ce-space-3); }
 }
-.inv-detail-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--ce-space-3); margin: 0; }
+/* Spalten ab 16rem (vorher 200 px): Auch eine lange Artikelnummer passt ganz in ihre Spalte, statt in die nächste
+   Angabe zu laufen; schmaler als 16rem steht jede Angabe in voller Breite. */
+.inv-detail-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: var(--ce-space-3); margin: 0; }
 .inv-detail-list > div { min-width: 0; }
 .inv-detail-list dt {
   font-family: var(--fs); font-size: var(--ce-text-label-size); font-weight: var(--ce-text-label-weight);

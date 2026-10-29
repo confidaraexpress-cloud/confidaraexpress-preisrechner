@@ -112,10 +112,14 @@
    Foundation (.ce-card): 1-px-Kante, sehr leichter Schatten, Radius 12 px. */
 .ov-mod { margin-top: var(--ce-space-7); min-width: 0; }
 .ov-mod-head {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
   gap: var(--ce-space-4); margin-bottom: var(--ce-space-3);
   min-height: 32px;
 }
+/* Der Titel bricht an Wortgrenzen um; die Textaktion wird nie schmaler als ihre Beschriftung. Passt sie nicht neben
+   das längste Wort des Titels, rückt sie in die nächste Zeile (vorher schrumpfte „Alle Rechnungen“ unter ihren Text). */
+.ov-mod-head > .ov-mod-title { flex: 1 1 0; min-width: auto; }
+.ov-mod-head > .btn { flex: none; }
 .ov-mod-title {
   margin: 0;
   font-family: var(--ce-font-sans);
@@ -487,13 +491,20 @@
 /* ══════════ Lager und Aufträge (G1/D7, 2026-10-27) ══════════
    Zwei Spalten — offene Aufträge, Artikel unter Mindestbestand —, je Zahl, die ersten
    Einträge und ein Weg zur Liste; darunter zwei Fakten. Kein eigener Farbton, keine Kachel. */
+/* Zwei Spalten nur, wenn die Karte Platz für beide hat (Container ov-lager) — nicht nach dem Fenster: neben den
+   Mitteilungen ist sie schmaler als darunter. Darunter eine Spalte, getrennt durch eine Linie. */
+.ov-card--lager { container: ov-lager / inline-size; }
 .ov-lager-raster {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--ce-space-6);
 }
 .ov-lager-spalte { display: flex; flex-direction: column; gap: var(--ce-space-3); min-width: 0; }
-.ov-lager-spalte + .ov-lager-spalte { padding-left: var(--ce-space-6); border-left: 1px solid var(--border-hairline); }
+.ov-lager-spalte + .ov-lager-spalte { padding-top: var(--ce-space-5); border-top: 1px solid var(--border-hairline); }
+@container ov-lager (min-width: 30rem) {
+  .ov-lager-raster { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ov-lager-spalte + .ov-lager-spalte { padding: 0 0 0 var(--ce-space-6); border-top: 0; border-left: 1px solid var(--border-hairline); }
+}
 .ov-lager-kopf { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ce-space-3); }
 .ov-lager-titel {
   font-size: var(--ce-text-label-size);
@@ -511,25 +522,30 @@
   color: var(--ce-color-text-primary);
 }
 .ov-lager-liste { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+/* Bezeichnung und Wert in einer Zeile, darunter die Nebenangabe. Nummern und Artikelnummern brechen nie (Werte);
+   passt der Wert nicht neben die Bezeichnung, rückt er darunter. */
 .ov-lager-zeile {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: "primaer wert" "sekundaer wert";
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
   column-gap: var(--ce-space-3);
   padding: var(--ce-space-2) 0;
   border-top: 1px solid var(--border-hairline);
 }
 .ov-lager-primaer {
-  grid-area: primaer;
-  min-width: 0;
+  order: 1;
+  flex: 1 1 0;
+  min-width: auto;
   overflow-wrap: break-word;
+  hyphens: auto;
   font-size: var(--ce-text-body-s-size);
   font-weight: 600;
   line-height: var(--ce-text-body-s-line);
   color: var(--ce-color-text-primary);
 }
 .ov-lager-sekundaer {
-  grid-area: sekundaer;
+  order: 3;
+  flex: 1 1 100%;
   min-width: 0;
   overflow-wrap: break-word;
   font-size: var(--ce-text-label-size);
@@ -537,8 +553,9 @@
   color: var(--ce-color-text-secondary);
 }
 .ov-lager-wert {
-  grid-area: wert;
-  align-self: center;
+  order: 2;
+  flex: none;
+  margin-left: auto;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
@@ -579,13 +596,55 @@
 /* Reihe Lager und Benachrichtigungen: 2 : 1 wie die Reihe darüber; steht das Lager allein, nimmt es die Reihe. */
 .ov-mod-grid--lager > :only-child { grid-column: 1 / -1; }
 
-/* ══════════ Letzte Sendungen: Spalten ══════════
-   Sendung · Empfänger · Versand · Status · Betrag — dieselben Felder wie die Sendungsliste. */
-.ov-list--sendungen .ov-list-row {
-  display: grid;
-  grid-template-columns: minmax(9.5rem, 1fr) minmax(0, 1.25fr) minmax(6.5rem, auto) auto 5.5rem;
-  align-items: center;
-  column-gap: var(--ce-space-4);
+/* ══════════ Letzte Sendungen: nach Inhalt und verfügbarer Breite ══════════
+   Sendung · Empfänger · Versand · Status · Betrag — dieselben Felder wie die Sendungsliste. Umgebaut wird nach der
+   Breite der Liste (Container ov-sendungen), nicht nach dem Fenster: Neben „Offene Rechnungen“ ist sie schmaler als
+   darunter, und eine große Browserschrift macht sie in rem gemessen schmaler. Die Spalten richten sich nach dem
+   längsten Wert aller Zeilen (Subgrid: Nummer, Versand, Status und Betrag fluchten über alle Zeilen), der Empfänger
+   bekommt den Rest, mindestens 6rem — ein langer Name trennt dort an Silben; ein langer Status („Buchungsstatus wird
+   geprüft“) nimmt höchstens 9rem und bricht an Wortgrenzen, statt dem Empfänger den Platz zu nehmen. Nummer, Datum und
+   Betrag brechen nie im Wert; „Ohne Vorgangsnummer“ ist Text und darf umbrechen. Vorher: feste Spaltenbreiten und
+   Fensterstufen — eine lange Vorgangsnummer lief in den Empfänger. Die Schwellen sind die gemessenen Mindestbreiten mit
+   langen Inhalten (zweizeilig 32.25rem, einzeilig 37.64rem); bei 16 px Grundschrift erscheinen die Formen in denselben
+   Fensterbreiten wie bisher (zweizeilig ab rund 1150 px neben „Offene Rechnungen“, einzeilig ab 1361 px). */
+.ov-card--sendungen { container: ov-sendungen / inline-size; }
+
+/* Schmal: Nummer und Betrag, darunter der Empfänger, darunter Versand und Status. Fließend: Was nicht nebeneinander
+   passt, rückt in die nächste Zeile, statt den Nachbarn zu überdecken. */
+.ov-list--sendungen .ov-list-row { flex-wrap: wrap; column-gap: var(--ce-space-4); row-gap: var(--ce-space-2); }
+.ov-list--sendungen .ov-list-main { order: 1; flex: 1 1 auto; min-width: auto; }
+/* Der Betrag ist so breit wie sein Wert (min-width: auto) — eine Rasterspalte wird nie schmaler als er. */
+.ov-list--sendungen .ov-list-num { order: 2; flex: none; min-width: auto; margin-left: auto; align-self: flex-start; text-align: right; }
+.ov-list--sendungen .ov-list-primary { overflow-wrap: normal; }
+.ov-list--sendungen .ov-list-empfaenger { order: 3; flex: 1 1 100%; }
+.ov-list--sendungen .ov-list-carrier { order: 4; flex: 1 1 auto; min-width: auto; }
+.ov-list--sendungen .ov-list-status { order: 5; flex: 0 1 auto; min-width: auto; margin-left: auto; }
+
+/* Mittel (ab 32.5rem Listenbreite): Nummer · Empfänger mit dem Versand darunter · Status · Betrag. */
+@container ov-sendungen (min-width: 32.5rem) {
+  .ov-list--sendungen {
+    display: grid;
+    grid-template-columns: [nr] auto [empf] minmax(6rem, 1fr) [status] fit-content(9rem) [betrag] auto;
+    column-gap: var(--ce-space-4);
+  }
+  .ov-list--sendungen .ov-list-empfaenger { hyphens: auto; }
+  .ov-list--sendungen .ov-list-row {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    grid-template-areas: "nr empf status betrag" "nr carrier status betrag";
+    row-gap: 2px;
+  }
+  .ov-list--sendungen .ov-list-main { grid-area: nr; }
+  .ov-list--sendungen .ov-list-empfaenger { grid-area: empf; }
+  .ov-list--sendungen .ov-list-carrier { grid-area: carrier; }
+  .ov-list--sendungen .ov-list-status { grid-area: status; margin-left: 0; }
+  .ov-list--sendungen .ov-list-num { grid-area: betrag; align-self: center; }
+}
+/* Breit (ab 39.53rem — bei 16 px genau ab 1361 px Fenster wie bisher): eine Zeile je Sendung. */
+@container ov-sendungen (min-width: 39.53rem) {
+  .ov-list--sendungen { grid-template-columns: [nr] auto [empf] minmax(6rem, 1fr) [carrier] auto [status] fit-content(9rem) [betrag] auto; }
+  .ov-list--sendungen .ov-list-row { grid-template-areas: "nr empf carrier status betrag"; }
 }
 .ov-list-empfaenger { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ov-list-empfaenger-name {
@@ -620,31 +679,9 @@
   .ov-kpi:nth-child(odd) { border-left: 0; }
   .ov-kpi:nth-child(n + 3) { border-top: 1px solid var(--ce-kpi-divider); }
 }
-/* Letzte Sendungen unter 1360 px: Versand rückt unter den Empfänger (zwei Zeilen statt fünf schmaler Spalten). */
-@media (max-width: 1360px) {
-  .ov-list--sendungen .ov-list-row {
-    grid-template-columns: minmax(8.5rem, 1fr) minmax(0, 1.4fr) auto 5.5rem;
-    grid-template-areas: "nr empf status betrag" "nr carrier status betrag";
-    row-gap: 2px;
-  }
-  .ov-list--sendungen .ov-list-main { grid-area: nr; }
-  .ov-list--sendungen .ov-list-empfaenger { grid-area: empf; }
-  .ov-list--sendungen .ov-list-carrier { grid-area: carrier; }
-  .ov-list--sendungen .ov-list-status { grid-area: status; }
-  .ov-list--sendungen .ov-list-num { grid-area: betrag; }
-}
-@media (max-width: 900px) {
-  .ov-lager-raster { grid-template-columns: minmax(0, 1fr); }
-  .ov-lager-spalte + .ov-lager-spalte { padding-left: 0; border-left: 0; padding-top: var(--ce-space-5); border-top: 1px solid var(--border-hairline); }
-}
 @media (max-width: 720px) {
   /* Auf schmalen Breiten stapeln die Zeilen: Status und Betrag rutschen unter
      den Haupttext, statt ihn auf wenige Zeichen zusammenzudrücken. */
-  .ov-list--sendungen .ov-list-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "nr betrag" "empf empf" "carrier status";
-    row-gap: var(--ce-space-2);
-  }
   .ov-list-row { flex-wrap: wrap; row-gap: var(--ce-space-2); }
   .ov-list-main { flex: 1 1 100%; }
   .ov-list-num { margin-left: auto; min-width: 0; }
@@ -681,7 +718,7 @@
   border-top: 1px solid var(--ce-color-border-subtle);
 }
 .ov-credit-head {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--ce-space-3);
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 var(--ce-space-3);
 }
 .ov-credit-label {
   font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);

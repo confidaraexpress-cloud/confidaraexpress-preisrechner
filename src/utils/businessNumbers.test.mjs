@@ -375,14 +375,17 @@ test("(15) keine Kreditlimit-/Kreditfreigabe-Aussagen in sichtbaren Texten", () 
   }
 });
 
-test("(16) Responsive/Barrierefreiheit: Nummern umbrechbar, Kopieraktion bedienbar", () => {
+test("(16) Responsive/Barrierefreiheit: Nummern ganz, Kopieraktion bedienbar", () => {
   const copy = read("components/ui/CopyableNumber.jsx");
   assert.ok(/<button/.test(copy), "Kopieraktion muss ein echter Button sein (Tastaturbedienung)");
   assert.ok(/aria-label=/.test(copy), "aria-label für die Kopieraktion fehlt");
   assert.ok(/role="status"/.test(copy) && /aria-live/.test(copy), "Rückmeldung nicht für Screenreader ausgezeichnet");
-  assert.ok(/wordBreak/.test(copy), "lange Nummern müssen umbrechen können");
-  // Auch in den Tabellen dürfen Nummern nicht abgeschnitten werden.
-  assert.ok(/wordBreak: "break-all"/.test(read("components/dashboard/ShipmentsList.jsx")), "kein Umbruch für lange Nummern in ShipmentsList.jsx");
+  // Seit der Responsive-Prüfung 2026-10-28 bricht eine Nummer nie mitten im Wert (Canonical 15): Sie steht ganz, und
+  // „Kopieren“ rückt in die nächste Zeile, wenn der Platz nicht reicht — nichts wird abgeschnitten.
+  assert.ok(/whiteSpace: "nowrap"/.test(copy) && /flexWrap: "wrap"/.test(copy), "die Nummer bricht oder die Kopieraktion rückt nicht um");
+  assert.ok(!/wordBreak: "break-all"/.test(copy), "die Nummer bricht wieder mitten im Wert");
+  // Auch in den Tabellen dürfen Nummern nicht abgeschnitten werden: ganz (.ce-wert), Tabelle erst bei genug Platz.
+  assert.ok(/shipment-id-nr mono ce-wert/.test(read("components/dashboard/ShipmentsList.jsx")), "die Trackingnummer in ShipmentsList.jsx ist kein ganzer Wert");
   // InvoicesList.jsx (Phase 5) setzt den Umbruch über eine CSS-Klasse statt eines Inline-Styles
   // (overflow-wrap statt word-break — funktional gleichwertig: lange Token brechen kontrolliert
   // um, statt die Spalte zu sprengen oder abgeschnitten zu werden).

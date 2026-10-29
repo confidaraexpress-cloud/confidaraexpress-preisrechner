@@ -52,12 +52,13 @@ export function CopyableNumber({ value, label, size = "md" }) {
   const fehler = feedback !== null && feedback.ok === false;
 
   return (
-    // Umbruch nur für die (längere) Fehlermeldung — im Normalfall bleibt das bisherige Layout.
-    <span className="ce-copynum" style={{ display: "inline-flex", flexWrap: fehler ? "wrap" : undefined, alignItems: "center", gap: 6, maxWidth: "100%" }}>
+    // Die Nummer bricht nie mitten im Wert; reicht der Platz nicht, rückt „Kopieren“ (und eine Meldung) in die
+    // nächste Zeile. Passt alles in eine Zeile, bleibt das bisherige Layout.
+    <span className="ce-copynum" style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center", gap: 6, maxWidth: "100%" }}>
       <span
         ref={textRef}
         className="mono"
-        style={{ fontSize: size === "lg" ? 16 : 13, letterSpacing: 0.3, wordBreak: "break-all" }}
+        style={{ fontSize: size === "lg" ? 16 : 13, letterSpacing: 0.3, whiteSpace: "nowrap" }}
       >
         {text}
       </span>

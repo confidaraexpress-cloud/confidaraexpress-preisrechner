@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { Werte } from "../../components/ui/Werte";
 import { EmptyState, NoResultsState, ListSkeleton } from "../../components/ui/StateView";
 import { InlineError, ProductFilterField } from "../../components/inventory/InventoryShared";
 import { getMovements, getProduct } from "../../api/inventoryApi";
@@ -220,7 +221,7 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
 
       {!loading && items.length > 0 && (
         <>
-          <div className="ce-table-container inv-list-table">
+          <div className="ce-table-container inv-list-table inv-list-table--bewegungen">
             <table className="ce-list-table">
               <caption className="sr-only">Bestandsbewegungen</caption>
               <thead>
@@ -252,9 +253,9 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
                       <td>
                         {/* Der Name führt, die SKU steht darunter: gesucht wird
                             nach dem Artikel, nicht nach seiner Nummer. */}
-                        <button type="button" className="btn btn-link inv-cell-link"
+                        <button type="button" className="btn btn-link inv-cell-link inv-cell-title"
                                 onClick={() => navigate(`/inventory/products/${m.productId}`)}>{m.productName}</button>
-                        <div className="inv-cell-meta"><span className="inv-cell-sku">{m.sku}</span></div>
+                        <div className="inv-cell-meta"><span className="inv-cell-sku"><Werte>{m.sku}</Werte></span></div>
                       </td>
                       <td>
                         <span className={`badge ${cls}`} title={roh ? `Serverwert: ${roh}` : undefined}>{text}</span>
@@ -278,7 +279,7 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
             </table>
           </div>
 
-          <ul className="ce-list-cards inv-list-cards">
+          <ul className="ce-list-cards inv-list-cards inv-list-cards--bewegungen">
             {items.map((m) => {
               const [cls, text, roh] = movementTypeView(m.type);
               const grund = adjustmentReasonLabel(m.reason);
@@ -292,11 +293,11 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
                   </div>
                   <button type="button" className="btn btn-link inv-card-title"
                           onClick={() => navigate(`/inventory/products/${m.productId}`)}>{m.productName}</button>
-                  <div className="inv-cell-meta">{m.sku} · {m.warehouseName}</div>
+                  <div className="inv-cell-meta"><Werte>{`${m.sku ?? ""} · ${m.warehouseName ?? ""}`}</Werte></div>
                   {grund && <div className="inv-cell-meta inv-mv-reason">{grund}</div>}
                   {notiz && <div className="inv-cell-meta inv-mv-note">Notiz: {notiz}</div>}
                   <dl className="inv-card-facts">
-                    <div><dt>Zeitpunkt</dt><dd>{dtDE(m.createdAt)}</dd></div>
+                    <div><dt>Zeitpunkt</dt><dd><Werte>{dtDE(m.createdAt)}</Werte></dd></div>
                     <div><dt>Bestand danach</dt><dd>{formatUnits(m.onHandAfter)}</dd></div>
                     {ref && <div><dt>Referenz</dt><dd><MovementReference reference={ref} navigate={navigate} /></dd></div>}
                     <div><dt>Erfasst durch</dt><dd>{m.createdByName || "—"}</dd></div>

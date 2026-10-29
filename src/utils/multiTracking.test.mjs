@@ -77,10 +77,12 @@ test("5 — Liste und Mobilkarte: kompakte Anzahl bei mehreren, sonst unverände
   // Die bisherige Einzelanzeige bleibt wörtlich — als Zweig für genau eine Nummer.
   assert.equal((liste.match(/\) : nums\.trackingNumber && \(/g) || []).length, 3,
     "die Einzelanzeige ist nicht mehr der Rückfall");
-  // In der Karte wörtlich; in der Tabelle steht die Nummer seit dem Komplettabschluss (Audit B.4, umbrechende IDs) als
-  // eigener Block hinter der Beschriftung — sie rückt als Ganzes in die nächste Zeile, statt mitten im Wert zu brechen.
-  assert.equal((liste.match(/\{NUMBER_LABELS\.tracking\}: \{nums\.trackingNumber\}/g) || []).length, 1);
-  assert.match(liste, /\{NUMBER_LABELS\.tracking\}:\{" "\}\s*<span className="shipment-id-nr mono" style=\{\{ wordBreak: "break-all" \}\}>\{nums\.trackingNumber\}<\/span>/);
+  // In Karte und Tabelle steht die Nummer als ganzer Wert (.ce-wert) hinter der Beschriftung: Sie rückt als Ganzes in
+  // die nächste Zeile und bricht nie mitten im Wert (Responsive-Prüfung 2026-10-28; vorher brach sie per break-all,
+  // in der Tabelle seit dem Komplettabschluss nur, wenn sie länger als die Spalte war).
+  assert.equal((liste.match(/\{NUMBER_LABELS\.tracking\}: <span className="ce-wert">\{nums\.trackingNumber\}<\/span>/g) || []).length, 1);
+  assert.match(liste, /\{NUMBER_LABELS\.tracking\}:\{" "\}\s*<span className="shipment-id-nr mono ce-wert">\{nums\.trackingNumber\}<\/span>/);
+  assert.doesNotMatch(liste, /wordBreak: "break-all" \}\}>\{nums\./, "eine Kennung der Liste bricht wieder mitten im Wert");
 });
 
 test("6 — Sendungsdetail und Mobilkarte zeigen ALLE Nummern, die Live-Ansicht ebenfalls", () => {

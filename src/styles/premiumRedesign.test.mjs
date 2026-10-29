@@ -384,3 +384,16 @@ test("15 — Überlagerte Auswahl: unter dem unsichtbaren Radio steht kein weite
   }
   assert.ok(geprueft >= 8, `nur ${geprueft} überlagerte Optionen gefunden — Anker verschoben?`);
 });
+
+test("16 — Sehr schmal im Verhältnis zur Schrift: Kennungen brechen nur dort und nur nach einem Bindestrich", () => {
+  // Werte setzt Bruchstellen (<wbr>) nur in langen Kennungen mit Ziffer und Bindestrich; ein Datum bleibt ganz.
+  const werte = ohneJsKommentare(lies(path.join(SRC, "components/ui/Werte.jsx")));
+  assert.match(werte, /const istKennung = \(text\) => text\.length >= 12 && text\.includes\("-"\) && \/\\d\/\.test\(text\);/);
+  assert.match(werte, /\{stueck\}-<wbr \/>/, "die Bruchstelle steht nicht nach dem Bindestrich");
+  assert.match(werte, /className="ce-wert ce-wert--kennung"/);
+  // Gelöst wird .ce-wert--kennung ausschließlich im Block unter 20em — sonst hält .ce-wert jede Kennung zusammen.
+  const block = EDITORIAL.match(/@media \(width < 20em\) \{([\s\S]*?)\n\}/);
+  assert.ok(block, "der Block „sehr schmal“ fehlt in premium-editorial.css");
+  assert.match(block[1], /\.ce-wert--kennung, \.inv-cell-sku\) \{ white-space: normal; \}/);
+  assert.equal(EDITORIAL.replace(block[0], "").includes("ce-wert--kennung"), false, "eine Kennung bricht auch außerhalb des Blocks");
+});

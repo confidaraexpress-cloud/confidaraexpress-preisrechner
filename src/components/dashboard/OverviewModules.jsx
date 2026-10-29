@@ -10,6 +10,7 @@ import { creditFacts, CREDIT_TEXT } from "../../utils/creditLimitView.mjs";
 import { shipmentRecipient } from "../../utils/shipmentRecipientView.mjs";
 import { CARRIER_PORTFOLIO_TEXT } from "../../utils/carrierPortfolioView.mjs";
 import { formatUnits, overviewPreviewRows, isInventoryEmpty } from "../../utils/inventoryView.mjs";
+import { Werte } from "../ui/Werte";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    OPERATIVE ÜBERSICHTSMODULE (Paket D, Redesign 2026-10)
@@ -68,7 +69,7 @@ export function RecentShipments({ shipments, loading, onAll }) {
         actionLabel="Alle Sendungen"
         onAction={onAll}
       />
-      <div className="ce-card ov-card">
+      <div className="ce-card ov-card ov-card--sendungen">
         {loading && rows.length === 0 ? (
           <div className="loading-center" role="status" aria-live="polite">
             <span className="spinner spinner-dark" /> Sendungen werden geladen …
@@ -86,10 +87,11 @@ export function RecentShipments({ shipments, loading, onAll }) {
               return (
                 <li className="ov-list-row" key={s.id}>
                   <div className="ov-list-main">
-                    <span className="ov-list-primary mono ce-wert">
-                      {nums.orderConfirmationNumber || NO_ORDER_CONFIRMATION_TEXT}
-                    </span>
-                    <span className="ov-list-secondary">{dateDE(s.created_at)}</span>
+                    {/* Die Nummer und das Datum sind Werte und brechen nie; der Hinweis ohne Nummer ist Text. */}
+                    {nums.orderConfirmationNumber
+                      ? <span className="ov-list-primary mono ce-wert">{nums.orderConfirmationNumber}</span>
+                      : <span className="ov-list-primary ov-list-primary--ohne">{NO_ORDER_CONFIRMATION_TEXT}</span>}
+                    <span className="ov-list-secondary ce-wert">{dateDE(s.created_at)}</span>
                   </div>
                   <div className="ov-list-empfaenger">
                     <span className="ov-list-empfaenger-name">{empfaenger?.name || "—"}</span>
@@ -209,7 +211,7 @@ export function OverviewNotifications({ items, onSelect }) {
                     {!n.read && <span className="ov-ntf-new">Neu</span>}
                     {n.title}
                   </span>
-                  <span className="ov-list-secondary">{notificationSubline(n)}</span>
+                  <span className="ov-list-secondary"><Werte>{notificationSubline(n)}</Werte></span>
                 </span>
                 <span className="ov-ntf-time">{relativeTime(n.updatedAt || n.createdAt)}</span>
               </button>
@@ -245,8 +247,8 @@ function SnapshotSpalte({ titel, zahl, anzahl, zeilen, leer, onAlle, alleLabel }
         <ul className="ov-lager-liste">
           {zeilen.map((z) => (
             <li className="ov-lager-zeile" key={z.id}>
-              <span className="ov-lager-primaer">{z.primary}</span>
-              {z.secondary && <span className="ov-lager-sekundaer">{z.secondary}</span>}
+              <span className="ov-lager-primaer"><Werte>{z.primary}</Werte></span>
+              {z.secondary && <span className="ov-lager-sekundaer"><Werte>{z.secondary}</Werte></span>}
               {z.value && <span className="ov-lager-wert">{z.value}</span>}
             </li>
           ))}
@@ -269,7 +271,7 @@ export function InventorySnapshot({ stand: standProp = null, onRetry = null, onN
   return (
     <section className="ov-mod ov-lager" aria-labelledby="ov-lager-title" aria-busy={stand.status === "laden" ? "true" : undefined}>
       <ModuleHead title={<span id="ov-lager-title">{T.title}</span>} actionLabel={T.action} onAction={gehe("inventory")} />
-      <div className="ce-card ov-card ov-card--pad">
+      <div className="ce-card ov-card ov-card--pad ov-card--lager">
         {stand.status === "laden" && (
           <div className="loading-center" role="status" aria-live="polite">
             <span className="spinner spinner-dark" /> Lagerdaten werden geladen …

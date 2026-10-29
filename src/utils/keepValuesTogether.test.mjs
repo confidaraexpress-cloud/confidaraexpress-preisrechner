@@ -43,6 +43,15 @@ test("4 — Vorgangsnummern und ISO-Monate als Einheit, nicht am Bindestrich", (
   assert.deepEqual(werte("AGB (Stand 2026-08)"), ["2026-08"]);
 });
 
+test("4a — Kennungen beliebiger Länge mit Ziffer bleiben ganz: Artikel-, Auftrags- und Referenznummern", () => {
+  assert.deepEqual(werte("SKU: ML-ELEKTRONIK-2026-000101"), ["ML-ELEKTRONIK-2026-000101"]);
+  assert.deepEqual(werte("Auftrag CE-AU-2026-000007"), ["CE-AU-2026-000007"]);
+  assert.deepEqual(werte("Ohne Vorgangsnummer · CE-AB-2026-000050"), ["CE-AB-2026-000050"]);
+  assert.deepEqual(werte("Kundenreferenz WEB-4471"), ["WEB-4471"]);
+  // Ohne Ziffer ist es ein Wort mit Bindestrich, keine Kennung.
+  assert.deepEqual(werte("Garmisch-Partenkirchen"), []);
+});
+
 test("4b — „E-Mail“ und seine Zusammensetzungen trennen nicht am Bindestrich", () => {
   assert.deepEqual(werte("Tracking-Link an weitere E-Mail-Adresse senden"), ["E-Mail-Adresse"]);
   assert.deepEqual(werte("Bestätigung per E-Mail an max@example.com"), ["E-Mail"]);

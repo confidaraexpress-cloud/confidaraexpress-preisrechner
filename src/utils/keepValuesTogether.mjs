@@ -28,6 +28,9 @@ const MUSTER = [
   /\d+(?:[.,]\d+)? ?(?:kg|%)/,
   // Zusammengesetztes Wort mit Bindestrich am Wortanfang, auch weiter verbunden: E-Mail, E-Mail-Adresse
   /\bE-Mail(?:-[A-Za-zÄÖÜäöüß]+)?/,
+  // Kennungen beliebiger Länge aus Buchstaben- und Zifferngruppen mit Bindestrich und mindestens einer Ziffer:
+  // Artikelnummern (ML-ELEKTRONIK-2026-000101), ältere Vorgangsnummern (CE-AB-2026-000050), Referenzen (WEB-4471)
+  /\b(?=[A-Za-z0-9-]*\d)[A-Za-z0-9]+(?:-[A-Za-z0-9]+)+\b/,
 ];
 const WERT = new RegExp(MUSTER.map((m) => `(?:${m.source})`).join("|"), "g");
 

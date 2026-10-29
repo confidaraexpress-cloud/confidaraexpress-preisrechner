@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { Werte } from "../../components/ui/Werte";
 import { EmptyState, NoResultsState, ListSkeleton } from "../../components/ui/StateView";
 import { InlineError, InlineSuccess, InventoryDialog, QuantityField, StockCells, StockBadge } from "../../components/inventory/InventoryShared";
 import { ProductForm } from "../../components/inventory/ProductForm";
@@ -185,9 +186,9 @@ export default function ProductsPage({ utility, onShipProduct }) {
 
       {!loading && items.length > 0 && (
         <>
-          {/* Tabelle ab 1100 px Viewport, darunter Karten — reale Contentbreite,
-              nicht Viewportbreite (Sidebar + Rahmen zählen mit). */}
-          <div className="ce-table-container inv-list-table">
+          {/* Tabelle erst, wenn der Inhaltsrahmen sie samt Aktionen trägt, sonst
+              Karten — Container ce-seite, nicht die Fensterbreite. */}
+          <div className="ce-table-container inv-list-table inv-list-table--artikel">
             <table className="ce-list-table">
               <caption className="sr-only">Artikelliste mit Bestand</caption>
               <thead>
@@ -208,7 +209,7 @@ export default function ProductsPage({ utility, onShipProduct }) {
                       {/* Identität: Name führt, SKU und Gewicht stehen darunter. */}
                       <div className="inv-cell-stack">
                         <button type="button" className="btn btn-link inv-cell-link inv-cell-title" onClick={() => navigate(`/inventory/products/${p.id}`)}>{p.name}</button>
-                        <span className="inv-cell-meta"><span className="inv-cell-sku">{p.sku}</span> · {formatKg(p.weightKg)}</span>
+                        <span className="inv-cell-meta"><span className="inv-cell-sku"><Werte>{p.sku}</Werte></span> · {formatKg(p.weightKg)}</span>
                       </div>
                     </td>
                     <StockCells stock={p.stock} minStock={p.minStock} />
@@ -231,7 +232,7 @@ export default function ProductsPage({ utility, onShipProduct }) {
             </table>
           </div>
 
-          <ul className="ce-list-cards inv-list-cards">
+          <ul className="ce-list-cards inv-list-cards inv-list-cards--artikel">
             {items.map((p) => (
               <li key={p.id} className="ce-card inv-card">
                 <div className="inv-card-head">
@@ -240,7 +241,7 @@ export default function ProductsPage({ utility, onShipProduct }) {
                     ? <span className="badge badge--neutral">Inaktiv</span>
                     : <StockBadge row={{ available: p.stock?.available, minStock: p.minStock }} />}
                 </div>
-                <span className="inv-cell-meta"><span className="inv-cell-sku">{p.sku}</span></span>
+                <span className="inv-cell-meta"><span className="inv-cell-sku"><Werte>{p.sku}</Werte></span></span>
                 <dl className="inv-card-facts">
                   <div><dt>Bestand</dt><dd>{formatUnits(p.stock?.onHand)}</dd></div>
                   <div><dt>Reserviert</dt><dd>{formatUnits(p.stock?.reserved)}</dd></div>

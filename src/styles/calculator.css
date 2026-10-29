@@ -425,7 +425,11 @@
    ruhige, mitlaufende Seitenspalte. Sie liegt absolut neben der Spalte und klebt innen (sticky); die kompakte
    Leiste bleibt damit verborgen, weil die Zusammenfassung sichtbar bleibt. Ohne Seitenspalte (Schritt 3) und
    unter 1600 px: unverändert eine Spalte. */
+/* Der Inhaltsbereich der Buchung ist ein Größencontainer (ce-buchung): Die Seitenspalte steht nur daneben, wenn
+   Blatt, Abstand und Spalte hineinpassen (1264 px) — bei großer Browserschrift ist die Navigation breiter. */
+.page-with-navbar:has(> .booking-wrap) { container: ce-buchung / inline-size; }
 @media (min-width: 1600px) {
+  @container ce-buchung (width >= 1264px) {
   .booking-wrap:has(> .booking-side) {
     position: relative;
     max-width: calc(var(--ce-size-booking) + var(--ce-space-7) + var(--ce-size-booking-side)
@@ -447,6 +451,7 @@
   .booking-side .blsum-price { align-items: flex-start; text-align: left; }
   .booking-side .blsum-price-box { align-items: flex-start; }
   .booking-side :is(.blsum-ins-note, .blsum-vat-note) { text-align: left; }
+  }
 }
 .booking-carrier-name { font-size: var(--ce-text-title-section-size); font-weight: 600; line-height: 1.3; color: var(--ce-color-text-primary); }
 .booking-carrier-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
@@ -495,7 +500,7 @@
 .booking-confirm-box:first-child { padding-top: 0; border-top: none; }
 .booking-confirm-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
 .booking-confirm-val { color: var(--ce-color-text-primary); text-align: right; }
-.booking-total-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding-top: 12px; border-top: 1px solid var(--ce-color-border-default); }
+.booking-total-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 12px; padding-top: 12px; border-top: 1px solid var(--ce-color-border-default); }
 .booking-total-label { font-size: var(--ce-text-body-l-size); font-weight: 600; color: var(--ce-color-text-primary); }
 .booking-total-amount { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 24px; font-weight: 600; color: var(--ce-color-text-primary); }
 /* Netto/Brutto (2026-10-02): in der Nettoanzeige steht der Gesamtbetrag netto über dem zahlbaren Gesamtbetrag
@@ -798,6 +803,21 @@
 
 /* ≤860px → drei Zeilen: Versandprodukt · [Übergabe|Zustellung] · Preis. */
 @media (max-width: 860px) {
+  .booking-livesum { grid-template-columns: 1fr 1fr; }
+  .blsum-zone { padding: 12px 16px; }
+  .blsum-zone + .blsum-zone { border-left: none; }
+  .blsum-product { grid-column: 1 / -1; border-bottom: 1px solid var(--border); }
+  .blsum-handover { border-right: 1px solid var(--border); }
+  .blsum-price { grid-column: 1 / -1; align-items: flex-start; text-align: left; border-top: 1px solid var(--border); }
+  .blsum-price-box { flex-direction: row; align-items: baseline; gap: 10px; }
+  .blsum-ins-note, .blsum-vat-note { text-align: left; }
+}
+/* Dieselben Stufen nach der Breite der Leiste selbst (Container blsum am Wrapper der Buchung): Neben der Navigation
+   ist die Arbeitsspalte zwischen 861 und etwa 1000 px Fenster zu schmal für vier Zonen — „Voraussichtliche Zustellung“
+   lief dort aus ihrer Zone. Die schmale Seitenspalte (ab 1440 px, höchstens 23rem) und Telefone bis 380 px behalten
+   ihre eigenen, gestapelten Regeln. */
+.booking-side-inner { container: blsum / inline-size; }
+@container blsum (23.5rem <= width < 44rem) {
   .booking-livesum { grid-template-columns: 1fr 1fr; }
   .blsum-zone { padding: 12px 16px; }
   .blsum-zone + .blsum-zone { border-left: none; }

@@ -592,6 +592,10 @@ function route(methode, pfad, query, optionen) {
   }
   if (pfad === "/api/kunde/inventory/movements") return json({ movements: lg.bewegungen, nextCursor: null });
   if (/^\/api\/kunde\/inventory\/(receipt|adjustment|block|unblock)$/.test(pfad)) return nichtVerfuegbar();
+  // Artikelimport: die Datei wird im Browser gelesen und zugeordnet; der Serverschritt (Prüfen,
+  // Übernehmen) ist eine Lagerbuchung und in der Demo nicht verfügbar. Kein offener Vorgang.
+  if (pfad === "/api/kunde/inventory/imports") return methode === "GET" ? json({ import: null, imports: [] }) : nichtVerfuegbar();
+  if (pfad.startsWith("/api/kunde/inventory/imports/")) return methode === "GET" ? json({ error: "Import nicht gefunden", code: "IMPORT_NOT_FOUND" }, 404) : nichtVerfuegbar();
   if (pfad === "/api/kunde/orders") return methode === "GET" ? json({ orders: lg.auftraege, nextCursor: null }) : nichtVerfuegbar();
   if ((m = pfad.match(/^\/api\/kunde\/orders\/(\d+)(\/cancel|\/shipping-prefill)?$/))) {
     const a = lg.auftraege.find((x) => x.id === m[1]);

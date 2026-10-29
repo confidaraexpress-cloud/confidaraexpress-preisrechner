@@ -322,7 +322,7 @@ test("16 — Tarifobjekte überleben die Persistenz unverändert (inkl. carrierL
 
 test("17 — keine neue Abhängigkeit", () => {
   assert.deepEqual(Object.keys(pkg.dependencies).sort(),
-    ["@vitejs/plugin-react", "maplibre-gl", "react", "react-dom", "react-router-dom", "vite"]);
+    ["@vitejs/plugin-react", "fflate", "maplibre-gl", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen", "vite"]);
   assert.deepEqual(Object.keys(pkg.devDependencies).sort(), ["playwright"]);
   for (const quelle of [modul, dialog, terms]) {
     for (const fremd of ["lucide-react", "react-modal", "@headlessui", "react-aria"]) {

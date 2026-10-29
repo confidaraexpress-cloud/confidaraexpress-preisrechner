@@ -296,7 +296,7 @@ test("14 — Adminportal und Auth-Bereich sind nicht berührt", () => {
 test("15 — keine neue Abhängigkeit, kein DOM-Hack, kein Polling", () => {
   const pkg = JSON.parse(lies("package.json"));
   assert.deepEqual(Object.keys(pkg.dependencies).sort(),
-    ["@vitejs/plugin-react", "maplibre-gl", "react", "react-dom", "react-router-dom", "vite"].sort(),
+    ["@vitejs/plugin-react", "fflate", "maplibre-gl", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen", "vite"].sort(),
     "es ist eine Abhängigkeit hinzugekommen");
   for (const verboten of ["setInterval", "setTimeout", "querySelector", "document.", "window."]) {
     assert.ok(!feld.includes(verboten),

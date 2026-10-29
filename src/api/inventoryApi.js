@@ -121,3 +121,40 @@ export function cancelOrder(orderId) {
 export function getOrderShippingPrefill(orderId, { signal } = {}) {
   return apiFetch(`/api/kunde/orders/${id(orderId)}/shipping-prefill`, { auth: true, signal });
 }
+
+// ── Artikel- und Bestandsimport ───────────────────────────────────────────────
+// Upload-Vertrag: multipart mit GENAU EINEM Dateiteil `document` (application/json,
+// kanonisches Importdokument, utils/inventoryImportDocument.mjs). Der Server prüft und
+// plant (Vorschau), übernimmt erst nach Bestätigung in Abschnitten und bucht Bestand nur
+// über Wareneingang bzw. Zählbestand-Korrektur.
+//   POST /api/kunde/inventory/imports                 GET  /api/kunde/inventory/imports?status=open
+//   GET  /api/kunde/inventory/imports/:id             GET  /api/kunde/inventory/imports/:id/rows
+//   POST /api/kunde/inventory/imports/:id/apply       POST /api/kunde/inventory/imports/:id/recheck
+//   POST /api/kunde/inventory/imports/:id/discard
+export function analyzeInventoryImport(document) {
+  const formData = new FormData();
+  formData.append("document", new Blob([JSON.stringify(document)], { type: "application/json" }), "import.json");
+  // Eigenes Zeitlimit: bis zu 10.000 Zeilen werden serverseitig geprüft und gespeichert.
+  return apiFetch(`/api/kunde/inventory/imports`, { method: "POST", auth: true, body: formData, timeoutMs: 120000 });
+}
+export function getOpenInventoryImport({ signal } = {}) {
+  return apiFetch(`/api/kunde/inventory/imports?status=open`, { auth: true, signal });
+}
+export function getInventoryImport(importId, { signal } = {}) {
+  return apiFetch(`/api/kunde/inventory/imports/${id(importId)}`, { auth: true, signal });
+}
+export function getInventoryImportRows(importId, params, { signal } = {}) {
+  return apiFetch(`/api/kunde/inventory/imports/${id(importId)}/rows${toQuery(params)}`, { auth: true, signal });
+}
+// Ein Aufruf übernimmt höchstens einen Abschnitt; wiederholbar ohne Doppelbuchung.
+export function applyInventoryImport(importId, flags) {
+  return apiFetch(`/api/kunde/inventory/imports/${id(importId)}/apply`, {
+    method: "POST", auth: true, body: JSON.stringify(flags || {}), timeoutMs: 60000,
+  });
+}
+export function recheckInventoryImport(importId) {
+  return apiFetch(`/api/kunde/inventory/imports/${id(importId)}/recheck`, { method: "POST", auth: true, body: "{}" });
+}
+export function discardInventoryImport(importId) {
+  return apiFetch(`/api/kunde/inventory/imports/${id(importId)}/discard`, { method: "POST", auth: true, body: "{}" });
+}

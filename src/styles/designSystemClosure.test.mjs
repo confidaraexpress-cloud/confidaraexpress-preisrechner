@@ -181,7 +181,7 @@ test("6 — es werden nur die drei benutzten Schriftfamilien geladen", () => {
 test("7 — es gibt keine ungenutzte UI-Abhängigkeit", () => {
   const pkg = JSON.parse(read("../../package.json"));
   const deps = Object.keys(pkg.dependencies || {}).sort();
-  assert.deepEqual(deps, ["@vitejs/plugin-react", "maplibre-gl", "react", "react-dom", "react-router-dom", "vite"]);
+  assert.deepEqual(deps, ["@vitejs/plugin-react", "fflate", "maplibre-gl", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen", "vite"]);
   // Keine fremde Iconbibliothek — das Produkt hat sein eigenes System.
   for (const [name, inhalt] of QUELLEN) {
     assert.doesNotMatch(inhalt, /from\s+["'](lucide-react|react-icons|@heroicons|@tabler\/icons|feather-icons)/,
@@ -206,6 +206,23 @@ test("7 — es gibt keine ungenutzte UI-Abhängigkeit", () => {
   for (const [name, inhalt] of QUELLEN) {
     assert.doesNotMatch(inhalt, /from\s+["'](mapbox-gl|leaflet|react-leaflet|react-map-gl|ol)["']/,
       `${name}: zweite Kartenbibliothek`);
+  }
+
+  // Artikelimport (.xlsx): read-excel-file (MIT) liest die Zellwerte über den Export
+  // „universal“ (ohne Web Worker, ohne eval); fflate (MIT) und saxen (MIT) — dieselben
+  // Bibliotheken, die read-excel-file selbst nutzt — prüfen vorab die Entpackgrößen und
+  // markieren Formelzellen. Alle drei werden tatsächlich genutzt, und zwar nur dynamisch
+  // aus dem Lesemodul (eigener Chunk, nie im Hauptbündel).
+  const lesemodul = read("../utils/inventoryImportXlsx.mjs");
+  for (const lib of ["read-excel-file/universal", "fflate", "saxen"]) {
+    assert.match(lesemodul, new RegExp(`\\bimport\\("${lib.replace("/", "\\/")}"\\)`), `${lib} wird nicht dynamisch geladen`);
+  }
+  const statischImport = QUELLEN.filter(([, t]) => /^import\s[^\n]*from\s+["'](read-excel-file[^"']*|fflate|saxen)["']/m.test(t));
+  assert.deepEqual(statischImport.map(([n]) => n), [],
+    "die Importbibliotheken dürfen nur dynamisch geladen werden — sonst landen sie im Hauptbündel");
+  // Keine zweite Tabellenbibliothek daneben.
+  for (const [name, inhalt] of QUELLEN) {
+    assert.doesNotMatch(inhalt, /from\s+["'](xlsx|exceljs|papaparse|sheetjs)["']/, `${name}: zweite Tabellenbibliothek`);
   }
 });
 

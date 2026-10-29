@@ -36,6 +36,21 @@ const ERROR_TEXTS = Object.freeze({
   WAREHOUSE_DEFAULT_REQUIRED: "Das Standardlager kann nicht deaktiviert oder abgewählt werden. Legen Sie zuerst ein anderes aktives Lager als Standard fest.",
   // Grundsatz; die Mengen aus `details` ergänzt warehouseNotEmptyText.
   WAREHOUSE_NOT_EMPTY: "Das Lager kann erst deaktiviert werden, wenn es leer ist.",
+  // ── Artikel- und Bestandsimport (Backend lib/inventoryImport.js) ──
+  STOCK_CHANGED: "Der Bestand hat sich seit der Vorschau geändert. Bitte prüfen Sie die Zeile erneut.",
+  IMPORT_UPLOAD_INVALID: "Die Importdaten konnten nicht übertragen werden. Bitte wählen Sie die Datei erneut.",
+  IMPORT_DOCUMENT_INVALID: "Die Importdaten sind unvollständig. Bitte wählen Sie die Datei erneut.",
+  IMPORT_TOO_LARGE: "Die Importdaten sind zu groß. Bitte teilen Sie die Datei auf.",
+  IMPORT_TOO_MANY_ROWS: "Die Datei hat mehr als 10.000 Datenzeilen. Bitte teilen Sie sie auf.",
+  IMPORT_NOT_FOUND: "Der Import wurde nicht gefunden.",
+  IMPORT_ALREADY_OPEN: "Ein Import wird gerade übernommen. Bitte setzen Sie ihn fort oder schließen Sie ihn ab.",
+  IMPORT_EXPIRED: "Die Vorschau ist abgelaufen. Bitte lassen Sie die Datei erneut prüfen.",
+  IMPORT_STATE_CONFLICT: "Dieser Import wurde inzwischen ersetzt oder abgeschlossen.",
+  IMPORT_CONFIRMATION_REQUIRED: "Bitte bestätigen Sie die Übernahme.",
+  IMPORT_INVALID_ROWS_CONFIRMATION_REQUIRED: "Bitte bestätigen Sie, dass die fehlerhaften Zeilen übersprungen werden.",
+  IMPORT_REPEAT_CONFIRMATION_REQUIRED: "Diese Wareneingänge wurden bereits gebucht. Bitte bestätigen Sie die erneute Buchung ausdrücklich.",
+  IMPORT_RETRY: "Der Abschnitt wurde wegen einer gleichzeitigen Änderung nicht übernommen. Bitte fortsetzen.",
+  IMPORT_RATE_LIMITED: "Zu viele Importvorgänge in kurzer Zeit. Bitte einen Moment warten.",
 });
 
 const ganzeZahl = (v) => (typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : null);

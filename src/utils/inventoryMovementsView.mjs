@@ -91,9 +91,11 @@ export function movementTypeOptions(items) {
  */
 export function movementReferenceView(movement) {
   const m = movement || {};
-  if (m.referenceType !== "shipment" && m.referenceType !== "order") return null;
+  if (m.referenceType !== "shipment" && m.referenceType !== "order" && m.referenceType !== "import") return null;
   const nummer = typeof m.referenceNumber === "string" && m.referenceNumber.trim()
     ? m.referenceNumber.trim() : null;
+  // Artikel- und Bestandsimport: der Server nennt den Dateinamen als Nummer — Text, kein Link.
+  if (m.referenceType === "import") return { kind: "import", label: "Import", number: nummer, orderId: null };
   if (m.referenceType === "order") {
     const id = m.referenceId != null && String(m.referenceId).trim() ? String(m.referenceId) : null;
     return { kind: "order", label: "Auftrag", number: nummer, orderId: id };

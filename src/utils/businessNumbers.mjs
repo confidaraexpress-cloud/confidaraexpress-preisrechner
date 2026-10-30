@@ -2,14 +2,18 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Zentrale, REINE Anzeigelogik für die ConfidaraExpress-Geschäftsnummern:
 //
-//   Kundennummer        CE-K-10030      users.customer_number / customer_snapshot.customerNumber
-//   Auftragsbestätigung CE-AB26-00001   order_confirmations.confirmation_number
+//   Kundennummer        CE-K-01001      users.customer_number / customer_snapshot.customerNumber
+//   Auftragsbestätigung CE-AB26-01001   order_confirmations.confirmation_number
 //                                       (bzw. service_snapshot.orderConfirmationNumber)
-//   Rechnungsnummer     CE-RE26-00001   invoices.invoice_number
+//   Rechnungsnummer     CE-RE26-01001   invoices.invoice_number
 //
-//   Bestellnummer       CE-BS26-00001   shipments.business_order_number — INTERN.
+//   Bestellnummer       CE-BS26-01001   shipments.business_order_number — INTERN.
 //                                       Technisch unverändert vorhanden, aber KEIN
 //                                       kundensichtbarer Geschäftsidentifier mehr.
+//
+// Startwert und Vergabe bestimmt allein das Backend (Canonical 1A „UG-Nummernkreise ab 01001“): ab dem
+// UG-Cutover beginnt jeder Kreis bei 01001, ältere Nummern wie CE-K-10030 oder CE-AB26-00001 bleiben
+// gültig. Diese Datei zeigt Nummern nur an — sie prüft, kürzt und erzeugt keine.
 //
 // Die sichtbare Vorgangsnummer einer Versandbuchung ist die AUFTRAGSBESTÄTIGUNG.
 // Sie ist das einzige CE-Kennzeichen, das gleichzeitig ein Dokument benennt, das der

@@ -1,5 +1,5 @@
-// Persönlicher ConfidaraExpress-Ansprechpartner der Seitenleiste (Betreiberentscheidung 2026-10-30, Canonical 1A,
-// v2.90) — reine Ansichtslogik ohne React, damit sie ohne DOM prüfbar bleibt.
+// Persönlicher ConfidaraExpress-Ansprechpartner als schwebende Karte unten rechts (Betreiberentscheidungen 2026-10-30,
+// Canonical 1A, v2.90 und v2.91) — reine Ansichtslogik ohne React, damit sie ohne DOM prüfbar bleibt.
 //
 // Quelle ist allein das Serverfeld `accountManager` aus GET /kundenbereich (AuthContext faltet es ins Benutzerobjekt):
 // Name, Telefon (Anzeige und tel:-Ziel), E-Mail und die Fotoversion. Das Frontend kennt keine Personen und keine
@@ -7,19 +7,30 @@
 // ConfidaraExpress-Kundenservice, nie eine geratene Person (auch die öffentliche Demo, die null liefert).
 
 export const ANSPRECH_TEXT = Object.freeze({
-  rolle: "Ihr Ansprechpartner",
+  rolle: "Ihr persönlicher Ansprechpartner",
   serviceName: "ConfidaraExpress",
   serviceRolle: "Kundenservice",
+  // Name des Bereichs (Orientierungspunkt) — mit Person bzw. ohne Zuordnung.
+  bereichPerson: "Ihr persönlicher Ansprechpartner",
+  bereichService: "ConfidaraExpress Kundenservice",
   // Vorgelesener Teil der Links: der sichtbare Text bleibt im Namen (WCAG 2.5.3), davor die Handlung.
   anrufen: "Anrufen: ",
   mailen: "E-Mail an ",
   // Schalter des Pulsierens (WCAG 2.2.2): benennt die Handlung, nie einen Zustand der Person.
   pulsAnhalten: "Pulsieren des Punkts anhalten",
   pulsFortsetzen: "Pulsieren des Punkts fortsetzen",
+  // Ein- und Ausklappen (G3): benennt die Handlung.
+  einklappen: "Karte einklappen",
+  oeffnenPerson: "Kontaktdaten anzeigen",
+  oeffnenService: "Karte anzeigen",
 });
 
 // Gerätebezogene Vorliebe, kein Kontodatum: nur „aus“ wird gespeichert, sonst pulsiert der Punkt (Standard).
 export const PULS_SPEICHER_SCHLUESSEL = "ce_ansprechpartner_puls";
+
+// Ebenso gerätebezogen (G3): nur „zu“ wird gespeichert — wo die volle Karte Platz hat, ist sie sonst offen. Es wird
+// nichts über die Person oder das Konto abgelegt.
+export const KARTE_SPEICHER_SCHLUESSEL = "ce_ansprechpartner_karte";
 
 const SCHLUESSEL_RE = /^[a-z]{2,32}$/;
 const EMAIL_RE = /^[^\s@<>"]{1,64}@[^\s@<>"]{1,190}\.[a-z]{2,24}$/i;
@@ -78,4 +89,28 @@ export function pulsMerken(speicher, angehalten) {
     if (angehalten) speicher.setItem(PULS_SPEICHER_SCHLUESSEL, "aus");
     else speicher.removeItem(PULS_SPEICHER_SCHLUESSEL);
   } catch { /* Vorliebe nicht speicherbar: sie gilt dann nur bis zum Neuladen */ }
+}
+
+// Vorliebe „Karte eingeklappt“ (G3) — dasselbe Muster: bei gesperrtem Speicher gilt der Standard (offen).
+export function karteEingeklappt(speicher) {
+  try { return Boolean(speicher) && speicher.getItem(KARTE_SPEICHER_SCHLUESSEL) === "zu"; } catch { return false; }
+}
+
+export function karteMerken(speicher, eingeklappt) {
+  try {
+    if (!speicher) return;
+    if (eingeklappt) speicher.setItem(KARTE_SPEICHER_SCHLUESSEL, "zu");
+    else speicher.removeItem(KARTE_SPEICHER_SCHLUESSEL);
+  } catch { /* Vorliebe nicht speicherbar: sie gilt dann nur bis zum Neuladen */ }
+}
+
+// Form des Docks: „voll“ auf großem Desktop (G3: Fenster ab 80em breit und 50em hoch, bei 16 px Grundschrift
+// 1280 × 800 — darunter, etwa 1366 × 768 oder 1280 × 720, deckte die offene Karte ein Viertel der Fensterhöhe ab; in em,
+// damit eine große Browserschrift wie wenig Platz zählt), sonst „kompakt“. Dieselbe Bedingung steht nirgends sonst.
+export const PLATZ_FUER_KARTE = "(min-width: 80em) and (min-height: 50em)";
+
+// Ist die Karte offen? Mit Platz: offen, außer das Gerät hat „eingeklappt“ gemerkt. Kompakt: nur nach einem Klick,
+// bis zum Schließen (nie gemerkt).
+export function karteOffen({ platz, eingeklappt, kurzGeoeffnet }) {
+  return platz ? !eingeklappt : Boolean(kurzGeoeffnet);
 }

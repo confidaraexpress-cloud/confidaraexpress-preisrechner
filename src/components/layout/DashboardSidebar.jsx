@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { SupportRequestDialog } from "../support/SupportRequestDialog";
@@ -383,10 +384,6 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
                 verschiedenen Zielen führen — der Navigationseintrag zu den
                 BESTEHENDEN Vorgängen, diese Aktion zu einer NEUEN Anfrage.
                 Wortlaut zentral in utils/supportRequest.mjs. */}
-            {/* Der persönliche ConfidaraExpress-Ansprechpartner dieses Kontos (Canonical 1A, v2.90): Person, Foto,
-                Telefon und E-Mail aus /kundenbereich; ohne Zuordnung der allgemeine Kundenservice. */}
-            <AccountManagerCard />
-
             <div className="pp-side-actions">
               {pwa.showNavItem && (
                 <button type="button" className="nitem nitem--utility" onClick={handleInstallEntry}>
@@ -409,6 +406,12 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
       {/* Außerhalb der <aside>: der Dialog ist ein Overlay über der gesamten Seite,
           kein Sidebarinhalt — sonst würde er auf Mobil im Drawer eingesperrt. */}
       {supportOpen && <SupportRequestDialog onClose={() => setSupportOpen(false)} />}
+
+      {/* Der persönliche ConfidaraExpress-Ansprechpartner dieses Kontos (Canonical 1A, v2.90/v2.91): schwebend unten
+          rechts, per Portal an <body> — nicht in der Seitenleiste, deren Schublade mobil ein transform trägt und
+          position: fixed einfangen würde. Beide Shells rendern diese Seitenleiste, die Karte steht also auf jeder
+          Kundenseite genau einmal und am Ende der Tab-Reihenfolge. */}
+      {typeof document !== "undefined" && createPortal(<AccountManagerCard />, document.body)}
     </>
   );
 }

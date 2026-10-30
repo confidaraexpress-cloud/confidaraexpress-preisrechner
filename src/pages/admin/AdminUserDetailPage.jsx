@@ -45,6 +45,7 @@ import { CustomerSupportSection } from "../../components/admin/CustomerSupportSe
 import { SalesPartnerAttributionSection } from "../../components/admin/SalesPartnerAttributionSection";
 import { CustomerBusinessEvidenceSection } from "../../components/admin/CustomerBusinessEvidenceSection";
 import { BillingModeSection } from "../../components/admin/BillingModeSection";
+import { AccountManagerSection } from "../../components/admin/AccountManagerSection";
 // Paket F: der Buchungsrahmen — Werte aus `credit` der Detailantwort, Änderung per PUT mit Bestätigung.
 import { CreditLimitSection } from "../../components/admin/CreditLimitSection";
 import { selectCredit, CREDIT_ADMIN_TEXT } from "../../utils/creditLimitView.mjs";
@@ -678,7 +679,8 @@ export default function AdminUserDetailPage() {
           <div className="adm-card-body">
             <KV items={[
               ["Firmenname", missingField(u, "company_name") || dash(companyOf(u))],
-              ["Ansprechpartner", missingField(u, "name") || dash(nameOf(u))],
+              // „(Kunde)“: die Person der Kundenfirma — der ConfidaraExpress-Ansprechpartner steht in der Karte darunter.
+              ["Ansprechpartner (Kunde)", missingField(u, "name") || dash(nameOf(u))],
               // Auftrag 2 / P8: Kontaktdaten des Ansprechpartners (optional, vom Kunden gepflegt) — getrennt von der
               // Login-E-Mail darunter, an die Anmeldung, Rechnungen und Systemmails gehen.
               ["Kontakt-E-Mail", dash(u.contact_email)],
@@ -698,6 +700,12 @@ export default function AdminUserDetailPage() {
             ]} />
           </div>
         </div>
+
+        {/* 2b) ConfidaraExpress-Betreuung (v2.90) — der persönliche Ansprechpartner des Kunden. Selbstladend; lädt
+             neu, wenn sich der Status ändert (die erste Freischaltung teilt automatisch zu). Nur für Kundenkonten. */}
+        {roleOf(u) !== "admin" && roleOf(u) !== "sales_partner" && (
+          <AccountManagerSection userId={idOf(u)} refreshKey={statusOf(u)} />
+        )}
 
         {/* 3) Kontostatus und Konditionen — Status, Rolle, individueller
              Aufschlag und die zugehörige Statusaktion an einer Stelle. */}

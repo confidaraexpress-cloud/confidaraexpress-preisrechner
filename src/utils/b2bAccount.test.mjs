@@ -102,7 +102,8 @@ test("10 — Kundendetail zeigt fehlende B2B-Felder statt nur eines Gedankenstri
   assert.match(userDetailSrc, /missingField\(u, "name"\)/);
   assert.match(userDetailSrc, /missingField\(u, "company_name"\)/);
   assert.match(userDetailSrc, /\["Firmenname", missingField/, "Feld heißt im Detail Firmenname");
-  assert.match(userDetailSrc, /\["Ansprechpartner", missingField/);
+  // Seit v2.90 mit „(Kunde)“ — getrennt vom ConfidaraExpress-Ansprechpartner der Betreuungskarte.
+  assert.match(userDetailSrc, /\["Ansprechpartner \(Kunde\)", missingField/);
 });
 
 test("11 — Kundenliste warnt vor dem Freischalten und wertet den 409-Guard aus", () => {

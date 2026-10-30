@@ -494,14 +494,15 @@ export default function AuthPage() {
         )}
         </div>
 
-        {/* Der persönliche Ansprechpartner, wie auf dem öffentlichen Preisrechner — alle Angaben aus
-            config/companyProfile.js. */}
+        {/* Der öffentliche Ansprechpartner von ConfidaraExpress, wie auf dem öffentlichen Preisrechner — alle Angaben
+            aus config/companyProfile.js. Seit v2.90 hat jeder Kunde im Kundenbereich seinen eigenen persönlichen
+            Ansprechpartner; diese Seite nennt deshalb niemanden pauschal „Ihren persönlichen“. */}
         <div className="auth-kontakt">
           <span className="auth-kontakt-zeichen" aria-hidden="true">
             {COMPANY_PROFILE.contactPerson.split(/\s+/).map((w) => w[0]).join("")}
           </span>
           <div className="auth-kontakt-text">
-            <p className="auth-kontakt-name">{COMPANY_PROFILE.contactPerson}, Ihr persönlicher Ansprechpartner</p>
+            <p className="auth-kontakt-name">{COMPANY_PROFILE.contactPerson}, Ansprechpartner bei ConfidaraExpress</p>
             <p className="auth-kontakt-wege">
               <a href={`mailto:${COMPANY_PROFILE.email}`}>{COMPANY_PROFILE.email}</a>
               <a href={`tel:${COMPANY_PROFILE.phone}`}>{COMPANY_PROFILE.phone}</a>

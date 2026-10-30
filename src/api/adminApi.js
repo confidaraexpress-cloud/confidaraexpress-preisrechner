@@ -371,6 +371,26 @@ export function setAdminUserCreditLimit(userId, creditLimit) {
   });
 }
 
+// GET /admin/users/:id/account-manager — read-only (v2.90): der persönliche ConfidaraExpress-Ansprechpartner des
+// Kontos — aktuelle Zuordnung samt Zeitpunkt, ob das Konto einen haben kann, die Auswahl und die nächste automatische
+// Zuteilung. Rohe Response zurück.
+export function getAdminUserAccountManager(userId, { signal } = {}) {
+  return apiFetch(`/admin/users/${encodeURIComponent(userId)}/account-manager`, { auth: true, signal });
+}
+
+// PUT /admin/users/:id/account-manager — den Ansprechpartner wechseln. Gesendet werden genau der gewählte Schlüssel
+// und der Stand, den die Seite gezeigt hat (`previousKey`, null = bisher keiner): Hat sich die Zuordnung inzwischen
+// geändert, antwortet der Server 409 ACCOUNT_MANAGER_CHANGED statt zu überschreiben. Ein leerer Schlüssel wird gar
+// nicht erst gesendet; ob er gültig ist, entscheidet der Server.
+export function setAdminUserAccountManager(userId, { accountManagerKey, previousKey }) {
+  if (typeof accountManagerKey !== "string" || accountManagerKey === "") return Promise.reject(new Error("invalid_account_manager"));
+  return apiFetch(`/admin/users/${encodeURIComponent(userId)}/account-manager`, {
+    method: "PUT",
+    auth: true,
+    body: JSON.stringify({ accountManagerKey, previousKey: previousKey ?? null }),
+  });
+}
+
 // POST /admin/consolidated-invoices/run — den Sammelrechnungslauf manuell anstoßen.
 //
 // Bewusst OHNE Parameter: kein Konto, kein Zeitraum, kein Stichtag. Ein Aufruf, über

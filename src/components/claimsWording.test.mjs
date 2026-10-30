@@ -37,7 +37,8 @@ test("2 — die Ersatzaussagen beschreiben vorhandene Funktionen", () => {
   assert.match(offers, /title: "Persönlicher Support",\s+desc: "Per E-Mail und Telefon"/);
   // Die Anmeldung belegt „persönlich“ mit dem Ansprechpartner aus der Unternehmensquelle statt mit einer Kachel.
   assert.ok(!fs.existsSync(path.join(here, "auth/TrustBar.jsx")), "die Vertrauensleiste ist entfallen");
-  assert.match(quelle("../pages/AuthPage.jsx"), /COMPANY_PROFILE\.contactPerson\}, Ihr persönlicher Ansprechpartner/);
+  // Seit v2.90 (persönlicher Ansprechpartner je Kunde im Kundenbereich) nennt die Anmeldung den öffentlichen Kontakt.
+  assert.match(quelle("../pages/AuthPage.jsx"), /COMPANY_PROFILE\.contactPerson\}, Ansprechpartner bei ConfidaraExpress/);
   // Vier Einträge je Leiste bleiben (das Raster ist auf vier ausgelegt).
   assert.equal((offers.match(/\{ title: "/g) || []).length, 4);
 });

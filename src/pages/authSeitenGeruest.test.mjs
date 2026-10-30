@@ -55,7 +55,7 @@ test("2 — Ansprechpartner, E-Mail und Telefon nur aus companyProfile — im Ge
   for (const datei of Object.keys(GERUESTE)) {
     const html = ohneKommentare(lies(datei));
     assert.ok(html.includes(`<span class="auth-kontakt-zeichen" aria-hidden="true">${initialen}</span>`), `${datei}: Initialen`);
-    assert.ok(html.includes(`<p class="auth-kontakt-name">${contactPerson}, Ihr persönlicher Ansprechpartner</p>`), `${datei}: Name`);
+    assert.ok(html.includes(`<p class="auth-kontakt-name">${contactPerson}, Ansprechpartner bei ConfidaraExpress</p>`), `${datei}: Name`);
     assert.ok(html.includes(`<a href="mailto:${email}">${email}</a>`), `${datei}: E-Mail`);
     assert.ok(html.includes(`<a href="tel:${phone}">${phone}</a>`), `${datei}: Telefon`);
     for (const ziel of ["impressum", "datenschutz", "agb", "widerruf"]) {
@@ -65,7 +65,7 @@ test("2 — Ansprechpartner, E-Mail und Telefon nur aus companyProfile — im Ge
     assert.doesNotMatch(html, /preisrechner\.confidaraexpress\.de|Ihre Daten in besten Händen|auth-trust/);
   }
   const seite = lies("src/pages/AuthPage.jsx");
-  assert.match(seite, /<p className="auth-kontakt-name">\{COMPANY_PROFILE\.contactPerson\}, Ihr persönlicher Ansprechpartner<\/p>/);
+  assert.match(seite, /<p className="auth-kontakt-name">\{COMPANY_PROFILE\.contactPerson\}, Ansprechpartner bei ConfidaraExpress<\/p>/);
   assert.doesNotMatch(seite, new RegExp(`${contactPerson}|${email.replace(/\./g, "\\.")}|${phone}`), "AuthPage schreibt Kontaktdaten selbst");
 });
 

@@ -107,62 +107,8 @@
 }
 [data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head) { height: auto; }
 
-/* ── Der persönliche Ansprechpartner in der Seitenleiste (Konzepte A und B) ──
-   Initialen im Ring, Name, Rolle und Telefon. Ruhig auf Navy, ohne Karte und ohne Bewegung. */
-[data-ce-bereich="kunde"] .pp-ansprech {
-  display: flex;
-  align-items: center;
-  gap: var(--ce-space-3);
-  margin: var(--ce-space-5) var(--ce-space-3) var(--ce-space-3);
-  padding: var(--ce-space-3);
-  border: 1px solid var(--ce-sidebar-border);
-  border-radius: var(--ce-pr-radius-panel);
-}
-[data-ce-bereich="kunde"] .pp-ansprech-zeichen {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border: 1px solid var(--ce-pr-on-navy-line);
-  border-radius: var(--ce-radius-full);
-  color: var(--ce-sidebar-text-strong);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-/* Bei großer Schrift ist die Spalte auf 32vw gedeckelt: Passt der Text nicht neben das Zeichen, steht er darunter. */
-[data-ce-bereich="kunde"] .pp-ansprech { flex-wrap: wrap; }
-[data-ce-bereich="kunde"] .pp-ansprech-text { display: grid; flex: 1 1 0; min-width: auto; }
-[data-ce-bereich="kunde"] .pp-ansprech-name {
-  margin: 0;
-  color: var(--ce-sidebar-text-strong);
-  font-size: 0.875rem;
-  font-weight: 600;
-  line-height: 1.4286;
-}
-[data-ce-bereich="kunde"] .pp-ansprech-rolle {
-  margin: 0;
-  color: var(--ce-sidebar-text-muted);
-  font-size: 0.75rem;
-  line-height: 1.5;
-}
-[data-ce-bereich="kunde"] .pp-ansprech-tel {
-  justify-self: start;
-  margin-top: 2px;
-  color: var(--ce-pr-signal-on-navy);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  line-height: 1.5385;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
-  text-decoration: none;
-}
-[data-ce-bereich="kunde"] .pp-ansprech-tel:hover { text-decoration: underline; text-underline-offset: 3px; }
-[data-ce-bereich="kunde"] .pp-ansprech-tel:focus-visible { outline: 2px solid var(--ce-pr-signal-on-navy); outline-offset: 2px; border-radius: var(--ce-radius-xs); }
-@media (pointer: coarse) {
-  [data-ce-bereich="kunde"] .pp-ansprech-tel { display: inline-flex; align-items: center; min-height: var(--ce-size-touch-target); margin-top: -8px; margin-bottom: -10px; }
-}
+/* Der persönliche Ansprechpartner der Seitenleiste steht seit v2.90 (Betreiberentscheidung 2026-10-30) in
+   premium-editorial.css, Abschnitt 25 — Foto, Telefon, E-Mail und grüner Punkt, nur im Kundenbereich. */
 
 /* ── Helle Kopfleiste (E3) ──
    Die bestehende Utility-Zeile des Seitenkopfs (Suche, Glocke, Benutzerchip)

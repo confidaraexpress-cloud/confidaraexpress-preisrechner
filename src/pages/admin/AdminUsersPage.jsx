@@ -11,6 +11,8 @@ import { CustomerRowActions } from "../../components/admin/CustomerRowActions";
 import { selectListTotal, selectListHasMore } from "../../utils/adminOverview.mjs";
 // Paket F: Buchungsrahmen je Zeile (Kurzform) und der Filter „ausgeschöpft / verfügbar".
 import { CREDIT_FILTER_OPTIONS, creditRowText } from "../../utils/creditLimitView.mjs";
+// v2.90: der zugeordnete ConfidaraExpress-Ansprechpartner als leise Zeile unter dem Kunden.
+import { listLine as betreuungsZeile } from "../../utils/adminAccountManagerView.mjs";
 import {
   BLOCK_DIALOG,
   DEFAULT_FILTERS,
@@ -109,6 +111,8 @@ function CustomerCell({ user }) {
         {admin && <span className={`badge ${userRoleMeta(f.role)[0]} adm-cust-role`}>{userRoleMeta(f.role)[1]}</span>}
       </span>
       {f.createdAt && <span className="adm-cust-since">Registriert {fmtDate(f.createdAt)}</span>}
+      {/* Tabelle und Karten zeigen dieselbe Zelle: die Liste behält ihre fünf Spalten. */}
+      {betreuungsZeile(user) && <span className="adm-cust-since adm-cust-betreuung">{betreuungsZeile(user)}</span>}
     </div>
   );
 }

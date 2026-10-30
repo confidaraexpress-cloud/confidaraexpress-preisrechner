@@ -227,8 +227,13 @@ test("E1 die Tabelle trägt genau die acht Spalten", () => {
   ]);
 });
 
-test("E2 der Artikel ist verlinkt — Name führend, SKU darunter", () => {
-  assert.match(code, /navigate\(`\/inventory\/products\/\$\{m\.productId\}`\)\}>\{m\.productName\}/);
+// v2.91: der Link läuft über ProductRef — solange der Artikel existiert ein Link, nach dem Löschen der erhaltene Name
+// mit der Marke „Artikel gelöscht“ (der Server liefert dann productId null), nie ein Link ins Leere.
+test("E2 der Artikel ist verlinkt — Name führend, SKU darunter; gelöscht ohne Link", () => {
+  assert.equal((code.match(/<ProductRef productId=\{m\.productId\} name=\{m\.productName\}/g) || []).length, 2, "Tabelle und Karten");
+  assert.match(shared, /navigate\(`\/inventory\/products\/\$\{productId\}`\)\}>\{name\}<\/button>/);
+  assert.match(shared, /if \(!productId\) \{/);
+  assert.match(shared, /<span className="badge badge--neutral">Artikel gelöscht<\/span>/);
   assert.match(code, /<span className="inv-cell-sku"><Werte>\{m\.sku\}<\/Werte><\/span>/);
 });
 

@@ -3,7 +3,7 @@ import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Werte } from "../../components/ui/Werte";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
-import { InlineError, InventoryDialog } from "../../components/inventory/InventoryShared";
+import { InlineError, InventoryDialog, ProductRef } from "../../components/inventory/InventoryShared";
 import { getOrder, cancelOrder, getOrderShippingPrefill } from "../../api/inventoryApi";
 import {
   orderStatusView, formatUnits, formatKg, inventoryErrorText,
@@ -224,7 +224,7 @@ export default function OrderDetailPage() {
                     <tr key={it.id}>
                       <td>
                         <div className="inv-cell-stack">
-                          <button type="button" className="btn btn-link inv-cell-link inv-cell-title" onClick={() => navigate(`/inventory/products/${it.productId}`)}>{it.name}</button>
+                          <ProductRef productId={it.productId} name={it.name} titleClass="inv-cell-title" linkClass="inv-cell-link" navigate={navigate} />
                           <span className="inv-cell-meta"><span className="inv-cell-sku"><Werte>{it.sku}</Werte></span></span>
                         </div>
                       </td>
@@ -244,7 +244,7 @@ export default function OrderDetailPage() {
             <ul className="inv-detail-cards" aria-label="Auftragspositionen">
               {(data.items || []).map((it) => (
                 <li key={it.id} className="inv-detail-card">
-                  <button type="button" className="btn btn-link inv-card-title" onClick={() => navigate(`/inventory/products/${it.productId}`)}>{it.name}</button>
+                  <ProductRef productId={it.productId} name={it.name} titleClass="inv-card-title" navigate={navigate} />
                   <span className="inv-cell-meta"><span className="inv-cell-sku"><Werte>{it.sku}</Werte></span></span>
                   <dl className="inv-card-facts">
                     <div><dt>Bestellt</dt><dd>{formatUnits(it.quantity)}</dd></div>

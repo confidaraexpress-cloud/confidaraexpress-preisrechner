@@ -721,6 +721,20 @@ function route(methode, pfad, query, optionen) {
     return json({ product: p, balances: [{ warehouseId: "10", warehouseName: lg.warehouses[0].name, ...p.stock, updatedAt: zeitstempel(-2) }],
       movements: lg.bewegungen.filter((b) => b.productId === p.id) });
   }
+  // Artikel löschen (v2.91): die Prüfung beantwortet die Demo aus den Beispieldaten — nach derselben Regel wie der
+  // Server (reserviert vor gesperrt vor Bestand). Das Löschen selbst ist eine Änderung und „In der Demo nicht
+  // verfügbar.“ (oben, wie jede Artikeländerung) — nie ein stiller Erfolg.
+  if ((m = pfad.match(/^\/api\/kunde\/products\/(\d+)\/deletion-check$/))) {
+    const p = lg.produkte.find((x) => x.id === m[1]);
+    if (!p) return json({ error: "Artikel nicht gefunden", code: "PRODUCT_NOT_FOUND" }, 404);
+    const s = p.stock;
+    const state = s.reserved > 0 ? "in_use" : s.blocked > 0 ? "blocked" : s.onHand > 0 ? "stock" : "free";
+    return json({ deletion: {
+      product: { id: p.id, sku: p.sku, name: p.name }, state,
+      warehouses: [{ warehouseId: "10", warehouseName: lg.warehouses[0].name, onHand: s.onHand, reserved: s.reserved, blocked: s.blocked }],
+      onHand: s.onHand, reserved: s.reserved, blocked: s.blocked, orders: [], shipments: 0,
+    } });
+  }
   if (pfad === "/api/kunde/inventory/balances") {
     return json({ balances: lg.produkte.map((p) => ({ productId: p.id, warehouseId: "10", sku: p.sku, productName: p.name, productStatus: p.status,
       warehouseName: lg.warehouses[0].name, onHand: p.stock.onHand, reserved: p.stock.reserved, blocked: p.stock.blocked, available: p.stock.available,

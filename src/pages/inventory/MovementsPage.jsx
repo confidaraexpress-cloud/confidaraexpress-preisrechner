@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Werte } from "../../components/ui/Werte";
 import { EmptyState, NoResultsState, ListSkeleton } from "../../components/ui/StateView";
-import { InlineError, ProductFilterField } from "../../components/inventory/InventoryShared";
+import { InlineError, ProductFilterField, ProductRef } from "../../components/inventory/InventoryShared";
 import { getMovements, getProduct } from "../../api/inventoryApi";
 import { useAllWarehouses } from "../../hooks/useAllWarehouses";
 import { showWarehouseFilter, warehouseOptionLabel } from "../../utils/warehouseView.mjs";
@@ -253,8 +253,8 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
                       <td>
                         {/* Der Name führt, die SKU steht darunter: gesucht wird
                             nach dem Artikel, nicht nach seiner Nummer. */}
-                        <button type="button" className="btn btn-link inv-cell-link inv-cell-title"
-                                onClick={() => navigate(`/inventory/products/${m.productId}`)}>{m.productName}</button>
+                        <ProductRef productId={m.productId} name={m.productName} titleClass="inv-cell-title"
+                                    linkClass="inv-cell-link" navigate={navigate} />
                         <div className="inv-cell-meta"><span className="inv-cell-sku"><Werte>{m.sku}</Werte></span></div>
                       </td>
                       <td>
@@ -291,8 +291,7 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
                     <span className={`badge ${cls}`} title={roh ? `Serverwert: ${roh}` : undefined}>{text}</span>
                     <span className={`inv-card-qty${Number(m.quantity) < 0 ? " inv-num-out" : " inv-num-in"}`}>{signedQuantity(m.quantity)}</span>
                   </div>
-                  <button type="button" className="btn btn-link inv-card-title"
-                          onClick={() => navigate(`/inventory/products/${m.productId}`)}>{m.productName}</button>
+                  <ProductRef productId={m.productId} name={m.productName} titleClass="inv-card-title" navigate={navigate} />
                   <div className="inv-cell-meta"><Werte>{`${m.sku ?? ""} · ${m.warehouseName ?? ""}`}</Werte></div>
                   {grund && <div className="inv-cell-meta inv-mv-reason">{grund}</div>}
                   {notiz && <div className="inv-cell-meta inv-mv-note">Notiz: {notiz}</div>}

@@ -36,6 +36,11 @@ const ERROR_TEXTS = Object.freeze({
   WAREHOUSE_DEFAULT_REQUIRED: "Das Standardlager kann nicht deaktiviert oder abgewählt werden. Legen Sie zuerst ein anderes aktives Lager als Standard fest.",
   // Grundsatz; die Mengen aus `details` ergänzt warehouseNotEmptyText.
   WAREHOUSE_NOT_EMPTY: "Das Lager kann erst deaktiviert werden, wenn es leer ist.",
+  // ── Artikel löschen (v2.91, Backend lib/inventory.js deleteProduct) ──
+  PRODUCT_IN_USE: "Der Artikel ist für offene Aufträge oder eine laufende Sendung reserviert. Versenden oder stornieren Sie diese zuerst.",
+  PRODUCT_STOCK_BLOCKED: "Ein Teil des Bestands ist gesperrt. Heben Sie die Sperre unter „Bestand“ auf, bevor Sie den Artikel löschen.",
+  PRODUCT_HAS_STOCK: "Der Artikel hat noch Bestand. Bestätigen Sie die Ausbuchung, um ihn zu löschen.",
+  PRODUCT_BUSY: "Der Artikel wird gerade von einem anderen Vorgang verwendet. Bitte versuchen Sie es gleich noch einmal.",
   // ── Artikel- und Bestandsimport (Backend lib/inventoryImport.js) ──
   STOCK_CHANGED: "Der Bestand hat sich seit der Vorschau geändert. Bitte prüfen Sie die Zeile erneut.",
   IMPORT_UPLOAD_INVALID: "Die Importdaten konnten nicht übertragen werden. Bitte wählen Sie die Datei erneut.",

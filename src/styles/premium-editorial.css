@@ -1842,3 +1842,45 @@
 @media (pointer: coarse) {
   :root[data-ce-bereich="kunde"] .pp-ansprech-link { min-height: var(--ce-size-touch-target); }
 }
+
+/* ═══════════ 26 · ARTIKEL LÖSCHEN ═════════════════════════════════════════════════════════
+   Betreiberentscheidungen 2026-10-30 (Canonical v2.91 G1/G2): „Löschen“ steht als dritte Zeilenaktion nach
+   „Bearbeiten“ und „Versenden“ — eine leise Textaktion im Fehlerton, nie betont neben der hervorgehobenen Aktion. Der
+   Dialog (ProductDeleteDialog.jsx) nennt Mengen je Lager bzw. reservierende Aufträge als ruhige Liste zwischen Linien.
+   In der Historie steht ein gelöschter Artikel mit seinem erhaltenen Namen und der Marke „Artikel gelöscht“. */
+:root[data-ce-bereich="kunde"] .btn.btn-ghost.inv-aktion-loeschen { color: var(--ce-color-status-error-fg); }
+@media (hover: hover) and (pointer: fine) {
+  :root[data-ce-bereich="kunde"] .btn.btn-ghost.inv-aktion-loeschen:hover:not(:disabled) {
+    background: var(--ce-color-status-error-surface);
+    color: var(--ce-color-status-error-fg);
+  }
+}
+/* Die drei Zeilenaktionen der Artikeltabelle stehen nebeneinander, wo der Inhaltsrahmen sie trägt (Mindestbreite der
+   Tabelle mit langen Inhalten gemessen 61.25rem, Schwelle 63rem); darunter (Tabelle ab 58rem) untereinander, in
+   derselben Reihenfolge wie bei den Sendungen — nie „2 + 1“ und nie quer scrollend. */
+:root[data-ce-bereich="kunde"] .inv-list-table--artikel .inv-row-actions { flex-wrap: nowrap; }
+@container ce-seite (width < 63rem) {
+  :root[data-ce-bereich="kunde"] .inv-list-table--artikel .inv-row-actions { flex-direction: column; align-items: flex-end; row-gap: var(--ce-space-1); }
+}
+:root[data-ce-bereich="kunde"] .inv-loeschen-liste {
+  margin: 0 0 var(--ce-space-4);
+  padding: 0;
+  border-top: 1px solid var(--ce-pr-hairline);
+  list-style: none;
+}
+:root[data-ce-bereich="kunde"] .inv-loeschen-liste > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ce-space-1) var(--ce-space-3);
+  padding: var(--ce-space-2) 0;
+  border-bottom: 1px solid var(--ce-pr-hairline);
+}
+:root[data-ce-bereich="kunde"] .inv-loeschen-check { margin-bottom: var(--ce-space-3); }
+:root[data-ce-bereich="kunde"] .inv-artikel-geloescht {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ce-space-1) var(--ce-space-2);
+}

@@ -1666,3 +1666,179 @@
   :root[data-ce-bereich="kunde"] .ce-paket-svg { justify-self: start; max-width: 10rem; }
   :root[data-ce-bereich="kunde"] .booking-blatt > .booking-blatt-fuss > .btn { min-width: auto; }
 }
+
+/* ═══════════ 25 · PERSÖNLICHER ANSPRECHPARTNER DER SEITENLEISTE ════════════
+   Betreiberentscheidung 2026-10-30 (Canonical 1A, v2.90): je Kunde die zugeordnete Person — rundes Foto, Name,
+   „Ihr Ansprechpartner“ mit grünem Punkt, darunter Telefon und E-Mail; ohne Zuordnung der Kundenservice mit dem
+   Signet (AccountManagerCard.jsx). Die Karte nutzt die volle Spaltenbreite, damit die E-Mail-Adresse bei 16 px
+   Grundschrift in eine Zeile passt (gemessen: 172–174 px bei 12 px, Innenbreite 190 px); passt sie nicht (große
+   Schrift), bricht sie vor dem „@“ (<wbr>), notfalls an beliebiger Stelle — die Telefonnummer bricht nie.
+   Der Punkt pulsiert ruhig und dauerhaft (nur der Lichthof, Ausnahme zu E11 für genau diesen Punkt); er selbst ist
+   der Schalter zum Anhalten (WCAG 2.2.2). Bei reduzierter Bewegung steht er still, und es gibt keinen Schalter. */
+/* Abstände knapp gehalten: bei 1440 × 900 mit geschlossenen Gruppen bleibt die Spalte samt Fußzeile ohne Scrollen. */
+:root[data-ce-bereich="kunde"] .pp-ansprech {
+  display: grid;
+  gap: var(--ce-space-2);
+  margin: var(--ce-space-4) 0 var(--ce-space-3);
+  padding: var(--ce-space-3);
+  border: 1px solid var(--ce-sidebar-border);
+  border-radius: var(--ce-pr-radius-panel);
+  font-style: normal;
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ce-space-3);
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-bild {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--ce-pr-ed-ansprech-bild);
+  height: var(--ce-pr-ed-ansprech-bild);
+  overflow: hidden;
+  border: 1px solid var(--ce-pr-on-navy-line);
+  border-radius: var(--ce-radius-full);
+  color: var(--ce-sidebar-text-strong);
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-foto {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-initialen {
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-bild--marke .ce-brandmark-img {
+  display: block;
+  width: 1.625rem;
+  height: auto;
+}
+/* Der Textblock behält als Mindestbreite sein längstes Wort: passt es nicht neben das Foto (große Schrift,
+   „ConfidaraExpress“), steht der Text darunter, statt über die Karte zu ragen. */
+:root[data-ce-bereich="kunde"] .pp-ansprech-text {
+  flex: 1 1 7rem;
+  min-width: auto;
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-name {
+  margin: 0;
+  color: var(--ce-sidebar-text-strong);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.3333;
+  overflow-wrap: break-word;
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-rolle {
+  display: flex;
+  align-items: center;
+  margin: 2px 0 0;
+  color: var(--ce-sidebar-text-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+/* Der Schalter ist 24 px groß (WCAG 2.5.8), steht aber mit negativem Rand in der 18-px-Zeile: Der Punkt liegt bündig
+   unter dem Namen, der Text 7 px dahinter. Mit grobem Zeiger wächst nur die Trefferfläche auf 44 px. */
+:root[data-ce-bereich="kunde"] .pp-ansprech-puls {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: -0.1875rem -0.0625rem -0.1875rem -0.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ce-radius-full);
+  background: none;
+  cursor: pointer;
+}
+/* Der Fokusring liegt innen: als Kreis um den Punkt, ohne den Text daneben zu überdecken. */
+:root[data-ce-bereich="kunde"] .pp-ansprech-puls:focus-visible {
+  outline: 2px solid var(--ce-pr-signal-on-navy);
+  outline-offset: -3px;
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-rolle > .pp-ansprech-punkt { margin-right: 0.4375rem; }
+:root[data-ce-bereich="kunde"] .pp-ansprech-punkt {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-pr-ed-ansprech-punkt);
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-punkt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--ce-pr-ed-ansprech-punkt);
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-ce-bereich="kunde"] .pp-ansprech-puls[data-puls="an"] .pp-ansprech-punkt::after {
+    animation: ce-ansprech-puls var(--ce-pr-ed-ansprech-puls-dauer) var(--ce-pr-ed-ansprech-puls-kurve) infinite;
+  }
+}
+@keyframes ce-ansprech-puls {
+  0% { transform: scale(1); opacity: 0.55; }
+  64% { transform: scale(2.75); opacity: 0; }
+  100% { transform: scale(2.75); opacity: 0; }
+}
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .pp-ansprech-puls:hover .pp-ansprech-punkt {
+    box-shadow: 0 0 0 0.1875rem var(--ce-pr-ed-ansprech-punkt-ring);
+  }
+}
+@media (pointer: coarse) {
+  :root[data-ce-bereich="kunde"] .pp-ansprech-puls::before {
+    content: "";
+    position: absolute;
+    inset: -0.625rem;
+  }
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-wege {
+  display: grid;
+  justify-items: start;
+  gap: 0;
+  margin: 0;
+  padding-top: var(--ce-space-2);
+  border-top: 1px solid var(--ce-sidebar-border);
+}
+/* Jede Zeile ist mindestens 24 px hoch (WCAG 2.5.8): zwei Links direkt übereinander lägen sonst zu dicht. */
+:root[data-ce-bereich="kunde"] .pp-ansprech-link {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 1.5rem;
+  border-radius: var(--ce-radius-xs);
+  color: var(--ce-pr-signal-on-navy);
+  font-weight: 600;
+  text-decoration: none;
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-tel {
+  font-size: 0.8125rem;
+  line-height: 1.5385;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-mail {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+}
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .pp-ansprech-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-link:focus-visible {
+  outline: 2px solid var(--ce-pr-signal-on-navy);
+  outline-offset: 2px;
+}
+@media (pointer: coarse) {
+  :root[data-ce-bereich="kunde"] .pp-ansprech-link { min-height: var(--ce-size-touch-target); }
+}

@@ -82,6 +82,9 @@ const ACTION_LABELS = {
   "user.billing_mode_changed": "Abrechnungsart geändert",
   // Paket E/F (2026-10-23): PUT /admin/users/:id/credit-limit — Vorher/Nachher stehen in den Details.
   "user.credit_limit_change": "Buchungsrahmen geändert",
+  // v2.90: PUT /admin/users/:id/account-manager — vorher/nachher als Schlüssel (miguel/patrick) in den Details; die
+  // automatische Erstzuteilung steht beim Eintrag „Kundenstatus geändert“ (new_account_manager, automatic).
+  "user.account_manager_change": "ConfidaraExpress-Ansprechpartner geändert",
   "user.price_markup_confirm": "Preisaufschlag bestätigt",
   "admin.cancellation.view": "Stornierungsanfrage eingesehen",
   "admin.cancellation.status_change": "Stornierungsanfrage: Status geändert",

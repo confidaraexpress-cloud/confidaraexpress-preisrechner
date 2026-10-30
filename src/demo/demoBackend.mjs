@@ -503,8 +503,9 @@ function route(methode, pfad, query, optionen) {
   const body = methode === "GET" ? {} : koerper(optionen);
   let m;
 
-  // Konto und Anmeldung
-  if (pfad === "/kundenbereich") return json({ user: st.konto, bookingProfile: { complete: true, missingFields: [] }, companyLogo: null, pendingEmailChange: null });
+  // Konto und Anmeldung. `accountManager: null` (v2.90): Die öffentliche Demo zeigt den allgemeinen Kundenservice —
+  // keine echte Person, kein Foto, keine persönlichen Kontaktdaten.
+  if (pfad === "/kundenbereich") return json({ user: st.konto, bookingProfile: { complete: true, missingFields: [] }, companyLogo: null, pendingEmailChange: null, accountManager: null });
   if (pfad === "/kunde/profil") {
     if (methode === "GET") return json({ user: st.konto });
     Object.assign(st.konto, Object.fromEntries(Object.entries(body).filter(([k]) => typeof k === "string")));

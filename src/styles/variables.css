@@ -783,4 +783,12 @@
      auslaufen. Spitze rund 28° je Bild bei 60 Hz — unter der Schwelle, ab der ein Plus rückwärts zu laufen scheint. */
   --ce-pr-ed-plus-dauer: 1150ms;
   --ce-pr-ed-plus-kurve: cubic-bezier(0.4, 0, 0.2, 1);
+  /* Persönlicher Ansprechpartner der Seitenleiste (Betreiberentscheidung 2026-10-30, v2.90): Foto 48 px und der grüne
+     Punkt — dasselbe Grün wie die Kennzahlmarke „Zugestellt“ auf Navy. Der Lichthof dehnt sich ruhig aus und verblasst,
+     danach eine Pause: ein Atemzug von 2,8 s, nie hektisch. Schmuck ohne Aussage über Erreichbarkeit. */
+  --ce-pr-ed-ansprech-bild: 3rem;
+  --ce-pr-ed-ansprech-punkt: var(--ce-pr-ed-mark-delivered);
+  --ce-pr-ed-ansprech-punkt-ring: rgba(92, 212, 154, 0.32);
+  --ce-pr-ed-ansprech-puls-dauer: 2800ms;
+  --ce-pr-ed-ansprech-puls-kurve: cubic-bezier(0.22, 0.61, 0.36, 1);
 }

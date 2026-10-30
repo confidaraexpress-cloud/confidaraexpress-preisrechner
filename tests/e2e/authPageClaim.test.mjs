@@ -57,7 +57,10 @@ for (const [name, viewport, touch] of [["390 px", { width: 390, height: 844 }, t
     const seite = norm(await page.locator("body").innerText());
     assert.doesNotMatch(seite, /Europa verbinden|Vergleichen\. Buchen\.|Wir verbinden Welten|Sie erreichen mehr|Exzellenz|Schnell\.|in besten Händen/,
       "ein alter Claim ist noch sichtbar");
-    assert.match(seite, /Miguel Vance, Ihr persönlicher Ansprechpartner/, "der Ansprechpartner fehlt");
+    // Seit v2.90 hat jeder Kunde seinen eigenen Ansprechpartner im Kundenbereich: die Anmeldung nennt den öffentlichen
+    // Kontakt, nie pauschal „Ihren persönlichen“.
+    assert.match(seite, /Miguel Vance, Ansprechpartner bei ConfidaraExpress/, "der Ansprechpartner fehlt");
+    assert.doesNotMatch(seite, /Ihr persönlicher Ansprechpartner/, "die Anmeldung nennt wieder pauschal einen persönlichen Ansprechpartner");
     assert.equal(await page.getByRole("link", { name: /Preisrechner/ }).count(), 0, "auf der Anmeldung gibt es keinen Preisrechner-Knopf");
 
     const mass = await page.evaluate(() => {

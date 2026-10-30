@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { API, apiFetch, setAuthErrorHandler, token as getToken } from "../api/client";
 import { clearShippingFlowStorage } from "../utils/shippingFlowStorage";
 import { clearCompanyLogoCache } from "../api/companyLogoApi";
+import { clearAccountManagerPhotoCache } from "../api/accountManagerApi";
 import { AuthSeite } from "../pages/authSeite";
 
 // Die Anmeldeseite vorladen, bevor die Anwendung dorthin wechselt (Abmelden, abgelaufene Sitzung): so rendert sie
@@ -34,6 +35,10 @@ const AuthContext = createContext(null);
 // F1: die Buchungsbereitschaft des Kontos (`bookingProfile`: { complete, missingFields })
 // kommt ebenfalls TOP-LEVEL und wird gleich gefaltet. Fehlt sie (älteres Backend), steht
 // hier null — dann erscheint kein Hinweis; entschieden wird ohnehin beim Buchen.
+// v2.90: der persönliche ConfidaraExpress-Ansprechpartner (`accountManager`: Name, Telefon, E-Mail, Fotoversion)
+// kommt ebenfalls TOP-LEVEL und wird gleich gefaltet. Fehlt er (keine Zuordnung, Admin, Demo, älteres Backend),
+// steht hier null — die Seitenleiste zeigt dann den allgemeinen Kundenservice. Ein Adminwechsel wird mit dem
+// nächsten Abruf von /kundenbereich sichtbar (Start, Anmeldung, Neuladen, refreshUser).
 function userFromKundenbereich(d) {
   const u = (d && d.user) || {};
   const partner = d?.salesPartner ?? u.salesPartner ?? null;
@@ -41,7 +46,8 @@ function userFromKundenbereich(d) {
   const logo = d?.companyLogo ?? u.companyLogo ?? null;
   const bookingProfile = d?.bookingProfile ?? u.bookingProfile ?? null;
   const billing = d?.billingCapabilities ?? u.billingCapabilities ?? null;
-  return { ...u, salesPartner: partner, pendingEmailChange: pending, companyLogo: logo, bookingProfile, billingCapabilities: billing };
+  const accountManager = d?.accountManager ?? u.accountManager ?? null;
+  return { ...u, accountManager, salesPartner: partner, pendingEmailChange: pending, companyLogo: logo, bookingProfile, billingCapabilities: billing };
 }
 
 export function AuthProvider({ children }) {
@@ -67,6 +73,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem("ce_token");
       clearShippingFlowStorage();   // dieselbe Bereinigung wie beim Abmelden
       clearCompanyLogoCache();      // Object-URL des Firmenlogos freigeben
+      clearAccountManagerPhotoCache(); // … und des Fotos des Ansprechpartners
       setAuthed(false);
       setUser(null);
       setSessionExpired(true);
@@ -145,8 +152,9 @@ export function AuthProvider({ children }) {
     clearShippingFlowStorage();
     // Das Firmenlogo liegt als Object-URL im Arbeitsspeicher des Tabs. Es
     // überlebte sonst den Kontowechsel im selben Tab — dieselbe Bereinigung wie
-    // beim zentralen 401/403-Handler oben.
+    // beim zentralen 401/403-Handler oben. Ebenso das Foto des Ansprechpartners.
     clearCompanyLogoCache();
+    clearAccountManagerPhotoCache();
     setAuthed(false);
     setUser(null);
     setSessionExpired(false);

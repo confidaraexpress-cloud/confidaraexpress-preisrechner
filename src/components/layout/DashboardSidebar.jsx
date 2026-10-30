@@ -4,8 +4,8 @@ import { useAuth } from "../../context/AuthContext";
 import { SupportRequestDialog } from "../support/SupportRequestDialog";
 import { SUPPORT_CARD } from "../../utils/supportRequest.mjs";
 import { BrandLogo } from "../ui/BrandLogo";
-import { COMPANY_PROFILE } from "../../config/companyProfile";
 import { Icon, ICON_SIZE } from "../ui/Icon";
+import { AccountManagerCard } from "./AccountManagerCard";
 import { usePwaInstall } from "../../hooks/usePwaInstall";
 import { useNavigationDrawer } from "../../hooks/useNavigationDrawer";
 import {
@@ -383,18 +383,9 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
                 verschiedenen Zielen führen — der Navigationseintrag zu den
                 BESTEHENDEN Vorgängen, diese Aktion zu einer NEUEN Anfrage.
                 Wortlaut zentral in utils/supportRequest.mjs. */}
-            {/* Der persönliche Ansprechpartner (Konzepte A und B, Premium-Redesign 2026-10-27): Name und Telefon
-                aus config/companyProfile.js — derselbe Kontakt wie auf Anmeldung und Preisrechner. */}
-            <div className="pp-ansprech">
-              <span className="pp-ansprech-zeichen" aria-hidden="true">
-                {COMPANY_PROFILE.contactPerson.split(/\s+/).map((w) => w[0]).join("")}
-              </span>
-              <div className="pp-ansprech-text">
-                <p className="pp-ansprech-name">{COMPANY_PROFILE.contactPerson}</p>
-                <p className="pp-ansprech-rolle">Ihr Ansprechpartner</p>
-                <a className="pp-ansprech-tel" href={`tel:${COMPANY_PROFILE.phone}`}>{COMPANY_PROFILE.phone}</a>
-              </div>
-            </div>
+            {/* Der persönliche ConfidaraExpress-Ansprechpartner dieses Kontos (Canonical 1A, v2.90): Person, Foto,
+                Telefon und E-Mail aus /kundenbereich; ohne Zuordnung der allgemeine Kundenservice. */}
+            <AccountManagerCard />
 
             <div className="pp-side-actions">
               {pwa.showNavItem && (

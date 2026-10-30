@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import {
   ANSPRECH_TEXT, PULS_SPEICHER_SCHLUESSEL, ansprechpartnerAnsicht, emailTeile, initialen, pulsAngehalten, pulsMerken,
+  KARTE_SPEICHER_SCHLUESSEL, PLATZ_FUER_KARTE, karteEingeklappt, karteMerken, karteOffen,
 } from "./accountManagerView.mjs";
 
 const SRC = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -21,7 +22,7 @@ const PATRICK = {
 test("1 — Person: Anzeige nur aus dem Serverfeld, Links fertig, Initialen, Fotoversion", () => {
   const a = ansprechpartnerAnsicht(PATRICK);
   assert.equal(a.art, "person");
-  assert.deepEqual([a.name, a.rolle, a.initialen, a.fotoVersion], ["Patrick Werner", "Ihr Ansprechpartner", "PW", "f9f2e8726f13"]);
+  assert.deepEqual([a.name, a.rolle, a.initialen, a.fotoVersion], ["Patrick Werner", "Ihr persönlicher Ansprechpartner", "PW", "f9f2e8726f13"]);
   assert.deepEqual(a.telefon, { anzeige: "0175 4167701", href: "tel:+491754167701" });
   assert.deepEqual(a.email, { adresse: "p.werner@confidaraexpress.de", href: "mailto:p.werner@confidaraexpress.de", lokal: "p.werner", domain: "@confidaraexpress.de" });
   assert.equal(ansprechpartnerAnsicht({ ...PATRICK, photo: null }).fotoVersion, null, "ohne Foto Initialen");
@@ -99,13 +100,20 @@ test("8 — Karte: Punkt Schmuck, Schalter benennt die Handlung, reduzierte Bewe
   assert.match(karte, /<button type="button" className="pp-ansprech-puls" data-puls=\{angehalten \? "aus" : "an"\}\s+aria-label=\{name\} title=\{name\} onClick=\{umschalten\}>/);
   assert.match(karte, /useSyncExternalStore\(abonniereBewegung, bewegungReduziert, \(\) => false\)/);
   assert.match(karte, /const BEWEGUNG_REDUZIERT = "\(prefers-reduced-motion: reduce\)";/);
-  assert.match(karte, /<img className="pp-ansprech-foto" src=\{fotoUrl\} alt="" width="48" height="48" decoding="async"/);
+  // v2.91: Foto 80 px in der offenen Karte, 56 px als eingeklapptes rundes Foto — dieselbe Bildkomponente.
+  assert.match(karte, /<img className="pp-ansprech-foto" src=\{fotoUrl\} alt="" width=\{groesse\} height=\{groesse\} decoding="async"/);
+  assert.match(karte, /klasse="pp-ansprech-bild--karte" groesse=\{80\}/);
+  assert.match(karte, /klasse="pp-ansprech-bild--foto" groesse=\{56\}/);
   assert.match(karte, /<span className="pp-ansprech-initialen" aria-hidden="true">\{ansicht\.initialen\}<\/span>/);
   // Sichtbarer Text im zugänglichen Namen (WCAG 2.5.3), die Handlung davor nur vorgelesen; Umbruch vor dem @.
   assert.match(karte, /<span className="sr-only">\{ANSPRECH_TEXT\.anrufen\}<\/span>\{ansicht\.telefon\.anzeige\}/);
   assert.match(karte, /<span className="sr-only">\{ANSPRECH_TEXT\.mailen\}<\/span>\{ansicht\.email\.lokal\}<wbr \/>\{ansicht\.email\.domain\}/);
-  assert.match(karte, /<address className="pp-ansprech pp-ansprech--person"/);
+  assert.match(karte, /const KartenTag = person \? "address" : "div";/);
+  assert.match(karte, /className=\{`pp-ansprech pp-ansprech--\$\{person \? "person" : "service"\}`\}/);
   assert.match(karte, /<BrandLogo variant="signet" tone="reverse" alt="" \/>/);
+  // G5: der Punkt nur in der offenen Karte — das eingeklappte Foto trägt keinen.
+  const knopf = karte.slice(karte.indexOf('className="pp-ansprech-foto-knopf"'));
+  assert.ok(knopf.length > 0 && !/Punkt|pp-ansprech-punkt/.test(knopf.slice(0, knopf.indexOf("</button>"))), "kein Punkt am eingeklappten Foto");
 });
 
 test("9 — Stile: nur Kundenbereich, Puls nur ohne reduzierte Bewegung und nur im Zustand „an“, Telefon bricht nie", () => {
@@ -113,7 +121,10 @@ test("9 — Stile: nur Kundenbereich, Puls nur ohne reduzierte Bewegung und nur 
   const abschnitt = css.slice(css.indexOf(':root[data-ce-bereich="kunde"] .pp-ansprech {'));
   assert.ok(abschnitt.length > 500, "Abschnitt 25 fehlt");
   assert.match(abschnitt, /@media \(prefers-reduced-motion: no-preference\) \{\s*:root\[data-ce-bereich="kunde"\] \.pp-ansprech-puls\[data-puls="an"\] \.pp-ansprech-punkt::after \{\s*animation: ce-ansprech-puls var\(--ce-pr-ed-ansprech-puls-dauer\) var\(--ce-pr-ed-ansprech-puls-kurve\) infinite;/);
-  assert.equal((abschnitt.match(/animation\s*:/g) || []).length, 1, "nur der Lichthof bewegt sich");
+  // Ohne Handlung bewegt sich nur der Lichthof. Die zweite Bewegung ist die Antwort auf das Öffnen (v2.91): nur nach
+  // einer Handlung (data-bewegung) und nie bei reduzierter Bewegung.
+  assert.equal((abschnitt.match(/animation\s*:/g) || []).length, 2, "Lichthof und Öffnen — sonst nichts");
+  assert.match(abschnitt, /@media \(prefers-reduced-motion: no-preference\) \{\s*:root\[data-ce-bereich="kunde"\] \.pp-ansprech-dock\[data-bewegung="ja"\] \.pp-ansprech:not\(\[hidden\]\) \{\s*animation: ce-ansprech-auf 180ms/);
   assert.match(abschnitt, /@keyframes ce-ansprech-puls \{\s*0% \{ transform: scale\(1\); opacity: 0\.55; \}\s*64% \{ transform: scale\(2\.75\); opacity: 0; \}\s*100% \{ transform: scale\(2\.75\); opacity: 0; \}\s*\}/);
   assert.match(abschnitt, /\.pp-ansprech-tel \{[^}]*white-space: nowrap;/);
   assert.match(abschnitt, /\.pp-ansprech-puls \{[^}]*width: 1\.5rem;[^}]*height: 1\.5rem;/, "Schalter mindestens 24 px");
@@ -123,4 +134,86 @@ test("9 — Stile: nur Kundenbereich, Puls nur ohne reduzierte Bewegung und nur 
   assert.match(tokens, /--ce-pr-ed-ansprech-puls-dauer: 2800ms;/);
   // Die alten Regeln der festen Karte sind entfernt — keine zweite Fassung in der Bereichsebene.
   assert.doesNotMatch(readFileSync(path.join(SRC, "styles", "premium-redesign.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, ""), /\.pp-ansprech/);
+});
+
+// ── Schwebende Karte (v2.91, G3–G5) ─────────────────────────────────────────────────────────────────────────────
+
+test("10 — Vorliebe „eingeklappt“: nur „zu“ wird gemerkt, gesperrter Speicher gilt als offen; Form aus dem Platz", () => {
+  const speicher = new Map();
+  const s = { getItem: (k) => (speicher.has(k) ? speicher.get(k) : null), setItem: (k, v) => speicher.set(k, v), removeItem: (k) => speicher.delete(k) };
+  assert.equal(KARTE_SPEICHER_SCHLUESSEL, "ce_ansprechpartner_karte");
+  assert.equal(karteEingeklappt(s), false);
+  karteMerken(s, true);
+  assert.equal(speicher.get(KARTE_SPEICHER_SCHLUESSEL), "zu");
+  assert.equal(karteEingeklappt(s), true);
+  karteMerken(s, false);
+  assert.equal(speicher.has(KARTE_SPEICHER_SCHLUESSEL), false, "offen ist der Standard und wird nicht gespeichert");
+  const wirft = { getItem: () => { throw new Error("gesperrt"); }, setItem: () => { throw new Error("gesperrt"); }, removeItem: () => {} };
+  assert.equal(karteEingeklappt(wirft), false);
+  assert.doesNotThrow(() => karteMerken(wirft, true));
+  assert.equal(karteEingeklappt(null), false);
+  // Mit Platz offen außer gemerkt; kompakt nur nach einem Klick (nie gemerkt).
+  assert.equal(karteOffen({ platz: true, eingeklappt: false, kurzGeoeffnet: false }), true);
+  assert.equal(karteOffen({ platz: true, eingeklappt: true, kurzGeoeffnet: true }), false);
+  assert.equal(karteOffen({ platz: false, eingeklappt: false, kurzGeoeffnet: false }), false);
+  assert.equal(karteOffen({ platz: false, eingeklappt: true, kurzGeoeffnet: true }), true);
+  // Großer Desktop ab 1280 × 800 (1366 × 768 und 1280 × 720 starten kompakt); in em: große Browserschrift zählt wie
+  // wenig Platz.
+  assert.equal(PLATZ_FUER_KARTE, "(min-width: 80em) and (min-height: 50em)");
+  assert.equal(ANSPRECH_TEXT.rolle, "Ihr persönlicher Ansprechpartner");
+});
+
+test("11 — Einbindung: genau einmal per Portal aus der Seitenleiste, nicht in ihrem Scrollbereich", () => {
+  const seite = ohneKommentare(lies("components/layout/DashboardSidebar.jsx"));
+  assert.equal((seite.match(/<AccountManagerCard \/>/g) || []).length, 1, "genau eine Einbindung");
+  assert.match(seite, /createPortal\(<AccountManagerCard \/>, document\.body\)/);
+  const aside = seite.slice(seite.indexOf("<aside"), seite.indexOf("</aside>"));
+  assert.ok(aside.length > 0 && !aside.includes("AccountManagerCard"), "nicht in der <aside> (transform fängt position: fixed ein)");
+  assert.doesNotMatch(seite, /useEffect/, "die Seitenleiste bleibt ohne Effekt");
+  for (const shell of ["pages/DashboardPage.jsx", "components/layout/DashboardLayout.jsx"]) {
+    assert.doesNotMatch(lies(shell), /AccountManagerCard/, `${shell}: keine zweite Einbindung`);
+  }
+});
+
+test("12 — Dock: Formen, Fokus folgt der Handlung, Escape und Klick daneben nur kompakt, belegte Höhe am Wurzelelement", () => {
+  const karte = ohneKommentare(lies("components/layout/AccountManagerCard.jsx"));
+  assert.match(karte, /<aside ref=\{dockRef\} className="pp-ansprech-dock" aria-label=\{bereich\}/);
+  assert.match(karte, /data-form=\{platz \? "voll" : "kompakt"\}/);
+  assert.match(karte, /hidden=\{!offen\}/, "Karte nur offen sichtbar");
+  assert.match(karte, /hidden=\{platz && offen\}/, "Foto neben der offenen vollen Karte ausgeblendet");
+  assert.match(karte, /aria-expanded=\{offen \? "true" : "false"\} aria-controls=\{KARTE_ID\}/);
+  assert.match(karte, /if \(e\.key === "Escape" && !platz && kurzGeoeffnet\)/);
+  assert.match(karte, /if \(platz \|\| !kurzGeoeffnet\) return undefined;/);
+  assert.match(karte, /wurzel\.style\.setProperty\("--ce-ansprech-hoehe"/);
+  assert.match(karte, /wurzel\.style\.removeProperty\("--ce-ansprech-hoehe"\)/);
+  assert.match(karte, /if \(ziel === "karte" && einklappenRef\.current\) einklappenRef\.current\.focus\(\);/);
+  assert.match(karte, /if \(ziel === "foto" && fotoRef\.current\) fotoRef\.current\.focus\(\);/);
+  // Der Name des eingeklappten Fotos kommt aus dem Inhalt — kein aria-label neben sichtbaren Initialen.
+  const knopf = karte.slice(karte.indexOf('className="pp-ansprech-foto-knopf"'), karte.indexOf("</button>", karte.indexOf('className="pp-ansprech-foto-knopf"')));
+  assert.doesNotMatch(knopf, /aria-label/);
+  assert.match(knopf, /<span className="sr-only">/);
+  assert.doesNotMatch(karte, /getDerivedStateFromError|componentDidCatch/, "keine zweite Fehlergrenze (errorBoundaryCoverage 1)");
+});
+
+test("13 — Stile: fest unten rechts, Ebene unter Popovern, Freiraum und scroll-padding, Demo-Leiste, Druck, Kontrast", () => {
+  const css = readFileSync(path.join(SRC, "styles", "premium-editorial.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  const dock = css.match(/:root\[data-ce-bereich="kunde"\] \.pp-ansprech-dock \{([^}]*)\}/);
+  assert.ok(dock, "Dockregel fehlt");
+  assert.match(dock[1], /position: fixed;/);
+  assert.match(dock[1], /z-index: var\(--ce-z-raised\);/, "unter jedem Popover (20–60), Menü (200), Schublade (198) und Dialog (600)");
+  assert.match(dock[1], /right: var\(--ce-ansprech-rand\);/);
+  assert.match(dock[1], /bottom: calc\(var\(--ce-ansprech-sockel\) \+ var\(--ce-ansprech-luecke\)\);/);
+  assert.match(css, /:root\[data-ce-bereich="kunde"\]:has\(\.pp-ansprech-dock\) \{\s*scroll-padding-bottom: calc\(var\(--ce-ansprech-sockel\) \+ var\(--ce-ansprech-luecke\) \+ var\(--ce-ansprech-hoehe, 0px\)/);
+  assert.match(css, /:root\[data-ce-bereich="kunde"\]:has\(\.pp-ansprech-dock\) \.main-content \{\s*padding-bottom: calc\(var\(--ce-ansprech-hoehe, 0px\)/);
+  assert.match(css, /:root\[data-ce-bereich="kunde"\]\[data-ce-demo\] \{\s*--ce-ansprech-sockel: calc\(var\(--demo-leiste-hoehe, 5rem\)/, "über der Demo-Leiste");
+  assert.match(css, /\.pp-ansprech-dock \[hidden\] \{ display: none; \}/);
+  assert.match(css, /@media print \{\s*:root\[data-ce-bereich="kunde"\] \.pp-ansprech-dock \{ display: none; \}/);
+  assert.match(css, /@media \(forced-colors: active\)/);
+  assert.match(css, /env\(safe-area-inset-bottom, 0px\)/);
+  const tokens = readFileSync(path.join(SRC, "styles", "variables.css"), "utf8");
+  assert.match(tokens, /--ce-pr-ed-ansprech-breite: 24rem;/);
+  // Kompakt steht die Karte über dem runden Foto — ohne zweites Foto in der Karte.
+  assert.match(css, /\.pp-ansprech-dock\[data-form="kompakt"\] \.pp-ansprech-bild--karte \{ display: none; \}/);
+  assert.match(tokens, /--ce-pr-ed-ansprech-bild: 5rem;/);
+  assert.match(tokens, /--ce-pr-ed-ansprech-foto: 3\.5rem;/);
 });

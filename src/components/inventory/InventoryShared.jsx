@@ -109,6 +109,23 @@ export function InlineSuccess({ text }) {
   );
 }
 
+/* ── Artikelbezug in der Historie (Bewegungen, Auftragspositionen) ──
+   Solange der Artikel existiert: Link zur Detailseite. Nach dem Löschen (v2.91) liefert der Server keine Artikel-ID
+   mehr — dann steht der erhaltene Name als Text mit der Marke „Artikel gelöscht“, nie ein Link ins Leere. */
+export function ProductRef({ productId, name, titleClass, linkClass = "", navigate }) {
+  if (!productId) {
+    return (
+      <span className={`${titleClass} inv-artikel-geloescht`}>
+        <span>{name}</span> <span className="badge badge--neutral">Artikel gelöscht</span>
+      </span>
+    );
+  }
+  const klasse = ["btn", "btn-link", linkClass, titleClass].filter(Boolean).join(" ");
+  return (
+    <button type="button" className={klasse} onClick={() => navigate(`/inventory/products/${productId}`)}>{name}</button>
+  );
+}
+
 /* ── Dialog ──
    Nutzt den globalen Dialogmechanismus (useDialog): Fokusfalle, Fokusrückgabe
    und Escape kommen von dort, nicht aus einer zweiten Eigenbaulösung. */

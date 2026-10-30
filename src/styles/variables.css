@@ -783,10 +783,14 @@
      auslaufen. Spitze rund 28° je Bild bei 60 Hz — unter der Schwelle, ab der ein Plus rückwärts zu laufen scheint. */
   --ce-pr-ed-plus-dauer: 1150ms;
   --ce-pr-ed-plus-kurve: cubic-bezier(0.4, 0, 0.2, 1);
-  /* Persönlicher Ansprechpartner der Seitenleiste (Betreiberentscheidung 2026-10-30, v2.90): Foto 48 px und der grüne
-     Punkt — dasselbe Grün wie die Kennzahlmarke „Zugestellt“ auf Navy. Der Lichthof dehnt sich ruhig aus und verblasst,
-     danach eine Pause: ein Atemzug von 2,8 s, nie hektisch. Schmuck ohne Aussage über Erreichbarkeit. */
-  --ce-pr-ed-ansprech-bild: 3rem;
+  /* Persönlicher Ansprechpartner, schwebend unten rechts (Betreiberentscheidungen 2026-10-30, v2.90/v2.91): offene
+     Karte 24rem breit mit Foto 80 px — daneben passt die längere E-Mail-Adresse bei 14 px in eine Zeile (gemessen
+     203 von 222 px); eingeklappt ein rundes Foto 56 px. Der grüne Punkt — dasselbe Grün wie die Kennzahlmarke „Zugestellt“ auf Navy: der Lichthof dehnt
+     sich ruhig aus und verblasst, danach eine Pause, ein Atemzug von 2,8 s, nie hektisch. Schmuck ohne Aussage über
+     Erreichbarkeit. */
+  --ce-pr-ed-ansprech-breite: 24rem;
+  --ce-pr-ed-ansprech-bild: 5rem;
+  --ce-pr-ed-ansprech-foto: 3.5rem;
   --ce-pr-ed-ansprech-punkt: var(--ce-pr-ed-mark-delivered);
   --ce-pr-ed-ansprech-punkt-ring: rgba(92, 212, 154, 0.32);
   --ce-pr-ed-ansprech-puls-dauer: 2800ms;

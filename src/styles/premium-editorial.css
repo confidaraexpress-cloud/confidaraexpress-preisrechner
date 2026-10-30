@@ -1667,81 +1667,188 @@
   :root[data-ce-bereich="kunde"] .booking-blatt > .booking-blatt-fuss > .btn { min-width: auto; }
 }
 
-/* ═══════════ 25 · PERSÖNLICHER ANSPRECHPARTNER DER SEITENLEISTE ════════════
-   Betreiberentscheidung 2026-10-30 (Canonical 1A, v2.90): je Kunde die zugeordnete Person — rundes Foto, Name,
-   „Ihr Ansprechpartner“ mit grünem Punkt, darunter Telefon und E-Mail; ohne Zuordnung der Kundenservice mit dem
-   Signet (AccountManagerCard.jsx). Die Karte nutzt die volle Spaltenbreite, damit die E-Mail-Adresse bei 16 px
-   Grundschrift in eine Zeile passt (gemessen: 172–174 px bei 12 px, Innenbreite 190 px); passt sie nicht (große
-   Schrift), bricht sie vor dem „@“ (<wbr>), notfalls an beliebiger Stelle — die Telefonnummer bricht nie.
-   Der Punkt pulsiert ruhig und dauerhaft (nur der Lichthof, Ausnahme zu E11 für genau diesen Punkt); er selbst ist
-   der Schalter zum Anhalten (WCAG 2.2.2). Bei reduzierter Bewegung steht er still, und es gibt keinen Schalter. */
-/* Abstände knapp gehalten: bei 1440 × 900 mit geschlossenen Gruppen bleibt die Spalte samt Fußzeile ohne Scrollen. */
+/* ═══════════ 25 · PERSÖNLICHER ANSPRECHPARTNER — SCHWEBENDE KARTE ═══════════════════
+   Betreiberentscheidungen 2026-10-30 (Canonical 1A, v2.90 und v2.91 G3–G5): die Karte steht unten rechts im Fenster,
+   auf jeder Kundenseite genau einmal (AccountManagerCard.jsx, Portal an <body> aus DashboardSidebar). Offen: Navy-Fläche
+   24rem breit, oben „● Ihr persönlicher Ansprechpartner“ mit „Karte einklappen“, darunter rundes Foto 80 px, Name,
+   Telefon und E-Mail. Eingeklappt und bei wenig Platz: ein rundes Foto 56 px (ohne Zuordnung das Signet); ein Klick
+   öffnet die Karte — kompakt als Fläche über dem Foto, ohne zweites Foto (das runde Foto darunter zeigt die Person).
+
+   Ebene --ce-z-raised: über dem Seiteninhalt, unter jedem Popover (20–60), Menü und Mitteilungsfenster (200/201), der
+   Schublade (198/199), Overlays (500) und Dialogen (600) — was der Nutzer öffnet, liegt immer über der Karte.
+   Nichts bleibt dauerhaft verdeckt: die gemessene Höhe des Docks (--ce-ansprech-hoehe, gesetzt von der Komponente)
+   gibt dem Seiteninhalt unten genau so viel Platz und dem Dokument das scroll-padding, damit Tastaturfokus und
+   Sprungziele über der Karte landen (WCAG 2.4.11, Technik C43). Die Form (data-form) entscheidet die Komponente nach
+   der einen Bedingung in utils/accountManagerView.mjs (PLATZ_FUER_KARTE).
+
+   Der grüne Punkt steht nur in der offenen Karte (G5). Er pulsiert ruhig und dauerhaft (nur der Lichthof, Ausnahme zu
+   E11 für genau diesen Punkt); er ist der Schalter zum Anhalten (WCAG 2.2.2) und steht bei reduzierter Bewegung still. */
+:root[data-ce-bereich="kunde"] {
+  --ce-ansprech-sockel: env(safe-area-inset-bottom, 0px);
+  --ce-ansprech-luecke: var(--ce-space-6);
+  --ce-ansprech-rand: max(var(--ce-space-6), env(safe-area-inset-right, 0px));
+}
+:root[data-ce-bereich="kunde"]:has(.pp-ansprech-dock[data-form="kompakt"]) {
+  --ce-ansprech-luecke: var(--ce-space-4);
+  --ce-ansprech-rand: max(var(--ce-space-4), env(safe-area-inset-right, 0px));
+}
+/* Demo: die Leiste belegt unten den Rand (am Desktop genau die Ecke rechts) — die Karte steht darüber, rechtsbündig mit
+   ihr. Den Platz der Leiste reserviert demo.css bereits am <body>. */
+:root[data-ce-bereich="kunde"][data-ce-demo] {
+  --ce-ansprech-sockel: calc(var(--demo-leiste-hoehe, 5rem) + env(safe-area-inset-bottom, 0px));
+  --ce-ansprech-rand: max(var(--ce-space-4), env(safe-area-inset-right, 0px));
+}
+:root[data-ce-bereich="kunde"]:has(.pp-ansprech-dock) {
+  scroll-padding-bottom: calc(var(--ce-ansprech-sockel) + var(--ce-ansprech-luecke) + var(--ce-ansprech-hoehe, 0px) + var(--ce-space-2));
+}
+:root[data-ce-bereich="kunde"]:has(.pp-ansprech-dock) .main-content {
+  padding-bottom: calc(var(--ce-ansprech-hoehe, 0px) + var(--ce-ansprech-luecke) + var(--ce-space-4));
+}
+
+:root[data-ce-bereich="kunde"] .pp-ansprech-dock {
+  position: fixed;
+  z-index: var(--ce-z-raised);
+  right: var(--ce-ansprech-rand);
+  bottom: calc(var(--ce-ansprech-sockel) + var(--ce-ansprech-luecke));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-dock [hidden] { display: none; }
+
+/* ── Offene Karte ── */
 :root[data-ce-bereich="kunde"] .pp-ansprech {
-  display: grid;
-  gap: var(--ce-space-2);
-  margin: var(--ce-space-4) 0 var(--ce-space-3);
-  padding: var(--ce-space-3);
+  width: var(--ce-pr-ed-ansprech-breite);
+  max-width: calc(100vw - 2 * var(--ce-ansprech-rand));
+  max-height: calc(100dvh - var(--ce-ansprech-sockel) - var(--ce-ansprech-luecke) - var(--ce-space-6));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--ce-space-3) var(--ce-space-5) var(--ce-space-5);
   border: 1px solid var(--ce-sidebar-border);
   border-radius: var(--ce-pr-radius-panel);
+  background: var(--ce-sidebar-bg);
+  color: var(--ce-sidebar-text-strong);
+  box-shadow: var(--ce-elevation-3);
   font-style: normal;
 }
+/* Kompakt: die Karte liegt über dem Foto, das Foto bleibt der Schalter. Oben bleibt Platz für die Kopfleiste. */
+:root[data-ce-bereich="kunde"] .pp-ansprech-dock[data-form="kompakt"] .pp-ansprech {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--ce-space-3));
+  max-height: calc(100dvh - var(--ce-ansprech-sockel) - var(--ce-ansprech-luecke) - var(--ce-pr-ed-ansprech-foto) - var(--ce-space-3) - 4.5rem);
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-ce-bereich="kunde"] .pp-ansprech-dock[data-bewegung="ja"] .pp-ansprech:not([hidden]) {
+    animation: ce-ansprech-auf 180ms var(--ce-motion-ease-entrance) both;
+  }
+}
+@keyframes ce-ansprech-auf {
+  from { opacity: 0; transform: translateY(0.375rem); }
+  to { opacity: 1; transform: none; }
+}
+
+:root[data-ce-bereich="kunde"] .pp-ansprech-zeile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ce-space-2);
+  min-height: 2rem;
+  margin-bottom: var(--ce-space-3);
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-rolle {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+  color: var(--ce-sidebar-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+/* Einklappen: ruhige runde Taste, 32 px (mit grobem Zeiger 44 px Trefferfläche). */
+:root[data-ce-bereich="kunde"] .pp-ansprech-einklappen {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  margin-right: calc(-1 * var(--ce-space-2));
+  padding: 0;
+  border: 0;
+  border-radius: var(--ce-radius-full);
+  background: none;
+  color: var(--ce-sidebar-text-muted);
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  :root[data-ce-bereich="kunde"] .pp-ansprech-einklappen:hover { background: var(--ce-sidebar-hover); color: var(--ce-sidebar-text-strong); }
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-einklappen:focus-visible {
+  outline: 2px solid var(--ce-pr-signal-on-navy);
+  outline-offset: -2px;
+}
+@media (pointer: coarse) {
+  :root[data-ce-bereich="kunde"] .pp-ansprech-einklappen::before { content: ""; position: absolute; inset: -0.375rem; }
+}
+
 :root[data-ce-bereich="kunde"] .pp-ansprech-kopf {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--ce-space-3);
+  gap: var(--ce-space-3) var(--ce-space-4);
 }
 :root[data-ce-bereich="kunde"] .pp-ansprech-bild {
   display: grid;
   flex: none;
   place-items: center;
-  width: var(--ce-pr-ed-ansprech-bild);
-  height: var(--ce-pr-ed-ansprech-bild);
   overflow: hidden;
-  border: 1px solid var(--ce-pr-on-navy-line);
   border-radius: var(--ce-radius-full);
   color: var(--ce-sidebar-text-strong);
 }
+:root[data-ce-bereich="kunde"] .pp-ansprech-bild--karte {
+  width: var(--ce-pr-ed-ansprech-bild);
+  height: var(--ce-pr-ed-ansprech-bild);
+  border: 2px solid var(--ce-pr-on-navy-line);
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-dock[data-form="kompakt"] .pp-ansprech-bild--karte { display: none; }
 :root[data-ce-bereich="kunde"] .pp-ansprech-foto {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-:root[data-ce-bereich="kunde"] .pp-ansprech-initialen {
-  font-size: 0.875rem;
+:root[data-ce-bereich="kunde"] .pp-ansprech-bild--karte .pp-ansprech-initialen {
+  font-size: 1.5rem;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 :root[data-ce-bereich="kunde"] .pp-ansprech-bild--marke .ce-brandmark-img {
   display: block;
-  width: 1.625rem;
+  width: 46%;
   height: auto;
 }
-/* Der Textblock behält als Mindestbreite sein längstes Wort: passt es nicht neben das Foto (große Schrift,
-   „ConfidaraExpress“), steht der Text darunter, statt über die Karte zu ragen. */
+/* Der Textblock behält als Mindestbreite sein längstes Wort: passt es nicht neben das Foto (große Schrift, sehr
+   schmal), steht der Text darunter, statt über die Karte zu ragen. */
 :root[data-ce-bereich="kunde"] .pp-ansprech-text {
-  flex: 1 1 7rem;
+  display: grid;
+  flex: 1 1 10rem;
+  gap: var(--ce-space-2);
   min-width: auto;
 }
 :root[data-ce-bereich="kunde"] .pp-ansprech-name {
   margin: 0;
   color: var(--ce-sidebar-text-strong);
-  font-size: 0.9375rem;
-  font-weight: 600;
-  line-height: 1.3333;
+  font-size: 1.25rem;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
   overflow-wrap: break-word;
 }
-:root[data-ce-bereich="kunde"] .pp-ansprech-rolle {
-  display: flex;
-  align-items: center;
-  margin: 2px 0 0;
-  color: var(--ce-sidebar-text-muted);
-  font-size: 0.75rem;
-  line-height: 1.5;
-}
-/* Der Schalter ist 24 px groß (WCAG 2.5.8), steht aber mit negativem Rand in der 18-px-Zeile: Der Punkt liegt bündig
-   unter dem Namen, der Text 7 px dahinter. Mit grobem Zeiger wächst nur die Trefferfläche auf 44 px. */
+
+/* Der Schalter ist 24 px groß (WCAG 2.5.8), steht aber mit negativem Rand in der Zeile: der Punkt liegt bündig am
+   Rand, der Text 7 px dahinter. Mit grobem Zeiger wächst nur die Trefferfläche auf 44 px. */
 :root[data-ce-bereich="kunde"] .pp-ansprech-puls {
   position: relative;
   display: inline-grid;
@@ -1801,39 +1908,39 @@
     inset: -0.625rem;
   }
 }
+
+/* Telefon und E-Mail: je eine Zeile mit kleinem Symbol, mindestens 28 px hoch (mit grobem Zeiger 44 px). */
 :root[data-ce-bereich="kunde"] .pp-ansprech-wege {
   display: grid;
   justify-items: start;
   gap: 0;
   margin: 0;
-  padding-top: var(--ce-space-2);
-  border-top: 1px solid var(--ce-sidebar-border);
 }
-/* Jede Zeile ist mindestens 24 px hoch (WCAG 2.5.8): zwei Links direkt übereinander lägen sonst zu dicht. */
 :root[data-ce-bereich="kunde"] .pp-ansprech-link {
   display: inline-flex;
   align-items: center;
+  gap: var(--ce-space-2);
   max-width: 100%;
-  min-height: 1.5rem;
+  min-height: 1.75rem;
   border-radius: var(--ce-radius-xs);
   color: var(--ce-pr-signal-on-navy);
+  font-size: 0.875rem;
   font-weight: 600;
+  line-height: 1.4;
   text-decoration: none;
 }
+:root[data-ce-bereich="kunde"] .pp-ansprech-link > svg { flex: none; opacity: 0.8; }
+:root[data-ce-bereich="kunde"] .pp-ansprech-link > span { min-width: 0; }
 :root[data-ce-bereich="kunde"] .pp-ansprech-tel {
-  font-size: 0.8125rem;
-  line-height: 1.5385;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
-:root[data-ce-bereich="kunde"] .pp-ansprech-mail {
-  font-size: 0.75rem;
-  line-height: 1.5;
-  overflow-wrap: break-word;
-}
+/* Passt die Adresse nicht in die Zeile (große Schrift), bricht sie vor dem „@“ (<wbr>), notfalls an beliebiger
+   Stelle — die Telefonnummer bricht nie. */
+:root[data-ce-bereich="kunde"] .pp-ansprech-mail > span { overflow-wrap: break-word; }
 @media (hover: hover) {
-  :root[data-ce-bereich="kunde"] .pp-ansprech-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+  :root[data-ce-bereich="kunde"] .pp-ansprech-link:hover > span { text-decoration: underline; text-underline-offset: 3px; }
 }
 :root[data-ce-bereich="kunde"] .pp-ansprech-link:focus-visible {
   outline: 2px solid var(--ce-pr-signal-on-navy);
@@ -1841,4 +1948,87 @@
 }
 @media (pointer: coarse) {
   :root[data-ce-bereich="kunde"] .pp-ansprech-link { min-height: var(--ce-size-touch-target); }
+}
+
+/* ── Rundes Foto (eingeklappt, kompakt) ── Weißer Ring in feiner Navy-Kante, damit es auf jeder Fläche steht. */
+:root[data-ce-bereich="kunde"] .pp-ansprech-foto-knopf {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--ce-pr-ed-ansprech-foto);
+  height: var(--ce-pr-ed-ansprech-foto);
+  padding: 0;
+  border: 2px solid var(--ce-color-surface);
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-sidebar-bg);
+  box-shadow: 0 0 0 1px var(--ce-sidebar-bg), var(--ce-elevation-3);
+  cursor: pointer;
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-bild--foto {
+  width: 100%;
+  height: 100%;
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-bild--foto .pp-ansprech-initialen {
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+@media (hover: hover) and (pointer: fine) {
+  :root[data-ce-bereich="kunde"] .pp-ansprech-foto-knopf:hover {
+    box-shadow: 0 0 0 1px var(--ce-sidebar-bg), 0 0 0 4px var(--ce-pr-on-navy-line), var(--ce-elevation-3);
+  }
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-foto-knopf:focus-visible {
+  outline: var(--ce-focus-ring);
+  outline-offset: 3px;
+}
+
+@media (forced-colors: active) {
+  :root[data-ce-bereich="kunde"] :is(.pp-ansprech, .pp-ansprech-foto-knopf) { border-color: CanvasText; }
+}
+@media print {
+  :root[data-ce-bereich="kunde"] .pp-ansprech-dock { display: none; }
+  :root[data-ce-bereich="kunde"]:has(.pp-ansprech-dock) .main-content { padding-bottom: 0; }
+}
+
+/* ═══════════ 26 · ARTIKEL LÖSCHEN ═════════════════════════════════════════════════════════
+   Betreiberentscheidungen 2026-10-30 (Canonical v2.91 G1/G2): „Löschen“ steht als dritte Zeilenaktion nach
+   „Bearbeiten“ und „Versenden“ — eine leise Textaktion im Fehlerton, nie betont neben der hervorgehobenen Aktion. Der
+   Dialog (ProductDeleteDialog.jsx) nennt Mengen je Lager bzw. reservierende Aufträge als ruhige Liste zwischen Linien.
+   In der Historie steht ein gelöschter Artikel mit seinem erhaltenen Namen und der Marke „Artikel gelöscht“. */
+:root[data-ce-bereich="kunde"] .btn.btn-ghost.inv-aktion-loeschen { color: var(--ce-color-status-error-fg); }
+@media (hover: hover) and (pointer: fine) {
+  :root[data-ce-bereich="kunde"] .btn.btn-ghost.inv-aktion-loeschen:hover:not(:disabled) {
+    background: var(--ce-color-status-error-surface);
+    color: var(--ce-color-status-error-fg);
+  }
+}
+/* Die drei Zeilenaktionen der Artikeltabelle stehen nebeneinander, wo der Inhaltsrahmen sie trägt (Mindestbreite der
+   Tabelle mit langen Inhalten gemessen 61.25rem, Schwelle 63rem); darunter (Tabelle ab 58rem) untereinander, in
+   derselben Reihenfolge wie bei den Sendungen — nie „2 + 1“ und nie quer scrollend. */
+:root[data-ce-bereich="kunde"] .inv-list-table--artikel .inv-row-actions { flex-wrap: nowrap; }
+@container ce-seite (width < 63rem) {
+  :root[data-ce-bereich="kunde"] .inv-list-table--artikel .inv-row-actions { flex-direction: column; align-items: flex-end; row-gap: var(--ce-space-1); }
+}
+:root[data-ce-bereich="kunde"] .inv-loeschen-liste {
+  margin: 0 0 var(--ce-space-4);
+  padding: 0;
+  border-top: 1px solid var(--ce-pr-hairline);
+  list-style: none;
+}
+:root[data-ce-bereich="kunde"] .inv-loeschen-liste > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ce-space-1) var(--ce-space-3);
+  padding: var(--ce-space-2) 0;
+  border-bottom: 1px solid var(--ce-pr-hairline);
+}
+:root[data-ce-bereich="kunde"] .inv-loeschen-check { margin-bottom: var(--ce-space-3); }
+:root[data-ce-bereich="kunde"] .inv-artikel-geloescht {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ce-space-1) var(--ce-space-2);
 }

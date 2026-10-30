@@ -121,10 +121,15 @@ export const ADJUSTMENT_REASONS = Object.freeze([
   { value: "other", label: "Sonstiges" },
 ]);
 
+// Gründe, die nur das System setzt (Backend SYSTEM_ADJUSTMENT_REASONS) — nie in der Auswahl der Korrektur.
+// `product_deleted`: Ausbuchung des Restbestands beim Löschen eines Artikels (v2.91).
+const SYSTEM_REASON_LABELS = Object.freeze({ product_deleted: "Artikel gelöscht" });
+
 /** Grundcode → sichtbarer Text. Ohne oder mit unbekanntem Code: null, nicht roh. */
 export function adjustmentReasonLabel(value) {
   const bekannt = ADJUSTMENT_REASONS.find((r) => r.value === value);
-  return bekannt ? bekannt.label : null;
+  if (bekannt) return bekannt.label;
+  return Object.prototype.hasOwnProperty.call(SYSTEM_REASON_LABELS, value) ? SYSTEM_REASON_LABELS[value] : null;
 }
 
 /* ══════════ Sperrbestand ═══════════════════════════════════════════════════ */

@@ -85,6 +85,8 @@ const ACTION_LABELS = {
   // v2.90: PUT /admin/users/:id/account-manager — vorher/nachher als Schlüssel (miguel/patrick) in den Details; die
   // automatische Erstzuteilung steht beim Eintrag „Kundenstatus geändert“ (new_account_manager, automatic).
   "user.account_manager_change": "ConfidaraExpress-Ansprechpartner geändert",
+  // Artikel löschen (v2.91): handelnd ist der Kunde selbst; Metadaten Artikel-ID, SKU, ausgebuchte Stückzahl.
+  "product.delete": "Artikel gelöscht (Kunde)",
   "user.price_markup_confirm": "Preisaufschlag bestätigt",
   "admin.cancellation.view": "Stornierungsanfrage eingesehen",
   "admin.cancellation.status_change": "Stornierungsanfrage: Status geändert",

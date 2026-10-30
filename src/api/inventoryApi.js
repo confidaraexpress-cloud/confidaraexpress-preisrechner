@@ -71,6 +71,17 @@ export function createProduct(payload) {
 export function updateProduct(productId, payload) {
   return apiFetch(`/api/kunde/products/${id(productId)}`, { method: "PATCH", auth: true, body: JSON.stringify(payload) });
 }
+// Artikel löschen (v2.91): erst die Prüfung ohne Änderung (Bestand je Lager, Reservierungen, Sperren), dann die
+// Löschung. Bei Bestand trägt sie die Bestätigung der Ausbuchung: { writeOff: [{ warehouseId, onHand }] } — je Lager
+// genau die angezeigte Menge; der Server prüft sie unter Sperre erneut.
+export function getProductDeletionCheck(productId, { signal } = {}) {
+  return apiFetch(`/api/kunde/products/${id(productId)}/deletion-check`, { auth: true, signal });
+}
+export function deleteProduct(productId, payload = null) {
+  return apiFetch(`/api/kunde/products/${id(productId)}`, {
+    method: "DELETE", auth: true, ...(payload ? { body: JSON.stringify(payload) } : {}),
+  });
+}
 
 // ── Bestand und Bewegungen ────────────────────────────────────────────────────
 export function getBalances(params, { signal } = {}) {

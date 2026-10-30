@@ -6,6 +6,7 @@ import { EmptyState, NoResultsState, ListSkeleton } from "../../components/ui/St
 import { InlineError, InlineSuccess, InventoryDialog, QuantityField, StockCells, StockBadge } from "../../components/inventory/InventoryShared";
 import { ProductForm } from "../../components/inventory/ProductForm";
 import { ProductImportDialog } from "../../components/inventory/ProductImportDialog";
+import { ProductDeleteDialog } from "../../components/inventory/ProductDeleteDialog";
 import { getProducts, createProduct, updateProduct, getWarehouses } from "../../api/inventoryApi";
 import { formatKg, formatUnits, inventoryErrorText, mapProductToShipment } from "../../utils/inventoryView.mjs";
 
@@ -18,8 +19,13 @@ const PAGE_LIMIT = 25;
    wechselt in den bestehenden Prozess „Neue Sendung" — exakt derselbe Weg, den
    das Adressbuch seit jeher nimmt. Es gibt keinen zweiten Versandprozess.
 
-   Kein Löschen: ein Artikel trägt Historie (Bewegungen, Auftragspositionen,
-   Versandpositionen). Nicht mehr geführte Artikel werden inaktiv gesetzt.
+   „Löschen" (Betreiberentscheidungen 2026-10-30, Canonical v2.91) entfernt den
+   Artikel tatsächlich; Bewegungen, Auftrags- und Versandpositionen behalten ihre
+   Angaben. Der Dialog (ProductDeleteDialog) fragt erst den Server, ob und wie
+   gelöscht werden kann — mit Bestand nur nach ausdrücklicher Ausbuchung,
+   reserviert oder gesperrt gar nicht. Die Aktion ist eine leise Textaktion am
+   Ende der Zeile: erkennbar, aber nie neben der hervorgehobenen Aktion betont.
+   Inaktiv setzen bleibt möglich (Bearbeiten).
 
    Redesign 2026-10: der Artikelname ist die Identität der Zeile (als Link zur
    Detailseite), die SKU steht sekundär darunter. Ein eigenes „Öffnen"
@@ -50,6 +56,7 @@ export default function ProductsPage({ utility, onShipProduct }) {
   const [shipQty, setShipQty] = useState("1");
   const [defaultWarehouseId, setDefaultWarehouseId] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const seq = useRef(0);
 
@@ -245,6 +252,8 @@ export default function ProductsPage({ utility, onShipProduct }) {
                         <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setEditing(p); setFormError(""); setFormOpen(true); }}>Bearbeiten</button>
                         <button type="button" className="btn btn-sm btn-outline" disabled={p.status === "inactive"}
                                 onClick={() => { setShipTarget(p); setShipQty("1"); }}>Versenden</button>
+                        <button type="button" className="btn btn-sm btn-ghost inv-aktion-loeschen" aria-label={`Löschen: ${p.name}`}
+                                onClick={() => setDeleteTarget(p)}>Löschen</button>
                       </div>
                     </td>
                   </tr>
@@ -273,6 +282,8 @@ export default function ProductsPage({ utility, onShipProduct }) {
                   <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setEditing(p); setFormOpen(true); }}>Bearbeiten</button>
                   <button type="button" className="btn btn-sm btn-outline" disabled={p.status === "inactive"}
                           onClick={() => { setShipTarget(p); setShipQty("1"); }}>Versenden</button>
+                  <button type="button" className="btn btn-sm btn-ghost inv-aktion-loeschen" aria-label={`Löschen: ${p.name}`}
+                          onClick={() => setDeleteTarget(p)}>Löschen</button>
                 </div>
               </li>
             ))}
@@ -310,6 +321,16 @@ export default function ProductsPage({ utility, onShipProduct }) {
         onClose={() => setImportOpen(false)}
         onImported={importAbgeschlossen}
       />
+
+      {/* An den Artikel gebunden (key): jede Öffnung prüft frisch beim Server. */}
+      {deleteTarget && (
+        <ProductDeleteDialog
+          key={deleteTarget.id}
+          product={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={({ text }) => { setDeleteTarget(null); zeigeErfolg(text); load(null); }}
+        />
+      )}
 
       <InventoryDialog
         open={Boolean(shipTarget)}

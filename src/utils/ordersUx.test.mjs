@@ -203,8 +203,10 @@ test("C3 Grundstruktur und Positionstabelle bleiben erhalten", () => {
   assert.match(detailPage, /<dt>Erstellt<\/dt>/);
 });
 
-test("C4 der Artikelname bleibt klickbar", () => {
-  assert.match(detailPage, /navigate\(`\/inventory\/products\/\$\{it\.productId\}`\)/);
+// v2.91: über ProductRef — ein Link, solange der Artikel existiert; nach dem Löschen der Name mit „Artikel gelöscht“.
+test("C4 der Artikelname bleibt klickbar (gelöscht: ohne Link)", () => {
+  assert.equal((detailPage.match(/<ProductRef productId=\{it\.productId\} name=\{it\.name\}/g) || []).length, 2);
+  assert.match(lies("../components/inventory/InventoryShared.jsx"), /navigate\(`\/inventory\/products\/\$\{productId\}`\)/);
 });
 
 test("C5 der Hinweis unter den Positionen erklärt „reserviert“ ohne Jargon", () => {

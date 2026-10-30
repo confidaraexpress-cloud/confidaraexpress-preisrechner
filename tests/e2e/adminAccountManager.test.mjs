@@ -80,6 +80,9 @@ async function setup(page, { start = "miguel", konflikt = false, ladefehler = fa
 }
 
 const KARTE = "#adm-account-manager-section";
+// Zeiten zeigt die Adminseite in der Ortszeit des Browsers: feste Zone und Sprache, damit „30.10.2026, 10:00“ für
+// 09:00 Z auf jedem Rechner gilt (der CI-Runner läuft in UTC).
+const ORT = Object.freeze({ timezoneId: "Europe/Berlin", locale: "de-DE" });
 const norm = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
 
 test.before(async () => {
@@ -103,7 +106,7 @@ async function oeffne(page, id = 7) {
 }
 
 test("A — Wechsel: genau ein PUT mit dem gezeigten Stand, Erfolgsmeldung, neu geladene Zuordnung", async () => {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, ...ORT });
   const state = await setup(page);
   await oeffne(page);
   await page.locator(`${KARTE} #adm-account-manager-select`).waitFor({ timeout: 30000 });
@@ -127,7 +130,7 @@ test("A — Wechsel: genau ein PUT mit dem gezeigten Stand, Erfolgsmeldung, neu 
 });
 
 test("B — Konflikt: der Server meldet einen neueren Stand; Meldung nennt ihn, die Karte zeigt ihn danach", async () => {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, ...ORT });
   const state = await setup(page, { konflikt: true });
   await oeffne(page);
   await page.locator("#adm-account-manager-select").waitFor({ timeout: 30000 });
@@ -142,7 +145,7 @@ test("B — Konflikt: der Server meldet einen neueren Stand; Meldung nennt ihn, 
 });
 
 test("C — noch nicht zugeordnet: Platzhalter, erster PUT mit previousKey null", async () => {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, ...ORT });
   const state = await setup(page, { start: null });
   await oeffne(page);
   await page.locator("#adm-account-manager-select").waitFor({ timeout: 30000 });
@@ -157,7 +160,7 @@ test("C — noch nicht zugeordnet: Platzhalter, erster PUT mit previousKey null"
 });
 
 test("D — anonymisiertes Konto: Grund statt Auswahl; Adminkonto: keine Karte", async () => {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, ...ORT });
   await setup(page);
   await oeffne(page, 9);
   await page.locator(KARTE).waitFor({ timeout: 30000 });
@@ -171,7 +174,7 @@ test("D — anonymisiertes Konto: Grund statt Auswahl; Adminkonto: keine Karte",
 });
 
 test("E — Ladefehler: Meldung und „Erneut laden“, die übrige Seite bleibt", async () => {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, ...ORT });
   const state = await setup(page, { ladefehler: true });
   await oeffne(page);
   await page.locator(`${KARTE} [role="alert"]`).waitFor({ timeout: 30000 });
@@ -186,7 +189,7 @@ test("E — Ladefehler: Meldung und „Erneut laden“, die übrige Seite bleibt
 });
 
 test("F — Kundenliste: „Betreuung: …“ nur bei Kundenkonten", async () => {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, ...ORT });
   await setup(page);
   await page.goto(`${BASE}/admin/users`, { waitUntil: "domcontentloaded" });
   await page.locator(".adm-users-table tbody tr").first().waitFor({ timeout: 30000 });
@@ -199,7 +202,7 @@ test("F — Kundenliste: „Betreuung: …“ nur bei Kundenkonten", async () =>
 });
 
 test("G — 390 px: die Betreuungskarte ohne Querüberlauf", async () => {
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, ...ORT });
   await setup(page);
   await oeffne(page);
   await page.locator("#adm-account-manager-select").waitFor({ timeout: 30000 });

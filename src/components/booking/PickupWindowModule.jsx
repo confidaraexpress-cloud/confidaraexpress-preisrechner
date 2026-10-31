@@ -33,6 +33,9 @@ import { sameDayBookByText } from "../../utils/sameDayCollectionView.mjs";
 //   • none — Paketshopabgabe oder kein Abholtag: kein Abschnitt.
 // Ohne Wahl wird der Entwurf weder gelesen noch beschrieben, und eine noch im Seitenzustand liegende Auswahl
 // eines anderen Tarifs wird verworfen — sie darf weder die Buchung sperren noch eine Zusammenfassung verfälschen.
+// Zähler der Hydrierungsläufe über alle Instanzen des Abschnitts (siehe Hydrierung unten).
+let hydrierungsLauf = 0;
+
 export function PickupWindowModule({ tariff, ceShipmentId, value, onChange, onHydrationChange }) {
   const profil = pickupTimeProfileOf(tariff);
   const adjustable = profil.kind === PICKUP_PROFILE.ADJUSTABLE;
@@ -60,7 +63,14 @@ export function PickupWindowModule({ tariff, ceShipmentId, value, onChange, onHy
   // Buchen mit einem anderen als dem angezeigten Fenster). value (Eltern-State) hat Vorrang,
   // wenn bereits gesetzt (Rückkehr auf Step 1 nach Schrittwechsel). Geladen wird der Wunsch
   // FÜR DIESES ANGEBOT: einen Wunsch, der zu einem anderen Tarif gehört, meldet der Server als leer.
+  // Die Sperre lebt in der Buchungsseite, nicht hier: „Weiter" baut dieses Modul ab (Step 2), und
+  // eine danach eintreffende Antwort muss sie trotzdem lösen — sonst bliebe „Kostenpflichtig
+  // buchen" ohne Hinweis dauerhaft gesperrt. Verworfen wird nur die Antwort eines überholten
+  // Laufs, nie die nach dem Abbau. Überholt ist ein Lauf, sobald ein neuer beginnt — auch in einer
+  // neuen Instanz (Rückkehr auf Step 1), deshalb zählt `hydrierungsLauf` außerhalb der Komponente.
   useEffect(() => {
+    const lauf = ++hydrierungsLauf;
+    const ueberholt = () => lauf !== hydrierungsLauf;
     if (!adjustable) {
       // Keine Wahl an diesem Angebot: nichts laden, nichts sperren — und keine fremde Auswahl stehen lassen.
       report.current && report.current({ loading: false, error: false });
@@ -68,14 +78,14 @@ export function PickupWindowModule({ tariff, ceShipmentId, value, onChange, onHy
       return;
     }
     if (value && (value.from || value.until)) { setHydrating(false); report.current && report.current({ loading: false, error: false }); return; }
-    let alive = true;
     setHydrating(true); setHydrateError(false);
     report.current && report.current({ loading: true, error: false });
     getDraftPickupWindow(ceShipmentId, offerId)
       .then(async (r) => {
-        if (!alive) return;
+        if (ueberholt()) return;
         if (r.status === 401 || r.status === 403) return; // zentraler Auth-Redirect
         let d = null; try { d = await r.json(); } catch { d = null; }
+        if (ueberholt()) return;
         if (r.ok && d && d.pickupTimeFrom && d.pickupTimeUntil) {
           setFrom(toHHMM(d.pickupTimeFrom)); setUntil(toHHMM(d.pickupTimeUntil));
           change.current && change.current({ from: toHHMM(d.pickupTimeFrom), until: toHHMM(d.pickupTimeUntil) });
@@ -86,8 +96,7 @@ export function PickupWindowModule({ tariff, ceShipmentId, value, onChange, onHy
         }
         setHydrating(false); report.current && report.current({ loading: false, error: false });
       })
-      .catch(() => { if (!alive) return; setHydrateError(true); setHydrating(false); report.current && report.current({ loading: false, error: true }); });
-    return () => { alive = false; };
+      .catch(() => { if (ueberholt()) return; setHydrateError(true); setHydrating(false); report.current && report.current({ loading: false, error: true }); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adjustable, ceShipmentId, offerId]);
 

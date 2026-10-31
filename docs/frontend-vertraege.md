@@ -76,8 +76,15 @@ keine ServiceID. Gleiche Klassen, Zeilen und Typografie wie bisher (`calc-panel`
   Fenster.
 - **409 `PICKUP_WINDOW_CHANGED`:** Der Dialog nennt ein neues Fenster nur, wenn der Server eines nennt; bei
   `adjustable: false` heißt es fest vorgegeben.
+- **Laden des gespeicherten Fensters:** Solange es lädt oder das Laden scheitert, ist „Kostenpflichtig buchen“ gesperrt.
+  Die Sperre lebt in der Buchungsseite. Verlässt der Kunde Schritt 1, bevor die Antwort da ist, löst sie die Sperre
+  trotzdem (ein gespeichertes Fenster steht dann in der Zusammenfassung); verworfen wird nur die Antwort eines
+  überholten Laufs — überholt ist ein Lauf, sobald ein neuer beginnt, auch nach der Rückkehr auf Schritt 1. Ein
+  Ladefehler sperrt weiter.
 - **Tests:** `src/utils/pickupTimeProfile.test.mjs`, E2E `tests/e2e/pickupScheduleProfiles.test.mjs` (A–L: alle Varianten,
-  120/180 Minuten, Wiederherstellung, 409, Same-Day, Tarifwechsel, 768/390 px, Tastatur und Touch).
+  120/180 Minuten, Wiederherstellung, 409, Same-Day, Tarifwechsel, 768/390 px, Tastatur und Touch) und
+  `tests/e2e/pickupWindowStepChange.test.mjs` (Antwort erst nach „Weiter“: frei, gespeichertes Fenster, Ladefehler,
+  überholter Lauf nach der Rückkehr).
 
 ### Frühzeiten auf der Tarifkarte — aktueller Vertrag
 

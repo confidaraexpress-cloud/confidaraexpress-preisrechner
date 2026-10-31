@@ -148,3 +148,15 @@ test("Q3 — Client: Lesen und Speichern tragen das Angebot, ohne leeren Paramet
   assert.ok(client.includes("export function saveDraftPickupWindow({ ceShipmentId, offerId, pickupTimeFrom, pickupTimeUntil })"));
   assert.ok(client.includes("...(angebot ? { offerId: angebot } : {})"));
 });
+
+// „Weiter" baut den Abschnitt ab (Schritt 2); die Sperre der Buchung lebt in der Seite. Eine Antwort, die erst
+// danach eintrifft, muss sie lösen — verworfen wird nur ein überholter Lauf (Browserbeleg:
+// tests/e2e/pickupWindowStepChange.test.mjs).
+test("Q4 — Hydrierung: der Abbau verwirft die Antwort nicht, nur ein überholter Lauf wird ignoriert", () => {
+  const modul = ohneKommentar(lies("components/booking/PickupWindowModule.jsx"));
+  assert.ok(!/alive = false/.test(modul), "der Abbau des Abschnitts verwirft die Antwort wieder");
+  assert.ok(modul.includes("const lauf = ++hydrierung.current;"), "der Lauf der Hydrierung wird nicht gezählt");
+  assert.ok(modul.includes("const ueberholt = () => lauf !== hydrierung.current;"));
+  // Vor und nach dem Lesen der Antwort sowie im Fehlerzweig — sonst meldet ein überholter Lauf seinen Stand.
+  assert.equal((modul.match(/if \(ueberholt\(\)\) return;/g) || []).length, 3, "nicht jeder Zweig prüft den Lauf");
+});

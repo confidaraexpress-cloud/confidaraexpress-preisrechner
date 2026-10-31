@@ -151,7 +151,7 @@ const neuesProtokoll = () => ({ pfade: [], reprice: [], book: [] });
 const text = async (loc) => (await loc.innerText()).replace(/ /g, " ");
 const querUeberlauf = (page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
-async function zurVersichertenBuchung(page, { warteAufBestaetigung = true } = {}) {
+async function zurVersichertenBuchung(page, { preisaenderungFolgt = false } = {}) {
   await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".offers-form-section", { timeout: 20000 });
   await fuelleVersandformular(page, { paket: { ...STANDARD_PAKET, packageCount: "1" } });
@@ -162,12 +162,19 @@ async function zurVersichertenBuchung(page, { warteAufBestaetigung = true } = {}
   if (await page.locator(".ins-cards").count() === 0) await page.getByRole("button", { name: /^Weiter/ }).first().click();
   await page.waitForSelector(".ins-cards", { timeout: 20000 });
   await page.locator(`.ins-card:has(input[value="transit_cover"]) .ins-card-name`).click();
+  const checks = page.getByRole("checkbox"); // AGB + Gefahrgut
+  const haken = async () => { await checks.nth(0).check(); await checks.nth(1).check(); };
+  // Meldet die Neubepreisung eine Preisänderung, öffnet die Seite 500 ms nach der letzten Antwort den Dialog, und
+  // dessen Overlay fängt jeden weiteren Klick ab. Die Haken kommen dann VOR die Antworten — danach hinge der Test
+  // davon ab, dass zwei Aktionen in diesem Fenster fertig werden, und das sagt die Seite nicht zu: Playwright scrollt
+  // bei wiederholten Versuchen per scrollIntoView, das wegen `scroll-behavior: smooth` animiert läuft, und das
+  // scroll-padding der schwebenden Karte verlängert diese Fahrten (gemessen rund 450 ms nach jeder Antwort).
+  if (preisaenderungFolgt) await haken();
   await page.locator("#ins-goodsAreNew-ja").check();
   await page.locator("#ins-goodsAreFragile-nein").check();
-  if (warteAufBestaetigung) await page.waitForSelector(".ins-status-ok", { timeout: 10000 });
-  const checks = page.getByRole("checkbox"); // AGB + Gefahrgut
-  await checks.nth(0).check();
-  await checks.nth(1).check();
+  if (preisaenderungFolgt) return;
+  await page.waitForSelector(".ins-status-ok", { timeout: 10000 });
+  await haken();
 }
 
 const buchenKlick = (page) => page.getByRole("button", { name: /Kostenpflichtig buchen/ }).click();
@@ -292,7 +299,7 @@ test("C — eine gewöhnliche Neubepreisung mit Preisänderung öffnet denselben
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const protokoll = neuesProtokoll();
   const zustand = await setupRoutes(page, protokoll, { startAktuell: 1 });
-  await zurVersichertenBuchung(page, { warteAufBestaetigung: false });
+  await zurVersichertenBuchung(page, { preisaenderungFolgt: true });
   await pruefeDialog(page, { alt: 24.68, neu: 26.11 });
   assert.equal(protokoll.book.length, 0);
   assert.equal(await page.locator(".booking-insurance-box .field-error").count(), 0, "statt des Dialogs erschien eine Fehlermeldung");

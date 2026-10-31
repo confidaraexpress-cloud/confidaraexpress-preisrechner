@@ -10,6 +10,7 @@
 //   • A — Antwort nach „Weiter": bis dahin gesperrt, danach frei; die Buchung geht genau einmal hinaus.
 //   • B — ein gespeichertes Fenster, das erst nach „Weiter" eintrifft, steht danach in der Zusammenfassung.
 //   • C — ein Ladefehler nach „Weiter" hält die Sperre (fail-closed), es wird nicht gebucht.
+//   • D — zurück auf Schritt 1 lädt der Abschnitt neu; die verspätete Antwort des alten Laufs ändert nichts mehr.
 //
 // Kein echtes Backend, keine Bestellung.
 import { test } from "node:test";
@@ -50,11 +51,12 @@ const TARIF = {
 
 let server, browser;
 
-/** Die Antwort des Abholfensters wartet, bis der Test sie freigibt. */
-async function setupRoutes(page, antwortAbholfenster) {
+/** Jede Anfrage des Abholfensters bekommt der Reihe nach ihre Antwort aus `antworten`; eine Antwort mit
+ *  `halten: true` wartet, bis der Test sie mit `freigeben(i)` freigibt. */
+async function setupRoutes(page, antworten) {
   const protokoll = { abholGet: 0, book: [] };
-  let freigeben;
-  const freigabe = new Promise((r) => { freigeben = r; });
+  const halte = antworten.map(() => { let frei; const warte = new Promise((r) => { frei = r; }); return { warte, frei }; });
+  const freigeben = (i = 0) => halte[i].frei();
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const req = route.request();
     const p = new URL(req.url()).pathname;
@@ -73,9 +75,9 @@ async function setupRoutes(page, antwortAbholfenster) {
       fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
     });
     if (p.includes("/api/jumingo/draft/pickup-window") && req.method() === "GET") {
-      protokoll.abholGet++;
-      await freigabe;
-      return json(antwortAbholfenster.body, antwortAbholfenster.status ?? 200);
+      const i = Math.min(protokoll.abholGet++, antworten.length - 1);
+      if (antworten[i].halten) await halte[i].warte;
+      return json(antworten[i].body, antworten[i].status ?? 200);
     }
     if (p.includes("/api/jumingo/book")) {
       protokoll.book.push(req.postDataJSON());
@@ -136,9 +138,10 @@ test("A — Antwort nach „Weiter“: bis dahin gesperrt, danach frei; genau ei
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const fehler = [];
   page.on("pageerror", (e) => fehler.push(String(e)));
-  const { protokoll, freigeben } = await setupRoutes(page, {
+  const { protokoll, freigeben } = await setupRoutes(page, [{
+    halten: true,
     body: { pickupWindow: null, availableFrom: `${ABHOLTAG}T09:00:00`, availableUntil: `${ABHOLTAG}T17:00:00`, minimumMinutes: 120, adjustable: true },
-  });
+  }]);
   await weiterVorDerAntwort(page, protokoll);
   assert.equal(await buchenKnopf(page).isDisabled(), true, "solange das Abholfenster lädt, darf nicht gebucht werden");
 
@@ -154,9 +157,9 @@ test("A — Antwort nach „Weiter“: bis dahin gesperrt, danach frei; genau ei
 
 test("B — ein gespeichertes Fenster, das erst nach „Weiter“ eintrifft, steht danach in der Zusammenfassung", async () => {
   const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
-  const { protokoll, freigeben } = await setupRoutes(page, {
-    body: { pickupTimeFrom: "10:00:00", pickupTimeUntil: "14:00:00", adjustable: true },
-  });
+  const { protokoll, freigeben } = await setupRoutes(page, [{
+    halten: true, body: { pickupTimeFrom: "10:00:00", pickupTimeUntil: "14:00:00", adjustable: true },
+  }]);
   await weiterVorDerAntwort(page, protokoll);
   const seite = page.locator(".booking-side");
   assert.ok(!(await seite.innerText()).includes("10:00–14:00"), "das gespeicherte Fenster stand vor der Antwort da");
@@ -170,11 +173,32 @@ test("B — ein gespeichertes Fenster, das erst nach „Weiter“ eintrifft, ste
 
 test("C — ein Ladefehler nach „Weiter“ hält die Sperre: es wird nicht gebucht", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  const { protokoll, freigeben } = await setupRoutes(page, { status: 503, body: { error: "nicht verfügbar" } });
+  const { protokoll, freigeben } = await setupRoutes(page, [{ halten: true, status: 503, body: { error: "nicht verfügbar" } }]);
   await weiterVorDerAntwort(page, protokoll);
   freigeben();
   await page.waitForTimeout(1500);
   assert.equal(await buchenKnopf(page).isDisabled(), true, "nach einem Ladefehler ist die Buchung freigegeben");
+  assert.equal(protokoll.book.length, 0);
+  await page.close();
+});
+
+test("D — zurück auf Schritt 1: die verspätete Antwort des alten Laufs ändert das Fenster nicht mehr", async () => {
+  const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+  const { protokoll, freigeben } = await setupRoutes(page, [
+    { halten: true, body: { pickupTimeFrom: "10:00:00", pickupTimeUntil: "14:00:00", adjustable: true } },
+    { body: { pickupTimeFrom: "11:00:00", pickupTimeUntil: "15:00:00", adjustable: true } },
+  ]);
+  await weiterVorDerAntwort(page, protokoll);
+  // Zurück auf Schritt 1: der Abschnitt entsteht neu und lädt erneut (die erste Antwort steht noch aus).
+  await page.locator(".booking-blatt-zurueck").click();
+  await page.waitForFunction(() => document.querySelector(".booking-side")?.innerText.includes("11:00–15:00"), null, { timeout: 10000 });
+  assert.equal(protokoll.abholGet, 2);
+
+  freigeben(0);
+  await page.waitForTimeout(1500);
+  const seite = await page.locator(".booking-side").innerText();
+  assert.ok(seite.includes("11:00–15:00") && !seite.includes("10:00–14:00"),
+    "die verspätete Antwort des alten Laufs hat das Fenster überschrieben");
   assert.equal(protokoll.book.length, 0);
   await page.close();
 });

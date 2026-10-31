@@ -155,8 +155,11 @@ test("Q3 — Client: Lesen und Speichern tragen das Angebot, ohne leeren Paramet
 test("Q4 — Hydrierung: der Abbau verwirft die Antwort nicht, nur ein überholter Lauf wird ignoriert", () => {
   const modul = ohneKommentar(lies("components/booking/PickupWindowModule.jsx"));
   assert.ok(!/alive = false/.test(modul), "der Abbau des Abschnitts verwirft die Antwort wieder");
-  assert.ok(modul.includes("const lauf = ++hydrierung.current;"), "der Lauf der Hydrierung wird nicht gezählt");
-  assert.ok(modul.includes("const ueberholt = () => lauf !== hydrierung.current;"));
+  // Gezählt wird über alle Instanzen: nach der Rückkehr auf Schritt 1 ist ein Lauf der alten Instanz überholt.
+  assert.ok(/^let hydrierungsLauf = 0;$[\s\S]*export function PickupWindowModule/m.test(modul),
+    "der Zähler steht nicht auf Modulebene vor der Komponente");
+  assert.ok(modul.includes("const lauf = ++hydrierungsLauf;"), "der Lauf der Hydrierung wird nicht gezählt");
+  assert.ok(modul.includes("const ueberholt = () => lauf !== hydrierungsLauf;"));
   // Vor und nach dem Lesen der Antwort sowie im Fehlerzweig — sonst meldet ein überholter Lauf seinen Stand.
   assert.equal((modul.match(/if \(ueberholt\(\)\) return;/g) || []).length, 3, "nicht jeder Zweig prüft den Lauf");
 });

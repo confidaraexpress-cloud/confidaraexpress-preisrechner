@@ -92,12 +92,13 @@
   line-height: var(--ce-text-body-line);
   color: var(--ce-color-text-secondary);
 }
-/* Übersicht: Die Datumszeile steht als Kopfzeile über dem Gruß; Gruß und Name sprechen mit einer Stimme. */
+/* Übersicht: Die Datumszeile steht als Kopfzeile über dem Gruß; Gruß und Name sprechen mit einer Stimme. Seit dem
+   Feinschliff (2026-11-01) im Nebentext (6,92:1) statt im gedämpften Ton (5,36:1). */
 :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-sub {
   order: -1;
   font-size: var(--ce-text-label-size);
   font-weight: 500;
-  color: var(--ce-color-text-muted);
+  color: var(--ce-color-text-secondary);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
@@ -288,9 +289,9 @@
 
 /* ── Kennzahlen: vier helle Karten (Betreiberentscheidung 2026-11-01, ersetzt das Navy-Band vom 2026-10-28) ──
    Vier gleich breite, gleichwertige Karten aus dem Material des Blatts „Offene Rechnungen“: weiß, Haarlinie, Radius und
-   Schatten des Blatts. Die Zahl trägt im schmalen Schnitt, Bezeichnung und Kontext bleiben leise. Jede Kennzahl behält
-   ihre Kennfarbe als kurze Kante auf der Oberkante ihrer Karte — dieselbe Geste wie die graue Kante unter dem Seitenkopf,
-   eine Legende, keine Warnung. Ein Subgrid hält Bezeichnung, Zahl und Kontext einer Reihe auf gemeinsamen Linien, auch
+   Schatten des Blatts. Die Zahl trägt im schmalen Schnitt, die Bezeichnung steht klar in eigener Tinte, der Kontext
+   bleibt leise (Feinschliff 2026-11-01). Jede Kennzahl behält ihre gedämpfte Kennfarbe als feine Kante auf der
+   Oberkante ihrer Karte — dieselbe Geste wie die graue Kante unter dem Seitenkopf, eine Legende, keine Warnung. Ein Subgrid hält Bezeichnung, Zahl und Kontext einer Reihe auf gemeinsamen Linien, auch
    wenn eine Bezeichnung umbricht. Nur ein geladener Wert über 0 färbt „Verzögert“ (data-null aus Overview.jsx). Die
    Karten sind Informationen, keine Bedienelemente: kein Zeiger, keine Reaktion beim Zeigen. Berechnung und Bedeutung
    unverändert. */
@@ -327,19 +328,20 @@
   hyphens: auto;
   font-size: var(--ce-text-label-size);
   line-height: var(--ce-text-label-line);
-  font-weight: 500;
+  font-weight: 550;
   letter-spacing: 0;
-  color: var(--ce-color-text-secondary);
+  color: var(--ce-pr-ed-kennzahl-tinte);
 }
-/* Die Kante liegt auf der Haarlinie der Oberkante, bündig mit dem Text — Blau für aktiv, Himmelblau für in Zustellung,
-   Grün für zugestellt, Bernstein für verzögert. */
+/* Die Kante liegt als feine Linie mit runden Enden auf der Haarlinie der Oberkante, bündig mit dem Text — gedämpftes
+   Blau für aktiv, Stahlblau für in Zustellung, Salbeigrün für zugestellt, Ocker für verzögert. */
 :root[data-ce-bereich="kunde"] .ov-kpi::before {
   content: "";
   position: absolute;
   top: -1px;
   left: var(--ce-space-6);
-  width: var(--ce-space-7);
-  height: 3px;
+  width: var(--ce-space-6);
+  height: 2px;
+  border-radius: var(--ce-radius-full);
   background: var(--ce-pr-ed-kennzahl-aktiv);
 }
 :root[data-ce-bereich="kunde"] .ov-kpi--transit::before { background: var(--ce-pr-ed-kennzahl-zustellung); }
@@ -351,9 +353,9 @@
   font-family: var(--ce-font-numeric);
   font-size: var(--ce-pr-ed-figure-size);
   line-height: 1;
-  font-weight: 600;
+  font-weight: 620;
   font-stretch: var(--ce-pr-ed-figure-stretch);
-  letter-spacing: -0.03em;
+  letter-spacing: -0.025em;
   color: var(--ce-color-text-primary);
   font-variant-numeric: tabular-nums lining-nums;
 }
@@ -383,7 +385,7 @@
   :root[data-ce-bereich="kunde"] .ov-kpis { column-gap: var(--ce-space-3); }
   :root[data-ce-bereich="kunde"] .ov-kpi { padding: var(--ce-space-4); }
   :root[data-ce-bereich="kunde"] .ov-kpi:nth-child(n + 3) { margin-top: var(--ce-space-3); }
-  :root[data-ce-bereich="kunde"] .ov-kpi::before { left: var(--ce-space-4); width: var(--ce-space-6); }
+  :root[data-ce-bereich="kunde"] .ov-kpi::before { left: var(--ce-space-4); width: var(--ce-space-5); }
   :root[data-ce-bereich="kunde"] .ov-kpi-value { margin-top: var(--ce-space-3); font-size: var(--ce-pr-ed-figure-size-mobile); }
 }
 

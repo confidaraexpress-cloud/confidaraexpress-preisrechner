@@ -119,6 +119,11 @@ test("2b — Begrüßung (Betreiberentscheidung 2026-11-01): ein Satz in der Gru
   }
   // Gruß und Name sprechen mit einer Stimme: der Name erbt Farbe und Gewicht.
   assert.match(editorial, /\.ce-page-header-title \.ov-greeting-name \{ color: inherit; font-weight: inherit; \}/);
+  // Feinschliff (2026-11-01): Die Datums- und Einordnungszeile steht im Nebentext statt im gedämpften Ton, in derselben Größe.
+  const zeileKopf = ':root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-sub {';
+  const zeile = editorial.slice(editorial.indexOf(zeileKopf), editorial.indexOf("}", editorial.indexOf(zeileKopf)));
+  assert.match(zeile, /color: var\(--ce-color-text-secondary\);/, "die Datumszeile steht nicht im Nebentext");
+  assert.match(zeile, /font-size: var\(--ce-text-label-size\);/, "die Datumszeile hat ihre Größe geändert");
 });
 
 test("3 — Sendungen und Rechnungen stehen ≈ 2 : 1 nebeneinander, darunter einspaltig", () => {

@@ -760,13 +760,15 @@
      Preisrechner tragen die Werte mit, verwenden sie aber nicht. Linien, Mulden und Tinte kommen aus den
      vorhandenen Tokens (--ce-pr-hairline, --ce-pr-inset, --ce-color-text-primary). */
   --ce-pr-ed-mark-delivered: #5cd49a;           /* Grün auf Navy (Punkt des Ansprechpartners) */
-  /* Kennzahlkarten der Übersicht (Betreiberentscheidung 2026-11-01, ersetzt das Navy-Band): je Kennzahl eine kurze
-     Kante in ihrer Kennfarbe, auf Weiß je mindestens 3:1; die Zahl „Verzögert“ über 0 im Textton 4,96:1. */
-  --ce-pr-ed-kennzahl-aktiv: #004afc;           /* Logo-Blau · 6,20:1 */
-  --ce-pr-ed-kennzahl-zustellung: #0b84b8;      /* 4,19:1 */
-  --ce-pr-ed-kennzahl-zugestellt: #138a55;      /* 4,38:1 */
-  --ce-pr-ed-kennzahl-verzoegert: #c87400;      /* 3,53:1 */
-  --ce-pr-ed-kennzahl-verzoegert-zahl: #a85d00; /* 4,96:1 */
+  /* Kennzahlkarten der Übersicht (Betreiberentscheidung 2026-11-01, ersetzt das Navy-Band; Feinschliff am selben Tag):
+     je Kennzahl eine feine Kante in ihrer gedämpften Kennfarbe, auf Weiß je mindestens 3:1; die Zahl „Verzögert“ über 0
+     im Textton 5,41:1; die Bezeichnung in einer eigenen Tinte zwischen Text und Nebentext. */
+  --ce-pr-ed-kennzahl-aktiv: #4467c4;           /* gedämpftes Blau · 5,27:1 */
+  --ce-pr-ed-kennzahl-zustellung: #468aa8;      /* Stahlblau · 3,85:1 */
+  --ce-pr-ed-kennzahl-zugestellt: #3f8763;      /* Salbeigrün · 4,32:1 */
+  --ce-pr-ed-kennzahl-verzoegert: #b8792b;      /* Ocker · 3,62:1 */
+  --ce-pr-ed-kennzahl-verzoegert-zahl: #9a5b12; /* 5,41:1 */
+  --ce-pr-ed-kennzahl-tinte: #2a3550;           /* Bezeichnung · 12,18:1 */
   --ce-pr-ed-shadow-sheet: 0 1px 0 rgba(11, 21, 50, 0.04), 0 12px 32px -18px rgba(11, 21, 50, 0.22);
   --ce-pr-ed-row-mark: #004afc;                 /* Signalkante an der Zeile bei Zeigen und Fokus */
   /* Editorial-Skala: Seitenkopf und Kennzahlen. Größen in rem (E13), bei 16 px Grundgröße ganze Pixel. */
@@ -782,8 +784,8 @@
   --ce-pr-ed-gruss-size-mobile: 1.75rem;        /* 28 px */
   --ce-pr-ed-gruss-line: 1.12;
   --ce-pr-ed-gruss-tracking: -0.022em;
-  --ce-pr-ed-figure-size: 2.75rem;              /* 44 px, Kennzahlen */
-  --ce-pr-ed-figure-size-mobile: 2.25rem;       /* 36 px */
+  --ce-pr-ed-figure-size: 3rem;                 /* 48 px, Kennzahlen */
+  --ce-pr-ed-figure-size-mobile: 2.5rem;        /* 40 px */
   --ce-pr-ed-figure-stretch: 78%;
   --ce-pr-ed-amount-stretch: 88%;               /* Beträge und Kennungen in Tabellen */
   /* Plus der Anlegen-Aktionen (Betreiberentscheidung 2026-10-28): zwei Umdrehungen, anfahren und lang

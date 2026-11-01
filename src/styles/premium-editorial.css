@@ -4,12 +4,14 @@
    Der Betreiber hat die lokale Editorial-Vorschau (Übersicht, Entwürfe) freigegeben
    und für den ganzen Kundenbereich bestimmt. Zwei Korrekturen dazu: vier gleich
    breite, gleichwertige Kennzahlen mit eigener Identität; der Betrag „Offene
-   Rechnungen“ bleibt in der bisherigen Größe.
+   Rechnungen“ bleibt in der bisherigen Größe. Seit 2026-11-01 (Betreiber-
+   entscheidung) stehen die Kennzahlen auf vier hellen Karten statt im Navy-Band,
+   und die Begrüßung der Übersicht ist kleiner als die Seitentitel.
 
    These: Der Kundenbereich liest sich wie ein Geschäftsbericht. Eine Familie
    (Instrument Sans) mit innerer Spannung — normale Breite für Text, schmaler
    Schnitt für Kennzahlen und Beträge. Weißes Papier, Tintenlinien unter Köpfen,
-   Haarlinien zwischen Zeilen, Navy gezielt als Band und als Aktion, eine
+   Haarlinien zwischen Zeilen, Navy gezielt als Aktion und Fläche, eine
    ruhige graue Kante unter jedem Seitenkopf (Betreiberentscheidung 2026-10-29).
 
    Diese Ebene steht als letzte im Bündel und hängt ausschließlich am Kunden-
@@ -101,16 +103,28 @@
 }
 :root[data-ce-bereich="kunde"] .ce-page-header-title .ov-greeting-name { color: inherit; font-weight: inherit; }
 :root[data-ce-bereich="kunde"] .ce-page-header-meta { color: var(--ce-color-text-secondary); }
+/* Übersicht: Die Begrüßung ist ein Satz, kein Plakat (Betreiberentscheidung 2026-11-01). Normale Breite und Gewicht 500
+   in der Gruß-Skala 40 / 34 / 28 px statt der Titelskala 56 / 44 / 36 px — die Kennzahlen darunter tragen die Seite.
+   Die Titel der übrigen Seiten bleiben in der Titelskala. */
+:root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-title {
+  font-size: var(--ce-pr-ed-gruss-size);
+  line-height: var(--ce-pr-ed-gruss-line);
+  font-weight: 500;
+  letter-spacing: var(--ce-pr-ed-gruss-tracking);
+  font-stretch: 100%;
+}
 
 /* Stufen in em: Sie greifen auch, wenn die Grundschrift des Browsers größer eingestellt ist (bei 16 px 1100 / 600 px). */
 @media (max-width: 68.75em) {
   :root[data-ce-bereich="kunde"] .ce-page-header-title { font-size: var(--ce-pr-ed-headline-size-tablet); }
+  :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-title { font-size: var(--ce-pr-ed-gruss-size-tablet); }
 }
 @media (max-width: 860px) {
   :root[data-ce-bereich="kunde"] .ce-page-header-main { padding-top: var(--ce-space-3); padding-bottom: var(--ce-space-5); }
 }
 @media (max-width: 37.5em) {
   :root[data-ce-bereich="kunde"] .ce-page-header-title { font-size: var(--ce-pr-ed-headline-size-mobile); }
+  :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-title { font-size: var(--ce-pr-ed-gruss-size-mobile); }
 }
 
 /* ═══════════ 3 · KNÖPFE ═══════════════════════════════════════════════════
@@ -272,24 +286,26 @@
 
 /* ═══════════ 5 · ÜBERSICHT ════════════════════════════════════════════════ */
 
-/* ── Lageband (Korrektur A): vier gleich breite, gleichwertige Kennzahlen im Navy der Wortmarke ──
-   Jede Kennzahl trägt ihre eigene Kennfarbe als Marke vor der Bezeichnung — wie eine Legende, nicht als
-   Warnung. Ein Subgrid hält Bezeichnung, Zahl und Kontext aller Spalten auf gemeinsamen Linien, auch wenn
-   eine Bezeichnung umbricht. Erst ein echter Wert über 0 bei „Verzögert“ färbt die Zahl (data-null kommt
-   aus Overview.jsx; ohne geladene Daten steht ohnehin „—“). Berechnung und Bedeutung unverändert. */
+/* ── Kennzahlen: vier helle Karten (Betreiberentscheidung 2026-11-01, ersetzt das Navy-Band vom 2026-10-28) ──
+   Vier gleich breite, gleichwertige Karten aus dem Material des Blatts „Offene Rechnungen“: weiß, Haarlinie, Radius und
+   Schatten des Blatts. Die Zahl trägt im schmalen Schnitt, Bezeichnung und Kontext bleiben leise. Jede Kennzahl behält
+   ihre Kennfarbe als kurze Kante auf der Oberkante ihrer Karte — dieselbe Geste wie die graue Kante unter dem Seitenkopf,
+   eine Legende, keine Warnung. Ein Subgrid hält Bezeichnung, Zahl und Kontext einer Reihe auf gemeinsamen Linien, auch
+   wenn eine Bezeichnung umbricht. Nur ein geladener Wert über 0 färbt „Verzögert“ (data-null aus Overview.jsx). Die
+   Karten sind Informationen, keine Bedienelemente: kein Zeiger, keine Reaktion beim Zeigen. Berechnung und Bedeutung
+   unverändert. */
 :root[data-ce-bereich="kunde"] .ov-kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-template-rows: auto auto 1fr;
-  gap: 0;
-  margin: var(--ce-space-1) 0 var(--ce-space-8);
+  gap: 0 var(--ce-space-4);
+  margin: var(--ce-space-2) 0 var(--ce-space-8);
   padding: 0;
   border: 0;
-  border-radius: var(--ce-pr-radius-card);
-  background: var(--ce-pr-ed-band);
-  color: var(--ce-pr-on-navy);
-  box-shadow: var(--ce-pr-ed-shadow-band);
-  overflow: hidden;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
 }
 :root[data-ce-bereich="kunde"] .ov-kpi {
   position: relative;
@@ -298,11 +314,12 @@
   grid-template-rows: subgrid;
   row-gap: 0;
   min-width: 0;
-  padding: var(--ce-space-6) var(--ce-space-6) var(--ce-space-5);
-  border: 0;
-  background: transparent;
+  padding: var(--ce-space-5) var(--ce-space-6);
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-radius-card);
+  background: var(--ce-color-surface);
+  box-shadow: var(--ce-pr-ed-shadow-sheet);
 }
-:root[data-ce-bereich="kunde"] .ov-kpi + .ov-kpi { border-left: 1px solid var(--ce-pr-ed-band-line); border-top: 0; }
 :root[data-ce-bereich="kunde"] .ov-kpi-label {
   display: block;
   min-width: 0;
@@ -310,62 +327,63 @@
   hyphens: auto;
   font-size: var(--ce-text-label-size);
   line-height: var(--ce-text-label-line);
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0;
-  color: var(--ce-pr-on-navy);
+  color: var(--ce-color-text-secondary);
 }
-/* Die Identität jeder Kennzahl: eine Akzentlinie an der Oberkante ihrer Spalte in ihrer Kennfarbe (die Kante unter dem
-   Seitenkopf bleibt grau) — Blau für aktiv, Himmelblau für in Zustellung, Grün für zugestellt, Bernstein für verzögert. */
+/* Die Kante liegt auf der Haarlinie der Oberkante, bündig mit dem Text — Blau für aktiv, Himmelblau für in Zustellung,
+   Grün für zugestellt, Bernstein für verzögert. */
 :root[data-ce-bereich="kunde"] .ov-kpi::before {
   content: "";
   position: absolute;
-  top: 0;
+  top: -1px;
   left: var(--ce-space-6);
-  width: var(--ce-space-8);
+  width: var(--ce-space-7);
   height: 3px;
-  background: var(--ce-pr-ed-mark-active);
+  background: var(--ce-pr-ed-kennzahl-aktiv);
 }
-:root[data-ce-bereich="kunde"] .ov-kpi--transit::before { background: var(--ce-pr-ed-mark-transit); }
-:root[data-ce-bereich="kunde"] .ov-kpi--delivered::before { background: var(--ce-pr-ed-mark-delivered); }
-:root[data-ce-bereich="kunde"] .ov-kpi--delayed::before { background: var(--ce-pr-ed-mark-delayed); }
+:root[data-ce-bereich="kunde"] .ov-kpi--transit::before { background: var(--ce-pr-ed-kennzahl-zustellung); }
+:root[data-ce-bereich="kunde"] .ov-kpi--delivered::before { background: var(--ce-pr-ed-kennzahl-zugestellt); }
+:root[data-ce-bereich="kunde"] .ov-kpi--delayed::before { background: var(--ce-pr-ed-kennzahl-verzoegert); }
 :root[data-ce-bereich="kunde"] .ov-kpi-value {
   align-self: end;
-  margin: var(--ce-space-5) 0 var(--ce-space-3) -2px;
+  margin: var(--ce-space-4) 0 var(--ce-space-2) -1px;
   font-family: var(--ce-font-numeric);
   font-size: var(--ce-pr-ed-figure-size);
-  line-height: 0.86;
+  line-height: 1;
   font-weight: 600;
   font-stretch: var(--ce-pr-ed-figure-stretch);
-  letter-spacing: -0.04em;
-  color: var(--ce-color-text-inverse);
+  letter-spacing: -0.03em;
+  color: var(--ce-color-text-primary);
   font-variant-numeric: tabular-nums lining-nums;
 }
-:root[data-ce-bereich="kunde"] .ov-kpi--delayed:not([data-null]) .ov-kpi-value { color: var(--ce-pr-ed-mark-delayed); }
+:root[data-ce-bereich="kunde"] .ov-kpi--delayed:not([data-null]) .ov-kpi-value { color: var(--ce-pr-ed-kennzahl-verzoegert-zahl); }
 
 :root[data-ce-bereich="kunde"] .ov-kpi-context {
   align-self: start;
   font-size: var(--ce-text-micro-size);
   line-height: 1.45;
-  color: var(--ce-pr-on-navy-2);
+  color: var(--ce-color-text-muted);
 }
-/* Der Zusatz bricht als Ganzes um (das geschützte Leerzeichen hält „24 h“ zusammen), nie in die Nachbarspalte. */
-:root[data-ce-bereich="kunde"] .ov-kpi-note { color: var(--ce-pr-on-navy); font-weight: 600; white-space: normal; }
+/* Der Zusatz bricht nur zwischen seinen Wortgruppen um (geschützte Leerzeichen halten „3 neu“ und „24 h“ zusammen), nie
+   in die Nachbarkarte. */
+:root[data-ce-bereich="kunde"] .ov-kpi-note { color: var(--ce-color-text-primary); font-weight: 600; white-space: normal; }
 
-@media (max-width: 1120px) {
-  :root[data-ce-bereich="kunde"] .ov-kpi { padding: var(--ce-space-5) var(--ce-space-5) var(--ce-space-4); }
-  :root[data-ce-bereich="kunde"] .ov-kpi::before { left: var(--ce-space-5); }
-}
-/* Telefon: 2 × 2, alle vier gleich groß; die Linien trennen Spalten und Reihen. */
-@media (max-width: 600px) {
+/* Unter 51.5625rem Inhaltsbreite — derselben Stufe, an der die Module untereinander rücken (bei 16 px bis 1120 px
+   Fenster) — 2 × 2, alle vier gleich groß; die zweite Reihe hält den Spaltenabstand. */
+@container ce-seite (width < 51.5625rem) {
   :root[data-ce-bereich="kunde"] .ov-kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-rows: auto auto 1fr auto auto 1fr;
-    margin-bottom: var(--ce-space-7);
   }
-  :root[data-ce-bereich="kunde"] .ov-kpi { padding: var(--ce-space-4) var(--ce-space-4) var(--ce-space-4); }
-  :root[data-ce-bereich="kunde"] .ov-kpi::before { left: var(--ce-space-4); width: var(--ce-space-7); }
-  :root[data-ce-bereich="kunde"] .ov-kpi:nth-child(odd) { border-left: 0; }
-  :root[data-ce-bereich="kunde"] .ov-kpi:nth-child(n + 3) { border-top: 1px solid var(--ce-pr-ed-band-line); }
+  :root[data-ce-bereich="kunde"] .ov-kpi:nth-child(n + 3) { margin-top: var(--ce-space-4); }
+}
+/* Telefon (unter 30rem Inhaltsbreite): engere Abstände und die kleinere Zahl. */
+@container ce-seite (width < 30rem) {
+  :root[data-ce-bereich="kunde"] .ov-kpis { column-gap: var(--ce-space-3); }
+  :root[data-ce-bereich="kunde"] .ov-kpi { padding: var(--ce-space-4); }
+  :root[data-ce-bereich="kunde"] .ov-kpi:nth-child(n + 3) { margin-top: var(--ce-space-3); }
+  :root[data-ce-bereich="kunde"] .ov-kpi::before { left: var(--ce-space-4); width: var(--ce-space-6); }
   :root[data-ce-bereich="kunde"] .ov-kpi-value { margin-top: var(--ce-space-3); font-size: var(--ce-pr-ed-figure-size-mobile); }
 }
 

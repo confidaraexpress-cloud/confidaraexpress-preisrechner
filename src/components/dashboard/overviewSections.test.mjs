@@ -95,6 +95,32 @@ test("2 — der Seitenkopf begrüßt persönlich, nennt Datum und Einordnung, GE
   assert.ok(!/font-(family|style|size|weight)/.test(name), "der Name bekommt ein eigenes Schriftbild");
 });
 
+test("2b — Begrüßung (Betreiberentscheidung 2026-11-01): ein Satz in der Gruß-Skala, in jeder Stufe kleiner als die Seitentitel", () => {
+  const editorial = src("../../styles/premium-editorial.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const variablen = src("../../styles/variables.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const kopf = ':root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-title {';
+  const start = editorial.indexOf(kopf);
+  assert.ok(start > -1, "die Regel der Begrüßung fehlt");
+  const regel = editorial.slice(start, editorial.indexOf("}", start));
+  assert.match(regel, /font-size: var\(--ce-pr-ed-gruss-size\);/, "die Begrüßung steht nicht in der Gruß-Skala");
+  assert.match(regel, /font-weight: 500;/, "die Begrüßung ist wieder ein fetter Titel");
+  assert.match(regel, /font-stretch: 100%;/, "die Begrüßung steht nicht in normaler Breite");
+  // Jede Stufe der Titelskala hat ihre Gruß-Stufe in derselben Medienabfrage (em: greift auch bei großer Grundschrift).
+  for (const [stufe, gruss] of [["68.75em", "tablet"], ["37.5em", "mobile"]]) {
+    const block = editorial.slice(editorial.indexOf(`@media (max-width: ${stufe}) {`));
+    assert.match(block.slice(0, block.indexOf("\n}")),
+      new RegExp(`\\.main-content:has\\(\\.ov-page\\) \\.ce-page-header-title \\{ font-size: var\\(--ce-pr-ed-gruss-size-${gruss}\\); \\}`),
+      `die Gruß-Stufe ${gruss} fehlt`);
+  }
+  // Kleiner als der Seitentitel derselben Stufe; die übrigen Seiten behalten die Titelskala.
+  const rem = (name) => parseFloat(variablen.match(new RegExp(`--${name}:\\s*([\\d.]+)rem;`))[1]);
+  for (const stufe of ["", "-tablet", "-mobile"]) {
+    assert.ok(rem(`ce-pr-ed-gruss-size${stufe}`) < rem(`ce-pr-ed-headline-size${stufe}`), `Gruß${stufe} ist nicht kleiner als der Seitentitel`);
+  }
+  // Gruß und Name sprechen mit einer Stimme: der Name erbt Farbe und Gewicht.
+  assert.match(editorial, /\.ce-page-header-title \.ov-greeting-name \{ color: inherit; font-weight: inherit; \}/);
+});
+
 test("3 — Sendungen und Rechnungen stehen ≈ 2 : 1 nebeneinander, darunter einspaltig", () => {
   assert.equal(rule(".ov-mod-grid").match(/grid-template-columns:\s*([^;]+)/)[1].trim(),
     "minmax(0, 2fr) minmax(0, 1fr)");

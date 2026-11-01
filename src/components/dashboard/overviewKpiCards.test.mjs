@@ -11,6 +11,11 @@
 // Refetch- und Polling-Verhalten sowie zu den Kontextzeilen sind unverändert
 // übernommen; die Tests zur Optik sichern den neuen, freigegebenen Vertrag.
 //
+// Die Optiktests 3, 4 und 17–23 prüfen die Grundebene overview.css. Sichtbar ist
+// im Kundenbereich die Editorial-Ebene (premium-editorial.css): seit der
+// Betreiberentscheidung vom 2026-11-01 vier helle Karten statt des Navy-Bands
+// (Test 31).
+//
 // Bewusst quelltextnah: das Repository hat kein jsdom und keine Renderbibliothek
 // für Komponenten.
 import { test } from "node:test";
@@ -82,9 +87,10 @@ test("1 — die Übersicht rendert genau VIER Kennzahlen in EINEM Band", () => {
   assert.deepEqual(labels, ["Aktive Sendungen", "In Zustellung", "Zugestellt", "Verzögert"]);
   // EIN Band (section mit Bezeichnung), darin je Kennzahl eine Zelle.
   assert.match(overviewCode, /<section className="ov-kpis" aria-label="Betriebsüberblick">/, "das Band fehlt");
-  // Editorial Premium (2026-10-28): data-null kennzeichnet eine geladene 0 — nur dann bleibt die Zahl neutral.
-  assert.match(overviewCode, /\{KPIS\.map\(\(kpi\) => \(\s*<div className=\{`ov-kpi ov-kpi--\$\{kpi\.key\}`\} key=\{kpi\.key\} data-null=\{ready && kpi\.value === "0" \? "" : undefined\}>/,
-    "jede Kennzahl ist eine Zelle des Bands");
+  // data-null (Editorial Premium 2026-10-28, seit 2026-11-01 auch ohne geladenen Wert): keine Zahl über 0 —
+  // dann bleibt die Zahl neutral, auch das „—“ beim Laden und nach einem Ladefehler.
+  assert.match(overviewCode, /\{KPIS\.map\(\(kpi\) => \(\s*<div className=\{`ov-kpi ov-kpi--\$\{kpi\.key\}`\} key=\{kpi\.key\} data-null=\{!ready \|\| kpi\.value === "0" \? "" : undefined\}>/,
+    "jede Kennzahl ist eine Karte des Abschnitts");
   assert.ok(!/pp-kpi\b|pp-kpis\b/.test(overviewCode), "die alten Kartenklassen sind zurück");
 });
 
@@ -348,6 +354,76 @@ test("30 — die KPI-Berechnung ist unverändert (Serveraggregat, sonst computeK
   assert.match(overviewCode, /value: String\(k\.inTransit\)/);
   assert.match(overviewCode, /value: String\(k\.delivered\)/);
   assert.match(overviewCode, /value: String\(k\.delayed\)/);
+});
+
+// ── Editorial-Ebene: vier helle Karten (Betreiberentscheidung 2026-11-01) ───
+const editorial = src("../../styles/premium-editorial.css").replace(/\/\*[\s\S]*?\*\//g, "");
+const ED = ':root[data-ce-bereich="kunde"] ';
+// Rumpf der ERSTEN Regel mit exakt diesem Selektor der Editorial-Ebene (Grundstufe vor den Container-Abfragen).
+function edRegel(selector) {
+  const kopf = `${ED}${selector} {`;
+  const start = editorial.indexOf(kopf);
+  return start < 0 ? null : editorial.slice(start + kopf.length, editorial.indexOf("}", start));
+}
+function edDecl(selector, prop) {
+  const m = (edRegel(selector) ?? "").match(new RegExp(`(?:^|;)\\s*${prop}:\\s*([^;]+)`));
+  return m ? m[1].trim() : null;
+}
+// Ein ganzer At-Block (Medien- oder Container-Abfrage) samt geschachtelter Regeln.
+function edBlock(kopf) {
+  const start = editorial.indexOf(kopf);
+  if (start < 0) return null;
+  let tiefe = 0;
+  for (let i = editorial.indexOf("{", start); i < editorial.length; i++) {
+    if (editorial[i] === "{") tiefe++;
+    else if (editorial[i] === "}" && --tiefe === 0) return editorial.slice(start, i + 1);
+  }
+  return null;
+}
+
+test("31 — Editorial (2026-11-01): vier helle Karten im Material des Rechnungsblatts statt des Navy-Bands", () => {
+  // Der Abschnitt ist keine Fläche mehr: kein Grund, kein Schatten, nichts wird abgeschnitten (Kartenschatten).
+  assert.equal(edDecl(".ov-kpis", "grid-template-columns"), "repeat(4, minmax(0, 1fr))");
+  assert.equal(edDecl(".ov-kpis", "background"), "transparent");
+  assert.equal(edDecl(".ov-kpis", "box-shadow"), "none");
+  assert.equal(edDecl(".ov-kpis", "overflow"), "visible");
+  assert.equal(edDecl(".ov-kpis", "gap"), "0 var(--ce-space-4)", "Abstand zwischen den Karten, Reihen über das Subgrid");
+  // Jede Kennzahl ist eine Karte aus dem Material des Blatts „Offene Rechnungen“: dieselbe Kante, derselbe Radius,
+  // derselbe Schatten.
+  const blatt = edRegel(".ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:nth-child(2) > .ov-card");
+  assert.ok(blatt, "das Blatt „Offene Rechnungen“ ist nicht auffindbar");
+  for (const prop of ["border", "border-radius", "box-shadow"]) {
+    const imBlatt = blatt.match(new RegExp(`(?:^|;)\\s*${prop}:\\s*([^;]+)`))[1].trim();
+    assert.equal(edDecl(".ov-kpi", prop), imBlatt, `Karte und Blatt unterscheiden sich in ${prop}`);
+  }
+  assert.equal(edDecl(".ov-kpi", "background"), "var(--ce-color-surface)");
+  assert.equal(edDecl(".ov-kpi", "grid-template-rows"), "subgrid", "Bezeichnung, Zahl und Kontext einer Reihe auf gemeinsamen Linien");
+  // Tinte auf Papier: die Zahl im schmalen Schnitt, Bezeichnung und Kontext leise.
+  assert.equal(edDecl(".ov-kpi-value", "color"), "var(--ce-color-text-primary)");
+  assert.equal(edDecl(".ov-kpi-value", "font-stretch"), "var(--ce-pr-ed-figure-stretch)");
+  assert.equal(edDecl(".ov-kpi-label", "color"), "var(--ce-color-text-secondary)");
+  assert.equal(edDecl(".ov-kpi-context", "color"), "var(--ce-color-text-muted)");
+  // Kennfarbe je Kennzahl als kurze Kante; „Verzögert“ färbt die Zahl nur ohne data-null (Test 1).
+  for (const [klasse, token] of [["", "aktiv"], ["--transit", "zustellung"], ["--delivered", "zugestellt"], ["--delayed", "verzoegert"]]) {
+    assert.equal(edDecl(`.ov-kpi${klasse}::before`, "background"), `var(--ce-pr-ed-kennzahl-${token})`, `Kennfarbe ${token}`);
+  }
+  assert.equal(edDecl(".ov-kpi--delayed:not([data-null]) .ov-kpi-value", "color"), "var(--ce-pr-ed-kennzahl-verzoegert-zahl)");
+  // Unter 51.5625rem Inhaltsbreite 2 × 2 — dieselbe Stufe, an der die Module untereinander rücken; nie einspaltig.
+  const zweiMalZwei = edBlock("@container ce-seite (width < 51.5625rem) {");
+  assert.ok(zweiMalZwei && /\.ov-kpis \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/.test(zweiMalZwei), "2 × 2 fehlt");
+  assert.ok(!/\.ov-kpis \{[^}]*grid-template-columns:\s*(?:1fr|minmax\(0, 1fr\))\s*;/.test(editorial), "die Karten stehen einspaltig");
+  // Informationsflächen: keine Reaktion beim Zeigen, kein Zeiger.
+  assert.ok(!/\.ov-kpi[^{,]*:hover/.test(editorial), "die Karten reagieren auf Zeigen");
+  assert.ok(!/cursor:/.test(edRegel(".ov-kpi")), "die Karten geben sich als bedienbar aus");
+  // Das Band ist vollständig entfernt, samt seiner Tokens.
+  for (const alt of ["--ce-pr-ed-band", "--ce-pr-ed-band-line", "--ce-pr-ed-shadow-band", "--ce-pr-ed-mark-active", "--ce-pr-ed-mark-transit", "--ce-pr-ed-mark-delayed"]) {
+    assert.ok(!new RegExp(`${alt}\\b(?!-)`).test(editorial + variables), `${alt} ist noch vorhanden`);
+  }
+  // Kontrast auf Weiß: Kennfarben je mindestens 3:1, die Zahl „Verzögert“ als Text mindestens 4,5:1.
+  for (const t of ["aktiv", "zustellung", "zugestellt", "verzoegert"]) {
+    assert.ok(contrast(tok(`ce-pr-ed-kennzahl-${t}`), "#ffffff") >= 3, `Kennfarbe ${t} unter 3:1`);
+  }
+  assert.ok(contrast(tok("ce-pr-ed-kennzahl-verzoegert-zahl"), "#ffffff") >= 4.5, "die Zahl „Verzögert“ unter 4,5:1");
 });
 
 test("15 — reloadShipments ist VOR den Effekten deklariert, die es referenzieren", () => {

@@ -398,12 +398,22 @@ test("31 — Editorial (2026-11-01): vier helle Karten im Material des Rechnungs
   }
   assert.equal(edDecl(".ov-kpi", "background"), "var(--ce-color-surface)");
   assert.equal(edDecl(".ov-kpi", "grid-template-rows"), "subgrid", "Bezeichnung, Zahl und Kontext einer Reihe auf gemeinsamen Linien");
-  // Tinte auf Papier: die Zahl im schmalen Schnitt, Bezeichnung und Kontext leise.
+  // Tinte auf Papier: die Zahl im schmalen Schnitt (Feinschliff: 48/40 px, Gewicht 620), die Bezeichnung klar in eigener
+  // Tinte (550), der Kontext leise.
   assert.equal(edDecl(".ov-kpi-value", "color"), "var(--ce-color-text-primary)");
   assert.equal(edDecl(".ov-kpi-value", "font-stretch"), "var(--ce-pr-ed-figure-stretch)");
-  assert.equal(edDecl(".ov-kpi-label", "color"), "var(--ce-color-text-secondary)");
+  assert.equal(edDecl(".ov-kpi-value", "font-weight"), "620");
+  assert.equal(tok("ce-pr-ed-figure-size"), "3rem");
+  assert.equal(tok("ce-pr-ed-figure-size-mobile"), "2.5rem");
+  assert.equal(edDecl(".ov-kpi-label", "color"), "var(--ce-pr-ed-kennzahl-tinte)");
+  assert.equal(edDecl(".ov-kpi-label", "font-weight"), "550");
+  assert.equal(edDecl(".ov-kpi-label", "font-size"), "var(--ce-text-label-size)", "die Bezeichnung wird nicht größer");
+  assert.ok(contrast(tok("ce-pr-ed-kennzahl-tinte"), "#ffffff") >= 7, "die Bezeichnung liegt unter 7:1");
   assert.equal(edDecl(".ov-kpi-context", "color"), "var(--ce-color-text-muted)");
-  // Kennfarbe je Kennzahl als kurze Kante; „Verzögert“ färbt die Zahl nur ohne data-null (Test 1).
+  // Kennfarbe je Kennzahl als feine Kante mit runden Enden (2 px statt des früheren 3-px-Balkens); „Verzögert“ färbt die
+  // Zahl nur ohne data-null (Test 1).
+  assert.equal(edDecl(".ov-kpi::before", "height"), "2px");
+  assert.equal(edDecl(".ov-kpi::before", "border-radius"), "var(--ce-radius-full)");
   for (const [klasse, token] of [["", "aktiv"], ["--transit", "zustellung"], ["--delivered", "zugestellt"], ["--delayed", "verzoegert"]]) {
     assert.equal(edDecl(`.ov-kpi${klasse}::before`, "background"), `var(--ce-pr-ed-kennzahl-${token})`, `Kennfarbe ${token}`);
   }

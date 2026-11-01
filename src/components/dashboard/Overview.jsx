@@ -20,7 +20,7 @@ import { UserChip } from "../ui/UserChip";
      Seitenkopf  persönliche Begrüßung „Guten Tag, [Name]" · Datum und
                  Einordnung · EINE Hauptaktion „Neue Sendung" · Mitteilungen
                  (Soft Button) und Konto als Utility
-     Kennzahlen  ein kompaktes Band mit vier gleich breiten Zellen
+     Kennzahlen  vier gleich breite, helle Karten (seit 2026-11-01; vorher ein Band)
      Arbeit      Letzte Sendungen (≈ 2/3) · Offene Rechnungen (≈ 1/3)
      Lager       Lager und Aufträge aus der Lagerübersicht (offene Aufträge,
                  Artikel unter Mindestbestand) — G1/D7, 2026-10-27
@@ -130,8 +130,8 @@ export function Overview({
 
   // Zusatzangabe der ersten Kennzahl. `new24` ist eine echte Zahl aus computeKpis
   // (Sendungen mit created_at innerhalb der letzten 24 Stunden) — kein Trend,
-  // keine Prozentangabe, kein Vergleichswert.
-  const activeNote = k.hasCreatedAt && k.new24 > 0 ? `${k.new24} neu in 24\u00a0h` : null;
+  // keine Prozentangabe, kein Vergleichswert. Gesch\u00fctzte Leerzeichen halten \u201e3 neu\u201c und \u201e24 h\u201c zusammen.
+  const activeNote = k.hasCreatedAt && k.new24 > 0 ? `${k.new24}\u00a0neu in 24\u00a0h` : null;
 
   // Vier Kennzahlen. Nur „Zugestellt" ist monatsbezogen — und diese Grenze zieht
   // ausschließlich der Server (delivered_this_month, Geschäftszeitzone
@@ -169,12 +169,13 @@ export function Overview({
       />
 
       <div className="page-body ov-page">
-        {/* ── Betriebsüberblick: EIN Band, vier gleich breite Zellen ──
-            Die Zellen sind reine Informationsflächen: kein Cursor, kein Hover,
-            kein Symbol, kein eigener Farbton je Kennzahl. */}
+        {/* ── Betriebsüberblick: vier gleich breite Karten ──
+            Die Karten sind reine Informationsflächen: kein Cursor, kein Hover,
+            kein Symbol. data-null steht, solange keine Zahl über 0 geladen ist
+            (geladene 0 oder noch „—“) — dann bleibt die Zahl ohne Akzentfarbe. */}
         <section className="ov-kpis" aria-label="Betriebsüberblick">
           {KPIS.map((kpi) => (
-            <div className={`ov-kpi ov-kpi--${kpi.key}`} key={kpi.key} data-null={ready && kpi.value === "0" ? "" : undefined}>
+            <div className={`ov-kpi ov-kpi--${kpi.key}`} key={kpi.key} data-null={!ready || kpi.value === "0" ? "" : undefined}>
               <span className="ov-kpi-label">{kpi.label}</span>
               {/* Solange nichts erfolgreich geladen wurde, steht „—" statt einer
                   Zahl: weder beim ersten Laden noch nach einem Ladefehler darf

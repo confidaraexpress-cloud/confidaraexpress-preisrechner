@@ -1337,7 +1337,8 @@
   }
 }
 
-.pc-chip-reset {
+.pc-chip-reset,
+.pc-puls-schalter {
   min-height: 40px;
   padding-inline: var(--ce-space-2);
   border: 0;
@@ -1350,6 +1351,11 @@
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
+}
+
+/* Der Schalter der Laufzeitpunkte steht schmal in eigener Zeile: bündig mit Anzahl und Sortierung. */
+.pc-puls-schalter {
+  padding-inline: 0;
 }
 
 /* Breit mindestens 220 px; bei großer Browserschrift auf dem Telefon schrumpft die Auswahl auf die Zeilenbreite
@@ -1456,29 +1462,14 @@
   min-height: 3rem;
 }
 
+/* Kopf: Carrier und Service als Text, darunter die Übergabeart. Ohne Carrier-Logo (Betreiberentscheidung 2026-11-02:
+   im öffentlichen Preisrechner keine Logos, die Namen bleiben; das Portal zeigt seine Logos weiter). */
 .pc-offer-head {
   grid-area: head;
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: var(--ce-space-2) var(--ce-space-3);
-}
-
-.pc-offer-logo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 64px;
-  height: 44px;
-  border: 1px solid var(--ce-color-border-subtle);
-  border-radius: var(--ce-radius-sm);
-  background: var(--ce-color-surface);
-}
-
-.pc-offer-logo img {
-  width: 52px;
-  height: 24px;
-  object-fit: contain;
 }
 
 .pc-offer-name {
@@ -1500,7 +1491,6 @@
 }
 
 .pc-offer-tag {
-  grid-column: 2;
   justify-self: start;
   display: inline-flex;
   align-items: center;
@@ -1547,15 +1537,40 @@
 }
 
 .pc-offer-achse::before {
+  --pc-punkt-ruhe: var(--ce-color-brand-soft);
+  --pc-punkt-licht: var(--ce-color-brand-border);
   left: 0;
   background: var(--ce-color-brand);
-  box-shadow: 0 0 0 3px var(--ce-color-brand-soft);
+  box-shadow: 0 0 0 3px var(--pc-punkt-ruhe);
 }
 
 .pc-offer-achse::after {
+  --pc-punkt-ruhe: var(--ce-color-success-ring);
+  --pc-punkt-licht: var(--ce-color-success-ring);
   right: 0;
   background: var(--ce-color-success-solid);
-  box-shadow: 0 0 0 3px var(--ce-color-success-ring);
+  box-shadow: 0 0 0 3px var(--pc-punkt-ruhe);
+}
+
+/* Laufzeitpunkte (Betreiberentscheidung 2026-11-02): Start und Zustellung pulsieren dezent und dauerhaft wie die
+   Punkte der Tarifkarte im Kundenbereich (offerTlDotPulse, animations.css) — um den ruhenden Ring atmet ein feiner
+   Lichtring in der Ringfarbe des Kundenbereichs, dazu ein Hauch Deckkraft; kein Skalieren, nur Schatten: Punkte, Achse
+   und Daten bewegen sich nicht. Der Zielpunkt läuft zeitversetzt. Schmuck ohne Aussage über Verfügbarkeit.
+   „Pulsieren anhalten“ in der Werkzeugleiste hält ihn an (WCAG 2.2.2); bei reduzierter Bewegung pulsiert nichts, und
+   der Schalter entfällt. */
+@keyframes pc-punkt-puls {
+  0%, 100% { box-shadow: 0 0 0 3px var(--pc-punkt-ruhe), 0 0 0 3px transparent; opacity: 1; }
+  50% { box-shadow: 0 0 0 3px var(--pc-punkt-ruhe), 0 0 0 7px var(--pc-punkt-licht); opacity: 0.85; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pc-offers:not([data-puls="aus"]) .pc-offer-achse::before,
+  .pc-offers:not([data-puls="aus"]) .pc-offer-achse::after {
+    animation: pc-punkt-puls 3.2s ease-in-out infinite;
+  }
+  .pc-offers:not([data-puls="aus"]) .pc-offer-achse::after {
+    animation-delay: 0.4s;
+  }
 }
 
 /* Start und Zustellung sind nie schmaler als ihr längstes Wort oder ihr Wert („09:00–17:00 Uhr“); lange Wörter
@@ -2729,7 +2744,13 @@
 
 @media (pointer: coarse) {
   .pc-chip,
-  .pc-chip-reset { min-height: 44px; }
+  .pc-chip-reset,
+  .pc-puls-schalter { min-height: 44px; }
+}
+
+/* Den Schalter für das Pulsieren der Laufzeitpunkte gibt es nur, wenn sie pulsieren: bei reduzierter Bewegung nicht. */
+@media (prefers-reduced-motion: reduce) {
+  .pc-puls-schalter { display: none; }
 }
 
 /* ── Bewegung: nur Übergänge, höchstens 200 ms, aus bei reduzierter Bewegung ─ */

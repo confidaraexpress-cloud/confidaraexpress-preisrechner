@@ -419,3 +419,95 @@ test("G — Ergebnisbereich erst nach der Berechnung, Carrierauswahl, „Angaben
   assert.deepEqual(fehler, []);
   await page.close();
 });
+
+// I — Betreiberentscheidung 2026-11-02: die Tarifkarten zeigen kein Carrier-Logo mehr (kein Bild, kein Rahmen, keine
+//     Anfrage nach einer Logodatei), Carrier und Service stehen als Text. Start- und Zustellpunkt der Achse pulsieren
+//     dauerhaft und zeitversetzt, nur über Schatten und Deckkraft — Achse, Punkte und Daten bleiben, wo sie sind;
+//     „Pulsieren anhalten“ hält an und setzt fort (WCAG 2.2.2), Filter und Sortierung arbeiten weiter. Bei reduzierter
+//     Bewegung pulsiert nichts, und der Schalter fehlt.
+const LOGODATEI = /\/assets\/carriers\/|\/(ups|dhl|dpd|gls|tnt|fedex|emons|der-kurier|trans-o-flex)(-[\w-]+)?\.(svg|png|webp)(\?|$)/i;
+async function puls(page) {
+  return page.evaluate(() => [...document.querySelectorAll("#pc-offers .pc-offer-achse")].map((achse) => {
+    const vor = getComputedStyle(achse, "::before"), nach = getComputedStyle(achse, "::after");
+    // Lagen relativ zur eigenen Karte: Die Seite scrollt nach der Berechnung zu den Ergebnissen.
+    const karte = achse.closest(".pc-offer").getBoundingClientRect();
+    const rel = (b) => [Math.round(b.left - karte.left), Math.round(b.top - karte.top), Math.round(b.width)];
+    const r = rel(achse.getBoundingClientRect());
+    const fakten = [...achse.closest(".pc-offer").querySelectorAll(".pc-fact")].map((f) => rel(f.getBoundingClientRect()));
+    return { start: vor.animationName, ziel: nach.animationName, wdh: vor.animationIterationCount, versatz: nach.animationDelay,
+      lage: [...r, vor.left, nach.right, vor.top, nach.top, vor.width, nach.width], fakten };
+  }));
+}
+for (const [breite, hoehe] of [[1440, 900], [390, 844]]) {
+  test(`I ${breite}px — ohne Carrier-Logos; Laufzeitpunkte pulsieren anhaltbar, nichts verschiebt sich`, async () => {
+    const { page, fehler } = await neueSeite({ width: breite, height: hoehe });
+    // Nur Bildabrufe zählen: Der Dev-Server lädt die Dateien, die carrierMap.js importiert, als Modul („?import“) —
+    // im Build sind sie bloße Adressen, angefragt würden sie erst von einem <img>.
+    const logoAnfragen = [];
+    page.on("request", (r) => { if (r.resourceType() === "image" && LOGODATEI.test(r.url())) logoAnfragen.push(r.url()); });
+    await setup(page);
+    await oeffne(page);
+    await fuelle(page);
+    await page.click("#pc-submit");
+    await page.waitForSelector("#pc-offers .pc-offer", { timeout: 30000 });
+    const karten = await page.evaluate(() => ({
+      bilder: document.querySelectorAll("#pc-results-section img").length,
+      rahmen: document.querySelectorAll(".pc-offer-logo").length,
+      carrier: [...document.querySelectorAll(".pc-offer-carrier")].map((e) => e.textContent.trim()),
+      service: [...document.querySelectorAll(".pc-offer-service")].map((e) => e.textContent.trim()),
+      preise: [...document.querySelectorAll(".pc-price-amount")].map((e) => e.textContent.trim()),
+      ueberlauf: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    }));
+    assert.equal(karten.bilder, 0, "ein Bild in den Ergebnissen");
+    assert.equal(karten.rahmen, 0, "ein leerer Logo-Rahmen");
+    assert.deepEqual([...karten.carrier].sort(), ["DHL Express", "DPD", "UPS"], "Carriernamen fehlen oder sind verändert");
+    assert.deepEqual([...karten.service].sort(), ["Classic", "Express", "Standard"], "Servicenamen fehlen oder sind verändert");
+    assert.equal(karten.preise.length, 3);
+    assert.equal(karten.ueberlauf, 0);
+
+    const a = await puls(page);
+    assert.equal(a.length, 3);
+    for (const p of a) {
+      assert.deepEqual([p.start, p.ziel, p.wdh, p.versatz], ["pc-punkt-puls", "pc-punkt-puls", "infinite", "0.4s"], "die Punkte pulsieren nicht");
+    }
+    assert.equal(await page.locator("#pc-puls").textContent(), "Pulsieren anhalten");
+    assert.ok(await page.locator("#pc-puls").isVisible());
+    // Mitten im Puls (die Hälfte eines Takts später) liegt alles wie vorher.
+    await kurz(1600);
+    const b = await puls(page);
+    assert.deepEqual(b.map((p) => [p.lage, p.fakten]), a.map((p) => [p.lage, p.fakten]), "der Puls verschiebt Achse, Punkte oder Daten");
+
+    await page.click("#pc-puls");
+    assert.equal(await page.locator("#pc-offers").getAttribute("data-puls"), "aus");
+    assert.equal(await page.locator("#pc-puls").textContent(), "Pulsieren fortsetzen");
+    for (const p of await puls(page)) assert.deepEqual([p.start, p.ziel], ["none", "none"], "angehalten pulsiert noch etwas");
+    // Filter und Sortierung arbeiten weiter; der Zustand des Schalters bleibt.
+    if (await page.locator("#pc-carrier-ups").count()) {
+      await page.locator("label.pc-chip", { has: page.locator("#pc-carrier-ups") }).click();
+      assert.equal(await page.locator("#pc-offers .pc-offer").count(), 1);
+      assert.equal(await page.locator("#pc-offers").getAttribute("data-puls"), "aus");
+      await page.click("#pc-carrier-reset");
+      assert.equal(await page.locator("#pc-offers .pc-offer").count(), 3);
+    }
+    await page.selectOption("#pc-sort", { index: 1 });
+    assert.equal(await page.locator("#pc-offers .pc-offer").count(), 3);
+    await page.click("#pc-puls");
+    for (const p of await puls(page)) assert.deepEqual([p.start, p.ziel], ["pc-punkt-puls", "pc-punkt-puls"], "fortgesetzt pulsiert nichts");
+
+    assert.deepEqual(logoAnfragen, [], `Logodateien angefragt: ${logoAnfragen.join(", ")}`);
+    assert.deepEqual(fehler, []);
+    await page.close();
+  });
+}
+
+test("I — reduzierte Bewegung: die Laufzeitpunkte stehen still, der Schalter fehlt", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
+  await setup(page);
+  await oeffne(page);
+  await fuelle(page);
+  await page.click("#pc-submit");
+  await page.waitForSelector("#pc-offers .pc-offer", { timeout: 30000 });
+  for (const p of await puls(page)) assert.deepEqual([p.start, p.ziel], ["none", "none"], "bei reduzierter Bewegung pulsiert etwas");
+  assert.equal(await page.locator("#pc-puls").isVisible(), false, "der Schalter steht ohne Puls");
+  await page.close();
+});

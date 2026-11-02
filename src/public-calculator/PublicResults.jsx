@@ -55,7 +55,10 @@ function Warten({ langsam, sekunden }) {
   );
 }
 
-function Liste({ ergebnis }) {
+// Die Laufzeitpunkte der Karten pulsieren dauerhaft (public-calculator.css); ein Schalter in der Werkzeugleiste hält
+// das an (WCAG 2.2.2) — für die Dauer des Seitenbesuchs, ohne Speicher. Bei reduzierter Bewegung pulsiert nichts, und
+// der Schalter ist ausgeblendet (CSS).
+function Liste({ ergebnis, puls, onPuls }) {
   const angebote = ergebnis.result ? ergebnis.result.offers : [];
   const [carrier, setCarrier] = useState([]);
   const [ordnung, setOrdnung] = useState("recommended");
@@ -92,13 +95,18 @@ function Liste({ ergebnis }) {
         <Field as="select" id="pc-sort" label="Sortierung" value={ordnung} onChange={(v) => setOrdnung(v)} className="pc-sort">
           {SORT_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
         </Field>
+        {sichtbar.length > 0 && (
+          <button type="button" className="pc-puls-schalter" id="pc-puls" aria-controls="pc-offers" onClick={onPuls}>
+            {puls ? "Pulsieren anhalten" : "Pulsieren fortsetzen"}
+          </button>
+        )}
       </div>
       {sichtbar.length === 0 ? (
         <Hinweis ton="info" titel="Keine Angebote für diese Auswahl" text="Für die gewählten Versanddienstleister liegt kein Angebot vor." id="pc-filter-empty">
           <button type="button" className="pc-button pc-button--secondary" onClick={() => setCarrier([])}>Auswahl zurücksetzen</button>
         </Hinweis>
       ) : (
-        <ul className="pc-offers pc-offers--list" id="pc-offers">
+        <ul className="pc-offers pc-offers--list" id="pc-offers" data-puls={puls ? "an" : "aus"}>
           {sichtbar.map((o, i) => <li key={o.productKey || `angebot-${i}`} className="pc-offers-item"><PublicOfferCard offer={o} index={i} /></li>)}
         </ul>
       )}
@@ -107,6 +115,7 @@ function Liste({ ergebnis }) {
 }
 
 export function PublicResults({ host, phase, ergebnis, anfrage, langsam, sekunden, onRetry, onEdit }) {
+  const [puls, setPuls] = useState(true);
   if (!host || phase === "idle") return null;
   const ausgang = ergebnis ? ergebnis.outcome : null;
   const anzahl = ergebnis && ergebnis.result ? ergebnis.result.offers.length : 0;
@@ -127,7 +136,8 @@ export function PublicResults({ host, phase, ergebnis, anfrage, langsam, sekunde
         <>
           {ausgang === OUTCOME.PARTIAL && <Hinweis ton="warning" titel={t.title} text={t.message} id="pc-partial" />}
           {gemischt && <p className="pc-packages-note" id="pc-packages-note">{OFFERS_MIXED_PACKAGES_NOTE}</p>}
-          <Liste key={ergebnis.request ? JSON.stringify(ergebnis.request) : "liste"} ergebnis={ergebnis} />
+          <Liste key={ergebnis.request ? JSON.stringify(ergebnis.request) : "liste"} ergebnis={ergebnis}
+            puls={puls} onPuls={() => setPuls((an) => !an)} />
         </>
       );
     } else if (ausgang === OUTCOME.NO_OFFERS || ausgang === OUTCOME.PARTIAL) {

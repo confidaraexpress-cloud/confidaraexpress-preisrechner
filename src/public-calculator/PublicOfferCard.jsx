@@ -16,7 +16,8 @@ import {
 // vollständigen Sendungsangaben als buchbar kennzeichnet; sie führt über die Übernahmeseite der Hauptdomain
 // direkt in die Registrierung (angemeldete Kundinnen und Kunden direkt in „Neue Sendung"). Sonst bleibt die Karte
 // sichtbar wie im Portal — an der Stelle der Aktion steht ihr Grund, nie eine leere Fläche. Keine Auszeichnung,
-// kein Rang.
+// kein Rang. Kein Carrier-Logo (Betreiberentscheidung 2026-11-02): Carrier und Service stehen als Text; das Portal
+// zeigt seine Logos unverändert weiter.
 
 export function PublicOfferCard({ offer, index }) {
   const carrier = publicCarrierDisplay(offer);
@@ -39,9 +40,6 @@ export function PublicOfferCard({ offer, index }) {
     <article className={`pc-offer${weiter ? "" : " pc-offer--quiet"}`} aria-labelledby={titelId}
       data-product-key={offer.productKey || undefined}>
       <header className="pc-offer-head">
-        <span className="pc-offer-logo">
-          {carrier.logo ? <img src={carrier.logo} alt="" width="72" height="32" loading="lazy" /> : null}
-        </span>
         <div className="pc-offer-name">
           <h3 className="pc-offer-carrier" id={titelId}>{carrier.name}</h3>
           <p className="pc-offer-service">{service}</p>

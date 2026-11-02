@@ -258,6 +258,17 @@ test("E — Anmeldung, öffentliche Seiten, Admin und Partnerportal bekommen kei
     assert.equal(befund.ov, false);
   };
   const oeffentlich = await browser.newPage({ viewport: { width: 1440, height: 900 }, locale: "de-DE" });
+  // Kein echtes Backend (E2E-Vertrag): Registrierung und Partnerregistrierung laden beim Öffnen lesend
+  // /api/legal/current bzw. /api/sales-partner/public-config — beides und jede weitere Anfrage beantwortet die Attrappe.
+  await oeffentlich.route("**/api.confidaraexpress.de/**", (route) => {
+    const p = new URL(route.request().url()).pathname;
+    const body = p.endsWith("/api/legal/current")
+      ? { setId: 3, setKey: "SET-2026-08", documents: [
+        { type: "terms", version: "2026-08", label: "Allgemeine Geschäftsbedingungen", url: "/api/legal/terms/2026-08" },
+        { type: "privacy", version: "2026-07", label: "Datenschutzerklärung", url: "/api/legal/privacy/2026-07" }] }
+      : {};
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+  });
   try {
     for (const [wo, ziel, sel] of [["Anmeldung", "/login", "form"], ["Registrierung", "/register", "form"], ["Sendungsverfolgung (öffentlich)", "/tracking", "h1"], ["Partnerregistrierung", "/partner-registrieren", "h1"]]) {
       await oeffentlich.goto(`${BASE}${ziel}`, { waitUntil: "domcontentloaded" });

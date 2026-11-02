@@ -107,15 +107,15 @@ test("die Übersicht ist bei vorhandenen Daten eine operative Arbeitsfläche", a
   await page.close();
 });
 
-// UX-Korrektur C (Betreiberentscheidung 2026-10-27): „Ihre Versanddienstleister“ als Navy-Fläche mit feinen Linien —
-// für jede Anzahl, die der Server liefert. Die Kacheln einer Reihe sind gleich breit und bleiben in der Fläche;
+// UX-Korrektur C (Betreiberentscheidung 2026-10-27): „Ihre Versanddienstleister“ als Navy-Fläche — seit dem Abschluss
+// (2026-11-02) ohne Linien, Zeichen und CE-Monogramm — für jede Anzahl, die der Server liefert. Die Kacheln einer Reihe sind gleich breit und bleiben in der Fläche;
 // schmal stehen höchstens drei je Reihe, die letzte Reihe mittig. Die Aktion führt zum Versandkostenrechner.
 const ALLE_CARRIER = [
   { id: "ups", name: "UPS" }, { id: "dhl", name: "DHL Express" }, { id: "dpd", name: "DPD" }, { id: "gls", name: "GLS" },
   { id: "tnt", name: "TNT" }, { id: "fedex", name: "FedEx" }, { id: "der-kurier", name: "DER KURIER" }, { id: "trans-o-flex", name: "trans-o-flex" },
 ];
 for (const anzahl of [1, 3, 5, 8]) {
-  for (const [breite, hoehe] of [[1440, 1000], [390, 844]]) {
+  for (const [breite, hoehe] of [[1440, 1000], [1024, 800], [390, 844]]) {
     test(`Versanddienstleister: Navy-Fläche mit ${anzahl} Carrier(n) bei ${breite} px`, async () => {
       const page = await browser.newPage({ viewport: { width: breite, height: hoehe } });
       const liste = ALLE_CARRIER.slice(0, anzahl);
@@ -132,9 +132,12 @@ for (const anzahl of [1, 3, 5, 8]) {
           const r = e.getBoundingClientRect();
           return { links: r.left, rechts: r.right, oben: Math.round(r.top), breite: Math.round(r.width) };
         });
+        // Seit dem Abschluss (Betreiberentscheidung 2026-11-02) trägt die Fläche kein CE-Monogramm und keine Marke mehr:
+        // keine Ebene davor oder dahinter, keine Zeichnung, kein Markup — nur ihre Verläufe.
+        const vor = getComputedStyle(flaeche, "::before"), nach = getComputedStyle(flaeche, "::after");
         return {
           hintergrund: getComputedStyle(flaeche).backgroundImage,
-          linien: flaeche.querySelector("svg.ov-carrier-linien")?.getAttribute("aria-hidden"),
+          ebenen: { vor: vor.content, nach: nach.content, bild: `${vor.backgroundImage} ${nach.backgroundImage}`, svg: flaeche.querySelectorAll("svg").length },
           namen: [...flaeche.querySelectorAll(".ov-carrier-name")].map((n) => n.textContent.trim()),
           titel: getComputedStyle(flaeche.querySelector(".ov-carrier-titel")).color,
           kacheln, fLinks: f.left, fRechts: f.right, lLinks: l.left, lRechts: l.right,
@@ -142,7 +145,11 @@ for (const anzahl of [1, 3, 5, 8]) {
         };
       });
       assert.match(m.hintergrund, /gradient/, "die Fläche trägt nicht die Navy-Bühne");
-      assert.equal(m.linien, "true", "die Linien fehlen oder sind nicht dekorativ");
+      assert.doesNotMatch(m.hintergrund, /url\(/, "die Navy-Bühne malt eine Zeichnung");
+      assert.equal(m.ebenen.vor, "none", `die Navy-Bühne trägt wieder eine Ebene (CE oder Marke) bei ${breite} px`);
+      assert.equal(m.ebenen.nach, "none", `die Navy-Bühne trägt eine zweite Ebene bei ${breite} px`);
+      assert.doesNotMatch(m.ebenen.bild, /url\(/, "eine Ebene der Navy-Bühne trägt eine Zeichnung");
+      assert.equal(m.ebenen.svg, 0, "Linien oder Zeichen stehen als Markup in der Fläche");
       assert.equal(m.titel, "rgb(255, 255, 255)", "der Titel steht nicht weiß auf Navy");
       assert.deepEqual(m.namen, liste.map((c) => c.name), "die Fläche zeigt nicht die Liste des Servers");
       assert.equal(m.ueberlauf, 0, "horizontales Scrollen");

@@ -27,7 +27,7 @@
 // Sichtbarkeitsregel der Onboardingtexte kippt, Daten/Routing ändern sich.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 
 const src = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
@@ -124,6 +124,275 @@ test("2b — Begrüßung (Betreiberentscheidung 2026-11-01): ein Satz in der Gru
   const zeile = editorial.slice(editorial.indexOf(zeileKopf), editorial.indexOf("}", editorial.indexOf(zeileKopf)));
   assert.match(zeile, /color: var\(--ce-color-text-secondary\);/, "die Datumszeile steht nicht im Nebentext");
   assert.match(zeile, /font-size: var\(--ce-text-label-size\);/, "die Datumszeile hat ihre Größe geändert");
+});
+
+test("2c — Premium-Dashboard V2 (2026-11-01): getönte Fläche nur auf der Übersicht, ein Kartenmaterial, Köpfe ohne Linie", () => {
+  const editorial = src("../../styles/premium-editorial.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const variablen = src("../../styles/variables.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const regel = (sel) => {
+    const kopf = `:root[data-ce-bereich="kunde"] ${sel} {`;
+    const i = editorial.indexOf(kopf);
+    return i < 0 ? "" : editorial.slice(i + kopf.length, editorial.indexOf("}", i));
+  };
+  // Die kräftige Fläche gilt nur für den Inhaltsbereich der Übersicht; Seitenleiste und Navigation bleiben, wie sie sind, die
+  // übrigen Kundenseiten tragen seit dem Betreiberauftrag 2026-11-02 die leise Arbeitsfläche (Test 2f).
+  // Seit Flow Signature V2 (Betreiberauftrag 2026-11-01: „weniger blass“) ein kühles, helles Blau statt Grau-Blau, seit V3
+  // (2026-11-02: „Hintergrund etwas stärker“) eine Stufe blauer — gedämpfter Text darauf weiterhin ≥ 4,5:1 (4,68:1).
+  assert.match(regel(".main-content:has(.ov-page)"), /background: var\(--ce-pr-ed-flaeche-uebersicht\);/);
+  assert.match(variablen, /--ce-pr-ed-flaeche-uebersicht:\s*#e9f0fb;/);
+  assert.equal((editorial.match(/var\(--ce-pr-ed-flaeche-uebersicht\)/g) || []).length, 1, "die Fläche hängt an einem weiteren Selektor");
+  // Die Suche steht auf jeder getönten Fläche sichtbar als weiße Kapsel mit Haarlinie statt der Mulde — seit 2026-11-02 in
+  // einer Regel für den ganzen Kundenbereich (die Mulde wäre auf der Arbeitsfläche heller als der Grund und ohne Kante).
+  assert.match(regel(".ce-suche"), /border-color: var\(--ce-pr-hairline\);/);
+  assert.match(regel(".ce-suche"), /background: var\(--ce-color-surface\);/);
+  assert.ok(!editorial.includes(".main-content:has(.ov-page) .ce-suche"), "die Übersicht trägt wieder eine eigene Suche");
+  // Modulköpfe ohne Linie, alle Modultitel in einer Größe.
+  assert.match(regel(".ov-mod-head"), /border-bottom: 0;/, "ein Modulkopf trägt wieder eine Linie");
+  assert.match(regel(".ov-mod-title"), /font-size: var\(--ce-pr-ed-modul-titel\);/);
+  assert.ok(!editorial.includes(".ov-mod-grid--lager .ov-mod-title {"), "die zweite Reihe hat wieder eine eigene Titelgröße");
+  // Jede vorhandene Modulkarte im gemeinsamen Material; keine Mulde mehr in der zweiten Reihe.
+  const material = regel(".ov-page .ov-mod > .ov-card");
+  for (const d of ["border: 1px solid var(--ce-pr-hairline);", "border-radius: var(--ce-pr-radius-card);",
+    "background: var(--ce-color-surface);", "box-shadow: var(--ce-pr-ed-shadow-flaeche);"]) {
+    assert.ok(material.includes(d), `Modulkarte ohne ${d}`);
+  }
+  assert.ok(!/\.ov-mod-grid--lager \.ov-card \{[^}]*--ce-pr-inset/.test(editorial), "die zweite Reihe steht wieder als Mulde");
+  // Die Sendungsliste bleibt eine Liste: Zeilen zwischen Haarlinien, keine Karte je Sendung.
+  assert.match(regel(".ov-list--sendungen .ov-list-row"), /border-bottom: 1px solid var\(--ce-pr-hairline\);/);
+  assert.ok(!/\.ov-list--sendungen \.ov-list-row \{[^}]*(box-shadow|border-radius)/.test(editorial), "eine Sendung steht als eigene Karte");
+  // Kein zusätzliches Markup: dieselben vier Kartenhüllen wie bisher.
+  assert.equal((src("./OverviewModules.jsx").match(/className="ce-card ov-card/g) || []).length, 4, "die Zahl der Kartenhüllen hat sich geändert");
+});
+
+test("2d — Confidara Flow Signature, Abschluss (2026-11-02): blaue Markenatmosphäre nur auf der Übersicht, ohne Ebene und Bewegung; keine CE-Monogramme, das Licht an den Aktionen", () => {
+  const editorial = src("../../styles/premium-editorial.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const variablen = src("../../styles/variables.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const regeln = [...editorial.replace(/@(media|supports|container)[^{]+\{/g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .map((m) => ({ sel: m[1].trim(), koerper: m[2] }));
+  const ÜBERSICHT = /^:root\[data-ce-bereich="kunde"\] (\.main-content:has\(\.ov-page\)|\.ov-page \.ov-carrier-(zeile|eintrag|liste)|\.ov-page :is\(\.ov-carrier-logo)/;
+
+  // Jede Regel, die ein Flow-Token liest, gehört zur Übersicht: ihre Fläche, Kopfleiste, Seitenkopf, Fuß oder Navy-Bühne.
+  const flow = regeln.filter((r) => r.koerper.includes("--ce-pr-ed-flow-"));
+  assert.ok(flow.length >= 8, "die Flow-Regeln fehlen");
+  for (const { sel, koerper } of flow) {
+    assert.match(sel, ÜBERSICHT, `${sel}: Flow-Token außerhalb der Übersicht`);
+    assert.doesNotMatch(koerper, /\b(animation|transition)\s*:/, `${sel}: Bewegung im Hintergrund`);
+  }
+  // Die Fläche bleibt reine Hintergrundmalerei: kein Stapelkontext (feste Dialoge, Aufklapper der Kopfleiste).
+  for (const { koerper } of regeln.filter((r) => r.sel === ':root[data-ce-bereich="kunde"] .main-content:has(.ov-page)')) {
+    assert.doesNotMatch(koerper, /\b(isolation|transform|filter|opacity|z-index|contain|will-change|mask(-image)?|position)\s*:/,
+      "die Fläche der Übersicht öffnet einen Stapelkontext oder eine Ebene");
+  }
+  // Drei Zonen in den Blautönen der Marke: oben Band, Wolke, Azur-Himmel, Kobaltfeld an der Aktion und eine flache Weite
+  // über den Kennzahlen; die Mitte bindet die Zonen mit Lichtbahn, Flanke an der Seitenleiste, Lichtwolke, Azurlicht und
+  // Azur-Säule; unten Kobalthof und Schein um die Bühne und Navy-Boden. Radiale Verläufe statt waagrechter Kanten.
+  const flaeche = regeln.find((r) => r.sel === ':root[data-ce-bereich="kunde"] .main-content:has(.ov-page)' && r.koerper.includes("background-image"));
+  for (const t of ["schein", "weite", "azur", "wolke", "nebel", "bahn", "flanke", "licht", "mitte", "rand", "hof", "glut", "boden"]) {
+    assert.ok(flaeche.koerper.includes(`var(--ce-pr-ed-flow-${t})`), `die Fläche liest --ce-pr-ed-flow-${t} nicht`);
+  }
+  // Abschluss (Betreiberentscheidung 2026-11-02): Ohne CE gibt es keinen Lichtkern mehr — im freien Feld läse er sich als
+  // leuchtende Blase an der früheren Stelle des Zeichens. Das Kobaltfeld steht auf der Mitte von „Neue Sendung“, Weite und
+  // Lichtbahn auf ihrer Achse; beide hängen am rechten Inhaltsrand aus Rahmen und Seitenrand, nicht an einer Prozentlage.
+  assert.doesNotMatch(editorial + variablen, /--ce-pr-ed-flow-(kern|licht-oben|buehne-kern)\b/, "ein Lichtkern der früheren CE-Monogramme ist zurück");
+  for (const [name, token] of [["--ov-licht-x", "licht-rechts"], ["--ov-aktion-x", "licht-aktion"]]) {
+    assert.ok(flaeche.koerper.includes(`${name}: calc(100% - max(var(--shell-gutter, var(--ce-page-gutter)), (100% - var(--ce-size-content)) / 2) - var(--ce-pr-ed-flow-${token}));`),
+      `${name} hängt nicht am rechten Inhaltsrand`);
+  }
+  for (const [x, hoehe] of [["--ov-aktion-x", "schein-oben"], ["--ov-licht-x", "weite-oben"]]) {
+    assert.equal((flaeche.koerper.match(new RegExp(`at var\\(${x}\\) var\\(--ce-pr-ed-flow-${hoehe}\\)`, "g")) || []).length, 1,
+      `Kobaltfeld bzw. Weite stehen nicht an ihrer Achse (${x}, ${hoehe})`);
+  }
+  const schmalStart = editorial.indexOf("@media (min-width: 1024px) and (max-width: 85.3125em) {");
+  const schmalerDesktop = editorial.slice(schmalStart, editorial.indexOf("@media (min-width: 1024px) and (max-width: 68.75em) {", schmalStart));
+  assert.ok(schmalStart > -1 && schmalerDesktop.length > 0, "die Fassung des schmalen Desktops fehlt");
+  assert.match(schmalerDesktop, /radial-gradient\(22rem 12rem at var\(--ov-aktion-x\) var\(--ce-pr-ed-flow-schein-oben\), var\(--ce-pr-ed-flow-schein-schmal\)/,
+    "auf dem schmalen Desktop steht das Kobaltfeld nicht an der Aktion");
+  // Chromium verwirft min(), max(), clamp() und calc() mit gemischten Einheiten in der Größe eines radialen Verlaufs — mit
+  // var() in derselben Deklaration fiele der ganze Hintergrund still weg (gemessen: nur noch die Flächenfarbe).
+  for (const { sel, koerper } of flow) {
+    for (const [, groesse] of koerper.matchAll(/radial-gradient\(([^,]*?) at /g)) {
+      assert.doesNotMatch(groesse, /\b(min|max|clamp|calc)\(/, `${sel}: Rechenfunktion in der Größe eines radialen Verlaufs`);
+    }
+  }
+  // Präziser Glow (V4): Kobaltfelder, Weiten, Lichtbahn und Bühnenlicht sind Verlaufslisten mit weichem Auslauf
+  // (Farbe und Zwischenstopps) statt einer Farbe mit linearem Abfall — und jeder Verlauf endet danach transparent.
+  for (const t of ["schein", "weite", "weite-schmal", "schein-schmal", "schein-aktion", "schein-mobil", "bahn", "bahn-schmal", "buehne-schein"]) {
+    const wert = (variablen.match(new RegExp(`--ce-pr-ed-flow-${t}:([^;]*);`)) || [])[1] || "";
+    assert.ok((wert.match(/rgba\(/g) || []).length >= 2, `--ce-pr-ed-flow-${t} ist keine Verlaufsliste mit weichem Auslauf`);
+    const nutzungen = [...editorial.matchAll(new RegExp(`var\\(--ce-pr-ed-flow-${t}\\)([^)]*\\))`, "g"))].map((m) => m[1]);
+    assert.ok(nutzungen.length > 0, `--ce-pr-ed-flow-${t} wird nicht gelesen`);
+    for (const rest of nutzungen) assert.match(rest, /^, transparent \d+%\)$/, `--ce-pr-ed-flow-${t}: der Verlauf endet nicht transparent`);
+  }
+  // Tokens nur in der Familie --ce-pr-ed-* (der Preisrechner-Build filtert sie heraus).
+  for (const name of ["nebel-oben", "nebel", "nebel-mobil", "stahl", "wolke", "wolke-mobil", "schein", "weite", "weite-schmal", "schein-schmal",
+    "schein-aktion", "schein-mobil", "azur", "azur-schmal", "bahn", "bahn-schmal", "flanke", "flanke-schmal", "licht", "mitte", "mitte-mobil", "rand", "hof",
+    "hof-schmal", "glut", "boden", "boden-schmal", "licht-aktion", "licht-rechts", "schein-oben", "weite-oben",
+    "kopf-linie", "buehne-grund", "buehne-schein", "buehne-tiefe", "buehne-horizont", "buehne-glanz", "buehne-licht-rechts", "route", "kachel"]) {
+    assert.match(variablen, new RegExp(`--ce-pr-ed-flow-${name}:`), `--ce-pr-ed-flow-${name} fehlt`);
+  }
+  assert.doesNotMatch(variablen, /--ce-flow-|--flow-/, "Flow-Tokens außerhalb der Familie --ce-pr-ed-*");
+
+  // Keine dekorativen CE-Monogramme (Betreiberentscheidung 2026-11-02): kein Zeichen im Kopf und auf der Bühne, keine
+  // Marke auf schmalen Seiten, keine Ankerfläche, keine Zeichnungsdateien. Das offizielle Logo (assets/brand, BrandLogo)
+  // ist davon nicht berührt und steht weiter in Seiten- und Mobilleiste.
+  const roh = src("../../styles/premium-editorial.css");
+  assert.doesNotMatch(editorial, /anchor-name|anchor\(|--ov-flow/, "das Ankerfeld des früheren CE im Kopf ist zurück");
+  assert.ok(!regeln.some((r) => /\.ce-page-header-main::(before|after)$/.test(r.sel) && r.sel.includes(".ov-page")),
+    "der Seitenkopf der Übersicht trägt wieder eine Ebene");
+  assert.ok(!regeln.some((r) => /\.ov-carrier-zeile::(before|after)$/.test(r.sel)), "die Navy-Bühne trägt wieder eine Ebene (CE oder Marke)");
+  assert.doesNotMatch(editorial, /signatur-ce|assets\/overview\//, "eine CE-Zeichnung wird wieder geladen");
+  assert.equal(existsSync(new URL("../../assets/overview/", import.meta.url)), false, "der Ordner der CE-Zeichnungen ist zurück");
+  for (const datei of readdirSync(new URL("../../styles/", import.meta.url)).filter((d) => d.endsWith(".css"))) {
+    assert.doesNotMatch(src(`../../styles/${datei}`), /signatur-ce|assets\/overview\//, `${datei}: lädt eine CE-Zeichnung`);
+  }
+  // Kopflinie: auf dem Blau in Navy statt hellem Grau, über die ganze Breite (kein Auslauf vor einem Zeichen).
+  const kopf = regeln.filter((r) => r.sel === ':root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-main');
+  assert.ok(kopf.some((r) => r.koerper.includes("border-bottom-color: var(--ce-pr-ed-flow-kopf-linie);")), "die Kopflinie steht hell auf dem Blau");
+  assert.ok(!kopf.some((r) => /border-bottom-color: transparent|background:/.test(r.koerper)), "die Kopflinie läuft vor einem früheren Zeichen aus");
+
+  // Unten: die Navy-Bühne in abgestuftem Navy mit Kobaltlicht an „Preise vergleichen“ (Achse 85 px) und Azur-Horizont —
+  // ohne Kern und ohne Zeichen.
+  const buehnen = regeln.filter((r) => r.sel === ':root[data-ce-bereich="kunde"] .ov-page .ov-carrier-zeile' && r.koerper.includes("--ce-pr-ed-flow-buehne-grund"));
+  const buehne = buehnen[0];
+  for (const t of ["buehne-grund", "buehne-schein", "buehne-horizont"]) {
+    assert.ok(buehne && buehne.koerper.includes(`var(--ce-pr-ed-flow-${t})`), `die Navy-Bühne verliert --ce-pr-ed-flow-${t}`);
+  }
+  assert.ok(buehne.koerper.includes("radial-gradient(24rem 14rem at calc(100% - var(--ce-pr-ed-flow-buehne-licht-rechts)) 5.3125rem, var(--ce-pr-ed-flow-buehne-schein), transparent 72%)"),
+    "das Bühnenlicht steht nicht auf der Achse von „Preise vergleichen“");
+  // Die Mitte von „Preise vergleichen“ liegt knapp 8rem vor der rechten Kante (gemessen 7,9rem); das frühere Licht am C
+  // (17,75rem) stand im freien Feld neben dem Hinweis.
+  const lichtRechts = Number((variablen.match(/--ce-pr-ed-flow-buehne-licht-rechts:\s*([\d.]+)rem;/) || [])[1]);
+  assert.ok(lichtRechts >= 6 && lichtRechts <= 10, `das Bühnenlicht steht ${lichtRechts}rem vor der Kante statt auf der Aktion`);
+  // Jede Fassung der Bühne (breit, schmal, gestapelt) setzt nach der Kurzschreibweise ihre Flächenfarbe: ohne sie prüft
+  // axe den Kontrast gegen Weiß.
+  assert.ok(buehnen.length >= 3, "eine Fassung der Bühne fehlt");
+  for (const b of buehnen) assert.match(b.koerper, /background-color: var\(--ce-pr-navy-900\);/, "ohne Flächenfarbe prüft axe den Kontrast gegen Weiß");
+  // Schmaler als 65,75rem steht das Bühnenlicht in der Ecke über der Aktion (auf der Aktion läge es hinter dem Hinweis:
+  // in V2 gemessen 3,9:1), gestapelt (bis 720 px) ebenfalls in der Ecke — nach der Containerregel, damit sie sie überstimmt.
+  const schmal = roh.slice(roh.indexOf("@container ce-seite (width < 65.75rem) {"), roh.indexOf("@container ce-seite (width >= 65.75rem) {"));
+  assert.ok(schmal.includes("at calc(100% - 2.05rem) 1.55rem, var(--ce-pr-ed-flow-buehne-schein)"), "schmale Bühne ohne Licht in der Ecke");
+  assert.ok(roh.lastIndexOf("at calc(100% - 1.8rem) 1.1rem, var(--ce-pr-ed-flow-buehne-schein)") > roh.indexOf("(width < 65.75rem)"),
+    "die gestapelte Bühne steht vor der Containerregel oder ohne Licht in der Ecke");
+  // Route durch die Kacheln: eine Lichtlinie hinter den Kacheln, nur in der einreihigen Bühne, nie klickbar.
+  assert.match(roh, /@container ce-seite \(width >= 65\.75rem\) \{\s*:root\[data-ce-bereich="kunde"\] \.ov-page \.ov-carrier-liste \{ position: relative; \}/,
+    "die Route durch die Kacheln hängt nicht an der einreihigen Bühne");
+  const route = regeln.find((r) => r.sel === ':root[data-ce-bereich="kunde"] .ov-page .ov-carrier-liste::before');
+  for (const d of ['content: "";', "position: absolute;", "height: 1px;", "z-index: -1;", "pointer-events: none;", "background: var(--ce-pr-ed-flow-route);"]) {
+    assert.ok(route && route.koerper.includes(d), `Route durch die Kacheln ohne ${d}`);
+  }
+  assert.ok(!/ov-carrier-linien|CarrierLinien/.test(modules), "die Linien stehen wieder als Markup in der Fläche");
+});
+
+test("2e — Confidara Flow Signature (2026-11-01): Datenflächen ruhig und einheitlich, Fuß und Kopfleiste ohne harte Kante", () => {
+  const editorial = src("../../styles/premium-editorial.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const regel = (sel) => (editorial.match(new RegExp(`:root\\[data-ce-bereich="kunde"\\] ${sel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\{([^}]*)\\}`)) || [])[1] || "";
+  // Status in einer Form: jede Angabe der Sendungsliste als Kapsel mit Haarlinie; Ausnahmen behalten ihre Tönung
+  // (die weiße Fläche gilt nur für die ruhigen Angaben), die Kante steht im eigenen Ton.
+  const kapsel = regel(".ov-page .ov-list--sendungen .badge");
+  for (const d of ["border: 1px solid var(--ce-pr-hairline);", "border-radius: var(--ce-radius-full);"]) assert.ok(kapsel.includes(d), `Statuskapsel ohne ${d}`);
+  assert.ok(!/background:/.test(kapsel), "die weiße Fläche überdeckt die Tönung der Ausnahmen");
+  assert.match(editorial, /\.ov-page \.ov-list--sendungen \.badge:not\(\.badge--warning, \.badge-yellow, \.badge--overdue, \.badge--error, \.badge-red, \.badge--blocked\) \{\s*background: var\(--ce-color-surface\);/);
+  // Carrier-Logos optisch gleich groß — dieselben Faktoren wie auf der Bühne, die Marke kommt aus der Zuordnung.
+  assert.match(modules, /<span className="ov-list-carrier" data-marke=\{c\.name\}>/, "die Logoangleichung braucht die Marke am Eintrag");
+  for (const [marke, faktor] of [["UPS", "1.3"], ["DPD", "1.15"], ["TNT", "1.25"]]) {
+    assert.ok(regel(`.ov-page .ov-list-carrier[data-marke="${marke}"] .ov-list-carrier-logo`).includes(`scale: ${faktor};`), `${marke}: Logo nicht angeglichen`);
+    assert.match(css, new RegExp(`\\.ov-carrier-eintrag\\[data-carrier="${marke.toLowerCase()}"\\] \\{ --ov-logo-optik: ${faktor.replace(".", "\\.")}; \\}`), `${marke}: Faktor weicht von der Bühne ab`);
+  }
+  // „Neu“ als leise Signal-Marke (kein Navy-Block), Überfälligkeit deutlicher als Kapsel mit Kante.
+  const neu = regel(".ov-ntf-new");
+  assert.ok(neu.includes("background: var(--ce-pr-signal-soft);") && neu.includes("color: var(--ce-pr-signal-ink);"), "„Neu“ ist keine Signal-Marke");
+  assert.ok(!neu.includes("--ce-pr-navy-800"), "„Neu“ steht wieder als Navy-Block");
+  assert.ok(regel(".ov-page .ov-inv-overdue .badge--overdue").includes("border: 1px solid color-mix(in srgb, currentColor 24%, transparent);"));
+  // Kopfleiste und Fuß: leise statt harter Kante quer durch das Licht.
+  assert.ok(regel(".main-content:has(.ov-page) .ce-page-header-utility").includes("border-bottom-color: var(--ce-pr-ed-flow-kopfleiste-linie);"));
+  const fuss = regel(".main-content:has(.ov-page) > .app-footer");
+  assert.ok(fuss.includes("border-top-color: transparent;") && fuss.includes("background: var(--ce-pr-ed-flow-fuss-linie) top / 100% 1px no-repeat;"), "der Fuß trägt wieder eine Kante über die ganze Breite");
+});
+
+test("2f — Premium Workspace (Betreiberauftrag 2026-11-02): jede übrige Kundenseite auf der leisen blauen Arbeitsfläche, die Übersicht ersetzt sie vollständig", () => {
+  const editorial = src("../../styles/premium-editorial.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const variablen = src("../../styles/variables.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const bereich = variablen.slice(variablen.indexOf(':root[data-ce-bereich="kunde"],'));
+  const tok = (name) => ((bereich.match(new RegExp(`--${name}:\\s*([^;]+);`)) || [])[1] || "").trim();
+  const KUNDE = ':root[data-ce-bereich="kunde"]';
+  const regeln = [...editorial.replace(/@(media|supports|container)[^{]+\{/g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .map((m) => ({ sel: m[1].trim(), koerper: m[2] }));
+
+  // Eine Fläche für den ganzen Kundenbereich: .main-content beider Kunden-Shells, nur unter data-ce-bereich="kunde" — Admin,
+  // Partnerportal, Anmeldung und öffentlicher Preisrechner setzen diesen Bereich nie (hooks/useCeBereich.js).
+  const raum = regeln.filter((r) => r.sel === `${KUNDE} .main-content`);
+  assert.equal(raum.length, 2, "Arbeitsfläche und ihre schmale Fassung (unter 1024 px) erwartet");
+  assert.match(raum[0].koerper, /background: var\(--ce-pr-ed-raum-flaeche\);/);
+  assert.match(raum[0].koerper, /background-repeat: no-repeat;/);
+  for (const shell of ["../layout/DashboardLayout.jsx", "../../pages/DashboardPage.jsx"]) {
+    const shellCode = stripComments(src(shell));
+    assert.match(shellCode, /useCeBereich\("kunde"\)/, `${shell}: ohne Bereich „kunde“`);
+    assert.match(shellCode, /<main className="main-content">/, `${shell}: ohne .main-content`);
+  }
+  // Dokument und Shell bleiben weiß, getönt ist nur die Inhaltsfläche; Raum-Tokens liest nur die Arbeitsfläche selbst und
+  // ihre Kopfleiste — keine Seite bekommt eine eigene Fassung.
+  assert.ok(regeln.some((r) => r.sel === `${KUNDE} :is(body, .app-shell)` && r.koerper.includes("background: var(--ce-color-surface);")));
+  assert.ok(!regeln.some((r) => r.sel.includes(":is(body, .app-shell, .main-content)")), "die Inhaltsfläche ist wieder weißes Papier");
+  for (const { sel } of regeln.filter((r) => r.koerper.includes("--ce-pr-ed-raum-"))) {
+    assert.ok([`${KUNDE} .main-content`, `${KUNDE} .ce-page-header-utility`].includes(sel), `${sel}: Raum-Token außerhalb der Arbeitsfläche`);
+  }
+  assert.ok(regeln.some((r) => r.sel === `${KUNDE} .ce-page-header-utility` && r.koerper.includes("border-bottom: 1px solid var(--ce-pr-ed-raum-kopfleiste-linie);")),
+    "die Kopfleiste trägt wieder die graue Haarlinie (im Band ein Lichtstreifen)");
+
+  // Reine Hintergrundmalerei: keine Ebene, kein Stapelkontext, keine Bewegung, keine Zeichnung (kein CE, keine Route).
+  for (const { koerper } of raum) {
+    assert.doesNotMatch(koerper, /\b(isolation|transform|filter|opacity|z-index|contain|will-change|mask(-image)?|position|animation|transition)\s*:/,
+      "die Arbeitsfläche öffnet einen Stapelkontext, eine Ebene oder bewegt sich");
+    assert.doesNotMatch(koerper, /url\(/, "eine Zeichnung auf der Arbeitsfläche");
+    for (const [, groesse] of koerper.matchAll(/radial-gradient\(([^,]*?) at /g)) {
+      assert.doesNotMatch(groesse, /\b(min|max|clamp|calc)\(/, "Rechenfunktion in der Größe eines radialen Verlaufs (Test 2d)");
+    }
+  }
+  // Wenige große, weiche Lichtflächen: Band oben, Schimmer rechts oben, Wolke links oben, Auslauf unten — in beiden
+  // Fassungen genau diese vier. Kein Licht mitten in der Seite hinter Formularen und Tabellen: Lagen nur oben (rem) oder am
+  // unteren Rand (100 %). Jede Lichtfläche ist eine Verlaufsliste, die transparent endet.
+  for (const { koerper } of raum) {
+    const bilder = koerper.slice(koerper.indexOf("background-image:"));
+    assert.equal((bilder.match(/(radial|linear)-gradient\(/g) || []).length, 4, "nicht genau vier Lichtflächen");
+    for (const t of ["schimmer", "wolke", "band", "auslauf"]) assert.ok(bilder.includes(`var(--ce-pr-ed-raum-${t})`), `--ce-pr-ed-raum-${t} fehlt`);
+    for (const [, lage] of bilder.matchAll(/ at ([^,]+),/g)) {
+      const y = lage.trim().split(/\s+/)[1];
+      assert.ok(y === "100%" || /^-?[\d.]+rem$/.test(y), `Licht mitten in der Seite (${lage.trim()})`);
+    }
+  }
+  for (const t of ["schimmer", "wolke", "auslauf"]) {
+    assert.ok((tok(`ce-pr-ed-raum-${t}`).match(/rgba\(/g) || []).length >= 2, `--ce-pr-ed-raum-${t} ist keine Verlaufsliste`);
+    for (const [, rest] of editorial.matchAll(new RegExp(`var\\(--ce-pr-ed-raum-${t}\\)([^)]*\\))`, "g"))) {
+      assert.match(rest, /^, transparent \d+%\)$/, `--ce-pr-ed-raum-${t}: der Verlauf endet nicht transparent`);
+    }
+  }
+  // Dieselbe Familie, jede Zone leiser als ihre Entsprechung auf der Übersicht; nur die Blautöne der Marke; der Grund
+  // heller als die Fläche der Übersicht und doch nicht weiß.
+  const dichte = (wert) => Math.max(...[...wert.matchAll(/rgba\([^)]*,\s*([\d.]+)\)/g)].map((m) => Number(m[1])));
+  for (const [r, f] of [["schimmer", "azur"], ["wolke", "wolke"], ["auslauf", "glut"]]) {
+    assert.ok(dichte(tok(`ce-pr-ed-raum-${r}`)) < dichte(tok(`ce-pr-ed-flow-${f}`)), `--ce-pr-ed-raum-${r} ist nicht leiser als --ce-pr-ed-flow-${f}`);
+    for (const [, rot, gruen, blau] of tok(`ce-pr-ed-raum-${r}`).matchAll(/rgba\((\d+), (\d+), (\d+),/g)) {
+      assert.ok(["0,74,252", "77,132,255", "127,156,207"].includes(`${rot},${gruen},${blau}`), `--ce-pr-ed-raum-${r}: Farbe außerhalb der Markenblautöne`);
+    }
+  }
+  const summe = (hex) => { const n = parseInt(hex.slice(1), 16); return ((n >> 16) & 255) + ((n >> 8) & 255) + (n & 255); };
+  const grund = tok("ce-pr-ed-raum-flaeche");
+  assert.match(grund, /^#[0-9a-f]{6}$/);
+  assert.ok(summe(grund) > summe(tok("ce-pr-ed-flaeche-uebersicht")) && summe(grund) < 3 * 255, "der Grund ist nicht heller als die Übersicht oder schon weiß");
+  // Text auf Grund und Band: Tinte, Nebentext und gedämpfter Text mindestens 4,6:1 (im Browser über alle Textzeilen der
+  // Kundenseiten gemessen: schlechtester Wert 4,69:1).
+  const lum = (hex) => { const n = parseInt(hex.slice(1), 16); return [16, 8, 0].map((s) => ((n >> s) & 255) / 255)
+    .map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0); };
+  const kontrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  for (const flaeche of [grund, tok("ce-pr-ed-raum-band")]) {
+    for (const text of ["ce-color-text-primary", "ce-color-text-secondary", "ce-color-text-muted"]) {
+      assert.ok(kontrast(tok(text), flaeche) >= 4.6, `${text} auf ${flaeche} unter 4,6:1`);
+    }
+  }
+  // Die Übersicht ersetzt die Fläche vollständig: Ihre Regel setzt den Grund in der Kurzform (sie löscht damit jedes Bild der
+  // Arbeitsfläche) und ihre eigenen Bilder — nie zwei Fassungen übereinander; den Wechsel trägt :has(), keine Klasse.
+  const signatur = regeln.find((r) => r.sel === `${KUNDE} .main-content:has(.ov-page)` && r.koerper.includes("background-image"));
+  assert.match(signatur.koerper, /background: var\(--ce-pr-ed-flaeche-uebersicht\);\s*background-image:/);
 });
 
 test("3 — Sendungen und Rechnungen stehen ≈ 2 : 1 nebeneinander, darunter einspaltig", () => {
@@ -268,14 +537,12 @@ test("14 — „Ihre Versanddienstleister“: Navy-Fläche mit Linien, nur aus G
   assert.match(block, /data-carrier=\{c\.id\}/, "die optische Logoangleichung braucht die öffentliche Carrier-ID");
   assert.match(block, /onClick=\{onCompare\}>\s*\{CARRIER_PORTFOLIO_TEXT\.action\}/, "die Vergleichsaktion fehlt");
   assert.ok(!/service|Laufzeit|Tage|time/.test(block), "Laufzeiten oder Dienste in der Carrierfläche");
-  // Die Linien: dekorativ, statisch, nur in der Fläche und hinter dem Inhalt.
-  const linien = modules.slice(modules.indexOf("function CarrierLinien"), modules.indexOf("export function CarrierPortfolio"));
-  assert.match(linien, /<svg className="ov-carrier-linien" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">/);
-  assert.match(block, /<CarrierLinien \/>/);
+  // Die Linienzeichnung (seit Flow Signature V3 das CE samt Route durch die Kacheln) ist reine Dekoration ohne Markup: Ebenen
+  // der Fläche hinter ihrem Inhalt (premium-editorial.css, Test 2d), an der Rundung beschnitten — kein SVG im Inhalt der Fläche.
+  assert.ok(!/ov-carrier-linien|CarrierLinien|<svg/.test(block), "die Linien stehen wieder als Markup in der Fläche");
   assert.match(rule(".ov-carrier-zeile"), /background:\s*var\(--ce-pr-stage\)/, "die Fläche ist nicht Navy");
+  assert.match(rule(".ov-carrier-zeile"), /isolation:\s*isolate/, "die Ebene der Linien läge nicht hinter dem Inhalt der Fläche");
   assert.match(rule(".ov-carrier-zeile"), /overflow:\s*hidden/, "die Linien laufen über die Fläche hinaus");
-  assert.match(rule(".ov-carrier-linien"), /position:\s*absolute;[\s\S]*z-index:\s*-1;[\s\S]*pointer-events:\s*none/);
-  assert.match(rule(".ov-carrier-routen path"), /vector-effect:\s*non-scaling-stroke/, "die Linien werden mit der Fläche dicker");
   assert.match(rule(".ov-carrier-titel"), /color:\s*var\(--ce-color-text-inverse\)/);
   assert.match(rule(".ov-carrier-zeile .ov-carrier-aktion:focus-visible"), /outline:\s*2px solid var\(--ce-pr-signal-on-navy\)/,
     "der Fokus ist auf Navy nicht sichtbar");

@@ -53,7 +53,7 @@ function CarrierMarke({ raw }) {
   if (!raw) return <span className="ov-list-carrier ov-quiet">Carrier offen</span>;
   const c = resolveCarrier(raw);
   return (
-    <span className="ov-list-carrier">
+    <span className="ov-list-carrier" data-marke={c.name}>
       {c.logo && <img className="ov-list-carrier-logo" src={c.logo} alt="" />}
       <span>{c.name}</span>
     </span>
@@ -330,36 +330,20 @@ export function InventorySnapshot({ stand: standProp = null, onRetry = null, onN
    Ohne Antwort (Fehler, ältere Serverfassung) oder ohne Carrier erscheint das
    Modul nicht — nie eine feste Liste.
 
-   Gestaltung (Betreiberentscheidung 2026-10-27): die Navy-Fläche mit den feinen
-   geschwungenen Linien der früheren Fläche (Geometrie aus 38d6f10), in den
-   Farben der freigegebenen Navy-Bühne (--ce-pr-*). Die Linien liegen nur in
-   dieser Fläche, sind statisch und rein dekorativ (aria-hidden). Darauf Titel,
-   der Hinweis zum Preisvergleich und die Vergleichsaktion als heller Knopf,
-   darunter je Carrier eine helle Logokachel mit dem Namen. Das Raster verteilt
-   jede Anzahl gleichmäßig (overview.css). Die Kacheln sind keine Aktion. Ohne
-   Logodatei steht der Name selbst in der Kachel — kein Symbol, nichts doppelt. */
-function CarrierLinien() {
-  return (
-    <svg className="ov-carrier-linien" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
-      <g className="ov-carrier-routen">
-        <path d="M-40 318 C 220 250, 340 120, 620 150 S 1000 250, 1260 118" />
-        <path d="M-40 178 C 260 128, 420 300, 700 300 S 1020 158, 1260 212" />
-        <path className="ov-carrier-route-hell" d="M120 430 C 300 330, 560 380, 780 250 S 1080 60, 1240 38" />
-      </g>
-      <g className="ov-carrier-knoten">
-        <circle cx="620" cy="150" r="3" />
-        <circle cx="700" cy="300" r="3" />
-        <circle cx="780" cy="250" r="3.5" />
-      </g>
-    </svg>
-  );
-}
-
+   Gestaltung (Betreiberentscheidung 2026-10-27, Abschluss 2026-11-02):
+   die Navy-Bühne in den Farben der freigegebenen Navy-Bühne (--ce-pr-*), ihr
+   Licht aus Verläufen in premium-editorial.css; ohne Zeichen und ohne
+   CE-Monogramm. Die Route durch die Kacheln ist reine Dekoration ohne Markup
+   (::before der Liste), statisch und nie klickbar. Darauf Titel, der Hinweis
+   zum Preisvergleich und
+   die Vergleichsaktion als heller Knopf, darunter je Carrier eine helle
+   Logokachel mit dem Namen. Das Raster verteilt jede Anzahl gleichmäßig
+   (overview.css). Die Kacheln sind keine Aktion. Ohne Logodatei steht der Name
+   selbst in der Kachel — kein Symbol, nichts doppelt. */
 export function CarrierPortfolio({ carriers, onCompare }) {
   if (!Array.isArray(carriers) || carriers.length === 0) return null;
   return (
     <section className="ov-carrier-zeile" aria-labelledby="ov-car-title">
-      <CarrierLinien />
       <div className="ov-carrier-kopf">
         <div className="ov-carrier-intro">
           <h2 className="ov-carrier-titel" id="ov-car-title">{CARRIER_PORTFOLIO_TEXT.title}</h2>

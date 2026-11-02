@@ -268,6 +268,17 @@ test("12 — Editorial-Ebene: nur Kundenbereich, keine Farbliterale, Knöpfe nac
   assert.deepEqual(kurzform, [], `Kurzform text-wrap in premium-editorial.css: ${kurzform.join(", ")}`);
 });
 
+/* ══════════ 12b — keine Kurzform „border-image: none“ in der Editorial-Ebene (Befund 2026-11-01) ══════════
+   Der Build minifiziert „border-image: none“ zu „border-image:“ — eine leere Deklaration, die der Browser verwirft. Das
+   weiße Vollbreitenband der Kopfleiste (border-image der Bereichsebene) blieb dadurch im ausgelieferten Bündel stehen,
+   im Dev-Server nicht; sichtbar wurde es erst auf der getönten Fläche der Übersicht. Aufheben nur über die Langform. */
+test("12b — Editorial-Ebene hebt border-image nur über die Langform auf (die Kurzform none fällt im Build weg)", () => {
+  const kurz = [...EDITORIAL.matchAll(/(?:^|[;{\s])border-image\s*:\s*none\b[^;}]*/g)].map((m) => m[0].trim());
+  assert.deepEqual(kurz, [], `Kurzform border-image: none in premium-editorial.css: ${kurz.join(", ")}`);
+  const kopf = EDITORIAL_REGELN.find(({ sel }) => sel === ':root[data-ce-bereich="kunde"] .ce-page-header-utility');
+  assert.ok(kopf && /border-image-source:\s*none/.test(kopf.koerper), "die Kopfleiste hebt das weiße Band nicht mehr auf");
+});
+
 /* ══════════ 13 — Plus-Drehung der Anlegen-Aktionen (Betreiberentscheidung 2026-10-28) ══════════
    Einzige Ausnahme zu E5: Beim Zeigen dreht sich nur das Pluszeichen (::before) der Anlegen-Aktionen zweimal und
    endet in der Ruhelage — einmal je Zeigen, nur mit echtem Zeiger, über die Tastatur beim sichtbaren Fokus, nie bei
@@ -443,4 +454,34 @@ test("17 — Seitenkante grau; die Menütaste spricht die Sprache der Kapsel dan
   for (const { sel, koerper } of EDITORIAL_REGELN.filter(({ sel }) => /actions-trigger/.test(sel))) {
     assert.doesNotMatch(koerper, /(^|;)\s*(transform|animation|opacity)\s*:/, `${sel}: Bewegung oder Deckkraft`);
   }
+});
+
+/* ══════════ 18 — Seiteneinblendung: keine feste Ebene bleibt darin gefangen (Befund 2026-11-01) ══════════
+   Die Einblendung einer Seite (nur Deckkraft, 180 ms) bildet währenddessen einen Stapelkontext. Ein in dieser Zeit
+   geöffneter Dialog lag darin unter der Ansprechpartnerkarte (accountManagerCard M, gelegentlich rot; Kopfleiste und
+   Seitenleiste ebenso). Enthält die Seite eine feste Ebene, endet die Einblendung deshalb sofort — über die Dauer, nicht
+   über den Namen (ein Namenswechsel startete sie beim Schließen neu) und ohne Ebenenänderung (eine angehobene Seite malte
+   durch den halbtransparenten Dialoghintergrund über die Karte). */
+test("18 — Seiteneinblendung: nur Deckkraft und „backwards“; jede feste Ebene der Seite beendet sie sofort", () => {
+  const SEITE = '[data-ce-bereich="kunde"] .main-content > :is(.page-body, .page-with-navbar)';
+  const einblendung = REGELN.find(({ sel }) => sel === SEITE);
+  assert.ok(einblendung, "die Regel der Seiteneinblendung fehlt");
+  assert.match(einblendung.koerper, /animation:\s*ce-pr-seite\s+180ms\s+[^;]*\bbackwards\b/);
+  assert.match(CSS, /@keyframes ce-pr-seite\s*\{\s*from\s*\{\s*opacity:\s*0;\s*\}\s*\}/, "die Einblendung animiert mehr als die Deckkraft");
+
+  const anheben = REGELN.find(({ sel }) => sel.startsWith(`${SEITE}:has(`));
+  assert.ok(anheben, "eine offene Ebene beendet die Einblendung nicht");
+  assert.match(anheben.koerper, /^\s*animation-duration:\s*0s;\s*$/, "erwartet: genau animation-duration: 0s");
+  assert.match(anheben.sel, /\[aria-modal="true"\]/, "modale Ebenen (auch das Mitteilungsfenster) beenden die Einblendung nicht");
+
+  // Jede fensterfüllende Ebene aus patterns.css (Dialoge, Schubladen) und die Ladeschicht des Angebotsvergleichs.
+  const muster = ohneKommentare(lies(path.join(HIER, "patterns.css")));
+  const gruppe = (anker) => {
+    const m = muster.match(new RegExp(`([^{}]*\\.${anker}[^{]*)\\{[^}]*position:\\s*fixed;[^}]*inset:\\s*0`));
+    return m ? [...m[1].matchAll(/\.([a-z-]+overlay)\b/g)].map((x) => x[1]) : [];
+  };
+  const ebenen = [...new Set([...gruppe("ce-dialog-overlay"), ...gruppe("ce-drawer-overlay"), "cmp-loading-overlay"])];
+  assert.ok(ebenen.length >= 12, `fensterfüllende Ebenen nicht gelesen: ${ebenen.join(", ")}`);
+  const fehlt = ebenen.filter((k) => !new RegExp(`\\.${k}\\b`).test(anheben.sel));
+  assert.deepEqual(fehlt, [], `diese Ebenen blieben in der Einblendung gefangen: ${fehlt.join(", ")}`);
 });

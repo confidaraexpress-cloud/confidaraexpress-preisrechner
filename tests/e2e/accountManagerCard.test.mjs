@@ -17,7 +17,7 @@
 //   J  200 % Zoom und 24 px Browserschrift: kompakt, geöffnet vollständig im Fenster, kein Querüberlauf
 //   K  lange E-Mail-Adresse: Umbruch vor dem „@“
 //   L  Nicht verdeckt: letzte Tabellenzeile und Kartenaktionen erreichbar, Tastaturfokus landet über der Karte
-//   M  Ebenen: Dialog und Schublade liegen über der Karte
+//   M  Ebenen: Dialog und Schublade liegen über der Karte — der Dialog auch während der Seiteneinblendung
 //   N  Adminwechsel und öffentliche Demo (über der Demo-Leiste, keine Person, kein Fotoabruf)
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -58,7 +58,7 @@ const ARTIKEL = Array.from({ length: 30 }, (_, i) => ({
 
 let server, browser;
 
-async function seite({ am = PATRICK, foto = 200, viewport = { width: 1440, height: 900 }, kontext = {}, ziel = "/dashboard", schrift = null, vorher = null } = {}) {
+async function seite({ am = PATRICK, foto = 200, viewport = { width: 1440, height: 900 }, kontext = {}, ziel = "/dashboard", schrift = null, vorher = null, zeitlupe = null } = {}) {
   const context = await browser.newContext({ viewport, ...kontext });
   const page = await context.newPage();
   const zustand = { am, fotoAbrufe: [], fehler: [] };
@@ -88,6 +88,15 @@ async function seite({ am = PATRICK, foto = 200, viewport = { width: 1440, heigh
     localStorage.setItem("ce_token", "e2e-token");
     if (v) for (const [k, w] of Object.entries(v)) localStorage.setItem(k, w);
   }, vorher);
+  if (zeitlupe) {
+    // Einblendung der Seite (ce-pr-seite, 180 ms) in Zeitlupe: Sie läuft sicher noch, wenn die Prüfung beginnt.
+    await page.addInitScript((rate) => {
+      document.addEventListener("animationstart", (e) => {
+        if (e.animationName !== "ce-pr-seite") return;
+        for (const a of e.target.getAnimations()) if (a.animationName === "ce-pr-seite") a.playbackRate = rate;
+      }, true);
+    }, zeitlupe);
+  }
   await page.goto(`${BASE}${ziel}`, { waitUntil: "domcontentloaded" });
   await page.locator(".pp-ansprech-dock").waitFor({ state: "attached", timeout: 30000 });
   return { context, page, zustand };
@@ -436,18 +445,30 @@ test("L — nicht verdeckt: letzte Zeilen und Fokus liegen über der Karte", asy
   }
 });
 
-test("M — Ebenen: Dialog und Schublade liegen über der Karte", async () => {
-  let { context, page } = await seite({ ziel: "/dashboard?page=products" });
+test("M — Ebenen: Dialog und Schublade liegen über der Karte — der Dialog auch während der Seiteneinblendung", async () => {
+  // Liegt an der Mitte des Elements die Karte oben?
+  const karteOben = (page, sel) => page.evaluate((s) => { const r = document.querySelector(s).getBoundingClientRect(); const e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return Boolean(e && e.closest(".pp-ansprech-dock")); }, sel);
+  // Zuerst während der Einblendung: Ihre Deckkraft bildet 180 ms lang einen Stapelkontext um die Seite, ein in dieser Zeit
+  // geöffneter Dialog lag darin unter der Karte (Befund 2026-11-01, vorher nur gelegentlich getroffen). In Zeitlupe läuft
+  // die Einblendung sicher noch, wenn der Dialog aufgeht.
+  let { context, page } = await seite({ ziel: "/dashboard?page=products", zeitlupe: 0.02 });
+  const anlegen = page.getByRole("button", { name: "Artikel anlegen" }).first();
+  await anlegen.waitFor();
+  assert.ok(await page.evaluate(() => document.getAnimations().some((a) => a.animationName === "ce-pr-seite" && a.playState === "running")),
+    "Vorbedingung: die Einblendung der Seite läuft noch");
+  await anlegen.click();
+  await page.locator('[role="dialog"]').waitFor();
+  assert.equal(await karteOben(page, ".pp-ansprech"), false, "der Dialog liegt auch während der Einblendung über der Karte");
+  await context.close();
+  ({ context, page } = await seite({ ziel: "/dashboard?page=products" }));
   await page.getByRole("button", { name: "Artikel anlegen" }).first().click();
   await page.locator('[role="dialog"]').waitFor();
-  let oben = await page.evaluate(() => { const r = document.querySelector(".pp-ansprech").getBoundingClientRect(); const e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return Boolean(e && e.closest(".pp-ansprech-dock")); });
-  assert.equal(oben, false, "der Dialog liegt über der Karte");
+  assert.equal(await karteOben(page, ".pp-ansprech"), false, "der Dialog liegt über der Karte");
   await context.close();
   ({ context, page } = await seite({ viewport: { width: 390, height: 844 }, kontext: { hasTouch: true, isMobile: true } }));
   await page.getByRole("button", { name: "Menü – Navigation öffnen" }).click();
   await page.waitForTimeout(400);
-  oben = await page.evaluate(() => { const r = document.querySelector(".pp-ansprech-foto-knopf").getBoundingClientRect(); const e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return Boolean(e && e.closest(".pp-ansprech-dock")); });
-  assert.equal(oben, false, "die Schublade liegt über dem Foto");
+  assert.equal(await karteOben(page, ".pp-ansprech-foto-knopf"), false, "die Schublade liegt über dem Foto");
   await context.close();
 });
 

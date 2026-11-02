@@ -639,6 +639,18 @@
   animation: ce-pr-seite 180ms var(--ce-motion-ease-standard) backwards;
 }
 @keyframes ce-pr-seite { from { opacity: 0; } }
+/* Während der 180 ms selbst besteht dieser Stapelkontext: Eine in dieser Zeit geöffnete feste Ebene der Seite (Dialog,
+   Schublade, Mitteilungsfenster, die Ladeschicht des Angebotsvergleichs beim Seitenaufbau) lag darin gefangen unter
+   Ansprechpartnerkarte, Kopfleiste und Seitenleiste (Befund 2026-11-01, accountManagerCard M). Enthält die Seite eine
+   solche Ebene, endet die Einblendung deshalb sofort. Nur die Dauer ändert sich, nicht der Name: Die Animation startet
+   dadurch nicht neu, auch nicht, wenn die Ebene wieder schließt. Keine Ebenenänderung — eine angehobene Seite malte ihre
+   Inhalte durch den halbtransparenten Dialoghintergrund über die Karte. Native <dialog> liegen ohnehin in der obersten
+   Ebene des Browsers. */
+[data-ce-bereich="kunde"] .main-content > :is(.page-body, .page-with-navbar):has([aria-modal="true"], .ce-dialog-overlay,
+  .stn-dialog-overlay, .sup-dialog-overlay, .dft-dialog-overlay, .abk-dialog-overlay, .email-change-overlay,
+  .adm-modal-overlay, .price-drift-overlay, .pdfview-overlay, .ce-drawer-overlay, .abk-drawer-overlay, .cmp-loading-overlay) {
+  animation-duration: 0s;
+}
 /* Solange eine Seite lädt, steht der Fuß unsichtbar am unteren Rand: kommt der Inhalt, rückt er ohne sichtbaren
    Sprung aus dem Bild (vorher wanderte er sichtbar nach unten, CLS 0,12 gedrosselt bei 390 px). */
 [data-ce-bereich="kunde"] .main-content:has(.loading-center) > .app-footer { visibility: hidden; }

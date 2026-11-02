@@ -321,3 +321,45 @@ test("8b — Zeigen nur mit echtem Zeiger: auf Touch bleibt nach dem Tippen kein
   assert.deepEqual(ausserhalb, [], `:hover außerhalb von @media (hover: hover): ${ausserhalb.join(" | ")}`);
   assert.match(css, /\.pc-page \.pc-button--offer:focus-visible,\s*\.pc-page \.pc-button--offer:active \{/, "Fokus und Drücken füllen die Kartenaktion");
 });
+
+// ══════════ 9 — Tarifkarte ohne Carrier-Logo, pulsierende Laufzeitpunkte (Betreiberentscheidung 2026-11-02) ══════════
+//   • Die Tarifkarte des öffentlichen Rechners zeigt kein Carrier-Logo und keinen leeren Rahmen dafür — Carrier und
+//     Service stehen als Text. Das Portal (OfferCard) zeigt seine Logos unverändert weiter.
+//   • Start- und Zustellpunkt der Achse pulsieren dauerhaft, nur über Schatten und Deckkraft (nichts verschiebt sich),
+//     nur ohne reduzierte Bewegung, anhaltbar über einen Schalter in der Werkzeugleiste (WCAG 2.2.2), der bei
+//     reduzierter Bewegung entfällt.
+test("9 — Tarifkarte ohne Carrier-Logo; Laufzeitpunkte pulsieren anhaltbar, nie bei reduzierter Bewegung", () => {
+  const karte = ohneKommentare(lies(path.join(HIER, "PublicOfferCard.jsx")));
+  assert.doesNotMatch(karte, /<img\b|\.logo\b|pc-offer-logo/, "die Tarifkarte zeigt wieder ein Carrier-Logo oder seinen Rahmen");
+  assert.match(karte, /<h3 className="pc-offer-carrier" id=\{titelId\}>\{carrier\.name\}<\/h3>/, "der Carriername fehlt");
+  assert.match(karte, /<p className="pc-offer-service">\{service\}<\/p>/, "der Service fehlt");
+
+  const css = ohneKommentare(lies(path.join(SRC, "styles", "public-calculator.css")));
+  assert.doesNotMatch(css, /pc-offer-logo/, "Regeln für das Logo der Tarifkarte stehen noch im Stylesheet");
+  const kopf = css.match(/\.pc-offer-head \{([^}]*)\}/)?.[1] ?? "";
+  assert.match(kopf, /grid-template-columns: minmax\(0, 1fr\);/, "der Kopf reserviert noch eine Spalte für ein Logo");
+  assert.doesNotMatch(css.match(/\.pc-offer-tag \{([^}]*)\}/)?.[1] ?? "", /grid-column/, "die Kennzeichnung rückt noch hinter eine Logospalte");
+
+  // Puls: nur Schatten und Deckkraft, nie Lage oder Größe.
+  const puls = css.match(/@keyframes pc-punkt-puls \{([\s\S]*?)\n\}/)?.[1] ?? "";
+  assert.ok(puls, "@keyframes pc-punkt-puls fehlt");
+  assert.doesNotMatch(puls, /transform|scale|translate|left|right|top|bottom|width|height|margin|inset/, "der Puls verschiebt oder skaliert");
+  assert.match(puls, /box-shadow/);
+  // Die Animation hängt nur an „keine Bewegungsreduktion“ und an der eingeschalteten Liste.
+  const bewegung = css.slice(css.indexOf("@media (prefers-reduced-motion: no-preference) {\n  .pc-offers:not([data-puls=\"aus\"])"));
+  assert.ok(bewegung.length > 0, "die Animation hängt nicht an prefers-reduced-motion: no-preference");
+  assert.match(bewegung, /^@media \(prefers-reduced-motion: no-preference\) \{\s*\.pc-offers:not\(\[data-puls="aus"\]\) \.pc-offer-achse::before,\s*\.pc-offers:not\(\[data-puls="aus"\]\) \.pc-offer-achse::after \{\s*animation: pc-punkt-puls 3\.2s ease-in-out infinite;/);
+  const ausserhalb = css.replace(/@media \(prefers-reduced-motion: no-preference\) \{[\s\S]*?\n\}/g, "");
+  assert.doesNotMatch(ausserhalb, /animation:\s*pc-punkt-puls/, "der Puls läuft auch bei reduzierter Bewegung");
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.pc-puls-schalter \{ display: none; \}/, "der Schalter steht auch ohne Puls");
+
+  // Schalter: einer für die Liste, benennt die Handlung, steuert die Liste; kein Speicher (Test 2).
+  const liste = ohneKommentare(lies(path.join(HIER, "PublicResults.jsx")));
+  assert.match(liste, /<button type="button" className="pc-puls-schalter" id="pc-puls" aria-controls="pc-offers" onClick=\{onPuls\}>\s*\{puls \? "Pulsieren anhalten" : "Pulsieren fortsetzen"\}/);
+  assert.match(liste, /<ul className="pc-offers pc-offers--list" id="pc-offers" data-puls=\{puls \? "an" : "aus"\}>/);
+  assert.doesNotMatch(liste, /(?<!aria-)\blive\b|echtzeit|online/i, "der Puls behauptet Verfügbarkeit");
+
+  // Außerhalb des Preisrechners bleibt alles: die Tarifkarte des Portals zeigt ihr Logo weiter.
+  const portal = ohneKommentare(lies(path.join(SRC, "components", "offers", "OfferCard.jsx")));
+  assert.match(portal, /<img src=\{carrierLogo\} alt=\{carrierName\}/, "die Tarifkarte des Portals verliert ihr Logo");
+});

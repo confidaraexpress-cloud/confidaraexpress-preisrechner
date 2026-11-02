@@ -20,7 +20,7 @@
 // für Komponenten.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 
 const src = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
@@ -87,10 +87,11 @@ test("1 — die Übersicht rendert genau VIER Kennzahlen in EINEM Band", () => {
   assert.deepEqual(labels, ["Aktive Sendungen", "In Zustellung", "Zugestellt", "Verzögert"]);
   // EIN Band (section mit Bezeichnung), darin je Kennzahl eine Zelle.
   assert.match(overviewCode, /<section className="ov-kpis" aria-label="Betriebsüberblick">/, "das Band fehlt");
-  // data-null (Editorial Premium 2026-10-28, seit 2026-11-01 auch ohne geladenen Wert): keine Zahl über 0 —
-  // dann bleibt die Zahl neutral, auch das „—“ beim Laden und nach einem Ladefehler.
-  assert.match(overviewCode, /\{KPIS\.map\(\(kpi\) => \(\s*<div className=\{`ov-kpi ov-kpi--\$\{kpi\.key\}`\} key=\{kpi\.key\} data-null=\{!ready \|\| kpi\.value === "0" \? "" : undefined\}>/,
+  // Seit dem Betreiberauftrag 2026-11-02 ohne data-null: Der Marker trug nur die frühere Sonderfarbe von „Verzögert“ über 0;
+  // alle vier Zahlen stehen jetzt in derselben Farbe (Test 31).
+  assert.match(overviewCode, /\{KPIS\.map\(\(kpi\) => \(\s*<div className=\{`ov-kpi ov-kpi--\$\{kpi\.key\}`\} key=\{kpi\.key\}>/,
     "jede Kennzahl ist eine Karte des Abschnitts");
+  assert.ok(!/data-null/.test(overviewCode), "der Marker der früheren Akzentfarbe ist zurück");
   assert.ok(!/pp-kpi\b|pp-kpis\b/.test(overviewCode), "die alten Kartenklassen sind zurück");
 });
 
@@ -381,43 +382,56 @@ function edBlock(kopf) {
   return null;
 }
 
-test("31 — Editorial (2026-11-01): vier helle Karten im Material des Rechnungsblatts statt des Navy-Bands", () => {
-  // Der Abschnitt ist keine Fläche mehr: kein Grund, kein Schatten, nichts wird abgeschnitten (Kartenschatten).
+test("31 — Editorial (2026-11-01, Premium-Dashboard V2, Flow Signature): vier helle Karten im Licht, ohne farbige Akzentstriche", () => {
+  // Der Abschnitt ist keine Fläche: kein Grund, kein Schatten, nichts wird abgeschnitten (Kartenschatten).
   assert.equal(edDecl(".ov-kpis", "grid-template-columns"), "repeat(4, minmax(0, 1fr))");
   assert.equal(edDecl(".ov-kpis", "background"), "transparent");
   assert.equal(edDecl(".ov-kpis", "box-shadow"), "none");
   assert.equal(edDecl(".ov-kpis", "overflow"), "visible");
   assert.equal(edDecl(".ov-kpis", "gap"), "0 var(--ce-space-4)", "Abstand zwischen den Karten, Reihen über das Subgrid");
-  // Jede Kennzahl ist eine Karte aus dem Material des Blatts „Offene Rechnungen“: dieselbe Kante, derselbe Radius,
-  // derselbe Schatten.
-  const blatt = edRegel(".ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:nth-child(2) > .ov-card");
-  assert.ok(blatt, "das Blatt „Offene Rechnungen“ ist nicht auffindbar");
-  for (const prop of ["border", "border-radius", "box-shadow"]) {
-    const imBlatt = blatt.match(new RegExp(`(?:^|;)\\s*${prop}:\\s*([^;]+)`))[1].trim();
-    assert.equal(edDecl(".ov-kpi", prop), imBlatt, `Karte und Blatt unterscheiden sich in ${prop}`);
-  }
-  assert.equal(edDecl(".ov-kpi", "background"), "var(--ce-color-surface)");
+  // Ein Kartensystem in zwei Gewichten (Flow Signature): Kennzahl- und Modulkarten teilen Radius und weißen Grund; die
+  // Kennzahlkarten stehen im Licht der oberen Zone — ihre Kante ist oben vom Kobaltlicht getönt und läuft in die Haarlinie
+  // aus, ihr Schatten ist leicht blau. Die Module behalten die ruhige Fassung mit Haarlinie und neutralem Schatten.
+  const material = edRegel(".ov-page .ov-mod > .ov-card");
+  assert.ok(material, "das gemeinsame Kartenmaterial der Module fehlt");
+  const imModul = (prop) => material.match(new RegExp(`(?:^|;)\\s*${prop}:\\s*([^;]+)`))[1].trim();
+  assert.equal(edDecl(".ov-kpi", "border-radius"), imModul("border-radius"), "Kennzahlkarte und Modulkarte haben verschiedene Radien");
+  assert.equal(edDecl(".ov-kpi", "background-color"), imModul("background"), "die Kennzahlkarte steht nicht auf dem weißen Grund der Module");
+  assert.equal(imModul("border"), "1px solid var(--ce-pr-hairline)");
+  assert.equal(imModul("box-shadow"), "var(--ce-pr-ed-shadow-flaeche)");
+  assert.equal(edDecl(".ov-kpi", "border"), "1px solid transparent");
+  assert.equal(edDecl(".ov-kpi", "background"), "var(--ce-pr-ed-karte-licht) padding-box, var(--ce-pr-ed-kante-licht) border-box");
+  assert.equal(edDecl(".ov-kpi", "box-shadow"), "var(--ce-pr-ed-shadow-kennzahl)");
+  assert.match(variables, /--ce-pr-ed-kante-licht: linear-gradient\(180deg, rgba\(0, 74, 252, [0-9.]+\)/, "die Kante ist oben nicht vom Kobaltlicht getönt");
+  assert.match(editorial, /@media \(forced-colors: active\) \{\s*:root\[data-ce-bereich="kunde"\] \.ov-kpi \{ border-color: CanvasText; \}/,
+    "im Kontrastmodus verliert die Karte ihre Kante");
+  assert.equal(edDecl(".ov-kpi", "padding"), "var(--ce-space-6)", "großzügiger, gleichmäßiger Innenabstand");
   assert.equal(edDecl(".ov-kpi", "grid-template-rows"), "subgrid", "Bezeichnung, Zahl und Kontext einer Reihe auf gemeinsamen Linien");
-  // Tinte auf Papier: die Zahl im schmalen Schnitt (Feinschliff: 48/40 px, Gewicht 620), die Bezeichnung klar in eigener
-  // Tinte (550), der Kontext leise.
-  assert.equal(edDecl(".ov-kpi-value", "color"), "var(--ce-color-text-primary)");
-  assert.equal(edDecl(".ov-kpi-value", "font-stretch"), "var(--ce-pr-ed-figure-stretch)");
-  assert.equal(edDecl(".ov-kpi-value", "font-weight"), "620");
-  assert.equal(tok("ce-pr-ed-figure-size"), "3rem");
-  assert.equal(tok("ce-pr-ed-figure-size-mobile"), "2.5rem");
+  // Die Zahl in dunklem Navy in normaler Breite (38/32 px, Gewicht 560), die Bezeichnung klar in eigener Tinte (600, Größe
+  // unverändert), der Kontext im Nebentext — dezent, nicht blass.
+  assert.equal(edDecl(".ov-kpi-value", "color"), "var(--ce-pr-ed-kennzahl-zahl)");
+  assert.equal(tok("ce-pr-ed-kennzahl-zahl"), "#011b55");
+  assert.equal(edDecl(".ov-kpi-value", "font-stretch"), "100%");
+  assert.equal(edDecl(".ov-kpi-value", "font-weight"), "560");
+  assert.equal(tok("ce-pr-ed-figure-size"), "2.375rem");
+  assert.equal(tok("ce-pr-ed-figure-size-mobile"), "2rem");
   assert.equal(edDecl(".ov-kpi-label", "color"), "var(--ce-pr-ed-kennzahl-tinte)");
-  assert.equal(edDecl(".ov-kpi-label", "font-weight"), "550");
+  assert.equal(edDecl(".ov-kpi-label", "font-weight"), "600");
   assert.equal(edDecl(".ov-kpi-label", "font-size"), "var(--ce-text-label-size)", "die Bezeichnung wird nicht größer");
   assert.ok(contrast(tok("ce-pr-ed-kennzahl-tinte"), "#ffffff") >= 7, "die Bezeichnung liegt unter 7:1");
-  assert.equal(edDecl(".ov-kpi-context", "color"), "var(--ce-color-text-muted)");
-  // Kennfarbe je Kennzahl als feine Kante mit runden Enden (2 px statt des früheren 3-px-Balkens); „Verzögert“ färbt die
-  // Zahl nur ohne data-null (Test 1).
-  assert.equal(edDecl(".ov-kpi::before", "height"), "2px");
-  assert.equal(edDecl(".ov-kpi::before", "border-radius"), "var(--ce-radius-full)");
-  for (const [klasse, token] of [["", "aktiv"], ["--transit", "zustellung"], ["--delivered", "zugestellt"], ["--delayed", "verzoegert"]]) {
-    assert.equal(edDecl(`.ov-kpi${klasse}::before`, "background"), `var(--ce-pr-ed-kennzahl-${token})`, `Kennfarbe ${token}`);
+  assert.equal(edDecl(".ov-kpi-context", "color"), "var(--ce-color-text-secondary)");
+  // Reduzierte Palette: keine farbigen Kanten mehr, weder an den Karten noch als Tokens. Alle vier Zahlen in demselben
+  // dunklen Navy (Betreiberauftrag 2026-11-02): „Verzögert“ trägt bei keinem Wert eine Sonderfarbe — keine Regel in
+  // irgendeinem Stylesheet färbt die Zahl einer einzelnen Kennzahl, und das Bernstein-Token ist entfernt.
+  assert.ok(!/\.ov-kpi(?:--[a-z]+)?::before/.test(editorial), "eine Kennzahlkarte trägt wieder eine Kante");
+  for (const alt of ["aktiv", "zustellung", "zugestellt", "verzoegert"]) {
+    assert.ok(!new RegExp(`--ce-pr-ed-kennzahl-${alt}[:-]`).test(variables + editorial), `das Token ${alt} ist noch vorhanden`);
   }
-  assert.equal(edDecl(".ov-kpi--delayed:not([data-null]) .ov-kpi-value", "color"), "var(--ce-pr-ed-kennzahl-verzoegert-zahl)");
+  const alleStile = readdirSync(new URL("../../styles/", import.meta.url)).filter((f) => f.endsWith(".css"))
+    .map((f) => src(`../../styles/${f}`).replace(/\/\*[\s\S]*?\*\//g, "")).join("\n");
+  const eigeneFarbe = [...alleStile.matchAll(/([^{}]*\.ov-kpi--[a-z]+[^{}]*)\{([^{}]*)\}/g)]
+    .filter(([, , rumpf]) => /(?:^|;)\s*color\s*:/.test(rumpf)).map(([, sel]) => sel.trim());
+  assert.deepEqual(eigeneFarbe, [], "eine Kennzahl färbt ihre Zahl wieder eigen");
   // Unter 51.5625rem Inhaltsbreite 2 × 2 — dieselbe Stufe, an der die Module untereinander rücken; nie einspaltig.
   const zweiMalZwei = edBlock("@container ce-seite (width < 51.5625rem) {");
   assert.ok(zweiMalZwei && /\.ov-kpis \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/.test(zweiMalZwei), "2 × 2 fehlt");
@@ -429,11 +443,8 @@ test("31 — Editorial (2026-11-01): vier helle Karten im Material des Rechnungs
   for (const alt of ["--ce-pr-ed-band", "--ce-pr-ed-band-line", "--ce-pr-ed-shadow-band", "--ce-pr-ed-mark-active", "--ce-pr-ed-mark-transit", "--ce-pr-ed-mark-delayed"]) {
     assert.ok(!new RegExp(`${alt}\\b(?!-)`).test(editorial + variables), `${alt} ist noch vorhanden`);
   }
-  // Kontrast auf Weiß: Kennfarben je mindestens 3:1, die Zahl „Verzögert“ als Text mindestens 4,5:1.
-  for (const t of ["aktiv", "zustellung", "zugestellt", "verzoegert"]) {
-    assert.ok(contrast(tok(`ce-pr-ed-kennzahl-${t}`), "#ffffff") >= 3, `Kennfarbe ${t} unter 3:1`);
-  }
-  assert.ok(contrast(tok("ce-pr-ed-kennzahl-verzoegert-zahl"), "#ffffff") >= 4.5, "die Zahl „Verzögert“ unter 4,5:1");
+  // Kontrast auf Weiß: die Navy-Zahl — dieselbe für alle vier Kennzahlen — mindestens 7:1.
+  assert.ok(contrast(tok("ce-pr-ed-kennzahl-zahl"), "#ffffff") >= 7, "die Zahl liegt unter 7:1");
 });
 
 test("15 — reloadShipments ist VOR den Effekten deklariert, die es referenzieren", () => {

@@ -305,10 +305,10 @@
 .ov-trust-item { display: flex; flex-direction: column; gap: var(--ce-space-1); min-width: 0; }
 
 /* ══════════ Ihre Versanddienstleister (G2; Navy-Fläche seit der UX-Korrektur C, 2026-10-27) ══════════
-   Betreiberentscheidung 2026-10-27: die Navy-Fläche mit feinen geschwungenen Linien ist zurück — in den Farben der
-   freigegebenen Navy-Bühne (--ce-pr-*), die Daten weiter ausschließlich aus GET /kunde/carriers (G2). Die Linien
-   sind keine Seitenebene: sie liegen nur in dieser Fläche, statisch, hinter dem Inhalt und an der Rundung
-   beschnitten (design-css-architektur.md, App-Shell). Die Logokacheln sind keine Aktion — kein Hover. Das Raster
+   Betreiberentscheidung 2026-10-27: die Navy-Fläche — in den Farben der freigegebenen Navy-Bühne (--ce-pr-*), die
+   Daten weiter ausschließlich aus GET /kunde/carriers (G2). Ihr Licht und die Route durch die Kacheln (premium-editorial.css;
+   seit dem Abschluss 2026-11-02 ohne CE-Monogramm) sind keine Seitenebene: Sie liegen in der Fläche, statisch, hinter dem
+   Inhalt und an der Rundung beschnitten (isolation, overflow). Die Logokacheln sind keine Aktion — kein Hover. Das Raster
    verteilt jede Anzahl gleichmäßig: ab vier Carriern füllen die Kacheln die Zeile, darunter stehen sie in fester
    Breite links; schmal drei je Reihe, die letzte Reihe mittig. Radien und Tiefen aus der Foundation (--ce-radius-*,
    --ce-elevation-*) wie jede Fläche der Übersicht. */
@@ -323,30 +323,6 @@
   background: var(--ce-pr-stage);
   box-shadow: var(--ce-elevation-2);
   color: var(--ce-pr-on-navy);
-}
-.ov-carrier-linien {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-.ov-carrier-routen path {
-  fill: none;
-  stroke: var(--ce-pr-on-navy-line);
-  stroke-opacity: 0.6;
-  stroke-width: 1.2;
-  vector-effect: non-scaling-stroke;
-}
-.ov-carrier-routen .ov-carrier-route-hell {
-  stroke: var(--ce-pr-signal-on-navy);
-  stroke-opacity: 0.4;
-  stroke-width: 1.4;
-}
-.ov-carrier-knoten circle {
-  fill: var(--ce-pr-signal-on-navy);
-  fill-opacity: 0.5;
 }
 .ov-carrier-kopf {
   display: flex;

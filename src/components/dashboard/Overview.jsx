@@ -171,11 +171,12 @@ export function Overview({
       <div className="page-body ov-page">
         {/* ── Betriebsüberblick: vier gleich breite Karten ──
             Die Karten sind reine Informationsflächen: kein Cursor, kein Hover,
-            kein Symbol. data-null steht, solange keine Zahl über 0 geladen ist
-            (geladene 0 oder noch „—“) — dann bleibt die Zahl ohne Akzentfarbe. */}
+            kein Symbol. Alle vier Zahlen stehen in derselben Farbe, auch
+            „Verzögert“ (Betreiberauftrag 2026-11-02; der Marker data-null für
+            dessen frühere Akzentfarbe entfällt). */}
         <section className="ov-kpis" aria-label="Betriebsüberblick">
           {KPIS.map((kpi) => (
-            <div className={`ov-kpi ov-kpi--${kpi.key}`} key={kpi.key} data-null={!ready || kpi.value === "0" ? "" : undefined}>
+            <div className={`ov-kpi ov-kpi--${kpi.key}`} key={kpi.key}>
               <span className="ov-kpi-label">{kpi.label}</span>
               {/* Solange nichts erfolgreich geladen wurde, steht „—" statt einer
                   Zahl: weder beim ersten Laden noch nach einem Ladefehler darf

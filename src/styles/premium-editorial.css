@@ -23,27 +23,56 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ═══════════ 1 · ARBEITSFLÄCHE ═══════════════════════════════════════════
-   Weißes Papier statt der hellgrauen Fläche; Gliederung über Linien, Maßstab
-   und Abstand. */
-:root[data-ce-bereich="kunde"] :is(body, .app-shell, .main-content) { background: var(--ce-color-surface); }
+   Gliederung über Linien, Maßstab und Abstand. Premium Workspace (Betreiberauftrag 2026-11-02): Jede Kundenseite liegt
+   auf einer hellen, blauen Arbeitsfläche — die Farb- und Lichtfamilie der Übersicht, deutlich leiser. Oben ein
+   Ice-Blue-Band, rechts oben ein Kobalt-/Azur-Schimmer, links oben eine Stahlblau-Wolke und unten ein Lichtauslauf;
+   dazwischen, hinter Formularen und Tabellen, der ruhige Grund (gedämpfter Text darauf ≥ 4,6:1). Die Übersicht trägt an derselben
+   Stelle ihre kräftigere Fassung (Abschnitt 5, :has(.ov-page)) und ersetzt damit alle Bilder dieser Fläche — es gibt
+   nie zwei Fassungen übereinander, und ein Seitenwechsel braucht keine Klasse. Alles sind Hintergrundbilder von
+   .main-content: keine Ebene, kein Stapelkontext, keine Bewegung. Lichtlagen in rem ab der Oberkante bzw. am unteren
+   Rand: auf langen Seiten bleibt die Mitte der ruhige Grund, ohne Kante und ohne Wiederholung. Seitenleiste, Mobilleiste
+   und Dokument bleiben, wie sie sind. */
+:root[data-ce-bereich="kunde"] :is(body, .app-shell) { background: var(--ce-color-surface); }
+:root[data-ce-bereich="kunde"] .main-content {
+  background: var(--ce-pr-ed-raum-flaeche);
+  background-image:
+    radial-gradient(72rem 34rem at 88% -10rem, var(--ce-pr-ed-raum-schimmer), transparent 74%),
+    radial-gradient(60rem 32rem at 0 -8rem, var(--ce-pr-ed-raum-wolke), transparent 72%),
+    linear-gradient(180deg, var(--ce-pr-ed-raum-band), transparent var(--ce-pr-ed-raum-hoehe)),
+    radial-gradient(100rem 30rem at 50% 100%, var(--ce-pr-ed-raum-auslauf), transparent 75%);
+  background-repeat: no-repeat;
+}
+/* Unter 1024 px: Die drei Lichter oben lägen sonst über dem ganzen ersten Bildschirm (gemessen 8,9 statt 7,7 ΔE zu Weiß,
+   zwei Drittel der Übersicht) — kleiner und kürzer. */
+@media (max-width: 1023px) {
+  :root[data-ce-bereich="kunde"] .main-content {
+    background-image:
+      radial-gradient(34rem 18rem at 100% -6rem, var(--ce-pr-ed-raum-schimmer), transparent 74%),
+      radial-gradient(28rem 16rem at 0 -4rem, var(--ce-pr-ed-raum-wolke), transparent 72%),
+      linear-gradient(180deg, var(--ce-pr-ed-raum-band), transparent var(--ce-pr-ed-raum-hoehe-mobil)),
+      radial-gradient(48rem 22rem at 50% 100%, var(--ce-pr-ed-raum-auslauf), transparent 75%);
+  }
+}
 
-/* Kopfleiste: Werkzeuge ruhig auf Papier, eine Haarlinie. Die Suche als Kapsel in der Mulde. */
+/* Kopfleiste: Werkzeuge ruhig auf der Fläche, eine leise Navy-Linie — das helle Grau der Haarlinie läse sich im Band oben
+   als Lichtstreifen (wie auf der Übersicht). Das weiße Vollbreitenband der Bereichsebene (border-image) entfällt über die
+   Langform: Die Kurzform „border-image: none“ minifiziert der Build zu einer leeren Deklaration, das Band blieb dadurch im
+   ausgelieferten Bündel stehen (sichtbar erst auf getönter Fläche). */
 :root[data-ce-bereich="kunde"] .ce-page-header-utility {
   background: transparent;
-  border-image: none;
-  border-bottom: 1px solid var(--ce-pr-hairline);
+  border-image-source: none;
+  border-bottom: 1px solid var(--ce-pr-ed-raum-kopfleiste-linie);
   box-shadow: none;
 }
+/* Die Suche steht auf jeder getönten Arbeitsfläche als weiße Kapsel mit Haarlinie: Ihre frühere Mulde (--ce-pr-inset)
+   wäre auf dem Grund heller als er und ohne Kante (gemessen ΔE 3,0). */
 :root[data-ce-bereich="kunde"] .ce-suche {
-  border-color: transparent;
+  border-color: var(--ce-pr-hairline);
   border-radius: var(--ce-radius-full);
-  background: var(--ce-pr-inset);
-}
-:root[data-ce-bereich="kunde"] .ce-suche:hover { background: var(--ce-color-surface-muted); }
-:root[data-ce-bereich="kunde"] .ce-suche:focus-within {
-  border-color: var(--ce-pr-signal);
   background: var(--ce-color-surface);
 }
+:root[data-ce-bereich="kunde"] .ce-suche:hover { border-color: var(--ce-color-border-strong); }
+:root[data-ce-bereich="kunde"] .ce-suche:focus-within { border-color: var(--ce-pr-signal); }
 
 /* ═══════════ 2 · SEITENKOPF ═══════════════════════════════════════════════
    Maßstab statt Dekor: der Titel in der Editorial-Skala (56 / 44 / 36 px), eine
@@ -287,14 +316,116 @@
 
 /* ═══════════ 5 · ÜBERSICHT ════════════════════════════════════════════════ */
 
-/* ── Kennzahlen: vier helle Karten (Betreiberentscheidung 2026-11-01, ersetzt das Navy-Band vom 2026-10-28) ──
-   Vier gleich breite, gleichwertige Karten aus dem Material des Blatts „Offene Rechnungen“: weiß, Haarlinie, Radius und
-   Schatten des Blatts. Die Zahl trägt im schmalen Schnitt, die Bezeichnung steht klar in eigener Tinte, der Kontext
-   bleibt leise (Feinschliff 2026-11-01). Jede Kennzahl behält ihre gedämpfte Kennfarbe als feine Kante auf der
-   Oberkante ihrer Karte — dieselbe Geste wie die graue Kante unter dem Seitenkopf, eine Legende, keine Warnung. Ein Subgrid hält Bezeichnung, Zahl und Kontext einer Reihe auf gemeinsamen Linien, auch
-   wenn eine Bezeichnung umbricht. Nur ein geladener Wert über 0 färbt „Verzögert“ (data-null aus Overview.jsx). Die
-   Karten sind Informationen, keine Bedienelemente: kein Zeiger, keine Reaktion beim Zeigen. Berechnung und Bedeutung
-   unverändert. */
+/* ── Arbeitsfläche (Premium-Dashboard V2, Betreiberentscheidung 2026-11-01) ──
+   Die Übersicht ist die stärkste Fassung der Arbeitsfläche („Signature Overview“): ein kühles, kräftigeres Blau, ihre
+   Karten und Blätter heben sich weiß davon ab. Die übrigen Kundenseiten liegen seit 2026-11-02 auf derselben Familie in
+   leiser Fassung (Abschnitt 1, „Premium Workspace“); Seitenleiste und Navigation bleiben, wie sie sind. Die Suche steht
+   auf beiden als weiße Kapsel mit Haarlinie (Abschnitt 1).
+   Hintergrundsystem „Confidara Flow Signature“ (Abschluss nach Betreiberentscheidung 2026-11-02: die Atmosphäre von V4/V5
+   ohne dekorative CE-Monogramme; das offizielle Logo steht allein in Seiten- und Mobilleiste): eine durchgehende blaue
+   Markenatmosphäre in drei Zonen. Oben ein Ice-Blue-Band, Stahlblau-Wolke links, Azur-Himmel und an „Neue Sendung“ ein
+   gebündeltes Kobaltfeld (weicher Auslauf statt breitem Nebel); eine flache Weite darunter legt das Licht über die
+   Kennzahlen. Die Mitte bindet die Zonen: eine Lichtbahn rechts zwischen Kopf und Bühne, eine Flanke an der Seitenleiste,
+   ein Azurlicht in der freien Fläche rechts unter den Mitteilungen, die Azur-Säule am rechten Rand; die Lichtwolke links
+   leiser. Unten ein dichter Kobalthof um die Navy-Bühne, ein Schein über ihr und ein Navy-Boden als Abschluss. Das
+   Kobaltfeld steht auf der Mitte der Aktion (rechter Inhaltsrand — Rahmen --ce-size-content, Rand --shell-gutter — minus
+   --ce-pr-ed-flow-licht-aktion), Weite und Lichtbahn auf --ce-pr-ed-flow-licht-rechts; im freien Feld zwischen Gruß und
+   Aktion steht ohne Zeichen kein Licht mehr (es läse sich dort als leuchtende Blase). Alles sind Hintergrundbilder von
+   .main-content: keine Ebene, kein Stapelkontext, keine Klickfläche — feste Dialoge und die Aufklapper der Kopfleiste
+   bleiben unberührt. Radiale Verläufe statt waagrechter Kanten; die Glow-Tokens sind Verlaufslisten mit weichem
+   Auslauf. Die Karten sind deckend weiß: das zusätzliche Licht zeigt sich nur in freien Flächen. Hinter Datumszeile,
+   Kopfleiste, Modullinks und Fuß bleibt es leiser (Text dort ≥ 4,6:1): Kobaltfeld und Weite skalieren mit der Breite der
+   Fläche (28 % und 60 %; min() und calc() mit gemischten Einheiten verwirft Chromium in Verlaufsgrößen), der Schein über
+   der Bühne steht höher als der Fuß. Bis 85,3125em ein kleineres Kobaltfeld und leiserer Himmel, leisere Lichtbahn, Hof
+   und Boden, bis 68,75em ohne Lichtbahn, unter 1024 px kleiner (die Mobilleiste ist weiß). */
+:root[data-ce-bereich="kunde"] .main-content:has(.ov-page) {
+  --ov-licht-x: calc(100% - max(var(--shell-gutter, var(--ce-page-gutter)), (100% - var(--ce-size-content)) / 2) - var(--ce-pr-ed-flow-licht-rechts));
+  --ov-aktion-x: calc(100% - max(var(--shell-gutter, var(--ce-page-gutter)), (100% - var(--ce-size-content)) / 2) - var(--ce-pr-ed-flow-licht-aktion));
+  background: var(--ce-pr-ed-flaeche-uebersicht);
+  background-image:
+    radial-gradient(28% 15rem at var(--ov-aktion-x) var(--ce-pr-ed-flow-schein-oben), var(--ce-pr-ed-flow-schein), transparent 72%),
+    radial-gradient(60% 22rem at var(--ov-licht-x) var(--ce-pr-ed-flow-weite-oben), var(--ce-pr-ed-flow-weite), transparent 72%),
+    radial-gradient(90rem 36rem at 60% -12rem, var(--ce-pr-ed-flow-azur), transparent 70%),
+    radial-gradient(64rem 34rem at 0 -6rem, var(--ce-pr-ed-flow-wolke), transparent 72%),
+    linear-gradient(180deg, var(--ce-pr-ed-flow-nebel-oben), var(--ce-pr-ed-flow-nebel) 9rem, transparent var(--ce-pr-ed-flow-hoehe)),
+    radial-gradient(26rem 50rem at var(--ov-licht-x) 56%, var(--ce-pr-ed-flow-bahn), transparent 70%),
+    radial-gradient(20rem 34rem at 0 48%, var(--ce-pr-ed-flow-flanke), transparent 70%),
+    radial-gradient(52rem 42rem at 14% 50%, var(--ce-pr-ed-flow-licht), transparent 70%),
+    radial-gradient(52rem 30rem at 80% 66%, var(--ce-pr-ed-flow-mitte), transparent 72%),
+    radial-gradient(40rem 90rem at 100% 50%, var(--ce-pr-ed-flow-rand), transparent 70%),
+    radial-gradient(64rem 15rem at 50% calc(100% - 28rem), var(--ce-pr-ed-flow-hof), transparent 72%),
+    radial-gradient(110rem 32rem at 50% calc(100% - 27rem), var(--ce-pr-ed-flow-glut), transparent 72%),
+    radial-gradient(90rem 22rem at 50% 100%, var(--ce-pr-ed-flow-boden), transparent 75%);
+  background-repeat: no-repeat;
+}
+/* Schmaler Desktop (bis 85,3125em, bei 16 px bis 1365 px): das weite Kobaltfeld reichte bis an die Datumszeile (V2
+   gemessen 3,89:1 bei 1280 px) — dort steht ein kleineres Licht an der Aktion, bis 68,75em ein noch leiseres.
+   Himmel, Lichtbahn, Flanke, Hof und Boden leiser: Datumszeile, Firma der Kopfleiste und Fuß halten ≥ 4,6:1. */
+@media (min-width: 1024px) and (max-width: 85.3125em) {
+  :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) {
+    background-image:
+      radial-gradient(22rem 12rem at var(--ov-aktion-x) var(--ce-pr-ed-flow-schein-oben), var(--ce-pr-ed-flow-schein-schmal), transparent 70%),
+      radial-gradient(48rem 18rem at var(--ov-licht-x) var(--ce-pr-ed-flow-weite-oben), var(--ce-pr-ed-flow-weite-schmal), transparent 72%),
+      radial-gradient(90rem 36rem at 60% -12rem, var(--ce-pr-ed-flow-azur-schmal), transparent 70%),
+      radial-gradient(64rem 34rem at 0 -6rem, var(--ce-pr-ed-flow-wolke), transparent 72%),
+      linear-gradient(180deg, var(--ce-pr-ed-flow-nebel-oben), var(--ce-pr-ed-flow-nebel) 9rem, transparent var(--ce-pr-ed-flow-hoehe)),
+      radial-gradient(24rem 48rem at var(--ov-licht-x) 56%, var(--ce-pr-ed-flow-bahn-schmal), transparent 70%),
+      radial-gradient(18rem 32rem at 0 48%, var(--ce-pr-ed-flow-flanke-schmal), transparent 70%),
+      radial-gradient(52rem 42rem at 14% 50%, var(--ce-pr-ed-flow-licht), transparent 70%),
+      radial-gradient(52rem 30rem at 80% 66%, var(--ce-pr-ed-flow-mitte), transparent 72%),
+      radial-gradient(40rem 90rem at 100% 50%, var(--ce-pr-ed-flow-rand), transparent 70%),
+      radial-gradient(64rem 15rem at 50% calc(100% - 28rem), var(--ce-pr-ed-flow-hof-schmal), transparent 72%),
+      radial-gradient(110rem 32rem at 50% calc(100% - 27rem), var(--ce-pr-ed-flow-glut), transparent 72%),
+      radial-gradient(90rem 22rem at 50% 100%, var(--ce-pr-ed-flow-boden-schmal), transparent 75%);
+  }
+}
+/* Bis 68,75em ohne Lichtbahn: der Link der zweiten Modulreihe stünde rechts in ihr (gemessen 4,3:1). */
+@media (min-width: 1024px) and (max-width: 68.75em) {
+  :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) {
+    background-image:
+      radial-gradient(24rem 14rem at calc(100% - 8rem) 10rem, var(--ce-pr-ed-flow-schein-aktion), transparent 70%),
+      radial-gradient(90rem 36rem at 60% -12rem, var(--ce-pr-ed-flow-azur-schmal), transparent 70%),
+      radial-gradient(64rem 34rem at 0 -6rem, var(--ce-pr-ed-flow-wolke), transparent 72%),
+      linear-gradient(180deg, var(--ce-pr-ed-flow-nebel-oben), var(--ce-pr-ed-flow-nebel) 9rem, transparent var(--ce-pr-ed-flow-hoehe)),
+      radial-gradient(18rem 32rem at 0 48%, var(--ce-pr-ed-flow-flanke-schmal), transparent 70%),
+      radial-gradient(52rem 42rem at 14% 50%, var(--ce-pr-ed-flow-licht), transparent 70%),
+      radial-gradient(52rem 30rem at 80% 66%, var(--ce-pr-ed-flow-mitte), transparent 72%),
+      radial-gradient(40rem 90rem at 100% 50%, var(--ce-pr-ed-flow-rand), transparent 70%),
+      radial-gradient(64rem 15rem at 50% calc(100% - 28rem), var(--ce-pr-ed-flow-hof-schmal), transparent 72%),
+      radial-gradient(110rem 32rem at 50% calc(100% - 27rem), var(--ce-pr-ed-flow-glut), transparent 72%),
+      radial-gradient(90rem 22rem at 50% 100%, var(--ce-pr-ed-flow-boden-schmal), transparent 75%);
+  }
+}
+/* Telefon: das Kobaltlicht an der Aktion statt hinter der Datumszeile (V2 gemessen 4,05:1 bei 320 px); das Azurlicht
+   rechts leiser (Link der Mitteilungen). */
+@media (max-width: 1023px) {
+  :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) {
+    background-image:
+      radial-gradient(22rem 12rem at 84% 15.5rem, var(--ce-pr-ed-flow-schein-mobil), transparent 72%),
+      radial-gradient(32rem 20rem at 0 3rem, var(--ce-pr-ed-flow-wolke-mobil), transparent 72%),
+      linear-gradient(180deg, var(--ce-pr-ed-flow-nebel-oben), var(--ce-pr-ed-flow-nebel-mobil) 9rem, transparent var(--ce-pr-ed-flow-hoehe-mobil)),
+      radial-gradient(36rem 40rem at 8% 50%, var(--ce-pr-ed-flow-licht), transparent 70%),
+      radial-gradient(30rem 40rem at 90% 58%, var(--ce-pr-ed-flow-mitte-mobil), transparent 72%),
+      radial-gradient(24rem 70rem at 100% 50%, var(--ce-pr-ed-flow-rand), transparent 70%),
+      radial-gradient(54rem 28rem at 50% calc(100% - 28rem), var(--ce-pr-ed-flow-glut), transparent 72%),
+      radial-gradient(40rem 20rem at 50% 100%, var(--ce-pr-ed-flow-boden-schmal), transparent 75%);
+  }
+}
+/* Kopfleiste und Kopflinie trennen leise: Ihre Haarlinien lägen sonst als harte — auf dem Blau helle — Kanten quer durch
+   das Licht. Der Seitenkopf trägt keine Zeichnung (die CE-Monogramme von Flow Signature V2–V5 sind mit dem Abschluss
+   entfallen, Betreiberentscheidung 2026-11-02): Die Kopflinie läuft durch, wie auf jeder Kundenseite. */
+:root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-utility { border-bottom-color: var(--ce-pr-ed-flow-kopfleiste-linie); }
+:root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-main { border-bottom-color: var(--ce-pr-ed-flow-kopf-linie); }
+
+/* ── Kennzahlen: vier helle Karten (Betreiberentscheidungen 2026-11-01; Premium-Dashboard V2, Flow Signature) ──
+   Vier gleich breite, gleichwertige Karten aus dem Material der Übersicht (weiß, Radius des Blatts), die im Licht der
+   oberen Zone stehen: Ihre Kante ist oben vom Kobaltlicht getönt und läuft nach unten in die neutrale Haarlinie aus, der
+   Schatten weich und tiefer, in neutralem Navy (farbige Schatten verbietet designSystemClosure 4). Die Module darunter
+   tragen dieselbe Karte in der ruhigen Fassung (Haarlinie, flacherer Schatten) — ein Kartensystem in zwei Gewichten. Ohne farbige Akzentstriche: Alle vier
+   Zahlen stehen in demselben dunklen Navy in normaler Breite, auch „Verzögert“ bei jedem Wert (Betreiberauftrag
+   2026-11-02; bis dahin über 0 in Bernstein-Gold). Die Bezeichnung steht klar in eigener Tinte, der Kontext im Nebentext. Ein Subgrid hält Bezeichnung, Zahl
+   und Kontext einer Reihe auf gemeinsamen Linien, auch wenn eine Bezeichnung umbricht. Die Karten sind Informationen, keine
+   Bedienelemente: kein Zeiger, keine Reaktion beim Zeigen. Berechnung und Bedeutung unverändert. */
 :root[data-ce-bereich="kunde"] .ov-kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -315,11 +446,16 @@
   grid-template-rows: subgrid;
   row-gap: 0;
   min-width: 0;
-  padding: var(--ce-space-5) var(--ce-space-6);
-  border: 1px solid var(--ce-pr-hairline);
+  padding: var(--ce-space-6);
+  border: 1px solid transparent;
   border-radius: var(--ce-pr-radius-card);
-  background: var(--ce-color-surface);
-  box-shadow: var(--ce-pr-ed-shadow-sheet);
+  background: var(--ce-pr-ed-karte-licht) padding-box, var(--ce-pr-ed-kante-licht) border-box;
+  background-color: var(--ce-color-surface);
+  box-shadow: var(--ce-pr-ed-shadow-kennzahl);
+}
+/* Kontrastmodus des Systems: Verläufe entfallen dort — die Karte behält eine sichtbare Kante. */
+@media (forced-colors: active) {
+  :root[data-ce-bereich="kunde"] .ov-kpi { border-color: CanvasText; }
 }
 :root[data-ce-bereich="kunde"] .ov-kpi-label {
   display: block;
@@ -328,44 +464,28 @@
   hyphens: auto;
   font-size: var(--ce-text-label-size);
   line-height: var(--ce-text-label-line);
-  font-weight: 550;
+  font-weight: 600;
   letter-spacing: 0;
   color: var(--ce-pr-ed-kennzahl-tinte);
 }
-/* Die Kante liegt als feine Linie mit runden Enden auf der Haarlinie der Oberkante, bündig mit dem Text — gedämpftes
-   Blau für aktiv, Stahlblau für in Zustellung, Salbeigrün für zugestellt, Ocker für verzögert. */
-:root[data-ce-bereich="kunde"] .ov-kpi::before {
-  content: "";
-  position: absolute;
-  top: -1px;
-  left: var(--ce-space-6);
-  width: var(--ce-space-6);
-  height: 2px;
-  border-radius: var(--ce-radius-full);
-  background: var(--ce-pr-ed-kennzahl-aktiv);
-}
-:root[data-ce-bereich="kunde"] .ov-kpi--transit::before { background: var(--ce-pr-ed-kennzahl-zustellung); }
-:root[data-ce-bereich="kunde"] .ov-kpi--delivered::before { background: var(--ce-pr-ed-kennzahl-zugestellt); }
-:root[data-ce-bereich="kunde"] .ov-kpi--delayed::before { background: var(--ce-pr-ed-kennzahl-verzoegert); }
 :root[data-ce-bereich="kunde"] .ov-kpi-value {
   align-self: end;
   margin: var(--ce-space-4) 0 var(--ce-space-2) -1px;
   font-family: var(--ce-font-numeric);
   font-size: var(--ce-pr-ed-figure-size);
-  line-height: 1;
-  font-weight: 620;
-  font-stretch: var(--ce-pr-ed-figure-stretch);
-  letter-spacing: -0.025em;
-  color: var(--ce-color-text-primary);
+  line-height: 1.1;
+  font-weight: 560;
+  font-stretch: 100%;
+  letter-spacing: -0.022em;
+  color: var(--ce-pr-ed-kennzahl-zahl);
   font-variant-numeric: tabular-nums lining-nums;
 }
-:root[data-ce-bereich="kunde"] .ov-kpi--delayed:not([data-null]) .ov-kpi-value { color: var(--ce-pr-ed-kennzahl-verzoegert-zahl); }
 
 :root[data-ce-bereich="kunde"] .ov-kpi-context {
   align-self: start;
   font-size: var(--ce-text-micro-size);
   line-height: 1.45;
-  color: var(--ce-color-text-muted);
+  color: var(--ce-color-text-secondary);
 }
 /* Der Zusatz bricht nur zwischen seinen Wortgruppen um (geschützte Leerzeichen halten „3 neu“ und „24 h“ zusammen), nie
    in die Nachbarkarte. */
@@ -383,31 +503,41 @@
 /* Telefon (unter 30rem Inhaltsbreite): engere Abstände und die kleinere Zahl. */
 @container ce-seite (width < 30rem) {
   :root[data-ce-bereich="kunde"] .ov-kpis { column-gap: var(--ce-space-3); }
-  :root[data-ce-bereich="kunde"] .ov-kpi { padding: var(--ce-space-4); }
+  :root[data-ce-bereich="kunde"] .ov-kpi { padding: var(--ce-space-4); box-shadow: var(--ce-pr-ed-shadow-kennzahl-klein); }
   :root[data-ce-bereich="kunde"] .ov-kpi:nth-child(n + 3) { margin-top: var(--ce-space-3); }
-  :root[data-ce-bereich="kunde"] .ov-kpi::before { left: var(--ce-space-4); width: var(--ce-space-5); }
   :root[data-ce-bereich="kunde"] .ov-kpi-value { margin-top: var(--ce-space-3); font-size: var(--ce-pr-ed-figure-size-mobile); }
 }
 
-/* ── Module: Kopf mit Tintenlinie, asymmetrisch 1,72 : 1 ── */
+/* ── Module: asymmetrisch 1,72 : 1 (Premium-Dashboard V2) ──
+   Jedes Modul ist ein Kopf auf der Fläche und darunter seine vorhandene Karte im gemeinsamen Material der Übersicht
+   (weiß, Haarlinie, Radius des Blatts, weicher Schatten) — keine zusätzlichen Karten. Die Köpfe tragen keine Linie mehr
+   (vorher Tintenlinie bzw. Haarlinie); die Karte darunter gliedert. Alle Modultitel stehen in einer Größe. */
 :root[data-ce-bereich="kunde"] .ov-mod-grid {
   grid-template-columns: minmax(0, 1.72fr) minmax(0, 1fr);
-  gap: 0 var(--ce-space-9);
-  margin-bottom: var(--ce-space-9);
+  gap: 0 var(--ce-space-8);
+  margin-bottom: var(--ce-space-8);
 }
+:root[data-ce-bereich="kunde"] .ov-page .ov-mod { margin-top: 0; }
 :root[data-ce-bereich="kunde"] .ov-mod-head {
   align-items: baseline;
   min-height: var(--ce-size-touch-target);
-  margin-bottom: 0;
-  padding-bottom: var(--ce-space-3);
-  border-bottom: 2px solid var(--ce-color-text-primary);
+  margin-bottom: var(--ce-space-2);
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 :root[data-ce-bereich="kunde"] .ov-mod-title {
-  font-size: var(--ce-text-title-section-size);
-  line-height: 1.2;
+  font-size: var(--ce-pr-ed-modul-titel);
+  line-height: 1.25;
   font-weight: 600;
-  letter-spacing: -0.022em;
+  letter-spacing: -0.018em;
   color: var(--ce-color-text-primary);
+}
+:root[data-ce-bereich="kunde"] .ov-page .ov-mod > .ov-card {
+  margin-top: 0;
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-radius-card);
+  background: var(--ce-color-surface);
+  box-shadow: var(--ce-pr-ed-shadow-flaeche);
 }
 
 /* ── Marke: Die Unterzeile „B2B Logistik- und Versandplattform“ ragte im Bereich (13 px statt 12 px) 8 px über die
@@ -424,21 +554,26 @@
 :root[data-ce-bereich="kunde"] .pdfview-head { flex-wrap: wrap; }
 :root[data-ce-bereich="kunde"] .pdfview-title { flex: 1 1 0; min-width: auto; overflow: visible; text-overflow: clip; white-space: normal; }
 
-/* ── Letzte Sendungen: offene Liste zwischen Linien statt Kartenkasten ──
+/* ── Letzte Sendungen: eine Liste zwischen Haarlinien in ihrer Karte (Premium-Dashboard V2; vorher offen auf dem Papier) ──
    Spalten und Umbau stehen in overview.css (Subgrid nach dem längsten Wert, Container ov-sendungen); hier nur die
-   Editorial-Gestaltung der Zeilen. */
+   Editorial-Gestaltung der Zeilen. Die Zeilen bleiben Zeilen — keine Karte je Sendung. Der Innenabstand liegt auf der
+   Karte, nicht auf den Zeilen: Die Karte ist der Container ov-sendungen, und Container-Abfragen messen ihre Inhaltsbreite —
+   so greifen die gemessenen Stufen (eine Zeile ab 39.53rem, zweizeilig ab 32.5rem) weiter an der tatsächlichen
+   Listenbreite. Mit Abstand auf den Zeilen lief ein langer Betrag bei 1180 px 1 px über die Karte. Die Haarlinien
+   beginnen und enden am Innenrand. */
 :root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:first-child > .ov-card {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  overflow: visible;
+  padding: 0 var(--ce-space-6);
+  overflow: hidden;
+}
+@container ce-seite (width < 30rem) {
+  :root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:first-child > .ov-card { padding: 0 var(--ce-space-4); }
 }
 :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row {
   position: relative;
   padding: var(--ce-space-4) 2px var(--ce-space-4) 0;
   border-bottom: 1px solid var(--ce-pr-hairline);
 }
+:root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row:last-child { border-bottom: 0; }
 @container ov-sendungen (min-width: 32.5rem) {
   :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row { row-gap: var(--ce-space-1); }
 }
@@ -447,7 +582,7 @@
   :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row { padding: var(--ce-space-4) 0; }
   :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row::before { display: none; }
 }
-/* Die Signalkante links zeigt die Zeile unter dem Zeiger. */
+/* Die Signalkante links neben der Zeile — im Innenrand der Karte — zeigt die Zeile unter dem Zeiger. */
 :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-row::before {
   content: "";
   position: absolute;
@@ -479,6 +614,31 @@
 }
 :root[data-ce-bereich="kunde"] .ov-list-empfaenger-name { font-size: var(--ce-text-body-s-size); font-weight: 500; color: var(--ce-color-text-primary); }
 :root[data-ce-bereich="kunde"] .ov-list-carrier { font-size: var(--ce-text-label-size); color: var(--ce-color-text-secondary); }
+/* Datum und Ort leiser als Nummer, Empfänger und Betrag (Flow Signature). */
+:root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-secondary { color: var(--ce-color-text-muted); }
+/* Carrier-Logos optisch gleich groß: dieselben Dateien stehen in einem gemeinsamen 48 × 30-Rahmen mit unterschiedlichem
+   Innenrand (das UPS-Schild ist darin schmal) — angeglichen mit denselben Faktoren wie auf der Navy-Bühne (overview.css). */
+:root[data-ce-bereich="kunde"] .ov-page .ov-list-carrier-logo { width: 34px; height: 21px; }
+:root[data-ce-bereich="kunde"] .ov-page .ov-list-carrier[data-marke="UPS"] .ov-list-carrier-logo { scale: 1.3; }
+:root[data-ce-bereich="kunde"] .ov-page .ov-list-carrier[data-marke="DPD"] .ov-list-carrier-logo { scale: 1.15; }
+:root[data-ce-bereich="kunde"] .ov-page .ov-list-carrier[data-marke="TNT"] .ov-list-carrier-logo { scale: 1.25; }
+/* Status in einer Form: jede Angabe als Kapsel mit Haarlinie, der Punkt trägt die Bedeutung. Ausnahmen (Verzögert,
+   Prüfung, Fehler) behalten ihre Tönung aus Abschnitt 4 und bekommen die Kante im eigenen Ton — Hierarchie bleibt,
+   die Form ist einheitlich. Nur in „Letzte Sendungen“ der Übersicht. */
+:root[data-ce-bereich="kunde"] .ov-page .ov-list--sendungen .badge {
+  min-height: 26px;
+  padding: 2px 10px 2px 9px;
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-radius-full);
+  font-weight: 600;
+}
+:root[data-ce-bereich="kunde"] .ov-page .ov-list--sendungen .badge:not(.badge--warning, .badge-yellow, .badge--overdue, .badge--error, .badge-red, .badge--blocked) {
+  background: var(--ce-color-surface);
+}
+:root[data-ce-bereich="kunde"] .ov-page .ov-list--sendungen :is(.badge--warning, .badge-yellow, .badge--overdue, .badge--error, .badge-red, .badge--blocked) {
+  border-color: color-mix(in srgb, currentColor 22%, transparent);
+}
+:root[data-ce-bereich="kunde"] .ov-page .ov-list--sendungen .badge::before { width: 7px; height: 7px; }
 :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-num {
   font-size: var(--ce-text-body-l-size);
   font-weight: 600;
@@ -490,39 +650,33 @@
 }
 
 /* ── Offene Rechnungen: das eine Blatt mit Betrag (Korrektur B: der Betrag behält die Größe des Bestands) ── */
-:root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:nth-child(2) > .ov-card {
-  margin-top: var(--ce-space-5);
-  padding: var(--ce-space-6);
-  border: 1px solid var(--ce-pr-hairline);
-  border-radius: var(--ce-pr-radius-card);
-  background: var(--ce-color-surface);
-  box-shadow: var(--ce-pr-ed-shadow-sheet);
-}
-:root[data-ce-bereich="kunde"] .ov-inv-amount { color: var(--ce-color-text-primary); }
+:root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:nth-child(2) > .ov-card { padding: var(--ce-space-6); }
+:root[data-ce-bereich="kunde"] .ov-inv-amount { color: var(--ce-pr-ed-kennzahl-zahl); }
 :root[data-ce-bereich="kunde"] .ov-inv-meta { margin-top: var(--ce-space-3); gap: var(--ce-space-1); font-size: var(--ce-text-label-size); color: var(--ce-color-text-secondary); }
 :root[data-ce-bereich="kunde"] .ov-inv-meta > span:first-child { color: var(--ce-color-text-primary); font-weight: 600; }
 :root[data-ce-bereich="kunde"] .ov-inv-overdue { margin-top: var(--ce-space-3); }
+/* Überfälligkeit deutlicher (Flow Signature): eine etwas größere Kapsel mit Kante im eigenen Ton. */
+:root[data-ce-bereich="kunde"] .ov-page .ov-inv-overdue .badge--overdue {
+  min-height: 28px;
+  padding: 3px 12px 3px 10px;
+  border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+  font-weight: 600;
+}
+:root[data-ce-bereich="kunde"] .ov-page .ov-credit-parts { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 :root[data-ce-bereich="kunde"] .ov-credit { margin-top: var(--ce-space-6); padding-top: var(--ce-space-5); border-top: 1px solid var(--ce-pr-hairline); }
 :root[data-ce-bereich="kunde"] .ov-credit-label { font-size: var(--ce-text-label-size); font-weight: 600; color: var(--ce-color-text-primary); }
 :root[data-ce-bereich="kunde"] .ov-credit-limit { font-weight: 600; font-stretch: var(--ce-pr-ed-amount-stretch); color: var(--ce-color-text-primary); }
 :root[data-ce-bereich="kunde"] .ov-credit-bar { height: 6px; border-radius: var(--ce-radius-full); background: var(--ce-color-surface-muted); }
 :root[data-ce-bereich="kunde"] .ov-credit-bar-fill { min-width: 10px; border-radius: var(--ce-radius-full); background: var(--ce-pr-stripe); }
 
-/* ── Zweite Reihe: Lager und Mitteilungen als zurückgenommene Mulden ── */
-:root[data-ce-bereich="kunde"] .ov-mod-grid--lager .ov-mod-head { border-bottom-width: 1px; border-bottom-color: var(--ce-color-border-default); }
-:root[data-ce-bereich="kunde"] .ov-mod-grid--lager .ov-mod-title { font-size: var(--ce-text-title-card-size); }
-:root[data-ce-bereich="kunde"] .ov-mod-grid--lager .ov-card {
-  margin-top: var(--ce-space-4);
-  border: 0;
-  border-radius: var(--ce-pr-radius-card);
-  background: var(--ce-pr-inset);
-  box-shadow: none;
-}
+/* ── Zweite Reihe: Lager und Mitteilungen im gemeinsamen Kartenmaterial (Premium-Dashboard V2; vorher graue Mulden, die
+   auf der getönten Fläche verschwänden) ── */
+/* Die Zahlen der Übersicht sprechen eine Sprache: Kennzahlen, der Betrag „Offene Rechnungen“ (Größe unverändert) und die
+   Lagerzahlen in normaler Breite und dunklem Navy (vorher die Lagerzahlen im schmalen Schnitt). */
 :root[data-ce-bereich="kunde"] .ov-lager-zahl {
-  font-weight: 600;
-  font-stretch: var(--ce-pr-ed-figure-stretch);
-  letter-spacing: -0.03em;
-  color: var(--ce-color-text-primary);
+  font-weight: 560;
+  letter-spacing: -0.02em;
+  color: var(--ce-pr-ed-kennzahl-zahl);
 }
 :root[data-ce-bereich="kunde"] .ov-lager-titel { font-weight: 600; color: var(--ce-color-text-secondary); }
 :root[data-ce-bereich="kunde"] .ov-lager-fakten dd { font-weight: 600; font-stretch: var(--ce-pr-ed-amount-stretch); color: var(--ce-color-text-primary); }
@@ -532,12 +686,97 @@
 }
 :root[data-ce-bereich="kunde"] .ov-mod-grid--lager .ov-list-row:first-child .ov-ntf-btn { border-radius: var(--ce-pr-radius-card) var(--ce-pr-radius-card) 0 0; }
 :root[data-ce-bereich="kunde"] .ov-mod-grid--lager .ov-list-row:last-child .ov-ntf-btn { border-radius: 0 0 var(--ce-pr-radius-card) var(--ce-pr-radius-card); }
-:root[data-ce-bereich="kunde"] .ov-ntf-new { border-radius: var(--ce-radius-full); background: var(--ce-pr-navy-800); color: var(--ce-color-text-inverse); }
+/* „Neu“ als leise Signal-Marke (Flow Signature; vorher ein Navy-Block, der lauter war als die Meldung); die Zeitangabe
+   steht auf der Titelzeile, nicht mittig neben zwei Zeilen. Ungelesen bleibt ein Wort, nie nur eine Farbe. */
+:root[data-ce-bereich="kunde"] .ov-ntf-new {
+  padding: 0 7px;
+  border: 1px solid var(--ce-pr-ed-neu-kante);
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-pr-signal-soft);
+  color: var(--ce-pr-signal-ink);
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  line-height: 18px;
+}
+:root[data-ce-bereich="kunde"] .ov-page .ov-ntf-btn { align-items: flex-start; }
+:root[data-ce-bereich="kunde"] .ov-page .ov-ntf-time { padding-top: 2px; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
-/* ── Versanddienstleister: die bestehende Navy-Bühne mit Linienzeichnung bleibt (Auftrag 2026-10-28); nur die
-   Rundung folgt dem Lageband. ── */
+/* ── Versanddienstleister: die Navy-Bühne als Markenabschluss der Übersicht (Flow Signature) ──
+   Abgestuftes Navy (oben links ein tieferes Kobalt, unten fast Mitternacht), Kobaltlicht an „Preise vergleichen“
+   (gebündelt, weicher Auslauf), kühles Licht unten links, ein Azur-Horizont unter den Kacheln und eine feine Lichtkante oben —
+   dieselbe Lichtsprache wie die obere Zone, invertiert. Kein Zeichen und keine Ebene über der Fläche: Das CE-Monogramm
+   (Flow Signature V3–V5) ist mit dem Abschluss entfallen (Betreiberentscheidung 2026-11-02), sein Licht steht seitdem auf
+   der Mitte der Aktion statt im freien Feld neben dem Hinweis (dort läse es sich ohne Zeichen als Leuchtkugel). Die
+   Rundung folgt den Karten. Daten unverändert aus GET /kunde/carriers (G2). */
 :root[data-ce-bereich="kunde"] .ov-carrier-zeile { border-radius: var(--ce-pr-radius-card); }
-:root[data-ce-bereich="kunde"] .ov-carrier-titel { letter-spacing: -0.024em; }
+:root[data-ce-bereich="kunde"] .ov-carrier-titel { letter-spacing: -0.02em; }
+:root[data-ce-bereich="kunde"] .ov-page .ov-carrier-zeile {
+  background:
+    radial-gradient(24rem 14rem at calc(100% - var(--ce-pr-ed-flow-buehne-licht-rechts)) 5.3125rem, var(--ce-pr-ed-flow-buehne-schein), transparent 72%),
+    radial-gradient(40rem 16rem at 12% 100%, var(--ce-pr-ed-flow-buehne-tiefe), transparent 72%),
+    radial-gradient(64rem 13rem at 50% 100%, var(--ce-pr-ed-flow-buehne-horizont), transparent 72%),
+    linear-gradient(180deg, var(--ce-pr-ed-flow-buehne-glanz), transparent 4rem),
+    var(--ce-pr-ed-flow-buehne-grund);
+  background-color: var(--ce-pr-navy-900);
+  box-shadow: var(--ce-pr-ed-shadow-buehne);
+}
+/* Schmaler als 65,75rem steht das Bühnenlicht in der Ecke über der Aktion: auf der Aktion läge es dort hinter dem
+   Hinweis (V2 gemessen 3,9:1). */
+@container ce-seite (width < 65.75rem) {
+  :root[data-ce-bereich="kunde"] .ov-page .ov-carrier-zeile {
+    background:
+      radial-gradient(18rem 11rem at calc(100% - 2.05rem) 1.55rem, var(--ce-pr-ed-flow-buehne-schein), transparent 72%),
+      radial-gradient(40rem 16rem at 12% 100%, var(--ce-pr-ed-flow-buehne-tiefe), transparent 72%),
+      radial-gradient(64rem 13rem at 50% 100%, var(--ce-pr-ed-flow-buehne-horizont), transparent 72%),
+      linear-gradient(180deg, var(--ce-pr-ed-flow-buehne-glanz), transparent 4rem),
+      var(--ce-pr-ed-flow-buehne-grund);
+    background-color: var(--ce-pr-navy-900);
+  }
+}
+/* Route durch die Kacheln: eine feine Lichtlinie auf halber Logohöhe (72 px) verbindet die Versanddienstleister — sichtbar
+   in den Fugen und an den Enden, hinter den Kacheln, nie klickbar. Nur in der einreihigen Bühne. */
+@container ce-seite (width >= 65.75rem) {
+  :root[data-ce-bereich="kunde"] .ov-page .ov-carrier-liste { position: relative; }
+  :root[data-ce-bereich="kunde"] .ov-page .ov-carrier-liste::before {
+    content: "";
+    position: absolute;
+    inset: 35.5px calc(-1 * var(--ce-space-8)) auto;
+    height: 1px;
+    z-index: -1;
+    pointer-events: none;
+    background: var(--ce-pr-ed-flow-route);
+  }
+}
+/* Gestapelte Bühne (bis 720 px): das Kobaltlicht in der Ecke über dem Titel, der Horizont schmaler. */
+@media (max-width: 720px) {
+  :root[data-ce-bereich="kunde"] .ov-page .ov-carrier-zeile {
+    background:
+      radial-gradient(18rem 12rem at calc(100% - 1.8rem) 1.1rem, var(--ce-pr-ed-flow-buehne-schein), transparent 72%),
+      radial-gradient(30rem 12rem at 50% 100%, var(--ce-pr-ed-flow-buehne-horizont), transparent 72%),
+      linear-gradient(180deg, var(--ce-pr-ed-flow-buehne-glanz), transparent 4rem),
+      var(--ce-pr-ed-flow-buehne-grund);
+    background-color: var(--ce-pr-navy-900);
+  }
+}
+/* Logokacheln: hell getönt statt flach weiß, eine feine Lichtkante innen und ein Hauch Azur außen, der Schatten fällt
+   nach unten in die Bühne. Ohne Logodatei steht der Name im selben Material. Die Logos selbst bleiben unverändert. */
+:root[data-ce-bereich="kunde"] .ov-page :is(.ov-carrier-logo, .ov-carrier-eintrag--ohne-logo .ov-carrier-name) {
+  border-radius: calc(var(--ce-pr-radius-card) - 2px);
+  background: var(--ce-pr-ed-flow-kachel);
+  box-shadow: var(--ce-pr-ed-shadow-kachel);
+}
+:root[data-ce-bereich="kunde"] .ov-page .ov-carrier-eintrag:not(.ov-carrier-eintrag--ohne-logo) .ov-carrier-name {
+  color: var(--ce-pr-ed-flow-kachel-name);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+/* Fuß der Übersicht: eine an den Enden auslaufende Haarlinie statt einer Kante über die ganze Breite — der Lichtsee unter
+   der Bühne läuft ungebrochen aus. Inhalt und Lage des Fußes unverändert. */
+:root[data-ce-bereich="kunde"] .main-content:has(.ov-page) > .app-footer {
+  border-top-color: transparent;
+  background: var(--ce-pr-ed-flow-fuss-linie) top / 100% 1px no-repeat;
+}
 
 /* ── Übersicht schmaler ── */
 @media (max-width: 1280px) {
@@ -545,7 +784,7 @@
 }
 @media (max-width: 1120px) {
   :root[data-ce-bereich="kunde"] :is(.ov-mod-grid, .ov-mod-grid--lager) { grid-template-columns: minmax(0, 1fr); gap: 0; margin-bottom: 0; }
-  :root[data-ce-bereich="kunde"] .ov-mod-grid > .ov-mod { margin-bottom: var(--ce-space-9); }
+  :root[data-ce-bereich="kunde"] .ov-mod-grid > .ov-mod { margin-bottom: var(--ce-space-8); }
 }
 /* Rechnungen quer: Betrag links, Buchungsrahmen rechts — nur, wenn die Karte mindestens 35.3125rem breit ist (bei
    16 px Grundschrift in dieser Fensterstufe immer, ab 861 px misst sie 565 px; bei großer Schrift stehen Betrag und
@@ -696,7 +935,7 @@
 }
 @container ce-seite (width < 51.5625rem) {
   :root[data-ce-bereich="kunde"] :is(.ov-mod-grid, .ov-mod-grid--lager) { grid-template-columns: minmax(0, 1fr); gap: 0; margin-bottom: 0; }
-  :root[data-ce-bereich="kunde"] .ov-mod-grid > .ov-mod { margin-bottom: var(--ce-space-9); }
+  :root[data-ce-bereich="kunde"] .ov-mod-grid > .ov-mod { margin-bottom: var(--ce-space-8); }
 }
 /* Die Sendungsverfolgung steht ohne .page-body direkt im Inhaltsbereich: derselbe Container ce-seite. */
 :root[data-ce-bereich="kunde"] .page-with-navbar.tracking-page { width: 100%; container: ce-seite / inline-size; }

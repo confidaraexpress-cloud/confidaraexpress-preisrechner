@@ -760,16 +760,102 @@
      Preisrechner tragen die Werte mit, verwenden sie aber nicht. Linien, Mulden und Tinte kommen aus den
      vorhandenen Tokens (--ce-pr-hairline, --ce-pr-inset, --ce-color-text-primary). */
   --ce-pr-ed-mark-delivered: #5cd49a;           /* Grün auf Navy (Punkt des Ansprechpartners) */
-  /* Kennzahlkarten der Übersicht (Betreiberentscheidung 2026-11-01, ersetzt das Navy-Band; Feinschliff am selben Tag):
-     je Kennzahl eine feine Kante in ihrer gedämpften Kennfarbe, auf Weiß je mindestens 3:1; die Zahl „Verzögert“ über 0
-     im Textton 5,41:1; die Bezeichnung in einer eigenen Tinte zwischen Text und Nebentext. */
-  --ce-pr-ed-kennzahl-aktiv: #4467c4;           /* gedämpftes Blau · 5,27:1 */
-  --ce-pr-ed-kennzahl-zustellung: #468aa8;      /* Stahlblau · 3,85:1 */
-  --ce-pr-ed-kennzahl-zugestellt: #3f8763;      /* Salbeigrün · 4,32:1 */
-  --ce-pr-ed-kennzahl-verzoegert: #b8792b;      /* Ocker · 3,62:1 */
-  --ce-pr-ed-kennzahl-verzoegert-zahl: #9a5b12; /* 5,41:1 */
+  /* Kennzahlkarten der Übersicht (Betreiberentscheidungen 2026-11-01; Premium-Dashboard V2): reduzierte Palette ohne
+     farbige Kanten — alle vier Zahlen in demselben dunklen Navy, auch „Verzögert“ (Betreiberauftrag 2026-11-02; bis dahin
+     über 0 in Bernstein-Gold); die Bezeichnung in einer eigenen Tinte zwischen Text und Nebentext. */
+  --ce-pr-ed-kennzahl-zahl: var(--ce-pr-navy-800); /* Logo-Navy · 16,29:1 */
   --ce-pr-ed-kennzahl-tinte: #2a3550;           /* Bezeichnung · 12,18:1 */
-  --ce-pr-ed-shadow-sheet: 0 1px 0 rgba(11, 21, 50, 0.04), 0 12px 32px -18px rgba(11, 21, 50, 0.22);
+  /* Premium Workspace (Betreiberauftrag 2026-11-02): jede Kundenseite außer der Übersicht liegt auf einer hellen, blauen
+     Arbeitsfläche — dieselbe Farb- und Lichtfamilie wie die Übersicht, deutlich leiser (Hintergrund im ersten Bildschirm
+     gemessen etwa halb so weit von Weiß entfernt wie auf der Übersicht, ohne Bühne und Kartenlicht). Wenige große,
+     weiche Lichtflächen: oben ein Ice-Blue-Band, rechts oben ein Kobalt-/Azur-Schimmer, links oben eine Stahlblau-Wolke,
+     unten ein Lichtauslauf. Kein CE, keine Route, kein Licht hinter Formularen und Tabellen (eine Flanke an der
+     Seitenleiste lag hinter der linken Spalte: gedämpfter Text dort 4,57:1); Karten, Felder und Dialoge bleiben weiß.
+     Die Lichtflächen sind Verlaufslisten mit weichem Auslauf (keine Kante, kein Kreis). */
+  --ce-pr-ed-raum-flaeche: #f0f4fc;             /* Grund · Tinte 16,32:1, Nebentext 6,28:1, gedämpft 4,86:1 */
+  --ce-pr-ed-raum-band: #e8effc;                /* Ice-Blue-Band oben (gedämpft 4,64:1), läuft bis --ce-pr-ed-raum-hoehe aus */
+  --ce-pr-ed-raum-hoehe: 30rem;
+  --ce-pr-ed-raum-hoehe-mobil: 20rem;           /* Telefon und Tablet: kürzer, die Übersicht bleibt dort die stärkere Fläche */
+  --ce-pr-ed-raum-schimmer: rgba(0, 74, 252, 0.1), rgba(77, 132, 255, 0.08) 30%, rgba(77, 132, 255, 0.03) 58%; /* rechts oben, Kobalt im Kern */
+  --ce-pr-ed-raum-wolke: rgba(127, 156, 207, 0.16), rgba(127, 156, 207, 0.08) 40%; /* Stahlblau links oben */
+  --ce-pr-ed-raum-auslauf: rgba(77, 132, 255, 0.08), rgba(77, 132, 255, 0.04) 40%; /* unten, unter dem Inhalt */
+  --ce-pr-ed-raum-kopfleiste-linie: rgba(17, 34, 80, 0.08); /* Kopfleiste: helles Grau läse sich im Band als Lichtstreifen */
+  /* Getönte Arbeitsfläche der Übersicht und das gemeinsame Material ihrer Karten (Premium-Dashboard V2; seit Flow
+     Signature V2 ein kühles, helles Blau statt Grau-Blau, seit V3 eine Stufe blauer): darauf weiße Karten mit Haarlinie
+     und einem weichen, kurzen Schatten. Text auf der Fläche: Tinte 15,69:1, Nebentext 6,04:1, gedämpft 4,68:1. */
+  --ce-pr-ed-flaeche-uebersicht: #e9f0fb;
+  --ce-pr-ed-shadow-flaeche: 0 1px 2px rgba(1, 27, 85, 0.04), 0 14px 32px -24px rgba(1, 27, 85, 0.24);
+  /* Confidara Flow Signature (Abschluss nach Betreiberentscheidung 2026-11-02: die Atmosphäre von V4/V5 ohne dekorative
+     CE-Monogramme — das offizielle Logo steht allein in Seiten- und Mobilleiste): eine durchgehende blaue Markenatmosphäre
+     in drei Zonen. Oben ein Ice-Blue-Band, eine Stahlblau-Wolke links, ein Azur-Himmel und an „Neue Sendung“ ein
+     gebündeltes Kobaltfeld; eine flache Weite trägt das Licht über die Kennzahlen. Die Mitte bindet beide Zonen: eine
+     Lichtbahn rechts zwischen Kopf und Bühne, eine Flanke an der Seitenleiste, ein Azurlicht in der freien Fläche rechts,
+     die Azur-Säule am Rand; die Lichtwolke links leiser. Unten ein dichter Kobalthof um die Navy-Bühne, ein Schein über ihr
+     und ein Navy-Boden als Abschluss. Ohne Zeichen steht kein Licht mehr im freien Feld (dort läse es sich als leuchtende
+     Blase): das Kobaltfeld oben und das Licht der Bühne stehen auf ihren Aktionen.
+     Die Glow-Tokens sind Verlaufslisten (Farbe und Zwischenstopps, in der Regel steht danach „transparent“): weicher
+     Auslauf statt linearem Abfall, keine Kante am Rand des Lichts. Hinter Datumszeile, Kopfleiste, Modullinks und Fuß
+     bleibt es leiser (Text ≥ 4,6:1); bis 85,3125em sind Himmel, Lichtbahn, Flanke, Hof und Boden zurückgenommen. */
+  --ce-pr-ed-flow-nebel-oben: #e6edfb;          /* Ice-Blue-Band: oben hinter der Kopfleiste leiser … */
+  --ce-pr-ed-flow-nebel: #dfe7fb;               /* … am kräftigsten auf Höhe der Aktion (9rem), läuft bis --ce-pr-ed-flow-hoehe aus */
+  --ce-pr-ed-flow-nebel-mobil: #dae5fb;         /* unter der weißen Mobilleiste */
+  --ce-pr-ed-flow-stahl: #7f9ccf;               /* Stahlblau: Ton der Wolke und der Kartenkante */
+  --ce-pr-ed-flow-wolke: rgba(127, 156, 207, 0.2);    /* Stahlblau-Wolke oben links, über der Datumszeile */
+  --ce-pr-ed-flow-wolke-mobil: rgba(127, 156, 207, 0.24);
+  --ce-pr-ed-flow-schein: rgba(0, 74, 252, 0.3), rgba(0, 74, 252, 0.2) 24%, rgba(0, 74, 252, 0.09) 46%, rgba(0, 74, 252, 0.03) 60%; /* Kobaltfeld an „Neue Sendung“: 28 % der Fläche, gebündelt */
+  --ce-pr-ed-flow-weite: rgba(0, 74, 252, 0.12), rgba(0, 74, 252, 0.06) 40%; /* flache Weite: das Licht über den Kennzahlen */
+  --ce-pr-ed-flow-weite-schmal: rgba(0, 74, 252, 0.1), rgba(0, 74, 252, 0.05) 40%;
+  --ce-pr-ed-flow-schein-schmal: rgba(0, 74, 252, 0.26), rgba(0, 74, 252, 0.16) 26%, rgba(0, 74, 252, 0.06) 48%; /* schmaler Desktop: kleineres Licht an der Aktion … */
+  --ce-pr-ed-flow-schein-aktion: rgba(0, 74, 252, 0.22), rgba(0, 74, 252, 0.14) 26%, rgba(0, 74, 252, 0.05) 48%; /* … bis 68,75em noch leiser */
+  --ce-pr-ed-flow-schein-mobil: rgba(0, 74, 252, 0.26), rgba(0, 74, 252, 0.16) 26%, rgba(0, 74, 252, 0.06) 48%; /* Telefon: an der Aktion */
+  --ce-pr-ed-flow-azur: rgba(77, 132, 255, 0.22);     /* Azur-Himmel oben (Ton aus --ce-pr-stripe) … */
+  --ce-pr-ed-flow-azur-schmal: rgba(77, 132, 255, 0.19); /* … bis 85,3125em leiser (Datumszeile, Firma in der Kopfleiste) */
+  --ce-pr-ed-flow-bahn: rgba(0, 74, 252, 0.1), rgba(0, 74, 252, 0.055) 40%; /* Lichtbahn rechts: verbindet Kopf und Bühne … */
+  --ce-pr-ed-flow-bahn-schmal: rgba(0, 74, 252, 0.085), rgba(0, 74, 252, 0.045) 40%; /* … bis 85,3125em leiser, bis 68,75em keine (Modullink rechts) */
+  --ce-pr-ed-flow-flanke: rgba(77, 132, 255, 0.2);    /* Flanke: Azurlicht an der Seitenleiste in der Mitte … */
+  --ce-pr-ed-flow-flanke-schmal: rgba(77, 132, 255, 0.16);
+  --ce-pr-ed-flow-licht: rgba(255, 255, 255, 0.28);   /* Lichtwolke links in der Mitte (leiser: die Mitte bleibt blau) */
+  --ce-pr-ed-flow-mitte: rgba(77, 132, 255, 0.16);    /* Azurlicht in der freien Fläche rechts unter den Mitteilungen … */
+  --ce-pr-ed-flow-mitte-mobil: rgba(77, 132, 255, 0.13); /* … auf dem Telefon rechts in der Mitte */
+  --ce-pr-ed-flow-rand: rgba(77, 132, 255, 0.18);     /* Azur-Säule am rechten Rand: die Marke reißt beim Scrollen nicht ab */
+  --ce-pr-ed-flow-hof: rgba(0, 74, 252, 0.22);        /* Kobalthof dicht um die Navy-Bühne … */
+  --ce-pr-ed-flow-hof-schmal: rgba(0, 74, 252, 0.18); /* … bis 85,3125em leiser (der Fuß) */
+  --ce-pr-ed-flow-glut: rgba(0, 74, 252, 0.2);        /* Schein über der Bühne (höher: der Fuß bleibt hell) */
+  --ce-pr-ed-flow-boden: rgba(1, 27, 85, 0.2);        /* Navy-Boden unter Bühne und Fuß: der Abschluss … */
+  --ce-pr-ed-flow-boden-schmal: rgba(1, 27, 85, 0.16); /* … bis 85,3125em und auf dem Telefon leiser */
+  --ce-pr-ed-flow-hoehe: 44rem;                 /* Auslauf des Bands oben … */
+  --ce-pr-ed-flow-hoehe-mobil: 38rem;           /* … und auf dem Telefon */
+  --ce-pr-ed-flow-licht-aktion: 5.625rem;       /* Mitte von „Neue Sendung“: so weit vor dem rechten Inhaltsrand steht das Kobaltfeld … */
+  --ce-pr-ed-flow-licht-rechts: 16.4375rem;     /* … Weite und Lichtbahn so weit (bis v2.102 die Mitte des C) … */
+  --ce-pr-ed-flow-schein-oben: 11.25rem;        /* … das Kobaltfeld etwas unter der Achse der Aktion (unter der Kopfleiste leiser) … */
+  --ce-pr-ed-flow-weite-oben: 15rem;            /* … die Weite auf Höhe der Kennzahlen */
+  --ce-pr-ed-flow-kopf-linie: rgba(17, 34, 80, 0.1); /* Kopflinie auf der blauen Fläche (helles Grau läse sich als Lichtkante) */
+  /* Kennzahlkarten im Licht der oberen Zone: dieselbe Karte wie die Module, die Kante oben vom Kobaltlicht getönt. */
+  --ce-pr-ed-kante-licht: linear-gradient(180deg, rgba(0, 74, 252, 0.32), rgba(127, 156, 207, 0.3) 34%, rgba(17, 34, 80, 0.09));
+  --ce-pr-ed-karte-licht: linear-gradient(180deg, #ffffff 40%, #fbfcff);
+  --ce-pr-ed-shadow-kennzahl: 0 1px 2px rgba(1, 27, 85, 0.05), 0 16px 34px -22px rgba(1, 27, 85, 0.26);
+  --ce-pr-ed-shadow-kennzahl-klein: 0 1px 2px rgba(1, 27, 85, 0.05), 0 10px 22px -16px rgba(1, 27, 85, 0.2); /* Telefon */
+  /* Navy-Bühne „Ihre Versanddienstleister“: abgestuftes Navy, Kobaltlicht an der Vergleichsaktion (seit V4 gebündelt, mit
+     weichem Auslauf), kühles Licht unten links, ein Azur-Horizont unter den Kacheln, Lichtkante oben, eine Route durch die
+     Kacheln; Kacheln hell getönt mit feiner Lichtkante. */
+  --ce-pr-ed-flow-buehne-grund: linear-gradient(160deg, #0f2259 0%, #0a1740 46%, #040b24 100%);
+  --ce-pr-ed-flow-buehne-schein: rgba(0, 74, 252, 0.85), rgba(0, 74, 252, 0.52) 28%, rgba(0, 74, 252, 0.18) 52%; /* Verlaufsliste */
+  --ce-pr-ed-flow-buehne-tiefe: rgba(77, 132, 255, 0.14);
+  --ce-pr-ed-flow-buehne-horizont: rgba(77, 132, 255, 0.36);
+  --ce-pr-ed-flow-buehne-glanz: rgba(143, 176, 255, 0.12);
+  --ce-pr-ed-flow-buehne-licht-rechts: 7.875rem; /* Mitte von „Preise vergleichen“ vor der rechten Kante (Achse 85 px von oben) */
+  --ce-pr-ed-flow-route: linear-gradient(90deg, transparent, rgba(143, 176, 255, 0.45) 10%, rgba(255, 255, 255, 0.55) 50%, rgba(143, 176, 255, 0.45) 90%, transparent);
+  /* Schatten bleiben neutral (Navy) oder weißes Streiflicht (designSystemClosure 4) — das Licht der Bühne kommt aus ihrem
+     Grund, nicht aus einem farbigen Glow. */
+  --ce-pr-ed-shadow-buehne: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 1px 2px rgba(1, 27, 85, 0.2), 0 34px 64px -40px rgba(1, 27, 85, 0.55);
+  --ce-pr-ed-flow-kachel: linear-gradient(180deg, #ffffff, #eef2fa);
+  --ce-pr-ed-shadow-kachel: inset 0 0 0 1px rgba(255, 255, 255, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.12), 0 14px 26px -18px rgba(0, 0, 0, 0.65);
+  --ce-pr-ed-flow-kachel-name: #d3dcf5;         /* Carriername auf Navy */
+  /* Leise Trennungen der Übersicht: die Kopfleiste im Licht und der Fuß als auslaufende Haarlinie. */
+  --ce-pr-ed-flow-kopfleiste-linie: rgba(17, 34, 80, 0.07);
+  --ce-pr-ed-flow-fuss-linie: linear-gradient(90deg, transparent, rgba(17, 34, 80, 0.12) 12%, rgba(17, 34, 80, 0.12) 88%, transparent);
+  --ce-pr-ed-neu-kante: rgba(0, 74, 252, 0.2);  /* Kante der Marke „Neu“ in den Mitteilungen */
+  --ce-pr-ed-modul-titel: 1.25rem;              /* 20 px, alle Modulköpfe der Übersicht */
   --ce-pr-ed-row-mark: #004afc;                 /* Signalkante an der Zeile bei Zeigen und Fokus */
   /* Editorial-Skala: Seitenkopf und Kennzahlen. Größen in rem (E13), bei 16 px Grundgröße ganze Pixel. */
   --ce-pr-ed-headline-size: 3.5rem;             /* 56 px */
@@ -784,8 +870,8 @@
   --ce-pr-ed-gruss-size-mobile: 1.75rem;        /* 28 px */
   --ce-pr-ed-gruss-line: 1.12;
   --ce-pr-ed-gruss-tracking: -0.022em;
-  --ce-pr-ed-figure-size: 3rem;                 /* 48 px, Kennzahlen */
-  --ce-pr-ed-figure-size-mobile: 2.5rem;        /* 40 px */
+  --ce-pr-ed-figure-size: 2.375rem;             /* 38 px, Kennzahlen in normaler Breite */
+  --ce-pr-ed-figure-size-mobile: 2rem;          /* 32 px */
   --ce-pr-ed-figure-stretch: 78%;
   --ce-pr-ed-amount-stretch: 88%;               /* Beträge und Kennungen in Tabellen */
   /* Plus der Anlegen-Aktionen (Betreiberentscheidung 2026-10-28): zwei Umdrehungen, anfahren und lang

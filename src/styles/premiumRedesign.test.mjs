@@ -268,6 +268,17 @@ test("12 — Editorial-Ebene: nur Kundenbereich, keine Farbliterale, Knöpfe nac
   assert.deepEqual(kurzform, [], `Kurzform text-wrap in premium-editorial.css: ${kurzform.join(", ")}`);
 });
 
+/* ══════════ 12b — keine Kurzform „border-image: none“ in der Editorial-Ebene (Befund 2026-11-01) ══════════
+   Der Build minifiziert „border-image: none“ zu „border-image:“ — eine leere Deklaration, die der Browser verwirft. Das
+   weiße Vollbreitenband der Kopfleiste (border-image der Bereichsebene) blieb dadurch im ausgelieferten Bündel stehen,
+   im Dev-Server nicht; sichtbar wurde es erst auf der getönten Fläche der Übersicht. Aufheben nur über die Langform. */
+test("12b — Editorial-Ebene hebt border-image nur über die Langform auf (die Kurzform none fällt im Build weg)", () => {
+  const kurz = [...EDITORIAL.matchAll(/(?:^|[;{\s])border-image\s*:\s*none\b[^;}]*/g)].map((m) => m[0].trim());
+  assert.deepEqual(kurz, [], `Kurzform border-image: none in premium-editorial.css: ${kurz.join(", ")}`);
+  const kopf = EDITORIAL_REGELN.find(({ sel }) => sel === ':root[data-ce-bereich="kunde"] .ce-page-header-utility');
+  assert.ok(kopf && /border-image-source:\s*none/.test(kopf.koerper), "die Kopfleiste hebt das weiße Band nicht mehr auf");
+});
+
 /* ══════════ 13 — Plus-Drehung der Anlegen-Aktionen (Betreiberentscheidung 2026-10-28) ══════════
    Einzige Ausnahme zu E5: Beim Zeigen dreht sich nur das Pluszeichen (::before) der Anlegen-Aktionen zweimal und
    endet in der Ruhelage — einmal je Zeigen, nur mit echtem Zeiger, über die Tastatur beim sichtbaren Fokus, nie bei

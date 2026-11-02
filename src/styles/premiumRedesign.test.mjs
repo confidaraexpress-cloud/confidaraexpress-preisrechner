@@ -444,3 +444,33 @@ test("17 — Seitenkante grau; die Menütaste spricht die Sprache der Kapsel dan
     assert.doesNotMatch(koerper, /(^|;)\s*(transform|animation|opacity)\s*:/, `${sel}: Bewegung oder Deckkraft`);
   }
 });
+
+/* ══════════ 18 — Seiteneinblendung: keine feste Ebene bleibt darin gefangen (Befund 2026-11-01) ══════════
+   Die Einblendung einer Seite (nur Deckkraft, 180 ms) bildet währenddessen einen Stapelkontext. Ein in dieser Zeit
+   geöffneter Dialog lag darin unter der Ansprechpartnerkarte (accountManagerCard M, gelegentlich rot; Kopfleiste und
+   Seitenleiste ebenso). Enthält die Seite eine feste Ebene, endet die Einblendung deshalb sofort — über die Dauer, nicht
+   über den Namen (ein Namenswechsel startete sie beim Schließen neu) und ohne Ebenenänderung (eine angehobene Seite malte
+   durch den halbtransparenten Dialoghintergrund über die Karte). */
+test("18 — Seiteneinblendung: nur Deckkraft und „backwards“; jede feste Ebene der Seite beendet sie sofort", () => {
+  const SEITE = '[data-ce-bereich="kunde"] .main-content > :is(.page-body, .page-with-navbar)';
+  const einblendung = REGELN.find(({ sel }) => sel === SEITE);
+  assert.ok(einblendung, "die Regel der Seiteneinblendung fehlt");
+  assert.match(einblendung.koerper, /animation:\s*ce-pr-seite\s+180ms\s+[^;]*\bbackwards\b/);
+  assert.match(CSS, /@keyframes ce-pr-seite\s*\{\s*from\s*\{\s*opacity:\s*0;\s*\}\s*\}/, "die Einblendung animiert mehr als die Deckkraft");
+
+  const anheben = REGELN.find(({ sel }) => sel.startsWith(`${SEITE}:has(`));
+  assert.ok(anheben, "eine offene Ebene beendet die Einblendung nicht");
+  assert.match(anheben.koerper, /^\s*animation-duration:\s*0s;\s*$/, "erwartet: genau animation-duration: 0s");
+  assert.match(anheben.sel, /\[aria-modal="true"\]/, "modale Ebenen (auch das Mitteilungsfenster) beenden die Einblendung nicht");
+
+  // Jede fensterfüllende Ebene aus patterns.css (Dialoge, Schubladen) und die Ladeschicht des Angebotsvergleichs.
+  const muster = ohneKommentare(lies(path.join(HIER, "patterns.css")));
+  const gruppe = (anker) => {
+    const m = muster.match(new RegExp(`([^{}]*\\.${anker}[^{]*)\\{[^}]*position:\\s*fixed;[^}]*inset:\\s*0`));
+    return m ? [...m[1].matchAll(/\.([a-z-]+overlay)\b/g)].map((x) => x[1]) : [];
+  };
+  const ebenen = [...new Set([...gruppe("ce-dialog-overlay"), ...gruppe("ce-drawer-overlay"), "cmp-loading-overlay"])];
+  assert.ok(ebenen.length >= 12, `fensterfüllende Ebenen nicht gelesen: ${ebenen.join(", ")}`);
+  const fehlt = ebenen.filter((k) => !new RegExp(`\\.${k}\\b`).test(anheben.sel));
+  assert.deepEqual(fehlt, [], `diese Ebenen blieben in der Einblendung gefangen: ${fehlt.join(", ")}`);
+});

@@ -13,7 +13,7 @@ import { validateContactPhone } from "./contactDetails.mjs";
 import { addressDetailsTooLongHint, offerBlockedHint, offerBlockedLabel, OFFER_ADDRESS_DETAILS_TOO_LONG_HINT } from "./offerIdentity.mjs";
 
 const lies = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
-const FALLTABELLE_SHA256 = "3f31b2ecad065a30cf12";
+const FALLTABELLE_SHA256 = "3a4ca68c70a8e3bec135";
 
 test("1 — die Falltabelle ist bytegleich mit der Backendkopie, und jeder Fall besteht", () => {
   const roh = lies("../testing/phoneNumberCases.json");

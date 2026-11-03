@@ -11,7 +11,7 @@ import {
 } from "./profileView.mjs";
 
 const lies = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
-const FALLTABELLE_SHA256 = "ff984d38227966539362";
+const FALLTABELLE_SHA256 = "c9f795bed2062e3196d1";
 
 test("1 — die Regel besteht die gemeinsame Falltabelle (bytegleich mit dem Backend)", () => {
   const roh = lies("../testing/contactDetailsCases.json");

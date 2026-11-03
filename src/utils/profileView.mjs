@@ -26,6 +26,9 @@ import { eoriFieldError, normalizeEori } from "./eori.mjs";
 import { CUSTOMS_UI_ENABLED } from "../config/launchMode.mjs";
 // Kontakt-E-Mail und Telefon: EINE Regel, gespiegelt aus Backend lib/contactDetails.js (gemeinsame Falltabelle).
 import { validateContactEmail, validateContactPhone } from "./contactDetails.mjs";
+// Eingabe-Audit A13: USt-IdNr. und PLZ nach denselben Regeln wie Registrierung und Backend.
+import { validateOptionalVatId } from "./vatId.mjs";
+import { validatePostalCode } from "./postalCode.mjs";
 
 // Feldgruppen exakt nach Backend-Whitelist (snake_case = echte Spalten-/Body-Namen).
 export const COMPANY_FIELDS = ["company_name", "vat_id", "eori_number", "street", "zip", "city", "country"];
@@ -160,8 +163,24 @@ function validateMaxLen(fields, form) {
   return errors;
 }
 
-export function validateCompanyForm(form) {
+export function validateCompanyForm(form, baseline = null) {
   const errors = { ...validateMaxLen(COMPANY_FIELDS, form), ...validateB2BRequired(COMPANY_FIELDS, form) };
+  // Eingabe-Audit A13 (2026-11-03), Spiegel von resolveStoredChecks im Backend: eine NEU eingetragene oder geänderte
+  // USt-IdNr. bzw. PLZ muss die Regel bestehen; ein unveränderter Altwert bleibt stehen und sperrt das Speichern
+  // nicht — dieselbe Haltung wie bei der EORI unten (die Karte sendet ihre Felder immer vollständig).
+  const alt = baseline || {};
+  const vat = trimmed(form?.vat_id);
+  if (!errors.vat_id && vat !== "" && vat !== trimmed(alt.vat_id)) {
+    const r = validateOptionalVatId(vat);
+    if (!r.ok) errors.vat_id = r.error;
+  }
+  const plz = trimmed(form?.zip);
+  const land = trimmed(form?.country).toUpperCase();
+  const plzGeaendert = plz !== trimmed(alt.zip) || land !== trimmed(alt.country).toUpperCase();
+  if (!errors.zip && plz !== "" && land !== "" && plzGeaendert) {
+    const pc = validatePostalCode(land, plz);
+    if (!pc.valid) errors.zip = pc.example ? "PLZ passt nicht zum Landesformat (Beispiel: " + pc.example + ")." : "PLZ ist ungültig.";
+  }
   const country = trimmed(form?.country);
   if (country !== "" && !/^[A-Z]{2}$/i.test(country)) {
     errors.country = "Bitte ein gültiges Land wählen.";
@@ -228,7 +247,7 @@ export function isFormValid(errors) {
 
 // Speichern-Button freigeben: gültig UND geändert UND kein laufender Request.
 export function canSaveCompany(form, baseline, saving) {
-  return !saving && isCompanyDirty(form, baseline) && isFormValid(validateCompanyForm(form));
+  return !saving && isCompanyDirty(form, baseline) && isFormValid(validateCompanyForm(form, baseline));
 }
 export function canSaveContact(form, baseline, saving) {
   return !saving && isContactDirty(form, baseline) && isFormValid(validateContactForm(form));

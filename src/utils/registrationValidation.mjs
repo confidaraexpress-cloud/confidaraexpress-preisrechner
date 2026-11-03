@@ -17,8 +17,13 @@ import { PASSWORD_MIN_LEN, PASSWORD_MAX_LEN, passwordLengthError } from "./passw
 import { normalizeReferralCode } from "./referralCapture.mjs";
 // Auftrag 2 / P10: USt-IdNr. — EINE Regel, gespiegelt aus Backend lib/vatId.js (gemeinsame Falltabelle).
 import { validateRequiredVatId, normalizeVatId, isLegalFormWithoutVatId, VAT_ID_ABSENT_TEXT } from "./vatId.mjs";
+// Eingabe-Audit A13: PLZ nach Landesregel und Telefon über den zentralen Telefonvertrag — wie Profil, Adressbuch, Sendung.
+import { validatePostalCode } from "./postalCode.mjs";
+import { parsePhoneNumber } from "./phoneNumber.mjs";
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// RFC 5321: höchstens 254 Zeichen — dieselbe Grenze wie im Backend (routes/auth.js, Eingabe-Audit A13).
+export const REG_EMAIL_MAX = 254;
 
 // Fehlertexte des Registrierungsformulars. Die REGEL (8–128, Zählung in
 // Code-Points) steht ausschließlich in passwordPolicy.mjs; hier steht nur der
@@ -59,7 +64,8 @@ export function getRegErrors(form = {}, passwordRepeat = "") {
   const e = {};
 
   if (!form.email?.trim())                     e.email    = "E-Mail ist ein Pflichtfeld.";
-  else if (!EMAIL_RE.test(form.email.trim()))  e.email    = "Bitte eine gültige geschäftliche E-Mail-Adresse eingeben.";
+  else if (form.email.trim().length > REG_EMAIL_MAX || !EMAIL_RE.test(form.email.trim()))
+    e.email = "Bitte eine gültige geschäftliche E-Mail-Adresse eingeben.";
 
   // Länge über die zentrale Regel — nie über form.password.length: `.length`
   // zählt UTF-16-Code-Units, sodass sieben getippte Zeichen mit einem Emoji
@@ -97,6 +103,11 @@ export function getRegErrors(form = {}, passwordRepeat = "") {
   // Weiterhin optionale Felder: nur Längenobergrenzen.
   if (form.street?.length > 200) e.street = "Straße darf maximal 200 Zeichen enthalten.";
   if (form.zip?.length > 10)     e.zip    = "PLZ darf maximal 10 Zeichen enthalten.";
+  // Eingabe-Audit A13: eine angegebene PLZ folgt der Landesregel (leer bleibt erlaubt).
+  else if (form.zip?.trim()) {
+    const pc = validatePostalCode(form.country || "DE", form.zip);
+    if (!pc.valid) e.zip = pc.example ? "PLZ passt nicht zum Landesformat (Beispiel: " + pc.example + ")." : "PLZ ist ungültig.";
+  }
   if (form.city?.length > 100)   e.city   = "Stadt darf maximal 100 Zeichen enthalten.";
 
   return e;
@@ -236,7 +247,6 @@ export function withReferralCode(payload, code) {
 export const PARTNER_NAME_RULE = Object.freeze({ apiField: "name", label: "Name", minLen: 2, maxLen: 100 });
 export const PARTNER_COMPANY_MAX = 200;
 export const PARTNER_PHONE_MAX = 40;
-const PARTNER_PHONE_RE = /^[0-9+()/. -]*$/;
 
 export const PARTNER_REG_TEXTS = Object.freeze({
   agreementRequired: "Bitte bestätigen Sie die Vertriebspartnervereinbarung.",
@@ -276,7 +286,9 @@ export function getPartnerRegErrors(form = {}, passwordRepeat = "", { requireAgr
   if (trimmed(form.companyName).length > PARTNER_COMPANY_MAX) e.companyName = PARTNER_REG_TEXTS.companyTooLong;
   const phone = trimmed(form.phone);
   if (phone.length > PARTNER_PHONE_MAX) e.phone = PARTNER_REG_TEXTS.phoneTooLong;
-  else if (!PARTNER_PHONE_RE.test(phone)) e.phone = PARTNER_REG_TEXTS.phoneInvalid;
+  // Eingabe-Audit A13: dieselbe Telefonregel wie überall (Telefonvertrag) statt einer eigenen Zeichenliste — die
+  // verbot etwa „Durchwahl“, das Adressbuch und Sendung annehmen. Der Meldungstext des Partnerantrags bleibt.
+  else if (phone && !parsePhoneNumber(phone).ok) e.phone = PARTNER_REG_TEXTS.phoneInvalid;
   if (requireAgreement && form.agreementAccepted !== true) e.agreement = PARTNER_REG_TEXTS.agreementRequired;
   return e;
 }

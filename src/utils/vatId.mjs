@@ -7,6 +7,9 @@
    alternative Steuernummer. Geprüft wird das FORMAT nach Länderpräfix — keine behördliche Bestätigung, keine
    Steuerbefreiung, kein Reverse-Charge. Leerzeichen, Punkte, Binde- und Schrägstriche entfallen; „GR“ wird „EL“. */
 
+// Eingabe-Audit A9: unsichtbare Formatzeichen aus eingefügtem Text (Spiegel von lib/textInput.js).
+import { stripInvisibleFormatChars } from "./textInput.mjs";
+
 const VAT_ID_FORMATS = Object.freeze({
   AT: /^U\d{8}$/,
   BE: /^[01]\d{9}$/,
@@ -77,7 +80,7 @@ export const VAT_ID_ABSENT_TEXT = Object.freeze({
 /** Die normalisierte Form — oder "" ohne Eingabe. */
 export function normalizeVatId(raw) {
   if (typeof raw !== "string") return "";
-  const v = raw.replace(/[\s./-]+/g, "").toUpperCase();
+  const v = stripInvisibleFormatChars(raw).replace(/[\s./-]+/g, "").toUpperCase();
   return v.startsWith("GR") ? `EL${v.slice(2)}` : v;
 }
 
@@ -96,4 +99,12 @@ export function validateRequiredVatId(raw) {
   // Dieselbe Plausibilitätsregel wie das Backend: ein langer Null-Lauf oder nur eine einzige Ziffer.
   if (/0{6,}/.test(v) || /^(\d)\1+$/.test(rest.replace(/^U/, ""))) return fehler("VAT_ID_INVALID", VAT_ID_TEXT.invalid);
   return { ok: true, value: v };
+}
+
+/** Profil (Eingabe-Audit A13), Spiegel von lib/vatId.js: freiwillig, aber — wenn angegeben — dieselbe Prüfung.
+ *  → { ok: true, value: string|null } | { ok: false, code, error } */
+export function validateOptionalVatId(raw) {
+  if (raw === undefined || raw === null) return { ok: true, value: null };
+  if (typeof raw === "string" && normalizeVatId(raw) === "") return { ok: true, value: null };
+  return validateRequiredVatId(raw);
 }

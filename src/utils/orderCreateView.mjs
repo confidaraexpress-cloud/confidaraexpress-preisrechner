@@ -15,6 +15,8 @@
 
 import { validatePostalCode, isPostalCodeRequired, hasPostalCode } from "./postalCode.mjs";
 import { unitLabel } from "./inventoryView.mjs";
+// Eingabe-Audit A13: dieselbe Telefonregel wie Sendung und Adressbuch (zentraler Telefonvertrag).
+import { parsePhoneNumber } from "./phoneNumber.mjs";
 
 /* ══════════ Empfänger ══════════════════════════════════════════════════════ */
 
@@ -23,16 +25,21 @@ import { unitLabel } from "./inventoryView.mjs";
  * routes/orders.js). Keine erfundenen Grenzen, keine abweichenden Werte —
  * ein im Client durchgelassenes Feld, das der Server abschneidet oder
  * ablehnt, wäre ein stiller Datenverlust.
+ *
+ * Vor- und Nachname (Eingabe-Audit A5, 2026-11-03): die Sendung verlangt die Kontaktperson
+ * strukturiert; ein Auftrag mit nur einem Namensfeld begann jede Sendung mit zwei leeren
+ * Pflichtfeldern, denn zerlegt wird ein Name nie. `fullName` bildet der Server daraus.
  */
 export const ORDER_RECIPIENT_LIMITS = Object.freeze({
-  fullName: 35, streetAndNumber: 35, city: 30, company: 35,
+  firstName: 35, lastName: 35, streetAndNumber: 35, city: 30, company: 35,
   addressAddition: 100, phone: 40, email: 254, postalCode: 10, country: 2,
 });
+// Vor- und Nachname zusammen — dieselbe Carriergrenze wie im Versandkontakt (lib/shippingContact.js FULL_NAME_MAX).
+export const ORDER_RECIPIENT_FULL_NAME_MAX = 35;
 
 /**
- * Pflichtfelder EXAKT aus dem Backendvertrag: die Schleife
- * `for (const req of ["fullName", "streetAndNumber", "city", "country"])`
- * in `validateRecipient()`. Mehr Sterne gibt es nicht.
+ * Pflichtfelder EXAKT aus dem Backendvertrag (`validateRecipient()` in
+ * routes/orders.js): Vor- und Nachname, Straße, Ort, Land. Mehr Sterne gibt es nicht.
  *
  * **Die PLZ steht bewusst NICHT in dieser Liste.** Das Backend prüft sie über
  * `validatePostalCode(country, postalCode)` — sie ist also nur dort Pflicht, wo
@@ -41,11 +48,11 @@ export const ORDER_RECIPIENT_LIMITS = Object.freeze({
  * (z. B. IE, AE, HK) war das ein erfundener Stern, der eine gültige Adresse
  * blockierte.
  */
-export const ORDER_RECIPIENT_REQUIRED = Object.freeze(["fullName", "streetAndNumber", "city", "country"]);
+export const ORDER_RECIPIENT_REQUIRED = Object.freeze(["firstName", "lastName", "streetAndNumber", "city", "country"]);
 
 export function emptyOrderRecipient() {
   return {
-    company: "", fullName: "", streetAndNumber: "", addressAddition: "",
+    company: "", firstName: "", lastName: "", streetAndNumber: "", addressAddition: "",
     postalCode: "", city: "", country: "DE", phone: "", email: "",
   };
 }
@@ -59,7 +66,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ISO2_RE = /^[A-Za-z]{2}$/;
 
 const PFLICHT_TEXTE = Object.freeze({
-  fullName: "Name ist erforderlich.",
+  firstName: "Vorname ist erforderlich.",
+  lastName: "Nachname ist erforderlich.",
   streetAndNumber: "Straße und Hausnummer sind erforderlich.",
   city: "Ort ist erforderlich.",
   country: "Land ist erforderlich.",
@@ -95,6 +103,23 @@ export function validateOrderRecipient(recipient) {
   const mail = wert("email");
   if (mail && !EMAIL_RE.test(mail)) errors.email = "Ungültige E-Mail-Adresse.";
 
+  // Eingabe-Audit A6: dieselben Längen wie der Server, damit der Fehler am Feld steht. Ein aus dem Adressbuch
+  // vorbelegter Wert umgeht `maxLength` — bisher kam dann nur „Bitte prüfen Sie Ihre Eingabe.“ zurück.
+  for (const [feld, max] of Object.entries(ORDER_RECIPIENT_LIMITS)) {
+    if (feld === "country" || feld === "postalCode" || errors[feld]) continue;
+    if (wert(feld).length > max) errors[feld] = `Höchstens ${max} Zeichen.`;
+  }
+  if (!errors.firstName && !errors.lastName && wert("firstName") && wert("lastName")
+      && `${wert("firstName")} ${wert("lastName")}`.length > ORDER_RECIPIENT_FULL_NAME_MAX) {
+    errors.lastName = `Vor- und Nachname dürfen zusammen höchstens ${ORDER_RECIPIENT_FULL_NAME_MAX} Zeichen haben.`;
+  }
+  // Eingabe-Audit A13: freiwillig wie bisher; ist eine Nummer angegeben, prüft sie der Telefonvertrag.
+  const telefon = wert("phone");
+  if (telefon && !errors.phone) {
+    const nummer = parsePhoneNumber(telefon);
+    if (!nummer.ok) errors.phone = nummer.error;
+  }
+
   return errors;
 }
 
@@ -111,7 +136,8 @@ export function normalizeOrderRecipient(recipient) {
   const pc = validatePostalCode(land, text(r.postalCode));
   return {
     company: optional(r.company),
-    fullName: text(r.fullName),
+    firstName: text(r.firstName),
+    lastName: text(r.lastName),
     streetAndNumber: text(r.streetAndNumber),
     addressAddition: optional(r.addressAddition),
     postalCode: (pc.valid ? (pc.normalizedValue ?? text(r.postalCode)) : text(r.postalCode)) || null,

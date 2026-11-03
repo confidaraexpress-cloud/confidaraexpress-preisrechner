@@ -8,8 +8,12 @@
 
 // Paket A (2026-10-23): die Telefonregel ist der zentrale Telefonvertrag — keine zweite Fassung hier.
 import { parsePhoneNumber } from "./phoneNumber.mjs";
+// Eingabe-Audit A9: unsichtbare Formatzeichen aus eingefügtem Text (Spiegel von lib/textInput.js).
+import { stripInvisibleFormatChars } from "./textInput.mjs";
 
 export const CONTACT_EMAIL_MAXLEN = 254;
+// Spalte users.contact_phone ist VARCHAR(30); eine Verbreiterung wäre eine Typänderung in db/init.js und braucht eine
+// Betreiberentscheidung (Eingabe-Audit A13, 2026-11-03).
 export const CONTACT_PHONE_MAXLEN = 30;
 
 export const CONTACT_DETAILS_TEXT = Object.freeze({
@@ -22,7 +26,7 @@ const EMAIL_RE = /^[^\s@,;<>()[\]"]+@[^\s@,;<>()[\]"]+\.[^\s@,;<>()[\]".]{2,}$/;
 
 /** → { ok: true, value: string|null } | { ok: false, error } */
 export function validateContactEmail(raw) {
-  const v = typeof raw === "string" ? raw.trim() : raw == null ? "" : null;
+  const v = typeof raw === "string" ? stripInvisibleFormatChars(raw).trim() : raw == null ? "" : null;
   if (v === null) return { ok: false, error: CONTACT_DETAILS_TEXT.emailInvalid };
   if (v === "") return { ok: true, value: null };
   if (v.length > CONTACT_EMAIL_MAXLEN || !EMAIL_RE.test(v)) return { ok: false, error: CONTACT_DETAILS_TEXT.emailInvalid };
@@ -31,7 +35,7 @@ export function validateContactEmail(raw) {
 
 /** → { ok: true, value: string|null } | { ok: false, error } */
 export function validateContactPhone(raw) {
-  const v = typeof raw === "string" ? raw.replace(/\s+/g, " ").trim() : raw == null ? "" : null;
+  const v = typeof raw === "string" ? stripInvisibleFormatChars(raw).replace(/\s+/g, " ").trim() : raw == null ? "" : null;
   if (v === null) return { ok: false, error: CONTACT_DETAILS_TEXT.phoneInvalid };
   if (v === "") return { ok: true, value: null };
   // Erkannt nach dem Telefonvertrag (Schreibweisen, Durchwahl, 6 bis 15 Ziffern); gespeichert wird die Angabe,

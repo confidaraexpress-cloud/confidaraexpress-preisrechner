@@ -49,7 +49,7 @@ export function mapAddressToShipmentFormPatch(address, prefix) {
 // Adressobjekt → Empfängerform eines Auftrags (`recipient` in
 // POST /api/kunde/orders). Geschwister-Mapper zu mapAddressToShipmentFormPatch:
 // dieselbe Quelle, dieselben Feldbedeutungen, nur ein anderes Zielschema
-// (contactName→fullName, addressAdd→addressAddition, postalCode/city/country/
+// (firstName/lastName direkt, addressAdd→addressAddition, postalCode/city/country/
 // phone/email/company direkt). Bewusst HIER und nicht im Auftragsformular — es
 // gibt genau eine Stelle, an der Adressbuchfelder ausgelegt werden.
 //
@@ -61,9 +61,11 @@ export function mapAddressToOrderRecipient(address) {
   const a = address || {};
   return {
     company: a.company || "",
-    // Neue Adressbucheinträge führen Vor- und Nachname getrennt; `contactName` ist nur noch
-    // Altwert. Zusammengesetzt (nie zerlegt), damit der Auftrag den Empfängernamen behält.
-    fullName: a.contactName || [a.firstName, a.lastName].map((x) => String(x || "").trim()).filter(Boolean).join(" "),
+    // Eingabe-Audit A5 (2026-11-03): Vor- und Nachname gehen getrennt in den Auftrag — wie die Kontaktperson der
+    // Sendung. Bisher wurden sie zu `fullName` zusammengesetzt, und „Versand vorbereiten“ verlor sie, weil ein
+    // Name nie zerlegt wird. Ein Altwert `contactName` ohne getrennte Felder bleibt leer: der Kunde ergänzt ihn.
+    firstName: String(a.firstName || "").trim(),
+    lastName: String(a.lastName || "").trim(),
     streetAndNumber: a.streetAndNumber || "",
     addressAddition: a.addressAdd || "",
     postalCode: a.postalCode || "",

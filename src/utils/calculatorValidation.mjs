@@ -145,7 +145,15 @@ function cityError(value, seite) {
   return null;
 }
 
-const num = (v) => (v === "" || v == null ? NaN : Number(v));
+// Eingabe-Audit A12 (2026-11-03): nur Ziffern mit höchstens einem Dezimalpunkt. `Number()` allein las im öffentlichen
+// Rechner (Textfelder) „0x10“ als 16 und „1e2“ als 100; ein Komma hat normalizeDecimalInput vorher umgewandelt.
+const num = (v) => {
+  if (typeof v === "number") return v;
+  if (v === "" || v == null) return NaN;
+  const s = String(v).trim();
+  // Ein Minuszeichen bleibt lesbar, damit ein negativer Wert seine eigene Meldung („größer als 0“) bekommt.
+  return /^-?\d+(?:\.\d+)?$/.test(s) ? Number(s) : NaN;
+};
 
 // Prüft ein Maßfeld (Länge/Breite/Höhe). Leer ist erlaubt — das Backend setzt
 // dann dokumentierte Standardmaße ein (30/20/15); nur ein GESETZTER, ungültiger

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { InlineError, CollapsibleSection } from "./InventoryShared";
 import { SECTION_FIELDS, sectionHasData } from "../../utils/inventoryView.mjs";
 import { CUSTOMS_UI_ENABLED } from "../../config/launchMode.mjs";
+import { parseIntegerInput, parseMeasureInput, parseMoneyInput } from "../../utils/productFormNumbers.mjs";
 
 /* ── Artikelformular ─────────────────────────────────────────────────────────
    Anlegen und Bearbeiten teilen sich dieses eine Formular — es gibt keine
@@ -39,23 +40,25 @@ function ausInitial(p) {
 
 // Leere optionale Felder werden als null gesendet (= „bewusst geleert"), nicht
 // weggelassen — sonst ließe sich ein einmal gesetzter Wert nie wieder entfernen.
+// Zahlen: eine eindeutige Lesart je Feldart (Eingabe-Audit A12, utils/productFormNumbers.mjs).
+const zahl = (r) => (r.empty || r.invalid ? null : r.value);
+
 function zuPayload(v) {
   const opt = (s) => (s.trim() === "" ? null : s.trim());
-  const num = (s) => (s.trim() === "" ? null : Number(s.trim().replace(",", ".")));
   return {
     sku: v.sku.trim(),
     name: v.name.trim(),
     description: opt(v.description),
     ean: opt(v.ean),
-    weightKg: num(v.weightKg),
-    lengthCm: num(v.lengthCm),
-    widthCm: num(v.widthCm),
-    heightCm: num(v.heightCm),
-    unitValue: num(v.unitValue),
+    weightKg: zahl(parseMeasureInput(v.weightKg)),
+    lengthCm: zahl(parseMeasureInput(v.lengthCm)),
+    widthCm: zahl(parseMeasureInput(v.widthCm)),
+    heightCm: zahl(parseMeasureInput(v.heightCm)),
+    unitValue: zahl(parseMoneyInput(v.unitValue)),
     hsCode: opt(v.hsCode),
     countryOfOrigin: opt(v.countryOfOrigin),
     customsDescription: opt(v.customsDescription),
-    minStock: v.minStock.trim() === "" ? null : Number(v.minStock.trim()),
+    minStock: zahl(parseIntegerInput(v.minStock)),
     status: v.status,
   };
 }
@@ -66,26 +69,22 @@ function pruefe(v) {
   else if (v.sku.trim().length > 64) e.sku = "Höchstens 64 Zeichen.";
   if (!v.name.trim()) e.name = "Bezeichnung ist erforderlich.";
   else if (v.name.trim().length > 255) e.name = "Höchstens 255 Zeichen.";
-  const w = Number(v.weightKg.replace(",", "."));
-  if (v.weightKg.trim() === "" || !Number.isFinite(w) || w < 0.1 || w > 1000)
-    e.weightKg = "Gewicht zwischen 0,1 und 1.000 kg.";
+  // Stückgewicht ab 1 g (Eingabe-Audit A7): 0,1 kg ist die Untergrenze eines Pakets, nicht eines Artikels.
+  const w = parseMeasureInput(v.weightKg);
+  if (w.empty || w.invalid || w.value < 0.001 || w.value > 1000)
+    e.weightKg = "Gewicht zwischen 0,001 und 1.000 kg.";
   for (const [k, label] of [["lengthCm", "Länge"], ["widthCm", "Breite"], ["heightCm", "Höhe"]]) {
-    if (v[k].trim() === "") continue;
-    const n = Number(v[k].replace(",", "."));
-    if (!Number.isFinite(n) || n < 0.1 || n > 300) e[k] = `${label} zwischen 0,1 und 300 cm.`;
+    const n = parseMeasureInput(v[k]);
+    if (n.empty) continue;
+    if (n.invalid || n.value < 0.1 || n.value > 300) e[k] = `${label} zwischen 0,1 und 300 cm.`;
   }
-  if (v.unitValue.trim() !== "") {
-    const n = Number(v.unitValue.replace(",", "."));
-    if (!Number.isFinite(n) || n < 0) e.unitValue = "Warenwert darf nicht negativ sein.";
-  }
+  const wert = parseMoneyInput(v.unitValue);
+  if (wert.invalid) e.unitValue = "Warenwert als Betrag angeben, z. B. 12,50 oder 1.234,50.";
   if (v.hsCode.trim() !== "" && !/^[0-9]{4,12}$/.test(v.hsCode.trim()))
     e.hsCode = "HS-Code besteht aus 4 bis 12 Ziffern.";
   if (v.countryOfOrigin.trim() !== "" && !/^[A-Za-z]{2}$/.test(v.countryOfOrigin.trim()))
     e.countryOfOrigin = "Zweistelliger Ländercode, z. B. DE.";
-  if (v.minStock.trim() !== "") {
-    const n = Number(v.minStock.trim());
-    if (!Number.isInteger(n) || n < 0) e.minStock = "Ganze Zahl ab 0.";
-  }
+  if (parseIntegerInput(v.minStock).invalid) e.minStock = "Ganze Zahl ab 0.";
   return e;
 }
 

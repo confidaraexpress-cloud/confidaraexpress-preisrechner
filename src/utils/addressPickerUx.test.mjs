@@ -126,7 +126,9 @@ test("A5 der Sendungsmapper und der Auftragsmapper bleiben getrennt", () => {
   const s = mapAddressToShipmentFormPatch(adresse, "r");
   const o = mapAddressToOrderRecipient(adresse);
   assert.equal(s.r_street, o.streetAndNumber);
-  assert.equal(s.r_fullName, o.fullName);
+  // Eingabe-Audit A5: Vor- und Nachname gehen in beiden Mappern getrennt und unverändert weiter.
+  assert.equal(s.r_firstName, o.firstName);
+  assert.equal(s.r_lastName, o.lastName);
   assert.equal(s.r_addition, o.addressAddition);
   assert.equal(s.r_zip, o.postalCode);
 });

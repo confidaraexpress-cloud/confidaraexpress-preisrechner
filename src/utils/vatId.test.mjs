@@ -8,7 +8,7 @@ import { validateRequiredVatId, normalizeVatId, VAT_ID_TEXT } from "./vatId.mjs"
 import { getRegErrors, buildRegistrationPayload, mapApiRegistrationError } from "./registrationValidation.mjs";
 
 const lies = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
-const FALLTABELLE_SHA256 = "6fb6c106f3ceddf3691c";
+const FALLTABELLE_SHA256 = "7d7cba0c17ed511b2d8f";
 const VALID = { name: "Anna Berger", email: "einkauf@firma.de", password: "SicheresPasswort1", company_name: "Firma GmbH",
                 vat_id: "DE123456789", street: "", zip: "", city: "", country: "DE" };
 

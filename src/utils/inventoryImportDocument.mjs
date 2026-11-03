@@ -6,7 +6,7 @@
    Je Zelle eines zugeordneten Felds:
    · Formelzelle (xlsx) oder Textzelle mit führendem „=“ (csv) → Befund FORMULA, kein Wert
    · Datumszelle → DATE_VALUE, kein Wert
-   · Zahl im Textfeld: ganzzahlig → Text; bei der Artikelnummer zusätzlich SKU_NUMERIC
+   · Zahl im Textfeld: ganzzahlig → Text; bei der Artikelnummer zusätzlich SKU_NUMERIC, bei der EAN EAN_NUMERIC
    · Textzahl → streng nach Zahlformat, sonst NUMBER_INVALID; Gewicht in kg, Maße in cm
    · Steuerzeichen → TEXT_INVALID
    Leere Zellen fehlen im Dokument: eine leere Zelle ändert nie einen Wert. */
@@ -34,6 +34,9 @@ function textWert(field, v, sourceType, issues) {
   }
   if (typeof v === "number" && Number.isInteger(v) && Math.abs(v) <= Number.MAX_SAFE_INTEGER) {
     if (field === "sku") issues.push({ field, code: "SKU_NUMERIC" });
+    // Eingabe-Audit A10: eine EAN/GTIN als Excel-Zahl verliert ihre führenden Nullen („0012345678905“ →
+    // „12345678905“). Das Zellformat kann sie nur anzeigen, gespeichert ist die Zahl — also ein sichtbarer Hinweis.
+    if (field === "ean") issues.push({ field, code: "EAN_NUMERIC" });
     return String(v);
   }
   issues.push({ field, code: "TEXT_INVALID" });

@@ -430,6 +430,7 @@ test("23 — ohne Zusatzversicherung entstehen keine Wertfehler", () => {
 /* ── Kein zusätzliches Feld für den Wareninhalt ──────────────────────────── */
 
 test("24 — contentDescription bleibt ohne eigenes Feld", () => {
-  assert.match(booking, /const contentDescription = \(form\.content\.trim\(\) \|\| "Paket"\)\.slice\(0, 35\)/);
+  // Eingabe-Audit A11: dieselbe 35-Zeichen-Grenze, jetzt an der Wortgrenze (utils/shipmentDeclarations.mjs).
+  assert.match(booking, /const contentDescription = providerContentDescription\(form\.content\.trim\(\) \|\| "Paket"\)/);
   assert.ok(!/contentDescription/.test(modulText), "das Modul erfasst den Inhalt erneut");
 });

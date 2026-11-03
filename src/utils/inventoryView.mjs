@@ -50,6 +50,7 @@ export {
   lowStockInfo,
   receiptPreview,
   adjustmentPreview,
+  parseStockAmount,
   ADJUSTMENT_REASONS,
   adjustmentReasonLabel,
   BLOCK_REASONS,

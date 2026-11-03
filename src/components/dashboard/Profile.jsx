@@ -147,7 +147,7 @@ export function Profile({ user, utility }) {
 
   const saveCard = async (which) => {
     const form = which === "company" ? companyForm : contactForm;
-    const errors = which === "company" ? validateCompanyForm(form) : validateContactForm(form);
+    const errors = which === "company" ? validateCompanyForm(form, companyBase) : validateContactForm(form);
     // Ungültige Pflichtfelder werden gar nicht erst abgesendet.
     if (!isFormValid(errors)) { setFieldErrors(errors); setCardError(Object.values(errors)[0]); return; }
     const patch = which === "company" ? buildCompanyPatch(form) : buildContactPatch(form);

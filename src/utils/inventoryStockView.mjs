@@ -104,6 +104,26 @@ export function adjustmentPreview(row, input) {
   return { stored: gespeichert, counted: gezaehlt, difference: differenz, next: gezaehlt, unchanged: differenz === 0 };
 }
 
+/**
+ * Die Menge eines Bestandsdialogs (Eingabe-Audit A1, 2026-11-03).
+ *
+ * Bisher machte `Number(String(amount).trim())` aus einem LEEREN Feld 0 — bei der Korrektur ist 0 ein gültiger
+ * gezählter Bestand, also wurde der Bestand still auf 0 gebucht. Jetzt gilt: leer ist keine Zahl. Nur ganze Zahlen
+ * aus Ziffern zählen; 0 nur dort, wo eine Zählung sie erlaubt (`allowZero`), und dann zeigt die Vorschau
+ * „Neuer Bestand: 0“ vor dem Speichern.
+ * Rückgabe `{ ok: true, value }` oder `{ ok: false, error }` (Kundentext).
+ */
+export function parseStockAmount(input, { allowZero = false } = {}) {
+  const s = String(input ?? "").trim();
+  if (s === "") {
+    return { ok: false, error: allowZero ? "Bitte geben Sie den gezählten Bestand ein." : "Bitte geben Sie eine Menge ein." };
+  }
+  if (!/^\d{1,7}$/.test(s)) return { ok: false, error: "Bitte eine ganze Zahl angeben." };
+  const n = Number(s);
+  if (!allowZero && n < 1) return { ok: false, error: "Bitte eine Menge größer null angeben." };
+  return { ok: true, value: n };
+}
+
 /* ══════════ Korrekturgründe ═══════════════════════════════════════════════ */
 
 // Die Codes stammen aus dem Backend (lib/inventory.js ADJUSTMENT_REASONS) und

@@ -3,6 +3,7 @@
   "faelle": [
     { "eingabe": "DE123456789", "ok": true, "wert": "DE123456789" },
     { "eingabe": " de 123 456 789 ", "ok": true, "wert": "DE123456789" },
+    { "eingabe": "DE\u200B123456789\uFEFF", "ok": true, "wert": "DE123456789" },
     { "eingabe": "DE-123.456.789", "ok": true, "wert": "DE123456789" },
     { "eingabe": "ATU12345678", "ok": true, "wert": "ATU12345678" },
     { "eingabe": "atu 1234 5678", "ok": true, "wert": "ATU12345678" },

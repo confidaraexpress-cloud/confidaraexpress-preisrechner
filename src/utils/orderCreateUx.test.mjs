@@ -48,14 +48,14 @@ const ordersCode = ohneKommentare(ordersPage);
 
 const vollstaendig = () => ({
   ...emptyOrderRecipient(),
-  fullName: "Maria Beispiel", streetAndNumber: "Hauptstraße 3",
+  firstName: "Maria", lastName: "Beispiel", streetAndNumber: "Hauptstraße 3",
   postalCode: "10115", city: "Berlin", country: "DE",
 });
 
 /* ══════════ A — Pflichtfelder exakt vom Backend ═══════════════════════════ */
 
-test("A1 genau vier unbedingte Pflichtfelder — die des Backendvertrags", () => {
-  assert.deepEqual([...ORDER_RECIPIENT_REQUIRED], ["fullName", "streetAndNumber", "city", "country"]);
+test("A1 genau fünf unbedingte Pflichtfelder — die des Backendvertrags (Vor- und Nachname seit Eingabe-Audit A5)", () => {
+  assert.deepEqual([...ORDER_RECIPIENT_REQUIRED], ["firstName", "lastName", "streetAndNumber", "city", "country"]);
 });
 
 test("A2 die PLZ ist KEIN unbedingtes Pflichtfeld", () => {
@@ -64,7 +64,7 @@ test("A2 die PLZ ist KEIN unbedingtes Pflichtfeld", () => {
 
 test("A3 fehlende Pflichtfelder werden benannt, optionale nicht", () => {
   const e = validateOrderRecipient(emptyOrderRecipient());
-  assert.ok(e.fullName && e.streetAndNumber && e.city);
+  assert.ok(e.firstName && e.lastName && e.streetAndNumber && e.city);
   assert.equal(e.company, undefined);
   assert.equal(e.phone, undefined);
   assert.equal(e.addressAddition, undefined);
@@ -100,7 +100,8 @@ test("A9 ungültige E-Mail wird gemeldet, leere nicht", () => {
 });
 
 test("A10 Feldlängen stimmen mit RECIPIENT_LIMITS des Backends überein", () => {
-  assert.equal(ORDER_RECIPIENT_LIMITS.fullName, 35);
+  assert.equal(ORDER_RECIPIENT_LIMITS.firstName, 35);
+  assert.equal(ORDER_RECIPIENT_LIMITS.lastName, 35);
   assert.equal(ORDER_RECIPIENT_LIMITS.streetAndNumber, 35);
   assert.equal(ORDER_RECIPIENT_LIMITS.city, 30);
   assert.equal(ORDER_RECIPIENT_LIMITS.company, 35);
@@ -110,7 +111,7 @@ test("A10 Feldlängen stimmen mit RECIPIENT_LIMITS des Backends überein", () =>
   assert.equal(ORDER_RECIPIENT_LIMITS.postalCode, 10);
 });
 
-test("A11 das Formular markiert nur die vier Pflichtfelder unbedingt mit *", () => {
+test("A11 das Formular markiert nur die fünf Pflichtfelder unbedingt mit *", () => {
   // Drei Schreibweisen, ein Ergebnis: die Feldkomponente bekommt `label="… *"`, das
   // Landfeld ist ein eigenes <select> mit eigenem <label>, und das Vorschlagsfeld der
   // Adressvalidierung erhaelt `label="…"` plus `required` (den Stern haengt die
@@ -122,7 +123,7 @@ test("A11 das Formular markiert nur die vier Pflichtfelder unbedingt mit *", () 
     ...[...formCode.matchAll(/<AddressSuggestInput[\s\S]*?label="([^"]+)"[\s\S]*?required/g)].map((m) => `${m[1]} *`),
   ];
   assert.deepEqual(sterne.sort(), [
-    "Land *", "Name / Ansprechpartner *", "Ort *", "Straße und Hausnummer *",
+    "Land *", "Nachname *", "Ort *", "Straße und Hausnummer *", "Vorname *",
   ]);
 });
 
@@ -135,7 +136,7 @@ test("A13 Normalisierung: leere optionale Felder werden null, Land groß", () =>
   assert.equal(p.country, "DE");
   assert.equal(p.company, null);
   assert.equal(p.phone, null);
-  assert.equal(p.fullName, "Maria Beispiel");
+  assert.deepEqual([p.firstName, p.lastName], ["Maria", "Beispiel"]);
 });
 
 /* ══════════ B — Adressbuch: eine Logik, eine Vorbelegung ══════════════════ */
@@ -146,8 +147,9 @@ test("B1 der Mapper übersetzt Adressbuch- in Empfängerfelder", () => {
     addressAdd: "Hinterhaus", postalCode: "20095", city: "Hamburg", country: "de",
     phone: "040 1", email: "jan@example.com",
   });
+  // Eingabe-Audit A5: ein Altwert `contactName` wird nie zerlegt — Vor- und Nachname bleiben leer, der Kunde ergänzt.
   assert.deepEqual(r, {
-    company: "Muster GmbH", fullName: "Jan Muster", streetAndNumber: "Weg 1",
+    company: "Muster GmbH", firstName: "", lastName: "", streetAndNumber: "Weg 1",
     addressAddition: "Hinterhaus", postalCode: "20095", city: "Hamburg",
     country: "DE", phone: "040 1", email: "jan@example.com",
   });
@@ -161,7 +163,7 @@ test("B2 Felder ohne Ziel im Auftrag werden NICHT übernommen", () => {
 });
 
 test("B3 eine übernommene Adresse ergibt einen gültigen Empfänger", () => {
-  const r = mapAddressToOrderRecipient({ contactName: "A B", streetAndNumber: "S 1", postalCode: "10115", city: "Berlin", country: "DE" });
+  const r = mapAddressToOrderRecipient({ firstName: "A", lastName: "B", streetAndNumber: "S 1", postalCode: "10115", city: "Berlin", country: "DE" });
   assert.deepEqual(validateOrderRecipient(r), {});
 });
 
@@ -240,7 +242,7 @@ test("C3 kein freies zweistelliges Textfeld mehr für das Land", () => {
 // Chromes Autofill-Popup über der eigenen Liste. Bis dahin verlangte D1 hier address-line1 und
 // address-level2. Alle übrigen Empfängerfelder behalten ihr passendes Token.
 test("D1 jedes Empfängerfeld außer Straße und Ort trägt ein passendes autocomplete", () => {
-  for (const token of ["organization", "name", "address-line2", "postal-code", "country", "tel", "email"]) {
+  for (const token of ["organization", "given-name", "family-name", "address-line2", "postal-code", "country", "tel", "email"]) {
     assert.match(formCode, new RegExp(`autoComplete="${token}"`), `autocomplete ${token} fehlt`);
   }
 });
@@ -533,12 +535,23 @@ test("L5 kein Wizard: die drei Abschnitte stehen in einem Formular", () => {
   }
 });
 
-test("Adressbuch → Auftrag: ohne Altwert `contactName` entsteht der Name aus Vor- und Nachname", () => {
-  // Neue Adressbucheinträge führen den Namen strukturiert; früher blieb der Empfängername leer.
+test("Adressbuch → Auftrag: Vor- und Nachname gehen getrennt in den Auftrag (Eingabe-Audit A5)", () => {
+  // Bis zum Eingabe-Audit wurden sie zu `fullName` zusammengesetzt, und „Versand vorbereiten“ verlor sie wieder.
   const r = mapAddressToOrderRecipient({ firstName: "Erika", lastName: "Muster", streetAndNumber: "S 1",
     postalCode: "10115", city: "Berlin", country: "DE" });
-  assert.equal(r.fullName, "Erika Muster");
-  assert.equal(mapAddressToOrderRecipient({ contactName: "Alt Wert", firstName: "Neu", lastName: "Name" }).fullName,
-    "Alt Wert", "ein vorhandener Altwert bleibt");
-  assert.equal(mapAddressToOrderRecipient({ firstName: " ", lastName: "Muster" }).fullName, "Muster");
+  assert.deepEqual([r.firstName, r.lastName], ["Erika", "Muster"]);
+  assert.equal("fullName" in r, false, "den Gesamtnamen bildet der Server");
+  const alt = mapAddressToOrderRecipient({ contactName: "Alt Wert" });
+  assert.deepEqual([alt.firstName, alt.lastName], ["", ""], "ein Altwert wird nie zerlegt");
+  assert.deepEqual([mapAddressToOrderRecipient({ firstName: " ", lastName: "Muster" }).firstName], [""]);
+});
+
+test("Eingabe-Audit A6/A13: Längen, Gesamtname und Telefon stehen am Feld statt als Sammelmeldung", () => {
+  const lang = validateOrderRecipient({ ...vollstaendig(), streetAndNumber: "Bürgermeister-Christian-Mayr-Straße 12a" });
+  assert.match(lang.streetAndNumber, /Höchstens 35 Zeichen/);
+  const name = validateOrderRecipient({ ...vollstaendig(), firstName: "Maria-Magdalena", lastName: "Schmidt-Wellenkamp-Ober" });
+  assert.match(name.lastName, /zusammen höchstens 35/);
+  assert.ok(validateOrderRecipient({ ...vollstaendig(), phone: "bitte anrufen" }).phone, "unlesbare Nummer");
+  assert.equal(validateOrderRecipient({ ...vollstaendig(), phone: "+49 30 1234567" }).phone, undefined);
+  assert.equal(validateOrderRecipient({ ...vollstaendig(), phone: "" }).phone, undefined, "Telefon bleibt freiwillig");
 });

@@ -117,7 +117,7 @@ test("7 — der Auftrags-Prefill füllt genau die bestehenden Empfängerfelder",
   const p = mapOrderPrefillToShipment(AUFTRAG_PREFILL);
   assert.deepEqual(Object.keys(p.form).sort(), [
     "r_addition", "r_city", "r_company", "r_country", "r_email",
-    "r_fullName", "r_phone", "r_street", "r_zip", "weight",
+    "r_firstName", "r_fullName", "r_lastName", "r_phone", "r_street", "r_zip", "weight",
   ]);
   assert.equal(p.form.r_fullName, "Max Muster");
   assert.equal(p.form.r_street, "Musterweg 1");
@@ -311,4 +311,14 @@ test("23 — der Lager-Prefill nutzt denselben Einmal-Mechanismus wie das Adress
   // existiert — eine normale Sendung schickt das Feld gar nicht.
   assert.ok(src.includes("...(inventoryContext ? { inventory: inventoryContext } : {})"),
     "der Lagerbezug wird nicht bedingt mitgeschickt");
+});
+
+test("7b — Eingabe-Audit A5/A7: Vor- und Nachname des Auftrags kommen an, unter 0,1 kg kein Gewichtsvorschlag", () => {
+  const neu = mapOrderPrefillToShipment({ ...AUFTRAG_PREFILL,
+    recipient: { ...AUFTRAG_PREFILL.recipient, firstName: "Erika", lastName: "Muster", fullName: "Erika Muster" } });
+  assert.deepEqual([neu.form.r_firstName, neu.form.r_lastName], ["Erika", "Muster"]);
+  const alt = mapOrderPrefillToShipment(AUFTRAG_PREFILL);
+  assert.deepEqual([alt.form.r_firstName, alt.form.r_lastName], ["", ""], "ein Altauftrag wird nie zerlegt");
+  const leicht = mapOrderPrefillToShipment({ ...AUFTRAG_PREFILL, suggestedWeightKg: 0.02 });
+  assert.equal("weight" in leicht.form, false, "unter der Paketgrenze von 0,1 kg kein Vorschlag");
 });

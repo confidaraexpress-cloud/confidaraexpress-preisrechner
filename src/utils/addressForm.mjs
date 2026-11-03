@@ -60,7 +60,7 @@ export function addressToFormValues(address) {
 // ohne Grenze; der Server lehnte ab, und die Seite zeigte nur eine allgemeine Meldung (Audit P7).
 export const ADDRESS_FIELD_MAXLEN = Object.freeze({
   label: 80, company: 200, contactName: 35, firstName: 35, lastName: 35,
-  email: 254, phone: 40, streetAndNumber: 200, addressAdd: 100, city: 100, state: 100, notes: 500,
+  email: 254, phone: 40, streetAndNumber: 200, addressAdd: 100, city: 100, state: 100, notes: 2000,
 });
 
 // Sichtbare Feldnamen für Meldungen am Feld und im Sammelhinweis.

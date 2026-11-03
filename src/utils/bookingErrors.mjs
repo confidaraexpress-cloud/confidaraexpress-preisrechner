@@ -435,6 +435,38 @@ export function istUnklarerAusgang(fehler) {
   return fehler === BOOK_FEHLER.PRUEFUNG_LAEUFT;
 }
 
+// ─── 400 BOOKING_ADDRESS_INVALID (Eingabe-Audit A4, 2026-11-03) ────────────────────────────
+// Der Server nennt seit dem Eingabe-Audit je Adressfehler Partei, Feld und Grund (`fieldErrors`). Bisher stand hier
+// nur „Adressvalidierung fehlgeschlagen“ — welche Zeile zu lang war, erfuhr der Kunde nicht. Nichts beauftragt.
+export const BOOKING_ADDRESS_INVALID_CODE = "BOOKING_ADDRESS_INVALID";
+const ADRESS_PARTEI = Object.freeze({ sender: "Absender", recipient: "Empfänger" });
+const ADRESS_FELD = Object.freeze({
+  streetAndNumber: "Straße und Hausnummer", city: "Ort", company: "Firma", addressAddition: "Adresszusatz",
+  postalCode: "PLZ", country: "Land", state: "Bundesstaat", firstName: "Vorname", lastName: "Nachname",
+  email: "E-Mail", phone: "Telefon", fullName: "Name",
+});
+// Die Gründe sind bereits deutsche Klartexte des Servers; nur die Längenform wird erklärt, woher die Grenze kommt.
+function adressGrund(reason) {
+  const r = String(reason ?? "").trim();
+  const max = r.match(/^max\. (\d+) Zeichen$/);
+  if (max) return `höchstens ${max[1]} Zeichen für diesen Versanddienst`;
+  if (r.startsWith("fehlt")) return "fehlt";
+  return r;
+}
+/** Kundentext für einen Adressfehler der Buchung — oder null, wenn der Server keine Feldliste mitgibt. */
+export function bookingAddressErrorText(body) {
+  const liste = body && typeof body === "object" && Array.isArray(body.fieldErrors) ? body.fieldErrors : [];
+  const teile = liste
+    .filter((f) => f && typeof f === "object" && typeof f.reason === "string" && f.reason.trim() !== "")
+    .map((f) => {
+      const partei = ADRESS_PARTEI[f.party] || null;
+      const feld = ADRESS_FELD[f.field] || null;
+      const wo = feld ? `${feld}${partei ? ` (${partei})` : ""}` : (partei || "Adresse");
+      return `${wo}: ${adressGrund(f.reason)}`;
+    });
+  return teile.length ? `Bitte prüfen Sie die Adressangaben — ${teile.join("; ")}.` : null;
+}
+
 // Restpfad einer NICHT-ok-Antwort. `body` ist der defensiv gelesene JSON-Body
 // (null bei leerem/unlesbarem Body — z. B. HTML-Fehlerseite eines Proxys).
 export function mapBookRestError(status, body) {
@@ -445,6 +477,10 @@ export function mapBookRestError(status, body) {
   const klasse = fehlerKlasse(code, body);
   if (klasse === "ABHOLTAG_GEAENDERT") return { ...BOOK_FEHLER.ABHOLTAG_GEAENDERT, message: collectionDateChangedText(body) };
   if (klasse) return BOOK_FEHLER[klasse];
+  if (code === BOOKING_ADDRESS_INVALID_CODE) {
+    const text = bookingAddressErrorText(body);
+    if (text) return { title: "Adressangaben prüfen", message: text, retryable: false };
+  }
   if (status === 404) return BOOK_FEHLER.ANGEBOT_WEG;   // abgelaufenes/fremdes Angebot — neu berechnen ist die Handlung
   if (status === 429) return BOOK_FEHLER.RATE_LIMITED;
   // TG22 Paket B: ein 5xx OHNE bekannten Code nach dem Absenden der finalen Buchung sagt nicht,

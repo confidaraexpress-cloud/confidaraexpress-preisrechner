@@ -31,7 +31,7 @@ import {
   isRebindRequired, isPriceInputsRequired, residentialModuleView, residentialBlocksBooking,
   offerResidentialSurchargeFree,
 } from "../utils/residentialPriceInputs.mjs";
-import { bookingContentPayload } from "../utils/shipmentDeclarations.mjs";
+import { bookingContentPayload, providerContentDescription } from "../utils/shipmentDeclarations.mjs";
 // TG124 DPD PaketShop: die verbindliche Abgabe-Shop-Auswahl (Finder-Kontext) + ihre Buchungssperre/Payload.
 import { useParcelShopFinder } from "../context/ParcelShopFinderContext";
 import { dropoffShopBlocksBooking, dropoffParcelShopBookPayload, offerRequiresDropoffParcelShop } from "../utils/dropoffParcelShop.mjs";
@@ -641,7 +641,8 @@ export default function BookingPage() {
   // ENTFERNT. Der technische contentDescription-Vertrag bleibt UNVERÄNDERT — es wird
   // weiter der bestehende sichere Default (Sendungsinhalt → "Paket") an /reprice und
   // /book übergeben. Kein neues öffentliches Feld, keine Zoll-/Backend-Änderung.
-  const contentDescription = (form.content.trim() || "Paket").slice(0, 35);
+  // Eingabe-Audit A11: an der Wortgrenze auf 35 Zeichen — dieselbe Regel wie im Backend; „Neue Sendung“ zeigt sie vorab.
+  const contentDescription = providerContentDescription(form.content.trim() || "Paket");
 
   // Read-only Anzeigewerte (Reprice-Response bevorzugt, sonst Tarif-Felder).
   const insDetails   = tariff?.insuranceDetails && typeof tariff.insuranceDetails === "object" ? tariff.insuranceDetails : null;

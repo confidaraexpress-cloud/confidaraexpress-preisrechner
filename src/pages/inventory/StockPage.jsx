@@ -11,7 +11,7 @@ import {
 } from "../../utils/warehouseView.mjs";
 import {
   ADJUSTMENT_REASONS, BLOCK_REASONS, adjustmentPreview, formatUnits,
-  inventoryErrorText, isLowStock, lowStockInfo, receiptPreview,
+  inventoryErrorText, isLowStock, lowStockInfo, parseStockAmount, receiptPreview,
 } from "../../utils/inventoryView.mjs";
 
 const PAGE_LIMIT = 25;
@@ -167,9 +167,10 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
 
   const absenden = async () => {
     if (!picked) { setDialogError("Bitte einen Artikel auswählen."); return; }
-    const n = Number(String(amount).trim());
-    if (!Number.isInteger(n) || n < 0) { setDialogError("Bitte eine ganze Zahl angeben."); return; }
-    if (dialog !== "adjust" && n < 1) { setDialogError("Bitte eine Menge größer null angeben."); return; }
+    // Eingabe-Audit A1: ein leeres Feld ist keine 0 — bei der Korrektur hätte es den Bestand still auf 0 gesetzt.
+    const menge = parseStockAmount(amount, { allowZero: dialog === "adjust" });
+    if (!menge.ok) { setDialogError(menge.error); return; }
+    const n = menge.value;
     const notiz = note.trim();
     if (dialog === "block" && blockReason === "other" && !notiz) {
       setDialogError("Bitte beschreiben Sie den Grund kurz in der Notiz.");

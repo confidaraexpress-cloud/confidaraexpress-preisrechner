@@ -22,6 +22,9 @@
    (15 Zeichen — es gilt für die Tarife mit Abgabe im Paketshop und für GLS). Welche Produkte das sind, sagt der
    Server am Angebot; die Oberfläche verzweigt nirgends an einem Anbieter. */
 
+// Eingabe-Audit A9: unsichtbare Formatzeichen aus eingefügtem Text (Spiegel von lib/textInput.js).
+import { stripInvisibleFormatChars } from "./textInput.mjs";
+
 export const PHONE_CORE_MIN_DIGITS = 6;
 export const PHONE_CORE_MAX_DIGITS = 15;
 export const PHONE_EXTENSION_MAX_DIGITS = 6;
@@ -53,8 +56,23 @@ const TRUNK_IN_PARENS_RE = /^(\+\s*\d{1,3}|00\s*\d{1,3})\s*\(\s*0\s*\)\s*/;
 
 const istText = (w) => typeof w === "string";
 
+// Eingabe-Audit A8 (2026-11-03), Spiegel des Backends: Gruppenschreibweise. Steht schon VOR dem letzten
+// Bindestrich ein Bindestrich zwischen Ziffern und hat die Gruppe direkt davor höchstens vier Ziffern
+// („+49 1512-3456-7890“, „+48 600-700-800“), gehört die letzte Gruppe zur Nummer und ist keine Durchwahl — sonst
+// ginge sie im kompakten Feld (15 Zeichen) samt ihren Ziffern verloren. „0711-123456-78“ bleibt eine Durchwahl.
+// Die Gruppenlesart gilt nur, wenn die ganze Nummer dann höchstens 15 Ziffern hat.
+function istGruppenschreibweise(kernText, ganz) {
+  if (!/\d\s*-\s*\d/.test(kernText)) return false;
+  const gruppe = kernText.match(/(\d+)\s*$/);
+  if (!gruppe || gruppe[1].length > 4) return false;
+  const ohneAmtsnull = ganz.replace(TRUNK_IN_PARENS_RE, "$1 ");
+  const ziffern = ohneAmtsnull.replace(/\D/g, "");
+  const anzahl = /^\s*00/.test(ohneAmtsnull) ? ziffern.length - 2 : ziffern.length;
+  return anzahl <= PHONE_CORE_MAX_DIGITS;
+}
+
 function bereinigen(raw) {
-  return raw
+  return stripInvisibleFormatChars(raw)
     .replace(/[‐-―−﹘﹣－]/g, "-")
     .replace(/／/g, "/")
     .replace(/\s+/g, " ")
@@ -78,7 +96,8 @@ export function parsePhoneNumber(raw) {
     needsRewrite = true;
   } else {
     const trenner = original.match(EXTENSION_SEP_RE);
-    if (trenner && (trenner[1].match(/\d/g) || []).length >= PHONE_CORE_MIN_DIGITS) {
+    if (trenner && (trenner[1].match(/\d/g) || []).length >= PHONE_CORE_MIN_DIGITS
+        && !istGruppenschreibweise(trenner[1], original)) {
       kernText = trenner[1];
       extension = trenner[2];
       if (!/\d-\d{1,6}$/.test(original)) needsRewrite = true;

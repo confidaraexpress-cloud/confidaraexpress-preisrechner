@@ -390,6 +390,11 @@ test("6 — die Korrektur meldet den GEZÄHLTEN Bestand, kein clientseitiges Del
   // passten nie in die Aktionsspalte (271 px selbst auf 1920 px).
   await page.locator(".inv-row-actions .inv-actions button").first().click();
   await page.getByRole("menuitem", { name: "Bestand korrigieren" }).click();
+  // Eingabe-Audit A1: ein leeres Feld ist keine 0 — es wird nichts gesendet, und der Dialog nennt den Grund.
+  await page.locator(".ce-dialog-actions button", { hasText: "Korrektur buchen" }).click();
+  await page.waitForTimeout(300);
+  assert.equal(body, null, "ein leeres Feld hat eine Korrektur gesendet");
+  assert.match(await page.locator(".ce-dialog").innerText(), /gezählten Bestand/);
   await page.locator("#inv-stock-qty").fill("98");
   await page.locator(".ce-dialog-actions button", { hasText: "Korrektur buchen" }).click();
   await page.waitForTimeout(400);
@@ -413,7 +418,7 @@ test("7 — bei zu wenig Bestand erscheint eine verständliche Meldung, kein Roh
   await page.waitForTimeout(400);
 
   await page.locator(".ce-page-header-actions button", { hasText: "Auftrag erstellen" }).click();
-  for (const [id, wert] of [["o-name", "Erika Muster"], ["o-street", "Zielweg 9"], ["o-zip", "20095"], ["o-city", "Hamburg"]]) {
+  for (const [id, wert] of [["o-first-name", "Erika"], ["o-last-name", "Muster"], ["o-street", "Zielweg 9"], ["o-zip", "20095"], ["o-city", "Hamburg"]]) {
     await page.locator(`#${id}`).fill(wert);
   }
   await page.locator("button", { hasText: "Position hinzufügen" }).click();

@@ -27,7 +27,7 @@ import {
    genau die Übersicht, die hier gebraucht wird.
 
    Die Empfängerfelder entsprechen EXAKT dem bestehenden Adressvertrag des
-   Versands (fullName/streetAndNumber/postalCode/city/country/company/
+   Versands (firstName/lastName/streetAndNumber/postalCode/city/country/company/
    addressAddition/phone/email) — der Auftrag speichert genau diese Form als
    Snapshot, sodass sie später unverändert in den Versandprozess übernommen
    werden kann.
@@ -254,14 +254,15 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
             </div>
           )}
 
+        <Feld id="o-company" label="Firma" value={recipient.company} onChange={set("company")}
+              error={errs.company} maxLength={ORDER_RECIPIENT_LIMITS.company} autoComplete="organization" />
+        {/* Eingabe-Audit A5: Vor- und Nachname getrennt, wie im Versandkontakt — bei einer Firmenlieferung
+            die Person, an die das Paket adressiert wird. „Versand vorbereiten“ übernimmt beide unverändert. */}
         <div className="inv-grid-2">
-          <Feld id="o-company" label="Firma" value={recipient.company} onChange={set("company")}
-                maxLength={ORDER_RECIPIENT_LIMITS.company} autoComplete="organization" />
-          {/* Pflichtfeld des Backends ist `fullName`. Der Zusatz benennt, was
-              hier hingehört: bei einer Firmenlieferung die Person, an die das
-              Paket adressiert wird. */}
-          <Feld id="o-name" label="Name / Ansprechpartner *" value={recipient.fullName} onChange={set("fullName")}
-                error={errs.fullName} maxLength={ORDER_RECIPIENT_LIMITS.fullName} autoComplete="name" />
+          <Feld id="o-first-name" label="Vorname *" value={recipient.firstName} onChange={set("firstName")}
+                error={errs.firstName} maxLength={ORDER_RECIPIENT_LIMITS.firstName} autoComplete="given-name" />
+          <Feld id="o-last-name" label="Nachname *" value={recipient.lastName} onChange={set("lastName")}
+                error={errs.lastName} maxLength={ORDER_RECIPIENT_LIMITS.lastName} autoComplete="family-name" />
         </div>
         {/* Land ZUERST (wie in „Neue Sendung“): Adressvorschläge gelten immer für ein Land.
             Stand es hinter Straße und Ort, suchte eine ausländische Anschrift noch mit der
@@ -304,7 +305,7 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
             error={errs.streetAndNumber}
             maxLength={ORDER_RECIPIENT_LIMITS.streetAndNumber} />
           <Feld id="o-add" label="Adresszusatz" value={recipient.addressAddition} onChange={set("addressAddition")}
-                maxLength={ORDER_RECIPIENT_LIMITS.addressAddition} autoComplete="address-line2" />
+                error={errs.addressAddition} maxLength={ORDER_RECIPIENT_LIMITS.addressAddition} autoComplete="address-line2" />
         </div>
         <div className="inv-grid-2">
           {/* Der Stern folgt dem LAND, nicht der Gewohnheit: das Backend prüft
@@ -335,7 +336,7 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
         />
         <div className="inv-grid-2">
           <Feld id="o-phone" label="Telefon" value={recipient.phone} onChange={set("phone")}
-                maxLength={ORDER_RECIPIENT_LIMITS.phone} autoComplete="tel" />
+                error={errs.phone} maxLength={ORDER_RECIPIENT_LIMITS.phone} type="tel" inputMode="tel" autoComplete="tel" />
           <Feld id="o-email" label="E-Mail" value={recipient.email} onChange={set("email")}
                 error={errs.email} maxLength={ORDER_RECIPIENT_LIMITS.email} type="email" autoComplete="email" />
         </div>

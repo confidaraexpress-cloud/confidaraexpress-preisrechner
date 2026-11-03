@@ -59,8 +59,8 @@ test("USA: ZIP und ZIP+4; falsche Länge", () => {
 });
 test("Niederlande: 4 Ziffern + 2 Buchstaben; case-insensitiv gültig; falsche Länge", () => {
   ok("NL", "1071 DK"); ok("NL", "1071dk"); // case-insensitiv gültig
-  // libaddressinput NL trägt kein upper=Z → keine Uppercase-Normalisierung (Quelle faithful):
-  assert.equal(validatePostalCode("NL", "1071dk").normalizedValue, "1071dk");
+  // Eingabe-Audit A13 (2026-11-03): Großbuchstaben für jedes Land — vorher ging „1071dk“ unverändert an die Anbieter.
+  assert.equal(validatePostalCode("NL", "1071dk").normalizedValue, "1071DK");
   bad("NL", "107 DK"); bad("NL", "1071 D");
 });
 test("Pflichtland leer → POSTAL_CODE_REQUIRED; kein-PLZ-Land leer → gültig", () => {

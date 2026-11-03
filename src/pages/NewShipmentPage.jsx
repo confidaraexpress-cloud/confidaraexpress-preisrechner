@@ -123,7 +123,7 @@ import {
 import { PROFILE_DASHBOARD_TARGET } from "../utils/bookingSuccessView.mjs";
 import { bookingProfileNotice } from "../utils/bookingProfileView.mjs";
 import { draftBookingOptionsToFlow, hasAnyDraftBookingOption } from "../utils/draftBookingOptions.mjs";
-import { declarationErrors, declarationsPayload, DECLARED_CONTENT_MAX } from "../utils/shipmentDeclarations.mjs";
+import { contentLengthHint, declarationErrors, declarationsPayload, DECLARED_CONTENT_MAX } from "../utils/shipmentDeclarations.mjs";
 import { getShipmentFormSnapshot, isShipmentFormDirty, hasMeaningfulShipmentInput, formDraftSchemaVersion } from "../utils/shipmentFormSnapshot.mjs";
 import { AddressPickerButton } from "../components/addressbook/AddressPickerButton";
 import { AddressSuggestInput } from "../components/address/AddressSuggestInput";
@@ -2335,7 +2335,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                        value={form.declaredContent} onChange={(v) => upd("declaredContent", v)}
                        onBlur={() => { markTouched("declaredContent"); firmenfeldVerlassen("declaredContent"); }}
                        error={errors.declaredContent}
-                       hint="Kurze Beschreibung des Inhalts." />
+                       hint={contentLengthHint(form.declaredContent) || "Kurze Beschreibung des Inhalts."} />
                 <Field id="ns-declaredGoodsValue" fieldKey="declaredGoodsValue" labelMode="floating"
                        label="Warenwert" required type="number" unit="EUR" unitLabel="in Euro"
                        min="0" step="0.01"

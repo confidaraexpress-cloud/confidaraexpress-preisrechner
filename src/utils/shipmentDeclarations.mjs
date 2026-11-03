@@ -162,3 +162,24 @@ export function bookingContentPayload(formContent, requiredPriceInputs) {
   if (Array.isArray(requiredPriceInputs) && requiredPriceInputs.length > 0) return {};
   return { content: formContent };
 }
+
+/* ── Inhaltsangabe an den Anbieter (Eingabe-Audit A11, 2026-11-03) ─────────────────────────────
+   Spiegel von providerContentDescription in Backend lib/shipmentDeclarations.js. Das Feld erlaubt 100 Zeichen; einige
+   Versanddienste übernehmen höchstens 35. Bisher wurde dafür still und hart nach 35 Zeichen abgeschnitten — jetzt an
+   der letzten Wortgrenze, ohne hängende Satzzeichen, und das Formular zeigt die übertragene Fassung vorab. */
+export const PROVIDER_CONTENT_MAX = 35;
+
+export function providerContentDescription(content, max = PROVIDER_CONTENT_MAX) {
+  const t = String(content ?? "").trim().replace(/\s+/g, " ");
+  if (t.length <= max) return t;
+  const grenze = t.slice(0, max + 1).lastIndexOf(" ");
+  const kurz = grenze > 0 ? t.slice(0, grenze) : t.slice(0, max);
+  return kurz.replace(/[\s,;:.\-–—/]+$/, "");
+}
+
+/** Hinweis unter dem Feld „Inhalt der Sendung“, sobald er länger ist, als einige Versanddienste übernehmen. */
+export function contentLengthHint(content) {
+  const t = String(content ?? "").trim().replace(/\s+/g, " ");
+  if (t.length <= PROVIDER_CONTENT_MAX) return null;
+  return `Einige Versanddienste übernehmen höchstens ${PROVIDER_CONTENT_MAX} Zeichen. Übertragen wird dann: „${providerContentDescription(t)}“.`;
+}

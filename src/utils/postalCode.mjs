@@ -13,6 +13,8 @@
 // proven to belong to the entered city/street. E.g. FR + 63743 stays valid.
 // ─────────────────────────────────────────────────────────────────────────────
 import { rules, version } from "./generated/postalCodeRules.mjs";
+// Eingabe-Audit A9: unsichtbare Formatzeichen aus eingefügtem Text (Spiegel von lib/textInput.js).
+import { stripInvisibleFormatChars } from "./textInput.mjs";
 
 export const postalRulesVersion = version;
 
@@ -41,13 +43,14 @@ export function isPostalCodeRequired(country) {
   return rule ? rule.required === true : false;
 }
 
-// Safe normalization only: trim, collapse internal whitespace, uppercase Latin for
-// alphanumeric-postcode countries. Never adds/removes digits, never pads.
+// Safe normalization only: drop invisible format characters (zero-width space, word
+// joiner, BOM — trim() keeps them), trim, collapse internal whitespace, uppercase Latin
+// letters for EVERY country (Eingabe-Audit A13: the rules compare case-insensitively,
+// no postal system distinguishes case, and "1234 ab" used to reach the providers as typed).
+// Never adds/removes digits, never pads. Mirror of lib/postalCode.js.
 export function normalizePostalCode(country, value) {
-  const rule = getPostalCodeRule(country);
-  let v = String(value == null ? "" : value).trim().replace(/\s+/g, " ");
-  if (rule && rule.uppercase) v = v.toUpperCase();
-  return v;
+  const v = stripInvisibleFormatChars(String(value == null ? "" : value)).trim().replace(/\s+/g, " ");
+  return v.toUpperCase();
 }
 
 // { valid:true, normalizedValue, required, example } | { valid:false, code, countryCode, example, message }

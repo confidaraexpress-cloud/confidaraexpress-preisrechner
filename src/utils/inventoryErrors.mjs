@@ -102,6 +102,39 @@ function detailText(code, details) {
   return null;
 }
 
+/* ── Feldfehler (Eingabe-Audit A6, 2026-11-03) ─────────────────────────────────────────────────
+   INVALID_QUANTITY ist der Sammelcode JEDER Feldprüfung des Lagerbereichs (Artikel, Aufträge, Bestand,
+   Lager); der Grund steht in `error` als „<feld>: <grund>“ bzw. „recipient.<feld>: <grund>“. Bisher zeigte die
+   Oberfläche dafür nur „Bitte prüfen Sie Ihre Eingabe.“ — welches Feld und welche Grenze, blieb offen. Jetzt:
+   Feldname in Kundensprache plus der Grund des Servers (deutscher Klartext). Ein unbekanntes Feld fällt auf den
+   bisherigen Satz zurück; ein technischer Feldname erscheint nie. */
+const FELD_TEXT = Object.freeze({
+  sku: "Artikelnummer (SKU)", name: "Bezeichnung", ean: "EAN", description: "Beschreibung", weightKg: "Gewicht",
+  lengthCm: "Länge", widthCm: "Breite", heightCm: "Höhe", unitValue: "Warenwert", hsCode: "Zolltarifnummer",
+  countryOfOrigin: "Ursprungsland", customsDescription: "Zollbeschreibung", minStock: "Mindestbestand",
+  customerReference: "Kundenreferenz", notes: "Notiz", note: "Notiz", quantity: "Menge", countedQuantity: "Gezählter Bestand",
+  company: "Firma", firstName: "Vorname", lastName: "Nachname", fullName: "Name", streetAndNumber: "Straße und Hausnummer",
+  addressAddition: "Adresszusatz", postalCode: "PLZ", city: "Ort", country: "Land", phone: "Telefon", email: "E-Mail",
+});
+const FELDFEHLER_RE = /^(recipient\.)?([A-Za-z]+):\s*(.+)$/;
+
+// „max. 35 Zeichen“ → „höchstens 35 Zeichen“; technische Dezimalpunkte der Bereichsgrenzen („0.001“) → „0,001“.
+// Tausenderpunkte wie in „1.000.000“ bleiben unberührt.
+function feldGrund(grund) {
+  return grund
+    .replace(/\bmax\. (\d+) Zeichen\b/g, "höchstens $1 Zeichen")
+    .replace(/\b0\.(\d+)/g, "0,$1");
+}
+
+/** INVALID_QUANTITY-Antwort → { field, text } in Kundensprache — oder null. */
+export function inventoryFieldError(body) {
+  if (!body || body.code !== "INVALID_QUANTITY" || typeof body.error !== "string") return null;
+  const m = body.error.trim().match(FELDFEHLER_RE);
+  if (!m || !FELD_TEXT[m[2]]) return null;
+  const partei = m[1] ? " (Empfänger)" : "";
+  return { field: m[2], text: `${FELD_TEXT[m[2]]}${partei}: ${feldGrund(m[3])}` };
+}
+
 /**
  * Fehlerantwort → kundenseitiger Text.
  * Bevorzugt den bekannten Code (bei Bestand, Sperre, inaktivem Artikel und vollem
@@ -111,6 +144,8 @@ function detailText(code, details) {
  */
 export function inventoryErrorText(body, fallback = "Der Vorgang konnte nicht ausgeführt werden.") {
   const code = body && typeof body.code === "string" ? body.code : null;
+  const feld = inventoryFieldError(body);
+  if (feld) return feld.text;
   const known = code ? ERROR_TEXTS[code] : null;
   if (known) return detailText(code, body.details) || known;
   if (body && typeof body.error === "string" && body.error.trim()) return body.error.trim();

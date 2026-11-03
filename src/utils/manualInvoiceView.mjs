@@ -159,6 +159,9 @@ export function formatCents(cents, currency = "EUR") {
 function dezimal(input, stellen) {
   const s = str(input).trim().replace(/\s/g, "");
   if (s === "") return "";
+  // Eingabe-Audit A12 (2026-11-03): „1.000“ (Punkt, genau drei Ziffern danach, kein Komma) ist mehrdeutig — der
+  // Einzelpreis liest es als Tausendergruppe (1.000 €), die Menge las es bisher als 1. Lieber melden als raten.
+  if (stellen >= 3 && /^\d{1,3}(?:\.\d{3})+$/.test(s)) return null;
   const re = new RegExp(`^\\d{1,9}(?:[.,]\\d{1,${stellen}})?$`);
   if (!re.test(s)) return null;
   return s.replace(",", ".");

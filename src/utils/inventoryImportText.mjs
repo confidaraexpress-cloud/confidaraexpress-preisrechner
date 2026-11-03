@@ -82,6 +82,7 @@ export function issueText(issue, columns) {
     case "DATE_VALUE": return `${spalte}: Datum statt Zahl oder Text.`;
     case "TEXT_INVALID": return `${spalte}: enthält unzulässige Zeichen oder keinen Text.`;
     case "SKU_NUMERIC": return "Die Artikelnummer war als Zahl gespeichert – bitte führende Nullen prüfen.";
+    case "EAN_NUMERIC": return "Die EAN war als Zahl gespeichert – führende Nullen gehen dabei verloren, bitte prüfen.";
     // Konflikte der Übernahme (Zeile nicht gebucht)
     case "ROW_STOCK_CHANGED": {
       const jetzt = zahl(p.current);

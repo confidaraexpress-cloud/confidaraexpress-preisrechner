@@ -102,6 +102,10 @@ export function mapOrderPrefillToShipment(prefill) {
 
   const form = {
     r_company: r.company || "",
+    // Eingabe-Audit A5: Vor- und Nachname kommen aus dem Auftrag in die Kontaktperson der Sendung. Ein Altauftrag
+    // trägt nur `fullName` — der bleibt wie bisher Altwert und wird nie zerlegt.
+    r_firstName: r.firstName || "",
+    r_lastName: r.lastName || "",
     r_fullName: r.fullName || "",
     r_street: r.streetAndNumber || "",
     r_addition: r.addressAddition || "",
@@ -113,9 +117,13 @@ export function mapOrderPrefillToShipment(prefill) {
   };
   // Das Warengewicht ist ein AUSGANGSPUNKT, kein Ergebnis: es wird nur gesetzt,
   // wenn der Server für jede offene Position ein Stückgewicht hatte. Sonst bleibt
-  // das Feld leer — lieber keine Zahl als eine zu niedrige.
-  if (typeof prefill.suggestedWeightKg === "number" && prefill.suggestedWeightKg > 0) {
-    form.weight = String(prefill.suggestedWeightKg);
+  // das Feld leer — lieber keine Zahl als eine zu niedrige. Seit Artikel ab 1 g
+  // erfasst werden (Eingabe-Audit A7) kann die Summe unter der Paketgrenze von
+  // 0,1 kg liegen: dann ebenfalls kein Vorschlag — dieselbe Regel wie beim
+  // Direktversand eines Artikels (unten).
+  const vorschlag = prefill.suggestedWeightKg;
+  if (typeof vorschlag === "number" && vorschlag >= 0.1 && vorschlag <= 1000) {
+    form.weight = String(vorschlag);
   }
 
   const orderNumber = prefill.order && typeof prefill.order.orderNumber === "string" ? prefill.order.orderNumber : null;

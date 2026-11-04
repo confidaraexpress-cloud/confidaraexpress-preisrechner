@@ -1437,7 +1437,7 @@
   .pc-offer--skeleton { min-height: 19rem; }
 }
 
-@container pc-karte (min-width: 52rem) {
+@container pc-karte (min-width: 58rem) {
   .pc-offer--skeleton { min-height: 11.5rem; }
 }
 
@@ -1601,8 +1601,8 @@
     align-items: start;
   }
   /* Der Wert füllt seine Spalte ganz; rechtsbündig über text-align statt justify-items: end — sonst setzte Chromium
-     einen umbrechenden Zeitraum in der schmalen Ablaufspalte der breiten Karte (ab 52rem) bis zu 95 px neben seine
-     Spalte (gemessen 910 px). */
+     einen umbrechenden Zeitraum in der schmalen Ablaufspalte der breiten Karte (damals ab 52rem) bis zu 95 px neben
+     seine Spalte (gemessen 910 px). */
   .pc-offer .pc-offer-facts > .pc-fact > dd {
     justify-self: stretch;
   }
@@ -1868,11 +1868,18 @@
   }
 }
 
-/* Breite Karte (ab 52rem, Desktop): eine Zeile — Identität mit Hinweisen · Ablauf · Preisspalte. Die Preise aller
-   Karten stehen in einer Spalte und lassen sich auf einen Blick vergleichen. */
-@container pc-karte (min-width: 52rem) {
+/* Breite Karte (ab 58rem, Desktop): eine Zeile — Identität mit Hinweisen · Ablauf · Preisspalte. Die Preise aller
+   Karten stehen in einer Spalte und lassen sich auf einen Blick vergleichen. Der Ablauf steht in der Kartenmitte
+   (Betreiberentscheidung 2026-11-04): zwei gleich breite Außenspalten, jede mindestens so breit wie die Preisspalte;
+   der Abschluss bleibt 14.5rem breit am rechten Rand. Bis dahin bekam allein die Identität den Überschuss, und der
+   Ablauf rückte mit der Karte nach rechts (gemessen 149 px bei 1324 px Kartenbreite, 12 px nach links bei 883–942 px).
+   Die Stufe beginnt seitdem erst bei 58rem statt 52rem: Mittig bleibt dem Ablauf an der Grenze 21.875rem (350 px),
+   genug für die längsten Angaben einzeilig („bereit ab 09:00 Uhr“ 123 px in der Startspalte, „Voraussichtliche
+   Zustellung“ 180 px in der Zielspalte, gemessen); bei 52rem wären es 254 px gewesen, und Bezeichnungen und Zeiträume
+   brächen um. Darunter steht der Ablauf in der mittleren Karte über die ganze Breite. */
+@container pc-karte (min-width: 58rem) {
   .pc-offer {
-    grid-template-columns: minmax(13rem, 1fr) minmax(0, 28rem) 14.5rem;
+    grid-template-columns: minmax(14.5rem, 1fr) minmax(0, 28rem) minmax(14.5rem, 1fr);
     grid-template-rows: auto 1fr;
     grid-template-areas: "head ablauf abschluss" "hints ablauf abschluss";
     column-gap: var(--ce-space-7);
@@ -1882,6 +1889,10 @@
     align-self: center;
     padding-top: 0;
     border-top: 0;
+  }
+  .pc-offer-abschluss {
+    justify-self: end;
+    width: 14.5rem;
   }
 }
 

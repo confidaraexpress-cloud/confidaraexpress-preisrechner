@@ -334,6 +334,60 @@ test("8b — Zeitleiste: Daten auf einer Höhe, Textkanten an den Punkten, gleic
   }
 });
 
+/* ══════════ 3c — ZEITLEISTE IN DER KARTENMITTE (Betreiberentscheidung 2026-11-04) ══════════
+   Übergabeart, Punkte, Linie und Beschriftung stehen als eine Einheit in der horizontalen Kartenmitte — breit
+   (Identität · Ablauf · Preis), zweizeilig und gestapelt. Bis dahin bekam in der breiten Karte allein die Identität
+   den Überschuss, und der Ablauf stand bis 131 px rechts der Mitte (1222 px Kartenbreite); gestapelt stand die
+   Übergabeart linksbündig. Preis und Aktion bleiben 235 px breit am rechten Rand, der Ablauf 400 px breit. */
+test("8c — Zeitleiste in der Kartenmitte, Preis und Aktion am rechten Rand", async () => {
+  const page = await browser.newPage({ viewport: { width: 1920, height: 1400 } });
+  await setupRoutes(page);
+  await zuDenAngeboten(page);
+  for (const breite of [1920, 1440, 1366, 1024, 768, 390, 320]) {
+    await page.setViewportSize({ width: breite, height: 1400 });
+    await page.evaluate(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
+    const m = await page.evaluate(() => [...document.querySelectorAll(".offer-card")].map((k) => {
+      k.style.contentVisibility = "visible";
+      const r = (e) => e.getBoundingClientRect();
+      // Die Übergabeart ist ein Block über die ganze Zone — gemessen wird ihr Text.
+      const text = (e) => { const g = document.createRange(); g.selectNodeContents(e); return g.getBoundingClientRect(); };
+      const kr = r(k), mitte = (kr.left + kr.right) / 2;
+      const ps = r(k.querySelector(".offer-tl-dot--start")), pz = r(k.querySelector(".offer-tl-dot--end"));
+      const ho = k.querySelector(".offer-handover"), hb = ho ? text(ho) : null;
+      const teile = [ps, pz, ...[...k.querySelectorAll(".offer-tl-node > *")].map(r), ...(hb ? [hb] : [])];
+      const links = Math.min(...teile.map((b) => b.left)), rechts = Math.max(...teile.map((b) => b.right));
+      const cs = getComputedStyle(k);
+      const innenRechts = kr.right - parseFloat(cs.paddingRight) - parseFloat(cs.borderRightWidth);
+      const z1 = r(k.querySelector(".offer-zone-1")), z2 = r(k.querySelector(".offer-zone-2")), z3 = r(k.querySelector(".offer-zone-3"));
+      return {
+        breite: kr.width,
+        einheit: (links + rechts) / 2 - mitte,
+        achse: (ps.left + pz.right) / 2 - mitte,
+        titel: hb ? (hb.left + hb.right) / 2 - mitte : 0,
+        preisRand: innenRechts - z3.right,
+        zone3: z3.width,
+        ablauf: r(k.querySelector(".offer-timeline")).width,
+        luecken: [z2.left - z1.right, z3.left - z2.right],
+      };
+    }));
+    assert.ok(m.length >= 4, `${breite}px: ${m.length} Karten`);
+    m.forEach((k, i) => {
+      assert.ok(Math.abs(k.einheit) <= 1, `${breite}px Karte ${i}: die Zeitleiste steht ${k.einheit.toFixed(1)} px neben der Kartenmitte`);
+      assert.ok(Math.abs(k.achse) <= 1, `${breite}px Karte ${i}: Punkte und Linie ${k.achse.toFixed(1)} px neben der Kartenmitte`);
+      assert.ok(Math.abs(k.titel) <= 1, `${breite}px Karte ${i}: die Übergabeart steht ${k.titel.toFixed(1)} px neben der Kartenmitte`);
+      assert.ok(Math.abs(k.preisRand) <= 1, `${breite}px Karte ${i}: Preis und Aktion ${k.preisRand.toFixed(1)} px vor dem rechten Rand`);
+      if (k.breite >= 950) {
+        assert.ok(Math.abs(k.zone3 - 235) <= 0.5, `${breite}px Karte ${i}: Preis und Aktion ${k.zone3.toFixed(1)} px statt 235 px breit`);
+        assert.ok(Math.abs(k.ablauf - 400) <= 0.5, `${breite}px Karte ${i}: der Ablauf ist ${k.ablauf.toFixed(1)} px statt 400 px breit`);
+        assert.ok(k.luecken.every((l) => l >= 23.5), `${breite}px Karte ${i}: zu wenig Abstand zwischen den Zonen (${k.luecken.map((l) => l.toFixed(1)).join(" / ")} px)`);
+      }
+    });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1), false,
+      `${breite}px: die Seite scrollt horizontal`);
+  }
+  await page.close();
+});
+
 /* ══════════ 4 — BELEGBILDER ══════════ */
 
 test("8 — Screenshots aller drei Breiten ablegen", async () => {

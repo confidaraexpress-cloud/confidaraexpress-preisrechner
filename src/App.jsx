@@ -64,6 +64,8 @@ const AdminInvoiceDetailPage = React.lazy(() => import("./pages/admin/AdminInvoi
 // Auftrag 2 / P1: „Neue Rechnung erstellen" — Entwurf, Vorschau, bewusstes Ausstellen.
 const AdminManualInvoicePage = React.lazy(() => import("./pages/admin/AdminManualInvoicePage"));
 const AdminCancellationRequestsPage = React.lazy(() => import("./pages/admin/AdminCancellationRequestsPage"));
+// P5 (2026-11-04): Anträge auf Sammelrechnung — Liste; entschieden wird im Kundendetail.
+const AdminBillingModeRequestsPage = React.lazy(() => import("./pages/admin/AdminBillingModeRequestsPage"));
 const AdminCancellationRequestDetailPage = React.lazy(() => import("./pages/admin/AdminCancellationRequestDetailPage"));
 const AdminSupportRequestsPage = React.lazy(() => import("./pages/admin/AdminSupportRequestsPage"));
 const AdminSupportRequestDetailPage = React.lazy(() => import("./pages/admin/AdminSupportRequestDetailPage"));
@@ -214,6 +216,7 @@ export default function App() {
           <Route path="/admin/invoices/manual/:draftId" element={<AdminManualInvoicePage />} />
           <Route path="/admin/cancellation-requests"     element={<AdminCancellationRequestsPage />} />
           <Route path="/admin/cancellation-requests/:id" element={<AdminCancellationRequestDetailPage />} />
+          <Route path="/admin/billing-mode-requests"     element={<AdminBillingModeRequestsPage />} />
           {/* Package C: Buchungsklärung — ungeklärte Buchungsvorgänge beider Anbieter. */}
           <Route path="/admin/reconciliation"            element={<AdminReconciliationPage />} />
           <Route path="/admin/reconciliation/:attemptId" element={<AdminReconciliationDetailPage />} />

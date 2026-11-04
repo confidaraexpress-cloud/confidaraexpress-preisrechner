@@ -527,6 +527,12 @@ function route(methode, pfad, query, optionen) {
     ] });
   }
   if (pfad === "/kunde/consolidated-invoice/current") return json({ active: false });
+  // P5: Antrag auf Sammelrechnung — die Demo zeigt den Ausgangszustand eines Kontos ohne Antrag.
+  if (pfad === "/kunde/billing-mode-requests/current" || pfad === "/kunde/billing-mode-requests") {
+    if (methode !== "GET" || pfad !== "/kunde/billing-mode-requests/current") return nichtVerfuegbar();
+    return json({ request: null, billingMode: st.konto.billing_mode === "consolidated_7d" ? "consolidated_7d" : "single",
+      billingCapabilities: { consolidated7dAvailable: false } });
+  }
 
   // Lieferscheine: Übersicht, Verlauf, Fassungen und Vorlage lesen; Ansehen und Herunterladen liefern SIMULATION-PDFs.
   // Hochladen, Erstellen, Zurückziehen und die Vorlage ändern gibt es in der Demo nicht — nie ein stiller Erfolg.

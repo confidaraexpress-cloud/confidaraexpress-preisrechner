@@ -56,6 +56,13 @@ export const OPERATIONS_QUEUES = Object.freeze([
   { key: "additional_emails_unclear", label: "Zusatzmails mit unklarem Ausgang", icon: "mail",
     hint: "Auch unter „Zusatzmails fehlgeschlagen“ gezählt — vor erneutem Senden prüfen, ob die Mail ankam",
     target: "shipment", listTo: null, tone: "warning" },
+  // P5: offene Anträge auf Sammelrechnung (Ziel: das Konto, dort wird entschieden) und Sammelsendungen, die der
+  // Sammelrechnungslauf nach der Frist nicht abgerechnet hat (Lauf, Kunden- oder Ausstellerdaten prüfen).
+  { key: "billing_mode_requests_pending", label: "Sammelrechnungsanträge", icon: "invoice",
+    hint: "Warten auf Prüfung und Entscheidung", target: "user", listTo: "/admin/billing-mode-requests", tone: "warning" },
+  { key: "consolidated_uninvoiced_overdue", label: "Sammelsendungen ohne Rechnung", icon: "invoice",
+    hint: "Vor mehr als 8 Tagen gebucht und auf keiner Sammelrechnung — Sammellauf, Kunden- und Ausstellerdaten prüfen",
+    target: "shipment", listTo: null, tone: "warning" },
 ]);
 
 export const OPERATIONS_DIAGNOSTICS = Object.freeze([
@@ -82,6 +89,7 @@ export function operationsTargetPath(target, id) {
     case "shipment": return `/admin/shipments/${n}`;
     case "cancellation": return `/admin/cancellation-requests/${n}`;
     case "invoice": return `/admin/invoices/${n}`;
+    case "user": return `/admin/users/${n}`;
     default: return null;
   }
 }

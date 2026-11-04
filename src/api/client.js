@@ -315,6 +315,35 @@ export async function getCurrentConsolidatedPeriod() {
   return { ok: true, status: r.status, data: d };
 }
 
+// ── Antrag auf Sammelrechnung (P5, Canonical v2.111) ─────────────────────────
+// Ein Antrag ist KEINE Umstellung: genehmigen darf nur ConfidaraExpress. Adressiert wird ohne
+// Konto-ID — das Konto steht im JWT (dieselbe Regel wie beim Sammelzeitraum). Keiner der drei Wege
+// wirft bei HTTP-Fehlern: die Karte zeigt Serverwahrheit, Servertext oder eine ruhige Hinweiszeile.
+async function antragsAntwort(r) {
+  let d = {};
+  try { d = await r.json(); } catch { /* leerer / kein JSON-Body → Defaults */ }
+  return { ok: r.ok, status: r.status, data: d };
+}
+
+// GET /kunde/billing-mode-requests/current — neuester eigener Antrag, Abrechnungsart, Verfügbarkeit.
+export async function getBillingModeRequest() {
+  return antragsAntwort(await apiFetch(`/kunde/billing-mode-requests/current`, { auth: true }));
+}
+
+// POST /kunde/billing-mode-requests — gesendet wird ausschließlich die optionale Begründung.
+export async function createBillingModeRequest(note) {
+  return antragsAntwort(await apiFetch(`/kunde/billing-mode-requests`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ note: typeof note === "string" ? note : "" }),
+  }));
+}
+
+// DELETE /kunde/billing-mode-requests/current — den offenen eigenen Antrag zurückziehen.
+export async function withdrawBillingModeRequest() {
+  return antragsAntwort(await apiFetch(`/kunde/billing-mode-requests/current`, { method: "DELETE", auth: true }));
+}
+
 // ── Zoll-Handelsrechnung (Customs commercial invoice) ────────────────────────
 // Dünne Wrapper um das auth-geschützte Confidara-Gateway.
 // `:shipmentId` ist der ConfidaraExpress-Sendungshandle `ceShipmentId` (shipments.id) —

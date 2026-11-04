@@ -428,6 +428,38 @@ export function getAdminInvoice(id) {
   return apiFetch(`/admin/invoices/${encodeURIComponent(id)}`, { auth: true });
 }
 
+// ── Anträge auf Sammelrechnung (P5, Canonical v2.111) ───────────────────────────
+// GET /admin/billing-mode-requests?status=… — Liste (Standard: offene, älteste zuerst). `status` nur aus
+// der bekannten Menge; ein anderer Wert wird gar nicht erst gesendet.
+const BILLING_MODE_REQUEST_FILTERS = ["pending", "approved", "rejected", "withdrawn", "all"];
+export function listAdminBillingModeRequests({ status = "pending", limit, offset, signal } = {}) {
+  const q = new URLSearchParams();
+  if (BILLING_MODE_REQUEST_FILTERS.includes(status)) q.set("status", status);
+  if (Number.isInteger(limit) && limit > 0) q.set("limit", String(limit));
+  if (Number.isInteger(offset) && offset >= 0) q.set("offset", String(offset));
+  return apiFetch(`/admin/billing-mode-requests?${q.toString()}`, { auth: true, signal });
+}
+
+// GET /admin/users/:id/billing-mode-requests — die Anträge EINES Kontos (Kundendetail).
+export function getAdminUserBillingModeRequests(userId, { signal } = {}) {
+  return apiFetch(`/admin/users/${encodeURIComponent(userId)}/billing-mode-requests`, { auth: true, signal });
+}
+
+// POST /admin/billing-mode-requests/:id/approve — genehmigen. Ohne Body: das ausführende Adminkonto kommt
+// serverseitig aus dem JWT; der Server prüft Verfügbarkeit und Status unter Sperre (409 sonst).
+export function approveAdminBillingModeRequest(requestId) {
+  return apiFetch(`/admin/billing-mode-requests/${encodeURIComponent(requestId)}/approve`, { method: "POST", auth: true });
+}
+
+// POST /admin/billing-mode-requests/:id/reject — ablehnen. Gesendet wird ausschließlich der Pflichtgrund.
+export function rejectAdminBillingModeRequest(requestId, reason) {
+  return apiFetch(`/admin/billing-mode-requests/${encodeURIComponent(requestId)}/reject`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ reason: typeof reason === "string" ? reason : "" }),
+  });
+}
+
 // ── Stornierungsanfragen (Admin) ─────────────────────────────────────────────
 // INTERNER Verwaltungsvorgang: Prüfen und Bearbeiten von Kunden-Storno-Wünschen.
 // KEINE echte Carrier-/JUMiNGO-Stornierung, KEINE Erstattung/Gutschrift — diese

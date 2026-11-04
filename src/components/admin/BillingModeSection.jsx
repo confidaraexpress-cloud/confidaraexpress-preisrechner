@@ -5,8 +5,10 @@ import { BILLING_MODES, BILLING_MODE_TEXT } from "../../utils/billingModeView.mj
 // Sektion „Abrechnung" in der Admin-Kundendetailansicht.
 //
 // Zeigt die Abrechnungsart des Kontos und erlaubt, sie umzustellen — für Support
-// und Onboarding: ein Kunde, der auf Sammelrechnung wechseln möchte, soll nicht
-// auf ein Selfservice-Feature warten müssen. Rein darstellend; der Request liegt
+// und Onboarding. P5 (Canonical v2.111): der Regelweg ist der Antrag des Kunden mit
+// Entscheidung darunter (BillingModeRequestsPanel); die Umstellung hier bleibt der
+// Supportweg unter denselben Serverbedingungen (NEU auf Sammelrechnung nur mit
+// laufendem Sammelrechnungslauf und regulärer Rechnungsstellung, sonst 409). Rein darstellend; der Request liegt
 // in der Seite (ein Request-Pfad, ein Zustand) — dieselbe Aufteilung wie bei
 // `CustomerMarkupSection`.
 //
@@ -30,6 +32,7 @@ export function BillingModeSection({
   error = "",
   successText = "",
   onChange,              // (nextMode: string) => void
+  children = null,       // P5: der Antrag auf Sammelrechnung (BillingModeRequestsPanel) — selbstladend
 }) {
   const current = BILLING_MODES.includes(mode) ? mode : "single";
   const opt = BILLING_MODE_TEXT.options[current];
@@ -73,6 +76,7 @@ export function BillingModeSection({
             {successText}
           </p>
         )}
+        {children}
       </div>
     </div>
   );

@@ -302,10 +302,10 @@ console.log("\n── H. Wählbarkeit der Sammelabrechnung ──");
 
 const konto = (billing_mode, billingCapabilities) => ({ billing_mode, billingCapabilities });
 
-test("(H1) Fähigkeit true: ein Einzelrechnungskonto kann die Sammelrechnung wählen", () => {
+test("(H1) P5: auch mit Fähigkeit wählt ein Einzelrechnungskonto die Sammelrechnung NICHT direkt — es beantragt sie", () => {
   const u = konto("single", { consolidated7dAvailable: true });
   assert.equal(consolidatedBillingAvailable(u), true);
-  assert.equal(billingModeOptionSelectable(u, "consolidated_7d"), true);
+  assert.equal(billingModeOptionSelectable(u, "consolidated_7d"), false);
   assert.equal(billingModeOptionSelectable(u, "single"), true);
 });
 
@@ -331,19 +331,23 @@ test("(H4) Bestandskonto mit Sammelrechnung: bleibt wählbar und sichtbar, der R
   assert.equal(billingMode(u), "consolidated_7d", "das Bestandskonto wird nie umgedeutet");
   assert.equal(billingModeOptionSelectable(u, "consolidated_7d"), true);
   assert.equal(billingModeOptionSelectable(u, "single"), true);
-  // Nach dem Wechsel ist die Sammelrechnung wieder ein NEUER Wechsel — und nicht mehr wählbar.
+  // Nach dem Wechsel ist die Sammelrechnung wieder ein NEUER Wechsel — nur auf Antrag, auch mit Fähigkeit.
   assert.equal(billingModeOptionSelectable(konto("single", { consolidated7dAvailable: false }), "consolidated_7d"), false);
-  assert.ok(/Rückkehr zur Sammelrechnung derzeit nicht möglich/.test(BILLING_MODE_TEXT.consolidatedKeptNote));
+  assert.equal(billingModeOptionSelectable(konto("single", { consolidated7dAvailable: true }), "consolidated_7d"), false);
+  assert.ok(/neuer Antrag nötig/.test(BILLING_MODE_TEXT.switchBackNote), "der Rückweg nennt seine Folge nicht");
 });
 
 test("(H5) die Karte sperrt die Option und sendet keinen Auswahlversuch, der abgelehnt würde", () => {
   assert.ok(/const selectable = billingModeOptionSelectable\(user, mode\);/.test(bmKarteSrc));
   assert.ok(/disabled=\{!selectable \|\| \(bmSaving && bmMode !== mode\)\}/.test(bmKarteSrc), "die Option wird nicht gesperrt");
-  assert.ok(/\{!selectable && <span className="field-hint">\{BILLING_MODE_TEXT\.consolidatedUnavailable\}<\/span>\}/.test(bmKarteSrc));
+  assert.ok(/\{!selectable && <span className="field-hint">\{BILLING_MODE_TEXT\.consolidatedByRequest\}<\/span>\}/.test(bmKarteSrc));
   const save = schnitt(bmKarteSrc, "const saveBillingMode", "const period = periodData", "(H5) BillingModeCard");
   assert.ok(/if \(bmSaving \|\| mode === serverBmMode \|\| !billingModeOptionSelectable\(user, mode\)\) return;/.test(save));
-  assert.ok(/serverBmMode === "consolidated_7d" && !consolidatedBillingAvailable\(user\)/.test(bmKarteSrc),
-    "das Bestandskonto erfährt nicht, dass der Rückweg vorerst endgültig ist");
+  assert.ok(/serverBmMode === "consolidated_7d" && !verfuegbar/.test(bmKarteSrc),
+    "das Bestandskonto erfährt nicht, dass es ohne verfügbare Sammelrechnung nicht buchen kann");
+  assert.ok(/const verfuegbar = consolidatedBillingAvailable\(user\);/.test(bmKarteSrc));
+  assert.ok(/serverBmMode === "consolidated_7d" && \(\s*<p className="field-hint mt-8" id="bm-switch-back-note">\{BILLING_MODE_TEXT\.switchBackNote\}/.test(bmKarteSrc),
+    "ein Sammelkonto erfährt vor dem Rückweg nicht, dass danach ein neuer Antrag nötig ist");
 });
 
 test("(H6) die Fähigkeit kommt aus /kundenbereich — eine Quelle, in das User-Objekt gefaltet", () => {

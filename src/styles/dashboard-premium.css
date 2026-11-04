@@ -658,6 +658,14 @@
 .dn-mode-option:hover { border-color: var(--ce-color-border-strong); }
 .dn-mode-option.selected { border-color: var(--ce-color-brand); background: var(--ce-color-brand-soft); }
 .dn-mode-option input[type="radio"] { margin-top: 2px; flex-shrink: 0; }
+
+/* ── Antrag auf Sammelrechnung (P5, 2026-11-04) ──────────────────────────────
+   Der Stand steht als Hinweisfläche (der Zustand ist das Wort im Titel, nie allein die Farbe),
+   das Formular darunter auf denselben Feld- und Knopfbausteinen wie das übrige Profil. */
+.bm-request-form { display: flex; flex-direction: column; align-items: flex-start; }
+.bm-request-form .field-textarea { width: 100%; }
+.bm-request-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--ce-space-1) var(--ce-space-3); width: 100%; margin-top: var(--ce-space-1); }
+.bm-request-count { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap; }
 .dn-mode-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .dn-mode-label { font-size: var(--ce-text-body-size); line-height: 1.4286; font-weight: 600; color: var(--ce-color-text-primary); }
 /* R9: in der gewählten Option (brand-soft) erreicht der gedämpfte Hinweis nur 4,30:1;

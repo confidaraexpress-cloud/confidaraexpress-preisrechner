@@ -1511,7 +1511,10 @@
 
 /* Ablauf wie in der Tarifkarte des Kundenbereichs: eine ruhende Achse von der Abholung bzw. Abgabe (Startpunkt im
    Markenblau) zur Zustellung (Zielpunkt grün), darunter links der Start, rechts die Laufzeit. Spalten 2 : 3, damit
-   „Voraussichtliche Laufzeit“ und „laut Versanddienstleister“ auch auf dem Telefon einzeilig bleiben. */
+   „Voraussichtliche Laufzeit“ und „laut Versanddienstleister“ auch auf dem Telefon einzeilig bleiben. Seit 2026-11-04
+   (Betreiberentscheidung P1) dieselbe Geometrieregel wie die Zeitleiste des Kundenbereichs (offers.css): Textkante =
+   Punktkante — hier bündig mit der Achse, Punkte und Beschriftung bei 0 px —, Bezeichnung und Datum beider Seiten auf
+   gemeinsamen Zeilen (unten). */
 .pc-offer-ablauf {
   grid-area: ablauf;
   display: grid;
@@ -1574,12 +1577,38 @@
 }
 
 /* Start und Zustellung sind nie schmaler als ihr längstes Wort oder ihr Wert („09:00–17:00 Uhr“); lange Wörter
-   („Voraussichtliche“, „Versanddienstleister“) trennen an Silben, damit beide bei 320 px nebeneinander passen. */
+   („Voraussichtliche“, „Versanddienstleister“) trennen an Silben, damit beide bei 320 px nebeneinander passen.
+   Bezeichnung und Wert beider Seiten stehen auf zwei gemeinsamen Zeilen (Subgrid): Bricht eine Bezeichnung um, rücken
+   beide Werte gemeinsam — das Datum der Abholung und das der Zustellung stehen immer auf einer Linie. Die Zusätze
+   folgen direkt ihrem Datum. */
 .pc-offer-facts {
   display: grid;
   grid-template-columns: minmax(min-content, 2fr) minmax(min-content, 3fr);
-  gap: var(--ce-space-3);
+  column-gap: var(--ce-space-3);
+  row-gap: 2px;
   hyphens: auto;
+}
+
+@supports (grid-template-rows: subgrid) {
+  .pc-offer-facts {
+    grid-template-rows: auto auto;
+  }
+  /* Oben in ihrer Zeile, nie gestreckt: gestreckt verteilte ein Wert die Höhe der Nachbarspalte auf seine Zusätze, und
+     „bereit ab 09:00 Uhr“ rückte vom Datum ab. */
+  .pc-offer-facts > .pc-fact {
+    grid-row: 1 / -1;
+    grid-template-rows: subgrid;
+    align-items: start;
+  }
+  /* Der Wert füllt seine Spalte ganz; rechtsbündig über text-align statt justify-items: end — sonst setzte Chromium
+     einen umbrechenden Zeitraum in der schmalen Ablaufspalte der breiten Karte (ab 52rem) bis zu 95 px neben seine
+     Spalte (gemessen 910 px). */
+  .pc-offer .pc-offer-facts > .pc-fact > dd {
+    justify-self: stretch;
+  }
+  .pc-offer .pc-offer-facts > .pc-fact:last-child > dd {
+    justify-items: stretch;
+  }
 }
 
 .pc-offer-facts > .pc-fact:last-child {
@@ -1600,6 +1629,12 @@
   }
   .pc-offer-facts {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    row-gap: var(--ce-space-3);
+  }
+  .pc-offer-facts > .pc-fact {
+    grid-row: auto;
+    grid-template-rows: none;
   }
   .pc-offer-facts > .pc-fact:last-child,
   .pc-offer-facts > .pc-fact:last-child dd {

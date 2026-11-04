@@ -289,6 +289,47 @@ test("7 — kein horizontaler Ueberlauf auf 1440, 834 und 390", async () => {
   }
 });
 
+/* ══════════ 3b — ZEITLEISTE ALS RASTER (Betreiberentscheidung 2026-11-04, P1) ══════════
+   Titel, Datum und Zusatz beider Knoten stehen auf gemeinsamen Zeilen: Start- und Zieldatum auf einer Höhe, auch wenn
+   ein Titel umbricht; Textkante = Punktkante links und rechts; jede Karte der Liste mit derselben Zeitleistenhöhe —
+   JUMiNGO mit Kalenderdaten neben Transglobal mit Laufzeit, Abholung neben Shopabgabe. */
+test("8b — Zeitleiste: Daten auf einer Höhe, Textkanten an den Punkten, gleiche Höhe in jeder Breite", async () => {
+  for (const breite of [1440, 1024, 768, 390]) {
+    const page = await browser.newPage({ viewport: { width: breite, height: 1400 } });
+    await setupRoutes(page);
+    await zuDenAngeboten(page);
+    const m = await page.evaluate(() => [...document.querySelectorAll(".offer-card")].map((k) => {
+      k.style.contentVisibility = "visible";
+      const r = (e) => e.getBoundingClientRect();
+      const start = k.querySelector(".offer-tl-node--start"), ende = k.querySelector(".offer-tl-node--end");
+      const ds = start.querySelector(".offer-tl-primary"), dz = ende.querySelector(".offer-tl-primary");
+      const zeilen = (e) => Math.round(r(e).height / parseFloat(getComputedStyle(e).lineHeight));
+      const zs = start.querySelector(".offer-tl-sub"), zz = ende.querySelector(".offer-tl-sub, .offer-early-note");
+      return {
+        datum: ds && dz ? Math.abs(r(ds).top - r(dz).top) : 0,
+        zusatz: zs && zz ? Math.abs(r(zs).top - r(zz).top) : 0,
+        links: Math.abs(Math.min(...[...start.children].map((c) => r(c).left)) - r(k.querySelector(".offer-tl-dot--start")).left),
+        rechts: Math.abs(Math.max(...[...ende.children].map((c) => r(c).right)) - r(k.querySelector(".offer-tl-dot--end")).right),
+        hoehe: r(k.querySelector(".offer-tl-labels")).height,
+        titel: [zeilen(start.querySelector(".offer-tl-title")), zeilen(ende.querySelector(".offer-tl-title"))],
+        breite: r(k).width,
+      };
+    }));
+    assert.ok(m.length >= 4, `${breite}px: ${m.length} Karten`);
+    m.forEach((k, i) => {
+      assert.ok(k.datum <= 1, `${breite}px Karte ${i}: Start- und Zieldatum ${k.datum.toFixed(1)} px versetzt`);
+      assert.ok(k.zusatz <= 1, `${breite}px Karte ${i}: die Zusatzzeilen stehen ${k.zusatz.toFixed(1)} px versetzt`);
+      assert.ok(k.links <= 1, `${breite}px Karte ${i}: Textkante ${k.links.toFixed(1)} px neben dem Startpunkt`);
+      assert.ok(k.rechts <= 1, `${breite}px Karte ${i}: Textkante ${k.rechts.toFixed(1)} px neben dem Zielpunkt`);
+      if (k.breite >= 950) assert.deepEqual(k.titel, [1, 1], `${breite}px Karte ${i}: ein Titel bricht in der breiten Karte um`);
+    });
+    const hoehen = m.map((k) => k.hoehe);
+    assert.ok(Math.max(...hoehen) - Math.min(...hoehen) <= 1,
+      `${breite}px: ungleiche Zeitleisten (${hoehen.map((h) => h.toFixed(1)).join(" / ")} px)`);
+    await page.close();
+  }
+});
+
 /* ══════════ 4 — BELEGBILDER ══════════ */
 
 test("8 — Screenshots aller drei Breiten ablegen", async () => {

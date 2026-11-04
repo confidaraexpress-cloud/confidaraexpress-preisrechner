@@ -137,9 +137,10 @@ test("2c — Premium-Dashboard V2 (2026-11-01): getönte Fläche nur auf der Üb
   // Die kräftige Fläche gilt nur für den Inhaltsbereich der Übersicht; Seitenleiste und Navigation bleiben, wie sie sind, die
   // übrigen Kundenseiten tragen seit dem Betreiberauftrag 2026-11-02 die leise Arbeitsfläche (Test 2f).
   // Seit Flow Signature V2 (Betreiberauftrag 2026-11-01: „weniger blass“) ein kühles, helles Blau statt Grau-Blau, seit V3
-  // (2026-11-02: „Hintergrund etwas stärker“) eine Stufe blauer — gedämpfter Text darauf weiterhin ≥ 4,5:1 (4,68:1).
+  // (2026-11-02: „Hintergrund etwas stärker“) eine Stufe blauer, seit der Betreiberentscheidung vom 2026-11-04 (Ü-V1) im
+  // Verhältnis der Arbeitsfläche dezent heller — gedämpfter Text darauf ≥ 4,6:1 (4,81:1).
   assert.match(regel(".main-content:has(.ov-page)"), /background: var\(--ce-pr-ed-flaeche-uebersicht\);/);
-  assert.match(variablen, /--ce-pr-ed-flaeche-uebersicht:\s*#e9f0fb;/);
+  assert.match(variablen, /--ce-pr-ed-flaeche-uebersicht:\s*#eef3fc;/);
   assert.equal((editorial.match(/var\(--ce-pr-ed-flaeche-uebersicht\)/g) || []).length, 1, "die Fläche hängt an einem weiteren Selektor");
   // Die Suche steht auf jeder getönten Fläche sichtbar als weiße Kapsel mit Haarlinie statt der Mulde — seit 2026-11-02 in
   // einer Regel für den ganzen Kundenbereich (die Mulde wäre auf der Arbeitsfläche heller als der Grund und ohne Kante).
@@ -280,7 +281,21 @@ test("2d — Confidara Flow Signature, Abschluss (2026-11-02): blaue Markenatmos
   for (const d of ['content: "";', "position: absolute;", "height: 1px;", "z-index: -1;", "pointer-events: none;", "background: var(--ce-pr-ed-flow-route);"]) {
     assert.ok(route && route.koerper.includes(d), `Route durch die Kacheln ohne ${d}`);
   }
-  assert.ok(!/ov-carrier-linien|CarrierLinien/.test(modules), "die Linien stehen wieder als Markup in der Fläche");
+  // Daneben die feinen geschwungenen Linien der früheren Fläche (Betreiberentscheidung 2026-11-04): genau die Geometrie
+  // bis zum Abschluss (c00a87e^, aus 38d6f10) — drei Routen, drei Lichtknoten, statisch, keine Bewegung (Test 14).
+  const linien = modules.slice(modules.indexOf("function CarrierLinien"), modules.indexOf("export function CarrierPortfolio"));
+  for (const d of ["M-40 318 C 220 250, 340 120, 620 150 S 1000 250, 1260 118", "M-40 178 C 260 128, 420 300, 700 300 S 1020 158, 1260 212",
+    "M120 430 C 300 330, 560 380, 780 250 S 1080 60, 1240 38"]) {
+    assert.ok(linien.includes(`d="${d}"`), `die Route ${d.slice(0, 14)}… fehlt oder ist verändert`);
+  }
+  for (const k of ['cx="620" cy="150" r="3"', 'cx="700" cy="300" r="3"', 'cx="780" cy="250" r="3.5"']) {
+    assert.ok(linien.includes(`<circle ${k} />`), `der Lichtknoten ${k} fehlt oder ist verändert`);
+  }
+  assert.equal((linien.match(/<path /g) || []).length, 3, "nicht genau drei Routen");
+  assert.equal((linien.match(/<circle /g) || []).length, 3, "nicht genau drei Lichtknoten");
+  assert.doesNotMatch(linien, /<animate|<set |animation|transition/, "die Linien bewegen sich");
+  assert.doesNotMatch(cssBare.slice(cssBare.indexOf(".ov-carrier-linien {"), cssBare.indexOf(".ov-carrier-kopf {")), /animation|transition|transform/,
+    "die Linien bewegen sich");
 });
 
 test("2e — Confidara Flow Signature (2026-11-01): Datenflächen ruhig und einheitlich, Fuß und Kopfleiste ohne harte Kante", () => {
@@ -537,12 +552,20 @@ test("14 — „Ihre Versanddienstleister“: Navy-Fläche mit Linien, nur aus G
   assert.match(block, /data-carrier=\{c\.id\}/, "die optische Logoangleichung braucht die öffentliche Carrier-ID");
   assert.match(block, /onClick=\{onCompare\}>\s*\{CARRIER_PORTFOLIO_TEXT\.action\}/, "die Vergleichsaktion fehlt");
   assert.ok(!/service|Laufzeit|Tage|time/.test(block), "Laufzeiten oder Dienste in der Carrierfläche");
-  // Die Linienzeichnung (seit Flow Signature V3 das CE samt Route durch die Kacheln) ist reine Dekoration ohne Markup: Ebenen
-  // der Fläche hinter ihrem Inhalt (premium-editorial.css, Test 2d), an der Rundung beschnitten — kein SVG im Inhalt der Fläche.
-  assert.ok(!/ov-carrier-linien|CarrierLinien|<svg/.test(block), "die Linien stehen wieder als Markup in der Fläche");
+  // Die Linien (Betreiberentscheidung 2026-11-04, zurück wie bis zum Abschluss 2026-11-02): dekorativ, statisch, nur in
+  // der Fläche und hinter dem Inhalt; die gerade Route durch die Kacheln bleibt daneben eine Ebene ohne Markup (Test 2d).
+  const linien = modules.slice(modules.indexOf("function CarrierLinien"), modules.indexOf("export function CarrierPortfolio"));
+  assert.match(linien, /<svg className="ov-carrier-linien" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">/);
+  assert.match(block, /<section className="ov-carrier-zeile" aria-labelledby="ov-car-title">\s*<CarrierLinien \/>/,
+    "die Linien stehen nicht als erstes, hinterstes Element in der Fläche");
+  assert.equal((block.match(/<svg/g) || []).length, 0, "eine weitere Zeichnung steht im Inhalt der Fläche");
   assert.match(rule(".ov-carrier-zeile"), /background:\s*var\(--ce-pr-stage\)/, "die Fläche ist nicht Navy");
   assert.match(rule(".ov-carrier-zeile"), /isolation:\s*isolate/, "die Ebene der Linien läge nicht hinter dem Inhalt der Fläche");
   assert.match(rule(".ov-carrier-zeile"), /overflow:\s*hidden/, "die Linien laufen über die Fläche hinaus");
+  assert.match(rule(".ov-carrier-linien"), /position:\s*absolute;[\s\S]*z-index:\s*-1;[\s\S]*pointer-events:\s*none/);
+  assert.match(rule(".ov-carrier-routen path"), /vector-effect:\s*non-scaling-stroke/, "die Linien werden mit der Fläche dicker");
+  assert.match(rule(".ov-carrier-routen path"), /stroke:\s*var\(--ce-pr-on-navy-line\)/, "die Routen tragen nicht die Linienfarbe der Bühne");
+  assert.match(rule(".ov-carrier-knoten circle"), /fill:\s*var\(--ce-pr-signal-on-navy\)/, "die Lichtknoten tragen nicht das Signal auf Navy");
   assert.match(rule(".ov-carrier-titel"), /color:\s*var\(--ce-color-text-inverse\)/);
   assert.match(rule(".ov-carrier-zeile .ov-carrier-aktion:focus-visible"), /outline:\s*2px solid var\(--ce-pr-signal-on-navy\)/,
     "der Fokus ist auf Navy nicht sichtbar");

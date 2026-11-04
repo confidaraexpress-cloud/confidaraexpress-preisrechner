@@ -1918,7 +1918,10 @@
   :root[data-ce-bereich="kunde"] :is(.sdoc-subtitle, .sdoc-row-number) { overflow-wrap: break-word; }
   :root[data-ce-bereich="kunde"] .booking-email-note { overflow-wrap: break-word; }
 
-  :root[data-ce-bereich="kunde"] .offer-tl-labels { grid-template-columns: minmax(0, 1fr); }
+  /* Start und Zustellung untereinander: das gemeinsame Zeilenraster (offers.css) entfällt, jeder Knoten ist wieder ein
+     eigener Block. */
+  :root[data-ce-bereich="kunde"] .offer-tl-labels { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; row-gap: 8px; }
+  :root[data-ce-bereich="kunde"] .offer-tl-node { display: flex; flex-direction: column; gap: 2px; grid-column: 1; grid-row: auto; }
   :root[data-ce-bereich="kunde"] .offer-tl-node--end { align-items: flex-start; text-align: left; }
   :root[data-ce-bereich="kunde"] .offer-early-note { align-self: flex-start; }
   :root[data-ce-bereich="kunde"] .ce-paket { grid-template-columns: minmax(0, 1fr); }

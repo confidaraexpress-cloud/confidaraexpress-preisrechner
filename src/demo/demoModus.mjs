@@ -51,7 +51,9 @@ export function demoAusgangsziel(pathname, search = "", hash = "", herkunft = "h
 /** Wohin die Aktionen der Demo-Leiste führen (Hauptdomain bzw. öffentlicher Preisrechner). */
 export const DEMO_ZIELE = Object.freeze({
   registrieren: "/register",
-  preisrechner: "https://preisrechner.confidaraexpress.de/",
+  // ?von=demo: der Preisrechner fragt nach der Demo nicht noch einmal, ob man sie sehen möchte (Demo-Hinweis, P2,
+  // public-calculator/demoHinweis.mjs) — er entfernt den Parameter selbst aus der Adresse.
+  preisrechner: "https://preisrechner.confidaraexpress.de/?von=demo",
 });
 
 /** Die Texte der Demo an einer Stelle. */

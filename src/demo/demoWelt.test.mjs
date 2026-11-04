@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { DEMO_BASIS, DEMO_TEXTE, istDemoPfad } from "./demoModus.mjs";
+import { DEMO_BASIS, DEMO_TEXTE, DEMO_ZIELE, istDemoPfad } from "./demoModus.mjs";
 import { arbeitsspeicher, speicherAbschirmen } from "./demoSpeicher.mjs";
 import { demoNetzErlaubt, netzSperren } from "./demoNetz.mjs";
 import { demoAngebote, demoAntwort, demoZuruecksetzen } from "./demoBackend.mjs";
@@ -327,4 +327,24 @@ test("17 — Lieferscheine in der Demo: jede Art sichtbar, Dokumente als SIMULAT
     const muster = await anfrage("/api/kunde/delivery-note-template/active/preview");
     assert.ok(Buffer.from(muster.daten).toString("latin1").includes("SIMULATION"));
   });
+});
+
+test("18 — P2: die Demo ist vor dem ersten Bild gekennzeichnet, und jeder Rückweg zum Preisrechner trägt ?von=demo", () => {
+  // data-ce-demo setzt der Demo-Start nach dem Einschalten, vor dem ersten Rendern (vorher erst ein Effekt von
+  // DemoApp) — nur bei gelungener Abschirmung.
+  const start = ohneKommentare(lies("demo", "demoStart.mjs"));
+  const bedingung = start.indexOf("if (DEMO_ZUSTAND.abgeschirmt) {");
+  const ein = start.indexOf("demoEinschalten();");
+  const kennzeichen = start.indexOf('window.document.documentElement.setAttribute("data-ce-demo", "");');
+  assert.ok(bedingung > 0 && ein > bedingung && kennzeichen > ein, "data-ce-demo erst nach dem Einschalten, nur abgeschirmt");
+  assert.ok(kennzeichen < start.indexOf("setzeDemoTransport("), "die Kennzeichnung steht vor dem Transport");
+
+  // Der Preisrechner fragt nach der Demo nicht noch einmal (public-calculator/demoHinweis.mjs).
+  assert.equal(DEMO_ZIELE.preisrechner, "https://preisrechner.confidaraexpress.de/?von=demo");
+  assert.match(ohneKommentare(lies("demo", "DemoLeiste.jsx")), /href=\{DEMO_ZIELE\.preisrechner\}>\{DEMO_TEXTE\.beenden\}<\/a>/);
+  assert.match(ohneKommentare(lies("demo", "DemoApp.jsx")), /href=\{DEMO_ZIELE\.preisrechner\}>Zum Preisrechner<\/a>/);
+  assert.match(ohneKommentare(lies("main.jsx")), /href=\{DEMO_ZIELE\.preisrechner\}>Zum Preisrechner<\/a>/);
+  for (const datei of [["demo", "DemoLeiste.jsx"], ["demo", "DemoApp.jsx"], ["main.jsx"]]) {
+    assert.doesNotMatch(ohneKommentare(lies(...datei)), /preisrechner\.confidaraexpress\.de/, `${datei.join("/")}: Rückweg ohne ?von=demo`);
+  }
 });

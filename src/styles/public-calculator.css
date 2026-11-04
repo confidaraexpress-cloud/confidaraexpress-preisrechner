@@ -2677,6 +2677,110 @@
   outline-color: var(--ce-color-text-inverse);
 }
 
+/* ── Demo-Hinweis beim ersten Öffnen (P2, Betreiberentscheidung 2026-11-04) ──────────────────────────────────
+   „Möchten Sie zuerst den Kundenbereich ansehen?“ (DemoHinweisDialog.jsx): ein weißes Blatt auf dem Navy-Schleier,
+   oben der Markenstreifen, darunter Frage, zwei Sätze und zwei gleich breite Aktionen in den Knöpfen der Seite —
+   „Demo ansehen“ in Navy-Kontur, „Zum Preisrechner“ gefüllt (erster Fokus, rechts bzw. unten). Desktop mittig,
+   höchstens 30rem; bis 599 px ein Blatt unten mit 16 px Rand, die Aktionen untereinander. Keine Animation, kein
+   Bild, keine eigene Schrift. Fest über der Seite (Portal am Ende von <body>); bei großer Schrift scrollt das Blatt. */
+.pc-page .pc-dialog-schleier {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ce-z-dialog);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ce-space-4);
+  background: var(--ce-color-overlay-drawer);
+}
+
+/* Beim Verlassen der Seite verborgen (der Verlaufscache bewahrt die Seite ohne Dialog). */
+.pc-page .pc-dialog-schleier[hidden] {
+  display: none;
+}
+
+.pc-page .pc-dialog {
+  width: 100%;
+  max-width: 30rem;
+  max-height: calc(100dvh - 2 * var(--ce-space-4));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--ce-space-8) var(--ce-space-7) var(--ce-space-7);
+  border-radius: var(--ce-pr-radius-card);
+  background-color: var(--ce-color-surface);
+  background-image: var(--ce-pr-stripe);
+  background-repeat: no-repeat;
+  background-position: top left;
+  background-size: 100% 3px;
+  box-shadow: var(--ce-pr-shadow-sheet);
+  color: var(--ce-color-text-primary);
+}
+
+/* Fokus auf dem Blatt selbst entsteht nur durch einen Klick auf seinen Text — Escape und Tab bleiben im Dialog. */
+.pc-page .pc-dialog:focus {
+  outline: none;
+}
+
+.pc-page .pc-dialog-titel {
+  font-family: var(--ce-pr-font-display);
+  font-size: 1.5rem;
+  font-weight: 650;
+  font-stretch: var(--ce-pr-display-stretch);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+
+.pc-page .pc-dialog-text {
+  margin-top: var(--ce-space-3);
+  color: var(--ce-color-text-secondary);
+}
+
+/* Was die Demo zeigt, darunter als eigener Satz die Zusage (ohne Anmeldung, nichts gebucht). */
+.pc-page .pc-dialog-text p + p {
+  margin-top: var(--ce-space-2);
+}
+
+.pc-page .pc-dialog-aktionen {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ce-space-3);
+  margin-top: var(--ce-space-6);
+}
+
+/* „Demo ansehen“ ist ein Link: in der Navy-Kontur der Zweitaktion, nicht in der Linkfarbe der Seite. */
+.pc-page .pc-dialog-aktionen a.pc-button--secondary {
+  color: var(--ce-pr-navy-800);
+}
+
+@media (max-width: 599px) {
+  .pc-page .pc-dialog-schleier {
+    align-items: flex-end;
+    padding-bottom: calc(var(--ce-space-4) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .pc-page .pc-dialog {
+    max-height: calc(100dvh - 2 * var(--ce-space-4) - env(safe-area-inset-bottom, 0px));
+    padding: var(--ce-space-7) var(--ce-space-5) var(--ce-space-5);
+  }
+
+  .pc-page .pc-dialog-titel {
+    font-size: 1.25rem;
+    line-height: 1.3;
+  }
+
+  .pc-page .pc-dialog-aktionen {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media print {
+  .pc-page .pc-dialog-schleier {
+    display: none;
+  }
+}
+
 /* ── Seite nicht gefunden (preisrechner/404.html) ────────────────────────── */
 .pc-page--notfound {
   display: flex;

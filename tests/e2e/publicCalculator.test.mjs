@@ -17,6 +17,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import { DEMO_HINWEIS_SCHLUESSEL, ohneDemoHinweis } from "./helpers/demoHinweis.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -92,8 +93,10 @@ async function setup(page, { prepare = { delayMs: 0, body: { available: true } }
   return p;
 }
 
+// Der Demo-Hinweis ist in jedem Tab dieser Suite schon beantwortet (helpers/demoHinweis.mjs; eigene Suite).
 async function neueSeite(viewport) {
   const page = await browser.newPage({ viewport });
+  await ohneDemoHinweis(page);
   const fehler = [];
   page.on("pageerror", (e) => fehler.push(String(e)));
   return { page, fehler };
@@ -199,7 +202,8 @@ for (const [breite, hoehe] of [[1440, 900], [390, 844]]) {
     // Der gerenderte Körper — im Entwicklungsserver steht das Stylesheet samt Kommentaren inline im Kopf.
     assert.doesNotMatch(await page.evaluate(() => document.body.outerHTML), /jumingo|transglobal/i);
     assert.deepEqual(await page.evaluate(() => Object.keys(localStorage)), []);
-    assert.deepEqual(await page.evaluate(() => Object.keys(sessionStorage)), []);
+    // Im sessionStorage steht allein der Merker des Demo-Hinweises (P2), ohne Daten.
+    assert.deepEqual(await page.evaluate(() => ({ ...sessionStorage })), { [DEMO_HINWEIS_SCHLUESSEL]: "1" });
     // Die Seite zeigt die Marke und ruft keine Ressource einer anderen Domain außer der API.
     assert.ok(await page.locator(".pc-brand-img").evaluate((img) => img.complete && img.naturalWidth > 0), "Marken-Lockup nicht geladen");
     assert.deepEqual(fehler, []);
@@ -377,6 +381,7 @@ test("F — Übergabe: feste Adresse der Hauptdomain, Token nur im Fragment", as
 
 test("G — Ergebnisbereich erst nach der Berechnung, Carrierauswahl, „Angaben ändern“ zurück zum Formular", async () => {
   const page = await browser.newPage({ viewport: { width: 1366, height: 768 }, reducedMotion: "reduce" });
+  await ohneDemoHinweis(page);
   const fehler = [];
   page.on("pageerror", (e) => fehler.push(String(e)));
   const p = await setup(page);
@@ -502,6 +507,7 @@ for (const [breite, hoehe] of [[1440, 900], [390, 844]]) {
 
 test("I — reduzierte Bewegung: die Laufzeitpunkte stehen still, der Schalter fehlt", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
+  await ohneDemoHinweis(page);
   await setup(page);
   await oeffne(page);
   await fuelle(page);

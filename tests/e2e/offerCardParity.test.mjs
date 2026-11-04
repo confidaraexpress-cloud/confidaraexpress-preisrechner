@@ -123,6 +123,8 @@ const karteMessen = (page, sel) => page.locator(sel).evaluate((el) => {
     hatTimeline: !!el.querySelector(".offer-timeline"),
     hatHandover: !!el.querySelector(".offer-handover"),
     hatPreis: !!el.querySelector(".offer-price"),
+    hatLogoKachel: !!el.querySelector(".offer-logo-tile"),
+    hatLogoBild: !!el.querySelector(".offer-logo-tile img"),
     ctaGesperrt: el.querySelector(".offer-cta-btn")?.disabled === true,
     text: el.innerText,
   };
@@ -189,6 +191,8 @@ test("2 — jede Karte traegt Uebergabeart, Timeline und Preis", async () => {
     assert.ok(k.hatHandover, `Karte ${i}: keine Uebergabeart`);
     assert.ok(k.hatTimeline, `Karte ${i}: keine Timeline`);
     assert.ok(k.hatPreis, `Karte ${i}: kein Preis`);
+    // Der echte Kundenbereich behält seine Carrier-Logos (P2, 2026-11-04: nur die Demo zeigt keine).
+    assert.ok(k.hatLogoKachel && k.hatLogoBild, `Karte ${i}: Logokachel mit Carrier-Logo fehlt im Kundenbereich`);
   }
   await page.close();
 });

@@ -51,14 +51,21 @@ test("1 — die erste Anweisung des Einstiegs ist die Aufwärmmeldung, nie abgew
 });
 
 test("2 — die Insel bleibt klein: nichts aus Router, Vorgang, Anmeldung, Dashboard, Adressdiensten, Karte", () => {
+  const STORAGE = /localStorage|sessionStorage|indexedDB|document\.cookie/;
   const verboten = [
     /styles\/index\.css/, /react-router/, /ShippingFlowContext|useShippingFlow/, /AuthContext|useAuth/,
     /components\/dashboard\//, /pages\//, /AddressSuggestInput|addressValidation|geoapify/i, /maplibre/,
-    /components\/offers\/OfferCard/, /localStorage|sessionStorage|indexedDB|document\.cookie/,
+    /components\/offers\/OfferCard/, STORAGE,
     /jumingo|transglobal/i, /assets\/carriers\/jumingo/,
+    // Kein Modul der Demo (auch nicht die Logo-Entscheidung des Kundenbereichs, utils/carrierLogoView.mjs).
+    /from "[^"]*\/demo\/[^"]*"/, /carrierLogoView/,
   ];
   for (const [datei, src] of INSEL) {
-    for (const muster of verboten) assert.doesNotMatch(src, muster, `${datei}: ${muster}`);
+    // Einzige Ausnahme vom Storage-Verbot: der Merker des Demo-Hinweises (Test 10).
+    for (const muster of verboten) {
+      if (muster === STORAGE && datei === "demoHinweis.mjs") continue;
+      assert.doesNotMatch(src, muster, `${datei}: ${muster}`);
+    }
   }
   const api = ohneKommentare(lies(path.join(SRC, "api", "publicCalculatorApi.js")));
   assert.doesNotMatch(api, /localStorage|jumingo|transglobal/i);
@@ -359,7 +366,69 @@ test("9 — Tarifkarte ohne Carrier-Logo; Laufzeitpunkte pulsieren anhaltbar, ni
   assert.match(liste, /<ul className="pc-offers pc-offers--list" id="pc-offers" data-puls=\{puls \? "an" : "aus"\}>/);
   assert.doesNotMatch(liste, /(?<!aria-)\blive\b|echtzeit|online/i, "der Puls behauptet Verfügbarkeit");
 
-  // Außerhalb des Preisrechners bleibt alles: die Tarifkarte des Portals zeigt ihr Logo weiter.
+  // Außerhalb des Preisrechners bleibt alles: die Tarifkarte des Portals zeigt ihr Logo weiter — seit P2
+  // (2026-11-04) über carrierLogoAnzeige, das nur in der Demo kein Logo liefert (utils/carrierLogoView.test.mjs).
   const portal = ohneKommentare(lies(path.join(SRC, "components", "offers", "OfferCard.jsx")));
-  assert.match(portal, /<img src=\{carrierLogo\} alt=\{carrierName\}/, "die Tarifkarte des Portals verliert ihr Logo");
+  assert.match(portal, /const logoAnzeige = carrierLogoAnzeige\(carrierLogo\);/, "die Tarifkarte des Portals verliert ihr Logo");
+  assert.match(portal, /<img src=\{logoAnzeige\.logo\} alt=\{carrierName\}/, "die Tarifkarte des Portals verliert ihr Logo");
+});
+
+test("10 — Demo-Hinweis: nur in der Insel, genau ein Storage-Schlüssel in genau einer Datei, belegte Texte", async () => {
+  // Die bewusste Ausnahme vom Storage-Verbot (P2, Betreiberentscheidung 2026-11-04): nur sessionStorage, nur in
+  // demoHinweis.mjs, nur über den einen Schlüssel — gelesen und geschrieben im try/catch.
+  const mitStorage = INSEL.filter(([, src]) => /localStorage|sessionStorage|indexedDB|document\.cookie/.test(src)).map(([d]) => d);
+  assert.deepEqual(mitStorage, ["demoHinweis.mjs"]);
+  const merker = Object.fromEntries(INSEL)["demoHinweis.mjs"];
+  assert.doesNotMatch(merker, /localStorage|indexedDB|document\.cookie/);
+  assert.equal(merker.match(/sessionStorage/g).length, 1, "sessionStorage genau einmal (die Quelle des Merkers)");
+  assert.deepEqual([...merker.matchAll(/speicher\(\)\.(\w+)\(([^)]*)\)/g)].map((m) => `${m[1]}(${m[2]})`),
+    ["getItem(DEMO_HINWEIS_SCHLUESSEL)", "setItem(DEMO_HINWEIS_SCHLUESSEL, \"1\")"]);
+  assert.equal([...merker.matchAll(/try \{ (return )?speicher\(\)/g)].length, 2, "Lesen und Schreiben im try/catch");
+  const hinweis = await import(pathToFileURL(path.join(HIER, "demoHinweis.mjs")).href);
+  assert.equal(hinweis.DEMO_HINWEIS_SCHLUESSEL, "ce-preisrechner-demo-hinweis");
+
+  // Gerendert nur im Einstieg der Insel, als Geschwister des Rechners — kein anderer Teil der Anwendung (also auch
+  // nicht der angemeldete Kundenbereich) kennt den Dialog.
+  assert.match(MAIN, /import \{ DemoHinweisDialog \} from "\.\/DemoHinweisDialog\.jsx";/);
+  assert.match(MAIN, /<PublicCalculatorApp[\s\S]*?\/>\s*(\{\}\s*)?<DemoHinweisDialog \/>\s*<\/ContentErrorBoundary>/);
+  const ausserhalb = [];
+  const durchsuche = (ordner) => {
+    for (const e of fs.readdirSync(ordner, { withFileTypes: true })) {
+      const p = path.join(ordner, e.name);
+      if (e.isDirectory()) { if (p !== HIER) durchsuche(p); continue; }
+      if (/\.(jsx|js|mjs)$/.test(e.name) && /DemoHinweis|demoHinweis/.test(ohneKommentare(lies(p)))) ausserhalb.push(path.relative(SRC, p));
+    }
+  };
+  durchsuche(SRC);
+  assert.deepEqual(ausserhalb, [], "der Demo-Hinweis gehört allein in die Insel des Preisrechners");
+
+  // Dialog: gemeinsames Dialogverhalten, Portal an <body>, zwei Aktionen, kein Schließen-Symbol, kein Speicherzugriff.
+  const dialog = Object.fromEntries(INSEL)["DemoHinweisDialog.jsx"];
+  assert.match(dialog, /const ref = useDialog\(\{ open: offen, onClose: zumRechner, returnFocusTo: rechnerTitel \}\);/);
+  assert.match(dialog, /createPortal\(/);
+  assert.match(dialog, /document\.body,\s*\);/);
+  assert.match(dialog, /role="dialog" aria-modal="true"\s+aria-labelledby="pc-demo-hinweis-titel" aria-describedby="pc-demo-hinweis-text"/);
+  assert.equal([...dialog.matchAll(/<(a|button)\b/g)].length, 2, "genau zwei Aktionen");
+  assert.match(dialog, /<a className="pc-button pc-button--secondary" id="pc-demo-hinweis-demo" href=\{DEMO_URL\}>\{TEXT\.demo\}<\/a>/);
+  assert.match(dialog, /<button type="button" className="pc-button pc-button--primary" id="pc-demo-hinweis-rechner" ref=\{rechner\}\s+onClick=\{zumRechner\}>/);
+  assert.equal(hinweis.DEMO_URL, "https://confidaraexpress.de/demo");
+  assert.ok(HTML_OHNE.includes(`<a class="pc-header-demo" href="${hinweis.DEMO_URL}">Demo ansehen</a>`), "dieselbe Demo wie im Kopf");
+
+  // Texte: die Frage und die zwei Aktionen wie entschieden; der Satz zur Demo ohne Versprechen (wie Test 6).
+  assert.equal(hinweis.DEMO_HINWEIS_TEXTE.titel, "Möchten Sie zuerst den Kundenbereich ansehen?");
+  assert.equal(hinweis.DEMO_HINWEIS_TEXTE.demo, "Demo ansehen");
+  assert.equal(hinweis.DEMO_HINWEIS_TEXTE.rechner, "Zum Preisrechner");
+  for (const muster of [/garantier|Garantie/i, /günstigst|Bestpreis/i, /\d+\s*%/, /in \d+\s*(Minuten|Stunden|Sekunden)/i, /jumingo|transglobal/i]) {
+    for (const satz of [hinweis.DEMO_HINWEIS_TEXTE.text, hinweis.DEMO_HINWEIS_TEXTE.zusatz]) assert.doesNotMatch(satz, muster);
+  }
+  assert.match(hinweis.DEMO_HINWEIS_TEXTE.text, /mit Beispieldaten\.$/);
+  assert.equal(hinweis.DEMO_HINWEIS_TEXTE.zusatz, "Sie öffnet sich ohne Anmeldung — nichts wird gebucht.");
+  assert.match(dialog, /<div className="pc-dialog-text" id="pc-demo-hinweis-text">\s*<p>\{TEXT\.text\}<\/p>\s*<p>\{TEXT\.zusatz\}<\/p>\s*<\/div>/);
+
+  // Stil: fest über der Seite, ohne Animation und ohne Übergang.
+  const css = ohneKommentare(lies(path.join(SRC, "styles", "public-calculator.css")));
+  const regel = (sel) => css.match(new RegExp(`${sel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\{([^}]*)\\}`))?.[1] ?? "";
+  assert.match(regel(".pc-page .pc-dialog-schleier"), /position: fixed;[\s\S]*z-index: var\(--ce-z-dialog\);/);
+  assert.match(regel(".pc-page .pc-dialog-schleier[hidden]"), /display: none;/);
+  assert.doesNotMatch(css.match(/\.pc-dialog[\w-]*[^{]*\{[^}]*\}/g).join("\n"), /animation|transition/, "der Dialog bewegt sich");
 });

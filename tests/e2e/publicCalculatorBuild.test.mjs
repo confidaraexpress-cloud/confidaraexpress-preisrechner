@@ -17,6 +17,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import { ohneDemoHinweis } from "./helpers/demoHinweis.mjs";
 import { chromium } from "playwright";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
@@ -148,6 +149,8 @@ test("B2 — Build-Bericht: gzip und brotli je Asset gegen die festgeschriebene 
 // Was eine Seite beim ersten Aufruf an JS und CSS tatsächlich lädt — im Browser gezählt, komprimiert gerechnet.
 async function erstaufruf(basis, pfad, ordner) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  // Gemessen wird die Seite selbst; der Demo-Hinweis (P2) ist in diesem Tab schon beantwortet.
+  await ohneDemoHinweis(ctx);
   await ctx.route("**/api.confidaraexpress.de/**", API_MOCK);
   const page = await ctx.newPage();
   const geladen = new Set();
@@ -176,6 +179,7 @@ test("B3 — Erstaufruf: weniger JS und CSS als der heutige Erstaufruf der Domai
 
 async function messe(url) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await ohneDemoHinweis(ctx);
   await ctx.route("**/api.confidaraexpress.de/**", API_MOCK);
   const page = await ctx.newPage();
   const cdp = await ctx.newCDPSession(page);
@@ -234,6 +238,7 @@ const BREITEN = [[1920, 1080], [1440, 900], [1366, 768], [768, 1024], [390, 844]
 
 async function rechnerkarte(viewport, { ohneJs = false, verfuegbar = true } = {}) {
   const ctx = await browser.newContext({ viewport });
+  await ohneDemoHinweis(ctx);
   await ctx.route("**/api.confidaraexpress.de/**", (route) => (
     new URL(route.request().url()).pathname === "/api/public/price-quote/prepare"
       ? route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ available: verfuegbar }) })

@@ -6,6 +6,7 @@ import { createShippingWarmupSignal } from "../utils/shippingWarmup.mjs";
 import { availabilityFromPrepare } from "../utils/publicCalculatorView.mjs";
 import { ContentErrorBoundary } from "../components/common/ContentErrorBoundary";
 import { PublicCalculatorApp } from "./PublicCalculatorApp.jsx";
+import { DemoHinweisDialog } from "./DemoHinweisDialog.jsx";
 
 // ── Öffentlicher Preisrechner: Einstieg der Insel ────────────────────────────
 // Die erste Anweisung meldet den Seitenaufruf, damit der Server den Kaltstart der
@@ -57,6 +58,8 @@ if (ziel) {
         resultsHost={document.getElementById("pc-results")}
         mapHost={document.getElementById("pc-hero-map-canvas")}
       />
+      {/* Der Demo-Hinweis beim ersten Öffnen (P2): Geschwister des Rechners, per Portal am Ende von <body>. */}
+      <DemoHinweisDialog />
     </ContentErrorBoundary>,
   );
 }

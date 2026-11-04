@@ -11,6 +11,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import { ohneDemoHinweis } from "./helpers/demoHinweis.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -71,6 +72,7 @@ async function setup(page, { quote } = {}) {
 
 async function neueSeite(viewport = { width: 1440, height: 1000 }) {
   const page = await browser.newPage({ viewport });
+  await ohneDemoHinweis(page);
   const fehler = [];
   page.on("pageerror", (e) => fehler.push(String(e)));
   return { page, fehler };

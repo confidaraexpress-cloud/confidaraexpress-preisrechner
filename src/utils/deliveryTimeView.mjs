@@ -34,6 +34,7 @@
 // Tagesendwert 17:00. Entschieden wird allein an der Uhrzeit.
 
 import { readDeliveryProjection } from "./deliveryProjectionView.mjs";
+import { deliveryContractOf } from "./deliveryContractView.mjs";
 
 /** Grenze, ab der eine Zustellzeit als „früh“ HERVORGEHOBEN wird: 900 Minuten
  *  = 15:00 Uhr.
@@ -60,6 +61,38 @@ export function normalizeDeliveryTime(value) {
   const min = Number(m[2]);
   if (!(h >= 0 && h <= 23) || !(min >= 0 && min <= 59)) return "";
   return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
+
+// „H:MM“ oder „HH:MM“ in einem sichtbaren Text. Die Grenzen (keine Ziffer, kein
+// Doppelpunkt direkt davor oder danach) prüft die Schleife — bewusst ohne
+// Lookbehind, den ältere Safari-Versionen nicht parsen.
+const UHRZEIT_IM_TEXT = /(\d{1,2}):(\d{2})/g;
+const GRENZZEICHEN = /[\d:]/;
+
+/** Alle gültigen Uhrzeiten eines sichtbaren Textes, in Leserichtung:
+ *  `{ start, end, text, minutes }` — `text` ist die Fundstelle Zeichen für
+ *  Zeichen („9:00“ bleibt „9:00“). Lange Zahlen, ungültige Zeiten und
+ *  Sekundenangaben sind keine Uhrzeit.
+ *
+ *  EINE Erkennung für zwei reine Darstellungsfragen: die grüne Uhrzeit im
+ *  Servicenamen (serviceNameTimeView.mjs) und die Frage, ob ein Name bereits
+ *  eine Uhrzeit nennt (`deliveryTimeOfDay`). Eine Zustellzeit entsteht daraus
+ *  nie. */
+export function uhrzeitenImText(value) {
+  const text = typeof value === "string" ? value : "";
+  const treffer = [];
+  for (const m of text.matchAll(UHRZEIT_IM_TEXT)) {
+    const start = m.index;
+    const end = start + m[0].length;
+    const davor = start > 0 ? text[start - 1] : "";
+    const danach = end < text.length ? text[end] : "";
+    if (GRENZZEICHEN.test(davor) || GRENZZEICHEN.test(danach)) continue;
+    const stunde = Number(m[1]);
+    const minute = Number(m[2]);
+    if (stunde > 23 || minute > 59) continue;
+    treffer.push({ start, end, text: m[0], minutes: stunde * 60 + minute });
+  }
+  return treffer;
 }
 
 /** Die Zustelluhrzeit eines Tarifs als „HH:MM" — oder "".
@@ -212,4 +245,84 @@ export function earlyDeliveryNote(tariff) {
   if (!isEarlyDelivery(tariff)) return "";
   const zeit = deliveryTimeLabel(tariff);
   return zeit ? `Lieferung ${zeit}` : "";
+}
+
+// ─── TAGESZEIT DER ZUSTELLUNG — EINE REGEL FÜR ALLE FLÄCHEN (P4, 2026-11-04) ───
+//
+// Betreiberentscheidung 2026-11-04 (P4): jedes Angebot nennt die Tageszeit
+// seiner Zustellung in genau einem von drei Fällen — auf der Tarifkarte, im
+// Detailbereich, in der Buchungsleiste, im öffentlichen Preisrechner und in
+// der Demo gleich:
+//
+//   1. belegte Uhrzeit (`deliveryTimeUntilOf`: Anbieteruhrzeit, sonst die
+//      belegte Zeitleistung der Server-Prognose) → „bis 12:00 Uhr“; vor 15:00
+//      zusätzlich das grüne Feld „Lieferung bis 12:00 Uhr“ (`earlyDeliveryNote`)
+//   2. Zustelltag des Anbieters oder Prognose des Servers, aber keine
+//      Uhrzeit → „Zustellung im Tagesverlauf“
+//   3. sonst keine Aussage: ohne Zustelltag (nur eine Laufzeit oder „Auf
+//      Anfrage“) — und ohne Uhrzeit auch dann nicht, wenn der kuratierte
+//      Produktname selbst eine Uhrzeit nennt („Express 12:00“). Neben dem Namen
+//      stünde „im Tagesverlauf“ im Widerspruch; solange die Zeit nicht belegt
+//      ist, bleibt der Name die einzige Angabe (TNT 49).
+//
+// „Zustellung im Tagesverlauf“ ist KEINE Uhrzeit. Lieferzeitfilter,
+// Fristgruppen, Uhrzeitauswahl, Sortierung und Auszeichnungen lesen weiter nur
+// `deliveryTimeUntilOf`/`deliveryTimeMinutes` — eine Frist mit Uhrzeit erfüllt
+// der Tagesverlauf nie. Der Produktname erzeugt hier nie eine Uhrzeit; er
+// unterdrückt nur den Tagesverlauf-Satz. Keine Zusage: kein „garantiert“, keine
+// Obergrenze, die niemand belegt hat.
+
+export const DELIVERY_TIME_OF_DAY_KIND = Object.freeze({
+  TIME: "time",
+  DAY_COURSE: "dayCourse",
+  NONE: "none",
+});
+
+/** Der Satz für Fall 2 — als eigene Zeile und hinter „Zustellung“ bzw. einem
+ *  Datum („16.09.2026, im Tagesverlauf“). */
+export const DELIVERY_DAY_COURSE_TEXT = Object.freeze({
+  line: "Zustellung im Tagesverlauf",
+  inline: "im Tagesverlauf",
+});
+
+const KEINE_TAGESZEIT = Object.freeze({ kind: DELIVERY_TIME_OF_DAY_KIND.NONE, line: "", inline: null });
+const TAGESVERLAUF = Object.freeze({
+  kind: DELIVERY_TIME_OF_DAY_KIND.DAY_COURSE,
+  line: DELIVERY_DAY_COURSE_TEXT.line,
+  inline: DELIVERY_DAY_COURSE_TEXT.inline,
+});
+const MIT_ZUSTELLTAG = new Set(["range", "date", "estimate"]);
+
+// Trägt das Angebot eine Uhrzeitangabe, die sich nicht als „HH:MM“ lesen lässt
+// (Anbieterfeld, Minutenfeld oder eine Prognose-Uhrzeit außerhalb des Vertrags)?
+// Dann ist die Tageszeit unklar — sie wird weder gezeigt noch zum Tagesverlauf
+// (fail-closed).
+function unlesbareUhrzeitangabe(t) {
+  const roh = t && typeof t === "object" ? t : {};
+  if (typeof roh.deliveryTimeUntil === "string" && roh.deliveryTimeUntil.trim() !== "") return true;
+  if (Number.isFinite(roh.deliveryTimeUntilMinutes)) return true;
+  const prognose = roh.deliveryProjection;
+  return !!prognose && typeof prognose === "object" && typeof prognose.timeUntil === "string"
+    && prognose.timeUntil.trim() !== "";
+}
+
+/** Die Tageszeit der Zustellung eines Angebots — einer der drei Fälle oben:
+ *  `{ kind, line, inline }`. `line` ist die eigene Zeile („bis 12:00 Uhr“,
+ *  „Zustellung im Tagesverlauf“, ""), `inline` die Form hinter „Zustellung“
+ *  oder einem Datum („bis 12:00 Uhr“, „im Tagesverlauf“, `null`). */
+export function deliveryTimeOfDay(tariff) {
+  const zeit = deliveryTimeLabel(tariff);
+  if (zeit) return Object.freeze({ kind: DELIVERY_TIME_OF_DAY_KIND.TIME, line: zeit, inline: zeit });
+  if (unlesbareUhrzeitangabe(tariff)) return KEINE_TAGESZEIT;
+  if (!MIT_ZUSTELLTAG.has(deliveryContractOf(tariff).kind)) return KEINE_TAGESZEIT;
+  // Der kuratierte Name des Servers; die Ersatznamen der Oberfläche („Express“,
+  // „Versandservice“) tragen nie eine Uhrzeit.
+  if (uhrzeitenImText(tariff?.publicServiceName).length > 0) return KEINE_TAGESZEIT;
+  return TAGESVERLAUF;
+}
+
+/** Die Tageszeit als eigene Zeile: „bis 12:00 Uhr“, „Zustellung im
+ *  Tagesverlauf“ — oder "" ohne Aussage. */
+export function deliveryTimeOfDayLabel(tariff) {
+  return deliveryTimeOfDay(tariff).line;
 }

@@ -109,11 +109,12 @@ export function BookingLiveSummary({ tariff, priceView, pickupWindow, vatMode })
         {!shopLabel && !handoverDate && !win && !handover.isDropoff && <span className="blsum-sub">nach Auswahl</span>}
       </div>
 
-      {/* Zone 3 — Zustellung */}
+      {/* Zone 3 — Zustellung; darunter die Tageszeit wie auf der Karte („bis 12:00 Uhr",
+          „Zustellung im Tagesverlauf" oder nichts — deliveryTimeView.mjs) */}
       <div className="blsum-zone blsum-delivery">
         <span className="blsum-label">{zustellung.label}</span>
         <span className="blsum-val">{zustellung.value}</span>
-        {zustellung.until && <span className="blsum-sub">{zustellung.until} Uhr</span>}
+        {zustellung.timeOfDay && <span className="blsum-sub">{zustellung.timeOfDay}</span>}
       </div>
 
       {/* Zone 4 — Preis: „Gesamt" bei bestätigtem Preis, sonst „Versand" (+ Zustandshinweis);

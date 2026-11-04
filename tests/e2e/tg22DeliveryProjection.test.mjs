@@ -256,13 +256,15 @@ test("A — Abholung Montag, Laufzeit 1–2: „Voraussichtliche Zustellung Di. 
   const ende = karte.locator(".offer-tl-node--end");
   assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(ende.locator(".offer-tl-primary")), `${kurz(MO_MIN)} – ${kurz(MO_MAX)}`);
-  assert.equal(await ende.locator(".offer-tl-sub").count(), 0, "unter der Prognose steht eine Uhrzeit");
+  // P4 (2026-11-04): ohne belegte Uhrzeit steht unter der Prognose „Zustellung im Tagesverlauf" — keine Uhrzeit.
+  assert.deepEqual(await alleTexte(ende.locator(".offer-tl-sub")), ["Zustellung im Tagesverlauf"]);
+  assert.doesNotMatch(await inhalt(ende), /\d{1,2}:\d{2}|\bUhr\b/, "unter der Prognose steht eine Uhrzeit");
 
   const panel = await oeffneDetails(page, TG_MO);
   const laufzeit = panel.locator('[data-profile-section="transit"]');
   assert.deepEqual(await zeilenVon(laufzeit), [
     ["Voraussichtliche Laufzeit", "1–2 Tage"],
-    ["Voraussichtliche Zustellung", `${kurz(MO_MIN)} – ${kurz(MO_MAX)}`],
+    ["Voraussichtliche Zustellung", `${kurz(MO_MIN)} – ${kurz(MO_MAX)}, im Tagesverlauf`],
   ]);
   assert.deepEqual(await alleTexte(laufzeit.locator(".offer-profile-note")), [
     "Die Laufzeit ist eine Schätzung des Versanddienstleisters und keine Zustellzusage.",
@@ -304,7 +306,7 @@ test("C — Laufzeit „1+“: „ab …“ und „ab 1 Tag“ — keine erfunde
   const panel = await oeffneDetails(page, TG_OFFEN);
   assert.deepEqual(await zeilenVon(panel.locator('[data-profile-section="transit"]')), [
     ["Voraussichtliche Laufzeit", "ab 1 Tag"],
-    ["Voraussichtliche Zustellung", `ab ${kurz(MO_MIN)}`],
+    ["Voraussichtliche Zustellung", `ab ${kurz(MO_MIN)}, im Tagesverlauf`],
   ]);
   assert.doesNotMatch(await inhalt(karte.locator(".offer-tl-node--end")), /–/, "eine Obergrenze wurde erfunden");
   assert.deepEqual(fehler, []);
@@ -338,7 +340,9 @@ test("E — Privatadresse: die Buchungsseite zeigt die Prognose; Wahl der Liefer
   await waehle(page, TG_MO);
   assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-label")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-val")), `${lang(MO_MIN)} – ${lang(MO_MAX)}`);
-  assert.equal(await page.locator(".blsum-delivery .blsum-sub").count(), 0, "eine Uhrzeit auf der Buchungsseite");
+  // P4: dieselbe Tageszeit wie auf der Karte — „Zustellung im Tagesverlauf", keine Uhrzeit.
+  assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-sub")), "Zustellung im Tagesverlauf",
+    "die Buchungsseite nennt die Tageszeit der Karte nicht");
   // G6/M9 (2026-10-27): die Zustellung steht einmal, im Beleg — das ausgewählte Angebot wiederholt sie nicht.
   assert.equal(await page.locator(".offsum-fact, .offsum-facts").count(), 0);
   await waehleLieferadresse(page, true);

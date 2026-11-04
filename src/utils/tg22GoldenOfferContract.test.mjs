@@ -345,7 +345,8 @@ test("E1 — nur eine Laufzeit: „Voraussichtliche Laufzeit · 1–2 Tage“, k
   assert.equal(z.label, "Voraussichtliche Laufzeit");
   assert.equal(z.transit, "1–2 Tage");
   assert.equal(z.day, null);
-  assert.deepEqual(deliveryInfo(TG22), { label: "Voraussichtliche Laufzeit", value: "1–2 Tage", until: null, isRange: false });
+  // P4: nur eine Laufzeit ist kein Zustelltag — keine Tageszeit, auch kein „im Tagesverlauf“.
+  assert.deepEqual(deliveryInfo(TG22), { label: "Voraussichtliche Laufzeit", value: "1–2 Tage", timeOfDay: null, isRange: false });
 });
 
 test("E2 — Zustelldaten des Angebots: „Zustellung“ mit Zeitraum und „bis“-Uhrzeit bleiben erhalten", () => {
@@ -353,7 +354,7 @@ test("E2 — Zustelldaten des Angebots: „Zustellung“ mit Zeitraum und „bis
   assert.equal(z.kind, "range");
   assert.equal(z.label, DELIVERY_LABEL.DATED);
   assert.deepEqual(deliveryInfo(JUMINGO), {
-    label: "Zustellung", value: "16.09.2026 – 17.09.2026", until: "bis 18:00", isRange: true,
+    label: "Zustellung", value: "16.09.2026 – 17.09.2026", timeOfDay: "bis 18:00 Uhr", isRange: true,
   });
 });
 
@@ -364,7 +365,7 @@ test("E3 — gleicher Tag, Einzeldatum, nichts: Tag, Tag, „Auf Anfrage“", ()
   assert.equal(deliveryInfo({ deliveryDate: "2026-09-18" }).value, "18.09.2026");
   assert.equal(deliveryInfo({ deliveryDate: "2026-09-18" }).label, "Zustellung");
   const nichts = deliveryInfo({});
-  assert.deepEqual(nichts, { label: "Zustellung", value: DELIVERY_ON_REQUEST, until: null, isRange: false });
+  assert.deepEqual(nichts, { label: "Zustellung", value: DELIVERY_ON_REQUEST, timeOfDay: null, isRange: false });
   assert.equal(deliveryContractOf(null).kind, "unknown");
   assert.equal(deliveryContractOf({ deliveryTimeUntil: "bis 12:00" }).until, "bis 12:00");
 });

@@ -17,7 +17,7 @@ import {
 import { isIndicativePrice, INDICATIVE_PRICE_LABEL, INDICATIVE_PRICE_EXPLANATION }
   from "../../utils/priceCompletenessView.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
-import { earlyDeliveryNote, deliveryTimeLabel } from "../../utils/deliveryTimeView.mjs";
+import { earlyDeliveryNote, deliveryTimeOfDay, deliveryTimeOfDayLabel } from "../../utils/deliveryTimeView.mjs";
 import { serviceNameSegments } from "../../utils/serviceNameTimeView.mjs";
 import { offerDebugView, offerDebugCardClass } from "../../utils/offerDebugView.mjs";
 import { chargeableWeightLine, labelCapabilityLine, OFFER_METADATA_LABEL } from "../../utils/offerMetadataView.mjs";
@@ -29,7 +29,7 @@ import { pickupContractOf, pickupTimeText, pickupWindowDetailText, pickupDayLabe
 import { deliveryContractOf } from "../../utils/deliveryContractView.mjs";
 import { serviceDetailsView } from "../../utils/serviceDetailsView.mjs";
 import { packageRulesLines } from "../../utils/packageRulesView.mjs";
-import { projectedDeliveryText, projectedDeliveryDateText, projectedDeliveryTimeText, projectedDeliveryNote,
+import { projectedDeliveryText, projectedDeliveryDateText, projectedDeliveryNote,
          DELIVERY_PROJECTION_TEXT } from "../../utils/deliveryProjectionView.mjs";
 import { ServiceProfileDetails } from "./ServiceProfileDetails";
 import { carrierAppliesLabel, LABEL_HANDLING_TEXT } from "../../utils/labelHandling.mjs";
@@ -146,7 +146,11 @@ function buildEnd(t, etaLabel, earlyNote) {
   // wird hereingereicht, nicht neu berechnet). Damit können Anzeige und
   // Unterdrückung nicht auseinanderlaufen — auch nicht in dem Randfall, in dem
   // `isEarlyDelivery` zwar true ist, aber kein Zeittext entsteht.
-  const zeitText = deliveryTimeLabel(t);
+  //
+  // P4 (2026-11-04): ohne Uhrzeit steht an derselben Stelle „Zustellung im Tagesverlauf", sobald ein Zustelltag
+  // oder eine Prognose vorliegt — nie neben einer Uhrzeit im Produktnamen („Express 12:00") und nie als Frist.
+  // Die Regel steht einmal in deliveryTimeView.mjs (`deliveryTimeOfDay`), für Karte, Details, Buchung und Preisrechner.
+  const zeitText = deliveryTimeOfDayLabel(t);
   const secondary = [];
   if (zeitText && !earlyNote) secondary.push(zeitText);
   return { title, primary, secondary };
@@ -301,7 +305,10 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
   // eine belegte Uhrzeit dahinter. Ein Angebot mit Produktprofil nennt sie bereits im Abschnitt „Laufzeit"
   // (ServiceProfileDetails); dort steht sie nicht ein zweites Mal.
   const prognoseText = zustellung.kind === "estimate" ? projectedDeliveryDateText(zustellung.estimate) : null;
-  const prognoseZeit = zustellung.kind === "estimate" ? projectedDeliveryTimeText(zustellung.estimate) : null;
+  // P4: die Tageszeit nach derselben Regel wie der Endknoten — „bis 12:00 Uhr", „im Tagesverlauf" oder nichts
+  // (deliveryTimeView.mjs). Hinter dem Datum der Prognose bzw. als Zeile „Zustellung" bei Anbieterdaten.
+  const tageszeit = deliveryTimeOfDay(t);
+  const prognoseZusatz = zustellung.kind === "estimate" ? tageszeit.inline : null;
 
   // Abholzuschlag nur als neutraler Hinweis — niemals als zusätzlicher Preis.
   const showPickupSurcharge = t.hasPickupSurcharge === true;
@@ -363,7 +370,7 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
   const zeigtPrognose = prognoseText !== null && profil === null;
   const hasTermin = !!(dropoffLabel || abholung.day || abholung.windowFrom || abholung.readyFrom || sameDay
                    || zustellung.kind === "range" || zustellung.kind === "date"
-                   || (zustellung.kind !== "estimate" && zustellung.until) || zeigtPrognose);
+                   || (zustellung.kind !== "estimate" && tageszeit.inline) || zeigtPrognose);
   const hasLinks = carrierLinkItems.length > 0;
   // Die Merkmalsmarken der Kartenfläche gibt es seit 2026-10-04 nicht mehr. Ohne Profil nennen die Hauptmerkmale
   // Drucker und Versandlabel; das Profil nennt nur „Versandlabel zum Ausdrucken" und die Sendungsverfolgung. Die
@@ -462,12 +469,12 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
             <DetailRow label="Zustellzeitraum" value={`${fmtDE(zustellung.dayFrom)} – ${fmtDE(zustellung.dayUntil)}`} />
           )}
           {zustellung.kind === "date" && <DetailRow label="Zustelltermin" value={fmtDE(zustellung.day)} />}
-          {zustellung.kind !== "estimate" && zustellung.until && (
-            <DetailRow label="Zustellung" value={`${zustellung.until} Uhr`} />
+          {zustellung.kind !== "estimate" && tageszeit.inline && (
+            <DetailRow label="Zustellung" value={tageszeit.inline} />
           )}
           {zeigtPrognose && (
             <DetailRow label={DELIVERY_PROJECTION_TEXT.label}
-                       value={prognoseZeit ? `${prognoseText}, ${prognoseZeit}` : prognoseText} />
+                       value={prognoseZusatz ? `${prognoseText}, ${prognoseZusatz}` : prognoseText} />
           )}
           {zeigtPrognose && (
             <p className="offer-detail-note offer-projection-note">

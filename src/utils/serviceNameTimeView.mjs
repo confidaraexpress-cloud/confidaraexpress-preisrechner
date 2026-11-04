@@ -20,13 +20,10 @@
 // beim Frühzeit-Hinweisfeld (`FRUEHZUSTELLUNG_GRENZE_MINUTEN`). Eine
 // Tagesendzeit im Namen bliebe neutral, genau wie in der Timeline.
 
-import { FRUEHZUSTELLUNG_GRENZE_MINUTEN } from "./deliveryTimeView.mjs";
-
-// „H:MM“ oder „HH:MM“. Die Grenzen (keine Ziffer, kein Doppelpunkt direkt
-// davor oder danach) prüft die Schleife — bewusst ohne Lookbehind, den ältere
-// Safari-Versionen nicht parsen.
-const UHRZEIT = /(\d{1,2}):(\d{2})/g;
-const GRENZZEICHEN = /[\d:]/;
+// Welche Zeichenfolge eine Uhrzeit ist („H:MM“ oder „HH:MM“, keine Ziffer und
+// kein Doppelpunkt direkt davor oder danach), entscheidet dieselbe Erkennung,
+// die auch prüft, ob ein Name schon eine Uhrzeit nennt (`uhrzeitenImText`).
+import { FRUEHZUSTELLUNG_GRENZE_MINUTEN, uhrzeitenImText } from "./deliveryTimeView.mjs";
 
 /** Zerlegt einen sichtbaren Servicenamen in Anzeigesegmente
  *  `{ text, time }` — `time: true` genau für eine frühe Uhrzeit im Text.
@@ -38,19 +35,11 @@ export function serviceNameSegments(name) {
   if (!text) return [];
   const segmente = [];
   let rest = 0;
-  for (const m of text.matchAll(UHRZEIT)) {
-    const start = m.index;
-    const ende = start + m[0].length;
-    const davor = start > 0 ? text[start - 1] : "";
-    const danach = ende < text.length ? text[ende] : "";
-    if (GRENZZEICHEN.test(davor) || GRENZZEICHEN.test(danach)) continue;
-    const stunde = Number(m[1]);
-    const minute = Number(m[2]);
-    if (stunde > 23 || minute > 59) continue;
-    if (stunde * 60 + minute >= FRUEHZUSTELLUNG_GRENZE_MINUTEN) continue;
-    if (start > rest) segmente.push({ text: text.slice(rest, start), time: false });
-    segmente.push({ text: m[0], time: true });
-    rest = ende;
+  for (const u of uhrzeitenImText(text)) {
+    if (u.minutes >= FRUEHZUSTELLUNG_GRENZE_MINUTEN) continue;
+    if (u.start > rest) segmente.push({ text: text.slice(rest, u.start), time: false });
+    segmente.push({ text: u.text, time: true });
+    rest = u.end;
   }
   if (rest < text.length) segmente.push({ text: text.slice(rest), time: false });
   return segmente;

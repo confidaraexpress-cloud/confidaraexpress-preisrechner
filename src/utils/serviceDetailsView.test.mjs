@@ -402,8 +402,9 @@ test("TG23 — „express_urgent“ ergibt „Schneller Expressversand für eili
     ["Abholung an Ihrer Adresse", null], ["Sendungsverfolgung inklusive", null],
     ["Versandlabel zum Ausdrucken", "PDF · DIN A4 / Thermodruck"],
   ]);
+  // P4: UPS Express Saver stellt bis zum Ende des Arbeitstages zu — ohne belegte Uhrzeit „im Tagesverlauf“.
   assert.deepEqual(v.transit.rows.map((z) => [z.label, z.value]),
-    [["Voraussichtliche Laufzeit", "1 Tag"], ["Voraussichtliche Zustellung", "Do., 17.09."]]);
+    [["Voraussichtliche Laufzeit", "1 Tag"], ["Voraussichtliche Zustellung", "Do., 17.09., im Tagesverlauf"]]);
   assert.equal(v.transit.projectionNote,
     "Aus Abholtag und Laufzeit berechnet; Wochenenden und bundesweite Feiertage sind nicht mitgezählt. Regionale oder ausländische Feiertage können die Zustellung verschieben.");
   assert.deepEqual(v.size.rows.map((z) => [z.label, z.value]),
@@ -479,9 +480,10 @@ test("TG29 — ein nicht belegter Divisor ist eine Aussage: Profil ja, Volumenge
   assert.ok(!/Volumengewicht|÷|5\.000|höhere Gewicht/.test(alleTexte(v)), "eine Volumengewichtserklärung ohne Beleg");
   // Keine erfundene Gewichtsgrenze.
   assert.equal(zeile(v.size, "maxWeight"), undefined);
-  // Die übrigen Abschnitte bleiben — Laufzeit, Prognose, Absicherungsgrenzen, Einschränkungen.
+  // Die übrigen Abschnitte bleiben — Laufzeit, Prognose, Absicherungsgrenzen, Einschränkungen. P4: UPS Express
+  // trägt keine belegte Uhrzeit (UPS nennt sie je Bestimmungsort) — deshalb „im Tagesverlauf“, keine Obergrenze.
   assert.deepEqual(v.transit.rows.map((z) => [z.label, z.value]),
-    [["Voraussichtliche Laufzeit", "1 Tag"], ["Voraussichtliche Zustellung", "Do., 17.09."]]);
+    [["Voraussichtliche Laufzeit", "1 Tag"], ["Voraussichtliche Zustellung", "Do., 17.09., im Tagesverlauf"]]);
   assert.equal(nbsp(zeile(v.cover, "additionalCover").value), "bis 2.500 € Warenwert");
   assert.deepEqual(v.restrictions.rows, [{ id: "notAccepted", label: "Nicht zugelassen", value: "Paletten, Koffer" }]);
   // Keine Uhrzeit, keine Garantie, kein Anbieter.

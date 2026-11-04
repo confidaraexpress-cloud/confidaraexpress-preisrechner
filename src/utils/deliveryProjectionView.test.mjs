@@ -20,6 +20,7 @@ import {
 } from "./deliveryProjectionView.mjs";
 import { deliveryContractOf, DELIVERY_LABEL } from "./deliveryContractView.mjs";
 import { deliveryInfo } from "./bookingSummaryView.mjs";
+import { deliveryTimeOfDayLabel } from "./deliveryTimeView.mjs";
 import { serviceDetailsView, SERVICE_DETAILS_TEXT } from "./serviceDetailsView.mjs";
 import { applyResultFilters, deliveryDeadlineAssessment } from "./offersFilterView.mjs";
 import { assignBadges } from "./offerBadges.js";
@@ -111,14 +112,16 @@ test("4 — Beschriftung „Voraussichtliche Zustellung“ auf Karte, Buchungsfl
   assert.equal(z.kind, "estimate");
   assert.equal(z.label, "Voraussichtliche Zustellung");
   assert.deepEqual({ ...z.estimate }, { dateMin: "2026-09-15", dateMax: "2026-09-16", timeUntil: null });
-  assert.deepEqual(deliveryInfo(TG22), { label: "Voraussichtliche Zustellung", value: "15.09.2026 – 16.09.2026", until: null, isRange: false });
+  // P4: ohne belegte Uhrzeit nennt die Buchungsleiste wie die Karte „Zustellung im Tagesverlauf".
+  assert.deepEqual(deliveryInfo(TG22), { label: "Voraussichtliche Zustellung", value: "15.09.2026 – 16.09.2026",
+    timeOfDay: "Zustellung im Tagesverlauf", isRange: false });
   // Die Karte liest dieselbe Aussage: der Knoten trägt den Titel des Vertrags und die Tage des Servers.
   const ende = abschnitt(code(KARTE), "function buildEnd", "function DetailRow");
   assert.match(ende, /else if \(zustellung\.kind === "estimate"\) primary = projectedDeliveryText\(zustellung\.estimate\);/);
   assert.match(ende, /const title = zustellung\.label;/);
   const profil = serviceDetailsView(TG22);
   assert.deepEqual(profil.transit.rows.find((r) => r.id === "projection"),
-    { id: "projection", label: "Voraussichtliche Zustellung", value: "Di., 15.09. – Mi., 16.09." });
+    { id: "projection", label: "Voraussichtliche Zustellung", value: "Di., 15.09. – Mi., 16.09., im Tagesverlauf" });
   // Eine Prognose ohne den vierten Schlüssel (Server vor TG-L1) bleibt lesbar — ohne Uhrzeit.
   const alt = mit({ deliveryProjection: { kind: "estimated", dateMin: "2026-09-15", dateMax: "2026-09-16" } });
   assert.deepEqual({ ...readDeliveryProjection(alt) }, { dateMin: "2026-09-15", dateMax: "2026-09-16", timeUntil: null });
@@ -131,7 +134,7 @@ test("5 — die Laufzeit des Anbieters bleibt stehen: Karte oben, Zustellvertrag
   const v = serviceDetailsView(TG22);
   assert.deepEqual(v.transit.rows, [
     { id: "transit", label: "Voraussichtliche Laufzeit", value: "1–2 Tage" },
-    { id: "projection", label: "Voraussichtliche Zustellung", value: "Di., 15.09. – Mi., 16.09." },
+    { id: "projection", label: "Voraussichtliche Zustellung", value: "Di., 15.09. – Mi., 16.09., im Tagesverlauf" },
   ]);
   assert.equal(v.transit.note, SERVICE_DETAILS_TEXT.transitNote, "der Hinweis zur Laufzeit ist verschwunden");
   assert.equal(v.transit.projectionNote, DELIVERY_PROJECTION_TEXT.note);
@@ -145,7 +148,9 @@ test("6 — eine Uhrzeit nur als belegte Zeitleistung des Servers — nie aus ei
   // Ein Anbieterfeld neben einer Prognose wird nicht zur Prognose-Uhrzeit (der Server setzt nie beides).
   const mitUhrzeit = mit({ deliveryTimeUntil: "18:00" });
   assert.equal(deliveryContractOf(mitUhrzeit).until, null);
-  assert.equal(deliveryInfo(mitUhrzeit).until, null);
+  assert.equal(readDeliveryProjection(mitUhrzeit).timeUntil, null);
+  // P4: Buchungsleiste und Karte lesen dieselbe Tageszeit-Regel (deliveryTimeView.mjs) — sie laufen nicht auseinander.
+  assert.equal(deliveryInfo(mitUhrzeit).timeOfDay, deliveryTimeOfDayLabel(mitUhrzeit));
   // Ohne Zeitleistung (Zeitraum, timeUntil null) entsteht nirgends eine Uhrzeit.
   for (const text of [projectedDeliveryText(readDeliveryProjection(TG22)), deliveryInfo(TG22).value,
                       JSON.stringify(serviceDetailsView(TG22).transit)]) {
@@ -156,7 +161,7 @@ test("6 — eine Uhrzeit nur als belegte Zeitleistung des Servers — nie aus ei
                      deliveryProjection: { kind: "estimated", dateMin: "2026-09-15", dateMax: "2026-09-15", timeUntil: "12:00" } });
   assert.deepEqual({ ...readDeliveryProjection(zeit) }, { dateMin: "2026-09-15", dateMax: "2026-09-15", timeUntil: "12:00" });
   assert.equal(deliveryContractOf(zeit).until, "bis 12:00");
-  assert.deepEqual(deliveryInfo(zeit), { label: "Voraussichtliche Zustellung", value: "15.09.2026", until: "bis 12:00", isRange: false });
+  assert.deepEqual(deliveryInfo(zeit), { label: "Voraussichtliche Zustellung", value: "15.09.2026", timeOfDay: "bis 12:00 Uhr", isRange: false });
   assert.equal(projectedDeliveryTimeText(readDeliveryProjection(zeit)), "bis 12:00 Uhr");
   assert.deepEqual(serviceDetailsView(zeit).transit.rows.find((r) => r.id === "projection"),
     { id: "projection", label: "Voraussichtliche Zustellung", value: "Di., 15.09., bis 12:00 Uhr" });
@@ -242,7 +247,7 @@ test("12 — Absicherung: die Aussage der Karte ist mit und ohne Prognose identi
 test("13 — JUMiNGO: Zustellzeitraum aus Anbieterdaten unverändert — eine Prognose überschreibt ihn nie", () => {
   const z = deliveryContractOf(JUMINGO);
   assert.deepEqual([z.kind, z.label, z.estimate], ["range", "Zustellung", null]);
-  assert.deepEqual(deliveryInfo(JUMINGO), { label: "Zustellung", value: "16.09.2026 – 17.09.2026", until: "bis 18:00", isRange: true });
+  assert.deepEqual(deliveryInfo(JUMINGO), { label: "Zustellung", value: "16.09.2026 – 17.09.2026", timeOfDay: "bis 18:00 Uhr", isRange: true });
   const mitFremderPrognose = { ...JUMINGO, deliveryProjection: { kind: "estimated", dateMin: "2026-09-15", dateMax: "2026-09-15" } };
   assert.deepEqual(deliveryInfo(mitFremderPrognose), deliveryInfo(JUMINGO));
 });
@@ -250,7 +255,7 @@ test("13 — JUMiNGO: Zustellzeitraum aus Anbieterdaten unverändert — eine Pr
 test("14 — JUMiNGO: die Zustelluhrzeit bleibt sichtbar", () => {
   assert.equal(deliveryContractOf(JUMINGO).until, "bis 18:00");
   const ende = abschnitt(code(KARTE), "function buildEnd", "function DetailRow");
-  assert.match(ende, /const zeitText = deliveryTimeLabel\(t\);/);
+  assert.match(ende, /const zeitText = deliveryTimeOfDayLabel\(t\);/);
   const details = abschnitt(code(KARTE), "function DetailsPanel", "function OfferCardBase");
   assert.ok(details.includes('label="Zustellung"'), "die Zustellzeile der Details fehlt");
 });

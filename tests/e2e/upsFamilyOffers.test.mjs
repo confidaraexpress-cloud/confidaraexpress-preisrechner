@@ -577,7 +577,10 @@ test("A — Vergleich: Standard- und Expressversand auswählbar; UPS · Express 
   const ende = express.locator(".offer-tl-node--end");
   assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(ende.locator(".offer-tl-primary")), kurz(DIENSTAG));
-  assert.equal(await ende.locator(".offer-tl-sub").count(), 0, "unter der Prognose steht eine Uhrzeit");
+  // P4 (2026-11-04): UPS Express 29 trägt keine belegte Uhrzeit (UPS nennt sie je Bestimmungsort) — „Zustellung im
+  // Tagesverlauf", weder 10:30 noch eine Obergrenze 12:00.
+  assert.deepEqual(await alleTexte(ende.locator(".offer-tl-sub")), ["Zustellung im Tagesverlauf"]);
+  assert.equal(await ende.locator(".offer-early-note").count(), 0, "eine Uhrzeit ohne Carrierbeleg");
   await istPreisauskunft(express, "UPS · Express");
   assert.doesNotMatch(await inhalt(express), KEINE_ZUSAGE, "Zeit- oder Garantieaussage an UPS · Express");
 
@@ -617,7 +620,7 @@ test("B — Details UPS · Express: Express-Profil ohne Volumengewichtsformel un
   const abschnitt = (id) => panel.locator(`[data-profile-section="${id}"]`);
   assert.equal(await inhalt(abschnitt("main").locator(".offer-profile-summary")), "Schneller Expressversand für eilige Sendungen.");
   assert.deepEqual(await zeilenVon(abschnitt("transit")), [
-    ["Voraussichtliche Laufzeit", "1 Tag"], ["Voraussichtliche Zustellung", kurz(DIENSTAG)],
+    ["Voraussichtliche Laufzeit", "1 Tag"], ["Voraussichtliche Zustellung", `${kurz(DIENSTAG)}, im Tagesverlauf`],
   ]);
   // Größe & Gewicht: nur die CE-Grenze von einem Packstück und das Abrechnungsgewicht des Servers.
   assert.deepEqual(await zeilenVon(abschnitt("size")), [["Packstücke", "1 je Sendung"], ["Abrechnungsgewicht", "2,00 kg"]]);

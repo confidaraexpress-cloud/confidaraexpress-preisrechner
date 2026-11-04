@@ -440,7 +440,8 @@ test("A — TG23-Karte: UPS · Expressversand · 1 Tag · voraussichtliche Liefe
   const ende = karte.locator(".offer-tl-node--end");
   assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(ende.locator(".offer-tl-primary")), kurz(DIENSTAG));
-  assert.equal(await ende.locator(".offer-tl-sub").count(), 0, "unter der Prognose steht eine Uhrzeit");
+  // P4 (2026-11-04): UPS Express Saver ohne belegte Uhrzeit — „Zustellung im Tagesverlauf", keine Uhrzeit.
+  assert.deepEqual(await alleTexte(ende.locator(".offer-tl-sub")), ["Zustellung im Tagesverlauf"]);
   assert.doesNotMatch(await inhalt(ende), /\d{1,2}:\d{2}|\bUhr\b|–/, "Uhrzeit oder Zeitraum an einer eintägigen Prognose");
   assert.match(await inhalt(karte.locator(".offer-tl-node--start")), /bereit ab 09:00 Uhr/);
 
@@ -517,7 +518,7 @@ test("B — Details: fünf Abschnitte mit dem Express-Profil; Termin & Abholung 
   const laufzeit = abschnittVon(panel, "transit");
   assert.deepEqual(await zeilenVon(laufzeit), [
     ["Voraussichtliche Laufzeit", "1 Tag"],
-    ["Voraussichtliche Zustellung", kurz(DIENSTAG)],
+    ["Voraussichtliche Zustellung", `${kurz(DIENSTAG)}, im Tagesverlauf`],
   ]);
   assert.deepEqual(await alleTexte(laufzeit.locator(".offer-profile-note")), [
     "Die Laufzeit ist eine Schätzung des Versanddienstleisters und keine Zustellzusage.",
@@ -812,10 +813,11 @@ test("G — Buchungsseite: UPS · Expressversand, Lieferprognose, Abholtag, Labe
   assert.equal(await inhalt(page.locator(".booking-carrier-name")), "UPS");
   assert.equal(await inhalt(page.locator(".offsum-service-name")), "Expressversand");
 
-  // Lieferprognose des Servers als TT.MM.JJJJ — ein Tag, ohne Uhrzeit.
+  // Lieferprognose des Servers als TT.MM.JJJJ — ein Tag, ohne Uhrzeit; darunter wie auf der Karte der Tagesverlauf (P4).
   assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-label")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-val")), lang(DIENSTAG));
-  assert.equal(await page.locator(".blsum-delivery .blsum-sub").count(), 0, "eine Uhrzeit an der Prognose");
+  assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-sub")), "Zustellung im Tagesverlauf",
+    "eine Uhrzeit oder keine Tageszeit an der Prognose");
   // G6/M9 (2026-10-27): Zustellung und Abholung stehen einmal, im Beleg — das ausgewählte Angebot wiederholt sie nicht.
   assert.equal(await page.locator(".offsum-fact, .offsum-facts").count(), 0);
 

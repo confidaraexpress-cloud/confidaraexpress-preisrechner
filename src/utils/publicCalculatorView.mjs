@@ -29,7 +29,7 @@ import {
   offerRequiresResidentialChoice, offerResidentialSurchargeFree, RESIDENTIAL_TEXT,
 } from "./residentialPriceInputs.mjs";
 import { carrierAppliesLabel, LABEL_HANDLING_TEXT } from "./labelHandling.mjs";
-import { deliveryTimeLabel, earlyDeliveryNote } from "./deliveryTimeView.mjs";
+import { deliveryTimeOfDayLabel, earlyDeliveryNote } from "./deliveryTimeView.mjs";
 import { vatDisplay } from "./vatDisplayView.mjs";
 // Individuelle Mehrpaketsendungen (Canonical v2.79): derselbe Paketeditor wie im Portal.
 import {
@@ -329,7 +329,9 @@ export function offerPickupView(offer) {
 }
 
 /** Zustellung oder Laufzeit mit dem Zusatz „laut Versanddienstleister" — eine voraussichtliche Zustellung des
- *  Servers (TG-L2) mit „aus Versandtag und Laufzeit berechnet". */
+ *  Servers (TG-L2) mit „aus Versandtag und Laufzeit berechnet". Die Tageszeit (`time`) nach derselben Regel wie
+ *  die Karte im Portal (P4, deliveryTimeView.mjs): vor 15:00 „Lieferung bis 12:00 Uhr", sonst „bis 18:00 Uhr",
+ *  ohne Uhrzeit „Zustellung im Tagesverlauf", ohne Zustelltag oder neben einer Uhrzeit im Namen nichts. */
 export function offerDeliveryView(offer) {
   const z = deliveryContractOf(offer);
   let value;
@@ -344,7 +346,7 @@ export function offerDeliveryView(offer) {
     label: z.label,
     value,
     note: z.kind === "estimate" ? SCHEDULE_TEXT.estimated : SCHEDULE_TEXT.byCarrier,
-    time: frueh || deliveryTimeLabel(offer) || null,
+    time: frueh || deliveryTimeOfDayLabel(offer) || null,
   };
 }
 

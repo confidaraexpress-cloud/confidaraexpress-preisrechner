@@ -26,8 +26,9 @@ import { handoverMode, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "./handoverMode.
 import { chargeableWeightLine, labelCapabilityLine, OFFER_METADATA_LABEL } from "./offerMetadataView.mjs";
 import { offerCardInsurance } from "./coverInsuranceView.mjs";
 import { COVER_INSURANCE_TEXT } from "./insuranceTerms.mjs";
-import { readDeliveryProjection, projectedDeliveryText, projectedDeliveryTimeText, projectedDeliveryNote,
+import { readDeliveryProjection, projectedDeliveryText, projectedDeliveryNote,
          DELIVERY_PROJECTION_TEXT } from "./deliveryProjectionView.mjs";
+import { deliveryTimeOfDay } from "./deliveryTimeView.mjs";
 
 /* Die sichtbaren Texte — hier und nicht im JSX, damit sie geprüft werden können. */
 export const SERVICE_DETAILS_TEXT = Object.freeze({
@@ -155,16 +156,17 @@ export function serviceDetailsView(tariff) {
   // ── 2. Laufzeit — genau einmal, als Schätzung ─────────────────────────────────
   // TG22 Package B / TG-L2: darunter die voraussichtliche Zustellung, die der SERVER aus Abhol- bzw. Abgabetag
   // und Laufzeit gerechnet hat — mit eigenem kurzen Hinweis, eine belegte Uhrzeit dahinter. Die Laufzeit des
-  // Anbieters bleibt stehen.
+  // Anbieters bleibt stehen. P4: hinter den Tagen die Tageszeit nach der gemeinsamen Regel (deliveryTimeView.mjs) —
+  // „bis 12:00 Uhr", ohne belegte Uhrzeit „im Tagesverlauf", neben einer Uhrzeit im Produktnamen nichts.
   const laufzeit = fmtDelivery(t);
   const projektion = readDeliveryProjection(t);
   const prognose = projectedDeliveryText(projektion);
-  const prognoseZeit = projectedDeliveryTimeText(projektion);
+  const prognoseZusatz = prognose ? deliveryTimeOfDay(t).inline : null;
   const transitRows = [];
   if (laufzeit) transitRows.push({ id: "transit", label: SERVICE_DETAILS_TEXT.transitLabel, value: laufzeit });
   if (prognose) {
     transitRows.push({ id: "projection", label: DELIVERY_PROJECTION_TEXT.label,
-                       value: prognoseZeit ? `${prognose}, ${prognoseZeit}` : prognose });
+                       value: prognoseZusatz ? `${prognose}, ${prognoseZusatz}` : prognose });
   }
   const transit = transitRows.length > 0
     ? { rows: transitRows,

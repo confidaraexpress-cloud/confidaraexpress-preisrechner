@@ -25,6 +25,7 @@
 import { isoDayDE, money } from "./formatters.js";
 import { deliveryContractOf, DELIVERY_ON_REQUEST } from "./deliveryContractView.mjs";
 import { projectedDeliveryDateText } from "./deliveryProjectionView.mjs";
+import { deliveryTimeOfDayLabel } from "./deliveryTimeView.mjs";
 import { INDICATIVE_PRICE_LABEL } from "./priceCompletenessView.mjs";
 import { readPriceComponents, PRICE_COMPONENT_TYPE } from "./priceComponentsView.mjs";
 
@@ -45,8 +46,9 @@ export function handoverInfo(tariff) {
 // Welche Aussage gilt und wie sie heißt, steht in deliveryContractView.mjs —
 // dieselbe Regel wie auf der Angebotskarte: „Zustellung" mit den Daten des
 // Angebots, „Voraussichtliche Zustellung" mit der Prognose des Servers (TG22 Package B,
-// TG-L2 — eine belegte Uhrzeit in `until`), „Voraussichtliche Laufzeit" bei reiner Laufzeit,
-// sonst „Auf Anfrage".
+// TG-L2), „Voraussichtliche Laufzeit" bei reiner Laufzeit, sonst „Auf Anfrage".
+// Die Tageszeit darunter (`timeOfDay`) nach derselben Regel wie der Endknoten der Karte
+// (P4, deliveryTimeView.mjs): „bis 12:00 Uhr", „Zustellung im Tagesverlauf" oder `null`.
 // Hier entsteht nur die Schreibweise der Buchungsflächen (TT.MM.JJJJ).
 export function deliveryInfo(tariff) {
   const z = deliveryContractOf(tariff);
@@ -56,7 +58,7 @@ export function deliveryInfo(tariff) {
     z.kind === "estimate" ? projectedDeliveryDateText(z.estimate) :
     z.kind === "transit"  ? z.transit :
     DELIVERY_ON_REQUEST;
-  return { label: z.label, value, until: z.until, isRange: z.kind === "range" };
+  return { label: z.label, value, timeOfDay: deliveryTimeOfDayLabel(tariff) || null, isRange: z.kind === "range" };
 }
 
 // ── Preis ───────────────────────────────────────────────────────────────────

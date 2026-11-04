@@ -511,3 +511,55 @@ test("I — reduzierte Bewegung: die Laufzeitpunkte stehen still, der Schalter f
   assert.equal(await page.locator("#pc-puls").isVisible(), false, "der Schalter steht ohne Puls");
   await page.close();
 });
+
+// J — dieselbe Geometrieregel wie die Zeitleiste des Kundenbereichs (Betreiberentscheidung 2026-11-04, P1): Bezeichnung
+//     und Wert beider Seiten auf gemeinsamen Zeilen — Abhol- und Zustelldatum auf einer Höhe, auch wenn eine Bezeichnung
+//     umbricht —, Textkante = Punktkante links und rechts (bündig mit der Achse), kein Wert ragt aus seiner Spalte.
+const ZEITLEISTE = [
+  angebot({ productKey: pk("U"), publicCarrierId: "ups", publicServiceName: "Standard",
+    deliveryProjection: { kind: "estimated", dateMin: "2026-10-22", dateMax: "2026-10-23", timeUntil: null } }),
+  angebot({ productKey: pk("D"), publicCarrierId: "dhl", publicServiceName: "Express", collectionDate: "2026-10-21",
+    collectionReadyFrom: "09:00", pickupDate: null, pickupTimeFrom: null, pickupTimeUntil: null,
+    deliveryProjection: { kind: "estimated", dateMin: "2026-10-22", dateMax: "2026-10-22", timeUntil: "12:00" } }),
+  angebot({ productKey: pk("P"), publicCarrierId: "dpd", publicServiceName: "Classic", deliveryDate: "2026-10-23",
+    deliveryTimeUntil: "18:00", deliveryTimeUntilMinutes: 1080 }),
+];
+test("J — Zeitleiste: Daten auf einer Höhe, Textkanten an den Punkten", async () => {
+  for (const [breite, hoehe] of [[1440, 900], [1024, 768], [910, 900], [768, 1024], [390, 844], [360, 780]]) {
+    const { page, fehler } = await neueSeite({ width: breite, height: hoehe });
+    // Lange Bezeichnung („Voraussichtliche Zustellung“) mit Zeitraum, Abgabe mit Uhrzeit und Anbieterdatum mit Uhrzeit.
+    await setup(page, { quote: () => ({ status: 200, body: { status: "ok", quotedAt: "2026-10-21T08:00:00.000Z",
+      publicCarriers: CARRIER, availableShippingModes: ["express", "standard"], offers: ZEITLEISTE } }) });
+    await oeffne(page);
+    await fuelle(page);
+    await page.click("#pc-submit");
+    await page.waitForSelector("#pc-offers .pc-offer", { timeout: 30000 });
+    const m = await page.evaluate(() => [...document.querySelectorAll("#pc-offers .pc-offer")].map((k) => {
+      const r = (e) => e.getBoundingClientRect();
+      const achse = k.querySelector(".pc-offer-achse"), a = r(achse);
+      const [start, ziel] = k.querySelectorAll(".pc-fact");
+      const ms = r(start.querySelector(".pc-fact-main")), mz = r(ziel.querySelector(".pc-fact-main"));
+      const zs = start.querySelector(".pc-fact-sub"), zz = ziel.querySelector(".pc-fact-sub");
+      return {
+        datum: Math.abs(ms.top - mz.top),
+        // Der erste Zusatz folgt direkt auf sein Datum — der Wert wird nie auf die Höhe der Nachbarspalte gestreckt.
+        abstand: Math.max(zs ? Math.abs(r(zs).top - ms.bottom) : 0, zz ? Math.abs(r(zz).top - mz.bottom) : 0),
+        links: Math.abs(Math.min(r(start.querySelector("dt")).left, ms.left) - (a.left + parseFloat(getComputedStyle(achse, "::before").left))),
+        rechts: Math.abs(Math.max(r(ziel.querySelector("dt")).right, mz.right) - (a.right - parseFloat(getComputedStyle(achse, "::after").right))),
+        // Jede Angabe bleibt in ihrer Spalte (Bezeichnung, Datum, Zusätze).
+        ueberstand: Math.max(...[start, ziel].flatMap((f) => [...f.querySelectorAll("dt, .pc-fact-main, .pc-fact-sub")]
+          .map((e) => Math.max(r(f).left - r(e).left, r(e).right - r(f).right)))),
+      };
+    }));
+    assert.equal(m.length, ZEITLEISTE.length, `${breite}px: ${m.length} Karten`);
+    m.forEach((k, i) => {
+      assert.ok(k.ueberstand <= 1, `${breite}px Karte ${i}: eine Angabe ragt ${k.ueberstand.toFixed(1)} px aus ihrer Spalte`);
+      assert.ok(k.datum <= 1, `${breite}px Karte ${i}: Abhol- und Zustelldatum ${k.datum.toFixed(1)} px versetzt`);
+      assert.ok(k.abstand <= 1, `${breite}px Karte ${i}: ein Zusatz steht ${k.abstand.toFixed(1)} px abgesetzt unter seinem Datum`);
+      assert.ok(k.links <= 1, `${breite}px Karte ${i}: Textkante ${k.links.toFixed(1)} px neben dem Startpunkt`);
+      assert.ok(k.rechts <= 1, `${breite}px Karte ${i}: Textkante ${k.rechts.toFixed(1)} px neben dem Zustellpunkt`);
+    });
+    assert.deepEqual(fehler, []);
+    await page.close();
+  }
+});

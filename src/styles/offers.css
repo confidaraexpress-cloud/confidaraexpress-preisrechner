@@ -394,7 +394,7 @@
    die echte Höhe. */
 .offer-card {
   content-visibility: auto;
-  contain-intrinsic-size: auto 190px;
+  contain-intrinsic-size: auto 198px;
 }
 /* Rückkehr auf eine gemerkte Scrollposition (NewShipmentPage): bis der Sprung
    sitzt, liegen alle Karten vollständig im Layout — sonst rechnete er mit
@@ -554,18 +554,36 @@
   flex: 1; height: 2px; margin: 0 8px; border-radius: var(--ce-radius-sm);
   background: var(--ce-color-border-default);
 }
-/* Zwei gleich breite Spalten: Start links, Ziel rechts — deckungsgleich mit
-   den beiden Enden der Linie. `minmax(0, 1fr)`: ein breiteres Kind (etwa das
-   Frühzeit-Hinweisfeld im Endknoten) kann seine Spur nicht aufweiten.
+/* Zeitleiste als ein Raster (Betreiberentscheidung 2026-11-04, P1): zwei Spalten
+   im Verhältnis 2 : 3 in jeder Kartenbreite — der Startknoten ist kurz
+   („Abholung heute“, „bereit ab 09:00 Uhr“), der Endknoten trägt die langen
+   Titel („Voraussichtliche Zustellung“) und das Hinweisfeld; bei 1 : 1 brach der
+   Zieltitel in der zweizeiligen Karte um, und das Zieldatum stand eine Zeile
+   tiefer als das Startdatum. Beide Spalten sind nie schmaler als ihr längstes
+   Wort oder ihr Wert („09:00–17:00 Uhr“).
+
+   Drei gemeinsame Zeilen — Titel · Datum · Zusatz (Unterzeile oder Hinweisfeld,
+   künftig auch „Zustellung im Tagesverlauf“) —, die beide Knoten über ein
+   Subgrid teilen: Bricht ein Titel um, rücken beide Daten gemeinsam, Start- und
+   Zieldatum stehen immer auf einer Linie. Die Beschriftung steht wie die
+   Schiene 3 px eingerückt: Textkante = Punktkante, links wie rechts.
 
    Die Beschriftung reserviert die Höhe von Titel, Datum und EINER Zusatzzeile
-   (Unterzeile oder Hinweisfeld, höchstens 20 px) samt zwei Knotenabständen —
+   (Unterzeile oder Hinweisfeld, höchstens 20 px) samt zwei Zeilenabständen —
    sonst ist ein Angebot mit Abholfenster oder Frühzeit-Hinweis höher als seine
    Nachbarn, und ein höherer Block in einer Liste gleichartiger Karten liest
    sich als Fehler. Gilt seit dem Feinschliff (2026-10) auch für die breite
-   Karte: dort trägt jetzt der Ablauf die Zeilenhöhe. */
+   Karte: dort trägt jetzt der Ablauf die Zeilenhöhe. Ohne Subgrid bleiben die
+   Knoten eigene Spalten (Fassung bis 2026-11-03). */
 .offer-tl-labels {
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start;
+  /* Reserve je Zeile (im Raster): eine Titelzeile, das Datum, eine Zusatzzeile von 20 px — die schmalen Stufen unten
+     setzen sie dort höher, wo Titel, Zeitraum oder Zusatz umbrechen können. */
+  --offer-tl-titel: calc(1.3 * var(--ce-text-body-size));
+  --offer-tl-datum: 0px;
+  --offer-tl-zusatz: max(20px, calc(1.35 * var(--ce-text-body-s-size)));
+  display: grid; grid-template-columns: minmax(min-content, 2fr) minmax(min-content, 3fr);
+  column-gap: 16px; row-gap: 2px; align-items: start;
+  padding: 0 3px;
   min-height: calc(2.6 * var(--ce-text-body-size) + 24px);
 }
 .offer-tl-node { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -611,6 +629,23 @@
   /* Bricht der Satz auf einer schmalen Karte um, dann ausgewogen
      („Lieferung bis" / „10:30 Uhr") statt mit einem einzelnen „Uhr". */
   text-wrap: balance;
+}
+
+/* Zeitleiste als Raster (siehe .offer-tl-labels): gemeinsame Zeilen Titel · Datum · Zusatz. */
+@supports (grid-template-rows: subgrid) {
+  .offer-tl-labels {
+    grid-template-rows: minmax(var(--offer-tl-titel), auto) minmax(var(--offer-tl-datum), auto) minmax(var(--offer-tl-zusatz), auto);
+    align-content: start;
+  }
+  .offer-tl-node { display: grid; grid-row: 1 / -1; grid-template-rows: subgrid; align-items: start; }
+  .offer-tl-node--start { grid-column: 1; justify-items: start; }
+  .offer-tl-node--end   { grid-column: 2; justify-items: end; }
+  .offer-tl-title   { grid-row: 1; }
+  .offer-tl-primary { grid-row: 2; }
+  .offer-tl-sub,
+  .offer-early-note { grid-row: 3; }
+  /* Im Raster steht das Hinweisfeld oben in seiner Zeile am rechten Rand (in der Spalte: align-self: flex-end). */
+  .offer-early-note { align-self: start; justify-self: end; }
 }
 
 /* Uhrzeitzeile des Lieferzeitfilters (beide Formular-Popover + Angebots-
@@ -1055,15 +1090,15 @@
   .offer-zone-3 {
     min-height: calc(28px * 1.15 + 10px + 2 * var(--ce-text-button-size) * var(--ce-text-button-line) + 10px);
   }
-  /* Platzhalter: gemessen 294 px (eingeklappt, 670–910 px Kartenbreite, jede Karte gleich). */
-  .offer-card { contain-intrinsic-size: auto 294px; }
+  /* Platzhalter: gemessen 302 px (eingeklappt, 654–910 px Kartenbreite, jede Karte gleich; 2026-11-04). */
+  .offer-card { contain-intrinsic-size: auto 302px; }
 }
 
 @container offers (max-width: 639px) {
   /* Karte voll gestapelt: Zone 1 → Zone 2 → Zone 3 → Zone 4 */
   .offer-card { padding: 16px; }
-  /* Platzhalter: gemessen 381 px (eingeklappt, 324–534 px Kartenbreite, jede Karte gleich). */
-  .offer-card { contain-intrinsic-size: auto 381px; }
+  /* Platzhalter: gemessen 392 px (eingeklappt, 414–634 px Kartenbreite, jede Karte gleich; 2026-11-04). */
+  .offer-card { contain-intrinsic-size: auto 392px; }
   .offer-card-inner {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "zone-1" "zone-2" "zone-3" "zone-4";
@@ -1077,15 +1112,10 @@
   .offer-handover { text-align: left; }
   /* Dieselbe Reservierung wie oben (Titel, Datum, eine Zusatzzeile bis 20 px),
      in den kleineren Stufen dieser Breite (Titel 13 px, Zusatz 12 px). Die
-     Spalten teilen 2 : 3 — der Startknoten ist kurz („Abholung heute",
-     „bereit ab 09:00 Uhr"), der Endknoten trägt die langen Titel
-     („Voraussichtliche Lieferung") und das Hinweisfeld; so bleibt beides auch
-     auf 390 px einzeilig (2026-10-04). */
+     Spalten teilen wie überall 2 : 3 (oben), mit engerem Spaltenabstand. */
   .offer-tl-labels {
-    /* Beide Knoten sind nie schmaler als ihr längstes Wort oder ihr Wert („09:00–17:00 Uhr“, „Voraussichtliche“ — sie
-       liefen sonst bei 320 px heraus). */
-    grid-template-columns: minmax(min-content, 2fr) minmax(min-content, 3fr);
-    gap: 8px;
+    --offer-tl-titel: calc(1.3 * var(--ce-text-body-s-size));
+    column-gap: 8px;
     min-height: calc(2.6 * var(--ce-text-body-s-size) + 24px);
   }
   /* Lange Shop-/Lieferzeitraum-Texte sauber an WORTGRENZEN umbrechen statt
@@ -1110,15 +1140,27 @@
   .offer-actions { flex: 1 1 auto; min-width: 0; margin: 0 0 0 -8px; justify-content: flex-start; }
 }
 
+/* P1 (2026-11-04): Im Kundenbereich (Titel 15 px) bricht „Voraussichtliche Zustellung“ unter etwa 374 px
+   Kartenbreite in der Zielspalte um (gemessen: 364 px zweizeilig, 374 px einzeilig). Ab hier hält JEDE Karte die
+   zweite Titelzeile frei — eine Karte mit „Zustellung“ ist sonst niedriger als ihre Nachbarn (gleich hohe Karten,
+   Betreiberentscheidung 2026-10-04). In rem, damit die Grenze mit der Schrift wächst; mit Abstand zur Messung. */
+@container offers (max-width: 24rem) {
+  /* Platzhalter: gemessen 411 px (eingeklappt, 348–374 px Kartenbreite, jede Karte gleich; 2026-11-04). */
+  .offer-card { contain-intrinsic-size: auto 411px; }
+  .offer-tl-labels { --offer-tl-titel: calc(2.6 * var(--ce-text-body-s-size)); }
+}
+
 /* TG-L2: „Voraussichtliche Zustellung" (174 px) und „bereit ab 09:00 Uhr" (111 px) passen bis etwa 330 px
    Kartenbreite nicht beide einzeilig nebeneinander (gemessen 2026-10-23 bei 390 px Viewport: 282 px für beide
    Spalten). Bricht der Titel um und folgt das Uhrzeitfeld, würde die Karte 16 px höher als ihre Nachbarn — deshalb
    hält hier JEDE Karte die zweite Titelzeile frei (gleich hohe Karten, Betreiberentscheidung 2026-10-04). Mit
-   Abstand zur gemessenen Grenze; die schmale Stufe darunter reserviert ohnehin mehr. */
+   Abstand zur gemessenen Grenze; die schmale Stufe darunter reserviert ohnehin mehr. Seit P1 (2026-11-04) bricht hier
+   im Kundenbereich auch die Unterzeile des Starts um („bereit ab 09:00 Uhr“, „frühester Abholtag“ bei 13 px, gemessen
+   334 px zweizeilig): Die Zusatzzeile hält zwei Zeilen frei (zwei Unterzeilen bzw. das zweizeilige Hinweisfeld). */
 @container offers (max-width: 344px) {
-  /* Platzhalter: gemessen 397 px (eingeklappt, 390–410 px Viewport, jede Karte gleich). */
-  .offer-card { contain-intrinsic-size: auto 397px; }
-  .offer-tl-labels { min-height: calc(2.6 * var(--ce-text-body-s-size) + 40px); }
+  /* Platzhalter: gemessen 427 px (eingeklappt, 324–344 px Kartenbreite, jede Karte gleich; 2026-11-04). */
+  .offer-card { contain-intrinsic-size: auto 427px; }
+  .offer-tl-labels { --offer-tl-zusatz: 36px; min-height: calc(2.6 * var(--ce-text-body-s-size) + 40px); }
 }
 
 /* Schmale Karte (bis 320 px, etwa 320–375 px Viewport): Marke, Ablauf,
@@ -1132,8 +1174,8 @@
    Die Logokachel wird 36 px groß, damit der längste Servicename einzeilig
    bleibt. */
 @container offers (max-width: 320px) {
-  /* Platzhalter: gemessen 473 px (eingeklappt, 254–309 px Kartenbreite, jede Karte gleich). */
-  .offer-card { contain-intrinsic-size: auto 473px; }
+  /* Platzhalter: gemessen 489 px (eingeklappt, 294–318 px Kartenbreite, jede Karte gleich; 2026-11-04). */
+  .offer-card { contain-intrinsic-size: auto 489px; }
   .offer-zone-1 { gap: 8px; }
   .offer-logo-tile { width: 36px; height: 36px; }
   .offer-logo-tile img { width: 26px; height: 26px; }
@@ -1147,6 +1189,15 @@
   @media (pointer: coarse) {
     .offer-zone-4 { min-height: calc(11px + 2 * var(--ce-size-touch-target) + 4px); }
   }
+}
+
+/* P1 (2026-11-04): Unter etwa 288 px Kartenbreite bricht ein Zustellzeitraum („Fr., 06.11. – Mo., 09.11.“) in der
+   Zielspalte zweizeilig um (gemessen: 286 px zweizeilig, 288 px einzeilig). Im gemeinsamen Raster hält hier JEDE Karte
+   die zweite Datumszeile frei — eine Karte mit einem einzelnen Tag ist sonst niedriger als ihre Nachbarn. */
+@container offers (max-width: 18.25rem) {
+  /* Platzhalter: gemessen 509 px (eingeklappt, 254–286 px Kartenbreite, jede Karte gleich; 2026-11-04). */
+  .offer-card { contain-intrinsic-size: auto 509px; }
+  .offer-tl-labels { --offer-tl-datum: calc(2.6 * var(--ce-text-body-s-size)); }
 }
 
 /* Browser ohne Container Queries: dieselben Stufen grob über den Viewport

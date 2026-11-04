@@ -771,19 +771,22 @@
      weiche Lichtflächen: oben ein Ice-Blue-Band, rechts oben ein Kobalt-/Azur-Schimmer, links oben eine Stahlblau-Wolke,
      unten ein Lichtauslauf. Kein CE, keine Route, kein Licht hinter Formularen und Tabellen (eine Flanke an der
      Seitenleiste lag hinter der linken Spalte: gedämpfter Text dort 4,57:1); Karten, Felder und Dialoge bleiben weiß.
-     Die Lichtflächen sind Verlaufslisten mit weichem Auslauf (keine Kante, kein Kreis). */
-  --ce-pr-ed-raum-flaeche: #f0f4fc;             /* Grund · Tinte 16,32:1, Nebentext 6,28:1, gedämpft 4,86:1 */
-  --ce-pr-ed-raum-band: #e8effc;                /* Ice-Blue-Band oben (gedämpft 4,64:1), läuft bis --ce-pr-ed-raum-hoehe aus */
+     Die Lichtflächen sind Verlaufslisten mit weichem Auslauf (keine Kante, kein Kreis). Seit der Betreiberentscheidung
+     vom 2026-11-04 (Variante V2) eine Stufe heller: Grund #f5f7fd statt #f0f4fc (ΔE zu Weiß 4,2 statt 5,8), Band #eef3fd
+     statt #e8effc, die Lichter im selben Verhältnis um ein Fünftel leiser — weiße Karten heben sich weiter ab. */
+  --ce-pr-ed-raum-flaeche: #f5f7fd;             /* Grund · Tinte 16,79:1, Nebentext 6,46:1, gedämpft 5,00:1 */
+  --ce-pr-ed-raum-band: #eef3fd;                /* Ice-Blue-Band oben (gedämpft 4,82:1), läuft bis --ce-pr-ed-raum-hoehe aus */
   --ce-pr-ed-raum-hoehe: 30rem;
   --ce-pr-ed-raum-hoehe-mobil: 20rem;           /* Telefon und Tablet: kürzer, die Übersicht bleibt dort die stärkere Fläche */
-  --ce-pr-ed-raum-schimmer: rgba(0, 74, 252, 0.1), rgba(77, 132, 255, 0.08) 30%, rgba(77, 132, 255, 0.03) 58%; /* rechts oben, Kobalt im Kern */
-  --ce-pr-ed-raum-wolke: rgba(127, 156, 207, 0.16), rgba(127, 156, 207, 0.08) 40%; /* Stahlblau links oben */
-  --ce-pr-ed-raum-auslauf: rgba(77, 132, 255, 0.08), rgba(77, 132, 255, 0.04) 40%; /* unten, unter dem Inhalt */
+  --ce-pr-ed-raum-schimmer: rgba(0, 74, 252, 0.08), rgba(77, 132, 255, 0.064) 30%, rgba(77, 132, 255, 0.024) 58%; /* rechts oben, Kobalt im Kern */
+  --ce-pr-ed-raum-wolke: rgba(127, 156, 207, 0.128), rgba(127, 156, 207, 0.064) 40%; /* Stahlblau links oben */
+  --ce-pr-ed-raum-auslauf: rgba(77, 132, 255, 0.064), rgba(77, 132, 255, 0.032) 40%; /* unten, unter dem Inhalt */
   --ce-pr-ed-raum-kopfleiste-linie: rgba(17, 34, 80, 0.08); /* Kopfleiste: helles Grau läse sich im Band als Lichtstreifen */
   /* Getönte Arbeitsfläche der Übersicht und das gemeinsame Material ihrer Karten (Premium-Dashboard V2; seit Flow
-     Signature V2 ein kühles, helles Blau statt Grau-Blau, seit V3 eine Stufe blauer): darauf weiße Karten mit Haarlinie
-     und einem weichen, kurzen Schatten. Text auf der Fläche: Tinte 15,69:1, Nebentext 6,04:1, gedämpft 4,68:1. */
-  --ce-pr-ed-flaeche-uebersicht: #e9f0fb;
+     Signature V2 ein kühles, helles Blau statt Grau-Blau, seit V3 eine Stufe blauer, seit der Betreiberentscheidung vom
+     2026-11-04 (Ü-V1) im Verhältnis der Arbeitsfläche dezent heller, #eef3fc statt #e9f0fb): darauf weiße Karten mit
+     Haarlinie und einem weichen, kurzen Schatten. Text auf der Fläche: Tinte 16,15:1, Nebentext 6,22:1, gedämpft 4,81:1. */
+  --ce-pr-ed-flaeche-uebersicht: #eef3fc;
   --ce-pr-ed-shadow-flaeche: 0 1px 2px rgba(1, 27, 85, 0.04), 0 14px 32px -24px rgba(1, 27, 85, 0.24);
   /* Confidara Flow Signature (Abschluss nach Betreiberentscheidung 2026-11-02: die Atmosphäre von V4/V5 ohne dekorative
      CE-Monogramme — das offizielle Logo steht allein in Seiten- und Mobilleiste): eine durchgehende blaue Markenatmosphäre
@@ -796,9 +799,9 @@
      Die Glow-Tokens sind Verlaufslisten (Farbe und Zwischenstopps, in der Regel steht danach „transparent“): weicher
      Auslauf statt linearem Abfall, keine Kante am Rand des Lichts. Hinter Datumszeile, Kopfleiste, Modullinks und Fuß
      bleibt es leiser (Text ≥ 4,6:1); bis 85,3125em sind Himmel, Lichtbahn, Flanke, Hof und Boden zurückgenommen. */
-  --ce-pr-ed-flow-nebel-oben: #e6edfb;          /* Ice-Blue-Band: oben hinter der Kopfleiste leiser … */
-  --ce-pr-ed-flow-nebel: #dfe7fb;               /* … am kräftigsten auf Höhe der Aktion (9rem), läuft bis --ce-pr-ed-flow-hoehe aus */
-  --ce-pr-ed-flow-nebel-mobil: #dae5fb;         /* unter der weißen Mobilleiste */
+  --ce-pr-ed-flow-nebel-oben: #eaf0fc;          /* Ice-Blue-Band: oben hinter der Kopfleiste leiser … (Ü-V1, vorher #e6edfb) */
+  --ce-pr-ed-flow-nebel: #e5ecfb;               /* … am kräftigsten auf Höhe der Aktion (9rem), läuft bis --ce-pr-ed-flow-hoehe aus (vorher #dfe7fb) */
+  --ce-pr-ed-flow-nebel-mobil: #e1eafb;         /* unter der weißen Mobilleiste; im Verhältnis des Nebels heller (vorher #dae5fb) */
   --ce-pr-ed-flow-stahl: #7f9ccf;               /* Stahlblau: Ton der Wolke und der Kartenkante */
   --ce-pr-ed-flow-wolke: rgba(127, 156, 207, 0.2);    /* Stahlblau-Wolke oben links, über der Datumszeile */
   --ce-pr-ed-flow-wolke-mobil: rgba(127, 156, 207, 0.24);

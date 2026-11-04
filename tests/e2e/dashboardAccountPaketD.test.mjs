@@ -108,7 +108,8 @@ test("die Übersicht ist bei vorhandenen Daten eine operative Arbeitsfläche", a
 });
 
 // UX-Korrektur C (Betreiberentscheidung 2026-10-27): „Ihre Versanddienstleister“ als Navy-Fläche — seit dem Abschluss
-// (2026-11-02) ohne Linien, Zeichen und CE-Monogramm — für jede Anzahl, die der Server liefert. Die Kacheln einer Reihe sind gleich breit und bleiben in der Fläche;
+// (2026-11-02) ohne Zeichen und CE-Monogramm, seit dem 2026-11-04 wieder mit den feinen geschwungenen Linien — für jede
+// Anzahl, die der Server liefert. Die Kacheln einer Reihe sind gleich breit und bleiben in der Fläche;
 // schmal stehen höchstens drei je Reihe, die letzte Reihe mittig. Die Aktion führt zum Versandkostenrechner.
 const ALLE_CARRIER = [
   { id: "ups", name: "UPS" }, { id: "dhl", name: "DHL Express" }, { id: "dpd", name: "DPD" }, { id: "gls", name: "GLS" },
@@ -133,11 +134,19 @@ for (const anzahl of [1, 3, 5, 8]) {
           return { links: r.left, rechts: r.right, oben: Math.round(r.top), breite: Math.round(r.width) };
         });
         // Seit dem Abschluss (Betreiberentscheidung 2026-11-02) trägt die Fläche kein CE-Monogramm und keine Marke mehr:
-        // keine Ebene davor oder dahinter, keine Zeichnung, kein Markup — nur ihre Verläufe.
+        // keine Ebene davor oder dahinter, keine Zeichnung als Bild — ihre Verläufe und, seit der Betreiberentscheidung vom
+        // 2026-11-04 wieder, genau eine Zeichnung im Markup: die feinen Linien, dekorativ, hinter dem Inhalt, nie klickbar.
         const vor = getComputedStyle(flaeche, "::before"), nach = getComputedStyle(flaeche, "::after");
+        const svg = flaeche.querySelectorAll("svg");
+        const linien = flaeche.querySelector(":scope > svg.ov-carrier-linien");
+        const lr = linien ? linien.getBoundingClientRect() : null;
+        const lcs = linien ? getComputedStyle(linien) : null;
         return {
           hintergrund: getComputedStyle(flaeche).backgroundImage,
-          ebenen: { vor: vor.content, nach: nach.content, bild: `${vor.backgroundImage} ${nach.backgroundImage}`, svg: flaeche.querySelectorAll("svg").length },
+          ebenen: { vor: vor.content, nach: nach.content, bild: `${vor.backgroundImage} ${nach.backgroundImage}`, svg: svg.length },
+          linien: linien ? { versteckt: linien.getAttribute("aria-hidden"), pfade: linien.querySelectorAll("path").length,
+            knoten: linien.querySelectorAll("circle").length, lage: lcs.position, ebene: lcs.zIndex, zeiger: lcs.pointerEvents,
+            deckt: Math.abs(lr.left - f.left) <= 1.5 && Math.abs(lr.right - f.right) <= 1.5 && Math.abs(lr.top - f.top) <= 1.5 && Math.abs(lr.bottom - f.bottom) <= 1.5 } : null,
           namen: [...flaeche.querySelectorAll(".ov-carrier-name")].map((n) => n.textContent.trim()),
           titel: getComputedStyle(flaeche.querySelector(".ov-carrier-titel")).color,
           kacheln, fLinks: f.left, fRechts: f.right, lLinks: l.left, lRechts: l.right,
@@ -149,7 +158,9 @@ for (const anzahl of [1, 3, 5, 8]) {
       assert.equal(m.ebenen.vor, "none", `die Navy-Bühne trägt wieder eine Ebene (CE oder Marke) bei ${breite} px`);
       assert.equal(m.ebenen.nach, "none", `die Navy-Bühne trägt eine zweite Ebene bei ${breite} px`);
       assert.doesNotMatch(m.ebenen.bild, /url\(/, "eine Ebene der Navy-Bühne trägt eine Zeichnung");
-      assert.equal(m.ebenen.svg, 0, "Linien oder Zeichen stehen als Markup in der Fläche");
+      assert.equal(m.ebenen.svg, 1, "außer den Linien steht eine Zeichnung im Markup der Fläche, oder die Linien fehlen");
+      assert.deepEqual(m.linien, { versteckt: "true", pfade: 3, knoten: 3, lage: "absolute", ebene: "-1", zeiger: "none", deckt: true },
+        `die Linien fehlen, sind nicht dekorativ oder liegen nicht hinter dem Inhalt der ganzen Fläche bei ${breite} px`);
       assert.equal(m.titel, "rgb(255, 255, 255)", "der Titel steht nicht weiß auf Navy");
       assert.deepEqual(m.namen, liste.map((c) => c.name), "die Fläche zeigt nicht die Liste des Servers");
       assert.equal(m.ueberlauf, 0, "horizontales Scrollen");

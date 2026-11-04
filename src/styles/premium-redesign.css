@@ -1706,10 +1706,10 @@
 [data-ce-bereich="kunde"] .blsum-price-gross { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 [data-ce-bereich="kunde"] :is(.blsum-price-unit, .pc-price-unit) { margin-left: 0.2em; }
 
-/* Angebotskarte: „Voraussichtliche Zustellung“ bricht auf breiten Karten nicht mehr um (Audit B.4) — der Endknoten
-   bekommt den größeren Teil der Ablaufspalte, Titel in der Beschriftungsstufe. */
+/* Angebotskarte: „Voraussichtliche Zustellung“ bricht auf breiten Karten nicht mehr um (Audit B.4) — Titel in der
+   Beschriftungsstufe; den größeren Teil der Ablaufspalte (2 : 3) bekommt der Endknoten seit 2026-11-04 in jeder Breite
+   (offers.css, Zeitleiste als ein Raster). */
 @container offers (min-width: 59.375rem) {
-  [data-ce-bereich="kunde"] .offer-tl-labels { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
   [data-ce-bereich="kunde"] .offer-tl-title { font-size: var(--ce-text-label-size); white-space: nowrap; }
 }
 

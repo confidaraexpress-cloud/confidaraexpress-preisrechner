@@ -224,13 +224,18 @@ test("C6 — das Hinweisfeld steht IM Endknoten direkt unter dem Lieferdatum, ni
     "das Feld muss im Endknoten nach Datum und Unterzeilen stehen");
   const knotenSchluss = karte.indexOf("</div>", unterzeilen);
   assert.ok(i < knotenSchluss, "das Feld steht nicht mehr im Endknoten");
-  // Die Spur des Endknotens kann sich nicht aufweiten — Timeline und Preisspalte
-  // verziehen sich durch das Feld nicht (gemessen: deliveryTimeFilter-E2E, Test 7).
+  // Die Spuren teilen seit P1 (Betreiberentscheidung 2026-11-04) in jeder Breite 2 : 3 und sind nie schmaler als ihr
+  // längstes Wort; das Feld bricht um, statt seine Spur aufzuweiten — Timeline und Preisspalte verziehen sich durch das
+  // Feld nicht (gemessen: deliveryTimeFilter-E2E, Test 7). Titel, Datum und Zusatz beider Knoten stehen auf drei
+  // gemeinsamen Zeilen (Subgrid), das Feld in der Zusatzzeile.
   const css = lies("src/styles/offers.css").replace(/\/\*[\s\S]*?\*\//g, "");
   const spuren = css.match(/\.offer-tl-labels\s*\{([^}]*)\}/);
   assert.ok(spuren, ".offer-tl-labels fehlt");
-  assert.match(spuren[1], /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/,
-    "die Spuren der Timeline-Beschriftung sind nicht auf minmax(0, 1fr) begrenzt");
+  assert.match(spuren[1], /grid-template-columns:\s*minmax\(min-content,\s*2fr\)\s+minmax\(min-content,\s*3fr\)/,
+    "die Spuren der Timeline-Beschriftung teilen nicht 2 : 3");
+  const raster = css.slice(css.indexOf("@supports (grid-template-rows: subgrid) {\n  .offer-tl-labels"));
+  assert.match(raster, /\.offer-tl-node \{ display: grid; grid-row: 1 \/ -1; grid-template-rows: subgrid;/, "die Knoten teilen keine Zeilen");
+  assert.match(raster, /\.offer-tl-sub,\s*\.offer-early-note \{ grid-row: 3; \}/, "das Feld steht nicht in der Zusatzzeile");
 });
 
 /* ══════════ U) Uhrzeitauswahl — ein Feld statt vieler Pillen ══════════════ */

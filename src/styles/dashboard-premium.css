@@ -666,6 +666,9 @@
 .bm-request-form .field-textarea { width: 100%; }
 .bm-request-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--ce-space-1) var(--ce-space-3); width: 100%; margin-top: var(--ce-space-1); }
 .bm-request-count { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap; }
+/* Große Browserschrift auf schmalen Breiten (24 px bei 320/360 px): die Beschriftung bricht um, statt am Kartenrand
+   angeschnitten zu werden — die Knöpfe des Antrags füllen höchstens die Kartenbreite (Vorbild `.booking-success-wrap .btn-full`). */
+.bm-request .btn { max-width: 100%; white-space: normal; text-align: center; }
 .dn-mode-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .dn-mode-label { font-size: var(--ce-text-body-size); line-height: 1.4286; font-weight: 600; color: var(--ce-color-text-primary); }
 /* R9: in der gewählten Option (brand-soft) erreicht der gedämpfte Hinweis nur 4,30:1;

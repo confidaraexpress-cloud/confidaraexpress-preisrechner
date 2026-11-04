@@ -4,6 +4,7 @@ import { Werte } from "../ui/Werte";
 import { EmptyState, ErrorState } from "../ui/StateView";
 import { money, dateDE, isoDayDE } from "../../utils/formatters";
 import { resolveCarrier, resolveCarrierName } from "../../utils/carrierMap";
+import { carrierLogoAnzeige } from "../../utils/carrierLogoView.mjs";
 import { shipmentRecipient } from "../../utils/shipmentRecipientView.mjs";
 import { getTracking, requestShipmentCancellation } from "../../api/client";
 import { TRACKING_NOT_FOUND } from "../../utils/trackingMessages";
@@ -114,14 +115,18 @@ function EmpfaengerZelle({ s }) {
   );
 }
 
+/* Das Logo eines Carriers in der Liste — in der Demo keines (utils/carrierLogoView.mjs). */
+const carrierLogoVon = (raw) => (raw ? carrierLogoAnzeige(resolveCarrier(raw).logo).logo : null);
+
 /* Versand einer Zeile: Carrier mit Logo, darunter Dienst und Gewicht. */
 function VersandZelle({ s }) {
   const carrier = s.selected_carrier ? resolveCarrier(s.selected_carrier) : null;
+  const logo = carrierLogoVon(s.selected_carrier);
   const dienst = shipmentServiceNameOf(s);
   return (
     <div className="shipment-versand">
       <span className="shipment-versand-carrier">
-        {carrier?.logo && <img className="shipment-versand-logo" src={carrier.logo} alt="" />}
+        {logo && <img className="shipment-versand-logo" src={logo} alt="" />}
         <span>{carrier ? carrier.name : "Carrier offen"}</span>
       </span>
       <span className="shipment-versand-detail">{[dienst, gewichtText(s)].filter((t) => t && t !== "—").join(" · ") || "—"}</span>
@@ -586,8 +591,8 @@ export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShi
                   <div className="ce-list-card-row">
                     <span className="ce-list-card-key">Carrier</span>
                     <span className="ce-list-card-val shipment-versand-carrier">
-                      {s.selected_carrier && resolveCarrier(s.selected_carrier).logo && (
-                        <img className="shipment-versand-logo" src={resolveCarrier(s.selected_carrier).logo} alt="" />
+                      {carrierLogoVon(s.selected_carrier) && (
+                        <img className="shipment-versand-logo" src={carrierLogoVon(s.selected_carrier)} alt="" />
                       )}
                       <span>{s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "—"}</span>
                     </span>

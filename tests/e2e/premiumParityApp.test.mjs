@@ -13,6 +13,9 @@
 //   D7  Suche von einer Seite außerhalb des Dashboards: hervorgehoben, im Browserverlauf nur Art und Kennung.
 //   D8  Menütaste „Weitere Aktionen“ (Entwürfe, Adressbuch, Bestand): rund, so hoch wie die Kapsel daneben und auf
 //       ihrer Mitte, die Punkte ganz in der Fläche; auf dem Telefon 44 px.
+//   D9  Demo ohne Carrier-Logos (P2, 2026-11-04): Übersicht samt Navy-Bühne, Sendungen, Tarifkarten und Buchung
+//       nennen den Carrier als Text — keine Logokachel, kein Paket-Zeichen, kein Logo auch nur für einen Augenblick,
+//       data-ce-demo schon am ersten Bild; die geschwungenen Linien der Bühne bleiben.
 //
 // Der öffentliche Preisrechner steht in premiumParityPublic.test.mjs (je Suite genau ein Vite-Server).
 import { test } from "node:test";
@@ -363,6 +366,93 @@ test("D8 — Menütaste „Weitere Aktionen“: rund, so hoch wie die Kapsel dan
         if (telefon) assert.equal(m.hoehe, 44, `${ort}: auf dem Telefon ${m.hoehe}px statt 44px`);
         assert.ok(m.punkte + 4 <= m.innen, `${ort}: die Punkte (${m.punkte}px) reichen an den Rand (${m.innen}px)`);
       }
+      assert.deepEqual(ausDerDemo, [], "die Demo hat den Server angefragt");
+      assert.deepEqual(fehler, []);
+    } finally { await ctx.close(); }
+  }
+});
+
+/** Jedes Carrier-Bild, das je im Dokument stand — auch nur für einen Augenblick —, und ob die Demo-Kennzeichnung
+ *  schon am ersten gerenderten Inhalt stand. Läuft vor jedem Skript der Seite. */
+function logoBeobachter() {
+  window.__ceCarrierBilder = [];
+  window.__ceDemoAmErstenBild = null;
+  new MutationObserver((liste) => {
+    for (const m of liste) {
+      for (const n of m.addedNodes) {
+        if (n.nodeType !== 1) continue;
+        for (const b of n.matches("img") ? [n] : n.querySelectorAll("img")) {
+          if (/\/carriers\//.test(b.getAttribute("src") || "")) window.__ceCarrierBilder.push(b.getAttribute("src"));
+        }
+      }
+    }
+    if (window.__ceDemoAmErstenBild === null && document.getElementById("root")?.firstElementChild) {
+      window.__ceDemoAmErstenBild = document.documentElement.hasAttribute("data-ce-demo");
+    }
+  }).observe(document, { childList: true, subtree: true });
+}
+
+test("D9 — Demo ohne Carrier-Logos (P2): Übersicht, Sendungen, Tarifkarten und Buchung nennen den Carrier als Text, ohne Kachel und ohne Aufblitzen", async () => {
+  const KACHELN = ".offer-logo-tile, .blsum-logo, .bsum-logo, .booking-carrier-logo, .ov-carrier-logo, .ov-list-carrier-logo, .shipment-versand-logo";
+  const texte = (page, auswahl) => page.$$eval(auswahl, (els) => els.map((e) => e.textContent.trim()));
+  for (const [viewport, buchen] of [[{ width: 1440, height: 900 }, true], [{ width: 390, height: 844 }, false]]) {
+    const { ctx, page, fehler, ausDerDemo } = await demoBrowser(viewport);
+    const logoAbrufe = [];
+    page.on("request", (r) => { if (r.resourceType() === "image" && /\/carriers\//.test(r.url())) logoAbrufe.push(r.url()); });
+    await page.addInitScript(logoBeobachter);
+    const ort = `@${viewport.width}`;
+    // Jede Seitenladung beginnt mit einer neuen Liste — geprüft wird deshalb vor jedem Seitenwechsel.
+    const keinCarrierBild = async (wo) => {
+      assert.deepEqual(await page.evaluate(() => window.__ceCarrierBilder), [], `${ort} ${wo}: ein Carrier-Logo stand im Dokument`);
+    };
+    try {
+      // Übersicht: die Navy-Bühne „Ihre Versanddienstleister“ mit Namenskacheln — die geschwungenen Linien (P1) bleiben.
+      await page.goto(`${BASE_APP}/demo/dashboard`, { waitUntil: "domcontentloaded" });
+      await page.waitForSelector(".ov-carrier-zeile .ov-carrier-eintrag", { timeout: 60000 });
+      assert.equal(await page.evaluate(() => window.__ceDemoAmErstenBild), true, `${ort}: data-ce-demo fehlte am ersten Bild`);
+      assert.deepEqual(await texte(page, ".ov-carrier-zeile .ov-carrier-name"), ["UPS", "DHL Express", "DPD", "GLS", "TNT"]);
+      assert.equal(await page.locator(".ov-carrier-eintrag:not(.ov-carrier-eintrag--ohne-logo)").count(), 0, `${ort}: Logokachel auf der Bühne`);
+      assert.equal(await page.locator(".ov-carrier-zeile > svg.ov-carrier-linien .ov-carrier-routen path").count(), 3, `${ort}: Linien der Bühne fehlen`);
+      const liste = await texte(page, ".ov-list-carrier");
+      assert.ok(liste.length > 0 && liste.every((t) => t && t !== "—"), `${ort}: Carrier der letzten Sendungen: ${liste}`);
+      assert.equal(await page.locator(KACHELN).count(), 0, `${ort}: Logo in der Übersicht`);
+      await keinCarrierBild("Übersicht");
+
+      // Sendungen: Tabelle bzw. Karten mit dem Namen allein.
+      await page.goto(`${BASE_APP}/demo/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
+      await page.waitForSelector(".shipment-versand-carrier:visible", { timeout: 20000 });
+      const sendungen = await texte(page, ".shipment-versand-carrier");
+      assert.ok(sendungen.length > 0 && sendungen.every(Boolean), `${ort}: Carrier der Sendungen: ${sendungen}`);
+      assert.equal(await page.locator(KACHELN).count(), 0, `${ort}: Logo in der Sendungsliste`);
+      await keinCarrierBild("Sendungen");
+
+      if (buchen) {
+        // Tarifkarten: Carrier und Service als Text, ohne Logokachel und ohne Paket-Zeichen.
+        await page.goto(`${BASE_APP}/demo/dashboard?page=new`, { waitUntil: "domcontentloaded" });
+        await fuelleVersandformular(page);
+        await berechneAngebote(page);
+        const karten = await page.locator(".offer-card").count();
+        assert.ok(karten >= 3, `${ort}: ${karten} Karten`);
+        assert.equal(await page.locator(".offer-card .offer-zone-1--ohne-logo").count(), karten);
+        for (const auswahl of [".offer-card .offer-carrier-name", ".offer-card .offer-service-type"]) {
+          const t = await texte(page, auswahl);
+          assert.ok(t.length === karten && t.every(Boolean), `${ort}: ${auswahl}: ${t}`);
+        }
+        assert.equal(await page.locator(KACHELN).count(), 0, `${ort}: Logokachel auf einer Tarifkarte`);
+
+        // Buchung: Beleg, Kurzleiste und ausgewähltes Angebot ebenso.
+        await page.locator(".offer-card:not(.offer-card--unavailable)").first().locator("button.offer-cta-btn").click();
+        await page.waitForURL(/\/demo\/booking/, { timeout: 20000 });
+        await page.waitForSelector(".booking-livesum .blsum-carrier", { timeout: 20000 });
+        assert.ok((await texte(page, ".blsum-carrier"))[0], `${ort}: Carrier im Beleg fehlt`);
+        assert.ok((await texte(page, ".booking-carrier-name"))[0], `${ort}: Carrier im ausgewählten Angebot fehlt`);
+        await page.mouse.wheel(0, 1600);
+        await kurz(400);
+        assert.equal(await page.locator(KACHELN).count(), 0, `${ort}: Logo auf der Buchungsseite`);
+        await keinCarrierBild("Neue Sendung und Buchung");
+      }
+
+      assert.deepEqual(logoAbrufe, [], `${ort}: Carrier-Logo geladen`);
       assert.deepEqual(ausDerDemo, [], "die Demo hat den Server angefragt");
       assert.deepEqual(fehler, []);
     } finally { await ctx.close(); }

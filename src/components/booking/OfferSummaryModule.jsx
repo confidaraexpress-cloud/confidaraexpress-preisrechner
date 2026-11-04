@@ -1,6 +1,7 @@
 import React from "react";
 import { Icon } from "../ui/Icon";
 import { publicCarrierDisplay, publicServiceName } from "../../utils/carrierMap";
+import { carrierLogoAnzeige } from "../../utils/carrierLogoView.mjs";
 import { handoverInfo, priceInfo } from "../../utils/bookingSummaryView.mjs";
 import { sameDayUntilText } from "../../utils/sameDayCollectionView.mjs";
 
@@ -16,6 +17,7 @@ import { sameDayUntilText } from "../../utils/sameDayCollectionView.mjs";
 // entfällt, keine Logik, keine Neuberechnung — dieselben Helfer wie zuvor.
 export function OfferSummaryModule({ tariff, priceView }) {
   const { name: carrierName, logo: carrierLogo } = publicCarrierDisplay(tariff);
+  const logoAnzeige = carrierLogoAnzeige(carrierLogo);
   const handover = handoverInfo(tariff);
   const serviceMode = handover.isPickup || handover.isDropoff ? handover.label : null;
   const printerRequired = tariff.printerRequired === true;
@@ -32,14 +34,14 @@ export function OfferSummaryModule({ tariff, priceView }) {
         <div className="offsum-top">
           <div className="offsum-identity">
             <div className="booking-carrier-wrap">
-              {/* Wie in der Angebotskarte: Logo oder neutrales Paket-Icon. */}
-              {carrierLogo ? (
-                <img src={carrierLogo} alt="" aria-hidden="true" className="booking-carrier-logo" />
+              {/* Wie in der Angebotskarte: Logo oder neutrales Paket-Icon; in der Demo nur der Name. */}
+              {logoAnzeige.kachel && (logoAnzeige.logo ? (
+                <img src={logoAnzeige.logo} alt="" aria-hidden="true" className="booking-carrier-logo" />
               ) : (
                 <span className="booking-carrier-logo booking-carrier-logo--generic" aria-hidden="true">
                   <Icon n="package" s={20} c="currentColor" />
                 </span>
-              )}
+              ))}
               <span className="booking-carrier-name">{carrierName}</span>
             </div>
             <div className="offsum-service">

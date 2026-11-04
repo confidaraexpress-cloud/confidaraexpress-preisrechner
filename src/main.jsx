@@ -1,6 +1,7 @@
 // Öffentliche Kundenbereich-Demo: MUSS der erste Import bleiben. Unter /demo schirmt er Speicher und Netz ab, bevor
 // irgendein anderes Modul sie berührt (demo/demoStart.mjs); sonst tut er nichts.
 import { DEMO_ZUSTAND } from "./demo/demoStart.mjs";
+import { DEMO_ZIELE } from "./demo/demoModus.mjs";
 import React, { Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -30,7 +31,7 @@ function DemoNichtVerfuegbar() {
         <p className="demo-ende-text">Bitte öffnen Sie sie in einem aktuellen Browser oder registrieren Sie direkt ein Geschäftskonto.</p>
         <div className="demo-ende-aktionen">
           <a className="btn btn-primary btn-lg" href="/register">Geschäftskonto registrieren</a>
-          <a className="btn btn-outline btn-lg" href="https://preisrechner.confidaraexpress.de/">Zum Preisrechner</a>
+          <a className="btn btn-outline btn-lg" href={DEMO_ZIELE.preisrechner}>Zum Preisrechner</a>
         </div>
       </div>
     </main>

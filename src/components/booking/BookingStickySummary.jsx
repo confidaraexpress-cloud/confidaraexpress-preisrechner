@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { money } from "../../utils/formatters";
 import { publicCarrierDisplay, publicServiceName } from "../../utils/carrierMap";
+import { carrierLogoAnzeige } from "../../utils/carrierLogoView.mjs";
 import { handoverInfo, deliveryInfo, priceInfo } from "../../utils/bookingSummaryView.mjs";
 import { isGrossVatMode } from "../../utils/vatDisplayView.mjs";
 
@@ -75,6 +76,7 @@ export function BookingStickySummary({ tariff, priceView, observeRef, vatMode })
   if (!tariff) return null;
 
   const { name: carrierName, logo: carrierLogo } = publicCarrierDisplay(tariff);
+  const logoAnzeige = carrierLogoAnzeige(carrierLogo);
   const handover = handoverInfo(tariff);
   const delivery = deliveryInfo(tariff);
   const preis = priceInfo(priceView);
@@ -101,11 +103,11 @@ export function BookingStickySummary({ tariff, priceView, observeRef, vatMode })
       <div className="booking-sticky-fill">
         <div className="booking-sticky-summary">
 
-          {/* Links — Versandprodukt */}
+          {/* Links — Versandprodukt (in der Demo ohne Logo und ohne Icon, nur Text) */}
           <div className="bsum-product">
-            {carrierLogo
-              ? <img src={carrierLogo} alt="" className="bsum-logo" />
-              : <span className="bsum-logo bsum-logo--generic"><Icon n="package" s={16} c="currentColor" /></span>}
+            {logoAnzeige.kachel && (logoAnzeige.logo
+              ? <img src={logoAnzeige.logo} alt="" className="bsum-logo" />
+              : <span className="bsum-logo bsum-logo--generic"><Icon n="package" s={16} c="currentColor" /></span>)}
             <span className="bsum-product-txt">
               <span className="bsum-carrier">{carrierName}</span>
               <span className="bsum-service">{publicServiceName(tariff)}</span>

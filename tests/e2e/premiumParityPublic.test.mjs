@@ -12,6 +12,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import { ohneDemoHinweis } from "./helpers/demoHinweis.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -71,6 +72,7 @@ test.after(async () => {
 /** Preisrechner mit gemocktem öffentlichem Backend. */
 async function preisrechner({ viewport = { width: 1440, height: 900 }, reducedMotion = "no-preference" } = {}) {
   const ctx = await browser.newContext({ viewport, reducedMotion, locale: "de-DE", timezoneId: "Europe/Berlin" });
+  await ohneDemoHinweis(ctx);
   await ctx.route(`${API}/**`, async (route) => {
     const pfad = new URL(route.request().url()).pathname;
     const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });

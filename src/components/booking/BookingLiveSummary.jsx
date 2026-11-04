@@ -2,6 +2,7 @@ import React from "react";
 import { Icon } from "../ui/Icon";
 import { money, isoDayDE } from "../../utils/formatters";
 import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../../utils/carrierMap";
+import { carrierLogoAnzeige } from "../../utils/carrierLogoView.mjs";
 import { isInsuredType } from "../../utils/bookingPriceView.mjs";
 import { INSURANCE_TYPE_TRANSIT_COVER } from "../../utils/coverInsuranceView.mjs";
 import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
@@ -22,6 +23,7 @@ import { isGrossVatMode, VAT_TEXT } from "../../utils/vatDisplayView.mjs";
 export function BookingLiveSummary({ tariff, priceView, pickupWindow, vatMode }) {
   if (!tariff) return null;
   const { name: carrierName, logo: carrierLogo } = publicCarrierDisplay(tariff);
+  const logoAnzeige = carrierLogoAnzeige(carrierLogo);
   const handover = handoverInfo(tariff);
 
   // ── Übergabe ──
@@ -85,10 +87,11 @@ export function BookingLiveSummary({ tariff, priceView, pickupWindow, vatMode })
       {/* Zone 1 — Versandprodukt */}
       <div className="blsum-zone blsum-product">
         {/* Wie in der Angebotskarte: Logo oder neutrales Paket-Icon — nie ein leeres
-            Element, damit die Zeile bei unbekanntem Carrier nicht springt. */}
-        {carrierLogo
-          ? <img src={carrierLogo} alt="" aria-hidden="true" className="blsum-logo" />
-          : <span className="blsum-logo blsum-logo--generic" aria-hidden="true"><Icon n="package" s={20} c="currentColor" /></span>}
+            Element, damit die Zeile bei unbekanntem Carrier nicht springt. In der Demo
+            weder Logo noch Icon: Carrier und Service stehen allein als Text. */}
+        {logoAnzeige.kachel && (logoAnzeige.logo
+          ? <img src={logoAnzeige.logo} alt="" aria-hidden="true" className="blsum-logo" />
+          : <span className="blsum-logo blsum-logo--generic" aria-hidden="true"><Icon n="package" s={20} c="currentColor" /></span>)}
         <span className="blsum-product-txt">
           <span className="blsum-carrier">{carrierName}</span>
           <span className="blsum-service">{publicServiceName(tariff)}</span>

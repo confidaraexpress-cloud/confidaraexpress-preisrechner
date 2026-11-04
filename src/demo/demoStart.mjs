@@ -19,6 +19,9 @@ if (typeof window !== "undefined" && istDemoPfad(window.location.pathname)) {
   DEMO_ZUSTAND.abgeschirmt = speicherAbschirmen(window);
   if (DEMO_ZUSTAND.abgeschirmt) {
     demoEinschalten();
+    // Die Kennzeichnung am Dokument steht schon vor dem ersten Rendern (P2, 2026-11-04; vorher setzte sie erst ein
+    // Effekt von DemoApp): Regeln unter [data-ce-demo] gelten damit ab dem ersten Bild.
+    window.document.documentElement.setAttribute("data-ce-demo", "");
     netzSperren(window);
     // Ein Platzhalter im Ersatzspeicher: der echte AuthProvider fragt damit „/kundenbereich" — und bekommt die Antwort
     // der Demo-Datenquelle. Es ist kein Token und erreicht nie einen Server.

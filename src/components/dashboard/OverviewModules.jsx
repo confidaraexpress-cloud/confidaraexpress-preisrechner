@@ -3,6 +3,7 @@ import { StatusBadge } from "../ui/StatusBadge";
 import { EmptyState } from "../ui/StateView";
 import { money, dateDE } from "../../utils/formatters";
 import { resolveCarrier, resolvePublicCarrier } from "../../utils/carrierMap";
+import { carrierLogoAnzeige } from "../../utils/carrierLogoView.mjs";
 import { customerShipmentNumbers, NO_ORDER_CONFIRMATION_TEXT } from "../../utils/businessNumbers.mjs";
 import { notificationSubline, relativeTime } from "../../utils/notificationsView.mjs";
 import { recentShipments, overviewInvoiceFacts, topNotifications, INVENTORY_SNAPSHOT_TEXT, snapshotRows } from "../../utils/overviewModules.mjs";
@@ -48,13 +49,15 @@ function ModuleHead({ title, actionLabel, onAction }) {
    kein Filter, keine eigene Abfrage. Gezeigt werden ausschließlich Felder, die
    die bestehende Sendungsantwort bereits enthält: Nummer und Datum, Empfänger
    (recipient_address — dieselben Felder wie die Kopfsuche), Carrier mit Logo,
-   Status, Preis. Fehlt der Empfänger (ältere Sendung), steht „—“. */
+   Status, Preis. Fehlt der Empfänger (ältere Sendung), steht „—“. In der Demo nur der
+   Name, ohne Logo (utils/carrierLogoView.mjs). */
 function CarrierMarke({ raw }) {
   if (!raw) return <span className="ov-list-carrier ov-quiet">Carrier offen</span>;
   const c = resolveCarrier(raw);
+  const { logo } = carrierLogoAnzeige(c.logo);
   return (
     <span className="ov-list-carrier" data-marke={c.name}>
-      {c.logo && <img className="ov-list-carrier-logo" src={c.logo} alt="" />}
+      {logo && <img className="ov-list-carrier-logo" src={logo} alt="" />}
       <span>{c.name}</span>
     </span>
   );
@@ -342,7 +345,8 @@ export function InventorySnapshot({ stand: standProp = null, onRetry = null, onN
    die Vergleichsaktion als heller Knopf, darunter je Carrier eine helle
    Logokachel mit dem Namen. Das Raster verteilt jede Anzahl gleichmäßig
    (overview.css). Die Kacheln sind keine Aktion. Ohne Logodatei steht der Name
-   selbst in der Kachel — kein Symbol, nichts doppelt. */
+   selbst in der Kachel — kein Symbol, nichts doppelt. In der Demo (P2, 2026-11-04)
+   steht so jeder Carrier: der Name in der Kachel, kein Logo (utils/carrierLogoView.mjs). */
 function CarrierLinien() {
   return (
     <svg className="ov-carrier-linien" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
@@ -376,7 +380,7 @@ export function CarrierPortfolio({ carriers, onCompare }) {
       </div>
       <ul className="ov-carrier-liste">
         {carriers.map((c) => {
-          const logo = resolvePublicCarrier(c.id).logo;
+          const { logo } = carrierLogoAnzeige(resolvePublicCarrier(c.id).logo);
           return (
             <li className={`ov-carrier-eintrag${logo ? "" : " ov-carrier-eintrag--ohne-logo"}`} key={c.id} data-carrier={c.id}>
               {logo && <span className="ov-carrier-logo" aria-hidden="true"><img src={logo} alt="" /></span>}

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { money, fmtDelivery } from "../../utils/formatters";
 import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../../utils/carrierMap";
+import { carrierLogoAnzeige } from "../../utils/carrierLogoView.mjs";
 import { ParcelShopFinderTrigger } from "./ParcelShopFinderTrigger";
 import { handoverMode, handoverLabel, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "../../utils/handoverMode.mjs";
 import {
@@ -561,6 +562,7 @@ function OfferCardBase({
   selectionStage,
 }) {
   const { name: carrierName, logo: carrierLogo } = publicCarrierDisplay(t);
+  const logoAnzeige = carrierLogoAnzeige(carrierLogo);
   const [detailsOpen, setDetailsOpen]       = useState(false);
   const [detailsMounted, setDetailsMounted] = useState(false);
 
@@ -663,7 +665,7 @@ function OfferCardBase({
             wird nur, DASS ein Gegenstueck existiert. */}
         {debugAnsicht && <span className="sr-only">{debugAnsicht.srText}</span>}
         {/* ── Zone 1: Anbieter & Hauptnutzen ── */}
-        <div className="offer-zone-1">
+        <div className={`offer-zone-1${logoAnzeige.kachel ? "" : " offer-zone-1--ohne-logo"}`}>
           {/* Logokachel: entweder das Carrierlogo oder — bei einem echten unbekannten
               Carrier (publicCarrierId "other") — ein neutrales Paket-Zeichen. NIEMALS
               Text in der Kachel: der Name ist zu lang für die Kachel und bräche
@@ -671,13 +673,17 @@ function OfferCardBase({
               .offer-carrier-name. Das Paket-Zeichen ist die einzige verbliebene Grafik
               der Karte und eine bewusste funktionale Ausnahme des Redesigns (2026-10):
               es besetzt den Platz der Carrier-Identität, ist kein Dekor. Seit dem
-              Feinschliff (2026-10) steht die Kachel kompakt LINKS neben dem Text. */}
-          <div className={`offer-logo-tile${carrierLogo ? "" : " offer-logo-tile--generic"}`}>
-            {carrierLogo
-              ? <img src={carrierLogo} alt={carrierName} width="30" height="30" />
-              : <Icon n="package" s={22} c="currentColor" />
-            }
-          </div>
+              Feinschliff (2026-10) steht die Kachel kompakt LINKS neben dem Text.
+              In der Demo (P2, 2026-11-04) entfällt die Kachel ganz: Carrier und Service
+              stehen als Text wie im öffentlichen Preisrechner (utils/carrierLogoView.mjs). */}
+          {logoAnzeige.kachel && (
+            <div className={`offer-logo-tile${logoAnzeige.logo ? "" : " offer-logo-tile--generic"}`}>
+              {logoAnzeige.logo
+                ? <img src={logoAnzeige.logo} alt={carrierName} width="30" height="30" />
+                : <Icon n="package" s={22} c="currentColor" />
+              }
+            </div>
+          )}
           <div className="offer-zone-1-main">
             {/* Die Auszeichnung („Günstigste", „Schnellste") steht direkt neben dem
                 Carrier (Feinschliff 2026-10). Vorher hielt ein eigener Slot über dem

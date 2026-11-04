@@ -446,13 +446,20 @@
    volle Breite. Die Stufen darunter richten sich nach der KARTENbreite
    (Container `offers`, siehe unten), nicht nach dem Viewport — die Sidebar der
    Shell ist damit automatisch eingepreist. */
-/* Der Ablauf ist höchstens 400 px breit (.offer-timeline); was die breite Karte
-   darüber hinaus hat, bekommt seit 2026-10-04 die Identität (mindestens 224 px)
-   — so passen Carrier und Marke meist in eine Zeile, und Laufzeit und
-   Servicename stehen über alle Karten auf derselben Höhe. */
+/* Der Ablauf ist höchstens 400 px breit (.offer-timeline) und steht in der
+   Kartenmitte (Betreiberentscheidung 2026-11-04): Was die breite Karte darüber
+   hinaus hat, teilen sich Identität und Preisbereich zu gleichen Teilen — zwei
+   gleich breite Außenspalten, jede mindestens so breit wie Preis und Aktion
+   (235 px). Bis dahin bekam allein die Identität den Überschuss (seit
+   2026-10-04, mindestens 224 px), und der Ablauf rückte mit der Kartenbreite
+   nach rechts: gemessen 18 px bei 996 px, 31 px bei 1022 px und 131 px bei
+   1222 px Kartenbreite. Carrier und Marke stehen meist in einer Zeile; nur eine
+   lange Kombination („DHL Express“ mit „Vorläufiger Preis“, 288 px samt Logo)
+   rückt die Marke unter etwa 1070 px Kartenbreite unter den Carrier — die Karte
+   wird davon nicht höher (Reserve des Ablaufs). */
 .offer-card-inner {
   display: grid;
-  grid-template-columns: minmax(224px, 1fr) minmax(0, 400px) 235px;
+  grid-template-columns: minmax(235px, 1fr) minmax(0, 400px) minmax(235px, 1fr);
   grid-template-areas:
     "zone-1 zone-2 zone-3"
     "zone-4 zone-4 zone-4";
@@ -716,11 +723,16 @@
 }
 
 /* ── Zone 3: Preis & Aktion ──────────────────────────────────────────────────── */
-.offer-zone-3 { grid-area: zone-3; position: relative; display: flex; flex-direction: column; align-items: flex-end; }
+/* Preis und Aktion bleiben 235 px breit (die Preisspalte der zweizeiligen
+   Karte) und stehen am rechten Rand ihrer Spalte — in der breiten Karte ist die
+   Spalte so breit wie die der Identität, damit der Ablauf mittig steht
+   (Betreiberentscheidung 2026-11-04). */
+.offer-zone-3 { grid-area: zone-3; justify-self: end; width: 235px; position: relative; display: flex; flex-direction: column; align-items: flex-end; }
 /* Preis und Aktion bilden einen eigenen Bereich der Karte: eine feine
-   senkrechte Linie mitten in der Spaltenlücke trennt ihn vom Ablauf — ohne
-   Spaltenbreiten zu verschieben. Nur im dreispaltigen Aufbau; zweizeilig und
-   gestapelt (Kartenbreite < 950 px) entfällt sie. */
+   senkrechte Linie 12 px vor ihm (an der Stufengrenze mitten in der
+   Spaltenlücke) trennt ihn vom Ablauf — ohne Spaltenbreiten zu verschieben.
+   Nur im dreispaltigen Aufbau; zweizeilig und gestapelt (Kartenbreite < 950 px)
+   entfällt sie. */
 .offer-zone-3::before {
   content: "";
   position: absolute; top: 0; bottom: 0; left: -12px;
@@ -1107,9 +1119,10 @@
   /* Zone 2: dieselbe waagerechte Prozesslinie, nur kompakter. Breitenlimit
      aufheben, damit die Linie die volle Breite nutzt. */
   .offer-timeline { max-width: none; margin: 0; }
-  /* Auf schmalen Karten steht die Kennzeichnung linksbündig über dem Ablauf —
-     zentriert über einer linksbündigen Spalte wirkte sie verrutscht. */
-  .offer-handover { text-align: left; }
+  /* Die Kennzeichnung bleibt auch hier mittig über dem Ablauf
+     (Betreiberentscheidung 2026-11-04): Übergabeart, Punkte, Linie und
+     Beschriftung stehen in jeder Breite als eine Einheit in der Kartenmitte
+     (bis dahin hier linksbündig). */
   /* Dieselbe Reservierung wie oben (Titel, Datum, eine Zusatzzeile bis 20 px),
      in den kleineren Stufen dieser Breite (Titel 13 px, Zusatz 12 px). Die
      Spalten teilen wie überall 2 : 3 (oben), mit engerem Spaltenabstand. */
@@ -1130,7 +1143,7 @@
 
   /* Zone 3: Preis linksbündig, CTA in voller Breite darunter (die Reserve für
      eine zweizeilige Aktion gilt weiter, siehe oben). */
-  .offer-zone-3 { display: flex; flex-direction: column; align-items: stretch; }
+  .offer-zone-3 { justify-self: stretch; width: auto; display: flex; flex-direction: column; align-items: stretch; }
   .offer-price-block { text-align: left; margin-bottom: 10px; }
   .offer-price-line { display: flex; justify-content: flex-start; }
   .offer-cta-btn { width: 100%; min-width: 0; }
@@ -1215,7 +1228,7 @@
     .offer-card { padding: 16px; }
     .offer-card-inner { grid-template-columns: minmax(0, 1fr); grid-template-areas: "zone-1" "zone-2" "zone-3" "zone-4"; }
     .offer-timeline { max-width: none; margin: 0; }
-    .offer-zone-3 { display: flex; flex-direction: column; align-items: stretch; }
+    .offer-zone-3 { justify-self: stretch; width: auto; display: flex; flex-direction: column; align-items: stretch; }
     .offer-price-block { text-align: left; margin-bottom: 10px; }
     .offer-price-line { display: flex; justify-content: flex-start; }
     .offer-cta-btn { width: 100%; min-width: 0; }

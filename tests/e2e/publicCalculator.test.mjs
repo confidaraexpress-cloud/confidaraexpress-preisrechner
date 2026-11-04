@@ -531,7 +531,7 @@ const ZEITLEISTE = [
     deliveryTimeUntil: "18:00", deliveryTimeUntilMinutes: 1080 }),
 ];
 test("J — Zeitleiste: Daten auf einer Höhe, Textkanten an den Punkten", async () => {
-  for (const [breite, hoehe] of [[1440, 900], [1024, 768], [910, 900], [768, 1024], [390, 844], [360, 780]]) {
+  for (const [breite, hoehe] of [[1440, 900], [1024, 768], [1020, 900], [910, 900], [768, 1024], [390, 844], [360, 780]]) {
     const { page, fehler } = await neueSeite({ width: breite, height: hoehe });
     // Lange Bezeichnung („Voraussichtliche Zustellung“) mit Zeitraum, Abgabe mit Uhrzeit und Anbieterdatum mit Uhrzeit.
     await setup(page, { quote: () => ({ status: 200, body: { status: "ok", quotedAt: "2026-10-21T08:00:00.000Z",
@@ -568,4 +568,56 @@ test("J — Zeitleiste: Daten auf einer Höhe, Textkanten an den Punkten", async
     assert.deepEqual(fehler, []);
     await page.close();
   }
+});
+
+// K — die Zeitleiste steht in der Kartenmitte (Betreiberentscheidung 2026-11-04): Achse, Bezeichnungen, Daten und Zusätze
+//     als eine Einheit in jeder Stufe. Bis dahin bekam in der breiten Karte allein die Identität den Überschuss, und
+//     der Ablauf stand bis 149 px rechts der Mitte (1324 px Kartenbreite). Die Preisspalte bleibt 14.5rem breit am rechten
+//     Rand; die breite Stufe beginnt erst bei 58rem, damit dem mittigen Ablauf mindestens 21.875rem (350 px) bleiben und
+//     seine Bezeichnungen einzeilig stehen.
+test("K — Zeitleiste in der Kartenmitte, Preisspalte am rechten Rand", async () => {
+  const { page, fehler } = await neueSeite({ width: 1920, height: 900 });
+  await setup(page, { quote: () => ({ status: 200, body: { status: "ok", quotedAt: "2026-10-21T08:00:00.000Z",
+    publicCarriers: CARRIER, availableShippingModes: ["express", "standard"], offers: ZEITLEISTE } }) });
+  await oeffne(page);
+  await fuelle(page);
+  await page.click("#pc-submit");
+  await page.waitForSelector("#pc-offers .pc-offer", { timeout: 30000 });
+  let breiteStufe = 0;
+  for (const breite of [1920, 1440, 1100, 1024, 1020, 960, 768, 390, 360]) {
+    await page.setViewportSize({ width: breite, height: 900 });
+    await page.evaluate(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
+    const m = await page.evaluate(() => [...document.querySelectorAll("#pc-offers .pc-offer")].map((k) => {
+      const r = (e) => e.getBoundingClientRect();
+      const kr = r(k), mitte = (kr.left + kr.right) / 2;
+      const achse = k.querySelector(".pc-offer-achse"), a = r(achse), mitAchse = getComputedStyle(achse).display !== "none";
+      const teile = [...k.querySelectorAll(".pc-fact dt, .pc-fact-main, .pc-fact-sub")].map(r).concat(mitAchse ? [a] : []);
+      const links = Math.min(...teile.map((b) => b.left)), rechts = Math.max(...teile.map((b) => b.right));
+      const cs = getComputedStyle(k), ab = r(k.querySelector(".pc-offer-abschluss"));
+      const zeilen = (e) => Math.round(r(e).height / parseFloat(getComputedStyle(e).lineHeight));
+      return {
+        breite: kr.width, rem: parseFloat(getComputedStyle(document.documentElement).fontSize),
+        einheit: (links + rechts) / 2 - mitte, achse: mitAchse ? (a.left + a.right) / 2 - mitte : 0,
+        preisRand: kr.right - parseFloat(cs.paddingRight) - parseFloat(cs.borderRightWidth) - ab.right,
+        abschluss: ab.width, ablauf: r(k.querySelector(".pc-offer-ablauf")).width,
+        titel: [...k.querySelectorAll(".pc-fact dt")].map(zeilen), werte: [...k.querySelectorAll(".pc-fact-main")].map(zeilen),
+      };
+    }));
+    assert.equal(m.length, ZEITLEISTE.length, `${breite}px: ${m.length} Karten`);
+    m.forEach((k, i) => {
+      assert.ok(Math.abs(k.einheit) <= 1, `${breite}px Karte ${i}: die Zeitleiste steht ${k.einheit.toFixed(1)} px neben der Kartenmitte`);
+      assert.ok(Math.abs(k.achse) <= 1, `${breite}px Karte ${i}: die Achse steht ${k.achse.toFixed(1)} px neben der Kartenmitte`);
+      assert.ok(Math.abs(k.preisRand) <= 1, `${breite}px Karte ${i}: der Abschluss endet ${k.preisRand.toFixed(1)} px vor dem rechten Rand`);
+      if (k.breite >= 58 * k.rem) {
+        breiteStufe++;
+        assert.ok(Math.abs(k.abschluss - 14.5 * k.rem) <= 0.5, `${breite}px Karte ${i}: die Preisspalte ist ${k.abschluss.toFixed(1)} px breit`);
+        assert.ok(k.ablauf >= 21.875 * k.rem - 1, `${breite}px Karte ${i}: der Ablauf ist nur ${k.ablauf.toFixed(1)} px breit`);
+        assert.deepEqual([...k.titel, ...k.werte], [1, 1, 1, 1], `${breite}px Karte ${i}: Bezeichnung oder Datum bricht in der breiten Karte um`);
+      }
+    });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${breite}px: horizontales Scrollen`);
+  }
+  assert.ok(breiteStufe >= 3 * ZEITLEISTE.length, `nur ${breiteStufe} Messungen in der breiten Karte`);
+  assert.deepEqual(fehler, []);
+  await page.close();
 });

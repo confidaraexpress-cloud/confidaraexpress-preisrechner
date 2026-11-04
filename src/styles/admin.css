@@ -1333,6 +1333,50 @@ a.adm-canc-ship-no:hover { text-decoration: underline; }
   .adm-canc-reason { -webkit-line-clamp: 4; }
 }
 
+/* ── Sammelrechnungsanträge (P5, 2026-11-04) ─────────────────────────────────
+   Liste nach dem Muster der Stornierungsanfragen, fünf Spalten: Status, Datum und Aktion
+   starr, Kunde und Begründung teilen sich den Rest. Entschieden wird im Kundendetail. */
+.adm-bmr-table table { min-width: 0; table-layout: fixed; }
+.adm-bmr-table th, .adm-bmr-table td { vertical-align: top; }
+.adm-bmr-table th { white-space: normal; }
+.adm-bmr-table th:nth-child(3), .adm-bmr-table td:nth-child(3) { width: 132px; }
+.adm-bmr-table th:nth-child(4), .adm-bmr-table td:nth-child(4) { width: 128px; }
+.adm-bmr-table th:nth-child(5), .adm-bmr-table td:nth-child(5) { width: 108px; }
+.adm-bmr-cust { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adm-bmr-cust-name { font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-primary); text-decoration: none; overflow-wrap: break-word; }
+a.adm-bmr-cust-name:hover { color: var(--ce-color-brand-ink); text-decoration: underline; }
+a.adm-bmr-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
+.adm-bmr-sub { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-muted); overflow-wrap: break-word; }
+.adm-bmr-time { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-secondary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+/* Begründung: Freitext des Kunden, in der Liste auf drei Zeilen begrenzt; voll im Kundendetail. */
+.adm-bmr-note {
+  font-size: var(--ce-text-body-s-size); line-height: 1.5; color: var(--ce-color-text-primary); margin: 0;
+  overflow-wrap: break-word;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.adm-bmr-cards { display: none; list-style: none; flex-direction: column; gap: var(--ce-space-3); }
+/* Der Hinweis vor der Verfügbarkeit steht als eigene Zeile über der Liste, nicht an sie geklebt. */
+.adm-bmr-hint { margin-bottom: var(--ce-space-4); }
+
+@media (max-width: 860px) {
+  .adm-bmr-table { display: none; }
+  .adm-bmr-cards { display: flex; }
+}
+
+/* Antrag im Kundendetail: der offene Antrag mit Entscheidung, darunter der Verlauf — abgesetzt
+   von der Supportumstellung darüber durch eine Haarlinie, nicht durch eine zweite Karte. */
+.adm-bm-requests { border-top: 1px solid var(--ce-color-border-subtle); padding-top: var(--ce-space-4); }
+.adm-bm-requests-title { font-size: var(--ce-text-body-size); font-weight: 600; color: var(--ce-color-text-primary); margin: 0 0 var(--ce-space-2); }
+.adm-bm-pending-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2); font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-secondary); }
+.adm-bm-note { margin: 0; font-size: var(--ce-text-body-s-size); line-height: 1.5; color: var(--ce-color-text-primary); white-space: pre-line; overflow-wrap: break-word; }
+.adm-bm-actions { display: flex; flex-wrap: wrap; gap: var(--ce-space-2); }
+.adm-bm-reject .adm-note-input { width: 100%; }
+.adm-bm-history-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ce-space-2); }
+.adm-bm-history-item { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-secondary); overflow-wrap: break-word; }
+.adm-bm-history-note { margin: var(--ce-space-1) 0 0; color: var(--ce-color-text-primary); }
+/* Der Protokoll-Link steht bündig zur Kartenkante (die Link-Aktion bringt eigenen Innenabstand mit). */
+.adm-bm-audit { padding-left: 0; padding-right: 0; }
+
 /* ── Buchungsklärung (Package C) ─────────────────────────────────────────── */
 /* Liste: sieben Spalten wie die Stornierungsanfragen — derselbe Umschaltpunkt. */
 .adm-recon-table table { min-width: 0; table-layout: fixed; }

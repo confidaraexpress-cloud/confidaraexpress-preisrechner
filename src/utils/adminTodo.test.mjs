@@ -31,6 +31,9 @@ const OPS = {
     invoice_document_open: { count: 0 }, invoice_mail_unclear: { count: 0 }, invoice_mail_open: { count: 0 },
     order_confirmation_mail_unclear: { count: 0 }, order_confirmation_mail_open: { count: 0 },
     additional_emails_unclear: { count: 0 },
+    // P5: zwei offene Sammelrechnungsanträge (Ziel: Konto 12), keine überfällige Sammelsendung.
+    billing_mode_requests_pending: { count: 2, oldestAt: "2026-10-05T08:00:00Z", oldestId: 12 },
+    consolidated_uninvoiced_overdue: { count: 0 },
   },
   diagnostics: {
     superseded_unresolved: { count: 0 }, orphaned_unresolved: { count: 1, oldestAt: "2026-10-02T08:00:00Z", oldestId: 5 },
@@ -84,12 +87,19 @@ test("3 — Reihenfolge nach Dringlichkeit, Werte nur aus der jeweiligen Quelle"
   assert.equal(Object.fromEntries(adminTodoViews({ entries: ENTRIES, ops: null0 }).map((v) => [v.key, v])).cancellations.oldestTo, null);
   assert.equal(nach.invoicesOverdue.count, 2);
   assert.equal(nach.invoicesOverdue.oldestTo, null, "nur die Stornierungen tragen einen ältesten Fall");
+  // P5: Sammelrechnungsanträge führen zur Liste; der älteste Fall ist das Konto, auf dem entschieden wird.
+  assert.equal(nach.billing_mode_requests_pending.count, 2);
+  assert.equal(nach.billing_mode_requests_pending.label, "Sammelrechnungsanträge");
+  assert.equal(nach.billing_mode_requests_pending.to, "/admin/billing-mode-requests");
+  assert.equal(nach.billing_mode_requests_pending.oldestTo, "/admin/users/12");
+  assert.equal(nach.consolidated_uninvoiced_overdue.count, 0);
+  assert.equal(nach.consolidated_uninvoiced_overdue.label, "Sammelsendungen ohne Rechnung");
 });
 
 test("4 — Gruppen: offen > 0, erledigt = 0, unbekannt nie als 0", () => {
   const g = groupAdminTodo(adminTodoViews({ entries: ENTRIES, ops: OPS }));
   assert.deepEqual(g.open.map((v) => v.key),
-    ["reconciliation_open", "partnerApplications", "support", "invoicesOverdue", "awb_missing"]);
+    ["reconciliation_open", "partnerApplications", "support", "billing_mode_requests_pending", "invoicesOverdue", "awb_missing"]);
   assert.ok(g.done.some((v) => v.key === "cancellations"));
   assert.deepEqual(g.unavailable, []);
   assert.deepEqual(g.loading, []);

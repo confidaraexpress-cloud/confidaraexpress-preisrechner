@@ -360,6 +360,9 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
                   // Editor eines Entwurfs („new" oder Entwurfs-ID) am bestehenden Adminrahmen, erreichbar
                   // über „Neue Rechnung erstellen" in der Rechnungsliste — kein Sidebar-Eintrag.
                   "/admin/invoices/manual/:draftId",
+                  // Sammelrechnungsanträge (P5, bewusste Ankeränderung, +1): die Liste am bestehenden Adminrahmen;
+                  // entschieden wird im Kundendetail — kein Sidebar-Eintrag (Höhenbudget).
+                  "/admin/billing-mode-requests",
                   "*"];
   const gefunden = [...app.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(gefunden.sort(), [...ROUTEN].sort(), "der Routenbestand hat sich verändert");

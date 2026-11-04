@@ -80,6 +80,9 @@ const ACTION_LABELS = {
   "user.business_verification": "Unternehmerprüfung erfasst",
   "invoice.consolidated_run_triggered": "Sammelrechnungslauf gestartet",
   "user.billing_mode_changed": "Abrechnungsart geändert",
+  // P5 (v2.111): Entscheidung über einen Antrag auf Sammelrechnung — Antrag und Status vorher/nachher in den Details.
+  "billing_mode_request.approved": "Sammelrechnungsantrag genehmigt",
+  "billing_mode_request.rejected": "Sammelrechnungsantrag abgelehnt",
   // Paket E/F (2026-10-23): PUT /admin/users/:id/credit-limit — Vorher/Nachher stehen in den Details.
   "user.credit_limit_change": "Buchungsrahmen geändert",
   // v2.90: PUT /admin/users/:id/account-manager — vorher/nachher als Schlüssel (miguel/patrick) in den Details; die

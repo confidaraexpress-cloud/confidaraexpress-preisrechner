@@ -54,6 +54,9 @@ const BEREICHE = [
     desc: "Anfragen beantworten, Status und interne Vermerke pflegen." },
   { to: "/admin/cancellation-requests", title: "Stornierungsanfragen",
     desc: "Kundenwünsche prüfen und intern bearbeiten." },
+  // P5: nur über diese Kachel und „Zu erledigen“ erreichbar — kein Sidebar-Eintrag (Höhenbudget).
+  { to: "/admin/billing-mode-requests", title: "Sammelrechnungsanträge",
+    desc: "Anträge auf die 7-Tage-Sammelrechnung prüfen; entschieden wird im Kundendetail." },
   { to: "/admin/reconciliation", title: "Buchungsklärung",
     desc: "Ungeklärte Buchungsvorgänge prüfen und entscheiden." },
   { to: "/admin/invoices/backfill", title: "Interne Vorschau-PDFs",

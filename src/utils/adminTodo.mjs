@@ -57,8 +57,12 @@ export const ADMIN_TODO = Object.freeze([
   Object.freeze({ key: "cancellations", source: "count", label: "Stornierungsanfragen", linkLabel: "Anfragen öffnen",
     oldestFrom: "cancellations_open" }),
   Object.freeze({ key: "support", source: "count", label: "Supportanfragen", linkLabel: "Anfragen öffnen" }),
+  // P5: offene Anträge auf Sammelrechnung — Zahl und Weg zur Liste aus der Betriebsqueue.
+  Object.freeze({ key: "billing_mode_requests_pending", source: "queue" }),
   Object.freeze({ key: "invoicesOverdue", source: "count", label: "Überfällige Rechnungen", linkLabel: "Rechnungen öffnen" }),
   Object.freeze({ key: "invoice_drift_unreviewed", source: "queue" }),
+  // P5: Sammelsendungen, die nach der Frist auf keiner Rechnung stehen.
+  Object.freeze({ key: "consolidated_uninvoiced_overdue", source: "queue" }),
   Object.freeze({ key: "awb_missing", source: "queue" }),
   Object.freeze({ key: "label_missing", source: "queue" }),
   // JOB-1/JOB-2: je Belegart erst der unklare Ausgang (vor erneutem Senden prüfen), dann der

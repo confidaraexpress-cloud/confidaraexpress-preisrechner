@@ -18,7 +18,7 @@ import {
 
 const def = (key) => [...OPERATIONS_QUEUES, ...OPERATIONS_DIAGNOSTICS].find((d) => d.key === key);
 
-test("genau die sechzehn Queues und vier Diagnosen des Backendvertrags — mit demselben Ziel je ältestem Fall", () => {
+test("genau die achtzehn Queues und vier Diagnosen des Backendvertrags — mit demselben Ziel je ältestem Fall", () => {
   assert.deepEqual(OPERATIONS_QUEUES.map((q) => q.key), [
     "reconciliation_open", "booking_overdue", "booking_without_open_attempt", "invoice_drift_unreviewed",
     "awb_missing", "label_missing", "cancellations_open", "additional_emails_failed", "invoice_mail_failed",
@@ -26,6 +26,8 @@ test("genau die sechzehn Queues und vier Diagnosen des Backendvertrags — mit d
     // JOB-1/JOB-2 (Go-Live-Stabilisierung): liegen gebliebene Nacharbeiten und unklare Mailausgänge.
     "invoice_document_open", "invoice_mail_unclear", "invoice_mail_open", "order_confirmation_mail_unclear",
     "order_confirmation_mail_open", "additional_emails_unclear",
+    // P5: offene Sammelrechnungsanträge und Sammelsendungen über der Frist ohne Rechnung.
+    "billing_mode_requests_pending", "consolidated_uninvoiced_overdue",
   ]);
   assert.deepEqual(OPERATIONS_DIAGNOSTICS.map((q) => q.key), [
     "superseded_unresolved", "orphaned_unresolved", "contradictory_evidence", "booking_without_attempt",
@@ -40,6 +42,7 @@ test("genau die sechzehn Queues und vier Diagnosen des Backendvertrags — mit d
     invoice_document_open: "invoice", invoice_mail_unclear: "invoice", invoice_mail_open: "invoice",
     order_confirmation_mail_unclear: "shipment", order_confirmation_mail_open: "shipment",
     additional_emails_unclear: "shipment",
+    billing_mode_requests_pending: "user", consolidated_uninvoiced_overdue: "shipment",
   });
   // Kein Text nennt einen Einkaufsanbieter — die Übersicht ist providerneutral beschriftet.
   for (const q of [...OPERATIONS_QUEUES, ...OPERATIONS_DIAGNOSTICS]) {
@@ -52,6 +55,8 @@ test("der Link zum ältesten Fall führt zum Datensatztyp der Queue — nur mit 
   assert.equal(operationsTargetPath("shipment", "77"), "/admin/shipments/77");
   assert.equal(operationsTargetPath("cancellation", 12), "/admin/cancellation-requests/12");
   assert.equal(operationsTargetPath("invoice", 3), "/admin/invoices/3");
+  // P5: ein Sammelrechnungsantrag wird am Konto entschieden.
+  assert.equal(operationsTargetPath("user", 12), "/admin/users/12");
   for (const falsch of [0, -1, 1.5, "abc", null, undefined, "1e3"]) {
     assert.equal(operationsTargetPath("attempt", falsch), falsch === "1e3" ? "/admin/reconciliation/1000" : null, String(falsch));
   }
@@ -96,7 +101,7 @@ test("operationsViews liest nur queues und diagnostics — ein Backend ohne Endp
     diagnostics: { booking_without_attempt: { count: 4, oldestAt: null, oldestId: 3, startUnknown: true } },
   });
   assert.equal(r.generatedAt, "2026-09-12T10:00:00Z");
-  assert.equal(r.queues.length, 16);
+  assert.equal(r.queues.length, 18);
   assert.equal(r.diagnostics.length, 4);
   assert.equal(r.queues.find((v) => v.key === "reconciliation_open").display, "1");
   assert.equal(r.queues.find((v) => v.key === "awb_missing").state, "unavailable");

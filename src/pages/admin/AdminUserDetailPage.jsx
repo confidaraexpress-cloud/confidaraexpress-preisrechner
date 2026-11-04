@@ -45,6 +45,7 @@ import { CustomerSupportSection } from "../../components/admin/CustomerSupportSe
 import { SalesPartnerAttributionSection } from "../../components/admin/SalesPartnerAttributionSection";
 import { CustomerBusinessEvidenceSection } from "../../components/admin/CustomerBusinessEvidenceSection";
 import { BillingModeSection } from "../../components/admin/BillingModeSection";
+import { BillingModeRequestsPanel } from "../../components/admin/BillingModeRequestsPanel";
 import { AccountManagerSection } from "../../components/admin/AccountManagerSection";
 // Paket F: der Buchungsrahmen — Werte aus `credit` der Detailantwort, Änderung per PUT mit Bestätigung.
 import { CreditLimitSection } from "../../components/admin/CreditLimitSection";
@@ -758,7 +759,15 @@ export default function AdminUserDetailPage() {
           error={bmError}
           successText={bmSuccess}
           onChange={changeBillingMode}
-        />
+        >
+          {/* P5: Antrag auf Sammelrechnung — prüfen, genehmigen, ablehnen. Partnerkonten stellen keinen Antrag. */}
+          {roleOf(u) !== "sales_partner" && (
+            <BillingModeRequestsPanel
+              userId={idOf(u)}
+              onModeChange={(m) => setUser((prev) => (prev ? { ...prev, billing_mode: m } : prev))}
+            />
+          )}
+        </BillingModeSection>
 
         {/* 3e) Buchungsrahmen (Paket F) — Rahmen, offene Belege, reserviert, verfügbar aus
              derselben Belastungsabfrage wie das Buchungs-Gate; der Admin setzt den Rahmen mit

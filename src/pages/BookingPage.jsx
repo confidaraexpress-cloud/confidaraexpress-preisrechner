@@ -22,7 +22,9 @@ import { restoredInsuranceState, insuranceRestoreKey } from "../utils/insuranceR
 import { sameOffer } from "../utils/offerIdentity.mjs";
 import { sameDayUnavailableBookingText, SAME_DAY_COLLECTION_UNAVAILABLE_CODE } from "../utils/sameDayCollectionView.mjs";
 import { tariffWithAcceptedShippingPrice, replaceOffer } from "../utils/acceptedOfferPrice.mjs";
-import { sanitizeReferenceInput } from "../utils/referenceNumber.mjs";
+import {
+  sanitizeReferenceInput, referenceInputProblem, referenceLength, referenceLabelHint, REFERENCE_MAX_LENGTH,
+} from "../utils/referenceNumber.mjs";
 import {
   RESIDENTIAL_STATUS, RESIDENTIAL_ACTION, RESIDENTIAL_TEXT,
   offerRequiresResidentialChoice, offerRevisionOf, optionsRequestBody, readPriceInputOptions,
@@ -396,9 +398,10 @@ export default function BookingPage() {
   // TG22 Paket B: Feldfehler der Referenznummer aus einer serverseitigen Ablehnung
   // (400 INVALID_REFERENCE_NUMBER). Jede neue Eingabe nimmt ihn zurück.
   const [referenceError, setReferenceError] = useState("");
-  // Referenznummer clientseitig an die Backend-Regeln angleichen: < und >, Steuer-,
-  // Zeilentrenn- und Richtungszeichen entfernen, hart auf 35 Zeichen kappen
-  // (utils/referenceNumber.mjs; optional → kein Fehlerzustand).
+  // Referenzauftrag 2026-11-05 (B5): bei der Eingabe gehen nur unsichtbare Steuerzeichen; Sichtbares bleibt, wie
+  // es eingegeben wurde — kein stilles Kürzen auf 35, kein Entfernen von < >. Passt die Referenz nicht zur
+  // Buchungsschranke, steht die Meldung sofort am Feld (`referenzProblem`, unten nach dem Schalter), und gebucht
+  // wird erst danach.
   const updReference = (v) => { setReferenceError(""); upd("reference", sanitizeReferenceInput(v)); };
 
   // ── Zusatzoption: Labeldruckformat (A4/A6) ──────────────────────────────────
@@ -424,6 +427,9 @@ export default function BookingPage() {
   // Genau dieser Fall ging beim Fortsetzen eines Entwurfs bisher verloren.
   const [referenceEnabled, setReferenceEnabled] = useState(
     () => flowBooking?.referenceEnabled === true || !!(flowBooking?.reference || "").trim());
+  // Referenzauftrag 2026-11-05 (B5): passt die Referenz zur Buchungsschranke? Nur bei aktiver Option — eine
+  // ausgeschaltete Referenz wird nicht gebucht und sperrt deshalb nichts. Steht bewusst NACH dem Schalter-State.
+  const referenzProblem = referenceEnabled ? referenceInputProblem(form.reference) : null;
   const [labelFormatEnabled, setLabelFormatEnabled] = useState(
     () => flowBooking?.labelFormatEnabled === true || (flowBooking?.labelFormat || "A4") !== "A4");
 
@@ -1208,6 +1214,14 @@ export default function BookingPage() {
       setEmailShowErrors(true);
       setStep(1);
       setError("Bitte prüfen Sie die zusätzliche E-Mail-Adresse, bevor Sie buchen.");
+      return;
+    }
+    // Referenzauftrag 2026-11-05 (B5): eine Referenz, die die Buchungsschranke ablehnen würde (über 35 Zeichen,
+    // < >), wird nicht mehr still gekürzt — ohne Korrektur entsteht KEIN Request. Zurück an das Feld.
+    if (referenzProblem) {
+      setReferenceError(referenzProblem.message);
+      setStep(1);
+      setError("Bitte prüfen Sie die Referenznummer, bevor Sie buchen.");
       return;
     }
     // TG22 Residential — zweite Hälfte der doppelten Absicherung (die erste ist das Weiter-Gate):
@@ -2156,6 +2170,12 @@ export default function BookingPage() {
       setError("Bitte prüfen Sie die zusätzliche E-Mail-Adresse, bevor Sie fortfahren.");
       return;
     }
+    // Referenzauftrag 2026-11-05 (B5): dieselbe Regel wie beim Buchen — erste Hälfte der doppelten Absicherung.
+    if (referenzProblem) {
+      setReferenceError(referenzProblem.message);
+      setError("Bitte prüfen Sie die Referenznummer, bevor Sie fortfahren.");
+      return;
+    }
     // TG22 Residential: ohne gebundene Art der Lieferadresse geht es nicht weiter — der Preis ist
     // vorläufig und die Absicherung nicht verfügbar. Der Server prüft dieselbe Regel erneut.
     if (residentialBlocks) {
@@ -2303,7 +2323,16 @@ export default function BookingPage() {
               onReferenceChange={updReference}
               referenceEnabled={referenceEnabled}
               onReferenceEnabledChange={toggleReference}
-              referenceError={referenceError}
+              referenceError={referenceError || (referenzProblem ? referenzProblem.message : "")}
+              referenceLength={referenceLength(form.reference)}
+              referenceMaxLength={REFERENCE_MAX_LENGTH}
+              // Referenzauftrag 2026-11-05 (B3): was mit der Referenz bei DIESEM Angebot geschieht — allein aus dem
+              // Angebot (serverseitig bestimmt), kein Anbietername, keine eigene Ableitung.
+              referenceLabelHint={referenceLabelHint({
+                referenceOnLabel: tariff?.referenceOnLabel,
+                referenceLabelVerifiedLength: tariff?.referenceLabelVerifiedLength,
+                value: form.reference,
+              })}
               labelFormatOptions={labelFormatOptions}
               labelDeliveryInfo={labelInfo}
               labelHandling={tariff?.labelHandling}

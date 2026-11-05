@@ -89,10 +89,16 @@ test("3 — ein unbekanntes Format wird nie durchgereicht", () => {
   assert.deepEqual(DRAFT_LABEL_FORMATS, ["A4", "A6"], "es gibt genau zwei Formate");
 });
 
-test("4 — die Referenz wird auf die Backendgrenze gekürzt", () => {
-  const o = buildDraftBookingOptions({ referenceEnabled: true, reference: "X".repeat(90) });
-  assert.equal(o.reference.value.length, DRAFT_REFERENCE_MAX_LENGTH);
-  assert.equal(DRAFT_REFERENCE_MAX_LENGTH, 35, "muss JUMiNGO details.reference_number spiegeln");
+/* Referenzauftrag 2026-11-05 (B5): bis dahin kürzte der Entwurf auf 35 (die Buchungsgrenze) — eine 40 Zeichen lange
+   Referenz kam beim Fortsetzen still gekürzt zurück. Jetzt hält er sie unverändert bis zur Speichergrenze (100, wie
+   der Server-Entwurf); die Buchung lehnt über 35 weiterhin ab, und das Feld zeigt es. */
+test("4 — der Entwurf hält die Referenz ungekürzt bis zur Speichergrenze", () => {
+  const vierzig = "X".repeat(40);
+  assert.equal(buildDraftBookingOptions({ referenceEnabled: true, reference: vierzig }).reference.value, vierzig);
+  assert.equal(draftBookingOptionsToFlow({ reference: { enabled: true, value: vierzig } }).reference, vierzig);
+  assert.equal(DRAFT_REFERENCE_MAX_LENGTH, 100, "muss REFERENCE_DRAFT_MAX_LENGTH des Server-Entwurfs spiegeln");
+  const o = buildDraftBookingOptions({ referenceEnabled: true, reference: String.fromCodePoint(0x1f600).repeat(130) });
+  assert.equal(Array.from(o.reference.value).length, DRAFT_REFERENCE_MAX_LENGTH, "zeichengenau begrenzt");
 });
 
 test("5 — der leere Ausgangszustand ist der einzige Nullzustand", () => {

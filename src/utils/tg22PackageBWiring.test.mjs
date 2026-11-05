@@ -137,8 +137,9 @@ test("9 — Profilhinweis: eigene Fläche mit Weg ins Profil, keine Abmeldung", 
 
 test("10 — die Referenzeingabe wird bereinigt, der Feldfehler steht am Feld", () => {
   assert.match(booking, /const updReference = \(v\) => \{ setReferenceError\(""\); upd\("reference", sanitizeReferenceInput\(v\)\); \};/);
-  assert.match(booking, /referenceError=\{referenceError\}/);
-  assert.match(optionen, /aria-describedby=\{referenceError \? "booking-reference-error" : undefined\}/);
+  // Referenzauftrag 2026-11-05: die Feldmeldung ist der Serverfehler ODER die sofortige Prüfung (zu lang, < >).
+  assert.match(booking, /referenceError=\{referenceError \|\| \(referenzProblem \? referenzProblem\.message : ""\)\}/);
+  assert.match(optionen, /referenceError \? "booking-reference-error" : null/);
   assert.match(optionen, /id="booking-reference-error"/);
 });
 

@@ -103,17 +103,18 @@ test("7 — die Aktuell-Anzeige liest den echten Wert, sie wird nicht getippt", 
 
 /* ══════════ Unveränderte Fachlichkeit ══════════ */
 
-test("8 — Werte, Grenzen und Texte der Referenznummer sind unverändert", () => {
-  // TG22 Paket B: das Sanitizing liegt im Helfer utils/referenceNumber.mjs — spitze Klammern wie
-  // bisher, dazu Steuer-, Zeilentrenn- und Richtungszeichen; die Maximallänge bleibt 35.
+/* Referenzauftrag 2026-11-05 (B5): bis dahin hielt (8) das stille Kürzen fest (maxLength 35, spitze Klammern im
+   Bereinigungsmuster). Jetzt bleibt Sichtbares erhalten; die Grenze 35 zeigt der Zähler, die Meldung steht am Feld. */
+test("8 — Referenznummer: keine stille Kürzung, Zähler und Meldung am Feld, Grenze 35 unverändert", () => {
   assert.match(bookingPage, /upd\("reference", sanitizeReferenceInput\(v\)\)/,
     "die Eingabe läuft nicht durch den Bereinigungshelfer");
   const helfer = lies("../utils/referenceNumber.mjs");
-  assert.match(helfer, /export const REFERENCE_MAX_LENGTH = 35;/, "die Maximallänge darf sich nicht ändern");
-  assert.match(helfer, /\+ "<>\]"/, "spitze Klammern werden nicht mehr entfernt");
-  assert.match(modul, /maxLength=\{35\}/);
+  assert.match(helfer, /export const REFERENCE_MAX_LENGTH = 35;/, "die Buchungsgrenze darf sich nicht ändern");
+  assert.doesNotMatch(helfer, /\+ "<>\]"/, "spitze Klammern werden wieder still entfernt");
+  assert.doesNotMatch(helfer, /\.slice\(0, REFERENCE_MAX_LENGTH\)/, "die Eingabe wird wieder still gekürzt");
+  assert.doesNotMatch(modul, /maxLength=\{35\}/, "das Feld kappt wieder still auf 35 Zeichen");
   assert.match(modul, /placeholder="z\. B\. Bestellnummer, Kostenstelle …"/);
-  assert.match(modul, /Max\. 35 Zeichen\./, "der Hilfetext bleibt erhalten");
+  assert.match(modul, /\{referenceLength\}\/\{referenceMaxLength\} Zeichen/, "der Zeichenzähler fehlt");
   assert.match(modul, /Referenznummer \/ Bestellnummer/);
 });
 

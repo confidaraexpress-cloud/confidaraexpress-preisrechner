@@ -82,6 +82,21 @@ function Badge({ meta }) {
   return <span className={`badge ${cls}`} title={roh || undefined}>{label}</span>;
 }
 
+// Referenzauftrag 2026-11-05: der als Anbieterreferenz gesendete Wert. Die Versuchskennung ist eindeutig; eine
+// Kundenreferenz nicht — dann steht daneben, womit zusätzlich abzugleichen ist. Ohne Wert (älterer Versuch derselben
+// Sendung) steht nur die Herkunft da.
+function sentReferenceCell(a) {
+  const istKunde = a.providerReferenceSource === "customer_reference";
+  return (
+    <span>
+      {a.sentProviderReference ? <span className="adm-mono">{a.sentProviderReference}</span> : (istKunde ? "Kundenreferenz dieses Versuchs" : "—")}
+      {istKunde && (
+        <span className="adm-kv-note"> · Kundenreferenz, nicht eindeutig: zusätzlich über Zeitpunkt, Service, Empfänger-PLZ und Einkaufspreis abgleichen</span>
+      )}
+    </span>
+  );
+}
+
 // Response-Container defensiv entpacken; die Feldnormalisierung übernimmt
 // normalizeReconciliationAttempt.
 function selectAttempt(d) {
@@ -492,6 +507,9 @@ export default function AdminReconciliationDetailPage() {
               ["Anbieterausgang", <Badge meta={reconciliationStateMeta(a.state)} />],
               ["Technischer Grund", dash(a.ambiguousReason)],
               ["Eigene Referenz", a.yourReference ? <span className="adm-mono">{a.yourReference}</span> : "—"],
+              // Referenzauftrag 2026-11-05: unter diesem Wert liegt der Auftrag beim Anbieter. Eine Kundenreferenz ist
+              // nicht eindeutig — der Hinweis nennt, womit zusätzlich abzugleichen ist (Runbook §5.1).
+              ...(a.providerReferenceSource ? [["An den Anbieter gesendet", sentReferenceCell(a)]] : []),
               ["Buchungsreferenz des Anbieters", a.providerBookingReference ? <span className="adm-mono">{a.providerBookingReference}</span> : "—"],
               ["Fehlerreferenz des Anbieters", a.providerFailReference ? <span className="adm-mono">{a.providerFailReference}</span> : "—"],
               ["Leistung (Anbieter)", a.providerServiceId ? <span className="adm-mono">{a.providerServiceId}</span> : "—"],

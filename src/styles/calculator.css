@@ -1162,6 +1162,22 @@
 .addopt-reveal { margin-top: var(--ce-space-2); padding-left: 44px; }
 /* Auf schmalen Viewports kostet die Einrückung zu viel Feldbreite. */
 @media (max-width: 600px) { .addopt-reveal { padding-left: 0; } }
+/* Referenzauftrag 2026-11-05: Hinweis und Zeichenzähler in einer Zeile (dasselbe Muster wie .sup-dialog-meta),
+   darunter der Satz zum gewählten Angebot. Über 35 Zeichen färbt der Zähler mit der Fehlerfarbe — die Meldung
+   selbst steht als .field-error über der Zeile. */
+.addopt-reference-meta { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ce-space-3); }
+.addopt-reference-meta .field-hint { margin-top: 6px; }
+.addopt-reference-counter {
+  flex-shrink: 0; margin-top: 6px;
+  font-size: var(--ce-text-caption-size); color: var(--ce-color-text-muted);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
+.addopt-reference-counter.is-over { color: var(--ce-color-status-error-fg); font-weight: 500; }
+.addopt-reference-label {
+  margin: var(--ce-space-2) 0 0; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+.addopt-reference-caveat { color: var(--ce-color-text-muted); }
 /* .addopt-field/.addopt-block/.addopt-group-label sind mit der Umstellung auf
    Progressive Disclosure entfallen — die frühere Gruppenüberschrift
    „Labelformat" ist jetzt die Schalterzeile selbst. */

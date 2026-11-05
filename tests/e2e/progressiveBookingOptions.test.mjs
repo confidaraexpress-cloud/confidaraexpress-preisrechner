@@ -181,9 +181,9 @@ test("2 — Einschalten zeigt das Feld, Ausschalten verbirgt es wieder", async (
 
   await schalte(page, REF_TOGGLE, true);
   await assert.ok(await page.locator(REF_INPUT).isVisible(), "das Feld muss nach dem Einschalten erscheinen");
-  // Grenzen und Texte unverändert.
-  assert.equal(await page.locator(REF_INPUT).getAttribute("maxlength"), "35");
-  assert.match(await page.locator(".addopt-panel").innerText(), /Max\. 35 Zeichen/);
+  // Referenzauftrag 2026-11-05 (B5): kein stilles Kappen mehr — die Grenze 35 zeigt der Zähler am Feld.
+  assert.equal(await page.locator(REF_INPUT).getAttribute("maxlength"), null);
+  assert.match(await page.locator("#booking-reference-count").innerText(), /^0\/35 Zeichen$/);
 
   await schalte(page, REF_TOGGLE, false);
   assert.equal(await page.locator(REF_INPUT).count(), 0, "das Feld muss wieder verschwinden");

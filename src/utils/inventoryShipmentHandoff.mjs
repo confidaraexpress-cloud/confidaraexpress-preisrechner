@@ -4,6 +4,8 @@
    Herkunftshinweis und die beiden Prefill-Abbildungen. Reine Abbildungen —
    keine API, kein React, kein Zustand. */
 
+import { sanitizeReferenceInput } from "./referenceNumber.mjs";
+
 /* ══════════ Lagerbezug-Snapshot (Absicht) ═══════════════════════════════════
 
    Kanonische Heimat von normalizeInventoryContext(): sie stand ursprünglich in
@@ -93,7 +95,13 @@ export function inventoryOriginNotice(context) {
 /**
  * Auftrag → Versand-Prefill.
  * Erwartet die Antwort von GET /api/kunde/orders/:id/shipping-prefill.
- * Rückgabe: { form, inventory, notice } — oder null, wenn nichts Brauchbares da ist.
+ * Rückgabe: { form, inventory, notice, booking } — oder null, wenn nichts Brauchbares da ist.
+ *
+ * Referenzauftrag 2026-11-05 (B4): `booking` trägt die Kundenreferenz des Auftrags als bearbeitbaren
+ * Vorschlag für die Buchungsreferenz (`{ reference, referenceEnabled: true }`) — oder ist `null`, wenn der
+ * Auftrag keine trägt. Sie wird NICHT gekürzt: ein Auftrag erlaubt 80 Zeichen, die Buchung 35; eine längere
+ * Referenz steht vollständig im Feld, und die Feldmeldung sagt, dass sie vor der Buchung zu kürzen ist.
+ * Ob der Vorschlag gilt, entscheidet der Aufrufer — eine bereits eingegebene Buchungsreferenz überschreibt er nicht.
  */
 export function mapOrderPrefillToShipment(prefill) {
   if (!prefill || typeof prefill !== "object") return null;
@@ -128,7 +136,17 @@ export function mapOrderPrefillToShipment(prefill) {
 
   const orderNumber = prefill.order && typeof prefill.order.orderNumber === "string" ? prefill.order.orderNumber : null;
   const inv = { orderId: String(prefill.order?.id ?? ""), orderNumber };
-  return { form, inventory: inv, notice: inventoryOriginNotice(inv) };
+  return { form, inventory: inv, notice: inventoryOriginNotice(inv), booking: orderReferenceProposal(prefill.order) };
+}
+
+/**
+ * Die Auftragsreferenz als Vorschlag für die Buchungsreferenz — oder `null`.
+ * Nur unsichtbare Steuerzeichen gehen (utils/referenceNumber.mjs), Sichtbares bleibt; nie gekürzt.
+ */
+export function orderReferenceProposal(order) {
+  const roh = order && typeof order.customerReference === "string" ? order.customerReference : "";
+  const reference = sanitizeReferenceInput(roh).trim();
+  return reference ? { reference, referenceEnabled: true } : null;
 }
 
 /**

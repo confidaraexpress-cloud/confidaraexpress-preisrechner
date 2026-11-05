@@ -303,7 +303,7 @@ test.after(async () => {
 
 /* ══════════ A — TG-Angebot, Zusatzoptionen, Belege ══════════ */
 
-test("A — 1440: keine Formatauswahl, Lieferhinweis, bereinigte Referenz, Zusatzempfänger, kein labelFormat, A4/Thermodruck", async () => {
+test("A — 1440: keine Formatauswahl, Lieferhinweis, Referenz mit Feldmeldung, Zusatzempfänger, kein labelFormat, A4/Thermodruck", async () => {
   const { page, fehler } = await neueSeite();
   const protokoll = neuesProtokoll();
   await setupRoutes(page, protokoll);
@@ -314,11 +314,17 @@ test("A — 1440: keine Formatauswahl, Lieferhinweis, bereinigte Referenz, Zusat
   assert.equal(await page.locator('input[name="labelFormat"]').count(), 0);
   assert.equal((await text(page.locator("#booking-label-delivery-info"))).trim(), "Versandlabel verfügbar als DIN A4 und Thermodruck");
 
-  // Referenz mit spitzen Klammern, Richtungs- und Steuerzeichen.
+  // Referenz mit spitzen Klammern, Richtungs- und Steuerzeichen. Referenzauftrag 2026-11-05 (B5): bei der Eingabe
+  // gehen nur die unsichtbaren Zeichen; `<` `>` bleiben sichtbar stehen, die Feldmeldung nennt sie, und gebucht
+  // wird erst nach der Korrektur — nichts wird still verändert.
   const z = (n) => String.fromCharCode(n);
   await schalter(page, "booking-reference-toggle").click();
   await page.locator("#booking-reference").fill(`AB<C>${z(0x202e)}D${z(0x200f)}E${z(0x07)}F`);
-  assert.equal(await page.locator("#booking-reference").inputValue(), "ABCDEF");
+  assert.equal(await page.locator("#booking-reference").inputValue(), "AB<C>DEF");
+  assert.equal((await text(page.locator("#booking-reference-error"))).trim(),
+    "Die Zeichen < und > sind in der Referenz nicht zulässig.");
+  await page.locator("#booking-reference").fill("ABCDEF");
+  assert.equal(await page.locator("#booking-reference-error").count(), 0, "die Meldung bleibt nach der Korrektur stehen");
 
   await schalter(page, "booking-tracking-email-toggle").click();
   await page.locator("#booking-tracking-email-toggle-input").fill("lager@example.com");

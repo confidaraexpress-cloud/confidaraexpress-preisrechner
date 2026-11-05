@@ -76,14 +76,17 @@ test("4 — der neutrale Lieferhinweis kommt aus labelSizes", () => {
 
 /* ══════════ 2 — Referenznummer ══════════ */
 
+/* Referenzauftrag 2026-11-05 (B5): unsichtbare Zeichen gehen weiterhin, sichtbare bleiben — auch < und > (die Buchung
+   lehnt sie mit Feldmeldung ab, statt sie still zu entfernen), und es wird nicht mehr auf 35 gekürzt. */
 test("5 — Steuerzeichen, Zeilentrenner und Bidi-Zeichen verschwinden bei Eingabe und Wiederherstellung", () => {
   const z = (n) => String.fromCharCode(n);
   const verseucht = `AB${z(0)}C${z(9)}D${z(10)}E${z(0x1f)}F${z(0x7f)}G${z(0x85)}H${z(0x9f)}I${z(0x2028)}J${z(0x2029)}`
     + `K${z(0x200e)}L${z(0x200f)}M${z(0x202a)}N${z(0x202e)}O${z(0x2066)}P${z(0x2069)}Q${z(0x061c)}R<S>`;
-  assert.equal(sanitizeReferenceInput(verseucht), "ABCDEFGHIJKLMNOPQRS");
+  assert.equal(sanitizeReferenceInput(verseucht), "ABCDEFGHIJKLMNOPQR<S>");
   // Sichtbare Zeichen bleiben — auch Umlaute, Leerzeichen und Bindestriche.
   assert.equal(sanitizeReferenceInput("Bestellung Nr. Ä-4711 / KST 12"), "Bestellung Nr. Ä-4711 / KST 12");
-  assert.equal(sanitizeReferenceInput("X".repeat(80)).length, REFERENCE_MAX_LENGTH);
+  assert.equal(sanitizeReferenceInput("X".repeat(80)).length, 80, "die Eingabe wird wieder still gekürzt");
+  assert.equal(REFERENCE_MAX_LENGTH, 35);
   assert.equal(sanitizeReferenceInput(null), "");
   // Der Entwurf durchläuft dieselbe Bereinigung.
   const flow = draftBookingOptionsToFlow({ reference: { enabled: true, value: `R-1${z(0x202e)}${z(10)}2` } });

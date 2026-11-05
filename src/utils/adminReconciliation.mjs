@@ -169,6 +169,9 @@ export function normalizeReconciliationAttempt(raw) {
     carrierPublicId: text(raw.carrierPublicId),
     fulfillmentMode: text(raw.fulfillmentMode),
     yourReference: text(raw.yourReference),
+    // Referenzauftrag 2026-11-05: was als Anbieterreferenz hinausging — der Suchschlüssel beim Anbieter.
+    providerReferenceSource: text(raw.providerReferenceSource),
+    sentProviderReference: text(raw.sentProviderReference),
     providerBookingReference: text(raw.providerBookingReference),
     providerFailReference: text(raw.providerFailReference),
     customerGross: zahl(raw.customerGross),
@@ -363,6 +366,9 @@ const CODE_TEXT = Object.freeze({
   provider_reference_invalid: "Die Auftragsreferenz ist ungültig.",
   provider_reference_too_long: "Die Auftragsreferenz ist zu lang.",
   provider_reference_mismatch: "Die angegebene Referenz weicht von der gespeicherten Anbieterreferenz ab.",
+  // Referenzauftrag 2026-11-05: ein Anbieterauftrag gehört höchstens einem Versuch.
+  provider_reference_in_use:
+    "Diese Auftragsreferenz gehört bereits zu einem anderen Buchungsversuch — dieser Auftrag ist nicht der gesuchte. Bitte über Zeitpunkt, Service, Empfänger-PLZ und Einkaufspreis weitersuchen.",
   commercial_snapshot_incomplete: "Der eingefrorene Preisstand ist unvollständig — so nicht abschließbar.",
   completion_inputs_missing: "Die eingefrorenen Abschlussangaben fehlen — so nicht abschließbar.",
   completion_inputs_unreadable: "Die eingefrorenen Abschlussangaben sind nicht lesbar.",

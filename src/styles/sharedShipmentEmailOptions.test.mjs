@@ -145,7 +145,9 @@ test("13 — die bestehenden Optionen sind unverändert", () => {
   // TG22 Paket B: das Sanitizing liegt im Helfer (spitze Klammern + Steuerzeichen, max. 35).
   assert.match(bookingPage, /upd\("reference", sanitizeReferenceInput\(v\)\)/);
   assert.match(bookingPage, /if \(!on\) setLabelFormat\("A4"\);/);
-  assert.match(modul, /maxLength=\{35\}/);
+  // Referenzauftrag 2026-11-05 (B5): keine stille Kürzung mehr — die Grenze zeigt der Zähler am Feld.
+  assert.doesNotMatch(modul, /maxLength=\{35\}/);
+  assert.match(modul, /id="booking-reference-count"/);
   const ids = [...modul.matchAll(/\{ id: "([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(ids, ["A4", "A6"]);
 });

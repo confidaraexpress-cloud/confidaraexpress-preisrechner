@@ -602,6 +602,7 @@ export default function AdminShipmentDetailPage() {
                         <span className="adm-opattempt-meta">
                           {v.providerText} · begonnen {fmtDateTime(v.createdAt)}
                           {v.providerBookingReference ? ` · Referenz ${v.providerBookingReference}` : ""}
+                          {v.sentProviderReference ? ` · gesendet ${v.sentProviderReference}` : ""}
                         </span>
                       </div>
                       <span className="adm-opattempt-badges">

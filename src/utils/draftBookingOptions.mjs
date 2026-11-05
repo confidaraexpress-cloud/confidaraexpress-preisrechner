@@ -30,7 +30,10 @@ import { sanitizeReferenceInput } from "./referenceNumber.mjs";
 
 export const DRAFT_LABEL_FORMATS = Object.freeze(["A4", "A6"]);
 export const DEFAULT_LABEL_FORMAT = "A4";
-export const DRAFT_REFERENCE_MAX_LENGTH = 35;
+// Referenzauftrag 2026-11-05 (B5): dieselbe Speichergrenze wie der Server-Entwurf (lib/draftBookingOptions.js
+// REFERENCE_DRAFT_MAX_LENGTH). Eine zu lange Referenz kommt beim Fortsetzen unverändert mit Feldmeldung zurück, statt
+// still auf 35 gekürzt zu werden; gebucht wird sie erst, wenn sie passt (utils/referenceNumber.mjs).
+export const DRAFT_REFERENCE_MAX_LENGTH = 100;
 export const DRAFT_EMAIL_MAX_LENGTH = 255;
 
 const str = (v) => (typeof v === "string" ? v : "");
@@ -62,7 +65,7 @@ export function buildDraftBookingOptions({
   const fmtOn = on(labelFormatEnabled);
   const fmt = str(labelFormat).trim().toUpperCase();
   return {
-    reference:          { enabled: refOn, value: refOn ? str(reference).trim().slice(0, DRAFT_REFERENCE_MAX_LENGTH) : "" },
+    reference:          { enabled: refOn, value: refOn ? Array.from(str(reference).trim()).slice(0, DRAFT_REFERENCE_MAX_LENGTH).join("") : "" },
     trackingEmail:      { enabled: trkOn, value: trkOn ? str(trackingEmail).trim().slice(0, DRAFT_EMAIL_MAX_LENGTH) : "" },
     labelTrackingEmail: { enabled: lblOn, value: lblOn ? str(labelTrackingEmail).trim().slice(0, DRAFT_EMAIL_MAX_LENGTH) : "" },
     // Anders als die drei übrigen ist A4 ein aktiv gesendeter Wert und kein Weglassen:
@@ -91,7 +94,7 @@ export function draftBookingOptionsToFlow(raw) {
     // Schalter trüge, verliert ihn hier, statt ihn unsichtbar zurückzubringen.
     // Ein Entwurf aus einer älteren Fassung kann Steuerzeichen tragen — dieselbe Bereinigung
     // wie bei der Eingabe (utils/referenceNumber.mjs).
-    reference:          on(ref.enabled) ? sanitizeReferenceInput(str(ref.value)).slice(0, DRAFT_REFERENCE_MAX_LENGTH) : "",
+    reference:          on(ref.enabled) ? Array.from(sanitizeReferenceInput(str(ref.value))).slice(0, DRAFT_REFERENCE_MAX_LENGTH).join("") : "",
     trackingEmail:      on(trk.enabled) ? str(trk.value).slice(0, DRAFT_EMAIL_MAX_LENGTH) : "",
     labelTrackingEmail: on(lbl.enabled) ? str(lbl.value).slice(0, DRAFT_EMAIL_MAX_LENGTH) : "",
     labelFormat:        fmtOn && DRAFT_LABEL_FORMATS.includes(fmtValue) ? fmtValue : DEFAULT_LABEL_FORMAT,

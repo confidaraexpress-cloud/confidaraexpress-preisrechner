@@ -119,6 +119,9 @@ function versuch(raw) {
     stateMeta: reconciliationStateMeta(raw.state),
     ambiguousReason: text(raw.ambiguousReason),
     yourReference: text(raw.yourReference),
+    // Referenzauftrag 2026-11-05: was als Anbieterreferenz hinausging (nur am neuesten Versuch mit Wert).
+    providerReferenceSource: text(raw.providerReferenceSource),
+    sentProviderReference: text(raw.sentProviderReference),
     providerBookingReference: text(raw.providerBookingReference),
     providerFailReference: text(raw.providerFailReference),
     createdAt: raw.createdAt ?? null,

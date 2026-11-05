@@ -331,7 +331,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // Ein bewusst geöffneter Entwurf überschreibt den Sitzungsvorgang VOLLSTÄNDIG
   // — es wird nichts gemischt.
   const { shipment: flowShipment, setScope: setFlowScope, clearScope: clearFlowScope,
-          setBooking: setFlowBooking,
+          setBooking: setFlowBooking, booking: flowBookingState,
           setStep: setFlowStep, droppedReason, consumeDroppedReason } = useShippingFlow();
   const flowInitRef = useRef(undefined);
   if (flowInitRef.current === undefined) {
@@ -870,6 +870,12 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     const merged = { ...form, ...(prefillInventory.form || {}) };
     setForm(merged);
     setInventoryContext(prefillInventory.inventory);
+    // Referenzauftrag 2026-11-05 (B4): die Kundenreferenz des Auftrags wird zum bearbeitbaren Vorschlag der
+    // Buchungsreferenz — ungekürzt (utils/inventoryShipmentHandoff.mjs). Eine im laufenden Vorgang bereits
+    // eingegebene Buchungsreferenz wird NICHT überschrieben; der Kunde kann den Vorschlag ändern oder entfernen.
+    if (prefillInventory.booking && !String(flowBookingState?.reference || "").trim()) {
+      setFlowBooking(prefillInventory.booking);
+    }
     // inventoryNotice ist abgeleitet (siehe oben) — sie folgt inventoryContext im
     // nächsten Render automatisch, kein separates Setzen mehr nötig.
     setBaseline(getShipmentFormSnapshot({

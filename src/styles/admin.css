@@ -688,6 +688,8 @@
 
 /* Key-Value: Beschriftung leise darüber (12/18), Wert in Lesegröße darunter. */
 .adm-kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--ce-space-4) var(--ce-space-6); }
+/* Referenzauftrag 2026-11-05: Zusatz zu einem Wert (etwa „Kundenreferenz, nicht eindeutig") — leiser als der Wert. */
+.adm-kv-note { color: var(--ce-color-text-muted); font-size: var(--ce-text-caption-size); }
 .adm-kv-item { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .adm-kv-item dt { font-size: var(--ce-text-caption-size); font-weight: 500; line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
 .adm-kv-item dd { font-size: var(--ce-text-body-size); line-height: 1.4286; color: var(--ce-color-text-primary); word-break: break-word; }

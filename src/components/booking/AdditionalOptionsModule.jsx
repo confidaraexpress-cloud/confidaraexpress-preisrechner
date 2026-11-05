@@ -63,6 +63,9 @@ function EmailOption({ id, label, enabled, onEnabledChange, value, onChange, err
 
 export function AdditionalOptionsModule({
   reference, onReferenceChange, referenceEnabled, onReferenceEnabledChange, referenceError,
+  // Referenzauftrag 2026-11-05: Zeichenzähler (Länge wie die Buchungsschranke zählt) und der Satz zum Angebot
+  // (`{ status, text, caveat }` oder null) — beides berechnet der Orchestrator aus utils/referenceNumber.mjs.
+  referenceLength = 0, referenceMaxLength = 35, referenceLabelHint = null,
   labelFormat, onLabelFormatChange, labelFormatEnabled, onLabelFormatEnabledChange,
   labelFormatOptions, labelDeliveryInfo, labelHandling,
   trackingEmail, onTrackingEmailChange, trackingEmailEnabled, onTrackingEmailEnabledChange,
@@ -85,8 +88,9 @@ export function AdditionalOptionsModule({
     <div className="calc-panel addopt-panel mb-16">
       <div className="calc-panel-header"><h3>Zusätzliche Optionen</h3></div>
       <div className="calc-panel-body">
-        {/* 1) Optionale Referenznummer — max. 35 Zeichen; spitze Klammern und unsichtbare
-            Steuerzeichen entfernt der Orchestrator bereits bei der Eingabe. */}
+        {/* 1) Optionale Referenznummer. Referenzauftrag 2026-11-05: kein stilles Kürzen mehr — das Feld
+            zeigt die Länge an, die Meldung (zu lang, `<` `>`) kommt vom Orchestrator, und darunter steht,
+            was mit der Referenz bei DIESEM Angebot geschieht (`referenceLabelHint`, serverseitige Aussage). */}
         <div className="addopt-option">
           <Switch
             id="booking-reference-toggle"
@@ -104,14 +108,30 @@ export function AdditionalOptionsModule({
                   value={reference}
                   onChange={e => onReferenceChange(e.target.value)}
                   placeholder="z. B. Bestellnummer, Kostenstelle …"
-                  maxLength={35}
                   aria-invalid={referenceError ? "true" : undefined}
-                  aria-describedby={referenceError ? "booking-reference-error" : undefined}
+                  aria-describedby={[
+                    referenceError ? "booking-reference-error" : null,
+                    "booking-reference-count",
+                    referenceLabelHint ? "booking-reference-label" : null,
+                  ].filter(Boolean).join(" ")}
                 />
-                {referenceError && <span className="field-error" id="booking-reference-error">{referenceError}</span>}
-                <span className="field-hint">
-                  Optional – z. B. Bestellnummer, Kostenstelle oder interne Referenz. Max. 35 Zeichen.
-                </span>
+                {referenceError && <span className="field-error" id="booking-reference-error" role="alert">{referenceError}</span>}
+                <div className="addopt-reference-meta">
+                  <span className="field-hint">Optional – z. B. Bestellnummer, Kostenstelle oder interne Referenz.</span>
+                  <span
+                    id="booking-reference-count"
+                    className={`addopt-reference-counter${referenceLength > referenceMaxLength ? " is-over" : ""}`}
+                    aria-live="polite"
+                  >
+                    {referenceLength}/{referenceMaxLength} Zeichen
+                  </span>
+                </div>
+                {referenceLabelHint && (
+                  <p className="addopt-reference-label" id="booking-reference-label" data-reference-on-label={referenceLabelHint.status}>
+                    {referenceLabelHint.text}
+                    {referenceLabelHint.caveat && <span className="addopt-reference-caveat"> {referenceLabelHint.caveat}</span>}
+                  </p>
+                )}
               </div>
             </div>
           )}

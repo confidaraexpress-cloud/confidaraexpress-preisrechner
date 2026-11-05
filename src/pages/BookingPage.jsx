@@ -10,7 +10,7 @@ import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher, loadPr
 import { FormAlert } from "../components/ui/FormAlert";
 import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess, istOffenerAusgang,
   fordertNeuberechnung, erlaubtSpaeterenVersuch, istUnklarerAusgang, BOOK_FEHLER, OFFER_ALREADY_USED_TEXT,
-  REFERENCE_INVALID_TEXT, lagerkonfliktBeimBuchen, preisangabenFehlenHandlung,
+  referenceRejectionText, lagerkonfliktBeimBuchen, preisangabenFehlenHandlung,
   PARCELSHOP_REQUIRED_TEXT, paketshopFehlt, zusatzmailFehler, repriceFehlerText } from "../utils/bookingErrors.mjs";
 import { customerText, normalizeApiError } from "../utils/apiError.mjs";
 // Paket F: der Buchungsrahmen — Vorab-Hinweis (reine Anzeige) und der 409-Befund „ausgeschöpft".
@@ -1619,7 +1619,9 @@ export default function BookingPage() {
         //   BUSINESS_PROFILE_INCOMPLETE (422): Profil vervollständigen — keine Abmeldung.
         //   BILLING_MODE_UNAVAILABLE    (422): BEL-4, Abrechnung im Profil umstellen — keine Abmeldung.
         //   LABEL_FORMAT_NOT_SUPPORTED  (400): nichts beauftragt, das Angebot trägt → neu berechnen.
-        //   INVALID_REFERENCE_NUMBER    (400): Feldfehler an der Referenznummer, zurück zu Schritt 1.
+        //   INVALID_REFERENCE_NUMBER    (400): Feldfehler an der Referenznummer, zurück zu Schritt 1. Mit
+        //                                      `reason: "not_accepted_for_offer"` (Portal-Referenzauftrag 2026-11-06)
+        //                                      hat der Tarif die Referenz nicht unverändert übernommen — eigener Satz.
         if (d?.code === "BUSINESS_PROFILE_INCOMPLETE") {
           // F1: nennt die Antwort die fehlenden Felder (`missingFields`), sagt der Hinweis genau
           // diese; sonst bleibt der Text des Fehlerkatalogs.
@@ -1651,7 +1653,7 @@ export default function BookingPage() {
         }
         if (d?.code === "INVALID_REFERENCE_NUMBER") {
           setReferenceEnabled(true);
-          setReferenceError(REFERENCE_INVALID_TEXT);
+          setReferenceError(referenceRejectionText(d));
           setStep(1);
           setError("Bitte prüfen Sie die Referenznummer, bevor Sie buchen.");
           setLoading(false);

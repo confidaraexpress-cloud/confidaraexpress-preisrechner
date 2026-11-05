@@ -65,7 +65,9 @@ const REF_ERROR = "#booking-reference-error";
 
 let server, browser;
 
-async function setupRoutes(page, rec, { auftragsReferenz = null } = {}) {
+// `bookAntworten`: die Antworten von /book der Reihe nach (`{ status, body }`); danach die erfolgreiche Buchung.
+async function setupRoutes(page, rec, { auftragsReferenz = null, bookAntworten = [] } = {}) {
+  const ausstehend = [...bookAntworten];
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const req = route.request();
     const p = new URL(req.url()).pathname;
@@ -99,6 +101,8 @@ async function setupRoutes(page, rec, { auftragsReferenz = null } = {}) {
     });
     if (p.includes("/api/jumingo/book")) {
       rec.book.push(JSON.parse(req.postData() || "{}"));
+      const naechste = ausstehend.shift();
+      if (naechste) return json(naechste.body, naechste.status);
       return json({ trackingNumber: "TRACK1", labelUrl: null });
     }
     return json({});
@@ -291,5 +295,51 @@ test("9 — Meldung, Zähler und Satz brechen auf 390 px ohne Überlauf um", asy
   const ueberlauf = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
   assert.equal(ueberlauf, false, "horizontaler Überlauf bei 390 px");
   for (const sel of [REF_COUNT, REF_ERROR, REF_LABEL]) assert.ok(await page.locator(sel).isVisible(), `${sel} nicht sichtbar`);
+  await page.close();
+});
+
+/* ══════════ Portal-Referenzauftrag (2026-11-06) — der Tarif übernimmt die Referenz nicht ══════════ */
+
+test("10 — 400 INVALID_REFERENCE_NUMBER „not_accepted_for_offer“: eigener Satz am Feld, Referenz bleibt, dasselbe Angebot bucht danach", async () => {
+  const rec = { book: [] };
+  const abgelehnt = {
+    status: 400,
+    body: {
+      error: "Diese Referenz konnte für den gewählten Tarif nicht unverändert übernommen werden.",
+      code: "INVALID_REFERENCE_NUMBER", field: "referenceNumber", reason: "not_accepted_for_offer",
+    },
+  };
+  const page = await neueSeite(rec, { bookAntworten: [abgelehnt] });
+  await zurBuchungMit(page, 1);
+  await schalte(page, REF_TOGGLE, true);
+  const lang = "Bestellung 0042/Ä-Ö ü ß é KST-12 Z9";
+  await page.locator(REF_INPUT).fill(lang);
+  const buchen = async () => {
+    await page.getByRole("button", { name: /^Weiter/ }).first().click();
+    await page.waitForTimeout(400);
+    const checks = page.getByRole("checkbox");
+    await checks.nth(0).check();
+    await checks.nth(1).check();
+    await page.getByRole("button", { name: /Kostenpflichtig buchen/ }).click();
+  };
+  await buchen();
+  await page.locator(REF_ERROR).waitFor({ timeout: 20000 });
+  assert.equal(await page.locator(REF_ERROR).innerText(),
+    "Diese Referenz konnte für den gewählten Tarif nicht unverändert übernommen werden. Es wurde nichts beauftragt. "
+    + "Bitte kürzen oder ändern Sie die Referenz oder buchen Sie ohne Referenz.");
+  assert.equal(await page.locator(REF_INPUT).getAttribute("aria-invalid"), "true");
+  assert.equal(await page.locator(REF_INPUT).inputValue(), lang, "die Referenz wurde still verändert");
+  assert.equal(rec.book.length, 1, "nach der Ablehnung wurde ohne Zutun erneut gebucht");
+  const body = await page.locator("body").innerText();
+  assert.doesNotMatch(body, /neu berechnen|PurchaseOrderNumber|Transglobal|Portal/i);
+  // Der Kunde kürzt die Referenz und bucht dasselbe Angebot erneut.
+  await page.locator(REF_INPUT).fill("PO-4711");
+  await buchen();
+  await page.waitForTimeout(1200);
+  assert.equal(rec.book.length, 2);
+  assert.equal(rec.book[1].referenceNumber, "PO-4711");
+  // Dasselbe Angebot (die Attrappen tragen keine offerId; gewählt wird über tariffId/shipperTariffId).
+  assert.deepEqual([rec.book[0].tariffId, rec.book[0].shipperTariffId], [2, 2]);
+  assert.deepEqual([rec.book[1].tariffId, rec.book[1].shipperTariffId], [2, 2], "ein anderes Angebot wurde gebucht");
   await page.close();
 });

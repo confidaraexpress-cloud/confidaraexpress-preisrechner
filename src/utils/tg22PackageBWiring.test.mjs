@@ -121,7 +121,8 @@ test("8 — 400/422: Profil, Neuberechnung und Referenzfeld stehen vor den Feld-
   assert.ok(profil >= 0 && neuberechnen > profil && referenz > neuberechnen && email > referenz);
   // F1: nennt die 422 die fehlenden Felder, sagt der Hinweis genau diese — sonst der Katalogtext.
   assert.match(zweig, /setProfileHint\(bookingProfileGateText\(d, normalizeApiError\(\{ status: r\.status, body: d \}\)\.message\)\);/);
-  assert.match(zweig, /setReferenceError\(REFERENCE_INVALID_TEXT\);\s*setStep\(1\);/);
+  // Portal-Referenzauftrag (2026-11-06): der Satz folgt dem Grund der Antwort (`referenceRejectionText`).
+  assert.match(zweig, /setReferenceError\(referenceRejectionText\(d\)\);\s*setStep\(1\);/);
   assert.match(zweig, /setRecalcNotice\(mapBookRestError\(r\.status, d\)\.message\);/);
 });
 

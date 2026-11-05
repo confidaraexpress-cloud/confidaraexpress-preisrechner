@@ -480,8 +480,9 @@ test("TG29 — ein nicht belegter Divisor ist eine Aussage: Profil ja, Volumenge
   assert.ok(!/Volumengewicht|÷|5\.000|höhere Gewicht/.test(alleTexte(v)), "eine Volumengewichtserklärung ohne Beleg");
   // Keine erfundene Gewichtsgrenze.
   assert.equal(zeile(v.size, "maxWeight"), undefined);
-  // Die übrigen Abschnitte bleiben — Laufzeit, Prognose, Absicherungsgrenzen, Einschränkungen. P4: UPS Express
-  // trägt keine belegte Uhrzeit (UPS nennt sie je Bestimmungsort) — deshalb „im Tagesverlauf“, keine Obergrenze.
+  // Die übrigen Abschnitte bleiben — Laufzeit, Prognose, Absicherungsgrenzen, Einschränkungen. Die Prognose dieser
+  // Nachbildung trägt keine Uhrzeit (wie die 29 auf DE→EU) — deshalb „im Tagesverlauf“, keine Obergrenze. Im Inland bei
+  // Laufzeit 1 liefert der Server seit 2026-11-05 „12:00“ (deliveryTimeOfDay.test.mjs, Fall 4).
   assert.deepEqual(v.transit.rows.map((z) => [z.label, z.value]),
     [["Voraussichtliche Laufzeit", "1 Tag"], ["Voraussichtliche Zustellung", "Do., 17.09., im Tagesverlauf"]]);
   assert.equal(nbsp(zeile(v.cover, "additionalCover").value), "bis 2.500 € Warenwert");

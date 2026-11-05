@@ -2,14 +2,15 @@
 // Detailbereich und in den Fristgruppen; die Zeitleiste trägt die neue Zusatzzeile in jeder Breite. Echter Dev-Server,
 // echter Browser, gemocktes Backend.
 //
-// Die Regel selbst prüft die Unit-Suite (src/utils/deliveryTimeOfDay.test.mjs: 15 Launchprodukte, UPS 29 und TNT 49
-// mit und ohne Beleg, JUMiNGO, Filter, Demo). Die Buchungsleiste prüfen tg22DeliveryProjection (E) und
-// tg23ExpressSaver, den öffentlichen Preisrechner publicCalculator (J2).
+// Die Regel selbst prüft die Unit-Suite (src/utils/deliveryTimeOfDay.test.mjs: 15 Launchprodukte, UPS 29 mit und ohne
+// Uhrzeit vom Server, TNT 49 mit und ohne Beleg, JUMiNGO, Filter, Demo). Die Buchungsleiste prüfen
+// tg22DeliveryProjection (E) und tg23ExpressSaver, den öffentlichen Preisrechner publicCalculator (J2).
 //
-//   K  Karte: grünes Feld vor 15:00, graue Uhrzeit danach, „Zustellung im Tagesverlauf" ohne Uhrzeit, nichts neben
-//      einer Uhrzeit im Namen (TNT 49) oder ohne Zustelltag
+//   K  Karte: grünes Feld vor 15:00 (auch UPS Express 29 im Inland, Betreiberentscheidung 2026-11-05), graue Uhrzeit
+//      danach, „Zustellung im Tagesverlauf" ohne Uhrzeit, nichts neben einer Uhrzeit im Namen (TNT 49) oder ohne Zustelltag
 //   D  Detailbereich: dieselbe Aussage hinter „Zustellung" bzw. dem Datum der Prognose
-//   F  Fristgruppen: „im Tagesverlauf" erfüllt keine Fristuhrzeit — die Karte bleibt in „Frist nicht bestätigt"
+//   F  Fristgruppen: „im Tagesverlauf" erfüllt keine Fristuhrzeit — die Karte bleibt in „Frist nicht bestätigt"; die
+//      Uhrzeit des Servers (DHL 87, UPS 29) erfüllt sie
 //   R  1440 / 1024 / 768 / 390 px: Daten und Zusatzzeilen auf einer Höhe, Textkanten an den Punkten, gleich hohe
 //      Zeitleisten, kein waagerechter Überlauf
 //
@@ -63,14 +64,14 @@ const T = (sid, carrier, name, netto, prognose, extra = {}) => ({
 const UPS = { id: "ups", name: "UPS" }, DHL = { id: "dhl", name: "DHL Express" }, DPD = { id: "dpd", name: "DPD" };
 const TNT = { id: "tnt", name: "TNT" };
 
-// Die Aussagen nebeneinander: Anbieterzeit früh und spät, Anbieterdatum ohne Zeit, belegte Zeitleistung (DHL 87),
-// UPS Express 29 und UPS Standard 22 ohne Uhrzeit (Tag und Zeitraum), TNT 49 mit der Uhrzeit nur im Namen, eine reine
-// Laufzeit ohne Prognose.
+// Die Aussagen nebeneinander (Inland): Anbieterzeit früh und spät, Anbieterdatum ohne Zeit, Zeitleistungen des Servers
+// (DHL 87 und seit 2026-11-05 UPS Express 29, je 12:00), UPS Standard 22 ohne Uhrzeit (Zeitraum), TNT 49 mit der Uhrzeit
+// nur im Namen, eine reine Laufzeit ohne Prognose.
 const j9 = J(3260, DHL, "Express National 9:00", 31, FRIST, "09:00");
 const j18 = J(3257, UPS, "Standard", 12, FRIST, "18:00", { shippingMode: "standard" });
 const jOhne = J(3271, DPD, "Classic", 10, FRIST, null, { shippingMode: "standard" });
 const t87 = T(87, "dhl", "Domestic Express 12:00", 25, { dateMin: FRIST, dateMax: FRIST, timeUntil: "12:00" });
-const t29 = T(29, "ups", "Express", 20, { dateMin: FRIST, dateMax: FRIST });
+const t29 = T(29, "ups", "Express", 20, { dateMin: FRIST, dateMax: FRIST, timeUntil: "12:00" });
 const t22 = T(22, "ups", "Standardversand", 9, { dateMin: FRIST, dateMax: "2026-09-01" },
   { transitDaysMax: 2, deliveryTime: "1–2 Tage" });
 const t49 = T(49, "tnt", "Express 12:00", 19, { dateMin: FRIST, dateMax: FRIST });
@@ -202,7 +203,7 @@ test("K — Karte: Uhrzeit grün oder grau, „Zustellung im Tagesverlauf“ ohn
   const ende = (t) => karteVon(page, t).locator(".offer-tl-node--end");
   const erwartet = [
     [j9, [], "Lieferung bis 09:00 Uhr"], [j18, ["bis 18:00 Uhr"], null], [jOhne, [TAGESVERLAUF], null],
-    [t87, [], "Lieferung bis 12:00 Uhr"], [t29, [TAGESVERLAUF], null], [t22, [TAGESVERLAUF], null],
+    [t87, [], "Lieferung bis 12:00 Uhr"], [t29, [], "Lieferung bis 12:00 Uhr"], [t22, [TAGESVERLAUF], null],
     [t49, [], null], [tLauf, [], null],
   ];
   for (const [t, grau, gruen] of erwartet) {
@@ -213,8 +214,13 @@ test("K — Karte: Uhrzeit grün oder grau, „Zustellung im Tagesverlauf“ ohn
   // TNT 49: der Name bleibt die einzige Uhrzeitangabe — grün im Namen, keine Zeit und kein Tagesverlauf darunter.
   assert.equal(norm(await karteVon(page, t49).locator(".offer-service-time").textContent()), "12:00");
   assert.doesNotMatch(norm(await ende(t49).textContent()), /Uhr|Tagesverlauf/);
-  // UPS Express 29: keine Uhrzeit ohne Carrierbeleg (weder 10:30 noch 12:00) und kein Garantiewort.
-  assert.doesNotMatch(norm(await ende(t29).textContent()), /garantiert|\d{1,2}:\d{2}/i);
+  // UPS Express 29: dasselbe grüne Feld wie DHL 87 (gleiche Klasse, gleiche Farbe), kein Garantiewort, kein 10:30, keine
+  // Uhrzeit im Namen.
+  const feld = (t) => ende(t).locator(".offer-early-note");
+  const farbe = (t) => feld(t).evaluate((el) => [getComputedStyle(el).color, getComputedStyle(el).backgroundColor]);
+  assert.deepEqual(await farbe(t29), await farbe(t87), "das Feld der 29 sieht anders aus als das der DHL 87");
+  assert.doesNotMatch(norm(await ende(t29).textContent()), /garantiert|vormittag|10:30/i);
+  assert.equal(await karteVon(page, t29).locator(".offer-service-time").count(), 0, "Uhrzeit im Namen der 29");
   assert.deepEqual(fehler, []);
   await page.close();
 });
@@ -228,8 +234,10 @@ test("D — Detailbereich: „Zustellung · im Tagesverlauf“ bei Anbieterdatum
   assert.equal(norm(await zeile(jPanel, "Zustellung").textContent()), "im Tagesverlauf");
   const j18Panel = await oeffneDetails(page, j18);
   assert.equal(norm(await zeile(j18Panel, "Zustellung").textContent()), "bis 18:00 Uhr");
-  const tPanel = await oeffneDetails(page, t29);
-  assert.match(norm(await zeile(tPanel, "Voraussichtliche Zustellung").textContent()), /^\d{2}\.\d{2}\.\d{4}, im Tagesverlauf$/);
+  const tPanel = await oeffneDetails(page, t22);
+  assert.match(norm(await zeile(tPanel, "Voraussichtliche Zustellung").textContent()), /, im Tagesverlauf$/);
+  const t29Panel = await oeffneDetails(page, t29);
+  assert.match(norm(await zeile(t29Panel, "Voraussichtliche Zustellung").textContent()), /^\d{2}\.\d{2}\.\d{4}, bis 12:00 Uhr$/);
   const t49Panel = await oeffneDetails(page, t49);
   assert.match(norm(await zeile(t49Panel, "Voraussichtliche Zustellung").textContent()), /^\d{2}\.\d{2}\.\d{4}$/,
     "neben „Express 12:00“ steht eine Tageszeit");
@@ -245,11 +253,13 @@ test("F — Fristgruppen: „im Tagesverlauf“ erfüllt keine Fristuhrzeit, die
   await untenUhrzeit(page, "12:00 Uhr");
   await page.waitForSelector('[data-offers-group="unconfirmed"]', { timeout: 10000 });
   assert.deepEqual((await gruppenIds(page, "confirmed")).sort(), [j9.offerId].sort());
-  assert.deepEqual(await gruppenIds(page, "projected"), [t87.offerId]);
+  // Die Uhrzeit des Servers erfüllt die Frist — bei DHL 87 und bei UPS Express 29 nach derselben Regel.
+  assert.deepEqual((await gruppenIds(page, "projected")).sort(), [t87.offerId, t29.offerId].sort());
   const offen = await gruppenIds(page, "unconfirmed");
-  for (const t of [jOhne, t29, t49]) assert.ok(offen.includes(t.offerId), `${t.publicServiceName} ist nicht „Frist nicht bestätigt“`);
+  for (const t of [jOhne, t49]) assert.ok(offen.includes(t.offerId), `${t.publicServiceName} ist nicht „Frist nicht bestätigt“`);
   // Die Karten behalten ihre Aussage in der Gruppe — der Tagesverlauf wird nicht zur Uhrzeit.
-  assert.deepEqual(await texte(karteVon(page, t29).locator(".offer-tl-node--end .offer-tl-sub")), [TAGESVERLAUF]);
+  assert.deepEqual(await texte(karteVon(page, jOhne).locator(".offer-tl-node--end .offer-tl-sub")), [TAGESVERLAUF]);
+  assert.deepEqual(await texte(karteVon(page, t29).locator(".offer-tl-node--end .offer-early-note")), ["Lieferung bis 12:00 Uhr"]);
   assert.equal(p.calc, 1, "ein Lieferzeitfilter hat eine Preisanfrage ausgelöst");
   assert.deepEqual(fehler, []);
   await page.close();

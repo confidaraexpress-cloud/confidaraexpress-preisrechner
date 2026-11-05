@@ -5,8 +5,9 @@
 //   Zustelltag oder Prognose ohne Uhrzeit   → „Zustellung im Tagesverlauf"
 //   keine Zustellangabe / Uhrzeit im Namen  → nichts
 //
-// Geprüft werden die 15 Transglobal-Launchprodukte mit den Zeitleistungen des Servers (TG-L1: nur DHL 85/86/87 DE→DE,
-// Laufzeit 1), UPS Express 29 und TNT 49 mit und ohne Carrierbeleg (der Beleg wäre eine reine Datenergänzung des
+// Geprüft werden die 15 Transglobal-Launchprodukte mit den Zeitleistungen des Servers (TG-L1: DHL 85/86/87, seit der
+// Betreiberentscheidung 2026-11-05 auch UPS Express 29 mit 12:00 — jeweils nur DE→DE und Laufzeit 1), UPS Express 29
+// mit und ohne Uhrzeit vom Server, TNT 49 mit und ohne Carrierbeleg (der Beleg wäre eine reine Datenergänzung des
 // Servers), JUMiNGO mit 09:00, 12:00, 17:00 und 18:00 Uhr, Angebote ohne Uhrzeit und ohne Zustellprognose, Laufzeiten
 // und Strecken, die Unabhängigkeit von Lieferzeitfilter und Fristgruppen sowie dieselbe Zeile auf Karte, Detailbereich,
 // Buchungsleiste, öffentlichem Preisrechner und Demo. Die Browserprüfungen stehen in tests/e2e/deliveryTimeOfDay.test.mjs.
@@ -73,13 +74,13 @@ test("1 — drei Fälle, drei Formen: Uhrzeit, Tagesverlauf, nichts", () => {
 /* ══════════ 2) Die 15 Transglobal-Launchprodukte ══════════ */
 
 // Name (Kurationsstand der Policy), Strecke, Laufzeit des Quotes und die Prognose, die der Server daraus rechnet.
-// `zeit` ist die Zeitleistung des Servers (nur 85/86/87, DE→DE, Laufzeit 1).
+// `zeit` ist die Zeitleistung des Servers (29 seit 2026-11-05 und 85/86/87, nur DE→DE, Laufzeit 1).
 const LAUNCH = [
   { id: 22, name: "Standardversand", strecke: "DE", erwartet: TAGESVERLAUF },
   { id: 22, name: "Standardversand", strecke: "EU", dateMax: "2026-11-11", transit: [1, 2], erwartet: TAGESVERLAUF },
   { id: 23, name: "Expressversand", strecke: "DE", erwartet: TAGESVERLAUF },
   { id: 26, name: "Standardversand Mehrpaket", strecke: "DE", dateMax: "2026-11-16", transit: [1, 5], erwartet: TAGESVERLAUF },
-  { id: 29, name: "Express", strecke: "DE", erwartet: TAGESVERLAUF },
+  { id: 29, name: "Express", strecke: "DE", zeit: "12:00", erwartet: "bis 12:00 Uhr", feld: "Lieferung bis 12:00 Uhr" },
   { id: 29, name: "Express", strecke: "EU", erwartet: TAGESVERLAUF },
   { id: 41, name: "Economy Express", strecke: "EU", dateMin: "2026-11-11", transit: [2, 2], erwartet: TAGESVERLAUF },
   { id: 44, name: "Express", strecke: "EU", erwartet: TAGESVERLAUF },
@@ -94,7 +95,7 @@ const LAUNCH = [
   { id: 137, name: "Classic", strecke: "DE", erwartet: TAGESVERLAUF },
 ];
 
-test("2 — alle 15 Launchprodukte: belegte Uhrzeit nur bei DHL 85/86/87, sonst „Zustellung im Tagesverlauf“, TNT 49 nichts", () => {
+test("2 — alle 15 Launchprodukte: Uhrzeit nur bei UPS 29 (Inland) und DHL 85/86/87, sonst „Zustellung im Tagesverlauf“, TNT 49 nichts", () => {
   assert.equal(new Set(LAUNCH.map((p) => p.id)).size, 15, "nicht alle 15 Launchprodukte geprüft");
   for (const p of LAUNCH) {
     const angebot = tg(p.name, { dateMin: p.dateMin, dateMax: p.dateMax ?? p.dateMin, timeUntil: p.zeit ?? null,
@@ -113,23 +114,28 @@ test("3 — die Zeitprodukte ohne belegte Uhrzeit (andere Laufzeit, offenes Fens
   assert.equal(deliveryTimeOfDayLabel(tg(undefined)), TAGESVERLAUF);
 });
 
-/* ══════════ 3) UPS Express 29 und TNT 49 — mit und ohne Carrierbeleg ══════════ */
+/* ══════════ 3) UPS Express 29 (Betreiberentscheidung 2026-11-05) und TNT 49 ══════════ */
 
-test("4 — UPS Express 29 ohne Carrierbeleg (heute): Tagesverlauf auf jeder Strecke und Laufzeit, keine Obergrenze", () => {
+test("4 — UPS Express 29 im Inland bei Laufzeit 1: „Lieferung bis 12:00 Uhr“ im selben grünen Feld wie DHL Express 12:00", () => {
+  // Die Uhrzeit kommt allein vom Server (Zeitleistung der 29, nur DE→DE und Laufzeit 1) — die Oberfläche rechnet nichts.
+  const ups29 = tg("Express", { timeUntil: "12:00" });
+  const dhl87 = tg("Domestic Express 12:00", { timeUntil: "12:00" });
+  assert.equal(deliveryTimeOfDayLabel(ups29), "bis 12:00 Uhr");
+  assert.equal(earlyDeliveryNote(ups29), "Lieferung bis 12:00 Uhr");
+  assert.deepEqual(deliveryTimeOfDay(ups29), deliveryTimeOfDay(dhl87));
+  assert.equal(earlyDeliveryNote(ups29), earlyDeliveryNote(dhl87));
+  // Keine Zusage: kein Garantiewort, kein Vormittag, keine zweite Uhrzeit.
+  assert.doesNotMatch(JSON.stringify([deliveryTimeOfDay(ups29), earlyDeliveryNote(ups29)]), /garant|zugesichert|vormittag|10:30/i);
+});
+
+test("5 — UPS Express 29 ohne Uhrzeit vom Server (DE→EU, „1–2“, „1+“): Tagesverlauf, die Oberfläche ergänzt keine Obergrenze", () => {
   for (const angebot of [tg("Express"), tg("Express", { dateMax: "2026-11-11", transit: [1, 2] }),
                          tg("Express", { dateMax: null, transit: [1, null] })]) {
     assert.equal(deliveryTimeOfDayLabel(angebot), TAGESVERLAUF);
     assert.equal(earlyDeliveryNote(angebot), "");
-    assert.ok(!/\d{1,2}:\d{2}/.test(JSON.stringify(deliveryTimeOfDay(angebot))), "eine Uhrzeit ohne Beleg");
+    assert.ok(!/\d{1,2}:\d{2}/.test(JSON.stringify(deliveryTimeOfDay(angebot))), "eine Uhrzeit ohne Zeitleistung");
   }
-});
-
-test("5 — UPS Express 29 mit Carrierbeleg: die Uhrzeit käme allein vom Server (Zeitleistung), die Oberfläche ändert nichts", () => {
-  // Hätte die Policy eine belegte Obergrenze (DE→DE, Laufzeit 1), trüge die Prognose `timeUntil` — mehr nicht.
-  const belegt = tg("Express", { timeUntil: "12:00" });
-  assert.equal(deliveryTimeOfDayLabel(belegt), "bis 12:00 Uhr");
-  assert.equal(earlyDeliveryNote(belegt), "Lieferung bis 12:00 Uhr");
-  // An einem Zeitraum (DE→EU, Laufzeit 1–2) gilt eine Uhrzeit nie — und eine verworfene Uhrzeit wird kein Tagesverlauf.
+  // An einem Zeitraum (Laufzeit 1–2) gilt eine Uhrzeit nie — und eine verworfene Uhrzeit wird kein Tagesverlauf.
   assert.equal(deliveryTimeOfDayLabel(tg("Express", { dateMax: "2026-11-11", timeUntil: "12:00", transit: [1, 2] })), "");
 });
 
@@ -187,7 +193,7 @@ test("11 — die Uhrzeiterkennung im Namen: ganze Uhrzeiten, keine Scheintreffer
 /* ══════════ 5) Lieferzeitfilter und Fristgruppen bleiben unberührt ══════════ */
 
 test("12 — „Zustellung im Tagesverlauf“ ist keine Uhrzeit: keine Fristoption, keine erfüllte Fristuhrzeit, Gruppen wie bisher", () => {
-  const ups29 = tg("Express");
+  const ups29 = tg("Express"); // UPS Express 29 ohne Uhrzeit vom Server (DE→EU) — Zustellung im Tagesverlauf
   const dpd137 = tg("Classic", { dateMax: "2026-11-11", transit: [1, 2] });
   const dhl87 = tg("Domestic Express 12:00", { timeUntil: "12:00" });
   // Keine Uhrzeitoption aus einem Tagesverlauf — nur die belegte 12:00.
@@ -203,6 +209,15 @@ test("12 — „Zustellung im Tagesverlauf“ ist keine Uhrzeit: keine Fristopti
   assert.deepEqual([gruppen.confirmed.length, gruppen.projected.length, gruppen.unconfirmed.length], [0, 1, 1]);
   // Dieselbe Bewertung wie ohne den Namen, der den Tagesverlauf unterdrückt — der Name wirkt nicht auf den Filter.
   assert.equal(deliveryDeadlineAssessment(tg("Express 12:00"), frist), deliveryDeadlineAssessment(ups29, frist));
+  // UPS Express 29 im Inland mit der Uhrzeit des Servers (2026-11-05): dieselbe Filterlogik wie DHL 87 — passt zu einer
+  // Frist ab 12:00 am Zustelltag, nicht zu einer bis 10:00; die Fristoptionen bleiben dieselben.
+  const ups29Inland = tg("Express", { timeUntil: "12:00" });
+  assert.deepEqual(deliveryTimeOptions([ups29Inland, dpd137, dhl87]), ["12:00"]);
+  for (const f of [frist, { ...frist, latestDeliveryTime: "10:00" }, { ...frist, latestDeliveryTime: "16:00" },
+                   { latestDeliveryDate: "2026-11-10" }, { latestDeliveryDate: "2026-11-09" }]) {
+    assert.equal(deliveryDeadlineAssessment(ups29Inland, f), deliveryDeadlineAssessment(dhl87, f), JSON.stringify(f));
+  }
+  assert.equal(deliveryDeadlineAssessment(ups29Inland, frist), "projected");
 });
 
 test("13 — Filter, Fristgruppen, Uhrzeitauswahl, Sortierung und Auszeichnungen lesen die Tageszeit-Regel nicht", () => {
@@ -216,8 +231,8 @@ test("13 — Filter, Fristgruppen, Uhrzeitauswahl, Sortierung und Auszeichnungen
 /* ══════════ 6) Eine Zeile auf allen Flächen ══════════ */
 
 test("14 — dieselbe Aussage auf Karte, Buchungsleiste, Preisrechner und Detailbereich", () => {
-  const faelle = [tg("Express"), tg("Classic", { dateMax: "2026-11-11", transit: [1, 2] }), tg("Express 12:00"),
-                  tg("Domestic Express 12:00", { timeUntil: "12:00" }), jumingo("Standard", "18:00", 1080),
+  const faelle = [tg("Express"), tg("Express", { timeUntil: "12:00" }), tg("Classic", { dateMax: "2026-11-11", transit: [1, 2] }),
+                  tg("Express 12:00"), tg("Domestic Express 12:00", { timeUntil: "12:00" }), jumingo("Standard", "18:00", 1080),
                   jumingo("Standard", null, null), { transitDaysMin: 1, transitDaysMax: 2 }];
   for (const t of faelle) {
     const karte = deliveryTimeOfDayLabel(t);

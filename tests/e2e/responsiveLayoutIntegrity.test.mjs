@@ -119,6 +119,12 @@ async function pruefe(page, breiten, name) {
     await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: "instant" }));
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     await kurz(60);
+    // Die klebende Buchungsleiste erfährt ihren Zustand asynchron von einem IntersectionObserver, den jeder
+    // Größenwechsel neu aufsetzt (BookingStickySummary.jsx). Am Seitenanfang ist sie nie „stuck“; zwei Frames reichten
+    // auf einem ausgelasteten Runner nicht (CI 2026-11-02 und 2026-11-05: Leiste über „Ausgewähltes Angebot“, nur bei
+    // 320 px direkt nach 1440 px). Gewartet wird höchstens 2 s — klebt sie danach noch, meldet die Prüfung es wie bisher.
+    await page.waitForFunction(() => !document.querySelector(".booking-sticky-layer.is-stuck"), null, { timeout: 2000 })
+      .catch(() => {});
     const befunde = (await page.evaluate(layoutBefunde)).filter((b) => !b.fest && b.art !== "gekuerztMitTitel");
     for (const b of befunde) alle.push(`${w}px ${b.art} ${b.um}px „${b.text}“ @${b.bei}${b.mit ? ` ↔ „${b.mit}“ @${b.mitBei}` : ""}${b.zelle ? ` Zelle ${b.zelle}` : ""}${b.container ? ` in ${b.container}` : ""}`);
   }

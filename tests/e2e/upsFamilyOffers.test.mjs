@@ -577,10 +577,11 @@ test("A — Vergleich: Standard- und Expressversand auswählbar; UPS · Express 
   const ende = express.locator(".offer-tl-node--end");
   assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(ende.locator(".offer-tl-primary")), kurz(DIENSTAG));
-  // P4 (2026-11-04): UPS Express 29 trägt keine belegte Uhrzeit (UPS nennt sie je Bestimmungsort) — „Zustellung im
-  // Tagesverlauf", weder 10:30 noch eine Obergrenze 12:00.
+  // Die Prognose dieser Nachbildung (Stand vor der Freigabe) trägt keine Uhrzeit — „Zustellung im Tagesverlauf“, die
+  // Oberfläche ergänzt weder 10:30 noch 12:00. Im Inland bei Laufzeit 1 liefert der Server seit 2026-11-05 „12:00“
+  // (tests/e2e/deliveryTimeOfDay.test.mjs K).
   assert.deepEqual(await alleTexte(ende.locator(".offer-tl-sub")), ["Zustellung im Tagesverlauf"]);
-  assert.equal(await ende.locator(".offer-early-note").count(), 0, "eine Uhrzeit ohne Carrierbeleg");
+  assert.equal(await ende.locator(".offer-early-note").count(), 0, "eine Uhrzeit, die der Server nicht geliefert hat");
   await istPreisauskunft(express, "UPS · Express");
   assert.doesNotMatch(await inhalt(express), KEINE_ZUSAGE, "Zeit- oder Garantieaussage an UPS · Express");
 

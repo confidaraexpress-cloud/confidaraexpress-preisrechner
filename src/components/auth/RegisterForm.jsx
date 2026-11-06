@@ -14,6 +14,8 @@ import { applyAddressSuggestion, cityFromSuggestion, countryFirstHint } from "..
 import { cityPlaceholder, postalCodePlaceholder } from "../../utils/addressPlaceholders.mjs";
 import { postalCodeInputMode } from "../../utils/postalCode.mjs";
 import { VAT_ID_TEXT, VAT_ID_ABSENT_TEXT, LEGAL_FORMS_WITHOUT_VAT_ID } from "../../utils/vatId.mjs";
+// Phase 1 (Canonical v2.117): voraussichtliches monatliches Versandvolumen — acht feste Angaben, eine Quelle.
+import { SHIPMENT_VOLUME_OPTIONS, SHIPMENT_VOLUME_QUESTION, SHIPMENT_VOLUME_TEXT } from "../../utils/shipmentVolume.mjs";
 
 // Pflichtfeld-Markierung. Das Sternchen ist rein visuell (aria-hidden) — für
 // Screenreader trägt das jeweilige Eingabefeld required/aria-required.
@@ -51,6 +53,8 @@ export function RegisterForm({
   declarations = {}, onDeclarationChange = () => {}, legalContext = null,
   // Nur noch die Erklärungen fehlen: der Knopf ist gesperrt, der Grund steht unter den Erklärungen.
   declarationsMissingOnly = false,
+  // Phase 1: nur noch das Versandvolumen fehlt — derselbe Grund-Hinweis wie bei den Erklärungen.
+  volumeMissingOnly = false, onVolumeBlur,
 }) {
   // Nur die Länder, die ConfidaraExpress heute anbietet — die Liste kommt vom Server
   // (GET /api/shipping/launch-scope), nicht aus einer zweiten Aufzählung im Client.
@@ -273,6 +277,43 @@ export function RegisterForm({
         </div>
       </div>
 
+      {/* Phase 1 (Betreiberentscheidung 2026-11-06): voraussichtliches monatliches Versandvolumen — Pflicht, ohne
+          Vorauswahl, genau eine von acht Angaben. Native Optionsfelder in einer Gruppe: Pfeiltasten wechseln die
+          Wahl, Screenreader lesen Frage, Pflicht, Hinweis und Fehler. Verlässt der Fokus die Gruppe ohne Wahl,
+          steht der Grund sofort an der Gruppe (onVolumeBlur). */}
+      <fieldset
+        className={`auth-volume${errors.monthly_shipment_volume ? " auth-volume-invalid" : ""}`}
+        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) onVolumeBlur?.(); }}
+      >
+        <legend className="auth-field-label auth-volume-legend">{SHIPMENT_VOLUME_QUESTION} <Req /></legend>
+        <span className="auth-field-hint" id="reg-volume-hint">{SHIPMENT_VOLUME_TEXT.hint}</span>
+        <div className="auth-volume-options">
+          {SHIPMENT_VOLUME_OPTIONS.map((o) => {
+            const gewaehlt = form.monthly_shipment_volume === o.key;
+            return (
+              <label key={o.key} className={`auth-volume-option${gewaehlt ? " is-selected" : ""}`}>
+                <input
+                  type="radio"
+                  className="auth-volume-radio"
+                  name="monthly_shipment_volume"
+                  value={o.key}
+                  checked={gewaehlt}
+                  onChange={() => upd("monthly_shipment_volume", o.key)}
+                  required
+                  aria-invalid={errors.monthly_shipment_volume ? "true" : undefined}
+                  aria-describedby={errors.monthly_shipment_volume ? "reg-volume-hint reg-volume-error" : "reg-volume-hint"}
+                />
+                <span className="auth-volume-mark" aria-hidden="true" />
+                <span className="auth-volume-text">{o.label}</span>
+              </label>
+            );
+          })}
+        </div>
+        {errors.monthly_shipment_volume && (
+          <span className="auth-field-error" id="reg-volume-error">{errors.monthly_shipment_volume}</span>
+        )}
+      </fieldset>
+
       <span className="auth-section-label">Adresse <span className="auth-optional">(optional)</span></span>
 
       {/* Land ZUERST (wie in „Neue Sendung“): Adressvorschläge gelten immer für ein Land.
@@ -379,6 +420,9 @@ export function RegisterForm({
         </Erklaerung>
         {declarationsMissingOnly && (
           <p className="auth-declaration-hint" role="status">{REG_DECLARATION_TEXTS.missingHint}</p>
+        )}
+        {volumeMissingOnly && (
+          <p className="auth-declaration-hint" role="status">{SHIPMENT_VOLUME_TEXT.required}</p>
         )}
       </div>
 

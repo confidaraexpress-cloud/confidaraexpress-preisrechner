@@ -30,9 +30,11 @@ const FORBIDDEN = ["email", "password", "role", "status", "payment_term", "payme
 // ── Baselines ────────────────────────────────────────────────────────────────
 test("1 — companyBaseline übernimmt genau die Unternehmensfelder", () => {
   const b = companyBaseline(USER);
-  assert.deepEqual(Object.keys(b).sort(), [...COMPANY_FIELDS].sort());
+  // Phase 1 (Canonical v2.117): dazu das monatliche Versandvolumen (Auswahlfeld, leer = „Keine Angabe").
+  assert.deepEqual(Object.keys(b).sort(), [...COMPANY_FIELDS, "monthly_shipment_volume"].sort());
   assert.equal(b.company_name, "ConfidaraExpress UG");
   assert.equal(b.country, "DE");
+  assert.equal(b.monthly_shipment_volume, "");
 });
 
 test("2 — companyBaseline setzt Deutschland-Default bei fehlendem Land", () => {

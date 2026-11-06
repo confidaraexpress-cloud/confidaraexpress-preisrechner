@@ -58,6 +58,10 @@ async function fuelle(page, ustId) {
   await page.fill("#reg-name", "Anna Berger");
   await page.fill("#reg-email", "einkauf@musterkunde.example");
   await page.fill("#reg-company", "Musterkunde GmbH");
+  // Phase 1 (Canonical v2.117): das voraussichtliche monatliche Versandvolumen ist Pflicht (eine der acht Angaben).
+  // Es wird VOR der USt-IdNr. gewählt: eine ungültige Nummer zeigt ihren Fehler beim Verlassen des Felds und
+  // verschiebt die Gruppe darunter genau zwischen Maus-Down und Maus-Up.
+  await page.locator('input[name="monthly_shipment_volume"][value="11_50"]').check();
   if (ustId !== undefined) await page.fill("#reg-vat", ustId);
   const pw = page.locator('.auth-input[type="password"]');
   await pw.nth(0).fill("EinSicheresPasswort2026");

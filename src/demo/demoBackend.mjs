@@ -51,6 +51,10 @@ function konto() {
     billing_mode: "single",
     payment_term: 7,
     created_at: zeitstempel(-120),
+    // Phase 1 (Canonical v2.117): die eigene Angabe zum monatlichen Versandvolumen samt Stand (Schlüssel aus
+    // utils/shipmentVolume.mjs) — dieselbe Form wie GET /kundenbereich.
+    monthly_shipment_volume: "51_100",
+    monthly_shipment_volume_updated_at: zeitstempel(-120),
   };
 }
 
@@ -514,7 +518,10 @@ function route(methode, pfad, query, optionen) {
   if (pfad === "/kundenbereich") return json({ user: st.konto, bookingProfile: { complete: true, missingFields: [] }, companyLogo: null, pendingEmailChange: null, accountManager: null });
   if (pfad === "/kunde/profil") {
     if (methode === "GET") return json({ user: st.konto });
+    // Wie der Server: der Stand des Versandvolumens wandert nur bei einem geänderten Wert mit.
+    const neuesVolumen = typeof body.monthly_shipment_volume === "string" && body.monthly_shipment_volume !== st.konto.monthly_shipment_volume;
     Object.assign(st.konto, Object.fromEntries(Object.entries(body).filter(([k]) => typeof k === "string")));
+    if (neuesVolumen) st.konto.monthly_shipment_volume_updated_at = new Date().toISOString();
     return json({ user: st.konto, message: "Gespeichert (Demo)" });
   }
   if (pfad === "/kunde/password" || pfad.startsWith("/api/kunde/email-change") || pfad === "/api/kunde/company-logo") {

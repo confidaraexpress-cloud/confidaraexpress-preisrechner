@@ -1,0 +1,40 @@
+{
+  "hinweis": "Phase 1 (2026-11-06, Canonical v2.117): Falltabelle des voraussichtlichen monatlichen Versandvolumens. Bytegleich in Backend (tests/fixtures/shipmentVolumeCases.json) und Frontend (src/testing/shipmentVolumeCases.json); beide Implementierungen pruefen gegen sie.",
+  "frage": "Voraussichtliches monatliches Versandvolumen",
+  "optionen": [
+    { "schluessel": "1_10", "text": "1–10 Sendungen" },
+    { "schluessel": "11_50", "text": "11–50 Sendungen" },
+    { "schluessel": "51_100", "text": "51–100 Sendungen" },
+    { "schluessel": "101_250", "text": "101–250 Sendungen" },
+    { "schluessel": "251_500", "text": "251–500 Sendungen" },
+    { "schluessel": "501_1000", "text": "501–1.000 Sendungen" },
+    { "schluessel": "over_1000", "text": "Mehr als 1.000 Sendungen" },
+    { "schluessel": "none_yet", "text": "Noch kein Versand / Neugründung" }
+  ],
+  "registrierung": [
+    { "eingabe": "1_10", "ok": true, "wert": "1_10" },
+    { "eingabe": "11_50", "ok": true, "wert": "11_50" },
+    { "eingabe": "51_100", "ok": true, "wert": "51_100" },
+    { "eingabe": "101_250", "ok": true, "wert": "101_250" },
+    { "eingabe": "251_500", "ok": true, "wert": "251_500" },
+    { "eingabe": "501_1000", "ok": true, "wert": "501_1000" },
+    { "eingabe": "over_1000", "ok": true, "wert": "over_1000" },
+    { "eingabe": "none_yet", "ok": true, "wert": "none_yet" },
+    { "fehlt": true, "ok": false, "code": "SHIPMENT_VOLUME_REQUIRED" },
+    { "eingabe": null, "ok": false, "code": "SHIPMENT_VOLUME_REQUIRED" },
+    { "eingabe": "", "ok": false, "code": "SHIPMENT_VOLUME_REQUIRED" },
+    { "eingabe": "   ", "ok": false, "code": "SHIPMENT_VOLUME_INVALID" },
+    { "eingabe": " 1_10", "ok": false, "code": "SHIPMENT_VOLUME_INVALID" },
+    { "eingabe": "1_10 ", "ok": false, "code": "SHIPMENT_VOLUME_INVALID" },
+    { "eingabe": "1-10", "ok": false, "code": "SHIPMENT_VOLUME_INVALID" },
+    { "eingabe": "1–10 Sendungen", "ok": false, "code": "SHIPMENT_VOLUME_INVALID" },
+    { "eingabe": "OVER_1000", "ok": false, "code": "SHIPMENT_VOLUME_INVALID" },
+    { "eingabe": "1000_plus", "ok": false, "code": "SHIPMENT_VOLUME_INVALID" },
+    { "eingabe": "0", "ok": false, "code": "SHIPMENT_VOLUME_INVALID" },
+    { "eingabe": "none_yet; DROP TABLE users", "ok": false, "code": "SHIPMENT_VOLUME_INVALID" },
+    { "eingabe": 10, "ok": false, "code": "SHIPMENT_VOLUME_INVALID" },
+    { "eingabe": true, "ok": false, "code": "SHIPMENT_VOLUME_INVALID" },
+    { "eingabe": ["1_10"], "ok": false, "code": "SHIPMENT_VOLUME_INVALID" },
+    { "eingabe": { "schluessel": "1_10" }, "ok": false, "code": "SHIPMENT_VOLUME_INVALID" }
+  ]
+}

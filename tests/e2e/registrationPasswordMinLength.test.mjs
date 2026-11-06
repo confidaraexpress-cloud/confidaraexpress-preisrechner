@@ -46,6 +46,8 @@ async function fillPflichtfelder(page) {
   await page.fill("#reg-company", "Muster Logistik GmbH");
   // Auftrag 2 / P10: die USt-IdNr. ist bei jeder Neuregistrierung Pflicht.
   await page.fill("#reg-vat", "DE123456789");
+  // Phase 1 (Canonical v2.117): das voraussichtliche monatliche Versandvolumen ist Pflicht (eine der acht Angaben).
+  await page.locator('input[name="monthly_shipment_volume"][value="11_50"]').check();
   await page.click("#reg-business .auth-checkbox");
   await page.click("#reg-terms .auth-checkbox");
 }

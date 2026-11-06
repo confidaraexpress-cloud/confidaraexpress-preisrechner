@@ -23,11 +23,13 @@ import {
   companyBaseline, contactBaseline,
   buildCompanyPatch, buildContactPatch,
   validateCompanyForm, validateContactForm, isFormValid,
-  canSaveCompany, canSaveContact, isEditActionDisabled, contactSaveConfirmed,
+  canSaveCompany, canSaveContact, isEditActionDisabled, contactSaveConfirmed, companySaveConfirmed,
   companyAddressLine, paymentTermValue, PROFILE_TEXT,
   mapApiProfileError,
 } from "../../utils/profileView.mjs";
 import { customerNumberOf, NOT_ASSIGNED_TEXT, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
+// Phase 1 (Canonical v2.117): monatliches Versandvolumen — Anzeige und Auswahl aus derselben Quelle wie die Registrierung.
+import { SHIPMENT_VOLUME_OPTIONS, SHIPMENT_VOLUME_QUESTION, SHIPMENT_VOLUME_TEXT, shipmentVolumeLabel } from "../../utils/shipmentVolume.mjs";
 // Nur der Hilfetext des EORI-Felds. Formatprüfung und Normalisierung laufen bereits in
 // profileView.mjs (companyBaseline/buildCompanyPatch/validateCompanyForm) — hier steht
 // keine zweite Regel.
@@ -180,6 +182,12 @@ export function Profile({ user, utility }) {
       if (which === "contact" && !contactSaveConfirmed(patch, d.user)) {
         // Die Karte bleibt offen, die Eingaben bleiben stehen — kein „Gespeichert" für nicht übernommene Werte.
         setCardError(PROFILE_TEXT.contactSaveNotConfirmed);
+        setSaving(false);
+        return;
+      }
+      // Phase 1: dasselbe für das Versandvolumen — ein Server ohne das Feld verwirft es still.
+      if (which === "company" && !companySaveConfirmed(patch, d.user)) {
+        setCardError(SHIPMENT_VOLUME_TEXT.notConfirmed);
         setSaving(false);
         return;
       }
@@ -349,6 +357,18 @@ export function Profile({ user, utility }) {
               citySuggestions={companyAddressCheck.cityOptions}
               onPickCity={(c) => updCompany("city", c)}
             />
+            {/* Phase 1 (Canonical v2.117): dieselben acht Angaben wie bei der Registrierung. „Keine Angabe" gibt es
+                nur, solange nichts gewählt ist — ein gesetzter Wert lässt sich ändern, aber nicht leeren (der Server
+                lehnt es ab, und buildCompanyPatch sendet ohne Wahl nichts). */}
+            <div className="field">
+              <label className="field-label" htmlFor="pf-volume">{SHIPMENT_VOLUME_QUESTION}</label>
+              <select id="pf-volume" className="field-input field-select" value={companyForm.monthly_shipment_volume}
+                onChange={e => updCompany("monthly_shipment_volume", e.target.value)}>
+                {!shipmentVolumeLabel(companyBase.monthly_shipment_volume) && <option value="">{SHIPMENT_VOLUME_TEXT.none}</option>}
+                {SHIPMENT_VOLUME_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+              </select>
+              {fieldErr("monthly_shipment_volume")}
+            </div>
             {renderCardActions("company", canSaveCompany(companyForm, companyBase, saving))}
           </div>
         ) : (
@@ -364,6 +384,12 @@ export function Profile({ user, utility }) {
                 : []),
               { k: "Adresse", v: addressLine || "Keine Adresse hinterlegt", empty: !addressLine },
               { k: "Land", v: countryName || "Nicht angegeben", empty: !countryName },
+              // Phase 1: Bestandskonten ohne Angabe sehen „Keine Angabe" — keine Sperre, keine Aufforderung.
+              {
+                k: "Monatliches Versandvolumen",
+                v: shipmentVolumeLabel(user?.monthly_shipment_volume) || SHIPMENT_VOLUME_TEXT.none,
+                empty: !shipmentVolumeLabel(user?.monthly_shipment_volume),
+              },
             ])}
             {/* F1: die Rechnungsanschrift bleibt im Profil optional — gebucht werden kann aber
                 erst mit ihr. Der Hinweis nennt die fehlenden Angaben dort, wo sie gepflegt werden. */}

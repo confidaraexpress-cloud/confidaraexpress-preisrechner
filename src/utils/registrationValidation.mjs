@@ -20,6 +20,8 @@ import { validateRequiredVatId, normalizeVatId, isLegalFormWithoutVatId, VAT_ID_
 // Eingabe-Audit A13: PLZ nach Landesregel und Telefon über den zentralen Telefonvertrag — wie Profil, Adressbuch, Sendung.
 import { validatePostalCode } from "./postalCode.mjs";
 import { parsePhoneNumber } from "./phoneNumber.mjs";
+// Phase 1 (Canonical v2.117): voraussichtliches monatliches Versandvolumen — gespiegelt aus Backend lib/shipmentVolume.js.
+import { validateRegistrationShipmentVolume } from "./shipmentVolume.mjs";
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // RFC 5321: höchstens 254 Zeichen — dieselbe Grenze wie im Backend (routes/auth.js, Eingabe-Audit A13).
@@ -100,6 +102,11 @@ export function getRegErrors(form = {}, passwordRepeat = "") {
     if (!ust.ok) e.vat_id = ust.error;
   }
 
+  // Phase 1 (Betreiberentscheidung 2026-11-06): genau eine der acht Angaben zum monatlichen Versandvolumen, ohne
+  // Vorauswahl. Verbindlich prüft der Server (POST /register, lib/shipmentVolume.js).
+  const volumen = validateRegistrationShipmentVolume(form.monthly_shipment_volume);
+  if (!volumen.ok) e.monthly_shipment_volume = volumen.error;
+
   // Weiterhin optionale Felder: nur Längenobergrenzen.
   if (form.street?.length > 200) e.street = "Straße darf maximal 200 Zeichen enthalten.";
   if (form.zip?.length > 10)     e.zip    = "PLZ darf maximal 10 Zeichen enthalten.";
@@ -119,7 +126,7 @@ export function getRegErrors(form = {}, passwordRepeat = "") {
 // dann an der jeweiligen Checkbox statt als allgemeiner Banner.
 const KNOWN_FORM_FIELDS = new Set([
   "name", "email", "password", "company_name", "vat_id", "vat_id_absent", "legal_form", "street", "zip", "city", "country",
-  "businessCustomerConfirmed", "termsAcknowledged",
+  "businessCustomerConfirmed", "termsAcknowledged", "monthly_shipment_volume",
 ]);
 
 // ═════════════════════════════════════════════════════════════════════════════

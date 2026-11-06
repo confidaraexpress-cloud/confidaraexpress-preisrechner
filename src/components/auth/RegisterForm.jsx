@@ -277,42 +277,40 @@ export function RegisterForm({
         </div>
       </div>
 
-      {/* Phase 1 (Betreiberentscheidung 2026-11-06): voraussichtliches monatliches Versandvolumen — Pflicht, ohne
-          Vorauswahl, genau eine von acht Angaben. Native Optionsfelder in einer Gruppe: Pfeiltasten wechseln die
-          Wahl, Screenreader lesen Frage, Pflicht, Hinweis und Fehler. Verlässt der Fokus die Gruppe ohne Wahl,
-          steht der Grund sofort an der Gruppe (onVolumeBlur). */}
-      <fieldset
-        className={`auth-volume${errors.monthly_shipment_volume ? " auth-volume-invalid" : ""}`}
-        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) onVolumeBlur?.(); }}
-      >
-        <legend className="auth-field-label auth-volume-legend">{SHIPMENT_VOLUME_QUESTION} <Req /></legend>
-        <span className="auth-field-hint" id="reg-volume-hint">{SHIPMENT_VOLUME_TEXT.hint}</span>
-        <div className="auth-volume-options">
-          {SHIPMENT_VOLUME_OPTIONS.map((o) => {
-            const gewaehlt = form.monthly_shipment_volume === o.key;
-            return (
-              <label key={o.key} className={`auth-volume-option${gewaehlt ? " is-selected" : ""}`}>
-                <input
-                  type="radio"
-                  className="auth-volume-radio"
-                  name="monthly_shipment_volume"
-                  value={o.key}
-                  checked={gewaehlt}
-                  onChange={() => upd("monthly_shipment_volume", o.key)}
-                  required
-                  aria-invalid={errors.monthly_shipment_volume ? "true" : undefined}
-                  aria-describedby={errors.monthly_shipment_volume ? "reg-volume-hint reg-volume-error" : "reg-volume-hint"}
-                />
-                <span className="auth-volume-mark" aria-hidden="true" />
-                <span className="auth-volume-text">{o.label}</span>
-              </label>
-            );
-          })}
+      {/* Voraussichtliches monatliches Versandvolumen (Phase 1, Betreiberentscheidung 2026-11-06) — Pflicht, ohne
+          Vorauswahl, genau eine von acht Angaben. Seit der Premium-UX-Nachbesserung (2026-11-06) ein natives
+          Auswahlfeld wie „Land“ statt acht dauerhaft sichtbarer Optionsfelder: geschlossen eine Zeile, geöffnet die
+          acht Angaben in der Auswahlliste des Systems (Maus, Touch, Tastatur, Screenreader; mobil nie abgeschnitten).
+          Der Platzhalter ist keine Angabe und in der Liste nicht wählbar. Verlässt der Fokus das Feld ohne Wahl,
+          steht der Grund sofort am Feld (onVolumeBlur). */}
+      <div className={`auth-field auth-volume${errors.monthly_shipment_volume ? " auth-volume-invalid" : ""}`}>
+        <div className="auth-field-row">
+          <label className="auth-field-label" htmlFor="reg-volume">{SHIPMENT_VOLUME_QUESTION} <Req /></label>
         </div>
+        <div className="auth-input-wrap">
+          <select
+            id="reg-volume"
+            name="monthly_shipment_volume"
+            className={`auth-input auth-select auth-input-no-icon${form.monthly_shipment_volume ? "" : " auth-select--leer"}${errors.monthly_shipment_volume ? " auth-input-error" : ""}`}
+            value={form.monthly_shipment_volume || ""}
+            onChange={(e) => upd("monthly_shipment_volume", e.target.value)}
+            onBlur={() => onVolumeBlur?.()}
+            required
+            aria-required="true"
+            aria-invalid={errors.monthly_shipment_volume ? "true" : undefined}
+            aria-describedby={errors.monthly_shipment_volume ? "reg-volume-hint reg-volume-error" : "reg-volume-hint"}
+          >
+            <option value="" disabled hidden>{SHIPMENT_VOLUME_TEXT.placeholder}</option>
+            {SHIPMENT_VOLUME_OPTIONS.map((o) => (
+              <option key={o.key} value={o.key}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+        <span className="auth-field-hint" id="reg-volume-hint">{SHIPMENT_VOLUME_TEXT.hint}</span>
         {errors.monthly_shipment_volume && (
           <span className="auth-field-error" id="reg-volume-error">{errors.monthly_shipment_volume}</span>
         )}
-      </fieldset>
+      </div>
 
       <span className="auth-section-label">Adresse <span className="auth-optional">(optional)</span></span>
 

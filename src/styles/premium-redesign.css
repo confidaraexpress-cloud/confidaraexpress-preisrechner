@@ -1481,79 +1481,31 @@
 }
 [data-ce-bereich="auth"] .auth-check.checked .auth-checkbox { border-color: var(--ce-pr-navy-800); background: var(--ce-pr-navy-800); }
 
-/* Voraussichtliches monatliches Versandvolumen (Phase 1, 2026-11-06): acht Angaben als ruhige Auswahlfelder in einer
-   Gruppe — ab etwa 30 rem zwei Spalten, darunter eine. Das native Optionsfeld liegt unsichtbar über dem ganzen Feld
-   (Trefferfläche, Tastatur, Screenreader); gezeichnet werden nur Rand, Fläche und Marke. Gewählt: Navy-Kante auf
-   Signal-Soft, die Marke als gefüllter Ring. Fehler: die Kanten im Fehlerton, der Text darunter. */
-[data-ce-bereich="auth"] .auth-volume {
-  min-width: 0;
-  margin: 0 0 18px;
-  padding: 0;
-  border: 0;
-}
-[data-ce-bereich="auth"] .auth-volume-legend {
-  display: block;
-  margin: 0 0 2px;
-  padding: 0;
-}
-[data-ce-bereich="auth"] .auth-volume-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5rem), 1fr));
-  gap: 8px;
-  margin-top: 10px;
-}
-[data-ce-bereich="auth"] .auth-volume-option {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  padding: 10px 12px;
-  border: 1px solid var(--ce-color-border-interactive);
-  border-radius: var(--ce-pr-radius-control);
-  background: var(--ce-color-surface);
-  color: var(--ce-color-text-primary);
-  font-size: 0.9375rem;
-  line-height: 1.35;
-  cursor: pointer;
-  transition: border-color 140ms ease, background-color 140ms ease;
-}
-[data-ce-bereich="auth"] .auth-volume-option:hover { border-color: var(--ce-color-border-strong); }
-[data-ce-bereich="auth"] .auth-volume-option.is-selected {
-  border-color: var(--ce-pr-navy-800);
-  background: var(--ce-pr-signal-soft);
-}
-[data-ce-bereich="auth"] .auth-volume-option:has(.auth-volume-radio:focus-visible) {
-  outline: 2px solid var(--ce-color-focus-ring);
-  outline-offset: 2px;
-}
-[data-ce-bereich="auth"] .auth-volume-radio {
+/* Auswahlfelder (Land, Rechtsform, Versandvolumen): dieselbe Feldform wie die Eingaben, rechts ein ruhiger Pfeil als
+   Öffnen-Zeichen (Premium-UX-Nachbesserung 2026-11-06; vorher stand ein Auswahlfeld ohne Pfeil wie ein Textfeld da).
+   Der Pfeil ist eine Maske in der Textfarbe des Felds — er folgt Fokus und Fehler über currentColor und fängt keine
+   Klicks ab. Ein leeres Pflichtfeld zeigt seinen Platzhalter im Platzhalterton; die Optionen der Liste bleiben in
+   der Textfarbe. */
+[data-ce-bereich="auth"] .auth-select { padding-right: 44px; text-overflow: ellipsis; }
+[data-ce-bereich="auth"] .auth-input-wrap:has(> .auth-select)::after {
+  content: "";
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-[data-ce-bereich="auth"] .auth-volume-mark {
-  flex: none;
+  top: 50%;
+  right: 14px;
   width: 18px;
   height: 18px;
-  border: 1.5px solid var(--ce-color-border-interactive);
-  border-radius: var(--ce-radius-full);
-  background: var(--ce-color-surface);
+  margin-top: -9px;
+  background: var(--ce-color-text-secondary);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  pointer-events: none;
 }
-[data-ce-bereich="auth"] .auth-volume-option.is-selected .auth-volume-mark {
-  border-color: var(--ce-pr-navy-800);
-  background: var(--ce-pr-navy-800);
-  box-shadow: inset 0 0 0 3.5px var(--ce-color-surface);
-}
-[data-ce-bereich="auth"] .auth-volume-text { min-width: 0; }
-[data-ce-bereich="auth"] .auth-volume-invalid .auth-volume-option { border-color: var(--ce-color-status-error-fg); }
-[data-ce-bereich="auth"] .auth-volume .auth-field-error { margin-top: 8px; }
-@media (prefers-reduced-motion: reduce) {
-  [data-ce-bereich="auth"] .auth-volume-option { transition: none; }
+[data-ce-bereich="auth"] .auth-input-wrap:has(> .auth-select:focus)::after { background: var(--ce-pr-signal-ink); }
+[data-ce-bereich="auth"] .auth-input-wrap:has(> .auth-input-error)::after { background: var(--ce-color-status-error-fg); }
+[data-ce-bereich="auth"] .auth-select--leer { color: var(--ce-color-text-placeholder); }
+[data-ce-bereich="auth"] .auth-select--leer option { color: var(--ce-color-text-primary); }
+@media (forced-colors: active) {
+  [data-ce-bereich="auth"] .auth-input-wrap:has(> .auth-select)::after { background: CanvasText; }
 }
 
 /* Die Primäraktion: Navy, feine Innenkante, keine Bewegung (E1, E5). */

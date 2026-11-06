@@ -29,6 +29,8 @@ export const SHIPMENT_VOLUME_TEXT = Object.freeze({
   invalid: "Bitte wählen Sie eine der angebotenen Angaben zum Versandvolumen.",
   // Registrierung: eine Einschätzung genügt, die Angabe bleibt änderbar.
   hint: "Eine Einschätzung genügt – Sie können die Angabe später im Profil ändern.",
+  // Registrierung: Platzhalter des geschlossenen Auswahlfelds — keine Angabe, in der Liste nicht wählbar.
+  placeholder: "Bitte wählen",
   // Bestandskonto ohne Angabe (Profil, Admin-Kundendetail).
   none: "Keine Angabe",
   // Profil: der Server hat die Angabe nicht übernommen (etwa ein noch nicht aktualisierter Server).

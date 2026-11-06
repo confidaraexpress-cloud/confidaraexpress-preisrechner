@@ -38,7 +38,7 @@ import { getCurrentLegalSet } from "../api/legalApi";
 import { PASSWORD_MIN_LEN, PASSWORD_MAX_LEN, passwordLengthError } from "../utils/passwordPolicy.mjs";
 // Auftrag 2 / P10: dieselbe Regel wie die Registrierungsprüfung (gespiegelt aus Backend lib/vatId.js).
 import { validateRequiredVatId } from "../utils/vatId.mjs";
-// Phase 1 (Canonical v2.117): Prüfung der Versandvolumen-Gruppe beim Verlassen (dieselbe Regel wie getRegErrors).
+// Phase 1 (Canonical v2.117): Prüfung des Versandvolumen-Felds beim Verlassen (dieselbe Regel wie getRegErrors).
 import { validateRegistrationShipmentVolume } from "../utils/shipmentVolume.mjs";
 
 // Wortlaute des Zurücksetzen-Formulars. Der Kurztext bleibt wortgleich zur
@@ -330,7 +330,7 @@ export default function AuthPage() {
     });
   };
 
-  // Phase 1: verlässt der Fokus die Versandvolumen-Gruppe ohne Wahl, steht der Grund an der Gruppe.
+  // Phase 1: verlässt der Fokus das Versandvolumen-Feld ohne Wahl, steht der Grund am Feld.
   const handleRegVolumeBlur = () => {
     setRegErrors(p => {
       const n = { ...p };

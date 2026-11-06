@@ -3,7 +3,8 @@
 // login.html und register.html zeigen vor dem ersten Rendern das Endlayout der Anmeldung. Weil ein statisches
 // Dokument nichts importieren kann, hält dieser Test die Gerüste mit ihren Quellen gleich:
 //   • Satz, Unterzeile und Kartenlegende — utils/authSeitenText.mjs (dieselben Worte wie AuthPage und Preisrechner)
-//   • Ansprechpartner, E-Mail und Telefon — config/companyProfile.js (Unternehmensangaben nur von dort)
+//   • Kontakt (E-Mail und Telefon) — config/companyProfile.js (Unternehmensangaben nur von dort), Symbole aus
+//     components/ui/Icon.jsx; seit 2026-11-06 ohne Namen und Initialen
 //   • die Pfade — utils/kundenAuthPfad.mjs, gespiegelt in nginx.conf (mit vollständigem Sicherheitsheaderblock) und
 //     in der Entwicklungs-/Vorschauweiche samt Builder-Eingängen (vite.config.js)
 //   • das Blatt im Gerüst ist nicht bedienbar: aria-hidden, inert, keine ids, keine Namen, nichts im Tabulatorweg.
@@ -49,15 +50,24 @@ test("1 — Satz, Unterzeile und Legende stehen wortgleich wie in AuthPage (AUTH
   assert.doesNotMatch(`${AUTH_TEXT.titel} ${AUTH_TEXT.lead}`, /Fulfillment|einlager|Lagerhaltung für/i);
 });
 
-test("2 — Ansprechpartner, E-Mail und Telefon nur aus companyProfile — im Gerüst wie in AuthPage", () => {
+test("2 — Kontakt: nur E-Mail und Telefon aus companyProfile, Symbole aus dem Icon-System — im Gerüst wie in AuthPage", () => {
   const { contactPerson, email, phone } = COMPANY_PROFILE;
-  const initialen = contactPerson.split(/\s+/).map((w) => w[0]).join("");
+  // Dieselben Pfade wie components/ui/Icon.jsx, dasselbe Markup, das <Icon> rendert — das Gerüst tippt nichts ab.
+  const icon = lies("src/components/ui/Icon.jsx");
+  const pfad = (n) => icon.match(new RegExp(`^\\s*${n}:\\s*"([^"]+)",`, "m"))[1];
+  const svg = (n, s) => `<svg width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="${pfad(n)}"/></svg>`;
   for (const datei of Object.keys(GERUESTE)) {
     const html = ohneKommentare(lies(datei));
-    assert.ok(html.includes(`<span class="auth-kontakt-zeichen" aria-hidden="true">${initialen}</span>`), `${datei}: Initialen`);
-    assert.ok(html.includes(`<p class="auth-kontakt-name">${contactPerson}, Ansprechpartner bei ConfidaraExpress</p>`), `${datei}: Name`);
-    assert.ok(html.includes(`<a href="mailto:${email}">${email}</a>`), `${datei}: E-Mail`);
-    assert.ok(html.includes(`<a href="tel:${phone}">${phone}</a>`), `${datei}: Telefon`);
+    const start = html.indexOf('<div class="auth-kontakt">');
+    assert.ok(start > 0, `${datei}: der Kontakt fehlt`);
+    const kontakt = html.slice(start, html.indexOf('<nav class="auth-legal"', start));
+    assert.ok(kontakt.includes(`<a class="auth-kontakt-weg" href="mailto:${email}"><span class="auth-kontakt-ico">${svg("mail", 18)}</span><span class="auth-kontakt-wert"><span class="sr-only">${AUTH_TEXT.kontaktMail}</span>${email}</span></a>`), `${datei}: E-Mail-Zeile`);
+    assert.ok(kontakt.includes(`<a class="auth-kontakt-weg" href="tel:${phone}"><span class="auth-kontakt-ico">${svg("phone", 16)}</span><span class="auth-kontakt-wert"><span class="sr-only">${AUTH_TEXT.kontaktTelefon}</span>${phone}</span></a>`), `${datei}: Telefonzeile`);
+    assert.equal((kontakt.match(/<a\b/g) || []).length, 2, `${datei}: genau zwei Kontaktwege`);
+    // Betreiberentscheidung 2026-11-06: kein Name, keine Initialen, kein Titel „Ansprechpartner“ (im Formular der
+    // Registrierung bleibt „Ansprechpartner“ die Beschriftung des Kundenfelds).
+    assert.doesNotMatch(kontakt, /Ansprechpartner|auth-kontakt-(zeichen|name)/, `${datei}: Titel oder Initialen im Kontakt`);
+    assert.doesNotMatch(html, new RegExp(contactPerson), `${datei}: Name im Gerüst`);
     for (const ziel of ["impressum", "datenschutz", "agb", "widerruf"]) {
       assert.ok(html.includes(`<a href="/${ziel}" target="_blank" rel="noopener noreferrer">`), `${datei}: Link /${ziel}`);
     }
@@ -65,7 +75,10 @@ test("2 — Ansprechpartner, E-Mail und Telefon nur aus companyProfile — im Ge
     assert.doesNotMatch(html, /preisrechner\.confidaraexpress\.de|Ihre Daten in besten Händen|auth-trust/);
   }
   const seite = lies("src/pages/AuthPage.jsx");
-  assert.match(seite, /<p className="auth-kontakt-name">\{COMPANY_PROFILE\.contactPerson\}, Ansprechpartner bei ConfidaraExpress<\/p>/);
+  const code = seite.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+  assert.match(code, /<a className="auth-kontakt-weg" href=\{`mailto:\$\{COMPANY_PROFILE\.email\}`\}>\s*<span className="auth-kontakt-ico"><Icon n="mail" s=\{18\} \/><\/span>\s*<span className="auth-kontakt-wert"><span className="sr-only">\{AUTH_TEXT\.kontaktMail\}<\/span>\{COMPANY_PROFILE\.email\}<\/span>\s*<\/a>/);
+  assert.match(code, /<a className="auth-kontakt-weg" href=\{`tel:\$\{COMPANY_PROFILE\.phone\}`\}>\s*<span className="auth-kontakt-ico"><Icon n="phone" s=\{16\} \/><\/span>\s*<span className="auth-kontakt-wert"><span className="sr-only">\{AUTH_TEXT\.kontaktTelefon\}<\/span>\{COMPANY_PROFILE\.phone\}<\/span>\s*<\/a>/);
+  assert.doesNotMatch(code, /contactPerson|Ansprechpartner|auth-kontakt-(zeichen|name)/, "AuthPage nennt wieder einen Namen");
   assert.doesNotMatch(seite, new RegExp(`${contactPerson}|${email.replace(/\./g, "\\.")}|${phone}`), "AuthPage schreibt Kontaktdaten selbst");
 });
 

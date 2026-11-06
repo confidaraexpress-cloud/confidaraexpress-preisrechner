@@ -19,7 +19,7 @@ const quelle = (p) => ohneKommentare(fs.readFileSync(path.join(here, p), "utf8")
 const VERBOTEN = /garantier|Tiefpreis|DSGVO-konform|Echtzeit|Nachhaltig|umweltfreundlich|klimaneutral|jederzeit erreichbar|rund um die Uhr|24\/7/i;
 
 // Die Anmelde-Vertrauensleiste (auth/TrustBar.jsx) ist seit G1 (2026-10-27) entfallen: die Anmeldung zeigt statt
-// Kacheln die Botschaft, die Karte und den namentlichen Ansprechpartner. Geprüft werden deren Texte.
+// Kacheln die Botschaft, die Karte und den Kontakt (seit 2026-11-06 nur E-Mail und Telefon). Geprüft werden deren Texte.
 const DATEIEN = ["dashboard/Overview.jsx", "offers/OffersList.jsx", "../pages/AuthPage.jsx", "../utils/authSeitenText.mjs",
   "dashboard/OverviewModules.jsx", "../utils/carrierPortfolioView.mjs"];
 
@@ -35,10 +35,13 @@ test("2 — die Ersatzaussagen beschreiben vorhandene Funktionen", () => {
   assert.match(offers, /title: "Abholung oder Abgabe",\s+desc: "Je nach Tarif mit Abholung oder Abgabe im Paketshop"/);
   assert.match(offers, /desc: "SSL-verschlüsselte Übertragung"/);
   assert.match(offers, /title: "Persönlicher Support",\s+desc: "Per E-Mail und Telefon"/);
-  // Die Anmeldung belegt „persönlich“ mit dem Ansprechpartner aus der Unternehmensquelle statt mit einer Kachel.
   assert.ok(!fs.existsSync(path.join(here, "auth/TrustBar.jsx")), "die Vertrauensleiste ist entfallen");
-  // Seit v2.90 (persönlicher Ansprechpartner je Kunde im Kundenbereich) nennt die Anmeldung den öffentlichen Kontakt.
-  assert.match(quelle("../pages/AuthPage.jsx"), /COMPANY_PROFILE\.contactPerson\}, Ansprechpartner bei ConfidaraExpress/);
+  // Betreiberentscheidung 2026-11-06: die Anmeldung nennt keinen Ansprechpartner mehr (den persönlichen zeigt seit v2.90
+  // der Kundenbereich), sondern nur E-Mail und Telefon aus der Unternehmensquelle.
+  const anmeldung = quelle("../pages/AuthPage.jsx");
+  assert.match(anmeldung, /href=\{`mailto:\$\{COMPANY_PROFILE\.email\}`\}/);
+  assert.match(anmeldung, /href=\{`tel:\$\{COMPANY_PROFILE\.phone\}`\}/);
+  assert.doesNotMatch(anmeldung, /contactPerson|Ansprechpartner/, "die Anmeldung nennt wieder einen Ansprechpartner");
   // Vier Einträge je Leiste bleiben (das Raster ist auf vier ausgelegt).
   assert.equal((offers.match(/\{ title: "/g) || []).length, 4);
 });

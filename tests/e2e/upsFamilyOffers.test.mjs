@@ -784,7 +784,7 @@ test("F — Mehrpaketbuchung (gemessen): Paketzeile, Privatadresse, Absicherung 
 
   // Erfolg: die Bestandteile des Servers — Versand, EIN Zuschlag Privatadresse, Absicherung.
   const recap = await inhalt(page.locator(".booking-success-recap"));
-  assert.match(recap, /Carrier\s*UPS — Standardversand Mehrpaket/);
+  assert.match(await inhalt(page.locator(".bsx-fakten")), /UPS — Standardversand Mehrpaket/);
   assert.match(recap, /Versand netto\s*31,93 €/);
   assert.match(recap, /Zuschlag Privatadresse netto\s*3,18 €/);
   assert.match(recap, /Zusätzliche Transportabsicherung/);

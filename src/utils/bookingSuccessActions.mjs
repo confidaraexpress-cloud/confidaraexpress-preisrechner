@@ -1,16 +1,19 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Erfolgsseite Variante A „Bestätigung mit Aktionskopf" (Betreiberentscheidung 2026-11-06, Phase 1, Canonical
-// v2.117) — reine Entscheidung, kein React, kein fetch, kein Zustand.
+// Erfolgsseite der Buchung — reine Entscheidung, kein React, kein fetch, kein Zustand. Phase 1 (Betreiberentscheidung
+// 2026-11-06, Canonical v2.117) führte die Hauptaktion und die Dokumentliste ein; die Premium-UX-Nachbesserung
+// (Betreiberentscheidung 2026-11-06, Canonical v2.118) ordnet die Seite nach drei Fragen: War die Buchung erfolgreich?
+// Was ist jetzt zu tun? Wo liegen Dokumente und Buchungsdaten?
 //
 // Eine Funktion beantwortet aus der Buchungsantwort und dem Verlauf des Labelabrufs auf dieser Seite:
 //   · welche Zeilen das Versandlabel in der Dokumentliste bekommt (Name, Stand, Aktion),
-//   · welche EINE Hauptaktion oben steht (gefüllter Knopf) und welche Nebenaktion daneben,
+//   · welche EINE Hauptaktion oben steht (gefüllter Knopf) und ob darunter ein ruhiger Verweis steht,
+//   · welche Rückmeldung nach einem Klick unter der Hauptaktion steht (Wartezustand oder Fehler),
 //   · was in „So geht es weiter" steht (Label, Übergabe, Sendungsverfolgung).
 //
 // Der Labelstand kommt ausschließlich vom Server (bookingShippingDocuments/bookingLabelView in
-// bookingShippingDocuments.mjs) — hier entsteht keine zweite Labelregel. Eine Datei, die erst beim Anbieter
-// abgerufen werden muss, heißt „Versandlabel abrufen"; erst nach erfolgreichem Abruf „herunterladen"
-// (Betreiberentscheidung 2.5). Ein nicht vorhandenes Label hat nie einen Download.
+// bookingShippingDocuments.mjs) — hier entsteht keine zweite Labelregel. Liegt das Label in ConfidaraExpress oder ist
+// es beim Versanddienstleister abrufbar, lädt derselbe Klick sofort das PDF: beide heißen „Versandlabel
+// herunterladen“ (v2.118). Ein nicht vorhandenes Label hat nie einen Download.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import {
@@ -22,17 +25,15 @@ export const BOOKING_SUCCESS_TEXT = Object.freeze({
   status: "Gebucht",
   title: "Sendung erfolgreich gebucht!",
   documentsTitle: "Dokumente",
+  summaryTitle: "Ihre Buchung",
   stepsTitle: "So geht es weiter",
   labelName: "Versandlabel",
   ready: "Bereit",
   download: "Herunterladen",
-  retrieveAction: "Abrufen",
-  retryRetrieve: "Erneut abrufen",
   retry: "Erneut versuchen",
   shipments: "Zu meinen Sendungen",
   newShipment: "Neue Sendung",
   allDocuments: "Alle Dokumente anzeigen",
-  orderConfirmationPdf: "Auftragsbestätigung (PDF)",
   carrierReference: "Sendungsnummer",
   pickup: "Abholung",
   dropoff: "Abgabe im Paketshop",
@@ -40,14 +41,12 @@ export const BOOKING_SUCCESS_TEXT = Object.freeze({
   detailsHide: "Buchungsdetails ausblenden",
 });
 
-// Hauptaktion und Nebenaktion: welche Handlung ein Knopf auslöst. Die Seite ordnet jeder Art genau einen
-// Handler zu; die Art selbst trägt keinen Pfad und keine Nummer (die kommen aus `doc` bzw. der Buchung).
+// Hauptaktion und Verweis: welche Handlung ein Knopf auslöst. Die Seite ordnet jeder Art genau einen Handler zu; die
+// Art selbst trägt keinen Pfad und keine Nummer (die kommen aus `doc` bzw. der Buchung).
 export const SUCCESS_ACTION = Object.freeze({
   DOCUMENT: "document",          // ein Versandbeleg der Buchungsantwort (servergelieferter Pfad)
-  LABEL: "label",                // das Label über den Sendungshandle herunterladen (liegt in ConfidaraExpress)
-  RETRIEVE: "retrieve",          // das Label beim Versanddienstleister abrufen (derselbe Weg, andere Zusage)
+  LABEL: "label",                // das Label über den Sendungshandle herunterladen (abgelegt oder beim Anbieter abrufbar)
   SHIPMENTS: "shipments",        // „Zu meinen Sendungen"
-  ORDER_CONFIRMATION: "order_confirmation",
   DOCUMENTS: "documents",        // zur Dokumentliste dieser Seite springen
 });
 
@@ -57,23 +56,23 @@ export const ROW_TONE = Object.freeze({ READY: "ready", INFO: "info", WAIT: "wai
 const zeile = (felder) => Object.freeze({ reference: null, action: null, ...felder });
 
 /**
- * Labelzeilen, Haupt- und Nebenaktion.
+ * Labelzeilen, Hauptaktion, Verweis und Rückmeldung.
  *
  * @param booking     die Buchungsantwort
  * @param labelRun    Verlauf des Labelabrufs auf dieser Seite:
- *                    { fetched: true nach erfolgreichem Abruf/Download, notReady: true nach LABEL_NOT_READY,
+ *                    { fetched: true nach erfolgreichem Download, notReady: true nach LABEL_NOT_READY,
  *                      error: Fehlertext eines echten Fehlers (Netz, Server, Berechtigung) oder null }
- * @param hasOrderConfirmation  ob eine Auftragsbestätigung zum Herunterladen gemeldet ist
- * @returns {{ mode: string|null, rows: object[], primary: object, secondary: object|null }}
+ * @returns {{ mode: string|null, rows: object[], primary: object, secondary: object|null,
+ *             feedback: {tone: string, text: string}|null }}
  */
-export function bookingSuccessLabelPlan(booking, labelRun = {}, { hasOrderConfirmation = false } = {}) {
+export function bookingSuccessLabelPlan(booking, labelRun = {}) {
   const T = BOOKING_SUCCESS_TEXT;
   const A = SUCCESS_ACTION;
   const lauf = labelRun && typeof labelRun === "object" ? labelRun : {};
   const sendungen = { kind: A.SHIPMENTS, text: T.shipments };
-  const bestaetigung = hasOrderConfirmation ? { kind: A.ORDER_CONFIRMATION, text: T.orderConfirmationPdf } : null;
 
-  // 1) Die Buchungsantwort meldet ladbare Versandbelege: jede Datei eine Zeile, die erste ist die Hauptaktion.
+  // 1) Die Buchungsantwort meldet ladbare Versandbelege: jede Datei eine Zeile, die erste ist die Hauptaktion. Bei
+  //    mehreren Belegen verweist ein ruhiger Link auf die Liste — kein zweiter gleichwertiger Knopf.
   const belege = bookingShippingDocuments(booking);
   if (belege.length > 0) {
     const rows = belege.map((doc) => zeile({
@@ -89,70 +88,59 @@ export function bookingSuccessLabelPlan(booking, labelRun = {}, { hasOrderConfir
       mode: BOOKING_LABEL_MODE.DOWNLOAD,
       rows,
       primary: { kind: A.DOCUMENT, doc: erstes, text: shippingDocumentButtonLabel(erstes) },
-      secondary: belege.length > 1 ? { kind: A.DOCUMENTS, text: T.allDocuments } : bestaetigung,
+      secondary: belege.length > 1 ? { kind: A.DOCUMENTS, text: T.allDocuments } : null,
+      feedback: null,
     };
   }
 
-  // 2) Ohne Sendungshandle gibt es nichts herunterzuladen oder abzurufen.
+  // 2) Ohne Sendungshandle gibt es nichts herunterzuladen.
   if (!booking || booking.ceShipmentId == null || String(booking.ceShipmentId).trim() === "") {
-    return { mode: null, rows: [], primary: sendungen, secondary: null };
+    return { mode: null, rows: [], primary: sendungen, secondary: null, feedback: null };
   }
 
   // 3) Der Labelstand des Servers (P2-01/EXTRA).
   const ansicht = bookingLabelView(booking);
   const M = BOOKING_LABEL_MODE;
   const labelZeile = (felder) => zeile({ key: "label", name: T.labelName, ...felder });
-  const fehlerZeile = (aktion) => labelZeile({ status: lauf.error, tone: ROW_TONE.ERROR, action: aktion });
 
-  if (ansicht.mode === M.DOWNLOAD || (ansicht.mode === M.PENDING && ansicht.retrievable && lauf.fetched === true)) {
-    // Die Datei liegt bereit — von Anfang an oder nach einem erfolgreichen Abruf auf dieser Seite.
+  if (ansicht.mode === M.DOWNLOAD || (ansicht.mode === M.PENDING && ansicht.retrievable)) {
+    // Abgelegt oder beim Versanddienstleister abrufbar: derselbe Klick lädt das PDF. Die Hauptaktion behält ihren
+    // Namen in jedem Zustand; Warten und Fehler stehen darunter und an der Zeile.
     const laden = { kind: A.LABEL, text: T.download, ariaLabel: BOOKING_LABEL_TEXT.download };
-    if (lauf.notReady === true) {
-      return {
-        mode: ansicht.mode,
-        rows: [labelZeile({ status: BOOKING_LABEL_TEXT.notReady, tone: ROW_TONE.WAIT, action: { ...laden, text: T.retry } })],
-        primary: sendungen,
-        secondary: { kind: A.LABEL, text: T.retry },
-      };
-    }
-    if (lauf.error) {
-      return { mode: ansicht.mode, rows: [fehlerZeile({ ...laden, text: T.retry })], primary: { kind: A.LABEL, text: BOOKING_LABEL_TEXT.download }, secondary: bestaetigung };
-    }
-    return {
-      mode: ansicht.mode,
-      rows: [labelZeile({ status: T.ready, tone: ROW_TONE.READY, action: laden })],
-      primary: { kind: A.LABEL, text: BOOKING_LABEL_TEXT.download },
-      secondary: bestaetigung,
-    };
-  }
-
-  if (ansicht.mode === M.PENDING && ansicht.retrievable) {
-    // JUMiNGO: noch nicht in ConfidaraExpress, beim Versanddienstleister abrufbar.
-    const abruf = { kind: A.RETRIEVE, text: T.retrieveAction, ariaLabel: BOOKING_LABEL_TEXT.retrieve };
+    const primary = { kind: A.LABEL, text: BOOKING_LABEL_TEXT.download };
     if (lauf.notReady === true) {
       // Normaler Wartezustand: ruhig, nicht rot; die Buchung ist davon unberührt.
       return {
         mode: ansicht.mode,
-        rows: [labelZeile({ status: BOOKING_LABEL_TEXT.notReady, tone: ROW_TONE.WAIT, action: { ...abruf, text: T.retryRetrieve } })],
-        primary: sendungen,
-        secondary: { kind: A.RETRIEVE, text: T.retryRetrieve },
+        rows: [labelZeile({ status: BOOKING_LABEL_TEXT.notReady, tone: ROW_TONE.WAIT, action: { ...laden, text: T.retry } })],
+        primary, secondary: null,
+        feedback: { tone: ROW_TONE.WAIT, text: BOOKING_LABEL_TEXT.notReady },
       };
     }
     if (lauf.error) {
-      return { mode: ansicht.mode, rows: [fehlerZeile({ ...abruf, text: T.retry })], primary: { kind: A.RETRIEVE, text: BOOKING_LABEL_TEXT.retrieve }, secondary: sendungen };
+      return {
+        mode: ansicht.mode,
+        rows: [labelZeile({ status: lauf.error, tone: ROW_TONE.ERROR, action: { ...laden, text: T.retry } })],
+        primary, secondary: null,
+        feedback: { tone: ROW_TONE.ERROR, text: lauf.error },
+      };
     }
+    // „Bereit“ nur, wenn die Datei in ConfidaraExpress liegt oder auf dieser Seite schon geladen wurde. Davor sagt die
+    // Zeile nur, was der Klick liefert — ein abrufbares Label kann noch einen Moment brauchen.
+    const liegtVor = ansicht.mode === M.DOWNLOAD || lauf.fetched === true;
     return {
-      mode: ansicht.mode,
-      rows: [labelZeile({ status: ansicht.text, tone: ROW_TONE.INFO, action: abruf })],
-      primary: { kind: A.RETRIEVE, text: BOOKING_LABEL_TEXT.retrieve },
-      secondary: sendungen,
+      mode: liegtVor ? M.DOWNLOAD : ansicht.mode,
+      rows: [labelZeile(liegtVor
+        ? { status: T.ready, tone: ROW_TONE.READY, action: laden }
+        : { status: ansicht.text, tone: ROW_TONE.INFO, action: laden })],
+      primary, secondary: null, feedback: null,
     };
   }
 
   // Portal (DPD 124/137) ohne Abruf, GLS 110 beim Fahrer, gesondert bereitgestellt, unbekannt: der Stand an der
-  // Zeile, kein Download, keine Abrufzusage; die Hauptaktion führt zu den Sendungen.
+  // Zeile, kein Download; die Hauptaktion führt zu den Sendungen.
   const ton = ansicht.mode === M.PENDING ? ROW_TONE.WAIT : ROW_TONE.INFO;
-  return { mode: ansicht.mode, rows: [labelZeile({ status: ansicht.text, tone: ton })], primary: sendungen, secondary: null };
+  return { mode: ansicht.mode, rows: [labelZeile({ status: ansicht.text, tone: ton })], primary: sendungen, secondary: null, feedback: null };
 }
 
 /**
@@ -168,17 +156,16 @@ export function bookingSuccessNextSteps(plan, tariff, { pickupText = null, dropo
   const M = BOOKING_LABEL_MODE;
   const p = plan && typeof plan === "object" ? plan : { mode: null, rows: [] };
   const mehrere = p.rows.filter((r) => r.action && r.action.kind === SUCCESS_ACTION.DOCUMENT).length > 1;
+  const ersteAktion = p.rows.length > 0 && p.rows[0].action ? p.rows[0].action.kind : null;
 
   let label;
   if (p.rows.length === 0) label = "Ihre Versanddokumente finden Sie unter „Meine Sendungen“ → „Dokumente“.";
-  else if (p.mode === M.DOWNLOAD || p.rows[0].action?.kind === SUCCESS_ACTION.LABEL) {
+  else if (ersteAktion === SUCCESS_ACTION.LABEL && p.rows[0].tone === ROW_TONE.WAIT) {
+    label = "Das Versandlabel ist in wenigen Minuten bereit – hier oder unter „Meine Sendungen“ → „Dokumente“.";
+  } else if (ersteAktion === SUCCESS_ACTION.LABEL || ersteAktion === SUCCESS_ACTION.DOCUMENT) {
     label = mehrere
       ? "Jedes Versandlabel herunterladen, ausdrucken und auf das zugehörige Paket kleben."
       : "Versandlabel herunterladen, ausdrucken und gut sichtbar auf das Paket kleben.";
-  } else if (p.rows[0].action?.kind === SUCCESS_ACTION.RETRIEVE) {
-    label = p.rows[0].tone === ROW_TONE.WAIT
-      ? "Das Versandlabel ist in wenigen Minuten abrufbar – hier oder unter „Meine Sendungen“ → „Dokumente“."
-      : "Versandlabel abrufen, ausdrucken und gut sichtbar auf das Paket kleben.";
   } else if (p.mode === M.CARRIER_AT_PICKUP) label = "Kein Ausdruck nötig – der Fahrer bringt das Versandlabel bei der Abholung am Paket an.";
   else if (p.mode === M.PENDING) label = "Das Versandlabel erstellt der Versanddienstleister. Sie finden es danach unter „Meine Sendungen“ → „Dokumente“.";
   else if (p.mode === M.SEPARATE) label = "Verwenden Sie das Versandlabel, das Ihnen gesondert bereitgestellt wurde.";

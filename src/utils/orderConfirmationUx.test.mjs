@@ -114,10 +114,11 @@ test("8 der Knopf erscheint NUR, wenn die Buchungsantwort eine Bestätigung meld
 
 test("9 der Erfolgsbildschirm nennt die Nummer an der Dokumentzeile und im Knopfnamen", () => {
   // Phase 1 (Variante A): die Dokumentliste zeigt je Zeile Name, Nummer und Stand; die Nummer bricht als Einheit um
-  // (.ce-wert). Der Knopf heißt sichtbar „Herunterladen", sein zugänglicher Name nennt Beleg und Nummer.
-  assert.ok(/<DokumentZeile key="ab" name=\{D\.orderConfirmation\} nummer=\{abNummer\}/.test(docsSrc), "die Nummer steht nicht an der Zeile");
+  // (.ce-wert). Der Knopf heißt sichtbar „Herunterladen", sein zugänglicher Name nennt Beleg und Nummer. Seit v2.118
+  // trägt jede Zeile zusätzlich das Symbol ihrer Belegart.
+  assert.ok(/<DokumentZeile key="ab"(?: symbol="\w+")? name=\{D\.orderConfirmation\} nummer=\{abNummer\}/.test(docsSrc), "die Nummer steht nicht an der Zeile");
   assert.ok(/<span className="ce-wert bsx-dok-nummer">\{nummer\}<\/span>/.test(docsSrc), "die Nummer bricht nicht als Einheit um");
-  assert.ok(docsSrc.includes("ariaLabel: `Auftragsbestätigung ${abNummer} herunterladen`"), "der Knopfname nennt die Nummer nicht");
+  assert.ok(docsSrc.includes("`Auftragsbestätigung ${abNummer} herunterladen`"), "der Knopfname nennt die Nummer nicht");
 });
 
 test("10 401/403 erzeugen keine eigene Meldung (zentraler Redirect)", () => {

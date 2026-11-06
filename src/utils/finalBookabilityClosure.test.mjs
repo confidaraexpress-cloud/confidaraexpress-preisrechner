@@ -189,6 +189,7 @@ test("F7 — P2-01: der Erfolgsbildschirm bietet nur bei `available` einen Downl
   const M = BOOKING_LABEL_MODE;
   assert.deepEqual(bookingLabelView({ labelStatus: "available" }), { mode: M.DOWNLOAD, retrievable: false, text: null });
   // Phase 1 (Thema 4): der Stand steht kurz an der Labelzeile — „abrufbar" und „wird erstellt" sind zwei Stände.
+  // v2.118: ein abrufbares Label sagt an der Zeile, was der Klick liefert — der Abruf beim Anbieter bleibt unsichtbar.
   assert.deepEqual(bookingLabelView({ labelStatus: "pending", labelRetrievable: false }),
     { mode: M.PENDING, retrievable: false, text: BOOKING_LABEL_TEXT.pending });
   assert.deepEqual(bookingLabelView({ labelStatus: "pending", labelRetrievable: true }),
@@ -203,10 +204,11 @@ test("F7 — P2-01: der Erfolgsbildschirm bietet nur bei `available` einen Downl
   assert.equal(bookingLabelView({ success: true }).mode, M.DOWNLOAD);
   // Der allgemeine Hinweissatz ist in jedem Zustand entfallen (Betreiberentscheidung 2026-11-06).
   assert.equal(BOOKING_LABEL_TEXT.pending, "Wird vom Versanddienstleister erstellt");
-  assert.equal(BOOKING_LABEL_TEXT.retrievable, "Beim Versanddienstleister abrufbar");
+  assert.equal(BOOKING_LABEL_TEXT.retrievable, "PDF zum Ausdrucken");
   for (const t of Object.values(BOOKING_LABEL_TEXT)) assert.doesNotMatch(t, /Sobald es verfügbar ist/, t);
-  assert.doesNotMatch(BOOKING_LABEL_TEXT.retrieve, /herunterladen/i, "der Abruf gibt sich als Download aus");
-  assert.equal(BOOKING_LABEL_TEXT.retrieve, "Versandlabel abrufen");
+  // Ein abrufbares Label verspricht vor dem Klick kein „Bereit“ — und nennt keinen internen Abruf.
+  assert.doesNotMatch(BOOKING_LABEL_TEXT.retrievable, /bereit|abruf/i);
+  assert.ok(!("retrieve" in BOOKING_LABEL_TEXT), "„Versandlabel abrufen“ ist entfallen (v2.118)");
   assert.equal(BOOKING_LABEL_TEXT.download, "Versandlabel herunterladen");
 });
 
@@ -216,15 +218,15 @@ test("F8 — P2-01: ohne Download-Stand kein Download — die Erfolgsseite folgt
   // Portal (nicht abrufbar), beim Fahrer, gesondert, unbekannt: keine Aktion an der Labelzeile, Hauptaktion „Zu meinen Sendungen".
   for (const stand of [{ labelStatus: "pending", labelRetrievable: false }, { labelStatus: "carrier_at_pickup" },
     { labelStatus: "separate" }, { labelStatus: "unknown" }]) {
-    const plan = bookingSuccessLabelPlan({ ...sendung, ...stand }, {}, { hasOrderConfirmation: true });
+    const plan = bookingSuccessLabelPlan({ ...sendung, ...stand });
     assert.equal(plan.rows[0].action, null, JSON.stringify(stand));
     assert.equal(plan.primary.kind, A.SHIPMENTS, JSON.stringify(stand));
     assert.doesNotMatch(plan.primary.text, /herunterladen/i);
   }
-  // Abrufbar: Hauptaktion „Versandlabel abrufen" — erst nach erfolgreichem Abruf „herunterladen".
+  // Abrufbar (v2.118): derselbe Klick lädt das PDF — von Anfang an „Versandlabel herunterladen", vor wie nach dem Laden.
   const abrufbar = { ...sendung, labelStatus: "pending", labelRetrievable: true };
   assert.deepEqual([bookingSuccessLabelPlan(abrufbar).primary.kind, bookingSuccessLabelPlan(abrufbar).primary.text],
-    [A.RETRIEVE, "Versandlabel abrufen"]);
+    [A.LABEL, "Versandlabel herunterladen"]);
   assert.deepEqual([bookingSuccessLabelPlan(abrufbar, { fetched: true }).primary.kind, bookingSuccessLabelPlan(abrufbar, { fetched: true }).primary.text],
     [A.LABEL, "Versandlabel herunterladen"]);
   // Vorhanden: „Versandlabel herunterladen" als Hauptaktion.

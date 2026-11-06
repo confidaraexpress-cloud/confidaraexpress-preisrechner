@@ -364,9 +364,11 @@ test("6 — carrier_at_pickup: keine Label-Mail, Tracking-only bleibt; Erfolgsse
 
 // ══════════ Phase 1 (Betreiberentscheidung 2026-11-06, Canonical v2.117): Variante A und Labelhinweis ══════════
 // Der allgemeine Hinweis „Ihr Versandlabel wird erstellt …" entfällt in jedem Zustand; der Stand steht kurz an der
-// Labelzeile. Ein erst beim Anbieter abzurufendes Label heißt „Versandlabel abrufen", erst danach „herunterladen".
+// Labelzeile. Premium-UX-Nachbesserung (Canonical v2.118): ein beim Anbieter abrufbares Label heißt sofort
+// „Versandlabel herunterladen" — derselbe Klick lädt das PDF. Warten und Fehler stehen unter der Hauptaktion und an
+// der Labelzeile; neben der Hauptaktion steht kein zweiter Knopf.
 
-test("7 — JUMiNGO abrufbar: „Versandlabel abrufen“ als Hauptaktion; nach dem Abruf „Versandlabel herunterladen“", async () => {
+test("7 — JUMiNGO abrufbar: sofort „Versandlabel herunterladen“; ein Klick lädt das PDF, danach steht die Zeile auf „Bereit“", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 }, acceptDownloads: true });
   const protokoll = [];
   await setupRoutes(page, { protokoll, buchung: { labelStatus: "pending", labelRetrievable: true } });
@@ -374,14 +376,21 @@ test("7 — JUMiNGO abrufbar: „Versandlabel abrufen“ als Hauptaktion; nach d
   const wrap = page.locator(".booking-success-wrap");
   const haupt = wrap.locator(".bsx-hauptaktion");
   await haupt.waitFor({ timeout: 15000 });
-  assert.equal((await haupt.innerText()).trim(), "Versandlabel abrufen");
-  assert.match(await page.locator("#booking-label-status").innerText(), /Beim Versanddienstleister abrufbar/);
+  assert.equal((await haupt.innerText()).trim(), "Versandlabel herunterladen");
+  // Vor dem Klick verspricht die Zeile kein „Bereit“ und nennt keinen internen Abruf.
+  assert.equal((await page.locator("#booking-label-status").innerText()).trim(), "PDF zum Ausdrucken");
+  assert.doesNotMatch(await wrap.innerText(), /abrufen|abrufbar|abgerufen/i, "der interne Abruf steht im Kundentext");
   assert.doesNotMatch(await wrap.innerText(), /Ihr Versandlabel wird erstellt|Sobald es verfügbar ist/, "der allgemeine Labelhinweis steht noch da");
-  assert.equal(await wrap.getByRole("button", { name: /Versandlabel herunterladen/ }).count(), 0, "ein Download vor dem Abruf");
+  assert.equal(await page.locator("#booking-label-retrieve").count(), 0, "ein eigener Abrufknopf");
+  // Die Zeile bietet denselben Download ruhig an — kein zweiter gefüllter Knopf neben der Hauptaktion.
+  assert.equal(await wrap.locator(".bsx-dokliste").getByRole("button", { name: "Versandlabel herunterladen" }).count(), 1);
+  assert.equal(await wrap.locator(".bsx-nebenaktion").count(), 0);
+  assert.equal(await wrap.locator(".btn-primary").count(), 1, "mehr als ein gefüllter Knopf");
   await Promise.all([page.waitForEvent("download", { timeout: 15000 }), haupt.click()]);
   assert.ok(protokoll.includes(`/api/shipments/${CE_SHIPMENT_ID}/label`));
-  await page.waitForFunction(() => document.querySelector(".bsx-hauptaktion")?.innerText.trim() === "Versandlabel herunterladen", null, { timeout: 10000 });
-  assert.match(await wrap.locator(".bsx-dokliste .bsx-dok").first().innerText(), /Bereit/);
+  await page.waitForFunction(() => /Bereit/.test(document.querySelector(".bsx-dokliste .bsx-dok")?.innerText || ""), null, { timeout: 10000 });
+  assert.equal((await haupt.innerText()).trim(), "Versandlabel herunterladen");
+  assert.equal(await wrap.locator(".bsx-aktion-meldung").count(), 0, "nach dem Download steht eine Meldung unter der Hauptaktion");
   await page.close();
 });
 
@@ -397,11 +406,16 @@ test("8 — „noch nicht bereit“ ist ein ruhiger Wartezustand, kein Fehler; d
   // Ruhig: keine rote Fläche, keine Alarmansage, die Buchung bleibt bestätigt.
   assert.equal(await wrap.locator(".alert-error, .bsx-dok--error, [role='alert']").count(), 0, "ein Wartezustand erscheint als Fehler");
   assert.match(await page.locator(".booking-success-title").innerText(), /erfolgreich gebucht/);
-  // Hauptaktion jetzt „Zu meinen Sendungen", daneben „Erneut abrufen".
-  assert.equal((await wrap.locator(".bsx-hauptaktion").innerText()).trim(), "Zu meinen Sendungen");
-  assert.equal((await wrap.locator(".bsx-nebenaktion").innerText()).trim(), "Erneut abrufen");
-  await Promise.all([page.waitForEvent("download", { timeout: 15000 }), wrap.locator(".bsx-nebenaktion").click()]);
-  await page.waitForFunction(() => document.querySelector(".bsx-hauptaktion")?.innerText.trim() === "Versandlabel herunterladen", null, { timeout: 10000 });
+  // Die Hauptaktion behält ihren Namen; darunter steht der Wartezustand ruhig (nicht im Fehlerton), an der Zeile
+  // „Erneut versuchen". Kein zweiter Knopf daneben.
+  assert.equal((await wrap.locator(".bsx-hauptaktion").innerText()).trim(), "Versandlabel herunterladen");
+  assert.match(await wrap.locator(".bsx-aktion-meldung").innerText(), /Noch nicht bereit – bitte in einigen Minuten erneut versuchen/);
+  assert.equal(await wrap.locator(".bsx-aktion-meldung--fehler").count(), 0, "der Wartezustand steht im Fehlerton");
+  assert.equal(await wrap.locator(".bsx-nebenaktion").count(), 0);
+  assert.match(await wrap.locator(".bsx-dokliste .bsx-dok").first().locator("button").innerText(), /Erneut versuchen/);
+  await Promise.all([page.waitForEvent("download", { timeout: 15000 }), wrap.locator(".bsx-hauptaktion").click()]);
+  await page.waitForFunction(() => /Bereit/.test(document.querySelector(".bsx-dokliste .bsx-dok")?.innerText || ""), null, { timeout: 10000 });
+  assert.equal(await wrap.locator(".bsx-aktion-meldung").count(), 0, "der Wartezustand bleibt nach dem Download stehen");
   await page.close();
 });
 
@@ -417,6 +431,9 @@ test("9 — ein echter Abruffehler bleibt als Fehler erkennbar — an der Labelz
   assert.match(await fehlerZeile.innerText(), /später erneut/);
   assert.match(await fehlerZeile.locator("button").innerText(), /Erneut versuchen/);
   assert.doesNotMatch(await fehlerZeile.innerText(), /Fehler$/, "Server-Freitext im Kundentext");
+  // Unter der Hauptaktion steht derselbe Fehler sichtbar im Fehlerton; die Buchung bleibt bestätigt.
+  assert.match(await wrap.locator(".bsx-aktion-meldung--fehler").innerText(), /später erneut/);
+  assert.match(await page.locator(".booking-success-title").innerText(), /erfolgreich gebucht/);
   await page.close();
 });
 

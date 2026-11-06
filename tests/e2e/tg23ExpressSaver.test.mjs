@@ -883,9 +883,11 @@ test("H — Erfolg: UPS — Expressversand, Bestandteile, Gesamtbetrag vom Serve
   await page.waitForSelector(".booking-success-title", { timeout: 20000 });
 
   const recap = await inhalt(page.locator(".booking-success-recap"));
-  assert.match(recap, /Carrier\s*UPS — Expressversand/);
-  assert.match(recap, /Route\s*Aschaffenburg → Berlin/);
-  assert.match(recap, /Serviceart\s*Abholung/);
+  const fakten = await inhalt(page.locator(".bsx-fakten"));
+  assert.match(fakten, /UPS — Expressversand/);
+  assert.match(fakten, /Aschaffenburg → Berlin/);
+  assert.match(fakten, /Abholung/);
+  assert.doesNotMatch(recap, /Carrier|Route|Serviceart/, "der Beleg wiederholt die Fakten des Kopfs");
   assert.match(recap, /Versand netto\s*26,25 €/);
   assert.match(recap, /Zuschlag Privatadresse netto\s*3,44 €/);
   assert.match(recap, /Gesamtbetrag brutto\s*35,33 €/);
@@ -969,7 +971,7 @@ test("I — JUMiNGO-Pendant „Expressversand“ daneben: beide sichtbar, JUMiNG
   assert.equal(body.tariffId, JM.id);
   assert.ok(!("offerRevision" in body), "das JUMiNGO-Pendant sendet einen Preisstand");
   assert.ok(!("priceInputs" in body), "das JUMiNGO-Pendant sendet eine Adressart");
-  assert.match(await inhalt(page.locator(".booking-success-recap")), /Carrier\s*UPS — Expressversand/);
+  assert.match(await inhalt(page.locator(".bsx-fakten")), /UPS — Expressversand/);
   assert.deepEqual(fehler, []);
   await page.close();
 });

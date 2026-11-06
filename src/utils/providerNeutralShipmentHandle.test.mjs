@@ -132,7 +132,7 @@ test("7 — der Label-Download der Buchungsseite nutzt den CE-Handle aus der Buc
   // diese Entscheidung trifft der Labelplan (bookingSuccessActions.mjs) — ohne Handle keine Labelzeile und keine
   // Label-Hauptaktion.
   const plan = read("./bookingSuccessActions.mjs");
-  assert.match(plan, /if \(!booking \|\| booking\.ceShipmentId == null \|\| String\(booking\.ceShipmentId\)\.trim\(\) === ""\) \{\s*return \{ mode: null, rows: \[\], primary: sendungen, secondary: null \};/);
+  assert.match(plan, /if \(!booking \|\| booking\.ceShipmentId == null \|\| String\(booking\.ceShipmentId\)\.trim\(\) === ""\) \{\s*return \{ mode: null, rows: \[\], primary: sendungen, secondary: null, feedback: null \};/);
 });
 
 test("8 — auch das Abholzeitfenster adressiert über den CE-Handle", () => {

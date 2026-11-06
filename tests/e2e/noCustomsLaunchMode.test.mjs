@@ -208,15 +208,16 @@ test("SMOKE E — auch die Registrierung bietet nur freigegebene Länder an", as
   // Scope nicht am eingeloggten Bereich hängt.
   const { ctx, page, fehler } = await neueSeite();
   try {
+    // Das Länderfeld über seine id: seit v2.118 ist auch das Versandvolumen ein Auswahlfeld (select.auth-select).
     await page.goto(`${BASE}/register`, { waitUntil: "domcontentloaded" });
-    await page.waitForSelector("select.auth-select", { timeout: 20000 });
+    await page.waitForSelector("select#reg-country", { timeout: 20000 });
     await page.waitForFunction(
-      () => document.querySelectorAll("select.auth-select option").length > 1
-         && document.querySelectorAll("select.auth-select option").length < 40,
+      () => document.querySelectorAll("select#reg-country option").length > 1
+         && document.querySelectorAll("select#reg-country option").length < 40,
       undefined, { timeout: 20000 }
     );
 
-    const codes = await optionen(page, "select.auth-select");
+    const codes = await optionen(page, "select#reg-country");
     assert.equal(codes.length, 27, `27 Länder erwartet, waren ${codes.length}`);
     for (const drittland of ["US", "CH", "GB", "NO", "TR"]) {
       assert.ok(!codes.includes(drittland), `${drittland} darf bei der Registrierung nicht wählbar sein`);

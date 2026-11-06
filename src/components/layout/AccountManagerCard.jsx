@@ -51,6 +51,24 @@ const bewegungReduziert = medienStand(BEWEGUNG_REDUZIERT);
 const abonnierePlatz = medienAbo(PLATZ_FUER_KARTE);
 const platzFuerKarte = medienStand(PLATZ_FUER_KARTE);
 
+/* Eine Seite, deren Inhalt unten rechts liegt, kann für die Dauer ihrer Anzeige die kompakte Form anfordern — heute
+   nur die Erfolgsseite der Buchung (Premium-UX-Nachbesserung 2026-11-06, Canonical v2.118): Ab 1280 px verdeckte die
+   offene Karte dort den Beleg. Die Karte steht dann als Foto wie bei wenig Platz; ein Klick öffnet sie über dem Foto.
+   Nichts davon wird im Gerät gemerkt, und mit dem Verlassen der Seite gilt wieder die Regel des Fensters. */
+let kompaktAnforderungen = 0;
+const kompaktHoerer = new Set();
+const kompaktMelden = () => kompaktHoerer.forEach((melden) => melden());
+const abonniereKompakt = (melden) => { kompaktHoerer.add(melden); return () => kompaktHoerer.delete(melden); };
+const kompaktAngefordert = () => kompaktAnforderungen > 0;
+
+export function useAnsprechKarteKompakt() {
+  useEffect(() => {
+    kompaktAnforderungen += 1;
+    kompaktMelden();
+    return () => { kompaktAnforderungen -= 1; kompaktMelden(); };
+  }, []);
+}
+
 function geraetespeicher() {
   try { return window.localStorage; } catch { return null; }
 }
@@ -111,7 +129,9 @@ function Dock() {
   const ansicht = ansprechpartnerAnsicht(user ? user.accountManager : null);
   const person = ansicht.art === "person";
   const reduziert = useSyncExternalStore(abonniereBewegung, bewegungReduziert, () => false);
-  const platz = useSyncExternalStore(abonnierePlatz, platzFuerKarte, () => true);
+  const fensterPlatz = useSyncExternalStore(abonnierePlatz, platzFuerKarte, () => true);
+  const kompakt = useSyncExternalStore(abonniereKompakt, kompaktAngefordert, () => false);
+  const platz = fensterPlatz && !kompakt;
   const [eingeklappt, setEingeklappt] = useState(() => karteEingeklappt(geraetespeicher()));
   const [kurzGeoeffnet, setKurzGeoeffnet] = useState(false);
   const [durchHandlung, setDurchHandlung] = useState(false);

@@ -61,7 +61,7 @@ async function fuelle(page, ustId) {
   // Phase 1 (Canonical v2.117): das voraussichtliche monatliche Versandvolumen ist Pflicht (eine der acht Angaben).
   // Es wird VOR der USt-IdNr. gewählt: eine ungültige Nummer zeigt ihren Fehler beim Verlassen des Felds und
   // verschiebt die Gruppe darunter genau zwischen Maus-Down und Maus-Up.
-  await page.locator('input[name="monthly_shipment_volume"][value="11_50"]').check();
+  await page.locator("#reg-volume").selectOption("11_50");
   if (ustId !== undefined) await page.fill("#reg-vat", ustId);
   const pw = page.locator('.auth-input[type="password"]');
   await pw.nth(0).fill("EinSicheresPasswort2026");

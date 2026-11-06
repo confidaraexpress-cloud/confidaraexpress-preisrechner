@@ -7,6 +7,10 @@
 // darunter jede einzelne Aktion. Die Liste zeigt je Dokument eine Zeile: Name, Stand, Aktion — statt gestapelter
 // Knöpfe. Der allgemeine Labelhinweis entfällt (Thema 4); der Stand steht kurz an der Labelzeile.
 //
+// Premium-UX-Nachbesserung (Canonical v2.118): Jede Zeile trägt ein ruhiges Symbol ihrer Belegart, die Aktion ist ein
+// nachrangiger Textknopf mit Downloadzeichen — die Liste macht jeden Beleg erreichbar, ohne der Hauptaktion oben einen
+// zweiten gleichwertigen Knopf entgegenzustellen.
+//
 // Props: die Buchungsantwort (`booking`) und der vom Hook useProformaDocument
 // aufgelöste Proforma-Eintrag (`proformaEntry`) — die Auflösung selbst (Poll,
 // Budget, Fehlerfreiheit) bleibt bewusst in der Seite bzw. im Hook: dieser
@@ -16,15 +20,16 @@
 // jeder davon eine eigene Zeile — bei mehreren Paketen also jedes Etikett, nicht nur das
 // erste. Ohne diese Angabe entscheidet seit P2-01 der vom Server genannte Labelstand
 // (`booking.labelStatus`): ein Download nur, wenn das Label in ConfidaraExpress
-// liegt (oder ein älterer Server gar keinen Stand nennt); ein beim Anbieter abrufbares Label
-// heißt „abrufen", bis die Datei tatsächlich geladen wurde.
+// liegt, beim Versanddienstleister abrufbar ist (derselbe Klick lädt das PDF, v2.118) oder ein
+// älterer Server gar keinen Stand nennt.
 import { useState } from "react";
+import { Icon } from "../ui/Icon";
 import { downloadLabel } from "../../utils/downloadLabel";
 import { downloadDocument } from "../../utils/downloadDocument";
 import { isLabelNotReady } from "../../utils/labelErrors.mjs";
 import {
   bookingShippingDocuments, shippingDocumentFallbackFilename, shippingDocumentLoadingLabel,
-  BOOKING_SHIPPING_DOCUMENTS_TEXT, bookingShippingPrintNotice, BOOKING_LABEL_TEXT,
+  BOOKING_SHIPPING_DOCUMENTS_TEXT, bookingShippingPrintNotice,
 } from "../../utils/bookingShippingDocuments.mjs";
 import { BOOKING_SUCCESS_TEXT, SUCCESS_ACTION, ROW_TONE } from "../../utils/bookingSuccessActions.mjs";
 import { downloadDeliveryNote } from "../../utils/downloadDeliveryNote";
@@ -51,7 +56,7 @@ export function useBookingSuccessDocuments(booking, proformaEntry) {
   const [labelLoading, setLabelLoading] = useState(false);
   const [labelError, setLabelError] = useState("");
   // Phase 1: Verlauf des Labelabrufs auf dieser Seite — „noch nicht bereit" ist ein Wartezustand (ruhig, nicht rot),
-  // ein erfolgreicher Abruf macht aus „abrufen" ein „herunterladen".
+  // nach einem erfolgreichen Download steht die Labelzeile auf „Bereit".
   const [labelNotReady, setLabelNotReady] = useState(false);
   const [labelFetched, setLabelFetched] = useState(false);
   // Eigener Zustand für den Lieferschein: ein fehlgeschlagener Lieferscheindownload
@@ -163,11 +168,12 @@ export function useBookingSuccessDocuments(booking, proformaEntry) {
   };
 }
 
-// Eine Dokumentzeile: Name (mit Nummer), Stand, Aktion. Der Stand eines echten Fehlers ist rot und wird angesagt;
-// Warten und Hinweise bleiben ruhig.
-function DokumentZeile({ name, nummer, nummerLabel, status, tone, statusId, aktion }) {
+// Eine Dokumentzeile: Symbol der Belegart, Name (mit Nummer), Stand, Aktion. Der Stand eines echten Fehlers ist rot
+// und wird angesagt; Warten und Hinweise bleiben ruhig.
+function DokumentZeile({ symbol, name, nummer, nummerLabel, status, tone, statusId, aktion }) {
   return (
     <li className={`bsx-dok bsx-dok--${tone}`}>
+      <span className="bsx-dok-symbol" aria-hidden="true"><Icon n={symbol} s={20} /></span>
       <div className="bsx-dok-text">
         <span className="bsx-dok-name">
           {name}
@@ -184,10 +190,14 @@ function DokumentZeile({ name, nummer, nummerLabel, status, tone, statusId, akti
   );
 }
 
-const ladeKnopf = ({ text, ariaLabel, onClick, disabled, laedt, ladeText, id }) => (
-  <button type="button" className="btn btn-outline btn-sm bsx-dok-knopf" id={id} onClick={onClick} disabled={disabled}
-          aria-label={laedt ? undefined : ariaLabel}>
-    {laedt ? <><span className="spinner spinner-dark" /> {ladeText}</> : text}
+// Die Aktion einer Zeile: ein ruhiger Textknopf mit Zeichen — „Herunterladen“ oder, nach einem fehlgeschlagenen
+// Versuch, „Erneut versuchen“. Der zugängliche Name nennt den Beleg und beginnt mit dem sichtbaren Text.
+const ladeKnopf = ({ text, ariaLabel, onClick, disabled, laedt, ladeText, fehlgeschlagen = false, beleg = "" }) => (
+  <button type="button" className="bsx-dok-knopf" onClick={onClick} disabled={disabled}
+          aria-label={laedt ? undefined : (fehlgeschlagen ? `${BOOKING_SUCCESS_TEXT.retry}: ${beleg}` : ariaLabel)}>
+    {laedt
+      ? <><span className="spinner spinner-dark" /> {ladeText}</>
+      : <><Icon n={fehlgeschlagen ? "refresh" : "download"} s={18} />{fehlgeschlagen ? BOOKING_SUCCESS_TEXT.retry : text}</>}
   </button>
 );
 
@@ -215,19 +225,18 @@ export function BookingSuccessDocuments({ booking, proformaEntry, plan, docs, de
       const fehler = docs.versandFehler[a.doc.downloadPath];
       if (fehler) { status = fehler; tone = ROW_TONE.ERROR; }
       aktion = ladeKnopf({
-        text: fehler ? T.retry : a.text, ariaLabel: a.ariaLabel,
+        text: a.text, ariaLabel: a.ariaLabel, fehlgeschlagen: Boolean(fehler), beleg: a.doc.label,
         onClick: () => docs.handleDownloadShippingDocument(a.doc), disabled: docs.versandPfad !== "",
         laedt: docs.versandPfad === a.doc.downloadPath, ladeText: shippingDocumentLoadingLabel(a.doc),
       });
-    } else if (a && (a.kind === SUCCESS_ACTION.LABEL || a.kind === SUCCESS_ACTION.RETRIEVE)) {
+    } else if (a && a.kind === SUCCESS_ACTION.LABEL) {
       aktion = ladeKnopf({
-        text: a.text, ariaLabel: a.ariaLabel, onClick: docs.handleDownloadLabel, disabled: docs.labelLoading,
-        laedt: docs.labelLoading, id: a.kind === SUCCESS_ACTION.RETRIEVE ? "booking-label-retrieve" : undefined,
-        ladeText: a.kind === SUCCESS_ACTION.RETRIEVE ? BOOKING_LABEL_TEXT.retrieving : D.loading,
+        text: a.text, ariaLabel: a.ariaLabel, fehlgeschlagen: a.text === T.retry, beleg: r.name,
+        onClick: docs.handleDownloadLabel, disabled: docs.labelLoading, laedt: docs.labelLoading, ladeText: D.loading,
       });
     }
     zeilen.push(
-      <DokumentZeile key={r.key} name={r.name} nummer={r.reference} nummerLabel={r.reference ? T.carrierReference : null}
+      <DokumentZeile key={r.key} symbol="printer" name={r.name} nummer={r.reference} nummerLabel={r.reference ? T.carrierReference : null}
         status={status} tone={tone} aktion={aktion}
         statusId={r.key === "label" && (!a || a.kind !== SUCCESS_ACTION.LABEL || tone !== ROW_TONE.READY) ? "booking-label-status" : undefined} />,
     );
@@ -237,11 +246,12 @@ export function BookingSuccessDocuments({ booking, proformaEntry, plan, docs, de
   // Lieferschein: sie betrifft jede Buchung, der Lieferschein nur Konten mit Lagerbezug.
   if (abNummer) {
     zeilen.push(
-      <DokumentZeile key="ab" name={D.orderConfirmation} nummer={abNummer}
+      <DokumentZeile key="ab" symbol="invoice" name={D.orderConfirmation} nummer={abNummer}
         status={docs.orderConfirmationError || (demo ? T.ready : D.orderConfirmationReady)}
         tone={docs.orderConfirmationError ? ROW_TONE.ERROR : ROW_TONE.READY}
         aktion={ladeKnopf({
-          text: docs.orderConfirmationError ? T.retry : T.download, ariaLabel: `Auftragsbestätigung ${abNummer} herunterladen`,
+          text: T.download, ariaLabel: `Auftragsbestätigung ${abNummer} herunterladen`,
+          fehlgeschlagen: Boolean(docs.orderConfirmationError), beleg: `${D.orderConfirmation} ${abNummer}`,
           onClick: docs.handleDownloadOrderConfirmation, disabled: docs.orderConfirmationLoading,
           laedt: docs.orderConfirmationLoading, ladeText: "Auftragsbestätigung wird geladen…",
         })} />,
@@ -250,10 +260,11 @@ export function BookingSuccessDocuments({ booking, proformaEntry, plan, docs, de
   // Lieferschein — NUR, wenn die Buchungsantwort tatsächlich einen gemeldet hat.
   if (lieferschein) {
     zeilen.push(
-      <DokumentZeile key="ls" name={D.deliveryNote} nummer={lieferschein}
+      <DokumentZeile key="ls" symbol="invoice" name={D.deliveryNote} nummer={lieferschein}
         status={docs.deliveryNoteError || T.ready} tone={docs.deliveryNoteError ? ROW_TONE.ERROR : ROW_TONE.READY}
         aktion={ladeKnopf({
-          text: docs.deliveryNoteError ? T.retry : T.download, ariaLabel: `Lieferschein ${lieferschein} herunterladen`,
+          text: T.download, ariaLabel: `Lieferschein ${lieferschein} herunterladen`,
+          fehlgeschlagen: Boolean(docs.deliveryNoteError), beleg: `${D.deliveryNote} ${lieferschein}`,
           onClick: docs.handleDownloadDeliveryNote, disabled: docs.deliveryNoteLoading,
           laedt: docs.deliveryNoteLoading, ladeText: "Lieferschein wird geladen…",
         })} />,
@@ -265,18 +276,19 @@ export function BookingSuccessDocuments({ booking, proformaEntry, plan, docs, de
   if (proforma === PROFORMA_VIEW.READY) {
     const nummer = typeof proformaEntry?.number === "string" && proformaEntry.number.trim() ? proformaEntry.number.trim() : null;
     zeilen.push(
-      <DokumentZeile key="pf" name={D.proforma} nummer={nummer}
+      <DokumentZeile key="pf" symbol="invoice" name={D.proforma} nummer={nummer}
         status={docs.proformaError || T.ready} tone={docs.proformaError ? ROW_TONE.ERROR : ROW_TONE.READY}
         aktion={ladeKnopf({
-          text: docs.proformaError ? T.retry : T.download, ariaLabel: proformaDownloadLabel(proformaEntry),
+          text: T.download, ariaLabel: proformaDownloadLabel(proformaEntry),
+          fehlgeschlagen: Boolean(docs.proformaError), beleg: D.proforma,
           onClick: docs.handleDownloadProforma, disabled: docs.proformaLoading,
           laedt: docs.proformaLoading, ladeText: PROFORMA_TEXT.loading,
         })} />,
     );
   } else if (proforma === PROFORMA_VIEW.PROCESSING) {
-    zeilen.push(<DokumentZeile key="pf" name={D.proforma} tone={ROW_TONE.WAIT} status={PROFORMA_TEXT.processing} />);
+    zeilen.push(<DokumentZeile key="pf" symbol="invoice" name={D.proforma} tone={ROW_TONE.WAIT} status={PROFORMA_TEXT.processing} />);
   } else if (proforma === PROFORMA_VIEW.FAILED) {
-    zeilen.push(<DokumentZeile key="pf" name={D.proforma} tone={ROW_TONE.INFO} status={PROFORMA_TEXT.failed} />);
+    zeilen.push(<DokumentZeile key="pf" symbol="invoice" name={D.proforma} tone={ROW_TONE.INFO} status={PROFORMA_TEXT.failed} />);
   }
 
   if (zeilen.length === 0) return null;

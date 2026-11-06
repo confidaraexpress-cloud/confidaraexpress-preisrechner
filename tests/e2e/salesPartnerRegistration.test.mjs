@@ -91,7 +91,7 @@ async function kundenformularAbsenden(page) {
   // Auftrag 2 / P10: die USt-IdNr. ist bei jeder Neuregistrierung Pflicht.
   await page.fill("#reg-vat", "DE123456789");
   // Phase 1 (Canonical v2.117): das voraussichtliche monatliche Versandvolumen ist bei jeder Neuregistrierung Pflicht.
-  await page.locator('input[name="monthly_shipment_volume"][value="11_50"]').check();
+  await page.locator("#reg-volume").selectOption("11_50");
   const pw = page.locator('.auth-input[type="password"]');
   await pw.nth(0).fill("EinSicheresPasswort2026");
   await pw.nth(1).fill("EinSicheresPasswort2026");

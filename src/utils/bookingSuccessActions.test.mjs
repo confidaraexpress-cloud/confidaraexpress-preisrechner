@@ -1,5 +1,7 @@
-// Phase 1 (Betreiberentscheidung 2026-11-06, Canonical v2.117): Erfolgsseite Variante A — Hauptaktion, Labelzeilen
-// und nächste Schritte je Labelstand; Labelhinweis entfernt (Thema 4); Neuladen ohne „Kein Angebot ausgewählt".
+// Phase 1 (Betreiberentscheidung 2026-11-06, Canonical v2.117): Erfolgsseite — Hauptaktion, Labelzeilen und nächste
+// Schritte je Labelstand; Labelhinweis entfernt (Thema 4); Neuladen ohne „Kein Angebot ausgewählt". Premium-UX-
+// Nachbesserung (Canonical v2.118): ein abrufbares Label heißt sofort „Versandlabel herunterladen“, neben der
+// Hauptaktion steht kein zweiter Knopf, Warten und Fehler stehen als Rückmeldung unter ihr.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -20,10 +22,11 @@ const beleg = (type, ordinal, label, extra = {}) => ({
   type, ordinal, label, status: "ready", downloadPath: `/api/shipments/4711/provider-documents/${type}/${ordinal}`, ...extra,
 });
 
-test("1 — Label als Datei vorhanden: „Versandlabel herunterladen“ ist die Hauptaktion, daneben die Auftragsbestätigung", () => {
-  const p = bookingSuccessLabelPlan({ ...BASIS, labelStatus: "available" }, {}, { hasOrderConfirmation: true });
+test("1 — Label als Datei vorhanden: „Versandlabel herunterladen“ ist die Hauptaktion, ohne zweiten Knopf daneben", () => {
+  const p = bookingSuccessLabelPlan({ ...BASIS, labelStatus: "available" });
   assert.deepEqual([p.primary.kind, p.primary.text], [A.LABEL, "Versandlabel herunterladen"]);
-  assert.deepEqual([p.secondary.kind, p.secondary.text], [A.ORDER_CONFIRMATION, "Auftragsbestätigung (PDF)"]);
+  // v2.118: die Auftragsbestätigung steht in der Dokumentliste, nicht als zweiter Knopf neben der Hauptaktion.
+  assert.deepEqual([p.secondary, p.feedback], [null, null]);
   assert.deepEqual([p.rows.length, p.rows[0].status, p.rows[0].tone, p.rows[0].action.kind], [1, "Bereit", ROW_TONE.READY, A.LABEL]);
   // Ein älterer Server ohne Labelstand: der bisherige Download bleibt.
   assert.equal(bookingSuccessLabelPlan({ ...BASIS }).primary.kind, A.LABEL);
@@ -32,7 +35,7 @@ test("1 — Label als Datei vorhanden: „Versandlabel herunterladen“ ist die 
 test("2 — Mehrpaket: jede Datei eine Zeile in Serverreihenfolge, die erste ist die Hauptaktion", () => {
   const docs = [beleg("COLLECTION_LABEL", 0, "Abholetikett"), beleg("LABEL", 1, "Versandlabel 2 von 2", { carrierReference: "1Z999AA10123456784" }),
     beleg("LABEL", 0, "Versandlabel 1 von 2")];
-  const p = bookingSuccessLabelPlan({ ...BASIS, shippingDocuments: docs, labelStatus: "pending" }, {}, { hasOrderConfirmation: true });
+  const p = bookingSuccessLabelPlan({ ...BASIS, shippingDocuments: docs, labelStatus: "pending" });
   assert.deepEqual(p.rows.map((r) => r.name), ["Versandlabel 1 von 2", "Versandlabel 2 von 2", "Abholetikett"]);
   assert.deepEqual(p.rows.map((r) => r.action.ariaLabel), [
     "Versandlabel 1 von 2 herunterladen", "Versandlabel 2 von 2 herunterladen", "Abholetikett herunterladen"]);
@@ -45,24 +48,36 @@ test("2 — Mehrpaket: jede Datei eine Zeile in Serverreihenfolge, die erste ist
   assert.ok(fremd.rows.every((r) => r.action?.kind !== A.DOCUMENT));
 });
 
-test("3 — JUMiNGO, abrufbar: „Versandlabel abrufen“; nach erfolgreichem Abruf „Versandlabel herunterladen“", () => {
+test("3 — JUMiNGO, abrufbar: sofort „Versandlabel herunterladen“ — derselbe Klick lädt das PDF; „Bereit“ erst nach dem Laden", () => {
   const b = { ...BASIS, labelStatus: "pending", labelRetrievable: true };
   const vorher = bookingSuccessLabelPlan(b);
-  assert.deepEqual([vorher.primary.kind, vorher.primary.text], [A.RETRIEVE, "Versandlabel abrufen"]);
-  assert.deepEqual([vorher.secondary.kind, vorher.secondary.text], [A.SHIPMENTS, "Zu meinen Sendungen"]);
-  assert.deepEqual([vorher.rows[0].status, vorher.rows[0].tone, vorher.rows[0].action.kind], [BOOKING_LABEL_TEXT.retrievable, ROW_TONE.INFO, A.RETRIEVE]);
-  const nachher = bookingSuccessLabelPlan(b, { fetched: true }, { hasOrderConfirmation: true });
-  assert.deepEqual([nachher.primary.kind, nachher.primary.text, nachher.rows[0].status], [A.LABEL, "Versandlabel herunterladen", "Bereit"]);
+  assert.deepEqual([vorher.primary.kind, vorher.primary.text, vorher.secondary], [A.LABEL, "Versandlabel herunterladen", null]);
+  // Die Zeile verspricht vor dem Klick kein „Bereit“: sie sagt, was der Klick liefert.
+  assert.deepEqual([vorher.rows[0].status, vorher.rows[0].tone, vorher.rows[0].action.kind, vorher.rows[0].action.text],
+    [BOOKING_LABEL_TEXT.retrievable, ROW_TONE.INFO, A.LABEL, "Herunterladen"]);
+  assert.equal(BOOKING_LABEL_TEXT.retrievable, "PDF zum Ausdrucken");
+  const nachher = bookingSuccessLabelPlan(b, { fetched: true });
+  assert.deepEqual([nachher.primary.kind, nachher.primary.text, nachher.rows[0].status, nachher.rows[0].tone],
+    [A.LABEL, "Versandlabel herunterladen", "Bereit", ROW_TONE.READY]);
+  // Kein Wort „abrufen“ mehr in Hauptaktion, Zeile oder Ladezustand.
+  const texte = JSON.stringify([vorher, nachher, BOOKING_LABEL_TEXT, BOOKING_SUCCESS_TEXT]);
+  assert.doesNotMatch(texte, /abrufen|Abrufen|abgerufen/);
 });
 
 test("4 — LABEL_NOT_READY ist ein ruhiger Wartezustand; echte Fehler bleiben Fehler", () => {
   const b = { ...BASIS, labelStatus: "pending", labelRetrievable: true };
   const warten = bookingSuccessLabelPlan(b, { notReady: true });
-  assert.deepEqual([warten.rows[0].tone, warten.rows[0].status], [ROW_TONE.WAIT, BOOKING_LABEL_TEXT.notReady]);
-  assert.deepEqual([warten.primary.kind, warten.secondary.kind, warten.secondary.text], [A.SHIPMENTS, A.RETRIEVE, "Erneut abrufen"]);
+  assert.deepEqual([warten.rows[0].tone, warten.rows[0].status, warten.rows[0].action.text], [ROW_TONE.WAIT, BOOKING_LABEL_TEXT.notReady, "Erneut versuchen"]);
+  // Die Hauptaktion behält ihren Namen; die ruhige Rückmeldung steht darunter, kein zweiter Knopf daneben.
+  assert.deepEqual([warten.primary.kind, warten.primary.text, warten.secondary], [A.LABEL, "Versandlabel herunterladen", null]);
+  assert.deepEqual(warten.feedback, { tone: ROW_TONE.WAIT, text: BOOKING_LABEL_TEXT.notReady });
   assert.doesNotMatch(warten.rows[0].status, /fehlgeschlagen|Fehler/i, "ein Wartezustand behauptet keinen Fehlschlag");
   const fehler = bookingSuccessLabelPlan(b, { error: "Die Verbindung zum Server wurde unterbrochen." });
   assert.deepEqual([fehler.rows[0].tone, fehler.rows[0].action.text], [ROW_TONE.ERROR, "Erneut versuchen"]);
+  assert.deepEqual(fehler.feedback, { tone: ROW_TONE.ERROR, text: "Die Verbindung zum Server wurde unterbrochen." });
+  // Dasselbe für ein abgelegtes Label: Warten bleibt Warten, Fehler bleibt Fehler.
+  const abgelegt = bookingSuccessLabelPlan({ ...BASIS, labelStatus: "available" }, { notReady: true });
+  assert.deepEqual([abgelegt.rows[0].tone, abgelegt.feedback.tone, abgelegt.primary.kind], [ROW_TONE.WAIT, ROW_TONE.WAIT, A.LABEL]);
   // Erkennung am Code der Antwort; ohne Code genügt der Status 409.
   assert.equal(isLabelNotReady({ status: 409, code: "LABEL_NOT_READY" }), true);
   assert.equal(isLabelNotReady({ status: 409, code: null }), true);
@@ -80,9 +95,9 @@ test("5 — Portal, beim Fahrer, gesondert, unbekannt: Stand an der Zeile, kein 
     [{ labelStatus: "irgendwas" }, BOOKING_LABEL_TEXT.unknown, ROW_TONE.INFO],
   ];
   for (const [stand, text, ton] of faelle) {
-    const p = bookingSuccessLabelPlan({ ...BASIS, ...stand }, {}, { hasOrderConfirmation: true });
+    const p = bookingSuccessLabelPlan({ ...BASIS, ...stand });
     assert.deepEqual([p.rows[0].status, p.rows[0].tone, p.rows[0].action], [text, ton, null], JSON.stringify(stand));
-    assert.deepEqual([p.primary.kind, p.secondary], [A.SHIPMENTS, null], JSON.stringify(stand));
+    assert.deepEqual([p.primary.kind, p.secondary, p.feedback], [A.SHIPMENTS, null, null], JSON.stringify(stand));
   }
   assert.match(BOOKING_LABEL_TEXT.carrierAtPickup, /bei der Abholung am Paket angebracht\. Sie müssen kein Versandlabel ausdrucken/);
   // Ohne Sendungshandle: keine Labelzeile, nichts zum Herunterladen.
@@ -104,7 +119,9 @@ test("7 — „So geht es weiter“: Label, Übergabe, Sendungsverfolgung je Zus
   const fahrer = bookingSuccessLabelPlan({ ...BASIS, labelStatus: "carrier_at_pickup" });
   const portal = bookingSuccessLabelPlan({ ...BASIS, labelStatus: "pending" });
   assert.match(bookingSuccessNextSteps(datei, { serviceType: "dropoff" })[0], /herunterladen, ausdrucken/);
-  assert.match(bookingSuccessNextSteps(abruf, { serviceType: "dropoff" })[0], /abrufen, ausdrucken/);
+  assert.match(bookingSuccessNextSteps(abruf, { serviceType: "dropoff" })[0], /herunterladen, ausdrucken/);
+  const warten = bookingSuccessLabelPlan({ ...BASIS, labelStatus: "pending", labelRetrievable: true }, { notReady: true });
+  assert.match(bookingSuccessNextSteps(warten, { serviceType: "dropoff" })[0], /in wenigen Minuten bereit/);
   assert.match(bookingSuccessNextSteps(fahrer, { serviceType: "pickup" })[0], /Kein Ausdruck nötig/);
   assert.match(bookingSuccessNextSteps(portal, { serviceType: "dropoff" })[0], /erstellt der Versanddienstleister/);
   const [, shop, verfolgung] = bookingSuccessNextSteps(datei, { serviceType: "dropoff" }, { dropoffText: "DPD Pickup, Weg 1, 10115 Berlin" });
@@ -166,8 +183,15 @@ test("10 — Rahmen: auf der Erfolgsseite keine Schrittleiste und genau eine h1"
   assert.match(kopf, /\{title && <h1 className="ce-page-header-title" id=\{titleId\}>\{title\}<\/h1>\}/);
   const hero = lies("../components/booking/BookingSuccessHero.jsx");
   assert.equal((hero.match(/<h1 /g) || []).length, 1);
-  // Höchstens ein gefüllter Knopf auf der Erfolgsseite.
+  // Genau ein gefüllter Knopf auf der Erfolgsseite — die Hauptaktion; Zeilenaktionen sind ruhige Textknöpfe.
   const flaeche = ["BookingSuccessHero.jsx", "BookingSuccessDocuments.jsx", "BookingSuccessStep.jsx", "BookingSuccessDetails.jsx"]
     .map((d) => lies(`../components/booking/${d}`)).join("\n");
-  assert.equal((flaeche.match(/btn-primary/g) || []).length, 2, "die Hauptaktion und ihr Ladekennzeichen — kein zweiter gefüllter Knopf");
+  assert.equal((flaeche.match(/btn-primary/g) || []).length, 1, "kein zweiter gefüllter Knopf");
+  assert.equal((flaeche.match(/btn-outline/g) || []).length, 0, "keine Kapselknöpfe in der Dokumentliste");
+  // Die Wege in den Kundenbereich stehen nachrangig am Ende — nicht im Kopf neben der Hauptaktion.
+  assert.doesNotMatch(hero, /T\.newShipment|documentsLabel|booking-success-documents-link/);
+  const schritt = lies("../components/booking/BookingSuccessStep.jsx");
+  assert.ok(schritt.indexOf('className="bsx-fuss"') > schritt.indexOf("<BookingSuccessDetails"), "die Wege stehen nicht am Ende");
+  // Die Ansprechpartnerkarte steht auf der Erfolgsseite kompakt (sie verdeckte offen ab 1280 px den Beleg).
+  assert.match(schritt, /^\s*useAnsprechKarteKompakt\(\);$/m);
 });

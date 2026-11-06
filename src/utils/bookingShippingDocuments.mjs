@@ -91,8 +91,8 @@ export function bookingShippingDocuments(booking) {
 // war eine Zusage ohne Beleg. Der Server nennt den Stand jetzt selbst (`labelStatus`, dieselbe
 // Definition wie Auftragsbestätigung und Betriebssicht):
 //   available  das Label liegt in ConfidaraExpress         → „Versandlabel herunterladen"
-//   pending    es entsteht noch bzw. liegt beim Anbieter   → mit `labelRetrievable` „Versandlabel abrufen" (nie
-//              „herunterladen", bevor die Datei da ist), sonst nur der Stand an der Labelzeile
+//   pending    es entsteht noch bzw. liegt beim Anbieter   → mit `labelRetrievable` ebenfalls „Versandlabel
+//              herunterladen" (derselbe Klick lädt das PDF), sonst nur der Stand an der Labelzeile
 //   separate   außerhalb von ConfidaraExpress bereitgestellt → der Stand, kein Knopf
 //   unknown    kein Beleg (auch jeder unbekannte Wert)     → ein neutraler Verweis, kein Knopf
 // Fehlt das Feld ganz, antwortet ein Server vor diesem Stand: dann bleibt es beim bisherigen Knopf.
@@ -100,19 +100,24 @@ export function bookingShippingDocuments(booking) {
 // Phase 1 (Thema 4, Betreiberentscheidung 2026-11-06): Der allgemeine Hinweisblock „Ihr Versandlabel wird erstellt.
 // Sobald es verfügbar ist, …" entfällt in jedem Zustand. Was über das Label wahr ist, steht kurz als Stand der
 // Labelzeile in der Dokumentliste (utils/bookingSuccessActions.mjs).
+//
+// Premium-UX-Nachbesserung (Betreiberentscheidung 2026-11-06, Canonical v2.118): Ein beim Versanddienstleister
+// abrufbares Label heißt nicht mehr „Versandlabel abrufen“. Der Klick ruft denselben Downloadweg auf
+// (GET /api/shipments/:id/label) und lädt das PDF sofort — für den Kunden ist das „herunterladen“; der interne Abruf
+// beim Anbieter bleibt unsichtbar. Die Zeile verspricht vor dem Klick kein „Bereit“: 409 LABEL_NOT_READY bleibt ein
+// ruhiger Wartezustand, echte Fehler bleiben Fehler.
 export const BOOKING_LABEL_TEXT = Object.freeze({
   // Stand der Labelzeile je Zustand.
-  retrievable: "Beim Versanddienstleister abrufbar",
+  retrievable: "PDF zum Ausdrucken",
   pending: "Wird vom Versanddienstleister erstellt",
   separate: "Das Versandlabel wurde Ihnen gesondert bereitgestellt.",
   carrierAtPickup: "Das Versandlabel wird bei der Abholung am Paket angebracht. Sie müssen kein Versandlabel ausdrucken.",
   unknown: "Den aktuellen Stand finden Sie jederzeit unter „Meine Sendungen“ → „Dokumente“.",
-  // 409 LABEL_NOT_READY beim Abruf: ein normaler Wartezustand, ruhig und nie rot.
+  // 409 LABEL_NOT_READY beim Herunterladen: ein normaler Wartezustand, ruhig und nie rot.
   notReady: "Noch nicht bereit – bitte in einigen Minuten erneut versuchen.",
-  // Aktionen.
+  // Aktion und Ladezustand — für ein abgelegtes und ein abrufbares Label dieselben.
   download: "Versandlabel herunterladen",
-  retrieve: "Versandlabel abrufen",
-  retrieving: "Versandlabel wird abgerufen …",
+  loading: "Versandlabel wird geladen …",
 });
 
 export const BOOKING_LABEL_MODE = Object.freeze({

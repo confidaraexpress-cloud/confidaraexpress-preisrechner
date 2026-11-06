@@ -1228,19 +1228,6 @@
 [data-ce-bereich="kunde"] .booking-abgeschlossen-nummer { margin: 0; color: var(--ce-color-text-secondary); }
 [data-ce-bereich="kunde"] .booking-abgeschlossen-aktionen { display: flex; flex-wrap: wrap; gap: var(--ce-space-3); margin-top: var(--ce-space-2); }
 
-@media (prefers-reduced-motion: reduce) {
-  [data-ce-bereich="kunde"] .bsx-details-knopf svg { transition: none; }
-}
-@media (max-width: 560px) {
-  [data-ce-bereich="kunde"] .booking-success-wrap.bsx { gap: var(--ce-space-6); padding-top: var(--ce-space-2); }
-  [data-ce-bereich="kunde"] .bsx-kopf { padding-bottom: var(--ce-space-6); }
-  [data-ce-bereich="kunde"] .bsx-aktionen > .btn { flex: 1 1 100%; }
-  [data-ce-bereich="kunde"] .bsx .booking-success-numbers,
-  [data-ce-bereich="kunde"] .bsx .booking-success-delivery { padding-left: var(--ce-space-4); padding-right: var(--ce-space-4); }
-  [data-ce-bereich="kunde"] .bsx .booking-success-recap { padding-left: var(--ce-space-4); padding-right: var(--ce-space-4); }
-  [data-ce-bereich="kunde"] .bsx-beleg-kopf { padding-left: var(--ce-space-4); padding-right: var(--ce-space-4); }
-}
-
 /* Erfolgsseite: der Seitenkopf trägt nur die Werkzeugzeile (Suche, Mitteilungen, Konto) — die Bestätigung hat die h1.
    Unter 860 px stehen die Werkzeuge in der Topbar; dann entfällt der leere Kopf ganz. */
 @media (max-width: 860px) {

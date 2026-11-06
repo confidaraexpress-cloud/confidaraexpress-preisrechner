@@ -893,10 +893,11 @@ test("H — Erfolg: UPS — Expressversand, Bestandteile, Gesamtbetrag vom Serve
 
   const wrap = page.locator(".booking-success-wrap");
   assert.ok((await inhalt(wrap)).includes(AB), "die Auftragsbestätigungsnummer fehlt");
-  const knoepfe = wrap.getByRole("button", { name: /^Versandlabel.* herunterladen$/ });
+  const knoepfe = wrap.locator(".bsx-dokliste").getByRole("button", { name: /^Versandlabel.* herunterladen$/ });
   await knoepfe.first().waitFor({ timeout: 15000 });
-  assert.deepEqual((await knoepfe.allTextContents()).map((t) => t.trim()),
+  assert.deepEqual(await knoepfe.evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))),
     ["Versandlabel (A4) herunterladen", "Versandlabel (Thermodruck) herunterladen"]);
+  assert.equal((await wrap.locator(".bsx-hauptaktion").innerText()).trim(), "Versandlabel (A4) herunterladen");
   assert.equal(await wrap.getByRole("button", { name: "Label herunterladen" }).count(), 0,
     "zusätzlich steht der Einzelknopf des ersten Labels da");
   const [download] = await Promise.all([

@@ -90,6 +90,8 @@ async function kundenformularAbsenden(page) {
   await page.fill("#reg-company", "Muster Logistik GmbH");
   // Auftrag 2 / P10: die USt-IdNr. ist bei jeder Neuregistrierung Pflicht.
   await page.fill("#reg-vat", "DE123456789");
+  // Phase 1 (Canonical v2.117): das voraussichtliche monatliche Versandvolumen ist bei jeder Neuregistrierung Pflicht.
+  await page.locator('input[name="monthly_shipment_volume"][value="11_50"]').check();
   const pw = page.locator('.auth-input[type="password"]');
   await pw.nth(0).fill("EinSicheresPasswort2026");
   await pw.nth(1).fill("EinSicheresPasswort2026");
@@ -133,6 +135,7 @@ test("1 — /register?ref=… mit Freigabe: Code im Register-POST, Adresse ohne 
   assert.equal(calls.register.length, 1);
   assert.equal(calls.register[0].referralCode, "ABCDEFGH");
   assert.equal(calls.register[0].company_name, "Muster Logistik GmbH", "der bisherige Payload bleibt");
+  assert.equal(calls.register[0].monthly_shipment_volume, "11_50", "das Versandvolumen reist mit dem Empfehlungscode");
   assert.equal("sponsorCode" in calls.register[0], false);
   const nachher = await speicher(page);
   assert.equal(nachher.customer, null, "nach Erfolg ist der Kundencode gelöscht");

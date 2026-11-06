@@ -244,10 +244,11 @@ async function buchen(page) {
 
 async function pruefeErfolgsbelege(page, protokoll) {
   const wrap = page.locator(".booking-success-wrap");
-  const knoepfe = wrap.getByRole("button", { name: /^Versandlabel.* herunterladen$/ });
+  const knoepfe = wrap.locator(".bsx-dokliste").getByRole("button", { name: /^Versandlabel.* herunterladen$/ });
   await knoepfe.first().waitFor({ timeout: 15000 });
-  assert.deepEqual((await knoepfe.allTextContents()).map((t) => t.trim()),
+  assert.deepEqual(await knoepfe.evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))),
     ["Versandlabel (A4) herunterladen", "Versandlabel (Thermodruck) herunterladen"]);
+  assert.equal((await wrap.locator(".bsx-hauptaktion").innerText()).trim(), "Versandlabel (A4) herunterladen");
   assert.equal(await wrap.getByRole("button", { name: "Label herunterladen" }).count(), 0,
     "zusätzlich steht der Einzelknopf des ersten Labels da");
   assert.match(await wrap.innerText(), /UPS — Standard/);

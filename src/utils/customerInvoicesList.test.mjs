@@ -19,9 +19,13 @@ const viewSrc = read("utils/customerInvoiceView.mjs");
 test("1 — fünf fachliche Spalten mit scope, echte <caption>; Dokument und Aktion in EINER Spalte", () => {
   // Komplettabschluss (Audit B.4, 2026-10-27): ist das PDF bereit, stehen „Ansehen“ und „PDF herunterladen“ in der
   // Dokumentspalte, statt dass „PDF bereit“ daneben die Aktion doppelt; sonst stehen dort Status und Grund.
-  for (const col of ["Rechnung", "Zeitraum", "Betrag", "Zahlungsstatus", "Dokument"]) {
+  // Phase 1 (Betreiberentscheidung 2026-11-06): „Datum" statt „Zeitraum" — der Kopf kommt aus INVOICE_DATE_COLUMN.
+  for (const col of ["Rechnung", "Betrag", "Zahlungsstatus", "Dokument"]) {
     assert.match(listSrc, new RegExp(`<th scope="col">${col}</th>`), `Spalte fehlt: ${col}`);
   }
+  assert.match(listSrc, /<th scope="col">\{INVOICE_DATE_COLUMN\}<\/th>/, "Spalte Datum fehlt");
+  const listCode = listSrc.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+  assert.ok(!/Zeitraum/.test(listCode), "„Zeitraum“ steht noch in der Rechnungsliste");
   assert.equal((listSrc.match(/<th scope="col">/g) || []).length, 5, "genau fünf Spalten erwartet");
   assert.ok(!/<th scope="col">Aktion<\/th>/.test(listSrc), "die Aktion steht wieder in einer eigenen Spalte");
   assert.match(listSrc, /<td><DocumentActionsCell inv=\{inv\} /, "Dokument und Aktionen stehen nicht in einer Zelle");

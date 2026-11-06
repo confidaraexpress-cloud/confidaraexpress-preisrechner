@@ -1596,12 +1596,17 @@
   [data-ce-bereich="kunde"] .shipment-table :is(.stn-act--tracking, .stn-act--dokumente, .stn-act--storno) { grid-column: 1; }
 }
 
-/* ── Rechnungen: Rechnung · Zeitraum · Betrag · Zahlungsstatus · Dokument (mit Aktionen) ──
-   Fünf Spalten; die letzte trägt den Dokumentstatus oder die beiden Aktionen in EINER Zeile. */
+/* ── Rechnungen: Rechnung · Datum · Betrag · Zahlungsstatus · Dokument (mit Aktionen) ──
+   Fünf Spalten; die letzte trägt den Dokumentstatus oder die beiden Aktionen in EINER Zeile. Das Datum ist nur
+   ein Tag in Tabellenziffern und bekommt eine feste Breite; die Rechnung den Rest. Der Zahlungsstatus trägt
+   unter der Marke „Fällig am 30.10.2026" in EINER Zeile, auch fett im Fehlerton (gemessen 146 px Text bei
+   15 px Schrift, Phase 1, 2026-11-06). */
+[data-ce-bereich="kunde"] .inv-table--dokument th:nth-child(2),
+[data-ce-bereich="kunde"] .inv-table--dokument td:nth-child(2) { width: 9rem; }
 [data-ce-bereich="kunde"] .inv-table--dokument th:nth-child(3),
 [data-ce-bereich="kunde"] .inv-table--dokument td:nth-child(3) { width: 8.5rem; }
 [data-ce-bereich="kunde"] .inv-table--dokument th:nth-child(4),
-[data-ce-bereich="kunde"] .inv-table--dokument td:nth-child(4) { width: 10rem; }
+[data-ce-bereich="kunde"] .inv-table--dokument td:nth-child(4) { width: 11.5rem; }
 [data-ce-bereich="kunde"] .inv-table--dokument th:nth-child(5),
 [data-ce-bereich="kunde"] .inv-table--dokument td:nth-child(5) { width: 18.5rem; }
 [data-ce-bereich="kunde"] .inv-table--dokument .inv-actions { align-items: flex-start; }

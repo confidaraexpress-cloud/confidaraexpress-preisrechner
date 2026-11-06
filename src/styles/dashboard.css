@@ -570,7 +570,7 @@ tr:last-child td { border-bottom: none; }
 /* ─── Rechnungen: Tabelle ohne horizontales Scrollen (sechs Bereiche) ────────
    Die globale Regel `table { min-width: 480px }` wird hier gezielt aufgehoben.
    Betrag/Zahlungsstatus/Dokument/Aktion sind starr (Zahl, Statuslabel, Text,
-   Textaktionen) und bekommen feste Breiten; Rechnung und Zeitraum teilen sich
+   Textaktionen) und bekommen feste Breiten; Rechnung und Datum teilen sich
    den Rest (fixed-Layout, kein weiteres width nötig). Die Dokumentangabe ist
    seit dem Redesign Text statt Badge und darf zweizeilig umbrechen; die beiden
    Textaktionen stehen untereinander, sobald die Spalte für beide nicht reicht. */
@@ -582,7 +582,7 @@ tr:last-child td { border-bottom: none; }
 .inv-table th:nth-child(5), .inv-table td:nth-child(5) { width: 164px; }
 .inv-table th:nth-child(6), .inv-table td:nth-child(6) { width: 184px; }
 /* Ab 1280 px steht „Versendet am 30.9.2026" in EINER Zeile; Rechnung und
-   Zeitraum behalten dabei genug Breite für Nummer und Datum (gemessen). */
+   Datum behalten dabei genug Breite für Nummer und Datum (gemessen). */
 @media (min-width: 1280px) {
   .inv-table th:nth-child(5), .inv-table td:nth-child(5) { width: 192px; }
 }
@@ -598,13 +598,12 @@ tr:last-child td { border-bottom: none; }
 .inv-cell-number { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .inv-cell-number-value { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: var(--ce-text-body-size); line-height: 1.4286; font-weight: 600; color: var(--ce-color-text-primary); overflow-wrap: anywhere; }
 
-.inv-period { display: flex; flex-direction: column; gap: 2px; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); min-width: 0; }
-/* BEWUSST kein display:flex hier: Label und Datum sind beide je ein
-   unteilbares Wort ("Rechnung"/"Fällig", "30.7.2026"). Im normalen Textfluss
-   darf die Zeile bei Bedarf zwischen Label und Datum umbrechen, statt zu
-   überlaufen. */
-.inv-period-row { min-width: 0; }
-.inv-period-label { color: var(--ce-color-text-muted); }
+/* Spalte „Datum" (Phase 1, Betreiberentscheidung 2026-11-06): ausschließlich das Ausstellungsdatum, in
+   Tabellenziffern wie Nummer und Betrag — kein Vorsatz, kein zweites Datum. */
+.inv-date { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: var(--ce-text-body-size); line-height: 1.4286; color: var(--ce-color-text-primary); white-space: nowrap; }
+/* Zahlungsstatus: die Fälligkeit als leise zweite Zeile unter der Statusmarke; überfällig im Fehlerton. */
+.inv-status-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+.inv-status-due { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 .inv-period-due--overdue { color: var(--inv-critical-fg); font-weight: 600; }
 
 .inv-amount-value { font-family: var(--ce-font-numeric); font-size: var(--ce-text-body-size); line-height: 1.4286; font-weight: 600; color: var(--ce-color-text-primary); white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }

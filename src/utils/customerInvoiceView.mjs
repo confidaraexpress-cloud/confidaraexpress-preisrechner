@@ -197,6 +197,23 @@ export function invoicePeriod(inv) {
   };
 }
 
+// ── Rechnungsliste: Spalte „Datum" und Fälligkeit im Zahlungsstatus (Phase 1, 2026-11-06, Canonical v2.117) ──
+// Betreiberentscheidung: Die Spalte heißt „Datum", und in jeder Zelle steht ausschließlich ein Datum — das
+// Ausstellungsdatum (issued_at, sonst created_at) als Kalendertag wie im PDF, ohne Vorsatz („Rechnung", „Beleg",
+// „Leistung", „Fällig"). Das Leistungsdatum steht weiter im PDF, nicht in der Liste.
+export const INVOICE_DATE_COLUMN = "Datum";
+export function invoiceDateDay(inv) {
+  return invoicePeriod(inv).issuedDay;
+}
+// Die Fälligkeit gehört in die Spalte „Zahlungsstatus": nur für eine offene oder überfällige Forderung — nie für
+// bezahlte, stornierte oder Testbelege (Canonical v2.60: ein Testbeleg ist keine Forderung).
+export const INVOICE_DUE_PREFIX = "Fällig am";
+export function invoiceDueLine(inv) {
+  if (!inv || inv.is_cancelled === true) return null;
+  const p = invoicePeriod(inv);
+  return p.dueDay ? { day: p.dueDay, overdue: p.overdue === true } : null;
+}
+
 // ── Nicht verfügbare Aktion — verständliche, EHRLICHE Begründung ───────────
 // Rät NIE die Downloadpolicy nach: kennt das Backend keinen spezifischeren
 // Grund, bleibt der Text bewusst allgemein statt eine falsche Ursache zu

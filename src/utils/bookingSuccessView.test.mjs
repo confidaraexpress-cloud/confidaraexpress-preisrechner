@@ -12,7 +12,7 @@ import {
   INVOICE_DELIVERY_MODE, INVOICES_DASHBOARD_PAGE, INVOICES_DASHBOARD_TARGET, SHIPMENTS_DASHBOARD_TARGET,
   findInvoiceByNumber, resolveInvoiceDeliveryMode, isTerminalDeliveryMode, invoiceDeliveryHint,
   BOOKING_CONFIRMATION_LINE, INVOICE_AUTOCREATE_LINE, BOOKING_AMOUNT_MISSING_HINT,
-  DOCUMENT_WORDING, resolveDocumentWording, bookingDocumentWording, hintAlertClass,
+  DOCUMENT_WORDING, resolveDocumentWording, bookingDocumentWording, hintAlertClass, bookingDocumentNotice,
 } from "./bookingSuccessView.mjs";
 
 // ── Trennung Auftragsbestätigung ↔ Rechnung ──────────────────────────────────
@@ -112,22 +112,27 @@ test("10 — BookingPage verdrahtet Trennung, Deep-Link und Modus-Hinweis", () =
   // nicht die Verdrahtung.
   assert.match(src, /from "(?:\.\.\/)+utils\/bookingSuccessView\.mjs"/,
     "importiert die reine Erfolgslogik");
-  // Auftrag 2 / P2: die Belegzeile kommt aus `bookingDocumentWording` (Rechnung / Testdokument / neutral),
-  // die Bestätigungszeile bleibt die feste, davon getrennte Zeile.
-  assert.ok(src.includes("BOOKING_CONFIRMATION_LINE") && src.includes("wording.autocreateLine"), "zeigt beide getrennten Zeilen");
+  // Auftrag 2 / P2: die Belegworte kommen aus `bookingDocumentWording` (Rechnung / Testdokument / neutral),
+  // die Bestätigungszeile bleibt die feste, davon getrennte Zeile. Phase 1 (Variante A): Erstellungszeile und
+  // Modus-Hinweis sind EIN Hinweis (`bookingDocumentNotice`, unten fachlich geprüft) — getrennt von der Bestätigungszeile.
+  assert.ok(src.includes("BOOKING_CONFIRMATION_LINE") && src.includes("bookingDocumentNotice(booking, invoiceDeliveryMode)"),
+    "zeigt Bestätigungszeile und Belegphasen-Hinweis getrennt");
   assert.ok(src.includes("bookingDocumentWording(booking, invoiceDeliveryMode)"), "leitet die Belegworte aus Buchung und Beleg ab");
-  // Auf dem Erfolgsbildschirm selbst steht keine feste Rechnungszusage mehr — Nummernlabel, Belegzeile, Betragsverweis
-  // und Knopf kommen aus der Belegart der Buchung.
+  // Auf dem Erfolgsbildschirm selbst steht keine feste Rechnungszusage mehr — Nummernlabel, Belegphasen-Hinweis,
+  // Betragsverweis und Knopf kommen aus der Belegart der Buchung.
   const erfolg = fs.readFileSync(path.join(here, "../components/booking/BookingSuccessStep.jsx"), "utf8");
   assert.ok(!erfolg.includes("INVOICE_AUTOCREATE_LINE") && !erfolg.includes("NUMBER_LABELS.invoice")
     && !/Zu meinen Rechnungen/.test(erfolg) && !erfolg.includes("{betrag.hint}"),
     "eine feste Rechnungszusage steht noch auf dem Erfolgsbildschirm");
-  for (const stelle of ["wording.numberLabel", "wording.autocreateLine", "wording.amountMissingHint", "wording.documentsButton"]) {
+  for (const stelle of ["wording.numberLabel", "{hinweis.text}", "wording.amountMissingHint", "wording.documentsButton"]) {
     assert.ok(erfolg.includes(stelle), `${stelle} wird nicht gerendert`);
   }
-  assert.ok(src.includes("invoiceDeliveryHint(invoiceDeliveryMode)"), "rendert den modus-spezifischen Hinweis");
+  // Der modus-spezifische Satz entsteht in der reinen Logik (Fehlschlag, interne Vorschau) — nie in der Oberfläche.
+  const viewSrc = fs.readFileSync(path.join(here, "bookingSuccessView.mjs"), "utf8");
+  assert.ok(viewSrc.includes("invoiceDeliveryHint(M.FAILED)") && viewSrc.includes("invoiceDeliveryHint(M.TEST)"),
+    "der Belegphasen-Hinweis nutzt die modus-spezifischen Sätze nicht");
   assert.ok(src.includes("navigate(INVOICES_DASHBOARD_TARGET)"), "der Belegknopf oeffnet den Rechnungsbereich");
-  assert.ok(/wording\.documentsButton/.test(src) && /Zu meinen Sendungen/.test(src), "beide Aktionen vorhanden");
+  assert.ok(/wording\.documentsButton/.test(src) && /onShipments=\{zuSendungen\}/.test(src), "beide Aktionen vorhanden");
   assert.ok(hookSrc.includes("resolveInvoiceDeliveryMode(findInvoiceByNumber"), "Modus aus Serverwahrheit der erzeugten Rechnung");
   // keine ambige Alt-Formulierung mehr, die Bestätigung und Rechnung vermischt
   assert.ok(!src.includes("Bestätigung wurde an") && !hookSrc.includes("Bestätigung wurde an"),
@@ -211,7 +216,39 @@ test("F3 — hintAlertClass: Warnton als Warnung, unbekannter Ton ruhig als Info
   }
   const hier = path.dirname(fileURLToPath(import.meta.url));
   const erfolg = fs.readFileSync(path.join(hier, "../components/booking/BookingSuccessStep.jsx"), "utf8");
-  assert.match(erfolg, /className=\{`alert \$\{hintAlertClass\(hint\.tone\)\}`\}/, "der Erfolg nutzt die Tonzuordnung nicht");
+  assert.match(erfolg, /className=\{`alert \$\{hintAlertClass\(hinweis\.tone\)\}`\}/, "der Erfolg nutzt die Tonzuordnung nicht");
+});
+
+// ── Phase 1 (Variante A, Canonical v2.117): EIN Hinweis zur Belegphase ─────────────────────────────────────────────
+test("P1 — bookingDocumentNotice: ein Satz je Belegphase, alle rechtlich nötigen Aussagen bleiben", () => {
+  const M = INVOICE_DELIVERY_MODE;
+  // Testphase: „Testdokument – keine Rechnung" UND „keine Zahlungsforderung" in demselben Satz, warm (Warnton).
+  for (const mode of [M.PENDING, M.TEST_PHASE]) {
+    const h = bookingDocumentNotice({ invoicingPhase: "test_phase" }, mode);
+    assert.equal(h.tone, "warning");
+    assert.match(h.text, /Interner Testbetrieb/);
+    assert.match(h.text, /Testdokument – keine Rechnung/);
+    assert.match(h.text, /keine Zahlungsforderung/);
+    assert.doesNotMatch(h.text, /Rechnungsnummer|Ihre Rechnung wird|auf Ihrer Rechnung/);
+  }
+  const tpFehler = bookingDocumentNotice({ invoicingPhase: "test_phase" }, M.FAILED);
+  assert.match(tpFehler.text, /Testdokument – keine Rechnung/);
+  assert.match(tpFehler.text, /Ihre Buchung ist davon unberührt/);
+  // Regulär: Erstellung und PDF-Mail in einem Satz; vor dem Beleg die neutrale Erstellungszeile.
+  const regulaer = bookingDocumentNotice({ invoicingPhase: "regular" }, M.PRODUCTION);
+  assert.equal(regulaer.tone, "success");
+  assert.match(regulaer.text, /Ihre Rechnung wird automatisch erstellt/);
+  assert.match(regulaer.text, /zusätzlich separat als PDF/);
+  assert.equal(bookingDocumentNotice({ invoicingPhase: "regular" }, M.PENDING).text, bookingDocumentWording({ invoicingPhase: "regular" }).autocreateLine);
+  assert.deepEqual(bookingDocumentNotice({ invoicingPhase: "regular" }, M.TEST), invoiceDeliveryHint(M.TEST));
+  assert.equal(bookingDocumentNotice({ invoicingPhase: "regular" }, M.FAILED).text, invoiceDeliveryHint(M.FAILED).text);
+  // Sammelabrechnung: ihr Satz, keine Belegnummer, keine Rechnungszusage für DIESE Sendung.
+  const sammel = bookingDocumentNotice({ billingMode: "consolidated_7d", invoicingPhase: "regular" }, M.PENDING);
+  assert.match(sammel.text, /Sammelrechnung/);
+  // Älterer Server ohne Phase und ohne Beleg: neutral, weder Rechnung noch Testdokument behauptet.
+  const neutral = bookingDocumentNotice({}, M.PENDING);
+  assert.doesNotMatch(neutral.text, /Rechnung wird|Testdokument/);
+  assert.match(bookingDocumentNotice({}, M.FAILED).text, /Ihre Buchung ist davon unberührt/);
 });
 
 test("P2e — der Beleg entscheidet gegen eine widersprüchliche Phase nie zugunsten einer Rechnungszusage", () => {

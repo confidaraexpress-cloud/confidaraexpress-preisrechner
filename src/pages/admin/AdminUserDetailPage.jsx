@@ -12,6 +12,8 @@ import {
   setAdminUserStatus,
 } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
+// Phase 1 (Canonical v2.117): Versandvolumen (Angabe des Kunden) — nur lesend, Texte aus derselben Quelle wie das Profil.
+import { SHIPMENT_VOLUME_TEXT, shipmentVolumeLabel } from "../../utils/shipmentVolume.mjs";
 import { userStatusMeta, userRoleMeta } from "../../utils/adminUsers";
 import { b2bCompletenessHint, missingB2BAccountFields, isAnonymizedAccount } from "../../utils/b2bAccount.mjs";
 import {
@@ -698,6 +700,10 @@ export default function AdminUserDetailPage() {
               // Kundennummer = fachliche Kundenkennung (CE-K-…). Die interne
               // User-ID bleibt technischer Schlüssel und steht weiter unten.
               ["Kundennummer", customerNumber || "—"],
+              // Phase 1: die Selbstauskunft des Kunden mit dem Stand der letzten Änderung; ohne Angabe „Keine Angabe".
+              [SHIPMENT_VOLUME_TEXT.adminLabel, shipmentVolumeLabel(u.monthly_shipment_volume)
+                ? `${shipmentVolumeLabel(u.monthly_shipment_volume)}${u.monthly_shipment_volume_updated_at ? ` (Stand ${fmtDate(u.monthly_shipment_volume_updated_at)})` : ""}`
+                : SHIPMENT_VOLUME_TEXT.none],
             ]} />
           </div>
         </div>

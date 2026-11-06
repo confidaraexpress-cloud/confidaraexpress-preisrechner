@@ -10,7 +10,7 @@ import { getRegErrors, buildRegistrationPayload, mapApiRegistrationError } from 
 const lies = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
 const FALLTABELLE_SHA256 = "7d7cba0c17ed511b2d8f";
 const VALID = { name: "Anna Berger", email: "einkauf@firma.de", password: "SicheresPasswort1", company_name: "Firma GmbH",
-                vat_id: "DE123456789", street: "", zip: "", city: "", country: "DE" };
+                vat_id: "DE123456789", street: "", zip: "", city: "", country: "DE", monthly_shipment_volume: "11_50" };
 
 test("1 — die Regel besteht die gemeinsame Falltabelle (bytegleich mit dem Backend)", () => {
   const roh = lies("../testing/vatIdCases.json");

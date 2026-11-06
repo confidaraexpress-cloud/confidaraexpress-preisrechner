@@ -195,15 +195,20 @@ test("9 — kein Anbietername, keine Interna im sichtbaren Text", () => {
 
 test("10 — Erfolgsbildschirm: je Beleg ein Knopf über den Serverpfad, sonst der bisherige Labelknopf", () => {
   const code = ohneKommentare(lies("../components/booking/BookingSuccessDocuments.jsx"));
+  // Phase 1 (Variante A): die Zeilen entscheidet der Labelplan (bookingSuccessActions.mjs) — je Beleg eine Zeile mit
+  // eigener Aktion über den Serverpfad; die Dokumentliste rendert sie und lädt über denselben Handler.
+  const plan = ohneKommentare(lies("./bookingSuccessActions.mjs"));
   assert.ok(code.includes("const versanddokumente = bookingShippingDocuments(booking);"));
-  assert.ok(/versanddokumente\.map\(\(doc\) => \(/.test(code), "die Belege werden nicht einzeln gerendert");
-  assert.ok(code.includes("onClick={() => handleDownloadShippingDocument(doc)}"));
+  assert.ok(plan.includes("const belege = bookingShippingDocuments(booking);"));
+  assert.ok(/const rows = belege\.map\(\(doc\) => zeile\(\{/.test(plan), "die Belege werden nicht einzeln gerendert");
+  assert.ok(code.includes("onClick: () => docs.handleDownloadShippingDocument(a.doc)"));
   assert.ok(code.includes(
     "await downloadDocument(doc.downloadPath, { fallbackFilename: shippingDocumentFallbackFilename(doc) });"));
-  // Ohne Belege bleibt es exakt beim bisherigen Weg.
-  const verzweigung = code.indexOf("versanddokumente.length > 0 ?");
-  const altknopf = code.indexOf("onClick={handleDownloadLabel}");
+  // Ohne Belege bleibt es exakt beim bisherigen Weg (Label über den Sendungshandle).
+  const verzweigung = plan.indexOf("if (belege.length > 0) {");
+  const altknopf = plan.indexOf("kind: A.LABEL");
   assert.ok(verzweigung > -1 && altknopf > verzweigung, "der bisherige Labelknopf ist nicht der Rückfall");
+  assert.ok(code.includes("onClick: docs.handleDownloadLabel"));
   assert.ok(code.includes("downloadLabel(booking.ceShipmentId, orderConfirmationNumberOf(booking))"));
   // Mehrere Belege: der Kunde erfährt, wo er sie dauerhaft findet.
   assert.ok(/versanddokumente\.length > 1 && \(/.test(code));

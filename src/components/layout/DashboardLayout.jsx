@@ -45,6 +45,10 @@ export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Premium-Redesign Etappe 1: Bereichs-Scope des Kundenbereichs (hooks/useCeBereich.js).
   useCeBereich("kunde");
+  // Phase 1 (Thema 6, Variante A): auf der Erfolgsseite der Buchung zeigt der Seitenkopf nur die Werkzeugzeile —
+  // die Bestätigung trägt die einzige h1. Die Buchungsseite setzt den Wert über den Outlet-Kontext und setzt ihn beim
+  // Verlassen zurück (BookingPage, Schritt 3).
+  const [kopfNurWerkzeuge, setKopfNurWerkzeuge] = useState(false);
 
 
   // Sidebar-Markierung für die route-basierten Seiten. Die beiden Detailseiten
@@ -115,9 +119,9 @@ export function DashboardLayout() {
         {ROUTE_HEADERS[activePage] && (
           <DashboardSectionHeader
             eyebrow={ROUTE_HEADERS[activePage].eyebrow}
-            title={ROUTE_HEADERS[activePage].title}
-            subtitle={ROUTE_HEADERS[activePage].subtitle}
-            className={ROUTE_HEADERS[activePage].className}
+            title={kopfNurWerkzeuge && activePage === "booking" ? null : ROUTE_HEADERS[activePage].title}
+            subtitle={kopfNurWerkzeuge && activePage === "booking" ? null : ROUTE_HEADERS[activePage].subtitle}
+            className={[ROUTE_HEADERS[activePage].className, kopfNurWerkzeuge && activePage === "booking" ? "ce-page-header--nur-werkzeuge" : ""].filter(Boolean).join(" ")}
             utility={(
               <UtilityCluster>
                 {kopfSuche}
@@ -135,6 +139,7 @@ export function DashboardLayout() {
             derselben Stelle sitzen. */}
         <Outlet context={{
           navigateTo,
+          setKopfNurWerkzeuge,
           utility: (
             <UtilityCluster>
               {kopfSuche}

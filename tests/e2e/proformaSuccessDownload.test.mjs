@@ -241,7 +241,8 @@ test("4 — `failed` ist neutral, ohne Rot, ohne Wiederholen — und ohne Zweife
   assert.equal(await page.getByRole("button", { name: /Proforma/ }).count(), 0, "kein Knopf im Fehlerfall");
   assert.ok(!/PROFORMA_|U\+[0-9A-F]/.test(text), "kein Interna im sichtbaren Text");
   // Die übrigen Erfolgsaktionen sind unberührt.
-  await page.getByRole("button", { name: "Label herunterladen" }).waitFor({ timeout: 5000 });
+  // Phase 1 (Variante A): der Labeldownload ist die Hauptaktion oben („Versandlabel herunterladen").
+  await page.locator(".bsx-hauptaktion", { hasText: "Versandlabel herunterladen" }).waitFor({ timeout: 5000 });
   await page.close();
 });
 
@@ -255,7 +256,8 @@ test("5 — fällt die Dokument-API aus, bleibt der Erfolgsscreen exakt wie zuvo
   assert.match(text, /erfolgreich gebucht/);
   assert.ok(!/Proforma/i.test(text), "ohne verwertbare Antwort wird nichts behauptet");
   assert.equal(await page.locator(".booking-success-wrap .alert-error").count(), 0, "kein Fehlerbanner");
-  await page.getByRole("button", { name: "Label herunterladen" }).waitFor({ timeout: 5000 });
+  // Phase 1 (Variante A): der Labeldownload ist die Hauptaktion oben („Versandlabel herunterladen").
+  await page.locator(".bsx-hauptaktion", { hasText: "Versandlabel herunterladen" }).waitFor({ timeout: 5000 });
   await page.close();
 });
 

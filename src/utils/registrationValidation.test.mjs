@@ -42,6 +42,8 @@ const VALID = {
   company_name: "Muster Logistik GmbH",
   // Auftrag 2 / P10 (2026-10-17): die USt-IdNr. ist Pflicht.
   vat_id: "DE123456789", street: "", zip: "", city: "", country: "DE",
+  // Phase 1 (Canonical v2.117): das monatliche Versandvolumen ist Pflicht (eine der acht Angaben).
+  monthly_shipment_volume: "11_50",
 };
 const REPEAT = VALID.password;
 
@@ -128,10 +130,12 @@ test("10 — Payload nutzt die bestehenden snake_case-Feldnamen und trimmt Pflic
   assert.equal("company"     in payload, false, "kein paralleles Feld `company`");
   assert.equal("companyName" in payload, false, "kein paralleles Feld `companyName`");
   assert.equal("contactName" in payload, false, "kein paralleles Feld `contactName`");
+  // Phase 1 (Canonical v2.117): das monatliche Versandvolumen geht als eigener snake_case-Schlüssel mit.
   assert.deepEqual(
     Object.keys(payload).sort(),
-    ["city", "company_name", "country", "email", "name", "password", "street", "vat_id", "zip"],
+    ["city", "company_name", "country", "email", "monthly_shipment_volume", "name", "password", "street", "vat_id", "zip"],
   );
+  assert.equal(payload.monthly_shipment_volume, "11_50");
 });
 
 // ─── Backend-Feldfehler ───────────────────────────────────────────────────────
@@ -333,5 +337,5 @@ test("19 — Paket D: Payload ohne USt-IdNr. trägt Kennzeichen und Rechtsform �
   const mit = buildRegistrationPayload({ ...VALID, vat_id_absent: false, legal_form: "gbr" });
   assert.equal("vat_id_absent" in mit, false);
   assert.equal("legal_form" in mit, false);
-  assert.deepEqual(Object.keys(mit).sort(), ["city", "company_name", "country", "email", "name", "password", "street", "vat_id", "zip"]);
+  assert.deepEqual(Object.keys(mit).sort(), ["city", "company_name", "country", "email", "monthly_shipment_volume", "name", "password", "street", "vat_id", "zip"]);
 });

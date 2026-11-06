@@ -53,11 +53,13 @@ const effekt = schnitt(proformaHook,
 // Seit der Modularisierung leben Oberfläche und Handler der Erfolgsdokumente in
 // components/booking/BookingSuccessDocuments.jsx (wortgleich aus der Seite gezogen).
 const successDocs = lies("../components/booking/BookingSuccessDocuments.jsx");
-const oberflaecheStart = successDocs.indexOf("{/* Proforma-Rechnung — das Zollbegleitdokument");
+// Phase 1 (Variante A): die Proformazeile ist die letzte Zeile der Dokumentliste. Der Ausschnitt läuft vom Kommentar
+// über ihr bis zum Ende der Zeilen (danach kommen nur noch die Hinweise zu den Versandlabeln).
+const oberflaecheStart = successDocs.indexOf("// Proforma-Rechnung — das Zollbegleitdokument");
 assert.ok(oberflaecheStart >= 0, "Ankertext nicht gefunden: Proforma-Oberfläche");
-// Der Proformateil ist der LETZTE Block des Bausteins — der Ausschnitt läuft
-// deshalb bewusst bis zum Dateiende (danach kommt nur der Komponentenabschluss).
-const oberflaeche = successDocs.slice(oberflaecheStart);
+const oberflaecheEnde = successDocs.indexOf("if (zeilen.length === 0) return null;", oberflaecheStart);
+assert.ok(oberflaecheEnde > oberflaecheStart, "Ankertext nicht gefunden: Ende der Dokumentzeilen");
+const oberflaeche = successDocs.slice(oberflaecheStart, oberflaecheEnde);
 const handler = schnitt(successDocs,
   "const handleDownloadProforma = async () => {",
   "return (");
@@ -250,16 +252,17 @@ test("12 — kein Interna im sichtbaren Text, kein Wiederholen-Knopf", () => {
     "der Kunde muss lesen, dass seine Buchung in Ordnung ist");
   // Kein Wiederholen: ein weiterer Anlauf ändert am Serverzustand nichts. Geprüft
   // wird der CODE ohne Kommentare — ein Kommentar erklärt, er bedient nicht.
-  const ohneKommentare = oberflaeche.replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+  const ohneKommentare = oberflaeche.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/^\s*\/\/.*$/gm, "");
   assert.ok(!/Erneut|Nochmal|Wiederholen/i.test(ohneKommentare), "kein Wiederholen-Knopf");
   // Im Nicht-verfügbar- und im Wird-erstellt-Fall gibt es überhaupt kein
-  // Bedienelement — nur den Downloadknopf im Zustand `ready`.
-  assert.equal(ohneKommentare.split("<button").length - 1, 1, "genau ein Knopf, und nur bei `ready`");
+  // Bedienelement — nur den Downloadknopf im Zustand `ready` (Phase 1: über den Knopfbaustein der Liste).
+  assert.equal(ohneKommentare.split("ladeKnopf(").length - 1, 1, "genau ein Knopf, und nur bei `ready`");
+  assert.equal(ohneKommentare.split("<button").length - 1, 0, "ein zusätzlicher Knopf am Knopfbaustein vorbei");
   // Der Fehlerfall trägt kein Rot — neben „erfolgreich gebucht" wäre das ein
   // Zweifel an der Buchung selbst.
   const failedBlock = schnitt(oberflaeche, "PROFORMA_VIEW.FAILED", "PROFORMA_TEXT.failed");
-  assert.ok(!failedBlock.includes("alert-error"), "der Fehlerfall ist neutral gestaltet");
-  assert.ok(failedBlock.includes("alert-info"));
+  assert.ok(!failedBlock.includes("alert-error") && !failedBlock.includes("ROW_TONE.ERROR"), "der Fehlerfall ist neutral gestaltet");
+  assert.ok(failedBlock.includes("ROW_TONE.INFO"));
 });
 
 test("13 — drei Zustände, drei Anzeigen — und nichts bei `absent`", () => {

@@ -382,7 +382,9 @@ test("S7 — Buchung: Summe mit „Pakete anzeigen“, Zurück behält die Zeile
   await page.waitForSelector(".booking-success-title", { timeout: 20000 });
   assert.equal(p.book.length, 1);
   assert.ok(!("packageLines" in p.book[0]) && !JSON.stringify(p.book[0]).includes("packageLines"), "der Client sendet keine Paketzeilen");
-  assert.equal(await page.getByRole("button", { name: /^Versandlabel . von 2/ }).count(), 2, "je Paket ein Etikett");
+  // Erfolgsseite Variante A: je Paket eine Labelzeile in der Dokumentliste; die Hauptaktion lädt das erste.
+  assert.equal(await page.locator(".bsx-dokliste").getByRole("button", { name: /^Versandlabel . von 2/ }).count(), 2, "je Paket ein Etikett");
+  assert.equal((await page.locator(".bsx-hauptaktion").innerText()).trim(), "Versandlabel 1 von 2 herunterladen");
   assert.equal(norm(await page.locator("#booking-label-hint").textContent()),
     "Jedes Versandlabel nennt Gewicht und Maße seines Pakets sowie „1 OF 2“. Bitte jedes Label auf das Paket mit diesen Angaben kleben.");
   assert.deepEqual(fehler, []);

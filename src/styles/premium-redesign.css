@@ -674,31 +674,144 @@
    Tinte des Titels (Audit: Akzentwort als Vorlagenmuster). */
 [data-ce-bereich="kunde"] .ov-greeting-name { color: inherit; }
 
-/* ── Buchungsbestätigung: die digitale Versandbestätigung (Audit B8) ──
-   Eine Spalte in jeder Breite (der Buchungsrahmen ist 800 px): Kopf,
-   Dokumente, Beleg, „So geht es weiter“, Aktionen. Linksbündig, keine
-   Mittelachse, keine Grauflächen. Der Beleg ist das eine Objekt mit Karte:
-   Navy-Kopfleiste mit Signet, darunter der Markenstreifen. */
+/* ── Buchungsbestätigung: Variante A „Bestätigung mit Aktionskopf" (Phase 1, 2026-11-06, Canonical v2.117) ──
+   Reihenfolge in jeder Breite: Kopf (Status, h1, Fakten, Vorgangsnummer, Aktionen), Dokumente, „Ihre Buchung“,
+   „So geht es weiter“, Details. Der Kopf trägt den einen Maßstabssprung der Seite — die Titelskala des Seitenkopfs,
+   der auf Schritt 3 nur die Werkzeugzeile zeigt. Eine Karte (der Beleg mit Navy-Kopf und Markenstreifen); Dokumente
+   und Schritte sind Listen mit Haarlinien — Struktur statt Kastenrand. Genau ein gefüllter Knopf. Linksbündig. */
 [data-ce-bereich="kunde"] .booking-success-wrap.bsx {
   display: grid;
-  gap: var(--ce-space-5);
-  padding: var(--ce-space-6) 0 var(--ce-space-8);
+  gap: var(--ce-space-7);
+  padding: var(--ce-space-3) 0 var(--ce-space-9);
   text-align: left;
 }
+
+/* Kopf: Statuszeichen (kein Medaillon), Überschrift, Fakten, Vorgangsnummer, Aktionen. */
 [data-ce-bereich="kunde"] .bsx-kopf {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  gap: var(--ce-space-3);
+  min-width: 0;
+  padding-bottom: var(--ce-space-7);
+  border-bottom: 1px solid var(--ce-pr-hairline);
+}
+[data-ce-bereich="kunde"] .bsx-status--gebucht {
+  display: inline-flex;
+  align-items: center;
   gap: var(--ce-space-2);
+  margin: 0;
+  font-size: var(--ce-text-label-size);
+  line-height: var(--ce-text-label-line);
+  font-weight: 600;
+  color: var(--ce-color-status-success-fg);
+}
+[data-ce-bereich="kunde"] .bsx-status-zeichen {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-status-success-surface);
+  box-shadow: inset 0 0 0 1px var(--ce-color-status-success-border);
 }
 [data-ce-bereich="kunde"] .bsx .booking-success-title {
   margin: 0;
-  font-size: var(--ce-text-display-l-size-mobile);
-  line-height: var(--ce-text-title-page-line-mobile);
-  letter-spacing: var(--ce-text-title-page-tracking);
+  font-family: var(--ce-pr-font-display);
+  font-size: var(--ce-pr-ed-headline-size);
+  line-height: var(--ce-pr-ed-headline-line);
   font-weight: 600;
+  letter-spacing: var(--ce-pr-ed-headline-tracking);
+  font-stretch: var(--ce-pr-ed-headline-stretch);
   color: var(--ce-color-text-primary);
+  text-wrap-style: balance;
+  overflow-wrap: break-word;
 }
+/* Programmatischer Fokus nach der Buchung (Ansage für Screenreader) — keine Fokusmarke an einer Überschrift. */
+[data-ce-bereich="kunde"] .bsx .booking-success-title:focus,
+[data-ce-bereich="kunde"] .bsx-abschnitt:focus { outline: none; }
+/* Jeder Fakt trägt seinen Trennstrich vorn und rückt um dessen Breite nach links; der Strich am Anfang jeder
+   Zeile liegt damit außerhalb der Liste und wird abgeschnitten — bricht die Zeile um, beginnt sie ohne Strich. */
+[data-ce-bereich="kunde"] .bsx-fakten {
+  --bsx-fakt-trenner: calc(var(--ce-space-3) * 2 + 1px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ce-space-1) 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+  font-size: var(--ce-text-body-l-size);
+  line-height: var(--ce-text-body-l-line);
+  color: var(--ce-color-text-secondary);
+}
+[data-ce-bereich="kunde"] .bsx-fakten li {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  margin-left: calc(-1 * var(--bsx-fakt-trenner));
+  padding-right: var(--bsx-fakt-trenner);
+}
+[data-ce-bereich="kunde"] .bsx-fakten li:first-child { font-weight: 600; color: var(--ce-color-text-primary); }
+[data-ce-bereich="kunde"] .bsx-fakten li::before {
+  content: "";
+  flex: none;
+  width: 1px;
+  height: 1em;
+  margin: 0 var(--ce-space-3);
+  background: var(--ce-color-border-strong);
+}
+[data-ce-bereich="kunde"] .bsx-vorgang {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ce-space-1) var(--ce-space-3);
+}
+[data-ce-bereich="kunde"] .bsx-vorgang-label {
+  font-size: var(--ce-text-label-size);
+  line-height: var(--ce-text-label-line);
+  color: var(--ce-color-text-secondary);
+}
+[data-ce-bereich="kunde"] .bsx-aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ce-space-3);
+  margin-top: var(--ce-space-3);
+}
+[data-ce-bereich="kunde"] .bsx-aktionen > .btn { min-height: 48px; gap: var(--ce-space-2); white-space: normal; }
+[data-ce-bereich="kunde"] .bsx-hauptaktion { padding-left: var(--ce-space-6); padding-right: var(--ce-space-6); }
+[data-ce-bereich="kunde"] .bsx-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ce-space-1) var(--ce-space-6);
+}
+[data-ce-bereich="kunde"] .bsx-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ce-space-1);
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--ce-text-body-size);
+  line-height: var(--ce-text-body-line);
+  font-weight: 600;
+  color: var(--ce-pr-signal-ink);
+}
+[data-ce-bereich="kunde"] .bsx-link:hover { color: var(--ce-pr-signal-hover); text-decoration: underline; text-underline-offset: 3px; }
+[data-ce-bereich="kunde"] .bsx-link:focus-visible {
+  outline: 2px solid var(--ce-color-focus-ring);
+  outline-offset: 3px;
+  border-radius: var(--ce-radius-xs);
+}
+@media (pointer: coarse) {
+  [data-ce-bereich="kunde"] .bsx-link { min-height: var(--ce-size-touch-target); }
+}
+
 [data-ce-bereich="kunde"] .bsx-abschnitt {
   margin: 0 0 var(--ce-space-3);
   font-size: var(--ce-text-body-l-size);
@@ -707,19 +820,70 @@
   color: var(--ce-color-text-primary);
 }
 
-/* Dokumente: eine ruhige Karte, die Knöpfe untereinander in voller Breite. */
-[data-ce-bereich="kunde"] .bsx-dokumente {
-  padding: var(--ce-space-5);
-  border: 1px solid var(--ce-pr-hairline);
-  border-radius: var(--ce-pr-radius-panel);
-  background: var(--ce-color-surface);
-  box-shadow: var(--ce-pr-shadow-card);
+/* Dokumente: eine Liste mit Haarlinien — Name, Stand, Aktion je Zeile. */
+[data-ce-bereich="kunde"] .bsx-dokliste {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--ce-pr-hairline);
 }
-[data-ce-bereich="kunde"] .bsx-dokumente > .btn,
-[data-ce-bereich="kunde"] .bsx-dokumente > .alert,
-[data-ce-bereich="kunde"] .bsx-dokumente > p { margin-bottom: var(--ce-space-3); }
-[data-ce-bereich="kunde"] .bsx-dokumente > :last-child { margin-bottom: 0; }
-/* Ohne Sendungshandle gibt es keinen Beleg zum Herunterladen: dann keine leere Karte. */
+[data-ce-bereich="kunde"] .bsx-dok {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ce-space-3) var(--ce-space-5);
+  padding: var(--ce-space-4) 0;
+  border-bottom: 1px solid var(--ce-pr-hairline);
+}
+[data-ce-bereich="kunde"] .bsx-dok-text { display: grid; gap: 2px; flex: 1 1 13rem; min-width: 0; }
+[data-ce-bereich="kunde"] .bsx-dok-name {
+  font-size: var(--ce-text-body-size);
+  line-height: var(--ce-text-body-line);
+  font-weight: 600;
+  color: var(--ce-color-text-primary);
+  overflow-wrap: break-word;
+}
+[data-ce-bereich="kunde"] .bsx-dok-nummer { font-weight: 500; color: var(--ce-color-text-secondary); }
+[data-ce-bereich="kunde"] .bsx-dok-ref {
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+  overflow-wrap: break-word;
+}
+[data-ce-bereich="kunde"] .bsx-dok-status {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ce-space-2);
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+/* Der Standpunkt steht an der ersten Zeile, auch wenn ein Stand umbricht. */
+[data-ce-bereich="kunde"] .bsx-dok-status::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  margin-top: calc((1lh - 8px) / 2);
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-border-strong);
+}
+[data-ce-bereich="kunde"] .bsx-dok--ready .bsx-dok-status::before { background: var(--ce-color-status-success-fg); }
+[data-ce-bereich="kunde"] .bsx-dok--wait .bsx-dok-status::before { background: var(--ce-pr-signal); }
+[data-ce-bereich="kunde"] .bsx-dok--error .bsx-dok-status { color: var(--ce-color-status-error-fg); }
+[data-ce-bereich="kunde"] .bsx-dok--error .bsx-dok-status::before { background: var(--ce-color-status-error-fg); }
+[data-ce-bereich="kunde"] .bsx-dok-aktion { flex: none; }
+[data-ce-bereich="kunde"] .bsx-dok-knopf { min-height: 40px; white-space: nowrap; }
+[data-ce-bereich="kunde"] .bsx-dok-notiz {
+  max-width: 68ch;
+  margin: var(--ce-space-3) 0 0;
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+/* Ohne Sendungshandle gibt es keinen Beleg zum Herunterladen: dann kein leerer Abschnitt. */
 [data-ce-bereich="kunde"] .bsx-dokumente:not(:has(> :not(.bsx-abschnitt))) { display: none; }
 
 /* Der Beleg. */
@@ -791,32 +955,138 @@
 }
 [data-ce-bereich="kunde"] .bsx .booking-success-delivery .alert { margin-bottom: 0; }
 
-/* So geht es weiter: Text ohne Fläche. */
-[data-ce-bereich="kunde"] .bsx .booking-tracking-note {
-  max-width: 68ch;
+/* So geht es weiter: drei nummerierte Schritte — die Reihenfolge ist der Inhalt. */
+[data-ce-bereich="kunde"] .bsx-schritte {
+  display: grid;
+  gap: var(--ce-space-4);
   margin: 0;
   padding: 0;
+  list-style: none;
+  counter-reset: bsx-schritt;
+}
+[data-ce-bereich="kunde"] .bsx .bsx-schritt {
+  position: relative;
+  max-width: 68ch;
+  margin: 0;
+  padding: 2px 0 0 40px;
   border: 0;
+  border-radius: 0;
   background: none;
-  color: var(--ce-color-text-secondary);
+  counter-increment: bsx-schritt;
   font-size: var(--ce-text-body-size);
   line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-secondary);
+}
+[data-ce-bereich="kunde"] .bsx .bsx-schritt::before {
+  content: counter(bsx-schritt);
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-surface);
+  font-size: var(--ce-text-label-size);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ce-pr-navy-800);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
-/* Aktionen: eine Gruppe, die als Ganzes umbricht; mobil volle Breite. */
-[data-ce-bereich="kunde"] .bsx-aktionen {
+/* Buchungsdetails: ein Knopf öffnet, was der Kunde nicht sofort braucht. */
+[data-ce-bereich="kunde"] .bsx-details {
+  border-top: 1px solid var(--ce-pr-hairline);
+  border-bottom: 1px solid var(--ce-pr-hairline);
+}
+[data-ce-bereich="kunde"] .bsx-details-knopf {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--ce-space-3);
-  padding-top: var(--ce-space-2);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--ce-space-3) 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--ce-text-body-size);
+  font-weight: 600;
+  color: var(--ce-color-text-primary);
+  text-align: left;
+}
+[data-ce-bereich="kunde"] .bsx-details-knopf svg { flex: none; color: var(--ce-color-text-secondary); transition: transform 180ms ease; }
+[data-ce-bereich="kunde"] .bsx-details.is-offen .bsx-details-knopf svg { transform: rotate(180deg); }
+[data-ce-bereich="kunde"] .bsx-details-knopf:hover { color: var(--ce-pr-signal-ink); }
+[data-ce-bereich="kunde"] .bsx-details-knopf:focus-visible {
+  outline: 2px solid var(--ce-color-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--ce-radius-xs);
+}
+[data-ce-bereich="kunde"] .bsx-details-inhalt { padding: 0 0 var(--ce-space-5); }
+[data-ce-bereich="kunde"] .bsx-details-liste {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: var(--ce-space-4) var(--ce-space-6);
+  margin: 0;
+}
+[data-ce-bereich="kunde"] .bsx-details-eintrag { min-width: 0; }
+[data-ce-bereich="kunde"] .bsx-details-eintrag dt {
+  margin-bottom: var(--ce-space-1);
+  font-size: var(--ce-text-label-size);
+  line-height: var(--ce-text-label-line);
+  color: var(--ce-color-text-secondary);
+}
+[data-ce-bereich="kunde"] .bsx-details-eintrag dd {
+  display: grid;
+  margin: 0;
+  font-size: var(--ce-text-body-size);
+  line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-primary);
+  overflow-wrap: break-word;
+}
+
+/* Neuladen nach dem Abschluss: eine ruhige Bestätigung statt „Kein Angebot ausgewählt“. */
+[data-ce-bereich="kunde"] .booking-abgeschlossen {
+  display: grid;
+  justify-items: start;
+  gap: var(--ce-space-3);
+  max-width: 36rem;
+  margin: 0 auto;
+  text-align: left;
+}
+[data-ce-bereich="kunde"] .booking-abgeschlossen-titel {
+  margin: 0;
+  font-size: var(--ce-text-title-card-size);
+  line-height: var(--ce-text-title-card-line);
+  font-weight: 600;
+  color: var(--ce-color-text-primary);
+}
+[data-ce-bereich="kunde"] .booking-abgeschlossen-text,
+[data-ce-bereich="kunde"] .booking-abgeschlossen-nummer { margin: 0; color: var(--ce-color-text-secondary); }
+[data-ce-bereich="kunde"] .booking-abgeschlossen-aktionen { display: flex; flex-wrap: wrap; gap: var(--ce-space-3); margin-top: var(--ce-space-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-ce-bereich="kunde"] .bsx-details-knopf svg { transition: none; }
 }
 @media (max-width: 560px) {
+  [data-ce-bereich="kunde"] .booking-success-wrap.bsx { gap: var(--ce-space-6); padding-top: var(--ce-space-2); }
+  [data-ce-bereich="kunde"] .bsx-kopf { padding-bottom: var(--ce-space-6); }
   [data-ce-bereich="kunde"] .bsx-aktionen > .btn { flex: 1 1 100%; }
-  [data-ce-bereich="kunde"] .bsx-dokumente,
   [data-ce-bereich="kunde"] .bsx .booking-success-numbers,
   [data-ce-bereich="kunde"] .bsx .booking-success-delivery { padding-left: var(--ce-space-4); padding-right: var(--ce-space-4); }
   [data-ce-bereich="kunde"] .bsx .booking-success-recap { padding-left: var(--ce-space-4); padding-right: var(--ce-space-4); }
   [data-ce-bereich="kunde"] .bsx-beleg-kopf { padding-left: var(--ce-space-4); padding-right: var(--ce-space-4); }
+}
+
+/* Erfolgsseite: der Seitenkopf trägt nur die Werkzeugzeile (Suche, Mitteilungen, Konto) — die Bestätigung hat die h1.
+   Unter 860 px stehen die Werkzeuge in der Topbar; dann entfällt der leere Kopf ganz. */
+@media (max-width: 860px) {
+  [data-ce-bereich="kunde"] .ce-page-header--nur-werkzeuge { display: none; }
 }
 
 /* ═══════════ 6 · FELDER ═══════════════════════════════════════════════════
@@ -970,9 +1240,11 @@
   -webkit-mask-image: radial-gradient(ellipse 66% 62% at 50% 50%, #000 56%, transparent 100%);
   mask-image: radial-gradient(ellipse 66% 62% at 50% 50%, #000 56%, transparent 100%);
 }
+/* Wie im Preisrechner: bei Umbruch steht der Punkt an der ersten Zeile (Phase 1, 2026-11-06). */
 [data-ce-bereich="auth"] .auth-map-legend {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
+  max-width: 100%;
   gap: 8px;
   margin-top: 6px;
   color: var(--ce-pr-on-navy-2);
@@ -983,6 +1255,8 @@
   flex: none;
   width: 8px;
   height: 8px;
+  /* Mitte der ersten Zeile: (14px × 1,4286 = 20px − 8px) / 2. */
+  margin-top: 6px;
   border-radius: var(--ce-radius-full);
   background: var(--ce-pr-stadtlicht);
 }
@@ -1206,6 +1480,81 @@
   background: var(--ce-color-surface);
 }
 [data-ce-bereich="auth"] .auth-check.checked .auth-checkbox { border-color: var(--ce-pr-navy-800); background: var(--ce-pr-navy-800); }
+
+/* Voraussichtliches monatliches Versandvolumen (Phase 1, 2026-11-06): acht Angaben als ruhige Auswahlfelder in einer
+   Gruppe — ab etwa 30 rem zwei Spalten, darunter eine. Das native Optionsfeld liegt unsichtbar über dem ganzen Feld
+   (Trefferfläche, Tastatur, Screenreader); gezeichnet werden nur Rand, Fläche und Marke. Gewählt: Navy-Kante auf
+   Signal-Soft, die Marke als gefüllter Ring. Fehler: die Kanten im Fehlerton, der Text darunter. */
+[data-ce-bereich="auth"] .auth-volume {
+  min-width: 0;
+  margin: 0 0 18px;
+  padding: 0;
+  border: 0;
+}
+[data-ce-bereich="auth"] .auth-volume-legend {
+  display: block;
+  margin: 0 0 2px;
+  padding: 0;
+}
+[data-ce-bereich="auth"] .auth-volume-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5rem), 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+[data-ce-bereich="auth"] .auth-volume-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--ce-color-border-interactive);
+  border-radius: var(--ce-pr-radius-control);
+  background: var(--ce-color-surface);
+  color: var(--ce-color-text-primary);
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+[data-ce-bereich="auth"] .auth-volume-option:hover { border-color: var(--ce-color-border-strong); }
+[data-ce-bereich="auth"] .auth-volume-option.is-selected {
+  border-color: var(--ce-pr-navy-800);
+  background: var(--ce-pr-signal-soft);
+}
+[data-ce-bereich="auth"] .auth-volume-option:has(.auth-volume-radio:focus-visible) {
+  outline: 2px solid var(--ce-color-focus-ring);
+  outline-offset: 2px;
+}
+[data-ce-bereich="auth"] .auth-volume-radio {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+[data-ce-bereich="auth"] .auth-volume-mark {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--ce-color-border-interactive);
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-surface);
+}
+[data-ce-bereich="auth"] .auth-volume-option.is-selected .auth-volume-mark {
+  border-color: var(--ce-pr-navy-800);
+  background: var(--ce-pr-navy-800);
+  box-shadow: inset 0 0 0 3.5px var(--ce-color-surface);
+}
+[data-ce-bereich="auth"] .auth-volume-text { min-width: 0; }
+[data-ce-bereich="auth"] .auth-volume-invalid .auth-volume-option { border-color: var(--ce-color-status-error-fg); }
+[data-ce-bereich="auth"] .auth-volume .auth-field-error { margin-top: 8px; }
+@media (prefers-reduced-motion: reduce) {
+  [data-ce-bereich="auth"] .auth-volume-option { transition: none; }
+}
 
 /* Die Primäraktion: Navy, feine Innenkante, keine Bewegung (E1, E5). */
 [data-ce-bereich="auth"] .auth-cta {
@@ -1517,12 +1866,17 @@
   [data-ce-bereich="kunde"] .shipment-table :is(.stn-act--tracking, .stn-act--dokumente, .stn-act--storno) { grid-column: 1; }
 }
 
-/* ── Rechnungen: Rechnung · Zeitraum · Betrag · Zahlungsstatus · Dokument (mit Aktionen) ──
-   Fünf Spalten; die letzte trägt den Dokumentstatus oder die beiden Aktionen in EINER Zeile. */
+/* ── Rechnungen: Rechnung · Datum · Betrag · Zahlungsstatus · Dokument (mit Aktionen) ──
+   Fünf Spalten; die letzte trägt den Dokumentstatus oder die beiden Aktionen in EINER Zeile. Das Datum ist nur
+   ein Tag in Tabellenziffern und bekommt eine feste Breite; die Rechnung den Rest. Der Zahlungsstatus trägt
+   unter der Marke „Fällig am 30.10.2026" in EINER Zeile, auch fett im Fehlerton (gemessen 146 px Text bei
+   15 px Schrift, Phase 1, 2026-11-06). */
+[data-ce-bereich="kunde"] .inv-table--dokument th:nth-child(2),
+[data-ce-bereich="kunde"] .inv-table--dokument td:nth-child(2) { width: 9rem; }
 [data-ce-bereich="kunde"] .inv-table--dokument th:nth-child(3),
 [data-ce-bereich="kunde"] .inv-table--dokument td:nth-child(3) { width: 8.5rem; }
 [data-ce-bereich="kunde"] .inv-table--dokument th:nth-child(4),
-[data-ce-bereich="kunde"] .inv-table--dokument td:nth-child(4) { width: 10rem; }
+[data-ce-bereich="kunde"] .inv-table--dokument td:nth-child(4) { width: 11.5rem; }
 [data-ce-bereich="kunde"] .inv-table--dokument th:nth-child(5),
 [data-ce-bereich="kunde"] .inv-table--dokument td:nth-child(5) { width: 18.5rem; }
 [data-ce-bereich="kunde"] .inv-table--dokument .inv-actions { align-items: flex-start; }
@@ -1630,10 +1984,11 @@
   [data-ce-bereich="kunde"] .tracking-schnellwahl-eintrag { transition: none; }
 }
 
-/* ═══════════ 17 · BUCHUNGSBESTÄTIGUNG ZWEISPALTIG (Audit B.7) ═══════════
-   Ab 1280 px nutzt die Bestätigung die Inhaltsbreite statt einer 800-px-Spalte mit leeren Rändern: links der
-   Beleg (das eine Objekt der Seite), rechts Dokumente, „So geht es weiter“ und die Aktionen. Titel und Schritte
-   stehen über beiden Spalten. Inhalte, Reihenfolge im DOM und Texte bleiben. */
+/* ═══════════ 17 · BUCHUNGSBESTÄTIGUNG ZWEISPALTIG (Audit B.7, Variante A seit Phase 1) ═══════════
+   Ab 1280 px nutzt die Bestätigung die Inhaltsbreite: der Kopf steht über beiden Spalten, darunter links die
+   Dokumente, „So geht es weiter“ und die Details, rechts der Beleg („Ihre Buchung“) als das eine Objekt der Seite.
+   Die Reihenfolge im DOM (und damit für Tastatur und Screenreader) bleibt die der schmalen Fassung. Die letzte Zeile
+   ist flexibel: ein langer Beleg dehnt keine Abstände zwischen den linken Abschnitten. */
 @media (min-width: 1280px) {
   [data-ce-bereich="kunde"] .booking-wrap:has(.bsx) {
     max-width: calc(var(--ce-size-content) + 2 * var(--shell-gutter, var(--ce-page-gutter)));
@@ -1641,22 +1996,22 @@
   [data-ce-bereich="kunde"] .booking-wrap:has(.bsx) > * { max-width: none; }
   [data-ce-bereich="kunde"] .main-content:has(.bsx) .ce-page-header--booking .ce-page-header-main { max-width: var(--ce-size-content); }
   [data-ce-bereich="kunde"] .booking-success-wrap.bsx {
-    grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(22rem, 0.8fr);
+    grid-template-rows: auto auto auto auto 1fr;
     grid-template-areas:
       "kopf kopf"
-      "beleg dokumente"
-      "beleg weiter"
-      "beleg aktionen"
-      "beleg rest";
-    column-gap: var(--ce-space-7);
+      "dokumente beleg"
+      "weiter beleg"
+      "details beleg"
+      ". beleg";
+    column-gap: var(--ce-space-9);
     align-items: start;
   }
   [data-ce-bereich="kunde"] .bsx > .bsx-kopf { grid-area: kopf; }
-  [data-ce-bereich="kunde"] .bsx > .bsx-beleg { grid-area: beleg; }
   [data-ce-bereich="kunde"] .bsx > .bsx-dokumente { grid-area: dokumente; }
+  [data-ce-bereich="kunde"] .bsx > .bsx-beleg { grid-area: beleg; }
   [data-ce-bereich="kunde"] .bsx > .bsx-weiter { grid-area: weiter; }
-  [data-ce-bereich="kunde"] .bsx > .bsx-aktionen { grid-area: aktionen; }
-  [data-ce-bereich="kunde"] .bsx-aktionen { flex-direction: column; align-items: stretch; }
+  [data-ce-bereich="kunde"] .bsx > .bsx-details { grid-area: details; }
 }
 
 /* ═══════════ 18 · SCHRIFTGRÖSSEN NACH ROLLE (Typo-Skala 2026-10-27, Audit B.2) ═══════════

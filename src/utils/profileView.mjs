@@ -29,6 +29,8 @@ import { validateContactEmail, validateContactPhone } from "./contactDetails.mjs
 // Eingabe-Audit A13: USt-IdNr. und PLZ nach denselben Regeln wie Registrierung und Backend.
 import { validateOptionalVatId } from "./vatId.mjs";
 import { validatePostalCode } from "./postalCode.mjs";
+// Phase 1 (Canonical v2.117): monatliches Versandvolumen — Auswahlfeld der Unternehmenskarte (ändern ja, leeren nein).
+import { isShipmentVolumeKey, SHIPMENT_VOLUME_FIELD } from "./shipmentVolume.mjs";
 
 // Feldgruppen exakt nach Backend-Whitelist (snake_case = echte Spalten-/Body-Namen).
 export const COMPANY_FIELDS = ["company_name", "vat_id", "eori_number", "street", "zip", "city", "country"];
@@ -70,6 +72,8 @@ export function companyBaseline(user) {
     // Die ANZEIGE der Profilseite bleibt bewusst ungefiltert („Nicht angegeben"),
     // damit sie nicht behauptet, es sei ein Land hinterlegt.
     country: normalizeCountryCode(user?.country),
+    // Phase 1: leer = „Keine Angabe" (Bestandskonto). buildCompanyPatch sendet das Feld nur mit einer gültigen Wahl.
+    monthly_shipment_volume: str(user?.monthly_shipment_volume),
   };
 }
 
@@ -93,7 +97,20 @@ export function buildCompanyPatch(form) {
     zip: trimmed(form?.zip),
     city: trimmed(form?.city),
     country: trimmed(form?.country).toUpperCase(),
+    // Phase 1 (Canonical v2.117): das Versandvolumen nur mit einer der acht Angaben. Ohne Wahl fehlt der Schlüssel —
+    // der Server lehnt einen leeren Wert ab (leeren geht nicht), und ein Bestandskonto ohne Angabe soll alle anderen
+    // Unternehmensdaten unverändert speichern können.
+    ...(isShipmentVolumeKey(form?.monthly_shipment_volume) ? { monthly_shipment_volume: form.monthly_shipment_volume } : {}),
   };
+}
+
+// Phase 1: „Gespeichert" nur, wenn die Antwort die gesendete Versandvolumen-Angabe trägt — ein Server ohne das Feld
+// verwirft unbekannte Schlüssel still und antwortet trotzdem 200 (dasselbe Muster wie contactSaveConfirmed).
+export function companySaveConfirmed(patch, user) {
+  const p = patch && typeof patch === "object" ? patch : {};
+  if (!Object.prototype.hasOwnProperty.call(p, SHIPMENT_VOLUME_FIELD)) return true;
+  const u = user && typeof user === "object" ? user : {};
+  return u[SHIPMENT_VOLUME_FIELD] === p[SHIPMENT_VOLUME_FIELD];
 }
 
 // Die Telefonnummer mit derselben Leerraum-Normalisierung wie das Backend — sonst gälte eine nur anders
@@ -229,7 +246,7 @@ export function contactSaveConfirmed(patch, user) {
 // der Registrierung). Kennt das Formular das Feld, wird der Text am Eingabefeld
 // angezeigt; sonst bleibt es bei der allgemeinen Kartenmeldung.
 // → { fieldErrors, generalError }
-const KNOWN_PROFILE_FIELDS = new Set([...COMPANY_FIELDS, ...CONTACT_FIELDS]);
+const KNOWN_PROFILE_FIELDS = new Set([...COMPANY_FIELDS, ...CONTACT_FIELDS, SHIPMENT_VOLUME_FIELD]);
 
 export function mapApiProfileError(payload, fallback = "Speichern fehlgeschlagen. Bitte versuchen Sie es erneut.") {
   const data = payload && typeof payload === "object" ? payload : {};

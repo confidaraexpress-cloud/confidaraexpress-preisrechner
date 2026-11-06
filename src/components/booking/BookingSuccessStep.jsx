@@ -2,13 +2,19 @@
 //
 // ─── Was diese Komponente ist ────────────────────────────────────────────────
 // Der Bildschirm, den ein Kunde nach einer BEZAHLTEN, unumkehrbaren Bestellung
-// sieht. Er zeigt die Vorgangsnummern, sagt, welche Belege wann kommen, fasst
-// die Buchung zusammen und bietet die Dokumente an.
+// sieht. Er bestätigt die Buchung, bietet die eine Aktion an, die jetzt zählt,
+// listet die Dokumente, fasst die Buchung zusammen und sagt, wie es weitergeht.
 //
-// Ursprünglich wörtlich aus pages/BookingPage.jsx übernommen. Seit dem Premium-Redesign
-// (Etappe 1, Audit B8) als digitale Versandbestätigung gegliedert: Kopf, Dokumente, Beleg,
-// „So geht es weiter", Aktionen. Texte, Bedingungen, Klassen der Prüfanker und IDs sind
-// unverändert; hinzugekommen sind nur die Marke „Gebucht" und Abschnittstitel.
+// Ursprünglich wörtlich aus pages/BookingPage.jsx übernommen; seit dem Premium-Redesign
+// (Etappe 1, Audit B8) als digitale Versandbestätigung gegliedert. Seit Phase 1 (Betreiberentscheidung
+// 2026-11-06, Canonical v2.117) Variante A „Bestätigung mit Aktionskopf", in dieser Reihenfolge:
+//   A/B  Bestätigungskopf mit Hauptaktion  (components/booking/BookingSuccessHero.jsx)
+//   C    Dokumente als Liste               (components/booking/BookingSuccessDocuments.jsx)
+//   D    „Ihre Buchung" — die Beleg-Karte  (hier; Nummern, Recap, Betrag, EIN Hinweis zur Belegphase)
+//   E    „So geht es weiter" in drei Schritten
+//   F    „Buchungsdetails anzeigen"        (components/booking/BookingSuccessDetails.jsx)
+// Welche Hauptaktion und welche Labelzeilen erscheinen, entscheidet utils/bookingSuccessActions.mjs aus dem
+// Labelstand des Servers — keine zweite Labelregel in der Oberfläche.
 //
 // ─── Warum die Auslagerung erst jetzt möglich war ────────────────────────────
 // Nicht der Code stand im Weg, sondern die Governance. Gemessen an einem
@@ -18,42 +24,51 @@
 //   nach der Entkopplung  0
 //
 // Der Unterschied ist, dass die Prüfdateien seitdem die BUCHUNGSFLÄCHE lesen
-// (Seite + components/booking/*) statt der Datei `BookingPage.jsx`. Genau eine
+// (Seite + alle Bausteine in components/booking/) statt der Datei `BookingPage.jsx`. Genau eine
 // Sorte Zusage bleibt bewusst an der SEITE: „das gehört in eine Komponente,
 // nicht in die Seite" — auf der Fläche wäre sie zwangsläufig verletzt.
 //
 // ─── Alles kommt herein, nichts wird nachgeladen ─────────────────────────────
-// Die Komponente holt KEINE Daten: kein fetch, kein Hook mit Nebenwirkung, kein
-// Kontextzugriff. Sie bekommt, was sie zeigt. Nach einer bezahlten Bestellung
-// darf diese Anzeige von keinem weiteren Request abhängen — ein fehlgeschlagener
-// Nachladeversuch würde einen erfolgreichen Vorgang unvollständig aussehen lassen.
+// Die Komponente holt KEINE Daten: kein fetch, kein Hook mit Netzwirkung, kein
+// Kontextzugriff. Sie bekommt, was sie zeigt; Downloads starten nur auf Klick.
+// Nach einer bezahlten Bestellung darf diese Anzeige von keinem weiteren Request
+// abhängen — ein fehlgeschlagener Nachladeversuch würde einen erfolgreichen
+// Vorgang unvollständig aussehen lassen.
 import { CopyableNumber } from "../ui/CopyableNumber";
 import { BrandLogo } from "../ui/BrandLogo";
 import { PriceSummaryModule } from "./PriceSummaryModule";
-import { BookingSuccessDocuments } from "./BookingSuccessDocuments";
+import { BookingSuccessDocuments, useBookingSuccessDocuments } from "./BookingSuccessDocuments";
+import { BookingSuccessHero } from "./BookingSuccessHero";
+import { BookingSuccessDetails } from "./BookingSuccessDetails";
 import { bookingBillingNotice } from "../../utils/billingModeView.mjs";
 import { publicCarrierDisplay, publicServiceName } from "../../utils/carrierMap";
 import { carrierServiceLabel } from "../../utils/carrierServiceLabel.mjs";
 import { money } from "../../utils/formatters";
 import {
-  INVOICES_DASHBOARD_TARGET, invoiceDeliveryHint, hintAlertClass, BOOKING_CONFIRMATION_LINE,
-  bookingSuccessAmountView, bookingSuccessComponents, bookingDocumentWording,
+  INVOICES_DASHBOARD_TARGET, hintAlertClass, BOOKING_CONFIRMATION_LINE,
+  bookingSuccessAmountView, bookingSuccessComponents, bookingDocumentWording, bookingDocumentNotice,
 } from "../../utils/bookingSuccessView.mjs";
-import { NUMBER_LABELS, orderConfirmationNumberOf } from "../../utils/businessNumbers.mjs";
+import {
+  BOOKING_SUCCESS_TEXT, bookingSuccessLabelPlan, bookingSuccessNextSteps,
+} from "../../utils/bookingSuccessActions.mjs";
+import { orderConfirmationNumberOf } from "../../utils/businessNumbers.mjs";
 import { sameDaySuccessPickupText, SAME_DAY_TEXT } from "../../utils/sameDayCollectionView.mjs";
 import { boundDropoffLocationLine, DROPOFF_LOCATION_LABEL } from "../../utils/dropoffParcelShop.mjs";
 import { DEMO_TEXTE, istDemo } from "../../demo/demoModus.mjs";
 
 export function BookingSuccessStep({
   booking, bookingData, tariff, priceView, user, invoiceDeliveryMode, proformaEntry,
-  navigate, clearFlow, vatMode,
+  navigate, clearFlow, vatMode, reference = null,
 }) {
+  const T = BOOKING_SUCCESS_TEXT;
   // TG22 Paket B: der gebuchte Betrag kommt ausschließlich aus der Buchungsantwort. Die
   // Aufstellung der Buchungsseite erscheint nur, wenn sie ihn auf den Cent trägt.
   const betrag = bookingSuccessAmountView(booking, priceView);
   // Auftrag 2 / P2 (C2): Rechnung, Testdokument oder neutral „Beleg" — aus der eingefrorenen Belegphase
   // der Buchung und dem erzeugten Belegdatensatz, nie aus einem globalen Schalter.
   const wording = bookingDocumentWording(booking, invoiceDeliveryMode);
+  // Phase 1: EIN Hinweis zur Belegphase statt Erstellungszeile plus Hinweiskasten (utils/bookingSuccessView.mjs).
+  const hinweis = bookingDocumentNotice(booking, invoiceDeliveryMode);
   // TG22 Same-Day: die beim Buchen TATSÄCHLICH gesendete Abholzeit — aus der Buchungsantwort, nie aus dem Angebot.
   const abholungHeute = sameDaySuccessPickupText(booking);
   // Block C: der beim Buchen gebundene Abgabe-Paketshop — aus der Buchungsantwort, nie aus der lokalen Auswahl.
@@ -61,65 +76,67 @@ export function BookingSuccessStep({
   // Öffentliche Kundenbereich-Demo: dieselbe Bestätigung, eindeutig als Simulation gekennzeichnet — nichts wurde
   // beauftragt und keine E-Mail versendet (demo/demoModus.mjs). Außerhalb der Demo unverändert.
   const demo = istDemo();
-  return (
-      <div className="booking-success-wrap bsx">
-        {/* Premium-Redesign B8 — die digitale Versandbestätigung. Reihenfolge in jeder Breite: Kopf, Dokumente,
-            Beleg, „So geht es weiter", Aktionen. Kein Häkchen-Medaillon: die Bestätigung trägt der Titel, die
-            Marke „Gebucht" nennt den Zustand als Wort. Jede Zeile behält ihre bisherige Bedingung. */}
-        <header className="bsx-kopf">
-          {demo ? (
-            <>
-              <span className="badge badge--info bsx-status">{DEMO_TEXTE.buchungMarke}</span>
-              <h2 className="booking-success-title">{DEMO_TEXTE.buchungTitel}</h2>
-              <p className="alert alert-info bsx-demo-hinweis" role="note">{DEMO_TEXTE.buchungSimuliert}</p>
-            </>
-          ) : (
-            <>
-              <span className="badge badge--success bsx-status">Gebucht</span>
-              <h2 className="booking-success-title">Sendung erfolgreich gebucht!</h2>
-            </>
-          )}
-        </header>
 
-        {/* Dokumente zuerst: das Label ist der nächste Handgriff nach der Buchung. Label,
-            Auftragsbestätigung, Lieferschein und Proforma-Rechnung — Zustände, Handler und Oberfläche
-            wortgleich in components/booking/BookingSuccessDocuments.jsx. */}
-        <section className="bsx-dokumente" aria-labelledby="bsx-dokumente-titel">
-          <h3 className="bsx-abschnitt" id="bsx-dokumente-titel">Dokumente</h3>
-          <BookingSuccessDocuments booking={booking} proformaEntry={proformaEntry} />
+  // Downloads und Labelabruf: EIN Zustand für Kopf und Dokumentliste (useBookingSuccessDocuments).
+  const docs = useBookingSuccessDocuments(booking, proformaEntry);
+  const abNummer = orderConfirmationNumberOf(booking);
+  const plan = bookingSuccessLabelPlan(booking, docs.labelRun, { hasOrderConfirmation: Boolean(booking?.ceShipmentId && abNummer) });
+  const carrierName = publicCarrierDisplay(tariff).name;
+  const carrierZeile = carrierServiceLabel(publicCarrierDisplay(tariff).name, publicServiceName(tariff), " — ");
+  const route = bookingData?.form?.s_city && bookingData?.form?.r_city ? `${bookingData.form.s_city} → ${bookingData.form.r_city}` : null;
+  const uebergabe = tariff.serviceType === "pickup" ? T.pickup : tariff.serviceType === "dropoff" ? T.dropoff : null;
+  const schritte = bookingSuccessNextSteps(plan, tariff, { pickupText: abholungHeute, dropoffText: abgabeShop, carrierName });
+
+  const zuSendungen = () => navigate("/dashboard?page=shipments", { state: { justBooked: true } });
+  // Bewusster Neustart: der alte Vorgang ist beim Buchungserfolg bereits gelöscht — der erneute Aufruf schützt den
+  // Fall, dass der Kunde diesen Bildschirm über Browser-Zurück wieder erreicht und dann neu beginnt.
+  const neueSendung = () => { clearFlow(); navigate("/calculator"); };
+  const zurDokumentliste = () => {
+    const ziel = document.getElementById("bsx-dokumente-titel");
+    if (ziel) { ziel.scrollIntoView({ block: "start" }); ziel.focus({ preventScroll: true }); }
+  };
+
+  return (
+      <div className="booking-success-wrap bsx bsx--a">
+        <BookingSuccessHero
+          demo={demo}
+          facts={[carrierZeile, route, uebergabe].filter(Boolean)}
+          orderConfirmationNumber={abNummer}
+          plan={plan}
+          docs={docs}
+          documentsLabel={wording.documentsButton}
+          onShipments={zuSendungen}
+          onNewShipment={neueSendung}
+          onDocuments={() => navigate(INVOICES_DASHBOARD_TARGET)}
+          onShowDocumentList={zurDokumentliste}
+        />
+
+        {/* Dokumente: eine Zeile je Beleg — Name, Stand, Aktion. Label, Auftragsbestätigung, Lieferschein und
+            Proforma-Rechnung; jedes Label einer Mehrpaketsendung einzeln. */}
+        <section className="bsx-dokumente" aria-labelledby="bsx-dokumente-titel" id="bsx-dokumente">
+          <h2 className="bsx-abschnitt" id="bsx-dokumente-titel" tabIndex={-1}>{T.documentsTitle}</h2>
+          <BookingSuccessDocuments booking={booking} proformaEntry={proformaEntry} plan={plan} docs={docs} demo={demo} />
         </section>
 
-        {/* Der Beleg der Buchung: Navy-Kopfleiste mit Signet und Markenstreifen, darunter Nummern,
+        {/* Der Beleg der Buchung: Navy-Kopfleiste mit Signet und Markenstreifen, darunter die Belegnummer,
             Buchungsdaten, Betrag und die Zeilen zu Bestätigung und Abrechnung. */}
         <section className="bsx-beleg" aria-labelledby="bsx-beleg-titel">
           <div className="bsx-beleg-kopf">
-            <h3 className="bsx-beleg-titel" id="bsx-beleg-titel">Ihre Buchung</h3>
+            <h2 className="bsx-beleg-titel" id="bsx-beleg-titel">Ihre Buchung</h2>
             <BrandLogo variant="signet" tone="reverse" alt="" className="bsx-beleg-marke" />
           </div>
-          {/* Die Auftragsbestätigungsnummer (CE-AB…) ist die primäre sichtbare
-              Vorgangsnummer und steht zuerst; die Rechnungsnummer wird getrennt daneben
-              ausgewiesen und dient NICHT als allgemeine Vorgangsnummer. Fehlt die
-              Auftragsbestätigungsnummer, wird die Zeile ausgelassen — es wird keine
-              Ersatznummer erzeugt, insbesondere nicht die interne Bestellnummer (CE-BS…),
-              die Provider-Ordernummer oder eine interne Datenbank-ID. */}
-          <div className="booking-success-numbers">
-            {orderConfirmationNumberOf(booking) && (
-              <div className="bsx-nummer">
-                <div className="bsx-nummer-label">{NUMBER_LABELS.orderConfirmation}</div>
-                <CopyableNumber value={orderConfirmationNumberOf(booking)} label={NUMBER_LABELS.orderConfirmation} size="lg" />
-              </div>
-            )}
-            {/* Bei Sammelabrechnung gibt es zu DIESER Sendung noch keine Rechnung —
-                Nummer und Fälligkeit werden deshalb gar nicht erst angezeigt. Ein
-                Platzhalter wäre eine Behauptung über einen Beleg, den es nicht gibt.
-                Der Hinweis darunter sagt stattdessen, wo der Betrag erscheinen wird. */}
-            {bookingBillingNotice(booking).showsInvoiceNumber && (
+          {/* Die Auftragsbestätigungsnummer steht oben im Kopf. Die Rechnungs- bzw. Testbelegnummer wird hier
+              getrennt ausgewiesen und dient NICHT als allgemeine Vorgangsnummer. Bei Sammelabrechnung gibt es zu
+              DIESER Sendung noch keine Rechnung — Nummer und Fälligkeit werden gar nicht erst angezeigt; ein
+              Platzhalter wäre eine Behauptung über einen Beleg, den es nicht gibt. */}
+          {bookingBillingNotice(booking).showsInvoiceNumber && (
+            <div className="booking-success-numbers">
               <div className="bsx-nummer">
                 <div className="bsx-nummer-label" id="booking-success-document-number-label">{wording.numberLabel}</div>
                 <CopyableNumber value={booking.invoiceNumber} label={wording.numberLabel} size="lg" />
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Kompakter Recap — ausschließlich aus bereits vorhandenem Tarif-/
               Formular-State abgeleitet, keine neue Server-Anfrage. */}
@@ -168,64 +185,32 @@ export function BookingSuccessStep({
             )}
           </div>
 
-          {/* Klare Trennung: Auftragsbestätigung (wird per E-Mail versendet) ≠ spätere Rechnung/Rechnungs-E-Mail. */}
+          {/* Klare Trennung: Auftragsbestätigung (wird per E-Mail versendet) ≠ späterer Beleg. Dazu genau EIN Hinweis
+              zur Belegphase (Testdokument – keine Rechnung und keine Zahlungsforderung, Rechnung, Sammelabrechnung oder
+              ein noch fehlender Beleg) — vorher standen Erstellungszeile und Hinweiskasten nebeneinander. */}
           <div className="booking-success-delivery">
             <p className="text-muted mb-4">
               {demo ? DEMO_TEXTE.keineEmail : <>{BOOKING_CONFIRMATION_LINE}{user?.email ? ` (an ${user.email})` : ""}</>}
             </p>
-            {/* Der Standardsatz zur automatischen Rechnungserstellung gilt nur für die
-                Einzelabrechnung; bei Sammelabrechnung tritt der Sammelhinweis an seine
-                Stelle, statt beide nebeneinander zu behaupten. */}
-            {bookingBillingNotice(booking).consolidated
-              ? <p className="text-muted mb-8">{bookingBillingNotice(booking).text}</p>
-              : <p className="text-muted mb-8" id="booking-success-document-line">{wording.autocreateLine}</p>}
-            {!bookingBillingNotice(booking).consolidated && (() => {
-              const hint = invoiceDeliveryHint(invoiceDeliveryMode);
-              return (
-                <div className={`alert ${hintAlertClass(hint.tone)}`} role="status" aria-live="polite">
-                  {hint.text}
-                </div>
-              );
-            })()}
+            <div className={`alert ${hintAlertClass(hinweis.tone)}`} id="booking-success-document-line" role="status" aria-live="polite">
+              {hinweis.text}
+            </div>
           </div>
         </section>
 
-        {/* Ruhiger Hinweis — bewusst KEIN sofortiger Tracking-Call/Polling
-            direkt nach der Buchung (Status wäre ohnehin „new"/nicht verfügbar).
-            Der Trackingstatus erscheint später in „Meine Sendungen". Ist
-            trackingAvailable am Tarif explizit false, würde der optimistische
-            Text irreführen — dann ehrlicher Hinweis statt „wird vorbereitet". */}
+        {/* So geht es weiter: drei Schritte in fester Reihenfolge — Label, Übergabe, Sendungsverfolgung. Bewusst KEIN
+            sofortiger Tracking-Call direkt nach der Buchung; ist trackingAvailable am Tarif explizit false, steht der
+            ehrliche Hinweis statt „wird vorbereitet". */}
         <section className="bsx-weiter" aria-labelledby="bsx-weiter-titel">
-          <h3 className="bsx-abschnitt" id="bsx-weiter-titel">So geht es weiter</h3>
-          {tariff.trackingAvailable === false ? (
-            <p className="booking-tracking-note">
-              <span>Für diesen Tarif ist keine Sendungsverfolgung verfügbar.</span>
-            </p>
-          ) : (
-            <p className="booking-tracking-note">
-              <span>
-                Tracking wird vorbereitet. Die Sendungsverfolgung erscheint in Ihren
-                Sendungen, sobald der Versanddienstleister die Sendung übernommen hat.
-              </span>
-            </p>
-          )}
+          <h2 className="bsx-abschnitt" id="bsx-weiter-titel">{T.stepsTitle}</h2>
+          <ol className="bsx-schritte">
+            <li className="bsx-schritt">{schritte[0]}</li>
+            <li className="bsx-schritt">{schritte[1]}</li>
+            <li className="bsx-schritt booking-tracking-note">{schritte[2]}</li>
+          </ol>
         </section>
-        {/* Aktionspriorität (Paket B): die Dokumente stehen oben. Danach Sendung
-            ansehen → weitere Sendung erstellen → Rechnungen als sekundärer Weg.
-            Ziele/Links unverändert, nur Reihenfolge/Gewichtung. */}
-        <div className="bsx-aktionen">
-          <button className="btn btn-primary" onClick={() => navigate("/dashboard?page=shipments", { state: { justBooked: true } })}>
-            Zu meinen Sendungen
-          </button>
-          {/* Bewusster Neustart: der alte Vorgang ist beim Buchungserfolg
-              bereits gelöscht — der erneute Aufruf schützt den Fall, dass
-              der Kunde diesen Bildschirm über Browser-Zurück wieder
-              erreicht und dann neu beginnt. */}
-          <button className="btn btn-outline" onClick={() => { clearFlow(); navigate("/calculator"); }}>Neue Sendung</button>
-          <button className="btn btn-outline" id="booking-success-documents-link" onClick={() => navigate(INVOICES_DASHBOARD_TARGET)}>
-            {wording.documentsButton}
-          </button>
-        </div>
+
+        <BookingSuccessDetails form={bookingData?.form} reference={reference} />
       </div>
   );
 }

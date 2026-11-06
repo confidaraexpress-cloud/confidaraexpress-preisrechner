@@ -103,7 +103,11 @@ test("T5 — es wurde nichts an Beträgen oder Status geändert", () => {
   const code = nurCode(lies(INVOICES_LIST));
   assert.ok(/inv\.gross_amount \?\? inv\.amount/.test(code), "die Betragsquelle hat sich geändert");
   assert.ok(/paymentStatus\(inv\)/.test(code), "die Zahlungsstatuslogik hat sich geändert");
-  assert.ok(/invoicePeriod\(inv\)/.test(code), "die Datumslogik hat sich geändert");
+  // Phase 1 (Betreiberentscheidung 2026-11-06): die Spalte „Datum" liest nur noch den Ausstellungstag, die Fälligkeit
+  // steht im Zahlungsstatus — beide aus derselben Kalendertag-Regel (invoicePeriod) wie bisher.
+  assert.ok(/invoiceDateDay\(inv\)/.test(code) && /invoiceDueLine\(inv\)/.test(code), "die Datumslogik hat sich geändert");
+  const view = nurCode(lies("src/utils/customerInvoiceView.mjs"));
+  assert.ok(/return invoicePeriod\(inv\)\.issuedDay;/.test(view), "der Ausstellungstag folgt nicht mehr der Kalendertag-Regel");
 });
 
 test("T6 — diese Datei läuft im Unit-Testlauf tatsächlich mit", () => {

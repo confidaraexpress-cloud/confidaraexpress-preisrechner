@@ -384,7 +384,9 @@ const kurzWarten = (ms) => new Promise((r) => setTimeout(r, ms));
 const karteVon = (page, t) => page.locator(`.offer-card:has(button[aria-controls="offer-details-${t.offerId}"])`);
 const panelVon = (page, t) => page.locator(`#offer-details-${t.offerId}`);
 const buchenKnopf = (page) => page.getByRole("button", { name: /Kostenpflichtig buchen/ });
-const belegKnoepfe = (page) => page.locator(".booking-success-wrap")
+// Erfolgsseite Variante A: je Beleg genau ein Knopf in der Dokumentliste (sichtbar „Herunterladen", Name mit dem
+// Beleg); die Hauptaktion im Kopf lädt zusätzlich das erste Label.
+const belegKnoepfe = (page) => page.locator(".booking-success-wrap .bsx-dokliste")
   .getByRole("button", { name: /^(Versandlabel|Abholetikett).* herunterladen$/ });
 const zeileVon = (page, ab) => page.locator("table tbody tr", { hasText: ab }).first();
 
@@ -789,7 +791,8 @@ test("F — Mehrpaketbuchung (gemessen): Paketzeile, Privatadresse, Absicherung 
   assert.match(recap, /Gesamtbetrag brutto\s*51,78 €/);
   // Zwei Belege mit den Servernamen — ein Versandlabel in zwei Formaten, kein „1 von 2", kein Abholetikett.
   const knoepfe = belegKnoepfe(page);
-  assert.deepEqual((await knoepfe.allTextContents()).map((t) => t.trim()), MEHRPAKET_KNOEPFE);
+  assert.deepEqual(await knoepfe.evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), MEHRPAKET_KNOEPFE);
+  assert.equal((await page.locator(".booking-success-wrap .bsx-hauptaktion").innerText()).trim(), MEHRPAKET_KNOEPFE[0]);
   assert.equal(await page.locator(".booking-success-wrap").getByRole("button", { name: "Label herunterladen" }).count(), 0);
 
   const [download] = await Promise.all([

@@ -11,6 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { readPriceComponents } from "./priceComponentsView.mjs";
+import { bookingBillingNotice } from "./billingModeView.mjs";
 
 // Modus der Rechnungszustellung, den der Erfolgsscreen kommuniziert.
 export const INVOICE_DELIVERY_MODE = Object.freeze({
@@ -190,6 +191,41 @@ export function invoiceDeliveryHint(mode) {
     default:
       return { tone: "info", text: "Das Rechnungsdokument wird derzeit erstellt und erscheint gleich im Bereich Rechnungen." };
   }
+}
+
+// ── Phase 1 (Variante A, Canonical v2.117): EIN Hinweis zur Belegphase statt drei ──────────────────────
+// Die Erfolgsseite nannte die Testphase bis hierher dreimal (Nummernbezeichnung, Erstellungszeile, Hinweiskasten).
+// Jetzt steht in der Buchungsübersicht genau ein Satz dazu, was mit dem Beleg DIESER Buchung geschieht — aus der
+// eingefrorenen Belegphase und dem erzeugten Beleg, wie bisher nie aus einem globalen Schalter. Rechtlich nötige
+// Aussagen bleiben vollständig erhalten: „Testdokument – keine Rechnung" und „keine Zahlungsforderung" in der
+// Testphase, bei Sammelabrechnung deren Satz (ohne Belegnummer), bei einem fehlgeschlagenen Beleg „Ihre Buchung ist
+// davon unberührt".
+export const DOCUMENT_NOTICE_TEXT = Object.freeze({
+  testPhase: "Interner Testbetrieb: Statt einer Rechnung entsteht ein Testdokument („Testdokument – keine Rechnung“) – keine Zahlungsforderung. Sie erhalten es zusätzlich per E-Mail und finden es im Bereich Rechnungen.",
+  testPhaseFailed: "Ihr Testdokument („Testdokument – keine Rechnung“) konnte noch nicht erstellt werden. Ihre Buchung ist davon unberührt – das Testdokument wird nachgereicht.",
+  regularProduction: "Ihre Rechnung wird automatisch erstellt und Ihnen zusätzlich separat als PDF-Anhang per E-Mail versendet. Anschließend steht sie im Bereich Rechnungen bereit.",
+  neutralFailed: "Ihr Beleg konnte noch nicht erstellt werden. Ihre Buchung ist davon unberührt – der Beleg wird nachgereicht.",
+});
+
+/** Der eine Hinweis zur Belegphase: { tone, text } — Ton wie invoiceDeliveryHint (Darstellung über hintAlertClass). */
+export function bookingDocumentNotice(booking, invoiceDeliveryMode) {
+  const sammel = bookingBillingNotice(booking);
+  if (sammel.consolidated) return { tone: "info", text: sammel.text };
+  const M = INVOICE_DELIVERY_MODE;
+  const art = resolveDocumentWording(booking, invoiceDeliveryMode);
+  if (art === DOCUMENT_WORDING.TEST_PHASE) {
+    return invoiceDeliveryMode === M.FAILED
+      ? { tone: "info", text: DOCUMENT_NOTICE_TEXT.testPhaseFailed }
+      : { tone: "warning", text: DOCUMENT_NOTICE_TEXT.testPhase };
+  }
+  if (invoiceDeliveryMode === M.FAILED) {
+    return { tone: "info", text: art === DOCUMENT_WORDING.REGULAR ? invoiceDeliveryHint(M.FAILED).text : DOCUMENT_NOTICE_TEXT.neutralFailed };
+  }
+  if (invoiceDeliveryMode === M.TEST) return invoiceDeliveryHint(M.TEST);
+  if (art === DOCUMENT_WORDING.REGULAR && invoiceDeliveryMode === M.PRODUCTION) {
+    return { tone: "success", text: DOCUMENT_NOTICE_TEXT.regularProduction };
+  }
+  return { tone: "info", text: WORDING[art].autocreateLine };
 }
 
 // Meldungsklasse zum Ton des Hinweises (F3): Der Warnton der Testphase erscheint als Warnung, nicht als Info.

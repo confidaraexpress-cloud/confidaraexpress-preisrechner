@@ -38,6 +38,8 @@ const VALID = {
   // Auftrag 2 / P10: die USt-IdNr. ist bei jeder Neuregistrierung Pflicht.
   vat_id: "DE123456789",
   street: "", zip: "", city: "", country: "DE",
+  // Phase 1 (Canonical v2.117): das monatliche Versandvolumen ist Pflicht — hier geht es um das Passwort.
+  monthly_shipment_volume: "11_50",
 };
 // Baut Formular + passende Wiederholung — die Wiederholung wird separat geprüft.
 const mitPasswort = (pw) => [{ ...VALID, password: pw }, pw];

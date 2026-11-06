@@ -38,6 +38,8 @@ import { getCurrentLegalSet } from "../api/legalApi";
 import { PASSWORD_MIN_LEN, PASSWORD_MAX_LEN, passwordLengthError } from "../utils/passwordPolicy.mjs";
 // Auftrag 2 / P10: dieselbe Regel wie die Registrierungsprüfung (gespiegelt aus Backend lib/vatId.js).
 import { validateRequiredVatId } from "../utils/vatId.mjs";
+// Phase 1 (Canonical v2.117): Prüfung der Versandvolumen-Gruppe beim Verlassen (dieselbe Regel wie getRegErrors).
+import { validateRegistrationShipmentVolume } from "../utils/shipmentVolume.mjs";
 
 // Wortlaute des Zurücksetzen-Formulars. Der Kurztext bleibt wortgleich zur
 // bisherigen Meldung; der Langtext fehlte hier vorher vollständig.
@@ -97,6 +99,8 @@ export default function AuthPage() {
     vat_id: "", street: "", zip: "", city: "", country: "DE",
     // Paket D: ausdrücklich ohne USt-IdNr. (Rechtsform statt Nummer, Sitz Deutschland, manuelle Prüfung).
     vat_id_absent: false, legal_form: "",
+    // Phase 1 (Canonical v2.117): voraussichtliches monatliches Versandvolumen — Pflicht, ohne Vorauswahl.
+    monthly_shipment_volume: "",
   });
   const [regPasswordRepeat, setRegPasswordRepeat] = useState("");
   const [regErrors, setRegErrors] = useState({});
@@ -326,6 +330,16 @@ export default function AuthPage() {
     });
   };
 
+  // Phase 1: verlässt der Fokus die Versandvolumen-Gruppe ohne Wahl, steht der Grund an der Gruppe.
+  const handleRegVolumeBlur = () => {
+    setRegErrors(p => {
+      const n = { ...p };
+      const r = validateRegistrationShipmentVolume(regForm.monthly_shipment_volume);
+      if (!r.ok) n.monthly_shipment_volume = r.error; else delete n.monthly_shipment_volume;
+      return n;
+    });
+  };
+
   const handleRegPasswordRepeat = (v) => {
     setRegPasswordRepeat(v);
     setRegErrors(p => {
@@ -336,7 +350,10 @@ export default function AuthPage() {
     });
   };
 
-  const regFieldsValid = Object.keys(getRegErrors(regForm, regPasswordRepeat)).length === 0;
+  const regFieldErrors = getRegErrors(regForm, regPasswordRepeat);
+  const regFieldsValid = Object.keys(regFieldErrors).length === 0;
+  // Phase 1: nur noch das Versandvolumen fehlt — der gesperrte Knopf nennt den Grund (wie bei den Erklärungen).
+  const regVolumeMissingOnly = Object.keys(regFieldErrors).length === 1 && Boolean(regFieldErrors.monthly_shipment_volume);
   const regDeclarationsOk = Object.keys(getRegDeclarationErrors(regDeclarations)).length === 0;
   const regValid = Object.keys(getRegErrors(regForm, regPasswordRepeat)).length === 0
     && Object.keys(getRegDeclarationErrors(regDeclarations)).length === 0;
@@ -475,6 +492,8 @@ export default function AuthPage() {
                   onDeclarationChange={handleDeclarationChange}
                   legalContext={regLegal}
                   declarationsMissingOnly={regFieldsValid && !regDeclarationsOk}
+                  volumeMissingOnly={regVolumeMissingOnly}
+                  onVolumeBlur={handleRegVolumeBlur}
                 />
               )}
 

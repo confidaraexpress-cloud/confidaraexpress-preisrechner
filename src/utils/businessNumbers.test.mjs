@@ -233,17 +233,24 @@ test("(6) Sendungsdetail trennt Vorgangs-, Tracking- und Kundenreferenz", () => 
 
 test("(7) Buchungserfolg zeigt Auftragsbestätigungs- und Rechnungsnummer getrennt", () => {
   const src = buchungsFlaeche();
+  // Phase 1 (Variante A): die Auftragsbestätigungsnummer steht im Bestätigungskopf (BookingSuccessHero.jsx, mit
+  // Kopieren), die Rechnungs-/Testbelegnummer in der Beleg-Karte darunter — getrennt beschriftet, die Vorgangsnummer
+  // zuerst.
+  const kopf = schnitt(src, "export function BookingSuccessHero", "bsx-aktionen", "Bestätigungskopf (7)");
+  assert.ok(kopf.includes("orderConfirmationNumber") && kopf.includes("NUMBER_LABELS.orderConfirmation"),
+    "Auftragsbestätigungsnummer fehlt im Bestätigungskopf");
+  assert.ok(/const abNummer = orderConfirmationNumberOf\(booking\);/.test(src) && src.includes("orderConfirmationNumber={abNummer}"),
+    "die Nummer im Kopf kommt nicht aus der Buchungsantwort");
   const block = schnitt(src, "booking-success-numbers", "booking-success-delivery", "Erfolgsbildschirm-Nummern (7)");
-  assert.ok(block.includes("orderConfirmationNumberOf(booking)"), "Auftragsbestätigungsnummer fehlt im Erfolgsscreen");
   assert.ok(block.includes("booking.invoiceNumber"), "Rechnungsnummer fehlt im Erfolgsscreen");
   // Auftrag 2 / P2: die zweite Nummer trägt das Label ihrer Belegart (Rechnungsnummer / Testbelegnummer / Belegnummer).
-  assert.ok(block.includes("NUMBER_LABELS.orderConfirmation") && block.includes("wording.numberLabel"),
-    "Nummern nicht getrennt beschriftet");
-  // Die Vorgangsnummer steht VOR der Rechnungsnummer.
-  assert.ok(block.indexOf("orderConfirmationNumber") < block.indexOf("invoiceNumber"),
+  assert.ok(block.includes("wording.numberLabel"), "Nummern nicht getrennt beschriftet");
+  // Die Vorgangsnummer steht VOR der Rechnungsnummer: der Kopf wird vor der Beleg-Karte gerendert.
+  const schritt = schnitt(src, "export function BookingSuccessStep", "<BookingSuccessDetails", "Erfolgsbildschirm (7)");
+  assert.ok(schritt.indexOf("<BookingSuccessHero") < schritt.indexOf("booking-success-numbers"),
     "die Auftragsbestätigungsnummer muss zuerst stehen");
   // Kein CE-BS und keine Providerreferenz auf dem Erfolgsbildschirm.
-  assert.ok(!/businessOrderNumber|business_order_number|jumingo/i.test(block),
+  assert.ok(!/businessOrderNumber|business_order_number|jumingo/i.test(block + kopf),
     "interne Bestellnummer oder Providerreferenz im Erfolgsbildschirm");
 });
 

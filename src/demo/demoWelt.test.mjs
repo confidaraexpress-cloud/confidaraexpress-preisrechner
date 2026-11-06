@@ -10,6 +10,7 @@ import { DEMO_BASIS, DEMO_TEXTE, DEMO_ZIELE, istDemoPfad } from "./demoModus.mjs
 import { arbeitsspeicher, speicherAbschirmen } from "./demoSpeicher.mjs";
 import { demoNetzErlaubt, netzSperren } from "./demoNetz.mjs";
 import { demoAngebote, demoAntwort, demoZuruecksetzen } from "./demoBackend.mjs";
+import { BOOKING_SUCCESS_TEXT } from "../utils/bookingSuccessActions.mjs";
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.join(HIER, "..");
@@ -242,12 +243,18 @@ test("12 — die Demo rendert nur Kundenseiten der echten Anwendung, nie Anmeldu
 
 test("13 — die Buchungsbestätigung sagt in der Demo, dass nichts beauftragt und keine E-Mail versendet wurde", () => {
   const schritt = ohneKommentare(lies("components", "booking", "BookingSuccessStep.jsx"));
+  // Phase 1 (Variante A): der Bestätigungskopf ist ein eigener Baustein — die Demo-Aussagen stehen dort.
+  const kopf = ohneKommentare(lies("components", "booking", "BookingSuccessHero.jsx"));
   assert.match(schritt, /const demo = istDemo\(\);/);
-  assert.match(schritt, /\{DEMO_TEXTE\.buchungSimuliert\}/);
+  assert.match(schritt, /<BookingSuccessHero\s+demo=\{demo\}/);
+  assert.match(kopf, /\{DEMO_TEXTE\.buchungSimuliert\}/);
+  assert.match(kopf, /\{demo \? DEMO_TEXTE\.buchungTitel : T\.title\}/);
   assert.match(schritt, /demo \? DEMO_TEXTE\.keineEmail :/);
-  // Außerhalb der Demo unverändert.
-  assert.match(schritt, /<span className="badge badge--success bsx-status">Gebucht<\/span>/);
-  assert.match(schritt, /<h2 className="booking-success-title">Sendung erfolgreich gebucht!<\/h2>/);
+  // Außerhalb der Demo unverändert: „Gebucht" und „Sendung erfolgreich gebucht!" — jetzt als einzige h1 der Seite.
+  assert.match(kopf, /<span className="badge badge--info bsx-status">\{DEMO_TEXTE\.buchungMarke\}<\/span>/);
+  assert.match(kopf, /<h1 className="booking-success-title" id="bsx-titel" tabIndex=\{-1\} ref=\{titelRef\}>/);
+  assert.equal(BOOKING_SUCCESS_TEXT.status, "Gebucht");
+  assert.equal(BOOKING_SUCCESS_TEXT.title, "Sendung erfolgreich gebucht!");
   assert.match(DEMO_TEXTE.buchungSimuliert, /^Simulation: /);
   assert.match(DEMO_TEXTE.buchungSimuliert, /keine Kosten/);
   assert.match(DEMO_TEXTE.buchungSimuliert, /keine E-Mail/);

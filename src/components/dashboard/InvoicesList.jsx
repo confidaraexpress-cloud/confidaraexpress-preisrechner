@@ -11,7 +11,8 @@ import {
 } from "../../utils/invoiceView.mjs";
 import {
   paymentStatus,
-  documentStatusMeta, emailDeliveryMeta, invoicePeriod, unavailableActionReason,
+  documentStatusMeta, emailDeliveryMeta, unavailableActionReason,
+  invoiceDateDay, invoiceDueLine, INVOICE_DATE_COLUMN, INVOICE_DUE_PREFIX,
   INVOICE_FILTERS, matchesInvoiceFilter,
   FILTER_EMPTY_TEXT, LIST_EMPTY_TITLE, LIST_EMPTY_TEXT, LOADING_TEXT, LOAD_ERROR_TEXT,
   customerInvoiceSummary,
@@ -94,27 +95,12 @@ function InvoiceNumberBlock({ inv }) {
   );
 }
 
-function PeriodBlock({ inv }) {
-  const p = invoicePeriod(inv);
-  return (
-    <div className="inv-period">
-      {/* Ein echtes Leerzeichen ({" "}) zwischen Label und Wert ist hier kein Stilmittel,
-          sondern die einzige Umbruchstelle: zwei direkt aneinandergrenzende Inline-Elemente
-          ohne Leerraum dazwischen sind für den Zeilenumbruch EIN unteilbares Token — bei
-          schmalen Spaltenbreiten würde die Zeile sonst überlaufen statt umzubrechen. */}
-      <div className="inv-period-row"><span className="inv-period-label">{p.issuedLabel}</span> <span>{isoDayDE(p.issuedDay)}</span></div>
-      {/* Alle drei Daten kommen als kanonische Kalendertage ("YYYY-MM-DD") aus invoicePeriod
-          und werden mit isoDayDE rein textuell formatiert. dateDE würde daraus wieder ein Date
-          bauen und in der Zeitzone des Betrachters rendern — das Portal zeigte dann ein anderes
-          Datum als das PDF. */}
-      {p.serviceDay && <div className="inv-period-row"><span className="inv-period-label">Leistung</span> <span>{isoDayDE(p.serviceDay)}</span></div>}
-      {p.dueDay && (
-        <div className="inv-period-row">
-          <span className="inv-period-label">Fällig</span> <span className={p.overdue ? "inv-period-due--overdue" : undefined}>{isoDayDE(p.dueDay)}</span>
-        </div>
-      )}
-    </div>
-  );
+// Spalte „Datum" (Phase 1, Betreiberentscheidung 2026-11-06): ausschließlich das Ausstellungsdatum, kein Vorsatz.
+// Der Tag kommt als kanonischer Kalendertag ("YYYY-MM-DD") aus invoiceDateDay und wird mit isoDayDE rein textuell
+// formatiert. dateDE würde daraus wieder ein Date bauen und in der Zeitzone des Betrachters rendern — das Portal
+// zeigte dann ein anderes Datum als das PDF.
+function DateCell({ inv }) {
+  return <span className="inv-date">{isoDayDE(invoiceDateDay(inv))}</span>;
 }
 
 function AmountBlock({ inv }) {
@@ -125,9 +111,22 @@ function AmountBlock({ inv }) {
   );
 }
 
+// Zahlungsstatus mit der Fälligkeit als zweiter Zeile (nur offene und überfällige Forderungen; überfällig im
+// Fehlerton). Das Fälligkeitsdatum steht nirgends sonst in der Zeile — die Spalte „Datum" trägt nur das
+// Ausstellungsdatum.
 function PaymentStatusCell({ inv }) {
   const [tone, label] = paymentStatus(inv);
-  return <StatusPill tone={tone} label={label} />;
+  const faellig = invoiceDueLine(inv);
+  return (
+    <div className="inv-status-cell">
+      <StatusPill tone={tone} label={label} />
+      {faellig && (
+        <span className={`inv-status-due${faellig.overdue ? " inv-period-due--overdue" : ""}`}>
+          {INVOICE_DUE_PREFIX} {isoDayDE(faellig.day)}
+        </span>
+      )}
+    </div>
+  );
 }
 
 // Dokumentinformation als ruhige Textzeile(n) — keine zweite Badgefläche neben dem
@@ -187,7 +186,7 @@ function DocumentActionsCell({ inv, downloadingId, onView, onDownload }) {
 // die Daten — Dokument- und Versandinformation zuletzt als leiser Text.
 function InvoiceCard({ inv, downloadingId, onView, onDownload, gesucht = false }) {
   const [payTone, payLabel] = paymentStatus(inv);
-  const p = invoicePeriod(inv);
+  const faellig = invoiceDueLine(inv);
   const [docTone, docLabel] = documentStatusMeta(inv);
   const mail = emailDeliveryMeta(inv);
   return (
@@ -198,9 +197,10 @@ function InvoiceCard({ inv, downloadingId, onView, onDownload, gesucht = false }
       </div>
       <dl className="inv-card-kv">
         <div className="inv-card-kv-row inv-card-kv-row--amount"><dt>Betrag</dt><dd>{formatInvoiceAmount(inv.gross_amount ?? inv.amount, inv.currency)}</dd></div>
-        {p.dueDay && <div className="inv-card-kv-row"><dt>Fällig</dt><dd className={p.overdue ? "inv-period-due--overdue" : undefined}>{isoDayDE(p.dueDay)}</dd></div>}
-        <div className="inv-card-kv-row"><dt>{p.issuedLabel === "Beleg" ? "Belegdatum" : "Rechnungsdatum"}</dt><dd>{isoDayDE(p.issuedDay)}</dd></div>
-        {p.serviceDay && <div className="inv-card-kv-row"><dt>Leistung</dt><dd>{isoDayDE(p.serviceDay)}</dd></div>}
+        {/* Phase 1: der Feldname „Datum" steht außerhalb, im Wert nur das Datum. Die Fälligkeit ist ein eigenes
+            Feld (nur offene und überfällige Forderungen); das Leistungsdatum steht im PDF. */}
+        <div className="inv-card-kv-row"><dt>{INVOICE_DATE_COLUMN}</dt><dd>{isoDayDE(invoiceDateDay(inv))}</dd></div>
+        {faellig && <div className="inv-card-kv-row"><dt>Fällig</dt><dd className={faellig.overdue ? "inv-period-due--overdue" : undefined}>{isoDayDE(faellig.day)}</dd></div>}
         <div className="inv-card-kv-row"><dt>Dokument</dt><dd><DocumentInfo tone={docTone} label={docLabel} /></dd></div>
         {/* Zeile nur bei tatsächlich erfolgtem Versand — kein interner Betriebszustand. */}
         {mail && <div className="inv-card-kv-row"><dt>E-Mail</dt><dd><DocumentInfo tone={mail[0]} label={mail[1]} /></dd></div>}
@@ -353,12 +353,12 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
             <div className="table-card inv-table inv-table--dokument">
               <table>
                 <caption className="sr-only">
-                  Rechnungen — Rechnung, Zeitraum, Betrag, Zahlungsstatus und Dokument mit Aktionen.
+                  Rechnungen — Rechnung, Datum, Betrag, Zahlungsstatus mit Fälligkeit und Dokument mit Aktionen.
                 </caption>
                 <thead>
                   <tr>
                     <th scope="col">Rechnung</th>
-                    <th scope="col">Zeitraum</th>
+                    <th scope="col">{INVOICE_DATE_COLUMN}</th>
                     <th scope="col">Betrag</th>
                     <th scope="col">Zahlungsstatus</th>
                     <th scope="col">Dokument</th>
@@ -372,7 +372,7 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
                       data-suche-fokus={fokusId !== null && String(inv.id) === fokusId ? fokusId : undefined}
                     >
                       <td><InvoiceNumberBlock inv={inv} /></td>
-                      <td><PeriodBlock inv={inv} /></td>
+                      <td><DateCell inv={inv} /></td>
                       <td><AmountBlock inv={inv} /></td>
                       <td><PaymentStatusCell inv={inv} /></td>
                       <td><DocumentActionsCell inv={inv} downloadingId={downloadingId} onView={(i) => setPreviewInvoice({ id: i.id, invoice_number: i.invoice_number })} onDownload={handleDownload} /></td>

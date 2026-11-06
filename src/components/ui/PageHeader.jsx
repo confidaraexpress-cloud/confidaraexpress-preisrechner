@@ -49,15 +49,18 @@ export function PageHeader({
   return (
     <header className={klassen} aria-label="Seitenkopf">
       {utility && <div className="ce-page-header-utility">{utility}</div>}
-      <div className="ce-page-header-main">
-        <div className="ce-page-header-text">
-          {backLink}
-          <h1 className="ce-page-header-title" id={titleId}>{title}</h1>
-          {subtitle && <p className="ce-page-header-sub">{subtitle}</p>}
-          {meta && <div className="ce-page-header-meta">{meta}</div>}
+      {/* Ohne Titel (Erfolgsseite der Buchung, Phase 1) bleibt nur die Werkzeugzeile — die Seite trägt ihre h1 selbst. */}
+      {(title || subtitle || meta || actions || backLink) && (
+        <div className="ce-page-header-main">
+          <div className="ce-page-header-text">
+            {backLink}
+            {title && <h1 className="ce-page-header-title" id={titleId}>{title}</h1>}
+            {subtitle && <p className="ce-page-header-sub">{subtitle}</p>}
+            {meta && <div className="ce-page-header-meta">{meta}</div>}
+          </div>
+          {actions && <div className="ce-page-header-actions">{actions}</div>}
         </div>
-        {actions && <div className="ce-page-header-actions">{actions}</div>}
-      </div>
+      )}
     </header>
   );
 }

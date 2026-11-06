@@ -348,10 +348,13 @@ test("A — 1440: keine Formatauswahl, Lieferhinweis, Referenz mit Feldmeldung, 
   assert.equal(body.offerRevision, 1);
 
   const wrap = page.locator(".booking-success-wrap");
-  const knoepfe = wrap.getByRole("button", { name: /^Versandlabel.* herunterladen$/ });
+  // Erfolgsseite Variante A: je Beleg genau ein Knopf in der Dokumentliste (sichtbar „Herunterladen", Name mit dem
+  // Beleg); die Hauptaktion im Kopf lädt zusätzlich das erste Label.
+  const knoepfe = wrap.locator(".bsx-dokliste").getByRole("button", { name: /^Versandlabel.* herunterladen$/ });
   await knoepfe.first().waitFor({ timeout: 15000 });
-  assert.deepEqual((await knoepfe.allTextContents()).map((t) => t.trim()),
+  assert.deepEqual(await knoepfe.evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))),
     ["Versandlabel (A4) herunterladen", "Versandlabel (Thermodruck) herunterladen"]);
+  assert.equal((await wrap.locator(".bsx-hauptaktion").innerText()).trim(), "Versandlabel (A4) herunterladen");
   // Gebuchter Betrag = bestätigte Aufstellung → die Aufstellung steht da.
   const recap = await text(page.locator(".booking-success-recap"));
   assert.match(recap, /Gesamtbetrag brutto\s*14,68 €/);

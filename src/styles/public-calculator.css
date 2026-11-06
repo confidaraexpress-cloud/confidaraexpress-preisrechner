@@ -394,9 +394,12 @@
   mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, #000 58%, transparent 100%);
 }
 
+/* Bricht die Legende um (schmale Spalte, Telefon), steht der Punkt an der ersten Zeile statt zwischen beiden
+   (Phase 1, 2026-11-06: längerer Satz „Versand innerhalb Deutschlands und in alle anderen Länder der EU"). */
 .pc-hero-map-legend {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
+  max-width: 100%;
   gap: var(--ce-space-2);
   margin-top: var(--ce-space-2);
   color: var(--ce-color-text-inverse-soft);
@@ -417,6 +420,8 @@
   flex: none;
   width: 8px;
   height: 8px;
+  /* Mitte der ersten Zeile: (Zeilenhöhe 20px − 8px) / 2. */
+  margin-top: 6px;
   border-radius: var(--ce-radius-full);
   background: var(--ce-pr-stadtlicht);
 }

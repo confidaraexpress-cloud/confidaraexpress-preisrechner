@@ -8,5 +8,5 @@
 export const AUTH_TEXT = Object.freeze({
   titel: "Versand- und Logistik\u00admanagement für Unternehmen.",
   lead: "Preise mehrerer Versanddienstleister vergleichen, Sendungen buchen und verfolgen, Bestand und Aufträge Ihres Lagers führen – in einem Kundenbereich.",
-  kartenLegende: "Versand ab Deutschland in die Länder der EU",
+  kartenLegende: "Versand innerhalb Deutschlands und in alle anderen Länder der EU",
 });

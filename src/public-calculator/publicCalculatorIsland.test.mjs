@@ -161,7 +161,7 @@ test("4 — Seitengerüst: Kopf, Hero, Ergebnisse, Kundenbereich mit Vorschau, A
   assert.doesNotMatch(HTML_OHNE, /pc-eyebrow|pc-display-line|pc-hero-points|pc-hero-body/);
   // Premium-Redesign (Betreiberentscheidung 2026-10-27): die Karte trägt die Einstiegswelle der Lichter (nachtkarte.css).
   assert.match(HTML_OHNE, /<div class="pc-hero-map-canvas nk-welle" id="pc-hero-map-canvas">\s*<img class="pc-hero-map-img" src="\.\.\/src\/assets\/illustrations\/nachtkarte-eu\.svg" alt="" width="536" height="497" decoding="async" \/>/);
-  assert.match(HTML_OHNE, /<figcaption class="pc-hero-map-legend"><span class="pc-hero-map-dot" aria-hidden="true"><\/span>Versand ab Deutschland in die Länder der EU<\/figcaption>/);
+  assert.match(HTML_OHNE, /<figcaption class="pc-hero-map-legend"><span class="pc-hero-map-dot" aria-hidden="true"><\/span>Versand innerhalb Deutschlands und in alle anderen Länder der EU<\/figcaption>/);
   assert.match(HTML_OHNE, /<p class="pc-lead">Preise mehrerer Versanddienstleister vergleichen, Sendungen buchen und verfolgen, Bestand und Aufträge Ihres Lagers führen – in einem Kundenbereich, mit persönlichem Ansprechpartner\.<\/p>/);
   assert.match(HTML, /<title>Versand- und Logistikmanagement für Unternehmen \| ConfidaraExpress<\/title>/);
   // Bereich 2 gibt es erst nach der ersten Berechnung: vorher steht dort nichts, auch keine Überschrift.

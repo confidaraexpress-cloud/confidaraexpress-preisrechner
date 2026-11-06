@@ -970,9 +970,11 @@
   -webkit-mask-image: radial-gradient(ellipse 66% 62% at 50% 50%, #000 56%, transparent 100%);
   mask-image: radial-gradient(ellipse 66% 62% at 50% 50%, #000 56%, transparent 100%);
 }
+/* Wie im Preisrechner: bei Umbruch steht der Punkt an der ersten Zeile (Phase 1, 2026-11-06). */
 [data-ce-bereich="auth"] .auth-map-legend {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
+  max-width: 100%;
   gap: 8px;
   margin-top: 6px;
   color: var(--ce-pr-on-navy-2);
@@ -983,6 +985,8 @@
   flex: none;
   width: 8px;
   height: 8px;
+  /* Mitte der ersten Zeile: (14px × 1,4286 = 20px − 8px) / 2. */
+  margin-top: 6px;
   border-radius: var(--ce-radius-full);
   background: var(--ce-pr-stadtlicht);
 }

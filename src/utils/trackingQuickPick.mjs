@@ -3,9 +3,10 @@
    laufenden Sendungen — aus der bereits geladenen Sendungsliste (GET /kunde/shipments), keine neue Abfrage. Ein
    Klick verfolgt genau die Trackingnummer, die die Liste trägt; die Abfrage selbst ist unverändert.
 
-   Laufend heißt dasselbe wie in der Kennzahl „Aktive Sendungen“ (utils/kpis.mjs, isActive). Nur Sendungen mit
+   Laufend heißt dasselbe wie in der Kennzahl „Aktive Sendungen“: seit E1–E4 (2026-11-06) das Serverkennzeichen
+   `is_active` derselben Regel (utils/customerShipmentStatus.mjs, isActiveShipment). Nur Sendungen mit
    Trackingnummer kommen in Frage — ohne Nummer gibt es nichts zu verfolgen. Reine Abbildung, kein React. */
-import { isActive } from "./kpis.mjs";
+import { isActiveShipment } from "./customerShipmentStatus.mjs";
 import { customerShipmentNumbers, NO_ORDER_CONFIRMATION_TEXT } from "./businessNumbers.mjs";
 import { shipmentRecipientLine } from "./shipmentRecipientView.mjs";
 
@@ -21,7 +22,7 @@ export const TRACKING_QUICKPICK_TEXT = Object.freeze({
 export function trackingQuickPick(shipments, limit = 6) {
   const out = [];
   for (const s of Array.isArray(shipments) ? shipments : []) {
-    if (!s || !isActive(s)) continue;
+    if (!s || !isActiveShipment(s)) continue;
     const nums = customerShipmentNumbers(s);
     const nummer = typeof nums.trackingNumber === "string" ? nums.trackingNumber.trim() : "";
     if (!nummer) continue;

@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useHref, useNavigate } from "react-router-dom";
 import { NotificationBell } from "../notifications/NotificationBell";
 import { useNotifications } from "../../context/NotificationsContext";
-import { computeKpis, kpisFromServerStats } from "../../utils/kpis";
+import { SHIPMENT_KPIS, KPI_TEXT, kpisFromServerStats, activeNewNote } from "../../utils/kpis";
+import { Icon } from "../ui/Icon";
 import { hasOperationalData } from "../../utils/overviewModules.mjs";
 import { notificationTarget } from "../../utils/notificationsView.mjs";
 import { RecentShipments, OpenInvoices, OverviewNotifications, InventorySnapshot, CarrierPortfolio } from "./OverviewModules";
@@ -12,9 +13,10 @@ import { UserChip } from "../ui/UserChip";
 /* ═══════════════════════════════════════════════════════════════════════════
    ÜBERSICHT — die Designreferenz der Plattform (Redesign 2026-10)
    ───────────────────────────────────────────────────────────────────────────
-   Reiner View-Layer: Markup + CSS (src/styles/overview.css). Daten, KPI-
-   Berechnung (computeKpis / kpisFromServerStats), Routing und alle Handler
-   sind unverändert — es gibt keine neue Kennzahl und keine neue Abfrage.
+   View-Layer: Markup + CSS (src/styles/overview.css). Die Daten lädt
+   DashboardPage; die Kennzahlen kommen aus dem Serveraggregat
+   (kpisFromServerStats). Seit E1–E4 (2026-11-06) führt jede Kennzahlkarte
+   in „Sendungen" mit genau ihrem Filter (onOpenKpi).
 
    Aufbau:
      Seitenkopf  persönliche Begrüßung „Guten Tag, [Name]" · Datum und
@@ -69,6 +71,35 @@ const FUNKTIONEN = [
   { key: "lager",      title: "Lager und Aufträge",        desc: "Artikel und Bestand Ihres eigenen Lagers führen, Aufträge erfassen und direkt als Sendung vorbereiten." },
 ];
 
+/* ── Eine Kennzahlkarte (E1–E4, 2026-11-06) ──
+   Jede Karte ist ein Link in „Sendungen" mit genau ihrem Filter — auch bei 0 (dann zeigt die Liste einen
+   klaren Leerzustand). Ein gewöhnlicher Klick bleibt in der App (onOpen); Mittelklick, Strg-/Cmd-Klick und
+   „In neuem Tab öffnen" folgen dem href, den DashboardPage beim Start als ?page=shipments&kpi=… liest.
+   Der zugängliche Name entsteht aus dem sichtbaren Text (Bezeichnung, Zahl, Kontext) plus „Sendungen
+   anzeigen"; der Pfeil ist Schmuck. Keine Rolle `button`: die Karte navigiert. */
+function KennzahlKarte({ kpi, wert, kontext, note, onOpen }) {
+  const href = useHref(`/dashboard?page=shipments&kpi=${kpi.key}`);
+  const klick = (e) => {
+    if (!onOpen || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    onOpen(kpi.key);
+  };
+  return (
+    <a className={`ov-kpi ov-kpi--${kpi.cls}`} href={href} onClick={klick} data-kpi={kpi.key}>
+      <span className="ov-kpi-label">
+        <span className="ov-kpi-label-text">{kpi.label}</span>
+        <span className="ov-kpi-pfeil"><Icon n="arrowRight" s={16} /></span>
+      </span>
+      <span className="ov-kpi-value">{wert}</span>
+      <span className="ov-kpi-context">
+        {kontext}
+        {note && <span className="ov-kpi-note"><span className="sr-only">, </span>{note}</span>}
+        <span className="sr-only"> – {KPI_TEXT.openSuffix}</span>
+      </span>
+    </a>
+  );
+}
+
 // `kpisReady` sagt: „die Sendungen wurden mindestens EINMAL erfolgreich geladen".
 // Nur dann darf eine Zahl (auch die 0) stehen — eine 0 ist sonst nicht von einem
 // Ladefehler zu unterscheiden und behauptet fälschlich „Sie haben keine Sendungen".
@@ -79,6 +110,8 @@ export function Overview({
   // Paket F: der Buchungsrahmen (GET /kunde/credit) — null, solange nichts geladen ist.
   credit = null,
   onNewShipment, onAllShipments, onAllInvoices, onProfile, onNotificationNav,
+  // E1–E4 (2026-11-06): Klick auf eine Kennzahlkarte → „Sendungen" mit genau ihrem Filter.
+  onOpenKpi = null,
   // G1/D7: Navigation in die Lagerbereiche (page-Wert, Filter) — derselbe Weg wie die Seitenleiste.
   onNavigate = null,
   // G2 und G1/D7 (2026-10-27): die angebotenen Versanddienstleister und der Lagerstand — beides lädt DashboardPage;
@@ -89,17 +122,15 @@ export function Overview({
 }) {
   const navigate = useNavigate();
 
-  // KPI-Quelle (Phase 1 Betriebsreife): Seit die Sendungsliste paginiert geladen wird,
-  // zählt das SERVERSEITIGE stats-Aggregat über alle Sendungen — computeKpis über die
-  // sichtbare Seite wäre bei mehr als einer Seite eine falsche Zahl. Fehlt stats (altes
-  // Backend, unbrauchbare Antwort), fällt die Kennzahl auf computeKpis über die geladenen
-  // Zeilen zurück. kpisFromServerStats ist fail-safe und liefert dieselbe Ergebnisform.
-  const k = useMemo(
-    () => kpisFromServerStats(serverStats) || computeKpis(shipments),
-    [serverStats, shipments]
-  );
+  // KPI-Quelle: ausschließlich das SERVERSEITIGE stats-Aggregat über alle Sendungen
+  // (E1–E4, 2026-11-06) — dieselben Regeln wie die Filter, auf die die Karten führen. Die
+  // frühere Ersatzrechnung über die geladene Seite ist entfallen: Ohne gültiges Aggregat
+  // stehen „—" und „Noch nicht verfügbar", nie eine Zahl über nur 50 Sendungen.
+  const k = useMemo(() => kpisFromServerStats(serverStats), [serverStats]);
   const todayLabel = getTodayLabel();
   const ready = kpisReady === undefined ? !loading : kpisReady;
+  // Eine Zahl steht erst, wenn geladen wurde UND das Aggregat gültig ist.
+  const zahlen = ready && k !== null;
 
   // Persönliche Begrüßung: der Name kommt aus dem bestehenden Nutzerkontext —
   // dieselbe Quelle wie vor dem Redesign (Name, sonst Firmenname). Fehlt
@@ -128,22 +159,12 @@ export function Overview({
     else onNotificationNav("invoices", { invoice: target.invoice });
   };
 
-  // Zusatzangabe der ersten Kennzahl. `new24` ist eine echte Zahl aus computeKpis
-  // (Sendungen mit created_at innerhalb der letzten 24 Stunden) — kein Trend,
-  // keine Prozentangabe, kein Vergleichswert. Gesch\u00fctzte Leerzeichen halten \u201e3 neu\u201c und \u201e24 h\u201c zusammen.
-  const activeNote = k.hasCreatedAt && k.new24 > 0 ? `${k.new24}\u00a0neu in 24\u00a0h` : null;
-
-  // Vier Kennzahlen. Nur „Zugestellt" ist monatsbezogen — und diese Grenze zieht
-  // ausschließlich der Server (delivered_this_month, Geschäftszeitzone
-  // Europe/Berlin). Die übrigen drei zeigen den aktuellen Stand ohne Zeitraum.
-  // „Noch nicht abgeschlossen" beschreibt die erste Zahl neutral: isActive()
-  // zählt jeden offenen Business-Status, auch noch nicht übergebene Sendungen.
-  const KPIS = [
-    { key: "active",    label: "Aktive Sendungen", value: String(k.active),    context: "Noch nicht abgeschlossen",        note: activeNote },
-    { key: "transit",   label: "In Zustellung",    value: String(k.inTransit), context: "Auf dem Weg zum Empfänger",       note: null },
-    { key: "delivered", label: "Zugestellt",       value: String(k.delivered), context: "Im aktuellen Monat",              note: null },
-    { key: "delayed",   label: "Verzögert",        value: String(k.delayed),   context: "Über dem geplanten Liefertermin", note: null },
-  ];
+  // Zusatz der ersten Kennzahl (E3): „davon n neu (24 h)" — eine echte Teilmenge der aktiven
+  // Sendungen (Buchung in den letzten 24 Stunden), kein Trend, keine Prozentangabe. Bei 0 entfällt er.
+  // Geschützte Leerzeichen halten „3 neu" und „24 h" zusammen.
+  const activeNote = zahlen ? activeNewNote(k) : null;
+  // E1: Testbuchungen zählen mit; solange das Aggregat welche enthält, sagt die Übersicht es.
+  const testHinweis = zahlen && k.testBookings > 0;
 
   return (
     <>
@@ -170,28 +191,29 @@ export function Overview({
 
       <div className="page-body ov-page">
         {/* ── Betriebsüberblick: vier gleich breite Karten ──
-            Die Karten sind reine Informationsflächen: kein Cursor, kein Hover,
-            kein Symbol. Alle vier Zahlen stehen in derselben Farbe, auch
-            „Verzögert“ (Betreiberauftrag 2026-11-02; der Marker data-null für
-            dessen frühere Akzentfarbe entfällt). */}
+            Seit E1–E4 (2026-11-06) ist jede Karte ein Link auf „Sendungen" mit genau
+            ihrem Filter (auch bei 0). Alle vier Zahlen stehen in derselben Farbe, auch
+            „Verzögert“ (Betreiberauftrag 2026-11-02). Solange kein gültiges Aggregat
+            vorliegt, steht „—" statt einer Zahl: weder beim ersten Laden noch nach einem
+            Ladefehler darf eine 0 erscheinen, die wie ein echtes Ergebnis aussieht. */}
         <section className="ov-kpis" aria-label="Betriebsüberblick">
-          {KPIS.map((kpi) => (
-            <div className={`ov-kpi ov-kpi--${kpi.key}`} key={kpi.key}>
-              <span className="ov-kpi-label">{kpi.label}</span>
-              {/* Solange nichts erfolgreich geladen wurde, steht „—" statt einer
-                  Zahl: weder beim ersten Laden noch nach einem Ladefehler darf
-                  eine 0 erscheinen, die wie ein echtes Ergebnis aussieht. */}
-              <span className="ov-kpi-value">{ready ? kpi.value : "—"}</span>
-              <span className="ov-kpi-context">
-                {!ready ? (loading ? "Wird geladen…" : "Noch nicht verfügbar") : (
-                  <>
-                    {kpi.context}
-                    {kpi.note && <span className="ov-kpi-note"> · {kpi.note}</span>}
-                  </>
-                )}
-              </span>
-            </div>
+          {SHIPMENT_KPIS.map((kpi) => (
+            <KennzahlKarte
+              key={kpi.key}
+              kpi={kpi}
+              wert={zahlen ? String(k.byKey[kpi.key]) : "—"}
+              kontext={zahlen ? kpi.context : (loading ? "Wird geladen…" : "Noch nicht verfügbar")}
+              note={kpi.key === "active" ? activeNote : null}
+              onOpen={onOpenKpi}
+            />
           ))}
+          {/* E1: steht im Abstand unter den Karten (absolut, ohne Layoutsprung beim Nachladen). */}
+          {testHinweis && (
+            <p className="ov-kpi-hinweis">
+              <span className="ce-test-marke" aria-hidden="true">TEST</span>
+              {KPI_TEXT.testHint}
+            </p>
+          )}
         </section>
 
         {/* ── Operative Module ──

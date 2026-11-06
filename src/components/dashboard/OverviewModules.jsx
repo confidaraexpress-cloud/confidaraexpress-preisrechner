@@ -1,5 +1,5 @@
 import React from "react";
-import { StatusBadge } from "../ui/StatusBadge";
+import { ShipmentStatus } from "../ui/ShipmentStatus";
 import { EmptyState } from "../ui/StateView";
 import { money, dateDE } from "../../utils/formatters";
 import { resolveCarrier, resolvePublicCarrier } from "../../utils/carrierMap";
@@ -101,7 +101,8 @@ export function RecentShipments({ shipments, loading, onAll }) {
                     {empfaenger?.wohin && <span className="ov-list-secondary">{empfaenger.wohin}</span>}
                   </div>
                   <CarrierMarke raw={s.selected_carrier} />
-                  <span className="ov-list-status"><StatusBadge status={s.status} /></span>
+                  {/* E4 (2026-11-06): der Kundenstand des Servers wie in „Sendungen“ — mit TEST-Marke. */}
+                  <span className="ov-list-status"><ShipmentStatus shipment={s} /></span>
                   <span className="ov-list-num ce-num">{money(s.price_final)}</span>
                 </li>
               );

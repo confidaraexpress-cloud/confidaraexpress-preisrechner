@@ -1,7 +1,8 @@
 import React from "react";
-import { StatusBadge } from "../ui/StatusBadge";
+import { ShipmentStatus } from "../ui/ShipmentStatus";
 import { Werte } from "../ui/Werte";
-import { EmptyState, ErrorState } from "../ui/StateView";
+import { EmptyState, ErrorState, NoResultsState } from "../ui/StateView";
+import { KPI_TEXT, shipmentKpi, sendungenAnzahl } from "../../utils/kpis.mjs";
 import { money, dateDE, isoDayDE } from "../../utils/formatters";
 import { resolveCarrier, resolveCarrierName } from "../../utils/carrierMap";
 import { carrierLogoAnzeige } from "../../utils/carrierLogoView.mjs";
@@ -241,7 +242,28 @@ function ShipmentTrackingDetail({ tracking, loading, onRefresh }) {
 
 const SHIPMENTS_LOAD_ERROR_TITLE = "Die Sendungen konnten nicht geladen werden.";
 
-export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShipment, onCancellationRequested, hasMore, loadingMore, loadMoreError, onLoadMore, fokus = null }) {
+/* ── Kennzahlfilter (E1–E4, 2026-11-06) ──────────────────────────────────────
+   Eine Zeile unter dem Seitenkopf: „Filter: Verzögert", die Trefferzahl des SERVERS (filter.total — dieselbe
+   Zahl wie die Karte, alle Seiten zusammen), die Erklärung und „Filter entfernen". Die Leiste ist eine
+   Statusmeldung: nach dem Laden sagt sie Screenreadern Filter und Trefferzahl an. */
+function KennzahlFilterLeiste({ filter, onClear }) {
+  const kpi = shipmentKpi(filter.key);
+  const anzahl = filter.status === "ready" && Number.isFinite(filter.total) ? sendungenAnzahl(filter.total) : null;
+  return (
+    <div className="ce-filterleiste" data-kpi={filter.key}>
+      <p className="ce-filterleiste-text" role="status" aria-live="polite">
+        <span className="ce-filterleiste-name">Filter: {kpi.filter}</span>
+        {anzahl && <span className="ce-filterleiste-anzahl"> · {anzahl}</span>}
+        <span className="ce-filterleiste-erklaerung">{kpi.explain}</span>
+      </p>
+      <button type="button" className="btn-link ce-filterleiste-entfernen" onClick={onClear}>
+        {KPI_TEXT.removeFilter}
+      </button>
+    </div>
+  );
+}
+
+export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShipment, onCancellationRequested, hasMore, loadingMore, loadMoreError, onLoadMore, fokus = null, kpiFilter = null, onClearKpi = null }) {
   // Kopfsuche (Premium-Redesign): der gesuchte Eintrag steht hervorgehoben in der Liste — stand er nicht in den
   // geladenen Seiten, vorn. Zeile und Karte tragen data-suche-fokus; die sichtbare scrollt in den Blick.
   const anzeige = React.useMemo(() => listeMitFokus(shipments, fokus), [shipments, fokus]);
@@ -374,8 +396,28 @@ export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShi
             {notice.text}
           </div>
         )}
-        {loading ? (
+        {kpiFilter && <KennzahlFilterLeiste filter={kpiFilter} onClear={onClearKpi} />}
+        {kpiFilter && kpiFilter.status === "unavailable" ? (
+          // Fail-closed (altes Backend ohne Filter): keine ungefilterte Liste unter einem Filtertitel.
+          <NoResultsState
+            title={KPI_TEXT.unavailable}
+            action={<button type="button" className="btn btn-primary btn-sm" id="shipments-kpi-alle" onClick={onClearKpi}>{KPI_TEXT.showAll}</button>}
+          />
+        ) : loading ? (
           <div className="loading-center"><span className="spinner spinner-dark" /></div>
+        ) : kpiFilter && shipments.length === 0 && loadError ? (
+          // Ladefehler der gefilterten Liste: nie eine falsche 0, sondern ein sachlicher Fehlerzustand.
+          <ErrorState
+            title={KPI_TEXT.loadError}
+            action={<button type="button" className="btn btn-primary btn-sm" id="shipments-kpi-retry" onClick={onRetry}>Erneut versuchen</button>}
+            secondaryAction={<button type="button" className="btn btn-outline btn-sm" onClick={onClearKpi}>{KPI_TEXT.showAll}</button>}
+          />
+        ) : kpiFilter && shipments.length === 0 ? (
+          // Auch eine 0 ist anklickbar: die leere Liste bestätigt die Kennzahl und führt zurück zu allen Sendungen.
+          <NoResultsState
+            title={shipmentKpi(kpiFilter.key).empty}
+            action={<button type="button" className="btn btn-primary btn-sm" id="shipments-kpi-alle" onClick={onClearKpi}>{KPI_TEXT.showAll}</button>}
+          />
         ) : shipments.length === 0 && loadError ? (
           // F5: Ein Ladefehler ist kein Leerzustand. Der Kunde sieht, dass die Liste nicht geladen wurde, und kann
           // es erneut versuchen (derselbe Weg wie bei den Rechnungen).
@@ -453,7 +495,7 @@ export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShi
                         </td>
                         <td className="shipment-empfaenger-cell"><EmpfaengerZelle s={s} /></td>
                         <td className="shipment-versand-cell"><VersandZelle s={s} /></td>
-                        <td className="shipment-status"><StatusBadge status={s.status} /></td>
+                        <td className="shipment-status"><ShipmentStatus shipment={s} /></td>
                         <td className="shipment-price ce-num">{money(s.price_final)}</td>
                         <td className="ce-col-actions">
                           <ShipmentRowActions s={s} expanded={trackingId === s.id} onTrack={loadTracking} onDocuments={setDocumentsShipment} onCancel={openCancel} />
@@ -560,7 +602,7 @@ export function ShipmentsList({ shipments, loading, loadError, onRetry, onNewShi
                       {nums.orderConfirmationNumber
                         ? <span className="shipment-id-number mono ce-wert">{nums.orderConfirmationNumber}</span>
                         : <span className="shipment-id-fallback">{NO_ORDER_CONFIRMATION_TEXT}</span>}
-                      <span className="shipment-status"><StatusBadge status={s.status} /></span>
+                      <span className="shipment-status"><ShipmentStatus shipment={s} /></span>
                     </div>
                     {alleNummern ? (
                       <span className="shipment-id-sub">

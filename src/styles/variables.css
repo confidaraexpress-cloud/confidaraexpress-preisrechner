@@ -838,6 +838,12 @@
   --ce-pr-ed-karte-licht: linear-gradient(180deg, #ffffff 40%, #fbfcff);
   --ce-pr-ed-shadow-kennzahl: 0 1px 2px rgba(1, 27, 85, 0.05), 0 16px 34px -22px rgba(1, 27, 85, 0.26);
   --ce-pr-ed-shadow-kennzahl-klein: 0 1px 2px rgba(1, 27, 85, 0.05), 0 10px 22px -16px rgba(1, 27, 85, 0.2); /* Telefon */
+  /* Kennzahlkarten als Links (E1–E4, 2026-11-06): Signalkante beim Zeigen (≈ 35 %), ein Schatten eine Stufe tiefer und ein
+     leiser Ton beim Antippen. Die Filterleiste der Sendungsliste trägt dieselbe Signalfamilie leiser. */
+  --ce-pr-ed-kante-signal: rgba(0, 74, 252, 0.35);
+  --ce-pr-ed-shadow-kennzahl-hover: 0 1px 2px rgba(1, 27, 85, 0.06), 0 20px 40px -22px rgba(1, 27, 85, 0.34);
+  --ce-pr-ed-ton-signal: rgba(0, 74, 252, 0.04);
+  --ce-pr-ed-filter-kante: rgba(0, 74, 252, 0.18);
   /* Navy-Bühne „Ihre Versanddienstleister“: abgestuftes Navy, Kobaltlicht an der Vergleichsaktion (seit V4 gebündelt, mit
      weichem Auslauf), kühles Licht unten links, ein Azur-Horizont unter den Kacheln, Lichtkante oben, eine Route durch die
      Kacheln; Kacheln hell getönt mit feiner Lichtkante. */

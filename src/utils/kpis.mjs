@@ -1,132 +1,70 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Dashboard-KPI-Berechnung — reine, testbare Logik (keine React-/UI-Abhängigkeit)
+// Kennzahlkarten der Kundenübersicht — Anzeige der SERVERkennzahlen
 // ─────────────────────────────────────────────────────────────────────────────
-// Basiert auf dem Tracking-Modell, das das Backend (Phase 1/2) zusätzlich über
-// den bestehenden /kunde/shipments-Endpunkt liefert:
-//   tracking_status · tracking_status_text · last_tracked_at · delivered_at ·
-//   delivery_date_max
-// Der Tracking-Scheduler befüllt diese Felder serverseitig. Hier passiert
-// AUSSCHLIESSLICH Frontend-Aggregation — keine Backend-/API-/Businesslogik.
+// Betreiberentscheidungen E1–E4 vom 2026-11-06 (Canonical 1A „Kennzahlkarten: fachlich korrekt
+// und anklickbar"): Die vier Kennzahlen, ihre Filter und der Kundenstand jeder Zeile entstehen
+// ausschließlich im Backend (lib/shipmentKpis.js) — EINE Regelfassung für Zähler, Liste und
+// Zeilenkennzeichen. Dieses Modul rechnet nichts nach: Es liest das Aggregat `stats` aus
+// GET /kunde/shipments und hält die Texte der vier Karten und ihrer Filter an einer Stelle.
+//
+// Bis zum 2026-11-06 stand hier zusätzlich eine Ersatzrechnung über die geladenen Zeilen
+// (computeKpis). Sie konnte nur die erste Seite (50 Sendungen) sehen und zählte mit dem
+// Browsertag; seit es Filter je Kennzahl gibt, wäre sie eine zweite, abweichende Wahrheit.
+// Ohne gültiges Aggregat zeigen die Karten deshalb „—" und „Noch nicht verfügbar".
 //
 // Bewusst als .mjs: dieses Modul muss ohne die Vite-Pipeline direkt von Node
 // (node --test) importierbar sein. `.mjs` erzwingt ESM-Semantik unabhängig vom
 // (hier fehlenden) package.json "type"; Vite löst `.mjs` extensionslos zuerst auf.
 
-// ── Business-Status: „offener"/operativer Bestand (Backend-Vertrag) ──
-// Kennzeichnet eine Sendung, die gebucht bzw. in Bearbeitung ist. Endzustände
-// wie „delivered"/„cancelled"/„blocked"/„draft" sind bewusst NICHT enthalten.
-export const ACTIVE_BUSINESS_STATUSES = [
-  "approved", "active", "pending", "booked", "label_ready", "in_transit",
-];
+// ── Die vier Kennzahlen und ihre Filter (Reihenfolge der Karten) ──
+// key      Filter- und stats-Schlüssel des Servers (GET /kunde/shipments?kpi=…)
+// cls      Modifikator der Kartenklasse (ov-kpi--…), unverändert seit 2026-10 — stabile Anker für Stil und Tests
+// label    Titel der Karte (E3: „Unterwegs" statt „In Zustellung" — der Trackingstand reicht von
+//          der Abholung bis zur Zustellfahrt, eine Zustellfahrt ist nicht belegbar)
+// context  Kontextzeile der Karte
+// explain  Erklärung in der Filterleiste der Sendungsliste (genauer als die Kontextzeile, ohne Wiederholung des Namens)
+// filter   Name des Filters in der Sendungsliste („Filter: …")
+// empty    Leersatz der gefilterten Liste (auch eine 0 ist anklickbar)
+// /*#__PURE__*/: der öffentliche Preisrechner bindet dieses Modul über utils/businessDate.mjs (BUSINESS_TIME_ZONE) ein —
+// ohne die Markierung blieben die eingefrorenen Kundenbereichstexte in seinem Bündel stehen.
+export const SHIPMENT_KPIS = /*#__PURE__*/ Object.freeze([
+  /*#__PURE__*/ Object.freeze({ key: "active", cls: "active", label: "Aktive Sendungen", context: "Gebucht, noch nicht zugestellt",
+    filter: "Aktive Sendungen", explain: "Gebucht, noch nicht zugestellt", empty: "Aktuell keine aktiven Sendungen." }),
+  /*#__PURE__*/ Object.freeze({ key: "in_transit", cls: "transit", label: "Unterwegs", context: "Beim Versanddienstleister unterwegs",
+    filter: "Unterwegs", explain: "Beim Versanddienstleister unterwegs, noch nicht zugestellt", empty: "Aktuell keine Sendungen unterwegs." }),
+  /*#__PURE__*/ Object.freeze({ key: "delivered_this_month", cls: "delivered", label: "Zugestellt", context: "Im aktuellen Monat",
+    filter: "Zugestellt im aktuellen Monat", explain: "Zustellung in diesem Kalendermonat gemeldet", empty: "In diesem Monat wurde noch keine Sendung zugestellt." }),
+  /*#__PURE__*/ Object.freeze({ key: "delayed", cls: "delayed", label: "Verzögert", context: "Voraussichtlicher Liefertermin überschritten",
+    filter: "Verzögert", explain: "Voraussichtlicher Liefertermin überschritten, noch keine Zustellmeldung", empty: "Aktuell keine verzögerten Sendungen." }),
+]);
 
-// ── Stornierung: eine akzeptierte Anfrage beendet den operativen Bestand ──
-// `cancellation_status` stammt aus shipment_cancellation_requests und wird vom
-// Backend zusammen mit der Sendung ausgeliefert. Nur der Endzustand `accepted`
-// zählt: `pending`/`in_review` sind laufende Anfragen (die Sendung ist weiterhin
-// unterwegs), `rejected` bedeutet ausdrücklich „bleibt bestehen".
-//
-// Warum das hier zusätzlich zum Business-Status geprüft wird: der Betreiber
-// storniert bei JUMiNGO direkt, `shipments.status` wird dabei nicht zurück-
-// geschrieben. Ohne diese Prüfung bliebe eine akzeptiert stornierte Sendung
-// dauerhaft unter „Aktive Sendungen" stehen.
-const CANCELLED_BUSINESS_STATUSES = ["cancelled", "canceled"];
+export const SHIPMENT_KPI_KEYS = /*#__PURE__*/ Object.freeze(/*#__PURE__*/ SHIPMENT_KPIS.map((k) => k.key));
 
-// NULL-sicher normalisieren (getrimmt + klein) — dasselbe Muster wie beim
-// Trackingstatus, damit " Accepted " nicht durchrutscht.
-function normalizedLower(value) {
-  return typeof value === "string" && value.trim() ? value.trim().toLowerCase() : null;
+// Texte der Übersicht und der gefilterten Liste, die keiner einzelnen Karte gehören.
+export const KPI_TEXT = /*#__PURE__*/ Object.freeze({
+  // E1: Testbuchungen zählen mit — der Hinweis steht nur, solange das Aggregat welche enthält.
+  testHint: "Kennzahlen enthalten Testsendungen.",
+  showAll: "Alle Sendungen anzeigen",
+  removeFilter: "Filter entfernen",
+  // Altes Backend ohne Filter: lieber keine Liste als eine ungefilterte unter einem Filtertitel.
+  unavailable: "Dieser Filter ist derzeit nicht verfügbar.",
+  loadError: "Die gefilterten Sendungen konnten nicht geladen werden.",
+  openSuffix: "Sendungen anzeigen",
+});
+
+/** Ist `key` einer der vier Filter? Nur genau diese Werte gelangen in eine Anfrage. */
+export function isShipmentKpiKey(key) {
+  return typeof key === "string" && SHIPMENT_KPI_KEYS.includes(key);
 }
 
-export function isCancelled(s) {
-  if (normalizedLower(s?.cancellation_status) === "accepted") return true;
-  return CANCELLED_BUSINESS_STATUSES.includes(normalizedLower(s?.status));
+/** Die Beschreibung eines Filters oder null. */
+export function shipmentKpi(key) {
+  return SHIPMENT_KPIS.find((k) => k.key === key) || null;
 }
 
-// ── Tracking-Status (Backend-Vertrag, Phase 1/2) ──
-// Einzige Quelle der Wahrheit für „unterwegs"/„zugestellt". Der Business-Status
-// zieht ggf. verzögert nach; der Trackingstatus ist maßgeblich.
-export const TRACKING_IN_TRANSIT = "in_transit";
-export const TRACKING_DELIVERED  = "delivered";
-
-// NULL-sicher: normalisierter (getrimmt + klein) Trackingstatus oder null, falls
-// das Feld fehlt/kein String/leer ist. Verhindert Abstürze bei tracking_status = NULL.
-export function trackingStatusOf(s) {
-  const v = s?.tracking_status;
-  return typeof v === "string" && v.trim() ? v.trim().toLowerCase() : null;
-}
-
-// Zustellzustand laut Tracking. Wird für „Aktive Sendungen" und „Verzögert"
-// gebraucht (eine zugestellte Sendung ist weder aktiv noch verspätet) — NICHT
-// mehr für die Karte „Zugestellt": die zählt ausschließlich den aktuellen Monat
-// und stützt sich dafür auf das serverseitige Kennzeichen (siehe unten).
-export function isDelivered(s) {
-  return trackingStatusOf(s) === TRACKING_DELIVERED;
-}
-
-// KPI 3 – Zugestellt: ausschließlich das SERVERSEITIGE Monatskennzeichen.
-//
-// Die Monatsgrenze gehört an genau eine Stelle — den Server (Backend:
-// lib/calendarDate.js · businessMonthFlagSql). Er kennt die Geschäftszeitzone
-// Europe/Berlin und bestimmt Monatsanfang/-ende als echte UTC-Momente. Der
-// Browser kennt nur die Zeitzone des Nutzers; jede clientseitige Ableitung wäre
-// je nach Standort und Sommerzeit um Stunden bis einen Tag daneben.
-//
-// Deshalb bewusst KEIN Fallback: weder auf tracking_status noch auf
-// delivered_at, created_at, updated_at oder Browser-Monatsgrenzen. Fehlt das
-// Feld (älteres Backend), zählt die Sendung NICHT — ein sichtbar zu niedriger
-// Wert ist ehrlicher als eine falsch geratene Zahl. Genau `true` zählt; alles
-// andere (false/null/undefined) nicht.
-export function isDeliveredThisMonth(s) {
-  return s?.delivered_this_month === true;
-}
-
-// KPI 2 – In Zustellung: ausschließlich tracking_status === "in_transit".
-export function isInTransit(s) {
-  return trackingStatusOf(s) === TRACKING_IN_TRANSIT;
-}
-
-// KPI 1 – Aktive Sendungen (operativer Bestand): offener Business-Status, laut
-// Tracking noch NICHT zugestellt UND nicht storniert. Die Kombination sorgt
-// dafür, dass eine Sendung aus „aktiv" verschwindet, sobald der Scheduler sie
-// als zugestellt meldet — auch wenn der Business-Status (z. B. „booked") noch
-// nicht nachgezogen ist — und ebenso, sobald eine Stornierung akzeptiert wurde.
-// Kein Monatsfilter: eine Sendung aus dem Vormonat bleibt sichtbar, solange sie
-// operativ läuft.
-export function isActive(s) {
-  return ACTIVE_BUSINESS_STATUSES.includes(s?.status) && !isDelivered(s) && !isCancelled(s);
-}
-
-// Kalenderdatum als vergleichbare Ganzzahl YYYYMMDD aus der führenden
-// Datumskomponente von "YYYY-MM-DD" bzw. ISO-Datetime "YYYY-MM-DDTHH:…".
-// Bewusst kein Date-Parsing / keine Zeitzonen-Umrechnung (Datum-genau, konsistent
-// mit isoDayDE in formatters). null → unparsbar/leer.
-function dateInt(v) {
-  if (typeof v !== "string") return null;
-  const m = v.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
-  return m ? Number(m[1] + m[2] + m[3]) : null;
-}
-
-// Heutiges Kalenderdatum (lokal) als YYYYMMDD.
-function todayInt(now) {
-  const y  = now.getFullYear();
-  const mo = String(now.getMonth() + 1).padStart(2, "0");
-  const d  = String(now.getDate()).padStart(2, "0");
-  return Number(`${y}${mo}${d}`);
-}
-
-// KPI 4 – Verzögert (Phase 3, erstmals produktiv). Eine Sendung ist verzögert,
-// wenn ALLE drei Bedingungen gelten:
-//   1. tracking_status !== "delivered"  (noch nicht zugestellt)
-//   2. delivery_date_max existiert       (eine ETA ist bekannt)
-//   3. heutiges Datum > delivery_date_max (ETA-Tag liegt in der Vergangenheit)
-// Reiner ETA-gegen-heute-Vergleich auf Tagesbasis: keine Carrier-Freitexte, keine
-// Exception-Status. Fehlt die ETA oder ist die Sendung zugestellt → nie verzögert.
-// ETA = heute oder in der Zukunft → nicht verzögert (erst der Folgetag zählt).
-export function isDelayed(s, now) {
-  if (isDelivered(s)) return false;
-  const eta = dateInt(s?.delivery_date_max);
-  if (eta == null) return false;
-  return todayInt(now) > eta;
+/** „1 Sendung" / „n Sendungen" — für Trefferzahlen. */
+export function sendungenAnzahl(n) {
+  return `${n} ${n === 1 ? "Sendung" : "Sendungen"}`;
 }
 
 // ── Fachlicher Monat als Vergleichsschlüssel („YYYY-MM" in Europe/Berlin) ──
@@ -134,7 +72,7 @@ export function isDelayed(s, now) {
 // WICHTIG, damit hier keine zweite Wahrheit entsteht: dieser Schlüssel entscheidet
 // AUSSCHLIESSLICH, WANN erneut beim Server angefragt wird — niemals, WAS als
 // zugestellt zählt. Die Zählgrenze liegt allein im Backend
-// (lib/calendarDate.js · businessMonthFlagSql). Läge der Schlüssel um eine Stunde
+// (lib/calendarDate.js, lib/shipmentKpis.js). Läge der Schlüssel um eine Stunde
 // daneben, wäre die Folge lediglich ein etwas zu früher oder später Refetch, nie
 // eine falsche Zahl.
 //
@@ -151,65 +89,36 @@ export function businessMonthKey(now = new Date()) {
   return y && m ? `${y}-${m}` : null;
 }
 
-// ── Serverseitige Sendungsstatistik → KPI-Form (Phase 1 Betriebsreife) ──
-// Seit die Sendungsliste paginiert geladen wird (GET /kunde/shipments?limit=…), sieht der
-// Client nur noch eine Seite — computeKpis() über diese Teilmenge wäre eine falsche Zahl.
-// Der Server liefert deshalb im paginierten Modus ein `stats`-Aggregat über ALLE Zeilen,
-// dessen Prädikate exakt die Funktionen dieses Moduls spiegeln (Backend:
-// routes/kunde.js · SHIPMENT_STATS_SQL — Querverweis dort).
-//
-// Fail-safe, nicht fail-open: nur ein vollständig belegtes Aggregat (alle sechs Zähler
-// endliche Zahlen ≥ 0) wird übernommen; alles andere ergibt null, und der Aufrufer fällt
-// auf computeKpis über die geladenen Zeilen zurück — exakt das Verhalten vor diesem Paket
-// (relevant für den Deployment-Skew: neues Frontend + altes Backend liefert kein stats).
-// 0 ist überall ein gültiger Wert; geprüft wird mit Number.isFinite, nie über Falsy.
+// ── Serverseitige Sendungsstatistik → Kartenwerte ──
+// Der Server liefert im paginierten Abruf `stats` über ALLE Sendungen des Kontos.
+// Fail-safe, nicht fail-open: nur ein vollständig belegtes Aggregat (die sechs Zähler endliche
+// Zahlen ≥ 0, und „neu" nie größer als „aktiv") wird übernommen; alles andere ergibt null, und die
+// Karten zeigen „—" — eine geratene Zahl wäre schlimmer als keine. 0 ist überall ein gültiger
+// Wert; geprüft wird mit Number.isFinite, nie über Falsy. `test_bookings` (E1) ist optional:
+// fehlt es (älteres Backend), entfällt nur der Hinweis.
 export function kpisFromServerStats(stats) {
   if (!stats || typeof stats !== "object" || Array.isArray(stats)) return null;
   const lesen = (key) => {
-    const n = Number(stats[key]);
+    const v = stats[key];
+    if (v === null || v === undefined || v === "" || typeof v === "boolean") return null;   // Number(null) wäre 0
+    const n = Number(v);
     return Number.isFinite(n) && n >= 0 ? n : null;
   };
   const total = lesen("total"), active = lesen("active"), inTransit = lesen("in_transit");
   const delivered = lesen("delivered_this_month"), delayed = lesen("delayed"), new24 = lesen("new_24h");
   if ([total, active, inTransit, delivered, delayed, new24].some((v) => v === null)) return null;
-  // hasCreatedAt speist die Fußzeile „+n neu · 24 h": mit mindestens einer Sendung ist die
-  // Aussage belastbar (jede Zeile trägt serverseitig ein created_at) — leeres Konto wie bisher.
-  return { active, inTransit, delivered, delayed, new24, hasCreatedAt: total > 0 };
+  // „davon n neu (24 h)" ist eine Teilmenge der aktiven Sendungen (E3). Ein Aggregat, das mehr neue
+  // als aktive meldet, stammt von einem Backend vor dieser Regel — dann entfällt nur der Zusatz.
+  const tests = lesen("test_bookings");
+  return {
+    active, inTransit, delivered, delayed,
+    new24: new24 <= active ? new24 : null,
+    testBookings: tests,
+    byKey: { active, in_transit: inTransit, delivered_this_month: delivered, delayed },
+  };
 }
 
-// ── Aggregat für die vier KPI-Karten der Übersicht ──
-// `now` ist injizierbar (Default: aktueller Zeitpunkt) — nötig für deterministische
-// Tests der Verzögerungslogik.
-//
-// Nur „Zugestellt" ist monatsbezogen, und diese Grenze zieht ausschließlich der
-// Server. Die übrigen drei KPI sind reine Momentaufnahmen ohne Zeitraum: eine
-// Sendung aus dem Vormonat bleibt gezählt, solange sie aktiv, unterwegs oder
-// verspätet ist. Am Monatswechsel wird deshalb nichts künstlich genullt.
-export function computeKpis(shipments, now = new Date()) {
-  const list = Array.isArray(shipments) ? shipments : [];
-  const DAY = 86_400_000;
-
-  let active = 0, inTransit = 0, delivered = 0, delayed = 0, new24 = 0;
-  let hasCreatedAt = false;
-
-  for (const s of list) {
-    if (isActive(s))            active++;
-    if (isInTransit(s))         inTransit++;
-    if (isDeliveredThisMonth(s)) delivered++;
-    if (isDelayed(s, now))      delayed++;
-
-    // `new24` speist die Fußzeile der Karte „Aktive Sendungen" („+n neu · 24 h").
-    // Bewusst erhalten geblieben — es hat mit der entfernten Ausgabenkarte nichts
-    // zu tun und ist keine Geldgröße.
-    if (s?.created_at) {
-      const t = new Date(s.created_at).getTime();
-      if (!Number.isNaN(t)) {
-        hasCreatedAt = true;
-        const diff = now.getTime() - t;
-        if (diff >= 0 && diff <= DAY) new24++;
-      }
-    }
-  }
-
-  return { active, inTransit, delivered, delayed, new24, hasCreatedAt };
+/** Zusatz der Karte „Aktive Sendungen": „davon n neu (24 h)" — bei 0 oder ohne belastbare Zahl keiner. */
+export function activeNewNote(k) {
+  return k && Number.isFinite(k.new24) && k.new24 > 0 ? `davon ${k.new24} neu (24 h)` : null;
 }

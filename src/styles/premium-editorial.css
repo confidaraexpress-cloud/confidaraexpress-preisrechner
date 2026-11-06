@@ -424,8 +424,9 @@
    tragen dieselbe Karte in der ruhigen Fassung (Haarlinie, flacherer Schatten) — ein Kartensystem in zwei Gewichten. Ohne farbige Akzentstriche: Alle vier
    Zahlen stehen in demselben dunklen Navy in normaler Breite, auch „Verzögert“ bei jedem Wert (Betreiberauftrag
    2026-11-02; bis dahin über 0 in Bernstein-Gold). Die Bezeichnung steht klar in eigener Tinte, der Kontext im Nebentext. Ein Subgrid hält Bezeichnung, Zahl
-   und Kontext einer Reihe auf gemeinsamen Linien, auch wenn eine Bezeichnung umbricht. Die Karten sind Informationen, keine
-   Bedienelemente: kein Zeiger, keine Reaktion beim Zeigen. Berechnung und Bedeutung unverändert. */
+   und Kontext einer Reihe auf gemeinsamen Linien, auch wenn eine Bezeichnung umbricht. Seit E1–E4 (2026-11-06) ist jede Karte
+   ein Link auf ihre gefilterte Sendungsliste — Zustände unten („Kennzahlkarten als Links“): kleiner Pfeil, Kante und Schatten
+   beim Zeigen ohne Bewegung, sichtbarer Fokus. */
 :root[data-ce-bereich="kunde"] .ov-kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -696,7 +697,7 @@
   color: var(--ce-pr-signal-ink);
   font-weight: 650;
   letter-spacing: 0.01em;
-  line-height: 18px;
+  line-height: 1.4;
 }
 :root[data-ce-bereich="kunde"] .ov-page .ov-ntf-btn { align-items: flex-start; }
 :root[data-ce-bereich="kunde"] .ov-page .ov-ntf-time { padding-top: 2px; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
@@ -2293,4 +2294,133 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--ce-space-1) var(--ce-space-2);
+}
+
+/* ── Kennzahlkarten als Links (Betreiberentscheidungen E1–E4, 2026-11-06) ──
+   Jede Karte führt in „Sendungen“ mit genau ihrem Filter. Material, Maße, Typografie und Zahlenfarbe bleiben; neu sind nur:
+   ein kleiner Pfeil rechts in der Zeile der Bezeichnung (immer reserviert — nichts springt), beim Zeigen eine Signalkante mit
+   etwa 35 % Deckkraft und ein eine Stufe tieferer Schatten (eine Ebene über der Karte, nur Deckkraft wird übergeblendet — keine
+   Bewegung, keine Größenänderung) und ein sichtbarer Fokus im Fokuspaar des Systems. Auf Touchgeräten statt Hover ein kurzer
+   Ton beim Antippen. Die ganze Karte ist das Ziel (deutlich über 44 × 44 px). */
+:root[data-ce-bereich="kunde"] a.ov-kpi { color: inherit; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+:root[data-ce-bereich="kunde"] .ov-kpi-label { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ce-space-2); }
+:root[data-ce-bereich="kunde"] .ov-kpi-label-text { min-width: 0; overflow-wrap: break-word; hyphens: auto; }
+:root[data-ce-bereich="kunde"] .ov-kpi-pfeil {
+  display: inline-flex;
+  flex: none;
+  margin-top: 2px;
+  color: var(--ce-color-text-muted);
+  transition: color var(--ce-motion-fast) ease;
+}
+:root[data-ce-bereich="kunde"] .ov-kpi::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 1px solid var(--ce-pr-ed-kante-signal);
+  border-radius: inherit;
+  box-shadow: var(--ce-pr-ed-shadow-kennzahl-hover);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ce-motion-fast) ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  :root[data-ce-bereich="kunde"] a.ov-kpi:hover::after { opacity: 1; }
+  :root[data-ce-bereich="kunde"] a.ov-kpi:hover .ov-kpi-pfeil { color: var(--ce-pr-signal-ink); }
+}
+:root[data-ce-bereich="kunde"] a.ov-kpi:active::after { opacity: 1; background: var(--ce-pr-ed-ton-signal); }
+:root[data-ce-bereich="kunde"] a.ov-kpi:focus-visible {
+  outline: var(--ce-focus-ring);
+  outline-offset: var(--ce-focus-ring-offset);
+}
+:root[data-ce-bereich="kunde"] a.ov-kpi:focus-visible .ov-kpi-pfeil { color: var(--ce-pr-signal-ink); }
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ce-bereich="kunde"] .ov-kpi::after,
+  :root[data-ce-bereich="kunde"] .ov-kpi-pfeil { transition: none; }
+}
+@container ce-seite (width < 30rem) {
+  :root[data-ce-bereich="kunde"] .ov-kpi-pfeil svg { width: 14px; height: 14px; }
+}
+
+/* E1: „Kennzahlen enthalten Testsendungen.“ — eine ruhige Zeile im Abstand unter den Karten, absolut gesetzt: Sie erscheint erst
+   mit dem Aggregat und verschiebt dabei nichts (40 px Abstand zu den Modulen tragen sie). */
+:root[data-ce-bereich="kunde"] .ov-kpis { position: relative; }
+:root[data-ce-bereich="kunde"] .ov-kpi-hinweis {
+  position: absolute;
+  left: 0;
+  top: calc(100% + var(--ce-space-2));
+  display: flex;
+  align-items: center;
+  gap: var(--ce-space-2);
+  margin: 0;
+  font-size: var(--ce-text-micro-size);
+  line-height: 1.45;
+  color: var(--ce-color-text-secondary);
+}
+
+/* ── Kundenstand einer Sendung (E4) ──
+   TEST, der Stand und „Verzögert“ in einer Zeile, „Trackingstand nicht mehr aktuell“ darunter (bricht um, statt die Spalte zu
+   weiten). Die TEST-Marke ist gestrichelt umrandet: Sie kennzeichnet etwas Simuliertes, keinen Zustand — deshalb bewusst
+   keine Statusfläche. */
+:root[data-ce-bereich="kunde"] .ce-sendungsstand { display: inline-flex; flex-direction: column; align-items: flex-start; gap: var(--ce-space-1); max-width: 100%; }
+:root[data-ce-bereich="kunde"] .ce-sendungsstand-marken { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+:root[data-ce-bereich="kunde"] .ce-test-marke {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 6px;
+  border: 1px dashed var(--ce-color-text-muted);
+  border-radius: 6px;
+  font-size: var(--ce-text-badge-size);
+  line-height: 1.4;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  color: var(--ce-color-text-secondary);
+  white-space: nowrap;
+}
+:root[data-ce-bereich="kunde"] .ce-stand-hinweis {
+  font-size: var(--ce-text-micro-size);
+  line-height: 1.4;
+  font-weight: 400;
+  color: var(--ce-color-text-secondary);
+  white-space: normal;
+  min-width: 12ch;
+}
+
+/* ── Filterleiste der Sendungsliste (E1–E4) ──
+   Eine Zeile unter dem Seitenkopf: „Filter: Verzögert“ · Trefferzahl, darunter die Erklärung, rechts „Filter entfernen“. Leise
+   Signalfläche als Zustandsanzeige (kein Alarm); auf dem Telefon bricht „Filter entfernen“ in die zweite Zeile. */
+:root[data-ce-bereich="kunde"] .ce-filterleiste {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ce-space-2) var(--ce-space-4);
+  margin: 0 0 var(--ce-space-4);
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border: 1px solid var(--ce-pr-ed-filter-kante);
+  border-radius: var(--ce-radius-lg);
+  background: var(--ce-pr-signal-soft);
+}
+:root[data-ce-bereich="kunde"] .ce-filterleiste-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--ce-space-1); flex: 1 1 18rem; margin: 0; min-width: 0; }
+:root[data-ce-bereich="kunde"] .ce-filterleiste-name { font-weight: 600; color: var(--ce-pr-signal-ink); }
+:root[data-ce-bereich="kunde"] .ce-filterleiste-anzahl { color: var(--ce-color-text-primary); font-variant-numeric: tabular-nums lining-nums; }
+:root[data-ce-bereich="kunde"] .ce-filterleiste-erklaerung { flex-basis: 100%; font-size: var(--ce-text-micro-size); color: var(--ce-color-text-secondary); }
+:root[data-ce-bereich="kunde"] .ce-filterleiste-entfernen {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0;
+  color: var(--ce-pr-signal-ink);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Kontextzeilen der Kennzahlkarten (E3-Texte, 2026-11-06): Silbentrennung erst in der Telefonstufe. Darüber passt jedes Wort in
+   die Karte, und eine automatische Trennung wie „Versanddienstleis-ter“ oder „da-von“ läse sich unruhig; der Zusatz „davon n neu
+   (24 h)“ steht als eigene Zeile darunter. In der Telefonstufe trennt sie erst ab sechs Zeichen vor dem Trennstrich („Liefer-termin“,
+   nicht „Lie-fertermin“). Gilt nach der allgemeinen Trennregel (Abschnitt 22). */
+:root[data-ce-bereich="kunde"] .ov-kpi-context { hyphens: manual; }
+:root[data-ce-bereich="kunde"] .ov-kpi-note { display: block; margin-top: 2px; }
+@container ce-seite (width < 30rem) {
+  :root[data-ce-bereich="kunde"] .ov-kpi-context { hyphens: auto; hyphenate-limit-chars: 10 6 4; }
 }

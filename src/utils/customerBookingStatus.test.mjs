@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { BOOKING_IN_REVIEW_STATUS, BOOKING_IN_REVIEW_TEXT, isBookingInReview } from "./customerBookingStatus.mjs";
 import { canRequestCancellation } from "./customerCancellation.mjs";
-import { computeKpis, isActive } from "./kpis.mjs";
+import { customerShipmentStatus, isActiveShipment } from "./customerShipmentStatus.mjs";
 
 const hier = path.dirname(fileURLToPath(import.meta.url));
 const lies = (rel) => readFileSync(path.join(hier, rel), "utf8").replace(/\r\n/g, "\n");
@@ -34,8 +34,12 @@ test("2 — nur der exakte Serverwert gilt als Buchungsklärung", () => {
 test("3 — keine Stornierung und keine aktive Sendung — wie die Serverstatistik", () => {
   const s = { id: 7, status: "booking", cancellation_status: null, created_at: new Date().toISOString() };
   assert.equal(canRequestCancellation(s), false, "eine Buchungsklärung ist stornierbar");
-  assert.equal(isActive(s), false, "eine Buchungsklärung zählt als aktive Sendung");
-  assert.equal(computeKpis([s]).active, 0);
+  // Seit E1–E4 (2026-11-06) entscheidet allein der Server (lib/shipmentKpis.js): eine Buchungsklärung trägt
+  // customer_status „booking“ und is_active false — die Oberfläche zeigt „Buchungsstatus wird geprüft“.
+  const vomServer = { ...s, customer_status: "booking", is_active: false };
+  assert.equal(isActiveShipment(vomServer), false, "eine Buchungsklärung zählt als aktive Sendung");
+  assert.equal(customerShipmentStatus(vomServer).view.label, BOOKING_IN_REVIEW_TEXT.badge);
+  assert.equal(customerShipmentStatus(s).legacyStatus, "booking", "ohne Kundenstand: der Buchungsstatus wie bisher");
 });
 
 test("4 — Statusbadge: booking zeigt den neutralen Satz, kein Rohwert", () => {

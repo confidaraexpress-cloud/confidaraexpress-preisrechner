@@ -246,12 +246,11 @@ export function demoAngebote(body) {
     angebot("DEMO0000000000000000000000000001", "dhl", "DHL", "Paket", preis(6.9, 0.38), ausland ? [2, 4] : [1, 2],
       { pickupWindowAdjustable: true }),
     angebot("DEMO0000000000000000000000000002", "ups", "UPS", "Standardversand", preis(8.4, 0.42), ausland ? [2, 3] : [1, 2]),
-    // Die Referenzaussagen spiegeln die echten Gegenstücke: GLS/DPD über den Portalweg ohne Referenz, DHL Express mit
-    // belegtem Druck (Staging-Etiketten bis 17 Zeichen) — damit die Demo alle drei Sätze am Referenzfeld zeigt.
-    angebot("DEMO0000000000000000000000000003", "gls", "GLS", "BusinessParcel", preis(6.4, 0.33), ausland ? [2, 4] : [1, 3],
-      { referenceOnLabel: "not_supported" }),
-    angebot("DEMO0000000000000000000000000004", "dpd", "DPD", "Classic", preis(7.1, 0.35), ausland ? [2, 3] : [1, 2],
-      { referenceOnLabel: "not_supported" }),
+    // Die Referenzaussagen spiegeln die echten Gegenstücke: GLS/DPD übermitteln die Referenz seit dem Portal-
+    // Referenzauftrag (2026-11-06), ihr Druck ist nicht belegt (Standard „übermittelt"); DHL Express mit belegtem Druck
+    // (Staging-Etiketten bis 17 Zeichen). Kein echtes Angebot sagt mehr „erscheint nicht auf dem Versandlabel".
+    angebot("DEMO0000000000000000000000000003", "gls", "GLS", "BusinessParcel", preis(6.4, 0.33), ausland ? [2, 4] : [1, 3]),
+    angebot("DEMO0000000000000000000000000004", "dpd", "DPD", "Classic", preis(7.1, 0.35), ausland ? [2, 3] : [1, 2]),
     angebot("DEMO0000000000000000000000000005", "dhlexpress", "DHL Express", "Domestic Express 12:00", preis(24.5, 0.9), [1, 1],
       { deliveryProjection: { kind: "estimated", dateMin: isoDatum(zustellung(1)), dateMax: isoDatum(zustellung(1)), timeUntil: ausland ? null : "12:00" },
         referenceOnLabel: "printed", referenceLabelVerifiedLength: 17 }),

@@ -25,6 +25,15 @@ export const OFFER_ALREADY_USED_TEXT = "Dieses Angebot wurde bereits verwendet. 
 // TG22 Paket B — 400 INVALID_REFERENCE_NUMBER (Feld `referenceNumber`).
 export const REFERENCE_INVALID_TEXT =
   "Die Referenznummer enthält unzulässige Zeichen. Bitte verwenden Sie höchstens 35 gut lesbare Zeichen.";
+// Portal-Referenzauftrag (2026-11-06) — dieselbe 400 INVALID_REFERENCE_NUMBER mit `reason: "not_accepted_for_offer"`:
+// der gewählte Tarif hat die Referenz nicht unverändert übernommen. Nichts beauftragt; die Handlung ist die Referenz
+// (kürzen, ändern oder weglassen), nicht eine Neuberechnung — dasselbe Angebot bleibt buchbar.
+export const REFERENCE_NOT_ACCEPTED_TEXT =
+  "Diese Referenz konnte für den gewählten Tarif nicht unverändert übernommen werden. Es wurde nichts beauftragt. "
+  + "Bitte kürzen oder ändern Sie die Referenz oder buchen Sie ohne Referenz.";
+/** Der Satz am Referenzfeld zu einer 400 INVALID_REFERENCE_NUMBER — nach dem Grund der Antwort, sonst der allgemeine. */
+export const referenceRejectionText = (antwort) =>
+  (antwort && antwort.reason === "not_accepted_for_offer" ? REFERENCE_NOT_ACCEPTED_TEXT : REFERENCE_INVALID_TEXT);
 
 export const BOOK_FEHLER = {
   RATE_LIMITED: {

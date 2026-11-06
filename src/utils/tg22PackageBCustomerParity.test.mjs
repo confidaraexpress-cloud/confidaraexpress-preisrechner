@@ -21,6 +21,7 @@ import { normalizeApiError } from "./apiError.mjs";
 import { coverRepriceErrorText } from "./coverInsuranceView.mjs";
 import {
   mapBookRestError, fordertNeuberechnung, BOOK_FEHLER, OFFER_ALREADY_USED_TEXT, REFERENCE_INVALID_TEXT,
+  REFERENCE_NOT_ACCEPTED_TEXT, referenceRejectionText,
 } from "./bookingErrors.mjs";
 import { buildResumeInitialState, RESUME_PAST_DATE_NOTICE } from "./formDraftsView.mjs";
 
@@ -92,6 +93,18 @@ test("5 — Steuerzeichen, Zeilentrenner und Bidi-Zeichen verschwinden bei Einga
   const flow = draftBookingOptionsToFlow({ reference: { enabled: true, value: `R-1${z(0x202e)}${z(10)}2` } });
   assert.equal(flow.reference, "R-12");
   assert.ok(REFERENCE_INVALID_TEXT.length > 10);
+});
+
+test("5b — Portal-Referenzauftrag: „nicht unverändert übernommen\" hat einen eigenen Satz, alles andere bleibt der allgemeine", () => {
+  const antwort = { error: "x", code: "INVALID_REFERENCE_NUMBER", field: "referenceNumber", reason: "not_accepted_for_offer" };
+  assert.equal(referenceRejectionText(antwort), REFERENCE_NOT_ACCEPTED_TEXT);
+  for (const andere of [{ code: "INVALID_REFERENCE_NUMBER", field: "referenceNumber" }, { reason: "unbekannt" }, null, undefined]) {
+    assert.equal(referenceRejectionText(andere), REFERENCE_INVALID_TEXT, JSON.stringify(andere));
+  }
+  // Nichts beauftragt, die Handlung ist die Referenz — ohne Anbieter, ohne Feldnamen des Anbieters.
+  assert.match(REFERENCE_NOT_ACCEPTED_TEXT, /nichts beauftragt/);
+  assert.match(REFERENCE_NOT_ACCEPTED_TEXT, /ohne Referenz/);
+  assert.doesNotMatch(REFERENCE_NOT_ACCEPTED_TEXT, /transglobal|portal|purchase|dpd|gls|neu berechnen/i);
 });
 
 test("6 — der Quelltext des Helfers enthält kein unsichtbares Zeichen", async () => {

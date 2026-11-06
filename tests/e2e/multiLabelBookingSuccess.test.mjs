@@ -55,12 +55,21 @@ const BELEG_KNOEPFE = /^(Versandlabel|Abholetikett).* herunterladen$/;
 
 let server, browser;
 
-async function setupRoutes(page, { buchung = {}, protokoll, tarif = TARIFF, koerper } = {}) {
+// labelAntworten (Phase 1): Antworten des Labelabrufs der Reihe nach — "pdf", "notReady" (409 LABEL_NOT_READY) oder
+// "fehler" (503); danach immer die letzte. Ohne Angabe liefert der Abruf sofort die Datei.
+async function setupRoutes(page, { buchung = {}, protokoll, tarif = TARIFF, koerper, labelAntworten = null } = {}) {
+  let labelAbruf = 0;
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const p = new URL(route.request().url()).pathname;
     const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
     if (protokoll) protokoll.push(p);
 
+    if (labelAntworten && /^\/api\/shipments\/\d+\/label$/.test(p)) {
+      const art = labelAntworten[Math.min(labelAbruf, labelAntworten.length - 1)];
+      labelAbruf += 1;
+      if (art === "notReady") return json({ error: "Label noch nicht bereit", code: "LABEL_NOT_READY" }, 409);
+      if (art === "fehler") return json({ error: "Fehler" }, 503);
+    }
     if (/^\/api\/shipments\/\d+\/provider-documents\/[A-Z_]+\/\d+$/.test(p) || /^\/api\/shipments\/\d+\/label$/.test(p)) {
       return route.fulfill({ status: 200, headers: { "content-type": "application/pdf" }, body: PDF });
     }
@@ -133,27 +142,37 @@ test.after(async () => {
   }
 });
 
-test("1 — Mehrpaketsendung: vier Knöpfe, jeder lädt seinen eigenen Beleg", async () => {
+test("1 — Mehrpaketsendung: vier Zeilen, jede lädt ihren eigenen Beleg; die erste ist die Hauptaktion", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 }, acceptDownloads: true });
   const protokoll = [];
   await setupRoutes(page, { protokoll, buchung: { shippingDocuments: MEHRPAKET } });
   await bucheBisErfolg(page);
 
   const wrap = page.locator(".booking-success-wrap");
-  const knoepfe = wrap.getByRole("button", { name: BELEG_KNOEPFE });
+  // Phase 1 (Variante A): eine Dokumentliste — je Beleg eine Zeile mit Name, Stand und eigenem Knopf. Der sichtbare
+  // Knopftext heißt „Herunterladen", der zugängliche Name nennt den Beleg (vom Server).
+  const liste = wrap.locator(".bsx-dokliste");
+  const knoepfe = liste.getByRole("button", { name: BELEG_KNOEPFE });
   await knoepfe.first().waitFor({ timeout: 15000 });
-  assert.deepEqual((await knoepfe.allTextContents()).map((t) => t.trim()), [
+  assert.deepEqual(await knoepfe.evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), [
     "Versandlabel 1 von 3 herunterladen", "Versandlabel 2 von 3 herunterladen",
     "Versandlabel 3 von 3 herunterladen", "Abholetikett herunterladen",
   ]);
-  // Kein zusätzlicher Einzelknopf, der nur das erste Etikett lädt.
+  assert.deepEqual((await liste.locator(".bsx-dok-name").allInnerTexts()).map((t) => t.trim()).slice(0, 4),
+    ["Versandlabel 1 von 3", "Versandlabel 2 von 3", "Versandlabel 3 von 3", "Abholetikett"]);
+  // Die Sendungsnummer des Carriers steht an ihrer Zeile.
+  assert.match(await liste.locator(".bsx-dok").nth(1).innerText(), /Sendungsnummer\s+1Z999AA10000000002/);
+  // Die Hauptaktion lädt das erste Label; daneben der Sprung zur Dokumentliste.
+  assert.equal((await wrap.locator(".bsx-hauptaktion").innerText()).trim(), "Versandlabel 1 von 3 herunterladen");
+  assert.equal((await wrap.locator(".bsx-nebenaktion").innerText()).trim(), "Alle Dokumente anzeigen");
+  // Kein zusätzlicher Einzelknopf, der nur das erste Etikett über den Sammelpfad lädt.
   assert.equal(await wrap.getByRole("button", { name: "Label herunterladen" }).count(), 0);
   // Der Kunde erfährt, wo er die Belege dauerhaft findet.
   assert.match(await wrap.innerText(), /Meine Sendungen/);
 
   const [download] = await Promise.all([
     page.waitForEvent("download", { timeout: 15000 }),
-    wrap.getByRole("button", { name: "Versandlabel 2 von 3 herunterladen" }).click(),
+    liste.getByRole("button", { name: "Versandlabel 2 von 3 herunterladen" }).click(),
   ]);
   assert.ok(protokoll.includes(`/api/shipments/${CE_SHIPMENT_ID}/provider-documents/LABEL/1`),
     `Abrufe: ${protokoll.join(", ")}`);
@@ -161,36 +180,49 @@ test("1 — Mehrpaketsendung: vier Knöpfe, jeder lädt seinen eigenen Beleg", a
 
   const [abhol] = await Promise.all([
     page.waitForEvent("download", { timeout: 15000 }),
-    wrap.getByRole("button", { name: "Abholetikett herunterladen" }).click(),
+    liste.getByRole("button", { name: "Abholetikett herunterladen" }).click(),
   ]);
   assert.ok(protokoll.includes(`/api/shipments/${CE_SHIPMENT_ID}/provider-documents/COLLECTION_LABEL/0`));
   assert.equal(abhol.suggestedFilename(), "abholetikett-1.pdf");
+
+  const [erstes] = await Promise.all([
+    page.waitForEvent("download", { timeout: 15000 }),
+    wrap.locator(".bsx-hauptaktion").click(),
+  ]);
+  assert.ok(protokoll.includes(`/api/shipments/${CE_SHIPMENT_ID}/provider-documents/LABEL/0`), "die Hauptaktion lädt nicht das erste Label");
+  assert.equal(erstes.suggestedFilename(), "versandlabel-1.pdf");
   assert.ok(!protokoll.some((p) => /\/label$/.test(p)), "der Sammelpfad des ersten Etiketts wurde angesprochen");
   // Die Erfolgsmeldung steht unverändert, und nichts ist rot.
   assert.match(await page.locator(".booking-success-title").innerText(), /erfolgreich gebucht/);
-  assert.equal(await wrap.locator(".alert-error").count(), 0);
+  assert.equal(await wrap.locator(".alert-error, .bsx-dok--error").count(), 0);
   await page.close();
 });
 
-test("2 — ohne Versandbelege in der Antwort bleibt der bisherige Labelknopf", async () => {
+test("2 — ohne Versandbelege bleibt der bisherige Labelweg: „Versandlabel herunterladen“ über den Sendungshandle", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 }, acceptDownloads: true });
   const protokoll = [];
   await setupRoutes(page, { protokoll });
   await bucheBisErfolg(page);
 
   const wrap = page.locator(".booking-success-wrap");
-  const knopf = wrap.getByRole("button", { name: "Label herunterladen" });
-  await knopf.waitFor({ timeout: 15000 });
-  assert.equal(await wrap.getByRole("button", { name: BELEG_KNOEPFE }).count(), 0);
+  const haupt = wrap.locator(".bsx-hauptaktion");
+  await haupt.waitFor({ timeout: 15000 });
+  assert.equal((await haupt.innerText()).trim(), "Versandlabel herunterladen");
+  // Genau eine Labelzeile „Versandlabel", bereit, mit eigenem Knopf — kein Beleg der Ablage.
+  const zeilen = wrap.locator(".bsx-dokliste .bsx-dok");
+  assert.equal((await zeilen.first().locator(".bsx-dok-name").innerText()).trim(), "Versandlabel");
+  assert.match(await zeilen.first().innerText(), /Bereit/);
   assert.ok(!/Meine Sendungen“ →/.test(await wrap.innerText()), "der Mehrbeleghinweis steht ohne Belege da");
-  await Promise.all([page.waitForEvent("download", { timeout: 15000 }), knopf.click()]);
+  await Promise.all([page.waitForEvent("download", { timeout: 15000 }), haupt.click()]);
   assert.ok(protokoll.includes(`/api/shipments/${CE_SHIPMENT_ID}/label`), "der bisherige Labelweg wurde nicht genommen");
+  assert.ok(!protokoll.some((p) => p.includes("/provider-documents/")), "ein Belegpfad wurde angesprochen");
   await page.close();
 });
 
 test("3 — ein unsicherer Pfad wird nicht angeboten und nie angesprochen", async () => {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
-  await setupRoutes(page, { buchung: { shippingDocuments: [
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1100 }, acceptDownloads: true });
+  const protokoll = [];
+  await setupRoutes(page, { protokoll, buchung: { shippingDocuments: [
     { ...BELEG("LABEL", 0, "Versandlabel", null), downloadPath: "https://evil.example/a.pdf" },
   ] } });
   let fremd = 0;
@@ -198,34 +230,42 @@ test("3 — ein unsicherer Pfad wird nicht angeboten und nie angesprochen", asyn
   await bucheBisErfolg(page);
 
   const wrap = page.locator(".booking-success-wrap");
-  await wrap.getByRole("button", { name: "Label herunterladen" }).waitFor({ timeout: 15000 });
-  assert.equal(await wrap.getByRole("button", { name: BELEG_KNOEPFE }).count(), 0,
-    "ein fremder Pfad wurde als Downloadaktion angeboten");
+  const haupt = wrap.locator(".bsx-hauptaktion");
+  await haupt.waitFor({ timeout: 15000 });
+  // Der Beleg mit fremdem Host fällt weg; es bleibt der bisherige Labelweg über den Sendungshandle.
+  assert.equal(await wrap.locator(".bsx-dokliste .bsx-dok").filter({ hasText: "Versandlabel" }).count(), 1);
+  await Promise.all([page.waitForEvent("download", { timeout: 15000 }), haupt.click()]);
+  assert.ok(protokoll.includes(`/api/shipments/${CE_SHIPMENT_ID}/label`));
   assert.equal(fremd, 0, "der fremde Host wurde angesprochen");
   await page.close();
 });
 
-test("4 — auf 390 px stehen alle Belegknöpfe im Bild", async () => {
+test("4 — auf 390 px stehen Bestätigung, Hauptaktion und alle Belegknöpfe im Bild", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
   await setupRoutes(page, { buchung: { shippingDocuments: MEHRPAKET } });
   await bucheBisErfolg(page);
-  await page.locator(".booking-success-wrap").getByRole("button", { name: BELEG_KNOEPFE }).first().waitFor({ timeout: 15000 });
+  await page.locator(".bsx-dokliste").getByRole("button", { name: BELEG_KNOEPFE }).first().waitFor({ timeout: 15000 });
 
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.waitForTimeout(300);
   const messung = await page.evaluate(() => {
-    const knoepfe = [...document.querySelectorAll(".booking-success-wrap button")]
-      .filter((b) => /^(Versandlabel|Abholetikett).* herunterladen$/.test(b.textContent.trim()));
+    const kante = (el) => { const r = el.getBoundingClientRect(); return [r.left, r.right, r.top, r.bottom]; };
     return {
       fenster: window.innerWidth,
+      hoehe: window.innerHeight,
       querUeberlauf: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-      kanten: knoepfe.map((b) => { const r = b.getBoundingClientRect(); return [r.left, r.right]; }),
+      knoepfe: [...document.querySelectorAll(".bsx-dokliste button")].map(kante),
+      titel: kante(document.querySelector(".booking-success-title")),
+      haupt: kante(document.querySelector(".bsx-hauptaktion")),
     };
   });
-  assert.equal(messung.kanten.length, 4, "nicht jeder Beleg hat seinen Knopf");
-  for (const [links, rechts] of messung.kanten) {
+  assert.equal(messung.knoepfe.length, 4, "nicht jeder Beleg hat seinen Knopf");
+  for (const [links, rechts] of messung.knoepfe) {
     assert.ok(links >= 0 && rechts <= messung.fenster + 1, `Knopf außerhalb des Bildes: ${links}–${rechts}`);
   }
+  // Erster Bildschirm: Bestätigung und Hauptaktion.
+  assert.ok(messung.titel[3] <= messung.hoehe && messung.haupt[3] <= messung.hoehe, `nicht im ersten Bildschirm: ${JSON.stringify(messung)}`);
   assert.ok(messung.querUeberlauf <= 0, `horizontaler Überlauf: ${messung.querUeberlauf} px`);
   await page.close();
 });
@@ -319,5 +359,116 @@ test("6 — carrier_at_pickup: keine Label-Mail, Tracking-only bleibt; Erfolgsse
   });
   assert.ok(messung.links >= 0 && messung.rechts <= messung.fenster + 1, `Hinweis außerhalb des Bildes: ${JSON.stringify(messung)}`);
   assert.ok(messung.querUeberlauf <= 0, `horizontaler Überlauf: ${messung.querUeberlauf} px`);
+  await page.close();
+});
+
+// ══════════ Phase 1 (Betreiberentscheidung 2026-11-06, Canonical v2.117): Variante A und Labelhinweis ══════════
+// Der allgemeine Hinweis „Ihr Versandlabel wird erstellt …" entfällt in jedem Zustand; der Stand steht kurz an der
+// Labelzeile. Ein erst beim Anbieter abzurufendes Label heißt „Versandlabel abrufen", erst danach „herunterladen".
+
+test("7 — JUMiNGO abrufbar: „Versandlabel abrufen“ als Hauptaktion; nach dem Abruf „Versandlabel herunterladen“", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1100 }, acceptDownloads: true });
+  const protokoll = [];
+  await setupRoutes(page, { protokoll, buchung: { labelStatus: "pending", labelRetrievable: true } });
+  await bucheBisErfolg(page);
+  const wrap = page.locator(".booking-success-wrap");
+  const haupt = wrap.locator(".bsx-hauptaktion");
+  await haupt.waitFor({ timeout: 15000 });
+  assert.equal((await haupt.innerText()).trim(), "Versandlabel abrufen");
+  assert.match(await page.locator("#booking-label-status").innerText(), /Beim Versanddienstleister abrufbar/);
+  assert.doesNotMatch(await wrap.innerText(), /Ihr Versandlabel wird erstellt|Sobald es verfügbar ist/, "der allgemeine Labelhinweis steht noch da");
+  assert.equal(await wrap.getByRole("button", { name: /Versandlabel herunterladen/ }).count(), 0, "ein Download vor dem Abruf");
+  await Promise.all([page.waitForEvent("download", { timeout: 15000 }), haupt.click()]);
+  assert.ok(protokoll.includes(`/api/shipments/${CE_SHIPMENT_ID}/label`));
+  await page.waitForFunction(() => document.querySelector(".bsx-hauptaktion")?.innerText.trim() === "Versandlabel herunterladen", null, { timeout: 10000 });
+  assert.match(await wrap.locator(".bsx-dokliste .bsx-dok").first().innerText(), /Bereit/);
+  await page.close();
+});
+
+test("8 — „noch nicht bereit“ ist ein ruhiger Wartezustand, kein Fehler; der spätere Abruf gelingt", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1100 }, acceptDownloads: true });
+  await setupRoutes(page, { buchung: { labelStatus: "pending", labelRetrievable: true }, labelAntworten: ["notReady", "pdf"] });
+  await bucheBisErfolg(page);
+  const wrap = page.locator(".booking-success-wrap");
+  await wrap.locator(".bsx-hauptaktion").click();
+  const status = page.locator("#booking-label-status");
+  await page.waitForFunction(() => /Noch nicht bereit/.test(document.querySelector("#booking-label-status")?.innerText || ""), null, { timeout: 10000 });
+  assert.match(await status.innerText(), /Noch nicht bereit – bitte in einigen Minuten erneut versuchen/);
+  // Ruhig: keine rote Fläche, keine Alarmansage, die Buchung bleibt bestätigt.
+  assert.equal(await wrap.locator(".alert-error, .bsx-dok--error, [role='alert']").count(), 0, "ein Wartezustand erscheint als Fehler");
+  assert.match(await page.locator(".booking-success-title").innerText(), /erfolgreich gebucht/);
+  // Hauptaktion jetzt „Zu meinen Sendungen", daneben „Erneut abrufen".
+  assert.equal((await wrap.locator(".bsx-hauptaktion").innerText()).trim(), "Zu meinen Sendungen");
+  assert.equal((await wrap.locator(".bsx-nebenaktion").innerText()).trim(), "Erneut abrufen");
+  await Promise.all([page.waitForEvent("download", { timeout: 15000 }), wrap.locator(".bsx-nebenaktion").click()]);
+  await page.waitForFunction(() => document.querySelector(".bsx-hauptaktion")?.innerText.trim() === "Versandlabel herunterladen", null, { timeout: 10000 });
+  await page.close();
+});
+
+test("9 — ein echter Abruffehler bleibt als Fehler erkennbar — an der Labelzeile, mit „Erneut versuchen“", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+  await setupRoutes(page, { buchung: { labelStatus: "pending", labelRetrievable: true }, labelAntworten: ["fehler"] });
+  await bucheBisErfolg(page);
+  const wrap = page.locator(".booking-success-wrap");
+  await wrap.locator(".bsx-hauptaktion").click();
+  const fehlerZeile = wrap.locator(".bsx-dok--error");
+  await fehlerZeile.waitFor({ timeout: 10000 });
+  assert.equal(await fehlerZeile.locator("[role='alert']").count(), 1, "der Fehler wird nicht angesagt");
+  assert.match(await fehlerZeile.innerText(), /später erneut/);
+  assert.match(await fehlerZeile.locator("button").innerText(), /Erneut versuchen/);
+  assert.doesNotMatch(await fehlerZeile.innerText(), /Fehler$/, "Server-Freitext im Kundentext");
+  await page.close();
+});
+
+test("10 — Portal (DPD 124/137) ohne Abruf: Stand „Wird vom Versanddienstleister erstellt“, kein Download, kein Abruf", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+  await setupRoutes(page, { buchung: { labelStatus: "pending", labelRetrievable: false } });
+  await bucheBisErfolg(page);
+  const wrap = page.locator(".booking-success-wrap");
+  await page.locator("#booking-label-status").waitFor({ timeout: 15000 });
+  assert.match(await page.locator("#booking-label-status").innerText(), /Wird vom Versanddienstleister erstellt/);
+  assert.equal(await wrap.locator(".bsx-dokliste .bsx-dok").first().locator("button").count(), 0, "die Labelzeile bietet eine Aktion an");
+  assert.equal(await page.locator("#booking-label-retrieve").count(), 0);
+  assert.equal((await wrap.locator(".bsx-hauptaktion").innerText()).trim(), "Zu meinen Sendungen");
+  assert.doesNotMatch(await wrap.innerText(), /Ihr Versandlabel wird erstellt|Sobald es verfügbar ist/);
+  await page.close();
+});
+
+test("11 — Rahmen: keine Schrittleiste, genau eine h1, kein Seitentitel daneben; Neuladen zeigt „Buchung abgeschlossen“", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+  await setupRoutes(page, { buchung: { orderConfirmation: { number: "CE-AB26-01004" } } });
+  await bucheBisErfolg(page);
+  assert.equal(await page.locator(".steps-bar").count(), 0, "die Schrittleiste steht auf der Erfolgsseite");
+  const h1 = await page.locator("h1").allInnerTexts();
+  assert.deepEqual(h1.map((t) => t.trim()), ["Sendung erfolgreich gebucht!"], `h1: ${JSON.stringify(h1)}`);
+  assert.equal(await page.locator(".ce-page-header-title").count(), 0, "der Seitentitel „Sendung buchen“ konkurriert");
+  // Die Auftragsbestätigungsnummer steht oben mit Kopieren.
+  assert.match(await page.locator(".bsx-vorgang").innerText(), /Auftragsbestätigung[\s\S]*CE-AB26-01004/);
+  // Details sind aufklappbar und anfangs geschlossen.
+  const knopf = page.locator(".bsx-details-knopf");
+  assert.equal(await knopf.getAttribute("aria-expanded"), "false");
+  assert.equal(await page.locator("#bsx-details-inhalt").isVisible(), false);
+  await knopf.click();
+  assert.equal(await knopf.getAttribute("aria-expanded"), "true");
+  assert.match(await page.locator("#bsx-details-inhalt").innerText(), /Absender[\s\S]*Empfänger/);
+  // Neuladen: kein „Kein Angebot ausgewählt", sondern die ruhige Bestätigung — ohne erneute Buchung.
+  let buchungen = 0;
+  page.on("request", (r) => { if (r.url().includes("/api/jumingo/book")) buchungen += 1; });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.locator(".booking-abgeschlossen").waitFor({ timeout: 15000 });
+  const text = await page.locator(".booking-abgeschlossen").innerText();
+  assert.match(text, /Buchung abgeschlossen/);
+  assert.match(text, /CE-AB26-01004/);
+  assert.doesNotMatch(await page.locator("body").innerText(), /Kein Angebot ausgewählt/);
+  assert.equal(buchungen, 0, "das Neuladen hat erneut gebucht");
+  // Der Vermerk lebt nur im Verlaufseintrag (kein Web-Speicher) und trägt weder Angebot noch Anschrift noch Namen.
+  const lage = await page.evaluate(() => ({
+    verlauf: JSON.stringify(window.history.state),
+    sitzung: Object.keys(sessionStorage).filter((k) => /buchung|booking/i.test(k)),
+    lokal: Object.keys(localStorage).filter((k) => /buchung|booking/i.test(k)),
+  }));
+  assert.match(lage.verlauf, /buchungAbgeschlossen/);
+  assert.doesNotMatch(lage.verlauf, /tariff|Muster|Straße|max@example|Standardversand/, `Verlauf: ${lage.verlauf}`);
+  assert.deepEqual([lage.sitzung, lage.lokal], [[], []], "der Vermerk liegt in einem Browserspeicher");
   await page.close();
 });

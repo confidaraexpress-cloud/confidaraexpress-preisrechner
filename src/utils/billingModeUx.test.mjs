@@ -17,6 +17,7 @@ import {
   bookingBillingNotice, formatCalendarDayDe, periodRangeLabel, consolidatedPeriodView,
   consolidatedBillingAvailable, billingModeOptionSelectable, BILLING_MODE_UNAVAILABLE_CODE,
 } from "./billingModeView.mjs";
+import { bookingDocumentNotice, INVOICE_DELIVERY_MODE } from "./bookingSuccessView.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const src = (p) => fs.readFileSync(path.join(here, "..", p), "utf8");
@@ -146,8 +147,12 @@ test("(C3) die Buchungsseite entscheidet das nicht selbst", () => {
 });
 
 test("(C4) bei Sammelabrechnung steht kein Rechnungs-Zustellhinweis", () => {
-  // Er spricht über eine Rechnungs-E-Mail, die es zu dieser Sendung noch nicht gibt.
-  assert.ok(/!bookingBillingNotice\(booking\)\.consolidated && \(\(\) => \{/.test(bookingSrc));
+  // Er spricht über eine Rechnungs-E-Mail, die es zu dieser Sendung noch nicht gibt. Phase 1 (Variante A): EIN
+  // Belegphasen-Hinweis — bei Sammelabrechnung ist es deren Satz, nie ein Rechnungs-Zustellhinweis.
+  assert.ok(/hinweis = bookingDocumentNotice\(booking, invoiceDeliveryMode\)/.test(bookingSrc));
+  const sammel = bookingDocumentNotice({ billingMode: "consolidated_7d", invoicingPhase: "regular" }, INVOICE_DELIVERY_MODE.PRODUCTION);
+  assert.equal(sammel.text, bookingBillingNotice({ billingMode: "consolidated_7d" }).text);
+  assert.ok(!/PDF-Anhang|per E-Mail/.test(sammel.text), "Rechnungs-Zustellhinweis bei Sammelabrechnung");
 });
 
 // ── D. Profilkarte ───────────────────────────────────────────────────────────

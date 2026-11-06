@@ -128,8 +128,11 @@ test("7 — der Label-Download der Buchungsseite nutzt den CE-Handle aus der Buc
   // Die Sichtbarkeit des Buttons muss an derselben Bedingung hängen wie der
   // Handler — sonst zeigte er sich und täte beim Klick nichts.
   // TG-F5: der Labelknopf ist der Rückfall ohne Versandbelege. P2-01: ohne CE-Handle gar nichts, und
-  // der Knopf erscheint nur, wenn der vom Server genannte Labelstand einen Download trägt.
-  assert.match(successDocs, /: !booking\?\.ceShipmentId \? null : labelAnsicht\.mode === BOOKING_LABEL_MODE\.DOWNLOAD \? \(/);
+  // der Knopf erscheint nur, wenn der vom Server genannte Labelstand einen Download trägt. Phase 1 (Variante A):
+  // diese Entscheidung trifft der Labelplan (bookingSuccessActions.mjs) — ohne Handle keine Labelzeile und keine
+  // Label-Hauptaktion.
+  const plan = read("./bookingSuccessActions.mjs");
+  assert.match(plan, /if \(!booking \|\| booking\.ceShipmentId == null \|\| String\(booking\.ceShipmentId\)\.trim\(\) === ""\) \{\s*return \{ mode: null, rows: \[\], primary: sendungen, secondary: null \};/);
 });
 
 test("8 — auch das Abholzeitfenster adressiert über den CE-Handle", () => {

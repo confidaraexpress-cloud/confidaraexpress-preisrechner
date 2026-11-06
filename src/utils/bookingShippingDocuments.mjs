@@ -90,18 +90,28 @@ export function bookingShippingDocuments(booking) {
 // erzeugt, und einer Buchung, deren Etikett noch gar nicht in ConfidaraExpress liegt. Der Knopf
 // war eine Zusage ohne Beleg. Der Server nennt den Stand jetzt selbst (`labelStatus`, dieselbe
 // Definition wie Auftragsbestätigung und Betriebssicht):
-//   available  das Label liegt in ConfidaraExpress         → der Downloadknopf
-//   pending    es entsteht noch bzw. liegt beim Anbieter   → der Satz „wird erstellt"; nur mit
-//              `labelRetrievable` dazu der ausdrückliche Abruf (zweitrangig, nie „herunterladen")
-//   separate   außerhalb von ConfidaraExpress bereitgestellt → der Satz, kein Knopf
+//   available  das Label liegt in ConfidaraExpress         → „Versandlabel herunterladen"
+//   pending    es entsteht noch bzw. liegt beim Anbieter   → mit `labelRetrievable` „Versandlabel abrufen" (nie
+//              „herunterladen", bevor die Datei da ist), sonst nur der Stand an der Labelzeile
+//   separate   außerhalb von ConfidaraExpress bereitgestellt → der Stand, kein Knopf
 //   unknown    kein Beleg (auch jeder unbekannte Wert)     → ein neutraler Verweis, kein Knopf
 // Fehlt das Feld ganz, antwortet ein Server vor diesem Stand: dann bleibt es beim bisherigen Knopf.
+//
+// Phase 1 (Thema 4, Betreiberentscheidung 2026-11-06): Der allgemeine Hinweisblock „Ihr Versandlabel wird erstellt.
+// Sobald es verfügbar ist, …" entfällt in jedem Zustand. Was über das Label wahr ist, steht kurz als Stand der
+// Labelzeile in der Dokumentliste (utils/bookingSuccessActions.mjs).
 export const BOOKING_LABEL_TEXT = Object.freeze({
-  pending: "Ihr Versandlabel wird erstellt. Sobald es verfügbar ist, können Sie es in Ihrem ConfidaraExpress-Konto abrufen.",
+  // Stand der Labelzeile je Zustand.
+  retrievable: "Beim Versanddienstleister abrufbar",
+  pending: "Wird vom Versanddienstleister erstellt",
   separate: "Das Versandlabel wurde Ihnen gesondert bereitgestellt.",
   carrierAtPickup: "Das Versandlabel wird bei der Abholung am Paket angebracht. Sie müssen kein Versandlabel ausdrucken.",
-  unknown: "Den aktuellen Stand Ihres Versandlabels finden Sie jederzeit unter „Meine Sendungen“ → „Dokumente“.",
-  retrieve: "Versandlabel jetzt abrufen",
+  unknown: "Den aktuellen Stand finden Sie jederzeit unter „Meine Sendungen“ → „Dokumente“.",
+  // 409 LABEL_NOT_READY beim Abruf: ein normaler Wartezustand, ruhig und nie rot.
+  notReady: "Noch nicht bereit – bitte in einigen Minuten erneut versuchen.",
+  // Aktionen.
+  download: "Versandlabel herunterladen",
+  retrieve: "Versandlabel abrufen",
   retrieving: "Versandlabel wird abgerufen …",
 });
 
@@ -122,7 +132,9 @@ export function bookingLabelView(booking) {
   if (!Object.prototype.hasOwnProperty.call(b, "labelStatus")) return { mode: M.DOWNLOAD, retrievable: false, text: null };
   switch (b.labelStatus) {
     case "available": return { mode: M.DOWNLOAD, retrievable: false, text: null };
-    case "pending":   return { mode: M.PENDING, retrievable: b.labelRetrievable === true, text: BOOKING_LABEL_TEXT.pending };
+    case "pending":   return b.labelRetrievable === true
+      ? { mode: M.PENDING, retrievable: true, text: BOOKING_LABEL_TEXT.retrievable }
+      : { mode: M.PENDING, retrievable: false, text: BOOKING_LABEL_TEXT.pending };
     case "separate":  return { mode: M.SEPARATE, retrievable: false, text: BOOKING_LABEL_TEXT.separate };
     case "carrier_at_pickup": return { mode: M.CARRIER_AT_PICKUP, retrievable: false, text: BOOKING_LABEL_TEXT.carrierAtPickup };
     default:          return { mode: M.UNKNOWN, retrievable: false, text: BOOKING_LABEL_TEXT.unknown };

@@ -112,12 +112,12 @@ test("8 der Knopf erscheint NUR, wenn die Buchungsantwort eine Bestätigung meld
   );
 });
 
-test("9 der Erfolgsbildschirm nennt die Nummer im Knopftext", () => {
-  // Premium-Redesign B9: die Nummer bricht als Einheit um (.ce-wert), der Knopftext bleibt derselbe. Die
-  // Beschriftung steht in EINEM Element: der Knopf ist ein Flex-Container, sonst würden Text und Nummer zu
-  // getrennten Spalten.
-  assert.ok(/<span>Auftragsbestätigung <span className="ce-wert">\{orderConfirmationNumberOf\(booking\)\}<\/span> herunterladen<\/span>/.test(docsSrc),
-    "die Nummer steht nicht im Knopf");
+test("9 der Erfolgsbildschirm nennt die Nummer an der Dokumentzeile und im Knopfnamen", () => {
+  // Phase 1 (Variante A): die Dokumentliste zeigt je Zeile Name, Nummer und Stand; die Nummer bricht als Einheit um
+  // (.ce-wert). Der Knopf heißt sichtbar „Herunterladen", sein zugänglicher Name nennt Beleg und Nummer.
+  assert.ok(/<DokumentZeile key="ab" name=\{D\.orderConfirmation\} nummer=\{abNummer\}/.test(docsSrc), "die Nummer steht nicht an der Zeile");
+  assert.ok(/<span className="ce-wert bsx-dok-nummer">\{nummer\}<\/span>/.test(docsSrc), "die Nummer bricht nicht als Einheit um");
+  assert.ok(docsSrc.includes("ariaLabel: `Auftragsbestätigung ${abNummer} herunterladen`"), "der Knopfname nennt die Nummer nicht");
 });
 
 test("10 401/403 erzeugen keine eigene Meldung (zentraler Redirect)", () => {
@@ -129,8 +129,8 @@ test("10 401/403 erzeugen keine eigene Meldung (zentraler Redirect)", () => {
 
 test("11 die Auftragsbestätigung steht VOR dem Lieferschein", () => {
   // Sie betrifft jede Buchung, der Lieferschein nur Konten mit Lagerbezug.
-  const oc = docsCode.indexOf("onClick={handleDownloadOrderConfirmation}");
-  const dn = docsCode.indexOf("onClick={handleDownloadDeliveryNote}");
+  const oc = docsCode.indexOf("onClick: docs.handleDownloadOrderConfirmation");
+  const dn = docsCode.indexOf("onClick: docs.handleDownloadDeliveryNote");
   assert.ok(oc > 0 && dn > 0, "beide Knöpfe müssen existieren");
   assert.ok(oc < dn, "der Lieferschein steht vor der Auftragsbestätigung");
 });

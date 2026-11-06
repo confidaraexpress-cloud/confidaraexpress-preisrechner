@@ -26,6 +26,7 @@ import {
   OFFER_DIMENSIONS_UNVERIFIED_TEXT, OFFER_AREA_SURCHARGE_TEXT, OFFER_BLOCKED_FALLBACK,
 } from "./offerIdentity.mjs";
 import { bookingLabelView, BOOKING_LABEL_MODE, BOOKING_LABEL_TEXT } from "./bookingShippingDocuments.mjs";
+import { bookingSuccessLabelPlan, SUCCESS_ACTION } from "./bookingSuccessActions.mjs";
 import { documentRetrievePath, documentDownloadPath, documentViewState, DOC_STATUS, DOCUMENTS_TEXT } from "./shipmentDocumentsView.mjs";
 import { DELIVERY_PROJECTION_TEXT } from "./deliveryProjectionView.mjs";
 
@@ -187,10 +188,11 @@ test("F6 — Paketshop-Finder: Abgabe + kontrollierter Suchcode, keine zusätzli
 test("F7 — P2-01: der Erfolgsbildschirm bietet nur bei `available` einen Download an", () => {
   const M = BOOKING_LABEL_MODE;
   assert.deepEqual(bookingLabelView({ labelStatus: "available" }), { mode: M.DOWNLOAD, retrievable: false, text: null });
+  // Phase 1 (Thema 4): der Stand steht kurz an der Labelzeile — „abrufbar" und „wird erstellt" sind zwei Stände.
   assert.deepEqual(bookingLabelView({ labelStatus: "pending", labelRetrievable: false }),
     { mode: M.PENDING, retrievable: false, text: BOOKING_LABEL_TEXT.pending });
   assert.deepEqual(bookingLabelView({ labelStatus: "pending", labelRetrievable: true }),
-    { mode: M.PENDING, retrievable: true, text: BOOKING_LABEL_TEXT.pending });
+    { mode: M.PENDING, retrievable: true, text: BOOKING_LABEL_TEXT.retrievable });
   assert.deepEqual(bookingLabelView({ labelStatus: "separate", labelRetrievable: true }),
     { mode: M.SEPARATE, retrievable: false, text: BOOKING_LABEL_TEXT.separate });
   for (const unbekannt of ["unknown", null, "", "ready", 1, "AVAILABLE"]) {
@@ -199,21 +201,38 @@ test("F7 — P2-01: der Erfolgsbildschirm bietet nur bei `available` einen Downl
   }
   // Ein Server VOR diesem Stand nennt gar keinen Labelstand: dann bleibt es beim bisherigen Knopf.
   assert.equal(bookingLabelView({ success: true }).mode, M.DOWNLOAD);
-  assert.equal(BOOKING_LABEL_TEXT.pending,
-    "Ihr Versandlabel wird erstellt. Sobald es verfügbar ist, können Sie es in Ihrem ConfidaraExpress-Konto abrufen.");
+  // Der allgemeine Hinweissatz ist in jedem Zustand entfallen (Betreiberentscheidung 2026-11-06).
+  assert.equal(BOOKING_LABEL_TEXT.pending, "Wird vom Versanddienstleister erstellt");
+  assert.equal(BOOKING_LABEL_TEXT.retrievable, "Beim Versanddienstleister abrufbar");
+  for (const t of Object.values(BOOKING_LABEL_TEXT)) assert.doesNotMatch(t, /Sobald es verfügbar ist/, t);
   assert.doesNotMatch(BOOKING_LABEL_TEXT.retrieve, /herunterladen/i, "der Abruf gibt sich als Download aus");
+  assert.equal(BOOKING_LABEL_TEXT.retrieve, "Versandlabel abrufen");
+  assert.equal(BOOKING_LABEL_TEXT.download, "Versandlabel herunterladen");
 });
 
-test("F8 — P2-01: die Erfolgskomponente zeigt ohne Download-Stand keinen „Label herunterladen“-Knopf", () => {
+test("F8 — P2-01: ohne Download-Stand kein Download — die Erfolgsseite folgt allein dem Labelplan", () => {
+  const A = SUCCESS_ACTION;
+  const sendung = { ceShipmentId: 7, orderConfirmation: { number: "CE-AB26-01001" } };
+  // Portal (nicht abrufbar), beim Fahrer, gesondert, unbekannt: keine Aktion an der Labelzeile, Hauptaktion „Zu meinen Sendungen".
+  for (const stand of [{ labelStatus: "pending", labelRetrievable: false }, { labelStatus: "carrier_at_pickup" },
+    { labelStatus: "separate" }, { labelStatus: "unknown" }]) {
+    const plan = bookingSuccessLabelPlan({ ...sendung, ...stand }, {}, { hasOrderConfirmation: true });
+    assert.equal(plan.rows[0].action, null, JSON.stringify(stand));
+    assert.equal(plan.primary.kind, A.SHIPMENTS, JSON.stringify(stand));
+    assert.doesNotMatch(plan.primary.text, /herunterladen/i);
+  }
+  // Abrufbar: Hauptaktion „Versandlabel abrufen" — erst nach erfolgreichem Abruf „herunterladen".
+  const abrufbar = { ...sendung, labelStatus: "pending", labelRetrievable: true };
+  assert.deepEqual([bookingSuccessLabelPlan(abrufbar).primary.kind, bookingSuccessLabelPlan(abrufbar).primary.text],
+    [A.RETRIEVE, "Versandlabel abrufen"]);
+  assert.deepEqual([bookingSuccessLabelPlan(abrufbar, { fetched: true }).primary.kind, bookingSuccessLabelPlan(abrufbar, { fetched: true }).primary.text],
+    [A.LABEL, "Versandlabel herunterladen"]);
+  // Vorhanden: „Versandlabel herunterladen" als Hauptaktion.
+  assert.equal(bookingSuccessLabelPlan({ ...sendung, labelStatus: "available" }).primary.kind, A.LABEL);
+  // Die Dokumentliste entscheidet keinen Labelstand selbst — sie rendert die Zeilen des Plans.
   const docs = lies("../components/booking/BookingSuccessDocuments.jsx");
-  // „Label herunterladen“ steht genau einmal — im Zweig BOOKING_LABEL_MODE.DOWNLOAD.
-  assert.equal(docs.split('"Label herunterladen"').length - 1, 1);
-  const download = docs.indexOf("labelAnsicht.mode === BOOKING_LABEL_MODE.DOWNLOAD ? (");
-  const knopf = docs.indexOf('"Label herunterladen"');
-  const sonst = docs.indexOf("labelAnsicht.text");
-  assert.ok(download > 0 && download < knopf && knopf < sonst, "der Downloadknopf hängt nicht am Labelstand");
-  // Der Abruf erscheint nur mit `retrievable` — und nie als primäre Aktion.
-  assert.match(docs, /\{labelAnsicht\.retrievable && \(\s*<button type="button" className="btn btn-outline/);
+  assert.match(docs, /for \(const r of plan\.rows\)/);
+  assert.ok(!/labelStatus|bookingLabelView/.test(docs.replace(/\/\/.*$/gm, "")), "die Dokumentliste liest den Labelstand selbst");
 });
 
 test("F9 — EXTRA: „abrufbar“ ist nicht „bereit“ — der Abruf ist eine eigene Aktion, nie ein Download", () => {

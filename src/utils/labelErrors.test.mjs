@@ -64,7 +64,11 @@ test("6 — Banner an beiden Kundenstellen sind Live-Regionen", () => {
   // Erfolgsdokumente-Baustein (wortgleich aus der Buchungsseite gezogen).
   const booking = strip(src("../components/booking/BookingSuccessDocuments.jsx"));
   assert.match(drawer, /\{downloadError && \(\s*<div className="alert alert-error mb-16" role="alert">/);
-  assert.match(booking, /\{labelError && <div className="alert alert-error mb-16" role="alert">/);
+  // Phase 1 (Variante A): der Fehler steht an der Zeile seines Dokuments — ein echter Fehler als Alarm-Region, Warten
+  // und Hinweise als höfliche Live-Region. „Noch nicht bereit" (LABEL_NOT_READY) ist ein Warten, kein Fehler.
+  assert.match(booking, /role=\{tone === ROW_TONE\.ERROR \? "alert" : undefined\}/);
+  assert.match(booking, /aria-live=\{tone === ROW_TONE\.ERROR \? undefined : "polite"\}/);
+  assert.match(booking, /if \(isLabelNotReady\(e\)\) setLabelNotReady\(true\);/);
   // Und die Liste selbst zeigt keinen verwaisten Downloadfehler mehr an.
   const shipments = strip(src("../components/dashboard/ShipmentsList.jsx"));
   assert.ok(!/labelError/.test(shipments), "die Liste trägt wieder einen eigenen Labelfehler");

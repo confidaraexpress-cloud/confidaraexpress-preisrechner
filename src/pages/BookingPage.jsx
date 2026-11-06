@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useOutletContext } from "react-router-dom";
 import { useDialog } from "../hooks/useDialog";
 import { useShippingFlow } from "../context/ShippingFlowContext";
 import { packageSummaryLine, packageSummaryLineTexts, buildPartyPayload } from "../utils/newShipmentForm.mjs";
@@ -106,6 +106,12 @@ import { carrierAppliesLabel } from "../utils/labelHandling.mjs";
 import { buildDraftBookingOptions } from "../utils/draftBookingOptions.mjs";
 import { showsExternalDeliveryNoteField, DELIVERY_NOTE_TEXT } from "../utils/profileView.mjs";
 import { BookingSuccessStep } from "../components/booking/BookingSuccessStep";
+// Phase 1 (Thema 6): Neuladen nach Abschluss — ein kleiner Vermerk im Navigationszustand statt des gebuchten
+// Angebots; keine Speichertechnik, kein erneuter Abruf, keine erneute Buchung.
+import {
+  completedBookingNavState, hasCompletedBookingState, readCompletedBookingState, BOOKING_COMPLETION_TEXT,
+} from "../utils/bookingCompletionMarker.mjs";
+import { orderConfirmationNumberOf } from "../utils/businessNumbers.mjs";
 import { VatModeToggle } from "../components/offers/VatModeToggle";
 import { normalizeVatMode, VAT_TEXT } from "../utils/vatDisplayView.mjs";
 import { CopyableNumber } from "../components/ui/CopyableNumber";
@@ -159,7 +165,8 @@ export default function BookingPage() {
         customs: flowShipment.customs,
       };
     }
-    return navState || null;
+    // Phase 1: der Vermerk einer abgeschlossenen Buchung ist kein Angebotszustand.
+    return navState && !hasCompletedBookingState(navState) ? navState : null;
   }, [navState, flowShipment]);
   // Der Erfolgsbildschirm lebt aus dem Stand zum Buchungszeitpunkt. `clearFlow()` leert den
   // laufenden Vorgang unmittelbar nach der Buchung; wurde diese Seite ohne location.state
@@ -580,6 +587,25 @@ export default function BookingPage() {
       carrierLabelAtPickup, effectiveLabelTrackingEmailEnabled, trackingEmailEnabled, trackingEmail, labelTrackingEmailEnabled, labelTrackingEmail]);
 
   const tariff = bookingData?.tariff;
+
+  // ── Phase 1 (Thema 6, Variante A): Erfolgsseite ohne konkurrierenden Seitenkopf ──────────────────────────────
+  // Auf Schritt 3 zeigt der Seitenkopf der App-Shell nur die Werkzeugzeile — die Bestätigung trägt die einzige h1.
+  // Der Kanal kommt aus dem Outlet-Kontext von DashboardLayout; ohne ihn (etwa außerhalb der Shell) bleibt alles wie
+  // bisher.
+  const shellKontext = useOutletContext();
+  const setKopfNurWerkzeuge = shellKontext && typeof shellKontext.setKopfNurWerkzeuge === "function"
+    ? shellKontext.setKopfNurWerkzeuge : null;
+  useEffect(() => {
+    if (!setKopfNurWerkzeuge) return undefined;
+    setKopfNurWerkzeuge(step === 3);
+    return () => setKopfNurWerkzeuge(false);
+  }, [step, setKopfNurWerkzeuge]);
+  // Neuladen nach dem Buchungserfolg: ohne Angebot, aber mit gültigem Vermerk dieses Kontos „Buchung abgeschlossen"
+  // statt des bereits gebuchten Angebots oder „Kein Angebot ausgewählt" — nur Anzeige, kein Abruf, keine Wiederholung.
+  const abgeschlosseneBuchung = useMemo(
+    () => (tariff ? null : readCompletedBookingState(navState, { userId: user?.id })),
+    [tariff, navState, user?.id],
+  );
   // TG22 Paket B: welche Labelformate DIESES Angebot zur Wahl stellt (leer = keine Auswahl, kein
   // labelFormat im /book) und in welchen Formaten es das Label ohnehin liefert.
   const labelFormatOptions = labelFormatOptionsOf(tariff);
@@ -1749,6 +1775,12 @@ export default function BookingPage() {
       // ausschließlich aus `booking` — Sendungs-/Geschäftsnummer, Label und
       // Rechnungshinweis bleiben davon unberührt sichtbar.
       clearFlow();
+      // Phase 1 (Thema 6): den Navigationszustand ersetzen — das gebuchte Angebot fällt heraus. Ein Neuladen zeigt
+      // dann „Buchung abgeschlossen" statt eines Buchungsformulars für ein bereits gebuchtes Angebot.
+      navigate(`${location.pathname}${location.search}`, {
+        replace: true,
+        state: completedBookingNavState({ userId: user?.id, orderConfirmationNumber: orderConfirmationNumberOf(d) }),
+      });
     } catch (e) {
       // Netzabbruch/Timeout: kein „Failed to fetch" mehr im Banner.
       // TG22 Paket B: ein Zeitlimit oder Verbindungsabbruch der FINALEN Buchung sagt nicht, ob
@@ -2134,6 +2166,26 @@ export default function BookingPage() {
   };
   const addrReady = addrVollstaendig("s") && addrVollstaendig("r");
 
+  if (!tariff && abgeschlosseneBuchung) return (
+    <div className="page-with-navbar booking-no-tariff">
+      <div className="booking-abgeschlossen" role="status">
+        <h2 className="booking-abgeschlossen-titel">{BOOKING_COMPLETION_TEXT.title}</h2>
+        <p className="booking-abgeschlossen-text">{BOOKING_COMPLETION_TEXT.lead}</p>
+        {abgeschlosseneBuchung.orderConfirmationNumber && (
+          <p className="booking-abgeschlossen-nummer">
+            {BOOKING_COMPLETION_TEXT.numberLabel} <span className="ce-wert">{abgeschlosseneBuchung.orderConfirmationNumber}</span>
+          </p>
+        )}
+        <div className="booking-abgeschlossen-aktionen">
+          <button className="btn btn-primary" onClick={() => navigate("/dashboard?page=shipments")}>{BOOKING_COMPLETION_TEXT.shipments}</button>
+          <button className="btn btn-outline" onClick={() => navigate("/calculator")}>
+            {BOOKING_COMPLETION_TEXT.newShipment}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   if (!tariff) return (
     <div className="page-with-navbar booking-no-tariff">
       <div className="text-center">
@@ -2217,6 +2269,9 @@ export default function BookingPage() {
         {/* Step-Indicator — ruhig und textbasiert (Redesign 2026-10): jeder Schritt trägt
             seine Nummer, ein erledigter Schritt ist an der Fläche UND für Screenreader am
             Zusatz „abgeschlossen" erkennbar; kein Häkchen-Symbol. */}
+        {/* Phase 1 (Variante A): auf der Erfolgsseite entfällt die Schrittleiste — die Bestätigung selbst ist der
+            Abschluss. In den Schritten 1 und 2 bleibt sie unverändert. */}
+        {step !== 3 && (
         <div className="steps-bar mb-24">
           {steps.map((s, i) => (
             <div key={i} className="step-item" aria-current={i + 1 === step ? "step" : undefined}>
@@ -2232,6 +2287,7 @@ export default function BookingPage() {
             </div>
           ))}
         </div>
+        )}
 
         {/* Permanente Live-Zusammenfassung (Schritt 1 + 2) — dieselbe Preisquelle
             wie Karten und Preiszusammenfassung (zentrales Price-View-Model).
@@ -2635,6 +2691,7 @@ export default function BookingPage() {
             navigate={navigate}
             clearFlow={clearFlow}
             vatMode={vatMode}
+            reference={referenceEnabled && typeof form.reference === "string" && form.reference.trim() ? form.reference.trim() : null}
           />
         )}
 

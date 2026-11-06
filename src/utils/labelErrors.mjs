@@ -34,6 +34,15 @@ const STATUS_TEXTE = {
 const brauchbarerText = (v) =>
   typeof v === "string" && v.trim().split(/\s+/).length >= 3 ? v.trim() : null;
 
+// Phase 1 (Thema 4): „noch nicht bereit" ist beim Labelabruf ein normaler Wartezustand, kein Fehler. Die
+// Erfolgsseite zeigt ihn deshalb ruhig an der Labelzeile statt als rote Fehlerfläche; Netz-, Server- und
+// Berechtigungsfehler bleiben Fehler. Erkannt am Code der Antwort (downloadLabel setzt status und code).
+export function isLabelNotReady(err) {
+  if (!err || typeof err !== "object") return false;
+  if (err.code === "LABEL_NOT_READY") return true;
+  return err.status === 409 && (err.code === null || err.code === undefined);
+}
+
 export function mapLabelError(status, body) {
   const code = body && typeof body.code === "string" ? body.code : null;
   if (code && CODE_TEXTE[code]) return CODE_TEXTE[code];

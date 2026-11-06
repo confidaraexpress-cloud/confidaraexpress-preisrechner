@@ -432,7 +432,7 @@ test("5 — Letzte Sendungen: Nummer/Datum, Empfänger, Carrier, Status, Preis �
   // Audit B.4 (2026-10-27): der Empfänger steht mit in der Zeile — aus recipient_address der Kundenliste
   // (utils/shipmentRecipientView.mjs), ohne Angabe „—“; der Carrier mit Logo (CarrierMarke).
   for (const teil of ["orderConfirmationNumber", "<CarrierMarke raw={s.selected_carrier} />", "dateDE(s.created_at)",
-    "<StatusBadge status={s.status} />", "money(s.price_final)", "shipmentRecipient(s)", 'empfaenger?.name || "—"']) {
+    "<ShipmentStatus shipment={s} />", "money(s.price_final)", "shipmentRecipient(s)", 'empfaenger?.name || "—"']) {
     assert.ok(block.includes(teil), `${teil} fehlt in der Zeile`);
   }
   // Die frühere Zeilenaktion führte zur ganzen Liste — dasselbe Ziel wie
@@ -517,9 +517,12 @@ test("12 — keine Zusicherungen ohne Beleg; keine Preisgarantie, keine Konformi
 });
 
 test("13 — Onboarding ist ruhiger Text: keine Symbole, keine dunklen Flächen, kein Wasserzeichen", () => {
-  for (const verboten of ["icon:", "<Icon", "pp-bento", "pp-flow", "pp-medal", "pp-trust-watermark", "signet-standard"]) {
+  for (const verboten of ["icon:", "pp-bento", "pp-flow", "pp-medal", "pp-trust-watermark", "signet-standard"]) {
     assert.ok(!code.includes(verboten), `${verboten} gehört nicht mehr in die Übersicht`);
   }
+  // Einziges Symbol der Übersicht: der dekorative Pfeil der Kennzahlkarten (E1–E4, 2026-11-06) — nie im Onboarding.
+  assert.equal((code.match(/<Icon\b/g) || []).length, 1, "nur der Pfeil der Kennzahlkarten");
+  assert.ok(code.indexOf("<Icon") < code.indexOf("export function Overview"), "das Symbol gehört allein zur Kennzahlkarte");
   // Schritte und Vorteile teilen sich EINE Grundregel (gruppierter Selektor).
   const r = cssBare.match(/\.ov-steps,\s*\.ov-facts \{([^}]*)\}/)?.[1];
   assert.ok(r, "die gemeinsame Grundregel von .ov-steps/.ov-facts fehlt");
@@ -612,9 +615,10 @@ test("17 — Daten, Routing und Zustände der Übersicht sind unverändert", () 
   // Keine neue API-Abfrage, kein Polling, keine neue Abhängigkeit.
   assert.ok(!/fetch\(|apiFetch|setInterval/.test(code), "die Übersicht darf keine eigenen Daten laden");
   assert.ok(!/lucide-react/.test(overview), "lucide-react ist im Projekt nicht zulässig");
-  assert.match(code, /kpisFromServerStats\(serverStats\) \|\| computeKpis\(shipments\)/, "die KPI-Berechnung wurde verändert");
+  // E1–E4 (2026-11-06): die Kennzahlen allein aus dem Serveraggregat, ohne Rückfall auf die geladene Seite.
+  assert.match(code, /const k = useMemo\(\(\) => kpisFromServerStats\(serverStats\), \[serverStats\]\);/, "die KPI-Berechnung wurde verändert");
+  assert.ok(!/computeKpis/.test(code), "die Ersatzrechnung ist zurück");
   assert.match(code, /notificationTarget\(n\)/, "das Ziel einer Meldung wird nicht mehr aus der bestehenden Zuordnung abgeleitet");
-  for (const t of ["Noch nicht abgeschlossen", "Auf dem Weg zum Empfänger", "Im aktuellen Monat", "Über dem geplanten Liefertermin"]) {
-    assert.ok(code.includes(t), `KPI-Kontextzeile „${t}“ wurde verändert`);
-  }
+  // Die Kontextzeilen stehen seit E3 an einer Stelle (utils/kpis.mjs); die Übersicht liest sie von dort.
+  assert.match(code, /kontext=\{zahlen \? kpi\.context : /, "die Kontextzeile kommt nicht mehr aus der Kennzahl");
 });

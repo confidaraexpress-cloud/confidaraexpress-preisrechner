@@ -17,8 +17,9 @@ import { ortBeispiel } from "./publicCalculatorView.mjs";
 import { postalCodeHint } from "./postalCode.mjs";
 import { vorladbareSeite } from "./vorladbareSeite.js";
 
+// Laufend = das Serverkennzeichen is_active derselben Regel wie die Karte „Aktive Sendungen“ (E1–E4, 2026-11-06).
 const sendung = (felder) => ({
-  id: 1, status: "in_transit", tracking_number: "1Z999AA10123456784", order_confirmation_number: "CE-AB26-00047",
+  id: 1, status: "label_ready", is_active: true, tracking_number: "1Z999AA10123456784", order_confirmation_number: "CE-AB26-00047",
   selected_carrier: "ups", recipient_address: { company: "Alpen Handels GmbH", postalCode: "1070", city: "Wien", country: "AT" },
   ...felder,
 });
@@ -26,10 +27,11 @@ const sendung = (felder) => ({
 test("1 — Schnellwahl: nur laufende Sendungen mit Trackingnummer, höchstens sechs, Werte aus den Listenfeldern", () => {
   const liste = [
     sendung({ id: 1 }),
-    sendung({ id: 2, status: "delivered" }),
+    sendung({ id: 2, is_active: false, customer_status: "delivered" }),
     sendung({ id: 3, tracking_number: "" }),
-    sendung({ id: 4, status: "cancelled" }),
+    sendung({ id: 4, is_active: false, customer_status: "cancelled" }),
     sendung({ id: 5, status: "booked", tracking_number: "  JD0146000045  ", order_confirmation_number: null, selected_carrier: 7 }),
+    sendung({ id: 6, is_active: undefined }),
   ];
   const auswahl = trackingQuickPick(liste);
   assert.deepEqual(auswahl.map((e) => e.id), [1, 5], "nur laufende Sendungen mit Nummer");

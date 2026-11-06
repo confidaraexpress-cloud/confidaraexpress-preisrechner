@@ -1,220 +1,112 @@
-// Tests für die Dashboard-KPI-Logik (vier Karten).
+// Tests für die Kennzahlkarten der Kundenübersicht (vier Karten) und ihre Filter.
+// Seit den Betreiberentscheidungen E1–E4 (2026-11-06) rechnet das Frontend keine Kennzahl mehr nach:
+// Zähler, Filter und Kundenstand jeder Zeile kommen aus EINER Regelfassung im Backend
+// (lib/shipmentKpis.js). Geprüft wird hier, dass dieses Modul nur noch Serverwerte liest — fail-safe —
+// und die Texte der vier Karten und Filter an genau einer Stelle hält.
 // Läuft ohne zusätzliche Abhängigkeit über Node's eingebauten Test-Runner:
 //   node --test src/utils/kpis.test.mjs   (bzw. `npm test`)
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  computeKpis, isActive, isInTransit, isDelivered, isDeliveredThisMonth, isDelayed, isCancelled,
-  businessMonthKey, TRACKING_IN_TRANSIT, TRACKING_DELIVERED,
+  SHIPMENT_KPIS, SHIPMENT_KPI_KEYS, KPI_TEXT, isShipmentKpiKey, shipmentKpi, sendungenAnzahl,
+  kpisFromServerStats, activeNewNote, businessMonthKey,
 } from "./kpis.mjs";
 
 const src = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
-// Fixer „heute": Montag, 6. Juli 2026, 12:00 lokal.
-const NOW = new Date("2026-07-06T12:00:00");
-const ETA_YESTERDAY = "2026-07-05";
-const ETA_TODAY     = "2026-07-06";
-const ETA_TOMORROW  = "2026-07-07";
-const ETA_FAR_PAST  = "2026-06-30";
+const STATS = { total: 22, active: 4, in_transit: 1, delivered_this_month: 3, delayed: 2, new_24h: 1, test_bookings: 2 };
 
-// ── KPI 2 · In Zustellung: nur tracking_status === "in_transit" ──────────────
-test("In Zustellung zählt nur tracking_status === 'in_transit'", () => {
-  assert.equal(isInTransit({ tracking_status: TRACKING_IN_TRANSIT }), true);
-  assert.equal(isInTransit({ tracking_status: "IN_TRANSIT" }), true, "case-insensitiv");
-  assert.equal(isInTransit({ tracking_status: " in_transit " }), true, "getrimmt");
-  assert.equal(isInTransit({ tracking_status: TRACKING_DELIVERED }), false);
-  assert.equal(isInTransit({ tracking_status: null }), false, "NULL zählt nicht");
-  assert.equal(isInTransit({ status: "in_transit" }), false, "Business-Status zählt NICHT");
-  assert.equal(isInTransit({}), false);
+// ── Die vier Karten und ihre Filter (E3) ───────────────────────────────────
+test("vier Karten in fester Reihenfolge — Schlüssel = Filter = stats-Felder des Servers", () => {
+  assert.deepEqual([...SHIPMENT_KPI_KEYS], ["active", "in_transit", "delivered_this_month", "delayed"]);
+  assert.deepEqual(SHIPMENT_KPIS.map((k) => k.label), ["Aktive Sendungen", "Unterwegs", "Zugestellt", "Verzögert"]);
+  assert.deepEqual(SHIPMENT_KPIS.map((k) => k.context), [
+    "Gebucht, noch nicht zugestellt",
+    "Beim Versanddienstleister unterwegs",
+    "Im aktuellen Monat",
+    "Voraussichtlicher Liefertermin überschritten",
+  ]);
+  assert.deepEqual(SHIPMENT_KPIS.map((k) => k.filter), ["Aktive Sendungen", "Unterwegs", "Zugestellt im aktuellen Monat", "Verzögert"]);
+  assert.equal(SHIPMENT_KPIS.find((k) => k.key === "delayed").empty, "Aktuell keine verzögerten Sendungen.");
+  // Die Filterleiste erklärt genauer als die Karte und wiederholt den Filternamen nicht.
+  assert.equal(SHIPMENT_KPIS.find((k) => k.key === "delayed").explain, "Voraussichtlicher Liefertermin überschritten, noch keine Zustellmeldung");
+  for (const k of SHIPMENT_KPIS) assert.ok(k.explain && k.explain !== k.filter, `${k.key}: Erklärung fehlt oder wiederholt den Namen`);
+  assert.ok(!/aktuellen Monat/i.test(SHIPMENT_KPIS.find((k) => k.key === "delivered_this_month").explain),
+    "„Zugestellt im aktuellen Monat“ · „Im aktuellen Monat“ wiederholte sich");
+  for (const k of SHIPMENT_KPIS) assert.ok(k.empty.endsWith("."), `${k.key}: Leersatz ist ein Satz`);
+  assert.ok(!SHIPMENT_KPIS.some((k) => k.label === "In Zustellung"), "„In Zustellung“ ist durch „Unterwegs“ ersetzt");
+  assert.ok(Object.isFrozen(SHIPMENT_KPIS) && SHIPMENT_KPIS.every(Object.isFrozen));
 });
 
-test("In Zustellung ist unabhängig vom Monat und vom Monatskennzeichen", () => {
-  // Eine Sendung aus dem Vormonat, die weiterhin unterwegs ist, zählt weiter.
-  const alt = { status: "booked", tracking_status: TRACKING_IN_TRANSIT, created_at: "2026-05-02", delivered_this_month: false };
-  assert.equal(isInTransit(alt), true);
-  assert.equal(computeKpis([alt], NOW).inTransit, 1, "kein Monatsfilter auf „In Zustellung“");
+test("nur die vier Schlüssel sind Filter — alles andere nie", () => {
+  for (const k of SHIPMENT_KPI_KEYS) assert.equal(isShipmentKpiKey(k), true);
+  for (const x of ["", "x", "ACTIVE", "transit", "delivered", "new_24h", "test_bookings", "total", null, undefined, 1, ["active"], {}]) {
+    assert.equal(isShipmentKpiKey(x), false, JSON.stringify(x));
+  }
+  assert.equal(shipmentKpi("delayed").label, "Verzögert");
+  assert.equal(shipmentKpi("x"), null);
 });
 
-// ── KPI 3 · Zugestellt: ausschließlich das serverseitige Monatskennzeichen ────
-test("Zugestellt zählt NUR delivered_this_month === true", () => {
-  assert.equal(isDeliveredThisMonth({ delivered_this_month: true }), true);
-  assert.equal(isDeliveredThisMonth({ delivered_this_month: false }), false);
-  assert.equal(isDeliveredThisMonth({ delivered_this_month: null }), false, "null zählt nicht");
-  assert.equal(isDeliveredThisMonth({}), false, "fehlendes Feld zählt nicht");
-  assert.equal(isDeliveredThisMonth(undefined), false);
-  // Kein „truthy"-Fehlgriff: nur der echte Boolean true zählt.
-  assert.equal(isDeliveredThisMonth({ delivered_this_month: "true" }), false, "String zählt nicht");
-  assert.equal(isDeliveredThisMonth({ delivered_this_month: 1 }), false, "Zahl zählt nicht");
+test("Trefferzahl: „1 Sendung“ / „n Sendungen“ mit geschütztem Leerzeichen", () => {
+  assert.equal(sendungenAnzahl(0), "0 Sendungen");
+  assert.equal(sendungenAnzahl(1), "1 Sendung");
+  assert.equal(sendungenAnzahl(12), "12 Sendungen");
 });
 
-test("tracking_status='delivered' allein zählt NICHT mehr für „Zugestellt“", () => {
-  // Der zentrale Verhaltenswechsel: früher hätte das mitgezählt (alle jemals
-  // zugestellten Sendungen), jetzt entscheidet allein die serverseitige Monatsgrenze.
-  const altZugestellt = { status: "booked", tracking_status: TRACKING_DELIVERED, delivered_this_month: false };
-  assert.equal(computeKpis([altZugestellt], NOW).delivered, 0);
-  const neuZugestellt = { status: "booked", tracking_status: TRACKING_DELIVERED, delivered_this_month: true };
-  assert.equal(computeKpis([neuZugestellt], NOW).delivered, 1);
+test("Texte: Testhinweis (E1), Filter entfernen, alle anzeigen, nicht verfügbar", () => {
+  assert.equal(KPI_TEXT.testHint, "Kennzahlen enthalten Testsendungen.");
+  assert.equal(KPI_TEXT.removeFilter, "Filter entfernen");
+  assert.equal(KPI_TEXT.showAll, "Alle Sendungen anzeigen");
+  assert.match(KPI_TEXT.unavailable, /nicht verfügbar/);
 });
 
-test("fehlendes Monatskennzeichen wird NICHT durch eine Ersatzrechnung gerettet", () => {
-  // Älteres Backend ohne das additive Feld: lieber sichtbar zu niedrig als geraten.
-  const ohneFeld = { status: "booked", tracking_status: TRACKING_DELIVERED, delivered_at: "2026-07-02T10:00:00Z" };
-  assert.equal(computeKpis([ohneFeld], NOW).delivered, 0);
-  // Und im Quelltext existiert auch wirklich kein solcher Rückfall.
+// ── Serveraggregat → Kartenwerte (fail-safe) ───────────────────────────────
+test("ein vollständiges Aggregat wird 1:1 übernommen, je Filterschlüssel abrufbar", () => {
+  const k = kpisFromServerStats(STATS);
+  assert.deepEqual(k, {
+    active: 4, inTransit: 1, delivered: 3, delayed: 2, new24: 1, testBookings: 2,
+    byKey: { active: 4, in_transit: 1, delivered_this_month: 3, delayed: 2 },
+  });
+  assert.deepEqual(kpisFromServerStats({ ...STATS, total: 0, active: 0, in_transit: 0, delivered_this_month: 0, delayed: 0, new_24h: 0, test_bookings: 0 }).byKey,
+    { active: 0, in_transit: 0, delivered_this_month: 0, delayed: 0 }, "0 ist überall ein gültiger Wert");
+});
+
+test("jedes unvollständige oder unplausible Aggregat ergibt null — keine geratene Zahl", () => {
+  for (const kaputt of [null, undefined, "stats", [1, 2], {}, { ...STATS, total: undefined }, { ...STATS, active: "viele" },
+    { ...STATS, delayed: -1 }, { ...STATS, in_transit: Infinity }, { ...STATS, new_24h: null }]) {
+    assert.equal(kpisFromServerStats(kaputt), null, JSON.stringify(kaputt));
+  }
+});
+
+test("„davon n neu (24 h)“ ist eine Teilmenge der aktiven — sonst entfällt nur der Zusatz", () => {
+  assert.equal(activeNewNote(kpisFromServerStats(STATS)), "davon 1 neu (24 h)");
+  assert.equal(activeNewNote(kpisFromServerStats({ ...STATS, new_24h: 0 })), null, "bei 0 entfällt der Zusatz");
+  const alt = kpisFromServerStats({ ...STATS, active: 3, new_24h: 4 });
+  assert.equal(alt.new24, null, "mehr neue als aktive: Aggregat vor E3");
+  assert.equal(alt.active, 3, "die Kennzahl selbst bleibt");
+  assert.equal(activeNewNote(alt), null);
+  assert.equal(activeNewNote(null), null);
+});
+
+test("test_bookings ist optional: ohne Feld fehlt nur der Testhinweis", () => {
+  const { test_bookings: _weg, ...ohne } = STATS;   // eslint-disable-line no-unused-vars
+  const k = kpisFromServerStats(ohne);
+  assert.equal(k.testBookings, null);
+  assert.equal(k.active, 4);
+});
+
+// ── Keine zweite Regelfassung im Frontend ──────────────────────────────────
+test("das Modul rechnet keine Kennzahl nach (keine Status-, Tracking-, ETA- oder Zeitlogik)", () => {
   const code = stripComments(src("./kpis.mjs"));
-  const fn = code.slice(code.indexOf("export function isDeliveredThisMonth"));
-  const koerper = fn.slice(0, fn.indexOf("}") + 1);
-  for (const verboten of ["delivered_at", "created_at", "updated_at", "getMonth", "tracking_status"]) {
-    assert.ok(!koerper.includes(verboten), `Fallback auf ${verboten} ist unzulässig`);
+  for (const verboten of ["computeKpis", "isActive", "isDelayed", "isInTransit", "tracking_status", "delivery_date_max",
+    "cancellation_status", "created_at", "ACTIVE_BUSINESS_STATUSES", "getTime()"]) {
+    assert.ok(!code.includes(verboten), `kpis.mjs enthält noch ${verboten}`);
   }
 });
 
-// isDelivered bleibt erhalten — es wird für „Aktiv"/„Verzögert" gebraucht.
-test("isDelivered bleibt als Trackingzustand erhalten (für Aktiv/Verzögert)", () => {
-  assert.equal(isDelivered({ tracking_status: TRACKING_DELIVERED }), true);
-  assert.equal(isDelivered({ tracking_status: " Delivered " }), true);
-  assert.equal(isDelivered({ tracking_status: null }), false);
-});
-
-// ── Stornierung ──────────────────────────────────────────────────────────────
-test("isCancelled: nur der Endzustand 'accepted' beendet den Bestand", () => {
-  assert.equal(isCancelled({ cancellation_status: "accepted" }), true);
-  assert.equal(isCancelled({ cancellation_status: "pending" }), false, "laufende Anfrage");
-  assert.equal(isCancelled({ cancellation_status: "in_review" }), false, "laufende Anfrage");
-  assert.equal(isCancelled({ cancellation_status: "rejected" }), false, "abgelehnt → bleibt bestehen");
-  assert.equal(isCancelled({ cancellation_status: null }), false);
-  assert.equal(isCancelled({}), false);
-});
-
-test("Stornostatus ist robust gegen Groß-/Kleinschreibung und Leerzeichen", () => {
-  for (const v of ["accepted", "ACCEPTED", "Accepted", " accepted ", "  AcCePtEd\t"]) {
-    assert.equal(isCancelled({ cancellation_status: v }), true, `„${v}“ muss als storniert gelten`);
-  }
-});
-
-test("Business-Status 'cancelled' und 'canceled' gelten als storniert", () => {
-  for (const v of ["cancelled", "canceled", "CANCELLED", " Canceled "]) {
-    assert.equal(isCancelled({ status: v }), true, `„${v}“ muss als storniert gelten`);
-  }
-});
-
-// ── KPI 1 · Aktive Sendungen ─────────────────────────────────────────────────
-test("Aktiv = offener Business-Status, nicht zugestellt, nicht storniert", () => {
-  assert.equal(isActive({ status: "booked", tracking_status: null }), true, "gebucht → aktiv");
-  assert.equal(isActive({ status: "booked", tracking_status: TRACKING_IN_TRANSIT }), true, "unterwegs → aktiv");
-  assert.equal(isActive({ status: "booked", tracking_status: TRACKING_DELIVERED }), false, "zugestellt → nicht aktiv");
-  assert.equal(isActive({ status: "label_ready", tracking_status: null }), true);
-  assert.equal(isActive({ status: "delivered", tracking_status: null }), false, "Business-Endzustand");
-  assert.equal(isActive({ status: null, tracking_status: TRACKING_IN_TRANSIT }), false, "ohne offenen Status nicht aktiv");
-  assert.equal(isActive({}), false);
-});
-
-test("eine akzeptiert stornierte Sendung ist NICHT aktiv", () => {
-  const storniert = { status: "booked", tracking_status: null, cancellation_status: "accepted" };
-  assert.equal(isActive(storniert), false);
-  assert.equal(computeKpis([storniert], NOW).active, 0);
-  // Laufende oder abgelehnte Anfragen ändern dagegen nichts.
-  assert.equal(isActive({ status: "booked", tracking_status: null, cancellation_status: "pending" }), true);
-  assert.equal(isActive({ status: "booked", tracking_status: null, cancellation_status: "rejected" }), true);
-});
-
-test("Aktive Sendungen sind unabhängig vom Monat", () => {
-  const ausVormonat = { status: "booked", tracking_status: null, created_at: "2026-05-02" };
-  assert.equal(computeKpis([ausVormonat], NOW).active, 1, "Vormonatssendung bleibt aktiv sichtbar");
-});
-
-// ── KPI 4 · Verzögert ────────────────────────────────────────────────────────
-test("Verzögert: ETA in der Vergangenheit, nicht zugestellt", () => {
-  assert.equal(isDelayed({ tracking_status: TRACKING_IN_TRANSIT, delivery_date_max: ETA_YESTERDAY }, NOW), true);
-  assert.equal(isDelayed({ tracking_status: null, delivery_date_max: ETA_FAR_PAST }, NOW), true);
-});
-
-test("Verzögert NICHT bei fehlender ETA", () => {
-  assert.equal(isDelayed({ tracking_status: TRACKING_IN_TRANSIT, delivery_date_max: null }, NOW), false);
-  assert.equal(isDelayed({ tracking_status: TRACKING_IN_TRANSIT }, NOW), false);
-  assert.equal(isDelayed({ tracking_status: TRACKING_IN_TRANSIT, delivery_date_max: "" }, NOW), false);
-  assert.equal(isDelayed({ tracking_status: TRACKING_IN_TRANSIT, delivery_date_max: "kein-datum" }, NOW), false);
-});
-
-test("Verzögert NICHT wenn zugestellt (auch bei überschrittener ETA)", () => {
-  assert.equal(isDelayed({ tracking_status: TRACKING_DELIVERED, delivery_date_max: ETA_YESTERDAY }, NOW), false);
-});
-
-test("Verzögert NICHT bei ETA heute oder morgen", () => {
-  assert.equal(isDelayed({ tracking_status: TRACKING_IN_TRANSIT, delivery_date_max: ETA_TODAY }, NOW), false);
-  assert.equal(isDelayed({ tracking_status: TRACKING_IN_TRANSIT, delivery_date_max: ETA_TOMORROW }, NOW), false);
-});
-
-test("Verzögert: ISO-Datetime-ETA wird datumsgenau verglichen", () => {
-  assert.equal(isDelayed({ tracking_status: TRACKING_IN_TRANSIT, delivery_date_max: "2026-07-05T23:59:59Z" }, NOW), true);
-  assert.equal(isDelayed({ tracking_status: TRACKING_IN_TRANSIT, delivery_date_max: "2026-07-06T00:00:00Z" }, NOW), false);
-});
-
-test("Verzögert ist unabhängig vom Monat und vom Monatskennzeichen", () => {
-  const altVerspaetet = { status: "booked", tracking_status: TRACKING_IN_TRANSIT,
-                          delivery_date_max: "2026-04-01", created_at: "2026-03-20", delivered_this_month: false };
-  assert.equal(computeKpis([altVerspaetet], NOW).delayed, 1, "seit Monaten überfällig → weiter sichtbar");
-});
-
-// ── Robustheit und Aggregat ──────────────────────────────────────────────────
-test("Robust gegen NULL/leere Eingaben — keine Abstürze, alles 0", () => {
-  for (const input of [undefined, null, [], [null], [undefined], [{}]]) {
-    const k = computeKpis(input, NOW);
-    assert.equal(k.active, 0);
-    assert.equal(k.inTransit, 0);
-    assert.equal(k.delivered, 0);
-    assert.equal(k.delayed, 0);
-  }
-});
-
-test("eine erfolgreich geladene LEERE Liste ergibt für alle vier KPI 0", () => {
-  const k = computeKpis([], NOW);
-  assert.deepEqual(
-    { active: k.active, inTransit: k.inTransit, delivered: k.delivered, delayed: k.delayed },
-    { active: 0, inTransit: 0, delivered: 0, delayed: 0 });
-});
-
-test("computeKpis aggregiert die vier Status-KPIs korrekt", () => {
-  const shipments = [
-    { status: "booked",      tracking_status: null },                                                    // aktiv
-    { status: "label_ready", tracking_status: TRACKING_IN_TRANSIT, delivery_date_max: ETA_TOMORROW },    // aktiv + unterwegs
-    { status: "booked",      tracking_status: TRACKING_IN_TRANSIT, delivery_date_max: ETA_YESTERDAY },   // aktiv + unterwegs + verzögert
-    { status: "booked",      tracking_status: TRACKING_DELIVERED, delivered_this_month: true },          // zugestellt (diesen Monat)
-    { status: "booked",      tracking_status: TRACKING_DELIVERED, delivered_this_month: false },         // zugestellt, aber Vormonat
-    { status: "booked",      tracking_status: null, cancellation_status: "accepted" },                   // storniert → nichts
-    { status: "cancelled",   tracking_status: null },                                                    // storniert → nichts
-  ];
-  const k = computeKpis(shipments, NOW);
-  assert.equal(k.active, 3,    "aktiv: 3 (Stornierungen zählen nicht)");
-  assert.equal(k.inTransit, 2, "in Zustellung: 2");
-  assert.equal(k.delivered, 1, "zugestellt: nur die mit delivered_this_month=true");
-  assert.equal(k.delayed, 1,   "verzögert: 1");
-});
-
-// ── new24 bleibt erhalten (Fußzeile „Aktive Sendungen") ─────────────────────
-test("new24 zählt weiterhin die Sendungen der letzten 24 Stunden", () => {
-  const jetzt = new Date("2026-07-06T12:00:00Z");
-  const k = computeKpis([
-    { status: "booked", tracking_status: null, created_at: "2026-07-06T09:00:00Z" }, // vor 3 h
-    { status: "booked", tracking_status: null, created_at: "2026-07-05T13:00:00Z" }, // vor 23 h
-    { status: "booked", tracking_status: null, created_at: "2026-07-04T09:00:00Z" }, // älter
-  ], jetzt);
-  assert.equal(k.new24, 2);
-  assert.equal(k.hasCreatedAt, true);
-});
-
-// ── Die Spend-Bestandteile sind restlos entfernt ────────────────────────────
-test("computeKpis liefert KEINE Ausgaben-Felder mehr", () => {
-  const k = computeKpis([{ status: "booked", tracking_status: null, created_at: "2026-07-02", price_final: 99 }], NOW);
-  for (const feld of ["spendThis", "spendPrev", "deltaPct", "hasSpend"]) {
-    assert.ok(!(feld in k), `${feld} darf im Ergebnis nicht mehr existieren`);
-  }
-  assert.deepEqual(Object.keys(k).sort(), ["active", "delayed", "delivered", "hasCreatedAt", "inTransit", "new24"]);
-});
-
-test("weder Modul noch Übersicht enthalten noch Ausgaben-/Preislogik", () => {
+test("weder Modul noch Übersicht enthalten Ausgaben-/Preislogik", () => {
   const kpiSrc = stripComments(src("./kpis.mjs"));
   const overview = stripComments(src("../components/dashboard/Overview.jsx"));
   for (const feld of ["spendThis", "spendPrev", "deltaPct", "hasSpend", "spendFoot", "moneyCompact", "price_final"]) {

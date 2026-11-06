@@ -131,7 +131,8 @@ test("5 — die letzten Sendungen sind eine kompakte Auswahl, keine zweite Sendu
   }
   // Preis, Status und Datum kommen unverändert aus den bestehenden Feldern.
   assert.match(modules, /money\(s\.price_final\)/);
-  assert.match(modules, /<StatusBadge status=\{s\.status\} \/>/);
+  // E4 (2026-11-06): der Kundenstand des Servers (customer_status, TEST, Verzögert) statt des Buchungsstatus.
+  assert.match(modules, /<ShipmentStatus shipment=\{s\} \/>/);
   assert.match(modules, /dateDE\(s\.created_at\)/);
 });
 
@@ -440,13 +441,11 @@ test("23 — Leer-, Fehler- und Ladezustände laufen über StateView/FormAlert",
 /* ══════════ 24 — Datenverträge unangetastet ══════════════════════════ */
 
 test("24 — KPI-Berechnung, Rechnungs- und Sendungsfelder sind unverändert", () => {
-  // Phase 1 (Betriebsreife): KPI vorrangig aus dem serverseitigen stats-Aggregat,
-  // fail-safe zurück auf computeKpis (utils/kpis.mjs · kpisFromServerStats).
-  assert.match(overview, /kpisFromServerStats\(serverStats\) \|\| computeKpis\(shipments\)/);
-  assert.match(overview, /ready \? kpi\.value : "—"/);
-  for (const t of ["Noch nicht abgeschlossen", "Auf dem Weg zum Empfänger", "Im aktuellen Monat", "Über dem geplanten Liefertermin"]) {
-    assert.ok(overview.includes(t), `KPI-Kontextzeile verändert: ${t}`);
-  }
+  // E1–E4 (2026-11-06): KPI allein aus dem serverseitigen stats-Aggregat (utils/kpis.mjs · kpisFromServerStats),
+  // ohne gültiges Aggregat „—"; die Kontextzeilen stehen in utils/kpis.mjs (SHIPMENT_KPIS).
+  assert.match(overview, /const k = useMemo\(\(\) => kpisFromServerStats\(serverStats\), \[serverStats\]\);/);
+  assert.match(overview, /wert=\{zahlen \? String\(k\.byKey\[kpi\.key\]\) : "—"\}/);
+  assert.ok(!/computeKpis/.test(overview), "die Ersatzrechnung ist zurück");
   // Die Sendungs- und Rechnungsabrufe der Seite laden seit Phase 1 als erste
   // Keyset-Seite (limit=50) — ein altes Backend ignoriert den Parameter.
   assert.match(dashPage, /apiFetch\(`\/kunde\/shipments\?limit=50`, \{ auth: true \}\)/);

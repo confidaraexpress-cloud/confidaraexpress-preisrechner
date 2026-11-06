@@ -106,16 +106,30 @@ function adresseAlsApi(a) {
 
 // ── Sendungen ────────────────────────────────────────────────────────────────────────────────────────────────
 function sendungen() {
-  const s = (id, tage, status, carrier, preis, gewicht, ab, tracking, extra = {}) => ({
-    id, status, selected_carrier: carrier, price_final: preis, weight: gewicht, created_at: zeitstempel(tage, 9 + (id % 6)),
-    order_number: null, order_confirmation_number: ab, tracking_number: tracking, tracking_references: tracking ? [tracking] : [],
-    tracking_status: status === "delivered" ? "delivered" : status === "in_transit" || status === "delayed" ? "in_transit" : "pending",
-    requested_shipping_date: isoDatum(tagVerschoben(tage + 1)), cancellation_status: null, reference_number: null, package_lines: null,
-    // Zustellung: wie der Server mit Zeitpunkt und dem Kennzeichen „im laufenden Monat".
-    delivered_at: status === "delivered" ? zeitstempel(tage + 2, 14) : null,
-    delivered_this_month: status === "delivered" && tagVerschoben(tage + 2).getMonth() === new Date().getMonth(),
-    ...extra,
-  });
+  // `szenario` beschreibt den Verlauf der Demo-Sendung; die Zeile selbst trägt dieselben Felder wie die Serverantwort:
+  // gebuchter Status, Trackingstand, Liefertermin und seit E1–E4 (2026-11-06) den Kundenstand (customer_status, is_delayed,
+  // tracking_stale, is_test_booking).
+  const s = (id, tage, szenario, carrier, preis, gewicht, ab, tracking, extra = {}) => {
+    const trackingStatus = szenario === "delivered" ? "delivered" : szenario === "in_transit" || szenario === "delayed" ? "in_transit" : "pending";
+    const status = szenario === "booked" ? "booked" : "label_ready";
+    return {
+      id, status, selected_carrier: carrier, price_final: preis, weight: gewicht, created_at: zeitstempel(tage, 9 + (id % 6)),
+      order_number: null, order_confirmation_number: ab, tracking_number: tracking, tracking_references: tracking ? [tracking] : [],
+      tracking_status: trackingStatus,
+      requested_shipping_date: isoDatum(tagVerschoben(tage + 1)), cancellation_status: null, reference_number: null, package_lines: null,
+      // Zustellung: wie der Server mit Zeitpunkt und dem Kennzeichen „im laufenden Monat".
+      delivered_at: szenario === "delivered" ? zeitstempel(tage + 2, 14) : null,
+      delivered_this_month: szenario === "delivered" && tagVerschoben(tage + 2).getMonth() === new Date().getMonth(),
+      // Voraussichtlicher Liefertermin: die verzögerte Sendung liegt zwei Tage darüber.
+      delivery_date_max: szenario === "delayed" ? isoDatum(tagVerschoben(-2)) : szenario === "delivered" ? null : isoDatum(tagVerschoben(2)),
+      customer_status: szenario === "delivered" ? "delivered" : trackingStatus === "in_transit" ? "in_transit" : status,
+      is_active: szenario !== "delivered",
+      is_delayed: szenario === "delayed",
+      tracking_stale: false,
+      is_test_booking: false,
+      ...extra,
+    };
+  };
   // Empfänger wie in der echten Liste (recipient_address) — aus dem Adressbuch der Demo.
   const an = (id) => {
     const a = ADRESSEN().find((x) => x.id === id);
@@ -318,16 +332,27 @@ function koerper(optionen) {
   try { return JSON.parse(b) || {}; } catch { return {}; }
 }
 
-// Dasselbe Aggregat wie der Server (stats von GET /kunde/shipments, alle sechs Zähler).
+// Kennzahlen und Filter der Demo (E1–E4): aus den Feldern der Zeile — wie im Server zählen dieselben Regeln die Karte und
+// filtern die Liste, damit auch hier Zahl und Liste übereinstimmen. Die Demo kennt keine Stornierung und kein altes Tracking.
+const DEMO_KENNZAHLEN = {
+  active: (s) => s.is_active === true,
+  in_transit: (s) => s.customer_status === "in_transit",
+  delivered_this_month: (s) => s.delivered_this_month === true,
+  delayed: (s) => s.is_delayed === true,
+};
+
+// Dasselbe Aggregat wie der Server (stats von GET /kunde/shipments).
 function statistik(liste) {
   const jetzt = Date.now();
+  const zahl = (k) => liste.filter(DEMO_KENNZAHLEN[k]).length;
   return {
     total: liste.length,
-    active: liste.filter((s) => ["booked", "label_ready", "in_transit", "delayed"].includes(s.status)).length,
-    in_transit: liste.filter((s) => s.status === "in_transit").length,
-    delivered_this_month: liste.filter((s) => s.delivered_this_month === true).length,
-    delayed: liste.filter((s) => s.status === "delayed").length,
-    new_24h: liste.filter((s) => jetzt - new Date(s.created_at).getTime() < 86400000).length,
+    active: zahl("active"),
+    in_transit: zahl("in_transit"),
+    delivered_this_month: zahl("delivered_this_month"),
+    delayed: zahl("delayed"),
+    new_24h: liste.filter((s) => DEMO_KENNZAHLEN.active(s) && jetzt - new Date(s.created_at).getTime() < 86400000).length,
+    test_bookings: 0,
   };
 }
 
@@ -344,15 +369,15 @@ function trackingAntwort(sendung) {
   const ev = (status, beschreibung, ort, tage, zeit) => ({ status, description: beschreibung, location: ort, dateTime: { date: isoDatum(tagVerschoben(tage)), time: zeit } });
   const basis = Math.min(0, Math.round((new Date(sendung.created_at) - new Date()) / 86400000));
   const ereignisse = [ev("pending", "Die Sendung wurde elektronisch angekündigt.", "Stuttgart", basis, "16:42:00")];
-  if (sendung.status !== "booked" && sendung.status !== "label_ready") {
+  if (sendung.tracking_status === "in_transit" || sendung.tracking_status === "delivered") {
     ereignisse.push(ev("in_transit", "Die Sendung wurde vom Absender abgeholt.", "Stuttgart", basis + 1, "11:05:00"));
     ereignisse.push(ev("in_transit", "Die Sendung wurde im Start-Paketzentrum bearbeitet.", "Kornwestheim", basis + 1, "19:48:00"));
   }
-  if (sendung.status === "delivered") {
+  if (sendung.tracking_status === "delivered") {
     ereignisse.push(ev("in_transit", "Die Sendung wurde in das Zustellfahrzeug geladen.", "Zielregion", basis + 2, "07:12:00"));
     ereignisse.push(ev("delivered", "Die Sendung wurde erfolgreich zugestellt.", "Zielort", basis + 2, "13:26:00"));
   }
-  const stand = sendung.status === "delivered" ? "delivered" : ereignisse.length > 1 ? "in_transit" : "pending";
+  const stand = sendung.tracking_status === "delivered" ? "delivered" : ereignisse.length > 1 ? "in_transit" : "pending";
   const carrier = CARRIER_NAME[sendung.selected_carrier] || "DHL";
   return {
     shipmentId: sendung.id, tracking: null, trackingAvailable: true, trackingNumber: sendung.tracking_number,
@@ -493,6 +518,8 @@ function buchen(body) {
     cancellation_status: null, reference_number: typeof body.referenceNumber === "string" && body.referenceNumber ? body.referenceNumber : null,
     package_lines: null,
     recipient_address: body.recipient && typeof body.recipient === "object" ? { ...body.recipient } : null,
+    delivered_at: null, delivered_this_month: false, delivery_date_max: null,
+    customer_status: "label_ready", is_active: true, is_delayed: false, tracking_stale: false, is_test_booking: false,
   });
   st.rechnungen.unshift({ id: 100 + nr, invoice_number: `SIM-TB26-000${nr}`, status: "open", is_overdue: false, gross_amount: brutto, currency: "EUR",
     issued_at: new Date().toISOString(), due_date: isoDatum(tagVerschoben(7)), document_status: "ready", download_available: true,
@@ -582,7 +609,16 @@ function route(methode, pfad, query, optionen) {
   }
 
   // Sendungen
-  if (pfad === "/kunde/shipments") return json({ shipments: st.sendungen, stats: statistik(st.sendungen), nextCursor: null });
+  if (pfad === "/kunde/shipments") {
+    // Kennzahlfilter wie im Server: nur die vier Schlüssel, sonst 400; Trefferzahl = Zahl der Karte.
+    const kpi = query.get("kpi");
+    if (kpi) {
+      if (!Object.prototype.hasOwnProperty.call(DEMO_KENNZAHLEN, kpi)) return json({ error: "kpi: unbekannter Filter", code: "SHIPMENTS_KPI_INVALID" }, 400);
+      const treffer = st.sendungen.filter(DEMO_KENNZAHLEN[kpi]);
+      return json({ shipments: treffer, stats: statistik(st.sendungen), nextCursor: null, filter: { kpi, total: treffer.length } });
+    }
+    return json({ shipments: st.sendungen, stats: statistik(st.sendungen), nextCursor: null });
+  }
   if ((m = pfad.match(/^\/api\/shipments\/(\d+)\/tracking$/))) {
     const s = sendungZu(m[1]);
     return s ? json(trackingAntwort(s)) : json({ error: "Sendung nicht gefunden" }, 404);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useNavigationType } from "react-router-dom";
 import { apiFetch } from "../api/client";
 import { selectCredit } from "../utils/creditLimitView.mjs";
 import { fetchCarrierPortfolio } from "../api/carriersApi";
@@ -16,7 +16,7 @@ import { LegalLinks } from "../components/layout/LegalLinks";
 import { NotificationsProvider } from "../context/NotificationsContext";
 import { NotificationBell } from "../components/notifications/NotificationBell";
 import { useAuth } from "../context/AuthContext";
-import { businessMonthKey } from "../utils/kpis";
+import { businessMonthKey, isShipmentKpiKey, KPI_TEXT } from "../utils/kpis";
 import { UtilityCluster } from "../components/ui/PageHeader";
 import { UserChip } from "../components/ui/UserChip";
 import { BrandLogo } from "../components/ui/BrandLogo";
@@ -80,6 +80,18 @@ function waehleStartfilter(location) {
     return { page: "movements", filter: { productId: produkt } };
   }
   return null;
+}
+
+/* Der Kennzahlfilter der Sendungsliste (E1–E4, 2026-11-06) beim Start — aus derselben Adresse wie der
+   Bereich: `?page=shipments&kpi=…` (Kennzahlkarte in neuem Tab, Neuladen eines solchen Links) oder der
+   History-State (Neuladen nach dem Klick, Browser-Vor). Nur die vier Schlüssel der Karten gelten;
+   jeder andere Wert ist kein Filter. */
+function waehleStartKpi(location) {
+  const params = new URLSearchParams(location.search);
+  const ausQuery = params.get("page");
+  if (ausQuery) return ausQuery === "shipments" && isShipmentKpiKey(params.get("kpi")) ? params.get("kpi") : null;
+  const st = location.state || {};
+  return st.page === "shipments" && isShipmentKpiKey(st.kpi) ? st.kpi : null;
 }
 
 const NewShipmentPage  = React.lazy(() => import("./NewShipmentPage"));
@@ -227,6 +239,16 @@ export default function DashboardPage() {
   // holte ihn zurück und ein späterer Wechsel zurück auf die Seite filterte
   // erneut, ohne dass jemand danach gefragt hätte.
   const startSuche = useRef(location.search);
+  // ── Kennzahlfilter der Sendungsliste (E1–E4, 2026-11-06) ───────────────────
+  // `shipmentsKpi` ist der aktive Filter (null = alle Sendungen). Die gefilterte Liste hat EIGENE
+  // Zustände und eine eigene Anfragefolge: Trefferzahl und Zeilen kommen aus GET /kunde/shipments?kpi=…
+  // (serverseitig, alle Seiten), die ungefilterte Liste und die Übersichtsdaten bleiben unberührt.
+  const navigationType = useNavigationType();
+  const [shipmentsKpi, setShipmentsKpi] = useState(() => waehleStartKpi(location));
+  const kpiReq = useRef(0);
+  const [kpiListe, setKpiListe] = useState({ key: null, status: "idle", shipments: [], cursor: null, total: null });
+  const [kpiMehrLaedt, setKpiMehrLaedt] = useState(false);
+  const [kpiMehrFehler, setKpiMehrFehler] = useState("");
 
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -361,6 +383,83 @@ export default function DashboardPage() {
     }
   }, [shipmentsCursor, shipmentsMoreLoading]);
 
+  // ── Gefilterte Sendungsliste (E1–E4) ───────────────────────────────────────
+  // Erste Seite eines Filters. Fail-closed: bestätigt die Antwort den Filter nicht (altes Backend ohne
+  // ?kpi=), steht „Dieser Filter ist derzeit nicht verfügbar" statt einer ungefilterten Liste unter dem
+  // Filtertitel. Ein Ladefehler ist ein Fehlerzustand, nie eine 0. `kpiReq` verwirft überholte Antworten
+  // (Filterwechsel während des Ladens, Entfernen des Filters, Nachladen gegen Neuladen).
+  const ladeKpiListe = useCallback(async (kpi) => {
+    const seq = ++kpiReq.current;
+    setKpiListe({ key: kpi, status: "loading", shipments: [], cursor: null, total: null });
+    setKpiMehrFehler("");
+    try {
+      const r = await apiFetch(`/kunde/shipments?kpi=${encodeURIComponent(kpi)}&limit=50`, { auth: true });
+      if (seq !== kpiReq.current) return;
+      if (!r.ok) {
+        // 401/403 behandelt apiFetch zentral (Abmeldung) — hier kein zweiter Fehlerweg.
+        if (r.status !== 401 && r.status !== 403) setKpiListe((l) => (l.key === kpi ? { ...l, status: "error" } : l));
+        return;
+      }
+      const d = await r.json();
+      if (seq !== kpiReq.current) return;
+      const total = Number(d?.filter?.total);
+      if (!d || d.filter?.kpi !== kpi || !Number.isFinite(total)) {
+        setKpiListe({ key: kpi, status: "unavailable", shipments: [], cursor: null, total: null });
+        return;
+      }
+      setKpiListe({ key: kpi, status: "ready", shipments: d.shipments || [], cursor: d.nextCursor ?? null, total });
+    } catch {
+      if (seq === kpiReq.current) setKpiListe((l) => (l.key === kpi ? { ...l, status: "error" } : l));
+    }
+  }, []);
+
+  // Weitere Seiten desselben Filters: der Cursor des Servers trägt den Filter mit, die Trefferzahl
+  // kommt frisch aus der Antwort. Anfügen, nie ersetzen — wie in der ungefilterten Liste.
+  const ladeMehrKpi = useCallback(async () => {
+    const { key, cursor } = kpiListe;
+    if (!key || !cursor || kpiMehrLaedt) return;
+    setKpiMehrLaedt(true);
+    setKpiMehrFehler("");
+    const seq = kpiReq.current;
+    try {
+      const r = await apiFetch(`/kunde/shipments?kpi=${encodeURIComponent(key)}&limit=50&cursor=${encodeURIComponent(cursor)}`, { auth: true });
+      if (!r.ok) throw new Error(String(r.status));
+      const d = await r.json();
+      if (seq !== kpiReq.current) return;
+      const total = Number(d?.filter?.total);
+      if (d?.filter?.kpi !== key || !Number.isFinite(total)) throw new Error("filter");
+      setKpiListe((l) => (l.key === key
+        ? { ...l, shipments: [...l.shipments, ...(d.shipments || [])], cursor: d.nextCursor ?? null, total }
+        : l));
+    } catch {
+      if (seq === kpiReq.current) setKpiMehrFehler("Weitere Sendungen konnten nicht geladen werden. Bitte versuchen Sie es erneut.");
+    } finally {
+      setKpiMehrLaedt(false);
+    }
+  }, [kpiListe, kpiMehrLaedt]);
+
+  // Genau EIN Weg lädt die gefilterte Liste: dieser Effekt (Klick, Filterwechsel, Zurück/Vor, Neuladen).
+  useEffect(() => {
+    if (page !== "shipments" || !shipmentsKpi) return;
+    ladeKpiListe(shipmentsKpi);
+  }, [page, shipmentsKpi, ladeKpiListe]);
+
+  // „Filter entfernen" / „Alle Sendungen anzeigen": eine noch laufende Antwort gilt nicht mehr, die
+  // ungefilterte erste Seite wird frisch geladen, und der Fokus geht auf die Seitenüberschrift (der
+  // Knopf, der ihn hatte, verschwindet mit der Filterleiste). Der Filter verlässt auch den History-State
+  // (Effekt unten) — er kehrt beim nächsten Rendern oder Neuladen nicht zurück.
+  const entferneKennzahl = useCallback(() => {
+    kpiReq.current++;
+    setShipmentsKpi(null);
+    setKpiListe({ key: null, status: "idle", shipments: [], cursor: null, total: null });
+    setKpiMehrFehler("");
+    reloadShipments();
+    window.requestAnimationFrame(() => {
+      const titel = document.querySelector(".main-content .ce-page-header-title");
+      if (titel) { titel.setAttribute("tabindex", "-1"); titel.focus(); }
+    });
+  }, [reloadShipments]);
+
   const loadMoreInvoices = useCallback(async () => {
     if (!invoicesCursor || invoicesMoreLoading) return;
     setInvoicesMoreLoading(true);
@@ -459,13 +558,16 @@ export default function DashboardPage() {
   // Wert, mit dem die Anfrage gestellt wurde.
   const handleCancellationRequested = useCallback((shipmentId, patch) => {
     if (patch && patch.status) {
-      setShipments((prev) => prev.map((s) =>
-        s.id === shipmentId
-          ? { ...s, cancellation_status: patch.status, cancellation_requested_at: patch.requestedAt ?? s.cancellation_requested_at ?? null }
-          : s));
+      const anpassen = (s) => (s.id === shipmentId
+        ? { ...s, cancellation_status: patch.status, cancellation_requested_at: patch.requestedAt ?? s.cancellation_requested_at ?? null }
+        : s);
+      setShipments((prev) => prev.map(anpassen));
+      setKpiListe((l) => ({ ...l, shipments: l.shipments.map(anpassen) }));
     }
     fetchData();
-  }, [fetchData]);
+    // Mit aktivem Kennzahlfilter auch dessen Liste mit dem Server abgleichen.
+    if (shipmentsKpi) ladeKpiListe(shipmentsKpi);
+  }, [fetchData, shipmentsKpi, ladeKpiListe]);
 
   // Show success toast when returning from a completed booking
   useEffect(() => {
@@ -519,6 +621,29 @@ export default function DashboardPage() {
     navigate(location.pathname, { replace: true, state: naechster });
   }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Der Kennzahlfilter lebt im selben History-Eintrag wie der Bereich (E1–E4): Neuladen behält ihn,
+  // „Filter entfernen" und jeder andere Bereich löschen ihn. Er steht nur bei „Sendungen" im Eintrag.
+  // Läuft NACH dem Bereichs-Effekt darüber und liest wie dieser den LIVE-Zustand der History.
+  useEffect(() => {
+    const aktuell = (typeof window !== "undefined" && window.history.state?.usr) || {};
+    const soll = page === "shipments" ? shipmentsKpi : null;
+    if ((aktuell.kpi ?? null) === soll) return;
+    if (new URLSearchParams(window.location.search).get("page")) return;
+    const { kpi: _alt, ...rest } = aktuell;   // eslint-disable-line no-unused-vars
+    navigate(location.pathname, { replace: true, state: soll ? { ...rest, kpi: soll } : rest });
+  }, [page, shipmentsKpi]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Browser-Zurück/-Vor INNERHALB von /dashboard gibt es nur über die Kennzahlkarten (eigener Eintrag,
+  // siehe oeffneKennzahl): der Eintrag bringt Bereich und Filter zurück. Die übrige interne Navigation
+  // legt weiterhin keine Einträge an.
+  useEffect(() => {
+    if (navigationType !== "POP") return;
+    if (new URLSearchParams(location.search).get("page")) return;   // gehört dem ?page=-Effekt
+    const st = location.state || {};
+    if (DASHBOARD_PAGES.includes(st.page) && st.page !== page) setPage(st.page);
+    setShipmentsKpi(st.page === "shipments" && isShipmentKpiKey(st.kpi) ? st.kpi : null);
+  }, [location.key]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Navigate from calculator route back into dashboard pages
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -542,7 +667,11 @@ export default function DashboardPage() {
       // `replace` löst keine zusätzliche Navigation aus: derselbe Pfad, kein
       // neuer Eintrag, kein erneutes Feuern dieses Effekts (location.search
       // wird von "?page=…" zu "" — genau einmal).
-      navigate("/dashboard", { replace: true, state: { ...(location.state || {}), page: p } });
+      // Kennzahlfilter (E1–E4): nur mit ?page=shipments und nur einer der vier Schlüssel.
+      const kpi = p === "shipments" && isShipmentKpiKey(params.get("kpi")) ? params.get("kpi") : null;
+      setShipmentsKpi(kpi);
+      const { kpi: _altKpi, ...altState } = location.state || {};   // eslint-disable-line no-unused-vars
+      navigate("/dashboard", { replace: true, state: kpi ? { ...altState, page: p, kpi } : { ...altState, page: p } });
     }
   }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -574,6 +703,8 @@ export default function DashboardPage() {
     if (target.page === "calculator") { navigate("/calculator"); return; }
     // Eine Navigation räumt die Hervorhebung eines Suchtreffers ab; die Kopfsuche setzt sie über ihr onCommit neu.
     setSucheFokus(null);
+    // Ein Kennzahlfilter gilt nur für den Weg über die Karte; jede andere Navigation zeigt alle Sendungen.
+    setShipmentsKpi(null);
     setPage(target.page);
     // Folgeaktion, die an GENAU dieses Ziel gebunden ist (App-Eintrag → Karte).
     // Sie läuft erst hier, wenn die Navigation wirklich stattfindet — auch nach
@@ -622,6 +753,21 @@ export default function DashboardPage() {
       setNeueSendungKey((k) => k + 1);
     }
     performNav(target);
+  };
+
+  // Kennzahlkarte der Übersicht → „Sendungen" mit genau ihrem Filter (E1–E4). Anders als die übrige
+  // interne Navigation legt dieser Schritt einen eigenen History-Eintrag an: Browser-Zurück führt aus der
+  // gefilterten Liste auf die Übersicht zurück. Die Karten stehen nur auf der Übersicht — kein
+  // Verlassen-Dialog nötig.
+  const oeffneKennzahl = (kpi) => {
+    if (!isShipmentKpiKey(kpi)) return;
+    setSidebarOpen(false);
+    setSucheFokus(null);
+    setInventoryFilter(null);
+    setShipmentsKpi(kpi);
+    setPage("shipments");
+    const aktuell = (typeof window !== "undefined" && window.history.state?.usr) || {};
+    navigate(location.pathname, { state: { ...aktuell, page: "shipments", kpi } });
   };
 
   // Logout ebenfalls durch den Guard (ungespeicherte Angaben in „Neue Sendung").
@@ -761,6 +907,7 @@ export default function DashboardPage() {
             kpisReady={shipmentsLoaded}
             onNewShipment={() => navigateTo("new")}
             onAllShipments={() => navigateTo("shipments")}
+            onOpenKpi={oeffneKennzahl}
             onAllInvoices={() => navigateTo("invoices")}
             onProfile={() => navigateTo("profile")}
             onNotificationNav={navigateFromNotification}
@@ -811,17 +958,23 @@ export default function DashboardPage() {
         )}
 
         {page === "shipments" && (
+          // Mit Kennzahlfilter zeigt dieselbe Liste die gefilterten Zeilen des Servers — Tracking,
+          // Dokumente und Stornierung bleiben dieselben Funktionen (E1–E4).
           <ShipmentsList
-            shipments={shipments}
-            loading={loading}
-            loadError={loadError}
-            onRetry={fetchData}
+            shipments={shipmentsKpi ? kpiListe.shipments : shipments}
+            loading={shipmentsKpi ? (kpiListe.key !== shipmentsKpi || kpiListe.status === "loading") : loading}
+            loadError={shipmentsKpi ? (kpiListe.status === "error" ? KPI_TEXT.loadError : "") : loadError}
+            onRetry={shipmentsKpi ? () => ladeKpiListe(shipmentsKpi) : fetchData}
             onNewShipment={() => navigateTo("new")}
             onCancellationRequested={handleCancellationRequested}
-            hasMore={!!shipmentsCursor}
-            loadingMore={shipmentsMoreLoading}
-            loadMoreError={shipmentsMoreError}
-            onLoadMore={loadMoreShipments}
+            hasMore={shipmentsKpi ? (kpiListe.status === "ready" && !!kpiListe.cursor) : !!shipmentsCursor}
+            loadingMore={shipmentsKpi ? kpiMehrLaedt : shipmentsMoreLoading}
+            loadMoreError={shipmentsKpi ? kpiMehrFehler : shipmentsMoreError}
+            onLoadMore={shipmentsKpi ? ladeMehrKpi : loadMoreShipments}
+            kpiFilter={shipmentsKpi
+              ? { key: shipmentsKpi, status: kpiListe.key === shipmentsKpi ? kpiListe.status : "loading", total: kpiListe.total }
+              : null}
+            onClearKpi={entferneKennzahl}
             fokus={sucheFokus?.art === "sendung" ? sucheFokus : null}
           />
         )}

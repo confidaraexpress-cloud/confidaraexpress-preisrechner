@@ -6,7 +6,7 @@
 //       automatischer Retry — für /book ausdrücklich niemals.
 //   F1  paginierte Kundenlisten (DashboardPage): Erstladung als Seite (limit=50),
 //       Nachladen hängt an statt zu ersetzen, Cursor bleibt opak, serverseitige
-//       KPI-Statistik mit fail-safe-Rückfall auf computeKpis.
+//       KPI-Statistik, fail-safe (seit E1–E4, 2026-11-06 ohne Rückfall auf die geladene Seite).
 //
 // Verhaltenstests, wo das Modul ohne Vite importierbar ist (kpis.mjs,
 // apiError.mjs); Source-Asserts für die Vite-gebundenen Dateien (client.js liest
@@ -19,7 +19,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { kpisFromServerStats, computeKpis } from "./kpis.mjs";
+import { kpisFromServerStats } from "./kpis.mjs";
 import { normalizeThrownError } from "./apiError.mjs";
 import { buchungsFlaeche } from "../testing/quelltext.mjs";
 
@@ -33,16 +33,18 @@ const bookingSrc = buchungsFlaeche();
 
 const STATS_OK = { total: 120, active: 80, in_transit: 12, delivered_this_month: 30, delayed: 3, new_24h: 5 };
 
-test("A1 — vollständiges Aggregat wird 1:1 in die computeKpis-Form übersetzt", () => {
+test("A1 — vollständiges Aggregat wird 1:1 übernommen (je Kennzahl und je Filterschlüssel)", () => {
   assert.deepEqual(kpisFromServerStats(STATS_OK), {
-    active: 80, inTransit: 12, delivered: 30, delayed: 3, new24: 5, hasCreatedAt: true,
+    active: 80, inTransit: 12, delivered: 30, delayed: 3, new24: 5, testBookings: null,
+    byKey: { active: 80, in_transit: 12, delivered_this_month: 30, delayed: 3 },
   });
 });
 
 test("A2 — 0 ist überall ein gültiger Wert (nie eine Falsy-Prüfung)", () => {
   const leer = { total: 0, active: 0, in_transit: 0, delivered_this_month: 0, delayed: 0, new_24h: 0 };
   assert.deepEqual(kpisFromServerStats(leer), {
-    active: 0, inTransit: 0, delivered: 0, delayed: 0, new24: 0, hasCreatedAt: false,
+    active: 0, inTransit: 0, delivered: 0, delayed: 0, new24: 0, testBookings: null,
+    byKey: { active: 0, in_transit: 0, delivered_this_month: 0, delayed: 0 },
   });
 });
 
@@ -58,11 +60,11 @@ test("A3 — fail-safe: unvollständige/kaputte Aggregate ergeben null, nie gera
   assert.equal(kpisFromServerStats({ ...STATS_OK, in_transit: Infinity }), null, "unendlich → null");
 });
 
-test("A4 — die Ergebnisform ist deckungsgleich mit computeKpis (gleiche Schlüssel)", () => {
-  const vomServer = kpisFromServerStats(STATS_OK);
-  const lokal = computeKpis([]);
-  assert.deepEqual(Object.keys(vomServer).sort(), Object.keys(lokal).sort(),
-    "Übersicht muss beide Quellen ohne Fallunterscheidung rendern können");
+test("A4 — es gibt nur noch EINE Quelle: ohne gültiges Aggregat keine Zahl (E1–E4)", () => {
+  // Bis 2026-11-06 lieferte computeKpis über die geladene Seite dieselbe Form als Rückfall. Seit die Karten auf
+  // serverseitige Filter führen, wäre das eine zweite, abweichende Wahrheit — die Übersicht zeigt dann „—".
+  const kpisQuelle = src("kpis.mjs");
+  assert.ok(!/export function computeKpis/.test(kpisQuelle), "die Ersatzrechnung ist zurück");
 });
 
 /* ══════════ B · Timeout-Klassifizierung (Verhalten, apiError.mjs) ══════════ */
@@ -151,7 +153,7 @@ test("D1 — Erstladung und Refetch laden eine SEITE (limit=50), nicht mehr die 
 test("D2 — Deployment-Skew: fehlendes nextCursor/stats wird zu null, nie zu einem Fehler", () => {
   assert.ok((dashSrc.match(/nextCursor \?\? null/g) || []).length >= 3,
     "jeder Abrufweg muss ein fehlendes nextCursor (altes Backend) als Listenende lesen");
-  assert.match(dashSrc, /stats \?\? null/, "fehlende stats (altes Backend) → Rückfall auf computeKpis");
+  assert.match(dashSrc, /stats \?\? null/, "fehlende stats (altes Backend) → „—“ statt einer Zahl");
 });
 
 test("D3 — Nachladen hängt AN und ersetzt nie; der Cursor bleibt opak", () => {

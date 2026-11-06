@@ -31,7 +31,9 @@ test("1b — der Leerzustand nennt, was hier erscheint, und führt zur neuen Sen
 });
 
 test("2 — DashboardPage reicht Fehler und Wiederholung durch, das Band steht dort nicht doppelt", () => {
-  assert.match(seite, /<ShipmentsList\s+shipments=\{shipments\}\s+loading=\{loading\}\s+loadError=\{loadError\}\s+onRetry=\{fetchData\}/);
+  // Ohne Kennzahlfilter die gewohnte Liste; mit Filter (E1–E4) dieselbe Liste mit den gefilterten Zeilen, eigenem
+  // Lade- und Fehlerzustand und eigener Wiederholung.
+  assert.match(seite, /<ShipmentsList\s+shipments=\{shipmentsKpi \? kpiListe\.shipments : shipments\}\s+loading=\{shipmentsKpi \? \(kpiListe\.key !== shipmentsKpi \|\| kpiListe\.status === "loading"\) : loading\}\s+loadError=\{shipmentsKpi \? \(kpiListe\.status === "error" \? KPI_TEXT\.loadError : ""\) : loadError\}\s+onRetry=\{shipmentsKpi \? \(\) => ladeKpiListe\(shipmentsKpi\) : fetchData\}/);
   assert.match(seite, /\{loadError && !\(page === "shipments" && shipments\.length === 0\) && \(/);
   // fetchData setzt den Fehler zu Beginn zurück; eine erfolgreiche Wiederholung räumt ihn ab.
   assert.match(seite, /const fetchData = useCallback\(\(\) => \{\s+setLoading\(true\);\s+setLoadError\(""\);/);

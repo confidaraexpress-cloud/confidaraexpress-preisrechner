@@ -21,6 +21,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
+import { SHIPMENT_KPIS } from "../../utils/kpis.mjs";
 
 const src = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
@@ -78,29 +79,30 @@ function bandSektion() {
 }
 
 // ── Genau vier Kennzahlen ───────────────────────────────────────────────────
+
 test("1 — die Übersicht rendert genau VIER Kennzahlen in EINEM Band", () => {
-  const block = overviewCode.slice(overviewCode.indexOf("const KPIS = ["));
-  const arr = block.slice(0, block.indexOf("];") + 2);
-  const keys = [...arr.matchAll(/key:\s*"([a-z]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(keys, ["active", "transit", "delivered", "delayed"], "Bestand/Reihenfolge der Kennzahlen");
-  const labels = [...arr.matchAll(/label:\s*"([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(labels, ["Aktive Sendungen", "In Zustellung", "Zugestellt", "Verzögert"]);
-  // EIN Band (section mit Bezeichnung), darin je Kennzahl eine Zelle.
+  // Seit E1–E4 (2026-11-06) stehen Schlüssel, Bezeichnungen und Kontexte an EINER Stelle (utils/kpis.mjs).
+  assert.deepEqual(SHIPMENT_KPIS.map((k) => k.key), ["active", "in_transit", "delivered_this_month", "delayed"], "Bestand/Reihenfolge der Kennzahlen");
+  assert.deepEqual(SHIPMENT_KPIS.map((k) => k.label), ["Aktive Sendungen", "Unterwegs", "Zugestellt", "Verzögert"]);
+  // EIN Band (section mit Bezeichnung), darin je Kennzahl eine Karte.
   assert.match(overviewCode, /<section className="ov-kpis" aria-label="Betriebsüberblick">/, "das Band fehlt");
-  // Seit dem Betreiberauftrag 2026-11-02 ohne data-null: Der Marker trug nur die frühere Sonderfarbe von „Verzögert“ über 0;
-  // alle vier Zahlen stehen jetzt in derselben Farbe (Test 31).
-  assert.match(overviewCode, /\{KPIS\.map\(\(kpi\) => \(\s*<div className=\{`ov-kpi ov-kpi--\$\{kpi\.key\}`\} key=\{kpi\.key\}>/,
-    "jede Kennzahl ist eine Karte des Abschnitts");
+  assert.match(overviewCode, /\{SHIPMENT_KPIS\.map\(\(kpi\) => \(\s*<KennzahlKarte/, "jede Kennzahl ist eine Karte des Abschnitts");
+  assert.match(overviewCode, /<a className=\{`ov-kpi ov-kpi--\$\{kpi\.cls\}`\} href=\{href\} onClick=\{klick\} data-kpi=\{kpi\.key\}>/,
+    "die Karte ist ein Link mit der Kennzahl-Klasse");
+  // Die Klassenmodifikatoren bleiben die seit 2026-10 bekannten (Stil- und Testanker); der Filter steht in data-kpi.
+  assert.deepEqual(SHIPMENT_KPIS.map((k) => k.cls), ["active", "transit", "delivered", "delayed"]);
   assert.ok(!/data-null/.test(overviewCode), "der Marker der früheren Akzentfarbe ist zurück");
   assert.ok(!/pp-kpi\b|pp-kpis\b/.test(overviewCode), "die alten Kartenklassen sind zurück");
 });
 
-test("2 — keine Symbole im Kennzahlenband (Redesign 2026-10)", () => {
-  const block = overviewCode.slice(overviewCode.indexOf("const KPIS = ["));
-  const arr = block.slice(0, block.indexOf("];") + 2);
-  assert.ok(!/icon:/.test(arr), "die Kennzahlen tragen wieder Iconnamen");
-  assert.ok(!/<Icon\b/.test(overviewCode), "die Übersicht rendert wieder ein Symbol");
-  assert.ok(!/from "\.\.\/ui\/Icon"/.test(overviewCode), "der Icon-Import der Übersicht ist überflüssig");
+
+test("2 — einziges Symbol im Kennzahlenband: der dekorative Pfeil der Kennzahlkarten (E1–E4)", () => {
+  // Bis 2026-11-06 trugen die Karten kein Symbol. Seit sie in ihre gefilterte Liste führen, zeigt ein kleiner Pfeil
+  // (16 px, ohne Text, für Screenreader verborgen) die Bedienbarkeit — sonst bleibt die Übersicht ohne Symbole.
+  assert.equal((overviewCode.match(/<Icon\b/g) || []).length, 1, "genau EIN Symbol in der Übersicht");
+  assert.match(overviewCode, /<span className="ov-kpi-pfeil"><Icon n="arrowRight" s=\{16\} \/><\/span>/, "der Pfeil der Karte");
+  assert.ok(!/<Icon[^>]*title=/.test(overviewCode), "der Pfeil ist Schmuck (ohne title → aria-hidden)");
+  assert.ok(!/icon:/.test(overviewCode), "die Kennzahlen tragen wieder Iconnamen");
 });
 
 test("3 — das Band ist 4 Zellen breit, ab 1080 px 2 × 2 — nie ein vierfacher Stapel", () => {
@@ -127,15 +129,17 @@ test("4 — Trennung der Zellen über Haarlinien, nicht über Karten", () => {
 });
 
 // ── Lade-, Fehler- und Nullverhalten ────────────────────────────────────────
-test("5 — eine Zahl erscheint erst nach erfolgreichem Laden, sonst „—“", () => {
+
+test("5 — eine Zahl erscheint erst nach erfolgreichem Laden UND mit gültigem Aggregat, sonst „—“", () => {
   assert.match(overviewCode, /const ready = kpisReady === undefined \? !loading : kpisReady;/,
     "das Bereitschafts-Gate fehlt oder wurde umbenannt");
-  assert.match(overviewCode, /<span className="ov-kpi-value">\{ready \? kpi\.value : "—"\}<\/span>/,
+  assert.match(overviewCode, /const zahlen = ready && k !== null;/, "ohne gültiges Aggregat keine Zahl (E1–E4: kein Rückfall)");
+  assert.match(overviewCode, /wert=\{zahlen \? String\(k\.byKey\[kpi\.key\]\) : "—"\}/,
     "die Kennzahl muss am Bereitschafts-Gate hängen, nicht an loading");
-  assert.ok(!/\{loading \? "—" : kpi\.value\}/.test(overviewCode),
+  assert.ok(!/\{loading \? "—" : /.test(overviewCode),
     "der alte loading-Ternary würde nach einem Fehler eine falsche 0 zeigen");
   // Solange nicht bereit: Statustext statt Kontextzeile.
-  assert.match(overviewCode, /\{!ready \? \(loading \? "Wird geladen…" : "Noch nicht verfügbar"\) : \(/,
+  assert.match(overviewCode, /kontext=\{zahlen \? kpi\.context : \(loading \? "Wird geladen…" : "Noch nicht verfügbar"\)\}/,
     "der Lade-/Nichtverfügbar-Text fehlt");
 });
 
@@ -229,40 +233,31 @@ test("14 — überholte Sendungsantworten werden verworfen", () => {
   assert.equal((dashboardCode.match(/seq [=!]== shipmentsReq\.current/g) || []).length, 4,
     "alle Wege müssen vor setState auf Aktualität prüfen");
 });
-test("28 — die vier Kontextzeilen sind gesetzt und wiederholen sich nicht", () => {
-  const block = overviewCode.slice(overviewCode.indexOf("const KPIS = ["));
-  const arr = block.slice(0, block.indexOf("];") + 2);
-  const texte = [...arr.matchAll(/context:\s*"([^"]+)"/g)].map((m) => m[1]);
+
+test("28 — die vier Kontextzeilen nach E3 sind gesetzt und wiederholen sich nicht", () => {
+  const texte = SHIPMENT_KPIS.map((k) => k.context);
   assert.deepEqual(texte, [
-    "Noch nicht abgeschlossen",
-    "Auf dem Weg zum Empfänger",
+    "Gebucht, noch nicht zugestellt",
+    "Beim Versanddienstleister unterwegs",
     "Im aktuellen Monat",
-    "Über dem geplanten Liefertermin",
+    "Voraussichtlicher Liefertermin überschritten",
   ], `erwartete Kontextzeilen, gefunden: ${JSON.stringify(texte)}`);
   assert.equal(new Set(texte).size, 4, "keine wiederholte generische Angabe");
-  assert.ok(!overview.includes("Aktueller Stand"), "„Aktueller Stand“ stand dreimal identisch da");
-
-  // Die vorige Fassung „Aktuell laufend" ist bewusst ersetzt — Regressionsschutz,
-  // damit sie nicht versehentlich zurückkehrt.
-  assert.ok(!overview.includes("Aktuell laufend"),
-    "die vorige Kontextzeile „Aktuell laufend“ soll nicht mehr vorkommen");
-
-  // „Aktuell im Versandprozess" wäre für isActive() zu viel behauptet: dort
-  // zählen auch pending/approved, also noch nicht übergebene Sendungen. Der
-  // Auftrag sieht für genau diesen Fall den neutralen Text vor.
-  assert.ok(!overview.includes("Aktuell im Versandprozess"),
-    "der Text passt nicht zur Definition aktiver Sendungen");
-  const kpis = src("../../utils/kpis.mjs");
-  assert.match(kpis, /ACTIVE_BUSINESS_STATUSES = \[[\s\S]*?"pending"/,
-    "Grundlage der Entscheidung: pending zählt als aktiv");
+  // Die Fassungen vor E3 sind bewusst ersetzt — Regressionsschutz.
+  const kpisQuelle = src("../../utils/kpis.mjs");
+  for (const alt of ["Noch nicht abgeschlossen", "Auf dem Weg zum Empfänger", "Über dem geplanten Liefertermin", "Aktueller Stand", "Aktuell laufend"]) {
+    assert.ok(!overview.includes(alt) && !kpisQuelle.includes(`"${alt}"`), `die alte Kontextzeile „${alt}“ ist zurück`);
+  }
+  assert.ok(!kpisQuelle.includes('"In Zustellung"'), "„In Zustellung“ ist durch „Unterwegs“ ersetzt");
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Visuelles System des Kennzahlenbands (Redesign 2026-10)
    ═══════════════════════════════════════════════════════════════════════════ */
 
+
 test("16 — Lesereihenfolge: Beschriftung → Zahl → Kontext", () => {
-  const zelle = overviewCode.slice(overviewCode.indexOf("{KPIS.map((kpi) => ("));
+  const zelle = overviewCode.slice(overviewCode.indexOf("function KennzahlKarte"));
   const l = zelle.indexOf('className="ov-kpi-label"');
   const v = zelle.indexOf('className="ov-kpi-value"');
   const c = zelle.indexOf('className="ov-kpi-context"');
@@ -316,13 +311,21 @@ test("21 — im Band stehen keine Farbliterale", () => {
   assert.deepEqual(literale, [], `Farbliterale im Kennzahlenband: ${literale.join(", ")}`);
 });
 
-test("22 — die Zellen geben sich nicht als bedienbar aus", () => {
-  const sektion = bandSektion();
-  assert.ok(!/cursor:\s*pointer/.test(sektion), "kein Zeigercursor auf Informationszellen");
-  assert.ok(!/\.ov-kpi:hover/.test(cssBare), "keine Hover-Reaktion auf Informationszellen");
-  const zelle = overviewCode.slice(overviewCode.indexOf("{KPIS.map((kpi) => ("),
-    overviewCode.indexOf("</section>", overviewCode.indexOf("{KPIS.map((kpi) => (")));
-  assert.ok(!/onClick|role="button"|tabIndex|<button/.test(zelle), "eine Kennzahl ist bedienbar geworden");
+
+test("22 — die Karten sind Links in ihre gefilterte Sendungsliste (E1–E4, bewusst umgekehrt)", () => {
+  // Bis 2026-11-06 reine Informationsflächen. Jetzt: ein echter Link (Mittelklick, neuer Tab), ein gewöhnlicher
+  // Klick bleibt in der App; keine Rolle button (die Karte navigiert), kein tabIndex-Ersatz.
+  const karte = overviewCode.slice(overviewCode.indexOf("function KennzahlKarte"), overviewCode.indexOf("export function Overview"));
+  assert.match(karte, /const href = useHref\(`\/dashboard\?page=shipments&kpi=\$\{kpi\.key\}`\);/);
+  assert.match(karte, /e\.button !== 0 \|\| e\.metaKey \|\| e\.ctrlKey \|\| e\.shiftKey \|\| e\.altKey/, "Zusatztasten folgen dem href");
+  assert.match(karte, /e\.preventDefault\(\);\s*onOpen\(kpi\.key\);/);
+  assert.ok(!/role="button"|tabIndex|<button/.test(karte), "die Karte ist ein Link, kein Knopf");
+  // Zugänglicher Name aus dem sichtbaren Text plus „Sendungen anzeigen“.
+  assert.match(karte, /<span className="sr-only"> – \{KPI_TEXT\.openSuffix\}<\/span>/);
+  assert.ok(!/aria-label/.test(karte), "der Name entsteht aus dem sichtbaren Text");
+  // Grundebene: Linkfarbe zurückgesetzt; die Zustände setzt die Editorial-Ebene (Test 31).
+  assert.equal(decl("a.ov-kpi", "text-decoration"), "none");
+  assert.equal(decl("a.ov-kpi", "color"), "inherit");
 });
 
 test("23 — Textfarben erfüllen WCAG AA auf der Bandfläche", () => {
@@ -333,6 +336,7 @@ test("23 — Textfarben erfüllen WCAG AA auf der Bandfläche", () => {
   }
 });
 
+
 test("29 — keine erfundenen Trends, Chips, Diagramme oder Statuspunkte", () => {
   const start = overviewCode.indexOf('<section className="ov-kpis"');
   const ende = overviewCode.indexOf("</section>", start);
@@ -340,21 +344,23 @@ test("29 — keine erfundenen Trends, Chips, Diagramme oder Statuspunkte", () =>
   for (const verboten of ["kchip", "trendingUp", "ce-live", "%", "<svg", "chart"]) {
     assert.ok(!block.includes(verboten), `${verboten} gehört nicht ins Kennzahlenband`);
   }
-  // Die 24-Stunden-Angabe bleibt, sie ist eine echte Zahl aus computeKpis —
-  // als schlichter Nachsatz, nicht als Trendabzeichen.
-  assert.match(overviewCode, /const activeNote = k\.hasCreatedAt && k\.new24 > 0/,
+  // Der Zusatz „davon n neu (24 h)“ ist eine echte Teilmenge der aktiven Sendungen (E3) — als schlichte eigene
+  // Zeile unter dem Kontext (Screenreader hören „, davon …“), nicht als Trendabzeichen.
+  assert.match(overviewCode, /const activeNote = zahlen \? activeNewNote\(k\) : null;/,
     "die echte 24-Stunden-Angabe darf nicht stillschweigend verschwinden");
-  assert.match(overviewCode, /\{kpi\.note && <span className="ov-kpi-note"> · \{kpi\.note\}<\/span>\}/);
+  assert.match(overviewCode, /\{note && <span className="ov-kpi-note"><span className="sr-only">, <\/span>\{note\}<\/span>\}/);
+  assert.match(editorial, /:root\[data-ce-bereich="kunde"\] \.ov-kpi-note \{ display: block; margin-top: 2px; \}/);
+  // Silbentrennung der Kontextzeile erst in der Telefonstufe (keine „Versanddienstleis-ter“-Trennung auf dem Desktop).
+  assert.match(editorial, /:root\[data-ce-bereich="kunde"\] \.ov-kpi-context \{ hyphens: manual; \}/);
   assert.equal(decl(".ov-kpi-note", "white-space"), "normal", "der Nachsatz bricht bei Bedarf um");
 });
 
-test("30 — die KPI-Berechnung ist unverändert (Serveraggregat, sonst computeKpis)", () => {
-  assert.match(overviewCode, /kpisFromServerStats\(serverStats\) \|\| computeKpis\(shipments\)/,
+
+test("30 — die Kennzahlen kommen allein aus dem Serveraggregat (E1–E4: kein Rückfall auf die geladene Seite)", () => {
+  assert.match(overviewCode, /const k = useMemo\(\(\) => kpisFromServerStats\(serverStats\), \[serverStats\]\);/,
     "die Quelle der Kennzahlen wurde verändert");
-  assert.match(overviewCode, /value: String\(k\.active\)/);
-  assert.match(overviewCode, /value: String\(k\.inTransit\)/);
-  assert.match(overviewCode, /value: String\(k\.delivered\)/);
-  assert.match(overviewCode, /value: String\(k\.delayed\)/);
+  assert.ok(!/computeKpis/.test(overviewCode), "die Ersatzrechnung über die geladene Seite ist zurück");
+  assert.match(overviewCode, /\{SHIPMENT_KPIS\.map\(\(kpi\) => \(/);
 });
 
 // ── Editorial-Ebene: vier helle Karten (Betreiberentscheidung 2026-11-01) ───
@@ -436,9 +442,16 @@ test("31 — Editorial (2026-11-01, Premium-Dashboard V2, Flow Signature): vier 
   const zweiMalZwei = edBlock("@container ce-seite (width < 51.5625rem) {");
   assert.ok(zweiMalZwei && /\.ov-kpis \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/.test(zweiMalZwei), "2 × 2 fehlt");
   assert.ok(!/\.ov-kpis \{[^}]*grid-template-columns:\s*(?:1fr|minmax\(0, 1fr\))\s*;/.test(editorial), "die Karten stehen einspaltig");
-  // Informationsflächen: keine Reaktion beim Zeigen, kein Zeiger.
-  assert.ok(!/\.ov-kpi[^{,]*:hover/.test(editorial), "die Karten reagieren auf Zeigen");
-  assert.ok(!/cursor:/.test(edRegel(".ov-kpi")), "die Karten geben sich als bedienbar aus");
+  // Seit E1–E4 (2026-11-06) Links: Zeiger, beim Zeigen nur Deckkraft der Signalkante (Ebene über der Karte) und Farbe
+  // des Pfeils — keine Bewegung, kein transform, keine Größenänderung; Fokus im Fokuspaar des Systems.
+  assert.match(edRegel("a.ov-kpi") || "", /cursor: pointer/, "die Karte zeigt sich als Link");
+  const zeigen = (editorial.match(/@media \(hover: hover\) and \(pointer: fine\) \{\s*:root\[data-ce-bereich="kunde"\] a\.ov-kpi:hover::after[^}]*\}/) || [""])[0];
+  assert.ok(zeigen && /a\.ov-kpi:hover::after \{ opacity: 1; \}/.test(zeigen), "Hover nur über die Deckkraft der Ebene");
+  assert.ok(!/\.ov-kpi[^{]*\{[^}]*transform/.test(editorial.replace(/@keyframes[\s\S]*?\}\s*\}/g, "")), "keine Bewegung beim Zeigen");
+  assert.equal(edDecl(".ov-kpi::after", "border"), "1px solid var(--ce-pr-ed-kante-signal)");
+  assert.equal(edDecl(".ov-kpi::after", "box-shadow"), "var(--ce-pr-ed-shadow-kennzahl-hover)");
+  assert.equal(edDecl(".ov-kpi::after", "opacity"), "0");
+  assert.match(editorial, /a\.ov-kpi:focus-visible \{\s*outline: var\(--ce-focus-ring\);\s*outline-offset: var\(--ce-focus-ring-offset\);/);
   // Das Band ist vollständig entfernt, samt seiner Tokens.
   for (const alt of ["--ce-pr-ed-band", "--ce-pr-ed-band-line", "--ce-pr-ed-shadow-band", "--ce-pr-ed-mark-active", "--ce-pr-ed-mark-transit", "--ce-pr-ed-mark-delayed"]) {
     assert.ok(!new RegExp(`${alt}\\b(?!-)`).test(editorial + variables), `${alt} ist noch vorhanden`);

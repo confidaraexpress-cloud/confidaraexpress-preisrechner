@@ -61,6 +61,7 @@ for (const [name, viewport, touch] of [["390 px", { width: 390, height: 844 }, t
     // Betreiberentscheidung 2026-11-06: die Anmeldung zeigt nur E-Mail und Telefon mit Symbol — keinen Namen, keine
     // Initialen, keinen Titel (den persönlichen Ansprechpartner zeigt der Kundenbereich).
     assert.doesNotMatch(seite, new RegExp(COMPANY_PROFILE.contactPerson), "die Anmeldung nennt wieder einen Namen");
+    assert.doesNotMatch(seite, /Ihr persönlicher Ansprechpartner/, "die Anmeldung nennt wieder pauschal einen persönlichen Ansprechpartner");
     assert.doesNotMatch(await page.locator(".auth-kontakt").innerText(), /Ansprechpartner/, "der Kontakt trägt wieder einen Titel");
     assert.equal(await page.locator(".auth-kontakt-zeichen, .auth-kontakt-name").count(), 0, "Initialen oder Name stehen noch da");
     const wege = await page.locator(".auth-kontakt a").evaluateAll((as) => as.map((a) => ({

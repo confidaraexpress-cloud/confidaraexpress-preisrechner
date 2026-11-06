@@ -9,4 +9,7 @@ export const AUTH_TEXT = Object.freeze({
   titel: "Versand- und Logistik\u00admanagement für Unternehmen.",
   lead: "Preise mehrerer Versanddienstleister vergleichen, Sendungen buchen und verfolgen, Bestand und Aufträge Ihres Lagers führen – in einem Kundenbereich.",
   kartenLegende: "Versand innerhalb Deutschlands und in alle anderen Länder der EU",
+  // Vorsätze der Kontaktlinks nur für Screenreader (sichtbar sind Symbol und Wert): „E-Mail an support@…“, „Anrufen: 0160…“.
+  kontaktMail: "E-Mail an ",
+  kontaktTelefon: "Anrufen: ",
 });

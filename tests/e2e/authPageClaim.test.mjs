@@ -2,8 +2,8 @@
 //
 // Überschrift „Versand- und Logistikmanagement für Unternehmen.“ — wortgleich mit dem öffentlichen Preisrechner
 // (utils/authSeitenText.mjs) — und darunter der Satz, was der Kundenbereich kann. Geprüft werden Wortlaut,
-// Umbrüche und Lesbarkeit auf Smartphone und Desktop, der namentliche Ansprechpartner, dass es keinen
-// Preisrechner-Knopf gibt (Audit D2) — und dass Anmeldung und Registrierung unverändert erreichbar sind.
+// Umbrüche und Lesbarkeit auf Smartphone und Desktop, der Kontakt (nur E-Mail und Telefon, seit 2026-11-06 ohne Namen),
+// dass es keinen Preisrechner-Knopf gibt (Audit D2) — und dass Anmeldung und Registrierung unverändert erreichbar sind.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -12,6 +12,7 @@ import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { AUTH_TEXT } from "../../src/utils/authSeitenText.mjs";
+import { COMPANY_PROFILE } from "../../src/config/companyProfile.js";
 
 const PORT = 5279, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -57,10 +58,22 @@ for (const [name, viewport, touch] of [["390 px", { width: 390, height: 844 }, t
     const seite = norm(await page.locator("body").innerText());
     assert.doesNotMatch(seite, /Europa verbinden|Vergleichen\. Buchen\.|Wir verbinden Welten|Sie erreichen mehr|Exzellenz|Schnell\.|in besten Händen/,
       "ein alter Claim ist noch sichtbar");
-    // Seit v2.90 hat jeder Kunde seinen eigenen Ansprechpartner im Kundenbereich: die Anmeldung nennt den öffentlichen
-    // Kontakt, nie pauschal „Ihren persönlichen“.
-    assert.match(seite, /Miguel Vance, Ansprechpartner bei ConfidaraExpress/, "der Ansprechpartner fehlt");
-    assert.doesNotMatch(seite, /Ihr persönlicher Ansprechpartner/, "die Anmeldung nennt wieder pauschal einen persönlichen Ansprechpartner");
+    // Betreiberentscheidung 2026-11-06: die Anmeldung zeigt nur E-Mail und Telefon mit Symbol — keinen Namen, keine
+    // Initialen, keinen Titel (den persönlichen Ansprechpartner zeigt der Kundenbereich).
+    assert.doesNotMatch(seite, new RegExp(COMPANY_PROFILE.contactPerson), "die Anmeldung nennt wieder einen Namen");
+    assert.doesNotMatch(await page.locator(".auth-kontakt").innerText(), /Ansprechpartner/, "der Kontakt trägt wieder einen Titel");
+    assert.equal(await page.locator(".auth-kontakt-zeichen, .auth-kontakt-name").count(), 0, "Initialen oder Name stehen noch da");
+    const wege = await page.locator(".auth-kontakt a").evaluateAll((as) => as.map((a) => ({
+      href: a.getAttribute("href"), symbole: a.querySelectorAll(".auth-kontakt-ico svg").length })));
+    assert.deepEqual(wege, [{ href: `mailto:${COMPANY_PROFILE.email}`, symbole: 1 }, { href: `tel:${COMPANY_PROFILE.phone}`, symbole: 1 }]);
+    // Zugängliche Namen: Weg und sichtbarer Wert (Vorsatz nur für Screenreader).
+    assert.equal(await page.getByRole("link", { name: `E-Mail an ${COMPANY_PROFILE.email}`, exact: true }).count(), 1);
+    assert.equal(await page.getByRole("link", { name: `Anrufen: ${COMPANY_PROFILE.phone}`, exact: true }).count(), 1);
+    // Beide Symbolflächen gleich groß und bündig untereinander.
+    const flaechen = await page.locator(".auth-kontakt-ico").evaluateAll((es) => es.map((e) => {
+      const b = e.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.width), Math.round(b.height)]; }));
+    assert.equal(flaechen.length, 2);
+    assert.deepEqual(flaechen[0], flaechen[1], "die Symbolflächen fluchten nicht oder sind verschieden groß");
     assert.equal(await page.getByRole("link", { name: /Preisrechner/ }).count(), 0, "auf der Anmeldung gibt es keinen Preisrechner-Knopf");
 
     const mass = await page.evaluate(() => {

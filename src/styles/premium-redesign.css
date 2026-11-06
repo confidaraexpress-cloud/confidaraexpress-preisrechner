@@ -1281,7 +1281,7 @@
 
 /* ═══════════ 10 · ANMELDUNG (Konzept A, Abschnitt 5 2026-10-27) ═══════════════
    Navy-Bühne mit derselben gerahmten Nachtkarte wie der öffentliche Preisrechner: links Marke, Satz, Karte und
-   Ansprechpartner, rechts das Papierblatt mit dem Formular des Schritts. Dieselbe Bühne in jedem Schritt (Anmelden,
+   Kontakt, rechts das Papierblatt mit dem Formular des Schritts. Dieselbe Bühne in jedem Schritt (Anmelden,
    Registrieren, Passwort vergessen/zurücksetzen, E-Mail-Bestätigung) — nur das Blatt wechselt.
    Ladeweg (Audit B.1): login.html/register.html tragen dieselbe Bühne als statisches Seitengerüst; React ersetzt
    sie ohne Zwischenbild. Deshalb keine Einblendbewegung des Blatts, keine nachgeladene Karte: das erste Bild ist das
@@ -1298,7 +1298,7 @@
 [data-ce-bereich="auth"] .auth-card { animation: none; }
 
 /* Zweispaltig ab 1024 px: die Marke als Kopfzeile über beiden Spalten, darunter links Satz, Karte und
-   Ansprechpartner, rechts das Blatt — oben bündig mit dem Satz. Wechselt der Inhalt des Blatts (Anmelden,
+   Kontakt, rechts das Blatt — oben bündig mit dem Satz. Wechselt der Inhalt des Blatts (Anmelden,
    Registrieren, Fehler), wächst es nur nach unten; nichts verschiebt sich. Die leere Reihe „rest“ nimmt die Höhe
    eines langen Blatts (Registrierung) auf, links bleibt alles beieinander. */
 [data-ce-bereich="auth"] .auth-shell:has(> .auth-kopf) {
@@ -1406,44 +1406,51 @@
   background: var(--ce-pr-stadtlicht);
 }
 
-/* Ansprechpartner: Initialen, Name, Wege — der Beleg für „persönlich betreut“. */
+/* Kontakt (Betreiberentscheidung 2026-11-06): E-Mail und Telefon, je eine Zeile mit Symbol auf einer leicht getönten
+   runden Fläche — kein Name, keine Initialen. Hellblau tragen nur Symbol und Kante; der Wert steht hell und ruhig.
+   Jede Zeile ist ein Link mit mindestens 36 px Höhe (mit grobem Zeiger 44 px), Abstand 4 px (Zielgröße 2.5.8). */
 [data-ce-bereich="auth"] .auth-kontakt {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 14px;
+  display: grid;
+  /* Eine schrumpffähige Spalte: bei sehr schmaler Breite bricht die E-Mail-Adresse, statt die Seite zu verbreitern. */
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: start;
+  row-gap: 4px;
   margin-top: 28px;
 }
-[data-ce-bereich="auth"] .auth-kontakt-zeichen {
+[data-ce-bereich="auth"] .auth-kontakt-weg {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 100%;
+  min-height: 2.25rem;
+  border-radius: var(--ce-radius-full);
+  color: var(--ce-pr-on-navy);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.4;
+  text-decoration: none;
+}
+[data-ce-bereich="auth"] .auth-kontakt-ico {
   display: grid;
   flex: none;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 2rem;
+  height: 2rem;
   border: 1px solid var(--ce-pr-on-navy-line);
   border-radius: var(--ce-radius-full);
-  color: var(--ce-pr-on-navy);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-[data-ce-bereich="auth"] .auth-kontakt-name { margin: 0; font-size: 0.9375rem; font-weight: 600; color: var(--ce-pr-on-navy); }
-[data-ce-bereich="auth"] .auth-kontakt-wege {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 18px;
-  margin: 3px 0 0;
-  font-size: 0.875rem;
-}
-[data-ce-bereich="auth"] .auth-kontakt-wege a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
+  background: color-mix(in srgb, var(--ce-pr-signal-on-navy) 10%, transparent);
   color: var(--ce-pr-signal-on-navy);
-  text-decoration: none;
 }
-[data-ce-bereich="auth"] .auth-kontakt-wege a:hover { text-decoration: underline; }
-[data-ce-bereich="auth"] .auth-kontakt-wege a:focus-visible { outline: 2px solid var(--ce-pr-signal-on-navy); outline-offset: 2px; border-radius: var(--ce-radius-xs); }
+[data-ce-bereich="auth"] .auth-kontakt-wert { min-width: 0; }
+@media (hover: hover) {
+  [data-ce-bereich="auth"] .auth-kontakt-weg:hover .auth-kontakt-wert {
+    text-decoration: underline;
+    text-decoration-color: var(--ce-pr-signal-on-navy);
+    text-underline-offset: 4px;
+  }
+  [data-ce-bereich="auth"] .auth-kontakt-weg:hover .auth-kontakt-ico { border-color: var(--ce-pr-signal-on-navy); }
+}
+[data-ce-bereich="auth"] .auth-kontakt-weg:focus-visible { outline: 2px solid var(--ce-pr-signal-on-navy); outline-offset: 4px; }
 
 /* Das Papierblatt: Inhalt in den hellen Rollen. Die Glaswelt-Tokens werden nur
    innerhalb des Blatts auf Foundation-Rollen umgestellt. */
@@ -1599,7 +1606,7 @@
   [data-ce-bereich="auth"] .auth-tab,
   [data-ce-bereich="auth"] .auth-check,
   [data-ce-bereich="auth"] .auth-field-link,
-  [data-ce-bereich="auth"] .auth-kontakt-wege a { min-height: var(--ce-size-touch-target); }
+  [data-ce-bereich="auth"] .auth-kontakt-weg { min-height: var(--ce-size-touch-target); }
 }
 [data-ce-bereich="auth"] .auth-input-wrap:focus-within .auth-input-ico { color: var(--ce-pr-signal-ink); }
 [data-ce-bereich="auth"] .auth-input-error,
@@ -1756,16 +1763,15 @@
   [data-ce-bereich="auth"] .auth-card { padding: 22px 18px 24px; }
 }
 /* Sehr schmal im Verhältnis zur Schrift (unter 20em, etwa 320 px mit 24 px Browserschrift): Die beiden Reiter stehen
-   untereinander, die Marke gleitet senkrecht; der Satz wird so groß, wie die Breite trägt; die E-Mail-Adresse des
-   Ansprechpartners bricht, statt die Seite zu verbreitern. Bei 16 px Grundschrift wirkt das erst unter 320 px. */
+   untereinander, die Marke gleitet senkrecht; der Satz wird so groß, wie die Breite trägt; die E-Mail-Adresse im
+   Kontakt bricht, statt die Seite zu verbreitern. Bei 16 px Grundschrift wirkt das erst unter 320 px. */
 @media (width < 20em) {
   [data-ce-bereich="auth"] .auth-tabs { grid-template-columns: minmax(0, 1fr); }
   [data-ce-bereich="auth"] .auth-tabs-marke { right: 3px; bottom: auto; width: auto; height: calc(50% - 4px); }
   [data-ce-bereich="auth"] .auth-tabs--register .auth-tabs-marke { transform: translateY(calc(100% + 2px)); }
   [data-ce-bereich="auth"] .auth-title { font-size: min(2rem, 12.5vw); }
   [data-ce-bereich="auth"] :is(h2, .auth-card-lead, .auth-field-label, .auth-declarations) { hyphens: auto; }
-  [data-ce-bereich="auth"] .auth-kontakt-text { min-width: 0; }
-  [data-ce-bereich="auth"] .auth-kontakt-wege a { display: block; min-width: 0; max-width: 100%; overflow-wrap: break-word; }
+  [data-ce-bereich="auth"] .auth-kontakt-wert { overflow-wrap: break-word; }
 }
 @media (prefers-reduced-motion: reduce) {
   [data-ce-bereich="auth"] .auth-tabs-marke,

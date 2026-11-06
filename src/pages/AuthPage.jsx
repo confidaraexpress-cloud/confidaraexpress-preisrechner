@@ -362,7 +362,7 @@ export default function AuthPage() {
     <div className="auth-page">
       <div className="auth-shell">
         {/* Die Bühne steht in JEDEM Schritt gleich (Betreiberentscheidung G1/Abschnitt 5, 2026-10-27): Marke, Satz,
-            die gerahmte Nachtkarte und der Ansprechpartner. Nur das Blatt rechts wechselt — Anmelden, Registrieren,
+            die gerahmte Nachtkarte und der Kontakt. Nur das Blatt rechts wechselt — Anmelden, Registrieren,
             Passwort vergessen oder zurücksetzen. Das statische Seitengerüst (login.html, register.html) zeigt
             dieselbe Bühne vor dem ersten Rendern; ohne Wechsel der Komposition springt nichts. */}
         {/* Der einzige Markenanker der Seite; Reverse-Variante auf Navy, kein Claim, kein zweites Signet. Eine eigene
@@ -513,20 +513,19 @@ export default function AuthPage() {
         )}
         </div>
 
-        {/* Der öffentliche Ansprechpartner von ConfidaraExpress, wie auf dem öffentlichen Preisrechner — alle Angaben
-            aus config/companyProfile.js. Seit v2.90 hat jeder Kunde im Kundenbereich seinen eigenen persönlichen
-            Ansprechpartner; diese Seite nennt deshalb niemanden pauschal „Ihren persönlichen“. */}
+        {/* Kontakt (Betreiberentscheidung 2026-11-06): E-Mail und Telefon als zwei Zeilen mit Symbol — kein Name, keine
+            Initialen; den persönlichen Ansprechpartner zeigt der Kundenbereich. Werte aus config/companyProfile.js,
+            Symbole aus dem Icon-System. Der Umschlag ist im Raster kleiner gezeichnet als der Hörer: 18 und 16 px
+            gleichen das optisch aus. Der Vorsatz nennt Screenreadern den Weg, sichtbar bleibt der Wert. */}
         <div className="auth-kontakt">
-          <span className="auth-kontakt-zeichen" aria-hidden="true">
-            {COMPANY_PROFILE.contactPerson.split(/\s+/).map((w) => w[0]).join("")}
-          </span>
-          <div className="auth-kontakt-text">
-            <p className="auth-kontakt-name">{COMPANY_PROFILE.contactPerson}, Ansprechpartner bei ConfidaraExpress</p>
-            <p className="auth-kontakt-wege">
-              <a href={`mailto:${COMPANY_PROFILE.email}`}>{COMPANY_PROFILE.email}</a>
-              <a href={`tel:${COMPANY_PROFILE.phone}`}>{COMPANY_PROFILE.phone}</a>
-            </p>
-          </div>
+          <a className="auth-kontakt-weg" href={`mailto:${COMPANY_PROFILE.email}`}>
+            <span className="auth-kontakt-ico"><Icon n="mail" s={18} /></span>
+            <span className="auth-kontakt-wert"><span className="sr-only">{AUTH_TEXT.kontaktMail}</span>{COMPANY_PROFILE.email}</span>
+          </a>
+          <a className="auth-kontakt-weg" href={`tel:${COMPANY_PROFILE.phone}`}>
+            <span className="auth-kontakt-ico"><Icon n="phone" s={16} /></span>
+            <span className="auth-kontakt-wert"><span className="sr-only">{AUTH_TEXT.kontaktTelefon}</span>{COMPANY_PROFILE.phone}</span>
+          </a>
         </div>
 
 

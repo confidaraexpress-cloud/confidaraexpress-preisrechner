@@ -331,8 +331,8 @@ test("L5 — Anmeldung und Registrierung: kein Befund, Augenknopf neben dem Schr
     }
   } finally { await ctx.close(); }
 
-  // Telefon mit 24 px Browserschrift, direkt in dieser Breite geöffnet: Die Reiter stehen untereinander, die E-Mail des
-  // Ansprechpartners bricht, keine Karte wird breiter als der Bildschirm.
+  // Telefon mit 24 px Browserschrift, direkt in dieser Breite geöffnet: Die Reiter stehen untereinander, die E-Mail im
+  // Kontakt bricht, keine Karte wird breiter als der Bildschirm.
   const klein = await browser.newContext({ viewport: { width: 320, height: 800 }, locale: "de-DE", reducedMotion: "reduce", serviceWorkers: "block" });
   await klein.route(`${API}/**`, (route) => route.fulfill({ status: 200, contentType: "application/json", body: "{}" }));
   const seite = await klein.newPage();

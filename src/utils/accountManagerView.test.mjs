@@ -118,7 +118,12 @@ test("8 — Karte: Punkt Schmuck, Schalter benennt die Handlung, reduzierte Bewe
 
 test("9 — Stile: nur Kundenbereich, Puls nur ohne reduzierte Bewegung und nur im Zustand „an“, Telefon bricht nie", () => {
   const css = readFileSync(path.join(SRC, "styles", "premium-editorial.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
-  const abschnitt = css.slice(css.indexOf(':root[data-ce-bereich="kunde"] .pp-ansprech {'));
+  // Abschnitt 25 bis vor Abschnitt 26 (Artikel löschen) — spätere Abschnitte (etwa 27, das Kennzahl-Detailfenster mit
+  // eigener Öffnungsbewegung) gehören nicht zur Karte und zählen hier nicht mit.
+  const start = css.indexOf(':root[data-ce-bereich="kunde"] .pp-ansprech {');
+  const ende = css.indexOf(':root[data-ce-bereich="kunde"] .btn.btn-ghost.inv-aktion-loeschen', start);
+  assert.ok(start > -1 && ende > start, "Abschnitt 25 oder der Beginn von Abschnitt 26 fehlt");
+  const abschnitt = css.slice(start, ende);
   assert.ok(abschnitt.length > 500, "Abschnitt 25 fehlt");
   assert.match(abschnitt, /@media \(prefers-reduced-motion: no-preference\) \{\s*:root\[data-ce-bereich="kunde"\] \.pp-ansprech-puls\[data-puls="an"\] \.pp-ansprech-punkt::after \{\s*animation: ce-ansprech-puls var\(--ce-pr-ed-ansprech-puls-dauer\) var\(--ce-pr-ed-ansprech-puls-kurve\) infinite;/);
   // Ohne Handlung bewegt sich nur der Lichthof. Die zweite Bewegung ist die Antwort auf das Öffnen (v2.91): nur nach

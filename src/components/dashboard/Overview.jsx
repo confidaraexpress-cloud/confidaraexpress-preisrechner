@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo } from "react";
-import { useHref, useNavigate } from "react-router-dom";
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { NotificationBell } from "../notifications/NotificationBell";
 import { useNotifications } from "../../context/NotificationsContext";
 import { SHIPMENT_KPIS, KPI_TEXT, kpisFromServerStats, activeNewNote } from "../../utils/kpis";
@@ -9,14 +9,17 @@ import { notificationTarget } from "../../utils/notificationsView.mjs";
 import { RecentShipments, OpenInvoices, OverviewNotifications, InventorySnapshot, CarrierPortfolio } from "./OverviewModules";
 import { PageHeader, UtilityCluster } from "../ui/PageHeader";
 import { UserChip } from "../ui/UserChip";
+import { KpiDetailFenster } from "./KpiDetailFenster";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ÜBERSICHT — die Designreferenz der Plattform (Redesign 2026-10)
    ───────────────────────────────────────────────────────────────────────────
    View-Layer: Markup + CSS (src/styles/overview.css). Die Daten lädt
    DashboardPage; die Kennzahlen kommen aus dem Serveraggregat
-   (kpisFromServerStats). Seit E1–E4 (2026-11-06) führt jede Kennzahlkarte
-   in „Sendungen" mit genau ihrem Filter (onOpenKpi).
+   (kpisFromServerStats). Seit E1–E4 (2026-11-06) gehört zu jeder Kennzahlkarte
+   genau ein Serverfilter; seit 2026-11-07 öffnet ein Klick das Detailfenster
+   an der Karte (KpiDetailFenster), „Alle anzeigen" darin führt wie bisher in
+   „Sendungen" mit diesem Filter (onOpenKpi).
 
    Aufbau:
      Seitenkopf  persönliche Begrüßung „Guten Tag, [Name]" · Datum und
@@ -71,21 +74,24 @@ const FUNKTIONEN = [
   { key: "lager",      title: "Lager und Aufträge",        desc: "Artikel und Bestand Ihres eigenen Lagers führen, Aufträge erfassen und direkt als Sendung vorbereiten." },
 ];
 
-/* ── Eine Kennzahlkarte (E1–E4, 2026-11-06) ──
-   Jede Karte ist ein Link in „Sendungen" mit genau ihrem Filter — auch bei 0 (dann zeigt die Liste einen
-   klaren Leerzustand). Ein gewöhnlicher Klick bleibt in der App (onOpen); Mittelklick, Strg-/Cmd-Klick und
-   „In neuem Tab öffnen" folgen dem href, den DashboardPage beim Start als ?page=shipments&kpi=… liest.
+/* ── Eine Kennzahlkarte (E1–E4, 2026-11-06; Detailfenster seit 2026-11-07) ──
+   Jede Karte öffnet und schließt ihr Detailfenster (KpiDetailFenster) — auch bei 0 (dann ein klarer Leerzustand).
+   Sie navigiert nicht mehr: ein Knopf mit aria-expanded/aria-controls (aria-haspopup="dialog"). Die gefilterte
+   Sendungsliste bleibt über „Alle anzeigen" im Fenster erreichbar — dort als echter Link (Mittelklick, neuer Tab).
    Der zugängliche Name entsteht aus dem sichtbaren Text (Bezeichnung, Zahl, Kontext) plus „Sendungen
-   anzeigen"; der Pfeil ist Schmuck. Keine Rolle `button`: die Karte navigiert. */
-function KennzahlKarte({ kpi, wert, kontext, note, onOpen }) {
-  const href = useHref(`/dashboard?page=shipments&kpi=${kpi.key}`);
-  const klick = (e) => {
-    if (!onOpen || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    e.preventDefault();
-    onOpen(kpi.key);
-  };
+   anzeigen"; der Pfeil ist Schmuck und zeigt bei geöffnetem Fenster nach unten. */
+function KennzahlKarte({ kpi, wert, kontext, note, offen, fensterId, karteRef, onUmschalten }) {
   return (
-    <a className={`ov-kpi ov-kpi--${kpi.cls}`} href={href} onClick={klick} data-kpi={kpi.key}>
+    <button
+      type="button"
+      ref={karteRef}
+      className={`ov-kpi ov-kpi--${kpi.cls}`}
+      data-kpi={kpi.key}
+      aria-haspopup="dialog"
+      aria-expanded={offen}
+      aria-controls={offen ? fensterId : undefined}
+      onClick={() => onUmschalten(kpi.key)}
+    >
       <span className="ov-kpi-label">
         <span className="ov-kpi-label-text">{kpi.label}</span>
         <span className="ov-kpi-pfeil"><Icon n="arrowRight" s={16} /></span>
@@ -96,7 +102,7 @@ function KennzahlKarte({ kpi, wert, kontext, note, onOpen }) {
         {note && <span className="ov-kpi-note"><span className="sr-only">, </span>{note}</span>}
         <span className="sr-only"> – {KPI_TEXT.openSuffix}</span>
       </span>
-    </a>
+    </button>
   );
 }
 
@@ -110,8 +116,9 @@ export function Overview({
   // Paket F: der Buchungsrahmen (GET /kunde/credit) — null, solange nichts geladen ist.
   credit = null,
   onNewShipment, onAllShipments, onAllInvoices, onProfile, onNotificationNav,
-  // E1–E4 (2026-11-06): Klick auf eine Kennzahlkarte → „Sendungen" mit genau ihrem Filter.
-  onOpenKpi = null,
+  // E1–E4 (2026-11-06): „Sendungen" mit genau dem Filter einer Kennzahl — seit 2026-11-07 aus „Alle anzeigen"
+  // im Detailfenster. onKpiStand übernimmt das Serveraggregat der Fensterantwort für die Karten.
+  onOpenKpi = null, onKpiStand = null,
   // G1/D7: Navigation in die Lagerbereiche (page-Wert, Filter) — derselbe Weg wie die Seitenleiste.
   onNavigate = null,
   // G2 und G1/D7 (2026-10-27): die angebotenen Versanddienstleister und der Lagerstand — beides lädt DashboardPage;
@@ -166,6 +173,16 @@ export function Overview({
   // E1: Testbuchungen zählen mit; solange das Aggregat welche enthält, sagt die Übersicht es.
   const testHinweis = zahlen && k.testBookings > 0;
 
+  // ── Detailfenster der Kennzahlen (2026-11-07) ──
+  // Höchstens EIN Fenster: dieselbe Karte schließt es, eine andere wechselt. Der kurz gültige Stand je Kennzahl lebt
+  // nur, solange die Übersicht steht (kein Storage); jede Karte trägt ihre Ref als Anker und Fokusziel.
+  const [offeneKennzahl, setOffeneKennzahl] = useState(null);
+  const kartenRefs = useRef({});
+  const fensterStand = useRef(new Map());
+  const fensterId = `kpf-${useId().replace(/:/g, "")}`;
+  const umschalten = useCallback((key) => setOffeneKennzahl((offen) => (offen === key ? null : key)), []);
+  const schliessen = useCallback(() => setOffeneKennzahl(null), []);
+
   return (
     <>
       <PageHeader
@@ -204,7 +221,10 @@ export function Overview({
               wert={zahlen ? String(k.byKey[kpi.key]) : "—"}
               kontext={zahlen ? kpi.context : (loading ? "Wird geladen…" : "Noch nicht verfügbar")}
               note={kpi.key === "active" ? activeNote : null}
-              onOpen={onOpenKpi}
+              offen={offeneKennzahl === kpi.key}
+              fensterId={fensterId}
+              karteRef={(el) => { kartenRefs.current[kpi.key] = el; }}
+              onUmschalten={umschalten}
             />
           ))}
           {/* E1: steht im Abstand unter den Karten (absolut, ohne Layoutsprung beim Nachladen). */}
@@ -215,6 +235,18 @@ export function Overview({
             </p>
           )}
         </section>
+        {offeneKennzahl && (
+          <KpiDetailFenster
+            key={offeneKennzahl}
+            id={fensterId}
+            kpi={offeneKennzahl}
+            anker={kartenRefs.current[offeneKennzahl] || null}
+            cache={fensterStand.current}
+            onClose={schliessen}
+            onAlleAnzeigen={onOpenKpi}
+            onStand={onKpiStand}
+          />
+        )}
 
         {/* ── Operative Module ──
             Letzte Sendungen und offene Rechnungen nebeneinander (≈ 2:1), darunter

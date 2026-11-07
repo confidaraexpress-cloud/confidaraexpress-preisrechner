@@ -84,9 +84,10 @@
   padding: var(--ce-space-5) var(--ce-space-6);
 }
 .ov-kpi + .ov-kpi { border-left: 1px solid var(--ce-kpi-divider); }
-/* Seit E1–E4 (2026-11-06) ist jede Zelle ein Link auf ihre gefilterte Sendungsliste; Zustände (Pfeil, Kante, Fokus) setzt die
-   Editorial-Ebene des Kundenbereichs (premium-editorial.css). Hier nur die Linkfarbe der Grundebene. */
-a.ov-kpi { color: inherit; text-decoration: none; }
+/* Seit 2026-11-07 ist jede Zelle ein Knopf, der ihr Detailfenster öffnet (KpiDetailFenster; von E1–E4 bis dahin ein Link auf die
+   gefilterte Sendungsliste). Zustände (Pfeil, Kante, Fokus, offen) setzt die Editorial-Ebene des Kundenbereichs
+   (premium-editorial.css). Hier nur die Vorgaben des Browsers für Knöpfe zurückgesetzt. */
+button.ov-kpi { width: 100%; border: 0; background: none; font: inherit; color: inherit; text-align: start; cursor: pointer; }
 .ov-kpi-label {
   font-size: var(--ce-text-label-size);
   font-weight: var(--ce-text-label-weight);

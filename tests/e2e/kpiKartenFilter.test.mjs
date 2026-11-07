@@ -1,7 +1,9 @@
 // E2E: Kennzahlkarten als Filter (Betreiberentscheidungen E1–E4, 2026-11-06) — echter Dev-Server, echter Browser.
+// Seit 2026-11-07 öffnet ein Klick auf eine Karte ihr Detailfenster (eigene Suite kpiDetailFenster); in die gefilterte
+// Liste führt „Alle anzeigen“ in diesem Fenster. Diese Suite prüft die Liste weiter über genau diesen Weg.
 //
-// Geprüft wird, was Quelltextanker nicht erreichen: dass jede der vier Karten ein bedienbarer Link ist (Maus,
-// Tastatur, sichtbarer Fokus), dass ein Klick genau den Serverfilter der Karte anfragt und dessen Trefferzahl zeigt,
+// Geprüft wird, was Quelltextanker nicht erreichen: dass jede der vier Karten bedienbar ist (Maus,
+// Tastatur, sichtbarer Fokus), dass „Alle anzeigen“ genau den Serverfilter der Karte anfragt und dessen Trefferzahl zeigt,
 // dass „Weitere Sendungen laden“ im Filter bleibt, dass Zurück/Vor/Neuladen den Filter richtig behandeln, dass Leer-,
 // Fehler- und Altbackend-Zustände nie eine falsche Liste oder 0 zeigen und dass jede Liste den Kundenstand samt
 // TEST-Marke trägt.
@@ -109,10 +111,17 @@ async function setupRoutes(page, { daten = standardDaten(), modus = "normal", pr
   return protokoll;
 }
 
-const karte = (page, kpi) => page.locator(`a.ov-kpi[data-kpi="${kpi}"]`);
+const karte = (page, kpi) => page.locator(`.ov-kpi[data-kpi="${kpi}"]`);
+// Karte → Detailfenster → „Alle anzeigen“: der Weg in die gefilterte Liste seit 2026-11-07.
+async function alleAnzeigen(page, kpi, { tippen = false } = {}) {
+  if (tippen) await karte(page, kpi).tap(); else await karte(page, kpi).click();
+  const alle = page.locator(`.kpf[data-kpi="${kpi}"] .kpf-alle`);
+  await alle.waitFor({ timeout: 15000 });
+  if (tippen) await alle.tap(); else await alle.click();
+}
 async function uebersicht(page) {
   await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
-  await page.waitForFunction(() => document.querySelectorAll("a.ov-kpi").length === 4
+  await page.waitForFunction(() => document.querySelectorAll(".ov-kpi").length === 4
     && [...document.querySelectorAll(".ov-kpi-value")].every((e) => /^\d+$/.test(e.textContent.trim())), null, { timeout: 30000 });
 }
 const filterLeiste = (page) => page.locator(".ce-filterleiste");
@@ -138,14 +147,15 @@ test.after(async () => {
   if (server) stopDevServer(server, "SIGKILL");
 });
 
-test("1 — vier Karten sind Links mit Filter, neuen Bezeichnungen, „davon n neu (24 h)“ und Testhinweis", async () => {
+test("1 — vier bedienbare Karten mit Detailfenster, neuen Bezeichnungen, „davon n neu (24 h)“ und Testhinweis", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, locale: "de-DE" });
   try {
     await setupRoutes(page);
     await uebersicht(page);
     const s = stats(standardDaten());
-    const karten = await page.$$eval("a.ov-kpi", (as) => as.map((a) => ({
-      kpi: a.dataset.kpi, href: a.getAttribute("href"), label: a.querySelector(".ov-kpi-label-text").textContent.trim(),
+    const karten = await page.$$eval(".ov-kpi", (as) => as.map((a) => ({
+      kpi: a.dataset.kpi, tag: a.tagName, popup: a.getAttribute("aria-haspopup"), offen: a.getAttribute("aria-expanded"),
+      label: a.querySelector(".ov-kpi-label-text").textContent.trim(),
       wert: a.querySelector(".ov-kpi-value").textContent.trim(), kontext: a.querySelector(".ov-kpi-context").textContent.trim(),
       cursor: getComputedStyle(a).cursor,
     })));
@@ -153,7 +163,7 @@ test("1 — vier Karten sind Links mit Filter, neuen Bezeichnungen, „davon n n
       ["active", "Aktive Sendungen"], ["in_transit", "Unterwegs"], ["delivered_this_month", "Zugestellt"], ["delayed", "Verzögert"],
     ]);
     for (const k of karten) {
-      assert.equal(k.href, `/dashboard?page=shipments&kpi=${k.kpi}`);
+      assert.deepEqual([k.tag, k.popup, k.offen], ["BUTTON", "dialog", "false"], `${k.kpi}: Knopf des Detailfensters`);
       assert.equal(k.cursor, "pointer");
       assert.equal(k.wert, String(s[k.kpi]), `${k.kpi}: Zahl`);
     }
@@ -161,7 +171,7 @@ test("1 — vier Karten sind Links mit Filter, neuen Bezeichnungen, „davon n n
     assert.match(karten[3].kontext, /^Voraussichtlicher Liefertermin überschritten/);
     assert.ok(!(await page.locator(".ov-kpis").innerText()).includes("In Zustellung"));
     // Zugänglicher Name: sichtbarer Text plus „Sendungen anzeigen“.
-    await page.getByRole("link", { name: /Verzögert.*Sendungen anzeigen/ }).waitFor({ timeout: 5000 });
+    await page.getByRole("button", { name: /Verzögert.*Sendungen anzeigen/ }).waitFor({ timeout: 5000 });
     // E1: Hinweis unter den Karten — ohne die Module zu verschieben.
     assert.equal((await page.locator(".ov-kpi-hinweis").innerText()).replace(/\s+/g, " ").trim(), "TEST Kennzahlen enthalten Testsendungen.");
     const lage = await page.evaluate(() => {
@@ -177,13 +187,13 @@ test("1 — vier Karten sind Links mit Filter, neuen Bezeichnungen, „davon n n
   } finally { await page.close(); }
 });
 
-test("2 — Klick auf „Verzögert“: Serverfilter, Trefferzahl, 50 + Nachladen im Filter, jede Zeile verzögert; Zurück/Vor", async () => {
+test("2 — „Verzögert“ › „Alle anzeigen“: Serverfilter, Trefferzahl, 50 + Nachladen im Filter, jede Zeile verzögert; Zurück/Vor", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, locale: "de-DE" });
   try {
     const protokoll = await setupRoutes(page);
     await uebersicht(page);
     const erwartet = stats(standardDaten()).delayed;
-    await karte(page, "delayed").click();
+    await alleAnzeigen(page, "delayed");
     await filterLeiste(page).waitFor({ timeout: 15000 });
     await page.waitForFunction((n) => document.querySelector(".ce-filterleiste-anzahl")?.textContent.includes(`${n}`), erwartet, { timeout: 15000 });
     const leiste = (await filterLeiste(page).innerText()).replace(/\s+/g, " ");
@@ -201,7 +211,8 @@ test("2 — Klick auf „Verzögert“: Serverfilter, Trefferzahl, 50 + Nachlade
     assert.ok(marken.every((t) => t.includes("Verzögert")), "eine Zeile im Filter „Verzögert“ trägt keine Verzögerung");
     // Browser-Zurück → Übersicht; Vor → derselbe Filter.
     await page.goBack();
-    await page.waitForSelector("a.ov-kpi", { timeout: 15000 });
+    await page.waitForSelector(".ov-kpi", { timeout: 15000 });
+    assert.equal(await page.locator(".kpf").count(), 0, "zurück auf der Übersicht ist kein Fenster offen");
     assert.equal(await filterLeiste(page).count(), 0);
     await page.goForward();
     await filterLeiste(page).waitFor({ timeout: 15000 });
@@ -209,7 +220,7 @@ test("2 — Klick auf „Verzögert“: Serverfilter, Trefferzahl, 50 + Nachlade
   } finally { await page.close(); }
 });
 
-test("3 — Tastatur: Fokus sichtbar auf der Karte, Enter öffnet „Unterwegs“; Neuladen behält den Filter", async () => {
+test("3 — Tastatur: Fokus sichtbar auf der Karte, Enter öffnet das Fenster, „Alle anzeigen“ den Filter „Unterwegs“; Neuladen behält ihn", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, locale: "de-DE" });
   try {
     await setupRoutes(page);
@@ -227,6 +238,12 @@ test("3 — Tastatur: Fokus sichtbar auf der Karte, Enter öffnet „Unterwegs�
     });
     assert.deepEqual(ring, { stil: "solid", breite: "2px", sichtbar: true });
     await page.keyboard.press("Enter");
+    await page.locator('.kpf[data-kpi="in_transit"][data-stand="ready"]').waitFor({ timeout: 15000 });
+    // Der Fokus liegt im Fenster (Schließen); Umschalt+Tab läuft in der Falle zum letzten Ziel: „Alle anzeigen“.
+    await page.waitForFunction(() => document.activeElement?.classList.contains("kpf-schliessen"), null, { timeout: 5000 });
+    await page.keyboard.press("Shift+Tab");
+    assert.equal(await page.evaluate(() => document.activeElement?.className), "kpf-alle");
+    await page.keyboard.press("Enter");
     await filterLeiste(page).waitFor({ timeout: 15000 });
     assert.match(await filterLeiste(page).innerText(), /Filter: Unterwegs/);
     await page.reload({ waitUntil: "domcontentloaded" });
@@ -242,7 +259,7 @@ test("4 — Filter entfernen: volle Liste, Fokus auf der Überschrift, und nach 
   try {
     await setupRoutes(page);
     await uebersicht(page);
-    await karte(page, "active").click();
+    await alleAnzeigen(page, "active");
     await filterLeiste(page).waitFor({ timeout: 15000 });
     await page.getByRole("button", { name: "Filter entfernen" }).click();
     await page.waitForFunction(() => !document.querySelector(".ce-filterleiste"), null, { timeout: 15000 });
@@ -259,7 +276,7 @@ test("4 — Filter entfernen: volle Liste, Fokus auf der Überschrift, und nach 
   } finally { await page.close(); }
 });
 
-test("5 — Wert 0 ist anklickbar: Leerzustand mit „Alle Sendungen anzeigen“; Fehler und Altbackend zeigen nie eine falsche Liste", async () => {
+test("5 — Wert 0 ist anklickbar: Fenster und Liste im Leerzustand, „Alle Sendungen anzeigen“; Fehler und Altbackend zeigen nie eine falsche Liste", async () => {
   const ohneZustellung = standardDaten().filter((s) => !s.delivered_this_month);
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, locale: "de-DE" });
   try {
@@ -267,7 +284,10 @@ test("5 — Wert 0 ist anklickbar: Leerzustand mit „Alle Sendungen anzeigen“
     await uebersicht(page);
     assert.equal((await karte(page, "delivered_this_month").locator(".ov-kpi-value").innerText()).trim(), "0");
     await karte(page, "delivered_this_month").click();
-    await page.getByText("In diesem Monat wurde noch keine Sendung zugestellt.").waitFor({ timeout: 15000 });
+    await page.locator('.kpf[data-kpi="delivered_this_month"]').getByText("In diesem Monat wurde noch keine Sendung zugestellt.").waitFor({ timeout: 15000 });
+    await page.locator('.kpf[data-kpi="delivered_this_month"] .kpf-alle').click();
+    await page.locator(".shipments-page, .main-content").getByText("In diesem Monat wurde noch keine Sendung zugestellt.").first().waitFor({ timeout: 15000 });
+    await filterLeiste(page).waitFor({ timeout: 15000 });
     assert.match((await filterLeiste(page).innerText()).replace(/\s+/g, " "), /Zugestellt im aktuellen Monat · 0 Sendungen/);
     await page.getByRole("button", { name: "Alle Sendungen anzeigen" }).click();
     await page.waitForSelector(".shipment-table tbody tr", { timeout: 15000 });
@@ -303,17 +323,17 @@ test("6 — Deep-Link in neuem Tab filtert direkt; ein unbekannter Filter zeigt 
   } finally { await page.close(); }
 });
 
-test("7 — 390 px: Karten 2 × 2 und antippbar, Filterleiste bricht um, kein Querüberlauf", async () => {
+test("7 — 390 px: Karten 2 × 2 und antippbar, „Alle anzeigen“ im Sheet, Filterleiste bricht um, kein Querüberlauf", async () => {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, locale: "de-DE", hasTouch: true, isMobile: true });
   try {
     await setupRoutes(page);
     await uebersicht(page);
     // Lage per offsetTop/offsetLeft — nicht während der Einstiegsanimation über getBoundingClientRect.
     await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => null))));
-    const raster = await page.$$eval("a.ov-kpi", (as) => as.map((a) => [a.offsetLeft, a.offsetTop, a.offsetWidth, a.offsetHeight]));
+    const raster = await page.$$eval(".ov-kpi", (as) => as.map((a) => [a.offsetLeft, a.offsetTop, a.offsetWidth, a.offsetHeight]));
     assert.equal(new Set(raster.map((r) => r[1])).size, 2, "zwei Reihen");
     assert.ok(raster.every((r) => r[2] >= 44 && r[3] >= 44), "Ziel kleiner als 44 × 44 px");
-    await karte(page, "delayed").tap();
+    await alleAnzeigen(page, "delayed", { tippen: true });
     await filterLeiste(page).waitFor({ timeout: 15000 });
     await page.waitForSelector(".shipment-cards .ce-list-card", { timeout: 15000 });
     const ueberlauf = await page.evaluate(() => document.scrollingElement.scrollWidth - window.innerWidth);

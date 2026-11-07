@@ -755,10 +755,10 @@ export default function DashboardPage() {
     performNav(target);
   };
 
-  // Kennzahlkarte der Übersicht → „Sendungen" mit genau ihrem Filter (E1–E4). Anders als die übrige
-  // interne Navigation legt dieser Schritt einen eigenen History-Eintrag an: Browser-Zurück führt aus der
-  // gefilterten Liste auf die Übersicht zurück. Die Karten stehen nur auf der Übersicht — kein
-  // Verlassen-Dialog nötig.
+  // „Alle anzeigen" im Detailfenster einer Kennzahlkarte → „Sendungen" mit genau ihrem Filter (E1–E4; bis
+  // 2026-11-06 der Klick auf die Karte selbst). Anders als die übrige interne Navigation legt dieser Schritt einen
+  // eigenen History-Eintrag an: Browser-Zurück führt aus der gefilterten Liste auf die Übersicht zurück. Die Karten
+  // stehen nur auf der Übersicht — kein Verlassen-Dialog nötig.
   const oeffneKennzahl = (kpi) => {
     if (!isShipmentKpiKey(kpi)) return;
     setSidebarOpen(false);
@@ -769,6 +769,11 @@ export default function DashboardPage() {
     const aktuell = (typeof window !== "undefined" && window.history.state?.usr) || {};
     navigate(location.pathname, { state: { ...aktuell, page: "shipments", kpi } });
   };
+
+  // Detailfenster der Kennzahlen (2026-11-07): Seine Antwort trägt das Aggregat aus DEMSELBEN Datenbankstand wie seine
+  // Trefferzahl (kpiFensterStats hat es vollständig und gleich geprüft). Die Karten übernehmen es — Karte und Fenster
+  // zeigen damit dieselbe, aktuelle Zahl.
+  const uebernehmeKennzahlStand = useCallback((stats) => { if (stats) setShipmentsStats(stats); }, []);
 
   // Logout ebenfalls durch den Guard (ungespeicherte Angaben in „Neue Sendung").
   const requestLogout = () => {
@@ -908,6 +913,7 @@ export default function DashboardPage() {
             onNewShipment={() => navigateTo("new")}
             onAllShipments={() => navigateTo("shipments")}
             onOpenKpi={oeffneKennzahl}
+            onKpiStand={uebernehmeKennzahlStand}
             onAllInvoices={() => navigateTo("invoices")}
             onProfile={() => navigateTo("profile")}
             onNotificationNav={navigateFromNotification}

@@ -87,8 +87,9 @@ test("1 — die Übersicht rendert genau VIER Kennzahlen in EINEM Band", () => {
   // EIN Band (section mit Bezeichnung), darin je Kennzahl eine Karte.
   assert.match(overviewCode, /<section className="ov-kpis" aria-label="Betriebsüberblick">/, "das Band fehlt");
   assert.match(overviewCode, /\{SHIPMENT_KPIS\.map\(\(kpi\) => \(\s*<KennzahlKarte/, "jede Kennzahl ist eine Karte des Abschnitts");
-  assert.match(overviewCode, /<a className=\{`ov-kpi ov-kpi--\$\{kpi\.cls\}`\} href=\{href\} onClick=\{klick\} data-kpi=\{kpi\.key\}>/,
-    "die Karte ist ein Link mit der Kennzahl-Klasse");
+  // Seit 2026-11-07 ein Knopf, der das Detailfenster der Kennzahl öffnet (bis dahin ein Link, Test 22).
+  assert.match(overviewCode, /<button\s+type="button"\s+ref=\{karteRef\}\s+className=\{`ov-kpi ov-kpi--\$\{kpi\.cls\}`\}\s+data-kpi=\{kpi\.key\}/,
+    "die Karte ist ein Knopf mit der Kennzahl-Klasse");
   // Die Klassenmodifikatoren bleiben die seit 2026-10 bekannten (Stil- und Testanker); der Filter steht in data-kpi.
   assert.deepEqual(SHIPMENT_KPIS.map((k) => k.cls), ["active", "transit", "delivered", "delayed"]);
   assert.ok(!/data-null/.test(overviewCode), "der Marker der früheren Akzentfarbe ist zurück");
@@ -312,20 +313,31 @@ test("21 — im Band stehen keine Farbliterale", () => {
 });
 
 
-test("22 — die Karten sind Links in ihre gefilterte Sendungsliste (E1–E4, bewusst umgekehrt)", () => {
-  // Bis 2026-11-06 reine Informationsflächen. Jetzt: ein echter Link (Mittelklick, neuer Tab), ein gewöhnlicher
-  // Klick bleibt in der App; keine Rolle button (die Karte navigiert), kein tabIndex-Ersatz.
+test("22 — die Karten öffnen ihr Detailfenster an der Karte (2026-11-07, bewusst umgekehrt: vorher Links)", () => {
+  // Bis 2026-11-06 reine Informationsflächen, von E1–E4 bis 2026-11-06 Links in die gefilterte Sendungsliste. Seit der
+  // Betreiberentscheidung vom 2026-11-07 öffnet ein Klick ein Fenster an der Karte — keine Navigation. Die Karte ist
+  // deshalb ein Knopf mit aria-expanded/aria-controls (aria-haspopup="dialog"); der Link wandert als „Alle anzeigen“ ins
+  // Fenster (kpiDetailFenster.test.mjs).
   const karte = overviewCode.slice(overviewCode.indexOf("function KennzahlKarte"), overviewCode.indexOf("export function Overview"));
-  assert.match(karte, /const href = useHref\(`\/dashboard\?page=shipments&kpi=\$\{kpi\.key\}`\);/);
-  assert.match(karte, /e\.button !== 0 \|\| e\.metaKey \|\| e\.ctrlKey \|\| e\.shiftKey \|\| e\.altKey/, "Zusatztasten folgen dem href");
-  assert.match(karte, /e\.preventDefault\(\);\s*onOpen\(kpi\.key\);/);
-  assert.ok(!/role="button"|tabIndex|<button/.test(karte), "die Karte ist ein Link, kein Knopf");
+  assert.match(karte, /aria-haspopup="dialog"/);
+  assert.match(karte, /aria-expanded=\{offen\}/);
+  assert.match(karte, /aria-controls=\{offen \? fensterId : undefined\}/, "aria-controls nur, solange das Fenster existiert");
+  assert.match(karte, /onClick=\{\(\) => onUmschalten\(kpi\.key\)\}/);
+  assert.ok(!/useHref|href=|navigate\(|onOpen\b|role="button"|tabIndex/.test(karte), "die Karte navigiert nicht mehr und ist kein Ersatzknopf");
   // Zugänglicher Name aus dem sichtbaren Text plus „Sendungen anzeigen“.
   assert.match(karte, /<span className="sr-only"> – \{KPI_TEXT\.openSuffix\}<\/span>/);
   assert.ok(!/aria-label/.test(karte), "der Name entsteht aus dem sichtbaren Text");
-  // Grundebene: Linkfarbe zurückgesetzt; die Zustände setzt die Editorial-Ebene (Test 31).
-  assert.equal(decl("a.ov-kpi", "text-decoration"), "none");
-  assert.equal(decl("a.ov-kpi", "color"), "inherit");
+  // Höchstens EIN Fenster: dieselbe Karte schließt, eine andere wechselt (Schlüssel = Kennzahl → neuer Abruf).
+  assert.match(overviewCode, /setOffeneKennzahl\(\(offen\) => \(offen === key \? null : key\)\)/);
+  assert.match(overviewCode, /\{offeneKennzahl && \(\s*<KpiDetailFenster\s+key=\{offeneKennzahl\}/);
+  assert.match(overviewCode, /onAlleAnzeigen=\{onOpenKpi\}/, "„Alle anzeigen“ nutzt den bestehenden Weg in die gefilterte Liste");
+  assert.equal((overviewCode.match(/<KpiDetailFenster\b/g) || []).length, 1);
+  // Grundebene: die Vorgaben des Browsers für Knöpfe zurückgesetzt; die Zustände setzt die Editorial-Ebene (Test 31).
+  assert.equal(decl("button.ov-kpi", "font"), "inherit");
+  assert.equal(decl("button.ov-kpi", "color"), "inherit");
+  assert.equal(decl("button.ov-kpi", "text-align"), "start");
+  assert.equal(decl("button.ov-kpi", "width"), "100%");
+  assert.ok(rule("a.ov-kpi") === null, "die Grundebene kennt keine Link-Karte mehr");
 });
 
 test("23 — Textfarben erfüllen WCAG AA auf der Bandfläche", () => {
@@ -442,16 +454,27 @@ test("31 — Editorial (2026-11-01, Premium-Dashboard V2, Flow Signature): vier 
   const zweiMalZwei = edBlock("@container ce-seite (width < 51.5625rem) {");
   assert.ok(zweiMalZwei && /\.ov-kpis \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/.test(zweiMalZwei), "2 × 2 fehlt");
   assert.ok(!/\.ov-kpis \{[^}]*grid-template-columns:\s*(?:1fr|minmax\(0, 1fr\))\s*;/.test(editorial), "die Karten stehen einspaltig");
-  // Seit E1–E4 (2026-11-06) Links: Zeiger, beim Zeigen nur Deckkraft der Signalkante (Ebene über der Karte) und Farbe
-  // des Pfeils — keine Bewegung, kein transform, keine Größenänderung; Fokus im Fokuspaar des Systems.
-  assert.match(edRegel("a.ov-kpi") || "", /cursor: pointer/, "die Karte zeigt sich als Link");
-  const zeigen = (editorial.match(/@media \(hover: hover\) and \(pointer: fine\) \{\s*:root\[data-ce-bereich="kunde"\] a\.ov-kpi:hover::after[^}]*\}/) || [""])[0];
-  assert.ok(zeigen && /a\.ov-kpi:hover::after \{ opacity: 1; \}/.test(zeigen), "Hover nur über die Deckkraft der Ebene");
-  assert.ok(!/\.ov-kpi[^{]*\{[^}]*transform/.test(editorial.replace(/@keyframes[\s\S]*?\}\s*\}/g, "")), "keine Bewegung beim Zeigen");
+  // Seit E1–E4 (2026-11-06) bedienbar, seit 2026-11-07 als Knopf des Detailfensters: Zeiger, beim Zeigen nur Deckkraft
+  // der Signalkante (Ebene über der Karte) und Farbe des Pfeils — keine Bewegung, kein transform, keine Größenänderung;
+  // Fokus im Fokuspaar des Systems. Offen (aria-expanded) bleibt die Signalkante stehen.
+  assert.match(edRegel("button.ov-kpi") || "", /cursor: pointer/, "die Karte zeigt sich nicht als bedienbar");
+  const zeigen = (editorial.match(/@media \(hover: hover\) and \(pointer: fine\) \{\s*:root\[data-ce-bereich="kunde"\] button\.ov-kpi:hover::after[^}]*\}/) || [""])[0];
+  assert.ok(zeigen && /button\.ov-kpi:hover::after \{ opacity: 1; \}/.test(zeigen), "Hover nur über die Deckkraft der Ebene");
+  assert.match(editorial, /button\.ov-kpi\[aria-expanded="true"\]::after \{ opacity: 1; \}/, "die offene Karte zeigt ihre Signalkante");
+  // Die einzige Bewegung an der Karte: der Pfeil dreht sich zum geöffneten Fenster (Antwort auf den Klick, nicht aufs Zeigen).
+  const ohneKeyframes = editorial.replace(/@keyframes[\s\S]*?\}\s*\}/g, "");
+  const kartenBewegung = [...ohneKeyframes.matchAll(/([^{}]*\.ov-kpi[^{}]*)\{([^{}]*transform[^{}]*)\}/g)]
+    .map(([, sel, rumpf]) => `${sel.trim()} { ${rumpf.trim()} }`);
+  assert.deepEqual(kartenBewegung, [
+    ':root[data-ce-bereich="kunde"] .ov-kpi-pfeil svg { transition: transform var(--ce-motion-fast) ease; }',
+    ':root[data-ce-bereich="kunde"] button.ov-kpi[aria-expanded="true"] .ov-kpi-pfeil svg { transform: rotate(90deg); }',
+  ], "Bewegung an der Karte nur als Drehung des Pfeils zum geöffneten Fenster");
+  assert.match(editorial, /@media \(prefers-reduced-motion: reduce\) \{[^}]*\.ov-kpi-pfeil svg \{ transition: none; \}/, "reduzierte Bewegung: ohne Übergang");
   assert.equal(edDecl(".ov-kpi::after", "border"), "1px solid var(--ce-pr-ed-kante-signal)");
   assert.equal(edDecl(".ov-kpi::after", "box-shadow"), "var(--ce-pr-ed-shadow-kennzahl-hover)");
   assert.equal(edDecl(".ov-kpi::after", "opacity"), "0");
-  assert.match(editorial, /a\.ov-kpi:focus-visible \{\s*outline: var\(--ce-focus-ring\);\s*outline-offset: var\(--ce-focus-ring-offset\);/);
+  assert.match(editorial, /button\.ov-kpi:focus-visible \{\s*outline: var\(--ce-focus-ring\);\s*outline-offset: var\(--ce-focus-ring-offset\);/);
+  assert.ok(!/(^|[\s,}])a\.ov-kpi\b/.test(editorial), "die Editorial-Ebene kennt keine Link-Karte mehr");
   // Das Band ist vollständig entfernt, samt seiner Tokens.
   for (const alt of ["--ce-pr-ed-band", "--ce-pr-ed-band-line", "--ce-pr-ed-shadow-band", "--ce-pr-ed-mark-active", "--ce-pr-ed-mark-transit", "--ce-pr-ed-mark-delayed"]) {
     assert.ok(!new RegExp(`${alt}\\b(?!-)`).test(editorial + variables), `${alt} ist noch vorhanden`);

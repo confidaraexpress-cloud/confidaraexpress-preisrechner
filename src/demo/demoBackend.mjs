@@ -122,6 +122,11 @@ function sendungen() {
       delivered_this_month: szenario === "delivered" && tagVerschoben(tage + 2).getMonth() === new Date().getMonth(),
       // Voraussichtlicher Liefertermin: die verzögerte Sendung liegt zwei Tage darüber.
       delivery_date_max: szenario === "delayed" ? isoDatum(tagVerschoben(-2)) : szenario === "delivered" ? null : isoDatum(tagVerschoben(2)),
+      // Zeitpunkt des letzten erfolgreichen Trackingabrufs (Kennzahl-Detailfenster, 2026-11-07) — wie im Server nur, wo ein
+      // Trackingstand vorliegt; die Zustellung wurde beim Abruf ihres Zeitpunkts gemeldet.
+      last_tracked_at: szenario === "delivered" ? zeitstempel(tage + 2, 14) : trackingStatus === "in_transit" ? zeitstempel(0, 8) : null,
+      // Absender wie in der echten Liste (sender_address): das erfundene Konto selbst.
+      sender_address: { company: "Muster Logistik GmbH", postalCode: "70173", city: "Stuttgart", country: "DE" },
       customer_status: szenario === "delivered" ? "delivered" : trackingStatus === "in_transit" ? "in_transit" : status,
       is_active: szenario !== "delivered",
       is_delayed: szenario === "delayed",
@@ -610,12 +615,17 @@ function route(methode, pfad, query, optionen) {
 
   // Sendungen
   if (pfad === "/kunde/shipments") {
-    // Kennzahlfilter wie im Server: nur die vier Schlüssel, sonst 400; Trefferzahl = Zahl der Karte.
+    // Kennzahlfilter wie im Server: nur die vier Schlüssel, sonst 400; Trefferzahl = Zahl der Karte. Die Seite hat höchstens
+    // `limit` Zeilen (1–100, Standard 50) — das Detailfenster fragt mit limit=5 nur die neuesten an.
     const kpi = query.get("kpi");
     if (kpi) {
       if (!Object.prototype.hasOwnProperty.call(DEMO_KENNZAHLEN, kpi)) return json({ error: "kpi: unbekannter Filter", code: "SHIPMENTS_KPI_INVALID" }, 400);
+      // Wie der Server (lib/keysetCursor.js): fehlt `limit`, gilt 50; sonst nur eine Ganzzahl von 1 bis 100, alles andere 400.
+      const roh = query.get("limit");
+      const limit = roh === null || roh === "" ? 50 : /^\d{1,4}$/.test(roh) ? Number(roh) : NaN;
+      if (!(limit >= 1 && limit <= 100)) return json({ error: "limit: muss zwischen 1 und 100 liegen", code: "SHIPMENTS_LIMIT_INVALID" }, 400);
       const treffer = st.sendungen.filter(DEMO_KENNZAHLEN[kpi]);
-      return json({ shipments: treffer, stats: statistik(st.sendungen), nextCursor: null, filter: { kpi, total: treffer.length } });
+      return json({ shipments: treffer.slice(0, limit), stats: statistik(st.sendungen), nextCursor: null, filter: { kpi, total: treffer.length } });
     }
     return json({ shipments: st.sendungen, stats: statistik(st.sendungen), nextCursor: null });
   }

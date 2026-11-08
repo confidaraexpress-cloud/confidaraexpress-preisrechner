@@ -98,6 +98,10 @@ async function uebersicht(page) {
 async function oeffnen(page) {
   await chip(page).click();
   await page.waitForSelector(".ce-pm[data-bereit]", { timeout: 5000 });
+  // Erst nach der Öffnungsbewegung (160 ms) weiter: Playwrights Klickprüfung scrollt ein sich noch bewegendes Ziel „ins Bild“,
+  // und wegen `scroll-behavior: smooth` läuft diese Fahrt nach dem Klick weiter (gemessen in CI und bei 4× gedrosselter CPU).
+  await page.waitForFunction(() => document.querySelector(".ce-pm")?.getAnimations().every((a) => a.playState === "finished") ?? false,
+    null, { timeout: 5000 });
 }
 async function geschlossen(page) {
   await menue(page).waitFor({ state: "detached", timeout: 5000 });
@@ -282,13 +286,17 @@ test("E — „Sicherheit & Passwort“: Abschnitt „Sicherheit“ der Kontoein
   await eintrag(page, "sicherheit").click();
   const erneut = await abschnittSicherheitAktiv(page);
   assert.equal(erneut.imBild, true);
-  // Ein eingelöster Wunsch springt kein zweites Mal: „Mein Konto“ lässt die Seite, wo sie ist.
+  // Ein eingelöster Wunsch springt kein zweites Mal: nach „Mein Konto“ bleibt der Fokus am Chip, der Abschnitt außer Sicht.
   await page.keyboard.press("Shift");
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await oeffnen(page);
   await eintrag(page, "konto").click();
   await page.waitForTimeout(700);
-  assert.equal(await page.evaluate(() => Math.round(window.scrollY)), 0, "verspäteter Sprung ohne Wunsch");
+  assert.equal(await fokus(page), "chip", "verspäteter Sprung ohne Wunsch (Fokus)");
+  assert.equal(await page.evaluate(() => {
+    const r = document.querySelector("#profil-sicherheit").getBoundingClientRect();
+    return r.top >= 0 && r.top < innerHeight;
+  }), false, "verspäteter Sprung ohne Wunsch (Abschnitt im Bild)");
   assert.deepEqual(fehler, []);
   await ctx.close();
 });

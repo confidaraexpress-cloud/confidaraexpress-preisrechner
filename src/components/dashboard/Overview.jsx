@@ -115,7 +115,9 @@ export function Overview({
   user, shipments, invoices, invoiceSummary, serverStats, loading, kpisReady,
   // Paket F: der Buchungsrahmen (GET /kunde/credit) — null, solange nichts geladen ist.
   credit = null,
-  onNewShipment, onAllShipments, onAllInvoices, onProfile, onNotificationNav,
+  onNewShipment, onAllShipments, onAllInvoices, onNotificationNav,
+  // Profilmenü am Benutzerchip (2026-11-08): der Abmeldeweg der Shell (mit Verlassen-Schutz); navigiert wird über onNavigate.
+  onLogout = null,
   // E1–E4 (2026-11-06): „Sendungen" mit genau dem Filter einer Kennzahl — seit 2026-11-07 aus „Alle anzeigen"
   // im Detailfenster. onKpiStand übernimmt das Serveraggregat der Fensterantwort für die Karten.
   onOpenKpi = null, onKpiStand = null,
@@ -196,7 +198,7 @@ export function Overview({
             {/* Zustand und Polling kommen aus dem Shell-Provider; hier entsteht
                 keine zweite Abfrageschleife. */}
             <NotificationBell variant="overview" navigateTo={onNotificationNav} />
-            <UserChip user={user} onClick={onProfile} />
+            <UserChip user={user} onNavigate={onNavigate} onLogout={onLogout} />
           </UtilityCluster>
         )}
         actions={(

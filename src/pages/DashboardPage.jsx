@@ -819,7 +819,8 @@ export default function DashboardPage() {
     <UtilityCluster>
       {kopfSuche}
       <NotificationBell variant="page" navigateTo={navigateFromNotification} />
-      <UserChip user={user} onClick={() => navigateTo("profile")} />
+      {/* Profilmenü (2026-11-08): dieselbe Seitennavigation samt Verlassen-Schutz und derselbe Abmeldeweg wie die Sidebar. */}
+      <UserChip user={user} onNavigate={navigateTo} onLogout={requestLogout} />
     </UtilityCluster>
   );
 
@@ -915,7 +916,7 @@ export default function DashboardPage() {
             onOpenKpi={oeffneKennzahl}
             onKpiStand={uebernehmeKennzahlStand}
             onAllInvoices={() => navigateTo("invoices")}
-            onProfile={() => navigateTo("profile")}
+            onLogout={requestLogout}
             onNotificationNav={navigateFromNotification}
             onNavigate={navigateTo}
             carriers={carrierPortfolio}

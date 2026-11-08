@@ -39,6 +39,12 @@
 }
 .pp-uchip:hover { background: var(--ce-color-surface-hover); }
 .pp-uchip:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
+/* Profilmenü (2026-11-08): Der Chip öffnet ein Menü direkt unter sich. Die Klappmarke zeigt das an und dreht sich
+   offen nach oben; offen bleibt die Fläche gedrückt, solange das Menü steht (aria-expanded). */
+.pp-uchip[aria-expanded="true"] { background: var(--ce-color-surface-pressed); }
+.pp-uchip-pfeil { display: inline-flex; flex-shrink: 0; margin-left: 2px; color: var(--ce-color-text-secondary); }
+.pp-uchip-pfeil svg { transition: transform var(--ce-motion-fast) var(--ce-motion-ease-standard); }
+.pp-uchip[aria-expanded="true"] .pp-uchip-pfeil svg { transform: rotate(180deg); }
 .ce-comark { width: 32px; height: 32px; flex-shrink: 0; display: block; }
 /* Firmenlogo im Chip. `contain` ist tragend: ein Kundenlogo hat ein beliebiges
    Seitenverhältnis — es wird in die Fläche EINGEPASST, nie verzerrt und nie
@@ -711,7 +717,8 @@ button.ov-kpi { width: 100%; border: 0; background: none; font: inherit; color: 
 
 @media (prefers-reduced-motion: reduce) {
   .ov-ntf-btn,
-  .pp-uchip { transition: none; }
+  .pp-uchip,
+  .pp-uchip-pfeil svg { transition: none; }
 }
 
 /* ── Buchungsrahmen (Paket F, 2026-10-23; Premium-Redesign B11) ──

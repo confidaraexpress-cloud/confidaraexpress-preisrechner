@@ -2825,3 +2825,197 @@
 @media print {
   :root[data-ce-bereich="kunde"] :is(.kpf, .kpf-schleier) { display: none; }
 }
+
+/* ═══════════ 28 · PROFILMENÜ AM BENUTZERCHIP ═══════════════════════════════════════════════════════════════════
+   Betreiberentscheidung 2026-11-08 (Canonical 1A „Profilmenü am Benutzerchip“): Ein Klick auf den Benutzerchip öffnet
+   dieses Menü direkt unter dem Chip (ProfilMenue.jsx, Portal an <body>), statt in die Kontoeinstellungen zu wechseln.
+   Dieselben Prinzipien wie die Kennzahl-Detailfenster, ohne technische Kopplung: Lichtkante, helle Fläche, Radius der
+   Karte, navygetönter Schatten, ein kleiner Pfeil zum Chip. Kopf: die Firmenmarke des Chips in 40 px, Name, Firma und
+   „Geschäftskundenkonto“. Vier Einträge mit Linienicon auf Signal-Soft (Ausnahme zur Symbolregel, Betreibervorgabe),
+   Titel und Unterzeile, ein einheitlicher Pfeil; „Abmelden“ hinter einer Haarlinie mit neutraler Kachel. Zeigen hellblau
+   (nur echter Zeiger), Fokusring innen; jeder Eintrag mindestens 52 px (flache Fenster 48 px). Bewegung nur als
+   Antwort: Öffnen 160 ms Deckkraft und 4 px aus dem Chip heraus; bei reduzierter Bewegung keine. Lage, Breite und
+   Höchsthöhe setzt die Komponente (profilMenueLage); reicht die Höhe nicht, scrollt nur die Liste. Ebene
+   --ce-z-dropdown (über der Ansprechpartnerkarte, unter Schublade und Dialogen). */
+:root[data-ce-bereich="kunde"] .ce-pm {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: var(--ce-z-dropdown);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: var(--ce-pr-radius-card);
+  background: var(--ce-pr-ed-karte-licht) padding-box, var(--ce-pr-ed-kante-licht) border-box;
+  background-color: var(--ce-color-surface);
+  box-shadow: var(--ce-pr-ed-shadow-fenster);
+  color: var(--ce-color-text-primary);
+  font-family: var(--ce-font-sans);
+  text-align: start;
+}
+@media (forced-colors: active) {
+  :root[data-ce-bereich="kunde"] .ce-pm { border-color: CanvasText; }
+}
+/* Der Pfeil zum Chip: ein gedrehtes Quadrat in der Fläche, dessen zwei äußere Kanten die Lichtkante fortsetzen. */
+:root[data-ce-bereich="kunde"] .ce-pm::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: calc(var(--ce-pm-pfeil, 50%) - 7px);
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--ce-pr-ed-kante-signal);
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+  border-top-left-radius: 3px;
+  background: var(--ce-color-surface);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+/* Kopf: dieselbe Identität wie im Chip, eine Stufe größer — vollständig, ohne Kürzung. */
+:root[data-ce-bereich="kunde"] .ce-pm-kopf {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--ce-space-3);
+  padding: var(--ce-space-5) var(--ce-space-5) var(--ce-space-4);
+  border-bottom: 1px solid var(--ce-pr-hairline);
+}
+:root[data-ce-bereich="kunde"] .ce-pm-marke { display: inline-flex; align-self: start; }
+:root[data-ce-bereich="kunde"] .ce-pm-marke .ce-comark { width: 2.5rem; height: 2.5rem; }
+/* Ein Firmenlogo bekommt im Kopf die Breite, die es braucht (bis 72 px): Wortmarken bleiben lesbar statt in einem
+   Quadrat zu schrumpfen; eingepasst wie im Chip, nie verzerrt. */
+:root[data-ce-bereich="kunde"] .ce-pm-marke .ce-comark-img { width: auto; min-width: 2.5rem; max-width: 4.5rem; padding: 2px; }
+:root[data-ce-bereich="kunde"] .ce-pm-identitaet { display: flex; flex-direction: column; min-width: 0; }
+:root[data-ce-bereich="kunde"] .ce-pm-name {
+  font-size: 1rem;
+  line-height: 1.375;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--ce-color-text-primary);
+  overflow-wrap: break-word;
+}
+:root[data-ce-bereich="kunde"] .ce-pm-firma {
+  font-size: var(--ce-text-micro-size);
+  line-height: 1.45;
+  color: var(--ce-color-text-secondary);
+  overflow-wrap: break-word;
+}
+:root[data-ce-bereich="kunde"] .ce-pm-kontoart {
+  margin-top: var(--ce-space-1);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--ce-color-text-muted);
+}
+
+/* Einträge: Kachel mit Linienicon, Titel und Unterzeile, Pfeil — eine Zeile je Ziel. Nur die Liste scrollt. */
+:root[data-ce-bereich="kunde"] .ce-pm-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  padding: var(--ce-space-2);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+:root[data-ce-bereich="kunde"] .ce-pm-eintrag {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ce-space-3);
+  width: 100%;
+  min-height: 3.25rem;
+  padding: var(--ce-space-2) var(--ce-space-3);
+  border: 0;
+  border-radius: var(--ce-pr-radius-control-lg);
+  background: transparent;
+  color: var(--ce-color-text-primary);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--ce-motion-fast) ease;
+}
+:root[data-ce-bereich="kunde"] .ce-pm-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--ce-pr-radius-control);
+  background: var(--ce-pr-signal-soft);
+  box-shadow: inset 0 0 0 1px var(--ce-pr-ed-filter-kante);
+  color: var(--ce-pr-signal-ink);
+  transition: background-color var(--ce-motion-fast) ease;
+}
+:root[data-ce-bereich="kunde"] .ce-pm-text { display: flex; flex-direction: column; min-width: 0; }
+:root[data-ce-bereich="kunde"] .ce-pm-titel {
+  font-size: var(--ce-text-label-size);
+  line-height: 1.4286;
+  font-weight: 600;
+  color: var(--ce-color-text-primary);
+  overflow-wrap: break-word;
+}
+:root[data-ce-bereich="kunde"] .ce-pm-untertitel {
+  font-size: var(--ce-text-micro-size);
+  line-height: 1.4;
+  color: var(--ce-color-text-secondary);
+  overflow-wrap: break-word;
+}
+:root[data-ce-bereich="kunde"] .ce-pm-pfeil { display: inline-flex; color: var(--ce-color-text-muted); }
+:root[data-ce-bereich="kunde"] .ce-pm-pfeil svg { transition: transform var(--ce-motion-fast) ease; }
+:root[data-ce-bereich="kunde"] .ce-pm-trenner {
+  flex: none;
+  height: 1px;
+  margin: var(--ce-space-1) var(--ce-space-3);
+  background: var(--ce-pr-hairline);
+}
+/* „Abmelden“ ist eine Handlung, kein Ziel: neutrale Kachel, kein Pfeil. */
+:root[data-ce-bereich="kunde"] .ce-pm-eintrag--abmelden .ce-pm-symbol {
+  background: var(--ce-pr-inset);
+  box-shadow: inset 0 0 0 1px var(--ce-pr-hairline);
+  color: var(--ce-color-text-secondary);
+}
+
+/* Zeigen nur mit echtem Zeiger, Drücken und Tastaturfokus für jeden — hellblau, der Fokusring innen. */
+@media (hover: hover) and (pointer: fine) {
+  :root[data-ce-bereich="kunde"] .ce-pm-eintrag:hover { background: var(--ce-pr-signal-soft); }
+  :root[data-ce-bereich="kunde"] .ce-pm-eintrag:hover .ce-pm-symbol { background: var(--ce-pr-signal-soft-hover); }
+  :root[data-ce-bereich="kunde"] .ce-pm-eintrag:hover .ce-pm-pfeil { color: var(--ce-pr-signal-ink); }
+  :root[data-ce-bereich="kunde"] .ce-pm-eintrag:hover .ce-pm-pfeil svg { transform: translateX(2px); }
+}
+:root[data-ce-bereich="kunde"] .ce-pm-eintrag:focus-visible {
+  outline: var(--ce-focus-ring);
+  outline-offset: -2px;
+  background: var(--ce-pr-signal-soft);
+}
+:root[data-ce-bereich="kunde"] .ce-pm-eintrag:focus-visible .ce-pm-pfeil { color: var(--ce-pr-signal-ink); }
+:root[data-ce-bereich="kunde"] .ce-pm-eintrag:active { background: var(--ce-pr-signal-soft-hover); }
+
+/* Der offene Chip steht im Signalton des Menüs, seine Klappmarke in Signaltinte. */
+:root[data-ce-bereich="kunde"] .pp-uchip[aria-expanded="true"] { background: var(--ce-pr-signal-soft); }
+:root[data-ce-bereich="kunde"] .pp-uchip[aria-expanded="true"] .pp-uchip-pfeil { color: var(--ce-pr-signal-ink); }
+
+/* Flache Fenster (Telefon quer, kleine Laptops): dichter, damit das Menü ohne Innenscrollen passt — Ziele bleiben 48 px. */
+@media (max-height: 30em) {
+  :root[data-ce-bereich="kunde"] .ce-pm-kopf { padding: var(--ce-space-3) var(--ce-space-4) var(--ce-space-3); }
+  :root[data-ce-bereich="kunde"] .ce-pm-liste { padding: var(--ce-space-1) var(--ce-space-2); }
+  :root[data-ce-bereich="kunde"] .ce-pm-eintrag { min-height: 3rem; padding-block: var(--ce-space-1); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-ce-bereich="kunde"] .ce-pm[data-bereit] { animation: ce-pm-auf 160ms var(--ce-motion-ease-entrance) both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ce-bereich="kunde"] :is(.ce-pm-eintrag, .ce-pm-symbol, .ce-pm-pfeil svg) { transition: none; }
+}
+@keyframes ce-pm-auf {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+@media print {
+  :root[data-ce-bereich="kunde"] .ce-pm { display: none; }
+}

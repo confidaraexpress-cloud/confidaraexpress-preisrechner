@@ -39,7 +39,7 @@ const ROUTE_HEADERS = {
 };
 
 export function DashboardLayout() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -79,6 +79,14 @@ export function DashboardLayout() {
   };
   const kopfSuche = <KundenSuche nutzerId={user?.id ?? null} onOeffnen={sucheOeffnen} />;
 
+  // EIN Abmeldeweg dieser Shell für Sidebar und Profilmenü — derselbe wie bisher (hier ist kein Verlassen-Schutz
+  // registriert; „Neue Sendung“ lebt in DashboardPage).
+  const abmelden = () => {
+    setSidebarOpen(false);
+    logout();
+    navigate("/login");
+  };
+
   return (
     // Der Provider umschließt die gesamte Shell: Zustand und Polling des
     // Benachrichtigungscenters laufen dadurch genau EINMAL, unabhängig davon,
@@ -90,6 +98,7 @@ export function DashboardLayout() {
         navigateTo={navigateTo}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
+        onLogout={abmelden}
       />
       <main className="main-content">
         {/* Menü, Marke, Mitteilungen — keine zweite Identität neben der Sidebar (Paket A,
@@ -126,7 +135,7 @@ export function DashboardLayout() {
               <UtilityCluster>
                 {kopfSuche}
                 <NotificationBell variant="page" navigateTo={navigateTo} />
-                <UserChip user={user} onClick={() => navigateTo("profile")} />
+                <UserChip user={user} onNavigate={navigateTo} onLogout={abmelden} />
               </UtilityCluster>
             )}
           />
@@ -144,7 +153,7 @@ export function DashboardLayout() {
             <UtilityCluster>
               {kopfSuche}
               <NotificationBell variant="page" navigateTo={navigateTo} />
-              <UserChip user={user} onClick={() => navigateTo("profile")} />
+              <UserChip user={user} onNavigate={navigateTo} onLogout={abmelden} />
             </UtilityCluster>
           ),
         }} />

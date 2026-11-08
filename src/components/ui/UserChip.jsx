@@ -1,7 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { accountInitials } from "../../utils/accountIdentity.mjs";
 import { useCompanyLogo } from "../../hooks/useCompanyLogo";
 import { COMPANY_LOGO_TEXT } from "../../utils/companyLogoView.mjs";
+import { PROFIL_MENUE_TEXT } from "../../utils/profilMenueView.mjs";
+import { profilAbschnittAnfordern } from "../../utils/profilAbschnitt.mjs";
+import { Icon } from "./Icon";
+import { ProfilMenue } from "./ProfilMenue";
 
 /* ── Benutzerchip (Paket A, Phase 3) ─────────────────────────────────────────
    Bis Phase 3 gab es drei Identitätsanzeigen im eingeloggten Bereich: den
@@ -15,8 +19,12 @@ import { COMPANY_LOGO_TEXT } from "../../utils/companyLogoView.mjs";
    Bedienelemente. Die mobile Topbar trägt Menü, Wortmarke und Glocke — keine
    zweite Identität.
 
-   Die Komponente rendert nur Struktur und ruft `onClick` auf. Sie kennt keine
-   Route und keinen Zustand. */
+   Seit der Betreiberentscheidung vom 2026-11-08 öffnet ein Klick das
+   Profilmenü direkt unter dem Chip (ProfilMenue.jsx), statt in die
+   Kontoeinstellungen zu wechseln. Der Chip hält nur „offen“ und führt die
+   gewählte Aktion über die Wege aus, die ihm die Shell gibt: `onNavigate`
+   (deren Seitennavigation samt Verlassen-Schutz) und `onLogout` (deren
+   Abmeldeweg). Er kennt keine Route. */
 
 /* Firmenmarke: das hinterlegte Firmenlogo — und solange keines vorliegt, eine
    flache Fläche in der Akzentfarbe mit echter Konto-Initiale.
@@ -85,32 +93,82 @@ export function CompanyLogoPreview({ logoUrl, initial, className = "" }) {
   );
 }
 
-export function UserChip({ user, onClick, label = "Zu meinem Profil" }) {
+export function UserChip({ user, onNavigate, onLogout, label = PROFIL_MENUE_TEXT.knopf }) {
   const name = user?.name || user?.company_name || "Kunde";
   const org = user?.company_name && user?.company_name !== user?.name ? user.company_name : null;
   // EINE Initialenquelle für Sidebar, Benutzerchip und Profilhero.
   const initial = accountInitials(user);
   // Das Firmenlogo, falls hinterlegt. Der Hook holt es genau einmal je Fassung
   // (Modulzwischenspeicher) — der Chip hängt an vier Stellen im Baum und wird
-  // bei jedem Bereichswechsel neu montiert.
+  // bei jedem Bereichswechsel neu montiert. Der Kopf des Profilmenüs zeigt
+  // dieselbe Marke aus derselben Quelle.
   const logoUrl = useCompanyLogo(user);
   // Name und Firma ellipsieren im Chip bei Platzmangel (der Chip ist das
   // einzige nachgiebige Glied der Kopfzeile) — der title trägt deshalb neben
   // der Aktion auch die VOLLSTÄNDIGE Identität, damit nichts nur abgeschnitten
-  // erreichbar ist. Vollständig sichtbar bleibt sie ohnehin in Sidebar-Karte
-  // und Profil.
+  // erreichbar ist. Vollständig sichtbar bleibt sie im Kopf des Profilmenüs
+  // und im Profil.
   const fullIdentity = org ? `${name} — ${org}` : name;
+
+  // Profilmenü: null (zu) oder der Eintrag, der beim Öffnen den Fokus bekommt ("erstes" | "letztes").
+  const [offen, setOffen] = useState(null);
+  const knopfRef = useRef(null);
+  const menueId = `ce-pm-${useId().replace(/:/g, "")}`;
+
+  const schliessen = useCallback(({ fokus = false } = {}) => {
+    setOffen(null);
+    if (fokus) knopfRef.current?.focus({ preventScroll: true });
+  }, []);
+
+  // Eine Aktion: zuerst schließen und den Fokus an den Chip geben — ein Dialog des Ziels (Verlassen-Schutz von
+  // „Neue Sendung“) gibt ihn beim Abbrechen dorthin zurück —, dann der bestehende Weg der Shell. Der Sprung in
+  // „Sicherheit“ reist als Folgeaktion mit und entsteht nur, wenn die Navigation tatsächlich ausgeführt wird.
+  const auswaehlen = (eintrag) => {
+    schliessen({ fokus: true });
+    if (eintrag.abmelden) {
+      if (onLogout) onLogout();
+      return;
+    }
+    if (!onNavigate) return;
+    const folge = eintrag.abschnitt ? () => profilAbschnittAnfordern(eintrag.abschnitt) : null;
+    onNavigate(eintrag.ziel, null, folge);
+  };
+
+  // Pfeil runter/hoch am Chip öffnet das Menü mit dem ersten bzw. letzten Eintrag (Enter und Leertaste: Klick).
+  const tasteAmChip = (e) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    e.preventDefault();
+    setOffen(e.key === "ArrowUp" ? "letztes" : "erstes");
+  };
+
   // R9 (WCAG 2.5.3): KEIN aria-label. Es ersetzte Name und Firma vollständig — Sprachsteuerung und
   // Screenreader kannten nur „Zu meinem Profil“. Der Name entsteht jetzt aus dem sichtbaren Text
   // (die Firmenmarke ist aria-hidden); die Aktion ergänzt ein nur vorgelesener Zusatz.
   return (
-    <button type="button" className="pp-uchip" onClick={onClick} title={`${label}: ${fullIdentity}`}>
-      <CompanyMark initial={initial} logoUrl={logoUrl} />
-      <span className="pp-uchip-text">
-        <span className="pp-uname">{name}</span>
-        {org && <span className="pp-ucomp">{org}</span>}
-      </span>
-      <span className="sr-only">: {label}</span>
-    </button>
+    <>
+      <button type="button" className="pp-uchip" ref={knopfRef} onClick={() => setOffen((o) => (o ? null : "erstes"))}
+        onKeyDown={tasteAmChip} aria-haspopup="menu" aria-expanded={offen !== null} aria-controls={offen ? menueId : undefined}
+        title={`${label}: ${fullIdentity}`}>
+        <CompanyMark initial={initial} logoUrl={logoUrl} />
+        <span className="pp-uchip-text">
+          <span className="pp-uname">{name}</span>
+          {org && <span className="pp-ucomp">{org}</span>}
+        </span>
+        <span className="sr-only">: {label}</span>
+        <span className="pp-uchip-pfeil" aria-hidden="true"><Icon n="chevron" s={16} /></span>
+      </button>
+      {offen && (
+        <ProfilMenue
+          id={menueId}
+          ankerRef={knopfRef}
+          start={offen}
+          marke={<CompanyMark initial={initial} logoUrl={logoUrl} />}
+          name={name}
+          org={org}
+          onSchliessen={schliessen}
+          onAuswahl={auswaehlen}
+        />
+      )}
+    </>
   );
 }

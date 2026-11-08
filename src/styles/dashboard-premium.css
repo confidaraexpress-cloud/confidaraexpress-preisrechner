@@ -581,6 +581,9 @@
   justify-content: flex-end;
   margin: calc(-1 * var(--ce-space-2)) calc(-1 * var(--ce-space-3)) 0 0;
 }
+/* Sprungziel des Profilmenüs („Sicherheit & Passwort“, 2026-11-08): der Abschnitt landet mit Luft unter der
+   Fensterkante — derselbe Abstand wie die App-Karte (pwa.css). */
+.profile-card--sprungziel { scroll-margin-top: var(--ce-space-11); }
 .profile-sections .profile-section-body,
 .profile-sections .profile-form-body { padding: 0; }
 .profile-sections .profile-password-section {

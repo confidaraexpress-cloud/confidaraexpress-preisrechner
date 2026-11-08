@@ -12,11 +12,15 @@ import React from "react";
 // (Lieferschein, Abrechnung, Firmenlogo). Die optionale Aktion („Bearbeiten")
 // steht als Textaktion oben rechts in der Inhaltsfläche — nah an den Daten,
 // die sie verändert.
-export function SettingsSection({ title, subtitle, action, children, className = "" }) {
+//
+// Sprungziel (Profilmenü, 2026-11-08): Mit `id`, `abschnittRef` und `titelRef`
+// kann ein Abschnitt angesprungen werden — der Titel nimmt dann den Fokus
+// programmatisch an (tabIndex -1), ohne in die Tab-Reihenfolge zu kommen.
+export function SettingsSection({ title, subtitle, action, children, className = "", id, abschnittRef, titelRef }) {
   return (
-    <section className={`table-card profile-card${className ? ` ${className}` : ""}`}>
+    <section id={id} ref={abschnittRef} className={`table-card profile-card${className ? ` ${className}` : ""}`}>
       <div className="table-card-header profile-card-head">
-        <h2 className="table-card-title">{title}</h2>
+        <h2 className="table-card-title" ref={titelRef} tabIndex={titelRef ? -1 : undefined}>{title}</h2>
         {subtitle && <p className="profile-card-sub">{subtitle}</p>}
       </div>
       <div className="profile-card-body">

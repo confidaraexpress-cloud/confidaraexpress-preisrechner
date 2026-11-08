@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useSyncExternalStore } from "react";
 import { PageHeader } from "../ui/PageHeader";
 import { StatusBadge } from "../ui/StatusBadge";
 import { apiFetch } from "../../api/client";
@@ -43,6 +43,8 @@ import { useAddressValidation } from "../../hooks/useAddressValidation";
 import { applyAddressSuggestion, cityFromSuggestion, countryFirstHint } from "../../utils/addressValidationView.mjs";
 import { cityPlaceholder, postalCodePlaceholder } from "../../utils/addressPlaceholders.mjs";
 import { postalCodeInputMode } from "../../utils/postalCode.mjs";
+import { profilAbschnittAbonnieren, profilAbschnittEinloesen, profilAbschnittWunsch } from "../../utils/profilAbschnitt.mjs";
+import { useAbschnittSprung } from "../../hooks/useAbschnittSprung";
 
 // Benötigt Backend: PATCH /kunde/profil — bereichsweise Teilupdates:
 //   Unternehmensdaten → { company_name, vat_id, eori_number, street, zip, city, country }
@@ -77,6 +79,19 @@ export function Profile({ user, utility }) {
   const companyBtnRef = useRef(null);
   const contactBtnRef = useRef(null);
   const refocusRef = useRef(null);
+
+  // „Sicherheit & Passwort“ im Profilmenü (2026-11-08): die Kontoeinstellungen öffnen und in den Abschnitt „Sicherheit“
+  // springen. Der Wunsch ist gemeldeter Zustand (utils/profilAbschnitt.mjs): er greift beim Mount UND bei schon offenen
+  // Kontoeinstellungen; eingelöst wird er genau einmal, ausgerichtet und fokussiert über den gemeinsamen Sprung.
+  const sicherheitRef = useRef(null);
+  const sicherheitTitelRef = useRef(null);
+  const abschnittWunsch = useSyncExternalStore(profilAbschnittAbonnieren, profilAbschnittWunsch, () => null);
+  const [sicherheitSprung, setSicherheitSprung] = useState(false);
+  useEffect(() => {
+    if (abschnittWunsch !== "sicherheit" || !profilAbschnittEinloesen("sicherheit")) return;
+    setSicherheitSprung(true);
+  }, [abschnittWunsch]);
+  useAbschnittSprung(sicherheitSprung, sicherheitRef, sicherheitTitelRef, () => setSicherheitSprung(false), { oben: true });
 
   // Fokus nach Schließen (Speichern/Abbrechen) zurück auf den jeweiligen
   // „Bearbeiten"-Button (Accessibility §20). Kein Fokus-Diebstahl beim Erst-Mount.
@@ -480,8 +495,10 @@ export function Profile({ user, utility }) {
     </SettingsSection>
   );
 
+  // Sprungziel des Profilmenüs („Sicherheit & Passwort“): Login-E-Mail und Passwortänderung stehen hier.
   const renderSecurityCard = () => (
-    <SettingsSection title="Sicherheit" subtitle="Schützen Sie Ihr Konto">
+    <SettingsSection title="Sicherheit" subtitle="Schützen Sie Ihr Konto" id="profil-sicherheit"
+      className="profile-card--sprungziel" abschnittRef={sicherheitRef} titelRef={sicherheitTitelRef}>
       <div className="profile-section-body">
         {renderRows([
           { k: "Login-E-Mail", v: user?.email || "Nicht angegeben", empty: !user?.email },

@@ -53,7 +53,7 @@ const ERROR_TEXTS = Object.freeze({
   IMPORT_STATE_CONFLICT: "Dieser Import wurde inzwischen ersetzt oder abgeschlossen.",
   IMPORT_CONFIRMATION_REQUIRED: "Bitte bestätigen Sie die Übernahme.",
   IMPORT_INVALID_ROWS_CONFIRMATION_REQUIRED: "Bitte bestätigen Sie, dass die fehlerhaften Zeilen übersprungen werden.",
-  IMPORT_REPEAT_CONFIRMATION_REQUIRED: "Diese Wareneingänge wurden bereits gebucht. Bitte bestätigen Sie die erneute Buchung ausdrücklich.",
+  IMPORT_REPEAT_CONFIRMATION_REQUIRED: "Einige Wareneingänge wurden möglicherweise bereits gebucht. Bitte bestätigen Sie die erneute Buchung ausdrücklich.",
   IMPORT_RETRY: "Der Abschnitt wurde wegen einer gleichzeitigen Änderung nicht übernommen. Bitte fortsetzen.",
   IMPORT_RATE_LIMITED: "Zu viele Importvorgänge in kurzer Zeit. Bitte einen Moment warten.",
 });

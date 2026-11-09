@@ -5,10 +5,14 @@
 
    Je Zelle eines zugeordneten Felds:
    · Formelzelle (xlsx) oder Textzelle mit führendem „=“ (csv) → Befund FORMULA, kein Wert
+   · Excel-Fehlerzelle (xlsx, #NV, #DIV/0! …) → CELL_ERROR mit dem Fehlerwert, kein Wert — nie „leer“
    · Datumszelle → DATE_VALUE, kein Wert
    · Zahl im Textfeld: ganzzahlig → Text; bei der Artikelnummer zusätzlich SKU_NUMERIC, bei der EAN EAN_NUMERIC
-   · Textzahl → streng nach Zahlformat, sonst NUMBER_INVALID; Gewicht in kg, Maße in cm
+   · Textzahl → streng nach Zahlformat, sonst NUMBER_INVALID; Gewicht in kg, Maße in cm, jede Spalte
+     mit ihrer eigenen Einheit
    · Steuerzeichen → TEXT_INVALID
+   Excel-Exponentialschreibweise in Artikelnummer oder EAN („4,00638E+12“) prüft der Server
+   (NUMBER_EXPONENT); der Text geht unverändert hin, damit die Vorschau den Dateiwert zeigt.
    Leere Zellen fehlen im Dokument: eine leere Zelle ändert nie einen Wert. */
 
 import { IMPORT_FIELDS } from "./inventoryImportMapping.mjs";
@@ -61,26 +65,34 @@ function zahlWert(field, v, numberFormat, issues) {
  * @param {number} p.headerIndex           Index der Kopfzeile
  * @param {Record<string, number>} p.mapping Feld → Spaltenindex
  * @param {Record<string, string>} p.labels  Feld → Spaltenname (Anzeige)
- * @param {{weight: string|null, length: string|null}} p.units
+ * @param {Record<string, string|null>} p.units Einheit je Feld: weightKg kg|g, lengthCm/widthCm/heightCm cm|mm|m
  * @param {"de"|"intl"} p.numberFormat
  * @param {Set<string>} [p.formulas]       Formelpositionen „Zeile:Spalte“ (1-basiert)
+ * @param {Map<string, string|null>} [p.errors] Excel-Fehlerzellen „Zeile:Spalte“ → Fehlerwert
  * @param {{type: "csv"|"xlsx", name: string|null, sheet: string|null}} p.source
  * @param {{stockMode: string, updateExisting: boolean, warehouseId: string|null}} p.options
  */
-export function buildImportDocument({ rows, headerIndex, mapping, labels, units, numberFormat, formulas = new Set(), source, options }) {
+export function buildImportDocument({ rows, headerIndex, mapping, labels, units, numberFormat, formulas = new Set(), errors = new Map(), source, options }) {
   const felder = IMPORT_FIELDS.filter((f) => mapping[f.key] !== undefined && (f.key !== "stock" || options.stockMode !== "none"));
   const out = [];
   let emptyRows = 0;
   for (let i = headerIndex + 1; i < rows.length; i++) {
     const row = Array.isArray(rows[i]) ? rows[i] : [];
     const fileRow = i + 1;
-    if (felder.every((f) => zelleLeer(row[mapping[f.key]]))) { emptyRows++; continue; }
+    const pos = (f) => `${fileRow}:${mapping[f.key] + 1}`;
+    // Leer ist eine Zeile nur ohne Wert UND ohne Excel-Fehlerwert in den zugeordneten Feldern.
+    if (felder.every((f) => zelleLeer(row[mapping[f.key]]) && !errors.has(pos(f)))) { emptyRows++; continue; }
     const values = {};
     const issues = [];
     for (const f of felder) {
       const col = mapping[f.key];
       const v = row[col];
-      if (formulas.has(`${fileRow}:${col + 1}`)) { issues.push({ field: f.key, code: "FORMULA" }); continue; }
+      if (formulas.has(pos(f))) { issues.push({ field: f.key, code: "FORMULA" }); continue; }
+      if (errors.has(pos(f))) {
+        const fehlerwert = errors.get(pos(f));
+        issues.push(fehlerwert ? { field: f.key, code: "CELL_ERROR", value: fehlerwert } : { field: f.key, code: "CELL_ERROR" });
+        continue;
+      }
       if (zelleLeer(v)) continue;
       if (v instanceof Date) { issues.push({ field: f.key, code: "DATE_VALUE" }); continue; }
       if (typeof v === "boolean") { issues.push({ field: f.key, code: f.kind === "text" ? "TEXT_INVALID" : "NUMBER_INVALID" }); continue; }
@@ -91,8 +103,8 @@ export function buildImportDocument({ rows, headerIndex, mapping, labels, units,
       }
       let n = zahlWert(f.key, v, numberFormat, issues);
       if (n === undefined) continue;
-      if (f.unit === "weight") n = toKg(n, units.weight);
-      if (f.unit === "length") n = toCm(n, units.length);
+      if (f.unit === "weight") n = toKg(n, units[f.key]);
+      if (f.unit === "length") n = toCm(n, units[f.key]);
       values[f.key] = n;
     }
     out.push(issues.length ? { row: fileRow, values, issues: issues.slice(0, 20) } : { row: fileRow, values });

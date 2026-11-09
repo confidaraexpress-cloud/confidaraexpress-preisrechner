@@ -62,6 +62,7 @@ function neuesSzenario(opt = {}) {
     uploads: [],
     applyBodies: [],
     zeilenAbfragen: [],
+    zeilen: opt.zeilen || ZEILEN,
   };
 }
 
@@ -90,8 +91,11 @@ async function setupRoutes(page, sz) {
       const filter = url.searchParams.get("filter") || "all";
       sz.zeilenAbfragen.push(filter);
       const passt = (z) => filter === "all" || (filter === "error" && z.applyStatus === "error")
-        || (filter === "problems" && ["error", "stale", "failed"].includes(z.applyStatus)) || (filter === z.action);
-      return json({ rows: ZEILEN.filter(passt), nextAfter: null });
+        || (filter === "problems" && ["error", "stale", "failed"].includes(z.applyStatus)) || (filter === z.action)
+        || (filter === "repeat" && z.issues.some((i) => i.code === "ROW_RECEIPT_REPEAT"))
+        || (filter === "warnings" && z.issues.some((i) => i.severity === "warning"));
+      const limit = Number(url.searchParams.get("limit") || 100);
+      return json({ rows: sz.zeilen.filter(passt).slice(0, limit), nextAfter: null });
     }
     if (/\/api\/kunde\/inventory\/imports\/77\/apply$/.test(p)) {
       sz.applyBodies.push(req.postDataJSON());
@@ -189,7 +193,7 @@ test("1 — CSV (Windows-1252, Gramm) bis zum Ergebnis: Dokument im Upload, Fehl
     assert.deepEqual(doc.rows[0], { row: 2, values: { sku: "A-1", name: "Schraube Größe M6", weightKg: 0.25, stock: 10 } });
     assert.deepEqual(doc.rows[2].values.weightKg, 0.00005);
 
-    assert.match(await d.innerText(), /Gewicht \(g\): bitte zwischen 0,1 und 1\.000 kg angeben\./);
+    assert.match(await d.innerText(), /Gewicht \(g\): bitte zwischen 0,001 und 1\.000 kg angeben\./);
     const uebernehmen = d.getByRole("button", { name: "2 Zeilen übernehmen" });
     assert.equal(await uebernehmen.isDisabled(), true, "ohne Bestätigung der Fehlerzeilen keine Übernahme");
     // Einzahl bei einer Zeile: „1 fehlerhafte Zeile“, nicht „1 fehlerhafte Zeilen“.
@@ -283,10 +287,10 @@ test("5 — erkannte Wiederholung eines Wareneingangs verlangt die ausdrücklich
     await d.locator("#inv-import-file").setInputFiles({ name: "artikel.csv", mimeType: "text/csv", buffer: CSV_1252 });
     await d.getByRole("radio", { name: /Wareneingang buchen/ }).check();
     await d.getByRole("button", { name: "Datei prüfen lassen" }).click();
-    await d.getByText(/Diese Wareneingänge wurden bereits gebucht/).waitFor();
+    await d.getByRole("heading", { name: "Diese Wareneingänge wurden möglicherweise bereits gebucht." }).waitFor();
     const knopf = d.getByRole("button", { name: "2 Zeilen übernehmen" });
     assert.equal(await knopf.isDisabled(), true);
-    await d.getByLabel("Es ist eine neue Lieferung — erneut buchen").check();
+    await d.getByLabel("Es ist eine neue Lieferung — diese Mengen erneut buchen").check();
     await knopf.click();
     await d.getByText("Der Import ist abgeschlossen.").waitFor();
     assert.deepEqual(sz.applyBodies[0], { confirm: true, skipInvalidRows: false, confirmRepeat: true });
@@ -372,6 +376,191 @@ test("8 — Lager: der Dialog lädt sie selbst; langsame Antwort und Ladefehler 
     await d.getByRole("button", { name: "Datei prüfen lassen", disabled: false }).waitFor();
     assert.equal(await d.getByText("Die Lager konnten nicht geladen werden.").count(), 0);
     assert.equal(await d.getByRole("button", { name: "Lager erneut laden" }).count(), 0);
+  } finally {
+    await page.close();
+  }
+});
+
+// ── Master-Audit 2026-11-09: sieben Befunde ────────────────────────────────────
+const dokumentAus = (upload) => JSON.parse(upload.body.slice(upload.body.indexOf("{"), upload.body.lastIndexOf("}") + 1));
+
+// Arbeitsmappe: Blatt 1 „Alt 2025“ ausgeblendet (alte Daten), Blatt 2 „Aktuell“ sichtbar mit #NV im Bestand.
+function xlsxMitAusgeblendetemBlatt() {
+  const ct = '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/></Types>';
+  const rels = '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+  const wb = '<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Alt 2025" sheetId="1" state="hidden" r:id="rId1"/><sheet name="Aktuell" sheetId="2" r:id="rId2"/></sheets></workbook>';
+  const wbRels = '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/></Relationships>';
+  const kopf = '<row r="1"><c r="A1" t="inlineStr"><is><t>Artikelnummer</t></is></c><c r="B1" t="inlineStr"><is><t>Bezeichnung</t></is></c><c r="C1" t="inlineStr"><is><t>Gewicht (kg)</t></is></c><c r="D1" t="inlineStr"><is><t>Bestand</t></is></c></row>';
+  const alt = `<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${kopf}<row r="2"><c r="A2" t="inlineStr"><is><t>ALT-1</t></is></c><c r="B2" t="inlineStr"><is><t>Altbestand</t></is></c><c r="C2"><v>1</v></c><c r="D2"><v>99</v></c></row></sheetData></worksheet>`;
+  const aktuell = `<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${kopf}`
+    + '<row r="2"><c r="A2" t="inlineStr"><is><t>ART-1</t></is></c><c r="B2" t="inlineStr"><is><t>Artikel A</t></is></c><c r="C2"><v>1.25</v></c><c r="D2" t="e"><v>#N/A</v></c></row>'
+    + '<row r="3"><c r="A3" t="inlineStr"><is><t>NEU-1</t></is></c><c r="B3" t="inlineStr"><is><t>Winkel</t></is></c><c r="C3"><v>0.4</v></c><c r="D3"><v>5</v></c></row>'
+    + "</sheetData></worksheet>";
+  return Buffer.from(zipSync({
+    "[Content_Types].xml": strToU8(ct), "_rels/.rels": strToU8(rels), "xl/workbook.xml": strToU8(wb),
+    "xl/_rels/workbook.xml.rels": strToU8(wbRels), "xl/worksheets/sheet1.xml": strToU8(alt), "xl/worksheets/sheet2.xml": strToU8(aktuell),
+  }));
+}
+
+test("9 — Vorschau zeigt jeden Zielwert neuer Artikel (Raster) und Vorher → Nachher, Rundung sichtbar", async () => {
+  const zeilen = [
+    { rowNo: 2, sku: "A-1", action: "create", applyStatus: "pending", applyCode: null, issues: [], productId: null,
+      changes: [
+        { field: "name", before: null, after: "Schraube Größe M6" }, { field: "ean", before: null, after: "4006381333931" },
+        { field: "weightKg", before: null, after: 0.25 }, { field: "lengthCm", before: null, after: 20 }, { field: "widthCm", before: null, after: 10 },
+        { field: "heightCm", before: null, after: 5 }, { field: "unitValue", before: null, after: 5, fileValue: 4.995 }, { field: "minStock", before: null, after: 3 },
+      ],
+      stock: { value: 10, onHandBefore: 0, delta: 10 } },
+    ...ZEILEN.slice(1),
+  ];
+  const sz = neuesSzenario({ zeilen });
+  const page = await artikelseite(sz);
+  try {
+    await page.getByRole("button", { name: "Artikel importieren" }).click();
+    const d = dialog(page);
+    await d.locator("#inv-import-file").setInputFiles({ name: "artikel.csv", mimeType: "text/csv", buffer: CSV_1252 });
+    await d.getByRole("button", { name: "Datei prüfen lassen" }).click();
+    await d.getByRole("heading", { name: "Vorschau" }).waitFor();
+    await d.getByRole("button", { name: /^Alle/ }).click();
+    const neu = d.locator(".inv-import-row").filter({ hasText: "A-1" }).getByRole("definition");
+    await neu.first().waitFor();
+    assert.deepEqual(await neu.allInnerTexts(), [
+      "Schraube Größe M6", "4006381333931", "0,25 kg", "20 cm", "10 cm", "5 cm", "5,00\u00a0€\ngerundet aus 4,995\u00a0€", "3",
+    ]);
+    const begriffe = await d.locator(".inv-import-row").filter({ hasText: "A-1" }).getByRole("term").allInnerTexts();
+    assert.deepEqual(begriffe, ["Bezeichnung", "EAN", "Gewicht", "Länge", "Breite", "Höhe", "Warenwert", "Mindestbestand"]);
+    assert.match(await d.locator(".inv-import-row").filter({ hasText: "ART-1" }).innerText(), /Gewicht\s+1,25 kg → 0,5 kg/);
+  } finally {
+    await page.close();
+  }
+});
+
+test("10 — XLSX: ausgeblendetes Blatt nicht vorgewählt, gekennzeichnet; #NV im Bestand geht als CELL_ERROR an den Server", async () => {
+  const sz = neuesSzenario();
+  const page = await artikelseite(sz);
+  try {
+    await page.getByRole("button", { name: "Artikel importieren" }).click();
+    const d = dialog(page);
+    await d.locator("#inv-import-file").setInputFiles({ name: "inventur.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: xlsxMitAusgeblendetemBlatt() });
+    await d.getByRole("heading", { name: "Spalten prüfen" }).waitFor();
+    const blatt = d.getByLabel("Tabellenblatt");
+    assert.equal(await blatt.inputValue(), "1", "das sichtbare Blatt „Aktuell“ ist vorgewählt");
+    assert.deepEqual(await blatt.locator("option").allInnerTexts(), ["Alt 2025 (ausgeblendet)", "Aktuell"]);
+    assert.equal(await d.locator(".inv-import-sheet-hidden").count(), 0);
+    // Bewusst das ausgeblendete Blatt wählen: erlaubt, aber sichtbar gekennzeichnet.
+    await blatt.selectOption("0");
+    await d.getByText("Das Tabellenblatt „Alt 2025“ ist in Excel ausgeblendet.", { exact: false }).waitFor();
+    await blatt.selectOption("1");
+    await d.getByRole("button", { name: "Datei prüfen lassen" }).click();
+    await d.getByRole("heading", { name: "Vorschau" }).waitFor();
+    const doc = dokumentAus(sz.uploads[0]);
+    assert.equal(doc.source.sheet, "Aktuell");
+    assert.deepEqual(doc.rows, [
+      { row: 2, values: { sku: "ART-1", name: "Artikel A", weightKg: 1.25 }, issues: [{ field: "stock", code: "CELL_ERROR", value: "#N/A" }] },
+      { row: 3, values: { sku: "NEU-1", name: "Winkel", weightKg: 0.4, stock: 5 } },
+    ]);
+  } finally {
+    await page.close();
+  }
+});
+
+test("11 — CSV mit gemischtem Zeichensatz wird nicht gelesen; gemischte Maßeinheiten je Spalte umgerechnet", async () => {
+  const sz = neuesSzenario();
+  const page = await artikelseite(sz);
+  try {
+    await page.getByRole("button", { name: "Artikel importieren" }).click();
+    const d = dialog(page);
+    const gemischt = Buffer.concat([Buffer.from("Artikelnummer;Bezeichnung;Gewicht (kg)\r\nM-1;Größe Müller;1\r\n", "utf8"), Buffer.from("M-2;Grön;1\r\n", "latin1")]);
+    await d.locator("#inv-import-file").setInputFiles({ name: "gemischt.csv", mimeType: "text/csv", buffer: gemischt });
+    await d.getByText("Die CSV-Datei enthält möglicherweise unterschiedliche Zeichensätze.", { exact: false }).waitFor();
+    assert.equal(await d.getByRole("heading", { name: "Datei auswählen" }).count(), 1, "bleibt bei der Dateiauswahl");
+
+    const masse = Buffer.from("Artikelnummer;Bezeichnung;Gewicht (g);Länge (cm);Breite (mm);Höhe (mm)\r\nK-1;Karton;500;20;100;50\r\n", "utf8");
+    await d.locator("#inv-import-file").setInputFiles({ name: "masse.csv", mimeType: "text/csv", buffer: masse });
+    await d.getByRole("heading", { name: "Spalten prüfen" }).waitFor();
+    await d.getByText("Die Maßspalten nennen unterschiedliche Einheiten.", { exact: false }).waitFor();
+    for (const [gruppe, einheit] of [["Länge", "cm – Zentimeter"], ["Breite", "mm – Millimeter"], ["Höhe", "mm – Millimeter"]]) {
+      const g = d.getByRole("group", { name: new RegExp(`^${gruppe} aus`) });
+      assert.equal(await g.getByRole("radio", { name: einheit }).isChecked(), true, gruppe);
+    }
+    await d.getByRole("radio", { name: /Bestand nicht ändern/ }).check();
+    await d.getByRole("button", { name: "Datei prüfen lassen" }).click();
+    await d.getByRole("heading", { name: "Vorschau" }).waitFor();
+    assert.deepEqual(dokumentAus(sz.uploads[0]).rows[0].values, { sku: "K-1", name: "Karton", weightKg: 0.5, lengthCm: 20, widthCm: 10, heightCm: 5 });
+  } finally {
+    await page.close();
+  }
+});
+
+test("12 — Teilwiederholung der letzten 7 Tage: Warnung mit betroffenen Artikeln, keine vorausgewählte Zustimmung", async () => {
+  const hinweis = { field: "stock", code: "ROW_RECEIPT_REPEAT", severity: "warning", params: { date: "2026-11-05T08:30:00.000Z", file: "teillieferung-montag.csv", recent: true } };
+  const zeilen = ["T-1", "T-2", "T-3", "T-4"].map((sku, i) => ({
+    rowNo: i + 2, sku, action: "update", applyStatus: "pending", applyCode: null, productId: String(200 + i), changes: [],
+    issues: i < 3 ? [hinweis] : [], stock: { value: 10 + i, onHandBefore: 10 + i, delta: 10 + i },
+  }));
+  const sz = neuesSzenario({
+    zeilen,
+    analyse: header({
+      stockMode: "receipt", totalRows: 4,
+      counts: { create: 0, update: 4, unchanged: 0, skipped: 0, error: 0, stockChanges: 4, warnings: 3, repeatRows: 3, repeatRecentRows: 3 },
+      progress: { ...header().progress, error: 0, pending: 4 },
+      repeat: { importId: "70", createdAt: "2026-11-05T08:00:00Z", sourceName: "teillieferung-montag.csv", matches: 3, total: 4, identical: false, confirmed: false },
+    }),
+  });
+  const page = await artikelseite(sz);
+  try {
+    await page.getByRole("button", { name: "Artikel importieren" }).click();
+    const d = dialog(page);
+    await d.locator("#inv-import-file").setInputFiles({ name: "artikel.csv", mimeType: "text/csv", buffer: CSV_1252 });
+    await d.getByRole("radio", { name: /Wareneingang buchen/ }).check();
+    await d.getByRole("button", { name: "Datei prüfen lassen" }).click();
+    const warnung = d.getByRole("region", { name: "Einige Artikelmengen wurden möglicherweise bereits als Wareneingang gebucht." });
+    await warnung.waitFor();
+    assert.match(await warnung.innerText(), /3 von 4 Zeilen haben dieselbe Artikelnummer und Menge wie ein Wareneingang, der in den letzten 7 Tagen in dieses Lager gebucht wurde\./);
+    assert.match(await warnung.innerText(), /erhöht den Lagerbestand zusätzlich/);
+    const liste = await warnung.getByRole("list", { name: "Betroffene Artikel" }).getByRole("listitem").allInnerTexts();
+    assert.equal(liste.length, 3);
+    assert.match(liste[0], /T-1\s+10 Stück, zuletzt gebucht am 05\.11\.2026, „teillieferung-montag\.csv“/);
+    const haken = d.getByLabel("Es ist eine neue Lieferung — diese Mengen erneut buchen");
+    assert.equal(await haken.isChecked(), false, "keine vorausgewählte Zustimmung");
+    const knopf = d.getByRole("button", { name: "4 Zeilen übernehmen" });
+    assert.equal(await knopf.isDisabled(), true);
+    assert.match(await d.innerText(), /Die Übernahme wartet auf Ihre Bestätigung der möglichen Doppelbuchung/);
+    assert.match(await d.innerText(), /Mögliche Wiederholungen 3/);
+    assert.match(await d.locator(".inv-import-row").filter({ hasText: "T-1" }).innerText(), /Möglicherweise bereits gebucht: Dieselbe Menge wurde am 05\.11\.2026 als Wareneingang gebucht/);
+    await haken.check();
+    await knopf.click();
+    await d.getByText("Der Import ist abgeschlossen.").waitFor();
+    assert.deepEqual(sz.applyBodies[0], { confirm: true, skipInvalidRows: false, confirmRepeat: true });
+  } finally {
+    await page.close();
+  }
+});
+
+test("13 — Treffer älter als 7 Tage: nur Hinweis, keine zusätzliche Bestätigung", async () => {
+  const hinweis = { field: "stock", code: "ROW_RECEIPT_REPEAT", severity: "warning", params: { date: "2026-10-01T08:30:00.000Z", file: null, recent: false } };
+  const zeilen = [{ rowNo: 2, sku: "T-1", action: "update", applyStatus: "pending", applyCode: null, productId: "200", changes: [], issues: [hinweis], stock: { value: 10, onHandBefore: 0, delta: 10 } }];
+  const sz = neuesSzenario({
+    zeilen,
+    analyse: header({
+      stockMode: "receipt", totalRows: 1,
+      counts: { create: 0, update: 1, unchanged: 0, skipped: 0, error: 0, stockChanges: 1, warnings: 1, repeatRows: 1, repeatRecentRows: 0 },
+      progress: { ...header().progress, error: 0, pending: 1 }, repeat: null,
+    }),
+  });
+  const page = await artikelseite(sz);
+  try {
+    await page.getByRole("button", { name: "Artikel importieren" }).click();
+    const d = dialog(page);
+    await d.locator("#inv-import-file").setInputFiles({ name: "artikel.csv", mimeType: "text/csv", buffer: CSV_1252 });
+    await d.getByRole("radio", { name: /Wareneingang buchen/ }).check();
+    await d.getByRole("button", { name: "Datei prüfen lassen" }).click();
+    await d.getByText("Bei 1 Zeile wurde dieselbe Menge vor mehr als 7 Tagen schon einmal als Wareneingang gebucht.", { exact: false }).waitFor();
+    assert.equal(await d.getByLabel(/Es ist eine neue Lieferung/).count(), 0);
+    assert.match(await d.innerText(), /Dieselbe Menge wurde am 01\.10\.2026 schon einmal als Wareneingang gebucht\./);
+    await d.getByRole("button", { name: "1 Zeile übernehmen" }).click();
+    await d.getByText("Der Import ist abgeschlossen.").waitFor();
+    assert.deepEqual(sz.applyBodies[0], { confirm: true, skipInvalidRows: false, confirmRepeat: false });
   } finally {
     await page.close();
   }

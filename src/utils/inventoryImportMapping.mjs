@@ -4,8 +4,9 @@
    „available“ wird nie als Bestand vorgeschlagen: verfügbarer Bestand ist nicht der
    physische. Jedes Feld nimmt höchstens eine Spalte, jede Spalte höchstens ein Feld.
 
-   Einheiten kommen aus dem Spaltennamen („Gewicht (g)“, „Länge in mm“). Fehlt die
-   Angabe, ist die Wahl im Zuordnungsschritt Pflicht — die Werte werden nie zur
+   Einheiten kommen aus dem Spaltennamen („Gewicht (g)“, „Länge in mm“) — JE SPALTE: „Länge (cm)“
+   und „Höhe (mm)“ werden jede mit ihrer eigenen Einheit umgerechnet. Fehlt die Angabe, ist die
+   Wahl für diese Spalte im Zuordnungsschritt Pflicht — die Werte werden nie zur
    Einheitenvermutung herangezogen. */
 
 import { formatEvidence, isAmbiguousNumberText } from "./inventoryImportNumbers.mjs";
@@ -25,6 +26,9 @@ export const IMPORT_FIELDS = Object.freeze([
 ]);
 
 export const FIELD_BY_KEY = Object.freeze(Object.fromEntries(IMPORT_FIELDS.map((f) => [f.key, f])));
+export const DIMENSION_FIELDS = Object.freeze(["lengthCm", "widthCm", "heightCm"]);
+const WEIGHT_UNITS = Object.freeze(["kg", "g"]);
+const LENGTH_UNITS = Object.freeze(["cm", "mm", "m"]);
 
 // Normalisierte Spaltennamen (klein, Umlaute ausgeschrieben, nur Buchstaben und Ziffern).
 const SYNONYME = Object.freeze({
@@ -123,18 +127,28 @@ export function suggestMapping(headers) {
   return { mapping, status, units: unitsFor(headers, mapping) };
 }
 
-/** Einheiten aus den Spaltennamen der zugeordneten Felder (null = Wahl nötig). */
+/** Einheit, die der Spaltenname eines Felds nennt (nur passende Einheiten), sonst null. */
+export function headerUnit(headers, mapping, key) {
+  if (mapping[key] === undefined) return null;
+  const u = analyseHeader(headers[mapping[key]]).unit;
+  const erlaubt = key === "weightKg" ? WEIGHT_UNITS : DIMENSION_FIELDS.includes(key) ? LENGTH_UNITS : [];
+  return erlaubt.includes(u) ? u : null;
+}
+
+/** Einheit JE zugeordnetem Gewichts- und Maßfeld aus dem Spaltennamen (null = Wahl nötig). */
 export function unitsFor(headers, mapping) {
-  const unitOf = (key) => (mapping[key] !== undefined ? analyseHeader(headers[mapping[key]]).unit : null);
-  const weight = unitOf("weightKg");
-  const lengths = ["lengthCm", "widthCm", "heightCm"].filter((k) => mapping[k] !== undefined).map(unitOf);
-  const lengthUnits = new Set(lengths.filter(Boolean));
-  return {
-    weight: weight === "kg" || weight === "g" ? weight : null,
-    // Alle Maßspalten müssen dieselbe genannte Einheit tragen, sonst ist die Wahl nötig.
-    length: lengths.length > 0 && lengthUnits.size === 1 && lengths.every(Boolean) && ["cm", "mm", "m"].includes([...lengthUnits][0])
-      ? [...lengthUnits][0] : null,
-  };
+  const units = {};
+  for (const key of ["weightKg", ...DIMENSION_FIELDS]) {
+    if (mapping[key] !== undefined) units[key] = headerUnit(headers, mapping, key);
+  }
+  return units;
+}
+
+/** Nennen die Maßspalten verschiedene Einheiten (oder nur einige eine)? Dann wählt die Oberfläche
+ *  je Spalte statt einmal für alle. */
+export function dimensionUnitsDiffer(headers, mapping) {
+  const genannt = DIMENSION_FIELDS.filter((k) => mapping[k] !== undefined).map((k) => headerUnit(headers, mapping, k));
+  return new Set(genannt).size > 1;
 }
 
 /** Fehlende Pflichtangaben der Zuordnung (für „Weiter“). */
@@ -143,8 +157,8 @@ export function mappingProblems(mapping, { stockMode, units }) {
   if (mapping.sku === undefined) problems.push("SKU_UNMAPPED");
   const cols = Object.values(mapping);
   if (new Set(cols).size !== cols.length) problems.push("COLUMN_TWICE");
-  if (mapping.weightKg !== undefined && !units.weight) problems.push("WEIGHT_UNIT_MISSING");
-  if (["lengthCm", "widthCm", "heightCm"].some((k) => mapping[k] !== undefined) && !units.length) problems.push("LENGTH_UNIT_MISSING");
+  if (mapping.weightKg !== undefined && !WEIGHT_UNITS.includes(units.weightKg)) problems.push("WEIGHT_UNIT_MISSING");
+  if (DIMENSION_FIELDS.some((k) => mapping[k] !== undefined && !LENGTH_UNITS.includes(units[k]))) problems.push("LENGTH_UNIT_MISSING");
   if (stockMode !== "none" && mapping.stock === undefined) problems.push("STOCK_UNMAPPED");
   return problems;
 }

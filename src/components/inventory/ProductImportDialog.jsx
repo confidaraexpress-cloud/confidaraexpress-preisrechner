@@ -9,11 +9,14 @@ import { isApiTimeout } from "../../api/client";
 import { inventoryErrorText } from "../../utils/inventoryView.mjs";
 import { formatUnits } from "../../utils/inventoryFormat.mjs";
 import { decodeText, detectDelimiter, parseCsv, ImportReadError } from "../../utils/inventoryImportCsv.mjs";
-import { readXlsx } from "../../utils/inventoryImportXlsx.mjs";
-import { IMPORT_FIELDS, suggestMapping, analyseHeader, mappingProblems, numberFormatEvidence } from "../../utils/inventoryImportMapping.mjs";
+import { readXlsx, defaultSheetIndex } from "../../utils/inventoryImportXlsx.mjs";
+import {
+  IMPORT_FIELDS, DIMENSION_FIELDS, suggestMapping, headerUnit, dimensionUnitsDiffer, mappingProblems, numberFormatEvidence,
+} from "../../utils/inventoryImportMapping.mjs";
 import { buildImportDocument, toCsv, templateCsv } from "../../utils/inventoryImportDocument.mjs";
 import {
-  issueText, applyCodeText, changeText, stockText, ACTION_LABELS, APPLY_STATUS_LABELS, readErrorText,
+  issueText, applyCodeText, targetText, beforeAfterText, roundingNote, stockText, datumText, FIELD_LABELS, ACTION_LABELS,
+  APPLY_STATUS_LABELS, readErrorText,
 } from "../../utils/inventoryImportText.mjs";
 
 /* ── Artikel importieren ─────────────────────────────────────────────────────
@@ -48,6 +51,13 @@ const WAREHOUSE_LIMIT = 100;
 
 const PAGE = 100;
 const MAX_FILE_BYTES = 15 * 1024 * 1024;
+// Obergrenze des Servers für das Importdokument (routes/inventoryImports.js, DOCUMENT_MAX_BYTES).
+const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+// So viele betroffene Artikel nennt die Warnung zur möglichen Doppelbuchung selbst; alle zeigt der Filter.
+const REPEAT_PREVIEW = 5;
+const LANGE_BESCHREIBUNG = 140;
+const WEIGHT_UNIT_OPTIONS = [["kg", "Kilogramm (kg)"], ["g", "Gramm (g)"]];
+const LENGTH_UNIT_OPTIONS = [["cm", "Zentimeter (cm)"], ["mm", "Millimeter (mm)"], ["m", "Meter (m)"]];
 const STEPS = { file: 1, mapping: 2, preview: 3, apply: 4, result: 4 };
 const STEP_TITLES = { file: "Datei auswählen", mapping: "Spalten prüfen", preview: "Vorschau", apply: "Übernahme", result: "Ergebnis" };
 
@@ -89,6 +99,56 @@ function beispiele(rows, headerIndex, col) {
   return out;
 }
 
+// „3 von 10 Zeilen haben dieselbe Artikelnummer und Menge wie …“ — mit dem Anteil der letzten 7 Tage.
+function wiederholSatz(n, total, jung) {
+  const kopf = `${formatUnits(n)} von ${anzahl(total, "Zeile", "Zeilen")} ${n === 1 ? "hat" : "haben"} dieselbe Artikelnummer und Menge wie`;
+  if (jung > 0 && jung >= n) return `${kopf} ein Wareneingang, der in den letzten 7 Tagen in dieses Lager gebucht wurde.`;
+  if (jung > 0) return `${kopf} ein früherer Wareneingang in diesem Lager, ${formatUnits(jung)} davon aus den letzten 7 Tagen.`;
+  return `${kopf} ein früherer Wareneingang in diesem Lager.`;
+}
+
+// Textanfang bis zur letzten Wortgrenze vor `max` Zeichen.
+function anfang(text, max) {
+  const kurz = text.slice(0, max);
+  const grenze = kurz.lastIndexOf(" ");
+  return (grenze > max * 0.6 ? kurz.slice(0, grenze) : kurz).replace(/[\s.,;:–-]+$/, "");
+}
+
+// Geplante Werte einer Zeile als Raster: neue Artikel mit jedem Zielwert, aktualisierte mit
+// Vorher → Nachher. Die Werte kommen unverändert vom Server (genau die zu speichernden).
+function ZeilenWerte({ row }) {
+  const changes = Array.isArray(row.changes) ? row.changes : [];
+  if (changes.length === 0 || (row.action !== "create" && row.action !== "update")) return null;
+  const neu = row.action === "create";
+  return (
+    <dl className="inv-import-values" aria-label={neu ? "Werte des neuen Artikels" : "Geänderte Werte"}>
+      {changes.map((c) => {
+        // Der Wert selbst; eine Rundung durch die Spaltengenauigkeit steht als eigene Zeile darunter.
+        const ohneRundung = { ...c, fileValue: undefined };
+        const text = neu ? targetText(ohneRundung) : beforeAfterText(ohneRundung);
+        const rundung = roundingNote(c);
+        const breit = c.field === "name" || c.field === "description";
+        // Eine lange Beschreibung eines neuen Artikels klappt auf, statt die Zeile zu sprengen.
+        const lang = neu && c.field === "description" && typeof c.after === "string" && c.after.length > LANGE_BESCHREIBUNG;
+        return (
+          <div key={c.field} className={`inv-import-value${breit ? " inv-import-value--wide" : ""}`}>
+            <dt>{FIELD_LABELS[c.field] || c.field}</dt>
+            <dd>
+              {lang ? (
+                <details className="inv-import-value-more">
+                  <summary>{`${anfang(c.after, LANGE_BESCHREIBUNG - 20)}… `}<span className="inv-import-value-toggle">ganz anzeigen</span></summary>
+                  <p>{c.after}</p>
+                </details>
+              ) : text}
+              {rundung && <span className="inv-import-value-note">{rundung}</span>}
+            </dd>
+          </div>
+        );
+      })}
+    </dl>
+  );
+}
+
 function badgeOf(row) {
   if (row.applyStatus === "applied") return ["badge--success", "Übernommen"];
   if (row.applyStatus === "failed") return ["badge--error", APPLY_STATUS_LABELS.failed];
@@ -111,7 +171,8 @@ export function ProductImportDialog({ open, onClose, onImported }) {
   const [table, setTable] = useState(null);
   const [mapping, setMapping] = useState({});
   const [status, setStatus] = useState({});
-  const [units, setUnits] = useState({ weight: null, length: null });
+  // Einheit je Gewichts- und Maßfeld (weightKg, lengthCm, widthCm, heightCm).
+  const [units, setUnits] = useState({});
   const [numberFormat, setNumberFormat] = useState(null);
   const [evidence, setEvidence] = useState(null);
   const [stockMode, setStockMode] = useState("counted");
@@ -130,11 +191,14 @@ export function ProductImportDialog({ open, onClose, onImported }) {
   const [loadingRows, setLoadingRows] = useState(false);
   const [skipInvalid, setSkipInvalid] = useState(false);
   const [confirmRepeat, setConfirmRepeat] = useState(false);
+  const [repeatRows, setRepeatRows] = useState([]);
+  const [leereZeilen, setLeereZeilen] = useState(null);
   const [exporting, setExporting] = useState(false);
 
   const inputRef = useRef(null);
   const headingRef = useRef(null);
   const rowSeq = useRef(0);
+  const repeatSeq = useRef(0);
 
   const busy = reading || analyzing || applying || creatingWarehouse;
 
@@ -158,14 +222,29 @@ export function ProductImportDialog({ open, onClose, onImported }) {
     }
   }, []);
 
+  // Die ersten Zeilen mit möglicher Doppelbuchung für die Warnung (unabhängig vom gewählten Filter).
+  const ladeWiederholungen = useCallback(async (header) => {
+    const meins = ++repeatSeq.current;
+    const anzahlTreffer = (header.counts && header.counts.repeatRows) || 0;
+    setRepeatRows([]);
+    if (header.status !== "analyzed" || (!header.repeat && anzahlTreffer === 0)) return;
+    try {
+      const res = await getInventoryImportRows(header.id, { filter: "repeat", limit: REPEAT_PREVIEW });
+      const body = await res.json().catch(() => null);
+      // Eine späte Antwort einer früheren Analyse überschreibt die Liste nicht.
+      if (repeatSeq.current === meins && res.ok && body && Array.isArray(body.rows)) setRepeatRows(body.rows);
+    } catch { /* die Warnung bleibt ohne Liste verständlich; die Zeilen tragen ihre Hinweise */ }
+  }, []);
+
   const zeigeVorschau = useCallback(async (header, f) => {
     setImp(header);
     setFilter(f);
     setRows([]);
     setNextAfter(null);
     setPhase(header.status === "applying" || header.status === "completed" ? "result" : "preview");
+    ladeWiederholungen(header);
     await ladeZeilen(header.id, f);
-  }, [ladeZeilen]);
+  }, [ladeZeilen, ladeWiederholungen]);
 
   // Lager selbst laden: Die Liste der Seite kann beim Öffnen noch fehlen, und ein stiller
   // Ladefehler darf nicht wie „kein Lager“ aussehen (sonst entstünde ein zweites Hauptlager).
@@ -191,6 +270,7 @@ export function ProductImportDialog({ open, onClose, onImported }) {
     let aktiv = true;
     setPhase("loading"); setError(""); setFile(null); setTable(null); setImp(null); setRows([]);
     setSkipInvalid(false); setConfirmRepeat(false); setInterrupted(false); setStockModeTouched(false);
+    setRepeatRows([]); setLeereZeilen(null);
     setLager([]); setWarehouseId(null);
     ladeLager(() => aktiv);
     getOpenInventoryImport().then(async (res) => {
@@ -206,12 +286,12 @@ export function ProductImportDialog({ open, onClose, onImported }) {
   }, [open, zeigeVorschau, ladeLager]);
 
   // ── Schritt 1: Datei lesen ────────────────────────────────────────────────
-  const vorbereiten = (tabelle, formulas, meta) => {
+  const vorbereiten = (tabelle, formulas, meta, errors = new Map()) => {
     const headerIndex = ersteZeileMitInhalt(tabelle);
     if (headerIndex < 0 || headerIndex >= tabelle.length - 1) throw new ImportReadError("NO_DATA");
     const headers = (tabelle[headerIndex] || []).map((v) => zellText(v).trim());
     const s = suggestMapping(headers);
-    setTable({ rows: tabelle, formulas, headerIndex, headers });
+    setTable({ rows: tabelle, formulas, errors, headerIndex, headers });
     setMapping(s.mapping);
     setStatus(s.status);
     setUnits(s.units);
@@ -241,10 +321,11 @@ export function ProductImportDialog({ open, onClose, onImported }) {
         vorbereiten(tabelle, new Set(), { type: "csv", delimiter });
       } else {
         const sheets = await readXlsx(buffer);
-        const idx = sheets.findIndex((s) => !s.blocked && ersteZeileMitInhalt(s.rows) >= 0);
+        // Vorwahl: erstes sichtbares Blatt mit Daten; ein ausgeblendetes nur, wenn sonst keines Daten hat.
+        const idx = defaultSheetIndex(sheets, (rows) => ersteZeileMitInhalt(rows) >= 0);
         if (idx < 0) throw new ImportReadError(sheets.some((s) => s.blocked) ? sheets.find((s) => s.blocked).blocked : "NO_DATA");
         setFile({ name, type: "xlsx", encoding: null, delimiter: null, delimiterDetected: true, text: null, sheets, sheetIndex: idx });
-        vorbereiten(sheets[idx].rows, sheets[idx].formulas, { type: "xlsx" });
+        vorbereiten(sheets[idx].rows, sheets[idx].formulas, { type: "xlsx" }, sheets[idx].errors);
       }
       setPhase("mapping");
     } catch (e) {
@@ -271,7 +352,7 @@ export function ProductImportDialog({ open, onClose, onImported }) {
     if (!s || s.blocked) return;
     try {
       setFile({ ...file, sheetIndex: idx });
-      vorbereiten(s.rows, s.formulas, { type: "xlsx" });
+      vorbereiten(s.rows, s.formulas, { type: "xlsx" }, s.errors);
       setError("");
     } catch (e) {
       setError(e instanceof ImportReadError ? readErrorText(e.code, e.params) : readErrorText("XLSX_UNREADABLE"));
@@ -288,15 +369,14 @@ export function ProductImportDialog({ open, onClose, onImported }) {
     if (fieldKey) nextStatus[fieldKey] = "manual";
     setMapping(next);
     setStatus(nextStatus);
-    // Einheit aus dem neuen Spaltennamen; sonst bleibt eine bereits getroffene Wahl.
-    const unitAus = (key) => (next[key] !== undefined ? analyseHeader(table.headers[next[key]]).unit : null);
-    const w = unitAus("weightKg");
-    const lengthKeys = ["lengthCm", "widthCm", "heightCm"].filter((k) => next[k] !== undefined);
-    const lu = lengthKeys.map(unitAus);
-    setUnits((u) => ({
-      weight: next.weightKg === undefined ? null : (w === "kg" || w === "g" ? w : u.weight),
-      length: lengthKeys.length === 0 ? null : (lu.every(Boolean) && new Set(lu).size === 1 ? lu[0] : u.length),
-    }));
+    // Einheit je Feld aus dem neuen Spaltennamen; sonst bleibt die für dieses Feld getroffene Wahl.
+    setUnits((u) => {
+      const neu = {};
+      for (const key of ["weightKg", ...DIMENSION_FIELDS]) {
+        if (next[key] !== undefined) neu[key] = headerUnit(table.headers, next, key) || u[key] || null;
+      }
+      return neu;
+    });
     if (!stockModeTouched) setStockMode(next.stock !== undefined ? "counted" : "none");
     const ev = numberFormatEvidence(table.rows.slice(table.headerIndex + 1), next);
     setEvidence(ev);
@@ -336,17 +416,21 @@ export function ProductImportDialog({ open, onClose, onImported }) {
     setAnalyzing(true);
     try {
       const labels = Object.fromEntries(Object.entries(mapping).map(([k, c]) => [k, table.headers[c]]));
-      const { document } = buildImportDocument({
-        rows: table.rows, headerIndex: table.headerIndex, mapping, labels, units, numberFormat, formulas: table.formulas,
+      const { document, emptyRows } = buildImportDocument({
+        rows: table.rows, headerIndex: table.headerIndex, mapping, labels, units, numberFormat,
+        formulas: table.formulas, errors: table.errors,
         source: { type: file.type, name: file.name, sheet: file.type === "xlsx" ? file.sheets[file.sheetIndex].name : null },
         options: { stockMode, updateExisting, warehouseId },
       });
       if (document.rows.length === 0) { setError(readErrorText("NO_DATA")); return; }
+      // Die Datei darf 15 MB groß sein, das übertragene Dokument 10 MB — eine klare Meldung statt eines 413.
+      if (new Blob([JSON.stringify(document)]).size > MAX_DOCUMENT_BYTES) { setError(readErrorText("DOCUMENT_TOO_LARGE")); return; }
       const res = await analyzeInventoryImport(document);
       const body = await res.json().catch(() => null);
       if (!res.ok) { setError(inventoryErrorText(body, "Die Datei konnte nicht geprüft werden.")); return; }
       setSkipInvalid(false);
       setConfirmRepeat(false);
+      setLeereZeilen(emptyRows);
       await zeigeVorschau(body.import, body.import.counts && body.import.counts.error > 0 ? "error" : "all");
     } catch (e) {
       if (e && e.code === "TOO_MANY_ROWS") setError(readErrorText("TOO_MANY_ROWS", e.params));
@@ -419,6 +503,7 @@ export function ProductImportDialog({ open, onClose, onImported }) {
       setImp(body.import);
       setPhase("preview");
       setFilter("pending");
+      setLeereZeilen(null);
       await ladeZeilen(body.import.id, "pending");
     } catch {
       setError("Die Zeilen konnten nicht neu geprüft werden.");
@@ -504,8 +589,13 @@ export function ProductImportDialog({ open, onClose, onImported }) {
     ["skipped", "Übersprungen", counts.skipped || 0],
     ["error", "Fehler", counts.error || 0],
     ["warnings", "Hinweise", counts.warnings || 0],
+    ["repeat", "Mögliche Wiederholungen", counts.repeatRows || 0],
     ["stock", "Bestandsänderungen", counts.stockChanges || 0],
   ].filter(([key, , n]) => key === "all" || n > 0) : [];
+  const filterWaehlen = (key) => { setFilter(key); ladeZeilen(imp.id, key); };
+  // Mögliche Doppelbuchung (Wareneingang): Zeilen mit Treffer und davon die der letzten 7 Tage.
+  const wiederholZeilen = counts.repeatRows ?? (imp && imp.repeat ? imp.repeat.matches : 0);
+  const wiederholJung = counts.repeatRecentRows ?? 0;
 
   const kopf = phase === "loading" ? null : (
     <div className="inv-import-head">
@@ -532,11 +622,15 @@ export function ProductImportDialog({ open, onClose, onImported }) {
                   <span className={`badge ${badge}`}>{label}</span>
                 </div>
                 {r.applyCode && <p className="inv-import-row-problem">{applyCodeText(r.applyCode, r.issues, columns)}</p>}
-                {hinweise.map((i, n) => (
-                  <p key={n} className={i.severity === "error" ? "inv-import-row-problem" : "inv-import-row-hint"}>{issueText(i, columns)}</p>
-                ))}
+                {hinweise.map((i, n) => (i.severity === "error"
+                  ? <p key={n} className="inv-import-row-problem">{issueText(i, columns)}</p>
+                  : (
+                    <p key={n} className={`inv-import-row-hint inv-import-row-hint--warning${i.code === "ROW_RECEIPT_REPEAT" && i.params && i.params.recent ? " inv-import-row-hint--strong" : ""}`}>
+                      <span className="sr-only">Hinweis: </span>{issueText(i, columns)}
+                    </p>
+                  )))}
                 {info && <p className="inv-import-row-hint">{issueText(info, columns)}</p>}
-                {(r.changes || []).map((c) => <p key={c.field} className="inv-import-row-change">{changeText(c)}</p>)}
+                <ZeilenWerte row={r} />
                 {bestand && r.action !== "error" && <p className="inv-import-row-change">{bestand}</p>}
               </li>
             );
@@ -578,6 +672,10 @@ export function ProductImportDialog({ open, onClose, onImported }) {
   } else if (phase === "mapping" && table) {
     const optionenFuer = (col) => IMPORT_FIELDS.filter((f) => mapping[f.key] === undefined || mapping[f.key] === col);
     const feldVon = (col) => Object.keys(mapping).find((k) => mapping[k] === col) || "";
+    // Maßspalten: eine gemeinsame Wahl, solange die Spaltennamen dieselbe (oder keine) Einheit nennen;
+    // sonst je Spalte — „Länge (cm)“ und „Höhe (mm)“ werden nie mit einer Einheit gelesen.
+    const masse = DIMENSION_FIELDS.filter((k) => mapping[k] !== undefined);
+    const masseGetrennt = dimensionUnitsDiffer(table.headers, mapping);
     inhalt = (
       <>
         <p className="inv-import-lead">
@@ -587,10 +685,20 @@ export function ProductImportDialog({ open, onClose, onImported }) {
         {file.type === "xlsx" && file.sheets.length > 1 && (
           <div className="inv-import-field">
             <label className="field-label" htmlFor="inv-import-sheet">Tabellenblatt</label>
-            <select id="inv-import-sheet" className="field-select" value={file.sheetIndex} onChange={(e) => blattAendern(Number(e.target.value))}>
-              {file.sheets.map((s, i) => <option key={s.name} value={i} disabled={Boolean(s.blocked)}>{s.name}{s.blocked ? " (nicht lesbar)" : ""}</option>)}
+            <select id="inv-import-sheet" className="field-select" value={file.sheetIndex} onChange={(e) => blattAendern(Number(e.target.value))}
+                    aria-describedby={file.sheets[file.sheetIndex].hidden ? "inv-import-sheet-hidden" : undefined}>
+              {file.sheets.map((s, i) => (
+                <option key={s.name} value={i} disabled={Boolean(s.blocked)}>
+                  {s.name}{s.hidden ? " (ausgeblendet)" : ""}{s.blocked ? " (nicht lesbar)" : ""}
+                </option>
+              ))}
             </select>
           </div>
+        )}
+        {file.type === "xlsx" && file.sheets[file.sheetIndex].hidden && (
+          <p className="inv-import-sheet-hidden" id="inv-import-sheet-hidden" role="note">
+            Das Tabellenblatt „{file.sheets[file.sheetIndex].name}“ ist in Excel ausgeblendet. Prüfen Sie, ob es die aktuellen Artikeldaten enthält.
+          </p>
         )}
         {file.type === "csv" && !file.delimiterDetected && (
           <fieldset className="inv-import-fieldset">
@@ -637,26 +745,50 @@ export function ProductImportDialog({ open, onClose, onImported }) {
           <fieldset className="inv-import-fieldset">
             <legend className="field-label">Einheit des Gewichts</legend>
             <div className="ce-segment inv-import-segment">
-              {[["kg", "Kilogramm (kg)"], ["g", "Gramm (g)"]].map(([u, l]) => (
+              {WEIGHT_UNIT_OPTIONS.map(([u, l]) => (
                 <label key={u} className="ce-segment-option inv-import-segment-option">
-                  <input type="radio" name="inv-import-weight-unit" checked={units.weight === u} onChange={() => setUnits({ ...units, weight: u })} />
+                  <input type="radio" name="inv-import-weight-unit" checked={units.weightKg === u} onChange={() => setUnits({ ...units, weightKg: u })} />
                   <span>{l}</span>
                 </label>
               ))}
             </div>
           </fieldset>
         )}
-        {["lengthCm", "widthCm", "heightCm"].some((k) => mapping[k] !== undefined) && (
+        {masse.length > 0 && !masseGetrennt && (
           <fieldset className="inv-import-fieldset">
             <legend className="field-label">Einheit der Maße</legend>
             <div className="ce-segment inv-import-segment">
-              {[["cm", "Zentimeter (cm)"], ["mm", "Millimeter (mm)"], ["m", "Meter (m)"]].map(([u, l]) => (
+              {LENGTH_UNIT_OPTIONS.map(([u, l]) => (
                 <label key={u} className="ce-segment-option inv-import-segment-option">
-                  <input type="radio" name="inv-import-length-unit" checked={units.length === u} onChange={() => setUnits({ ...units, length: u })} />
+                  <input type="radio" name="inv-import-length-unit" checked={masse.every((k) => units[k] === u)}
+                         onChange={() => setUnits({ ...units, ...Object.fromEntries(masse.map((k) => [k, u])) })} />
                   <span>{l}</span>
                 </label>
               ))}
             </div>
+          </fieldset>
+        )}
+        {masse.length > 0 && masseGetrennt && (
+          <fieldset className="inv-import-fieldset">
+            <legend className="field-label">Einheiten der Maße</legend>
+            <p className="field-hint">Die Maßspalten nennen unterschiedliche Einheiten. Jede Spalte wird mit ihrer eigenen Einheit in Zentimeter umgerechnet.</p>
+            {masse.map((k) => (
+              <fieldset key={k} className="inv-import-unit">
+                <legend className="inv-import-unit-label">
+                  {FIELD_LABELS[k]} <span className="inv-import-unit-column">aus „{table.headers[mapping[k]] || `Spalte ${mapping[k] + 1}`}“</span>
+                </legend>
+                {/* Je Spalte genügt das Kürzel — die Überschrift nennt Feld und Spalte; der ausgeschriebene
+                    Name bleibt für Screenreader Teil der Bezeichnung. */}
+                <div className="ce-segment inv-import-segment inv-import-segment--kurz">
+                  {LENGTH_UNIT_OPTIONS.map(([u, l]) => (
+                    <label key={u} className="ce-segment-option inv-import-segment-option">
+                      <input type="radio" name={`inv-import-unit-${k}`} checked={units[k] === u} onChange={() => setUnits({ ...units, [k]: u })} />
+                      <span>{u}<span className="sr-only">{` – ${l.replace(/ \(.*\)$/, "")}`}</span></span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            ))}
           </fieldset>
         )}
         <fieldset className="inv-import-fieldset">
@@ -753,24 +885,60 @@ export function ProductImportDialog({ open, onClose, onImported }) {
       <>
         <p className="inv-import-lead">
           {imp.source && imp.source.name ? <><strong>{imp.source.name}</strong> · </> : null}
-          {anzahl(imp.totalRows, "Zeile", "Zeilen")} geprüft. Noch wurde nichts geändert.
+          {anzahl(imp.totalRows, "Zeile", "Zeilen")} geprüft
+          {leereZeilen > 0 ? `, ${anzahl(leereZeilen, "leere Zeile", "leere Zeilen")} übersprungen` : ""}. Noch wurde nichts geändert.
         </p>
         {imp.repeat && (
-          <div className="inv-import-notice" role="note">
+          <section className="inv-import-repeat" aria-labelledby="inv-import-repeat-title">
+            <h4 className="inv-import-repeat-title" id="inv-import-repeat-title">
+              {imp.repeat.identical ? "Diese Wareneingänge wurden möglicherweise bereits gebucht." : "Einige Artikelmengen wurden möglicherweise bereits als Wareneingang gebucht."}
+            </h4>
             <p>
-              {imp.repeat.identical ? "Diese Wareneingänge wurden bereits gebucht" : `${formatUnits(imp.repeat.matches)} von ${anzahl(imp.repeat.total, "Wareneingang", "Wareneingängen")} ${imp.repeat.matches === 1 ? "stimmt" : "stimmen"} mit einem früheren Import überein`}
-              {imp.repeat.createdAt ? ` (${new Date(imp.repeat.createdAt).toLocaleDateString("de-DE")}${imp.repeat.sourceName ? `, ${imp.repeat.sourceName}` : ""})` : ""}.
+              {imp.repeat.identical
+                ? `Die Datei entspricht einem Wareneingang, der bereits in dieses Lager gebucht wurde${imp.repeat.createdAt ? ` (${datumText(imp.repeat.createdAt)}${imp.repeat.sourceName ? `, „${imp.repeat.sourceName}“` : ""})` : ""}.`
+                : wiederholSatz(wiederholZeilen, imp.repeat.total, wiederholJung)}
+              {" "}Eine erneute Buchung erhöht den Lagerbestand zusätzlich. Ist es eine neue Lieferung, bestätigen Sie das bitte — sonst korrigieren Sie die Datei oder verwerfen die Vorschau.
             </p>
-            <label className="inv-toolbar-check">
+            {repeatRows.length > 0 && (
+              <ul className="inv-import-repeat-list" aria-label="Betroffene Artikel">
+                {repeatRows.map((r) => {
+                  const h = (r.issues || []).find((i) => i.code === "ROW_RECEIPT_REPEAT");
+                  const p = (h && h.params) || {};
+                  const menge = r.stock && typeof r.stock.delta === "number" ? r.stock.delta : null;
+                  const datum = datumText(p.date);
+                  return (
+                    <li key={r.rowNo}>
+                      <span className="inv-cell-sku"><Werte>{r.sku}</Werte></span>
+                      <span className="inv-import-repeat-detail">
+                        {menge !== null ? `${formatUnits(menge)} Stück` : "dieselbe Menge"}
+                        {datum ? `, zuletzt gebucht am ${datum}` : ""}
+                        {p.file ? `, „${p.file}“` : ""}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {wiederholZeilen > repeatRows.length && repeatRows.length > 0 && (
+              <button type="button" className="btn btn-ghost btn-sm inv-import-repeat-all" onClick={() => filterWaehlen("repeat")}>
+                Alle {formatUnits(wiederholZeilen)} betroffenen Zeilen anzeigen
+              </button>
+            )}
+            <label className="inv-toolbar-check inv-import-repeat-confirm">
               <input type="checkbox" checked={confirmRepeat} onChange={(e) => setConfirmRepeat(e.target.checked)} />
-              <span>Es ist eine neue Lieferung — erneut buchen</span>
+              <span>Es ist eine neue Lieferung — diese Mengen erneut buchen</span>
             </label>
-          </div>
+          </section>
+        )}
+        {!imp.repeat && wiederholZeilen > 0 && (
+          <p className="inv-import-note">
+            {wiederholZeilen === 1 ? "Bei 1 Zeile wurde" : `Bei ${formatUnits(wiederholZeilen)} Zeilen wurde`} dieselbe Menge vor mehr als 7 Tagen schon einmal als Wareneingang gebucht. Die Zeilen tragen einen Hinweis; eine Bestätigung ist nicht nötig.
+          </p>
         )}
         <div className="ce-segment inv-import-filter" role="group" aria-label="Zeilen filtern">
           {filterOptionen.map(([key, label, n]) => (
             <button key={key} type="button" className="ce-segment-option inv-import-segment-option" aria-pressed={filter === key}
-                    onClick={() => { setFilter(key); ladeZeilen(imp.id, key); }}>
+                    onClick={() => filterWaehlen(key)}>
               {label} {formatUnits(n)}
             </button>
           ))}
@@ -788,6 +956,9 @@ export function ProductImportDialog({ open, onClose, onImported }) {
               <input type="checkbox" checked={skipInvalid} onChange={(e) => setSkipInvalid(e.target.checked)} />
               <span>{anzahl(fehlerAnzahl, "fehlerhafte Zeile", "fehlerhafte Zeilen")} überspringen und die übrigen übernehmen</span>
             </label>
+          )}
+          {imp.repeat && imp.status === "analyzed" && !confirmRepeat && (
+            <p className="field-hint">Die Übernahme wartet auf Ihre Bestätigung der möglichen Doppelbuchung (oben).</p>
           )}
         </div>
       </>

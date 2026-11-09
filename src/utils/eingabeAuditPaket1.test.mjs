@@ -136,7 +136,7 @@ test("A10 — XLSX: eine EAN als Zahl bekommt einen sichtbaren Hinweis", () => {
   const { document } = buildImportDocument({
     rows: [["Artikelnummer", "EAN", "Gewicht"], ["A-1", 12345678905, 1]],
     headerIndex: 0, mapping: { sku: 0, ean: 1, weightKg: 2 },
-    labels: { sku: "Artikelnummer", ean: "EAN", weightKg: "Gewicht (kg)" }, units: { weight: "kg", length: null },
+    labels: { sku: "Artikelnummer", ean: "EAN", weightKg: "Gewicht (kg)" }, units: { weightKg: "kg" },
     numberFormat: "de", source: { type: "xlsx", name: "a.xlsx", sheet: "Artikel" },
     options: { stockMode: "none", updateExisting: true, warehouseId: null },
   });

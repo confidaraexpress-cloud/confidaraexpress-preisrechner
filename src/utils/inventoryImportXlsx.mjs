@@ -5,6 +5,11 @@
    ein schmaler Scan über dieselben geprüften Bibliotheken (fflate entpackt, saxen liest
    XML) jede Formelzelle; sie wird nie ausgewertet und nie als Wert übernommen.
 
+   Derselbe Scan führt die Excel-Fehlerzellen (Typ „e“: #NV, #DIV/0!, #BEZUG! …). Die
+   Bibliothek liefert sie leer; ohne die Markierung würde ein Fehlerwert still zu „kein Wert“.
+   Aus workbook.xml kommt außerdem der Blattzustand: ein ausgeblendetes Blatt (hidden,
+   veryHidden) wird gekennzeichnet und nie unbemerkt vorgewählt.
+
    Schutz vor manipulierten Dateien (bevor etwas entpackt wird):
    · Dateigröße, angegebene entpackte Größe je Eintrag und gesamt (ZIP-Bombe)
    · keine DOCTYPE-/ENTITY-Deklaration in den gelesenen XML-Teilen
@@ -22,6 +27,13 @@ export const XLSX_LIMITS = Object.freeze({
   maxRows: 10001,
   maxColumns: 100,
 });
+
+// Fehlerwerte, die eine Zelle vom Typ „e“ speichert (OOXML schreibt sie englisch). Nur diese
+// Texte gehen als Begleitwert an den Server (Backend EXCEL_ERROR_VALUES, dieselbe Liste).
+export const EXCEL_ERROR_VALUES = Object.freeze([
+  "#NULL!", "#DIV/0!", "#VALUE!", "#REF!", "#NAME?", "#NUM!", "#N/A", "#GETTING_DATA",
+  "#SPILL!", "#CALC!", "#FIELD!", "#BLOCKED!", "#CONNECT!", "#BUSY!", "#UNKNOWN!", "#PYTHON!", "#EXTERNAL!",
+]);
 
 function localName(name) {
   const i = name.indexOf(":");
@@ -60,11 +72,12 @@ function parseXml(Parser, xml, handlers) {
   parser.on("error", () => { failed = true; });
   if (handlers.openTag) parser.on("openTag", handlers.openTag);
   if (handlers.closeTag) parser.on("closeTag", handlers.closeTag);
+  if (handlers.text) parser.on("text", handlers.text);
   parser.parse(xml);
   if (failed) throw new ImportReadError("XLSX_UNREADABLE");
 }
 
-// workbook.xml: Blattname → Beziehungs-ID; workbook.xml.rels: ID → Pfad des Blatts.
+// workbook.xml: Blattname → Beziehungs-ID und Zustand; workbook.xml.rels: ID → Pfad des Blatts.
 function sheetPaths(Parser, workbookXml, relsXml) {
   const sheets = [];
   parseXml(Parser, workbookXml, {
@@ -72,7 +85,7 @@ function sheetPaths(Parser, workbookXml, relsXml) {
       if (localName(name) !== "sheet") return;
       const a = attrs();
       const rid = Object.keys(a).find((k) => localName(k) === "id" && k.includes(":"));
-      if (a.name && rid) sheets.push({ name: decode(a.name), rid: a[rid] });
+      if (a.name && rid) sheets.push({ name: decode(a.name), rid: a[rid], state: a.state || "visible" });
     },
   });
   const targets = new Map();
@@ -85,17 +98,22 @@ function sheetPaths(Parser, workbookXml, relsXml) {
       targets.set(a.Id, t);
     },
   });
-  return new Map(sheets.map((s) => [s.name, targets.get(s.rid) || null]));
+  return new Map(sheets.map((s) => [s.name, { path: targets.get(s.rid) || null, state: s.state }]));
 }
 
-// Formelzellen eines Blatts als Menge „Zeile:Spalte“ (1-basiert, absolute Excel-Position).
-// Geteilte, Matrix- und Datentabellenformeln markieren ihren ganzen Bereich.
-function scanFormulas(Parser, xml, limits) {
+// Formel- und Fehlerzellen eines Blatts, Position „Zeile:Spalte“ (1-basiert, absolute Excel-Position).
+// Geteilte, Matrix- und Datentabellenformeln markieren ihren ganzen Bereich. Fehlerzellen (t="e")
+// tragen ihren Fehlerwert aus <v>, sofern er ein bekannter Excel-Fehlerwert ist, sonst null.
+function scanCells(Parser, xml, limits) {
   const formulas = new Set();
+  const errors = new Map();
   let inSheetData = false;
   let row = 0;
   let col = 0;
   let cell = null;
+  let errorCell = false;
+  let inValue = false;
+  let value = "";
   parseXml(Parser, xml, {
     openTag(name, attrs) {
       const local = localName(name);
@@ -108,24 +126,39 @@ function scanFormulas(Parser, xml, limits) {
         return;
       }
       if (local === "c") {
-        const pos = parseCellRef(attrs().r);
+        const a = attrs();
+        const pos = parseCellRef(a.r);
         if (pos) { row = pos.row; col = pos.col; } else col += 1;
         cell = `${row}:${col}`;
+        errorCell = a.t === "e";
+        value = "";
         return;
       }
+      if (local === "v" && cell && errorCell) { inValue = true; return; }
       if (local === "f" && cell) {
         formulas.add(cell);
         const a = attrs();
         if (a.ref && (a.t === "shared" || a.t === "array" || a.t === "dataTable")) markRange(a.ref, formulas, limits);
       }
     },
+    text(t, decode) {
+      if (inValue && value.length < 32) value += decode(t);
+    },
     closeTag(name) {
       const local = localName(name);
-      if (local === "c") cell = null;
+      if (local === "v") inValue = false;
+      if (local === "c") {
+        if (cell && errorCell) {
+          const v = value.trim();
+          errors.set(cell, EXCEL_ERROR_VALUES.includes(v) ? v : null);
+        }
+        cell = null;
+        errorCell = false;
+      }
       if (local === "sheetData") inSheetData = false;
     },
   });
-  return formulas;
+  return { formulas, errors };
 }
 
 function toArrayBuffer(input) {
@@ -135,8 +168,9 @@ function toArrayBuffer(input) {
 }
 
 /**
- * .xlsx → Blätter mit Zellwerten und Formelpositionen.
- * @returns {Promise<Array<{ name: string, rows: Array<Array<string|number|boolean|Date|null>>, formulas: Set<string> }>>}
+ * .xlsx → Blätter mit Zellwerten, Formel- und Fehlerpositionen und Sichtbarkeit.
+ * @returns {Promise<Array<{ name: string, rows: Array<Array<string|number|boolean|Date|null>>, formulas: Set<string>,
+ *   errors: Map<string, string|null>, blocked: string|null, hidden: boolean }>>}
  */
 export async function readXlsx(input, limits = XLSX_LIMITS) {
   const buffer = toArrayBuffer(input);
@@ -189,18 +223,29 @@ export async function readXlsx(input, limits = XLSX_LIMITS) {
   // Ein Blatt, das sich nicht sicher lesen lässt, ist nicht wählbar (`blocked`) — die
   // übrigen Blätter bleiben nutzbar. Ohne Blatt-XML ist keine Formelprüfung möglich.
   return sheets.map((s) => {
-    const path = paths.get(s.sheet);
-    const xml = path ? text(path) : null;
+    const info = paths.get(s.sheet) || { path: null, state: "visible" };
+    const xml = info.path ? text(info.path) : null;
     const rows = Array.isArray(s.data) ? s.data : [];
     let blocked = null;
     if (xml === null) blocked = "XLSX_STRUCTURE_UNSUPPORTED";
     else if (rows.length > limits.maxRows) blocked = "TOO_MANY_ROWS";
     else if (rows.some((r) => Array.isArray(r) && r.length > limits.maxColumns)) blocked = "TOO_MANY_COLUMNS";
+    const cells = blocked ? { formulas: new Set(), errors: new Map() } : scanCells(Parser, guardXml(xml), limits);
     return {
       name: s.sheet,
       rows: blocked ? [] : rows,
-      formulas: blocked ? new Set() : scanFormulas(Parser, guardXml(xml), limits),
+      formulas: cells.formulas,
+      errors: cells.errors,
       blocked,
+      hidden: info.state === "hidden" || info.state === "veryHidden",
     };
   });
+}
+
+/** Vorwahl des Tabellenblatts: das erste sichtbare, lesbare Blatt mit Inhalt; ein ausgeblendetes
+ *  nur, wenn kein sichtbares Daten enthält (die Oberfläche kennzeichnet es dann). -1: keines. */
+export function defaultSheetIndex(sheets, hasContent) {
+  const geeignet = (s) => !s.blocked && hasContent(s.rows);
+  const sichtbar = sheets.findIndex((s) => !s.hidden && geeignet(s));
+  return sichtbar >= 0 ? sichtbar : sheets.findIndex(geeignet);
 }

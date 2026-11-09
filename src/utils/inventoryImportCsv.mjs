@@ -2,6 +2,13 @@
    Zeichensatz: Byte-Order-Mark entscheidet (UTF-8, UTF-16 LE/BE). Ohne BOM wird STRENG
    als UTF-8 gelesen; scheitert das, ist es Windows-1252 (Excel „CSV (Trennzeichen-
    getrennt)“ unter deutschem Windows). Der erkannte Zeichensatz wird angezeigt.
+   Ausnahme: Enthält eine Datei, die kein gültiges UTF-8 ist, trotzdem gültige UTF-8-Folgen
+   westlicher Zeichen (z. B. C3 B6 = „ö“, E2 82 AC = „€“), wurde sie teils als UTF-8 und teils
+   als Windows-1252 gespeichert. Ein Rückfall auf Windows-1252 machte daraus „GrÃ¶ÃŸe“ — die
+   Datei wird deshalb nicht gelesen (CSV_MIXED_ENCODING). Gezählt werden nur Folgen mit dem
+   Leitbyte C2/C3 (U+0080–U+00FF) bzw. E2 (Satzzeichen, €, ™): In echtem Windows-1252 stehen
+   „Â“, „Ã“ oder „â“ praktisch nie vor einem solchen Byte; „ß“ vor einem typografischen
+   Anführungszeichen (DF 93) bleibt dagegen gültiges Windows-1252.
 
    Trennzeichen: Semikolon, Komma oder Tabulator — das Zeichen, das in den ersten Zeilen
    außerhalb von Anführungszeichen gleichbleibend am häufigsten vorkommt. Ist das nicht
@@ -36,8 +43,21 @@ export function decodeText(bytes) {
   try {
     return { text: new TextDecoder("utf-8", { fatal: true }).decode(u8), encoding: "utf-8" };
   } catch {
+    if (enthaeltUtf8Umlautfolge(u8)) throw new ImportReadError("CSV_MIXED_ENCODING");
     return { text: new TextDecoder("windows-1252").decode(u8), encoding: "windows-1252" };
   }
+}
+
+const folgebyte = (b) => b >= 0x80 && b <= 0xbf;
+
+// Gültige UTF-8-Folge westlicher Zeichen an beliebiger Stelle (siehe Kopf).
+function enthaeltUtf8Umlautfolge(u8) {
+  for (let i = 0; i + 1 < u8.length; i++) {
+    const b = u8[i];
+    if ((b === 0xc2 || b === 0xc3) && folgebyte(u8[i + 1])) return true;
+    if (b === 0xe2 && i + 2 < u8.length && folgebyte(u8[i + 1]) && folgebyte(u8[i + 2])) return true;
+  }
+  return false;
 }
 
 // Zählt je Zeile die Kandidaten außerhalb von Anführungszeichen (nur die ersten Zeilen).

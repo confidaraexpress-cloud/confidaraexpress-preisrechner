@@ -1077,8 +1077,106 @@
 }
 .inv-import-row-problem { color: var(--ce-color-status-error-fg); }
 .inv-import-row-hint { color: var(--ce-color-text-secondary); }
+/* Hinweise (Warnungen) tragen eine Marke am Rand — sie lesen sich nicht mehr wie Fließtext; eine
+   mögliche Doppelbuchung der letzten 7 Tage zusätzlich in Textfarbe. */
+.inv-import-row-hint--warning {
+  padding-left: var(--ce-space-3);
+  border-left: 2px solid var(--ce-color-status-warning-border);
+  color: var(--ce-color-text-secondary);
+}
+.inv-import-row-hint--strong { color: var(--ce-color-text-primary); border-left-color: var(--ce-color-status-warning-fg); }
 .inv-import-row-change { color: var(--ce-color-text-primary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 .inv-import-confirm { display: grid; gap: var(--ce-space-2); }
+
+/* Geplante Werte einer Zeile: Bezeichnung und Beschreibung über die volle Breite, Zahlen im Raster.
+   Kein Tabellenblock — die Spalten brechen mit der Breite um, nie seitlich über den Rand. */
+.inv-import-values {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr));
+  gap: var(--ce-space-2) var(--ce-space-4);
+  margin: var(--ce-space-1) 0 0;
+  min-width: 0;
+}
+.inv-import-value { display: grid; gap: 2px; min-width: 0; align-content: start; }
+.inv-import-value--wide { grid-column: 1 / -1; }
+.inv-import-value dt {
+  color: var(--ce-color-text-muted);
+  font-size: var(--ce-text-caption-size);
+  line-height: var(--ce-text-caption-line);
+}
+.inv-import-value dd {
+  margin: 0;
+  color: var(--ce-color-text-primary);
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  overflow-wrap: break-word;
+}
+.inv-import-value-note {
+  display: block;
+  color: var(--ce-color-text-muted);
+  font-size: var(--ce-text-caption-size);
+  line-height: var(--ce-text-caption-line);
+}
+.inv-import-value-more summary { cursor: pointer; list-style: none; }
+.inv-import-value-more summary::-webkit-details-marker { display: none; }
+.inv-import-value-toggle { color: var(--ce-color-brand); text-decoration: underline; text-underline-offset: 2px; }
+.inv-import-value-more[open] .inv-import-value-toggle { display: none; }
+.inv-import-value-more summary:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); border-radius: var(--ce-radius-xs); }
+.inv-import-value-more p { margin: var(--ce-space-1) 0 0; white-space: pre-line; }
+
+/* Mögliche Doppelbuchung: ruhige Warnfläche, betroffene Artikel, genau eine Bestätigung. */
+.inv-import-repeat {
+  display: grid;
+  gap: var(--ce-space-2);
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border: 1px solid var(--ce-color-status-warning-border);
+  border-radius: var(--ce-radius-md);
+  background: var(--ce-color-status-warning-surface);
+  color: var(--ce-color-text-primary);
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  min-width: 0;
+}
+.inv-import-repeat p { margin: 0; max-width: 72ch; }
+.inv-import-repeat-title {
+  margin: 0;
+  color: var(--ce-color-text-primary);
+  font-size: var(--ce-text-body-size);
+  line-height: var(--ce-text-body-line);
+  font-weight: 600;
+}
+.inv-import-repeat-list { display: grid; gap: var(--ce-space-1); margin: 0; padding: 0; list-style: none; }
+.inv-import-repeat-list li {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--ce-space-2); min-width: 0;
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
+.inv-import-repeat-detail { min-width: 0; color: var(--ce-color-text-secondary); overflow-wrap: break-word; }
+.inv-import-repeat-all { justify-self: start; }
+.inv-import-repeat-confirm { padding-top: var(--ce-space-1); font-weight: 600; }
+
+/* Ausgeblendetes Tabellenblatt gewählt: sichtbar machen, nicht verbieten. */
+.inv-import-sheet-hidden {
+  margin: 0;
+  max-width: 68ch;
+  padding-left: var(--ce-space-3);
+  border-left: 2px solid var(--ce-color-status-warning-border);
+  color: var(--ce-color-text-primary);
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+}
+
+/* Einheit je Maßspalte, wenn die Spaltennamen verschiedene Einheiten nennen. */
+.inv-import-unit { display: grid; gap: var(--ce-space-1); min-width: 0; margin: 0; padding: 0; border: 0; }
+.inv-import-unit-label { padding: 0; color: var(--ce-color-text-primary); font-size: var(--ce-text-body-s-size); font-weight: 600; }
+.inv-import-unit-column { color: var(--ce-color-text-muted); font-weight: 400; overflow-wrap: break-word; }
+/* Kürzel je Spalte: Segmente in Mindestbreite, auch am Telefon in einer Zeile. */
+.inv-import-segment--kurz .inv-import-segment-option { min-width: 3.5rem; justify-content: center; text-align: center; }
+@media (max-width: 640px) {
+  .inv-import-segment.inv-import-segment--kurz { width: fit-content; }
+  .inv-import-segment--kurz .inv-import-segment-option { flex: 0 0 auto; }
+}
 
 .inv-import-progress {
   position: relative;

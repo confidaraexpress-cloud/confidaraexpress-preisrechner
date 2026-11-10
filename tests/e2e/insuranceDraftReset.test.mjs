@@ -51,6 +51,11 @@ const TARIF = {
   deliveryDate: "2026-08-08T00:00:00Z",
   insuranceAvailable: true,
   insuranceDetails: { isInsurable: true, extraInsurancePriceBruttoPreselect: 3.99, extraInsurancePremiumPriceBruttoPreselect: 7.49 },
+  // E1/E2 (2026-11-10): je Stufe die Aussage des Servers für den Warenwert des Formulars (250 €).
+  insuranceCover: {
+    standard: { state: "available", coverLimit: 20000, maxInsuredValue: 250 },
+    premium:  { state: "available", coverLimit: 20000, maxInsuredValue: 250 },
+  },
 };
 
 const VERSICHERT = {

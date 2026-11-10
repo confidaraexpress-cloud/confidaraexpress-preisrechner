@@ -25,13 +25,11 @@
 import { INSURANCE_TYPE_TRANSIT_COVER } from "./coverInsuranceView.mjs";
 import { readPriceComponents } from "./priceComponentsView.mjs";
 
-// Zentrale Frontend-Grenze für den Versicherungswert. Entspricht der bereits
-// bestehenden Inline-Grenze (BookingPage/InsuranceModule) und der Backend-Regel
-// (extra_insurance_value 1..20000). Hier nur zentralisiert — kein neuer Wert.
-// Gilt AUSSCHLIESSLICH für das Stufenmodell (Standard/Premium). Die zusätzliche
-// Transportabsicherung kennt diese Grenze nicht: ihr Versicherungswert ist der Warenwert, und
-// ihre Grenzen nennt der Server (utils/coverInsuranceView.mjs).
-export const INSURANCE_VALUE_MAX = 20000;
+// Betreiberentscheidungen E1/E2 (2026-11-10): hier stand bis dahin die feste Frontend-Grenze
+// des Versicherungswerts (20.000 €) samt Prüfung „Warenwert über dem Maximum" und einer
+// Vorbelegung, die den Warenwert 1:1 spiegelte. Grenze und höchster Versicherungswert kommen jetzt
+// je Stufe vom Server (utils/tierInsuranceCover.mjs); über der Grenze gibt es keine Stufe mehr,
+// und vorbelegt wird der Warenwert in ganzen Euro.
 
 export const PRICE_STATUS = {
   BASE_CONFIRMED:    "BASE_CONFIRMED",    // keine Versicherung → Tarifpreis, bestätigt
@@ -260,19 +258,4 @@ export function insuranceCardPrice({ cardType, selectedType, view, preselectGros
 // ── Progressive-Disclosure-Helfer (rein) ─────────────────────────────────────
 export function insuranceValueFieldsVisible(insuranceType) {
   return isInsuredType(insuranceType);
-}
-
-// Solange der Nutzer den Versicherungswert nicht manuell überschrieben hat, spiegelt
-// er den Warenwert 1:1 (als String, keine Rundung/Kappung). Rückgabe: zu setzender
-// String ODER null (= nicht ändern).
-export function autofillInsuranceValue({ goodsValue, insuranceValueManual }) {
-  if (insuranceValueManual) return null;
-  return typeof goodsValue === "string" ? goodsValue : (goodsValue == null ? "" : String(goodsValue));
-}
-
-// Warenwert oberhalb des maximal versicherbaren Betrags → Anpassungsbereich sichtbar,
-// Erklärung anzeigen, Reprice/Buchung blockieren (via insValid=false außerhalb).
-export function goodsExceedsInsuranceMax(goodsValue) {
-  const g = num(goodsValue);
-  return g != null && g > INSURANCE_VALUE_MAX;
 }

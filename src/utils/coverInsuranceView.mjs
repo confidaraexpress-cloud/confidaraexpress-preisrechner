@@ -28,6 +28,9 @@ import { getBookingModules } from "./bookingModules.js";
 import { PRICE_CHANGE_KIND, priceChangeAnsicht } from "./priceChangeView.mjs";
 import { SAME_DAY_COLLECTION_UNAVAILABLE_CODE, sameDayUnavailableBookingText } from "./sameDayCollectionView.mjs";
 import { offerAwaitsPriceInputs } from "./offerIdentity.mjs";
+// Betreiberentscheidungen E1/E2 (2026-11-10): welche Stufen der gestuften Zusatzversicherung der Server
+// für diesen Warenwert anbietet.
+import { availableInsuranceTiers, tierCoverNotice } from "./tierInsuranceCover.mjs";
 
 export const INSURANCE_TYPE_TRANSIT_COVER = "transit_cover";
 export const SELECTION_MODEL_COVER_VALUE = "cover_value";
@@ -156,7 +159,9 @@ export function insuranceTypeForTariff(type, tariff) {
     if (coverInsuranceNotice(tariff) !== null) return "none";
     return type === INSURANCE_TYPE_TRANSIT_COVER ? type : "none";
   }
-  return TIER_TYPES.includes(type) ? type : "none";
+  // Betreiberentscheidung E1 (2026-11-10): eine Stufe, die der Server für diesen Warenwert nicht
+  // anbietet, wird nicht wiederhergestellt.
+  return TIER_TYPES.includes(type) && availableInsuranceTiers(tariff).includes(type) ? type : "none";
 }
 
 // Kundentexte der Neubepreisung — über den CODE entschieden, nie über den Rohtext.
@@ -327,18 +332,28 @@ export function priceChangeBreakdownLines(view) {
  * Solange ein Angebot auf die Art der Lieferadresse wartet, sagt der Server über die Absicherung
  * noch nichts (`insuranceAvailable` ist an die Buchbarkeit gebunden). Auch das ist KEIN „nicht
  * verfügbar" — ob sie wählbar ist, steht erst in der Bindungsantwort.
+ *
+ * Betreiberentscheidung E1 (2026-11-10): im Stufenmodell ist die Zusatzversicherung nur „möglich",
+ * wenn der Server für den erklärten Warenwert mindestens eine Stufe anbietet (`insuranceCover`,
+ * utils/tierInsuranceCover.mjs). Sonst steht seine Aussage an der Absicherung (über der Grenze oder
+ * ohne bekannte Grenze), und gebucht wird ohne Zusatzversicherung. `tiers` nennt die wählbaren Stufen.
+ * Die Buchungsseite liest dieselbe Entscheidung.
  */
 export function offerCardInsurance(tariff) {
   const t = tariff && typeof tariff === "object" ? tariff : {};
   const d = detailsOf(t);
-  const insurable = getBookingModules(t).insurance === true;
-  const notice = insurable ? null : coverInsuranceNotice(t);
+  const modul = getBookingModules(t).insurance === true;
+  const deckungsmodell = isCoverValueModel(t);
+  const tiers = modul && !deckungsmodell ? availableInsuranceTiers(t) : [];
+  const insurable = modul && (deckungsmodell || tiers.length > 0);
+  const notice = insurable ? null : (modul ? tierCoverNotice(t) : coverInsuranceNotice(t));
   return {
     insurable,
     explicitlyUnavailable: !insurable && notice === null && !offerAwaitsPriceInputs(t)
       && (t.insuranceAvailable === false || (d !== null && d.isInsurable === false)),
-    coverModel: insurable && isCoverValueModel(t),
+    coverModel: insurable && deckungsmodell,
     excessValue: coverExcessValue(t),
     notice,
+    tiers,
   };
 }

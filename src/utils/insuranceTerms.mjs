@@ -148,6 +148,10 @@ export const COVER_INSURANCE_TEXT = Object.freeze({
   cardName:          "Zusätzliche Transportabsicherung",
   noneName:          "Keine zusätzliche Transportabsicherung",
   cardDescription:   "Absicherung Ihrer Sendung bis zum angegebenen Warenwert",
+  // Die Absicherung gilt nicht für jede Ware gegen Beschädigung (Absicherungsbedingungen: u. a. Glas,
+  // Bildschirme, Schmuck/Uhren, Kunst). Ohne diesen Satz versprach die Karte uneingeschränkten Schutz.
+  // „können": welche Ausschlüsse für das Konto genau gelten, ist beim Anbieter angefragt.
+  exclusionNote:     "Bestimmte Waren (z. B. Glas, Bildschirme, Schmuck, Uhren, Kunst) können vom Schutz gegen Beschädigung ausgeschlossen sein.",
   // Der Preis entsteht erst mit den Angaben des Kunden — nie aus einer Tabelle.
   pricePending:      "Preis nach Ihren Angaben",
   // TG22 Paket B: der Warenwert IST der Versicherungswert — angezeigt, nicht gewählt.
@@ -216,6 +220,38 @@ export function coverLimitText(maxCoverValue) {
     : COVER_INSURANCE_TEXT.coverLimitGeneric;
 }
 
+// ── Gestufte Zusatzversicherung: Grenzen (Betreiberentscheidungen E1/E2, 2026-11-10) ──
+// E1: liegt der Warenwert über der Höchstgrenze, gibt es KEINE Zusatzversicherung — auch keine
+// teilweise. E2: der Versicherungswert ist nie höher als der Warenwert. Die Grenze nennt der Server
+// je Stufe am Tarif (`insuranceCover`, utils/tierInsuranceCover.mjs); hier stehen nur die Sätze.
+// Ganze Euro, weil der Versicherungswert nur in ganzen Euro übernommen wird.
+export const TIER_COVER_TEXT = Object.freeze({
+  limitExceeded:     "Für diesen Warenwert ist keine Zusatzversicherung verfügbar.",
+  unavailable:       "Für diesen Tarif ist derzeit keine Zusatzversicherung verfügbar.",
+  valueRequired:     "Bitte geben Sie den Versicherungswert an.",
+  valueInvalid:      "Bitte geben Sie einen gültigen Betrag ein.",
+  valueWholeEuros:   "Bitte geben Sie den Versicherungswert in ganzen Euro an.",
+  valueMin:          "Der Versicherungswert muss mindestens 1 € betragen.",
+  valueExceedsGoods: "Der Versicherungswert darf den Warenwert nicht überschreiten.",
+  // Liegt der Versicherungswert unter dem Warenwert, ist die Ware nicht voll versichert — das sagt
+  // der Satz, ohne eine Vertragsregel zu erfinden („kann").
+  underinsurance:    "Der Versicherungswert liegt unter dem Warenwert. Im Schadensfall kann die Entschädigung anteilig gekürzt werden.",
+});
+
+// E1 — der Warenwert liegt über der Grenze dieses Tarifs. Der Betrag kommt ausschließlich vom Server.
+export function tierCoverLimitText(maxCoverValue) {
+  return istPositiverBetrag(maxCoverValue)
+    ? `${TIER_COVER_TEXT.limitExceeded} Eine Zusatzversicherung ist für diesen Tarif nur bis zu einem Warenwert von ${grenzeEuro(maxCoverValue)} möglich.`
+    : TIER_COVER_TEXT.limitExceeded;
+}
+
+// E2 — der Hinweis unter dem Versicherungswert: der höchste wählbare Betrag ist der Warenwert in ganzen Euro.
+export function tierInsuredValueHint(maxInsuredValue) {
+  return istPositiverBetrag(maxInsuredValue)
+    ? `Höchstens ${grenzeEuro(maxInsuredValue)} (Warenwert in ganzen Euro). Standardmäßig entspricht er dem Warenwert.`
+    : "Standardmäßig entspricht er dem Warenwert.";
+}
+
 // Kartentexte des Deckungsbetragsmodells. „none" trägt dieselbe neutrale Aussage und
 // denselben Tarif-Bedingungslink wie im Stufenmodell; es gibt KEINEN Detaildialog —
 // der vorhandene Dialog beschreibt die Stufen.
@@ -229,9 +265,14 @@ export function coverInsuranceCardCopy(id, excessValue) {
     });
   }
   const excess = coverExcessText(excessValue);
+  // Die Selbstbeteiligung nur aus dem Serverwert; der Ausschlusshinweis immer — er nimmt der
+  // Beschreibung das uneingeschränkte Versprechen.
   return Object.freeze({
     description: COVER_INSURANCE_TEXT.cardDescription,
-    bullets: Object.freeze(excess ? [{ text: excess, info: true }] : []),
+    bullets: Object.freeze([
+      ...(excess ? [{ text: excess, info: true }] : []),
+      { text: COVER_INSURANCE_TEXT.exclusionNote, info: true },
+    ]),
     hasDetails: false,
   });
 }

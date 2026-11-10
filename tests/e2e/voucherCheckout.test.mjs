@@ -51,6 +51,11 @@ const TARIFF = {
     isInsurable: true, insuranceValue: 500,
     extraInsurancePriceBruttoPreselect: 2.5, extraInsurancePremiumPriceBruttoPreselect: 4.9,
   },
+  // E1/E2 (2026-11-10): je Stufe die Aussage des Servers für den Warenwert des Formulars (250 €).
+  insuranceCover: {
+    standard: { state: "available", coverLimit: 20000, maxInsuredValue: 250 },
+    premium:  { state: "available", coverLimit: 20000, maxInsuredValue: 250 },
+  },
 };
 
 // Die serverbestätigte Gutscheinantwort (Allowlist des Preview-Endpunkts).

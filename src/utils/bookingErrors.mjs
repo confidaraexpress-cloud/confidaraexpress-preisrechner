@@ -18,6 +18,7 @@ import { inventoryErrorText } from "./inventoryErrors.mjs";
 import {
   SAME_DAY_TEXT, SAME_DAY_COLLECTION_UNAVAILABLE_CODE, SAME_DAY_UNAVAILABLE_KIND, sameDayUnavailableKindOf,
 } from "./sameDayCollectionView.mjs";
+import { TIER_COVER_TEXT, tierCoverLimitText } from "./insuranceTerms.mjs";
 
 // TG22 Paket B — derselbe Satz bei /book und bei der Neubepreisung der Absicherung.
 export const OFFER_ALREADY_USED_TEXT = "Dieses Angebot wurde bereits verwendet. Bitte prüfen Sie Ihre Sendungen.";
@@ -567,12 +568,20 @@ const REPRICE_CODE_TEXT = Object.freeze({
   CONTENT_DESCRIPTION_INVALID: "Die Inhaltsbeschreibung darf höchstens 35 Zeichen lang sein.",
   GOODS_VALUE_REQUIRED: "Bitte geben Sie den Warenwert an — er ist für die Versicherung erforderlich.",
   GOODS_VALUE_INVALID: "Bitte geben Sie einen Warenwert zwischen 1 und 9.999.999 € an.",
-  INSURANCE_VALUE_INVALID: "Bitte geben Sie einen Versicherungswert zwischen 1 und 20.000 € an.",
+  // Betreiberentscheidungen E1/E2 (2026-11-10): der Versicherungswert ist ganze Euro und nie höher als
+  // der Warenwert; über der Grenze des Tarifs gibt es keine Zusatzversicherung.
+  INSURANCE_VALUE_INVALID: TIER_COVER_TEXT.valueWholeEuros,
+  INSURANCE_VALUE_EXCEEDS_GOODS_VALUE: TIER_COVER_TEXT.valueExceedsGoods,
+  INSURANCE_COVER_LIMIT_EXCEEDED: TIER_COVER_TEXT.limitExceeded,
+  INSURANCE_UNAVAILABLE: TIER_COVER_TEXT.unavailable,
+  INSURANCE_SELECTION_MISMATCH: "Die Angaben zu dieser Sendung haben sich geändert. Bitte berechnen Sie die Preise erneut.",
   SHIPMENT_NOT_FOUND: "Die Sendung wurde nicht gefunden. Bitte berechnen Sie die Preise erneut.",
   SHIPMENT_NOT_DRAFT: "Diese Sendung kann nicht mehr geändert werden. Bitte prüfen Sie Ihre Sendungen.",
 });
 export function repriceFehlerText(body) {
   const code = body && typeof body === "object" ? body.code : null;
+  // E1: die Grenze, die der Server nennt, steht im Satz.
+  if (code === "INSURANCE_COVER_LIMIT_EXCEEDED") return tierCoverLimitText(body.maxCoverValue);
   return typeof code === "string" && Object.prototype.hasOwnProperty.call(REPRICE_CODE_TEXT, code)
     ? REPRICE_CODE_TEXT[code] : null;
 }

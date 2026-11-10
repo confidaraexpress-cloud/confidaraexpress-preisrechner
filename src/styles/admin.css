@@ -1881,3 +1881,76 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
   font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line, 1.4); color: var(--ce-color-text-secondary);
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
 }
+
+/* ── Individuelle Versandtarife (Betreiberentscheidung 2026-11-10) ───────────────────────────────
+   Sieben Zeilen, ein Prozentfeld je Zeile, ein Speichern; je Zeile ein eingeklappter Preisvergleich.
+   Gestapelt unter 48rem, ab 48rem ein dreispaltiges Raster (Produkt · Aufschlag · Wirksam). Dieselben
+   Bausteine wie der Kundenaufschlag (.adm-markup-input-wrap, .adm-markup-suffix, .adm-sp-fold). */
+.adm-tarif-intro { margin-bottom: var(--ce-space-4); }
+.adm-tarif-badge { font-variant-numeric: tabular-nums; }
+.adm-tarif-rows { display: flex; flex-direction: column; border-top: 1px solid var(--ce-color-border-subtle); }
+.adm-tarif-head { display: none; }
+.adm-tarif-row {
+  display: grid; grid-template-columns: 1fr; gap: var(--ce-space-2) var(--ce-space-5);
+  padding: var(--ce-space-3) 0; border-bottom: 1px solid var(--ce-color-border-subtle);
+}
+.adm-tarif-row--dirty { background: linear-gradient(90deg, var(--ce-color-surface-subtle), transparent 60%); }
+.adm-tarif-name { display: flex; align-items: baseline; gap: var(--ce-space-2); min-width: 0; }
+.adm-tarif-label { font-size: var(--ce-text-body-size); font-weight: 600; line-height: var(--ce-text-body-line); color: var(--ce-color-text-primary); }
+.adm-tarif-key { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-muted); font-variant-numeric: tabular-nums; }
+.adm-tarif-field { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2); }
+.adm-tarif-input-wrap { max-width: 160px; }
+.adm-tarif-effective { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; align-self: center; }
+/* Rasterkinder dürfen schrumpfen: eine offene Vergleichstabelle dehnt sonst die Zeile über die Karte (Befund 390 px). */
+.adm-tarif-row > * { min-width: 0; }
+.adm-tarif-error { grid-column: 1 / -1; }
+.adm-tarif-cmp-row { grid-column: 1 / -1; min-width: 0; max-width: 100%; }
+.adm-tarif-cmp-row .adm-sp-fold { min-width: 0; }
+.adm-tarif-cmp-row .adm-sp-fold-body { max-width: 100%; overflow-x: auto; }
+.adm-tarif-savebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ce-space-3); padding: var(--ce-space-4) 0 var(--ce-space-2); }
+.adm-tarif-dirty { font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-brand-ink); }
+.adm-tarif-clean { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-muted); }
+.adm-tarif-note { margin: var(--ce-space-2) 0; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted); }
+.adm-tarif-note--warn { padding: 10px 13px; border-radius: var(--ce-radius-sm); color: var(--ce-color-text-primary); background: var(--ce-color-status-warning-surface, var(--ce-color-surface-subtle)); border: 1px solid var(--ce-color-border-subtle); }
+.adm-tarif-cmp { margin-top: var(--ce-space-5); padding-top: var(--ce-space-4); border-top: 1px solid var(--ce-color-border-subtle); display: flex; flex-direction: column; gap: var(--ce-space-3); }
+.adm-tarif-cmp-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--ce-space-3) var(--ce-space-4); }
+.adm-tarif-ziel { display: flex; flex-direction: column; gap: 6px; min-width: 220px; }
+.adm-tarif-stand { flex: 1 1 240px; align-self: center; }
+/* `table { min-width: 480px }` der Basis gezielt aufgehoben (wie .adm-users-table): die Tabelle folgt ihrem Rahmen. */
+.adm-tarif-table { width: 100%; min-width: 0; border-collapse: collapse; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); }
+.adm-tarif-table th, .adm-tarif-table td { padding: 8px 10px; border-bottom: 1px solid var(--ce-color-border-subtle); text-align: left; vertical-align: top; }
+.adm-tarif-table th { font-size: var(--ce-text-caption-size); font-weight: 600; color: var(--ce-color-text-muted); white-space: nowrap; }
+.adm-tarif-table td.adm-tarif-num, .adm-tarif-table th.adm-tarif-num { text-align: right; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap; }
+.adm-tarif-diff--cheaper { color: var(--ce-color-status-success-fg); font-weight: 600; }
+.adm-tarif-diff--more { color: var(--ce-color-text-primary); font-weight: 600; }
+.adm-tarif-table-note { margin-top: var(--ce-space-2); }
+.adm-tarif-custom { display: flex; flex-direction: column; gap: var(--ce-space-3); }
+.adm-tarif-custom-grid { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--ce-space-3); }
+.adm-tarif-custom-field { display: flex; flex-direction: column; gap: 6px; }
+.adm-tarif-custom-field .adm-markup-input-wrap { max-width: 150px; }
+.adm-tarif-details { margin: 0; }
+.adm-tarif-disclaimer { margin-top: var(--ce-space-1); }
+@media (min-width: 48rem) {
+  .adm-tarif-head { display: grid; grid-template-columns: minmax(12rem, 1.2fr) minmax(16rem, 1fr) minmax(12rem, 1.2fr); gap: var(--ce-space-5); padding: var(--ce-space-2) 0; font-size: var(--ce-text-caption-size); font-weight: 600; color: var(--ce-color-text-muted); }
+  .adm-tarif-row { grid-template-columns: minmax(12rem, 1.2fr) minmax(16rem, 1fr) minmax(12rem, 1.2fr); align-items: center; }
+}
+@media (max-width: 47.99rem) {
+  .adm-tarif-field .btn { flex: 1 1 auto; justify-content: center; }
+  .adm-tarif-input-wrap { max-width: none; flex: 1 1 140px; }
+  .adm-tarif-savebar .btn { width: 100%; justify-content: center; }
+  .adm-tarif-ziel { width: 100%; }
+  .adm-tarif-ziel .adm-edit-select { max-width: none; }
+  .adm-tarif-cmp-controls .btn { width: 100%; justify-content: center; }
+  .adm-tarif-custom-grid .btn { width: 100%; justify-content: center; }
+  .adm-tarif-custom-field { flex: 1 1 40%; }
+  .adm-tarif-custom-field .adm-markup-input-wrap { max-width: none; }
+  /* Vergleichstabelle gestapelt: je Paket ein Block, jede Zahl mit ihrer Beschriftung — nichts wird abgeschnitten. */
+  .adm-tarif-table, .adm-tarif-table tbody, .adm-tarif-table tr, .adm-tarif-table td { display: block; }
+  .adm-tarif-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .adm-tarif-table tr { padding: var(--ce-space-2) 0; border-bottom: 1px solid var(--ce-color-border-subtle); }
+  .adm-tarif-table td { display: flex; justify-content: space-between; align-items: baseline; gap: var(--ce-space-3); padding: 2px 0; border: 0; white-space: normal; }
+  .adm-tarif-table td::before { content: attr(data-label); flex: 0 0 auto; font-size: var(--ce-text-caption-size); font-weight: 500; color: var(--ce-color-text-muted); }
+  .adm-tarif-table td:first-child { font-weight: 600; color: var(--ce-color-text-primary); }
+  .adm-tarif-table td:first-child::before { content: none; }
+  .adm-tarif-table td.adm-tarif-num { text-align: right; }
+}

@@ -39,7 +39,7 @@ test("2 — „Protokoll“ statt „Admin-Audit“ in allen Adminseiten", () =>
     assert.doesNotMatch(ohneKommentare(read(datei)), /Admin-Audit/, `${datei}: „Admin-Audit“ statt „Protokoll“`);
   }
   // Die Navigation nennt die Seite so.
-  assert.match(read("components/layout/AdminSidebar.jsx"), /\{ to: "\/admin\/audit-logs", label: "Protokoll" \}/);
+  assert.match(read("components/layout/AdminSidebar.jsx"), /\{ to: "\/admin\/audit-logs", label: "Protokoll", icon: "clock" \}/);
 });
 
 test("3 — Rückwege in Fehlerzuständen nennen ihre Liste, „Übersicht“ meint nur /admin", () => {
@@ -74,18 +74,21 @@ test("5 — Support: der Hinweis passt zum Antwortformular derselben Seite", () 
   assert.match(detail, /unter „Öffentlich antworten“/);
   assert.match(detail, /htmlFor="sup-reply">Öffentlich antworten</);
   // Die Zusicherung bleibt: Status und Vermerk senden nichts an den Kunden.
-  assert.match(detail, /<strong>keine<\/strong> Nachricht an den Kunden versendet/);
+  assert.match(detail, /<strong>Nur intern:<\/strong> Status und Vermerk schicken dem Kunden keine Nachricht/);
   assert.match(liste, /verschickt keine Nachricht an den Kunden/);
 });
 
 test("6 — Stornierungen, interne Rechnungsfunktion, Sendungen: ohne Großschreibung, Englisch und unklare Kennungen", () => {
   const storno = ohneKommentare(read("pages/admin/AdminCancellationRequestsPage.jsx"));
   assert.doesNotMatch(storno, /KEINE|Carrier-\/JUMiNGO/);
-  assert.match(storno, /keine Stornierung\s+beim Carrier oder bei JUMiNGO und keine Erstattung/);
+  // Admin-Vereinfachung (2026-11-10): dieselbe Aussage in Alltagssprache.
+  assert.match(storno, /keine Stornierung beim\s+Versanddienstleister oder Anbieter und keine Erstattung/);
   const vorschau = ohneKommentare(read("pages/admin/AdminBackfillPage.jsx"));
   assert.doesNotMatch(vorschau, /Shipment-ID/);
   assert.equal((vorschau.match(/Sendungs-ID \(intern\)/g) || []).length, 2, "Tabelle und Karte");
   const sendungen = ohneKommentare(read("pages/admin/AdminShipmentsPage.jsx"));
-  assert.match(sendungen, /<label htmlFor="f-carrier">Carrier-Kürzel<\/label>/);
+  // Admin-Vereinfachung (2026-11-10): deutsche Beschriftung; das exakte Kürzel nennt das Hilfesymbol.
+  assert.match(sendungen, /<label htmlFor="f-carrier">\s*Versanddienstleister\s*<AdminInfoTip label="Versanddienstleister">Kürzel genau wie gespeichert/);
+  assert.doesNotMatch(sendungen, /Carrier-Kürzel/);
   assert.match(sendungen, /<label htmlFor="f-user">Kunden-ID \(intern\)<\/label>/);
 });

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { listAdminInvoices, listManualInvoiceDrafts } from "../../api/adminApi";
 import { MANUAL_INVOICE_TEXT, formatCents } from "../../utils/manualInvoiceView.mjs";
@@ -191,11 +191,34 @@ function ManualInvoiceDrafts() {
   );
 }
 
+// Vorfilter aus dem Kundendetail („Rechnungen ansehen“): ?kunde=<interne ID> — nur eine Zahl gilt.
+const kundeAusAdresse = (params) => {
+  const v = params.get("kunde") || "";
+  return /^\d+$/.test(v) ? v : "";
+};
+
 export default function AdminInvoicesPage() {
-  const [draft, setDraft] = useState(EMPTY_INVOICE_FILTERS);
-  const [applied, setApplied] = useState(EMPTY_INVOICE_FILTERS);
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const kundeParam = kundeAusAdresse(searchParams);
+  const [draft, setDraft] = useState(() => ({ ...EMPTY_INVOICE_FILTERS, user_id: kundeParam }));
+  const [applied, setApplied] = useState(() => ({ ...EMPTY_INVOICE_FILTERS, user_id: kundeParam }));
   const [filterError, setFilterError] = useState("");
   const [page, setPage] = useState(1);
+  // Name des Kunden für den Filterchip — nur aus dem Router-State des Kundendetails, nie geraten.
+  const kundeName = location.state && typeof location.state.kundeName === "string" ? location.state.kundeName : "";
+  // Ändert sich die Adresse von außen (Navigation auf dieselbe Seite), folgt der Filter ihr.
+  useEffect(() => {
+    setApplied((prev) => (prev.user_id === kundeParam ? prev : { ...EMPTY_INVOICE_FILTERS, user_id: kundeParam }));
+    setDraft((prev) => (prev.user_id === kundeParam ? prev : { ...EMPTY_INVOICE_FILTERS, user_id: kundeParam }));
+    setPage(1);
+  }, [kundeParam]);
+  // Die Adresse folgt dem Kundenfilter (ersetzend, ohne Verlaufseintrag).
+  const syncKunde = (userId) => {
+    const next = new URLSearchParams(searchParams);
+    if (userId) next.set("kunde", userId); else next.delete("kunde");
+    if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true, state: location.state });
+  };
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -243,23 +266,25 @@ export default function AdminInvoicesPage() {
     setFilterError("");
     setPage(1);
     setApplied(draft);
+    syncKunde(/^\d+$/.test(String(draft.user_id || "").trim()) ? String(draft.user_id).trim() : "");
   };
-  const resetFilters = () => { setFilterError(""); setPage(1); setDraft(EMPTY_INVOICE_FILTERS); setApplied(EMPTY_INVOICE_FILTERS); };
+  const resetFilters = () => { setFilterError(""); setPage(1); setDraft(EMPTY_INVOICE_FILTERS); setApplied(EMPTY_INVOICE_FILTERS); syncKunde(""); };
   const goPrev = () => { if (page > 1) setPage((p) => p - 1); };
   const goNext = () => { if (hasMore) setPage((p) => p + 1); };
 
   const showPagination = !error && (rows.length > 0 || page > 1);
   const now = new Date();
   const emptyState = invoiceEmptyState({ count: rows.length, filters: applied });
-  const chips = activeInvoiceFilterChips(applied);
+  const chips = activeInvoiceFilterChips(applied).map((c) => (
+    c.key === "user_id" && kundeName && applied.user_id === kundeParam ? { ...c, label: `Kunde: ${kundeName}` } : c
+  ));
 
   return (
     <div className="adm-page">
       <PageHeader
         variant="admin"
         title={<>Rechnungen</>}
-        subtitle={<>Forderungsübersicht — Zahlungsstatus, Fälligkeiten und Beträge. Test- und Vorschau-Rechnungen
-            sind gekennzeichnet und zählen nicht als Kundenforderung.</>}
+        subtitle={<>Zahlungsstatus, Beträge und Fälligkeiten. Test- und Vorschaurechnungen sind gekennzeichnet und keine Forderung.</>}
         actions={(
           <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
           Aktualisieren
@@ -294,12 +319,11 @@ export default function AdminInvoicesPage() {
             Zurücksetzen
           </button>
         </div>
-        {/* Technischer Filter — bewusst nachgeordnet und eingeklappt: die interne
-            Kunden-ID ist kein Arbeitsmittel des Forderungsmanagements. Eine
-            Freitextsuche über Firma/Kundennummer bietet das Backend nicht an;
-            sie wird deshalb auch nicht vorgetäuscht. */}
-        <details className="adm-filter-adv">
-          <summary><span className="adm-tech-caret" aria-hidden="true" /> Technischer Filter</summary>
+        {/* Weitere Filter — bewusst nachgeordnet und eingeklappt: die interne Kunden-ID ist kein
+            Arbeitsmittel des Forderungsmanagements; der einfache Weg ist „Rechnungen ansehen“ im
+            Kundendetail. Eine Freitextsuche bietet das Backend nicht an; sie wird nicht vorgetäuscht. */}
+        <details className="adm-filter-adv" open={Boolean(draft.user_id) && !kundeName}>
+          <summary><span className="adm-tech-caret" aria-hidden="true" /> Weitere Filter</summary>
           <div className="adm-filter-adv-body">
             <div className="adm-filter-field">
               <label htmlFor="f-user">Kunden-ID (intern)</label>
@@ -311,8 +335,7 @@ export default function AdminInvoicesPage() {
               />
             </div>
             <p className="adm-support-hint">
-              Es gibt keine Freitextsuche über Firma, Kundennummer oder Rechnungsnummer — das Backend
-              bietet dafür keinen Filter an.
+              Es gibt keine Freitextsuche. Die Rechnungen eines Kunden öffnen Sie im Kundendetail über „Rechnungen ansehen“.
             </p>
           </div>
         </details>

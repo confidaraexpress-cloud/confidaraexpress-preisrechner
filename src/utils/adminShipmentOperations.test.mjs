@@ -151,7 +151,7 @@ test("die drei Etikettenstaende sind unterscheidbar — und ein unbekannter fael
   assert.deepEqual(stand("recovery_timeout").labelStatusMeta,
     ["badge-red", "Nachlauf abgelaufen — bitte prüfen"]);
   // TG110 Final Closure: der Carrier bringt das Label bei der Abholung an — ein GESCHLOSSENER Stand, eigene Beschriftung.
-  assert.deepEqual(stand("carrier_applied").labelStatusMeta, ["badge-green", "Carrier bringt Label bei Abholung an"]);
+  assert.deepEqual(stand("carrier_applied").labelStatusMeta, ["badge-green", "Versanddienstleister bringt Label bei Abholung an"]);
   // Ohne Stand gibt es keine Zusage — und kein erfundenes Abzeichen.
   assert.equal(stand(null).labelStatus, null);
   assert.equal(stand(null).labelStatusMeta, null);
@@ -181,13 +181,13 @@ test("INTERNAL-01: ohne `labelAvailability` (älteres Backend, nicht gebucht) bl
 
 test("INTERNAL-01: die fünf Labelzustände sind unterscheidbar — keiner behauptet, der Anbieter habe kein Label", () => {
   const stand = (state, over = {}) => selectOperations(OPS({ labelAvailability: { state, ...over } })).labelAvailability;
-  assert.deepEqual(stand("available").meta, ["badge-green", "In CE"]);
-  assert.deepEqual(stand("delivered_outside_ce").meta, ["badge-blue", "Außerhalb von CE zugestellt"]);
+  assert.deepEqual(stand("available").meta, ["badge-green", "Gespeichert"]);
+  assert.deepEqual(stand("delivered_outside_ce").meta, ["badge-blue", "Außerhalb des Systems zugestellt"]);
   assert.deepEqual(stand("fetch_failed").meta, ["badge-red", "Letzter Abruf gescheitert"]);
   assert.deepEqual(stand("provider_not_ready").meta, ["badge-yellow", "Beim Anbieter noch nicht bereit"]);
-  assert.deepEqual(stand("not_in_ce_yet").meta, ["badge-gray", "Noch nicht in CE abgerufen"]);
+  assert.deepEqual(stand("not_in_ce_yet").meta, ["badge-gray", "Noch nicht abgerufen"]);
   // TG110 Final Closure: geschlossen, eigener Hinweis — kein „fehlt", keine Einkaufsquelle.
-  assert.deepEqual(stand("carrier_applied").meta, ["badge-green", "Carrier bringt Label bei Abholung an"]);
+  assert.deepEqual(stand("carrier_applied").meta, ["badge-green", "Versanddienstleister bringt Label bei Abholung an"]);
   assert.match(labelDownloadHint({ labelAvailability: { state: "carrier_applied" } }), /bei der Abholung am Paket an/);
   const texte = ["available", "delivered_outside_ce", "carrier_applied", "fetch_failed", "provider_not_ready", "not_in_ce_yet"]
     .map((s) => `${labelAvailabilityMeta(s)[1]} ${labelDownloadHint({ labelAvailability: { state: s } })}`);
@@ -203,11 +203,11 @@ test("INTERNAL-01: die fünf Labelzustände sind unterscheidbar — keiner behau
 
 test("INTERNAL-01: der Hinweis unter dem gesperrten Supportabruf folgt dem Serverzustand", () => {
   const hinweis = (state) => labelDownloadHint(selectOperations(OPS({ labelAvailability: { state } })));
-  assert.match(hinweis("delivered_outside_ce"), /außerhalb von CE zugestellt.*keine Datei/);
-  assert.match(hinweis("available"), /Anbieterbeleg in CE/);
+  assert.match(hinweis("delivered_outside_ce"), /außerhalb des Systems zugestellt.*keine Datei/);
+  assert.match(hinweis("available"), /Anbieterbeleg vor/);
   assert.match(hinweis("fetch_failed"), /technisch gescheitert/);
   assert.match(hinweis("provider_not_ready"), /noch kein nutzbares Versandlabel/);
-  assert.equal(hinweis("not_in_ce_yet"), "In CE liegt noch kein Versandlabel.");
+  assert.equal(hinweis("not_in_ce_yet"), "Es liegt noch kein Versandlabel vor.");
 });
 
 test("Paritätsaudit B1 — Versand der Auftragsbestätigung: Aktion aus dem Status, Ergebnis aus dem Server", async () => {

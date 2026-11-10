@@ -311,6 +311,9 @@ function PartnerDetailBody({ detail, partnerId, from, refreshKey, onChanged, zie
           <KV items={[
             ["Empfehlungscode", p.referralCode ? <CopyableNumber value={p.referralCode} label="Empfehlungscode" /> : "—"],
             ["Verwendeter Sponsorcode", p.sponsorCodeUsed ? <span className="adm-mono">{p.sponsorCodeUsed}</span> : "—"],
+          ]} />
+          {/* Links über die volle Breite — im Raster wurden sie abgeschnitten (Sichtprüfung 2026-11-10). */}
+          <KV className="adm-kv adm-kv--wide" items={[
             ["Kundenlink", kundenLink ? <CopyableNumber value={kundenLink} label="Kundenlink" /> : "—"],
             ["Partnerlink", partnerLink ? <CopyableNumber value={partnerLink} label="Partnerlink" /> : "—"],
           ]} />

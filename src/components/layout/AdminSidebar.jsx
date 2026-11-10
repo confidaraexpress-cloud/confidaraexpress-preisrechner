@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { accountInitials, accountDisplayName } from "../../utils/accountIdentity.mjs";
 import { BrandLogo } from "../ui/BrandLogo";
+import { Icon, ICON_SIZE } from "../ui/Icon";
 import { useNavigationDrawer } from "../../hooks/useNavigationDrawer";
 
 // Kennung der Adminsidebar — Ziel von aria-controls am Menüknopf der mobilen Topbar
@@ -12,42 +13,41 @@ const DRAWER_BIS_PX = 900;
 
 // Aktive Adminnavigation (URL-basiert). NavLink liefert den Active-Zustand über
 // die URL — bewusst KEINE Vermischung mit dem State-basierten Kunden-Dashboard.
-// Seit dem Redesign (2026-10) reine Textnavigation: keine Symbole vor den
-// Einträgen.
 //
-// UX-Paket 2: dieselben Ziele und `end`-Regeln, nach Aufgaben gruppiert. Zwei
-// Einträge heißen jetzt wie ihre Seite statt technisch („Produktion &
-// Backfill" → „Interne Vorschau-PDFs", „Audit-Logs" → „Protokoll").
+// Admin-Vereinfachung (Betreiberauftrag 2026-11-10): die drei Hauptbereiche
+// Kunden, Sendungen und Rechnungen stehen direkt unter der Übersicht, darunter
+// zwei benannte Gruppen. Jede Adminseite ist jetzt über die Navigation
+// erreichbar — auch Sammelrechnungsanträge und Preisrechner, die vorher nur über
+// Kacheln der Übersicht zu finden waren. Je Eintrag ein dekoratives Symbol der
+// eigenen Icon-Komponente vor dem Text (wie die Hauptpunkte der Kunden-Sidebar,
+// E7); der Name bleibt Text. Ziele und `end`-Regeln unverändert, keine Route neu.
 const NAV_GROUPS = [
-  { label: null, items: [{ to: "/admin", label: "Übersicht", end: true }] },
   {
-    label: "Kunden und Partner",
+    label: null,
     items: [
-      { to: "/admin/users", label: "Kunden" },
+      { to: "/admin", label: "Übersicht", icon: "dashboard", end: true },
+      { to: "/admin/users", label: "Kunden", icon: "user" },
+      { to: "/admin/shipments", label: "Sendungen", icon: "truck" },
+      { to: "/admin/invoices", label: "Rechnungen", icon: "invoice", end: true },
+    ],
+  },
+  {
+    label: "Zu erledigen",
+    items: [
+      { to: "/admin/support-requests", label: "Supportanfragen", icon: "headset" },
+      { to: "/admin/cancellation-requests", label: "Stornierungsanfragen", icon: "ban" },
+      { to: "/admin/reconciliation", label: "Buchungsklärung", icon: "shield" },
+      { to: "/admin/billing-mode-requests", label: "Sammelrechnungsanträge", icon: "layers" },
+    ],
+  },
+  {
+    label: "Vertrieb und Verwaltung",
+    items: [
       // Vertriebspartnerprogramm: Anträge, Partner, Versandnachweise, Gutschriften, Einstellungen.
-      { to: "/admin/partners", label: "Vertriebspartner" },
-    ],
-  },
-  {
-    label: "Versand und Rechnungen",
-    items: [
-      { to: "/admin/shipments", label: "Sendungen" },
-      { to: "/admin/invoices", label: "Rechnungen", end: true },
-    ],
-  },
-  {
-    label: "Support und Bearbeitung",
-    items: [
-      { to: "/admin/support-requests", label: "Supportanfragen" },
-      { to: "/admin/cancellation-requests", label: "Stornierungsanfragen" },
-      { to: "/admin/reconciliation", label: "Buchungsklärung" },
-    ],
-  },
-  {
-    label: "Verwaltung und Protokoll",
-    items: [
-      { to: "/admin/invoices/backfill", label: "Interne Vorschau-PDFs" },
-      { to: "/admin/audit-logs", label: "Protokoll" },
+      { to: "/admin/partners", label: "Vertriebspartner", icon: "briefcase" },
+      { to: "/admin/public-calculator", label: "Preisrechner", icon: "euro" },
+      { to: "/admin/invoices/backfill", label: "Vorschau-PDFs", icon: "printer" },
+      { to: "/admin/audit-logs", label: "Protokoll", icon: "clock" },
     ],
   },
 ];
@@ -95,16 +95,6 @@ export function AdminSidebar({ open, onClose }) {
           </button>
         </div>
 
-        {/* Eine Initialenquelle für das ganze Produkt (Paket D): Sidebar,
-            Benutzerchip, Profilhero — und auch der Adminbereich. */}
-        <div className="adm-identity">
-          <span className="adm-identity-avatar" aria-hidden="true">{accountInitials(user)}</span>
-          <div className="adm-identity-text">
-            <span className="adm-identity-name">{accountDisplayName(user, "Administrator")}</span>
-            <span className="adm-identity-role">Administrator</span>
-          </div>
-        </div>
-
         <nav className="adm-nav" aria-label="Adminnavigation">
           {NAV_GROUPS.map((group, i) => {
             const eintraege = group.items.map((item) => (
@@ -115,6 +105,7 @@ export function AdminSidebar({ open, onClose }) {
                 onClick={onClose}
                 className={({ isActive }) => `adm-nitem${isActive ? " adm-nitem-on" : ""}`}
               >
+                <span className="adm-nitem-icon" aria-hidden="true"><Icon n={item.icon} s={ICON_SIZE.md} /></span>
                 <span>{item.label}</span>
               </NavLink>
             ));
@@ -150,8 +141,19 @@ export function AdminSidebar({ open, onClose }) {
         </nav>
 
         {/* Zwei Textaktionen: der Bereichswechsel ist die häufigere und trägt
-            deshalb die Markenfarbe; „Abmelden" bleibt neutral. */}
+            deshalb die Markenfarbe; „Abmelden" bleibt neutral. Seit der
+            Admin-Vereinfachung (2026-11-10) steht die Identität des angemeldeten
+            Admins hier unten neben „Abmelden" statt über der Navigation — die
+            Navigation bekommt den Platz für alle Bereiche. Eine Initialenquelle
+            für das ganze Produkt (Paket D). */}
         <div className="adm-side-foot">
+          <div className="adm-identity">
+            <span className="adm-identity-avatar" aria-hidden="true">{accountInitials(user)}</span>
+            <div className="adm-identity-text">
+              <span className="adm-identity-name" title={accountDisplayName(user, "Administrator")}>{accountDisplayName(user, "Administrator")}</span>
+              <span className="sr-only">, Administrator</span>
+            </div>
+          </div>
           <button type="button" className="adm-foot-btn adm-foot-btn-switch" onClick={goDashboard}>
             <span>Zum Kundenbereich</span>
           </button>

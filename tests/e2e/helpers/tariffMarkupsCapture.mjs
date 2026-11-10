@@ -95,6 +95,9 @@ try {
     await mock(page);
     await page.goto(`${BASE}/admin/users/7`, { waitUntil: "domcontentloaded" });
     const karte = page.locator("#adm-tariff-section");
+    // Seit der Admin-Vereinfachung (2026-11-10) eingeklappt — per Klick auf den Kopf öffnen.
+    await karte.locator(":scope > summary").waitFor({ timeout: 30000 });
+    if (!(await karte.evaluate((d) => d.open))) await karte.locator(":scope > summary").click();
     await karte.locator("#adm-tarif-input-22").waitFor({ timeout: 30000 });
     await page.waitForTimeout(400);
     const schuss = async (tag) => { const f = path.join(OUT, `${name}-${tag}.png`); await karte.screenshot({ path: f }); bericht.bilder.push(path.basename(f)); };

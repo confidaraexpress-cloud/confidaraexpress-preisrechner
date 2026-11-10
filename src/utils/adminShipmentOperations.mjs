@@ -62,7 +62,7 @@ const PORTAL_LABEL_STATUS_META = {
   pending: ["badge-yellow", "Wird beim Anbieter erzeugt"],
   ready: ["badge-green", "Liegt vor"],
   recovery_timeout: ["badge-red", "Nachlauf abgelaufen — bitte prüfen"],
-  carrier_applied: ["badge-green", "Carrier bringt Label bei Abholung an"],
+  carrier_applied: ["badge-green", "Versanddienstleister bringt Label bei Abholung an"],
 };
 export const portalLabelStatusMeta = (s) => PORTAL_LABEL_STATUS_META[s] || statusFallback(s);
 
@@ -79,12 +79,12 @@ export const portalLabelStatusMeta = (s) => PORTAL_LABEL_STATUS_META[s] || statu
      provider_not_ready    der Anbieter antwortete zuletzt ohne nutzbares Label
      not_in_ce_yet         noch nicht abgerufen — keine Aussage über den Anbieter */
 const LABEL_AVAILABILITY_META = {
-  available: ["badge-green", "In CE"],
-  delivered_outside_ce: ["badge-blue", "Außerhalb von CE zugestellt"],
-  carrier_applied: ["badge-green", "Carrier bringt Label bei Abholung an"],
+  available: ["badge-green", "Gespeichert"],
+  delivered_outside_ce: ["badge-blue", "Außerhalb des Systems zugestellt"],
+  carrier_applied: ["badge-green", "Versanddienstleister bringt Label bei Abholung an"],
   fetch_failed: ["badge-red", "Letzter Abruf gescheitert"],
   provider_not_ready: ["badge-yellow", "Beim Anbieter noch nicht bereit"],
-  not_in_ce_yet: ["badge-gray", "Noch nicht in CE abgerufen"],
+  not_in_ce_yet: ["badge-gray", "Noch nicht abgerufen"],
 };
 export const labelAvailabilityMeta = (s) => LABEL_AVAILABILITY_META[s] || statusFallback(s);
 
@@ -92,12 +92,12 @@ export const labelAvailabilityMeta = (s) => LABEL_AVAILABILITY_META[s] || status
 // Der Supportabruf liefert nur ein gespeichertes Label oder den Dokumentabruf des Anbieters;
 // ein Anbieterbeleg liegt in CE, wird dort aber nicht ausgeliefert.
 const LABEL_DOWNLOAD_HINT = {
-  available: "Das Versandlabel liegt als Anbieterbeleg in CE (siehe „Anbieterbelege“) — dieser Abruf liefert es nicht.",
-  delivered_outside_ce: "Das Versandlabel wurde außerhalb von CE zugestellt (Buchungsklärung) — in CE liegt keine Datei.",
-  carrier_applied: "Der Carrier bringt das Versandlabel bei der Abholung am Paket an — es gibt kein Kundenlabel in CE.",
-  fetch_failed: "Der letzte Labelabruf ist technisch gescheitert — in CE liegt noch kein Versandlabel.",
+  available: "Das Versandlabel liegt als Anbieterbeleg vor (siehe „Anbieterbelege“) — dieser Abruf liefert es nicht.",
+  delivered_outside_ce: "Das Versandlabel wurde außerhalb des Systems zugestellt (Buchungsklärung) — hier liegt keine Datei.",
+  carrier_applied: "Der Versanddienstleister bringt das Versandlabel bei der Abholung am Paket an — es gibt kein Kundenlabel.",
+  fetch_failed: "Der letzte Labelabruf ist technisch gescheitert — es liegt noch kein Versandlabel vor.",
   provider_not_ready: "Beim letzten Abruf lag beim Anbieter noch kein nutzbares Versandlabel vor.",
-  not_in_ce_yet: "In CE liegt noch kein Versandlabel.",
+  not_in_ce_yet: "Es liegt noch kein Versandlabel vor.",
 };
 export const LABEL_DOWNLOAD_HINT_NEUTRAL = "Für diese Sendung liegt kein Versandlabel zum Abruf vor.";
 export function labelDownloadHint(ops) {

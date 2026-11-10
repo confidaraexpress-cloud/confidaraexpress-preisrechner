@@ -156,6 +156,9 @@ export function CustomerMarkupSection({
           <>
             {/* Aktueller Stand — Status wird über Text UND Badge vermittelt, nie
                 allein über Farbe. */}
+            {/* Admin-Vereinfachung (2026-11-10): Wert und Status groß, die Zeitpunkte als eine leise
+                Zeile darunter (vorher drei eigene Felder; sie stehen zusätzlich in den technischen
+                Informationen der Seite). */}
             <dl className="adm-kv adm-markup-kv">
               <div className="adm-kv-item">
                 <dt>Aktueller Aufschlag</dt>
@@ -165,19 +168,11 @@ export function CustomerMarkupSection({
                 <dt>Bestätigungsstatus</dt>
                 <dd><span className={`badge ${badgeCls}`}>{badgeLabel}</span></dd>
               </div>
-              <div className="adm-kv-item">
-                <dt>Zuletzt bestätigt</dt>
-                <dd>{formatMarkupDateTime(pricing?.confirmedAt)}</dd>
-              </div>
-              <div className="adm-kv-item">
-                <dt>Zuletzt geändert</dt>
-                <dd>{formatMarkupDateTime(pricing?.updatedAt)}</dd>
-              </div>
-              <div className="adm-kv-item">
-                <dt>Bestätigt von</dt>
-                <dd>{formatConfirmedBy(pricing?.confirmedBy)}</dd>
-              </div>
             </dl>
+            <p className="adm-markup-audit" id="adm-markup-audit">
+              Zuletzt bestätigt: {formatMarkupDateTime(pricing?.confirmedAt)} · von {formatConfirmedBy(pricing?.confirmedBy)}
+              {" "}· zuletzt geändert: {formatMarkupDateTime(pricing?.updatedAt)}
+            </p>
 
             {/* Unbestätigt: der gespeicherte Standardwert ist ausdrücklich KEINE
                 individuelle Bestätigung — der Hinweis sagt, was als Nächstes fehlt.

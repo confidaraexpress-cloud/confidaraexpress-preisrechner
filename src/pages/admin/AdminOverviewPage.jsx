@@ -41,31 +41,31 @@ const LOADERS = {
   dispatchEvidence: (p) => listAdminDispatchEvidenceQueue(p),
 };
 
+// Admin-Vereinfachung (2026-11-10): dieselbe Reihenfolge und dieselben Namen wie die Navigation —
+// seitdem ist jede Seite auch dort erreichbar (Sammelrechnungsanträge und Preisrechner vorher nur hier).
 const BEREICHE = [
   { to: "/admin/users", title: "Kunden",
-    desc: "Konten prüfen, freischalten, sperren und Aufschläge pflegen." },
-  { to: "/admin/partners", title: "Vertriebspartner",
-    desc: "Anträge prüfen, Partner, Versandnachweise und Gutschriften verwalten." },
+    desc: "Konten prüfen, freischalten und Aufschläge pflegen." },
   { to: "/admin/shipments", title: "Sendungen",
-    desc: "Sendungen einsehen, Label und Tracking prüfen." },
+    desc: "Sendungen ansehen, Label und Sendungsverfolgung abrufen." },
   { to: "/admin/invoices", title: "Rechnungen",
-    desc: "Forderungen, Zahlungsstatus und Rechnungsdokumente." },
+    desc: "Zahlungsstatus, Rechnungsdokumente und Versand." },
   { to: "/admin/support-requests", title: "Supportanfragen",
-    desc: "Anfragen beantworten, Status und interne Vermerke pflegen." },
+    desc: "Anfragen beantworten und bearbeiten." },
   { to: "/admin/cancellation-requests", title: "Stornierungsanfragen",
-    desc: "Kundenwünsche prüfen und intern bearbeiten." },
-  // P5: nur über diese Kachel und „Zu erledigen“ erreichbar — kein Sidebar-Eintrag (Höhenbudget).
-  { to: "/admin/billing-mode-requests", title: "Sammelrechnungsanträge",
-    desc: "Anträge auf die 7-Tage-Sammelrechnung prüfen; entschieden wird im Kundendetail." },
+    desc: "Stornowünsche prüfen und entscheiden." },
   { to: "/admin/reconciliation", title: "Buchungsklärung",
-    desc: "Ungeklärte Buchungsvorgänge prüfen und entscheiden." },
-  { to: "/admin/invoices/backfill", title: "Interne Vorschau-PDFs",
-    desc: "Produktionsbereitschaft prüfen und fehlende Rechnungs-PDFs als Vorschau erzeugen." },
-  // Öffentlicher Preisrechner (2026-10-16): nur über diese Karte erreichbar — kein Sidebar-Eintrag (Höhenbudget).
-  { to: "/admin/public-calculator", title: "Öffentlicher Preisrechner",
-    desc: "Aufschlag und Verfügbarkeit der Preise ohne Anmeldung pflegen." },
+    desc: "Buchungen mit unklarem Ergebnis prüfen und entscheiden." },
+  { to: "/admin/billing-mode-requests", title: "Sammelrechnungsanträge",
+    desc: "Anträge auf die Sammelrechnung prüfen." },
+  { to: "/admin/partners", title: "Vertriebspartner",
+    desc: "Anträge, Partner, Versandnachweise und Gutschriften." },
+  { to: "/admin/public-calculator", title: "Preisrechner",
+    desc: "Aufschlag und Verfügbarkeit des öffentlichen Preisrechners." },
+  { to: "/admin/invoices/backfill", title: "Vorschau-PDFs",
+    desc: "Rechnungsbereitschaft prüfen, Vorschauen und Rechtstexte ansehen." },
   { to: "/admin/audit-logs", title: "Protokoll",
-    desc: "Protokollierte Adminvorgänge einsehen und filtern." },
+    desc: "Alle protokollierten Adminvorgänge." },
 ];
 
 // Herkunft für die Detailseiten: „Zurück" führt wieder hierher.

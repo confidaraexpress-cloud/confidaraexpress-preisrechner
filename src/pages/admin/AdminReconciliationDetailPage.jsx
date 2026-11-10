@@ -342,9 +342,8 @@ export default function AdminReconciliationDetailPage() {
 
       <div className="adm-scope-note" role="note">
         <div>
-          <strong>Hier wird nur festgehalten, was beim Anbieter festgestellt wurde.</strong> Es wird kein
-          Anbieter kontaktiert, nichts storniert und nichts erstattet. Jede Entscheidung wird im Protokoll
-          festgehalten.
+          <strong>Sie halten nur fest, was Sie beim Anbieter festgestellt haben.</strong> Es wird kein Anbieter
+          kontaktiert, nichts storniert und nichts erstattet. Jede Entscheidung wird protokolliert.
         </div>
       </div>
 

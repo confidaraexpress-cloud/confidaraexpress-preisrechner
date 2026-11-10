@@ -134,8 +134,8 @@ export default function AdminReconciliationPage() {
       <PageHeader
         variant="admin"
         title={<>Buchungsklärung</>}
-        subtitle={<>Buchungsvorgänge, deren Ausgang beim Anbieter ungeklärt ist. Hier wird festgehalten,
-            was beim Anbieter festgestellt wurde — es wird kein Anbieter kontaktiert und nichts storniert.</>}
+        subtitle={<>Buchungen mit unklarem Ergebnis beim Anbieter. Sie halten fest, was Sie dort festgestellt haben –
+            es wird kein Anbieter kontaktiert und nichts storniert.</>}
         actions={(
           <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
             Aktualisieren

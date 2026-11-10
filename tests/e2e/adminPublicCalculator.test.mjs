@@ -150,13 +150,14 @@ test("K — Konflikt: Hinweis, aktueller Stand sichtbar, nichts gespeichert, Neu
   await page.close();
 });
 
-test("S — die Admin-Sidebar bleibt unverändert: kein Eintrag für den Preisrechner, „Protokoll“ bleibt der letzte", async () => {
+test("S — die Admin-Sidebar führt zum Preisrechner (Admin-Vereinfachung 2026-11-10), aktiv auf seiner Seite, „Protokoll“ bleibt der letzte", async () => {
   const { page, fehler } = await neueSeite({ width: 1440, height: 900 });
   await setup(page);
   await page.goto(`${BASE}/admin/public-calculator`, { waitUntil: "domcontentloaded" });
   await page.locator(".adm-nav").waitFor({ state: "visible", timeout: 30000 });
   const links = await page.locator(".adm-nav a").evaluateAll((as) => as.map((a) => [a.getAttribute("href"), a.textContent.trim()]));
-  assert.ok(!links.some(([href]) => href === "/admin/public-calculator"), "neuer Sidebar-Eintrag");
+  assert.equal(links.filter(([href]) => href === "/admin/public-calculator").length, 1, "genau ein Sidebar-Eintrag");
+  assert.deepEqual(await page.locator(".adm-nitem-on").allInnerTexts(), ["Preisrechner"]);
   assert.equal(links.at(-1)[1], "Protokoll");
   const m = await page.locator(".adm-nav").evaluate((nav) => ({ scroll: nav.scrollHeight, client: nav.clientHeight }));
   assert.ok(m.scroll <= m.client, "die Navigation scrollt");

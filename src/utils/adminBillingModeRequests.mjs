@@ -31,7 +31,7 @@ export const BILLING_MODE_REQUEST_FILTER_OPTIONS = [
 
 export const ADMIN_BILLING_REQUEST_TEXT = {
   pageTitle: "Sammelrechnungsanträge",
-  pageSubtitle: "Anträge von Geschäftskunden auf die 7-Tage-Sammelrechnung. Entschieden wird im Kundendetail; eine Genehmigung stellt das Konto für künftige Buchungen um und stellt keine Rechnung aus.",
+  pageSubtitle: "Anträge auf die Sammelrechnung alle 7 Tage. Entschieden wird im Kundendetail; eine Genehmigung gilt für künftige Buchungen und stellt keine Rechnung aus.",
   listError: "Die Anträge konnten nicht geladen werden.",
   emptyPending: { title: "Keine offenen Anträge", text: "Neue Anträge erscheinen hier und unter „Zu erledigen“ in der Übersicht." },
   emptyOther: { title: "Keine Anträge", text: "Für diesen Filter gibt es keine Anträge." },

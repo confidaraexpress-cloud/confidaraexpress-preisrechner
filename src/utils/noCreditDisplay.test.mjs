@@ -72,7 +72,7 @@ test("3 — die Karte heißt „Aktivität und Zahlung“ (nicht mehr „Zahlung
   // Debitorenwerte standen vorher doppelt auf der Seite.
   // Redesign 2026-10: Kartenköpfe tragen kein Symbol mehr — der Titel steht
   // allein im Kopf.
-  assert.match(userDetailSrc, /<div className="adm-card-head">Aktivität und Zahlung<\/div>/,
+  assert.match(userDetailSrc, /title="Aktivität und Zahlung"/,
     "Kartentitel muss 'Aktivität und Zahlung' sein");
   assert.equal(/Zahlung &amp; Kredit/.test(userDetailSrc), false, "alter Titel muss weg sein");
   assert.equal(/Aggregierte Kennzahlen/.test(userDetailSrc), false, "die doppelte Kennzahlenkarte ist entfallen");

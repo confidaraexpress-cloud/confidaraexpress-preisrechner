@@ -39,38 +39,33 @@ export const CODE_INVALID_EXPRESS_PERCENT = "INVALID_EXPRESS_MARKUP_PERCENT";
 export const MARKUP_TEXTS = Object.freeze({
   sectionTitle: "Individueller Kundenaufschlag",
   fieldLabel: "Kundenaufschlag",
-  inputHelp:
-    "Geben Sie den Prozentwert ein. Beispiel: 20 entspricht 20 %. "
-    + "Ein Wert von 0,20 entspricht 0,20 %.",
+  // Admin-Vereinfachung (2026-11-10): kürzer, gleiche Aussage — der Prozentvertrag (20 = 20 %,
+  // 0,20 = 0,20 %) und die Wirkung nur auf neue Preise bleiben sichtbar.
+  inputHelp: "In Prozent: 20 entspricht 20 %, 0,20 entspricht 0,20 %.",
   effectHint:
-    "Der bestätigte Aufschlag gilt für zukünftige Preisberechnungen und Buchungen dieses Kunden. "
-    + "Bereits abgeschlossene Buchungen und gestellte Rechnungen bleiben unverändert.",
+    "Gilt für neue Preise und Buchungen dieses Kunden. Bestehende Buchungen und Rechnungen bleiben unverändert.",
   confirmRequired: "Vor der Freischaltung muss der Kundenaufschlag festgelegt und bestätigt werden.",
   approvalBlockedTitle: "Kundenaufschlag erforderlich",
   approvalBlockedText: "Vor der Freischaltung muss der individuelle Kundenaufschlag festgelegt und bestätigt werden.",
   approvalBlockedCta: "Aufschlag festlegen",
   reactivationRequired: "Zur Reaktivierung ist ein bestätigter Kundenaufschlag erforderlich.",
-  legacyApproved: "Globaler Standardaufschlag aktiv",
+  legacyApproved: "Allgemeiner Standardaufschlag aktiv",
   legacyApprovedText:
-    "Für diesen bereits freigeschalteten Kunden gilt aktuell der globale Standardaufschlag. "
-    + "Der Zugang bleibt bestehen. Eine individuelle Bestätigung ist vor einer späteren erneuten "
-    + "Freischaltung erforderlich.",
+    "Es gilt der allgemeine Standardaufschlag. Der Zugang bleibt bestehen; "
+    + "vor einer erneuten Freischaltung ist eine individuelle Bestätigung nötig.",
   loadingPricing: "Kundenaufschlag wird geladen…",
   confirmedPrefix: "Bestätigter Kundenaufschlag",
   // ── Expressaufschlag ──────────────────────────────────────────────────────
   standardGroupTitle: "Standardaufschlag",
-  standardGroupScope: "Gilt für Standard-, Economy- und alle übrigen Tarife.",
+  standardGroupScope: "Gilt für alle Tarife außer Express.",
   expressGroupTitle: "Expressaufschlag",
-  expressGroupScope: "Gilt nur für Tarife, die serverseitig eindeutig als Express eingestuft sind.",
+  expressGroupScope: "Gilt nur für Expresstarife.",
   expressFieldLabel: "Expressaufschlag",
   expressOptional: "optional",
-  expressInputHelp:
-    "Leer lassen, wenn für Expresstarife derselbe Aufschlag gelten soll wie sonst. "
-    + "Ein Wert von 0 bedeutet ausdrücklich 0 % — nicht \u201Enicht festgelegt\u201C.",
+  expressInputHelp: "Leer lassen für den Standardaufschlag. 0 bedeutet 0 %.",
   expressFallbackAction: "Standardaufschlag verwenden",
   expressFallbackHint:
-    "Ist kein eigener Expressaufschlag gesetzt, wird automatisch der Standardaufschlag verwendet. "
-    + "Eine Änderung des Standardaufschlags verändert dann auch den Expresspreis.",
+    "Ohne eigenen Expressaufschlag gilt der Standardaufschlag – ändern Sie ihn, ändert sich auch der Expresspreis.",
   expressNotSet: "Standardaufschlag verwenden",
   effectiveExpressPrefix: "Wirksamer Expressaufschlag",
   effectiveExpressViaFallback: "über den Standardaufschlag",

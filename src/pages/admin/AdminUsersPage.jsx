@@ -312,7 +312,7 @@ export default function AdminUsersPage() {
       <PageHeader
         variant="admin"
         title={<>Kunden</>}
-        subtitle={<>Übersicht aller Geschäftskunden. Statusänderungen werden protokolliert.</>}
+        subtitle={<>Geschäftskunden suchen, prüfen und freischalten.</>}
         actions={(
           <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
           Aktualisieren

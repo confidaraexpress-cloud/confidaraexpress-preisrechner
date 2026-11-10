@@ -4,6 +4,7 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { AdminBackLink } from "../../components/admin/AdminBackLink";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/StateView";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
+import { AdminFacts } from "../../components/admin/AdminFacts";
 import { getAdminInvoice, markAdminInvoicePaid, generateAdminInvoiceDocument, sendAdminInvoiceEmail, resendAdminInvoiceEmail, recordInvoiceReversal, createInvoiceReversalInvoice } from "../../api/adminApi";
 import { Field } from "../../components/ui/Field";
 import { DateField } from "../../components/admin/DateField";
@@ -30,6 +31,7 @@ import {
   SNAPSHOT_MISSING_NOTE,
   SUCCESS_TEXT,
   amountFields,
+  vatRatePercentText,
   currentAccount,
   documentOutcomeMessage,
   documentState,
@@ -444,7 +446,6 @@ export default function AdminInvoiceDetailPage() {
         subtitle={(
           <span className="adm-detail-sub">
             <span>{recipient.company || account.company || "Rechnungsempfänger unbekannt"}</span>
-            <span>{moneyOrDash(amounts.gross)}</span>
             <span>Erstellt {fmtDate(createdOf(inv))}</span>
           </span>
         )}
@@ -471,6 +472,23 @@ export default function AdminInvoiceDetailPage() {
 
       <Alert msg={payMsg} />
 
+      {/* Das Wichtigste auf einen Blick — Beträge und Zustände der Rechnung, nichts gerechnet. */}
+      <AdminFacts
+        id="adm-inv-facts"
+        items={[
+          { label: "Betrag", value: moneyOrDash(amounts.gross), hint: "brutto" },
+          productive && dueOf(inv) ? {
+            label: "Fällig am",
+            value: fmtDate(dueOf(inv)),
+            hint: overdue ? "überfällig" : undefined,
+            tone: overdue ? "danger" : undefined,
+          } : null,
+          productive && paidAtOf(inv) ? { label: "Bezahlt am", value: fmtDate(paidAtOf(inv)), tone: "success" } : null,
+          { label: "Dokument", value: <span className={`badge ${doc.cls}`}>{doc.label}</span> },
+          { label: "E-Mail", value: <span className={`badge ${mail.cls}`}>{mail.label}</span> },
+        ]}
+      />
+
       <div className="adm-cards">
         {/* 2) Forderung und Fälligkeit */}
         <div className="adm-card">
@@ -478,7 +496,8 @@ export default function AdminInvoiceDetailPage() {
           <div className="adm-card-body">
             <KV items={[
               ["Netto", moneyOrDash(amounts.net)],
-              [amounts.vatRate != null ? `Umsatzsteuer (${String(amounts.vatRate).replace(".", ",")} %)` : "Umsatzsteuer", moneyOrDash(amounts.vat)],
+              // Die gespeicherte Rate (0.19) als Prozent (19 %) — bis 2026-11-10 stand hier „0,19 %“.
+              [vatRatePercentText(amounts.vatRate) ? `Umsatzsteuer (${vatRatePercentText(amounts.vatRate)})` : "Umsatzsteuer", moneyOrDash(amounts.vat)],
               ["Brutto", moneyOrDash(amounts.gross)],
               ["Währung", dash(amounts.currency)],
               // Der Wortlaut kommt aus der zentralen Quelle und nennt den Bezugspunkt mit:
@@ -505,76 +524,47 @@ export default function AdminInvoiceDetailPage() {
           </div>
         </div>
 
-        {/* 3) Rechnungsempfänger — HISTORISCH aus dem Snapshot. */}
-        <div className="adm-card">
-          <div className="adm-card-head">Rechnungsempfänger zum Zeitpunkt der Rechnung</div>
+        {/* 2b) Zahlung (bis 2026-11-10 „Adminaktionen“ am Seitenende) — direkt unter den Beträgen. */}
+        <div className="adm-card" id="adm-inv-payment">
+          <div className="adm-card-head">Zahlung</div>
           <div className="adm-card-body">
-            {recipient.known ? (
-              <KV items={[
-                ["Firma", dash(recipient.company)],
-                ["Name", dash(recipient.name)],
-                [NUMBER_LABELS.customer, dash(recipient.customerNumber)],
-                ["Rechnungs-E-Mail", dash(recipient.email)],
-                ["USt-IdNr.", dash(recipient.vatId)],
-              ]} />
-            ) : (
-              <p className="adm-addr-note">{SNAPSHOT_MISSING_NOTE}</p>
-            )}
-            <p className="adm-support-hint">
-              Diese Angaben sind mit der Rechnung eingefroren und werden nicht durch spätere
-              Stammdatenänderungen ersetzt.
-            </p>
-          </div>
-        </div>
-
-        {/* 4) Aktuelles Kundenkonto — bewusst getrennt vom Snapshot. */}
-        <div className="adm-card">
-          <div className="adm-card-head">Aktuelles Kundenkonto</div>
-          <div className="adm-card-body">
-            <KV items={[
-              ["Firma (aktuell)", dash(account.company)],
-              [`${NUMBER_LABELS.customer} (aktuell)`, dash(account.customerNumber)],
-            ]} />
-            {account.linkable ? (
-              <div className="adm-track-link">
-                <Link className="btn btn-outline btn-sm" to={`/admin/users/${encodeURIComponent(account.userId)}`}>
-                  Aktuelles Kundenkonto öffnen
-                </Link>
-              </div>
-            ) : (
-              <p className="adm-addr-note">{manual ? MI.noAccountExternal : "Kein verknüpftes Kundenkonto."}</p>
-            )}
-          </div>
-        </div>
-
-        {/* 5) Zugehörige Sendung */}
-        <div className="adm-card">
-          <div className="adm-card-head">Zugehörige Sendung</div>
-          <div className="adm-card-body">
-            {shipment.linked ? (
+            {pay.payable ? (
               <>
-                <KV items={[
-                  [NUMBER_LABELS.orderConfirmation, shipment.orderNumberKnown
-                    ? <span className="adm-mono">{shipment.orderNumber}</span>
-                    : <span className="adm-muted">{SHIPMENT_NO_ORDER_NUMBER}</span>],
-                  ["Carrier", shipment.carrier ? resolveCarrierName(shipment.carrier) : "—"],
-                  ["Route", dash(shipment.route)],
-                  ["Sendungsstatus", shipment.status
-                    ? (() => { const [c, l] = shipmentStatusMeta(shipment.status); return <span className={`badge ${c}`}>{l}</span>; })()
-                    : "—"],
-                ]} />
-                <div className="adm-track-link">
-                  <Link className="btn btn-outline btn-sm" to={`/admin/shipments/${encodeURIComponent(shipment.shipmentId)}`}>
-                    Sendung öffnen
-                  </Link>
+                <p className="adm-support-hint" style={{ marginTop: 0 }}>
+                  Setzt die Rechnung auf bezahlt und speichert das Zahlungsdatum. Das kann nicht rückgängig gemacht werden.
+                </p>
+                {/* Bewusst KEINE normale Primäraktion: das Markieren einer
+                    Rechnung als bezahlt ist unumkehrbar und zahlungswirksam.
+                    Kein roter Danger-Button — der bleibt zerstörenden Aktionen
+                    vorbehalten. */}
+                <div className="adm-support">
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm adm-irreversible-action"
+                    onClick={() => { setPayMsg(null); setPayOpen(true); }}
+                    disabled={payBusy}
+                  >
+                    {PAY_DIALOG.confirm}
+                  </button>
                 </div>
               </>
             ) : (
-              <p className="adm-addr-note">{manual ? MI.noShipment : "Keine Sendung verknüpft."}</p>
+              <>
+                <div className="adm-support">
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm adm-irreversible-action"
+                    disabled
+                    aria-describedby="adm-pay-blocked"
+                  >
+                    {PAY_DIALOG.confirm}
+                  </button>
+                </div>
+                <p className="adm-support-hint" id="adm-pay-blocked">{pay.reason}</p>
+              </>
             )}
           </div>
         </div>
-
         {/* 6) Rechnungsdokument */}
         <div className="adm-card">
           <div className="adm-card-head">Rechnungsdokument</div>
@@ -656,31 +646,6 @@ export default function AdminInvoiceDetailPage() {
           </div>
         </div>
 
-        {/* 8) Technische Informationen — eingeklappt, natives <details>. */}
-        <details className="adm-card adm-tech">
-          <summary className="adm-card-head adm-tech-summary">
-            Technische Informationen
-            <span className="adm-tech-caret" aria-hidden="true" />
-          </summary>
-          <div className="adm-card-body">
-            <KV items={[
-              ["Rechnungs-ID (intern)", dash(idOf(inv))],
-              ["Kunden-ID (intern)", dash(account.userId)],
-              ["Sendungs-ID (intern)", dash(shipment.shipmentId)],
-              [NUMBER_LABELS.jumingoOrder, dash(jumingoOrderOf(inv))],
-              ["document_mode (roh)", dash(docModeRawOf(inv))],
-              ["is_test_document", inv.is_test_document === true ? "true" : inv.is_test_document === false ? "false" : "—"],
-              ["Ausgestellt am", fmtDate(issuedAtOf(inv))],
-              ["Dateigröße", fmtBytes(pdfSizeOf(inv))],
-              ["Erstellungsversuche", docAttemptsOf(inv) != null ? String(docAttemptsOf(inv)) : "—"],
-              ["Letzter Dokumentfehler", <span className="adm-mono">{dash(technicalCode(docLastErrorOf(inv)))}</span>],
-              ["Versandversuche", emailAttemptsOf(inv) != null ? String(emailAttemptsOf(inv)) : "0"],
-              ["Letzter Versandfehler", <span className="adm-mono">{dash(technicalCode(emailLastErrorOf(inv)))}</span>],
-              ["Provider-Message-ID", <span className="adm-mono">{dash(emailMessageIdOf(inv))}</span>],
-            ]} />
-          </div>
-        </details>
-
         {/* 8b) Storno — nur manuell erstellte Rechnungen. Regelweg seit Schritt 3: die Stornorechnung entsteht hier
             im System (CE-ST, PDF). Ein bereits außerhalb erstellter Beleg kann weiterhin vermerkt werden. */}
         {manual && (
@@ -726,48 +691,101 @@ export default function AdminInvoiceDetailPage() {
           </div>
         )}
 
-        {/* 9) Adminaktionen */}
+        {/* 3) Rechnungsempfänger — HISTORISCH aus dem Snapshot. */}
         <div className="adm-card">
-          <div className="adm-card-head">Adminaktionen</div>
+          <div className="adm-card-head">Rechnungsempfänger zum Zeitpunkt der Rechnung</div>
           <div className="adm-card-body">
-            {pay.payable ? (
-              <>
-                <p className="adm-support-hint" style={{ marginTop: 0 }}>
-                  Setzt den Rechnungsstatus auf bezahlt und speichert das Zahlungsdatum.
-                  Die Aktion wird im Protokoll festgehalten und kann nicht rückgängig gemacht werden.
-                </p>
-                {/* Bewusst KEINE normale Primäraktion: das Markieren einer
-                    Rechnung als bezahlt ist unumkehrbar und zahlungswirksam.
-                    Kein roter Danger-Button — der bleibt zerstörenden Aktionen
-                    vorbehalten. */}
-                <div className="adm-support">
-                  <button
-                    type="button"
-                    className="btn btn-outline btn-sm adm-irreversible-action"
-                    onClick={() => { setPayMsg(null); setPayOpen(true); }}
-                    disabled={payBusy}
-                  >
-                    {PAY_DIALOG.confirm}
-                  </button>
-                </div>
-              </>
+            {recipient.known ? (
+              <KV items={[
+                ["Firma", dash(recipient.company)],
+                ["Name", dash(recipient.name)],
+                [NUMBER_LABELS.customer, dash(recipient.customerNumber)],
+                ["Rechnungs-E-Mail", dash(recipient.email)],
+                ["USt-IdNr.", dash(recipient.vatId)],
+              ]} />
             ) : (
-              <>
-                <div className="adm-support">
-                  <button
-                    type="button"
-                    className="btn btn-outline btn-sm adm-irreversible-action"
-                    disabled
-                    aria-describedby="adm-pay-blocked"
-                  >
-                    {PAY_DIALOG.confirm}
-                  </button>
-                </div>
-                <p className="adm-support-hint" id="adm-pay-blocked">{pay.reason}</p>
-              </>
+              <p className="adm-addr-note">{SNAPSHOT_MISSING_NOTE}</p>
+            )}
+            <p className="adm-support-hint">
+              Diese Angaben sind mit der Rechnung eingefroren und werden nicht durch spätere
+              Stammdatenänderungen ersetzt.
+            </p>
+          </div>
+        </div>
+
+        {/* 4) Aktuelles Kundenkonto — bewusst getrennt vom Snapshot. */}
+        <div className="adm-card">
+          <div className="adm-card-head">Aktuelles Kundenkonto</div>
+          <div className="adm-card-body">
+            <KV items={[
+              ["Firma (aktuell)", dash(account.company)],
+              [`${NUMBER_LABELS.customer} (aktuell)`, dash(account.customerNumber)],
+            ]} />
+            {account.linkable ? (
+              <div className="adm-track-link">
+                <Link className="btn btn-outline btn-sm" to={`/admin/users/${encodeURIComponent(account.userId)}`}>
+                  Aktuelles Kundenkonto öffnen
+                </Link>
+              </div>
+            ) : (
+              <p className="adm-addr-note">{manual ? MI.noAccountExternal : "Kein verknüpftes Kundenkonto."}</p>
             )}
           </div>
         </div>
+
+        {/* 5) Zugehörige Sendung */}
+        <div className="adm-card">
+          <div className="adm-card-head">Zugehörige Sendung</div>
+          <div className="adm-card-body">
+            {shipment.linked ? (
+              <>
+                <KV items={[
+                  [NUMBER_LABELS.orderConfirmation, shipment.orderNumberKnown
+                    ? <span className="adm-mono">{shipment.orderNumber}</span>
+                    : <span className="adm-muted">{SHIPMENT_NO_ORDER_NUMBER}</span>],
+                  ["Carrier", shipment.carrier ? resolveCarrierName(shipment.carrier) : "—"],
+                  ["Route", dash(shipment.route)],
+                  ["Sendungsstatus", shipment.status
+                    ? (() => { const [c, l] = shipmentStatusMeta(shipment.status); return <span className={`badge ${c}`}>{l}</span>; })()
+                    : "—"],
+                ]} />
+                <div className="adm-track-link">
+                  <Link className="btn btn-outline btn-sm" to={`/admin/shipments/${encodeURIComponent(shipment.shipmentId)}`}>
+                    Sendung öffnen
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <p className="adm-addr-note">{manual ? MI.noShipment : "Keine Sendung verknüpft."}</p>
+            )}
+          </div>
+        </div>
+
+        {/* 8) Technische Informationen — eingeklappt, natives <details>. */}
+        <details className="adm-card adm-tech">
+          <summary className="adm-card-head adm-tech-summary">
+            Technische Informationen
+            <span className="adm-tech-caret" aria-hidden="true" />
+          </summary>
+          <div className="adm-card-body">
+            <KV items={[
+              ["Rechnungs-ID (intern)", dash(idOf(inv))],
+              ["Kunden-ID (intern)", dash(account.userId)],
+              ["Sendungs-ID (intern)", dash(shipment.shipmentId)],
+              [NUMBER_LABELS.jumingoOrder, dash(jumingoOrderOf(inv))],
+              ["document_mode (roh)", dash(docModeRawOf(inv))],
+              ["is_test_document", inv.is_test_document === true ? "true" : inv.is_test_document === false ? "false" : "—"],
+              ["Ausgestellt am", fmtDate(issuedAtOf(inv))],
+              ["Dateigröße", fmtBytes(pdfSizeOf(inv))],
+              ["Erstellungsversuche", docAttemptsOf(inv) != null ? String(docAttemptsOf(inv)) : "—"],
+              ["Letzter Dokumentfehler", <span className="adm-mono">{dash(technicalCode(docLastErrorOf(inv)))}</span>],
+              ["Versandversuche", emailAttemptsOf(inv) != null ? String(emailAttemptsOf(inv)) : "0"],
+              ["Letzter Versandfehler", <span className="adm-mono">{dash(technicalCode(emailLastErrorOf(inv)))}</span>],
+              ["Provider-Message-ID", <span className="adm-mono">{dash(emailMessageIdOf(inv))}</span>],
+            ]} />
+          </div>
+        </details>
+
       </div>
 
       {/* ── Bestätigungsdialoge: zentrale Komponente mit Fokus-Management ── */}

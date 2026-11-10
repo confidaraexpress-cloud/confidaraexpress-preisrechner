@@ -125,7 +125,8 @@ test("A — Wechsel: genau ein PUT mit dem gezeigten Stand, Erfolgsmeldung, neu 
   assert.match(norm(await page.locator(KARTE).innerText()), /Zugeordnet seit 30\.10\.2026, 12:15/);
   assert.equal(await page.locator("#adm-account-manager-save").isDisabled(), true);
   // Das Kundenfeld der Karte darüber heißt eindeutig „Ansprechpartner (Kunde)“.
-  assert.match(norm(await page.locator(".adm-card").first().innerText()), /Ansprechpartner \(Kunde\) Max Mustermann/);
+  // Seit der Admin-Vereinfachung (2026-11-10) steht der Kontostatus als erste Karte — die Kontaktkarte per Titel.
+  assert.match(norm(await page.locator(".adm-card", { hasText: "Unternehmen und Kontakt" }).innerText()), /Ansprechpartner \(Kunde\) Max Mustermann/);
   await page.close();
 });
 
@@ -184,7 +185,7 @@ test("E — Ladefehler: Meldung und „Erneut laden“, die übrige Seite bleibt
   const frist = Date.now() + 5000;
   while (state.gets <= vorher && Date.now() < frist) await page.waitForTimeout(50);
   assert.ok(state.gets >= vorher + 1, "Erneut laden fragt erneut");
-  assert.match(norm(await page.locator(".adm-card").first().innerText()), /Unternehmen und Kontakt/);
+  assert.equal(await page.locator(".adm-card", { hasText: "Unternehmen und Kontakt" }).isVisible(), true, "die übrige Seite fehlt");
   await page.close();
 });
 

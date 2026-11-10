@@ -341,10 +341,9 @@ export default function AdminCancellationRequestDetailPage() {
           beim Carrier/JUMiNGO ist und keine Erstattung/Gutschrift auslöst. */}
       <div className="adm-scope-note" role="note">
         <div>
-          <strong>Interner Verwaltungsvorgang.</strong> Das Bearbeiten dieser Anfrage ändert nur ihren
-          internen Bearbeitungsstatus bzw. Vermerk. Es wird <strong>keine</strong> Stornierung beim
-          Carrier/JUMiNGO ausgelöst und <strong>keine</strong> Erstattung, Gutschrift oder
-          Rechnungskorrektur vorgenommen.
+          <strong>Nur intern:</strong> Das Bearbeiten ändert nur Status und Vermerk dieser Anfrage. Es wird
+          <strong> nichts</strong> beim Versanddienstleister oder Anbieter storniert und <strong>nichts</strong> erstattet,
+          gutgeschrieben oder an Rechnungen korrigiert.
         </div>
       </div>
 

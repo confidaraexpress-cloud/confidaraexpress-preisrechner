@@ -12,8 +12,9 @@ import { formatConfirmedBy, formatMarkupDateTime, formatMarkupPercent, markupInp
   from "./customerMarkup.mjs";
 
 export const PUBLIC_CALC_ADMIN_TEXT = Object.freeze({
-  title: "Öffentlicher Preisrechner",
-  subtitle: "Preise ohne Anmeldung auf preisrechner.confidaraexpress.de. Änderungen wirken ab der nächsten Berechnung und werden protokolliert.",
+  // Admin-Vereinfachung (2026-11-10): heißt wie der Navigationseintrag.
+  title: "Preisrechner",
+  subtitle: "Öffentliche Preise ohne Anmeldung auf preisrechner.confidaraexpress.de. Änderungen gelten ab der nächsten Berechnung.",
   markupCard: "Aufschlag",
   markupLabel: "Neuer Aufschlag in Prozent",
   markupHint: "Zum Beispiel 25 oder 22,5 — höchstens zwei Nachkommastellen, zwischen 0 und 100.",

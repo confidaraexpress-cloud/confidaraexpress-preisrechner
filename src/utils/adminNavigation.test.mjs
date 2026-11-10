@@ -12,29 +12,40 @@ const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
 const ohneKommentare = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
 const seite = (f) => ohneKommentare(read(`../pages/admin/${f}`));
 
+// Admin-Vereinfachung (Betreiberauftrag 2026-11-10): jede Adminseite ist über die Navigation
+// erreichbar — dazu kamen Sammelrechnungsanträge und Preisrechner (vorher nur Kacheln der Übersicht).
 const ZIELE = ["/admin", "/admin/users", "/admin/partners", "/admin/shipments", "/admin/invoices",
   "/admin/support-requests", "/admin/cancellation-requests", "/admin/reconciliation",
+  "/admin/billing-mode-requests", "/admin/public-calculator",
   "/admin/invoices/backfill", "/admin/audit-logs"];
 
-test("1 — Sidebar: vier benannte Gruppen, jedes bisherige Ziel genau einmal, `end`-Regeln unverändert", () => {
+test("1 — Sidebar: Hauptbereiche oben, zwei benannte Gruppen, jedes Ziel genau einmal, `end`-Regeln unverändert", () => {
   const src = ohneKommentare(read("../components/layout/AdminSidebar.jsx"));
   const gruppen = [...src.matchAll(/label: "([^"]+)",\s*\n\s*items:/g)].map((m) => m[1]);
-  assert.deepEqual(gruppen, ["Kunden und Partner", "Versand und Rechnungen", "Support und Bearbeitung", "Verwaltung und Protokoll"]);
+  assert.deepEqual(gruppen, ["Zu erledigen", "Vertrieb und Verwaltung"]);
   const ziele = [...src.matchAll(/\{ to: "(\/admin[^"]*)", label: "([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual([...ziele].sort(), [...ZIELE].sort(), "ein Ziel fehlt oder ist doppelt");
-  assert.match(src, /\{ to: "\/admin", label: "Übersicht", end: true \}/);
-  assert.match(src, /\{ to: "\/admin\/invoices", label: "Rechnungen", end: true \}/);
+  // Kunden, Sendungen und Rechnungen (Priorität des Betreibers) direkt unter der Übersicht.
+  assert.deepEqual(ziele.slice(0, 4), ["/admin", "/admin/users", "/admin/shipments", "/admin/invoices"]);
+  assert.match(src, /\{ to: "\/admin", label: "Übersicht", icon: "dashboard", end: true \}/);
+  assert.match(src, /\{ to: "\/admin\/invoices", label: "Rechnungen", icon: "invoice", end: true \}/);
   // Klare Namen statt Technik; derselbe Eintrag wie im Supporttest.
-  assert.match(src, /\{ to: "\/admin\/invoices\/backfill", label: "Interne Vorschau-PDFs" \}/);
-  assert.match(src, /\{ to: "\/admin\/audit-logs", label: "Protokoll" \}/);
-  assert.match(src, /\{ to: "\/admin\/support-requests", label: "Supportanfragen" \}/);
+  assert.match(src, /\{ to: "\/admin\/invoices\/backfill", label: "Vorschau-PDFs", icon: "printer" \}/);
+  assert.match(src, /\{ to: "\/admin\/audit-logs", label: "Protokoll", icon: "clock" \}/);
+  assert.match(src, /\{ to: "\/admin\/support-requests", label: "Supportanfragen", icon: "headset" \}/);
   assert.doesNotMatch(src, /Backfill"|Audit-Logs"/);
+  // Jeder Eintrag trägt ein Symbol der eigenen Icon-Komponente, dekorativ vor dem Text.
+  assert.equal([...src.matchAll(/\{ to: "\/admin[^}]*icon: "[a-zA-Z]+"/g)].length, ZIELE.length, "Eintrag ohne Symbol");
+  assert.match(src, /<span className="adm-nitem-icon" aria-hidden="true"><Icon n=\{item\.icon\} s=\{ICON_SIZE\.md\} \/><\/span>\s*<span>\{item\.label\}<\/span>/);
   // Gruppen sind für Screenreader benannt; kein Zähler, keine Glocke, keine neue Abfrage.
   assert.match(src, /role="group" aria-labelledby=\{id\}/);
   assert.doesNotMatch(src, /apiFetch|api\/adminApi|useEffect/);
   // Die Seitentitel heißen wie die Einträge.
   assert.match(seite("AuditLogPage.jsx"), /title=\{<>Protokoll<\/>\}/);
   assert.match(seite("AdminSalesPartnerCreditNotesPage.jsx"), /title=\{<>Gutschriften<\/>\}/);
+  assert.match(seite("AdminBackfillPage.jsx"), /title="Vorschau-PDFs"/);
+  assert.match(read("./adminPublicCalculatorView.mjs"), /title: "Preisrechner",/);
+  assert.match(read("./adminBillingModeRequests.mjs"), /pageTitle: "Sammelrechnungsanträge",/);
 });
 
 test("2 — Teilnavigation: fünf Bereiche, Pre-Live nur bei `enabled: true`, keine eigene Abfrage, kein zweiter Seitenkopf", () => {

@@ -166,9 +166,12 @@ test("7 — die Symbolknöpfe sind quadratische 44-px-Ziele ohne Textpolster", (
   assert.match(block(premium, ".app-shell .hamburger-btn"), /min-height: var\(--ce-size-touch-target\);/);
 });
 
-test("8 — die Navigation bleibt Textnavigation, ohne fremde Iconbibliothek (Kunde: Icons nur vor Hauptpunkten, E7)", () => {
-  // Admin bleibt unverändert reiner Text.
-  assert.doesNotMatch(adminSidebar, /<Icon\b/, "AdminSidebar: Symbole in der Navigation");
+test("8 — die Navigation bleibt Textnavigation, ohne fremde Iconbibliothek (Kunde: Icons nur vor Hauptpunkten, E7; Admin: je Eintrag)", () => {
+  // Admin (Admin-Vereinfachung, Betreiberauftrag 2026-11-10): genau eine Renderstelle — das dekorative
+  // Symbol vor dem Text jedes Eintrags, aus dem eigenen Icon-System; der Name bleibt Text.
+  assert.equal((adminSidebar.match(/<Icon\b/g) || []).length, 1, "AdminSidebar: Symbole außerhalb der Einträge");
+  assert.match(adminSidebar, /import \{ Icon, ICON_SIZE \} from "\.\.\/ui\/Icon";/, "AdminSidebar: Icon nicht aus dem eigenen System");
+  assert.match(adminSidebar, /<span className="adm-nitem-icon" aria-hidden="true"><Icon n=\{item\.icon\}/);
   // Kunde (E7): genau zwei Renderstellen, jede vor einer Beschriftung (sidebarNavigation.test.mjs, Test 15).
   assert.equal((sidebar.match(/<Icon\b/g) || []).length, 2, "DashboardSidebar: Icons außerhalb der Hauptpunkte");
   assert.match(sidebar, /import \{ Icon, ICON_SIZE \} from "\.\.\/ui\/Icon";/, "DashboardSidebar: Icon nicht aus dem eigenen System");

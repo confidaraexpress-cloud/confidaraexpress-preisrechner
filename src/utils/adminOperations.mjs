@@ -19,7 +19,7 @@ export const OPERATIONS_QUEUES = Object.freeze([
     hint: "Offener Versuch älter als 10 Minuten", target: "attempt",
     listTo: "/admin/reconciliation", tone: "warning" },
   { key: "booking_without_open_attempt", label: "Gesperrt ohne offenen Versuch", icon: "info",
-    hint: "Diagnose — Beginn des Provider-Calls unbekannt, nicht automatisch aktionsfähig",
+    hint: "Diagnose — Beginn des Buchungsaufrufs unbekannt, nicht automatisch entscheidbar",
     target: "shipment", listTo: null, tone: "diagnostic" },
   { key: "invoice_drift_unreviewed", label: "Ungeprüfte Rechnungsabweichungen", icon: "euro",
     hint: "Anbieterrechnung weicht vom erwarteten Einkauf ab", target: "attempt", listTo: null, tone: "warning" },
@@ -27,8 +27,8 @@ export const OPERATIONS_QUEUES = Object.freeze([
     hint: "Gebucht, ohne Trackingreferenz nach der Betriebsfrist", target: "shipment", listTo: null, tone: "warning" },
   // INTERNAL-01: der Schlüssel bleibt `label_missing`; gezählt wird „kein Versandlabel in CE" (noch
   // nicht abgerufen, beim Anbieter noch nicht bereit, Abruf gescheitert) — nie „fehlt beim Anbieter".
-  { key: "label_missing", label: "Versandlabel nicht in CE", icon: "invoice",
-    hint: "Gebucht, nach der Betriebsfrist ohne Label in CE — nicht abgerufen, nicht bereit oder Abruf gescheitert",
+  { key: "label_missing", label: "Versandlabel noch nicht gespeichert", icon: "invoice",
+    hint: "Gebucht, nach der Betriebsfrist noch kein Label gespeichert — nicht abgerufen, nicht bereit oder Abruf gescheitert",
     target: "shipment", listTo: null, tone: "warning" },
   { key: "cancellations_open", label: "Offene Stornierungen", icon: "ban",
     hint: "Offen oder in Prüfung", target: "cancellation", listTo: "/admin/cancellation-requests", tone: "warning" },
@@ -70,7 +70,7 @@ export const OPERATIONS_DIAGNOSTICS = Object.freeze([
     hint: "Neben einem neueren Versuch — nicht aktionsfähig", target: "attempt", listTo: null, tone: "diagnostic" },
   { key: "orphaned_unresolved", label: "Verwaiste ungeklärte Versuche", icon: "info",
     hint: "Sendung gelöscht — nicht aktionsfähig", target: "attempt", listTo: null, tone: "diagnostic" },
-  { key: "contradictory_evidence", label: "Widersprüchliche Evidenz", icon: "info",
+  { key: "contradictory_evidence", label: "Widersprüchliche Belege", icon: "info",
     hint: "Anbieterausgang und Entscheidung passen nicht zusammen", target: "attempt", listTo: null, tone: "diagnostic" },
   { key: "booking_without_attempt", label: "Gesperrt ohne jeden Versuch", icon: "info",
     hint: "Altbestand — Beginn des Provider-Calls unbekannt", target: "shipment", listTo: null, tone: "diagnostic" },

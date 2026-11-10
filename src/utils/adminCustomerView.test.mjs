@@ -277,7 +277,7 @@ test("14 — die B2B-Sperre gilt weiterhin nur für die Freischaltung", () => {
 test("15 — statusabhängige Texte: approved sagt nie „Kunde freischalten“", () => {
   const approved = accountStatusCopy("approved");
   assert.equal(approved.title, "Kunde ist freigeschaltet");
-  assert.equal(approved.description, "Dieser Kunde ist freigeschaltet und kann ConfidaraExpress nutzen.");
+  assert.equal(approved.description, "Kann ConfidaraExpress nutzen und Sendungen buchen.");
   assert.equal(approved.actionKind, "block");
   assert.equal(/freischalten/i.test(approved.title), false, "kein Widerspruch zum tatsächlichen Status");
   // Die Karte bezieht Überschrift und Beschreibung genau daraus.
@@ -289,7 +289,7 @@ test("15 — statusabhängige Texte: approved sagt nie „Kunde freischalten“"
 test("16 — statusabhängige Texte: blocked und pending", () => {
   const blocked = accountStatusCopy("blocked");
   assert.equal(blocked.title, "Kunde reaktivieren");
-  assert.equal(blocked.description, "Dieser Kunde ist blockiert und kann derzeit keine neuen Sendungen buchen.");
+  assert.equal(blocked.description, "Gesperrt — kann derzeit keine neuen Sendungen buchen.");
   assert.equal(blocked.hint, "Vor der Reaktivierung muss ein individueller Kundenaufschlag bestätigt sein.");
   assert.equal(blocked.actionKind, "approve");
   const pending = accountStatusCopy("pending");
@@ -340,7 +340,8 @@ test("19 — Zahlungswerte stehen genau einmal auf der Seite", () => {
   }
   assert.equal(/Aggregierte Kennzahlen/.test(detailSrc), false, "die doppelte Kennzahlenkarte ist entfallen");
   // Redesign 2026-10: Kartenköpfe tragen kein Symbol mehr.
-  assert.match(detailSrc, /<div className="adm-card-head">Aktivität und Zahlung<\/div>/);
+  // Admin-Vereinfachung (2026-11-10): einklappbar (AdminDisclosureCard), Titel unverändert.
+  assert.match(detailSrc, /title="Aktivität und Zahlung"/);
   // Eine Quelle für alle Werte.
   const m = activityMetrics({ shipments_total: 4, invoices_total: 3, invoices_unpaid: 2, invoices_overdue: 1, open_amount: "199.5" });
   assert.deepEqual(m, { shipmentsTotal: 4, invoicesTotal: 3, invoicesUnpaid: 2, invoicesOverdue: 1, openAmount: 199.5, hasOverdue: true });
@@ -462,10 +463,10 @@ test("26 — der Aufschlagsbereich bleibt fachlich unverändert und vermeidet le
   // Globaler Standardaufschlag: sachlich, kein Warnzustand.
   const n = legacyApprovedNotice({ currentStatus: "approved", pricing: selectPriceMarkup({ priceMarkupPercent: 20, confirmed: false }) });
   assert.equal(n.show, true);
-  assert.equal(n.headline, "Globaler Standardaufschlag aktiv");
-  assert.match(n.text, /globale Standardaufschlag/);
+  assert.equal(n.headline, "Allgemeiner Standardaufschlag aktiv");
+  assert.match(n.text, /allgemeine Standardaufschlag/);
   assert.match(n.text, /Der Zugang bleibt bestehen/);
-  assert.match(n.text, /vor einer späteren erneuten\s+Freischaltung erforderlich/);
+  assert.match(n.text, /vor einer erneuten Freischaltung ist eine individuelle Bestätigung nötig/);
   // Bestätigter, unveränderter Wert → kein Request.
   const confirmed = selectPriceMarkup({ priceMarkupPercent: 17.5, confirmed: true });
   assert.equal(canSaveMarkup(confirmed, "17,50"), false);

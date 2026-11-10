@@ -461,7 +461,8 @@ test("Detail: echtes <h1>, fachliche Karten, technische Infos eingeklappt", () =
   assert.equal(/dash\(req\.reviewedBy\)\]/.test(detailSrc), false, "reviewedBy wurde roh gerendert");
   assert.match(detailSrc, /const reviewerName = req\.reviewedBy && typeof req\.reviewedBy === "object"/);
   // Kein Text, der eine Carrierstornierung suggeriert.
-  assert.match(detailSrc, /keine<\/strong> Stornierung beim/);
+  // Admin-Vereinfachung (2026-11-10): dieselbe Zusicherung, kürzer — nichts wird beim Versanddienstleister storniert.
+  assert.match(detailSrc, /<strong> nichts<\/strong> beim Versanddienstleister oder Anbieter storniert/);
 });
 
 test("Detail: Optimistic-Locking-Konflikt wird verständlich aufgelöst", () => {

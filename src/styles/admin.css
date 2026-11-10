@@ -104,17 +104,18 @@
 .adm-side-close:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 
 /* Identität des angemeldeten Admins — ruhig, eine Zeile Name, eine Zeile Rolle. */
+/* Im Fuß über den beiden Aktionen (seit der Admin-Vereinfachung 2026-11-10): eine Zeile,
+   Name und Rolle nebeneinander, damit die Navigation oben den Platz für alle Bereiche hat. */
 .adm-identity {
   flex: 0 0 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 var(--ce-space-2) var(--ce-space-4);
-  margin-bottom: var(--ce-space-3);
-  border-bottom: 1px solid var(--ce-color-border-subtle);
+  gap: var(--ce-space-2);
+  padding: 0 var(--ce-space-3) var(--ce-space-1);
 }
 .adm-identity-avatar {
-  width: 32px; height: 32px; flex-shrink: 0;
+  width: 24px; height: 24px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   border-radius: var(--ce-radius-full);
   background: var(--ce-color-brand-soft);
@@ -122,13 +123,13 @@
   font-size: var(--ce-text-body-s-size);
   font-weight: 600;
 }
-.adm-identity-text { display: flex; flex-direction: column; min-width: 0; }
+.adm-identity-text { display: flex; align-items: baseline; gap: var(--ce-space-2); min-width: 0; }
 .adm-identity-name {
   font-size: var(--ce-text-body-s-size); font-weight: 600; line-height: var(--ce-text-body-s-line);
   color: var(--ce-color-text-primary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.adm-identity-role { font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
+.adm-identity-role { flex: 0 0 auto; font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
 
 /* Navigation: reiner Text, 14/20 500, aktiv 600 in Indigo auf Brand Soft
    mit Akzentkante links. Der Zustand ist mehrfach codiert — Fläche, Kante,
@@ -190,8 +191,13 @@
    frühere Überschrift und trägt keinen Zusatzabstand — die Navigation braucht
    dieselbe Höhe wie zuvor (gemessen: 1280 × 720 bleibt ohne inneres Scrollen). */
 @media (min-width: 901px) and (max-height: 860px) {
+  .adm-brand { margin-bottom: var(--ce-space-3); }
   .adm-identity { display: none; }
-  .adm-nitem { min-height: var(--ce-size-control-sm); padding-top: 6px; padding-bottom: 6px; }
+  .adm-side-foot { margin-top: var(--ce-space-3); padding-top: var(--ce-space-3); }
+  .adm-foot-btn { min-height: var(--ce-size-control-sm); padding-top: 6px; padding-bottom: 6px; }
+  /* 30 px je Eintrag (Zeigerbedienung, deutlich über dem 24-px-Mindestziel): alle zwölf Bereiche
+     bleiben bei 1280 × 720 ohne inneres Scrollen sichtbar (gemessen 2026-11-10). */
+  .adm-nitem { min-height: 30px; padding-top: 5px; padding-bottom: 5px; }
   .adm-ngroup { margin-top: 0; }
   .adm-ngroup > .adm-nsec { padding-top: 2px; padding-bottom: 2px; }
 }
@@ -1954,3 +1960,155 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
   .adm-tarif-table td:first-child::before { content: none; }
   .adm-tarif-table td.adm-tarif-num { text-align: right; }
 }
+
+/* ══════════ Admin-Vereinfachung (Betreiberauftrag 2026-11-10) ═══════════════
+   Gemeinsame Bausteine aller Adminseiten: Hilfesymbol, „Auf einen Blick“,
+   Aktionsleiste, Abschnittsgruppen. Nur Tokens, keine neue Bauteilfamilie. */
+
+/* Hilfesymbol (AdminInfoTip): 24-px-Knopf in der Textfarbe, der Hilfetext
+   liegt fest über der Seite und bleibt ganz im Fenster (Lage per JS). */
+.adm-tip { display: inline-flex; align-items: center; vertical-align: middle; margin-left: 4px; }
+.adm-tip-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; padding: 0;
+  border: 0; border-radius: var(--ce-radius-full);
+  background: none; color: var(--ce-color-text-muted); cursor: pointer;
+}
+.adm-tip-btn:hover, .adm-tip-btn[aria-expanded="true"] { background: var(--ce-color-surface-muted); color: var(--ce-color-brand-ink); }
+.adm-tip-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+.adm-tip-pop { position: fixed; display: none; }
+.adm-tip-pop-open {
+  display: block;
+  z-index: var(--ce-z-dropdown);
+  width: max-content;
+  max-width: min(20rem, calc(100vw - 24px));
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-md);
+  background: var(--ce-color-surface);
+  box-shadow: var(--ce-elevation-dropdown);
+  font-size: var(--ce-text-body-s-size);
+  font-weight: 400;
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+  text-align: left;
+  white-space: normal;
+}
+
+/* „Auf einen Blick“ (AdminFacts): die wichtigsten Werte einer Detailseite in
+   einer ruhigen Zeile — Beschriftung klein, Wert groß; mobil zwei Spalten. */
+.adm-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0;
+  margin: 0 0 var(--ce-space-4);
+  padding: 0;
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-md);
+  background: var(--ce-color-surface);
+  box-shadow: var(--ce-elevation-1);
+  overflow: hidden;
+}
+.adm-fact {
+  display: flex; flex-direction: column; gap: 2px; min-width: 0;
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border-right: 1px solid var(--ce-color-border-subtle);
+  border-bottom: 1px solid var(--ce-color-border-subtle);
+  margin: 0 -1px -1px 0;
+}
+.adm-fact dt { font-size: var(--ce-text-caption-size); font-weight: 500; line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
+.adm-fact dd {
+  margin: 0;
+  font-size: var(--ce-text-title-card-size); font-weight: 600; line-height: var(--ce-text-title-card-line);
+  color: var(--ce-color-text-primary);
+  overflow-wrap: break-word;
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
+.adm-fact-value { display: block; }
+.adm-fact-hint { display: block; margin-top: 2px; font-size: var(--ce-text-caption-size); font-weight: 400; line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
+.adm-fact--warning .adm-fact-value { color: var(--ce-color-status-warning-fg); }
+.adm-fact--danger .adm-fact-value { color: var(--ce-color-status-error-fg); }
+.adm-fact--success .adm-fact-value { color: var(--ce-color-status-success-fg); }
+.adm-fact .badge { align-self: flex-start; }
+@media (max-width: 560px) {
+  .adm-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .adm-fact { padding: var(--ce-space-3); }
+  /* Eine ungerade letzte Angabe nutzt die ganze Zeile statt einer leeren Zelle daneben. */
+  .adm-fact:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+
+/* Aktionsleiste unter dem Seitenkopf einer Detailseite: die häufigen Aktionen
+   an einer Stelle, mobil volle Breite. */
+.adm-actionbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2); margin: 0 0 var(--ce-space-4); }
+.adm-actionbar-note { flex-basis: 100%; margin: 0; font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
+@media (max-width: 560px) {
+  .adm-actionbar > .btn { flex: 1 1 auto; justify-content: center; }
+}
+
+/* Abschnittsgruppe einer langen Detailseite: eine Überschrift über mehreren
+   Karten (Konto, Preise, Abrechnung …). */
+.adm-group { display: flex; flex-direction: column; gap: var(--ce-space-4); }
+.adm-group + .adm-group { margin-top: var(--ce-space-5); }
+.adm-group-title {
+  margin: 0;
+  font-size: var(--ce-text-title-section-size); font-weight: 600; line-height: var(--ce-text-title-section-line);
+  color: var(--ce-color-text-primary);
+}
+
+/* Symbol je Navigationseintrag (Admin-Vereinfachung 2026-11-10, wie E7 im
+   Kundenbereich): fester 18-px-Platz vor dem Text, leise in Ruhe, im aktiven
+   und überfahrenen Eintrag in dessen Textfarbe. Rein dekorativ (aria-hidden). */
+.adm-nitem-icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 18px; width: 18px; height: 18px; color: var(--ce-color-text-muted); }
+.adm-nitem:hover .adm-nitem-icon, .adm-nitem-on .adm-nitem-icon { color: inherit; }
+/* Gruppentitel innerhalb einer Kartenspalte (Kundendetail): mehr Luft davor als zwischen den Karten. */
+.adm-cards > .adm-group-title { margin-top: var(--ce-space-4); }
+.adm-cards > .adm-group-title:first-child { margin-top: 0; }
+/* Zeitpunkte des Kundenaufschlags als eine leise Zeile unter Wert und Status. */
+.adm-markup-audit { margin: var(--ce-space-2) 0 0; font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
+/* Hinweis „nur intern“ in der Bearbeitungskarte (statt einer Box über der Seite): Fließtext, kein Flexraster. */
+.adm-scope-note--inline { display: block; margin: 0 0 var(--ce-space-4); }
+
+/* Breite Tabellen des Partnerdetails (Provisionen, Gutschriften, Monatsbewertungen …) auf dem Desktop:
+   Reicht die Kartenbreite nicht für alle Spalten, wurde die Tabelle bis 2026-11-10 rechts abgeschnitten
+   (Aktionen wie „Als ausgezahlt markieren“ nur per seitlichem Scrollen erreichbar). Jetzt wird jede Zeile
+   zu einer Karte mit den Feldern im Raster — Beschriftung über dem Wert, nichts verdeckt. Gemessen wird die
+   Breite der Tabelle selbst (Container), nicht das Fenster; unter 641 px gilt weiter die Listenansicht oben. */
+.adm-sp-cardtable { container: adm-sp-tabelle / inline-size; }
+@media (min-width: 641px) {
+  @container adm-sp-tabelle (max-width: 1100px) {
+    .adm-sp-cardtable table,
+    .adm-sp-cardtable tbody { display: block; width: 100%; }
+    .adm-sp-cardtable thead {
+      position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+      overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+    .adm-sp-cardtable tr {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: var(--ce-space-2) var(--ce-space-4);
+      padding: var(--ce-space-3) var(--ce-space-4);
+      border: 1px solid var(--ce-color-border-subtle);
+      border-radius: var(--ce-radius-sm);
+    }
+    .adm-sp-cardtable tr + tr { margin-top: var(--ce-space-2); }
+    .adm-sp-cardtable td {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0;
+      height: auto; padding: 0; border: 0; text-align: left;
+      overflow-wrap: break-word;
+    }
+    .adm-sp-cardtable td[colspan] { grid-column: 1 / -1; }
+    .adm-sp-cardtable td::before {
+      content: attr(data-label);
+      font-size: var(--ce-text-caption-size); font-weight: 500; line-height: var(--ce-text-caption-line);
+      color: var(--ce-color-text-muted);
+    }
+    .adm-sp-cardtable td.adm-num { text-align: left; }
+    /* Getönte Zeilen (Korrektur, Entscheidung) als ganze Karte tönen — nicht jede Zelle einzeln. */
+    .adm-sp-cardtable .adm-sp-row-correction,
+    .adm-sp-cardtable .adm-sp-decision-row { background: var(--ce-color-surface-subtle); }
+    .adm-sp-cardtable .adm-sp-row-correction td,
+    .adm-sp-cardtable .adm-sp-decision-row td { background: none; }
+  }
+}
+/* Wertepaare mit langen Werten (Links): eine Spalte über die volle Breite. */
+.adm-kv--wide { grid-template-columns: minmax(0, 1fr); margin-top: var(--ce-space-4); }

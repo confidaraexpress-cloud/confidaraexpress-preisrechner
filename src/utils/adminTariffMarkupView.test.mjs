@@ -201,7 +201,10 @@ test("Seite: die Karte hängt mit Kundenschlüssel unter dem Kundenaufschlag —
   assert.match(seite, /import \{ CustomerTariffMarkupSection \} from "\.\.\/\.\.\/components\/admin\/CustomerTariffMarkupSection"/);
   assert.match(seite, /<CustomerTariffMarkupSection key=\{`tarife-\$\{idOf\(u\)\}`\} userId=\{idOf\(u\)\} pricing=\{pricing\} \/>/);
   assert.ok(seite.indexOf("<CustomerMarkupSection") < seite.indexOf("<CustomerTariffMarkupSection"), "unter dem Kundenaufschlag");
-  assert.ok(seite.indexOf("<CustomerTariffMarkupSection") < seite.indexOf("<CustomerApprovalCard"), "vor der Freischaltung");
+  // Admin-Vereinfachung (2026-11-10): Kontostatus und Freischaltung stehen oben in der Gruppe „Konto“,
+  // Aufschlag und Versandtarife darunter in der Gruppe „Preise“ — direkt untereinander.
+  assert.ok(seite.indexOf("<CustomerApprovalCard") < seite.indexOf('id="adm-user-group-preise"'), "Freischaltung in der Gruppe Konto");
+  assert.ok(seite.indexOf('id="adm-user-group-preise"') < seite.indexOf("<CustomerMarkupSection"), "Aufschlag in der Gruppe Preise");
 });
 
 test("Texte: Vorabcharakter und Netto sind benannt; die Zustände haben Wortlaute", () => {

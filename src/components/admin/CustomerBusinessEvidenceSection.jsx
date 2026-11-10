@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { addAdminUserBusinessVerification, getAdminUserBusinessEvidence } from "../../api/adminApi";
+import { AdminDisclosureCard } from "./AdminDisclosureCard";
 import {
   BUSINESS_EVIDENCE_TEXTS as T,
   VERIFICATION_METHOD_OPTIONS,
@@ -73,10 +74,19 @@ export function CustomerBusinessEvidenceSection({ userId }) {
   const letzte = data && data.verifications.length ? data.verifications[0] : null;
   const fruehere = data ? data.verifications.slice(1) : [];
 
+  // Admin-Vereinfachung (2026-11-10): eingeklappt, sobald eine Prüfung vorliegt; ohne Prüfung oder mit
+  // Nachweispflicht öffnet sich der Bereich selbst. Die Kurzfassung nennt den Stand.
+  // Ein Ladefehler öffnet den Bereich ebenfalls: Meldung und „Erneut laden“ müssen sichtbar sein.
+  const offen = Boolean(state.error) || (Boolean(data) && (!letzte || data.verificationRequired === true));
   return (
-    <div className="adm-card" id="adm-business-evidence">
-      <div className="adm-card-head">{T.title}</div>
-      <div className="adm-card-body">
+    <AdminDisclosureCard
+      id="adm-business-evidence"
+      title={T.title}
+      summary={data ? (letzte
+        ? <span className="badge badge-green">Geprüft</span>
+        : <span className="badge badge-yellow">Noch nicht geprüft</span>) : null}
+      attention={offen}
+    >
         {state.loading && !data ? (
           <div className="loading-center" role="status" aria-live="polite">
             <span className="spinner spinner-dark" /> Wird geladen…
@@ -165,8 +175,7 @@ export function CustomerBusinessEvidenceSection({ userId }) {
               : <p className="adm-support-hint">{evidenceGateHint(data)}</p>}
           </>
         )}
-      </div>
-    </div>
+    </AdminDisclosureCard>
   );
 }
 

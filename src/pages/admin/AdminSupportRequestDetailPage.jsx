@@ -343,20 +343,6 @@ export default function AdminSupportRequestDetailPage() {
         )}
       />
 
-      {/* Scope-Trennung: unmissverständlich, dass Status und Vermerk NICHTS an die
-          Kundschaft senden und nichts an Sendung, Rechnung oder Zahlung ändern.
-          UX-Paket 6: der Weg zur Kundenantwort ist die öffentliche Antwort unten
-          (Nachrichtenverlauf und Glocke des Kunden) — der frühere Satz „Die Antwort
-          erfolgt per E-Mail …" widersprach dem Antwortformular derselben Seite. */}
-      <div className="adm-scope-note" role="note">
-        <div>
-          <strong>Interner Bearbeitungsstand.</strong> Status und Vermerk sind rein organisatorisch.
-          Es wird <strong>keine</strong> Nachricht an den Kunden versendet und <strong>nichts</strong> an
-          Sendungen, Rechnungen oder Zahlungen verändert. Eine Antwort an den Kunden schreiben Sie
-          unter „Öffentlich antworten“.
-        </div>
-      </div>
-
       {saveMsg && (
         <div className={`alert ${alertClass}`}>
           {saveMsg.text}
@@ -387,48 +373,6 @@ export default function AdminSupportRequestDetailPage() {
       )}
 
       <div className="adm-cards">
-        {/* 1) Metadaten des Vorgangs. Titel, Kategorie, Status und Antwortbedarf
-            stehen seit Paket E im gemeinsamen Seitenkopf (oben) — hier stand
-            zuvor ein zweiter Seitentitel mitten auf der Seite. */}
-        <div className="adm-card">
-          <div className="adm-card-body">
-            <KV items={[
-              ["Eingegangen", fmtDateTime(req.createdAt)],
-              ["Zuletzt geändert", fmtDateTime(req.updatedAt)],
-              ["Zuletzt bearbeitet von", handlerName],
-              ["Bearbeitet am", fmtDateTime(req.handledAt)],
-              // Nur bei tatsächlich geschlossenen Anfragen — sonst keine leere Zeile erzwingen.
-              ...(req.closedAt ? [["Geschlossen am", fmtDateTime(req.closedAt)]] : []),
-              ["Revision", missingRevision ? "—" : String(revision)],
-              // Optionale, vorbereitete Zuordnungen: erscheinen ausschließlich, wenn gesetzt.
-              // Es wird keine Platzhalterkarte und keine leere Zeile erzeugt.
-              ...(req.shipmentId != null
-                ? [["Sendung", <Link to={shipmentPath(req.shipmentId)}>Sendung #{req.shipmentId}</Link>]]
-                : []),
-              ...(req.invoiceId != null
-                ? [["Rechnung", <Link to={invoicePath(req.invoiceId)}>Rechnung #{req.invoiceId}</Link>]]
-                : []),
-            ]} />
-          </div>
-        </div>
-
-        {/* 2) Kunde */}
-        <div className="adm-card">
-          <h2 className="adm-card-title">Kunde</h2>
-          <div className="adm-card-body">
-            <KV items={[
-              ["Unternehmen", uid != null && cust.known
-                ? <Link to={`/admin/users/${encodeURIComponent(uid)}`}>{cust.primary}</Link>
-                : cust.primary],
-              ["Ansprechpartner", dash(req.customer?.name)],
-              ["Kundennummer", dash(req.customer?.customerNumber)],
-              ["E-Mail", req.customer?.email
-                ? <a href={`mailto:${req.customer.email}`}>{req.customer.email}</a>
-                : "—"],
-            ]} />
-          </div>
-        </div>
-
         {/* 3) Anfrage — Betreff und Nachricht sind Kundeneingabe und werden als
             REINER Text gerendert (React escaped sie; kein dangerouslySetInnerHTML). */}
         <div className="adm-card">
@@ -504,26 +448,16 @@ export default function AdminSupportRequestDetailPage() {
           </div>
         </div>
 
-        {/* 3b) E-Mail-Zustellung — zwei UNABHÄNGIGE Vorgänge, strikt getrennt dargestellt.
-            Ein Fehler der einen Mail sagt nichts über die andere aus. */}
-        <div className="adm-card">
-          <h2 className="adm-card-title">E-Mail-Zustellung</h2>
-          <div className="adm-card-body">
-            <div className="adm-sup-mailrows">
-              <MailRow label={SUPPORT_MAIL_LABELS.internal} state={req.notifications?.internal} />
-              <MailRow label={SUPPORT_MAIL_LABELS.customerConfirmation} state={req.notifications?.customerConfirmation} />
-            </div>
-            <p className="adm-sup-hint">
-              Beide E-Mails werden unabhängig voneinander versendet. Ein Fehler bei einer der beiden
-              hat die Anfrage nicht verhindert — das Ticket besteht in jedem Fall.
-            </p>
-          </div>
-        </div>
-
         {/* 4) Bearbeitung */}
         <div className="adm-card">
           <h2 className="adm-card-title">Bearbeitung</h2>
           <div className="adm-card-body">
+            {/* Admin-Vereinfachung (2026-11-10): die frühere Hinweisbox über der Seite, gekürzt und dort,
+                wo sie gilt — Status und Vermerk senden nichts an den Kunden und ändern nichts am Vorgang. */}
+            <p className="adm-scope-note adm-scope-note--inline" role="note">
+              <strong>Nur intern:</strong> Status und Vermerk schicken dem Kunden keine Nachricht und ändern nichts an
+              Sendungen, Rechnungen oder Zahlungen. Antworten schreiben Sie oben unter „Öffentlich antworten“.
+            </p>
 
             <label className="adm-label" htmlFor="sup-status">Status</label>
             {statusEditable && statusOptions.length > 0 ? (
@@ -579,6 +513,74 @@ export default function AdminSupportRequestDetailPage() {
             </div>
           </div>
         </div>
+        {/* 2) Kunde */}
+        <div className="adm-card">
+          <h2 className="adm-card-title">Kunde</h2>
+          <div className="adm-card-body">
+            <KV items={[
+              ["Unternehmen", uid != null && cust.known
+                ? <Link to={`/admin/users/${encodeURIComponent(uid)}`}>{cust.primary}</Link>
+                : cust.primary],
+              ["Ansprechpartner", dash(req.customer?.name)],
+              ["Kundennummer", dash(req.customer?.customerNumber)],
+              ["E-Mail", req.customer?.email
+                ? <a href={`mailto:${req.customer.email}`}>{req.customer.email}</a>
+                : "—"],
+            ]} />
+          </div>
+        </div>
+
+        {/* 1) Metadaten des Vorgangs. Titel, Kategorie, Status und Antwortbedarf
+            stehen seit Paket E im gemeinsamen Seitenkopf (oben) — hier stand
+            zuvor ein zweiter Seitentitel mitten auf der Seite. */}
+        <div className="adm-card">
+          <h2 className="adm-card-title">Details</h2>
+          <div className="adm-card-body">
+            <KV items={[
+              ["Eingegangen", fmtDateTime(req.createdAt)],
+              ["Zuletzt geändert", fmtDateTime(req.updatedAt)],
+              ["Zuletzt bearbeitet von", handlerName],
+              ["Bearbeitet am", fmtDateTime(req.handledAt)],
+              // Nur bei tatsächlich geschlossenen Anfragen — sonst keine leere Zeile erzwingen.
+              ...(req.closedAt ? [["Geschlossen am", fmtDateTime(req.closedAt)]] : []),
+              // Optionale, vorbereitete Zuordnungen: erscheinen ausschließlich, wenn gesetzt.
+              // Es wird keine Platzhalterkarte und keine leere Zeile erzeugt.
+              ...(req.shipmentId != null
+                ? [["Sendung", <Link to={shipmentPath(req.shipmentId)}>Sendung #{req.shipmentId}</Link>]]
+                : []),
+              ...(req.invoiceId != null
+                ? [["Rechnung", <Link to={invoicePath(req.invoiceId)}>Rechnung #{req.invoiceId}</Link>]]
+                : []),
+            ]} />
+          </div>
+        </div>
+
+        {/* 3b) E-Mail-Zustellung — zwei UNABHÄNGIGE Vorgänge, strikt getrennt dargestellt.
+            Ein Fehler der einen Mail sagt nichts über die andere aus. */}
+        <div className="adm-card">
+          <h2 className="adm-card-title">E-Mail-Zustellung</h2>
+          <div className="adm-card-body">
+            <div className="adm-sup-mailrows">
+              <MailRow label={SUPPORT_MAIL_LABELS.internal} state={req.notifications?.internal} />
+              <MailRow label={SUPPORT_MAIL_LABELS.customerConfirmation} state={req.notifications?.customerConfirmation} />
+            </div>
+            <p className="adm-sup-hint">
+              Beide E-Mails werden unabhängig voneinander versendet. Ein Fehler bei einer der beiden
+              hat die Anfrage nicht verhindert — das Ticket besteht in jedem Fall.
+            </p>
+          </div>
+        </div>
+
+        {/* Technische Informationen — eingeklappt: die Revision dient nur dem Schutz vor parallelen Änderungen. */}
+        <details className="adm-card adm-tech">
+          <summary className="adm-card-head adm-tech-summary">
+            Technische Informationen
+            <span className="adm-tech-caret" aria-hidden="true" />
+          </summary>
+          <div className="adm-card-body">
+            <KV items={[["Revision", missingRevision ? "—" : String(revision)]]} />
+          </div>
+        </details>
       </div>
     </div>
   );

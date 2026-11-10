@@ -266,6 +266,16 @@ export function amountFields(row) {
   };
 }
 
+// ── Steuersatz als Prozenttext ──────────────────────────────────────────────
+// `vat_rate` ist laut Backendvertrag eine DEZIMALRATE (config/vatConfig.js: 0.19 = 19 %, höchstens
+// 0.25). Bis 2026-11-10 hängte die Detailseite nur „%“ an und zeigte „Umsatzsteuer (0,19 %)“.
+// Ein Wert außerhalb [0, 1] ist keine Rate — dann keine Angabe statt einer falschen Zahl (fail-closed).
+export function vatRatePercentText(rate) {
+  const n = typeof rate === "number" ? rate : Number.NaN;
+  if (!Number.isFinite(n) || n < 0 || n > 1) return null;
+  return `${(n * 100).toLocaleString("de-DE", { maximumFractionDigits: 2 })} %`;
+}
+
 // ── Rechnungsempfänger: historisch vs. aktuell ──────────────────────────────
 // Der Snapshot ist für die Rechnung maßgeblich. Aktuelle Stammdaten dürfen ihn
 // NIE ersetzen — sie erscheinen ausschließlich als getrennt beschrifteter

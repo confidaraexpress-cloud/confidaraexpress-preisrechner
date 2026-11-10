@@ -162,8 +162,13 @@ test.after(async () => {
   if (server) stopDevServer(server, "SIGKILL");
 });
 
+// Admin-Vereinfachung (2026-11-10): die Karte ist eingeklappt (Kurzfassung „N individuell“) und öffnet
+// sich erst bei ungespeicherten Änderungen selbst — der Test öffnet sie wie ein Admin per Klick.
 async function oeffne(page, id = 7) {
   await page.goto(`${BASE}/admin/users/${id}`, { waitUntil: "domcontentloaded" });
+  const kopf = page.locator(`${KARTE} > summary`);
+  await kopf.waitFor({ timeout: 30000 });
+  if (!(await page.locator(KARTE).evaluate((d) => d.open))) await kopf.click();
   await page.locator(`${KARTE} #adm-tarif-input-22`).waitFor({ timeout: 30000 });
 }
 const zeile = (page, key) => page.locator(`${KARTE} .adm-tarif-row[data-product="${key}"]`);
@@ -361,8 +366,7 @@ test("H — Kundenwechsel: Entwürfe und Vergleichsbasis beginnen leer, keine Ve
   await page.locator("#adm-tarif-refresh").click();
   await page.locator(`${KARTE} .adm-tarif-table`).first().waitFor({ timeout: 10000 });
   await page.locator("#adm-tarif-input-85").fill("50");
-  await page.goto(`${BASE}/admin/users/8`, { waitUntil: "domcontentloaded" });
-  await page.locator(`${KARTE} #adm-tarif-input-22`).waitFor({ timeout: 30000 });
+  await oeffne(page, 8);
   assert.equal(await page.locator("#adm-tarif-input-22").inputValue(), "", "Kunde 8 hat keinen Produktsatz");
   assert.equal(await page.locator("#adm-tarif-input-85").inputValue(), "", "der Entwurf von Kunde 7 ist nicht mitgewandert");
   assert.equal(norm(await page.locator("#adm-tarif-dirty").innerText()), "Keine Änderungen");

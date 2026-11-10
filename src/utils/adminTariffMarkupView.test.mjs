@@ -105,7 +105,14 @@ test("Beträge und Unterschiede: Cent vom Server, de-DE, drei Wortlaute, Zustän
   assert.equal(transglobalCellText({ status: "fetch_failed" }), TARIFF_TEXTS.fetchFailed);
   assert.equal(transglobalCellText({ status: "ok", customerNetCents: 1126 }), "11,26 €");
   assert.equal(referenceCellText({ status: "no_reference" }), TARIFF_TEXTS.noReference);
-  assert.equal(referenceCellText({ status: "not_comparable" }), TARIFF_TEXTS.notComparable);
+  assert.equal(referenceCellText({ status: "not_comparable" }), "Nicht vergleichbar", "unbekannter Grund: nie ein Preis");
+  assert.equal(referenceCellText({ status: "not_comparable", reason: "collection_date_mismatch" }), "Abweichender Abholtag");
+  assert.equal(referenceCellText({ status: "not_comparable", reason: "collection_date_missing" }), "Abholtag nicht belegt");
+  assert.equal(referenceCellText({ status: "not_comparable", reason: "delivery_promise_mismatch" }), "Andere Zustellzusage");
+  assert.equal(referenceCellText({ status: "not_comparable", reason: "delivery_promise_unverified" }), "Zustellzusage nicht belegt");
+  assert.equal(referenceCellText({ status: "not_comparable", reason: "collection_date_mismatch", customerNetCents: 2600 }), "Abweichender Abholtag", "ein mitgelieferter Betrag wird nie als Referenzpreis gezeigt");
+  assert.equal(differenceCellText({ transglobal: { status: "ok" }, reference: { status: "not_comparable", reason: "delivery_promise_unverified" }, difference: null }), "Kein belastbarer Vergleich");
+  assert.equal(differenceCellText({ transglobal: { status: "ok" }, reference: { status: "not_comparable", reason: "collection_date_mismatch" }, difference: { cents: 100, percent: 1, verdict: "cheaper" } }), "1,00 € (1,00 %) günstiger", "eine vom Server gelieferte Differenz hat Vorrang");
   assert.equal(differenceCellText({ transglobal: { status: "ok" }, reference: { status: "no_reference" }, difference: null }), TARIFF_TEXTS.noReference);
   assert.equal(differenceCellText({ transglobal: { status: "unavailable" }, reference: { status: "ok" }, difference: null }), "—");
   assert.equal(packageLabel({ weightKg: 1, lengthCm: 20, widthCm: 15, heightCm: 10 }), "1 kg · 20 × 15 × 10 cm");

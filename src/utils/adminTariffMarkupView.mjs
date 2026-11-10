@@ -81,7 +81,13 @@ export const TARIFF_TEXTS = Object.freeze({
   disclaimer: "Beispielpreise für diese Versanddaten – keine Preisgarantie für andere Sendungen.",
   unavailable: "Tarif nicht verfügbar",
   noReference: "Kein vergleichbares Angebot",
-  notComparable: "Kein belastbarer Vergleich (abweichender Abholtag)",
+  // Nicht belastbare Referenz: die JUMiNGO-Spalte nennt den Servergrund, die Unterschiedsspalte das Ergebnis.
+  notComparable: "Kein belastbarer Vergleich",
+  referenceNotComparable: "Nicht vergleichbar",
+  referenceCollectionMismatch: "Abweichender Abholtag",
+  referenceCollectionMissing: "Abholtag nicht belegt",
+  referenceDeliveryMismatch: "Andere Zustellzusage",
+  referenceDeliveryUnverified: "Zustellzusage nicht belegt",
   fetchFailed: "Preise konnten nicht abgerufen werden",
   cheaper: "günstiger",
   moreExpensive: "teurer",
@@ -240,10 +246,21 @@ export function transglobalCellText(cell) {
   if (cell.status === "unavailable") return TARIFF_TEXTS.unavailable;
   return TARIFF_TEXTS.fetchFailed;
 }
+// Wortlaut einer nicht belastbaren Referenz nach ihrem Servergrund (REFERENCE_REASON des Backends) — steht in der
+// JUMiNGO-Spalte; die Unterschiedsspalte sagt dann „Kein belastbarer Vergleich“.
+export function referenceReasonText(reason) {
+  switch (reason) {
+    case "collection_date_mismatch": return TARIFF_TEXTS.referenceCollectionMismatch;
+    case "collection_date_missing": return TARIFF_TEXTS.referenceCollectionMissing;
+    case "delivery_promise_mismatch": return TARIFF_TEXTS.referenceDeliveryMismatch;
+    case "delivery_promise_unverified": return TARIFF_TEXTS.referenceDeliveryUnverified;
+    default: return TARIFF_TEXTS.referenceNotComparable;
+  }
+}
 export function referenceCellText(cell) {
   if (!cell) return TARIFF_TEXTS.fetchFailed;
   if (cell.status === "ok") return formatCents(cell.customerNetCents);
-  if (cell.status === "not_comparable") return TARIFF_TEXTS.notComparable;
+  if (cell.status === "not_comparable") return referenceReasonText(cell.reason);
   if (cell.status === "no_reference") return TARIFF_TEXTS.noReference;
   return TARIFF_TEXTS.fetchFailed;
 }

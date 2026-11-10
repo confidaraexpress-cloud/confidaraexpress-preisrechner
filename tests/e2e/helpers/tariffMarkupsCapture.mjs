@@ -21,6 +21,11 @@ const PRODUKTE = [[22, "UPS Standard", "UPS", "STANDARD"], [23, "UPS Express Sav
 const PAKETE = [{ id: "p1", weightKg: 1, lengthCm: 20, widthCm: 15, heightCm: 10 }, { id: "p5", weightKg: 5, lengthCm: 30, widthCm: 20, heightCm: 20 }, { id: "p15", weightKg: 15, lengthCm: 40, widthCm: 30, heightCm: 30 }, { id: "p20", weightKg: 20, lengthCm: 50, widthCm: 35, heightCm: 30 }, { id: "p30", weightKg: 30, lengthCm: 50, widthCm: 40, heightCm: 35 }];
 const EINKAUF = { 22: 938, 23: 1528, 29: 2551, 84: 2442, 85: 8959, 86: 5235, 87: 3373 };
 const REFERENZ = { 22: 1008, 23: 1690, 84: 2600, 85: 3900 };
+// Zellzustände wie das Backend sie liefert: nicht belastbare Referenzen mit Servergrund, ein nicht verfügbarer Tarif.
+const NICHT_BELASTBAR = { "84:p30": "collection_date_mismatch", "85:p30": "delivery_promise_unverified" };
+const NICHT_VERFUEGBAR = new Set(["86:p30"]);
+// Fehler- und Ladezustände werden über diese Schalter im Mock ausgelöst (nur Mocks, kein Providerkontakt).
+const modus = { put: 0, refresh: 0, preview: 0, verzoegerungMs: 0 };
 const DESTS = ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE"];
 const kn = (c, p) => Math.round(c * (100 + p) / 100);
 const overrides = { 22: 35 };
@@ -43,9 +48,12 @@ function projektion(run, draft) {
     accountMarkup: { standardPercent: 20, expressPercent: 30 },
     scenarios: run.szenarien.map((s) => ({ id: s.id, package: { weightKg: s.weightKg, lengthCm: s.lengthCm, widthCm: s.widthCm, heightCm: s.heightCm }, status: "ok", providers: { transglobal: "success", jumingo: "success" } })),
     products: PRODUKTE.map(([key, label, carrier, klasse]) => { const m = satz(key, draft); return { productKey: key, label, carrier, pricingClass: klasse, markup: m, rows: run.szenarien.map((s) => {
-      const tg = kn(EINKAUF[key], m.percent); const ref = REFERENZ[key] || null;
-      const diff = ref ? { cents: ref - tg, percent: Math.round(Math.abs(ref - tg) / ref * 10000) / 100 * (ref - tg < 0 ? -1 : 1), verdict: ref - tg > 0 ? "cheaper" : ref - tg < 0 ? "more_expensive" : "equal" } : null;
-      return { scenarioId: s.id, transglobal: { status: "ok", customerNetCents: tg, collectionDate: "2026-11-11", availableWithShipmentDetails: true }, reference: { status: ref ? "ok" : "no_reference", customerNetCents: ref, pickupDate: ref ? "2026-11-11" : null }, difference: diff }; }) }; }),
+      const tgOk = !NICHT_VERFUEGBAR.has(`${key}:${s.id}`);
+      const grund = NICHT_BELASTBAR[`${key}:${s.id}`] || null;
+      const tg = tgOk ? kn(EINKAUF[key], m.percent) : null; const ref = grund ? null : REFERENZ[key] || null;
+      const diff = tgOk && ref ? { cents: ref - tg, percent: Math.round(Math.abs(ref - tg) / ref * 10000) / 100 * (ref - tg < 0 ? -1 : 1), verdict: ref - tg > 0 ? "cheaper" : ref - tg < 0 ? "more_expensive" : "equal" } : null;
+      return { scenarioId: s.id, transglobal: { status: tgOk ? "ok" : "unavailable", customerNetCents: tg, collectionDate: "2026-11-11", availableWithShipmentDetails: tgOk },
+        reference: grund ? { status: "not_comparable", reason: grund, customerNetCents: null, pickupDate: "2026-11-12" } : { status: ref ? "ok" : "no_reference", reason: null, customerNetCents: ref, pickupDate: ref ? "2026-11-11" : null }, difference: diff }; }) }; }),
     ageSeconds: 5 };
 }
 
@@ -57,9 +65,17 @@ async function mock(page) {
     if (p.endsWith("/kundenbereich")) return json({ user: ADMIN });
     if (/\/admin\/users\/7$/.test(p)) return json({ user: KUNDE, summary: {} });
     if (/\/price-markup$/.test(p)) return json({ userId: 7, priceMarkupPercent: 20, expressPriceMarkupPercent: 30, effectiveExpressPriceMarkupPercent: 30, expressMarkupUsesFallback: false, confirmed: true, confirmedAt: "2026-09-01T00:00:00.000Z", confirmedBy: 1, updatedAt: "2026-09-01T00:00:00.000Z" });
+    if (/\/tariff-markups$/.test(p) && req.method() === "PUT" && modus.put) return json({ error: "Interner Fehler." }, modus.put);
     if (/\/tariff-markups$/.test(p)) return json(dto());
-    if (/\/tariff-comparison$/.test(p)) { const b = req.postDataJSON(); const run = { id: String(naechste++), kind: b.custom ? "custom" : "standard", land: b.destinationCountry, szenarien: b.custom ? [{ id: "custom", ...b.custom }] : PAKETE }; runs[run.id] = run; return json(projektion(run, null)); }
+    if (/\/tariff-comparison$/.test(p)) {
+      if (modus.verzoegerungMs) await new Promise((r) => setTimeout(r, modus.verzoegerungMs));
+      if (modus.refresh === 429) return json({ error: "Zu viele Anfragen. Bitte später erneut versuchen.", code: "RATE_LIMITED" }, 429);
+      if (modus.refresh) return json({ error: "Interner Fehler." }, modus.refresh);
+      const b = req.postDataJSON(); const run = { id: String(naechste++), kind: b.custom ? "custom" : "standard", land: b.destinationCountry, szenarien: b.custom ? [{ id: "custom", ...b.custom }] : PAKETE }; runs[run.id] = run; return json(projektion(run, null));
+    }
     const m = /\/tariff-comparison\/(\d+)\/preview$/.exec(p);
+    if (m && modus.preview === 409) return json({ error: "Der Kundenaufschlag hat sich seit der Aktualisierung geändert. Bitte die Preise aktualisieren.", code: "COMPARISON_STALE" }, 409);
+    if (m && modus.preview) return json({ error: "Interner Fehler." }, modus.preview);
     if (m) return json(projektion(runs[m[1]], req.postDataJSON().markups));
     if (p.endsWith("/launch-scope")) return json({ countries: DESTS, destinationCountries: DESTS, originCountries: ["DE"] });
     if (p.includes("/notifications")) return json({ notifications: [], unreadCount: 0, snapshotAt: "", pagination: {} });
@@ -98,6 +114,49 @@ try {
     await page.locator("#adm-tarif-details > summary").click();
     await page.waitForTimeout(300);
     await schuss("4-eigenes-paket-details");
+    // Zellzustände: nicht belastbare Referenz mit Grund (84), nicht verfügbarer Tarif (86).
+    await page.locator("#adm-tarif-details > summary").click();
+    await page.locator("#adm-tarif-cmp-84 > summary").click();
+    await page.waitForTimeout(250);
+    await schuss("5-nicht-belastbar");
+    await page.locator("#adm-tarif-cmp-86 > summary").click();
+    await page.waitForTimeout(250);
+    await schuss("6-nicht-verfuegbar");
+    // Fehler beim Speichern (500): Meldung, Entwurf bleibt.
+    modus.put = 500;
+    await page.locator("#adm-tarif-save").click();
+    await karte.locator(".alert-error").waitFor({ timeout: 5000 });
+    await page.waitForTimeout(150);
+    await schuss("7-speichern-fehler");
+    modus.put = 0;
+    // Vorschau abgelehnt (409 COMPARISON_STALE): „Aktualisierung erforderlich“, keine alten Preise.
+    modus.preview = 409;
+    await page.locator("#adm-tarif-input-23").fill("25");
+    await karte.locator(".adm-tarif-cmp .adm-tarif-note--warn").waitFor({ timeout: 5000 });
+    await page.waitForTimeout(150);
+    await schuss("8-vorschau-veraltet");
+    modus.preview = 0;
+    // Ladezustand: verzögerte Antwort, Knopf beschäftigt.
+    modus.verzoegerungMs = 2500;
+    await page.locator("#adm-tarif-refresh").click();
+    await page.locator('#adm-tarif-refresh[aria-busy="true"]').waitFor({ timeout: 3000 });
+    await page.waitForTimeout(300);
+    await schuss("9-laden");
+    // Offen ist weiterhin der Vergleich von 86 – die erste Tabelle im DOM (22) bleibt eingeklappt und damit unsichtbar.
+    await karte.locator("#adm-tarif-cmp-86 .adm-tarif-table").waitFor({ timeout: 15000 });
+    modus.verzoegerungMs = 0;
+    // Fehler beim Preisabruf (500) und Limit (429).
+    modus.refresh = 500;
+    await page.locator("#adm-tarif-refresh").click();
+    await karte.locator('[role="alert"]', { hasText: "Preise konnten nicht abgerufen werden" }).waitFor({ timeout: 5000 });
+    await page.waitForTimeout(150);
+    await schuss("10-abruf-fehler");
+    modus.refresh = 429;
+    await page.locator("#adm-tarif-refresh").click();
+    await karte.locator('[role="alert"]', { hasText: "Zu viele Aktualisierungen" }).waitFor({ timeout: 5000 });
+    await page.waitForTimeout(150);
+    await schuss("11-abruf-limit");
+    modus.refresh = 0;
     bericht.masse[name] = await page.evaluate(() => {
       const el = document.querySelector("#adm-tariff-section");
       const r = el.getBoundingClientRect();

@@ -44,6 +44,8 @@ const PAKETE = [
 // Einkauf je Produkt in Cent (nur im Mock-Server — der Browser sieht nur Kundenpreise).
 const EINKAUF = { 22: 938, 23: 1528, 29: 2551, 84: 2442, 85: 8959, 86: 5235, 87: 3373 };
 const REFERENZ = { 22: 1008, 23: 1690, 84: 2600, 85: 3900 }; // JUMiNGO-Kundenpreise; 29/86/87 ohne Referenz
+// Nicht belastbare Referenzen (Servergrund REFERENCE_REASON): 30-kg-Paket von 84 mit abweichendem Abholtag, von 85 ohne belegte Zustellzusage.
+const NICHT_BELASTBAR = { "84:p30": "collection_date_mismatch", "85:p30": "delivery_promise_unverified" };
 const kundennetto = (cents, percent) => Math.round(cents * (100 + percent) / 100);
 const DESTS = ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE"];
 
@@ -84,10 +86,12 @@ async function setup(page, { overrides = { 7: { 22: 35 }, 8: {} }, konto = { sta
       return { productKey: key, label, carrier, pricingClass: klasse, markup: m, rows: run.szenarien.map((s) => {
         const tgOk = inland || key < 80;
         const tg = tgOk ? kundennetto(EINKAUF[key], m.percent) : null;
-        const ref = REFERENZ[key] && inland ? REFERENZ[key] : null;
+        const grund = inland ? NICHT_BELASTBAR[`${key}:${s.id}`] || null : null;
+        const ref = REFERENZ[key] && inland && !grund ? REFERENZ[key] : null;
         const diff = tgOk && ref ? { cents: ref - tg, percent: Math.round(Math.abs(ref - tg) / ref * 10000) / 100 * (ref - tg < 0 ? -1 : 1), verdict: ref - tg > 0 ? "cheaper" : ref - tg < 0 ? "more_expensive" : "equal" } : null;
         return { scenarioId: s.id, transglobal: { status: tgOk ? "ok" : "unavailable", customerNetCents: tg, collectionDate: "2026-11-11", availableWithShipmentDetails: tgOk },
-          reference: { status: ref ? "ok" : "no_reference", customerNetCents: ref, pickupDate: ref ? "2026-11-11" : null }, difference: diff };
+          reference: grund ? { status: "not_comparable", reason: grund, customerNetCents: null, pickupDate: "2026-11-12" }
+            : { status: ref ? "ok" : "no_reference", reason: null, customerNetCents: ref, pickupDate: ref ? "2026-11-11" : null }, difference: diff };
       }) };
     }),
     ageSeconds: 5,
@@ -106,6 +110,7 @@ async function setup(page, { overrides = { 7: { 22: 35 }, 8: {} }, konto = { sta
     if (m && req.method() === "GET") { state.gets += 1; return json(dto(Number(m[1]))); }
     if (m && req.method() === "PUT") {
       const body = req.postDataJSON(); state.puts.push({ uid: Number(m[1]), body });
+      if (state.putStatus) return json({ error: "Interner Fehler." }, state.putStatus);
       const uid = Number(m[1]); state.overrides[uid] = state.overrides[uid] || {};
       for (const [k, v] of Object.entries(body.markups || {})) { if (v === null) delete state.overrides[uid][k]; else state.overrides[uid][k] = v; }
       return json(dto(uid));
@@ -113,6 +118,8 @@ async function setup(page, { overrides = { 7: { 22: 35 }, 8: {} }, konto = { sta
     m = /\/admin\/users\/(\d+)\/tariff-comparison$/.exec(p);
     if (m && req.method() === "POST") {
       const body = req.postDataJSON(); state.refreshes.push({ uid: Number(m[1]), body });
+      if (state.refreshStatus === 429) return json({ error: "Zu viele Aktualisierungen.", code: "RATE_LIMITED" }, 429);
+      if (state.refreshStatus) return json({ error: "Interner Fehler." }, state.refreshStatus);
       if (body.custom && !(Number(body.custom.weightKg) > 0)) return json({ error: "Bitte Gewicht, Länge, Breite und Höhe des Pakets gültig angeben.", code: "INVALID_CUSTOM_PACKAGE" }, 400);
       const run = { id: String(state.naechste++), uid: Number(m[1]), kind: body.custom ? "custom" : "standard", land: body.destinationCountry, createdAt: "2026-11-10T20:05:00.000Z",
         szenarien: body.custom ? [{ id: "custom", ...body.custom }] : PAKETE };
@@ -122,6 +129,7 @@ async function setup(page, { overrides = { 7: { 22: 35 }, 8: {} }, konto = { sta
     m = /\/admin\/users\/(\d+)\/tariff-comparison\/(\d+)\/preview$/.exec(p);
     if (m && req.method() === "POST") {
       const body = req.postDataJSON(); state.previews.push({ uid: Number(m[1]), runId: m[2], body });
+      if (state.previewStatus) return json({ error: "Interner Fehler." }, state.previewStatus);
       if (state.stale) return json({ error: "Der Kundenaufschlag hat sich seit der Aktualisierung geändert. Bitte die Preise aktualisieren.", code: "COMPARISON_STALE" }, 409);
       const run = state.runs[m[2]];
       if (!run || run.uid !== Number(m[1])) return json({ error: "abgelaufen", code: "COMPARISON_EXPIRED" }, 410);
@@ -395,5 +403,61 @@ test("I — 390 px: kein Querüberlauf, Speichern und Aktualisieren erreichbar, 
   assert.ok(btn && btn.width >= 44 && btn.height >= 44, "Speichern als Touchziel");
   const r = await page.locator("#adm-tarif-refresh").boundingBox();
   assert.ok(r && r.height >= 40);
+  await page.close();
+});
+
+test("J — Fehlerpfade: Speichern 500 → Meldung, Entwurf bleibt; Abruf 500/429 → Wortlaut ohne Tabelle; nicht belastbare Referenz nennt den Grund ohne Preis; Vorschau-Fehler ohne erfundenen Preis", async () => {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 1000 }, ...ORT });
+  const state = await setup(page);
+  await oeffne(page);
+  // Speichern scheitert: genau ein PUT, Fehlermeldung, der Entwurf bleibt erhalten.
+  await page.locator("#adm-tarif-input-23").fill("25");
+  state.putStatus = 500;
+  await page.locator("#adm-tarif-save").click();
+  await page.locator(`${KARTE} .alert-error`).waitFor({ timeout: 5000 });
+  assert.equal(state.puts.length, 1);
+  assert.match(norm(await page.locator(`${KARTE} .alert-error`).innerText()), /Die Tarifaufschläge konnten nicht gespeichert werden/);
+  assert.equal(await page.locator("#adm-tarif-input-23").inputValue(), "25", "der Entwurf bleibt erhalten");
+  assert.equal(norm(await page.locator("#adm-tarif-dirty").innerText()), "● Ungespeicherte Änderung (1)");
+  assert.equal(state.refreshes.length, 0, "kein Providerabruf durch den Fehler");
+  state.putStatus = 0;
+  // Preisabruf scheitert: 500 → allgemeiner Wortlaut, 429 → Limitwortlaut; nie eine Tabelle, nie ein Preis.
+  state.refreshStatus = 500;
+  await page.locator("#adm-tarif-refresh").click();
+  await page.locator(`${KARTE} [role="alert"]`, { hasText: "Preise konnten nicht abgerufen werden. Bitte erneut versuchen." }).waitFor({ timeout: 5000 });
+  assert.equal(await page.locator(`${KARTE} .adm-tarif-table`).count(), 0);
+  assert.equal(await page.locator("#adm-tarif-refresh").getAttribute("aria-busy"), null, "Knopf wieder frei");
+  state.refreshStatus = 429;
+  await page.locator("#adm-tarif-refresh").click();
+  await page.locator(`${KARTE} [role="alert"]`, { hasText: "Zu viele Aktualisierungen in kurzer Zeit." }).waitFor({ timeout: 5000 });
+  assert.equal(await page.locator(`${KARTE} .adm-tarif-table`).count(), 0);
+  assert.equal(state.refreshes.length, 2);
+  // Danach gelingt der Abruf; die Fehlermeldung verschwindet.
+  state.refreshStatus = 0;
+  await page.locator("#adm-tarif-refresh").click();
+  await page.locator(`${KARTE} .adm-tarif-table`).first().waitFor({ timeout: 10000 });
+  assert.equal(await page.locator(`${KARTE} .alert-error`).count(), 0, "keine alte Fehlermeldung");
+  // Nicht belastbare Referenzen nennen den Servergrund – ohne Referenzpreis und ohne Unterschied.
+  const zellen = async (key) => zeile(page, key).locator("tbody tr").evaluateAll((trs) => trs.map((tr) => [...tr.querySelectorAll("td")].map((td) => td.innerText.replace(/\s+/g, " ").trim())));
+  await page.locator("#adm-tarif-cmp-84 > summary").click();
+  const z84 = await zellen(84);
+  assert.equal(z84[0][2], "26,00 €", "die ersten Pakete haben eine Referenz");
+  assert.equal(z84[4][0], "30 kg · 50 × 40 × 35 cm");
+  assert.equal(z84[4][2], "Abweichender Abholtag", "die JUMiNGO-Spalte nennt den Grund – nie einen Preis");
+  assert.equal(z84[4][3], "Kein belastbarer Vergleich");
+  await page.locator("#adm-tarif-cmp-85 > summary").click();
+  const z85 = await zellen(85);
+  assert.equal(z85[4][2], "Zustellzusage nicht belegt");
+  assert.equal(z85[4][3], "Kein belastbarer Vergleich");
+  // Vorschau scheitert (500): Fehlermeldung, die Tabelle zeigt weiter die gespeicherten Sätze, kein erfundener Vorschaupreis.
+  state.previewStatus = 500;
+  await page.locator("#adm-tarif-cmp-22 > summary").click();
+  await page.locator("#adm-tarif-input-22").fill("40");
+  await page.locator(`${KARTE} [role="alert"]`, { hasText: "Preise konnten nicht abgerufen werden. Bitte erneut versuchen." }).waitFor({ timeout: 5000 });
+  assert.ok(state.previews.length >= 1, "die Vorschau wurde angefragt");
+  const z22 = await zellen(22);
+  assert.equal(z22[0][1], "12,66 €", "gespeicherter Satz 35 %, kein Vorschaupreis mit 40 %");
+  assert.doesNotMatch(norm(await zeile(page, 22).innerText()), /Vorschau mit den eingegebenen Sätzen/);
+  assert.equal(state.refreshes.length, 3, "kein Providerabruf durch den Vorschaufehler");
   await page.close();
 });

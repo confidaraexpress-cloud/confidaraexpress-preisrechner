@@ -4,7 +4,7 @@ import {
   refreshAdminTariffComparison, previewAdminTariffComparison,
 } from "../../api/adminApi";
 import { countries } from "../../utils/countries";
-import { AdminSubDisclosure } from "./AdminDisclosureCard";
+import { AdminDisclosureCard, AdminSubDisclosure } from "./AdminDisclosureCard";
 import {
   TARIFF_TEXTS as T, selectTariffMarkups, draftsFromProducts, tariffDraftChanges, buildTariffMarkupsBody,
   parseTariffInput, effectiveForRow, effectiveLine, tariffSaveError, selectComparison, comparisonBaseStatus,
@@ -280,13 +280,16 @@ export function CustomerTariffMarkupSection({ userId, pricing }) {
     </dl>
   ) : <p className="adm-tarif-note">{T.noBase}</p>;
 
+  // Admin-Vereinfachung (2026-11-10): eingeklappt mit Kurzfassung (Zahl der individuellen Sätze) —
+  // ungespeicherte Änderungen öffnen den Bereich. Inhalt und Abläufe sind unverändert.
   return (
-    <div className="adm-card adm-tarif" id={TARIFF_SECTION_ID}>
-      <div className="adm-card-head">
-        {T.sectionTitle}
-        {data && <span className="badge adm-card-head-action adm-tarif-badge">{individuell} {T.individual}</span>}
-      </div>
-      <div className="adm-card-body">
+    <AdminDisclosureCard
+      id={TARIFF_SECTION_ID}
+      className="adm-tarif"
+      title={T.sectionTitle}
+      summary={data ? <span className="badge adm-tarif-badge">{individuell} {T.individual}</span> : null}
+      attention={aenderungen.count > 0}
+    >
         {state.loading ? (
           <div className="loading-center" role="status" aria-live="polite"><span className="spinner spinner-dark" /> {T.loading}</div>
         ) : state.error ? (
@@ -416,8 +419,7 @@ export function CustomerTariffMarkupSection({ userId, pricing }) {
             </section>
           </>
         )}
-      </div>
-    </div>
+    </AdminDisclosureCard>
   );
 }
 

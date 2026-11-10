@@ -30,6 +30,7 @@ import {
   SUCCESS_TEXT,
   activeInvoiceFilterChips,
   amountFields,
+  vatRatePercentText,
   currentAccount,
   customerCell,
   documentOutcomeMessage,
@@ -430,8 +431,11 @@ test("18 — nur belegte Backend-Filter; keine erfundene Suche", () => {
   // Kunden-ID: numerisch, und als technischer Filter nachgeordnet.
   assert.equal(validateInvoiceFilters({ user_id: "abc" }).valid, false);
   assert.equal(validateInvoiceFilters({ user_id: "42" }).valid, true);
-  assert.match(listSrc, /<details className="adm-filter-adv">/);
-  assert.match(listSrc, /Technischer Filter/);
+  // Admin-Vereinfachung (2026-11-10): „Weitere Filter“, offen nur bei einer manuell gesetzten Kunden-ID;
+  // der einfache Weg ist „Rechnungen ansehen“ im Kundendetail (vorgefiltert über ?kunde=).
+  assert.ok(listSrc.includes('<details className="adm-filter-adv" open={Boolean(draft.user_id) && !kundeName}>'), "Weitere Filter eingeklappt");
+  assert.match(listSrc, /Weitere Filter/);
+  assert.match(listSrc, /Rechnungen ansehen/);
 });
 
 test("19 — aktive Filter sind sichtbar und zurücksetzbar; kein Doppel-Request", () => {
@@ -648,4 +652,15 @@ test("Auftrag 1 A — „Rechnungsdokument erzeugen“ sagt die Wahrheit über d
   // Die Logik bleibt: derselbe Aufruf, derselbe Ergebnis- und Schließpfad.
   assert.match(detailSrc, /const r = await generateAdminInvoiceDocument\(id\);/);
   assert.match(detailSrc, /setDocMsg\(documentOutcomeMessage\(d\.outcome\)\);/);
+});
+
+test("Steuersatz: die gespeicherte Dezimalrate erscheint als Prozent, nie als „0,19 %“ (Admin-Vereinfachung 2026-11-10)", () => {
+  assert.equal(vatRatePercentText(0.19), "19 %");
+  assert.equal(vatRatePercentText(0.07), "7 %");
+  assert.equal(vatRatePercentText(0.165), "16,5 %");
+  assert.equal(vatRatePercentText(0), "0 %");
+  // Kein Ratenwert (alter Prozentwert, Unsinn, fehlend): keine Angabe statt einer falschen Zahl.
+  for (const v of [19, 1.19, -0.1, null, undefined, NaN, "0.19"]) assert.equal(vatRatePercentText(v), null, String(v));
+  assert.match(detailSrc, /vatRatePercentText\(amounts\.vatRate\)/);
+  assert.doesNotMatch(detailSrc, /String\(amounts\.vatRate\)/, "die Rate wird nicht mehr roh mit % angezeigt");
 });

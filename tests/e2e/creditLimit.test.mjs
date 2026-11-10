@@ -206,7 +206,7 @@ test("C — Admin-Kundendetail: Werte, Eingangsprüfung ohne Request, gültige �
   assert.match(nach, /Verfügbar 2\.950,50 €/);
   assert.match(nach, /Buchungsrahmen auf 3\.500,50 € gesetzt/);
   assert.equal(await input.inputValue(), "3500,50", "das Feld zeigt den Serverwert");
-  assert.equal(await sektion.getByRole("link", { name: "Änderungsverlauf im Audit-Log" }).getAttribute("href"),
+  assert.equal(await sektion.getByRole("link", { name: "Änderungsverlauf im Protokoll" }).getAttribute("href"),
     "/admin/audit-logs?action=user.credit_limit_change&target_user_id=7");
   assert.deepEqual(fehler, []);
   await page.close();

@@ -117,38 +117,41 @@ test("1 — der aktive Navigationseintrag ist mehrfach codiert", async () => {
   assert.notEqual(stil.color, inaktiv.color, "der aktive Eintrag hat keine eigene Textfarbe");
   assert.notEqual(stil.weight, inaktiv.weight, "der aktive Eintrag hat keinen eigenen Schriftschnitt");
   assert.equal(stil.current, "page", "der aktive Eintrag ist nicht semantisch als aktuelle Seite markiert");
-  // Reine Textnavigation: kein Symbol in der Sidebar. Die Marke ist die
-  // Originalkomposition als <img>, kein Inline-SVG.
-  assert.equal(await page.locator(".adm-side svg").count(), 0,
-    "die Adminnavigation trägt wieder Symbole");
+  // Admin-Vereinfachung (2026-11-10): je Eintrag genau ein dekoratives Symbol vor dem Text (eigenes
+  // Icon-System, aria-hidden); der Zustand bleibt mehrfach codiert. Die Marke ist weiter ein <img>.
+  const eintraege = await page.locator(".adm-nitem").count();
+  assert.equal(await page.locator(".adm-nitem .adm-nitem-icon svg").count(), eintraege, "ein Eintrag ohne Symbol");
+  assert.equal(await page.locator(".adm-side svg").count(), eintraege, "Symbole außerhalb der Einträge");
+  assert.equal(await page.locator(".adm-nitem-icon[aria-hidden='true']").count(), eintraege, "Symbol nicht dekorativ");
   await page.close();
 });
 
-test("1b — die Navigation ist nach Aufgaben gruppiert; jedes bisherige Ziel bleibt genau einmal erreichbar (UX-Paket 2)", async () => {
+test("1b — die Navigation: Hauptbereiche oben, zwei Gruppen, jedes Ziel genau einmal (Admin-Vereinfachung 2026-11-10)", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await setupRoutes(page);
   await page.goto(`${BASE}/admin/invoices/backfill`, { waitUntil: "networkidle" });
   const nav = page.locator(".adm-nav");
   await nav.waitFor({ state: "visible" });
 
-  // Vier benannte Gruppen (für Screenreader über aria-labelledby), Übersicht davor.
+  // Zwei benannte Gruppen (für Screenreader über aria-labelledby), davor Übersicht, Kunden, Sendungen, Rechnungen.
   const gruppen = await nav.locator('[role="group"]').evaluateAll((els) => els.map((g) => ({
     name: document.getElementById(g.getAttribute("aria-labelledby"))?.textContent.trim(),
     links: [...g.querySelectorAll("a")].map((a) => [a.textContent.trim(), a.getAttribute("href")]),
   })));
   assert.deepEqual(gruppen, [
-    { name: "Kunden und Partner", links: [["Kunden", "/admin/users"], ["Vertriebspartner", "/admin/partners"]] },
-    { name: "Versand und Rechnungen", links: [["Sendungen", "/admin/shipments"], ["Rechnungen", "/admin/invoices"]] },
-    { name: "Support und Bearbeitung", links: [["Supportanfragen", "/admin/support-requests"],
-      ["Stornierungsanfragen", "/admin/cancellation-requests"], ["Buchungsklärung", "/admin/reconciliation"]] },
-    { name: "Verwaltung und Protokoll", links: [["Interne Vorschau-PDFs", "/admin/invoices/backfill"], ["Protokoll", "/admin/audit-logs"]] },
+    { name: "Zu erledigen", links: [["Supportanfragen", "/admin/support-requests"],
+      ["Stornierungsanfragen", "/admin/cancellation-requests"], ["Buchungsklärung", "/admin/reconciliation"],
+      ["Sammelrechnungsanträge", "/admin/billing-mode-requests"]] },
+    { name: "Vertrieb und Verwaltung", links: [["Vertriebspartner", "/admin/partners"], ["Preisrechner", "/admin/public-calculator"],
+      ["Vorschau-PDFs", "/admin/invoices/backfill"], ["Protokoll", "/admin/audit-logs"]] },
   ]);
   const alle = await nav.locator("a").evaluateAll((els) => els.map((a) => a.getAttribute("href")));
-  assert.deepEqual([...alle].sort(), ["/admin", "/admin/audit-logs", "/admin/cancellation-requests", "/admin/invoices",
-    "/admin/invoices/backfill", "/admin/partners", "/admin/reconciliation", "/admin/shipments",
-    "/admin/support-requests", "/admin/users"], "ein Ziel fehlt oder ist doppelt");
+  assert.deepEqual(alle.slice(0, 4), ["/admin", "/admin/users", "/admin/shipments", "/admin/invoices"], "Hauptbereiche nicht oben");
+  assert.deepEqual([...alle].sort(), ["/admin", "/admin/audit-logs", "/admin/billing-mode-requests", "/admin/cancellation-requests",
+    "/admin/invoices", "/admin/invoices/backfill", "/admin/partners", "/admin/public-calculator", "/admin/reconciliation",
+    "/admin/shipments", "/admin/support-requests", "/admin/users"], "ein Ziel fehlt oder ist doppelt");
   // Auf der Vorschau-PDF-Seite ist genau ihr Eintrag aktiv — nicht zusätzlich „Rechnungen".
-  assert.deepEqual(await page.locator(".adm-nitem-on").allInnerTexts(), ["Interne Vorschau-PDFs"]);
+  assert.deepEqual(await page.locator(".adm-nitem-on").allInnerTexts(), ["Vorschau-PDFs"]);
   await page.close();
 });
 

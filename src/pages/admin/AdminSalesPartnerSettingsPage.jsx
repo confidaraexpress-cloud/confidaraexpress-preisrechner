@@ -172,7 +172,7 @@ export default function AdminSalesPartnerSettingsPage() {
       <PageHeader
         variant="admin"
         title={<>Einstellungen Vertriebspartner</>}
-        subtitle={<>Globale Level-Regeln und Obergrenzen. Änderungen gelten als neue Version ab dem gewählten Tag und werden protokolliert.</>}
+        subtitle={<>Level-Regeln und Obergrenzen für alle Partner. Änderungen gelten ab dem gewählten Tag als neue Version.</>}
       />
       <SalesPartnerAdminNav prelive={prelive} />
 

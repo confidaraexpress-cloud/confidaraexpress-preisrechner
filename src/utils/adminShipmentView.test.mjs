@@ -447,7 +447,8 @@ test("22 — Kennungen bleiben maskiert, Adressdaten unverändert geschützt", (
   assert.equal(/masked_jumingo|maskTail/.test(listSrc), false, "die Liste braucht keine Kennungen mehr");
   // Die bestehende Adress-/Labelkarte bleibt unangetastet.
   assert.match(detailSrc, /Adressdaten/);
-  assert.match(detailSrc, /Support-Aktionen/);
+  // Admin-Vereinfachung (2026-11-10): die frühere Karte „Support-Aktionen“ heißt nach ihrem Inhalt.
+  assert.match(detailSrc, /Label und Sendungsverfolgung/);
 });
 
 // ═══ G) Tracking: drei getrennte Zustände ════════════════════════════════════

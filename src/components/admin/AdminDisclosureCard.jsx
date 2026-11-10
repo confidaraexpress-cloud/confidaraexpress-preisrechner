@@ -12,11 +12,13 @@ import React, { useEffect, useState } from "react";
    der Bereich von selbst; schließen kann der Admin ihn jederzeit. Der
    Klappzustand ist ein Wert dieser Komponente — Neuladen der Daten setzt ihn
    nicht zurück. */
-export function AdminDisclosureCard({ id, title, summary = null, attention = false, children }) {
-  const [open, setOpen] = useState(attention === true);
+// Admin-Vereinfachung (2026-11-10): `className` ergänzt die Kartenklasse (bestehende Stile wie
+// `.adm-tarif` gelten weiter), `defaultOpen` öffnet den Bereich beim ersten Anzeigen.
+export function AdminDisclosureCard({ id, title, summary = null, attention = false, defaultOpen = false, className = "", children }) {
+  const [open, setOpen] = useState(attention === true || defaultOpen === true);
   useEffect(() => { if (attention === true) setOpen(true); }, [attention]);
   return (
-    <details id={id} className="adm-card adm-disclosure" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+    <details id={id} className={`adm-card adm-disclosure${className ? ` ${className}` : ""}`} open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary className="adm-card-head adm-disclosure-head">
         <span className="adm-disclosure-text">
           <span className="adm-disclosure-title">{title}</span>

@@ -112,9 +112,9 @@ test("operationsViews liest nur queues und diagnostics — ein Backend ohne Endp
   assert.equal(operationsViews(null).generatedAt, null);
 });
 
-test("INTERNAL-01: `label_missing` behauptet keinen Mangel beim Anbieter — es zählt „kein Label in CE“", () => {
+test("INTERNAL-01: `label_missing` behauptet keinen Mangel beim Anbieter — es zählt „noch nicht gespeichert“", () => {
   const q = def("label_missing");
-  assert.equal(q.label, "Versandlabel nicht in CE");
+  assert.equal(q.label, "Versandlabel noch nicht gespeichert");
   assert.match(q.hint, /nicht abgerufen/);
   assert.match(q.hint, /nicht bereit/);
   assert.match(q.hint, /Abruf gescheitert/);

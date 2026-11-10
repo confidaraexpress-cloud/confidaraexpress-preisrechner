@@ -412,7 +412,7 @@ for (const [breite, hoehe] of [[1440, 900], [390, 844]]) {
     assert.match(await storno.textContent(), /Ältester Fall:/);
     // Queues mit 0 sind keine Karte, sondern stehen in „Keine offenen Fälle".
     assert.equal(await page.locator('#adm-todo [data-queue="label_missing"]').count(), 0);
-    assert.match(await page.locator("#adm-todo-done").textContent(), /Versandlabel nicht in CE/);
+    assert.match(await page.locator("#adm-todo-done").textContent(), /Versandlabel noch nicht gespeichert/);
     // Diagnosen: eingeklappt, aber mit Kurzfassung — und weiterhin ohne behaupteten Beginn.
     const diag = page.locator("#adm-diag");
     assert.equal(await diag.evaluate((el) => el.open), false, "die Diagnosen sind nicht eingeklappt");
@@ -536,7 +536,7 @@ test("390px: gesperrt ohne offenen Versuch und Altbestand — Hinweise ohne Frei
 
 console.log("\nINTERNAL-01 — Versandlabel: was CE weiß, nicht was beim Anbieter „fehlt“\n");
 
-test("außerhalb von CE zugestellt: Zustand und Hinweis sagen dasselbe — kein „fehlt“, kein „noch nicht verfügbar“", async () => {
+test("außerhalb des Systems zugestellt: Zustand und Hinweis sagen dasselbe — kein „fehlt“, kein „noch nicht verfügbar“", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await setupRoutes(page, {
     shipment: SHIPMENT(OPERATIONS({
@@ -547,16 +547,16 @@ test("außerhalb von CE zugestellt: Zustand und Hinweis sagen dasselbe — kein 
   await page.goto(`${BASE}/admin/shipments/77`, { waitUntil: "networkidle" });
   const zustand = page.locator("#adm-ship-ops-label");
   await zustand.waitFor({ state: "visible" });
-  assert.equal((await zustand.textContent()).trim(), "Außerhalb von CE zugestellt");
+  assert.equal((await zustand.textContent()).trim(), "Außerhalb des Systems zugestellt");
   const hinweis = (await page.locator("#adm-label-hint").textContent()).trim();
-  assert.match(hinweis, /außerhalb von CE zugestellt \(Buchungsklärung\) — in CE liegt keine Datei/);
+  assert.match(hinweis, /außerhalb des Systems zugestellt \(Buchungsklärung\) — hier liegt keine Datei/);
   const seite = await page.locator("body").textContent();
   assert.doesNotMatch(seite, /Label fehlt|Label für diese Sendung noch nicht verfügbar/,
     "eine alte Mangelaussage ist stehen geblieben");
   await page.close();
 });
 
-test("390px: ein gescheiterter Abruf nennt Zeitpunkt und kurzen Code — die Queue heißt „Versandlabel nicht in CE“", async () => {
+test("390px: ein gescheiterter Abruf nennt Zeitpunkt und kurzen Code — die Queue heißt „Versandlabel noch nicht gespeichert“", async () => {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await setupRoutes(page, {
     queues: { ...QUEUES, queues: { ...QUEUES.queues,
@@ -583,7 +583,7 @@ test("390px: ein gescheiterter Abruf nennt Zeitpunkt und kurzen Code — die Que
   const queue = page.locator('.adm-ops-item[data-queue="label_missing"]');
   await queue.locator(".adm-ops-count").filter({ hasText: "2" }).waitFor({ state: "visible" });
   const qText = await queue.textContent();
-  assert.match(qText, /Versandlabel nicht in CE/);
+  assert.match(qText, /Versandlabel noch nicht gespeichert/);
   assert.doesNotMatch(qText, /fehlt/);
   assert.equal(await queue.getByRole("link", { name: "Ältesten Fall öffnen" }).getAttribute("href"), "/admin/shipments/77");
   await keinUeberlauf(page, "Übersicht 390px Label");

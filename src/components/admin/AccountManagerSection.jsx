@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { getAdminUserAccountManager, setAdminUserAccountManager } from "../../api/adminApi";
 import { dtDE } from "../../utils/formatters";
+import { AdminInfoTip } from "./AdminInfoTip";
 import {
   AM_ADMIN_TEXT as T, reasonText, saveOutcome, selectAdminAccountManager,
 } from "../../utils/adminAccountManagerView.mjs";
@@ -79,7 +80,11 @@ export function AccountManagerSection({ userId, refreshKey }) {
     <div className="adm-card" id={ACCOUNT_MANAGER_SECTION_ID}>
       {/* Zustand doppelt codiert: als Text im Kartenkopf und als Auswahlstellung — nie allein farblich. */}
       <div className="adm-card-head">
-        {T.title}
+        <span>
+          {T.title}
+          {/* Admin-Vereinfachung (2026-11-10): Erklärung als Hilfesymbol statt Absatz unter dem Feld. */}
+          <AdminInfoTip label="Ansprechpartner">{T.hint}</AdminInfoTip>
+        </span>
         {data && data.applicable && (
           <span className="badge badge--neutral adm-card-head-action">{data.current ? data.current.name : T.unassigned}</span>
         )}
@@ -118,7 +123,6 @@ export function AccountManagerSection({ userId, refreshKey }) {
               <div className="adm-kv-item"><dt>{T.since}</dt><dd>{data.assignedAt ? dtDE(data.assignedAt) : "—"}</dd></div>
               <div className="adm-kv-item"><dt>{T.nextAutomatic}</dt><dd>{data.nextAutomatic ? data.nextAutomatic.name : "—"}</dd></div>
             </dl>
-            <p className="field-hint mt-8">{T.hint}</p>
             <div className="mt-8">
               <button id={ACCOUNT_MANAGER_SAVE_ID} type="submit" className="btn btn-primary btn-sm" disabled={busy || !geaendert}>
                 {busy ? T.saving : T.save}

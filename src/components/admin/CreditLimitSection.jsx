@@ -5,6 +5,7 @@ import {
   creditFacts, selectCredit, parseCreditLimitInput, creditLimitInputValue, CREDIT_ADMIN_TEXT,
 } from "../../utils/creditLimitView.mjs";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { AdminInfoTip } from "./AdminInfoTip";
 
 // ───────────────────────────────────────────────────────�
 // Sektion „Buchungsrahmen" in der Admin-Kundendetailansicht (Paket F, 2026-10-23;
@@ -55,7 +56,11 @@ export function CreditLimitSection({
     <div className="adm-card" id={CREDIT_LIMIT_SECTION_ID}>
       {/* Der Zustand steht doppelt codiert da: als Wort im Kartenkopf und in den Zahlen — nie allein farblich. */}
       <div className="adm-card-head">
-        {CREDIT_ADMIN_TEXT.title}
+        <span>
+          {CREDIT_ADMIN_TEXT.title}
+          {/* Admin-Vereinfachung (2026-11-10): die Erklärung der Belastung als Hilfesymbol statt Hinweisbox. */}
+          <AdminInfoTip label="Wie der Buchungsrahmen belastet wird">{CREDIT_ADMIN_TEXT.note}</AdminInfoTip>
+        </span>
         <span className={`badge ${f.exhausted ? "badge--warning" : "badge--neutral"} adm-card-head-action`}>
           {f.exhausted ? CREDIT_ADMIN_TEXT.exhaustedBadge : CREDIT_ADMIN_TEXT.availableBadge(c.available)}
         </span>
@@ -91,9 +96,6 @@ export function CreditLimitSection({
             <p className="field-error mt-8" id={`${CREDIT_LIMIT_INPUT_ID}-error`} role="alert">{inputError}</p>
           )}
         </form>
-        <div className="adm-note mt-8">
-          <span>{CREDIT_ADMIN_TEXT.note}</span>
-        </div>
         {/* Verlauf: jede Änderung ist mit Vorher/Nachher auditiert — der Link öffnet das Audit-Log
             vorgefiltert auf dieses Konto und diese Aktion. */}
         {userId != null && (

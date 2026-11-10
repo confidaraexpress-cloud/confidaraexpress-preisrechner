@@ -229,7 +229,7 @@ export function accountStatusCopy(status) {
     case "approved":
       return {
         title: "Kunde ist freigeschaltet",
-        description: "Dieser Kunde ist freigeschaltet und kann ConfidaraExpress nutzen.",
+        description: "Kann ConfidaraExpress nutzen und Sendungen buchen.",
         hint: "",
         actionLabel: "Kunde blockieren",
         actionKind: "block",
@@ -237,7 +237,7 @@ export function accountStatusCopy(status) {
     case "blocked":
       return {
         title: "Kunde reaktivieren",
-        description: "Dieser Kunde ist blockiert und kann derzeit keine neuen Sendungen buchen.",
+        description: "Gesperrt — kann derzeit keine neuen Sendungen buchen.",
         hint: "Vor der Reaktivierung muss ein individueller Kundenaufschlag bestätigt sein.",
         actionLabel: "Kunde reaktivieren",
         actionKind: "approve",
@@ -245,7 +245,7 @@ export function accountStatusCopy(status) {
     case "pending":
       return {
         title: "Kunde freischalten",
-        description: "Dieser Kunde wartet auf die Freischaltung und kann ConfidaraExpress noch nicht nutzen.",
+        description: "Wartet auf die Freischaltung und kann noch nicht buchen.",
         hint: "Vor der Freischaltung muss ein individueller Kundenaufschlag bestätigt sein.",
         actionLabel: "Kunde freischalten",
         actionKind: "approve",

@@ -376,7 +376,7 @@ test("2 — Freigabe eines Antrags: Pflichtfeld Grundprovision, Vertragsbody, ne
   // UX-Paket 4: „Codes und Links“ ist eingeklappt; der Code steht im Kopf, ausgeklappt mit Kopierfeld.
   assert.match(await page.locator("#adm-sp-codes-card > summary").innerText(), /Empfehlungscode ABCD2345/);
   await bereich(page, "adm-sp-codes-card");
-  assert.match(await page.locator("#adm-sp-codes-card .adm-kv").innerText(), /ABCD2345/);
+  assert.match(await page.locator("#adm-sp-codes-card .adm-card-body").innerText(), /ABCD2345/);
 
   await page.locator("#adm-sp-approve").click();
   await page.locator('[role="dialog"]').waitFor({ state: "visible" });
@@ -496,10 +496,19 @@ test("4 — Einstellungen: Startwerte des Servers vorbelegt (nur speichern); ohn
   await ohne.close();
 });
 
+// Die Zuordnungskarte im Kundendetail ist seit der Admin-Vereinfachung (2026-11-10) eingeklappt.
+async function zuordnungOeffnen(page) {
+  const kopf = page.locator("#adm-sp-attribution > summary");
+  await kopf.waitFor();
+  if (!(await page.locator("#adm-sp-attribution").evaluate((d) => d.open))) await kopf.click();
+}
+
 test("5 — Kundendetail: die Zuordnungskarte lädt selbständig", async () => {
   const page = await browser.newPage();
   await setup(page);
   await page.goto(`${BASE}/admin/users/7`, { waitUntil: "networkidle" });
+  // Admin-Vereinfachung (2026-11-10): eingeklappt, der Kopf nennt den Partner; geöffnet wie ein Admin per Klick.
+  await zuordnungOeffnen(page);
   await page.locator("#adm-sp-attribution-current").waitFor({ state: "visible" });
   assert.match(await page.locator("#adm-sp-attribution").innerText(), /Sam Sponsor/);
   assert.match(await page.locator("#adm-sp-attribution").innerText(), /Empfehlungslink/);
@@ -695,6 +704,7 @@ test("10 — Pre-Live: Zuordnung Testkunde ↔ Testpartner zurückliegend; Misch
   // Testkunde (UX-Paket 1): das Kundendetail wirkt nicht wie ein echtes Konto.
   await page.locator("#adm-user-test-badge").waitFor({ state: "visible" });
   assert.equal(await page.locator("#adm-user-test-badge").innerText(), "TEST / PRE-LIVE");
+  await zuordnungOeffnen(page);
   await page.locator("#adm-sp-attribution-change").click();
   await page.locator('#adm-sp-attribution-partner option[value="41"]').waitFor({ state: "attached" });
   assert.match(await page.locator('#adm-sp-attribution-partner option[value="41"]').innerText(), /Test Vertrieb A – Test/);

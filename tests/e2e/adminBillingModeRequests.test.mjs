@@ -244,7 +244,7 @@ test("A5 — Übersicht: „Sammelrechnungsanträge“ unter „Zu erledigen“ 
   await page.close();
 });
 
-test("A6 — Protokoll: Genehmigung und Ablehnung tragen ihre Beschriftung (der Rohwert steht nur als Zweitzeile)", async () => {
+test("A6 — Protokoll: Genehmigung und Ablehnung tragen ihre Beschriftung (der Rohwert steht nur im Tooltip)", async () => {
   const { page, fehler } = await seite();
   await adminRoutes(page);
   await page.goto(`${BASE}/admin/audit-logs?target_user_id=7`, { waitUntil: "networkidle" });
@@ -252,8 +252,10 @@ test("A6 — Protokoll: Genehmigung und Ablehnung tragen ihre Beschriftung (der 
   const tabelle = norm(await page.locator(".adm-audit-table").innerText());
   assert.match(tabelle, /Sammelrechnungsantrag genehmigt/);
   assert.match(tabelle, /Sammelrechnungsantrag abgelehnt/);
-  // Unbekannte Aktionen stünden nur als Rohwert da; hier steht die Beschriftung vor dem Code.
-  assert.match(tabelle, /Sammelrechnungsantrag genehmigt billing_mode_request\.approved/);
+  // Admin-Vereinfachung (2026-11-10): der technische Aktionsname steht nur noch im Tooltip der Beschriftung.
+  assert.doesNotMatch(tabelle, /billing_mode_request\.approved/);
+  assert.equal(await page.locator(".adm-audit-table .adm-action", { hasText: "Sammelrechnungsantrag genehmigt" }).first().getAttribute("title"),
+    "billing_mode_request.approved");
   assert.deepEqual(fehler, []);
   await page.close();
 });

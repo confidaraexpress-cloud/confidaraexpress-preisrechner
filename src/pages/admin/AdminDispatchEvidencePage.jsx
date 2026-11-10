@@ -206,7 +206,7 @@ export default function AdminDispatchEvidencePage() {
       <PageHeader
         variant="admin"
         title={<>Versandnachweise</>}
-        subtitle={<>Gebuchte Sendungen von Kunden mit Partnerzuordnung, deren Versand noch nicht belegt ist. Ohne den Nachweis „Versendet“ entsteht keine Provision.</>}
+        subtitle={<>Sendungen von Partnerkunden ohne Versandnachweis. Ohne den Nachweis „Versendet“ entsteht keine Provision.</>}
         actions={<button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>Aktualisieren</button>}
       />
       <SalesPartnerAdminNav prelive={prelive} />

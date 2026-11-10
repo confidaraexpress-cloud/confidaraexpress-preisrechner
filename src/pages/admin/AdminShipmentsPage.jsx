@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { AdminInfoTip } from "../../components/admin/AdminInfoTip";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import {
@@ -123,9 +124,11 @@ function ShippingCell({ row }) {
   const line = shipmentRouteLine(row);
   return (
     <div className="adm-ship-way">
+      {/* Ohne gewählten Versanddienstleister (Entwurf) genau ein Hinweis — vorher stand dort zweimal
+          „noch nicht gewählt“ (Versanddienstleister und Versandart). */}
       <span className="adm-ship-carrier">
-        {f.carrier ? resolveCarrierName(f.carrier) : "Carrier noch nicht gewählt"}
-        <span className="adm-ship-mode"> · {shippingModeLabel(row)}</span>
+        {f.carrier ? resolveCarrierName(f.carrier) : "Versand noch nicht gewählt"}
+        {f.carrier && <span className="adm-ship-mode"> · {shippingModeLabel(row)}</span>}
       </span>
       {line && <span className="adm-ship-route">{line}</span>}
     </div>
@@ -157,9 +160,28 @@ function PriceCell({ row }) {
   return <span className="adm-muted adm-ship-noprice">{p.text}</span>;
 }
 
+// Vorfilter aus dem Kundendetail („Sendungen ansehen“): ?kunde=<interne ID> — nur eine Zahl gilt.
+const kundeAusAdresse = (params) => {
+  const v = params.get("kunde") || "";
+  return /^\d+$/.test(v) ? v : "";
+};
+
 export default function AdminShipmentsPage() {
-  const [draft, setDraft] = useState(EMPTY_SHIPMENT_FILTERS);
-  const [applied, setApplied] = useState(EMPTY_SHIPMENT_FILTERS);
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const startFilter = { ...EMPTY_SHIPMENT_FILTERS, user_id: kundeAusAdresse(searchParams) };
+  const [draft, setDraft] = useState(startFilter);
+  const [applied, setApplied] = useState(startFilter);
+  // Name des Kunden für den Filterchip — nur aus dem Router-State des Kundendetails, nie geraten.
+  const kundeName = location.state && typeof location.state.kundeName === "string" ? location.state.kundeName : "";
+  // Ändert sich die Adresse von außen (Navigation auf dieselbe Seite ohne bzw. mit anderem Kunden),
+  // folgt der Filter ihr; die eigene Synchronisierung unten löst hier nichts aus.
+  const kundeParam = kundeAusAdresse(searchParams);
+  useEffect(() => {
+    setApplied((prev) => (prev.user_id === kundeParam ? prev : { ...EMPTY_SHIPMENT_FILTERS, user_id: kundeParam }));
+    setDraft((prev) => (prev.user_id === kundeParam ? prev : { ...EMPTY_SHIPMENT_FILTERS, user_id: kundeParam }));
+    setPage(1);
+  }, [kundeParam]);
   const [filterError, setFilterError] = useState("");
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState([]);
@@ -211,18 +233,26 @@ export default function AdminShipmentsPage() {
 
   // Filter anwenden: erst validieren, dann Pagination zurücksetzen. Während ein
   // Request läuft, ist der Button gesperrt — kein Doppel-Request durch Doppelklick.
+  // Die Adresse folgt dem Kundenfilter (ersetzend, ohne Verlaufseintrag) — ein Neuladen zeigt dieselbe Liste.
+  const syncKunde = (userId) => {
+    const next = new URLSearchParams(searchParams);
+    if (userId) next.set("kunde", userId); else next.delete("kunde");
+    if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true, state: location.state });
+  };
   const applyFilters = () => {
     const v = validateShipmentFilters(draft);
     if (!v.valid) { setFilterError(v.error); return; }
     setFilterError("");
     setPage(1);
     setApplied(draft);
+    syncKunde(/^\d+$/.test(String(draft.user_id || "").trim()) ? String(draft.user_id).trim() : "");
   };
   const resetFilters = () => {
     setFilterError("");
     setPage(1);
     setDraft(EMPTY_SHIPMENT_FILTERS);
     setApplied(EMPTY_SHIPMENT_FILTERS);
+    syncKunde("");
   };
 
   const goPrev = () => { if (page > 1) setPage((p) => p - 1); };
@@ -295,7 +325,10 @@ export default function AdminShipmentsPage() {
     }
   };
 
-  const chips = useMemo(() => activeShipmentFilterChips(applied), [applied]);
+  const chips = useMemo(() => activeShipmentFilterChips(applied).map((c) => (
+    c.key === "user_id" && kundeName && applied.user_id === kundeAusAdresse(searchParams)
+      ? { ...c, label: `Kunde: ${kundeName}` } : c
+  )), [applied, kundeName, searchParams]);
   const emptyState = shipmentEmptyState({ count: rows.length, filters: applied });
   const showPagination = !error && !loading && (rows.length > 0 || page > 1);
   // Trennt Gesamtanzahl (Sendungen) von Seitenanzahl — die frühere "Seite 1 · 5
@@ -312,7 +345,7 @@ export default function AdminShipmentsPage() {
       <PageHeader
         variant="admin"
         title={<>Sendungen</>}
-        subtitle={<>Sendungsübersicht — nur Einsicht. Keine Adressen, keine Labeldaten, Kennungen maskiert.</>}
+        subtitle={<>Alle Sendungen Ihrer Kunden – Status, Versand und Preis.</>}
         actions={(
           <>
             {/* Aufräumaktion — bewusst NICHT die primäre Aktion und nicht in den
@@ -360,8 +393,11 @@ export default function AdminShipmentsPage() {
           </select>
         </div>
         <div className="adm-filter-field">
-          {/* Der Server vergleicht exakt mit dem Carrier-Kürzel (UX-Paket 6: so benannt). */}
-          <label htmlFor="f-carrier">Carrier-Kürzel</label>
+          {/* Der Server vergleicht exakt mit dem gespeicherten Kürzel des Versanddienstleisters. */}
+          <label htmlFor="f-carrier">
+            Versanddienstleister
+            <AdminInfoTip label="Versanddienstleister">Kürzel genau wie gespeichert, z. B. ups oder dhl.</AdminInfoTip>
+          </label>
           <input
             id="f-carrier" type="text" placeholder="z. B. ups"
             value={draft.carrier} onChange={(e) => setField("carrier", e.target.value)}
@@ -375,15 +411,6 @@ export default function AdminShipmentsPage() {
             {HAS_TRACKING_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
-        <div className="adm-filter-field">
-          <label htmlFor="f-user">Kunden-ID (intern)</label>
-          <input
-            id="f-user" type="text" inputMode="numeric" placeholder="optional"
-            value={draft.user_id} onChange={(e) => setField("user_id", e.target.value)}
-            aria-describedby={filterError ? "f-error" : undefined}
-            aria-invalid={filterError ? "true" : undefined}
-          />
-        </div>
         <div className="adm-filter-actions">
           <button type="submit" className="btn btn-primary btn-sm" disabled={loading}>
             Anwenden
@@ -392,11 +419,25 @@ export default function AdminShipmentsPage() {
             Zurücksetzen
           </button>
         </div>
-        {/* Das Backend bietet für Sendungen keine Freitextsuche — das wird hier
-            ehrlich benannt statt eine globale Suche vorzutäuschen. */}
+        {/* Selten gebraucht: der Filter über die interne Kunden-ID — eingeklappt wie bei den Rechnungen.
+            Der einfache Weg zu den Sendungen eines Kunden ist „Sendungen ansehen“ im Kundendetail. */}
+        <details className="adm-filter-adv" open={Boolean(draft.user_id) && !kundeName}>
+          <summary><span className="adm-tech-caret" aria-hidden="true" /> Weitere Filter</summary>
+          <div className="adm-filter-adv-body">
+            <div className="adm-filter-field">
+              <label htmlFor="f-user">Kunden-ID (intern)</label>
+              <input
+                id="f-user" type="text" inputMode="numeric" placeholder="optional"
+                value={draft.user_id} onChange={(e) => setField("user_id", e.target.value)}
+                aria-describedby={filterError ? "f-error" : undefined}
+                aria-invalid={filterError ? "true" : undefined}
+              />
+            </div>
+          </div>
+        </details>
+        {/* Das Backend bietet für Sendungen keine Freitextsuche — das steht ehrlich da, mit dem kürzesten Weg. */}
         <p className="adm-support-hint adm-filter-hint">
-          Es gibt keine Freitextsuche über Kunde oder Bestellnummer — filtern Sie über Status,
-          Carrier-Kürzel, Zeitraum, Tracking oder die interne Kunden-ID.
+          Es gibt keine Freitextsuche. Die Sendungen eines Kunden öffnen Sie im Kundendetail über „Sendungen ansehen“.
         </p>
         {filterError && <p id="f-error" className="field-error adm-filter-error" role="alert">{filterError}</p>}
       </form>

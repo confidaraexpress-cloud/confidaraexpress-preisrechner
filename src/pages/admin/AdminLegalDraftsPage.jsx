@@ -61,7 +61,7 @@ export default function AdminLegalDraftsPage() {
     <div className="adm-page">
       <PageHeader variant="admin" title="Rechtstexte – Arbeitsfassungen"
         backLink={<AdminBackLink to="/admin/invoices/backfill" label="Zurück zu den internen Vorschauen" />}
-        subtitle="Die vorbereiteten Entwürfe G1–G9 mit allen Vermerken und offenen Punkten lesen, ohne die gültigen Vertragsfassungen zu verändern." />
+        subtitle="Entwürfe G1–G9 mit Vermerken und offenen Punkten lesen. Die gültigen Fassungen bleiben unverändert." />
       <div className="adm-note adm-note--warning adm-ld-warning" role="note">
         <strong>ENTWURF – nicht veröffentlicht und rechtlich noch nicht freigegeben.</strong>
         <span>Die öffentlichen Seiten /agb und /datenschutz sowie die aktive Buchungsfassung bleiben unverändert.</span>

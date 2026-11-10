@@ -326,7 +326,7 @@ export default function AuditLogPage() {
       <PageHeader
         variant="admin"
         title={<>Protokoll</>}
-        subtitle={<>Protokollierte Administrationsvorgänge. Nur Einsicht — keine Änderungen.</>}
+        subtitle={<>Alle protokollierten Adminvorgänge – nur zum Nachsehen.</>}
         actions={(
           <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
           Aktualisieren
@@ -435,8 +435,9 @@ export default function AuditLogPage() {
                           <td className="adm-td-time">{fmtTime(timeOf(row))}</td>
                           <td><Party party={partyOf(row, "actor")} /></td>
                           <td>
-                            <span className="adm-action">{knownAction || action || "—"}</span>
-                            {knownAction && <span className="adm-action-raw">{action}</span>}
+                            {/* Admin-Vereinfachung (2026-11-10): der technische Aktionsname nur noch als Tooltip,
+                                nicht mehr als zweite Zeile unter der verständlichen Bezeichnung. */}
+                            <span className="adm-action" title={knownAction ? action : undefined}>{knownAction || action || "—"}</span>
                           </td>
                           <td><Targets row={row} /></td>
                           <td><span className={`badge ${resCls}`}>{resLabel}</span></td>
@@ -494,7 +495,6 @@ export default function AuditLogPage() {
                     <span className="adm-action">{knownAction || action || "—"}</span>
                     <span className={`badge ${resCls}`}>{resLabel}</span>
                   </div>
-                  {knownAction && <span className="adm-action-raw">{action}</span>}
                   <dl className="adm-scard-kv">
                     <div><dt>Zeit</dt><dd className="adm-td-time">{fmtTime(timeOf(row))}</dd></div>
                     <div><dt>{AUDIT_LABELS.actor}</dt><dd><Party party={partyOf(row, "actor")} /></dd></div>

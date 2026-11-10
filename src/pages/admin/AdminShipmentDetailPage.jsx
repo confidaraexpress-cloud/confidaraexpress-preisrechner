@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { AdminBackLink } from "../../components/admin/AdminBackLink";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
+import { AdminFacts } from "../../components/admin/AdminFacts";
 import {
   getAdminShipment, downloadAdminShipmentLabel, getAdminShipmentTracking,
   retryAdminShipmentEmailDelivery, sendAdminOrderConfirmationEmail, resendAdminOrderConfirmationEmail,
@@ -24,7 +25,6 @@ import {
   detailSections,
   isTestBooking,
   isTestPhaseShipment,
-  routeLabel,
   shipmentIdentity,
   shipmentInsuranceView,
   shipmentVoucherView,
@@ -386,6 +386,139 @@ export default function AdminShipmentDetailPage() {
     }
   };
 
+  // 3a) Buchung und Betrieb (Package C) — nur mit einem Backend, das `operations`
+  // liefert. Adminintern: Anbieter, Anbieterreferenzen und Buchungsversuche. Keine
+  // Belegbytes, keine Rohantworten; entschieden wird ausschließlich in der
+  // Buchungsklärung, nicht hier.
+  // Admin-Vereinfachung (2026-11-10): Die Betriebssicht steht oben, sobald ein Hinweis offen ist
+  // (z. B. ungeklärte Buchung) — sonst weiter unten bei den Details. Genau eine Karte, nie doppelt.
+  const opsCard = ops ? (
+    <div className="adm-card" id="adm-ship-ops">
+      <div className="adm-card-head">Buchung und Betrieb</div>
+      <div className="adm-card-body">
+        {opsNotices.map((n) => (
+          <div key={n.kind} className={`adm-note ${n.tone === "info" ? "adm-note--info" : "adm-note--warning"} adm-opnote`} role="note">
+            <span>
+              {n.text}
+              {n.to && <> <Link to={n.to}>Zur Buchungsklärung</Link></>}
+            </span>
+          </div>
+        ))}
+        <KV items={[
+          ["Anbieter", ops.providerText],
+          ["Buchungsreferenz des Anbieters", ops.providerBookingReference
+            ? <span className="adm-mono">{ops.providerBookingReference}</span> : "—"],
+          ["Leistung (Anbieter)", ops.providerServiceId ? <span className="adm-mono">{ops.providerServiceId}</span> : "—"],
+          ["Gebucht am", fmtDateTime(ops.bookedAt)],
+          ["Trackingreferenzen", ops.trackingReferences.length > 0
+            ? <span className="adm-mask">{ops.trackingReferences.map((t) => maskTail(t) || t).join(" · ")}</span>
+            : "—"],
+          ["Label gespeichert", docSummary.storedLabel ? "Ja" : "Nein"],
+          /* INTERNAL-01: was CE über das Versandlabel wirklich weiß — nur bei einer gebuchten
+             Sendung und nur mit einem Backend, das den Zustand liefert. Der Code eines
+             gescheiterten Abrufs ist ein kurzer Servercode, nie eine Anbieterantwort. */
+          ...(ops.labelAvailability ? [
+            ["Versandlabel", <span className={`badge ${ops.labelAvailability.meta[0]}`} id="adm-ship-ops-label">
+              {ops.labelAvailability.meta[1]}</span>],
+            ...(ops.labelAvailability.lastFailedAt ? [["Letzter gescheiterter Labelabruf", <>
+              {fmtDateTime(ops.labelAvailability.lastFailedAt)}
+              {ops.labelAvailability.lastError && <> · <span className="adm-mono">{ops.labelAvailability.lastError}</span></>}
+            </>]] : []),
+            ...(ops.labelAvailability.lastNotReadyAt
+              ? [["Letzte Anbieterantwort ohne Label", fmtDateTime(ops.labelAvailability.lastNotReadyAt)]] : []),
+          ] : []),
+          /* MF-03: nur bei einem PORTAL-Buchungsvorgang. Dort kann das Versandlabel
+             erst nach der Bestellung entstehen — die Buchung steht trotzdem. Ohne
+             Portalvorgang fehlen diese Zeilen vollstaendig. */
+          ...(ops.portal ? [
+            ["Portalvorgang", <span className="adm-mono">{ops.portal.portalService}{ops.portal.portalServiceId !== null ? ` · ${ops.portal.portalServiceId}` : ""}</span>],
+            ["Auftragsreferenz (Portal)", ops.portal.orderReference
+              ? <span className="adm-mono">{ops.portal.orderReference}</span> : "—"],
+            ["Etikett beim Anbieter", ops.portal.labelStatusMeta
+              ? <span className={`badge ${ops.portal.labelStatusMeta[0]}`}>{ops.portal.labelStatusMeta[1]}</span> : "—"],
+            ["Zuletzt geprüft", fmtDateTime(ops.portal.lastCheckedAt)],
+          ] : []),
+          ["Anbieterbelege", docSummary.providerDocumentCount > 0
+            ? ops.documents.providerDocuments.map((d) => d.typeText).join(" · ") : "Keine"],
+          ["Rechnungsdokument", ops.invoice
+            ? <span className={`badge ${ops.invoice.documentMeta[0]}`}>{ops.invoice.documentMeta[1]}</span> : "—"],
+          ["Rechnungsmail", ops.invoice
+            ? <span className={`badge ${ops.invoice.emailMeta[0]}`}>{ops.invoice.emailMeta[1]}</span> : "—"],
+          ["Mail Auftragsbestätigung", ops.orderConfirmation
+            ? <span className={`badge ${ops.orderConfirmation.emailMeta[0]}`}>{ops.orderConfirmation.emailMeta[1]}</span> : "—"],
+          ["Stornierungsanfrage", ops.cancellation
+            ? (
+              <Link to={ops.cancellation.to} id="adm-ship-ops-cancellation">
+                Anfrage #{ops.cancellation.id} · {ops.cancellation.statusMeta[1]}
+              </Link>
+            )
+            : "Keine"],
+        ]} />
+
+        {/* Paritätsaudit B1: Versand der Auftragsbestätigung. Senden (pending), erneut
+            versuchen (failed), bewusst erneut senden (sent) oder einen hängenden Versand
+            übernehmen (sending) — jeweils erst nach dem Bestätigungsdialog. */}
+        <ActionMsg msg={ocMailMsg} id="adm-ship-oc-mail-msg" />
+        {ocMail && (
+          <>
+            {ocMail.unclear && <p className="adm-support-hint" id="adm-ship-oc-mail-hint">{ORDER_CONFIRMATION_MAIL_TEXT.sendingHint}</p>}
+            <div className="adm-support">
+              <button
+                type="button"
+                id="adm-ship-oc-mail-action"
+                className="btn btn-outline btn-sm"
+                onClick={() => { setOcMailMsg(null); setOcMailOpen(true); }}
+                disabled={ocMailBusy}
+              >
+                {ocMail.label}
+              </button>
+            </div>
+          </>
+        )}
+
+        <div className="adm-op-subtitle">
+          Buchungsversuche{ops.attemptsLimited ? ` — die neuesten ${ops.attempts.length} von ${ops.attemptsTotal}` : ""}
+        </div>
+        {ops.attempts.length === 0 ? (
+          <p className="adm-addr-note">Keine Buchungsversuche erfasst.</p>
+        ) : (
+          <ul className="adm-opattempts">
+            {ops.attempts.map((v) => (
+              <li className="adm-opattempt" key={v.id}>
+                <div className="adm-opattempt-main">
+                  <Link className="adm-opattempt-title" to={`/admin/reconciliation/${encodeURIComponent(v.id)}`}>
+                    {attemptLabel(v)}
+                  </Link>
+                  <span className="adm-opattempt-meta">
+                    {v.providerText} · begonnen {fmtDateTime(v.createdAt)}
+                    {v.providerBookingReference ? ` · Referenz ${v.providerBookingReference}` : ""}
+                    {v.sentProviderReference ? ` · gesendet ${v.sentProviderReference}` : ""}
+                  </span>
+                </div>
+                <span className="adm-opattempt-badges">
+                  <span className={`badge ${v.stateMeta[0]}`}>{v.stateMeta[1]}</span>
+                  {/* Ohne menschliche Entscheidung ist ein normal abgeschlossener Versuch
+                      NICHT „ungeklärt" — ungeklärt ist nur der offene Fall. */}
+                  {v.resolution
+                    ? <span className={`badge ${v.resolutionMeta[0]}`}>{v.resolutionMeta[1]}</span>
+                    : (ops.reconciliation.open && ops.reconciliation.attemptId === v.id
+                      ? <span className="badge badge-yellow">Ungeklärt</span> : null)}
+                  {v.isLatest && <span className="adm-chip">Neuester</span>}
+                  {v.invoiceDrift && (
+                    <span className={`badge ${v.invoiceDrift.reviewed ? "badge-gray" : "badge-yellow"}`}>
+                      Rechnungsabweichung {v.invoiceDrift.reviewed ? "geprüft" : "ungeprüft"}
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  ) : null;
+  const opsOben = opsNotices.length > 0;
+
   return (
     <div className="adm-page">
       {/* 1) Kopfbereich — derselbe Seitenkopf wie in den Adminlisten. Die
@@ -403,7 +536,6 @@ export default function AdminShipmentDetailPage() {
           <span className="adm-detail-sub">
             <span>{cust.primary}</span>
             {cust.secondary && <span>{cust.secondary}</span>}
-            {routeLabel(s) && <span>{routeLabel(s)}</span>}
           </span>
         )}
         meta={(
@@ -413,8 +545,8 @@ export default function AdminShipmentDetailPage() {
             {isTestBooking(s) && <span className="badge badge-yellow" id="adm-ship-test-badge">Testbuchung</span>}
             {/* Canonical v2.60: echter Versandauftrag der internen Testphase — Beleg ist ein Testdokument. */}
             {isTestPhaseShipment(s) && <span className="badge badge-yellow" id="adm-ship-testphase-badge">Testdokument statt Rechnung</span>}
-            <span className="adm-chip">{carrierOf(s) ? resolveCarrierName(carrierOf(s)) : "Carrier noch nicht gewählt"}</span>
-            <span className="adm-chip">{shippingModeLabel(s)}</span>
+            {/* Versanddienstleister, Versandart und Strecke stehen seit der Admin-Vereinfachung
+                (2026-11-10) in „auf einen Blick“ direkt darunter — hier nicht doppelt. */}
             <span className="adm-chip">{fmtDate(dateOf(s))}</span>
             {sections.label && <span className="badge badge-green">Label verfügbar</span>}
             {/* Aussage ausschließlich über die GESPEICHERTE Nummer — nicht
@@ -427,7 +559,166 @@ export default function AdminShipmentDetailPage() {
         )}
       />
 
+      {/* Das Wichtigste auf einen Blick — gespeicherte Werte der Sendung, nichts gerechnet. */}
+      <AdminFacts
+        id="adm-ship-facts"
+        items={[
+          { label: "Versand", value: carrierOf(s) ? resolveCarrierName(carrierOf(s)) : "Noch nicht gewählt", hint: shippingModeLabel(s) },
+          routeStr(s) && routeStr(s) !== "—" ? { label: "Strecke", value: routeStr(s) } : null,
+          pkgOf(s) != null ? {
+            label: "Pakete",
+            value: String(pkgOf(s)),
+            hint: packageLineTextsOf(s) ? packageLinesWeightText(s) : (weightOf(s) != null ? `${weightOf(s)} kg` : undefined),
+          } : null,
+          firstDefined(s.price_final, s.priceFinal) != null ? { label: "Endpreis", value: money(firstDefined(s.price_final, s.priceFinal)) } : null,
+          invoice ? {
+            label: "Rechnung",
+            value: dash(firstDefined(invoice.invoice_number, invoice.number)),
+            hint: invoiceStatusMeta(firstDefined(invoice.status))[1],
+          } : null,
+        ]}
+      />
+
       <div className="adm-cards">
+        <div className="adm-card">
+          <div className="adm-card-head">Label und Sendungsverfolgung</div>
+          <div className="adm-card-body">
+            {labelMsg && (
+              <div className={`alert ${labelMsg.type === "success" ? "alert-success" : "alert-error"}`} role={labelMsg.type === "success" ? "status" : "alert"} style={{ marginBottom: 12 }}>
+                {labelMsg.text}
+              </div>
+            )}
+            <div className="adm-support">
+              {labelAvailable ? (
+                <button type="button" className="btn btn-outline btn-sm" onClick={openLabelConfirm} disabled={labelBusy}>
+                  {labelBusy
+                    ? <><span className="spinner spinner-dark" /> Wird geladen…</>
+                    : <>Label herunterladen</>}
+                </button>
+              ) : (
+                <button type="button" className="btn btn-outline btn-sm" disabled title={labelDownloadHint(ops)}>
+                  Label herunterladen
+                </button>
+              )}
+              {/* Live-Abfrage nur anbieten, wenn sie fachlich möglich ist (Aussage
+                  des Backends bzw. Alt-Vertrag: ohne Sendungs-ID 409). Der Button
+                  betrifft ausschließlich Live-Daten und Carrier-Link — nicht die
+                  gespeicherte Trackingnummer. */}
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={loadTracking}
+                disabled={trackBusy || !track.lookup.possible}
+                title={track.lookup.possible ? undefined : track.lookup.hint}
+                aria-describedby={track.lookup.possible ? undefined : "adm-track-lookup-hint"}
+              >
+                {trackBusy
+                  ? <><span className="spinner spinner-dark" /> Lade Live-Tracking…</>
+                  : <>{TRACKING_LABELS.lookupAction}</>}
+              </button>
+            </div>
+            {!labelAvailable && <p className="adm-support-hint" id="adm-label-hint">{labelDownloadHint(ops)}</p>}
+            {!track.lookup.possible && (
+              <p className="adm-support-hint" id="adm-track-lookup-hint">{track.lookup.hint}</p>
+            )}
+            <p className="adm-support-hint">Label- und Trackingabrufe werden protokolliert.</p>
+
+            {trackError && (
+              <div className="alert alert-error" style={{ marginTop: 12 }}>
+                {trackError}
+              </div>
+            )}
+            {/* Live-Block — ausschließlich Zustand 2 und 3. Er trifft KEINE
+                Aussage über die gespeicherte Trackingnummer; die steht zum
+                Vergleich mit eigener Beschriftung mit drin. */}
+            {track.live.loaded && (
+              <div className="adm-track">
+                <div className="adm-track-head">
+                  <span className="adm-track-title">{TRACKING_LABELS.liveTitle}</span>
+                  {(() => { const [c, l] = trackStatusMeta(track.live.status); return <span className={`badge ${c}`}>{l}</span>; })()}
+                </div>
+                {!track.live.hasData && <p className="adm-track-note">{track.live.hint}</p>}
+                <dl className="adm-kv">
+                  <div className="adm-kv-item">
+                    <dt>{TRACKING_LABELS.liveStatus}</dt>
+                    <dd>{track.live.status || "Noch kein Status geliefert"}</dd>
+                  </div>
+                  <div className="adm-kv-item">
+                    <dt>{TRACKING_LABELS.liveNumber}</dt>
+                    <dd className="adm-mask">{maskTail(track.live.number) || "Nicht geliefert"}</dd>
+                  </div>
+                  <div className="adm-kv-item">
+                    <dt>{TRACKING_LABELS.storedNumber}</dt>
+                    <dd className="adm-mask">
+                      {track.stored.present
+                        ? (maskTail(track.stored.number) || "Vorhanden")
+                        : TRACKING_HINTS.noStoredNumber}
+                    </dd>
+                  </div>
+                  <div className="adm-kv-item">
+                    <dt>Carrier</dt>
+                    <dd>{track.live.carrier ? resolveCarrierName(track.live.carrier) : "—"}</dd>
+                  </div>
+                  <div className="adm-kv-item"><dt>Quelle</dt><dd>{dash(track.live.source)}</dd></div>
+                </dl>
+                <div className="adm-track-link">
+                  {track.link.available ? (
+                    <a className="btn btn-outline btn-sm" href={track.link.url} target="_blank" rel="noopener noreferrer">
+                      {TRACKING_LABELS.carrierLink} öffnen
+                    </a>
+                  ) : (
+                    <span className="adm-support-hint">{track.link.hint}</span>
+                  )}
+                </div>
+                {/* Transportabschnitte der Live-Antwort — providerneutral: je Abschnitt
+                    Carrier, Nummer, Stand, Hinweise und Ereignisse mit Ort und Zeitangabe,
+                    wie sie geliefert wurde. Keine Paketnummern, kein Anbieterlink. */}
+                {track.live.legs.map((leg) => {
+                  const [legKlasse, legText] = trackStatusMeta(leg.status);
+                  const carrierName = leg.carrier ? resolveCarrierName(leg.carrier) : null;
+                  return (
+                    <div key={leg.key} className="adm-track adm-track-leg">
+                      <div className="adm-track-head">
+                        <span className="adm-track-title">
+                          {[carrierName, leg.trackingReference ? maskTail(leg.trackingReference) : null].filter(Boolean).join(" · ") || TRACKING_LABELS.legTitle}
+                        </span>
+                        <span className={`badge ${legKlasse}`}>{legText}</span>
+                      </div>
+                      <dl className="adm-kv">
+                        <div className="adm-kv-item"><dt>Carrier</dt><dd>{carrierName || "—"}</dd></div>
+                        <div className="adm-kv-item">
+                          <dt>{TRACKING_LABELS.liveNumber}</dt>
+                          <dd className="adm-mask">{maskTail(leg.trackingReference) || "Nicht geliefert"}</dd>
+                        </div>
+                        <div className="adm-kv-item"><dt>{TRACKING_LABELS.liveStatus}</dt><dd>{leg.status || "Noch kein Status geliefert"}</dd></div>
+                      </dl>
+                      {leg.errorMessages.length > 0 && (
+                        <div className="alert alert-error adm-track-leg-errors" style={{ marginTop: 12 }}>
+                          {TRACKING_LABELS.legErrors}: {leg.errorMessages.join(" · ")}
+                        </div>
+                      )}
+                      {leg.events.length > 0 ? (
+                        <dl className="adm-kv adm-track-events" style={{ marginTop: 12 }}>
+                          {leg.events.map((ev, i) => (
+                            <div key={i} className="adm-kv-item">
+                              <dt>{eventWhenText(ev) || TRACKING_LABELS.eventNoTime}</dt>
+                              <dd>{ev.description}{ev.location ? ` · ${ev.location}` : ""}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      ) : (
+                        <p className="adm-track-note">{TRACKING_HINTS.noLegEvents}</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {opsOben && opsCard}
+
         {/* 2) Kunde — fachliche Identität plus Sprung ins Kundenkonto. Bewusst
              ohne E-Mail/Kontoadresse: dafür ist die Kundendetailseite zuständig. */}
         {sections.customer && (
@@ -497,136 +788,6 @@ export default function AdminShipmentDetailPage() {
             ]} />
           </div>
         </div>
-
-        {/* 3a) Buchung & Betrieb (Package C) — nur mit einem Backend, das `operations`
-             liefert. Adminintern: Anbieter, Anbieterreferenzen und Buchungsversuche. Keine
-             Belegbytes, keine Rohantworten; entschieden wird ausschließlich in der
-             Buchungsklärung, nicht hier. */}
-        {ops && (
-          <div className="adm-card" id="adm-ship-ops">
-            <div className="adm-card-head">Buchung &amp; Betrieb</div>
-            <div className="adm-card-body">
-              {opsNotices.map((n) => (
-                <div key={n.kind} className={`adm-note ${n.tone === "info" ? "adm-note--info" : "adm-note--warning"} adm-opnote`} role="note">
-                  <span>
-                    {n.text}
-                    {n.to && <> <Link to={n.to}>Zur Buchungsklärung</Link></>}
-                  </span>
-                </div>
-              ))}
-              <KV items={[
-                ["Anbieter", ops.providerText],
-                ["Buchungsreferenz des Anbieters", ops.providerBookingReference
-                  ? <span className="adm-mono">{ops.providerBookingReference}</span> : "—"],
-                ["Leistung (Anbieter)", ops.providerServiceId ? <span className="adm-mono">{ops.providerServiceId}</span> : "—"],
-                ["Gebucht am", fmtDateTime(ops.bookedAt)],
-                ["Trackingreferenzen", ops.trackingReferences.length > 0
-                  ? <span className="adm-mask">{ops.trackingReferences.map((t) => maskTail(t) || t).join(" · ")}</span>
-                  : "—"],
-                ["Label gespeichert", docSummary.storedLabel ? "Ja" : "Nein"],
-                /* INTERNAL-01: was CE über das Versandlabel wirklich weiß — nur bei einer gebuchten
-                   Sendung und nur mit einem Backend, das den Zustand liefert. Der Code eines
-                   gescheiterten Abrufs ist ein kurzer Servercode, nie eine Anbieterantwort. */
-                ...(ops.labelAvailability ? [
-                  ["Versandlabel", <span className={`badge ${ops.labelAvailability.meta[0]}`} id="adm-ship-ops-label">
-                    {ops.labelAvailability.meta[1]}</span>],
-                  ...(ops.labelAvailability.lastFailedAt ? [["Letzter gescheiterter Labelabruf", <>
-                    {fmtDateTime(ops.labelAvailability.lastFailedAt)}
-                    {ops.labelAvailability.lastError && <> · <span className="adm-mono">{ops.labelAvailability.lastError}</span></>}
-                  </>]] : []),
-                  ...(ops.labelAvailability.lastNotReadyAt
-                    ? [["Letzte Anbieterantwort ohne Label", fmtDateTime(ops.labelAvailability.lastNotReadyAt)]] : []),
-                ] : []),
-                /* MF-03: nur bei einem PORTAL-Buchungsvorgang. Dort kann das Versandlabel
-                   erst nach der Bestellung entstehen — die Buchung steht trotzdem. Ohne
-                   Portalvorgang fehlen diese Zeilen vollstaendig. */
-                ...(ops.portal ? [
-                  ["Portalvorgang", <span className="adm-mono">{ops.portal.portalService}{ops.portal.portalServiceId !== null ? ` · ${ops.portal.portalServiceId}` : ""}</span>],
-                  ["Auftragsreferenz (Portal)", ops.portal.orderReference
-                    ? <span className="adm-mono">{ops.portal.orderReference}</span> : "—"],
-                  ["Etikett beim Anbieter", ops.portal.labelStatusMeta
-                    ? <span className={`badge ${ops.portal.labelStatusMeta[0]}`}>{ops.portal.labelStatusMeta[1]}</span> : "—"],
-                  ["Zuletzt geprüft", fmtDateTime(ops.portal.lastCheckedAt)],
-                ] : []),
-                ["Anbieterbelege", docSummary.providerDocumentCount > 0
-                  ? ops.documents.providerDocuments.map((d) => d.typeText).join(" · ") : "Keine"],
-                ["Rechnungsdokument", ops.invoice
-                  ? <span className={`badge ${ops.invoice.documentMeta[0]}`}>{ops.invoice.documentMeta[1]}</span> : "—"],
-                ["Rechnungsmail", ops.invoice
-                  ? <span className={`badge ${ops.invoice.emailMeta[0]}`}>{ops.invoice.emailMeta[1]}</span> : "—"],
-                ["Mail Auftragsbestätigung", ops.orderConfirmation
-                  ? <span className={`badge ${ops.orderConfirmation.emailMeta[0]}`}>{ops.orderConfirmation.emailMeta[1]}</span> : "—"],
-                ["Stornierungsanfrage", ops.cancellation
-                  ? (
-                    <Link to={ops.cancellation.to} id="adm-ship-ops-cancellation">
-                      Anfrage #{ops.cancellation.id} · {ops.cancellation.statusMeta[1]}
-                    </Link>
-                  )
-                  : "Keine"],
-              ]} />
-
-              {/* Paritätsaudit B1: Versand der Auftragsbestätigung. Senden (pending), erneut
-                  versuchen (failed), bewusst erneut senden (sent) oder einen hängenden Versand
-                  übernehmen (sending) — jeweils erst nach dem Bestätigungsdialog. */}
-              <ActionMsg msg={ocMailMsg} id="adm-ship-oc-mail-msg" />
-              {ocMail && (
-                <>
-                  {ocMail.unclear && <p className="adm-support-hint" id="adm-ship-oc-mail-hint">{ORDER_CONFIRMATION_MAIL_TEXT.sendingHint}</p>}
-                  <div className="adm-support">
-                    <button
-                      type="button"
-                      id="adm-ship-oc-mail-action"
-                      className="btn btn-outline btn-sm"
-                      onClick={() => { setOcMailMsg(null); setOcMailOpen(true); }}
-                      disabled={ocMailBusy}
-                    >
-                      {ocMail.label}
-                    </button>
-                  </div>
-                </>
-              )}
-
-              <div className="adm-op-subtitle">
-                Buchungsversuche{ops.attemptsLimited ? ` — die neuesten ${ops.attempts.length} von ${ops.attemptsTotal}` : ""}
-              </div>
-              {ops.attempts.length === 0 ? (
-                <p className="adm-addr-note">Keine Buchungsversuche erfasst.</p>
-              ) : (
-                <ul className="adm-opattempts">
-                  {ops.attempts.map((v) => (
-                    <li className="adm-opattempt" key={v.id}>
-                      <div className="adm-opattempt-main">
-                        <Link className="adm-opattempt-title" to={`/admin/reconciliation/${encodeURIComponent(v.id)}`}>
-                          {attemptLabel(v)}
-                        </Link>
-                        <span className="adm-opattempt-meta">
-                          {v.providerText} · begonnen {fmtDateTime(v.createdAt)}
-                          {v.providerBookingReference ? ` · Referenz ${v.providerBookingReference}` : ""}
-                          {v.sentProviderReference ? ` · gesendet ${v.sentProviderReference}` : ""}
-                        </span>
-                      </div>
-                      <span className="adm-opattempt-badges">
-                        <span className={`badge ${v.stateMeta[0]}`}>{v.stateMeta[1]}</span>
-                        {/* Ohne menschliche Entscheidung ist ein normal abgeschlossener Versuch
-                            NICHT „ungeklärt" — ungeklärt ist nur der offene Fall. */}
-                        {v.resolution
-                          ? <span className={`badge ${v.resolutionMeta[0]}`}>{v.resolutionMeta[1]}</span>
-                          : (ops.reconciliation.open && ops.reconciliation.attemptId === v.id
-                            ? <span className="badge badge-yellow">Ungeklärt</span> : null)}
-                        {v.isLatest && <span className="adm-chip">Neuester</span>}
-                        {v.invoiceDrift && (
-                          <span className={`badge ${v.invoiceDrift.reviewed ? "badge-gray" : "badge-yellow"}`}>
-                            Rechnungsabweichung {v.invoiceDrift.reviewed ? "geprüft" : "ungeprüft"}
-                          </span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* 3) Preisbereich (nur Anzeige) */}
         <div className="adm-card">
@@ -766,7 +927,6 @@ export default function AdminShipmentDetailPage() {
           </div>
         </div>
 
-        {/* Support-Aktionen — „Label herunterladen" aktiv; Tracking folgt später */}
         {/* Zoll — NUR bei tatsächlicher Zollrelevanz, nie als leere Karte bei
              Inlandssendungen. Es werden ausschließlich gespeicherte Werte gezeigt;
              die fachliche Zollprüfung bleibt vollständig im Backend. */}
@@ -789,142 +949,7 @@ export default function AdminShipmentDetailPage() {
           </div>
         )}
 
-        <div className="adm-card">
-          <div className="adm-card-head">Support-Aktionen</div>
-          <div className="adm-card-body">
-            {labelMsg && (
-              <div className={`alert ${labelMsg.type === "success" ? "alert-success" : "alert-error"}`} role={labelMsg.type === "success" ? "status" : "alert"} style={{ marginBottom: 12 }}>
-                {labelMsg.text}
-              </div>
-            )}
-            <div className="adm-support">
-              {labelAvailable ? (
-                <button type="button" className="btn btn-outline btn-sm" onClick={openLabelConfirm} disabled={labelBusy}>
-                  {labelBusy
-                    ? <><span className="spinner spinner-dark" /> Wird geladen…</>
-                    : <>Label herunterladen</>}
-                </button>
-              ) : (
-                <button type="button" className="btn btn-outline btn-sm" disabled title={labelDownloadHint(ops)}>
-                  Label herunterladen
-                </button>
-              )}
-              {/* Live-Abfrage nur anbieten, wenn sie fachlich möglich ist (Aussage
-                  des Backends bzw. Alt-Vertrag: ohne Sendungs-ID 409). Der Button
-                  betrifft ausschließlich Live-Daten und Carrier-Link — nicht die
-                  gespeicherte Trackingnummer. */}
-              <button
-                type="button"
-                className="btn btn-outline btn-sm"
-                onClick={loadTracking}
-                disabled={trackBusy || !track.lookup.possible}
-                title={track.lookup.possible ? undefined : track.lookup.hint}
-                aria-describedby={track.lookup.possible ? undefined : "adm-track-lookup-hint"}
-              >
-                {trackBusy
-                  ? <><span className="spinner spinner-dark" /> Lade Live-Tracking…</>
-                  : <>{TRACKING_LABELS.lookupAction}</>}
-              </button>
-            </div>
-            {!labelAvailable && <p className="adm-support-hint" id="adm-label-hint">{labelDownloadHint(ops)}</p>}
-            {!track.lookup.possible && (
-              <p className="adm-support-hint" id="adm-track-lookup-hint">{track.lookup.hint}</p>
-            )}
-            <p className="adm-support-hint">Label- und Trackingabrufe werden protokolliert.</p>
-
-            {trackError && (
-              <div className="alert alert-error" style={{ marginTop: 12 }}>
-                {trackError}
-              </div>
-            )}
-            {/* Live-Block — ausschließlich Zustand 2 und 3. Er trifft KEINE
-                Aussage über die gespeicherte Trackingnummer; die steht zum
-                Vergleich mit eigener Beschriftung mit drin. */}
-            {track.live.loaded && (
-              <div className="adm-track">
-                <div className="adm-track-head">
-                  <span className="adm-track-title">{TRACKING_LABELS.liveTitle}</span>
-                  {(() => { const [c, l] = trackStatusMeta(track.live.status); return <span className={`badge ${c}`}>{l}</span>; })()}
-                </div>
-                {!track.live.hasData && <p className="adm-track-note">{track.live.hint}</p>}
-                <dl className="adm-kv">
-                  <div className="adm-kv-item">
-                    <dt>{TRACKING_LABELS.liveStatus}</dt>
-                    <dd>{track.live.status || "Noch kein Status geliefert"}</dd>
-                  </div>
-                  <div className="adm-kv-item">
-                    <dt>{TRACKING_LABELS.liveNumber}</dt>
-                    <dd className="adm-mask">{maskTail(track.live.number) || "Nicht geliefert"}</dd>
-                  </div>
-                  <div className="adm-kv-item">
-                    <dt>{TRACKING_LABELS.storedNumber}</dt>
-                    <dd className="adm-mask">
-                      {track.stored.present
-                        ? (maskTail(track.stored.number) || "Vorhanden")
-                        : TRACKING_HINTS.noStoredNumber}
-                    </dd>
-                  </div>
-                  <div className="adm-kv-item">
-                    <dt>Carrier</dt>
-                    <dd>{track.live.carrier ? resolveCarrierName(track.live.carrier) : "—"}</dd>
-                  </div>
-                  <div className="adm-kv-item"><dt>Quelle</dt><dd>{dash(track.live.source)}</dd></div>
-                </dl>
-                <div className="adm-track-link">
-                  {track.link.available ? (
-                    <a className="btn btn-outline btn-sm" href={track.link.url} target="_blank" rel="noopener noreferrer">
-                      {TRACKING_LABELS.carrierLink} öffnen
-                    </a>
-                  ) : (
-                    <span className="adm-support-hint">{track.link.hint}</span>
-                  )}
-                </div>
-                {/* Transportabschnitte der Live-Antwort — providerneutral: je Abschnitt
-                    Carrier, Nummer, Stand, Hinweise und Ereignisse mit Ort und Zeitangabe,
-                    wie sie geliefert wurde. Keine Paketnummern, kein Anbieterlink. */}
-                {track.live.legs.map((leg) => {
-                  const [legKlasse, legText] = trackStatusMeta(leg.status);
-                  const carrierName = leg.carrier ? resolveCarrierName(leg.carrier) : null;
-                  return (
-                    <div key={leg.key} className="adm-track adm-track-leg">
-                      <div className="adm-track-head">
-                        <span className="adm-track-title">
-                          {[carrierName, leg.trackingReference ? maskTail(leg.trackingReference) : null].filter(Boolean).join(" · ") || TRACKING_LABELS.legTitle}
-                        </span>
-                        <span className={`badge ${legKlasse}`}>{legText}</span>
-                      </div>
-                      <dl className="adm-kv">
-                        <div className="adm-kv-item"><dt>Carrier</dt><dd>{carrierName || "—"}</dd></div>
-                        <div className="adm-kv-item">
-                          <dt>{TRACKING_LABELS.liveNumber}</dt>
-                          <dd className="adm-mask">{maskTail(leg.trackingReference) || "Nicht geliefert"}</dd>
-                        </div>
-                        <div className="adm-kv-item"><dt>{TRACKING_LABELS.liveStatus}</dt><dd>{leg.status || "Noch kein Status geliefert"}</dd></div>
-                      </dl>
-                      {leg.errorMessages.length > 0 && (
-                        <div className="alert alert-error adm-track-leg-errors" style={{ marginTop: 12 }}>
-                          {TRACKING_LABELS.legErrors}: {leg.errorMessages.join(" · ")}
-                        </div>
-                      )}
-                      {leg.events.length > 0 ? (
-                        <dl className="adm-kv adm-track-events" style={{ marginTop: 12 }}>
-                          {leg.events.map((ev, i) => (
-                            <div key={i} className="adm-kv-item">
-                              <dt>{eventWhenText(ev) || TRACKING_LABELS.eventNoTime}</dt>
-                              <dd>{ev.description}{ev.location ? ` · ${ev.location}` : ""}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                      ) : (
-                        <p className="adm-track-note">{TRACKING_HINTS.noLegEvents}</p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
+        {!opsOben && opsCard}
 
         {/* Technische Informationen — eingeklappt, natives <details>. Seit dem
             Redesign (2026-10) als letzter Abschnitt: erst die fachlichen Daten

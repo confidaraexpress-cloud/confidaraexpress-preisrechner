@@ -268,7 +268,7 @@ for (const [breite, hoehe] of [[1440, 900], [390, 844]]) {
     const zweite = new URLSearchParams(state.calls.audit[state.calls.audit.length - 1]);
     assert.equal(zweite.get("offset"), "25", "Seite 2 wurde nicht über offset angefragt");
     assert.ok(await aktion("Unternehmerprüfung erfasst").isVisible());
-    // Der technische Name steht bewusst klein unter dem Label (.adm-action-raw) — nie als Label selbst.
+    // Der technische Name steht nur noch im Tooltip des Labels (Admin-Vereinfachung 2026-11-10) — nie als Label selbst.
     const labels = await page.locator(".adm-action").filter({ visible: true }).allTextContents();
     assert.ok(!labels.some((t) => /^[a-z_]+\.[a-z_.]+$/.test(t.trim())), `Rohwert als Label: ${labels.join(" | ")}`);
     await keinUeberlauf(page, `Protokoll ${breite}px`);

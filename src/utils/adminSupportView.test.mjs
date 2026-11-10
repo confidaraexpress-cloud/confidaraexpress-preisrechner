@@ -365,8 +365,8 @@ test("29 — die drei Adminendpunkte laufen über das zentrale apiFetch", () => 
 });
 
 test("30 — Navigation und Routen sind vollständig verdrahtet", () => {
-  // Redesign 2026-10: reine Textnavigation — der Eintrag trägt kein Symbol mehr.
-  assert.match(adminSidebar, /\{ to: "\/admin\/support-requests", label: "Supportanfragen" \}/,
+  // Admin-Vereinfachung (2026-11-10): Symbol der eigenen Icon-Komponente vor dem Text.
+  assert.match(adminSidebar, /\{ to: "\/admin\/support-requests", label: "Supportanfragen", icon: "headset" \}/,
     "Menüeintrag fehlt oder weicht ab");
   // Lazy-Loading beibehalten (Performance-Regel des Projekts).
   assert.match(appJsx, /React\.lazy\(\(\) => import\("\.\/pages\/admin\/AdminSupportRequestsPage"\)\)/, "Liste nicht lazy");
@@ -540,7 +540,8 @@ test("34 — kein unsanitiertes HTML und kein Logging in der Adminoberfläche", 
 });
 
 test("35 — der Adminbereich benennt ausdrücklich, dass nichts an den Kunden geht", () => {
-  assert.match(detailPage, /keine<\/strong> Nachricht an den Kunden versendet/,
+  // Admin-Vereinfachung (2026-11-10): die Zusicherung steht gekürzt in der Karte „Bearbeitung“.
+  assert.match(detailPage, /Status und Vermerk schicken dem Kunden keine Nachricht/,
     "der Hinweis zur fehlenden Kundenbenachrichtigung fehlt");
   assert.match(listPage, /verschickt keine Nachricht an den Kunden/,
     "der Hinweis fehlt in der Liste");

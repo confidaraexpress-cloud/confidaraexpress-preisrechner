@@ -119,7 +119,7 @@ export function isCreditLimitExceeded(body) {
 export const CREDIT_ADMIN_TEXT = Object.freeze({
   title: "Buchungsrahmen",
   fieldLabel: "Rahmen in Euro (brutto)",
-  hint: "0 bis 1.000.000 Euro, höchstens zwei Nachkommastellen. Gilt sofort für alle neuen Buchungen; laufende Vorgänge bleiben unberührt.",
+  hint: "Gilt sofort für neue Buchungen; laufende Vorgänge bleiben unberührt.",
   save: "Rahmen speichern",
   confirmTitle: "Buchungsrahmen ändern?",
   confirmText: (von, nach) => `Der Buchungsrahmen wird von ${money(von)} auf ${money(nach)} gesetzt. Die Änderung wird protokolliert und gilt sofort für neue Buchungen.`,
@@ -133,7 +133,7 @@ export const CREDIT_ADMIN_TEXT = Object.freeze({
     + "Der Rahmen blockiert Buchungen, nie das Konto.",
   exhaustedBadge: "ausgeschöpft",
   availableBadge: (verfuegbar) => `${money(verfuegbar)} verfügbar`,
-  history: "Änderungsverlauf im Audit-Log",
+  history: "Änderungsverlauf im Protokoll",
   // Freischaltung: der Rahmen, der ab dann gilt — im Bestätigungsdialog sichtbar.
   approvalLine: (rahmen) => `Buchungsrahmen ab Freischaltung: ${money(rahmen)} brutto`,
 });

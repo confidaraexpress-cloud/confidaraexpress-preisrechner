@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { returnState } from "../../utils/adminBackLink.mjs";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { AdminDisclosureCard } from "./AdminDisclosureCard";
 import { DateField } from "./DateField";
 import {
   getAdminUserSalesPartnerAttribution,
@@ -180,10 +181,16 @@ export function SalesPartnerAttributionSection({ userId }) {
   const rueckwirkend = testKunde && partnerIstTest;
   const gewaehlterName = partnerDisplayName(partner.rows.find((p) => String(p.id) === String(confirm?.partnerUserId)) || null);
 
+  // Admin-Vereinfachung (2026-11-10): eingeklappt mit dem zugeordneten Partner als Kurzfassung; eine
+  // Meldung oder ein offenes Formular hält den Bereich offen. Der Dialog steht außerhalb der Klappe.
   return (
-    <div className="adm-card" id="adm-sp-attribution">
-      <div className="adm-card-head">Vertriebspartner-Zuordnung</div>
-      <div className="adm-card-body">
+    <>
+    <AdminDisclosureCard
+      id="adm-sp-attribution"
+      title="Vertriebspartner-Zuordnung"
+      summary={state.data ? (aktuell ? (aktuell.partnerName || "Zugeordnet") : "Kein Vertriebspartner") : null}
+      attention={Boolean(message) || modus !== null}
+    >
         {message && (
           <div className={`alert ${message.type === "success" ? "alert-success" : "alert-error"}`} role={message.type === "success" ? "status" : "alert"}>
             {message.text}
@@ -295,7 +302,7 @@ export function SalesPartnerAttributionSection({ userId }) {
           </>
         )}
         <p className="adm-support-hint">Änderungen gelten ab dem gewählten Tag und werden protokolliert.</p>
-      </div>
+    </AdminDisclosureCard>
 
       {confirm && (
         <ConfirmDialog
@@ -311,7 +318,7 @@ export function SalesPartnerAttributionSection({ userId }) {
           onConfirm={senden}
         />
       )}
-    </div>
+    </>
   );
 }
 

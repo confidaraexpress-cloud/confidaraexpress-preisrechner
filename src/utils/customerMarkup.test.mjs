@@ -636,8 +636,8 @@ test("39 — ein bestehender approved-Kunde ohne Bestätigung bleibt unveränder
   const n = legacyApprovedNotice({ currentStatus: "approved", pricing: selectPriceMarkup(UNCONFIRMED) });
   assert.equal(n.show, true);
   assert.equal(n.tone, "info", "sachlich, kein Warnzustand");
-  assert.equal(n.headline, "Globaler Standardaufschlag aktiv");
-  assert.ok(n.text.includes("globale Standardaufschlag"), n.text);
+  assert.equal(n.headline, "Allgemeiner Standardaufschlag aktiv");
+  assert.ok(n.text.includes("allgemeine Standardaufschlag"), n.text);
   assert.ok(n.text.includes("Der Zugang bleibt bestehen"), n.text);
   // Keine Störungs-/Sperrsprache, keine automatische Bestätigung.
   for (const word of ["Sperre", "gesperrt", "Fehler!", "dringend", "sofort", "Backfill"]) {
@@ -755,7 +755,7 @@ test("46 — die bestehende Kundendetailansicht bleibt vollständig erhalten", (
   for (const marker of [
     // Redesign 2026-10: Kartenköpfe ohne Symbol — dieselben Abschnitte.
     /<div className="adm-card-head">Unternehmen und Kontakt<\/div>/,
-    /<div className="adm-card-head">Aktivität und Zahlung<\/div>/,
+    /title="Aktivität und Zahlung"/,
     /Technische Informationen/,
     // UX-Paket 6 (bewusste Ankeränderung): „Konto" statt „Account" — dieselbe Aktion.
     /Konto anonymisieren/,

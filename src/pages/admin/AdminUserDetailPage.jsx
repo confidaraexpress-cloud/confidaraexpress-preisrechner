@@ -1,8 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useDialog } from "../../hooks/useDialog";
-import { useLocation, useParams, useNavigate } from "react-router-dom";
+import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { AdminBackLink } from "../../components/admin/AdminBackLink";
+import { AdminFacts } from "../../components/admin/AdminFacts";
+import { AdminDisclosureCard } from "../../components/admin/AdminDisclosureCard";
+import { billingModeFact, creditFact, markupFact, openAmountFact } from "../../utils/adminFactsView.mjs";
 import {
   getAdminUser,
   anonymizeAdminUser,
@@ -675,8 +678,55 @@ export default function AdminUserDetailPage() {
         </div>
       )}
 
+      {/* Admin-Vereinfachung (2026-11-10): das Wichtigste auf einen Blick — nur Werte, die die Seite
+          ohnehin geladen hat (Detailantwort, Aufschlag, Buchungsrahmen), nichts im Browser gerechnet. */}
+      <AdminFacts
+        id="adm-user-facts"
+        items={[
+          !pricingLoading && !pricingError ? markupFact(pricing) : null,
+          roleOf(u) !== "admin" && roleOf(u) !== "sales_partner" ? creditFact(detailPayload) : null,
+          openAmountFact(metrics),
+          metrics.shipmentsTotal !== null ? { label: "Sendungen", value: num(metrics.shipmentsTotal) } : null,
+          roleOf(u) !== "sales_partner" ? billingModeFact(readBillingMode(u)) : null,
+        ]}
+      />
+
+      {/* Häufige Wege in einem Schritt: die Sendungen und Rechnungen genau dieses Kunden (vorgefilterte
+          Listen über den bestehenden Serverfilter `user_id`). */}
+      {roleOf(u) !== "sales_partner" && idOf(u) != null && (
+        <div className="adm-actionbar" id="adm-user-actions">
+          <Link className="btn btn-outline btn-sm" id="adm-user-shipments-link"
+            to={`/admin/shipments?kunde=${encodeURIComponent(idOf(u))}`} state={{ kundeName: companyOf(u) || nameOf(u) || null }}>
+            Sendungen ansehen
+          </Link>
+          <Link className="btn btn-outline btn-sm" id="adm-user-invoices-link"
+            to={`/admin/invoices?kunde=${encodeURIComponent(idOf(u))}`} state={{ kundeName: companyOf(u) || nameOf(u) || null }}>
+            Rechnungen ansehen
+          </Link>
+        </div>
+      )}
 
       <div className="adm-cards">
+        <h2 className="adm-group-title" id="adm-user-group-konto">Konto</h2>
+        {/* Gruppe „Konto“: Status und Freischaltung zuerst, dann Stammdaten, Prüfung und Betreuung. */}
+        <CustomerApprovalCard
+          gate={gate}
+          pricing={pricing}
+          targetLabel={targetLabel}
+          busy={approveBusy}
+          message={approveMsg}
+          dialogOpen={approveOpen}
+          onOpenDialog={() => { setApproveMsg(null); setApproveOpen(true); }}
+          onCloseDialog={() => { if (!approveBusy) setApproveOpen(false); }}
+          onConfirm={confirmApprove}
+          onJumpToMarkup={focusMarkup}
+          blockable={statusCopy.actionKind === "block"}
+          blockDisabled={selfAccount}
+          blockDisabledReason={selfAccount ? SELF_ACTION_REASON : ""}
+          onBlock={() => { setApproveMsg(null); setBlockOpen(true); }}
+          creditLimit={selectCredit(detailPayload)?.limit ?? null}
+        />
+
         {/* 2) Unternehmen und Kontakt */}
         <div className="adm-card">
           <div className="adm-card-head">Unternehmen und Kontakt</div>
@@ -709,12 +759,21 @@ export default function AdminUserDetailPage() {
           </div>
         </div>
 
+        {/* 3c) Unternehmerprüfung (Go-Live Paket C) — Erklärungen der Registrierung
+             und Prüfvermerke. Selbstladend wie die Supportsektion; ein Fehler dort
+             blockiert diese Seite nicht. Kein Gate: die Freischaltung oben hängt
+             nicht daran. Nur für Kundenkonten. */}
+        {roleOf(u) !== "admin" && roleOf(u) !== "sales_partner" && (
+          <CustomerBusinessEvidenceSection userId={idOf(u)} />
+        )}
+
         {/* 2b) ConfidaraExpress-Betreuung (v2.90) — der persönliche Ansprechpartner des Kunden. Selbstladend; lädt
              neu, wenn sich der Status ändert (die erste Freischaltung teilt automatisch zu). Nur für Kundenkonten. */}
         {roleOf(u) !== "admin" && roleOf(u) !== "sales_partner" && (
           <AccountManagerSection userId={idOf(u)} refreshKey={statusOf(u)} />
         )}
 
+        <h2 className="adm-group-title" id="adm-user-group-preise">Preise</h2>
         {/* 3) Kontostatus und Konditionen — Status, Rolle, individueller
              Aufschlag und die zugehörige Statusaktion an einer Stelle. */}
         <CustomerMarkupSection
@@ -740,32 +799,7 @@ export default function AdminUserDetailPage() {
           <CustomerTariffMarkupSection key={`tarife-${idOf(u)}`} userId={idOf(u)} pricing={pricing} />
         )}
 
-        <CustomerApprovalCard
-          gate={gate}
-          pricing={pricing}
-          targetLabel={targetLabel}
-          busy={approveBusy}
-          message={approveMsg}
-          dialogOpen={approveOpen}
-          onOpenDialog={() => { setApproveMsg(null); setApproveOpen(true); }}
-          onCloseDialog={() => { if (!approveBusy) setApproveOpen(false); }}
-          onConfirm={confirmApprove}
-          onJumpToMarkup={focusMarkup}
-          blockable={statusCopy.actionKind === "block"}
-          blockDisabled={selfAccount}
-          blockDisabledReason={selfAccount ? SELF_ACTION_REASON : ""}
-          onBlock={() => { setApproveMsg(null); setBlockOpen(true); }}
-          creditLimit={selectCredit(detailPayload)?.limit ?? null}
-        />
-
-        {/* 3c) Unternehmerprüfung (Go-Live Paket C) — Erklärungen der Registrierung
-             und Prüfvermerke. Selbstladend wie die Supportsektion; ein Fehler dort
-             blockiert diese Seite nicht. Kein Gate: die Freischaltung oben hängt
-             nicht daran. Nur für Kundenkonten. */}
-        {roleOf(u) !== "admin" && roleOf(u) !== "sales_partner" && (
-          <CustomerBusinessEvidenceSection userId={idOf(u)} />
-        )}
-
+        <h2 className="adm-group-title" id="adm-user-group-abrechnung">Abrechnung</h2>
         {/* 3d) Abrechnung — Einzel- oder Sammelrechnung. Support/Onboarding dürfen
              das umstellen; die Änderung wirkt ausschließlich für künftige Buchungen. */}
         <BillingModeSection
@@ -802,9 +836,14 @@ export default function AdminUserDetailPage() {
         {/* 4) Aktivität und Zahlung — EINE Quelle für die Debitorenwerte (früher
              doppelt in „Zahlung" und „Aggregierte Kennzahlen"). Überfällige Rechnungen
              sperren das Konto nicht; Buchungen begrenzt allein der Buchungsrahmen (3e). */}
-        <div className="adm-card">
-          <div className="adm-card-head">Aktivität und Zahlung</div>
-          <div className="adm-card-body">
+        {/* Admin-Vereinfachung (2026-11-10): Sendungen und offener Betrag stehen schon oben „auf einen Blick“ —
+            die vollständigen Zahlen hier eingeklappt; überfällige Rechnungen öffnen den Bereich. */}
+        <AdminDisclosureCard
+          id="adm-user-activity"
+          title="Aktivität und Zahlung"
+          summary={metrics.invoicesTotal !== null ? `${num(metrics.invoicesTotal)} Rechnungen · ${num(metrics.invoicesUnpaid)} offen` : null}
+          attention={metrics.hasOverdue}
+        >
             <div className="adm-summary">
               <Stat label="Sendungen gesamt" value={num(metrics.shipmentsTotal)} />
               <Stat label="Rechnungen gesamt" value={num(metrics.invoicesTotal)} />
@@ -818,9 +857,9 @@ export default function AdminUserDetailPage() {
                 {OVERDUE_NOTE}
               </p>
             )}
-          </div>
-        </div>
+        </AdminDisclosureCard>
 
+        <h2 className="adm-group-title" id="adm-user-group-weiteres">Support und weitere Angaben</h2>
         {/* 4b) Supportanfragen dieses Kunden — read-only Übersicht der letzten
              Anfragen. Bearbeitet wird ausschließlich auf der Detailseite der
              Anfrage, damit es genau EINEN Schreibpfad gibt. Die Sektion lädt

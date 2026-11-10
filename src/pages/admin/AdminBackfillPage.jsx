@@ -62,8 +62,8 @@ function LegalTextsCard() {
       <div className="adm-card-head">Rechtstexte (Entwürfe)</div>
       <div className="adm-card-body">
         <p className="adm-support-hint">
-          Die vorbereiteten Rechtstexte lesen und prüfen — nicht veröffentlicht und rechtlich noch
-          nicht freigegeben. Die öffentlichen Seiten und die aktive Buchungsfassung bleiben unverändert.
+          Entwürfe lesen – nicht veröffentlicht und rechtlich noch nicht freigegeben. Öffentliche Seiten
+          und die aktive Buchungsfassung bleiben unverändert.
         </p>
         <div className="adm-legal-texts-links">
           <Link className="btn btn-primary btn-sm" to="/vorschau/rechtstexte/agb">Seitenvorschau (wie veröffentlicht)</Link>
@@ -85,14 +85,14 @@ function ReadinessCard({ readiness, loading, error, onReload }) {
   return (
     <div className="adm-card">
       <div className="adm-card-head">
-        Produktionsbereitschaft Rechnungen
+        Bereitschaft für echte Rechnungen
         <button type="button" className="btn btn-outline btn-sm adm-card-head-action" onClick={onReload} disabled={loading}>
           Aktualisieren
         </button>
       </div>
       <div className="adm-card-body">
         {loading ? (
-          <LoadingState text="Produktionsbereitschaft wird geprüft …" />
+          <LoadingState text="Bereitschaft wird geprüft …" />
         ) : error ? (
           <div className="alert alert-error" role="alert">{error}</div>
         ) : !readiness ? (
@@ -182,10 +182,8 @@ function ReadinessCard({ readiness, loading, error, onReload }) {
               </div>
             )}
             <p className="adm-support-hint">
-              Diese Anzeige ist rein informativ — sie zeigt, welche Stammdaten vor dem ersten echten
-              Kunden noch ersetzt werden müssen, blockiert aber weder den PDF-Backfill unten noch
-              künftige Buchungen. Aus Sicherheitsgründen werden ausschließlich Feldnamen, Status und
-              Zähler angezeigt — niemals Aussteller-, Bank- oder Steuerwerte.
+              Nur zur Information: Sie blockiert weder die Vorschau unten noch Buchungen. Angezeigt werden
+              nur Feldnamen, Status und Zähler – nie Aussteller-, Bank- oder Steuerwerte.
             </p>
           </>
         )}
@@ -218,7 +216,7 @@ export default function AdminBackfillPage() {
     try {
       const r = await getInvoiceProductionReadiness();
       if (!r.ok) {
-        if (r.status !== 401 && r.status !== 403) setReadinessError("Die Produktionsbereitschaft konnte nicht geladen werden.");
+        if (r.status !== 401 && r.status !== 403) setReadinessError("Die Bereitschaft konnte nicht geladen werden.");
         setReadiness(null);
         return;
       }
@@ -226,7 +224,7 @@ export default function AdminBackfillPage() {
       try { d = await r.json(); } catch { d = {}; }
       setReadiness(d && typeof d === "object" ? d : null);
     } catch {
-      setReadinessError("Die Produktionsbereitschaft konnte nicht geladen werden.");
+      setReadinessError("Die Bereitschaft konnte nicht geladen werden.");
       setReadiness(null);
     } finally {
       setReadinessLoading(false);
@@ -319,16 +317,14 @@ export default function AdminBackfillPage() {
       <PageHeader
         variant="admin"
         backLink={back}
-        title="Interne Vorschau-PDFs erzeugen"
-        subtitle={'Erzeugt für bestehende, tatsächlich gebuchte Sendungen ein fehlendes Rechnungs-PDF als interne Vorschau — mit Wasserzeichen „INTERNE VORSCHAU – NICHT ZAHLEN".'}
+        title="Vorschau-PDFs"
+        subtitle={'Fehlende Rechnungs-PDFs gebuchter Sendungen als interne Vorschau erzeugen – mit Wasserzeichen „INTERNE VORSCHAU – NICHT ZAHLEN".'}
       />
 
       <p className="adm-note adm-head-note" role="note">
         <span>
-          Das Dokument bleibt dauerhaft ein Testdokument: Es wird <strong>nicht</strong> produktiv,
-          verbraucht <strong>keine</strong> neue Rechnungsnummer, ändert <strong>keine</strong>
-          {" "}Beträge oder Datumsangaben und löst <strong>keinen</strong> E-Mail-Versand aus.
-          Jede Aktion wird serverseitig geprüft und im Protokoll festgehalten.
+          Eine Vorschau bleibt immer ein Testdokument: keine neue Rechnungsnummer, keine geänderten Beträge
+          oder Daten, kein E-Mail-Versand.
         </span>
       </p>
 
@@ -346,8 +342,8 @@ export default function AdminBackfillPage() {
 
       <div className="adm-section-head">
         <div>
-          <h2 className="adm-section-title">Backfill-Vorschau</h2>
-          <p className="adm-section-sub">Alle Rechnungen zu tatsächlich gebuchten Sendungen. Die Aktion ist nur aktiv, wenn das PDF objektiv erzeugbar ist.</p>
+          <h2 className="adm-section-title">Rechnungen gebuchter Sendungen</h2>
+          <p className="adm-section-sub">„Vorschau-PDF erzeugen“ ist nur aktiv, wenn alle nötigen Angaben vorliegen.</p>
         </div>
         <button type="button" className="btn btn-outline btn-sm" onClick={loadList} disabled={loading}>
           Aktualisieren

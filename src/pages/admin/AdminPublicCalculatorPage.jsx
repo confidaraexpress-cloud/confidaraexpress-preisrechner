@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
-import { AdminBackLink } from "../../components/admin/AdminBackLink";
 import {
   getAdminPublicCalculatorSettings, updateAdminPublicCalculatorAvailability, updateAdminPublicCalculatorMarkup,
 } from "../../api/adminApi";
@@ -161,7 +160,6 @@ export default function AdminPublicCalculatorPage() {
     <div className="adm-page">
       <PageHeader
         variant="admin"
-        backLink={<AdminBackLink to="/admin" label="Zur Übersicht" />}
         title={<>{T.title}</>}
         subtitle={<>{T.subtitle}</>}
       />

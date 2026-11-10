@@ -42,6 +42,7 @@ import {
 } from "../../utils/adminCustomerView.mjs";
 import { useAuth } from "../../context/AuthContext";
 import { CustomerMarkupSection } from "../../components/admin/CustomerMarkupSection";
+import { CustomerTariffMarkupSection } from "../../components/admin/CustomerTariffMarkupSection";
 import { CustomerApprovalCard } from "../../components/admin/CustomerApprovalCard";
 import { CustomerSupportSection } from "../../components/admin/CustomerSupportSection";
 import { SalesPartnerAttributionSection } from "../../components/admin/SalesPartnerAttributionSection";
@@ -730,6 +731,14 @@ export default function AdminUserDetailPage() {
           inputRef={markupInputRef}
           sectionRef={markupSectionRef}
         />
+
+        {/* 3a) Individuelle Versandtarife (Betreiberentscheidung 2026-11-10): sieben Transglobal-Produktsätze je
+             Kunde und der vorläufige Preisvergleich. Selbstladend; der Schlüssel erzwingt beim Kundenwechsel einen
+             frischen Zustand (keine Vermischung von Entwürfen oder Vergleichsbasen). `pricing` liefert die Kontosätze
+             für die Veraltet-Erkennung der Vergleichsbasis. Nicht für Vertriebspartner (kein Versandkonto). */}
+        {roleOf(u) !== "sales_partner" && (
+          <CustomerTariffMarkupSection key={`tarife-${idOf(u)}`} userId={idOf(u)} pricing={pricing} />
+        )}
 
         <CustomerApprovalCard
           gate={gate}

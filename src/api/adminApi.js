@@ -337,6 +337,47 @@ export function updateAdminCustomerPriceMarkup(userId, priceMarkupPercent, expre
   });
 }
 
+// ── Individuelle Versandtarife (Betreiberentscheidung 2026-11-10) ───────────
+// Vier Endpunkte, exakt die Pfade des Backends (routes/admin/tariffMarkups.js).
+// Pfade OHNE /api-Präfix wie die übrigen Adminrouten. Der Body enthält NUR die
+// vereinbarten Felder: `markups` (Produktschlüssel → Prozentwert oder null) bzw.
+// `destinationCountry`/`custom` — nie Kontodaten, nie Preise, nie Rechenraten.
+// GET /admin/users/:id/tariff-markups — gespeicherte, vererbte und wirksame Sätze + Vergleichsoptionen.
+export function getAdminCustomerTariffMarkups(userId, { signal } = {}) {
+  return apiFetch(`/admin/users/${encodeURIComponent(userId)}/tariff-markups`, { auth: true, signal });
+}
+// PUT /admin/users/:id/tariff-markups — Body { markups: { "22": 35, "84": null } } (null = Standard verwenden).
+export function updateAdminCustomerTariffMarkups(userId, body) {
+  if (!body || typeof body !== "object" || !body.markups || typeof body.markups !== "object") {
+    return Promise.reject(new Error("invalid_tariff_markups_body"));
+  }
+  return apiFetch(`/admin/users/${encodeURIComponent(userId)}/tariff-markups`, {
+    method: "PUT",
+    auth: true,
+    body: JSON.stringify({ markups: body.markups }),
+  });
+}
+// POST /admin/users/:id/tariff-comparison — der EINZIGE Aufruf mit Providerkontakt (Betreiber: „Preise aktualisieren“).
+// Body { destinationCountry, custom?: { weightKg, lengthCm, widthCm, heightCm } }.
+export function refreshAdminTariffComparison(userId, { destinationCountry, custom } = {}) {
+  const body = { destinationCountry };
+  if (custom) body.custom = custom;
+  return apiFetch(`/admin/users/${encodeURIComponent(userId)}/tariff-comparison`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify(body),
+  });
+}
+// POST /admin/users/:id/tariff-comparison/:runId/preview — Vorschau mit Entwurfssätzen, serverseitig, ohne Providerkontakt.
+export function previewAdminTariffComparison(userId, runId, markups, { signal } = {}) {
+  return apiFetch(`/admin/users/${encodeURIComponent(userId)}/tariff-comparison/${encodeURIComponent(runId)}/preview`, {
+    method: "POST",
+    auth: true,
+    signal,
+    body: JSON.stringify({ markups: { ...(markups || {}) } }),
+  });
+}
+
 // ── Entfernt: setAdminUserTestBooking ────────────────────────────────────────
 // Der Adminendpunkt PUT /admin/users/:id/test-booking existiert nicht mehr. Über
 // den JUMiNGO-Sandboxgutschein entscheidet serverseitig der globale Pre-Live-

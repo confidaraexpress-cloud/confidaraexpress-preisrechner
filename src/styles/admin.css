@@ -1887,7 +1887,7 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
    Gestapelt unter 48rem, ab 48rem ein dreispaltiges Raster (Produkt · Aufschlag · Wirksam). Dieselben
    Bausteine wie der Kundenaufschlag (.adm-markup-input-wrap, .adm-markup-suffix, .adm-sp-fold). */
 .adm-tarif-intro { margin-bottom: var(--ce-space-4); }
-.adm-tarif-badge { font-variant-numeric: tabular-nums; }
+.adm-tarif-badge { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 .adm-tarif-rows { display: flex; flex-direction: column; border-top: 1px solid var(--ce-color-border-subtle); }
 .adm-tarif-head { display: none; }
 .adm-tarif-row {
@@ -1897,7 +1897,7 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
 .adm-tarif-row--dirty { background: linear-gradient(90deg, var(--ce-color-surface-subtle), transparent 60%); }
 .adm-tarif-name { display: flex; align-items: baseline; gap: var(--ce-space-2); min-width: 0; }
 .adm-tarif-label { font-size: var(--ce-text-body-size); font-weight: 600; line-height: var(--ce-text-body-line); color: var(--ce-color-text-primary); }
-.adm-tarif-key { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-muted); font-variant-numeric: tabular-nums; }
+.adm-tarif-key { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-muted); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 .adm-tarif-field { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2); }
 .adm-tarif-input-wrap { max-width: 160px; }
 .adm-tarif-effective { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; align-self: center; }

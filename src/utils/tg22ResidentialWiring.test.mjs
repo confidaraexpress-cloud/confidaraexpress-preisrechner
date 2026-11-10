@@ -97,7 +97,9 @@ test("W6 — Absicherung: keine Neubepreisung vor der Bindung; Neubestätigung s
   const annahme = abschnitt(booking, "const acceptInsuredPriceChange = async", "const continueWithNewPrice");
   assert.match(annahme, /if \(residentialRequired && \(isRebindRequired\(d\) \|\| isPriceInputsRequired\(d\)\)\) \{\s*setPriceChange\(null\);\s*forderNeubindung\(/);
 
-  assert.match(booking, /\{residentialRequired && residentialBlocks \? \(\s*<p className="booking-ins-unavailable" id="insurance-after-residential">\s*\{RESIDENTIAL_TEXT\.insuranceAfterChoice\}\s*<\/p>\s*\) : modules\.insurance \? \(/);
+  // Seit E1 (2026-11-10) entscheidet dieselbe Aussage wie auf der Angebotskarte (`insuranceOffer`), ob
+  // eine Absicherung angeboten wird — vor der Bindung der Lieferadresse unverändert gar keine.
+  assert.match(booking, /\{residentialRequired && residentialBlocks \? \(\s*<p className="booking-ins-unavailable" id="insurance-after-residential">\s*\{RESIDENTIAL_TEXT\.insuranceAfterChoice\}\s*<\/p>\s*\) : insuranceOffer\.insurable \? \(/);
 });
 
 test("W7 — Optionen: genau ein Konfliktversuch, Wiederherstellung über boundValue, sonst still binden", () => {

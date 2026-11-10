@@ -64,6 +64,19 @@ const JU_TARIF = {
   insuranceAvailable: true,
   insuranceDetails: { isInsurable: true, extraInsurancePriceBruttoPreselect: 3.99,
                       extraInsurancePremiumPriceBruttoPreselect: 7.49 },
+  // E1/E2 (2026-11-10): je Stufe die Aussage des Servers für den erklärten Warenwert.
+  insuranceCover: {
+    standard: { state: "available", coverLimit: 20000, maxInsuredValue: 500 },
+    premium:  { state: "available", coverLimit: 20000, maxInsuredValue: 500 },
+  },
+};
+// Derselbe Stufentarif mit einem Warenwert über der Grenze: keine Stufe, eine Aussage.
+const JU_TARIF_UEBER_GRENZE = {
+  ...JU_TARIF,
+  insuranceCover: {
+    standard: { state: "above_cover_limit", coverLimit: 20000, maxInsuredValue: null },
+    premium:  { state: "above_cover_limit", coverLimit: 20000, maxInsuredValue: null },
+  },
 };
 const TG_NICHT_VERSICHERBAR = { offerId: "f".repeat(32), bookable: false, insuranceAvailable: false, insuranceDetails: null };
 
@@ -102,6 +115,9 @@ test("A3 — eine gespeicherte Auswahl gilt nur für das Modell DIESES Tarifs", 
   assert.equal(insuranceTypeForTariff("standard", JU_TARIF), "standard");
   assert.equal(insuranceTypeForTariff("premium", JU_TARIF), "premium");
   assert.equal(insuranceTypeForTariff("gold", JU_TARIF), "none");
+  // E1 (2026-11-10): über der Grenze — oder ohne Aussage des Servers — keine Stufe.
+  assert.equal(insuranceTypeForTariff("standard", JU_TARIF_UEBER_GRENZE), "none");
+  assert.equal(insuranceTypeForTariff("premium", { ...JU_TARIF, insuranceCover: undefined }), "none");
   // TG22 Paket B: ohne kaufbaren Zusatz wird keine Absicherung wiederhergestellt.
   assert.equal(insuranceTypeForTariff("transit_cover", TG_GRUNDSCHUTZ), "none");
   assert.equal(insuranceTypeForTariff("transit_cover", TG_HOECHSTDECKUNG), "none");
@@ -338,7 +354,11 @@ test("A10 — das Deckungsbetragsmodell nennt keine Stufe, keine 50 €, keinen 
   const karte = coverInsuranceCardCopy("transit_cover", 20);
   assert.equal(flach(karte.bullets[0].text), "Selbstbeteiligung: 20,00 €");
   assert.equal(karte.hasDetails, false);
-  assert.equal(coverInsuranceCardCopy("transit_cover", null).bullets.length, 0, "keine erfundene Selbstbeteiligung");
+  const ohneSelbstbeteiligung = coverInsuranceCardCopy("transit_cover", null).bullets.map((b) => b.text);
+  assert.ok(!ohneSelbstbeteiligung.some((t) => /Selbstbeteiligung/.test(t)), "keine erfundene Selbstbeteiligung");
+  // Kein uneingeschränktes Schutzversprechen: der Ausschlusshinweis steht immer auf der Karte.
+  assert.deepEqual(ohneSelbstbeteiligung, [COVER_INSURANCE_TEXT.exclusionNote]);
+  assert.equal(karte.bullets.at(-1).text, COVER_INSURANCE_TEXT.exclusionNote);
   const none = coverInsuranceCardCopy("none", 20);
   assert.equal(none.hasCarrierTerms, true);
   assert.equal(none.description, INSURANCE_TEXT.carrierLiability);
@@ -361,15 +381,21 @@ test("A11 — die Angebotskarte benutzt DASSELBE Gate wie die Buchungsseite", ()
     assert.equal(offerCardInsurance(t).insurable, getBookingModules(t).insurance, JSON.stringify(t));
   }
   assert.deepEqual(offerCardInsurance(TG_TARIF),
-    { insurable: true, explicitlyUnavailable: false, coverModel: true, excessValue: 20, notice: null });
+    { insurable: true, explicitlyUnavailable: false, coverModel: true, excessValue: 20, notice: null, tiers: [] });
   assert.equal(offerCardInsurance(JU_TARIF).coverModel, false);
   assert.equal(offerCardInsurance(JU_TARIF).notice, null);
+  assert.deepEqual(offerCardInsurance(JU_TARIF).tiers, ["standard", "premium"]);
+  // E1 (2026-11-10): über der Grenze ist die Zusatzversicherung nicht „möglich" — die Buchungsseite liest
+  // dieselbe Entscheidung (insuranceOffer), deshalb weicht sie hier bewusst vom reinen Modul-Schalter ab.
+  assert.equal(offerCardInsurance(JU_TARIF_UEBER_GRENZE).insurable, false);
+  assert.equal(offerCardInsurance(JU_TARIF_UEBER_GRENZE).explicitlyUnavailable, false);
+  assert.match(flach(offerCardInsurance(JU_TARIF_UEBER_GRENZE).notice.text), /bis zu einem Warenwert von 20\.000 € möglich/);
   assert.equal(offerCardInsurance(TG_NICHT_VERSICHERBAR).insurable, false);
   assert.equal(offerCardInsurance(TG_NICHT_VERSICHERBAR).explicitlyUnavailable, true);
   // TG22 Paket B: die Grundabsicherung ist KEIN „nicht verfügbar", sondern eine Aussage.
   assert.deepEqual(offerCardInsurance(TG_GRUNDSCHUTZ), {
     insurable: false, explicitlyUnavailable: false, coverModel: false, excessValue: 20,
-    notice: { kind: COVER_STATE.BASIC_COVER_INCLUDED, text: coverBasicCoverText(50) },
+    notice: { kind: COVER_STATE.BASIC_COVER_INCLUDED, text: coverBasicCoverText(50) }, tiers: [],
   });
   assert.equal(offerCardInsurance(TG_HOECHSTDECKUNG).notice.kind, COVER_STATE.ABOVE_COVER_LIMIT);
   assert.equal(offerCardInsurance(TG_HOECHSTDECKUNG).explicitlyUnavailable, false);
@@ -377,7 +403,7 @@ test("A11 — die Angebotskarte benutzt DASSELBE Gate wie die Buchungsseite", ()
   const wartet = { ...TG_NICHT_VERSICHERBAR, unavailableReason: "price_inputs_required",
                    requiredPriceInputs: ["deliveryIsResidential"] };
   assert.deepEqual(offerCardInsurance(wartet),
-    { insurable: false, explicitlyUnavailable: false, coverModel: false, excessValue: null, notice: null });
+    { insurable: false, explicitlyUnavailable: false, coverModel: false, excessValue: null, notice: null, tiers: [] });
   assert.equal(offerCardInsurance({ ...wartet, unavailableReason: "quote_only" }).explicitlyUnavailable, true);
 });
 
@@ -493,14 +519,17 @@ test("B7 — das Modul zeigt beide Pflichtfragen ohne Vorbelegung und KEIN Versi
   // TG22 Paket B: der frei wählbare Versicherungswert gehört ausschließlich zum Stufenmodell; im
   // Deckungsbetragsmodell sagt der gesperrte Warenwert, bis wohin abgesichert wird.
   assert.match(modul, /\{!coverModel && \(insValueFieldVisible \? \(/);
-  assert.match(modul, /max=\{insuranceValueMax\}/);
+  // E2 (2026-11-10): Höchstwert je Stufe vom Server, ganze Euro.
+  assert.match(modul, /max=\{insuranceValueMax \?\? undefined\} step="1"/);
   assert.match(modul, /coverModel \? COVER_INSURANCE_TEXT\.goodsValueCoverHint/);
-  assert.match(seite, /const insValueFieldVisible = !coverModel && \(insValueRevealed \|\| insValueManual \|\| goodsOverMax\)/);
+  // E1 (2026-11-10): keine Teilversicherung über der Grenze — das Feld öffnet sich nie mehr wegen
+  // eines Warenwerts über einem festen Maximum.
+  assert.match(seite, /const insValueFieldVisible = !coverModel && \(insValueRevealed \|\| insValueManual\);/);
   assert.match(modul, /coverInsuranceCardCopy\(c\.id, excessValue\)/);
   assert.match(modul, /\{!coverModel && \(\s*<InsuranceDetailsDialog/, "der Stufendialog darf im Deckungsbetragsmodell nicht erscheinen");
   assert.ok(!/<Switch/.test(modul), "kein Schalter für eine dreiwertige Angabe");
   assert.match(seite, /excessValue=\{coverExcessValue\(tariff\)\}/);
-  assert.match(seite, /goodsOverMax = !coverModel && goodsExceedsInsuranceMax\(goodsValue\)/);
+  assert.ok(!/goodsOverMax|goodsExceedsInsuranceMax|INSURANCE_VALUE_MAX/.test(seite + modul), "keine feste Grenze mehr");
 });
 
 test("B8 — Preiszusammenfassung und Live-Leiste zählen transit_cover als versichert, mit neutraler Bezeichnung", () => {
@@ -524,10 +553,13 @@ test("B9 — kein Anbietername in den kundenseitigen Flächen der Absicherung", 
 });
 
 test("B11 — ohne kaufbaren Zusatz: Hinweisfläche statt „nicht verfügbar“, ohne Bedienelement und ohne Preis", () => {
-  assert.match(seite, /const coverNotice = coverInsuranceNotice\(tariff\)/);
-  assert.match(seite, /\) : coverNotice \? \(\s*<InsuranceCoverNotice text=\{coverNotice\.text\} \/>/);
+  // Seit E1 (2026-11-10) dieselbe Entscheidung wie die Angebotskarte — auch für die gestufte
+  // Zusatzversicherung über ihrer Grenze (dann mit deren Titel).
+  assert.match(seite, /const insuranceOffer = offerCardInsurance\(tariff\)/);
+  assert.match(seite, /\) : insuranceOffer\.insurable \? \(\s*<InsuranceModule/);
+  assert.match(seite, /\) : insuranceOffer\.notice \? \(\s*<InsuranceCoverNotice\s+text=\{insuranceOffer\.notice\.text\}/);
   assert.match(seite, /repriceNotice=\{repriceNotice\}/);
-  assert.match(modul, /export function InsuranceCoverNotice\(\{ text \}\)/);
+  assert.match(modul, /export function InsuranceCoverNotice\(\{ text, title = COVER_INSURANCE_TEXT\.sectionTitle \}\)/);
   assert.match(modul, /\) : repriceNotice \? \(\s*<span className="field-hint" id="ins-reprice-notice">\{repriceNotice\}<\/span>/);
   const hinweis = modul.slice(modul.indexOf("export function InsuranceCoverNotice"), modul.indexOf("export function InsuranceModule"));
   assert.ok(hinweis.length > 0, "die Hinweisfläche fehlt");

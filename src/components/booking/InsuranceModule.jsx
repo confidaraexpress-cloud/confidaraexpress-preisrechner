@@ -7,6 +7,7 @@ import {
   COVER_INSURANCE_TEXT,
   carrierTermsHref,
   coverInsuranceCardCopy,
+  tierInsuredValueHint,
 } from "../../utils/insuranceTerms.mjs";
 import { EXTERNAL_LINK_REL, EXTERNAL_LINK_TARGET } from "../../utils/externalLink.mjs";
 
@@ -129,11 +130,12 @@ function GoodsQuestion({ feld, frage, wert, onChange, error }) {
 // TG22 Paket B — der Tarif trägt KEINEN kaufbaren Zusatz, sagt aber etwas über die Absicherung:
 // die enthaltene Grundabsicherung oder die Höchstdeckung. Eine Information in der gewohnten Fläche
 // der Absicherung — kein Fehlerzustand, keine Karten, kein Preis, kein Bedienelement.
-export function InsuranceCoverNotice({ text }) {
+// Seit E1 (2026-11-10) auch für die gestufte Zusatzversicherung über ihrer Grenze — dann mit deren Titel.
+export function InsuranceCoverNotice({ text, title = COVER_INSURANCE_TEXT.sectionTitle }) {
   return (
     <div className="booking-insurance-box" role="note">
       <div className="ins-head">
-        <span className="ins-head-title">{COVER_INSURANCE_TEXT.sectionTitle}</span>
+        <span className="ins-head-title">{title}</span>
       </div>
       <p className="ins-head-sub" id="ins-cover-notice">{text}</p>
     </div>
@@ -145,7 +147,7 @@ export function InsuranceModule({
   isInsured, tariff,
   goodsValue, onGoodsValueChange, onGoodsValueBlur, goodsValueError, goodsValueLocked = false,
   insuranceValue, onInsuranceValueChange, onInsuranceValueBlur, insValueError,
-  insValueFieldVisible, onRevealInsValue, goodsOverMax, insuranceValueMax,
+  insValueFieldVisible, onRevealInsValue, insuranceValueMax = null, underinsuranceHint = "",
   repriceError, repriceNotice = "", isRepricing, isStale, repriceConfirmed,
   coverModel = false, excessValue = null,
   goodsAreNew = null, goodsAreFragile = null, onGoodsAnswerChange, goodsAnswerErrors = {},
@@ -297,23 +299,16 @@ export function InsuranceModule({
             {coverModel && insValueError && <span className="field-error">{insValueError}</span>}
           </div>
 
-          {goodsOverMax && (
-            <p className="ins-overmax" role="note">
-              <span>
-                Der Warenwert liegt über dem maximal versicherbaren Betrag.
-                Bitte wählen Sie einen Versicherungswert bis {money(insuranceValueMax)}.
-              </span>
-            </p>
-          )}
-
-          {/* Der frei wählbare Versicherungswert gehört ausschließlich zum Stufenmodell. */}
+          {/* Der frei wählbare Versicherungswert gehört ausschließlich zum Stufenmodell. Ganze Euro
+              von 1 bis zum Warenwert (E2, 2026-11-10) — der Höchstwert kommt vom Server. Über der
+              Grenze gibt es keine Stufe und damit dieses Feld gar nicht (E1). */}
           {!coverModel && (insValueFieldVisible ? (
             <div className="field">
               <label className="field-label" htmlFor="ins-value">Versicherungswert (EUR)</label>
               <input
                 id="ins-value"
                 className={`field-input${insValueError ? " field-input-error" : ""}`}
-                type="number" inputMode="decimal" min="0" max={insuranceValueMax} step="0.01"
+                type="number" inputMode="numeric" min="1" max={insuranceValueMax ?? undefined} step="1"
                 value={insuranceValue}
                 onChange={e => onInsuranceValueChange(e.target.value)}
                 onBlur={onInsuranceValueBlur}
@@ -321,15 +316,21 @@ export function InsuranceModule({
               />
               {insValueError
                 ? <span className="field-error">{insValueError}</span>
-                : <span className="field-hint">
-                    {`Maximal ${money(insuranceValueMax)}. Standardmäßig entspricht er dem Warenwert.`}
-                  </span>}
+                : <span className="field-hint">{tierInsuredValueHint(insuranceValueMax)}</span>}
             </div>
           ) : (
             <button type="button" className="ins-adjust-btn" onClick={onRevealInsValue}>
               Versicherungswert anpassen
             </button>
           ))}
+
+          {/* E2: liegt der Versicherungswert unter dem Warenwert, sagt die Fläche das — eine
+              Teilversicherung sieht nie wie eine volle aus. */}
+          {!coverModel && underinsuranceHint && (
+            <p className="ins-overmax" role="note" id="ins-underinsurance">
+              <span>{underinsuranceHint}</span>
+            </p>
+          )}
 
           {coverModel && (
             <>

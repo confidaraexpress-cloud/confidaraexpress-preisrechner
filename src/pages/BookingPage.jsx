@@ -84,18 +84,21 @@ import {
   voucherInvalidationKey, shouldInvalidateVoucher, normalizeVoucherInput, voucherAvailableFor,
 } from "../utils/voucherView.mjs";
 import {
-  buildBookingPriceView, priceViewBlocksBooking, insuranceCardPrice,
-  autofillInsuranceValue, goodsExceedsInsuranceMax, INSURANCE_VALUE_MAX, PRICE_STATUS,
+  buildBookingPriceView, priceViewBlocksBooking, insuranceCardPrice, PRICE_STATUS,
   isInsuredType,
 } from "../utils/bookingPriceView.mjs";
 import {
   INSURANCE_TYPE_TRANSIT_COVER, isCoverValueModel, coverExcessValue, coverValueForTariff,
-  coverInsuranceNotice, coverRepriceNotice,
+  coverRepriceNotice, offerCardInsurance,
   goodsAnswerError, tristateAnswer, buildCoverRepricePayload, buildCoverBookInsurancePayload,
   coverRepriceErrorText, coverBookErrorText, coverBookErrorRequiresReprice, isCoverBookError,
   insuranceTypeForTariff, insuredPriceChangeView, priceChangeBreakdownLines, COVER_PRICE_CHANGE_TEXT,
 } from "../utils/coverInsuranceView.mjs";
-import { COVER_INSURANCE_TEXT } from "../utils/insuranceTerms.mjs";
+import { COVER_INSURANCE_TEXT, INSURANCE_TEXT } from "../utils/insuranceTerms.mjs";
+// Betreiberentscheidungen E1/E2 (2026-11-10): Grenzen der gestuften Zusatzversicherung, vom Server je Stufe genannt.
+import {
+  maxInsuredValueFor, insuredValueError, underinsuranceHint, defaultInsuredValue,
+} from "../utils/tierInsuranceCover.mjs";
 import {
   INVOICES_DASHBOARD_TARGET, invoiceDeliveryHint, BOOKING_CONFIRMATION_LINE, INVOICE_AUTOCREATE_LINE,
   PROFILE_DASHBOARD_TARGET,
@@ -666,9 +669,13 @@ export default function BookingPage() {
   // vom Server am Tarif genannt, sonst der eingefrorene Warenwert des Vorgangs. Er ist keine
   // Eingabe; der Server vergleicht einen mitgesendeten Wert nur noch mit dem Warenwert.
   const coverValueNum = coverModel ? coverValueForTariff(tariff, goodsValue) : null;
-  // Ohne kaufbaren Zusatz kann der Tarif trotzdem etwas sagen: die enthaltene Grundabsicherung
-  // oder die Höchstdeckung. Eine Information statt „nicht verfügbar".
-  const coverNotice = coverInsuranceNotice(tariff);
+  // Ob und welche Absicherung dieser Tarif für diesen Warenwert anbietet — DIESELBE Entscheidung wie
+  // auf der Angebotskarte. Ohne kaufbaren Zusatz kann der Tarif trotzdem etwas sagen: die enthaltene
+  // Grundabsicherung, die Höchstdeckung oder (E1, 2026-11-10) die Grenze der gestuften
+  // Zusatzversicherung. Eine Information statt „nicht verfügbar".
+  const insuranceOffer = offerCardInsurance(tariff);
+  // E2: der höchste wählbare Versicherungswert der gewählten Stufe — der Warenwert in ganzen Euro, vom Server genannt.
+  const tierMax = coverModel ? null : maxInsuredValueFor(tariff, insuranceType);
   // Inhaltsbeschreibung: das sichtbare Feld wurde aus dem Versicherungsbereich
   // ENTFERNT. Der technische contentDescription-Vertrag bleibt UNVERÄNDERT — es wird
   // weiter der bestehende sichere Default (Sendungsinhalt → "Paket") an /reprice und
@@ -685,8 +692,9 @@ export default function BookingPage() {
   // sie hängen von der bestätigten/gewählten Stufe ab (siehe unten, nach insValid).
 
   // Clientseitige Validierung (nur Standard/Premium), GETRENNT nach Backend-
-  // Grenzen. Warenwert (goodsValue): 1..9.999.999. Versicherungswert (value):
-  // 1..20.000. Komma-Eingaben werden über asNum() unterstützt. contentDescription
+  // Grenzen. Warenwert (goodsValue): 1..9.999.999. Versicherungswert (value): ganze
+  // Euro von 1 bis zum Warenwert (E2, Höchstwert vom Server je Stufe; die frühere feste
+  // 20.000-€-Grenze ist entfallen). Komma-Eingaben werden unterstützt. contentDescription
   // ist per maxLength/slice bereits ≤ 35 → keine separate Fehlermeldung nötig.
   // Im Deckungsbetragsmodell ist der Warenwert eine reine Anzeige der eingefrorenen
   // Sendungsangabe — er wird dort nicht erneut verlangt. TG22 Paket B: er ist zugleich der
@@ -702,11 +710,7 @@ export default function BookingPage() {
   const insValueError =
     !isInsured                 ? "" :
     coverModel                 ? (coverValueNum == null ? COVER_INSURANCE_TEXT.coverValueMissing : "") :
-    !insuranceValue.trim()     ? "Bitte geben Sie den Versicherungswert an." :
-    insuranceValueNum == null  ? "Bitte geben Sie einen gültigen Betrag ein." :
-    insuranceValueNum <= 0     ? "Der Versicherungswert muss größer als 0 € sein." :
-    insuranceValueNum > 20000  ? "Der Versicherungswert darf höchstens 20.000 € betragen." :
-    "";
+    insuredValueError(insuranceValue, tierMax);
   const insValid = !isInsured || (goodsValueError === "" && insValueError === "");
   // Die beiden Pflichtfragen der zusätzlichen Transportabsicherung — eigene Bedingung
   // NEBEN insValid. Solange eine Frage offen ist, gibt es weder Neubepreisung noch
@@ -823,20 +827,17 @@ export default function BookingPage() {
     { id: "standard", name: "Standardversicherung",    price: insuranceCardPrice({ cardType: "standard", selectedType: insuranceType, view: priceView, preselectGross: insStdPrice }) },
     { id: "premium",  name: "Premiumversicherung",     price: insuranceCardPrice({ cardType: "premium",  selectedType: insuranceType, view: priceView, preselectGross: insPremPrice }) },
     { id: "none",     name: "Keine zusätzliche Transportversicherung", price: insuranceCardPrice({ cardType: "none",     selectedType: insuranceType, view: priceView, preselectGross: null }) },
-  ];
+  // E1 (2026-11-10): nur die Stufen, die der Server für diesen Warenwert anbietet — „keine" immer.
+  ].filter((karte) => karte.id === "none" || insuranceOffer.tiers.includes(karte.id));
 
-  // Progressive Disclosure des Versicherungswert-Felds + Warenwert-über-Maximum.
-  // Im Deckungsbetragsmodell gibt es KEIN Versicherungswert-Feld: der Wert IST der Warenwert
-  // (TG22 Paket B), und die Stufengrenze gilt dort nicht.
-  const goodsOverMax = !coverModel && goodsExceedsInsuranceMax(goodsValue);
-  const insValueFieldVisible = !coverModel && (insValueRevealed || insValueManual || goodsOverMax);
+  // Progressive Disclosure des Versicherungswert-Felds. Im Deckungsbetragsmodell gibt es KEIN
+  // Versicherungswert-Feld: der Wert IST der Warenwert (TG22 Paket B). Die frühere Teilversicherung
+  // über 20.000 € (Feld automatisch offen, „bis 20.000 €") gibt es seit E1 nicht mehr: über der
+  // Grenze bietet der Server keine Stufe an.
+  const insValueFieldVisible = !coverModel && (insValueRevealed || insValueManual);
 
-  // Auto-Vorbelegung Versicherungswert = Warenwert, bis der Nutzer ihn manuell ändert.
-  const handleGoodsValueChange = (v) => {
-    setGoodsValue(v);
-    const next = autofillInsuranceValue({ goodsValue: v, insuranceValueManual: insValueManual });
-    if (next != null) setInsuranceValue(next);
-  };
+  // Der Warenwert ist die eingefrorene Sendungsangabe und hier nur sichtbar (das Feld ist gesperrt).
+  const handleGoodsValueChange = (v) => { setGoodsValue(v); };
   const handleInsuranceValueChange = (v) => { setInsuranceValue(v); setInsValueManual(true); };
   // JUM-06: Muss der Anbieterentwurf ohne Versicherung neu bepreist werden, sobald diese Auswahl
   // gilt? Genau dann, wenn „keine“ gewählt ist und im Stufenmodell zuvor versichert bepreist
@@ -849,7 +850,8 @@ export default function BookingPage() {
     // nicht, und niemand löste die Sperre wieder.
     if (id !== insuranceType && entwurfRuecksetzungNoetig(id)) setEntwurfRuecksetzung(true);
     setInsuranceType(id);
-    if (isInsuredType(id) && !insValueManual) setInsuranceValue(goodsValue);
+    // Vorbelegung = voller Warenwert; im Stufenmodell in ganzen Euro, wie der Server ihn je Stufe nennt (E2).
+    if (isInsuredType(id) && !insValueManual) setInsuranceValue(coverModel ? goodsValue : defaultInsuredValue(tariff, id));
   };
   // Antwort auf eine der beiden Pflichtfragen — ausschließlich true/false.
   const handleGoodsAnswer = (feld, wert) => {
@@ -2514,7 +2516,7 @@ export default function BookingPage() {
                   <p className="booking-ins-unavailable" id="insurance-after-residential">
                     {RESIDENTIAL_TEXT.insuranceAfterChoice}
                   </p>
-                ) : modules.insurance ? (
+                ) : insuranceOffer.insurable ? (
                   <InsuranceModule
                     insCards={insCards}
                     insuranceType={insuranceType}
@@ -2534,8 +2536,9 @@ export default function BookingPage() {
                     insValueError={insShowErrors ? insValueError : ""}
                     insValueFieldVisible={insValueFieldVisible}
                     onRevealInsValue={() => setInsValueRevealed(true)}
-                    goodsOverMax={goodsOverMax}
-                    insuranceValueMax={INSURANCE_VALUE_MAX}
+                    insuranceValueMax={tierMax}
+                    // E2: eine Teilversicherung sieht nie wie eine volle aus.
+                    underinsuranceHint={!coverModel && isInsured ? underinsuranceHint(insuranceValue, goodsValue) : ""}
                     repriceError={repriceError}
                     repriceNotice={repriceNotice}
                     isRepricing={priceView.isRepricing}
@@ -2550,8 +2553,11 @@ export default function BookingPage() {
                       ? { goodsAreNew: goodsAreNewError, goodsAreFragile: goodsAreFragileError }
                       : {}}
                   />
-                ) : coverNotice ? (
-                  <InsuranceCoverNotice text={coverNotice.text} />
+                ) : insuranceOffer.notice ? (
+                  <InsuranceCoverNotice
+                    text={insuranceOffer.notice.text}
+                    title={coverModel ? COVER_INSURANCE_TEXT.sectionTitle : INSURANCE_TEXT.sectionTitle}
+                  />
                 ) : (
                   <p className="booking-ins-unavailable">
                     Für diesen Tarif ist keine Zusatzversicherung verfügbar.

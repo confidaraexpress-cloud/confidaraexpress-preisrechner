@@ -8,11 +8,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buchungsFlaeche } from "../testing/quelltext.mjs";
+import * as bookingPriceViewModul from "./bookingPriceView.mjs";
 import {
   buildBookingPriceView, priceViewBlocksBooking, insuranceCardPrice,
-  insuranceValueFieldsVisible, autofillInsuranceValue, goodsExceedsInsuranceMax,
-  isInsuredType, INSURANCE_VALUE_MAX, PRICE_STATUS,
+  insuranceValueFieldsVisible,
+  isInsuredType, PRICE_STATUS,
 } from "./bookingPriceView.mjs";
+import { defaultInsuredValue, insuredValueError, maxInsuredValueFor } from "./tierInsuranceCover.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const read = (rel) => fs.readFileSync(path.join(__dirname, rel), "utf8");
@@ -150,19 +152,26 @@ test("(18) kein exakter Preis für die NICHT gewählte Stufe (nie 2. Provider-Ca
 test("(19) none → keine Wertfelder", () => assert.equal(insuranceValueFieldsVisible("none"), false));
 test("(20) Standard → Wertfelder sichtbar", () => assert.equal(insuranceValueFieldsVisible("standard"), true));
 test("(21) Premium → Wertfelder sichtbar", () => assert.equal(insuranceValueFieldsVisible("premium"), true));
-test("(22) Versicherungswert spiegelt Warenwert, solange nicht manuell", () => {
-  assert.equal(autofillInsuranceValue({ goodsValue: "500", insuranceValueManual: false }), "500");
+// Betreiberentscheidungen E1/E2 (2026-11-10): Vorbelegung und Höchstwert kommen je Stufe vom Server.
+const STUFEN = { insuranceCover: {
+  standard: { state: "available", coverLimit: 20000, maxInsuredValue: 500 },
+  premium:  { state: "above_cover_limit", coverLimit: 400, maxInsuredValue: null },
+} };
+test("(22) Versicherungswert wird mit dem Warenwert in ganzen Euro vorbelegt (vom Server je Stufe)", () => {
+  assert.equal(defaultInsuredValue(STUFEN, "standard"), "500");
+  assert.equal(defaultInsuredValue(STUFEN, "premium"), "", "eine nicht angebotene Stufe hat keine Vorbelegung");
 });
-test("(23) manuelle Anpassung bleibt erhalten (kein Auto-Spiegeln mehr)", () => {
-  assert.equal(autofillInsuranceValue({ goodsValue: "700", insuranceValueManual: true }), null);
+test("(23) manuelle Anpassung: zulässig bis zum Warenwert, darüber abgelehnt (E2)", () => {
+  assert.equal(insuredValueError("499", maxInsuredValueFor(STUFEN, "standard")), "");
+  assert.notEqual(insuredValueError("501", maxInsuredValueFor(STUFEN, "standard")), "");
 });
-test("(24) Warenwert über Maximum wird erkannt (öffnet Anpassungsbereich)", () => {
-  assert.equal(goodsExceedsInsuranceMax("25000"), true);
-  assert.equal(goodsExceedsInsuranceMax("20000"), false);
-  assert.equal(goodsExceedsInsuranceMax(""), false);
+test("(24) die feste 20.000-€-Grenze und „Warenwert über Maximum“ gibt es nicht mehr (E1)", () => {
+  assert.equal("INSURANCE_VALUE_MAX" in bookingPriceViewModul, false);
+  assert.equal("goodsExceedsInsuranceMax" in bookingPriceViewModul, false);
 });
-test("(25) keine stille Kappung — Autofill gibt den Rohwert (auch >Max) zurück", () => {
-  assert.equal(autofillInsuranceValue({ goodsValue: "25000", insuranceValueManual: false }), "25000");
+test("(25) keine stille Kappung — über der Grenze gibt es keine Stufe statt eines gekürzten Werts", () => {
+  assert.equal(maxInsuredValueFor(STUFEN, "premium"), null);
+  assert.equal("autofillInsuranceValue" in bookingPriceViewModul, false, "kein 1:1-Spiegeln des Rohwerts mehr");
 });
 test("(26) Inhaltsbeschreibungs-Feld ist aus dem Versicherungs-UI entfernt", () => {
   const mod = read("../components/booking/InsuranceModule.jsx");
@@ -252,9 +261,9 @@ test("(45) 7-Tage-Rechnung unverändert (paymentTerm-Hinweis bleibt)", () => {
   assert.ok(/7 Tage/.test(psm) || /paymentTerm/.test(psm), "Zahlungshinweis 7 Tage auf Rechnung bleibt");
 });
 
-// Zusatz: Grenze zentralisiert, kein neuer Wert
-test("(x) INSURANCE_VALUE_MAX = 20000 (zentralisierte bestehende Grenze)", () => {
-  assert.equal(INSURANCE_VALUE_MAX, 20000);
+// Zusatz: keine Grenze im Frontend — sie kommt vom Server (E1, 2026-11-10)
+test("(x) keine feste Versicherungsgrenze im Frontend", () => {
+  assert.ok(!/20000|20\.000/.test(read("bookingPriceView.mjs").replace(/\/\/.*$/gm, "")));
   assert.equal(isInsuredType("none"), false);
 });
 
@@ -410,7 +419,7 @@ test("(P23) BookingPage übergibt dasselbe priceView an Live-Leiste UND Preiszus
   assert.ok(/<BookingLiveSummary[^>]*priceView=\{priceView\}/.test(page), "Live-Leiste erhält priceView");
   assert.ok(/<PriceSummaryModule[^>]*priceView=\{priceView\}/.test(page), "Preiszusammenfassung erhält priceView");
 });
-test("(P24) INSURANCE_VALUE_MAX/Gate/Reprice-Vertrag unverändert (Regression)", () => {
+test("(P24) Gate/Reprice-Vertrag unverändert (Regression)", () => {
   const page = buchungsFlaeche();
   assert.ok(/priceViewBlocksBooking/.test(page), "Buchungs-Gate bleibt am View-Model");
   assert.ok(/repriceInsurance/.test(page), "Reprice-Aufruf bleibt erhalten");

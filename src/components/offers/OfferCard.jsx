@@ -434,10 +434,11 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
                 <DetailRow label="Grunddeckung" value={`max. ${money(insBaseCoverage)} lt. Tarifdaten`} />
               )}
               <DetailRow label="Zusatzversicherung" value="Möglich" />
-              {insStandardPrice != null && (
+              {/* E1 (2026-11-10): nur Stufen, die der Server für diesen Warenwert anbietet. */}
+              {insStandardPrice != null && insOffer.tiers.includes("standard") && (
                 <DetailRow label="Standard" value={`ab ${money(insStandardPrice)}`} />
               )}
-              {insPremiumPrice != null && (
+              {insPremiumPrice != null && insOffer.tiers.includes("premium") && (
                 <DetailRow label="Premium" value={`ab ${money(insPremiumPrice)}`} />
               )}
               <p className="offer-insurance-note">

@@ -244,6 +244,9 @@
   font-family: var(--fs); font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-secondary);
   cursor: pointer;
 }
+/* AUD-017 (WCAG 2.5.8): das Kontrollkästchen der Artikel- und Bestandsliste war 20 px — eigenständige
+   Ziele brauchen mindestens 24 px; die Zeile bleibt das große Ziel. */
+.inv-toolbar-check input[type="checkbox"] { width: 24px; height: 24px; flex-shrink: 0; accent-color: var(--ce-color-brand-ink); cursor: pointer; }
 
 /* Ein Spaltenkopf darf umbrechen, eine Zahl nicht.
 

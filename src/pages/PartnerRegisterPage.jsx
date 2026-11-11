@@ -102,7 +102,9 @@ export default function PartnerRegisterPage() {
   const modus = config.ok && !serverClosed ? partnerRegistrationMode(config.data) : "closed";
   const offen = modus !== "closed";
   const testweg = modus === "prelive_test";
-  const regelOptionen = { requireAgreement: !testweg };
+  // AUD-001 (Betreiberentscheidung 2026-11-11): die Bewerbung — ohne Vertragsannahme, der Antrag wartet.
+  const bewerbung = modus === "application";
+  const regelOptionen = { requireAgreement: !testweg && !bewerbung };
   const liveErrors = getPartnerRegErrors(form, passwordRepeat, regelOptionen);
   const valid = Object.keys(liveErrors).length === 0;
   // Sichtbar: ein Serverfehler bzw. Fehler des letzten Absendens, sonst der
@@ -151,7 +153,7 @@ export default function PartnerRegisterPage() {
     try {
       const r = await registerSalesPartner(buildPartnerRegistrationPayload(form, {
         sponsorCode: referralCodeFor("partner"),
-        agreementVersion: testweg ? null : config.data.agreementVersion,
+        agreementVersion: testweg || bewerbung ? null : config.data.agreementVersion,
       }));
       let d = null;
       try { d = await r.json(); } catch { d = null; }
@@ -211,10 +213,11 @@ export default function PartnerRegisterPage() {
       ), "alert");
   } else if (done) {
     // Kein Anmeldeknopf: vor der Freigabe ist keine Anmeldung möglich.
-    inhalt = zustand("check", "Antrag eingegangen", PARTNER_REG_TEXTS.success, (
+    inhalt = zustand("check", bewerbung ? "Bewerbung eingegangen" : "Antrag eingegangen",
+      bewerbung ? PARTNER_REG_TEXTS.applicationSuccess : PARTNER_REG_TEXTS.success, (
       <div className="auth-card-next" id="sp-next">
-        <p>{PARTNER_REG_TEXTS.successNext}</p>
-        {!testweg && <p>{PARTNER_REG_TEXTS.successMail}</p>}
+        <p>{bewerbung ? PARTNER_REG_TEXTS.applicationSuccessNext : PARTNER_REG_TEXTS.successNext}</p>
+        {!testweg && !bewerbung && <p>{PARTNER_REG_TEXTS.successMail}</p>}
       </div>
     ));
   } else if (!offen) {
@@ -365,6 +368,10 @@ export default function PartnerRegisterPage() {
             <div className="auth-alert auth-alert-info" id="sp-prelive-notice" role="note">
               {PARTNER_REG_TEXTS.preliveNotice}
             </div>
+          ) : bewerbung ? (
+            <div className="auth-alert auth-alert-info" id="sp-application-notice" role="note">
+              {PARTNER_REG_TEXTS.applicationNotice}
+            </div>
           ) : (<>
             <div className="auth-row">
               <div
@@ -391,12 +398,12 @@ export default function PartnerRegisterPage() {
           {/* Nie ohne Begründung gesperrt: ein unvollständiger Antrag zeigt beim
               Absenden seine Fehler (UX-Paket 6). Gesperrt nur während des Sendens. */}
           <button type="submit" id="sp-submit" className="auth-cta" disabled={submitting} onMouseDown={fokusBehalten}>
-            <span>{submitting ? "Wird gesendet…" : "Antrag stellen"}</span>
+            <span>{submitting ? "Wird gesendet…" : bewerbung ? PARTNER_REG_TEXTS.applicationSubmit : "Antrag stellen"}</span>
             <span className="auth-cta-arrow"><Icon n="arrowRight" s={18} /></span>
           </button>
 
           <p className="auth-form-legal">
-            {!testweg && (<>
+            {!testweg && !bewerbung && (<>
               <Link to="/partnervereinbarung" target="_blank" rel="noopener noreferrer" id="sp-agreement-link"
                 onMouseDown={fokusBehalten}>
                 Vertriebspartnervereinbarung lesen

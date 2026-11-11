@@ -227,6 +227,9 @@ export function coverLimitText(maxCoverValue) {
 // Ganze Euro, weil der Versicherungswert nur in ganzen Euro übernommen wird.
 export const TIER_COVER_TEXT = Object.freeze({
   limitExceeded:     "Für diesen Warenwert ist keine Zusatzversicherung verfügbar.",
+  // AUD-013 (Audit 2026-11-10): unter 1 € gibt es keinen ganzen Versicherungswert — eine Untergrenze,
+  // keine Höchstgrenze; wortgleich mit dem Hinweis des Servers.
+  goodsValueTooLow:  "Für Warenwerte unter 1 € ist keine Zusatzversicherung möglich.",
   unavailable:       "Für diesen Tarif ist derzeit keine Zusatzversicherung verfügbar.",
   valueRequired:     "Bitte geben Sie den Versicherungswert an.",
   valueInvalid:      "Bitte geben Sie einen gültigen Betrag ein.",

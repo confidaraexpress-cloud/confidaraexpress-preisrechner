@@ -154,6 +154,12 @@
 .pc-header {
   position: relative;
   z-index: 1;
+  /* AUD-012 (Audit 2026-11-10): Kopf und Hero stehen auf dem dunklen Band, das ein Pseudo-Element
+     (.pc-hero-grid::before) zeichnet. Prüfwerkzeuge (axe) und Darstellungen ohne Hintergrundbilder sehen
+     dieses Band nicht und rechneten den Kontrast gegen die helle Seitenfläche. Die Grundfarbe des Bandes
+     steht deshalb zusätzlich als deckende Hintergrundfarbe am Element — am Bildschirm unverändert, da der
+     Verlauf des Bandes mit denselben Grundtönen darüber bzw. darunter liegt. */
+  background-color: var(--ce-pr-navy-900);
 }
 
 /* Bricht um, statt abzuschneiden: bei großer Browserschrift steht die Navigation unter dem Logo (UX-Korrektur A,
@@ -289,6 +295,9 @@
   isolation: isolate;
   overflow-x: clip;
   padding-block: var(--ce-space-3) var(--ce-space-7);
+  /* AUD-012: siehe .pc-header — deckende Grundfarbe des Bandes; der Verlauf (::before, z-index -1 im eigenen
+     Stapelkontext) zeichnet weiterhin darüber, die Lichtflächen bleiben. */
+  background-color: var(--ce-pr-navy-900);
 }
 
 .pc-hero-grid {

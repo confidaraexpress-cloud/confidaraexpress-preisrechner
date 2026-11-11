@@ -146,8 +146,11 @@ export function AuthProvider({ children }) {
     // AUD-009 (Audit 2026-11-10): die Sitzung auch SERVERSEITIG beenden — das Token dieser Sitzung wird
     // widerrufen und ist danach nicht mehr verwendbar (nur diese Sitzung, andere Geräte bleiben angemeldet).
     // Best effort: offline oder bei einem Fehler wird lokal trotzdem abgemeldet; das Token läuft dann regulär ab.
-    if (getToken()) {
-      apiFetch("/auth/logout", { method: "POST", auth: true, timeoutMs: 5000 }).catch(() => {});
+    // Ohne `auth: true`: ein 401/403 dieser Anfrage (Token bereits ungültig, z. B. nach einem Passwortwechsel)
+    // darf nicht den zentralen Sitzungs-abgelaufen-Hinweis auslösen — das ist eine gewollte Abmeldung.
+    const tokenZumWiderruf = getToken();
+    if (tokenZumWiderruf) {
+      apiFetch("/auth/logout", { method: "POST", headers: { Authorization: `Bearer ${tokenZumWiderruf}` }, timeoutMs: 5000 }).catch(() => {});
     }
     localStorage.removeItem("ce_token");
     // Temporären Versandvorgang mit abräumen: er enthält Adress- und

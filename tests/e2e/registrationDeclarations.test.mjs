@@ -81,7 +81,8 @@ async function fuelleFelder(page) {
   await pw.nth(1).fill("EinSicheresPasswort2026");
 }
 const cta = (page) => page.locator("button.auth-cta");
-const angehakt = async (page, sel) => (await page.locator(sel).getAttribute("aria-checked")) === "true";
+// Die Erklärungen sind native Checkboxen (<input type="checkbox"> im Container #reg-…, AUD-012).
+const angehakt = (page, sel) => page.locator(`${sel} input[type="checkbox"]`).isChecked();
 
 test.before(async () => {
   server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { ...DEV_SERVER_SPAWN, stdio: "ignore" });
@@ -125,8 +126,14 @@ test("A — ohne Erklärungen: CTA gesperrt mit sichtbarem Grund, kein Request",
   assert.ok(!/Mit der Registrierung akzeptieren Sie/.test(text));
   // Paket D: die Option „Keine USt-IdNr. vorhanden“ (#reg-vat-absent) ist ebenfalls eine Checkbox im Auth-Stil —
   // gezählt werden deshalb nur die Erklärungen im Erklärungsblock (keine Einwilligungsbox für den Datenschutz).
-  assert.equal(await page.locator('.auth-declarations [role="checkbox"]').count(), 2, "nicht genau zwei Erklärungen");
-  assert.equal(await page.locator('[role="checkbox"]').count(), 3, "Erklärungen plus USt-IdNr.-Option");
+  // Seit AUD-012 sind die Erklärungen native Checkboxen (implizite Rolle), deshalb getByRole statt [role=…].
+  assert.equal(await page.locator(".auth-declarations").getByRole("checkbox").count(), 2, "nicht genau zwei Erklärungen");
+  assert.equal(await page.getByRole("checkbox").count(), 3, "Erklärungen plus USt-IdNr.-Option");
+  // Jede Erklärung ist eine echte Checkbox mit zugeordneter Beschriftung (klickbarer Text, Screenreader-Name).
+  for (const id of ["reg-business", "reg-terms"]) {
+    assert.equal(await page.locator(`#${id} input[type="checkbox"]`).count(), 1, `${id}: keine native Checkbox`);
+    assert.equal(await page.locator(`#${id} label[for="${id}-input"]`).count(), 1, `${id}: Beschriftung nicht zugeordnet`);
+  }
   await page.close();
 });
 
@@ -196,7 +203,7 @@ test("E — Link schaltet nicht um, Leertaste schon; mobil ohne Überlauf", asyn
   const [neu] = await Promise.all([ctx.waitForEvent("page"), page.click("#reg-terms a")]);
   await neu.close();
   assert.equal(await angehakt(page, "#reg-terms"), false, "das Lesen der AGB hat die Bestätigung gesetzt");
-  await page.focus("#reg-business");
+  await page.focus("#reg-business-input");
   await page.keyboard.press(" ");
   assert.equal(await angehakt(page, "#reg-business"), true, "die Leertaste schaltet die Erklärung nicht um");
   const mass = await page.evaluate(() => ({

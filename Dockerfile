@@ -1,4 +1,6 @@
-FROM node:20-alpine AS build
+# Audit 2026-11-10 (AUD-003): Node 24 LTS (aktive LTS-Linie, Wartung bis 2028-04) — dieselbe Linie wie CI und engines;
+# Node 20 ist seit 2026-04-30 ohne Sicherheitsupdates. Major-Pin: Patch- und Sicherheitsstände kommen mit dem Build.
+FROM node:24-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 # `npm ci` statt `npm install`: gebaut wird exakt das, was package-lock.json

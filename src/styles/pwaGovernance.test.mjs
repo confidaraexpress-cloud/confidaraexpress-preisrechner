@@ -285,7 +285,9 @@ function block(kopf) {
 }
 
 test("14 — sw.js, Manifest und Offline-Seite: no-cache, eigener Typ, volle Sicherheitsheader", () => {
-  assert.equal(SICHERHEIT.length, 5, "Sicherheitsheaderblock der Serverebene nicht gefunden");
+  // AUD-004 (Audit 2026-11-10): sechs Header — seit HSTS (max-age 7 Tage, ohne includeSubDomains/preload).
+  assert.equal(SICHERHEIT.length, 6, "Sicherheitsheaderblock der Serverebene nicht gefunden");
+  assert.ok(SICHERHEIT.some((z) => z === 'add_header Strict-Transport-Security "max-age=604800" always;'), "HSTS fehlt auf Serverebene");
   for (const kopf of ["location = /sw.js {", "location = /manifest.webmanifest {", "location = /offline.html {"]) {
     const b = block(kopf);
     assert.match(b, /add_header Cache-Control "no-cache" always;/, `${kopf} ohne no-cache`);

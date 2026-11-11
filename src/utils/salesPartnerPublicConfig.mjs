@@ -10,7 +10,9 @@
 // registrierte Dokument verlinkt (utils/salesPartnerAgreement.mjs).
 //
 // Seit dem Pre-Live-Registrierungsweg nennt der Server zusätzlich den offenen
-// Weg: `registrationMode` = "production" | "prelive_test" | "closed".
+// Weg: `registrationMode` = "production" | "application" | "prelive_test" | "closed".
+// "application" (seit 2026-11-11): die öffentliche Bewerbung — ein wartender Antrag
+// ohne Vertragsannahme; Vereinbarung und Freischaltung folgen gesondert.
 // `registrationEnabled` bleibt der unveränderte produktive Vertrag. Im
 // Pre-Live-Testweg erscheint dasselbe Formular ohne Vertragsannahme; ob ein
 // Antrag ein Testantrag ist, entscheidet ausschließlich der Server.
@@ -33,7 +35,8 @@ export const MAX_RETENTION_DAYS = 365;
 const text = (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : null);
 
 // Die vom Server genannten offenen Wege; alles andere ist „closed".
-const REGISTRATION_MODES = Object.freeze(["production", "prelive_test"]);
+// "application" (AUD-001, Betreiberentscheidung 2026-11-11): öffentliche Bewerbung ohne Vertragsannahme.
+const REGISTRATION_MODES = Object.freeze(["production", "application", "prelive_test"]);
 
 /** Aufbewahrungsdauer in ganzen Tagen (1 … 365) oder null. */
 export function retentionDaysOf(raw) {
@@ -76,12 +79,16 @@ export function partnerRegistrationOpen(config) {
 
 /** Welcher Weg der Partnerregistrierung ist offen?
  *  "production"   — nur mit der strengen Vertragsprüfung oben (partnerRegistrationOpen);
+ *  "application"  — Bewerbung (Betreiberentscheidung 2026-11-11, AUD-001): der Server nennt den Weg
+ *                   ausdrücklich, die produktive Registrierung ist NICHT offen. Es entsteht ein
+ *                   wartender Antrag ohne Vertragsannahme — Vereinbarung und Freischaltung folgen gesondert;
  *  "prelive_test" — nur, wenn der Server ihn ausdrücklich nennt und die
  *                   produktive Registrierung NICHT offen ist (der Server
  *                   schließt beides gegenseitig aus; die Oberfläche auch);
  *  "closed"       — in jedem anderen Fall. */
 export function partnerRegistrationMode(config) {
   if (partnerRegistrationOpen(config)) return "production";
+  if (config && config.registrationEnabled !== true && config.registrationMode === "application") return "application";
   if (config && config.registrationEnabled !== true && config.registrationMode === "prelive_test") return "prelive_test";
   return "closed";
 }

@@ -260,6 +260,12 @@ export const PARTNER_REG_TEXTS = Object.freeze({
   // Pre-Live-Testweg: statt der Vertragsannahme (wörtlich laut Betreiber). Kein Vertragstext, keine
   // Zustimmung — der Hinweis wird nicht gespeichert und nicht gesendet.
   preliveNotice: "Pre-Live-Testbetrieb – diese Registrierung dient ausschließlich dem internen Funktionstest und begründet noch keine rechtsverbindliche Vertriebspartnervereinbarung.",
+  // Bewerbung (Betreiberentscheidung 2026-11-11, AUD-001): öffentlich erreichbar, aber noch kein Partnerkonto —
+  // Vertragsannahme, Freischaltung und produktive Nutzung folgen gesondert; keine Provision durch die Bewerbung.
+  applicationNotice: "Mit dieser Bewerbung legen Sie noch kein aktives Partnerkonto an. Wir prüfen Ihre Angaben und melden uns per E-Mail. Die Vertriebspartnervereinbarung schließen Sie erst vor der Freischaltung ab; durch die Bewerbung entstehen keine Provisionsansprüche.",
+  applicationSubmit: "Bewerbung senden",
+  applicationSuccess: "Ihre Bewerbung ist eingegangen und wird geprüft.",
+  applicationSuccessNext: "Wir melden uns per E-Mail. Eine Anmeldung ist erst möglich, wenn Sie die Vertriebspartnervereinbarung angenommen haben und Ihr Konto freigeschaltet wurde.",
   companyTooLong: `Firma darf maximal ${PARTNER_COMPANY_MAX} Zeichen enthalten.`,
   phoneTooLong: `Telefon darf maximal ${PARTNER_PHONE_MAX} Zeichen enthalten.`,
   phoneInvalid: "Bitte eine gültige Telefonnummer eingeben.",

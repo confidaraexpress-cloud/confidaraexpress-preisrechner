@@ -21,26 +21,34 @@ import { SHIPMENT_VOLUME_OPTIONS, SHIPMENT_VOLUME_QUESTION, SHIPMENT_VOLUME_TEXT
 // Screenreader trägt das jeweilige Eingabefeld required/aria-required.
 const Req = () => <span className="auth-req" aria-hidden="true">*</span>;
 
-// Eine Pflicht-Checkbox im Stil der übrigen Auth-Checkboxen (role="checkbox", Tastatur).
-// Ein Link im Text schaltet die Checkbox NICHT um — Lesen ist keine Zustimmung.
+// Eine Pflicht-Checkbox im Stil der übrigen Auth-Checkboxen.
+//
+// AUD-012 (Audit 2026-11-10): bis dahin war der ganze Block ein `role="checkbox"`-Element, in dem der
+// AGB-Link steckte — ein Bedienelement in einem Bedienelement (axe „nested-interactive“); Tastatur und
+// Screenreader konnten Kästchen und Link nicht getrennt erreichen. Jetzt ist das Kästchen ein echtes,
+// nur visuell verborgenes `<input type="checkbox">`, der Text samt Link ein `<label>`. Ein Klick auf den
+// Text schaltet das Kästchen (Label-Verhalten), ein Klick auf den Link öffnet NUR den Link — Lesen ist
+// keine Zustimmung; Tab erreicht Kästchen und Link nacheinander. Der Wrapper behält `id` und die
+// Klassen (`checked` steuert die Zeichnung), die Kennung des Eingabefelds ist `${id}-input`.
 function Erklaerung({ id, checked, onToggle, error, children }) {
-  const toggle = () => onToggle(!checked);
   return (
     <>
-      <div
-        id={id}
-        className={`auth-check auth-declaration ${checked ? "checked" : ""}`}
-        onClick={toggle}
-        role="checkbox"
-        aria-checked={checked === true}
-        aria-required="true"
-        aria-invalid={error ? "true" : undefined}
-        aria-describedby={error ? `${id}-error` : undefined}
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); } }}
-      >
-        <span className="auth-checkbox" />
-        <span>{children} <Req /></span>
+      <div id={id} className={`auth-check auth-declaration ${checked ? "checked" : ""}`}>
+        <input
+          type="checkbox"
+          id={`${id}-input`}
+          className="auth-check-input"
+          checked={checked === true}
+          onChange={(e) => onToggle(e.target.checked)}
+          required
+          aria-required="true"
+          aria-invalid={error ? "true" : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
+        />
+        <label htmlFor={`${id}-input`} className="auth-check-label">
+          <span className="auth-checkbox" aria-hidden="true" />
+          <span>{children} <Req /></span>
+        </label>
       </div>
       {error && <span className="auth-field-error" id={`${id}-error`}>{error}</span>}
     </>

@@ -147,6 +147,13 @@ test("5b — Registrierungsweg: produktiv nur mit Vertragsprüfung, Pre-Live-Tes
   assert.equal(weg({ registrationMode: "prelive_test" }), "prelive_test");
   assert.equal(weg({ registrationMode: "PRELIVE_TEST" }), "closed", "nur der exakte Wert");
   assert.equal(weg({ registrationMode: "prelive" }), "closed");
+  // AUD-001 (Betreiberentscheidung 2026-11-11): die Bewerbung — nur auf ausdrückliche Nennung, nie bei offener Produktion.
+  assert.equal(weg({ registrationMode: "application" }), "application");
+  assert.equal(weg({ registrationEnabled: false, registrationMode: "application" }), "application");
+  assert.equal(weg({ registrationMode: "APPLICATION" }), "closed", "nur der exakte Wert");
+  // Produktiv offen mit prüfbarer Fassung gewinnt immer (wie beim Testweg); ohne Fassung geschlossen, nie stattdessen die Bewerbung.
+  assert.equal(weg({ registrationEnabled: true, registrationMode: "application", agreementVersion: "1.0", agreement: fassung }), "production");
+  assert.equal(weg({ registrationEnabled: true, registrationMode: "application" }), "closed");
   assert.equal(weg({ registrationEnabled: true, registrationMode: "production", agreementVersion: "1.0", agreement: fassung }), "production");
   // „production" ohne prüfbare Fassung bleibt zu — nie stattdessen der Testweg.
   assert.equal(weg({ registrationEnabled: true, registrationMode: "production" }), "closed");

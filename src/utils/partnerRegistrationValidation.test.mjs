@@ -186,9 +186,11 @@ test("13 — die Partnerseite nutzt die zentrale Validierung, keine eigene Fassu
   // Bewusste Ankeränderung (Pre-Live-Registrierungsweg): die Regeln bekommen nur
   // die Option, im Testweg keine Vertragsannahme zu verlangen.
   assert.match(seite, /getPartnerRegErrors\(form, passwordRepeat, regelOptionen\)/);
-  assert.match(seite, /const regelOptionen = \{ requireAgreement: !testweg \};/);
+  // AUD-001 (2026-11-11): im Bewerbungsweg ebenfalls keine Vertragsannahme — sie folgt vor der Freischaltung.
+  assert.match(seite, /const regelOptionen = \{ requireAgreement: !testweg && !bewerbung \};/);
   assert.match(seite, /const modus = config\.ok && !serverClosed \? partnerRegistrationMode\(config\.data\) : "closed";/);
-  assert.match(seite, /agreementVersion: testweg \? null : config\.data\.agreementVersion,/);
+  assert.match(seite, /agreementVersion: testweg \|\| bewerbung \? null : config\.data\.agreementVersion,/);
+  assert.match(seite, /\{PARTNER_REG_TEXTS\.applicationNotice\}/, "der Bewerbungshinweis fehlt");
   assert.match(seite, /\{PARTNER_REG_TEXTS\.preliveNotice\}/);
   assert.match(seite, /buildPartnerRegistrationPayload\(form, \{/);
   assert.match(seite, /mapPartnerRegistrationError\(/);
@@ -247,8 +249,11 @@ test("14 — Registrierung (UX-Paket 6): Pflichtfelder erklärt, nie grundlos ge
   // Erfolg: eindeutig, mit dem nächsten Schritt — ohne Anmeldeknopf vor der Freigabe.
   const erfolg = seite.slice(seite.indexOf("} else if (done) {"), seite.indexOf("} else if (!offen) {"));
   assert.match(erfolg, /PARTNER_REG_TEXTS\.success,/);
-  assert.match(erfolg, /\{PARTNER_REG_TEXTS\.successNext\}/);
-  assert.match(erfolg, /\{!testweg && <p>\{PARTNER_REG_TEXTS\.successMail\}<\/p>\}/, "die Freigabemail nur im produktiven Weg");
+  // AUD-001: der nächste Schritt ist je Weg ein eigener Satz (Bewerbung ohne Vertragsannahme), der Antragstext bleibt.
+  assert.match(erfolg, /PARTNER_REG_TEXTS\.successNext\}/);
+  assert.match(erfolg, /PARTNER_REG_TEXTS\.applicationSuccessNext/);
+  assert.match(erfolg, /\{!testweg && !bewerbung && <p>\{PARTNER_REG_TEXTS\.successMail\}<\/p>\}/, "die Freigabemail nur im produktiven Weg");
+  assert.match(erfolg, /PARTNER_REG_TEXTS\.applicationSuccess/, "der Bewerbungserfolg hat einen eigenen Text");
   assert.doesNotMatch(erfolg, /anmeldeKnopf|zurAnmeldung|navigate\(/, "kein Anmeldeweg vor der Freigabe");
   assert.equal(PARTNER_REG_TEXTS.success, "Ihr Antrag ist eingegangen und wird geprüft.");
   assert.match(PARTNER_REG_TEXTS.successNext, /Vorher ist keine Anmeldung möglich\.$/);

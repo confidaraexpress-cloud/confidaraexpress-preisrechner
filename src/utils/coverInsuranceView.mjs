@@ -171,6 +171,8 @@ const REPRICE_TEXT = Object.freeze({
   // Seite zeigt einen anderen Stand als der Server.
   INSURANCE_SELECTION_MISMATCH: "Die Angaben zu dieser Sendung haben sich geändert. Bitte berechnen Sie die Angebote neu.",
   INSURANCE_UNAVAILABLE: COVER_INSURANCE_TEXT.unavailable,
+  // AUD-013: Untergrenze (unter 1 € kein ganzer Versicherungswert) — wortgleich mit dem Server.
+  INSURANCE_GOODS_VALUE_TOO_LOW: "Für Warenwerte unter 1 € ist keine Zusatzversicherung möglich.",
   // TG22 Paket B: Aussagen des Tarifs, keine Fehler — hier nur für Wege ohne Hinweisfläche.
   INSURANCE_BASIC_COVER_INCLUDED: COVER_INSURANCE_TEXT.basicCoverIncludedGeneric,
   INSURANCE_COVER_LIMIT_EXCEEDED: COVER_INSURANCE_TEXT.coverLimitGeneric,
@@ -215,6 +217,7 @@ const BOOK_TEXT = Object.freeze({
   INSURANCE_SELECTION_MISMATCH: "Die Angaben zur Transportabsicherung haben sich geändert. Der Preis wird neu bestätigt — bitte buchen Sie danach erneut.",
   PRICE_CONFIRMATION_REQUIRED: "Bitte bestätigen Sie den Gesamtbetrag mit zusätzlicher Transportabsicherung erneut.",
   INSURANCE_UNAVAILABLE: COVER_INSURANCE_TEXT.unavailable,
+  INSURANCE_GOODS_VALUE_TOO_LOW: "Für Warenwerte unter 1 € ist keine Zusatzversicherung möglich.",
 });
 
 /** Kundentext einer abgelehnten versicherten Buchung (409 außer PRICE_CHANGED). */
@@ -228,6 +231,7 @@ export function coverBookErrorText(body) {
 // darf keine Absicherungsmeldung bekommen und keine Neubepreisung auslösen.
 export const COVER_BOOK_ERROR_CODES = Object.freeze([
   "INSURANCE_NOT_BOUND", "INSURANCE_SELECTION_MISMATCH", "PRICE_CONFIRMATION_REQUIRED", "INSURANCE_UNAVAILABLE",
+  "INSURANCE_GOODS_VALUE_TOO_LOW",
 ]);
 const REPRICE_BEHEBT = Object.freeze(["INSURANCE_NOT_BOUND", "INSURANCE_SELECTION_MISMATCH", "PRICE_CONFIRMATION_REQUIRED"]);
 

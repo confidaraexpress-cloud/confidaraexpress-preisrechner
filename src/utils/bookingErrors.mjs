@@ -573,6 +573,7 @@ const REPRICE_CODE_TEXT = Object.freeze({
   INSURANCE_VALUE_INVALID: TIER_COVER_TEXT.valueWholeEuros,
   INSURANCE_VALUE_EXCEEDS_GOODS_VALUE: TIER_COVER_TEXT.valueExceedsGoods,
   INSURANCE_COVER_LIMIT_EXCEEDED: TIER_COVER_TEXT.limitExceeded,
+  INSURANCE_GOODS_VALUE_TOO_LOW: TIER_COVER_TEXT.goodsValueTooLow,
   INSURANCE_UNAVAILABLE: TIER_COVER_TEXT.unavailable,
   INSURANCE_SELECTION_MISMATCH: "Die Angaben zu dieser Sendung haben sich geändert. Bitte berechnen Sie die Preise erneut.",
   SHIPMENT_NOT_FOUND: "Die Sendung wurde nicht gefunden. Bitte berechnen Sie die Preise erneut.",

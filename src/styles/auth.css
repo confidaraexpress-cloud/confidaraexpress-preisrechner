@@ -275,8 +275,9 @@
 
 /* Eye-button im slim-Modus (PasswordField slim=true) */
 .auth-eye-btn {
-  position: absolute; right: 14px;
-  width: 18px; height: 18px;
+  position: absolute; right: 11px;
+  /* AUD-012 (WCAG 2.5.8): eigenständiges Ziel mindestens 24 px — das Symbol bleibt 18 px, der Knopf wächst. */
+  width: 24px; height: 24px;
   background: none; border: none; cursor: pointer;
   color: var(--auth-ink-3); display: flex; align-items: center; justify-content: center;
   transition: color 160ms; flex-shrink: 0;
@@ -348,6 +349,17 @@
   width: 5px; height: 10px;
   border: solid white; border-width: 0 2px 2px 0;
   transform: rotate(45deg) translate(-1px, -1px);
+}
+/* AUD-012: echtes Kontrollkästchen hinter der gezeichneten Box (RegisterForm „Erklaerung“). Das Eingabefeld
+   bleibt im Zugänglichkeitsbaum und fokussierbar, ist aber unsichtbar; der Fokusring erscheint an der Box. */
+.auth-check .auth-check-input {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+.auth-check:has(.auth-check-input) { position: relative; }
+.auth-check-label { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; min-width: 0; }
+.auth-check-input:focus-visible + .auth-check-label .auth-checkbox {
+  outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset);
 }
 
 /* ── CTA Button ─────────────────────────────────────────────────────────── */

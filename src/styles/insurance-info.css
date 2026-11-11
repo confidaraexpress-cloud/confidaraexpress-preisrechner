@@ -213,6 +213,12 @@
   color: var(--ce-color-brand-ink);
   text-decoration: underline;
   text-underline-offset: 2px;
+  /* AUD-012 (WCAG 2.5.8): ein eigenständiges Textziel von 64×16 px — die Trefferfläche wächst auf
+     mindestens 24 px Höhe, ohne den Textfluss zu verschieben (Innenabstand gegen Außenabstand). */
+  display: inline-block;
+  padding: 6px 4px;
+  margin: -6px -4px;
+  border-radius: var(--ce-radius-sm);
 }
 .insinfo-quelle-link:hover { color: var(--ce-color-brand-hover); }
 .insinfo-quelle-link:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); border-radius: var(--ce-radius-sm); }

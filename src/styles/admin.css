@@ -1257,9 +1257,9 @@ a.adm-inv-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px;
    die Höhe eines Admin-Feldes und steht damit auf derselben Mittellinie wie
    die Eingaben daneben. */
 .adm-filter-check { display: flex; align-items: center; gap: var(--ce-space-2); min-height: var(--ce-size-control-admin); }
-/* 20 px — das kleinste zuverlässig treffbare Kästchen; die eigentliche
+/* 24 px (AUD-017, WCAG 2.5.8 — eigenständiges Ziel mindestens 24 px); die eigentliche
    Trefferfläche ist die 44 px hohe Zeile (siehe Responsive-Block oben). */
-.adm-filter-check input { width: 20px; height: 20px; accent-color: var(--ce-color-brand-ink); cursor: pointer; }
+.adm-filter-check input { width: 24px; height: 24px; accent-color: var(--ce-color-brand-ink); cursor: pointer; }
 .adm-filter-check label { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-primary); cursor: pointer; }
 .adm-filter-adv { flex-basis: 100%; margin-top: var(--ce-space-1); }
 .adm-filter-adv > summary { cursor: pointer; font-size: var(--ce-text-label-size); font-weight: var(--ce-text-label-weight); color: var(--ce-color-text-secondary); list-style: none; display: inline-flex; align-items: center; gap: var(--ce-space-2); min-height: 32px; }

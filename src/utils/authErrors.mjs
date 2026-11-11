@@ -29,7 +29,15 @@ export const AUTH_CODE_TEXTE = {
   INVALID_CREDENTIALS: "E-Mail-Adresse oder Passwort sind nicht korrekt.",
   ACCOUNT_PENDING_APPROVAL: "Ihr Konto wurde noch nicht freigeschaltet. Sie erhalten eine Nachricht, sobald der Zugang aktiviert wurde.",
   ACCOUNT_BLOCKED: "Ihr Konto wurde gesperrt. Bitte wenden Sie sich an den Support.",
+  // Admin-Anmeldung (Canonical v2.130, Stufe 2): Administratoren melden sich nur noch über /admin/login an — der
+  // Kundenlogin gibt ihnen kein Token. Die Kundenanmeldung zeigt dazu den Weg zur Admin-Anmeldung.
+  ADMIN_LOGIN_REQUIRED: "Administratoren melden sich über die Admin-Anmeldung an.",
 };
+
+/** Verweist die Antwort des Kundenlogins auf die Admin-Anmeldung? (Code des Servers, nie der Text.) */
+export function istAdminAnmeldungVerweis(body) {
+  return !!body && typeof body === "object" && body.code === "ADMIN_LOGIN_REQUIRED";
+}
 
 export const AUTH_NETZFEHLER = "Die Verbindung zum Server konnte nicht hergestellt werden. Bitte prüfen Sie Ihre Internetverbindung.";
 export const LOGIN_SERVERFEHLER = "Die Anmeldung ist momentan nicht möglich. Bitte versuchen Sie es erneut.";

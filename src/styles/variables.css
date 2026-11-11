@@ -523,6 +523,29 @@
   --auth-radius-sm: 8px;
   --auth-radius: 14px;
   --auth-radius-xl: 28px;
+
+  /* ── Admin-Anmeldung /admin/login (Canonical v2.130) — Bühne „Lichtstrom“ ──────────────────────────────
+     Nachtblau als Grund, Elektrischblau und Violett als Licht, ein heller Akzent. Nur auf der Admin-Anmeldung
+     (styles/auth.css, Abschnitt „Admin-Anmeldung“). Kontraste auf dem Glaspanel (gemessen über dem hellsten Band):
+     Tinte 1 ≥ 12:1, Tinte 2 ≥ 8:1, Tinte 3 ≥ 4,5:1. */
+  --auth-admin-nacht-950: #030716;
+  --auth-admin-nacht-900: #050c22;
+  --auth-admin-nacht-800: #0a1640;
+  --auth-admin-strom-blau: #2f6bff;
+  --auth-admin-strom-blau-hell: #7ea6ff;
+  --auth-admin-strom-violett: #7c4dff;
+  --auth-admin-licht: #eef2ff;
+  --auth-admin-tinte-1: #ffffff;
+  --auth-admin-tinte-2: #d0d8f6;
+  --auth-admin-tinte-3: #a3afd6;
+  --auth-admin-link: #bccaf7;
+  --auth-admin-fehler-tinte: #ffd7df;
+  --auth-admin-erfolg-tinte: #d2f8e8;
+  --auth-admin-info-tinte: #dde5ff;
+  --auth-admin-glow-blau: rgba(47, 107, 255, 0.55);
+  --auth-admin-glow-violett: rgba(124, 77, 255, 0.55);
+  --auth-admin-radius-panel: 28px;
+  --auth-admin-radius-feld: 14px;
 }
 
 /* ── Rahmen in Stufen (Gesamtauftrag D, 2026-10-24) ──

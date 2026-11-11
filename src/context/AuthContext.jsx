@@ -4,7 +4,8 @@ import { API, apiFetch, setAuthErrorHandler, token as getToken } from "../api/cl
 import { clearShippingFlowStorage } from "../utils/shippingFlowStorage";
 import { clearCompanyLogoCache } from "../api/companyLogoApi";
 import { clearAccountManagerPhotoCache } from "../api/accountManagerApi";
-import { AuthSeite } from "../pages/authSeite";
+import { AuthSeite, AdminAnmeldungSeite } from "../pages/authSeite";
+import { anmeldeseiteFuer, ohneSitzungsweiterleitung } from "../utils/adminAnmeldung.mjs";
 
 // Die Anmeldeseite vorladen, bevor die Anwendung dorthin wechselt (Abmelden, abgelaufene Sitzung): so rendert sie
 // ohne Ladefläche des Seitenwechsels. Ein Fehler hier ist folgenlos — die Route lädt dann selbst.
@@ -77,12 +78,15 @@ export function AuthProvider({ children }) {
       setAuthed(false);
       setUser(null);
       setSessionExpired(true);
-      anmeldungVorladen();
       const path = window.location.pathname;
-      if (path !== "/login" && path !== "/confirm-email-change") {
-        // Die gerade offene Adresse geht als Rücksprungwunsch mit; AuthPage
+      // Im Adminbereich führt das Sitzungsende auf die Admin-Anmeldung (Canonical v2.130), sonst wie bisher auf /login.
+      const ziel = anmeldeseiteFuer(path);
+      if (ziel === "/admin/login") AdminAnmeldungSeite.vorladen().catch(() => {});
+      else anmeldungVorladen();
+      if (!ohneSitzungsweiterleitung(path)) {
+        // Die gerade offene Adresse geht als Rücksprungwunsch mit; die Anmeldeseite
         // steuert sie nach dem Login nur an, wenn die Allowlist sie erlaubt.
-        navigate("/login", { replace: true, state: { from: `${path}${window.location.search}` } });
+        navigate(ziel, { replace: true, state: { from: `${path}${window.location.search}` } });
       }
     });
     return () => setAuthErrorHandler(null);

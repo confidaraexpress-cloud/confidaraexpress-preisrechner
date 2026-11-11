@@ -21,7 +21,7 @@ import { fileURLToPath } from "node:url";
 import { statischeAuthSeite } from "./src/utils/kundenAuthPfad.mjs";
 
 const REPO = path.dirname(fileURLToPath(import.meta.url));
-const GERUESTE = ["login.html", "register.html"];
+const GERUESTE = ["login.html", "register.html", "admin-login.html"];
 const MODULSKRIPT = /<script type="module" src="\/src\/main\.jsx"><\/script>\s*/;
 const EINSTIEGS_TAGS = /<script type="module" crossorigin src="\/assets\/[^"]+"><\/script>|<link rel="modulepreload" crossorigin href="\/assets\/[^"]+">|<link rel="stylesheet" crossorigin href="\/assets\/[^"]+">/g;
 const EINSTIEG = /^<script type="module" crossorigin src="\/assets\/index-[A-Za-z0-9_-]+\.js"><\/script>$/;
@@ -85,6 +85,8 @@ export default defineConfig({
         index: path.join(REPO, "index.html"),
         login: path.join(REPO, "login.html"),
         register: path.join(REPO, "register.html"),
+        // Admin-Anmeldung (Canonical v2.130): dunkles Gerüst für /admin/login, ohne eigenen JavaScript-Einstieg.
+        adminLogin: path.join(REPO, "admin-login.html"),
       },
     },
   },

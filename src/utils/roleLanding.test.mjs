@@ -33,12 +33,14 @@ test("1 — nur die exakte Rolle sales_partner ist ein Vertriebspartner", () => 
   }
 });
 
-test("2 — Partner → /partner; Kunde, Admin und Unbekanntes unverändert → /dashboard", () => {
+test("2 — Partner → /partner; Admin → /admin (Canonical v2.130); Kunde und Unbekanntes unverändert → /dashboard", () => {
   assert.equal(PARTNER_HOME, "/partner");
   assert.equal(CUSTOMER_HOME, "/dashboard");
   assert.equal(landingPathFor({ role: "sales_partner" }), "/partner");
   assert.equal(landingPathFor({ role: "customer" }), "/dashboard");
-  assert.equal(landingPathFor({ role: "admin" }), "/dashboard", "Admins landen wie bisher im Kundenbereich");
+  // Bewusste Ankeränderung (Admin-Anmeldung, Canonical v2.130): Admins landen im Adminpanel.
+  assert.equal(landingPathFor({ role: "admin" }), "/admin", "Admins landen im Adminpanel");
+  assert.equal(landingPathFor({ role: "Admin" }), "/dashboard", "strikter Vergleich auf genau admin");
   assert.equal(landingPathFor({}), "/dashboard");
   assert.equal(landingPathFor(null), "/dashboard");
 });
@@ -81,7 +83,9 @@ test("6 — nach dem Login: Partner ins Portal, alle anderen über das unveränd
   // Bereich des Portals zurück — nur über partnerReturnTarget (Ziel im Portal,
   // geprüft gegen die Bereichsliste), sonst wie bisher ins Portal.
   assert.match(page,
-    /if \(isSalesPartner\(ok\)\) navigate\(partnerReturnTarget\(returnTarget\) \|\| landingPathFor\(ok\)\);\s*\n\s*else navigate\(returnTarget \|\| "\/dashboard"\);/);
+    /if \(isSalesPartner\(ok\)\) navigate\(partnerReturnTarget\(returnTarget\) \|\| landingPathFor\(ok\)\);\s*\n\s*else navigate\(returnTarget \|\| landingPathFor\(ok\)\);/);
+  // Admin-Anmeldung (Canonical v2.130, bewusste Ankeränderung): ohne Rücksprungziel entscheidet die Rolle —
+  // Kunden landen unverändert in /dashboard, Admins in /admin.
   // login() liefert das Benutzerobjekt (truthy) statt true — die Rolle ist ohne
   // weiteren Render bekannt.
   const ctx = ohneKommentare(read("context/AuthContext.jsx"));

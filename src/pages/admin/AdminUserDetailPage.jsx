@@ -47,6 +47,8 @@ import { useAuth } from "../../context/AuthContext";
 import { CustomerMarkupSection } from "../../components/admin/CustomerMarkupSection";
 import { CustomerTariffMarkupSection } from "../../components/admin/CustomerTariffMarkupSection";
 import { CustomerApprovalCard } from "../../components/admin/CustomerApprovalCard";
+// Admin-Anmeldung (Canonical v2.130): Adminkonten haben statt der Kundenfreischaltung die Karte „Adminzugang“.
+import { AdminZugangKarte } from "../../components/admin/AdminZugangKarte";
 import { CustomerSupportSection } from "../../components/admin/CustomerSupportSection";
 import { SalesPartnerAttributionSection } from "../../components/admin/SalesPartnerAttributionSection";
 import { CustomerBusinessEvidenceSection } from "../../components/admin/CustomerBusinessEvidenceSection";
@@ -467,6 +469,8 @@ export default function AdminUserDetailPage() {
   const metrics = activityMetrics(summary);
   const deleteGate = deleteEligibility(summary);
   const selfAccount = isSelfAccount(u, currentAdminId);
+  // Adminkonto: keine Kundenfreischaltung, keine Gefahrenzone — Zugang nur freischalten oder sperren (AdminZugangKarte).
+  const adminKonto = roleOf(u) === "admin";
 
   // Fachliches Freischaltungs-Gate: verbindet den Kundenstatus mit dem
   // Bestätigungsstatus des Aufschlags. Reine Bedienbarkeit — das serverseitige
@@ -641,7 +645,7 @@ export default function AdminUserDetailPage() {
             {anonAt && <span className="adm-chip">Anonymisiert {fmtDate(anonAt)}</span>}
           </>
         )}
-        actions={statusCopy.actionKind === "approve" ? (
+        actions={!adminKonto && statusCopy.actionKind === "approve" ? (
           <button
             type="button"
             className="btn btn-primary btn-sm"
@@ -709,6 +713,9 @@ export default function AdminUserDetailPage() {
       <div className="adm-cards">
         <h2 className="adm-group-title" id="adm-user-group-konto">Konto</h2>
         {/* Gruppe „Konto“: Status und Freischaltung zuerst, dann Stammdaten, Prüfung und Betreuung. */}
+        {adminKonto ? (
+          <AdminZugangKarte kontoId={id} status={statusOf(u)} eigenesKonto={selfAccount} onGeaendert={load} />
+        ) : (
         <CustomerApprovalCard
           gate={gate}
           pricing={pricing}
@@ -726,6 +733,7 @@ export default function AdminUserDetailPage() {
           onBlock={() => { setApproveMsg(null); setBlockOpen(true); }}
           creditLimit={selectCredit(detailPayload)?.limit ?? null}
         />
+        )}
 
         {/* 2) Unternehmen und Kontakt */}
         <div className="adm-card">
@@ -895,7 +903,9 @@ export default function AdminUserDetailPage() {
           </div>
         </details>
 
-        {/* 6) Gefahrenzone — DSGVO-Anonymisierung (irreversibel) und harte Löschung */}
+        {/* 6) Gefahrenzone — DSGVO-Anonymisierung (irreversibel) und harte Löschung. Nicht für Adminkonten: sie werden
+             nie gelöscht oder anonymisiert (der Server lehnt beides ab); ihr Zugang wird gesperrt. */}
+        {!adminKonto && (
         <div className="adm-card adm-danger-zone">
           <div className="adm-card-head adm-danger-head">Gefahrenzone</div>
           <div className="adm-card-body">
@@ -952,6 +962,7 @@ export default function AdminUserDetailPage() {
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* Blockieren — Bestätigungsdialog, kein Statuswechsel durch einen Klick. */}

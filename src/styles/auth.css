@@ -537,3 +537,376 @@
   display: flex; align-items: center; transition: color 0.15s;
 }
 .field-eye-btn:hover { color: rgba(255,255,255,0.8); }
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════════════
+   Admin-Anmeldung /admin/login (Canonical v2.130) — Bühne „Lichtstrom“ und Glaspanel
+   ──────────────────────────────────────────────────────────────────────────────────────────────────────
+   Ein diagonales Bündel aus Lichtbändern (Elektrischblau → Violett) läuft durch das Panel; auf seiner hellsten
+   Linie zieht in Abständen ein Lichtimpuls vorbei (Sendungen in Bewegung). Dazu Tiefenlicht, drei schwebende
+   Glasformen, Körnung und Vignette. Ein inszenierter Moment (Einstieg ≈ 1 s), danach ruhige Drift.
+   Bewegung nur über transform/translate/rotate/scale und opacity; reduzierte Bewegung: ruhiges Standbild.
+   Klassen nur .auth-admin-*, Werte aus --auth-admin-* (variables.css). Logik: pages/AdminAnmeldungPage.jsx.
+   ══════════════════════════════════════════════════════════════════════════════════════════════════════ */
+.auth-admin-seite {
+  position: relative; isolation: isolate;
+  min-height: 100vh; min-height: 100dvh;
+  display: grid; grid-template-rows: 1fr auto;
+  background: var(--auth-admin-nacht-950);
+  color: var(--auth-admin-tinte-1);
+  font-family: var(--ce-font-sans);
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Bühne ──────────────────────────────────────────────────────────────────────────────────────────── */
+.auth-admin-buehne {
+  position: fixed; inset: 0; z-index: 0;
+  overflow: hidden; pointer-events: none;
+  contain: strict;
+}
+.auth-admin-grund {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(70% 55% at 50% 48%, rgba(22, 40, 118, 0.5), transparent 70%),
+    linear-gradient(180deg, var(--auth-admin-nacht-900) 0%, var(--auth-admin-nacht-950) 100%);
+}
+/* Tiefenlicht steht still: zwei bildschirmgroße Ebenen dauernd zu bewegen kostete in der Messung die meiste Bildrate
+   (qa-nachweise/admin-login-2026-11-11); die Bewegung tragen Strom, Impuls und Formen. */
+.auth-admin-tiefe { position: absolute; width: 110vmax; aspect-ratio: 1; border-radius: 50%; }
+.auth-admin-tiefe--blau {
+  left: -48vmax; bottom: -64vmax;
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.44), rgba(47, 107, 255, 0.18) 32%, rgba(47, 107, 255, 0.05) 52%, transparent 68%);
+}
+.auth-admin-tiefe--violett {
+  right: -52vmax; top: -66vmax;
+  background: radial-gradient(circle, rgba(124, 77, 255, 0.46), rgba(124, 77, 255, 0.18) 30%, rgba(124, 77, 255, 0.05) 50%, transparent 66%);
+}
+.auth-admin-strom {
+  position: absolute; left: 50%; top: 52%;
+  width: 200vmax; height: 64vmax;
+  transform: translate(-50%, -50%) rotate(-22deg);
+  animation: auth-admin-strom-ein 1100ms cubic-bezier(.2, .8, .2, 1) both;
+}
+.auth-admin-band {
+  position: absolute; left: 0; width: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, transparent 4%, rgba(47, 107, 255, 0) 14%, rgba(47, 107, 255, 0.9) 34%,
+    rgba(98, 92, 255, 0.95) 50%, rgba(124, 77, 255, 0.9) 64%, rgba(183, 154, 255, 0) 86%, transparent 94%);
+}
+.auth-admin-band--1 { top: 18%; height: 120px; filter: blur(46px); opacity: 0.5; animation: auth-admin-fliessen 19s ease-in-out infinite alternate; }
+.auth-admin-band--2 { top: 34%; height: 64px; filter: blur(22px); opacity: 0.7; animation: auth-admin-fliessen 15s ease-in-out infinite alternate-reverse; }
+.auth-admin-band--3 {
+  top: 47.5%; height: 2px; opacity: 0.95;
+  box-shadow: 0 0 18px 2px rgba(126, 166, 255, 0.8);
+  animation: auth-admin-fliessen 21s ease-in-out infinite alternate;
+}
+.auth-admin-band--4 { top: 53%; height: 150px; filter: blur(54px); opacity: 0.46; animation: auth-admin-fliessen 23s ease-in-out infinite alternate-reverse; }
+.auth-admin-band--5 {
+  top: 64%; height: 1px; opacity: 0.7;
+  box-shadow: 0 0 12px 1px rgba(183, 154, 255, 0.7);
+  animation: auth-admin-fliessen 17s ease-in-out infinite alternate;
+}
+.auth-admin-band--6 { top: 72%; height: 54px; filter: blur(26px); opacity: 0.42; animation: auth-admin-fliessen 25s ease-in-out infinite alternate-reverse; }
+/* Feine Fasern im Kern des Stroms: Struktur im Licht statt einer glatten Fläche (Benchmark Stripe/Raycast). */
+.auth-admin-faser {
+  position: absolute; left: 4%; right: 4%; top: 38%; height: 28%;
+  background: repeating-linear-gradient(180deg, rgba(196, 214, 255, 0.11) 0 1px, transparent 1px 6px);
+  -webkit-mask: linear-gradient(90deg, transparent, #000 26%, #000 70%, transparent), linear-gradient(180deg, transparent, #000 32%, #000 68%, transparent);
+  -webkit-mask-composite: source-in;
+          mask: linear-gradient(90deg, transparent, #000 26%, #000 70%, transparent), linear-gradient(180deg, transparent, #000 32%, #000 68%, transparent);
+          mask-composite: intersect;
+  opacity: 0.6;
+  animation: auth-admin-fliessen 27s ease-in-out infinite alternate;
+}
+.auth-admin-impuls {
+  position: absolute; left: 0; top: calc(47.5% - 2px);
+  width: 18vmax; height: 6px; border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(190, 210, 255, 0.9) 70%, var(--auth-admin-licht) 92%, transparent);
+  box-shadow: 0 0 22px 4px rgba(126, 166, 255, 0.75), 0 0 60px 10px rgba(124, 77, 255, 0.35);
+  opacity: 0;
+  animation: auth-admin-impuls 9s cubic-bezier(.45, 0, .25, 1) infinite 1.4s;
+}
+
+/* Schwebende Glasformen — Ring (schräg gesehen), Kapsel, Kugel. */
+.auth-admin-form { position: absolute; }
+.auth-admin-form--ring {
+  width: 260px; height: 260px; left: calc(50% - 500px); top: 6%;
+  transform: rotate(-26deg) scaleY(0.58);
+  filter: drop-shadow(0 0 22px rgba(126, 166, 255, 0.5));
+  animation: auth-admin-schweben-a 14s ease-in-out infinite alternate;
+}
+.auth-admin-form--ring::before,
+.auth-admin-form--ring::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  -webkit-mask: radial-gradient(circle, transparent 60%, #000 61.5%, #000 70.5%, transparent 72%);
+          mask: radial-gradient(circle, transparent 60%, #000 61.5%, #000 70.5%, transparent 72%);
+}
+.auth-admin-form--ring::before {
+  background: conic-gradient(from 200deg, rgba(255, 255, 255, 0.8), rgba(126, 166, 255, 0.42) 18%, rgba(124, 77, 255, 0.72) 40%,
+    rgba(255, 255, 255, 0.16) 58%, rgba(126, 166, 255, 0.46) 78%, rgba(255, 255, 255, 0.8));
+  animation: auth-admin-drehen 48s linear infinite;
+}
+.auth-admin-form--ring::after {
+  background: radial-gradient(circle at 26% 18%, rgba(255, 255, 255, 0.85), transparent 34%);
+}
+.auth-admin-form--kapsel {
+  width: 104px; height: 268px; left: calc(50% + 268px); top: 50%;
+  border-radius: 999px;
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.42), rgba(140, 170, 255, 0.16) 26%, rgba(124, 77, 255, 0.3) 72%, rgba(255, 255, 255, 0.12));
+  border: 1px solid rgba(220, 228, 255, 0.32);
+  box-shadow: inset 0 2px 10px rgba(255, 255, 255, 0.35), inset 0 -18px 34px rgba(124, 77, 255, 0.45), 0 24px 60px -18px rgba(90, 60, 255, 0.7);
+  transform: rotate(34deg);
+  animation: auth-admin-schweben-b 16s ease-in-out infinite alternate;
+}
+.auth-admin-form--kugel {
+  width: 92px; aspect-ratio: 1; left: calc(50% + 300px); top: 14%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #ffffff 0%, #d9e3ff 7%, #86a4ff 26%, #5e43e8 60%, #1b0f4a 100%);
+  box-shadow: 0 0 40px 6px rgba(124, 77, 255, 0.45), inset -10px -14px 24px rgba(10, 4, 40, 0.55);
+  animation: auth-admin-schweben-c 12s ease-in-out infinite alternate;
+}
+/* Körnung ohne Mischmodus: ein Mischmodus über bewegten Ebenen mischte jedes Bild neu (Messung wie oben). */
+.auth-admin-korn {
+  position: absolute; inset: 0; opacity: 0.05;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+.auth-admin-vignette { position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 50%, transparent 50%, rgba(2, 4, 14, 0.8) 100%); }
+
+/* ── Panel ──────────────────────────────────────────────────────────────────────────────────────────── */
+.auth-admin-mitte {
+  position: relative; z-index: 1;
+  display: grid; place-items: center;
+  padding: clamp(24px, 7vh, 72px) 16px 12px;
+}
+.auth-admin-panel {
+  position: relative;
+  width: min(100%, 460px);
+  padding: 44px 40px 34px;
+  border-radius: var(--auth-admin-radius-panel);
+  background:
+    linear-gradient(165deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03) 42%, rgba(124, 77, 255, 0.06) 100%),
+    rgba(6, 11, 34, 0.5);
+  border: 1px solid rgba(196, 210, 255, 0.18);
+  -webkit-backdrop-filter: blur(24px) saturate(135%);
+          backdrop-filter: blur(24px) saturate(135%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(124, 77, 255, 0.16),
+    0 40px 90px -30px rgba(2, 4, 20, 0.85),
+    0 0 70px -14px var(--auth-admin-glow-blau);
+  animation: auth-admin-panel-ein 900ms cubic-bezier(.2, .8, .2, 1) both 140ms;
+}
+/* Leuchtende Kontur: ein Verlaufsring über eine Maske, oben links hell, unten rechts violett. */
+.auth-admin-panel::before {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(140deg, rgba(160, 192, 255, 0.85), rgba(124, 77, 255, 0.15) 38%, rgba(124, 77, 255, 0) 55%, rgba(183, 154, 255, 0.7) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+}
+/* Lichtkante an der Oberkante des Glases. */
+.auth-admin-panel::after {
+  content: ""; position: absolute; left: 14%; right: 14%; top: -1px; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
+}
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .auth-admin-panel { background: rgba(8, 14, 42, 0.92); }
+}
+
+.auth-admin-kopf { margin-bottom: 30px; }
+.auth-admin-titel {
+  margin: 0; display: grid; justify-items: center; gap: 14px; text-align: center;
+  font-weight: 600;
+}
+.auth-admin-titel:focus { outline: none; }
+.auth-admin-marke .ce-brandmark-img { display: block; width: 156px; height: auto; filter: drop-shadow(0 6px 24px rgba(47, 107, 255, 0.45)); }
+.auth-admin-titel-text {
+  font-size: 2rem; line-height: 1.1; letter-spacing: -0.012em; font-stretch: 94%;
+  background: linear-gradient(100deg, var(--auth-admin-tinte-1) 0%, #e2e8ff 46%, #cbbcff 100%);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+}
+
+.auth-admin-formular { display: grid; gap: 18px; }
+.auth-admin-feld { display: grid; gap: 8px; }
+.auth-admin-label { font-size: 0.875rem; font-weight: 500; color: var(--auth-admin-tinte-2); }
+.auth-admin-eingabe {
+  position: relative; display: flex; align-items: center;
+  min-height: 56px; border-radius: var(--auth-admin-radius-feld);
+  background: rgba(4, 9, 30, 0.6);
+  border: 1px solid rgba(160, 182, 255, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: border-color 160ms ease, box-shadow 220ms ease, background-color 220ms ease;
+}
+.auth-admin-eingabe:hover { border-color: rgba(176, 196, 255, 0.42); }
+.auth-admin-eingabe:focus-within {
+  border-color: rgba(134, 168, 255, 0.95);
+  background: rgba(6, 13, 42, 0.74);
+  box-shadow: 0 0 0 4px rgba(76, 112, 255, 0.28), 0 0 30px -6px var(--auth-admin-glow-violett), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.auth-admin-eingabe--fehler { border-color: rgba(255, 160, 178, 0.85); }
+.auth-admin-eingabe-ico { flex: none; display: grid; place-items: center; width: 48px; color: var(--auth-admin-tinte-3); transition: color 160ms ease; }
+.auth-admin-eingabe:focus-within .auth-admin-eingabe-ico { color: var(--auth-admin-strom-blau-hell); }
+/* width: 100% macht das Feld „komprimierbar“: ohne sie zählt die Standardbreite eines <input> (~20 Zeichen) als
+   Mindestbreite der Zeile und verbreitert bei 360–390 px die ganze Seite über den Bildschirm hinaus. */
+.auth-admin-input {
+  flex: 1; min-width: 0; width: 100%; height: 54px; padding: 0 14px 0 0;
+  border: 0; outline: 0; background: transparent;
+  color: var(--auth-admin-tinte-1); caret-color: var(--auth-admin-strom-blau-hell);
+  font: inherit; font-size: 1rem;
+}
+.auth-admin-input:-webkit-autofill,
+.auth-admin-input:-webkit-autofill:hover,
+.auth-admin-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--auth-admin-tinte-1);
+  -webkit-box-shadow: 0 0 0 1000px var(--auth-admin-nacht-800) inset;
+  transition: background-color 600000s 0s;
+}
+.auth-admin-auge {
+  flex: none; display: grid; place-items: center;
+  width: 44px; height: 44px; margin-right: 6px;
+  border: 0; border-radius: 10px; background: transparent; cursor: pointer;
+  color: var(--auth-admin-tinte-3);
+  transition: color 150ms ease, background-color 150ms ease;
+}
+.auth-admin-auge:hover { color: var(--auth-admin-tinte-1); background: rgba(255, 255, 255, 0.07); }
+.auth-admin-auge:focus-visible { outline: 2px solid var(--auth-admin-strom-blau-hell); outline-offset: -2px; }
+.auth-admin-vergessen { display: flex; justify-content: flex-end; }
+.auth-admin-link {
+  border: 0; background: none; padding: 6px 2px; cursor: pointer;
+  color: var(--auth-admin-link); font: inherit; font-size: 0.8125rem;
+  text-decoration: underline; text-decoration-color: rgba(188, 202, 247, 0.42); text-underline-offset: 3px;
+}
+.auth-admin-link:hover { color: var(--auth-admin-tinte-1); text-decoration-color: currentColor; }
+.auth-admin-link:focus-visible { outline: 2px solid var(--auth-admin-strom-blau-hell); outline-offset: 2px; border-radius: 4px; }
+
+.auth-admin-cta {
+  position: relative; overflow: hidden; isolation: isolate;
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; min-height: 56px; margin-top: 6px;
+  border: 0; border-radius: var(--auth-admin-radius-feld); cursor: pointer;
+  color: var(--auth-admin-tinte-1); font: inherit; font-size: 1rem; font-weight: 600; letter-spacing: 0.01em;
+  background: linear-gradient(105deg, var(--auth-admin-strom-blau) 0%, #4a5bff 45%, var(--auth-admin-strom-violett) 100%);
+  background-size: 135% 100%; background-position: 0% 50%;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 14px 34px -12px rgba(76, 90, 255, 0.85), 0 0 0 1px rgba(160, 150, 255, 0.25);
+  transition: background-position 450ms cubic-bezier(.2, .8, .2, 1), box-shadow 240ms ease, transform 160ms ease;
+}
+.auth-admin-cta > span { position: relative; z-index: 1; }
+/* Lichtkante, die beim Überfahren über den Knopf läuft. */
+.auth-admin-cta::after {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 700ms cubic-bezier(.2, .8, .2, 1);
+}
+.auth-admin-cta:hover:not(:disabled) {
+  background-position: 100% 50%;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), 0 18px 44px -12px rgba(124, 77, 255, 0.95), 0 0 0 1px rgba(190, 170, 255, 0.42);
+}
+.auth-admin-cta:hover:not(:disabled)::after { transform: translateX(120%); }
+.auth-admin-cta:active:not(:disabled) { transform: translateY(1px); }
+.auth-admin-cta:focus-visible { outline: 3px solid var(--auth-admin-licht); outline-offset: 3px; }
+.auth-admin-cta:disabled { cursor: progress; }
+/* Laden: die Lichtkante läuft wiederholt, daneben ein ruhiger Ring. */
+.auth-admin-cta[aria-busy="true"]::after { transition: none; animation: auth-admin-cta-laden 1.3s ease-in-out infinite; }
+.auth-admin-cta-lauf {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35); border-top-color: var(--auth-admin-tinte-1);
+  animation: auth-admin-drehen 0.8s linear infinite;
+}
+
+.auth-admin-schritt { margin: 0; text-align: center; font-size: 1.25rem; font-weight: 600; line-height: 1.3; }
+.auth-admin-text { margin: 0; text-align: center; color: var(--auth-admin-tinte-2); font-size: 0.9375rem; line-height: 1.5; }
+.auth-admin-zurueck {
+  justify-self: center; display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px; padding: 10px 12px; border: 0; border-radius: 10px; background: none; cursor: pointer;
+  color: var(--auth-admin-link); font: inherit; font-size: 0.875rem;
+}
+.auth-admin-zurueck:hover { color: var(--auth-admin-tinte-1); background: rgba(255, 255, 255, 0.06); }
+.auth-admin-zurueck:focus-visible { outline: 2px solid var(--auth-admin-strom-blau-hell); outline-offset: 2px; }
+
+.auth-admin-meldung {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px; border-radius: 12px; border: 1px solid;
+  font-size: 0.875rem; line-height: 1.45;
+}
+.auth-admin-meldung-ico { flex: none; display: grid; place-items: center; height: 1.45em; }
+.auth-admin-meldung--fehler { background: rgba(255, 92, 122, 0.12); border-color: rgba(255, 150, 170, 0.38); color: var(--auth-admin-fehler-tinte); }
+.auth-admin-meldung--info { background: rgba(80, 120, 255, 0.13); border-color: rgba(150, 178, 255, 0.38); color: var(--auth-admin-info-tinte); }
+.auth-admin-meldung--erfolg { background: rgba(60, 220, 160, 0.11); border-color: rgba(120, 232, 186, 0.38); color: var(--auth-admin-erfolg-tinte); }
+
+.auth-admin-recht {
+  position: relative; z-index: 1;
+  display: flex; justify-content: center; gap: 24px;
+  padding: 4px 16px max(14px, env(safe-area-inset-bottom));
+}
+.auth-admin-recht a {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
+  color: var(--auth-admin-tinte-3); text-decoration: none; font-size: 0.8125rem;
+}
+.auth-admin-recht a:hover { color: var(--auth-admin-tinte-1); text-decoration: underline; text-underline-offset: 3px; }
+.auth-admin-recht a:focus-visible { outline: 2px solid var(--auth-admin-strom-blau-hell); outline-offset: 2px; border-radius: 4px; }
+
+/* ── Bewegung ───────────────────────────────────────────────────────────────────────────────────────── */
+@keyframes auth-admin-strom-ein { from { opacity: 0; translate: -6vmax 5vmax; } to { opacity: 1; translate: 0 0; } }
+@keyframes auth-admin-fliessen { from { translate: -5% 0; } to { translate: 5% 0; } }
+@keyframes auth-admin-impuls {
+  0%        { translate: -20vmax 0; opacity: 0; }
+  4%        { opacity: 1; }
+  30%       { translate: 190vmax 0; opacity: 1; }
+  32%, 100% { translate: 190vmax 0; opacity: 0; }
+}
+@keyframes auth-admin-schweben-a { from { translate: 0 0; } to { translate: 14px 22px; } }
+@keyframes auth-admin-schweben-b { from { translate: 0 0; rotate: 0deg; } to { translate: -10px -26px; rotate: -6deg; } }
+@keyframes auth-admin-schweben-c { from { translate: 0 0; } to { translate: -12px 18px; } }
+@keyframes auth-admin-drehen { to { rotate: 360deg; } }
+@keyframes auth-admin-panel-ein { from { opacity: 0; translate: 0 18px; scale: 0.985; } to { opacity: 1; translate: 0 0; scale: 1; } }
+@keyframes auth-admin-cta-laden { from { transform: translateX(-120%); } to { transform: translateX(120%); } }
+
+/* ── Breiten ────────────────────────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1600px) {
+  .auth-admin-form--ring { width: 300px; height: 300px; left: calc(50% - 600px); }
+  .auth-admin-form--kapsel { left: calc(50% + 330px); }
+  .auth-admin-form--kugel { width: 108px; left: calc(50% + 380px); }
+}
+@media (max-width: 1100px) {
+  .auth-admin-form--ring { left: calc(50% - 440px); }
+  .auth-admin-form--kapsel { left: calc(50% + 236px); }
+  .auth-admin-form--kugel { left: calc(50% + 250px); }
+}
+@media (max-width: 760px) {
+  .auth-admin-strom { top: 46%; width: 260vmax; height: 92vmax; transform: translate(-50%, -50%) rotate(-36deg); }
+  .auth-admin-band--1 { filter: blur(34px); }
+  .auth-admin-band--4 { filter: blur(40px); }
+  .auth-admin-form--ring { width: 170px; height: 170px; left: -56px; top: 3%; }
+  .auth-admin-form--kugel { width: 62px; left: auto; right: 16px; top: 5%; }
+  .auth-admin-form--kapsel { width: 66px; height: 172px; left: auto; right: -22px; top: auto; bottom: 7%; }
+}
+@media (max-width: 520px) {
+  .auth-admin-mitte { padding-top: max(20px, 5vh); }
+  .auth-admin-panel { padding: 32px 22px 26px; border-radius: 24px; }
+  .auth-admin-kopf { margin-bottom: 24px; }
+  .auth-admin-titel { gap: 12px; }
+  .auth-admin-marke .ce-brandmark-img { width: 132px; }
+  .auth-admin-titel-text { font-size: 1.75rem; }
+  .auth-admin-formular { gap: 16px; }
+}
+@media (pointer: coarse) {
+  .auth-admin-link { min-height: 44px; padding: 10px 4px; }
+}
+
+/* ── Reduzierte Bewegung: dieselbe Komposition als ruhiges Standbild ────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .auth-admin-strom, .auth-admin-band, .auth-admin-faser, .auth-admin-form, .auth-admin-form--ring::before,
+  .auth-admin-panel, .auth-admin-cta-lauf, .auth-admin-cta[aria-busy="true"]::after { animation: none; }
+  .auth-admin-impuls { animation: none; opacity: 0.85; translate: 92vmax 0; }
+  .auth-admin-eingabe, .auth-admin-cta, .auth-admin-cta::after, .auth-admin-auge, .auth-admin-eingabe-ico { transition: none; }
+}
+
+/* ── Erzwungene Farben (Kontrastmodus): Text und Kanten aus den Systemfarben ───────────────────────── */
+@media (forced-colors: active) {
+  .auth-admin-buehne { display: none; }
+  .auth-admin-panel { border: 1px solid CanvasText; backdrop-filter: none; }
+  .auth-admin-titel-text { background: none; color: CanvasText; }
+  .auth-admin-eingabe { border: 1px solid CanvasText; }
+  .auth-admin-cta { border: 1px solid ButtonText; }
+}

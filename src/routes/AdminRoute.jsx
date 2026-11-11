@@ -21,9 +21,9 @@ export function AdminRoute({ children }) {
   // verhindert ein Aufblitzen des Redirects, bevor die Rolle bekannt ist.
   if (loadingUser) return <LoadingScreen />;
 
-  // Nicht eingeloggt → Login; die Adresse geht als Rücksprungwunsch mit
-  // (geprüft wird sie erst in AuthPage, siehe utils/loginReturnTarget.mjs).
-  if (!authed) return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
+  // Nicht eingeloggt → Admin-Anmeldung (Canonical v2.130); die Adresse geht als Rücksprungwunsch mit
+  // (geprüft wird sie erst auf der Seite, siehe adminReturnTarget in utils/loginReturnTarget.mjs).
+  if (!authed) return <Navigate to="/admin/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
 
   // Eingeloggt, aber keine Admin-Rolle → zurück in den Kundenbereich. Bewusst
   // ohne Hinweis, dass /admin existiert (keine Informationspreisgabe).

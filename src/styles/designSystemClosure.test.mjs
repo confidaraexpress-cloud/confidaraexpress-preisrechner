@@ -363,6 +363,9 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
                   // Sammelrechnungsanträge (P5, bewusste Ankeränderung, +1): die Liste am bestehenden Adminrahmen;
                   // entschieden wird im Kundendetail — kein Sidebar-Eintrag (Höhenbudget).
                   "/admin/billing-mode-requests",
+                  // Admin-Anmeldung (Canonical v2.130, bewusste Ankeränderung, +1): öffentlich erreichbar, nur zum
+                  // Anmelden; im Auth-Bereich, außerhalb von AdminRoute und AdminLayout.
+                  "/admin/login",
                   "*"];
   const gefunden = [...app.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(gefunden.sort(), [...ROUTEN].sort(), "der Routenbestand hat sich verändert");

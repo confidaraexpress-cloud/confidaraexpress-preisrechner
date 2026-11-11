@@ -51,7 +51,7 @@ const RESET_PASSWORD_TEXTS = Object.freeze({
 // Klassifizierung (apiError.mjs). Ersetzt die früheren rohen e.message-Anzeigen
 // und die leeren Banner aus `new Error(d.error)` ohne Fallback.
 import {
-  mapLoginError, mapForgotError, mapResetError, mapAuthThrownError,
+  mapLoginError, mapForgotError, mapResetError, mapAuthThrownError, istAdminAnmeldungVerweis,
   classifyResetTokenCheck, FORGOT_NEUTRAL_ERFOLG, LOGIN_SERVERFEHLER,
   KUNDENBEREICH_NACH_LOGIN_FEHLER, RESET_PRUEFUNG_NETZFEHLER,
 } from "../utils/authErrors.mjs";
@@ -75,6 +75,8 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  // Admin-Anmeldung (Canonical v2.130): meldet der Kundenlogin ein Adminkonto, steht unter der Meldung der Weg dorthin.
+  const [adminWeg, setAdminWeg] = useState(false);
   // Öffentlicher Preisrechner: wartet eine Tarifwahl (Modulspeicher), sagt die Anmeldeseite es; nach einer
   // Registrierung bleibt sie bis zur Freischaltung nicht erhalten — und auch das steht da.
   const [uebernahmeWartet, setUebernahmeWartet] = useState(() => hasPendingHandoff());
@@ -177,11 +179,11 @@ export default function AuthPage() {
   }, []);
 
   const handleLogin = async () => {
-    setError(""); setLoading(true);
+    setError(""); setAdminWeg(false); setLoading(true);
     try {
       const r = await fetch(`${API}/login`, { method: "POST", headers: jsonH, body: JSON.stringify({ ...loginForm, rememberMe }) });
       const d = await readJson(r);
-      if (!r.ok) { setError(mapLoginError(r.status, d)); setLoading(false); return; }
+      if (!r.ok) { setError(mapLoginError(r.status, d)); setAdminWeg(istAdminAnmeldungVerweis(d)); setLoading(false); return; }
       if (!d?.token) { setError(LOGIN_SERVERFEHLER); setLoading(false); return; }
       localStorage.setItem("ce_token", d.token);
       // login() lädt /kundenbereich. Scheitert DAS, ist der Login nicht
@@ -196,7 +198,7 @@ export default function AuthPage() {
       // Partnerportal — auf Wunsch der zuletzt geöffnete Bereich (UX-Paket 6),
       // nie ein (für ihn gesperrtes) Kunden-Rücksprungziel.
       if (isSalesPartner(ok)) navigate(partnerReturnTarget(returnTarget) || landingPathFor(ok));
-      else navigate(returnTarget || "/dashboard");
+      else navigate(returnTarget || landingPathFor(ok));
     } catch (e) { setError(mapAuthThrownError(e)); }
     setLoading(false);
   };
@@ -289,7 +291,7 @@ export default function AuthPage() {
     setLoading(false);
   };
 
-  const clearMessages = () => { setError(""); setSuccess(""); setEmailChanged(false); };
+  const clearMessages = () => { setError(""); setSuccess(""); setEmailChanged(false); setAdminWeg(false); };
 
   const handleRegChange = (k, v) => {
     setRegForm(p => ({ ...p, [k]: v }));
@@ -456,6 +458,11 @@ export default function AuthPage() {
                 </div>
               )}
               {error   && <div className="auth-alert auth-alert-error" role="alert">{error}</div>}
+              {adminWeg && (
+                <p className="auth-card-wechsel" id="auth-admin-weg">
+                  <Link className="auth-card-wechsel-btn" to="/admin/login">Zur Admin-Anmeldung</Link>
+                </p>
+              )}
               {success && <div className="auth-alert auth-alert-success" role="status">{success}</div>}
               {uebernahmeWartet && (
                 <div className="auth-alert auth-alert-info" role="status" id="auth-handoff-pending">

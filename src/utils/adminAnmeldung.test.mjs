@@ -1,0 +1,152 @@
+// Admin-Anmeldung /admin/login (Canonical v2.130): reine Logik, Wortlaut und Quelltextgrenzen der Seite.
+// Run: node --test src/utils/adminAnmeldung.test.mjs
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import {
+  ADMIN_ANMELDUNG_TEXT, ADMIN_ANMELDE_FEHLER, ADMIN_VERGESSEN_ERFOLG, ADMIN_LOGIN_PATH, ADMIN_HOME,
+  mapAdminAnmeldeFehler, mapAdminVergessenFehler, adminZielNachAnmeldung, anmeldeseiteFuer,
+  ohneSitzungsweiterleitung, resetTokenAus,
+} from "./adminAnmeldung.mjs";
+import { AUTH_CODE_TEXTE, istAdminAnmeldungVerweis } from "./authErrors.mjs";
+
+const SRC = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+const lies = (rel) => readFileSync(path.join(SRC, rel), "utf8");
+const ohneKommentare = (t) => t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+
+test("1 — Pfade: /admin/login und /admin", () => {
+  assert.equal(ADMIN_LOGIN_PATH, "/admin/login");
+  assert.equal(ADMIN_HOME, "/admin");
+});
+
+test("2 — Anmeldefehler: Codes steuern, ohne Passwort verrät nichts das Konto", () => {
+  assert.equal(mapAdminAnmeldeFehler(401, { code: "INVALID_CREDENTIALS" }), ADMIN_ANMELDE_FEHLER.INVALID_CREDENTIALS);
+  assert.equal(mapAdminAnmeldeFehler(401, null), ADMIN_ANMELDE_FEHLER.INVALID_CREDENTIALS);
+  assert.equal(mapAdminAnmeldeFehler(403, { code: "ADMIN_ACCESS_REQUIRED", error: "roh" }), "Für dieses Konto besteht kein Zugang zum Adminbereich.");
+  assert.equal(mapAdminAnmeldeFehler(403, { code: "ACCOUNT_BLOCKED" }), ADMIN_ANMELDE_FEHLER.ACCOUNT_BLOCKED);
+  assert.equal(mapAdminAnmeldeFehler(403, { code: "ACCOUNT_PENDING_APPROVAL" }), ADMIN_ANMELDE_FEHLER.ACCOUNT_PENDING_APPROVAL);
+  assert.equal(mapAdminAnmeldeFehler(403, { error: "Serverrohtext" }), ADMIN_ANMELDE_FEHLER.ADMIN_ACCESS_REQUIRED, "nie ein Rohtext");
+  assert.equal(mapAdminAnmeldeFehler(429, { error: "Zu viele" }), ADMIN_ANMELDE_FEHLER.ZU_VIELE);
+  assert.match(mapAdminAnmeldeFehler(500, null), /nicht möglich/);
+  assert.match(mapAdminAnmeldeFehler(404, null), /nicht möglich/, "ein fehlender Eingang ist ein Serverfehler, kein Anmeldefehler");
+  // Kein Text nennt die Rolle eines Kontos ohne gültiges Passwort.
+  assert.doesNotMatch(ADMIN_ANMELDE_FEHLER.INVALID_CREDENTIALS, /Admin|Kunde|Partner/);
+});
+
+test("3 — Passwort vergessen: immer neutral, Fehler ohne Rohtext", () => {
+  assert.match(ADMIN_VERGESSEN_ERFOLG, /^Falls zu dieser E-Mail-Adresse ein Konto besteht/);
+  assert.match(mapAdminVergessenFehler(429), /Zu viele Anfragen/);
+  assert.match(mapAdminVergessenFehler(400), /gültige E-Mail-Adresse/);
+  assert.match(mapAdminVergessenFehler(500), /nicht verarbeitet/);
+});
+
+test("4 — Ziel nach der Anmeldung: nur geprüfte Adminziele, sonst /admin", () => {
+  assert.equal(adminZielNachAnmeldung("/admin/users/7"), "/admin/users/7");
+  assert.equal(adminZielNachAnmeldung("/admin/audit-logs"), "/admin/audit-logs");
+  for (const fremd of ["/dashboard", "/partner", "https://evil.example/admin", "//evil.example", "/admin/login", null, undefined, 42]) {
+    assert.equal(adminZielNachAnmeldung(fremd), "/admin", `durchgelassen: ${String(fremd)}`);
+  }
+});
+
+test("5 — Sitzungsende: Adminbereich → /admin/login, sonst /login; keine Weiterleitung auf den Anmeldeseiten", () => {
+  for (const p of ["/admin", "/admin/users", "/admin/users/5", "/admin/partners/credit-notes", "/vorschau/rechtstexte/agb", "/admin/login"]) {
+    assert.equal(anmeldeseiteFuer(p), "/admin/login", p);
+  }
+  for (const p of ["/dashboard", "/calculator", "/booking", "/partner", "/administration", "/", undefined]) {
+    assert.equal(anmeldeseiteFuer(p), "/login", String(p));
+  }
+  for (const p of ["/login", "/admin/login", "/confirm-email-change"]) assert.equal(ohneSitzungsweiterleitung(p), true, p);
+  for (const p of ["/admin", "/dashboard", "/register"]) assert.equal(ohneSitzungsweiterleitung(p), false, p);
+});
+
+test("6 — Einmallink aus der Adresse: nur die Form eines Tokens", () => {
+  const t = "a".repeat(64);
+  assert.equal(resetTokenAus(`?reset=${t}`), t);
+  assert.equal(resetTokenAus(`?x=1&reset=${t}`), t);
+  for (const s of ["", "?reset=", "?reset=kurz", `?reset=${"a".repeat(64)}%3Cscript`, "?reset=../../x", null, undefined]) {
+    assert.equal(resetTokenAus(s), null, String(s));
+  }
+});
+
+test("7 — Wortlaut nach Auftrag: Adminbereich, Passwort vergessen?, kein Werbe- oder Sicherheitstext", () => {
+  assert.equal(ADMIN_ANMELDUNG_TEXT.titel, "Adminbereich");
+  assert.equal(ADMIN_ANMELDUNG_TEXT.vergessen, "Passwort vergessen?");
+  const alles = Object.values(ADMIN_ANMELDUNG_TEXT).join(" ");
+  for (const verboten of [/autorisiert/i, /registrier/i, /Konto erstellen/i, /sicher(er|e) Zugang/i, /Willkommen/i]) {
+    assert.doesNotMatch(alles, verboten);
+  }
+});
+
+test("8 — Kundenlogin (Stufe 2): Verweis auf die Admin-Anmeldung über den Code, nie über den Text", () => {
+  assert.equal(istAdminAnmeldungVerweis({ code: "ADMIN_LOGIN_REQUIRED" }), true);
+  assert.equal(istAdminAnmeldungVerweis({ error: "Administratoren melden sich über die Admin-Anmeldung an." }), false);
+  assert.equal(istAdminAnmeldungVerweis(null), false);
+  assert.match(AUTH_CODE_TEXTE.ADMIN_LOGIN_REQUIRED, /Admin-Anmeldung/);
+  const seite = ohneKommentare(lies("pages/AuthPage.jsx"));
+  assert.match(seite, /setAdminWeg\(istAdminAnmeldungVerweis\(d\)\)/);
+  assert.match(seite, /<Link className="auth-card-wechsel-btn" to="\/admin\/login">Zur Admin-Anmeldung<\/Link>/);
+});
+
+test("9 — Seite: eigener Eingang, keine Registrierung, kein „Angemeldet bleiben“, Bühne dekorativ", () => {
+  const seite = ohneKommentare(lies("pages/AdminAnmeldungPage.jsx"));
+  const api = lies("api/adminAnmeldungApi.js");
+  assert.match(api, /apiFetch\("\/auth\/admin-login", \{ method: "POST"/);
+  assert.doesNotMatch(api, /rememberMe/, "der Admin-Eingang kennt kein „Angemeldet bleiben“");
+  assert.match(seite, /useCeBereich\("auth"\)/);
+  assert.match(seite, /<AdminLichtstrom \/>/);
+  // Angemeldeter Admin → Adminpanel, außer die Seite kam mit einem Einmallink (Einrichtung bei offener Sitzung eines
+  // anderen Kontos): dann der Link-Schritt, und nach dem Speichern endet die offene Sitzung (E2E G2).
+  assert.match(seite, /if \(authed && isAdmin\(user\) && !resetToken\) return <Navigate to=\{ziel\} replace \/>;/);
+  assert.match(seite, /setNeu\(""\); setNeuWdh\(""\);\s*if \(authed\) logout\(\);/, "nach dem Speichern endet eine offene Sitzung");
+  assert.match(seite, /if \(!isAdmin\(angemeldet\)\) \{ logout\(\);/, "Schutz in der Tiefe: Nicht-Admins werden sofort abgemeldet");
+  assert.doesNotMatch(seite, /register|Registrieren|rememberMe|Angemeldet bleiben|dangerouslySetInnerHTML/);
+  assert.doesNotMatch(seite, /https?:\/\//, "keine externen Ressourcen");
+  assert.match(seite, /autoComplete="username"/);
+  assert.match(seite, /autoComplete="current-password"/);
+  assert.equal((seite.match(/autoComplete="new-password"/g) || []).length, 2);
+  // Passwort anzeigen/verbergen ist per Tastatur erreichbar und benannt.
+  assert.match(seite, /aria-pressed=\{sichtbar\}/);
+  assert.doesNotMatch(seite, /tabIndex=\{-1\}[^>]*auth-admin-auge/);
+  const buehne = lies("components/auth/AdminLichtstrom.jsx");
+  assert.match(buehne, /className="auth-admin-buehne" aria-hidden="true"/);
+  assert.doesNotMatch(ohneKommentare(buehne), /<img|<svg|onClick|https?:\/\//);
+});
+
+test("10 — Route: /admin/login im Auth-Bereich, außerhalb von AdminRoute; Abmelden und Schutzroute führen dorthin", () => {
+  const app = ohneKommentare(lies("App.jsx"));
+  const auth = app.slice(app.indexOf("<Route element={<AuthAreaBoundary />}>"), app.indexOf("</Route>", app.indexOf("<Route element={<AuthAreaBoundary />}>")));
+  assert.match(auth, /<Route path="\/admin\/login" element=\{<AdminAnmeldungSeite \/>\} \/>/);
+  const adminBlock = app.slice(app.indexOf("<Route element={<AdminRoute><AdminLayout /></AdminRoute>}>"));
+  assert.doesNotMatch(adminBlock.slice(0, adminBlock.indexOf("</Route>")), /admin\/login/);
+  assert.match(ohneKommentare(lies("components/layout/AdminSidebar.jsx")), /logout\(\); navigate\("\/admin\/login"\);/);
+  assert.match(ohneKommentare(lies("routes/AdminRoute.jsx")), /<Navigate to="\/admin\/login" replace/);
+});
+
+test("11 — Gestaltung: Bewegung nur über transform/opacity, Standbild bei reduzierter Bewegung, Kontrastmodus", () => {
+  const css = lies("styles/auth.css");
+  const abschnitt = css.slice(css.indexOf("Admin-Anmeldung /admin/login (Canonical v2.130)"));
+  assert.ok(abschnitt.length > 2000, "Abschnitt fehlt");
+  // Keyframes bewegen nur translate/scale/rotate/transform und opacity (Blöcke per Klammerzählung gelesen).
+  let anzahl = 0;
+  for (const m of abschnitt.matchAll(/@keyframes [\w-]+ \{/g)) {
+    let tiefe = 1, i = m.index + m[0].length;
+    while (tiefe > 0 && i < abschnitt.length) { if (abschnitt[i] === "{") tiefe++; else if (abschnitt[i] === "}") tiefe--; i++; }
+    const koerper = abschnitt.slice(m.index + m[0].length, i - 1);
+    const eigenschaften = [...koerper.matchAll(/([a-z-]+)\s*:/g)].map((x) => x[1]);
+    for (const e of eigenschaften) assert.ok(["translate", "scale", "rotate", "transform", "opacity"].includes(e), `${m[0]} animiert ${e}`);
+    anzahl++;
+  }
+  assert.ok(anzahl >= 8, "die Keyframes wurden nicht gelesen");
+  const rm = abschnitt.slice(abschnitt.indexOf("@media (prefers-reduced-motion: reduce)"));
+  assert.match(rm, /animation: none;/);
+  assert.match(rm, /\.auth-admin-impuls \{ animation: none; opacity: 0\.85;/, "der Impuls steht als Standbild da, nicht leer");
+  assert.match(abschnitt, /@media \(forced-colors: active\)/);
+  assert.match(abschnitt, /\.auth-admin-buehne \{\s*position: fixed; inset: 0; z-index: 0;\s*overflow: hidden; pointer-events: none;/);
+  assert.doesNotMatch(abschnitt, /url\(["']?https?:/, "keine externen Ressourcen im Stil");
+  // Fokus ist sichtbar: Eingaben, Auge, Link, Knopf.
+  for (const sel of [".auth-admin-eingabe:focus-within", ".auth-admin-auge:focus-visible", ".auth-admin-link:focus-visible", ".auth-admin-cta:focus-visible"]) {
+    assert.ok(abschnitt.includes(sel), `Fokuszustand fehlt: ${sel}`);
+  }
+});

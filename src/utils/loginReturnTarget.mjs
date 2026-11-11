@@ -25,6 +25,7 @@
 // Übergabetoken liegt nur im Modulspeicher, utils/publicQuoteHandoffStore.mjs).
 
 import { HANDOFF_PATH } from "./publicQuoteHandoffStore.mjs";
+import { ADMIN_HOME, ADMIN_LOGIN_PATH } from "./roleLanding.mjs";
 
 const INTERNE_BASIS = "https://ce.invalid";
 const ID = /^[1-9][0-9]{0,9}$/;
@@ -84,8 +85,18 @@ export function safeReturnTarget(raw) {
   if (pfad === "/calculator") return "/calculator";
   if (pfad === HANDOFF_PATH) return HANDOFF_PATH;
   if (INVENTAR.test(pfad)) return pfad;
+  // Die Admin-Anmeldeseite ist nie ein Rücksprungziel (sonst Schleife Anmeldung → Anmeldung).
+  if (pfad === ADMIN_LOGIN_PATH) return null;
   if (ADMIN.test(pfad)) return pfad;
   return null;
+}
+
+/** Rücksprung nach der Admin-Anmeldung (/admin/login, Canonical v2.130): nur ein
+ *  geprüftes Ziel im Adminbereich, sonst `null` (→ /admin). Kunden-, Partner- und
+ *  Übernahmeziele bekommt die Adminseite nie. */
+export function adminReturnTarget(raw) {
+  const ziel = safeReturnTarget(raw);
+  return ziel !== null && (ziel === ADMIN_HOME || ziel.startsWith(`${ADMIN_HOME}/`)) ? ziel : null;
 }
 
 /** Rücksprung eines Vertriebspartners: nur ein Ziel im Partnerportal, sonst

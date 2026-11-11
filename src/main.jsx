@@ -15,7 +15,8 @@ import { captureHandoffFromLocation } from "./utils/publicQuoteHandoffStore.mjs"
 import { loadSalesPartnerPublicConfig } from "./api/partnerApi";
 import App from "./App";
 import { LoadingScreen } from "./components/common/LoadingScreen";
-import { AuthSeite, EmailBestaetigungSeite } from "./pages/authSeite";
+import { AuthSeite, EmailBestaetigungSeite, AdminAnmeldungSeite } from "./pages/authSeite";
+import { ADMIN_LOGIN_PATH } from "./utils/roleLanding.mjs";
 import { istKundenAuthPfad } from "./utils/kundenAuthPfad.mjs";
 
 // Die Demo lädt ihren eigenen Teil nur unter /demo (eigener Chunk, keine Last für den Kundenbereich).
@@ -95,6 +96,10 @@ const pfad = window.location.pathname;
 if (!DEMO_ZUSTAND.aktiv && istKundenAuthPfad(pfad)) {
   const seite = pfad.startsWith("/confirm-email-change") ? EmailBestaetigungSeite : AuthSeite;
   seite.vorladen().then(starten, starten);
+} else if (!DEMO_ZUSTAND.aktiv && (pfad === ADMIN_LOGIN_PATH || pfad === `${ADMIN_LOGIN_PATH}/`)) {
+  // Admin-Anmeldung (Canonical v2.130): dasselbe Vorladen — das dunkle Gerüst (admin-login.html) geht ohne helle
+  // Ladefläche des Seitenwechsels in die Seite über.
+  AdminAnmeldungSeite.vorladen().then(starten, starten);
 } else {
   starten();
 }

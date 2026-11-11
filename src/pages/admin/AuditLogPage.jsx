@@ -17,6 +17,12 @@ const ACTION_LABELS = {
   "user.delete": "Kunde gelöscht",
   "user.delete_denied": "Löschung abgelehnt",
   "admin.user_anonymize": "Kunde anonymisiert",
+  // Admin-Anmeldung und persönliche Adminkonten (Canonical v2.130).
+  "auth.admin_login": "Admin-Anmeldung",
+  "auth.admin_password_reset": "Admin-Passwort gesetzt",
+  "admin.access_change": "Adminzugang geändert",
+  "admin.account_created": "Adminkonto angelegt",
+  "admin.password_link": "Einrichtungslink erzeugt",
   "admin.shipment.view": "Sendungsdetail eingesehen",
   "admin.shipment.label_download": "Label heruntergeladen",
   "admin.shipment.tracking_view": "Tracking eingesehen",

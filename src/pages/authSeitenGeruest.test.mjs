@@ -101,8 +101,12 @@ test("3 — das Blatt im Gerüst ist nicht bedienbar und trägt die Gestalt des 
 
 test("4 — die Pfade: kundenAuthPfad ↔ nginx (vollständiger Headerblock) ↔ Entwicklungsweiche und Build", () => {
   assert.deepEqual(KUNDEN_AUTH_PFADE, ["/login", "/register", "/registrieren", "/confirm-email-change"]);
-  assert.deepEqual(STATISCHE_AUTH_SEITEN, { "/login": "login.html", "/register": "register.html", "/registrieren": "register.html" });
+  // Admin-Anmeldung (Canonical v2.130, bewusste Ankeränderung): /admin/login bekommt ein dunkles Gerüst.
+  assert.deepEqual(STATISCHE_AUTH_SEITEN, { "/login": "login.html", "/register": "register.html", "/registrieren": "register.html",
+    "/admin/login": "admin-login.html" });
   assert.equal(statischeAuthSeite("/login/"), "login.html");
+  assert.equal(statischeAuthSeite("/admin/login"), "admin-login.html");
+  assert.equal(istKundenAuthPfad("/admin/login"), false, "die Admin-Anmeldung ist kein Kundenpfad (eigenes Vorladen in main.jsx)");
   assert.equal(statischeAuthSeite("/confirm-email-change"), null, "die E-Mail-Bestätigung hat kein Gerüst");
   assert.equal(statischeAuthSeite("/partner-registrieren"), null, "die Partnerregistrierung bleibt unverändert");
   assert.equal(istKundenAuthPfad("/registrieren/"), true);
@@ -140,6 +144,20 @@ test("4 — die Pfade: kundenAuthPfad ↔ nginx (vollständiger Headerblock) ↔
   for (const anker of ['enforce: "post"', 'order: "pre"', 'html.replace(MODULSKRIPT, "")', 'order: "post"', "einstiege.length !== 1"]) {
     assert.ok(vite.includes(anker), `vite.config.js: ${anker} fehlt (ein Einstieg für die Versionsprüfung)`);
   }
+  // Admin-Anmeldung (Canonical v2.130): eigenes Gerüst im Build, ebenfalls ohne eigenen JavaScript-Einstieg.
+  assert.match(vite, /adminLogin: path\.join\(REPO, "admin-login\.html"\)/);
+  assert.match(vite, /const GERUESTE = \["login\.html", "register\.html", "admin-login\.html"\];/);
+});
+
+test("4b — das Gerüst der Admin-Anmeldung: dunkler Grund, Bereich auth, kein Formular, nicht zu indizieren", () => {
+  const html = lies("admin-login.html");
+  assert.match(html, /<html lang="de" data-ce-bereich="auth">/);
+  assert.match(html, /<meta name="robots" content="noindex, nofollow" \/>/);
+  assert.match(html, /<div class="auth-admin-buehne" aria-hidden="true">/);
+  assert.match(html, /<script type="module" src="\/src\/main\.jsx"><\/script>/, "das Modulskript (fällt im Build weg)");
+  assert.doesNotMatch(html, /<form|<input|<button|auth-admin-strom|auth-admin-panel/, "bedienbar und bewegt ist erst die fertige Seite");
+  const main = lies("src/main.jsx");
+  assert.match(main, /AdminAnmeldungSeite\.vorladen\(\)\.then\(starten, starten\);/, "die Admin-Anmeldung wird vor dem ersten Rendern geladen");
 });
 
 test("5 — main.jsx, App.jsx, AuthContext: ohne Token kein Ladebildschirm, mit Token die Prüfung auf dunklem Grund, die Seite ist vorgeladen", () => {

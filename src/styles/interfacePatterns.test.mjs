@@ -428,8 +428,10 @@ test("12 — Phase 3 fasst weder Routing noch API noch Businesslogik an", () => 
   // die Seite neu; die Demo selbst läuft in einer eigenen Seitenladung mit eigenem Router (src/demo/DemoApp.jsx).
   // Sammelrechnungsanträge (P5, Betreiberentscheidung 2026-11-04, dokumentierte Ankeränderung): +1 —
   // /admin/billing-mode-requests am bestehenden Adminrahmen, nur über Übersichtskachel und „Zu erledigen“ erreichbar.
-  assert.equal(mitPfad + indexRt, 48,
-    "48 Routen einschliesslich der Admin-Rechtstextvorschau, der Seitenvorschau, des öffentlichen Preisrechners, des Rechnungseditors, der Demo und der Sammelrechnungsanträge");
+  // Admin-Anmeldung (Canonical v2.130, Betreiberentscheidung 2026-11-11, dokumentierte Ankeränderung): +1 —
+  // /admin/login, die öffentliche Anmeldeseite des Adminbereichs am bestehenden Auth-Rahmen; keine neue Layoutroute.
+  assert.equal(mitPfad + indexRt, 49,
+    "49 Routen einschliesslich der Admin-Rechtstextvorschau, der Seitenvorschau, des öffentlichen Preisrechners, des Rechnungseditors, der Demo, der Sammelrechnungsanträge und der Admin-Anmeldung");
   assert.equal(pfadlos, 4,
     "die Zahl der pfadlosen Layoutrouten ist unverändert (4: Dashboard, öffentlich, Admin, Auth)");
 

@@ -81,6 +81,9 @@ test("2 — den Bereich setzen genau die Kunden- und Auth-Seiten; Partner und Ad
     "pages/DashboardPage.jsx": "kunde",
     "pages/AuthPage.jsx": "auth",
     "pages/EmailChangeConfirmPage.jsx": "auth",
+    // Admin-Anmeldung (Canonical v2.130, bewusste Ankeränderung): eine Auth-Seite, nicht das Adminpanel —
+    // AdminLayout setzt den Bereich weiterhin nie (unten).
+    "pages/AdminAnmeldungPage.jsx": "auth",
   });
   for (const datei of ["components/layout/PartnerLayout.jsx", "pages/PartnerRegisterPage.jsx", "components/layout/AdminLayout.jsx"]) {
     assert.doesNotMatch(lies(path.join(SRC, datei)), /data-ce-bereich|useCeBereich/, `${datei} setzt den Bereich`);

@@ -1,6 +1,7 @@
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { AdminAnmeldungSeite } from "../../pages/authSeite";
 import { accountInitials, accountDisplayName } from "../../utils/accountIdentity.mjs";
 import { BrandLogo } from "../ui/BrandLogo";
 import { Icon, ICON_SIZE } from "../ui/Icon";
@@ -61,7 +62,9 @@ export function AdminSidebar({ open, onClose }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => { logout(); navigate("/login"); };
+  // Abmelden aus dem Adminpanel führt auf die Admin-Anmeldung (Canonical v2.130); die Sitzung beendet logout()
+  // auch serverseitig. Die Seite ist vorgeladen, damit kein Ladebildschirm dazwischen steht.
+  const handleLogout = () => { AdminAnmeldungSeite.vorladen().catch(() => {}); logout(); navigate("/admin/login"); };
   const goDashboard = () => { onClose?.(); navigate("/dashboard"); };
 
   // Geöffneter Drawer (unter 900 px) wie ein Dialog: Fokus hinein, Tab bleibt im Drawer, Escape

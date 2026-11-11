@@ -14,7 +14,7 @@ import { NavbarLayout } from "./components/layout/NavbarLayout";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { AdminLayout } from "./components/layout/AdminLayout";
 import { demoAusgangsziel } from "./demo/demoModus.mjs";
-import { AuthSeite, EmailBestaetigungSeite } from "./pages/authSeite";
+import { AuthSeite, EmailBestaetigungSeite, AdminAnmeldungSeite } from "./pages/authSeite";
 import { statischeAuthSeite } from "./utils/kundenAuthPfad.mjs";
 
 // Die Kunden-Anmeldung: eigener Codeabschnitt wie jede Seite, aber vorladbar (pages/authSeite.js) — main.jsx lädt
@@ -148,6 +148,9 @@ export default function App() {
         <Route element={<AuthAreaBoundary />}>
           <Route path="/login"    element={<AuthPage />} />
           <Route path="/register" element={<AuthPage />} />
+          {/* Admin-Anmeldung (Canonical v2.130): öffentlich erreichbar, ausschließlich zum Anmelden — außerhalb von
+              AdminRoute und AdminLayout; der Server gibt nur Adminkonten ein Token. */}
+          <Route path="/admin/login" element={<AdminAnmeldungSeite />} />
 
           {/* Öffentliche Bestätigung der Login-E-Mail-Änderung (E-Mail-Token, kein
               Login nötig; eigene Auth-Ästhetik, nicht im Dashboard). */}

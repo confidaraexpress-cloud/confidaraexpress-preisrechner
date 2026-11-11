@@ -2,6 +2,8 @@ import React from "react";
 import { Icon } from "../ui/Icon";
 import { PasswordField } from "../ui/PasswordField";
 
+// Beide Felder tragen autocomplete="new-password" und eine Beschriftung per htmlFor (Admin-Anmeldung, Canonical v2.130):
+// Passwortmanager schlagen dann ein starkes, neues Passwort vor; sichtbar ändert sich nichts.
 export function ResetPasswordForm({ password, confirmPassword, onPasswordChange, onConfirmChange, onSubmit, loading, error, success }) {
   return (
     <div className="auth-card animate-fadeUp" style={{ width: "100%", maxWidth: "480px" }}>
@@ -18,26 +20,30 @@ export function ResetPasswordForm({ password, confirmPassword, onPasswordChange,
         <>
           <div className="auth-field">
             <div className="auth-field-row">
-              <label className="auth-field-label">Neues Passwort</label>
+              <label className="auth-field-label" htmlFor="reset-password">Neues Passwort</label>
             </div>
             <div className="auth-input-wrap">
               <span className="auth-input-ico"><Icon n="lock" s={18} /></span>
               <PasswordField
                 slim
+                id="reset-password"
                 value={password}
                 onChange={(e) => onPasswordChange(e.target.value)}
+                autoComplete="new-password"
                 placeholder="Mind. 8 Zeichen"
               />
             </div>
           </div>
           <div className="auth-field">
             <div className="auth-field-row">
-              <label className="auth-field-label">Passwort bestätigen</label>
+              <label className="auth-field-label" htmlFor="reset-password-confirm">Passwort bestätigen</label>
             </div>
             <div className="auth-input-wrap">
               <span className="auth-input-ico"><Icon n="lock" s={18} /></span>
               <PasswordField
                 slim
+                id="reset-password-confirm"
+                autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => onConfirmChange(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && onSubmit()}

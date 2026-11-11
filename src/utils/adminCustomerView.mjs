@@ -185,6 +185,9 @@ export function buildCustomerMenuModel({ user, currentAdminId = null } = {}) {
   const f = customerFields(user);
   const self = isSelfAccount(user, currentAdminId);
   const items = [{ key: "details", label: "Details öffnen", icon: "arrowRight", danger: false, separatorBefore: false, disabled: false, reason: "" }];
+  // Admin-Anmeldung (Canonical v2.130): ein Adminkonto läuft nicht durch die Kundenfreischaltung. Sein Zugang wird
+  // ausschließlich im Kontodetail freigeschaltet oder gesperrt (Karte „Adminzugang“, mit Bestätigung).
+  if (user && typeof user === "object" && user.role === "admin") return items;
 
   // Die B2B-Sperre gilt NUR für das Ziel „approved" — nie für das Blockieren.
   const b2bReason = approvalBlockReason(user);

@@ -248,9 +248,14 @@ test("13 — Adminkonten sind gesondert behandelt (Selbstschutz)", () => {
   assert.equal(isSelfAccount(ADMIN, "1"), true, "ID-Typ darf keine Rolle spielen");
   assert.equal(isSelfAccount(ACME, 1), false);
   assert.equal(isSelfAccount(ACME, null), false, "ohne bekannten Admin kein Fehlalarm");
-  const own = buildCustomerMenuModel({ user: ADMIN, currentAdminId: 1 }).find((i) => i.key === "block");
-  assert.equal(own.disabled, true);
-  assert.equal(own.reason, SELF_ACTION_REASON);
+  // Bewusste Ankeränderung (Admin-Anmeldung, Canonical v2.130): Adminzeilen tragen in der Liste keine Statusaktion
+  // mehr — weder das eigene noch ein fremdes Adminkonto. Ihr Zugang wird nur im Kontodetail freigeschaltet oder
+  // gesperrt (Karte „Adminzugang“, eigenes Konto dort gesperrt; der Server lehnt die eigene Änderung ab).
+  for (const id of [1, 2]) {
+    const keys = buildCustomerMenuModel({ user: ADMIN, currentAdminId: id }).map((i) => i.key);
+    assert.deepEqual(keys, ["details"], `Adminzeile (angemeldet als ${id})`);
+  }
+  assert.equal(typeof SELF_ACTION_REASON, "string");
   const other = buildCustomerMenuModel({ user: ACME, currentAdminId: 1 }).find((i) => i.key === "block");
   assert.equal(other.disabled, false);
   // Der Grund wird angezeigt, nicht verschwiegen.
@@ -487,7 +492,8 @@ test("27 — das Freischaltungs-Gate erklärt sich und führt zum Aufschlag", ()
   // Seit Paket E ist er der gemeinsame Seitenkopf (PageHeader, variant="admin");
   // die Aktion liegt in dessen actions-Slot statt in einem eigenen Kartenkopf.
   assert.match(detailSrc, /<PageHeader\b/);
-  assert.match(detailSrc, /actions=\{statusCopy\.actionKind === "approve" \? \(/);
+  // Admin-Anmeldung (Canonical v2.130, bewusste Ankeränderung): Adminkonten haben keine Kundenfreischaltung im Kopf.
+  assert.match(detailSrc, /actions=\{!adminKonto && statusCopy\.actionKind === "approve" \? \(/);
   assert.match(detailSrc, /disabled=\{approveBusy \|\| !gate\.allowed\}/);
   assert.match(detailSrc, /aria-describedby=\{!gate\.allowed \? "adm-approve-gate" : undefined\}/);
   // Für freigeschaltete Konten steht oben KEINE rote Hauptaktion.

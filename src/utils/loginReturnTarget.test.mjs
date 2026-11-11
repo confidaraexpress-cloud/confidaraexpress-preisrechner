@@ -40,7 +40,9 @@ test("2 — fremde Ziele ergeben null (kein Open Redirect)", () => {
 
 test("3 — unbekannte Pfade, Anmeldeseiten und die Buchungsseite ergeben null", () => {
   for (const pfad of ["/", "/login", "/register", "/booking", "/tracking", "/rechnungen/1", "/dashboard/x",
-    "/inventory/products/abc", "/inventory/products/0", "/admin/a/b/c", "/admin/../login"]) {
+    "/inventory/products/abc", "/inventory/products/0", "/admin/a/b/c", "/admin/../login",
+    // Admin-Anmeldung (Canonical v2.130): die Anmeldeseite selbst ist nie ein Ziel (sonst Schleife).
+    "/admin/login", "/admin/login?x=1"]) {
     assert.equal(safeReturnTarget(pfad), null, `durchgelassen: ${pfad}`);
   }
   // Punktsegmente werden aufgelöst, bevor geprüft wird — geprüft wird das echte Ziel.
@@ -71,15 +73,33 @@ test("6 — Schutzrouten und zentraler 401-Handler geben das Ziel mit, AuthPage 
   const adminRoute = ohneKommentare(read("routes/AdminRoute.jsx"));
   const ctx = ohneKommentare(read("context/AuthContext.jsx"));
   const page = ohneKommentare(read("pages/AuthPage.jsx"));
-  for (const [name, code] of [["ProtectedRoute", protectedRoute], ["AdminRoute", adminRoute]]) {
-    assert.match(code, /<Navigate to="\/login" replace state=\{\{ from: `\$\{location\.pathname\}\$\{location\.search\}` \}\} \/>/,
-      `${name} gibt das Ziel nicht mit`);
-  }
-  assert.match(ctx, /navigate\("\/login", \{ replace: true, state: \{ from: `\$\{path\}\$\{window\.location\.search\}` \} \}\);/);
+  assert.match(protectedRoute, /<Navigate to="\/login" replace state=\{\{ from: `\$\{location\.pathname\}\$\{location\.search\}` \}\} \/>/,
+    "ProtectedRoute gibt das Ziel nicht mit");
+  // Bewusste Ankeränderung (Admin-Anmeldung, Canonical v2.130): der Adminbereich führt auf /admin/login.
+  assert.match(adminRoute, /<Navigate to="\/admin\/login" replace state=\{\{ from: `\$\{location\.pathname\}\$\{location\.search\}` \}\} \/>/,
+    "AdminRoute gibt das Ziel nicht mit");
+  // Der zentrale Handler wählt die Anmeldeseite nach der Adresse (anmeldeseiteFuer) und gibt das Ziel mit.
+  assert.match(ctx, /const ziel = anmeldeseiteFuer\(path\);/);
+  assert.match(ctx, /navigate\(ziel, \{ replace: true, state: \{ from: `\$\{path\}\$\{window\.location\.search\}` \} \}\);/);
   // Das Ziel wird einmal gelesen, SOFORT geprüft und nur geprüft verwendet.
   assert.match(page, /useState\(\(\) => safeReturnTarget\(location\.state\?\.from\)\)/);
-  assert.match(page, /navigate\(returnTarget \|\| "\/dashboard"\);/);
+  assert.match(page, /navigate\(returnTarget \|\| landingPathFor\(ok\)\);/);
   assert.doesNotMatch(page, /navigate\(location\.state\?\.from/, "das Rohziel darf nie direkt angesteuert werden");
+  // Die Admin-Anmeldung liest ihr Ziel ebenso einmal und nur geprüft (adminZielNachAnmeldung → adminReturnTarget).
+  const admin = ohneKommentare(read("pages/AdminAnmeldungPage.jsx"));
+  assert.match(admin, /useState\(\(\) => adminZielNachAnmeldung\(location\.state\?\.from\)\)/);
+  assert.doesNotMatch(admin, /navigate\(location\.state\?\.from/, "das Rohziel darf nie direkt angesteuert werden");
+});
+
+test("6b — Admin-Anmeldung (Canonical v2.130): nur Ziele im Adminbereich, nie die Anmeldeseite selbst", async () => {
+  const { adminReturnTarget } = await import("./loginReturnTarget.mjs");
+  assert.equal(adminReturnTarget("/admin"), "/admin");
+  assert.equal(adminReturnTarget("/admin/users/5"), "/admin/users/5");
+  assert.equal(adminReturnTarget("/admin/partners/credit-notes"), "/admin/partners/credit-notes");
+  for (const fremd of ["/admin/login", "/dashboard", "/partner", "/calculator", "/preisrechner-uebernahme",
+    "https://evil.example/admin", "//evil.example/admin", "/admin/a/b/c", null, undefined, ""]) {
+    assert.equal(adminReturnTarget(fremd), null, `durchgelassen: ${fremd}`);
+  }
 });
 
 // Die echte Bereichsliste des Dashboards — aus dem Quelltext, nicht abgeschrieben.

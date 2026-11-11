@@ -21,6 +21,8 @@ export const STATISCHE_AUTH_SEITEN = Object.freeze({
   "/login": "login.html",
   "/register": "register.html",
   "/registrieren": "register.html",
+  // Admin-Anmeldung (Canonical v2.130): ein dunkles Gerüst (nur der Grund der Bühne) statt weißer index.html.
+  "/admin/login": "admin-login.html",
 });
 
 export function statischeAuthSeite(pathname) {

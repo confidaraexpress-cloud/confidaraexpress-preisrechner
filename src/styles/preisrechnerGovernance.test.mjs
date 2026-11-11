@@ -48,7 +48,9 @@ test("1 — genau zwei server-Blöcke: der bisherige zuerst und als default_serv
 });
 
 test("2 — eigene CSP: API als einzige fremde Verbindung, keine Kartenkacheln, kein unsafe-inline", () => {
-  assert.equal(SICHERHEIT.length, 5, "fünf Sicherheitsheader auf Serverebene");
+  // AUD-004 (Audit 2026-11-10): sechs Header — seit HSTS (max-age 7 Tage, ohne includeSubDomains/preload).
+  assert.equal(SICHERHEIT.length, 6, "sechs Sicherheitsheader auf Serverebene");
+  assert.ok(SICHERHEIT.some((z) => z === 'add_header Strict-Transport-Security "max-age=604800" always;'), "HSTS fehlt im Preisrechner-Block");
   const csp = SICHERHEIT.find((z) => z.startsWith("add_header Content-Security-Policy")) || "";
   assert.match(csp, /connect-src 'self' https:\/\/api\.confidaraexpress\.de;/);
   assert.match(csp, /script-src 'self';/);

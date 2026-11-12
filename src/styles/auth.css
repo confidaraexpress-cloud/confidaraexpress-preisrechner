@@ -650,11 +650,13 @@
 .auth-admin-holo-szene { position: absolute; left: 50%; top: 12em; width: 0; height: 0; perspective: 120em; }
 .auth-admin-holo-kamera { position: absolute; left: 0; top: 0; transform-style: preserve-3d; transform: rotateX(-22deg); }
 
-/* Leitstandtisch: technisches Raster, das zum Rand verblasst; Sendungsrouten laufen in den Projektor. */
+/* Leitstandtisch: technisches Raster, das zum Rand verblasst; der Projektor wirft einen weichen Lichtfleck auf den Tisch
+   (erdet das Hologramm); Sendungsrouten laufen in den Projektor. */
 .auth-admin-holo-tisch {
   position: absolute; left: -40em; top: -40em; width: 80em; height: 80em;
   transform: translateY(20.2em) rotateX(90deg);
   background:
+    radial-gradient(closest-side, rgba(150, 180, 255, 0.3), rgba(98, 92, 255, 0.1) 22%, transparent 34%),
     linear-gradient(90deg, rgba(126, 166, 255, 0.17) 1px, transparent 1px) 0 0 / 4em 4em,
     linear-gradient(180deg, rgba(126, 166, 255, 0.17) 1px, transparent 1px) 0 0 / 4em 4em;
   -webkit-mask: radial-gradient(closest-side, #000 16%, rgba(0, 0, 0, 0.34) 54%, transparent 92%);

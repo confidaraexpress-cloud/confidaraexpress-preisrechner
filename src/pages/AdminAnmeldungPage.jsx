@@ -4,7 +4,8 @@ import { useAuth } from "../context/AuthContext";
 import { useCeBereich } from "../hooks/useCeBereich";
 import { BrandLogo } from "../components/ui/BrandLogo";
 import { Icon } from "../components/ui/Icon";
-import { AdminLichtstrom } from "../components/auth/AdminLichtstrom";
+import { AdminLeitstand } from "../components/auth/AdminLeitstand";
+import { AdminHologramm } from "../components/auth/AdminHologramm";
 import { adminAnmelden, passwortVergessen, resetLinkPruefen, passwortSetzen } from "../api/adminAnmeldungApi";
 import { isAdmin } from "../utils/roleLanding.mjs";
 import {
@@ -20,7 +21,8 @@ import { passwordLengthError, PASSWORD_MIN_LEN, PASSWORD_MAX_LEN } from "../util
    Der einzige Eingang in den Adminbereich: Anmelden über POST /auth/admin-login, „Passwort vergessen?“ und das
    Setzen des eigenen Passworts über den Einmallink (…/admin/login?reset=…). Wer Admin ist, entscheidet der Server;
    diese Seite zeigt nur, was er antwortet, und führt danach ins Adminpanel (geprüftes Rücksprungziel, sonst /admin).
-   Gestaltung: styles/auth.css, Abschnitt „Admin-Anmeldung“; Bühne: components/auth/AdminLichtstrom.jsx. */
+   Gestaltung: styles/auth.css, Abschnitt „Admin-Anmeldung“; Bühne: components/auth/AdminLeitstand.jsx, Hauptmotiv:
+   components/auth/AdminHologramm.jsx. Das statische Seitengerüst admin-login.html zeigt dieselbe Komposition ruhend. */
 
 const PASSWORT_TEXTE = Object.freeze({
   tooShort: `Das Passwort muss mindestens ${PASSWORD_MIN_LEN} Zeichen haben.`,
@@ -236,9 +238,11 @@ export default function AdminAnmeldungPage() {
 
   return (
     <div className="auth-admin-seite">
-      <AdminLichtstrom />
+      <AdminLeitstand />
       <main className="auth-admin-mitte">
+        <AdminHologramm />
         <section className="auth-admin-panel" aria-labelledby={`${uid}-titel`}>
+          <span className="auth-admin-glanz" aria-hidden="true" />
           <header className="auth-admin-kopf">
             <h1 className="auth-admin-titel" id={`${uid}-titel`} ref={titelRef} tabIndex={-1}>
               <BrandLogo variant="lockup" tone="reverse" className="auth-admin-marke" />

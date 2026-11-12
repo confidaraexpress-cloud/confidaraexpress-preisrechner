@@ -95,7 +95,10 @@ test("9 — Seite: eigener Eingang, keine Registrierung, kein „Angemeldet blei
   assert.match(api, /apiFetch\("\/auth\/admin-login", \{ method: "POST"/);
   assert.doesNotMatch(api, /rememberMe/, "der Admin-Eingang kennt kein „Angemeldet bleiben“");
   assert.match(seite, /useCeBereich\("auth"\)/);
-  assert.match(seite, /<AdminLichtstrom \/>/);
+  // Canonical v2.131: Bühne „Leitstand“ hinter allem, das Hologramm als erstes Element der Mitte (vor dem Panel), der
+  // Glanz als erstes Kind des Panels — alles dekorativ.
+  assert.match(seite, /<AdminLeitstand \/>\s*<main className="auth-admin-mitte">\s*<AdminHologramm \/>\s*<section className="auth-admin-panel"/);
+  assert.match(seite, /<section className="auth-admin-panel"[^>]*>\s*<span className="auth-admin-glanz" aria-hidden="true" \/>/);
   // Angemeldeter Admin → Adminpanel, außer die Seite kam mit einem Einmallink (Einrichtung bei offener Sitzung eines
   // anderen Kontos): dann der Link-Schritt, und nach dem Speichern endet die offene Sitzung (E2E G2).
   assert.match(seite, /if \(authed && isAdmin\(user\) && !resetToken\) return <Navigate to=\{ziel\} replace \/>;/);
@@ -109,9 +112,17 @@ test("9 — Seite: eigener Eingang, keine Registrierung, kein „Angemeldet blei
   // Passwort anzeigen/verbergen ist per Tastatur erreichbar und benannt.
   assert.match(seite, /aria-pressed=\{sichtbar\}/);
   assert.doesNotMatch(seite, /tabIndex=\{-1\}[^>]*auth-admin-auge/);
-  const buehne = lies("components/auth/AdminLichtstrom.jsx");
+  const buehne = lies("components/auth/AdminLeitstand.jsx");
   assert.match(buehne, /className="auth-admin-buehne" aria-hidden="true"/);
-  assert.doesNotMatch(ohneKommentare(buehne), /<img|<svg|onClick|https?:\/\//);
+  const holo = lies("components/auth/AdminHologramm.jsx");
+  assert.match(holo, /className="auth-admin-holo" aria-hidden="true"/);
+  for (const quelle of [buehne, holo]) {
+    // Kein Bild, kein Text, keine Interaktion, keine externe Ressource: Netz und Pfeile kommen aus dem Stylesheet.
+    assert.doesNotMatch(ohneKommentare(quelle), /<img|<svg|onClick|onPointer|tabIndex|https?:\/\//);
+    const jsx = ohneKommentare(quelle);
+    const markup = jsx.slice(jsx.indexOf("<div className="), jsx.lastIndexOf("</div>"));
+    assert.doesNotMatch(markup.replace(/<[^>]*>/g, ""), /[A-Za-zÄÖÜäöüß]{2,}/, "kein sichtbarer Text");
+  }
 });
 
 test("10 — Route: /admin/login im Auth-Bereich, außerhalb von AdminRoute; Abmelden und Schutzroute führen dorthin", () => {
@@ -126,7 +137,7 @@ test("10 — Route: /admin/login im Auth-Bereich, außerhalb von AdminRoute; Abm
 
 test("11 — Gestaltung: Bewegung nur über transform/opacity, Standbild bei reduzierter Bewegung, Kontrastmodus", () => {
   const css = lies("styles/auth.css");
-  const abschnitt = css.slice(css.indexOf("Admin-Anmeldung /admin/login (Canonical v2.130)"));
+  const abschnitt = css.slice(css.indexOf("Admin-Anmeldung /admin/login (Canonical v2.131)"));
   assert.ok(abschnitt.length > 2000, "Abschnitt fehlt");
   // Keyframes bewegen nur translate/scale/rotate/transform und opacity (Blöcke per Klammerzählung gelesen).
   let anzahl = 0;
@@ -140,13 +151,51 @@ test("11 — Gestaltung: Bewegung nur über transform/opacity, Standbild bei red
   }
   assert.ok(anzahl >= 8, "die Keyframes wurden nicht gelesen");
   const rm = abschnitt.slice(abschnitt.indexOf("@media (prefers-reduced-motion: reduce)"));
-  assert.match(rm, /animation: none;/);
-  assert.match(rm, /\.auth-admin-impuls \{ animation: none; opacity: 0\.85;/, "der Impuls steht als Standbild da, nicht leer");
-  assert.match(abschnitt, /@media \(forced-colors: active\)/);
+  assert.match(rm, /\.auth-admin-holo \*, \.auth-admin-holo \*::before, \.auth-admin-holo \*::after,[^{]*\{ animation: none; \}/);
+  // Standbild, nicht leer: Scanlinie und Scanebene stehen in der Mitte des Pakets, die Impulse auf ihren Routen.
+  assert.match(rm, /\.auth-admin-holo-scan \{ opacity: 1; translate: /, "die Scanlinie steht als Standbild da");
+  assert.match(rm, /\.auth-admin-holo-scanebene \{ opacity: 1; translate: /);
+  assert.match(rm, /\.auth-admin-holo-impuls \{ opacity: 0\.85; translate: /, "die Impulse stehen als Standbild da");
+  assert.match(abschnitt, /@media \(forced-colors: active\) \{\s*\.auth-admin-buehne, \.auth-admin-holo \{ display: none; \}/);
   assert.match(abschnitt, /\.auth-admin-buehne \{\s*position: fixed; inset: 0; z-index: 0;\s*overflow: hidden; pointer-events: none;/);
+  // Das Hologramm fängt keine Klicks ab; im Seitengerüst ruht es (die Startwerte der Bewegung sind sein Ruhezustand).
+  assert.match(abschnitt, /\.auth-admin-holo \{[^}]*pointer-events: none;/);
+  assert.match(abschnitt, /\.auth-admin-geruest \.auth-admin-holo \*,\s*\.auth-admin-geruest \.auth-admin-holo \*::before,\s*\.auth-admin-geruest \.auth-admin-holo \*::after \{ animation: none; \}/);
+  // Das Panel blendet nicht ein: Das Gerüst zeigt es schon im ersten Bild, eine Einblendung ließe es kurz verschwinden.
+  const panel = abschnitt.slice(abschnitt.indexOf(".auth-admin-panel {"), abschnitt.indexOf("}", abschnitt.indexOf(".auth-admin-panel {")));
+  assert.doesNotMatch(panel, /animation/);
   assert.doesNotMatch(abschnitt, /url\(["']?https?:/, "keine externen Ressourcen im Stil");
   // Fokus ist sichtbar: Eingaben, Auge, Link, Knopf.
   for (const sel of [".auth-admin-eingabe:focus-within", ".auth-admin-auge:focus-visible", ".auth-admin-link:focus-visible", ".auth-admin-cta:focus-visible"]) {
     assert.ok(abschnitt.includes(sel), `Fokuszustand fehlt: ${sel}`);
+  }
+});
+
+test("12 — Seitengerüst admin-login.html: dieselbe Bühne, dasselbe Hologramm, ein Panel mit demselben Wortlaut", () => {
+  const html = readFileSync(path.join(SRC, "..", "admin-login.html"), "utf8").replace(/\r\n/g, "\n").replace(/<!--[\s\S]*?-->/g, "");
+  const tags = (text, attr) => [...text.matchAll(new RegExp(String.raw`<(div|span)\b(?:\s+${attr}="([^"]*)")?`, "g"))].map((m) => `${m[1]}.${m[2] || ""}`);
+  const zwischen = (text, von, bis) => { const a = text.indexOf(von); const b = text.indexOf(bis, a); assert.ok(a >= 0 && b > a, `${von} … ${bis} fehlt`); return text.slice(a, b); };
+  // Bühne und Hologramm: Element für Element gleich (Tag und Klassen), damit React das Gerüst ohne Sprung ersetzt.
+  const leitstand = ohneKommentare(lies("components/auth/AdminLeitstand.jsx"));
+  const hologramm = ohneKommentare(lies("components/auth/AdminHologramm.jsx"));
+  assert.deepEqual(tags(zwischen(html, '<div class="auth-admin-buehne"', "<main"), "class"),
+    tags(leitstand.slice(leitstand.indexOf('<div className="auth-admin-buehne"')), "className"));
+  const holoJsx = tags(hologramm.slice(hologramm.indexOf('<div className="auth-admin-holo"')), "className");
+  assert.deepEqual(tags(zwischen(html, '<div class="auth-admin-holo"', '<section class="auth-admin-panel">'), "class"), holoJsx);
+  assert.ok(holoJsx.length > 30, "das Hologramm wurde nicht gelesen");
+  // Das Panel im Gerüst: derselbe Wortlaut wie die Seite, keine Formularelemente, keine ids, nicht bedienbar.
+  const T = ADMIN_ANMELDUNG_TEXT;
+  assert.match(html, /<main class="auth-admin-mitte" aria-hidden="true" inert>/);
+  const panel = zwischen(html, '<section class="auth-admin-panel">', "</main>");
+  for (const text of [T.titel, T.email, T.passwort, T.vergessen, T.anmelden]) assert.ok(panel.includes(`>${text}<`), `Text fehlt: ${text}`);
+  assert.doesNotMatch(panel, /<form|<input|<button|<label|\sid=|tabindex|href=/);
+  assert.match(panel, /<img class="ce-brandmark-img" src="\/src\/assets\/brand\/lockup-reverse\.svg" alt="ConfidaraExpress" draggable="false" \/>/);
+  assert.match(html, /<nav class="auth-admin-recht" aria-label="Rechtliche Informationen">/);
+  assert.equal(T.recht, "Rechtliche Informationen");
+  // Symbole wie components/ui/Icon.jsx (E-Mail, Schloss, Auge).
+  const icon = lies("components/ui/Icon.jsx");
+  for (const n of ["mail", "lock", "eye"]) {
+    const d = icon.match(new RegExp(String.raw`\n\s*${n}:\s*"([^"]+)"`))[1];
+    assert.ok(panel.includes(`<path d="${d}" />`), `Symbol ${n} weicht von Icon.jsx ab`);
   }
 });

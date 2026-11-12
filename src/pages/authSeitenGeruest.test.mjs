@@ -149,13 +149,17 @@ test("4 — die Pfade: kundenAuthPfad ↔ nginx (vollständiger Headerblock) ↔
   assert.match(vite, /const GERUESTE = \["login\.html", "register\.html", "admin-login\.html"\];/);
 });
 
-test("4b — das Gerüst der Admin-Anmeldung: dunkler Grund, Bereich auth, kein Formular, nicht zu indizieren", () => {
+test("4b — das Gerüst der Admin-Anmeldung: fertige Komposition ruhend, Bereich auth, kein Formular, nicht zu indizieren", () => {
   const html = lies("admin-login.html");
   assert.match(html, /<html lang="de" data-ce-bereich="auth">/);
   assert.match(html, /<meta name="robots" content="noindex, nofollow" \/>/);
+  assert.match(html, /<div class="auth-admin-seite auth-admin-geruest">/, "ruhend: im Gerüst läuft keine Bewegung");
   assert.match(html, /<div class="auth-admin-buehne" aria-hidden="true">/);
   assert.match(html, /<script type="module" src="\/src\/main\.jsx"><\/script>/, "das Modulskript (fällt im Build weg)");
-  assert.doesNotMatch(html, /<form|<input|<button|auth-admin-strom|auth-admin-panel/, "bedienbar und bewegt ist erst die fertige Seite");
+  // Canonical v2.131: Hologramm und Panel stehen ab dem ersten Bild (LCP vor dem Laden des Skripts), sind aber nicht
+  // bedienbar — keine Formularelemente, keine ids, der ganze Inhalt inert und für Hilfstechnik verborgen.
+  assert.match(html, /<main class="auth-admin-mitte" aria-hidden="true" inert>/);
+  assert.doesNotMatch(ohneKommentare(html), /<form|<input|<button|<label|\sid="(?!root")/, "bedienbar ist erst die fertige Seite");
   const main = lies("src/main.jsx");
   assert.match(main, /AdminAnmeldungSeite\.vorladen\(\)\.then\(starten, starten\);/, "die Admin-Anmeldung wird vor dem ersten Rendern geladen");
 });

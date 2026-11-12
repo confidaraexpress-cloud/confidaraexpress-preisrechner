@@ -9,11 +9,14 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-v1.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#030716" />
-    <!-- Statisches Seitengerüst der Admin-Anmeldung (Canonical v2.130): nginx liefert es für /admin/login. Das erste Bild
-         ist der dunkle Grund der Bühne „Lichtstrom“ — kein weißer Zwischenbildschirm vor dem ersten Rendern. React
-         ersetzt das Gerüst durch die Seite (main.jsx lädt sie vorher); Lichtbänder und Panel laufen dann einmal ein.
-         Bewusst ohne Formular im Gerüst: bedienbar ist erst die fertige Seite. Stil: styles/auth.css. -->
+    <!-- Statisches Seitengerüst der Admin-Anmeldung (Canonical v2.131): nginx liefert es für /admin/login. Das erste Bild
+         ist die fertige Komposition — Leitstand, Hologramm (ruhend, .auth-admin-geruest) und ein Panel gleicher Gestalt
+         wie das Formular, ohne Formularelemente, ohne ids, nicht bedienbar (inert). React ersetzt es beim ersten Rendern
+         (main.jsx lädt die Seite vorher), ohne Zwischenbild und ohne Sprung; erst dann beginnt die Bewegung. Struktur von
+         Bühne und Hologramm wie components/auth/AdminLeitstand.jsx und AdminHologramm.jsx, das Panel wie
+         pages/AdminAnmeldungPage.jsx (adminAnmeldung.test.mjs gleicht ab). Stil: styles/auth.css. -->
     <link rel="preload" href="/src/assets/fonts/instrumentsans-var.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/src/assets/brand/lockup-reverse.svg" as="image" type="image/svg+xml" />
   </head>
   <body>
     <div id="root"><div class="auth-admin-seite auth-admin-geruest">
@@ -21,8 +24,84 @@
         <div class="auth-admin-grund"></div>
         <div class="auth-admin-tiefe auth-admin-tiefe--blau"></div>
         <div class="auth-admin-tiefe auth-admin-tiefe--violett"></div>
+        <div class="auth-admin-netz"></div>
+        <div class="auth-admin-daten auth-admin-daten--1"><span></span><span></span><span></span></div>
+        <div class="auth-admin-daten auth-admin-daten--2"><span></span><span></span><span></span></div>
+        <div class="auth-admin-korn"></div>
         <div class="auth-admin-vignette"></div>
       </div>
+      <main class="auth-admin-mitte" aria-hidden="true" inert>
+        <div class="auth-admin-holo" aria-hidden="true">
+          <div class="auth-admin-holo-schein"></div>
+          <div class="auth-admin-holo-kegel"></div>
+          <div class="auth-admin-holo-szene">
+            <div class="auth-admin-holo-kamera">
+              <div class="auth-admin-holo-tisch">
+                <div class="auth-admin-holo-route auth-admin-holo-route--1"><span class="auth-admin-holo-impuls"></span></div>
+                <div class="auth-admin-holo-route auth-admin-holo-route--2"><span class="auth-admin-holo-impuls"></span></div>
+                <div class="auth-admin-holo-route auth-admin-holo-route--3"><span class="auth-admin-holo-impuls"></span></div>
+                <div class="auth-admin-holo-route auth-admin-holo-route--4"><span class="auth-admin-holo-impuls"></span></div>
+              </div>
+              <div class="auth-admin-holo-projektor"><span class="auth-admin-holo-projektor-ring"></span></div>
+              <div class="auth-admin-holo-schwebe">
+                <div class="auth-admin-holo-paket">
+                  <div class="auth-admin-holo-flaeche auth-admin-holo-flaeche--vorn">
+                    <span class="auth-admin-holo-etikett"><span class="auth-admin-holo-strichcode"></span></span>
+                    <span class="auth-admin-holo-scan"></span>
+                  </div>
+                  <div class="auth-admin-holo-flaeche auth-admin-holo-flaeche--hinten"><span class="auth-admin-holo-scan"></span></div>
+                  <div class="auth-admin-holo-flaeche auth-admin-holo-flaeche--links"><span class="auth-admin-holo-scan"></span></div>
+                  <div class="auth-admin-holo-flaeche auth-admin-holo-flaeche--rechts">
+                    <span class="auth-admin-holo-pfeile"></span>
+                    <span class="auth-admin-holo-scan"></span>
+                  </div>
+                  <div class="auth-admin-holo-flaeche auth-admin-holo-flaeche--oben"></div>
+                  <div class="auth-admin-holo-flaeche auth-admin-holo-flaeche--unten"></div>
+                  <div class="auth-admin-holo-scanebene"><span class="auth-admin-holo-scanebene-licht"></span></div>
+                </div>
+                <div class="auth-admin-holo-orbit">
+                  <div class="auth-admin-holo-orbit-lauf">
+                    <span class="auth-admin-holo-punkt"></span>
+                    <span class="auth-admin-holo-punkt"></span>
+                    <span class="auth-admin-holo-punkt"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <section class="auth-admin-panel">
+          <header class="auth-admin-kopf">
+            <h1 class="auth-admin-titel">
+              <span class="ce-brand ce-brand--reverse ce-brand--lockup auth-admin-marke"><img class="ce-brandmark-img" src="/src/assets/brand/lockup-reverse.svg" alt="ConfidaraExpress" draggable="false" /></span>
+              <span class="auth-admin-titel-text">Adminbereich</span>
+            </h1>
+          </header>
+          <div class="auth-admin-formular">
+            <div class="auth-admin-feld">
+              <span class="auth-admin-label">E-Mail-Adresse</span>
+              <div class="auth-admin-eingabe">
+                <span class="auth-admin-eingabe-ico"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9ZM4 7l8 6 8-6" /></svg></span>
+                <span class="auth-admin-input"></span>
+              </div>
+            </div>
+            <div class="auth-admin-feld">
+              <span class="auth-admin-label">Passwort</span>
+              <div class="auth-admin-eingabe">
+                <span class="auth-admin-eingabe-ico"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 11V8a4 4 0 0 1 8 0v3M4.5 11h15a.5.5 0 0 1 .5.5v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a.5.5 0 0 1 .5-.5Z" /></svg></span>
+                <span class="auth-admin-input"></span>
+                <span class="auth-admin-auge"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 9a3 3 0 100 6 3 3 0 000-6z" /></svg></span>
+              </div>
+              <div class="auth-admin-vergessen"><span class="auth-admin-link">Passwort vergessen?</span></div>
+            </div>
+            <span class="auth-admin-cta"><span>Anmelden</span></span>
+          </div>
+        </section>
+      </main>
+      <nav class="auth-admin-recht" aria-label="Rechtliche Informationen">
+        <a href="/impressum" target="_blank" rel="noopener noreferrer">Impressum</a>
+        <a href="/datenschutz" target="_blank" rel="noopener noreferrer">Datenschutz</a>
+      </nav>
     </div></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

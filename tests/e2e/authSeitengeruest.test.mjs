@@ -9,6 +9,9 @@
 //       Prüfung) — auf dem dunklen Grund des Gerüsts, nie auf hellem; ein abgelaufenes Token wird verworfen.
 //   A4  Ein Einstieg: index.html lädt genau ein /assets/index-<hash>.js (die Versionsprüfung liest es), und die
 //       Gerüste laden dieselben Dateien — kein zweiter JavaScript-Einstieg.
+//   A5  Admin-Anmeldung (Canonical v2.131): ohne JavaScript zeigt /admin/login Leitstand, ruhendes Hologramm und ein
+//       nicht bedienbares Panel; mit JavaScript stehen Hologramm, Panel, Titel, Feld, Knopf und Fuß an derselben Stelle
+//       (±2 px), CLS < 0,01, danach bewegt sich das Hologramm. In 1440, 768 und 390 px.
 //
 // Kein echtes Backend: jede Anfrage außerhalb des Vorschauservers wird mit 404 beantwortet (die Seite braucht für die
 // Darstellung keine Serverantwort; die Registrierung zeigt dann ihre Rückfälle).
@@ -110,6 +113,60 @@ for (const [pfad, feld] of [["/login", "#auth-email"], ["/register", "#reg-name"
       await mitJs.close();
     });
   }
+}
+
+// Admin-Anmeldung (Canonical v2.131): das Gerüst zeigt Leitstand, Hologramm (ruhend) und Panel ab dem ersten Bild;
+// React ersetzt es an derselben Stelle, danach bewegt sich das Hologramm.
+const ADMIN_TEILE = { holo: ".auth-admin-holo", panel: ".auth-admin-panel", titel: ".auth-admin-titel-text",
+  feld: ".auth-admin-eingabe", knopf: ".auth-admin-cta", recht: ".auth-admin-recht" };
+const adminLage = (page) => page.evaluate((teile) => Object.fromEntries(Object.entries(teile).map(([k, sel]) => {
+  const el = document.querySelector(sel);
+  if (!el) return [k, null];
+  const r = el.getBoundingClientRect();
+  return [k, { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }];
+})), ADMIN_TEILE);
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 768, height: 1024 }, { width: 390, height: 844 }]) {
+  test(`A5 — /admin/login ${viewport.width} px: Gerüst mit Hologramm und Panel, fertige Seite an derselben Stelle`, async () => {
+    const ohneJs = await neuerKontext({ viewport, js: false });
+    const p1 = await ohneJs.newPage();
+    await p1.goto(`${BASE}/admin/login`, { waitUntil: "load" });
+    assert.equal(await p1.getAttribute("html", "data-ce-bereich"), "auth");
+    assert.equal(await p1.locator(".auth-admin-geruest").count(), 1, "kein Seitengerüst ohne JavaScript");
+    assert.equal(await p1.locator(".auth-admin-holo-flaeche").count(), 6, "das Hologramm fehlt im Gerüst");
+    assert.equal(await p1.locator(".auth-admin-holo-paket").evaluate((e) => getComputedStyle(e).animationName), "none", "im Gerüst ruht das Hologramm");
+    assert.ok(await p1.locator(".auth-admin-marke img").evaluate((img) => img.complete && img.naturalWidth > 0), "die Marke fehlt im Gerüst");
+    assert.equal(await p1.locator("input, button, form").count(), 0, "das Gerüst ist nicht bedienbar");
+    const geruest = await adminLage(p1);
+    await ohneJs.close();
+
+    const mitJs = await neuerKontext({ viewport });
+    await mitJs.addInitScript(() => {
+      window.__cls = 0;
+      new PerformanceObserver((liste) => { for (const e of liste.getEntries()) if (!e.hadRecentInput) window.__cls += e.value; })
+        .observe({ type: "layout-shift", buffered: true });
+    });
+    const p2 = await mitJs.newPage();
+    const fehler = [];
+    p2.on("pageerror", (e) => fehler.push(String(e)));
+    await p2.goto(`${BASE}/admin/login`, { waitUntil: "load" });
+    await p2.waitForSelector(".auth-admin-panel input[autocomplete=username]", { timeout: 20000 });
+    assert.equal(await p2.locator(".auth-admin-geruest").count(), 0, "React hat das Gerüst nicht ersetzt");
+    const fertig = await adminLage(p2);
+    for (const teil of Object.keys(ADMIN_TEILE)) {
+      const a = geruest[teil], b = fertig[teil];
+      assert.ok(a && b, `${teil} fehlt (${JSON.stringify({ a, b })})`);
+      for (const k of ["x", "y", "w", "h"]) {
+        assert.ok(Math.abs(a[k] - b[k]) <= 2, `${viewport.width}px: ${teil}.${k} springt von ${a[k]} auf ${b[k]}`);
+      }
+    }
+    assert.notEqual(await p2.locator(".auth-admin-holo-paket").evaluate((e) => getComputedStyle(e).animationName), "none", "das Hologramm bewegt sich nach der Übernahme");
+    await kurz(600);
+    assert.ok(await p2.evaluate(() => window.__cls < 0.01), "Layoutsprung beim Laden (CLS ≥ 0,01)");
+    assert.ok(await p2.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "horizontaler Überlauf");
+    assert.deepEqual(fehler, []);
+    await mitJs.close();
+  });
 }
 
 test("A2 — kein weißer Ladebildschirm, kein Sprung, die Lichter nach dem Bild", async () => {

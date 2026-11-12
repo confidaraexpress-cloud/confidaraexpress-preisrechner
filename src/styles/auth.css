@@ -539,14 +539,20 @@
 .field-eye-btn:hover { color: rgba(255,255,255,0.8); }
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════════════
-   Admin-Anmeldung /admin/login (Canonical v2.130) — Bühne „Lichtstrom“ und Glaspanel
+   Admin-Anmeldung /admin/login (Canonical v2.131) — Hologramm-Paket im Leitstand und Glaspanel
    ──────────────────────────────────────────────────────────────────────────────────────────────────────
-   Ein diagonales Bündel aus Lichtbändern (Elektrischblau → Violett) läuft durch das Panel; auf seiner hellsten
-   Linie zieht in Abständen ein Lichtimpuls vorbei (Sendungen in Bewegung). Dazu Tiefenlicht, drei schwebende
-   Glasformen, Körnung und Vignette. Ein inszenierter Moment (Einstieg ≈ 1 s), danach ruhige Drift.
-   Bewegung nur über transform/translate/rotate/scale und opacity; reduzierte Bewegung: ruhiges Standbild.
+   Hauptmotiv ist ein Versandpaket als Hologramm (CSS-3D): halbtransparente Flächen, blau-violette Kanten, Klebeband,
+   Etikett mit Strichcode. Es schwebt im Lichtkegel eines Projektors über einem Leitstandtisch und dreht sich langsam hin
+   und her; in Abständen läuft eine Scanlinie darüber, und der Strichcode leuchtet auf, wenn sie das Etikett kreuzt. Auf
+   dem Tisch laufen Sendungsrouten mit vereinzelten Lichtimpulsen in den Projektor, drei Trackingpunkte umkreisen das
+   Paket. Dahinter, zurückhaltend: Tiefenlicht, ein feines Netz, zwei Datenflächen ohne Zahlen (etwa 80 : 20).
+   Ab 60em Hologramm links, Panel rechts; schmaler das Hologramm über dem Panel. Bewegung nur über transform/translate/
+   rotate und opacity; reduzierte Bewegung: dieselbe Komposition als Standbild. Das Seitengerüst admin-login.html zeigt
+   die Komposition ruhend (.auth-admin-geruest), React ersetzt es ohne Sprung.
    Klassen nur .auth-admin-*, Werte aus --auth-admin-* (variables.css). Logik: pages/AdminAnmeldungPage.jsx.
    ══════════════════════════════════════════════════════════════════════════════════════════════════════ */
+/* overflow: clip in beiden Achsen: Der Tisch des Hologramms reicht über seinen Kasten hinaus und darf die Seite weder
+   breiter noch höher machen (kein Scrollcontainer, Inhalt wird nie abgeschnitten — die Seite wächst mit ihm). */
 .auth-admin-seite {
   position: relative; isolation: isolate;
   min-height: 100vh; min-height: 100dvh;
@@ -554,11 +560,11 @@
   background: var(--auth-admin-nacht-950);
   color: var(--auth-admin-tinte-1);
   font-family: var(--ce-font-sans);
-  overflow-x: clip;
+  overflow: clip;
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Bühne ──────────────────────────────────────────────────────────────────────────────────────────── */
+/* ── Leitstand (Hintergrund, steht still) ───────────────────────────────────────────────────────────── */
 .auth-admin-buehne {
   position: fixed; inset: 0; z-index: 0;
   overflow: hidden; pointer-events: none;
@@ -570,8 +576,6 @@
     radial-gradient(70% 55% at 50% 48%, rgba(22, 40, 118, 0.5), transparent 70%),
     linear-gradient(180deg, var(--auth-admin-nacht-900) 0%, var(--auth-admin-nacht-950) 100%);
 }
-/* Tiefenlicht steht still: zwei bildschirmgroße Ebenen dauernd zu bewegen kostete in der Messung die meiste Bildrate
-   (qa-nachweise/admin-login-2026-11-11); die Bewegung tragen Strom, Impuls und Formen. */
 .auth-admin-tiefe { position: absolute; width: 110vmax; aspect-ratio: 1; border-radius: 50%; }
 .auth-admin-tiefe--blau {
   left: -48vmax; bottom: -64vmax;
@@ -581,102 +585,259 @@
   right: -52vmax; top: -66vmax;
   background: radial-gradient(circle, rgba(124, 77, 255, 0.46), rgba(124, 77, 255, 0.18) 30%, rgba(124, 77, 255, 0.05) 50%, transparent 66%);
 }
-.auth-admin-strom {
-  position: absolute; left: 50%; top: 52%;
-  width: 200vmax; height: 64vmax;
-  transform: translate(-50%, -50%) rotate(-22deg);
-  animation: auth-admin-strom-ein 1100ms cubic-bezier(.2, .8, .2, 1) both;
+/* Netz der Steuerzentrale: Knoten mit Lichthof, feine Verbindungen, zwei gestrichelte Fernrouten. */
+.auth-admin-netz {
+  position: absolute; inset: 0;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 900'><g fill='none' stroke='%237ea6ff' stroke-opacity='.22'><path d='M70 150 250 96 420 182M250 96 300 36M70 150 150 300M1030 70 1190 140 1370 96M1190 140 1260 258M1370 96 1420 214M56 742 212 812 330 700M1226 812 1388 732 1300 640'/><path d='M-40 520Q420 420 760 470M700 880Q1100 760 1480 800' stroke-dasharray='2 7'/></g><g fill='%23c7d6ff' fill-opacity='.6' stroke='%237ea6ff' stroke-opacity='.12' stroke-width='9'><circle cx='70' cy='150' r='2.2'/><circle cx='250' cy='96' r='2.2'/><circle cx='420' cy='182' r='2.2'/><circle cx='300' cy='36' r='2.2'/><circle cx='150' cy='300' r='2.2'/><circle cx='1030' cy='70' r='2.2'/><circle cx='1190' cy='140' r='2.2'/><circle cx='1370' cy='96' r='2.2'/><circle cx='1260' cy='258' r='2.2'/><circle cx='1420' cy='214' r='2.2'/><circle cx='56' cy='742' r='2.2'/><circle cx='212' cy='812' r='2.2'/><circle cx='330' cy='700' r='2.2'/><circle cx='1226' cy='812' r='2.2'/><circle cx='1388' cy='732' r='2.2'/><circle cx='1300' cy='640' r='2.2'/></g></svg>") center / cover no-repeat;
 }
-.auth-admin-band {
-  position: absolute; left: 0; width: 100%; border-radius: 999px;
-  background: linear-gradient(90deg, transparent 4%, rgba(47, 107, 255, 0) 14%, rgba(47, 107, 255, 0.9) 34%,
-    rgba(98, 92, 255, 0.95) 50%, rgba(124, 77, 255, 0.9) 64%, rgba(183, 154, 255, 0) 86%, transparent 94%);
+/* Datenflächen ohne Zahlen: Kopfzeile, zwei Zeilen, eine Routenspur. Erst ab 90em, wo sie neben Hologramm und Panel
+   frei stehen (gemessen: bei 1440 px 20 px Abstand zum Panel). */
+.auth-admin-daten {
+  position: absolute; display: none; width: 150px; height: 92px; border-radius: 14px;
+  border: 1px solid rgba(160, 182, 255, 0.14);
+  background: linear-gradient(160deg, rgba(126, 166, 255, 0.07), rgba(124, 77, 255, 0.025));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
-.auth-admin-band--1 { top: 18%; height: 120px; filter: blur(46px); opacity: 0.5; animation: auth-admin-fliessen 19s ease-in-out infinite alternate; }
-.auth-admin-band--2 { top: 34%; height: 64px; filter: blur(22px); opacity: 0.7; animation: auth-admin-fliessen 15s ease-in-out infinite alternate-reverse; }
-.auth-admin-band--3 {
-  top: 47.5%; height: 2px; opacity: 0.95;
-  box-shadow: 0 0 18px 2px rgba(126, 166, 255, 0.8);
-  animation: auth-admin-fliessen 21s ease-in-out infinite alternate;
+.auth-admin-daten--1 { left: 28px; top: 12vh; }
+.auth-admin-daten--2 { right: 28px; bottom: 12vh; }
+.auth-admin-daten span { position: absolute; left: 18px; height: 2px; border-radius: 2px; background: rgba(160, 190, 255, 0.28); }
+.auth-admin-daten span:nth-child(1) { top: 22px; width: 58px; height: 3px; background: rgba(190, 210, 255, 0.48); }
+.auth-admin-daten span:nth-child(2) { top: 42px; width: 110px; }
+.auth-admin-daten span:nth-child(3) { top: 54px; width: 80px; }
+.auth-admin-daten--2 span:nth-child(2) { width: 88px; }
+.auth-admin-daten--2 span:nth-child(3) { width: 114px; }
+/* Stationen einer Route: drei erreicht, die letzte offen (kein Bedienelement, keine Zahl). */
+.auth-admin-daten::after {
+  content: ""; position: absolute; left: 18px; right: 18px; bottom: 16px; height: 12px;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 140 12'><path d='M6 6H134' stroke='%237ea6ff' stroke-opacity='.3'/><path d='M6 6H92' stroke='%23a9c4ff' stroke-opacity='.75'/><g fill='%23e3ebff'><circle cx='6' cy='6' r='2.6'/><circle cx='49' cy='6' r='2.6'/><circle cx='92' cy='6' r='3.2'/></g><circle cx='134' cy='6' r='2.6' fill='none' stroke='%237ea6ff' stroke-opacity='.6'/></svg>") left center / 100% 100% no-repeat;
 }
-.auth-admin-band--4 { top: 53%; height: 150px; filter: blur(54px); opacity: 0.46; animation: auth-admin-fliessen 23s ease-in-out infinite alternate-reverse; }
-.auth-admin-band--5 {
-  top: 64%; height: 1px; opacity: 0.7;
-  box-shadow: 0 0 12px 1px rgba(183, 154, 255, 0.7);
-  animation: auth-admin-fliessen 17s ease-in-out infinite alternate;
-}
-.auth-admin-band--6 { top: 72%; height: 54px; filter: blur(26px); opacity: 0.42; animation: auth-admin-fliessen 25s ease-in-out infinite alternate-reverse; }
-/* Feine Fasern im Kern des Stroms: Struktur im Licht statt einer glatten Fläche (Benchmark Stripe/Raycast). */
-.auth-admin-faser {
-  position: absolute; left: 4%; right: 4%; top: 38%; height: 28%;
-  background: repeating-linear-gradient(180deg, rgba(196, 214, 255, 0.11) 0 1px, transparent 1px 6px);
-  -webkit-mask: linear-gradient(90deg, transparent, #000 26%, #000 70%, transparent), linear-gradient(180deg, transparent, #000 32%, #000 68%, transparent);
-  -webkit-mask-composite: source-in;
-          mask: linear-gradient(90deg, transparent, #000 26%, #000 70%, transparent), linear-gradient(180deg, transparent, #000 32%, #000 68%, transparent);
-          mask-composite: intersect;
-  opacity: 0.6;
-  animation: auth-admin-fliessen 27s ease-in-out infinite alternate;
-}
-.auth-admin-impuls {
-  position: absolute; left: 0; top: calc(47.5% - 2px);
-  width: 18vmax; height: 6px; border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(190, 210, 255, 0.9) 70%, var(--auth-admin-licht) 92%, transparent);
-  box-shadow: 0 0 22px 4px rgba(126, 166, 255, 0.75), 0 0 60px 10px rgba(124, 77, 255, 0.35);
-  opacity: 0;
-  animation: auth-admin-impuls 9s cubic-bezier(.45, 0, .25, 1) infinite 1.4s;
-}
-
-/* Schwebende Glasformen — Ring (schräg gesehen), Kapsel, Kugel. */
-.auth-admin-form { position: absolute; }
-.auth-admin-form--ring {
-  width: 260px; height: 260px; left: calc(50% - 500px); top: 6%;
-  transform: rotate(-26deg) scaleY(0.58);
-  filter: drop-shadow(0 0 22px rgba(126, 166, 255, 0.5));
-  animation: auth-admin-schweben-a 14s ease-in-out infinite alternate;
-}
-.auth-admin-form--ring::before,
-.auth-admin-form--ring::after {
-  content: ""; position: absolute; inset: 0; border-radius: 50%;
-  -webkit-mask: radial-gradient(circle, transparent 60%, #000 61.5%, #000 70.5%, transparent 72%);
-          mask: radial-gradient(circle, transparent 60%, #000 61.5%, #000 70.5%, transparent 72%);
-}
-.auth-admin-form--ring::before {
-  background: conic-gradient(from 200deg, rgba(255, 255, 255, 0.8), rgba(126, 166, 255, 0.42) 18%, rgba(124, 77, 255, 0.72) 40%,
-    rgba(255, 255, 255, 0.16) 58%, rgba(126, 166, 255, 0.46) 78%, rgba(255, 255, 255, 0.8));
-  animation: auth-admin-drehen 48s linear infinite;
-}
-.auth-admin-form--ring::after {
-  background: radial-gradient(circle at 26% 18%, rgba(255, 255, 255, 0.85), transparent 34%);
-}
-.auth-admin-form--kapsel {
-  width: 104px; height: 268px; left: calc(50% + 268px); top: 50%;
-  border-radius: 999px;
-  background: linear-gradient(165deg, rgba(255, 255, 255, 0.42), rgba(140, 170, 255, 0.16) 26%, rgba(124, 77, 255, 0.3) 72%, rgba(255, 255, 255, 0.12));
-  border: 1px solid rgba(220, 228, 255, 0.32);
-  box-shadow: inset 0 2px 10px rgba(255, 255, 255, 0.35), inset 0 -18px 34px rgba(124, 77, 255, 0.45), 0 24px 60px -18px rgba(90, 60, 255, 0.7);
-  transform: rotate(34deg);
-  animation: auth-admin-schweben-b 16s ease-in-out infinite alternate;
-}
-.auth-admin-form--kugel {
-  width: 92px; aspect-ratio: 1; left: calc(50% + 300px); top: 14%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 32% 28%, #ffffff 0%, #d9e3ff 7%, #86a4ff 26%, #5e43e8 60%, #1b0f4a 100%);
-  box-shadow: 0 0 40px 6px rgba(124, 77, 255, 0.45), inset -10px -14px 24px rgba(10, 4, 40, 0.55);
-  animation: auth-admin-schweben-c 12s ease-in-out infinite alternate;
-}
-/* Körnung ohne Mischmodus: ein Mischmodus über bewegten Ebenen mischte jedes Bild neu (Messung wie oben). */
+/* Körnung ohne Mischmodus: ein Mischmodus über bewegten Ebenen mischte jedes Bild neu (qa-nachweise/admin-login-2026-11-11). */
 .auth-admin-korn {
   position: absolute; inset: 0; opacity: 0.05;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 .auth-admin-vignette { position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 50%, transparent 50%, rgba(2, 4, 14, 0.8) 100%); }
 
-/* ── Panel ──────────────────────────────────────────────────────────────────────────────────────────── */
+/* ── Hologramm (Hauptmotiv) ─────────────────────────────────────────────────────────────────────────────
+   Alle Maße in em: die Schriftgröße des Kastens ist der eine Maßstab je Breite. Die Szene liegt bei 12em, die
+   Kamera schaut von leicht oben (rotateX); das Paket dreht sich um die senkrechte Achse (rotate: y), der Tisch und der
+   Projektor liegen waagerecht darunter. Halbtransparente Flächen ohne Rückseitenausblendung: Die hinteren Kanten
+   scheinen durch — so wirkt Licht, nicht Körper. */
+.auth-admin-holo {
+  --holo-b: 21em; --holo-t: 15em; --holo-h: 14em;
+  position: relative; z-index: 0;
+  width: 40em; height: 34em;
+  font-size: clamp(4.6px, min(1.6vw, 0.8vh), 9px);
+  pointer-events: none;
+}
+.auth-admin-holo-schein {
+  position: absolute; left: 50%; top: 14em; width: 48em; height: 42em;
+  translate: -50% -50%;
+  background: radial-gradient(closest-side, rgba(98, 92, 255, 0.36), rgba(47, 107, 255, 0.14) 55%, transparent);
+}
+.auth-admin-holo-kegel {
+  position: absolute; left: 50%; top: 3em; width: 32em; height: 26.5em;
+  translate: -50% 0;
+  clip-path: polygon(3% 0, 97% 0, 57.5% 100%, 42.5% 100%);
+  background:
+    repeating-linear-gradient(90deg, rgba(214, 226, 255, 0.06) 0 1px, transparent 1px 1.2em),
+    linear-gradient(0deg, rgba(190, 212, 255, 0.55), rgba(126, 166, 255, 0.2) 38%, rgba(124, 77, 255, 0.08) 72%, transparent);
+  -webkit-mask: linear-gradient(0deg, #000 50%, transparent 94%);
+          mask: linear-gradient(0deg, #000 50%, transparent 94%);
+  opacity: 0.85;
+  animation: auth-admin-holo-atmen 6s ease-in-out infinite alternate;
+}
+.auth-admin-holo-szene { position: absolute; left: 50%; top: 12em; width: 0; height: 0; perspective: 120em; }
+.auth-admin-holo-kamera { position: absolute; left: 0; top: 0; transform-style: preserve-3d; transform: rotateX(-22deg); }
+
+/* Leitstandtisch: technisches Raster, das zum Rand verblasst; Sendungsrouten laufen in den Projektor. */
+.auth-admin-holo-tisch {
+  position: absolute; left: -40em; top: -40em; width: 80em; height: 80em;
+  transform: translateY(20.2em) rotateX(90deg);
+  background:
+    linear-gradient(90deg, rgba(126, 166, 255, 0.17) 1px, transparent 1px) 0 0 / 4em 4em,
+    linear-gradient(180deg, rgba(126, 166, 255, 0.17) 1px, transparent 1px) 0 0 / 4em 4em;
+  -webkit-mask: radial-gradient(closest-side, #000 16%, rgba(0, 0, 0, 0.34) 54%, transparent 92%);
+          mask: radial-gradient(closest-side, #000 16%, rgba(0, 0, 0, 0.34) 54%, transparent 92%);
+}
+.auth-admin-holo-route { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+.auth-admin-holo-route::before {
+  content: ""; position: absolute; right: 1.5em; top: -0.5px; width: 32em; height: 1px;
+  background: linear-gradient(90deg, rgba(126, 166, 255, 0), rgba(126, 166, 255, 0.5) 50%, rgba(190, 210, 255, 0.85));
+}
+.auth-admin-holo-route::after {
+  content: ""; position: absolute; right: 33.1em; top: -0.6em; width: 1.2em; height: 1.2em; border-radius: 50%;
+  background: radial-gradient(circle, var(--auth-admin-holo-hell) 0 24%, rgba(126, 166, 255, 0.55) 42%, transparent 70%);
+}
+.auth-admin-holo-route--1 { rotate: 34deg; }
+.auth-admin-holo-route--2 { rotate: 148deg; }
+.auth-admin-holo-route--3 { rotate: -18deg; }
+.auth-admin-holo-route--4 { rotate: 206deg; }
+.auth-admin-holo-impuls {
+  position: absolute; right: 1.5em; top: -0.2em; width: 4.4em; height: 0.4em; border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(169, 196, 255, 0.75) 55%, var(--auth-admin-licht));
+  box-shadow: 0 0 0.9em 0.1em rgba(126, 166, 255, 0.8);
+  translate: -28em 0; opacity: 0;
+  animation: auth-admin-holo-impuls 9s cubic-bezier(.4, 0, .3, 1) infinite;
+}
+.auth-admin-holo-route--2 .auth-admin-holo-impuls { animation-duration: 11s; animation-delay: 3.2s; }
+.auth-admin-holo-route--3 .auth-admin-holo-impuls { animation-duration: 13s; animation-delay: 6.5s; }
+.auth-admin-holo-route--4 .auth-admin-holo-impuls { animation-duration: 10s; animation-delay: 1.6s; }
+
+/* Projektor: Lichtquelle mit Ringen, ein Lichtring kreist langsam. */
+.auth-admin-holo-projektor {
+  position: absolute; left: -8em; top: -8em; width: 16em; height: 16em; border-radius: 50%;
+  transform: translateY(20em) rotateX(90deg);
+  background:
+    radial-gradient(circle, var(--auth-admin-licht) 0 4%, rgba(169, 196, 255, 0.92) 8%, rgba(98, 120, 255, 0.5) 18%, rgba(47, 107, 255, 0.16) 36%, transparent 60%),
+    repeating-radial-gradient(circle, rgba(169, 196, 255, 0.3) 0 1px, transparent 1px 1.5em);
+  -webkit-mask: radial-gradient(circle, #000 52%, transparent 70.7%);
+          mask: radial-gradient(circle, #000 52%, transparent 70.7%);
+}
+.auth-admin-holo-projektor-ring {
+  position: absolute; inset: 2em; border-radius: 50%;
+  background: conic-gradient(rgba(214, 226, 255, 0.9), rgba(126, 166, 255, 0) 30%, rgba(162, 139, 255, 0.75) 50%, rgba(126, 166, 255, 0) 80%, rgba(214, 226, 255, 0.9));
+  -webkit-mask: radial-gradient(circle, transparent 64%, #000 65.5%, #000 69%, transparent 70.5%);
+          mask: radial-gradient(circle, transparent 64%, #000 65.5%, #000 69%, transparent 70.5%);
+  animation: auth-admin-drehen 28s linear infinite reverse;
+}
+
+/* Paket: sechs Flächen um den Mittelpunkt, Breite × Tiefe × Höhe = 21 × 15 × 14em. */
+.auth-admin-holo-schwebe {
+  position: absolute; left: 0; top: 0; transform-style: preserve-3d;
+  animation: auth-admin-holo-schweben 7s ease-in-out infinite alternate;
+}
+.auth-admin-holo-paket {
+  position: absolute; left: 0; top: 0; transform-style: preserve-3d;
+  rotate: y -46deg;
+  animation: auth-admin-holo-wenden 16s ease-in-out infinite alternate;
+}
+.auth-admin-holo-flaeche {
+  position: absolute; left: 0; top: 0; box-sizing: border-box; overflow: hidden;
+  border: 1px solid var(--auth-admin-holo-kante);
+  background:
+    linear-gradient(115deg, transparent 32%, rgba(214, 226, 255, 0.1) 46%, transparent 60%),
+    repeating-linear-gradient(180deg, rgba(214, 226, 255, 0.06) 0 1px, transparent 1px 0.3em),
+    linear-gradient(160deg, rgba(126, 166, 255, 0.28), rgba(98, 92, 255, 0.11) 52%, rgba(124, 77, 255, 0.22));
+  box-shadow: -0.1em 0 0 rgba(120, 200, 255, 0.22), 0.1em 0 0 rgba(176, 130, 255, 0.24),
+    0 0 0.35em rgba(169, 196, 255, 0.6), 0 0 1.6em rgba(98, 130, 255, 0.5), inset 0 0 2em rgba(126, 166, 255, 0.3);
+}
+.auth-admin-holo-flaeche--vorn, .auth-admin-holo-flaeche--hinten {
+  width: var(--holo-b); height: var(--holo-h); margin: calc(var(--holo-h) / -2) 0 0 calc(var(--holo-b) / -2);
+}
+.auth-admin-holo-flaeche--links, .auth-admin-holo-flaeche--rechts {
+  width: var(--holo-t); height: var(--holo-h); margin: calc(var(--holo-h) / -2) 0 0 calc(var(--holo-t) / -2);
+}
+.auth-admin-holo-flaeche--oben, .auth-admin-holo-flaeche--unten {
+  width: var(--holo-b); height: var(--holo-t); margin: calc(var(--holo-t) / -2) 0 0 calc(var(--holo-b) / -2);
+}
+.auth-admin-holo-flaeche--vorn { transform: translateZ(calc(var(--holo-t) / 2)); }
+.auth-admin-holo-flaeche--hinten { transform: rotateY(180deg) translateZ(calc(var(--holo-t) / 2)); }
+.auth-admin-holo-flaeche--links { transform: rotateY(-90deg) translateZ(calc(var(--holo-b) / 2)); }
+.auth-admin-holo-flaeche--rechts { transform: rotateY(90deg) translateZ(calc(var(--holo-b) / 2)); }
+.auth-admin-holo-flaeche--oben {
+  transform: rotateX(90deg) translateZ(calc(var(--holo-h) / 2));
+  background:
+    linear-gradient(135deg, rgba(169, 196, 255, 0.34), rgba(126, 166, 255, 0.14) 60%, rgba(162, 139, 255, 0.24));
+}
+.auth-admin-holo-flaeche--unten {
+  transform: rotateX(-90deg) translateZ(calc(var(--holo-h) / 2));
+  background: radial-gradient(closest-side, rgba(190, 210, 255, 0.34), rgba(126, 166, 255, 0.08));
+}
+/* Klebeband über dem Deckel (entlang der Breite, auf der Naht) und ein Stück die Stirnseiten hinab. */
+.auth-admin-holo-flaeche--oben::before {
+  content: ""; position: absolute; left: 0; right: 0; top: calc(50% - 1.7em); height: 3.4em;
+  background: linear-gradient(180deg, rgba(227, 235, 255, 0.24), rgba(200, 215, 255, 0.12));
+  border-block: 1px solid rgba(214, 226, 255, 0.6);
+}
+.auth-admin-holo-flaeche--oben::after {
+  content: ""; position: absolute; left: 0; right: 0; top: calc(50% - 0.5px); height: 1px;
+  background: var(--auth-admin-holo-hell); box-shadow: 0 0 0.5em rgba(169, 196, 255, 0.9);
+}
+.auth-admin-holo-flaeche--links::before, .auth-admin-holo-flaeche--rechts::before {
+  content: ""; position: absolute; top: 0; left: calc(50% - 1.7em); width: 3.4em; height: 44%;
+  background: linear-gradient(180deg, rgba(227, 235, 255, 0.22), rgba(200, 215, 255, 0.1));
+  border: 1px solid rgba(214, 226, 255, 0.5); border-top: 0;
+}
+/* Etikett mit Adresszeilen (nur Linien) und Strichcode. */
+.auth-admin-holo-etikett {
+  position: absolute; right: 1.5em; bottom: 1.4em; width: 8.8em; height: 6.2em;
+  border: 1px solid rgba(214, 226, 255, 0.6); border-radius: 0.25em;
+  background:
+    linear-gradient(rgba(214, 226, 255, 0.55), rgba(214, 226, 255, 0.55)) 0.7em 0.8em / 3.8em 1px no-repeat,
+    linear-gradient(rgba(214, 226, 255, 0.38), rgba(214, 226, 255, 0.38)) 0.7em 1.45em / 5.6em 1px no-repeat,
+    linear-gradient(rgba(214, 226, 255, 0.38), rgba(214, 226, 255, 0.38)) 0.7em 2.1em / 4.4em 1px no-repeat,
+    rgba(190, 210, 255, 0.07);
+}
+.auth-admin-holo-strichcode {
+  position: absolute; left: 0.7em; right: 0.7em; bottom: 0.7em; height: 2.3em;
+  background: repeating-linear-gradient(90deg,
+    rgba(232, 239, 255, 0.9) 0 0.14em, transparent 0.14em 0.3em,
+    rgba(232, 239, 255, 0.9) 0.3em 0.36em, transparent 0.36em 0.5em,
+    rgba(232, 239, 255, 0.9) 0.5em 0.72em, transparent 0.72em 0.84em,
+    rgba(232, 239, 255, 0.9) 0.84em 0.9em, transparent 0.9em 1.08em);
+  opacity: 0.5;
+  animation: auth-admin-holo-erfassen 10s linear infinite;
+}
+/* Pfeile „oben“ auf der rechten Stirnseite. */
+.auth-admin-holo-pfeile {
+  position: absolute; left: calc(50% - 2.2em); bottom: 1.6em; width: 4.4em; height: 4.4em; opacity: 0.75;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d6e2ff' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'><path d='M8 18V5M4.5 8.5 8 5l3.5 3.5M16 18V5m-3.5 3.5L16 5l3.5 3.5M4 21h16'/></svg>") center / contain no-repeat;
+}
+/* Scan: Eine Ebene aus Licht wandert von oben nach unten durch das Paket; wo sie die Seiten schneidet, zieht ein
+   schmales Lichtband (Scanlinie, hellste Stelle 2.42em unter seiner Oberkante). Beide laufen im selben Takt: Die Linie
+   steht auf der Höhe L (0 … Höhe der Seiten), die Ebene bei L − Höhe/2 um den Mittelpunkt. */
+.auth-admin-holo-scan {
+  position: absolute; left: 0; right: 0; top: 0; height: 2.6em;
+  background: linear-gradient(180deg, transparent, rgba(126, 166, 255, 0.08) 50%, rgba(169, 196, 255, 0.3) 84%,
+    rgba(214, 226, 255, 0.68) 93%, rgba(169, 196, 255, 0.26) 97%, transparent);
+  translate: 0 -2.42em; opacity: 0;
+  animation: auth-admin-holo-scan 10s cubic-bezier(.45, .05, .55, .95) infinite;
+}
+.auth-admin-holo-scanebene {
+  position: absolute; left: 0; top: 0; transform-style: preserve-3d;
+  translate: 0 calc(var(--holo-h) / -2); opacity: 0;
+  animation: auth-admin-holo-ebene 10s cubic-bezier(.45, .05, .55, .95) infinite;
+}
+.auth-admin-holo-scanebene-licht {
+  position: absolute; left: 0; top: 0;
+  width: calc(var(--holo-b) + 11em); height: calc(var(--holo-t) + 11em);
+  margin: calc((var(--holo-t) + 11em) / -2) 0 0 calc((var(--holo-b) + 11em) / -2);
+  transform: rotateX(90deg);
+  background: radial-gradient(closest-side, rgba(214, 228, 255, 0.44), rgba(126, 166, 255, 0.2) 56%, rgba(124, 77, 255, 0.07) 80%, transparent);
+}
+
+/* Umlaufbahn mit drei Trackingpunkten, waagerecht um das Paket. */
+.auth-admin-holo-orbit {
+  position: absolute; left: -17em; top: -17em; width: 34em; height: 34em;
+  transform: translateY(2.2em) rotateX(90deg); transform-style: preserve-3d;
+}
+.auth-admin-holo-orbit::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  border: 1px solid rgba(126, 166, 255, 0.3);
+}
+.auth-admin-holo-orbit-lauf {
+  position: absolute; inset: 0; transform-style: preserve-3d;
+  animation: auth-admin-drehen 44s linear infinite;
+}
+.auth-admin-holo-punkt {
+  position: absolute; width: 1.8em; height: 1.8em; margin: -0.9em 0 0 -0.9em; border-radius: 50%;
+  background: radial-gradient(circle, var(--auth-admin-licht) 0 20%, rgba(126, 166, 255, 0.85) 36%, rgba(124, 77, 255, 0) 70%);
+}
+.auth-admin-holo-punkt:nth-child(1) { left: 50%; top: 0; }
+.auth-admin-holo-punkt:nth-child(2) { left: 90.96%; top: 78.68%; }
+.auth-admin-holo-punkt:nth-child(3) { left: 4.68%; top: 71.13%; }
+
+/* ── Komposition ────────────────────────────────────────────────────────────────────────────────────── */
 .auth-admin-mitte {
   position: relative; z-index: 1;
-  display: grid; place-items: center;
-  padding: clamp(24px, 7vh, 72px) 16px 12px;
+  display: grid; justify-items: center; align-content: center;
+  padding: max(8px, 1.5vh) 16px 12px;
 }
+
+/* ── Panel ──────────────────────────────────────────────────────────────────────────────────────────── */
+/* Ohne Einblendung: Das Seitengerüst zeigt das Panel schon im ersten Bild; eine Einblendung beim Übernehmen durch React
+   ließe es kurz verschwinden. */
 .auth-admin-panel {
   position: relative;
   width: min(100%, 460px);
@@ -693,7 +854,6 @@
     inset 0 -1px 0 rgba(124, 77, 255, 0.16),
     0 40px 90px -30px rgba(2, 4, 20, 0.85),
     0 0 70px -14px var(--auth-admin-glow-blau);
-  animation: auth-admin-panel-ein 900ms cubic-bezier(.2, .8, .2, 1) both 140ms;
 }
 /* Leuchtende Kontur: ein Verlaufsring über eine Maske, oben links hell, unten rechts violett. */
 .auth-admin-panel::before {
@@ -711,6 +871,17 @@
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   .auth-admin-panel { background: rgba(8, 14, 42, 0.92); }
 }
+/* Lichtreflex: in Abständen zieht ein Glanz über das Glas (unter dem Inhalt; das Panel ist durch backdrop-filter ein
+   eigener Stapelkontext). */
+.auth-admin-glanz {
+  position: absolute; inset: 0; z-index: -1; border-radius: inherit; overflow: hidden; pointer-events: none;
+}
+.auth-admin-glanz::before {
+  content: ""; position: absolute; top: -20%; bottom: -20%; left: 0; width: 60%;
+  background: linear-gradient(100deg, transparent 0%, rgba(214, 226, 255, 0.08) 42%, rgba(255, 255, 255, 0.14) 50%, rgba(214, 226, 255, 0.08) 58%, transparent 100%);
+  translate: -110% 0; opacity: 0;
+  animation: auth-admin-glanz 12s cubic-bezier(.4, 0, .2, 1) infinite 2.4s;
+}
 
 .auth-admin-kopf { margin-bottom: 30px; }
 .auth-admin-titel {
@@ -718,7 +889,9 @@
   font-weight: 600;
 }
 .auth-admin-titel:focus { outline: none; }
-.auth-admin-marke .ce-brandmark-img { display: block; width: 156px; height: auto; filter: drop-shadow(0 6px 24px rgba(47, 107, 255, 0.45)); }
+/* Seitenverhältnis der Marke (viewBox 1176 × 613): Der Platz steht, bevor das Bild geladen ist — im Seitengerüst sonst ein
+   Layoutsprung. */
+.auth-admin-marke .ce-brandmark-img { display: block; width: 156px; height: auto; aspect-ratio: 1176 / 613; filter: drop-shadow(0 6px 24px rgba(47, 107, 255, 0.45)); }
 .auth-admin-titel-text {
   font-size: 2rem; line-height: 1.1; letter-spacing: -0.012em; font-stretch: 94%;
   background: linear-gradient(100deg, var(--auth-admin-tinte-1) 0%, #e2e8ff 46%, #cbbcff 100%);
@@ -846,43 +1019,59 @@
 .auth-admin-recht a:hover { color: var(--auth-admin-tinte-1); text-decoration: underline; text-underline-offset: 3px; }
 .auth-admin-recht a:focus-visible { outline: 2px solid var(--auth-admin-strom-blau-hell); outline-offset: 2px; border-radius: 4px; }
 
-/* ── Bewegung ───────────────────────────────────────────────────────────────────────────────────────── */
-@keyframes auth-admin-strom-ein { from { opacity: 0; translate: -6vmax 5vmax; } to { opacity: 1; translate: 0 0; } }
-@keyframes auth-admin-fliessen { from { translate: -5% 0; } to { translate: 5% 0; } }
-@keyframes auth-admin-impuls {
-  0%        { translate: -20vmax 0; opacity: 0; }
-  4%        { opacity: 1; }
-  30%       { translate: 190vmax 0; opacity: 1; }
-  32%, 100% { translate: 190vmax 0; opacity: 0; }
-}
-@keyframes auth-admin-schweben-a { from { translate: 0 0; } to { translate: 14px 22px; } }
-@keyframes auth-admin-schweben-b { from { translate: 0 0; rotate: 0deg; } to { translate: -10px -26px; rotate: -6deg; } }
-@keyframes auth-admin-schweben-c { from { translate: 0 0; } to { translate: -12px 18px; } }
+/* ── Bewegung ───────────────────────────────────────────────────────────────────────────────────────────
+   Der erste Moment nach dem Laden: Die Scanlinie läuft einmal über das Paket, der Strichcode leuchtet auf. Danach
+   ruhige Wiederkehr — Drehen 16 s, Schweben 7 s, Scan alle 10 s, Lichtimpulse einzeln in eigenem Takt, Glanz alle 12 s.
+   Jeder Startwert ist der Ruhezustand des Seitengerüsts (kein Sprung, wenn React es ersetzt). */
+@keyframes auth-admin-holo-wenden { from { rotate: y -46deg; } to { rotate: y -22deg; } }
+@keyframes auth-admin-holo-schweben { from { translate: 0 0; } to { translate: 0 0.9em; } }
 @keyframes auth-admin-drehen { to { rotate: 360deg; } }
-@keyframes auth-admin-panel-ein { from { opacity: 0; translate: 0 18px; scale: 0.985; } to { opacity: 1; translate: 0 0; scale: 1; } }
+@keyframes auth-admin-holo-atmen { from { opacity: 0.85; } to { opacity: 1; } }
+@keyframes auth-admin-holo-scan {
+  0%        { translate: 0 -2.42em; opacity: 0; }
+  3%        { opacity: 1; }
+  26%       { translate: 0 calc(var(--holo-h) - 2.42em); opacity: 1; }
+  30%, 100% { translate: 0 calc(var(--holo-h) - 2.42em); opacity: 0; }
+}
+@keyframes auth-admin-holo-ebene {
+  0%        { translate: 0 calc(var(--holo-h) / -2); opacity: 0; }
+  3%        { opacity: 1; }
+  26%       { translate: 0 calc(var(--holo-h) / 2); opacity: 1; }
+  30%, 100% { translate: 0 calc(var(--holo-h) / 2); opacity: 0; }
+}
+@keyframes auth-admin-holo-erfassen {
+  0%, 12%   { opacity: 0.5; }
+  15%, 24%  { opacity: 1; }
+  34%, 100% { opacity: 0.5; }
+}
+@keyframes auth-admin-holo-impuls {
+  0%        { translate: -28em 0; opacity: 0; }
+  8%        { opacity: 1; }
+  36%       { translate: 0 0; opacity: 1; }
+  40%, 100% { translate: 0 0; opacity: 0; }
+}
+@keyframes auth-admin-glanz {
+  0%        { translate: -110% 0; opacity: 0; }
+  2%        { opacity: 1; }
+  14%       { translate: 190% 0; opacity: 1; }
+  16%, 100% { translate: 190% 0; opacity: 0; }
+}
 @keyframes auth-admin-cta-laden { from { transform: translateX(-120%); } to { transform: translateX(120%); } }
 
 /* ── Breiten ────────────────────────────────────────────────────────────────────────────────────────── */
-@media (min-width: 1600px) {
-  .auth-admin-form--ring { width: 300px; height: 300px; left: calc(50% - 600px); }
-  .auth-admin-form--kapsel { left: calc(50% + 330px); }
-  .auth-admin-form--kugel { width: 108px; left: calc(50% + 380px); }
+/* Ab 60em nebeneinander: links das Hologramm, rechts das Panel — eine Gruppe, mittig. */
+@media (min-width: 60em) {
+  .auth-admin-mitte {
+    grid-template-columns: auto minmax(0, 460px); justify-content: center; align-items: center;
+    column-gap: clamp(16px, 3vw, 64px);
+    padding: clamp(24px, 6vh, 64px) 32px 12px;
+  }
+  .auth-admin-holo { font-size: clamp(9px, min(0.94vw, 1.5vh), 14px); }
 }
-@media (max-width: 1100px) {
-  .auth-admin-form--ring { left: calc(50% - 440px); }
-  .auth-admin-form--kapsel { left: calc(50% + 236px); }
-  .auth-admin-form--kugel { left: calc(50% + 250px); }
-}
-@media (max-width: 760px) {
-  .auth-admin-strom { top: 46%; width: 260vmax; height: 92vmax; transform: translate(-50%, -50%) rotate(-36deg); }
-  .auth-admin-band--1 { filter: blur(34px); }
-  .auth-admin-band--4 { filter: blur(40px); }
-  .auth-admin-form--ring { width: 170px; height: 170px; left: -56px; top: 3%; }
-  .auth-admin-form--kugel { width: 62px; left: auto; right: 16px; top: 5%; }
-  .auth-admin-form--kapsel { width: 66px; height: 172px; left: auto; right: -22px; top: auto; bottom: 7%; }
+@media (min-width: 90em) {
+  .auth-admin-daten { display: block; }
 }
 @media (max-width: 520px) {
-  .auth-admin-mitte { padding-top: max(20px, 5vh); }
   .auth-admin-panel { padding: 32px 22px 26px; border-radius: 24px; }
   .auth-admin-kopf { margin-bottom: 24px; }
   .auth-admin-titel { gap: 12px; }
@@ -896,17 +1085,30 @@
 
 /* ── Reduzierte Bewegung: dieselbe Komposition als ruhiges Standbild ────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .auth-admin-strom, .auth-admin-band, .auth-admin-faser, .auth-admin-form, .auth-admin-form--ring::before,
-  .auth-admin-panel, .auth-admin-cta-lauf, .auth-admin-cta[aria-busy="true"]::after { animation: none; }
-  .auth-admin-impuls { animation: none; opacity: 0.85; translate: 92vmax 0; }
+  .auth-admin-holo *, .auth-admin-holo *::before, .auth-admin-holo *::after,
+  .auth-admin-glanz::before, .auth-admin-cta-lauf, .auth-admin-cta[aria-busy="true"]::after { animation: none; }
+  /* Der Moment der Erfassung: Die Scanlinie kreuzt gerade das Etikett, der Strichcode leuchtet; die Impulse stehen
+     in verschiedenen Abständen auf ihren Routen. */
+  .auth-admin-holo-scan { opacity: 1; translate: 0 calc(var(--holo-h) * 0.72 - 2.42em); }
+  .auth-admin-holo-scanebene { opacity: 1; translate: 0 calc(var(--holo-h) * 0.22); }
+  .auth-admin-holo-strichcode { opacity: 1; }
+  .auth-admin-holo-impuls { opacity: 0.85; translate: -11em 0; }
+  .auth-admin-holo-route--2 .auth-admin-holo-impuls { translate: -19em 0; }
+  .auth-admin-holo-route--3 .auth-admin-holo-impuls { translate: -6em 0; }
+  .auth-admin-holo-route--4 .auth-admin-holo-impuls { translate: -15em 0; }
   .auth-admin-eingabe, .auth-admin-cta, .auth-admin-cta::after, .auth-admin-auge, .auth-admin-eingabe-ico { transition: none; }
 }
 
 /* ── Erzwungene Farben (Kontrastmodus): Text und Kanten aus den Systemfarben ───────────────────────── */
 @media (forced-colors: active) {
-  .auth-admin-buehne { display: none; }
+  .auth-admin-buehne, .auth-admin-holo { display: none; }
   .auth-admin-panel { border: 1px solid CanvasText; backdrop-filter: none; }
   .auth-admin-titel-text { background: none; color: CanvasText; }
   .auth-admin-eingabe { border: 1px solid CanvasText; }
   .auth-admin-cta { border: 1px solid ButtonText; }
 }
+
+/* ── Seitengerüst (admin-login.html): dieselbe Komposition ruhend, bis React sie ersetzt ──────────────── */
+.auth-admin-geruest .auth-admin-holo *,
+.auth-admin-geruest .auth-admin-holo *::before,
+.auth-admin-geruest .auth-admin-holo *::after { animation: none; }

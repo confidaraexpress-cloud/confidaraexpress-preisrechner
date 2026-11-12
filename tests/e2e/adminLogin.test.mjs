@@ -4,7 +4,9 @@
 // Schutzroute mit Rücksprung; Sitzungsende im Adminbereich → /admin/login mit Hinweis; Abmelden → /admin/login (Sitzung
 // serverseitig widerrufen); angemeldeter Admin → /admin; „Passwort vergessen?“ neutral; Einmallink (Adresse bereinigt,
 // Passwort selbst setzen); Passwort anzeigen/verbergen per Tastatur; Ladezustand; Kundenlogin verweist ab Stufe 2 auf
-// die Admin-Anmeldung; Smartphone ohne Überlauf; reduzierte Bewegung; keine Konsolenfehler.
+// die Admin-Anmeldung; Smartphone ohne Überlauf; reduzierte Bewegung (Hologramm als Standbild); Komposition in 1440,
+// 768 und 390 px (Hologramm-Paket ganz im Bild, verdeckt weder Panel noch Bedienelemente; Canonical v2.131); keine
+// Konsolenfehler.
 // Kein echtes Backend, keine Mail, keine echten Konten.
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -336,14 +338,65 @@ test("N — Smartphone 390 px: kein Überlauf, große Bedienelemente, kein Autof
   await ctx.close();
 });
 
-test("O — reduzierte Bewegung: die Bühne steht still, das Formular bleibt bedienbar", async () => {
+test("O — reduzierte Bewegung: das Hologramm steht still und bleibt sichtbar, das Formular bleibt bedienbar", async () => {
   const { ctx, page } = await neueSeite({ reduce: true });
   backend(page);
   await page.goto(`${BASE}/admin/login`);
   await page.waitForSelector(".auth-admin-panel");
-  const anim = await page.evaluate(() => ["auth-admin-band--1", "auth-admin-impuls", "auth-admin-form--kugel", "auth-admin-panel"]
-    .map((k) => getComputedStyle(document.querySelector(`.${k}`)).animationName));
-  assert.deepEqual(anim, ["none", "none", "none", "none"]);
+  const m = await page.evaluate(() => {
+    const stil = (k) => getComputedStyle(document.querySelector(`.${k}`));
+    return {
+      anim: ["auth-admin-holo-paket", "auth-admin-holo-schwebe", "auth-admin-holo-scan", "auth-admin-holo-impuls", "auth-admin-holo-orbit-lauf", "auth-admin-panel"]
+        .map((k) => stil(k).animationName),
+      glanz: getComputedStyle(document.querySelector(".auth-admin-glanz"), "::before").animationName,
+      // Standbild, nicht leer: das Paket ist da, Scanlinie und Impulse stehen sichtbar.
+      holo: stil("auth-admin-holo").display, scan: Number(stil("auth-admin-holo-scan").opacity), impuls: Number(stil("auth-admin-holo-impuls").opacity),
+    };
+  });
+  assert.deepEqual(m.anim, ["none", "none", "none", "none", "none", "none"]);
+  assert.equal(m.glanz, "none");
+  assert.notEqual(m.holo, "none");
+  assert.ok(m.scan > 0.5 && m.impuls > 0.5, `Standbild leer: Scan ${m.scan}, Impuls ${m.impuls}`);
   assert.equal(await page.locator(".auth-admin-cta").isEnabled(), true);
   await ctx.close();
 });
+
+for (const [name, viewport, mobil] of [["1440", { width: 1440, height: 900 }, false], ["768", { width: 768, height: 1024 }, true], ["390", { width: 390, height: 844 }, true]]) {
+  test(`P — Komposition ${name} px: Hologramm gut sichtbar, verdeckt nichts, das Formular bleibt vorn und bedienbar`, async () => {
+    const { ctx, page, fehler } = await neueSeite({ viewport, mobil });
+    backend(page);
+    await page.goto(`${BASE}/admin/login`);
+    await page.waitForSelector(".auth-admin-panel input");
+    const m = await page.evaluate(() => {
+      const r = (e) => { const b = e.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, u: b.bottom, b: b.width, h: b.height }; };
+      const flaechen = [...document.querySelectorAll(".auth-admin-holo-flaeche")].map((e) => e.getBoundingClientRect());
+      const paket = { l: Math.min(...flaechen.map((f) => f.left)), t: Math.min(...flaechen.map((f) => f.top)),
+        r: Math.max(...flaechen.map((f) => f.right)), u: Math.max(...flaechen.map((f) => f.bottom)) };
+      const panel = r(document.querySelector(".auth-admin-panel"));
+      // Was liegt in der Mitte jedes Bedienelements obenauf? Muss das Element selbst (oder ein Kind) sein.
+      const vorn = [...document.querySelectorAll(".auth-admin-panel input, .auth-admin-auge, .auth-admin-link, .auth-admin-cta")].map((e) => {
+        const b = e.getBoundingClientRect();
+        const oben = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+        return e === oben || e.contains(oben);
+      });
+      return { paket, panel, vorn, fenster: [innerWidth, innerHeight], scrollW: document.documentElement.scrollWidth,
+        holoKlicks: getComputedStyle(document.querySelector(".auth-admin-holo")).pointerEvents };
+    });
+    const [w] = m.fenster;
+    assert.ok(m.scrollW <= w, `horizontaler Überlauf ${m.scrollW} > ${w}`);
+    // Das Paket ist ganz im Bild und groß genug, um als Motiv zu tragen.
+    assert.ok(m.paket.l >= 0 && m.paket.r <= w && m.paket.t >= 0, `Paket außerhalb des Bildes ${JSON.stringify(m.paket)}`);
+    const paketBreite = m.paket.r - m.paket.l;
+    assert.ok(paketBreite >= (w >= 960 ? 280 : 150), `Paket zu klein: ${Math.round(paketBreite)} px`);
+    // Kein Überdecken: Paket und Panel überschneiden sich nicht; ab 60em steht das Hologramm links neben dem Panel.
+    const ueberschneidung = m.paket.l < m.panel.r && m.paket.r > m.panel.l && m.paket.t < m.panel.u && m.paket.u > m.panel.t;
+    assert.equal(ueberschneidung, false, `Paket überdeckt das Panel ${JSON.stringify({ paket: m.paket, panel: m.panel })}`);
+    if (w >= 960) assert.ok(m.paket.r <= m.panel.l, "das Hologramm steht links neben dem Panel");
+    else assert.ok(m.paket.u <= m.panel.t, "das Hologramm steht über dem Panel");
+    assert.ok(m.panel.l >= 0 && m.panel.r <= w, "das Panel liegt ganz im Bild");
+    assert.deepEqual(m.vorn, m.vorn.map(() => true), "ein Bedienelement liegt unter einer anderen Ebene");
+    assert.equal(m.holoKlicks, "none", "das Hologramm darf keine Klicks abfangen");
+    assert.deepEqual(fehler, []);
+    await ctx.close();
+  });
+}

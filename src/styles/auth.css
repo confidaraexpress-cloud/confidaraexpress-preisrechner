@@ -839,7 +839,7 @@
 /* Ohne Einblendung: Das Seitengerüst zeigt das Panel schon im ersten Bild; eine Einblendung beim Übernehmen durch React
    ließe es kurz verschwinden. */
 .auth-admin-panel {
-  position: relative;
+  position: relative; isolation: isolate;
   width: min(100%, 460px);
   padding: 44px 40px 34px;
   border-radius: var(--auth-admin-radius-panel);
@@ -871,15 +871,18 @@
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   .auth-admin-panel { background: rgba(8, 14, 42, 0.92); }
 }
-/* Lichtreflex: in Abständen zieht ein Glanz über das Glas (unter dem Inhalt; das Panel ist durch backdrop-filter ein
-   eigener Stapelkontext). */
+/* Lichtreflex: in Abständen zieht ein Glanz über das Glas — unter dem Inhalt, im eigenen Stapelkontext des Panels
+   (isolation; ohne backdrop-filter, etwa im Kontrastmodus, rutschte er sonst hinter das Panel). */
 .auth-admin-glanz {
   position: absolute; inset: 0; z-index: -1; border-radius: inherit; overflow: hidden; pointer-events: none;
 }
+/* Waagerechter Verlauf, schräg gestellt per skewX: Ein schräger Verlauf (100deg) schnitte an den senkrechten Rändern des
+   Streifens in sichtbare Deckkraft — harte Kanten statt eines weichen Glanzes. */
 .auth-admin-glanz::before {
-  content: ""; position: absolute; top: -20%; bottom: -20%; left: 0; width: 60%;
-  background: linear-gradient(100deg, transparent 0%, rgba(214, 226, 255, 0.08) 42%, rgba(255, 255, 255, 0.14) 50%, rgba(214, 226, 255, 0.08) 58%, transparent 100%);
-  translate: -110% 0; opacity: 0;
+  content: ""; position: absolute; top: -10%; bottom: -10%; left: 0; width: 46%;
+  background: linear-gradient(90deg, transparent, rgba(214, 226, 255, 0.07) 35%, rgba(255, 255, 255, 0.13) 50%, rgba(214, 226, 255, 0.07) 65%, transparent);
+  transform: skewX(-14deg);
+  translate: -130% 0; opacity: 0;
   animation: auth-admin-glanz 12s cubic-bezier(.4, 0, .2, 1) infinite 2.4s;
 }
 
@@ -1051,10 +1054,10 @@
   40%, 100% { translate: 0 0; opacity: 0; }
 }
 @keyframes auth-admin-glanz {
-  0%        { translate: -110% 0; opacity: 0; }
+  0%        { translate: -130% 0; opacity: 0; }
   2%        { opacity: 1; }
-  14%       { translate: 190% 0; opacity: 1; }
-  16%, 100% { translate: 190% 0; opacity: 0; }
+  14%       { translate: 240% 0; opacity: 1; }
+  16%, 100% { translate: 240% 0; opacity: 0; }
 }
 @keyframes auth-admin-cta-laden { from { transform: translateX(-120%); } to { transform: translateX(120%); } }
 

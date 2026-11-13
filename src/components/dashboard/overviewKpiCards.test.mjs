@@ -265,7 +265,7 @@ test("16 — Lesereihenfolge: Beschriftung → Zahl → Kontext", () => {
   assert.ok(l > -1 && v > l && c > v, "Reihenfolge Beschriftung → Zahl → Kontext verletzt");
 });
 
-test("17 — die Zahl ist DM Sans 32/38, Gewicht 600, eng und tabellarisch", () => {
+test("17 — die Zahl steht in der Zahlenrolle 32/38, Gewicht 600, eng und tabellarisch", () => {
   assert.equal(decl(".ov-kpi-value", "font-family"), "var(--ce-font-numeric)");
   assert.equal(decl(".ov-kpi-value", "font-size"), "var(--ce-text-numeric-display-size)");
   assert.equal(decl(".ov-kpi-value", "font-weight"), "var(--ce-text-numeric-display-weight)");
@@ -278,11 +278,12 @@ test("17 — die Zahl ist DM Sans 32/38, Gewicht 600, eng und tabellarisch", () 
   assert.match(cssBare, /\.ov-kpi-value \{ font-size: var\(--ce-text-numeric-display-size-mobile\); \}/);
 });
 
-test("18 — Beschriftung 13/18 500, keine Versalien; Kontext 12/18", () => {
+test("18 — Beschriftung auf der Label-Stufe, keine Versalien; Kontext auf der Caption-Stufe", () => {
   assert.equal(decl(".ov-kpi-label", "font-size"), "var(--ce-text-label-size)");
   assert.equal(decl(".ov-kpi-label", "font-weight"), "var(--ce-text-label-weight)");
-  assert.equal(tok("ce-text-label-size"), "13px");
-  assert.equal(tok("ce-text-label-weight"), "500");
+  // Betreiberentscheidung 2026-11-13: Lesestufen der Grundskala +1 px (D4), mittlere Gewichtsstufe 550.
+  assert.equal(tok("ce-text-label-size"), "14px");
+  assert.equal(tok("ce-text-label-weight"), "550");
   assert.ok(!/text-transform|letter-spacing/.test(rule(".ov-kpi-label")), "keine Versalzeile");
   assert.equal(decl(".ov-kpi-context", "font-size"), "var(--ce-text-caption-size)");
 });

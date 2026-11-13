@@ -122,7 +122,7 @@ export default function TrackingPage({ utility = null, schnellwahl = null } = {}
   }));
 
   /* ── Darstellung (Redesign 2026-10) ──────────────────────────────────────────────────────────
-     Dieselbe Titelrolle wie jede andere Seite (DM Sans 28/36, links), darunter EIN beschriftetes
+     Dieselbe Titelrolle wie jede andere Seite (Instrument Sans, Titelstufe, links), darunter EIN beschriftetes
      Feld mit „Verfolgen", dann der Ergebnisstatus und der Verlauf als ruhige chronologische
      Textliste. Öffentlich (/tracking) steht die Seite in schmaler Lesebreite, im Kundenbereich auf
      derselben Inhaltskante wie die Shell (dashboard.css, .tracking-page-wrap).

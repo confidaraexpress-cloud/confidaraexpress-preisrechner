@@ -69,7 +69,7 @@ export function CompanyMark({ initial, logoUrl = null }) {
       {/* SVG-Präsentationsattribute lösen keine CSS-Variablen auf — die
           Familie steht hier deshalb als einziges Literal im Projekt; sie ist
           identisch mit --ce-font-sans. */}
-      <text x="20" y="26" textAnchor="middle" fontFamily="'DM Sans',system-ui,sans-serif" fontWeight="600" fontSize="16" fill="#ffffff">{initial}</text>
+      <text x="20" y="26" textAnchor="middle" fontFamily="'Instrument Sans',system-ui,sans-serif" fontWeight="600" fontSize="16" fill="#ffffff">{initial}</text>
     </svg>
   );
 }

@@ -50,7 +50,7 @@
   font-size: var(--ce-text-caption-size); color: var(--ce-color-text-muted);
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
 }
-.sup-dialog-min { font-size: var(--ce-text-caption-size); color: var(--ce-color-status-error-fg); font-weight: 500; }
+.sup-dialog-min { font-size: var(--ce-text-caption-size); color: var(--ce-color-status-error-fg); font-weight: var(--ce-weight-medium); }
 
 /* Die Fehlermeldung ist eine FormAlert — hier steht nur ihr Abstand. */
 .sup-dialog-error { margin-top: var(--ce-space-3); }
@@ -363,7 +363,7 @@ a.adm-sup-cust-name:hover { text-decoration: underline; }
   margin-bottom: 4px;
 }
 .adm-sup-msg-author { font-size: var(--ce-text-label-size); font-weight: var(--ce-text-label-weight); color: var(--ce-color-text-primary); }
-.adm-sup-msg-time { font-size: var(--ce-text-micro-size); font-weight: 400; color: var(--ce-color-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.adm-sup-msg-time { font-size: var(--ce-text-micro-size); font-weight: var(--ce-weight-text); color: var(--ce-color-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 .adm-sup-msg-body {
   margin: 0;
   font-size: 13px;

@@ -283,15 +283,19 @@ test("12 — die Einträge der ersten Ebene sind gleichrangig", () => {
   assert.ok(gemeinsam, ".pp-nav-group-head fehlt");
   // Feinkorrektur 2026-10: die Kunden-Sidebar hat ihre eigene Stufe
   // (--ce-sidebar-nav-*); die allgemeine Navigationsrolle (--ce-text-nav-*,
-  // Adminbereich und öffentlicher Drawer) bleibt 14/20, 500.
+  // Adminbereich und öffentlicher Drawer) bleibt 14/20 (seit 2026-11-13 Gewicht 550).
   assert.match(gemeinsam, /font-size:\s*var\(--ce-sidebar-nav-size\)/, "Navigationsgröße 15 px aus dem Sidebar-Token erwartet");
   assert.match(gemeinsam, /font-weight:\s*var\(--ce-sidebar-nav-weight\)/, "Navigationsgewicht 600 aus dem Sidebar-Token erwartet");
   assert.match(gemeinsam, /min-height:\s*var\(--ce-sidebar-nav-row\)/, "Zeilenhöhe 44 px aus dem Sidebar-Token erwartet");
   assert.match(gemeinsam, /border-radius:\s*var\(--ce-radius-sm\)/, "Radius 8 px erwartet");
   const variables = lies("../../styles/variables.css");
-  assert.match(variables, /--ce-sidebar-nav-size:\s*var\(--ce-text-body-l-size\)/, "Kunden-Sidebar auf der Stufe body-l (15 px)");
+  // D4 (Betreiberentscheidung 2026-11-13): die Navigation wächst nicht mit der Lesestufe — ihre 15 px liegen
+  // seitdem auf der Stufe body.
+  assert.match(variables, /--ce-sidebar-nav-size:\s*var\(--ce-text-body-size\)/, "Kunden-Sidebar auf der Stufe body (15 px)");
   assert.match(variables, /--ce-sidebar-nav-weight:\s*600/, "Hauptpunkte Gewicht 600");
-  assert.match(variables, /--ce-sidebar-nav-weight-sub:\s*500/, "Unterpunkte und sekundäre Aktionen Gewicht 500");
+  // Gewichtsleiter 2026-11-13: mittlere Stufe 550 statt 500.
+  assert.match(variables, /--ce-sidebar-nav-weight-sub:\s*var\(--ce-weight-medium\)/, "Unterpunkte und sekundäre Aktionen in der mittleren Stufe");
+  assert.match(variables, /--ce-weight-medium:\s*550/, "mittlere Gewichtsstufe 550");
   assert.match(variables, /--ce-sidebar-nav-row:\s*44px/, "Zeilenhöhe der Kunden-Sidebar 44 px");
   assert.match(variables, /--ce-text-nav-weight-active:\s*600/, "aktiv Gewicht 600");
   assert.match(variables, /--ce-text-nav-size:\s*14px/, "die allgemeine Navigationsrolle bleibt 14 px (Adminbereich)");

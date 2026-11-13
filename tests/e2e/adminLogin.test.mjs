@@ -6,14 +6,15 @@
 // Passwort selbst setzen); Passwort anzeigen/verbergen per Tastatur; Ladezustand; Kundenlogin verweist ab Stufe 2 auf
 // die Admin-Anmeldung; Smartphone ohne Überlauf; reduzierte Bewegung (Hologramm als Standbild); Komposition in 1440,
 // 768 und 390 px (Hologramm-Paket ganz im Bild, verdeckt weder Panel noch Bedienelemente; Canonical v2.131); keine
-// Konsolenfehler.
+// Konsolenfehler; Typografie unverändert gegenüber dem Stand vor der Confidara Signature Typography (Test Q).
 // Kein echtes Backend, keine Mail, keine echten Konten.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import { adminAnmeldungTypografie } from "./helpers/adminAnmeldungTypografie.mjs";
 import { chromium } from "playwright";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 const PORT = 5785, BASE = `http://127.0.0.1:${PORT}`;
@@ -396,6 +397,40 @@ for (const [name, viewport, mobil] of [["1440", { width: 1440, height: 900 }, fa
     assert.ok(m.panel.l >= 0 && m.panel.r <= w, "das Panel liegt ganz im Bild");
     assert.deepEqual(m.vorn, m.vorn.map(() => true), "ein Bedienelement liegt unter einer anderen Ebene");
     assert.equal(m.holoKlicks, "none", "das Hologramm darf keine Klicks abfangen");
+    assert.deepEqual(fehler, []);
+    await ctx.close();
+  });
+}
+
+// Confidara Signature Typography (2026-11-13): Schrift, Gewichte und Textfarben der Plattform ändern sich, die
+// Admin-Anmeldung ausdrücklich nicht. Verglichen wird die berechnete Typografie jedes Text- und Bedienelements mit dem
+// Stand davor (tests/e2e/fixtures/admin-anmeldung-typografie.json), dazu die Maße von Panel, Hauptaktion und Titel.
+// Einzige belegte Ausnahme: Der Augen-Knopf (nur Symbol, kein Text) erbt seitdem die Markenschrift statt der
+// Browserschrift Arial (globals.css) — ohne sichtbare Wirkung, der Pixelvergleich des Panels ergab 0,000 % Abweichung.
+const TYPOGRAFIE_AUSNAHMEN = [{ el: "button.auth-admin-auge", eigenschaft: "font-family" }];
+const TYPOGRAFIE_BASIS = JSON.parse(readFileSync(new URL("./fixtures/admin-anmeldung-typografie.json", import.meta.url), "utf8"));
+for (const [name, viewport, mobil] of [["1440", { width: 1440, height: 900 }, false], ["390", { width: 390, height: 844 }, true]]) {
+  test(`Q — Typografie ${name} px unverändert gegenüber dem Stand vor der Signature Typography`, async () => {
+    const { ctx, page, fehler } = await neueSeite({ viewport, mobil, reduce: true });
+    backend(page);
+    await page.goto(`${BASE}/admin/login`);
+    await page.waitForSelector(".auth-admin-panel input");
+    await page.evaluate(() => document.fonts.ready);
+    const ist = await adminAnmeldungTypografie(page);
+    const soll = TYPOGRAFIE_BASIS[name];
+    assert.ok(ist, "keine Admin-Anmeldung gefunden");
+    assert.deepEqual(ist.elemente.map((e) => e.el), soll.elemente.map((e) => e.el), "andere Elementfolge");
+    const abweichungen = [];
+    ist.elemente.forEach((e, i) => {
+      for (const [k, wert] of Object.entries(soll.elemente[i])) {
+        if (TYPOGRAFIE_AUSNAHMEN.some((a) => a.el === e.el && a.eigenschaft === k)) continue;
+        if (JSON.stringify(e[k]) !== JSON.stringify(wert)) abweichungen.push(`#${i} ${e.el} (${soll.texte[i]}): ${k} ${JSON.stringify(wert)} → ${JSON.stringify(e[k])}`);
+      }
+    });
+    assert.deepEqual(abweichungen, [], `Typografie der Admin-Anmeldung verändert:\n  ${abweichungen.join("\n  ")}`);
+    assert.deepEqual(ist.masse, soll.masse, "Maße von Panel, Hauptaktion oder Titel verändert");
+    // Die Ausnahme bleibt eng: der Knopf trägt weiterhin keinen Text.
+    assert.equal((await page.locator(".auth-admin-auge").innerText()).trim(), "");
     assert.deepEqual(fehler, []);
     await ctx.close();
   });

@@ -165,8 +165,9 @@ test("7c — das Frühzeit-Hinweisfeld nutzt Foundation-Tokens und trägt sichtb
   assert.ok(!/#[0-9a-f]{3,8}/i.test(regel[1]), "kein Hexliteral");
   assert.ok(!/border-radius:\s*(999|9999|50%)/.test(regel[1]), "keine Pillenform");
 
-  // Kleiner Statushinweis, kein Button: Label-Stufe, kein Schatten.
-  assert.match(regel[1], /font-size:\s*12px/);
+  // Kleiner Statushinweis, kein Button, kein Schatten. Seit 2026-11-13 (freigegebene Typografie, Umsetzungsplan
+  // 1.6: im Kundenbereich steht nichts Lesbares unter 13 px) 13 px statt 12 px.
+  assert.match(regel[1], /font-size:\s*13px/);
   assert.match(regel[1], /font-weight:\s*600/);
   assert.ok(!/box-shadow/.test(regel[1]), "ein Statushinweis trägt keine Tiefe");
 

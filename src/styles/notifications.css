@@ -243,7 +243,7 @@
   align-items: center;
   gap: 7px;
   font-size: var(--ce-text-body-size);
-  font-weight: 500;
+  font-weight: var(--ce-weight-medium);
   line-height: var(--ce-text-body-line);
   color: var(--ce-color-text-primary);
 }

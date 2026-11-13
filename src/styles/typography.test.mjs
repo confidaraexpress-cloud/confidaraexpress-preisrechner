@@ -1,19 +1,23 @@
 // Governance für Paket A, Phase 2.5 — systemweite Typografie und Textfarben.
 //
-// Geprüft wird, dass die gesamte Oberfläche aus EINER Skala kommt: die elf
-// Typografiestufen der Foundation, drei Schriftrollen (davon eine im Auslauf),
-// höchstens Gewicht 600, Textfarben ausschließlich aus den Foundation-Rollen
-// und präzise, rechtsbündige Zahlen.
+// Geprüft wird, dass die gesamte Oberfläche aus EINER Skala kommt: die
+// Typografiestufen der Foundation, eine Schriftfamilie, höchstens Gewicht 700
+// (die Achse der Schriftdatei — kein künstlicher Fettdruck), Textfarben
+// ausschließlich aus den Foundation-Rollen und präzise, rechtsbündige Zahlen.
 //
 // Bewusst NICHT geprüft: Abstände, Layout, Kartenmaterial, Radien, Schatten —
 // die gehören zu Phase 1/2 und haben dort ihre eigene Governance.
 //
-// Redesign 2026-10: die Skala folgt den freigegebenen Typografierollen
-// (Seitentitel 28/36, mobil 24/32 · Abschnitt 18/26 · Karte 16/24 · Fließtext
-// 14/22 · klein 13/20 · Label 13/18 · Caption/Tabellenkopf 12/18 · Kennzahl
-// 32/38). Cormorant gibt es nur noch im Auth-Bereich. Der Auth-Bereich ist
-// ausdrücklich eingefroren — seine eigenen Größen (11 px Versalzeilen) bleiben
-// unverändert und sind die EINZIGE Ausnahme von der neuen Untergrenze 12 px.
+// Redesign 2026-10: die Skala folgt den freigegebenen Typografierollen. Seit der
+// Betreiberentscheidung vom 2026-11-13 (Confidara Signature Typography, D1–D4)
+// gilt: eine Familie (Instrument Sans) für die ganze Plattform, die Lesestufen
+// der Grundskala +1 px (Seitentitel 34/40, mobil 28/34 · Abschnitt 18/26 ·
+// Karte 16/24 · Fließtext 15/23 · klein 14/21 · Label 14/20 · Caption 13/20 ·
+// Tabellenkopf 12/18 · Kennzahl 32/38 · Display S 24), Gewichte bis 700 (die
+// Obergrenze der Schriftdatei). Cormorant und DM Sans sind entfernt. Der
+// Auth-Bereich ist ausdrücklich eingefroren — seine eigenen Größen (11 px
+// Versalzeilen) bleiben unverändert und sind die EINZIGE Ausnahme von der
+// Untergrenze 12 px.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { pruefeImTestlauf } from "../../scripts/governance.mjs";
@@ -131,12 +135,12 @@ test("2 — nichts unter 11 px; außerhalb des Auth-Bereichs nichts unter 12 px"
   const treffer = GROESSEN.filter((g) => g.wert < 11)
     .map((g) => `${g.datei}:${g.zeile} (${g.wert}px)`);
   assert.deepEqual(treffer, [], `zu kleine Schrift:\n  ${treffer.join("\n  ")}`);
-  // Redesign 2026-10: die kleinste Stufe ist Micro/Caption mit 12 px
-  // (Tabellenkopf, Bildunterschrift, Badge). 11 px bleibt allein dem
-  // eingefrorenen Auth-Bereich.
+  // Die kleinste Stufe ist Micro mit 12 px (Tabellenkopf, Gewicht 600). Caption
+  // und Badge liegen seit D4 (Betreiberentscheidung 2026-11-13, Lesbarkeit der
+  // Grundskala +1 px) auf 13 px. 11 px bleibt allein dem eingefrorenen Auth-Bereich.
   assert.equal(tok("ce-text-micro-size"), "12px", "die kleinste Stufe ist Micro (12px)");
-  assert.equal(tok("ce-text-caption-size"), "12px", "Caption liegt auf 12px");
-  assert.equal(tok("ce-text-badge-size"), "12px", "Badges liegen auf 12px");
+  assert.equal(tok("ce-text-caption-size"), "13px", "Caption liegt auf 13px (D4)");
+  assert.equal(tok("ce-text-badge-size"), "13px", "Badges liegen auf 13px (D4)");
   const klein = GROESSEN.filter((g) => g.wert < 12 && !istAuth(g))
     .map((g) => `${g.datei}:${g.zeile} ${g.selektor} (${g.wert}px)`);
   assert.deepEqual(klein, [], `unter 12 px außerhalb von Auth:\n  ${klein.join("\n  ")}`);
@@ -163,45 +167,53 @@ test("3 — jede Schriftgröße liegt auf einer definierten Stufe der Skala", ()
   // Die Skala selbst ist vollständig und trägt die freigegebenen Werte. Die
   // beiden Display-Stufen sind mit dem Redesign auf den Seitentitel
   // zurückgeführt — es gibt keine größere Überschrift als den Seitentitel.
+  // D4 (Betreiberentscheidung 2026-11-13): Seitentitel 34/28 und die Lesestufen
+  // +1 px. Display S (24 px) hält die bisherige Zwischenstufe der Kennwerte,
+  // Beträge und Bühnentitel als eigene Stufe — deren Größe ändert sich nicht.
   for (const [stufe, desktop, mobil] of [
-    ["display-xl", "28px", "24px"], ["display-l", "28px", "24px"],
-    ["title-page", "28px", "24px"], ["title-section", "18px", "18px"],
-    ["title-card", "16px", "16px"], ["body-l", "15px", "15px"],
-    ["body", "14px", "14px"], ["body-s", "13px", "13px"],
-    ["label", "13px", "13px"], ["micro", "12px", "12px"],
-    ["numeric-display", "32px", "28px"],
+    ["display-xl", "34px", "28px"], ["display-l", "34px", "28px"],
+    ["title-page", "34px", "28px"], ["title-section", "18px", "18px"],
+    ["title-card", "16px", "16px"], ["body-l", "16px", "16px"],
+    ["body", "15px", "15px"], ["body-s", "14px", "14px"],
+    ["label", "14px", "14px"], ["micro", "12px", "12px"],
+    ["numeric-display", "32px", "28px"], ["display-s", "24px", "24px"],
   ]) {
     assert.equal(tok(`ce-text-${stufe}-size`), desktop, `--ce-text-${stufe}-size`);
     assert.equal(tok(`ce-text-${stufe}-size-mobile`), mobil, `--ce-text-${stufe}-size-mobile`);
   }
   // Rollen ohne Mobilwert.
-  for (const [rolle, wert] of [["caption", "12px"], ["badge", "12px"], ["button", "14px"], ["nav", "14px"]]) {
+  for (const [rolle, wert] of [["caption", "13px"], ["badge", "13px"], ["button", "14px"], ["nav", "14px"]]) {
     assert.equal(tok(`ce-text-${rolle}-size`), wert, `--ce-text-${rolle}-size`);
   }
   assert.equal(tok("ce-text-button-weight"), "600", "Buttons 14/20 600");
-  assert.equal(tok("ce-text-nav-weight"), "500", "Navigation 14/20 500 (Adminbereich, öffentlicher Drawer)");
+  // Gewichtsleiter (Betreiberentscheidung 2026-11-13): Fließtext 450, mittlere Stufe 550.
+  assert.equal(tok("ce-weight-text"), "450", "Fließtext 450");
+  assert.equal(tok("ce-weight-medium"), "550", "mittlere Stufe 550");
+  assert.equal(tok("ce-text-nav-weight"), "550", "Navigation 14/20 550 (Adminbereich, öffentlicher Drawer)");
   assert.equal(tok("ce-text-nav-weight-active"), "600", "aktive Navigation 600");
   // Die Kunden-Sidebar trägt seit der Feinkorrektur 2026-10 eine eigene,
-  // präsentere Stufe — auf der Skala (body-l, 15 px), nicht daneben.
-  assert.equal(tok("ce-sidebar-nav-size"), tok("ce-text-body-l-size"), "Kunden-Sidebar auf der Stufe body-l");
+  // präsentere Stufe — auf der Skala, nicht daneben. Die Navigation wächst mit
+  // der Lesestufe D4 ausdrücklich NICHT mit: ihre 15 px liegen seitdem auf body.
+  assert.equal(tok("ce-sidebar-nav-size"), tok("ce-text-body-size"), "Kunden-Sidebar auf der Stufe body");
   assert.equal(tok("ce-sidebar-nav-size"), "15px", "Kunden-Sidebar 15 px");
   assert.equal(tok("ce-sidebar-nav-weight"), "600", "Hauptpunkte der Kunden-Sidebar 600");
-  assert.equal(tok("ce-sidebar-nav-weight-sub"), "500", "Unterpunkte und sekundäre Aktionen 500");
+  assert.equal(tok("ce-sidebar-nav-weight-sub"), "550", "Unterpunkte und sekundäre Aktionen 550");
 });
 
 /* ══════════ 4 — Gewicht ══════════════════════════════════════════════════ */
 
-// Premium-Redesign (Betreiberentscheidung 2026-10-27, ersetzt E4 im Bereich): Instrument Sans trägt in Kunde,
-// Anmeldung und Preisrechner Titel und Preise bis 700. Diese Dateien hängen vollständig am Bereichsattribut
-// (premiumRedesign.test.mjs); Admin, Partnerportal und Partnerregistrierung bleiben bei höchstens 600.
-const BEREICHS_DATEIEN = new Set(["premium-redesign.css", "premium-editorial.css", "public-calculator.css", "paketbuehne.css", "nachtkarte.css", "demo.css"]);
+// Premium-Redesign (Betreiberentscheidung 2026-10-27): Instrument Sans trägt in Kunde, Anmeldung und
+// Preisrechner Titel und Preise bis 700. Seit D1 (Betreiberentscheidung 2026-11-13) liest die ganze Plattform
+// Instrument Sans; die Grenze ist überall die Achse der Schriftdatei (400–700). Mehr wäre künstlicher
+// Fettdruck. Die Hierarchie schützt der Teil unten: Lesestufen tragen das Fließtextgewicht, keine Titelgewichte.
+const GEWICHT_MAX = 700;
 
-test("4 — kein font-weight über 600 außerhalb der @font-face-Deklarationen (im Premium-Bereich höchstens 700)", () => {
+test("4 — kein font-weight über 700 (Achse der Schriftdatei) außerhalb der @font-face-Deklarationen", () => {
   const treffer = [];
   for (const [datei, text] of Object.entries(css)) {
     for (const m of text.matchAll(/font-weight:\s*(\d+|bold|bolder)/g)) {
       const wert = m[1] === "bold" || m[1] === "bolder" ? 700 : Number(m[1]);
-      if (wert > (BEREICHS_DATEIEN.has(datei) ? 700 : 600)) treffer.push(`${datei}:${text.slice(0, m.index).split("\n").length} (${m[1]})`);
+      if (wert > GEWICHT_MAX) treffer.push(`${datei}:${text.slice(0, m.index).split("\n").length} (${m[1]})`);
     }
   }
   assert.deepEqual(treffer, [], `zu fette Schrift:\n  ${treffer.join("\n  ")}`);
@@ -211,16 +223,18 @@ test("4 — kein font-weight über 600 außerhalb der @font-face-Deklarationen (
   for (const pfad of quelldateien()) {
     const inhalt = readFileSync(pfad, "utf8");
     for (const m of inhalt.matchAll(/fontWeight[:=]\s*"?(\d+)"?/g)) {
-      if (Number(m[1]) > 600) jsx.push(`${kurz(pfad)}: ${m[1]}`);
+      if (Number(m[1]) > GEWICHT_MAX) jsx.push(`${kurz(pfad)}: ${m[1]}`);
     }
   }
   assert.deepEqual(jsx, [], `zu fette Inline-Gewichte: ${jsx.join(", ")}`);
 
-  // Die Skala selbst bleibt bei höchstens 600 — im Bereichsblock (Premium-Redesign) bei höchstens 700.
-  const bereich = variables.indexOf(':root[data-ce-bereich="kunde"]');
+  // Die Skala selbst bleibt in jedem Block bei höchstens 700. Die Lesestufen tragen das Fließtextgewicht —
+  // keine pauschale Anhebung (Auftrag 2026-11-13: „nicht sämtliche Texte auf 700“).
   for (const m of variables.matchAll(/--ce-text-[\w-]+-weight:\s*(\d+)/g)) {
-    const grenze = bereich >= 0 && m.index > bereich ? 700 : 600;
-    assert.ok(Number(m[1]) <= grenze, `Skalengewicht ${m[1]} überschreitet ${grenze}`);
+    assert.ok(Number(m[1]) <= GEWICHT_MAX, `Skalengewicht ${m[1]} überschreitet ${GEWICHT_MAX}`);
+  }
+  for (const rolle of ["body-l", "body", "body-s", "caption"]) {
+    assert.equal(tok(`ce-text-${rolle}-weight`), "450", `--ce-text-${rolle}-weight trägt das Fließtextgewicht 450`);
   }
   // Kein künstlicher Fettdruck.
   for (const [datei, text] of Object.entries(css)) {
@@ -260,16 +274,18 @@ test("5 — keine neue Verwendung von Libre Franklin", () => {
   }
 });
 
-/* ══════════ 6/7 — Cormorant nur noch im Auth-Bereich ═════════════════════ */
+/* ══════════ 6/7 — keine Serifenschrift, die Displayrolle nur an einer Stelle ═ */
 
-const CORMORANT_ERLAUBT = new Set([
+// Betreiberentscheidung 2026-11-13 (D1, D3): Cormorant ist vollständig entfernt. Die Displayrolle
+// (--ce-font-display) bleibt als Name bestehen und zeigt auf Instrument Sans — benutzt wird sie nur noch vom
+// Titel der Partnerregistrierung, der seitdem im Titelstil „Signatur“ steht.
+const DISPLAYROLLE_ERLAUBT = new Set([
   // Redesign 2026-10: der Kundenseitentitel (.ce-page-header-title) und die
-  // Begrüßung der Übersicht (.pp-h1, entfallen) laufen in DM Sans. Cormorant
-  // bleibt allein im eingefrorenen Auth-Bereich. Die beiden früheren
-  // Erlaubnisse sind entfallen — eine Erlaubnis für etwas Nichtvorhandenes
-  // erlaubt still auch seine Wiedereinführung (siehe unten).
-  ".auth-title",           // Auth-Bereich (eigene Welt) — die Partnerregistrierung; die Kunden-Anmeldung setzt
-                           // ihre Stimme seit dem Premium-Redesign in Instrument Sans (premium-redesign.css).
+  // Begrüßung der Übersicht (.pp-h1, entfallen) laufen in der Sans-Schrift.
+  // Die beiden früheren Erlaubnisse sind entfallen — eine Erlaubnis für etwas
+  // Nichtvorhandenes erlaubt still auch seine Wiedereinführung (siehe unten).
+  ".auth-title",           // Partnerregistrierung (auth.css); die Kunden-Anmeldung setzt ihre Stimme seit dem
+                           // Premium-Redesign über premium-redesign.css.
   // Der öffentliche Preisrechner trug bis 2026-10-27 Cormorant in Headline und Abschnittstiteln; seit dem
   // Premium-Redesign (Betreiberentscheidung 2026-10-27) Instrument Sans. Die Erlaubnis ist entfallen — eine
   // Erlaubnis für etwas Nichtvorhandenes erlaubt still auch seine Wiedereinführung.
@@ -280,7 +296,7 @@ const CORMORANT_ERLAUBT = new Set([
 // sie entfallen. Die Liste ist damit um einen Eintrag KÜRZER und um genau
 // diesen Fall STRENGER.
 
-function cormorantSelektoren(text) {
+function displayrolleSelektoren(text) {
   const out = [];
   for (const m of text.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
     const body = m[2];
@@ -290,18 +306,23 @@ function cormorantSelektoren(text) {
   return out;
 }
 
-test("6 — Cormorant steht nur an den freigegebenen Display-Stellen", () => {
+test("6 — keine Serifenschrift; die Displayrolle steht nur an der freigegebenen Stelle", () => {
   const treffer = [];
   for (const [datei, text] of Object.entries(css)) {
-    for (const sel of cormorantSelektoren(text)) {
+    for (const sel of displayrolleSelektoren(text)) {
       // Die Rollendefinition selbst (--fd: …) ist keine Verwendung.
       if (/^\.app-shell$/.test(sel)) continue;
-      if (!CORMORANT_ERLAUBT.has(sel)) treffer.push(`${datei}: ${sel}`);
+      if (!DISPLAYROLLE_ERLAUBT.has(sel)) treffer.push(`${datei}: ${sel}`);
     }
   }
   assert.deepEqual(treffer, [],
-    `Cormorant außerhalb der Display-Momente:\n  ${treffer.join("\n  ")}`);
-  assert.match(tok("ce-font-display"), /Cormorant Garamond/);
+    `Displayrolle außerhalb der freigegebenen Stelle:\n  ${treffer.join("\n  ")}`);
+  // D1/D3 (2026-11-13): die Displayrolle ist Instrument Sans, Cormorant kommt in keinem Stylesheet mehr vor.
+  assert.match(tok("ce-font-display"), /^'Instrument Sans'/);
+  for (const [datei, text] of Object.entries(css)) {
+    assert.doesNotMatch(text, /Cormorant/, `${datei}: Cormorant ist entfernt`);
+  }
+  assert.doesNotMatch(stripComments(read("./fonts.css")), /Cormorant|DM Sans/, "fonts.css lädt eine entfernte Familie");
 });
 
 test("7 — das Adminportal ist vollständig Sans", () => {
@@ -309,21 +330,23 @@ test("7 — das Adminportal ist vollständig Sans", () => {
   assert.doesNotMatch(admin, /Cormorant|--ce-font-display|var\(--fd\)/,
     "im Adminbereich gibt es keine Serifen-Titel");
   // Redesign 2026-10: Kunden- und Adminbereich teilen EINEN Seitentitel —
-  // .ce-page-header-title auf der Page-Title-Stufe (28/36, mobil 24/32). Die
-  // Adminvariante ändert nur den Rahmen, keine Schriftrolle.
+  // .ce-page-header-title auf der Page-Title-Stufe. Seit D4 (Betreiberentscheidung
+  // 2026-11-13) 34/40, mobil 28/34; Gewicht 700 (Richtwert des Auftrags vom
+  // 2026-11-13 für große Titel 750–800, soweit die Schrift es trägt — die Datei
+  // endet bei 700). Die Adminvariante ändert nur den Rahmen, keine Schriftrolle.
   const muster = css["patterns.css"];
   const titel = muster.match(/\.ce-page-header-title \{([^}]*)\}/)[1];
   assert.match(titel, /font-family:\s*var\(--ce-font-sans\)/);
   assert.match(titel, /font-size:\s*var\(--ce-text-title-page-size\)/);
-  assert.equal(tok("ce-text-title-page-size"), "28px");
-  assert.equal(tok("ce-text-title-page-size-mobile"), "24px");
-  assert.equal(tok("ce-text-title-page-weight"), "600");
+  assert.equal(tok("ce-text-title-page-size"), "34px");
+  assert.equal(tok("ce-text-title-page-size-mobile"), "28px");
+  assert.equal(tok("ce-text-title-page-weight"), "700");
   assert.match(muster, /\.ce-page-header-title \{\s*font-size: var\(--ce-text-title-page-size-mobile\);/,
-    "mobil 24px");
+    "mobil 28px");
   assert.doesNotMatch(muster, /\.ce-page-header--admin \.ce-page-header-title \{[^}]*font-(family|size)/,
     "der Admintitel trägt keine eigene Schriftrolle");
   assert.doesNotMatch(admin, /\.adm-title[\s{]/, "die abgelöste Eigenregel .adm-title ist noch da");
-  // Filterbeschriftungen liegen auf der Label-Stufe (13/18 500).
+  // Filterbeschriftungen liegen auf der Label-Stufe (seit D4 14/20, 550).
   assert.match(admin, /\.adm-filter-field label \{[^}]*font-size:\s*var\(--ce-text-label-size\)/);
 });
 
@@ -341,8 +364,16 @@ test("8 — die Legacy-Graustufen tragen keine Textrolle mehr", () => {
   }
   assert.deepEqual(treffer, [], `Graustufen als Textfarbe:\n  ${treffer.join("\n  ")}`);
   // --gray400 (#94a3b8) misst 2,4:1 auf Weiß und war die Hauptquelle unlesbarer
-  // Metatexte. Der Nachfolger erfüllt AA.
-  assert.equal(tok("ce-color-text-muted"), "#667284");
+  // Metatexte. Der Nachfolger erfüllt AA. Seit der Betreiberentscheidung vom
+  // 2026-11-13 stehen die drei Nebenrollen in der Navy-Familie und deutlich
+  // dunkler: Nebentext mindestens 9:1, gedämpft mindestens 7:1, Platzhalter
+  // mindestens 4,5:1 auf Weiß.
+  assert.equal(tok("ce-color-text-muted"), "#4a5672");
+  assert.equal(tok("ce-color-text-secondary"), "#3a4662");
+  assert.equal(tok("ce-color-text-placeholder"), "#5a6681");
+  assert.ok(kontrast(tok("ce-color-text-secondary"), "#ffffff") >= 9, "Nebentext auf Weiß mindestens 9:1");
+  assert.ok(kontrast(tok("ce-color-text-muted"), "#ffffff") >= 7, "gedämpfter Text auf Weiß mindestens 7:1");
+  assert.ok(kontrast(tok("ce-color-text-placeholder"), "#ffffff") >= 4.5, "Platzhalter auf Weiß mindestens 4,5:1");
   assert.ok(kontrast(tok("ce-color-text-muted"), "#ffffff") >= 4.5,
     "Muted-Text muss auf Weiß mindestens 4,5:1 erreichen");
   assert.ok(kontrast(tok("ce-color-text-secondary"), "#ffffff") >= 4.5);
@@ -417,7 +448,7 @@ test("10 — Zahlenspalten in Tabellen sind rechtsbündig", () => {
   assert.match(admInv, /<td className="adm-num"><AmountCell/);
 });
 
-test("11 — Zahlen laufen tabellarisch und in DM Sans", () => {
+test("11 — Zahlen laufen tabellarisch und in Instrument Sans", () => {
   // Jede tabular-nums-Deklaration trägt zusätzlich das Feature-Tag.
   const treffer = [];
   for (const [datei, text] of Object.entries(css)) {
@@ -429,8 +460,9 @@ test("11 — Zahlen laufen tabellarisch und in DM Sans", () => {
     }
   }
   assert.deepEqual(treffer, [], `tabular-nums ohne "tnum": ${treffer.join(", ")}`);
-  // Der Zahlentoken zeigt auf DM Sans, nicht auf eine Serifenschrift.
-  assert.match(tok("ce-font-numeric"), /DM Sans/);
+  // Der Zahlentoken zeigt seit D1 (2026-11-13) auf Instrument Sans — dieselbe Datei wie die
+  // Textschrift —, nie auf eine Serifenschrift.
+  assert.match(tok("ce-font-numeric"), /^'Instrument Sans'/);
   assert.doesNotMatch(tok("ce-font-numeric"), /Cormorant|Georgia|Times|\bserif\b(?<!sans-serif)/,
     "Zahlen laufen nie in einer Serifenschrift");
   // Der KPI-Wert steht exakt auf der Numeric-Display-Stufe (Redesign 2026-10:

@@ -33,15 +33,17 @@
      `monospace`-Fallbacks. `numericFontAudit.test.mjs` hält das fest.
      Bewusst in `:root`: admin.css, calculator.css, drafts.css, offers.css und
      support.css liegen außerhalb der `.app-shell` und brauchen einen global
-     erreichbaren Token. Zeigt auf dieselbe bereits geladene DM-Sans-Datei wie
-     --ce-font-sans — keine neue Schrift, kein Faux-Weight. */
-  --ce-font-numeric: 'DM Sans', system-ui, sans-serif;
+     erreichbaren Token. Zeigt auf dieselbe bereits geladene Datei wie
+     --ce-font-sans (Instrument Sans, tabellarische Ziffern über "tnum", Null ohne
+     Strich und Punkt) — keine zweite Schrift, kein Faux-Weight. */
+  --ce-font-numeric: 'Instrument Sans', system-ui, sans-serif;
 
   /* ══════════════════════════════════════════════════════════════════════════
      FOUNDATION-TOKENS — Frontend-Redesign 2026-10 in der ConfidaraExpress-
      Farbwelt
      ──────────────────────────────────────────────────────────────────────────
-     Struktur aus dem Redesign: DM Sans, eine Typografieskala, 4-px-Abstände,
+     Struktur aus dem Redesign: eine Sans-Schrift (seit 2026-11-13 überall
+     Instrument Sans), eine Typografieskala, 4-px-Abstände,
      Radien 8 / 12 px, Arbeitsflächen mit feiner Kante und sehr leichtem
      Schatten. Die FARBEN sind die ursprünglichen ConfidaraExpress-Farben aus
      dem Stand vor dem Redesign (Indigo #5367E8, Navy #111A33, Violett
@@ -52,7 +54,8 @@
 
      Der Auth-Bereich liest keine dieser Farb-, Radius- oder Tiefenrollen — er
      trägt seine eigene, unveränderte --auth-*-Familie (Ende dieser Datei) und
-     als einzigen Foundation-Wert --ce-font-display (Cormorant).
+     als einzige Foundation-Werte die Schriftrollen (--ce-font-display,
+     --ce-font-sans) und die Gewichtsleiter (--ce-weight-*).
 
      Alle Kontrastangaben sind gerechnet (WCAG 2.1, relative Luminanz) gegen
      die jeweils genannte Fläche — nicht geschätzt.
@@ -85,11 +88,16 @@
   /* ── Text ──
      --ce-color-text-disabled unterschreitet AA bewusst: er ist ausschließlich
      für inaktive Bedienelemente zulässig, deren Zustand zusätzlich über
-     disabled/aria-disabled getragen wird, und nie für Information. */
+     disabled/aria-disabled getragen wird, und nie für Information.
+     Confidara Signature Typography (Betreiberentscheidung 2026-11-13): Neben-,
+     gedämpfter und Platzhaltertext stehen in der Navy-Familie (Farbton um 222°
+     wie das Logo-Navy) statt in Blaugrau — drei unterscheidbare Stufen unter dem
+     Haupttext, Nebentext auf jeder hellen Fläche über 7:1. Dieselben Werte
+     gelten im Bereichsblock (Kunde, Anmeldung, Preisrechner). */
   --ce-color-text-primary: #111a33;                   /* weiß 17,22:1 · Grund 16,36:1 */
-  --ce-color-text-secondary: #5f6d80;                 /* weiß 5,27:1 · Grund 5,00:1 */
-  --ce-color-text-muted: #667284;                     /* weiß 4,88:1 · Grund 4,63:1 · surface-muted 4,43:1 (dort nicht für Text) */
-  --ce-color-text-placeholder: #6b7688;               /* weiß 4,59:1 */
+  --ce-color-text-secondary: #3a4662;                 /* weiß 9,41:1 · Grund 8,94:1 · surface-muted 8,54:1 */
+  --ce-color-text-muted: #4a5672;                     /* weiß 7,33:1 · Grund 6,96:1 · surface-muted 6,66:1 */
+  --ce-color-text-placeholder: #5a6681;               /* weiß 5,75:1 · Grund 5,46:1 · surface-muted 5,22:1 */
   --ce-color-text-disabled: #97a1b0;                  /* 2,61:1 — nur inaktive Elemente */
   --ce-color-text-inverse: #ffffff;
   --ce-color-text-inverse-soft: rgba(226, 232, 246, 0.78);
@@ -203,58 +211,120 @@
   --ce-focus-ring-offset: 2px;
 
   /* ── Schriftfamilien ──
-     Die Oberfläche (Kundenportal, Admin, öffentliche Leseseiten) setzt
-     ausschließlich DM Sans — Titel, Text und Zahlen. Cormorant bleibt allein
-     dem unveränderten Auth-Bereich vorbehalten: --ce-font-display wird nur
-     noch von auth.css gelesen. */
-  --ce-font-display: 'Cormorant Garamond', 'Times New Roman', serif;
-  --ce-font-sans: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+     Confidara Signature Typography (Betreiberentscheidungen D1/D3, 2026-11-13):
+     Instrument Sans für die ganze Plattform — Titel, Text und Zahlen, in jedem
+     Bereich. Die Displayrolle ist dieselbe Familie (Titel der Anmeldebühnen
+     und der Partnerregistrierung); eine Serifenschrift gibt es nicht mehr. */
+  --ce-font-display: 'Instrument Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ce-font-sans: 'Instrument Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* ── Gewichtsleiter ──
+     Präzise Zwischengewichte statt Fettdruck (Betreiberentscheidung 2026-11-13):
+     Fließ-, Neben- und Tabellentext 450, Beschriftungen, Unternavigation und
+     Badges 550. Die variable Schriftdatei zeichnet jeden Wert echt. Komponenten
+     schreiben für diese beiden Stufen kein Zahlenliteral, sondern den Token. */
+  --ce-weight-text: 450;
+  --ce-weight-medium: 550;
 
   /* ── Typografierollen ──
-     Eine Skala, keine Halbpixel, nichts unter 11 px, höchstes Gewicht 600.
-     Zeilenhöhen als Verhältnis, damit sie bei Textvergrößerung mitwachsen —
-     die Werte ergeben bei der Grundgröße exakt die Zielhöhen
-     (z. B. 28 × 1,2857 = 36 px).
+     Eine Skala, keine Halbpixel, nichts unter 11 px, höchstes Gewicht 700 (die
+     Obergrenze der Schriftdatei). Zeilenhöhen als Verhältnis, damit sie bei
+     Textvergrößerung mitwachsen — die Werte ergeben bei der Grundgröße exakt die
+     Zielhöhen (z. B. 34 × 1,1765 = 40 px).
 
-     Rollen:  Page Title 28/36 · mobil 24/32 · Section 18/26 · Card 16/24 ·
-              Body 14/22 · Lesetext 15/24 · Small 13/20 · Label 13/18 (500) ·
-              Caption 12/18 · Tabellenkopf 12/18 (600) · Badge 12/18 (500) ·
-              Button 14/20 (600) · Navigation 14/20 (500, aktiv 600) ·
-              KPI 32/38.
+     Diese Grundskala lesen Admin, Partnerportal und die öffentlichen Seiten ohne
+     Bereich; Kunde, Anmeldung und Preisrechner tragen ihre eigene Skala im
+     Bereichsblock. Betreiberentscheidung D4 (2026-11-13): die Lesestufen sind
+     gegenüber dem Redesign 2026-10 um 1 px größer; die Navigation bleibt 14 px
+     (Höhenbudget der Admin-Seitenleiste), Tabellenkopf und Knopf bleiben.
+
+     Rollen:  Page Title 34/40 (700) · mobil 28/34 · Section 18/26 (650) ·
+              Card 16/24 (620) · Body 15/23 · Lesetext 16/24 · Small 14/21 ·
+              Label 14/20 (550) · Caption 13/20 · Tabellenkopf 12/18 (600) ·
+              Badge 13/18 (550) · Button 14/20 (600) ·
+              Navigation 14/20 (550, aktiv 600) · KPI 32/38 · Display S 24.
+     Seitentitel 700: Der Auftrag vom 2026-11-13 nennt für große Titel 750–800,
+     soweit die Schrift es trägt — die Datei endet bei 700.
      display-xl/-l tragen bewusst dieselben Werte wie der Page Title: es gibt
      im Redesign keinen Display-Satz mehr, und ein verbliebener Aufrufer
      bekommt damit die gemeinsame Titelrolle statt einer Sonderskala. */
-  --ce-text-display-xl-size: 28px;      --ce-text-display-xl-size-mobile: 24px;
-  --ce-text-display-xl-weight: 600;     --ce-text-display-xl-line: 1.2857;    --ce-text-display-xl-tracking: -0.02em;
-  --ce-text-display-l-size: 28px;       --ce-text-display-l-size-mobile: 24px;
-  --ce-text-display-l-weight: 600;      --ce-text-display-l-line: 1.2857;     --ce-text-display-l-tracking: -0.02em;
-  --ce-text-title-page-size: 28px;      --ce-text-title-page-size-mobile: 24px;
-  --ce-text-title-page-weight: 600;     --ce-text-title-page-line: 1.2857;    --ce-text-title-page-tracking: -0.02em;
-  --ce-text-title-page-line-mobile: 1.3333;  --ce-text-title-page-tracking-mobile: -0.015em;
+  --ce-text-display-xl-size: 34px;      --ce-text-display-xl-size-mobile: 28px;
+  --ce-text-display-xl-weight: 700;     --ce-text-display-xl-line: 1.1765;    --ce-text-display-xl-tracking: -0.022em;
+  --ce-text-display-l-size: 34px;       --ce-text-display-l-size-mobile: 28px;
+  --ce-text-display-l-weight: 700;      --ce-text-display-l-line: 1.1765;     --ce-text-display-l-tracking: -0.022em;
+  --ce-text-title-page-size: 34px;      --ce-text-title-page-size-mobile: 28px;
+  --ce-text-title-page-weight: 700;     --ce-text-title-page-line: 1.1765;    --ce-text-title-page-tracking: -0.022em;
+  --ce-text-title-page-line-mobile: 1.2143;  --ce-text-title-page-tracking-mobile: -0.018em;
   --ce-text-title-section-size: 18px;   --ce-text-title-section-size-mobile: 18px;
-  --ce-text-title-section-weight: 600;  --ce-text-title-section-line: 1.4444;  --ce-text-title-section-tracking: -0.01em;
+  --ce-text-title-section-weight: 650;  --ce-text-title-section-line: 1.4444;  --ce-text-title-section-tracking: -0.01em;
   --ce-text-title-card-size: 16px;      --ce-text-title-card-size-mobile: 16px;
-  --ce-text-title-card-weight: 600;     --ce-text-title-card-line: 1.5;       --ce-text-title-card-tracking: 0;
-  --ce-text-body-l-size: 15px;          --ce-text-body-l-size-mobile: 15px;
-  --ce-text-body-l-weight: 400;         --ce-text-body-l-line: 1.6;           --ce-text-body-l-tracking: 0;
-  --ce-text-body-size: 14px;            --ce-text-body-size-mobile: 14px;
-  --ce-text-body-weight: 400;           --ce-text-body-line: 1.5714;          --ce-text-body-tracking: 0;
-  --ce-text-body-s-size: 13px;          --ce-text-body-s-size-mobile: 13px;
-  --ce-text-body-s-weight: 400;         --ce-text-body-s-line: 1.5385;        --ce-text-body-s-tracking: 0;
-  --ce-text-label-size: 13px;           --ce-text-label-size-mobile: 13px;
-  --ce-text-label-weight: 500;          --ce-text-label-line: 1.3846;         --ce-text-label-tracking: 0;
+  --ce-text-title-card-weight: 620;     --ce-text-title-card-line: 1.5;       --ce-text-title-card-tracking: 0;
+  --ce-text-body-l-size: 16px;          --ce-text-body-l-size-mobile: 16px;
+  --ce-text-body-l-weight: var(--ce-weight-text); --ce-text-body-l-line: 1.5; --ce-text-body-l-tracking: 0;
+  --ce-text-body-size: 15px;            --ce-text-body-size-mobile: 15px;
+  --ce-text-body-weight: var(--ce-weight-text); --ce-text-body-line: 1.5333;  --ce-text-body-tracking: 0;
+  --ce-text-body-s-size: 14px;          --ce-text-body-s-size-mobile: 14px;
+  --ce-text-body-s-weight: var(--ce-weight-text); --ce-text-body-s-line: 1.5; --ce-text-body-s-tracking: 0;
+  --ce-text-label-size: 14px;           --ce-text-label-size-mobile: 14px;
+  --ce-text-label-weight: var(--ce-weight-medium); --ce-text-label-line: 1.4286; --ce-text-label-tracking: 0;
   --ce-text-micro-size: 12px;           --ce-text-micro-size-mobile: 12px;
   --ce-text-micro-weight: 600;          --ce-text-micro-line: 1.5;            --ce-text-micro-tracking: 0;
   --ce-text-numeric-display-size: 32px; --ce-text-numeric-display-size-mobile: 28px;
   --ce-text-numeric-display-weight: 600; --ce-text-numeric-display-line: 1.1875; --ce-text-numeric-display-tracking: -0.02em;
-  --ce-text-caption-size: 12px;         --ce-text-caption-weight: 400;        --ce-text-caption-line: 1.5;
-  --ce-text-badge-size: 12px;           --ce-text-badge-weight: 500;          --ce-text-badge-line: 1.5;
+  /* Display S 24 px: Kennwerte in Karten, Beträge, Bühnen- und Dialogtitel. Bis
+     D4 (2026-11-13) war das dieselbe Stufe wie der mobile Seitentitel; seitdem
+     eine eigene Stufe — die Größe dieser Aufrufer bleibt unverändert. */
+  --ce-text-display-s-size: 24px;       --ce-text-display-s-size-mobile: 24px;
+  --ce-text-caption-size: 13px;         --ce-text-caption-weight: var(--ce-weight-text); --ce-text-caption-line: 1.5385;
+  --ce-text-badge-size: 13px;           --ce-text-badge-weight: var(--ce-weight-medium); --ce-text-badge-line: 1.3846;
   --ce-text-button-size: 14px;          --ce-text-button-weight: 600;         --ce-text-button-line: 1.4286;
   /* Allgemeine Navigationsrolle (Adminbereich, öffentlicher Drawer). Die
      Kunden-Sidebar trägt seit der Feinkorrektur 2026-10 eine eigene, präsentere
      Stufe (--ce-sidebar-nav-*, unten bei der Sidebar). */
-  --ce-text-nav-size: 14px;             --ce-text-nav-weight: 500;            --ce-text-nav-weight-active: 600;
+  --ce-text-nav-size: 14px;             --ce-text-nav-weight: var(--ce-weight-medium); --ce-text-nav-weight-active: 600;
   --ce-text-nav-line: 1.4286;
+
+  /* ── Titelstile Signatur und Relief (Betreiberentscheidungen D2/D3, 2026-11-13) ──
+     Ein Material für Hauptüberschriften, nur CSS: Füllung aus der Navy-Familie zwischen Logo-Navy (#011b55) und
+     Logo-Blau (#004afc), eine helle Oberkante, eine dunkle Unterkante (Prägung) und eine weiche Tiefe. Zugeordnet in
+     titelstile.css: Signatur im Kundenbereich, auf Sendungsverfolgung und Versicherungsinfo; Relief in Admin,
+     Partnerportal und Rechtstexten; die Bühnenfassung (hell auf dunkel) auf Anmeldung, Registrierung,
+     Partnerregistrierung und Preisrechner. Palette ausschließlich Navy-Stufen, Logo-Blau, Markenviolett #7a5ce6,
+     Weiß und Schwarz (designSystemClosure Test 4). Die Schatten stehen in em und wachsen mit der Titelgröße.
+     Kontrast der hellsten Füllstufe #2a46a8 auf Weiß 8,3:1; der Bühnenfüllung #c9d5fb auf #0a1636 12,3:1. */
+  --ce-titel-signatur-fuellung: linear-gradient(180deg, #2a46a8 0%, #152b78 20%, #0b1b50 46%, #071234 74%, #1d1d63 100%);
+  --ce-titel-signatur-praegung:
+    drop-shadow(0 -0.014em 0 rgba(255, 255, 255, 0.95))
+    drop-shadow(0 0.016em 0 #10246a)
+    drop-shadow(0 0.016em 0 #0a1a52)
+    drop-shadow(0 0.016em 0 #071440)
+    drop-shadow(0 0.012em 0 rgba(0, 74, 252, 0.5))
+    drop-shadow(0 0.16em 0.2em rgba(1, 27, 85, 0.22))
+    drop-shadow(0 0.26em 0.42em rgba(122, 92, 230, 0.12));
+  /* Gruß der Übersicht: dasselbe Material eine Stufe ruhiger (ein Satz, kein Plakat — 2026-11-01). */
+  --ce-titel-gruss-praegung:
+    drop-shadow(0 -0.014em 0 rgba(255, 255, 255, 0.95))
+    drop-shadow(0 0.016em 0 #10246a)
+    drop-shadow(0 0.012em 0 rgba(0, 74, 252, 0.3))
+    drop-shadow(0 0.1em 0.14em rgba(1, 27, 85, 0.14));
+  --ce-titel-relief-fuellung: linear-gradient(180deg, #2a46a8 0%, #152b78 24%, #0b1b50 46%, #071234 74%, #0d1a4a 100%);
+  --ce-titel-relief-praegung:
+    drop-shadow(0 -0.014em 0 rgba(255, 255, 255, 0.95))
+    drop-shadow(0 0.016em 0 #10246a)
+    drop-shadow(0 0.012em 0 rgba(0, 74, 252, 0.32))
+    drop-shadow(0 0.1em 0.14em rgba(1, 27, 85, 0.16))
+    drop-shadow(0 0.18em 0.3em rgba(122, 92, 230, 0.07));
+  --ce-titel-buehne-fuellung: linear-gradient(180deg, #ffffff 0%, #f3f6ff 40%, #c9d5fb 100%);
+  --ce-titel-buehne-praegung:
+    drop-shadow(0 0.016em 0 #3d63f0)
+    drop-shadow(0 0.016em 0 #213c9e)
+    drop-shadow(0 0.12em 0.18em rgba(0, 0, 0, 0.45))
+    drop-shadow(0 0 0.34em rgba(122, 92, 230, 0.16));
+  /* Markierter Text bleibt lesbar: Die Füllung ist transparent, die Auswahl setzt eine echte Schriftfarbe. */
+  --ce-titel-auswahl-text: #ffffff;           /* auf #0041de 7,47:1 */
+  --ce-titel-auswahl-grund: #0041de;
+  --ce-titel-buehne-auswahl-text: #0a1636;    /* auf Weiß 17,78:1 */
+  --ce-titel-buehne-auswahl-grund: #ffffff;
 
   /* ── Abstände ──
      4-px-Basis: 4 · 8 · 12 · 16 · 20 · 24 · 32 · 40 · 48 · 64. 80/96 bleiben
@@ -461,14 +531,17 @@
   --ce-sidebar-scroll-thumb-hover: rgba(255, 255, 255, 0.3);
 
   /* Navigationstypografie der Kunden-Sidebar (Feinkorrektur 2026-10):
-     präsenter als die allgemeine Navigationsrolle (14/20, 500 — Adminbereich,
-     öffentlicher Drawer). 15/22 auf der Stufe body-l, Hauptpunkte 600,
-     Unterpunkte und sekundäre Aktionen 500, aktiv 600 (--ce-text-nav-
-     weight-active). Jede Zeile 44 px — ein Rhythmus für alle Ebenen. */
-  --ce-sidebar-nav-size: var(--ce-text-body-l-size);
+     präsenter als die allgemeine Navigationsrolle (14/20, 550 — Adminbereich,
+     öffentlicher Drawer). 15/22 auf der Stufe body (bis D4 lag dieselbe Größe
+     auf body-l; die Navigation wächst mit der Lesestufe ausdrücklich NICHT mit,
+     Betreiberentscheidung 2026-11-13), im Bereichsblock 15/22 in rem.
+     Hauptpunkte 600, Unterpunkte und sekundäre Aktionen 550 (Gewichtsleiter
+     2026-11-13), aktiv 600 bzw. im Bereich 650 (--ce-text-nav-weight-active).
+     Jede Zeile 44 px — ein Rhythmus für alle Ebenen. */
+  --ce-sidebar-nav-size: var(--ce-text-body-size);
   --ce-sidebar-nav-line: 1.4667;
   --ce-sidebar-nav-weight: 600;
-  --ce-sidebar-nav-weight-sub: 500;
+  --ce-sidebar-nav-weight-sub: var(--ce-weight-medium);
   --ce-sidebar-nav-row: 44px;
 
   /* Auf- und Zuklappen der Navigationsgruppen. EIN Takt für Rasterspur und
@@ -639,11 +712,12 @@
   --ce-color-border-focus: #004afc;
   --ce-color-focus-ring: rgba(0, 74, 252, 0.28);
 
-  /* ── Text ── */
-  --ce-color-text-primary: #0b1532;     /* 17,99:1 */
-  --ce-color-text-secondary: #4e5a73;   /* 6,92:1, auf #f7f8fb 6,52:1 */
-  --ce-color-text-muted: #5f6b83;       /* 5,36:1 */
-  --ce-color-text-placeholder: #697590; /* 4,62:1 */
+  /* ── Text ── Navy-Familie wie im Grundblock (Confidara Signature Typography, 2026-11-13). Kontrast auf Weiß, auf
+     der Arbeitsfläche --ce-pr-papier (#f4f6fa) und auf surface-muted (#f1f3f7). */
+  --ce-color-text-primary: #0b1532;     /* 17,99:1 · 16,62:1 · 16,19:1 */
+  --ce-color-text-secondary: #3a4662;   /* 9,41:1 · 8,69:1 · 8,47:1 */
+  --ce-color-text-muted: #4a5672;       /* 7,33:1 · 6,77:1 · 6,60:1 */
+  --ce-color-text-placeholder: #5a6681; /* 5,75:1 · 5,31:1 · 5,18:1 */
 
   /* ── Flächen ──
      Betreiberentscheidung G4 (2026-10-27, ersetzt „Weiß auf Weiß“ im Kundenbereich): die Arbeitsfläche der
@@ -654,7 +728,7 @@
   --ce-color-bg-canvas-bottom: #ffffff;
   --ce-color-bg-atmosphere: none;
   --ce-app-bg: none;
-  --ce-pr-papier: #f4f6fa;              /* Text primär 16,9:1, sekundär 6,45:1, gedämpft 5,0:1 */
+  --ce-pr-papier: #f4f6fa;              /* Text primär 16,62:1, sekundär 8,69:1, gedämpft 6,77:1 */
   --ce-app-bg-mid: var(--ce-pr-papier);
   --ce-app-bg-bottom: var(--ce-pr-papier);
   --ce-app-divider: #e6e9f0;
@@ -693,24 +767,26 @@
   /* ── Typografie (Betreiberentscheidung 2026-10-27, ersetzt E4 im Bereich; Skala G-Typo 2026-10-27) ──
      Instrument Sans für alles: eine Familie mit innerer Spannung über Gewicht (400–700) und Breite.
      Skala nach Rollen (Audit C): Inhaltstext 16, Tabellenzellen und Listenzeilen 15, Beschriftungen 14,
-     Tabellenköpfe, Status und Kleinstschrift 13 — nichts Lesbares unter 13. Titel 600 mit offener Laufweite
+     Tabellenköpfe, Status und Kleinstschrift 13 — nichts Lesbares unter 13. Titel mit offener Laufweite
      (−0,02 em statt −0,03), Zahlen tabellarisch. Größen in rem (E13), bei 16 px Grundgröße ganze Pixel; sie
-     wachsen mit der Schriftgröße des Browsers. Admin und Partner lesen diesen Block nie (DM Sans, höchstens 600). */
+     wachsen mit der Schriftgröße des Browsers. Admin und Partner lesen diesen Block nie (sie tragen die Grundskala).
+     Gewichtsleiter (Confidara Signature Typography, 2026-11-13): Text 450 und Beschriftung 550 kommen aus dem
+     Grundblock; Seitentitel 700, Abschnittstitel 650, Kartentitel 620, aktive Navigation 650. */
   --ce-font-sans: 'Instrument Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --ce-font-numeric: 'Instrument Sans', system-ui, sans-serif;
   --ce-pr-font-display: 'Instrument Sans', system-ui, sans-serif;
   --ce-pr-display-stretch: 96%;         /* Display und Seitentitel: kaum schmaler — präzise statt gepresst */
   --ce-text-display-xl-size: 2.5rem;    --ce-text-display-xl-size-mobile: 2rem;      --ce-text-display-xl-line: 1.1;
-  --ce-text-display-xl-weight: 600;     --ce-text-display-xl-tracking: -0.024em;
+  --ce-text-display-xl-weight: 700;     --ce-text-display-xl-tracking: -0.024em;
   --ce-text-display-l-size: 2.25rem;    --ce-text-display-l-size-mobile: 1.75rem;    --ce-text-display-l-line: 1.1667;
-  --ce-text-display-l-weight: 600;      --ce-text-display-l-tracking: -0.02em;
-  --ce-text-title-page-size: 2.25rem;   --ce-text-title-page-size-mobile: 1.75rem;   --ce-text-title-page-weight: 600;
+  --ce-text-display-l-weight: 700;      --ce-text-display-l-tracking: -0.02em;
+  --ce-text-title-page-size: 2.25rem;   --ce-text-title-page-size-mobile: 1.75rem;   --ce-text-title-page-weight: 700;
   --ce-text-title-page-line: 1.1667;    --ce-text-title-page-line-mobile: 1.2143;    --ce-text-title-page-tracking: -0.02em;
   --ce-text-title-page-tracking-mobile: -0.018em;
   --ce-text-title-section-size: 1.375rem; --ce-text-title-section-size-mobile: 1.25rem; --ce-text-title-section-line: 1.3636;
-  --ce-text-title-section-weight: 600;  --ce-text-title-section-tracking: -0.012em;
+  --ce-text-title-section-weight: 650;  --ce-text-title-section-tracking: -0.012em;
   --ce-text-title-card-size: 1.125rem;  --ce-text-title-card-size-mobile: 1.0625rem; --ce-text-title-card-line: 1.4444;
-  --ce-text-title-card-weight: 600;     --ce-text-title-card-tracking: -0.008em;
+  --ce-text-title-card-weight: 620;     --ce-text-title-card-tracking: -0.008em;
   --ce-text-body-l-size: 1.0625rem;     --ce-text-body-l-size-mobile: 1rem;          --ce-text-body-l-line: 1.5294;
   --ce-text-body-size: 1rem;            --ce-text-body-size-mobile: 1rem;            --ce-text-body-line: 1.5;
   --ce-text-body-s-size: 0.9375rem;     --ce-text-body-s-size-mobile: 0.9375rem;     --ce-text-body-s-line: 1.5333;
@@ -722,7 +798,7 @@
   --ce-text-caption-size: 0.8125rem;    --ce-text-caption-line: 1.5385;
   --ce-text-badge-size: 0.8125rem;      --ce-text-badge-weight: 600;                 --ce-text-badge-line: 1.3846;
   --ce-text-button-size: 0.9375rem;     --ce-text-button-line: 1.3333;               --ce-text-button-weight: 600;
-  --ce-text-nav-size: 0.9375rem;
+  --ce-text-nav-size: 0.9375rem;        --ce-text-nav-weight-active: 650;
   --ce-sidebar-nav-size: 0.9375rem;
 
   /* ── Form und Tiefe ── */

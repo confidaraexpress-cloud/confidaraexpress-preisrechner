@@ -176,7 +176,9 @@
   padding: 3px var(--ce-space-3);
   border-radius: var(--ce-radius-sm);
   background: var(--ce-color-bg-light-violet);
-  font-size: var(--ce-text-label-size); font-weight: 600; line-height: var(--ce-text-label-line);
+  /* 13/18 wie vor der Lesestufe D4 (2026-11-13): die Navigation wächst nicht mit
+     — Höhenbudget der Seitenleiste (premiumAdminPaketE 1c). */
+  font-size: var(--ce-text-caption-size); font-weight: 600; line-height: 1.3846;
   color: var(--ce-color-brand-violet-ink);
 }
 /* Gruppen der Navigation (UX-Paket 2): dieselben Einträge, nur nach Aufgaben
@@ -435,7 +437,7 @@
   color: var(--ce-color-text-primary);
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
 }
-.adm-metric-hint { font-size: var(--ce-text-caption-size); font-weight: 400; line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
+.adm-metric-hint { font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-text); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
 
 /* Schmale Fehlerzeile über bereits geladenen Inhalten. */
 .adm-inline-error { align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: var(--ce-space-3); }
@@ -469,7 +471,7 @@
   color: var(--ce-color-text-secondary);
 }
 .adm-diag-summary:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
-.adm-diag-count { font-weight: 400; color: var(--ce-color-text-muted); }
+.adm-diag-count { font-weight: var(--ce-weight-text); color: var(--ce-color-text-muted); }
 .adm-diag-note {
   margin: var(--ce-space-2) 0 var(--ce-space-3);
   font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line);
@@ -607,7 +609,7 @@
 .adm-meta-row td { background: var(--ce-color-surface-subtle); }
 .adm-meta-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--ce-space-2) var(--ce-space-5); padding: 6px 2px; }
 .adm-meta-item { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.adm-meta-item dt { font-size: var(--ce-text-caption-size); font-weight: 500; line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
+.adm-meta-item dt { font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
 .adm-meta-item dd { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-primary); word-break: break-word; }
 
 /* Audit-Logs: sechs Spalten sind unterhalb von 1200px keine lesbare Tabelle
@@ -638,7 +640,7 @@
   display: inline-flex; align-items: center; gap: 5px;
   padding: 2px 8px;
   border-radius: var(--ce-radius-sm);
-  font-size: var(--ce-text-caption-size); font-weight: 500; line-height: var(--ce-text-caption-line);
+  font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); line-height: var(--ce-text-caption-line);
   background: var(--ce-color-surface-muted); color: var(--ce-color-text-secondary);
   border: 1px solid var(--ce-color-border-subtle);
   white-space: nowrap;
@@ -702,7 +704,7 @@
 /* Referenzauftrag 2026-11-05: Zusatz zu einem Wert (etwa „Kundenreferenz, nicht eindeutig") — leiser als der Wert. */
 .adm-kv-note { color: var(--ce-color-text-muted); font-size: var(--ce-text-caption-size); }
 .adm-kv-item { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adm-kv-item dt { font-size: var(--ce-text-caption-size); font-weight: 500; line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
+.adm-kv-item dt { font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
 .adm-kv-item dd { font-size: var(--ce-text-body-size); line-height: 1.4286; color: var(--ce-color-text-primary); word-break: break-word; }
 
 /* ── EIN Hinweisstreifen für den gesamten Adminbereich ───────────────────────
@@ -776,7 +778,7 @@
 /* ── Summary-Zellen (Kundendetail — nur Aggregate) ───────────────────────── */
 .adm-summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--ce-space-3); }
 .adm-stat { background: var(--ce-color-surface-subtle); border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-sm); padding: var(--ce-space-3) var(--ce-space-4); }
-.adm-stat-label { font-size: var(--ce-text-caption-size); font-weight: 500; line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
+.adm-stat-label { font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
 .adm-stat-value {
   font-family: var(--ce-font-numeric); font-size: 24px; line-height: 1.25; font-weight: 600; letter-spacing: -0.02em;
   color: var(--ce-color-text-primary); margin-top: var(--ce-space-1); word-break: break-word;
@@ -964,7 +966,7 @@
 .adm-markup-group-title { margin: 0; font-size: var(--ce-text-body-size); font-weight: 600; line-height: var(--ce-text-body-line); color: var(--ce-color-text-primary); }
 .adm-markup-group-scope { margin: var(--ce-space-1) 0 0; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted); max-width: 560px; }
 /* „(optional)" bleibt Teil des Labels, aber optisch zurückgenommen. */
-.adm-markup-optional { font-weight: 500; color: var(--ce-color-text-muted); }
+.adm-markup-optional { font-weight: var(--ce-weight-medium); color: var(--ce-color-text-muted); }
 .adm-markup-express-row { display: flex; flex-wrap: wrap; gap: var(--ce-space-2); }
 /* Wirksamer Expressaufschlag — die Antwort auf „was gilt jetzt tatsächlich?". */
 .adm-markup-effective { flex: 0 0 100%; display: flex; align-items: flex-start; gap: 7px; margin: 0; padding: 10px 13px; border-radius: var(--ce-radius-sm); font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-primary); background: var(--ce-color-surface-subtle); border: 1px solid var(--ce-color-border-subtle); }
@@ -1057,7 +1059,7 @@ a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2
 .adm-rowactions-item {
   display: flex; align-items: center; gap: 9px; width: 100%;
   min-height: var(--ce-size-control-md); padding: var(--ce-space-2) var(--ce-space-3);
-  font-size: var(--ce-text-body-s-size); font-weight: 500; font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-medium); font-family: var(--ce-font-sans);
   color: var(--ce-color-text-primary); background: none; border: none;
   border-radius: var(--ce-radius-sm);
   cursor: pointer; text-align: left; white-space: nowrap;
@@ -1067,7 +1069,7 @@ a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2
 .adm-rowactions-item:disabled { color: var(--ce-color-text-disabled); cursor: not-allowed; }
 .adm-rowactions-item:disabled:hover { background: none; }
 .adm-rowactions-divider { height: 1px; background: var(--ce-color-border-subtle); margin: var(--ce-space-1) 2px; }
-.adm-rowactions-reason { padding: 0 var(--ce-space-3) var(--ce-space-2); font-size: var(--ce-text-caption-size); font-weight: 400; line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); white-space: normal; }
+.adm-rowactions-reason { padding: 0 var(--ce-space-3) var(--ce-space-2); font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-text); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); white-space: normal; }
 
 /* Filterzeile: Suche breit, Status kompakt, Hinweis in eigener Zeile. */
 .adm-filter-search { flex: 1; min-width: 240px; }
@@ -1084,7 +1086,7 @@ a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2
 .adm-users-cards { display: none; list-style: none; flex-direction: column; gap: var(--ce-space-3); }
 .adm-ucard-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .adm-ucard-kv { display: grid; grid-template-columns: 1fr; gap: var(--ce-space-2); margin-top: var(--ce-space-3); padding-top: var(--ce-space-3); border-top: 1px solid var(--ce-color-border-subtle); }
-.adm-ucard-kv dt { font-size: var(--ce-text-caption-size); font-weight: 500; line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
+.adm-ucard-kv dt { font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
 .adm-ucard-kv dd { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-primary); overflow-wrap: anywhere; }
 .adm-ucard-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ce-space-2); margin-top: var(--ce-space-3); }
 /* Touch-Ziele: mindestens 44 px hoch (WCAG 2.5.8). */
@@ -1105,7 +1107,7 @@ a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2
 .adm-detail-mail { overflow-wrap: anywhere; }
 /* R9: gedämpfter Text erreicht auf dem Chipgrund (surface-muted) nur 4,43:1 — auf weißem Grund 4,88:1 (AA).
    Die Variante bleibt ruhiger als der Standardchip, ohne neue Farbe. */
-.adm-chip-muted { color: var(--ce-color-text-muted); background: var(--ce-color-surface); font-weight: 500; }
+.adm-chip-muted { color: var(--ce-color-text-muted); background: var(--ce-color-surface); font-weight: var(--ce-weight-medium); }
 
 /* Überfällige Rechnungen: sichtbar, aber ausdrücklich ohne Automatik. */
 .adm-overdue-note { margin-top: var(--ce-space-3); }
@@ -1175,13 +1177,13 @@ a.adm-ship-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offs
 /* Spalte „Versand": Carrier + Versandart, darunter Route + Pakete. */
 .adm-ship-way { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .adm-ship-carrier { font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-primary); overflow-wrap: anywhere; }
-.adm-ship-mode { font-weight: 500; color: var(--ce-color-text-muted); }
+.adm-ship-mode { font-weight: var(--ce-weight-medium); color: var(--ce-color-text-muted); }
 .adm-ship-route { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-muted); white-space: nowrap; }
 
 /* Status + kompakte Tracking-/Label-Marker als Text statt zweier Ja/Nein-Spalten. */
 .adm-ship-status { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; }
 .adm-ship-markers { display: inline-flex; flex-wrap: wrap; gap: 5px; }
-.adm-ship-marker { display: inline-flex; align-items: center; padding: 0 6px; border-radius: var(--ce-radius-sm); font-size: var(--ce-text-caption-size); font-weight: 500; line-height: var(--ce-text-caption-line); color: var(--ce-color-text-secondary); background: var(--ce-color-surface-muted); white-space: nowrap; }
+.adm-ship-marker { display: inline-flex; align-items: center; padding: 0 6px; border-radius: var(--ce-radius-sm); font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-secondary); background: var(--ce-color-surface-muted); white-space: nowrap; }
 .adm-ship-noprice { font-size: var(--ce-text-caption-size); line-height: 1.35; display: block; white-space: normal; overflow-wrap: break-word; }
 
 .adm-filter-error { flex-basis: 100%; margin-top: 0; }
@@ -1191,7 +1193,7 @@ a.adm-ship-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offs
 .adm-ships-cards { display: none; list-style: none; flex-direction: column; gap: var(--ce-space-3); }
 .adm-scard-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .adm-scard-kv { display: grid; grid-template-columns: 1fr; gap: var(--ce-space-2); margin-top: var(--ce-space-3); padding-top: var(--ce-space-3); border-top: 1px solid var(--ce-color-border-subtle); }
-.adm-scard-kv dt { font-size: var(--ce-text-caption-size); font-weight: 500; line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); margin-bottom: 2px; }
+.adm-scard-kv dt { font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); margin-bottom: 2px; }
 .adm-scard-kv dd { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-primary); overflow-wrap: anywhere; }
 .adm-scard-actions { display: flex; flex-wrap: wrap; gap: var(--ce-space-2); margin-top: var(--ce-space-3); }
 .adm-scard-actions .btn { min-height: var(--ce-size-touch-target); flex: 1; justify-content: center; }
@@ -1321,7 +1323,7 @@ a.adm-canc-cust-name:focus-visible, a.adm-canc-ship-no:focus-visible { outline: 
 .adm-canc-ship-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-brand-ink); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-canc-ship-no:hover { text-decoration: underline; }
 /* Fehlende Bestellnummer: ehrlich, aber nicht wie eine echte Nummer wirkend. */
-.adm-canc-ship-no-muted { font-family: var(--ce-font-numeric); color: var(--ce-color-text-muted); font-weight: 500; }
+.adm-canc-ship-no-muted { font-family: var(--ce-font-numeric); color: var(--ce-color-text-muted); font-weight: var(--ce-weight-medium); }
 .adm-canc-sub { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-muted); overflow-wrap: anywhere; }
 .adm-canc-time { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-secondary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
@@ -1594,7 +1596,7 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
 .adm-disclosure-summary {
   min-width: 0;
   font-size: var(--ce-text-body-s-size);
-  font-weight: 400;
+  font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-body-s-line);
   color: var(--ce-color-text-muted);
   overflow-wrap: break-word;
@@ -1960,7 +1962,7 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
   .adm-tarif-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .adm-tarif-table tr { padding: var(--ce-space-2) 0; border-bottom: 1px solid var(--ce-color-border-subtle); }
   .adm-tarif-table td { display: flex; justify-content: space-between; align-items: baseline; gap: var(--ce-space-3); padding: 2px 0; border: 0; white-space: normal; }
-  .adm-tarif-table td::before { content: attr(data-label); flex: 0 0 auto; font-size: var(--ce-text-caption-size); font-weight: 500; color: var(--ce-color-text-muted); }
+  .adm-tarif-table td::before { content: attr(data-label); flex: 0 0 auto; font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); color: var(--ce-color-text-muted); }
   .adm-tarif-table td:first-child { font-weight: 600; color: var(--ce-color-text-primary); }
   .adm-tarif-table td:first-child::before { content: none; }
   .adm-tarif-table td.adm-tarif-num { text-align: right; }
@@ -1993,7 +1995,7 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
   background: var(--ce-color-surface);
   box-shadow: var(--ce-elevation-dropdown);
   font-size: var(--ce-text-body-s-size);
-  font-weight: 400;
+  font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-body-s-line);
   color: var(--ce-color-text-secondary);
   text-align: left;
@@ -2021,7 +2023,7 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
   border-bottom: 1px solid var(--ce-color-border-subtle);
   margin: 0 -1px -1px 0;
 }
-.adm-fact dt { font-size: var(--ce-text-caption-size); font-weight: 500; line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
+.adm-fact dt { font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
 .adm-fact dd {
   margin: 0;
   font-size: var(--ce-text-title-card-size); font-weight: 600; line-height: var(--ce-text-title-card-line);
@@ -2030,7 +2032,7 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
 }
 .adm-fact-value { display: block; }
-.adm-fact-hint { display: block; margin-top: 2px; font-size: var(--ce-text-caption-size); font-weight: 400; line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
+.adm-fact-hint { display: block; margin-top: 2px; font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-text); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
 .adm-fact--warning .adm-fact-value { color: var(--ce-color-status-warning-fg); }
 .adm-fact--danger .adm-fact-value { color: var(--ce-color-status-error-fg); }
 .adm-fact--success .adm-fact-value { color: var(--ce-color-status-success-fg); }
@@ -2104,7 +2106,7 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
     .adm-sp-cardtable td[colspan] { grid-column: 1 / -1; }
     .adm-sp-cardtable td::before {
       content: attr(data-label);
-      font-size: var(--ce-text-caption-size); font-weight: 500; line-height: var(--ce-text-caption-line);
+      font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); line-height: var(--ce-text-caption-line);
       color: var(--ce-color-text-muted);
     }
     .adm-sp-cardtable td.adm-num { text-align: left; }

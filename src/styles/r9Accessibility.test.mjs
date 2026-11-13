@@ -54,8 +54,10 @@ test("Kontrast: gedämpfter Admin-Chip auf weißem Grund erreicht AA", () => {
   assert.match(r, /color: var\(--ce-color-text-muted\)/);
   assert.match(r, /background: var\(--ce-color-surface\)/, "der Chip steht wieder auf dem gedämpften Grund");
   assert.ok(kontrast(token("ce-color-text-muted"), token("ce-color-surface")) >= AA);
-  // Gegenprobe: auf dem Standardgrund des Chips lag er unter AA — deshalb der eigene Grund.
-  assert.ok(kontrast(token("ce-color-text-muted"), token("ce-color-surface-muted")) < AA);
+  // Bis 2026-11-13 lag der gedämpfte Text auf dem Standardgrund des Chips unter AA — deshalb der eigene Grund.
+  // Seit der Navy-Stufe (Betreiberentscheidung 2026-11-13) erreicht er dort ebenfalls AA; der Chip bleibt
+  // trotzdem auf dem weißen Grund.
+  assert.ok(kontrast(token("ce-color-text-muted"), token("ce-color-surface-muted")) >= AA);
 });
 
 test("Kontrast: Hinweistexte in Lieferschein- und Abrechnungsart erreichen AA, auch in der gewählten Option", () => {
@@ -69,7 +71,7 @@ test("Kontrast: Hinweistexte in Lieferschein- und Abrechnungsart erreichen AA, a
 
 test("Token-Kommentar nennt den gemessenen Kontrast von --ce-color-text-muted", () => {
   const k = kontrast(token("ce-color-text-muted"), "#ffffff").toFixed(2).replace(".", ",");
-  assert.match(variablen, new RegExp(`--ce-color-text-muted: #667284;\\s*/\\* weiß ${k}:1`), `erwartet „weiß ${k}:1“`);
+  assert.match(variablen, new RegExp(`--ce-color-text-muted: #4a5672;\\s*/\\* weiß ${k}:1`), `erwartet „weiß ${k}:1“`);
 });
 
 test("Nutzer-Chip: der Name entsteht aus dem sichtbaren Text, die Aktion wird ergänzt (WCAG 2.5.3)", () => {

@@ -34,7 +34,7 @@ import { KpiDetailFenster } from "./KpiDetailFenster";
                  2026-10-27): ruhige Logozeile, keine feste Liste, keine Laufzeiten
 
    Feinkorrektur 2026-10: Begrüßung und Carrier-Bereich sind inhaltlich
-   zurück — im neuen Designsystem (DM Sans, keine Symbole). Der Carrier-
+   zurück — im neuen Designsystem (eine Sans-Schrift, keine Symbole). Der Carrier-
    Bereich trägt seit der Betreiberentscheidung 2026-10-04 wieder die Optik
    vor dem Redesign (Navy, Routenlinien, weiße Logo-Kacheln) — nur er.
    Entfallen bleiben: Serifengruß, dekorative Chips (Datum/Live/DSGVO),

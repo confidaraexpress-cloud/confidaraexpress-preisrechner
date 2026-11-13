@@ -1,0 +1,103 @@
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   TITELSTILE SIGNATUR UND RELIEF — Confidara Signature Typography (Betreiberentscheidungen D2/D3, 2026-11-13)
+
+   Hauptüberschriften tragen ein Material statt einer flachen Farbe: eine Füllung aus der Navy-Familie, eine helle
+   Oberkante, eine dunkle Unterkante (Prägung) und eine weiche Tiefe. Nur CSS — kein Bild, kein Pseudoelement mit
+   Text, kein Skript, keine Bewegung. Die Werte stehen als --ce-titel-* in variables.css.
+
+   Zuordnung (D2): Signatur für die großen Titel des Kundenbereichs, Sendungsverfolgung und Versicherungsinfo; Relief
+   für Admin, Partnerportal und Rechtstexte (Lesedokumente: das ruhigere Material); die Bühnenfassung — dasselbe
+   Material hell auf dunkel — für Anmeldung, Registrierung, Partnerregistrierung (D3) und Preisrechner. Die
+   Admin-Anmeldung trägt keinen dieser Titel und bleibt unverändert (.auth-admin-titel).
+
+   Sicherheit der Darstellung:
+   • Die Mechanik liest lokale Größen (--titel-*) mit Rückfall. Ein Titel ohne Zuordnung bleibt deshalb ein normaler
+     Titel in seiner Schriftfarbe — nie unsichtbar.
+   • Nur wo der Browser background-clip: text kann (@supports); sonst bleibt die flache Schriftfarbe.
+   • Erzwungene Farben, erhöhter Kontrast und Druck: flache Schriftfarbe ohne Verlauf und Schatten.
+   • Markierter Text erhält eine echte Schriftfarbe (die Füllung selbst ist transparent).
+   Die Bündel laden diese Datei je einmal: index.css vor der Musterebene, public-calculator.css nach den Tokens.
+   ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Zuordnung ─────────────────────────────────────────────────────────────────────────────────────────────────── */
+/* Relief: gemeinsame Titelrolle ohne Bereich (Admin, Partnerportal) und Rechtstexte. */
+.ce-page-header-title,
+.legal-title {
+  --titel-fuellung: var(--ce-titel-relief-fuellung);
+  --titel-praegung: var(--ce-titel-relief-praegung);
+  --titel-schriftfuellung: transparent;
+}
+/* Signatur: Kundenbereich (Seitenkopf, Sendungsverfolgung, Buchungserfolg) und die öffentlichen Einstiegsseiten. */
+:root[data-ce-bereich="kunde"] .ce-page-header-title,
+:root[data-ce-bereich="kunde"] .bsx .booking-success-title,
+.tracking-title,
+.insinfo-title {
+  --titel-fuellung: var(--ce-titel-signatur-fuellung);
+  --titel-praegung: var(--ce-titel-signatur-praegung);
+  --titel-schriftfuellung: transparent;
+}
+/* Der Gruß der Übersicht ist ein Satz, kein Plakat (2026-11-01): dasselbe Material, eine Stufe ruhiger. */
+:root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-title {
+  --titel-praegung: var(--ce-titel-gruss-praegung);
+}
+/* Bühne: helle Fassung auf den dunklen Flächen. */
+.auth-title,
+.pc-display {
+  --titel-fuellung: var(--ce-titel-buehne-fuellung);
+  --titel-praegung: var(--ce-titel-buehne-praegung);
+  --titel-schriftfuellung: transparent;
+}
+
+/* ── Mechanik ──────────────────────────────────────────────────────────────────────────────────────────────────── */
+@supports ((background-clip: text) or (-webkit-background-clip: text)) {
+  .ce-page-header-title,
+  .legal-title,
+  .tracking-title,
+  .insinfo-title,
+  .booking-success-title,
+  .auth-title,
+  .pc-display {
+    background-image: var(--titel-fuellung, none);
+    /* Je Zeile ein Verlauf: Mehrzeilige Titel sehen in jeder Zeile gleich aus. */
+    background-size: 100% 1lh;
+    background-repeat: repeat-y;
+    background-origin: content-box;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: var(--titel-schriftfuellung, currentColor);
+    filter: var(--titel-praegung, none);
+  }
+}
+
+/* ── Markierung ────────────────────────────────────────────────────────────────────────────────────────────────── */
+.ce-page-header-title::selection, .ce-page-header-title *::selection,
+.legal-title::selection, .legal-title *::selection,
+.tracking-title::selection, .tracking-title *::selection,
+.insinfo-title::selection, .insinfo-title *::selection,
+.booking-success-title::selection, .booking-success-title *::selection {
+  -webkit-text-fill-color: var(--ce-titel-auswahl-text);
+  color: var(--ce-titel-auswahl-text);
+  background-color: var(--ce-titel-auswahl-grund);
+}
+.auth-title::selection, .auth-title *::selection,
+.pc-display::selection, .pc-display *::selection {
+  -webkit-text-fill-color: var(--ce-titel-buehne-auswahl-text);
+  color: var(--ce-titel-buehne-auswahl-text);
+  background-color: var(--ce-titel-buehne-auswahl-grund);
+}
+
+/* ── Rückfall: erzwungene Farben, erhöhter Kontrast, Druck ─────────────────────────────────────────────────────── */
+/* Gleiche Spezifität wie die Mechanik und später im Blatt: Diese Regel gewinnt. */
+@media (forced-colors: active), (prefers-contrast: more), print {
+  .ce-page-header-title,
+  .legal-title,
+  .tracking-title,
+  .insinfo-title,
+  .booking-success-title,
+  .auth-title,
+  .pc-display {
+    background-image: none;
+    -webkit-text-fill-color: currentColor;
+    filter: none;
+  }
+}

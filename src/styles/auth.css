@@ -117,7 +117,7 @@
   padding: 9px 20px 9px 14px; border-radius: 999px;
   background: rgba(16, 28, 60, 0.55);
   border: 1px solid var(--auth-line-2);
-  font-size: 11px; font-weight: 500; letter-spacing: 0.22em; text-transform: uppercase;
+  font-size: 11px; font-weight: var(--ce-weight-medium); letter-spacing: 0.22em; text-transform: uppercase;
   color: var(--auth-ink-1);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   box-shadow:
@@ -129,14 +129,15 @@
 
 .auth-title {
   font-family: var(--ce-font-display);
-  font-weight: 500;
+  /* Partnerregistrierung (D3, 2026-11-13): Displaystufe 700 und die Bühnenfassung der Signatur (titelstile.css). */
+  font-weight: var(--ce-text-display-xl-weight);
   font-size: clamp(40px, 6vw, 86px);
   line-height: 1.05; letter-spacing: -0.015em;
   color: var(--auth-ink-1);
   margin: 28px 0 18px;
 }
 .auth-title em {
-  font-style: italic; font-weight: 500;
+  font-style: italic; font-weight: var(--ce-weight-medium);
   background: linear-gradient(140deg, #6189ff 0%, #3b6cff 50%, #2e5cff 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
@@ -144,7 +145,7 @@
   font-size: clamp(15px, 1.3vw, 18px); font-weight: 600;
   color: var(--auth-ink-1); letter-spacing: 0.005em; margin-bottom: 8px;
 }
-.auth-sub-2 { font-size: clamp(13px, 1.1vw, 15px); color: var(--auth-ink-3); font-weight: 400;
+.auth-sub-2 { font-size: clamp(13px, 1.1vw, 15px); color: var(--auth-ink-3); font-weight: var(--ce-weight-text);
   /* Gesamtauftrag D: Lesemaß — ab 768 px stand der Satz in einer Zeile mit rund 100 Zeichen. */
   max-width: 62ch; margin-inline: auto; text-wrap: balance; }
 
@@ -217,7 +218,7 @@
   padding: 12px 16px;
   border: 1px solid transparent; border-radius: 10px;
   background: transparent; color: var(--auth-ink-3);
-  font-size: 14px; font-weight: 500; letter-spacing: 0.01em; font-family: inherit;
+  font-size: 14px; font-weight: var(--ce-weight-medium); letter-spacing: 0.01em; font-family: inherit;
   transition: color 180ms, background 240ms, border-color 240ms, box-shadow 240ms;
 }
 .auth-tab:hover { color: var(--auth-ink-2); }
@@ -237,9 +238,9 @@
 .auth-field-row {
   display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;
 }
-.auth-field-label { font-size: 13px; font-weight: 500; color: var(--auth-ink-2); letter-spacing: 0.005em; }
+.auth-field-label { font-size: 13px; font-weight: var(--ce-weight-medium); color: var(--auth-ink-2); letter-spacing: 0.005em; }
 .auth-field-link {
-  font-size: 12px; color: var(--auth-blue-3); font-weight: 500;
+  font-size: 12px; color: var(--auth-blue-3); font-weight: var(--ce-weight-medium);
   background: 0; border: 0; padding: 0; cursor: pointer; transition: color 160ms;
   /* Gesamtauftrag D: Trefferfläche mindestens 24 px hoch (WCAG 2.5.8) — ohne die Zeile höher zu machen. */
   display: inline-flex; align-items: center; min-height: 24px; margin-block: -4px;
@@ -292,7 +293,7 @@
   margin-left: 1px;
 }
 .auth-optional {
-  font-weight: 400;
+  font-weight: var(--ce-weight-text);
   letter-spacing: 0;
   text-transform: none;
   color: var(--auth-ink-4);
@@ -453,7 +454,7 @@
   display: flex; align-items: center; justify-content: center; gap: 8px; line-height: 1.5;
 }
 .auth-foot-ico { width: 14px; height: 14px; color: var(--auth-ink-4); flex-shrink: 0; }
-.auth-foot strong { color: var(--auth-ink-3); font-weight: 500; }
+.auth-foot strong { color: var(--auth-ink-3); font-weight: var(--ce-weight-medium); }
 .auth-foot a { color: var(--auth-ink-3); text-decoration: none; transition: color 0.15s; }
 .auth-foot a:hover { color: var(--auth-blue-soft); text-decoration: underline; }
 
@@ -560,6 +561,12 @@
   background: var(--auth-admin-nacht-950);
   color: var(--auth-admin-tinte-1);
   font-family: var(--ce-font-sans);
+  /* Geschützt (Confidara Signature Typography, 2026-11-13): Die Admin-Anmeldung bleibt unverändert. Der body trägt
+     seitdem die Gewichtsleiter (450); diese Seite behält ihr bisheriges Grundgewicht, auch für Felder und Knöpfe mit
+     font: inherit. Der Haken --ce-steuerelement-gewicht hält auch Knöpfe und Felder ohne eigene Angabe auf dem
+     bisherigen Browserwert 400 (globals.css setzt sie sonst auf die Textstufe). */
+  font-weight: 400;
+  --ce-steuerelement-gewicht: 400;
   overflow: clip;
   -webkit-font-smoothing: antialiased;
 }

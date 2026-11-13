@@ -11,8 +11,10 @@ import React from "react";
      [Untertitel]
      [Meta-/Statuszeile]
 
-   • Der Titel ist überall dieselbe Rolle: DM Sans 28/36, mobil 24/32 — keine
-     Serifenschrift, keine zweite Titelhierarchie, keine Versal-Eyebrow mehr.
+   • Der Titel ist überall dieselbe Rolle: Instrument Sans in der Titelstufe
+     (--ce-text-title-page-*), seit der Betreiberentscheidung vom 2026-11-13 im
+     Titelstil „Signatur“ (Kundenbereich) bzw. „Relief“ (Admin, Partnerportal) —
+     keine Serifenschrift, keine zweite Titelhierarchie, keine Versal-Eyebrow mehr.
      Eine übergebene `eyebrow` wird deshalb nicht mehr dargestellt; die
      Bereichszugehörigkeit zeigt die Navigation.
    • Die Utility-Aktionen (Mitteilungen, Konto) stehen in einer eigenen,

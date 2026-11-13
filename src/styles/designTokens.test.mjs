@@ -7,7 +7,8 @@
 //
 //   • Die Foundation ist vollständig und trägt die Werte der freigegebenen
 //     Spezifikation — inklusive der vier Werte, an denen die ganze Farbwelt hängt.
-//     Das sind #5367e8 (Marke), #111a33 (Primärtext), #667284 (gedämpfter Text)
+//     Das sind #5367e8 (Marke), #111a33 (Primärtext), #4a5672 (gedämpfter Text,
+//     seit der Betreiberentscheidung 2026-11-13 in der Navy-Familie)
 //     und #8891a3 (Kante bedienbarer Elemente) — die ConfidaraExpress-Farbwelt;
 //     die zwischenzeitliche Petrol-Fassung des Redesigns 2026-10 ist
 //     zurückgenommen (Betreiberentscheidung).
@@ -140,7 +141,9 @@ test("3 — die vier tragenden Farbwerte stimmen exakt (ConfidaraExpress-Farbwel
   // zurückgenommen (Betreiberentscheidung).
   assert.equal(wert("ce-color-brand"), "#5367e8", "Markenakzent");
   assert.equal(wert("ce-color-text-primary"), "#111a33", "Navy / Primärtext");
-  assert.equal(wert("ce-color-text-muted"), "#667284", "gedämpfter Text");
+  // Betreiberentscheidung 2026-11-13: Neben- und gedämpfter Text in der Navy-Familie — deutlich dunkler und
+  // kontrastreicher (vorher #5f6d80 und #667284).
+  assert.equal(wert("ce-color-text-muted"), "#4a5672", "gedämpfter Text");
   assert.equal(wert("ce-color-border-interactive"), "#8891a3", "Kante bedienbarer Elemente");
   // Die abgeleiteten Markenzustände hängen an denselben Entscheidungen.
   assert.equal(wert("ce-color-brand-hover"), "#4658d9");
@@ -148,7 +151,7 @@ test("3 — die vier tragenden Farbwerte stimmen exakt (ConfidaraExpress-Farbwel
   assert.equal(wert("ce-color-brand-ink"), "#3d4fcf");
   assert.equal(wert("ce-color-brand-soft"), "#eef0fd");
   assert.equal(wert("ce-color-brand-soft-hover"), "#e3e7fb");
-  assert.equal(wert("ce-color-text-secondary"), "#5f6d80");
+  assert.equal(wert("ce-color-text-secondary"), "#3a4662");
   assert.equal(wert("ce-color-border-focus"), "#5367e8", "Fokus");
   // Violett bleibt zweiter Markenton (Auszeichnungen), nie Aktionsfarbe.
   assert.equal(wert("ce-color-brand-violet"), "#7a5ce6", "zweiter Markenton");

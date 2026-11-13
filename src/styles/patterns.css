@@ -28,8 +28,9 @@
      [Untertitel]
      [Meta-/Statuszeile]
 
-   Titel: DM Sans 28/36 600, mobil 24/32 — dieselbe Rolle auf jeder Seite,
-   auch im Adminbereich. Keine Serifenschrift, keine Versal-Eyebrow.
+   Titel: Instrument Sans in der Titelstufe (--ce-text-title-page-*) — dieselbe
+   Rolle auf jeder Seite, auch im Adminbereich (dort Titelstil „Relief“,
+   Betreiberentscheidung 2026-11-13). Keine Serifenschrift, keine Versal-Eyebrow.
 
    Der Rahmen entspricht exakt dem gemeinsamen Inhaltsrahmen (.page-body):
    Inhalt maximal 1200 px, Seitenrand --shell-gutter (32 / 24 / 16 px). Steht
@@ -297,7 +298,7 @@ td.ce-col-actions,
   border-bottom: 2px solid transparent;
   font-family: var(--ce-font-sans);
   font-size: var(--ce-text-body-size);
-  font-weight: 500;
+  font-weight: var(--ce-weight-medium);
   line-height: 1.4286;
   color: var(--ce-color-text-secondary);
   white-space: nowrap;

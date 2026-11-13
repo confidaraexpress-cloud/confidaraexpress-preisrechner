@@ -15,7 +15,7 @@
    Optik aus dem gemeinsamen Tab-Muster (.ce-tabs/.ce-tab, patterns.css) —
    hier steht nur der Abstand zur Werkzeugleiste. */
 .abk-tabs { margin-bottom: var(--ce-space-5); }
-.abk-tab-count { font-size: var(--ce-text-caption-size); font-weight: 500; color: var(--ce-color-text-muted); }
+.abk-tab-count { font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); color: var(--ce-color-text-muted); }
 .abk-tab--active .abk-tab-count { color: var(--ce-color-brand-ink); }
 
 /* ─── Werkzeugleiste ──────────────────────────────────────────────────────────
@@ -47,7 +47,7 @@
   min-height: var(--ce-size-control-md); padding: 0 var(--ce-space-4);
   border: 1px solid var(--ce-color-border-interactive); border-radius: var(--ce-radius-md);
   background: var(--ce-color-surface); color: var(--ce-color-text-primary);
-  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-size); font-weight: 500;
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-size); font-weight: var(--ce-weight-medium);
   cursor: pointer;
   transition: border-color var(--ce-motion-fast) var(--ce-motion-ease-standard), background-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
@@ -200,7 +200,7 @@
   display: flex; align-items: center; width: 100%; text-align: left;
   min-height: var(--ce-size-control-md); padding: 0 var(--ce-space-3);
   border: none; background: transparent; border-radius: var(--ce-radius-sm);
-  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-size); font-weight: 400; color: var(--ce-color-text-primary); cursor: pointer;
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-size); font-weight: var(--ce-weight-text); color: var(--ce-color-text-primary); cursor: pointer;
 }
 .abk-actions-item:hover, .abk-actions-item:focus-visible { background: var(--ce-color-surface-hover); }
 .abk-actions-item--danger { color: var(--ce-color-status-error-fg); }
@@ -255,7 +255,7 @@
 }
 .abk-role-option:hover { border-color: var(--ce-color-border-interactive-hover); }
 .abk-role-option input { position: absolute; opacity: 0; width: 0; height: 0; }
-.abk-role-option-label { font-size: var(--ce-text-body-s-size); font-weight: 500; color: var(--ce-color-text-primary); }
+.abk-role-option-label { font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-medium); color: var(--ce-color-text-primary); }
 .abk-role-option--selected { border-color: var(--ce-color-brand); background: var(--ce-color-brand-soft); }
 .abk-role-option--selected .abk-role-option-label { color: var(--ce-color-brand-ink); font-weight: 600; }
 .abk-role-option:focus-within { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }

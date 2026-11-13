@@ -111,6 +111,18 @@ test("4 — kein freier Schatten und kein farbiger Glow außerhalb des Auth-Bere
   }
   assert.deepEqual(frei, [], `frei geschriebene Schatten:\n  ${frei.join("\n  ")}`);
 
+  // (a') Dasselbe für filter: (Titelstile Signatur/Relief, 2026-11-13): Auch eine Prägung aus drop-shadow() steht
+  //      als Wert nur in variables.css; eine Regel verweist auf ein Token.
+  const freiFilter = [];
+  for (const f of ALLE_CSS) {
+    if (f === "variables.css" || f === "auth.css") continue;
+    for (const m of css[f].matchAll(/(?<![\w-])filter:\s*([^;}]+)/g)) {
+      const v = m[1].trim().replace(/\s+/g, " ");
+      if (/#[0-9a-f]{3,8}\b|rgba?\(/i.test(v)) freiFilter.push(`${f}: ${v.slice(0, 60)}`);
+    }
+  }
+  assert.deepEqual(freiFilter, [], `frei geschriebene Filterfarben:\n  ${freiFilter.join("\n  ")}`);
+
   // (b) Kein farbiger Glow. Jeder Schattenton der Ablage ist neutral (Navy
   //     rgba(17,26,51)) oder weißes Streiflicht. Einzige Ausnahme:
   //     --auth-blue-glow, das Signaturlicht des Auth-Bereichs.
@@ -125,6 +137,32 @@ test("4 — kein freier Schatten und kein farbiger Glow außerhalb des Auth-Bere
     }
   }
   assert.deepEqual(bunt, [], `farbiger Schatten:\n  ${bunt.join("\n  ")}`);
+
+  // (c) Einzige weitere, ausdrücklich begrenzte Farbquelle: das Material der Hauptüberschriften (--ce-titel-*,
+  //     Betreiberentscheidung D2 vom 2026-11-13). Erlaubt sind Navy-Stufen (Blau überwiegt, Rot unter 80), Weiß,
+  //     helle Blautöne der Bühnenfüllung (Blau ≥ 240, Rot ≥ 190), Schwarz, Logo-Blau rgb(0,74,252) und
+  //     Markenviolett rgb(122,92,230) — sonst nichts. Die Prägung besteht nur aus drop-shadow(), ohne blur().
+  const titelTokens = [...variables.matchAll(/(--ce-titel-[\w-]+):\s*([^;]+);/g)];
+  assert.ok(titelTokens.length >= 11, "die Titeltokens fehlen");
+  const hexZuRgb = (h) => {
+    const x = h.length <= 4 ? [...h.slice(1)].map((c) => c + c).join("") : h.slice(1, 7);
+    return [0, 2, 4].map((i) => parseInt(x.slice(i, i + 2), 16));
+  };
+  const erlaubt = ([r, g, b]) =>
+    (r === 255 && g === 255 && b === 255) || (r === 0 && g === 0 && b === 0) ||
+    (r === 0 && g === 74 && b === 252) || (r === 122 && g === 92 && b === 230) ||
+    (b > r && b > g && r < 80) || (b >= 240 && r >= 190);
+  const fremdeTitelfarbe = [];
+  for (const [, name, wert] of titelTokens) {
+    const farben = [...wert.matchAll(/#[0-9a-f]{3,8}\b/gi)].map((m) => hexZuRgb(m[0]))
+      .concat([...wert.matchAll(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g)].map((c) => [+c[1], +c[2], +c[3]]));
+    for (const rgb of farben) if (!erlaubt(rgb)) fremdeTitelfarbe.push(`${name}: rgb(${rgb.join(",")})`);
+    if (/-praegung$/.test(name)) {
+      assert.doesNotMatch(wert, /blur\(/, `${name}: blur() in der Prägung`);
+      assert.match(wert.trim(), /^(drop-shadow\([^()]*(\([^()]*\)[^()]*)?\)\s*)+$/, `${name}: nur drop-shadow()`);
+    }
+  }
+  assert.deepEqual(fremdeTitelfarbe, [], `fremde Farbe im Titelmaterial:\n  ${fremdeTitelfarbe.join("\n  ")}`);
 
   // backdrop-filter und Blur ausschließlich im Auth-Bereich.
   for (const f of ALLE_CSS) {
@@ -153,27 +191,30 @@ test("5 — es gibt genau einen Overlayton", () => {
 
 /* ══════════ 6 — Schrift ═════════════════════════════════════════════════ */
 
-test("6 — es werden nur die drei benutzten Schriftfamilien geladen", () => {
+test("6 — es wird nur die eine benutzte Schriftfamilie geladen", () => {
   const fonts = ohneKommentare(read("./fonts.css"));
   const familien = [...new Set([...fonts.matchAll(/font-family:\s*'([^']+)'/g)].map((m) => m[1]))].sort();
-  // Premium-Redesign (Betreiberentscheidung 2026-10-27): Instrument Sans für Kunde, Anmeldung und Preisrechner;
-  // DM Sans und Cormorant bleiben für Admin, Partnerportal und Partnerregistrierung.
-  assert.deepEqual(familien, ["Cormorant Garamond", "DM Sans", "Instrument Sans"]);
+  // Premium-Redesign (Betreiberentscheidung 2026-10-27): Instrument Sans für Kunde, Anmeldung und Preisrechner.
+  // Seit D1/D3 (Betreiberentscheidung 2026-11-13) für die ganze Plattform; DM Sans und Cormorant sind entfernt.
+  assert.deepEqual(familien, ["Instrument Sans"]);
   // Jede geladene Datei existiert, und es liegt keine ungenutzte Datei herum.
   const geladen = new Set([...fonts.matchAll(/url\('\.\.\/assets\/fonts\/([^']+)'\)/g)].map((m) => m[1]));
   const vorhanden = new Set(readdirSync(new URL("../assets/fonts/", import.meta.url)));
   for (const d of geladen) assert.ok(vorhanden.has(d), `fonts.css lädt ${d}, die Datei fehlt`);
   for (const d of vorhanden) assert.ok(geladen.has(d), `${d} liegt ungenutzt im Repository`);
-  // Kein UI-Gewicht über 600 — außer in den Dateien des Premium-Bereichs (Instrument Sans, Betreiberentscheidung
-  // 2026-10-27: Titel und Preise bis 700). Deren Regeln hängen am Bereichsattribut; Admin und Partner lesen sie nie.
-  const BEREICH = new Set(["premium-redesign.css", "premium-editorial.css", "public-calculator.css", "paketbuehne.css", "nachtkarte.css", "demo.css"]);
+  // Kein UI-Gewicht über 700 — die Achse der Schriftdatei (400–700). Bis 2026-11-13 galt außerhalb des
+  // Premium-Bereichs 600; seit D1 liest die ganze Plattform Instrument Sans mit derselben Gewichtsleiter.
   for (const f of ALLE_CSS) {
     for (const m of css[f].matchAll(/font-weight:\s*(\d+|bold|bolder)/g)) {
       if (f === "fonts.css") continue;
       const w = m[1] === "bold" || m[1] === "bolder" ? 700 : Number(m[1]);
-      assert.ok(w <= (BEREICH.has(f) ? 700 : 600), `${f}: font-weight ${m[1]}`);
+      assert.ok(w <= 700, `${f}: font-weight ${m[1]}`);
     }
   }
+  // Jede @font-face-Regel deklariert genau die Achse der Datei — kein Gewicht, das die Datei nicht trägt.
+  const achsen = [...fonts.matchAll(/font-weight:\s*([^;]+);/g)].map((m) => m[1].trim());
+  assert.ok(achsen.length > 0 && achsen.every((a) => a === "400 700"),
+    `Gewichtsangaben der @font-face-Regeln: ${achsen.join(", ")}`);
 });
 
 /* ══════════ 7 — Abhängigkeiten ══════════════════════════════════════════ */

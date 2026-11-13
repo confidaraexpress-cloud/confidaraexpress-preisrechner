@@ -6,16 +6,6 @@
       "gzip": 959,
       "brotli": 793
     },
-    "assets/cormorantgaramond-400.woff2": {
-      "raw": 37640,
-      "gzip": 37673,
-      "brotli": 37644
-    },
-    "assets/cormorantgaramond-400-italic.woff2": {
-      "raw": 39260,
-      "gzip": 39293,
-      "brotli": 39264
-    },
     "assets/der-kurier.svg": {
       "raw": 81313,
       "gzip": 58742,
@@ -25,16 +15,6 @@
       "raw": 6240,
       "gzip": 2350,
       "brotli": 2026
-    },
-    "assets/dmsans-300.woff2": {
-      "raw": 62724,
-      "gzip": 62656,
-      "brotli": 62728
-    },
-    "assets/dmsans-300-italic.woff2": {
-      "raw": 28040,
-      "gzip": 27979,
-      "brotli": 28044
     },
     "assets/emons.svg": {
       "raw": 14656,
@@ -77,9 +57,9 @@
       "brotli": 16226
     },
     "assets/public-calculator.css": {
-      "raw": 68652,
-      "gzip": 13300,
-      "brotli": 11849
+      "raw": 79895,
+      "gzip": 15200,
+      "brotli": 13535
     },
     "assets/tnt.svg": {
       "raw": 13707,

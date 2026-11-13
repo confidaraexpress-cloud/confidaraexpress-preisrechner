@@ -749,7 +749,8 @@
   font-family: var(--ce-pr-font-display);
   font-size: 2.5rem;
   line-height: 1.12;
-  font-weight: 600;
+  /* Seitentitelstufe (700 seit 2026-11-13); Füllung und Prägung „Signatur“ aus titelstile.css. */
+  font-weight: var(--ce-text-title-page-weight);
   letter-spacing: var(--ce-pr-ed-headline-tracking);
   font-stretch: var(--ce-pr-ed-headline-stretch);
   color: var(--ce-color-text-primary);
@@ -897,7 +898,7 @@
   color: var(--ce-color-text-primary);
   overflow-wrap: break-word;
 }
-[data-ce-bereich="kunde"] .bsx-dok-nummer { font-weight: 500; color: var(--ce-color-text-secondary); }
+[data-ce-bereich="kunde"] .bsx-dok-nummer { font-weight: var(--ce-weight-medium); color: var(--ce-color-text-secondary); }
 [data-ce-bereich="kunde"] .bsx-dok-ref {
   font-size: var(--ce-text-label-size);
   line-height: var(--ce-text-label-line);
@@ -1341,12 +1342,14 @@
 [data-ce-bereich="auth"] .auth-brand { align-items: flex-start; margin: 0; }
 /* Seitenverhältnis des Lockups (viewBox 1176 × 613): die Höhe steht fest, bevor das Bild geladen ist (kein CLS). */
 [data-ce-bereich="auth"] .auth-brand .ce-brandmark-img { width: 136px; height: auto; aspect-ratio: 1176 / 613; }
-/* Die Stimme der Bühne: Instrument Sans, offen gesetzt (Audit B.2: −0,022 em, Breite 96 %, 620 statt 650). */
+/* Die Stimme der Bühne: Instrument Sans, offen gesetzt (Audit B.2: −0,022 em, Breite 96 %). Gewicht seit dem
+   2026-11-13 die Displaystufe 700 (Auftrag: große Titel 750–800, soweit die Schrift es trägt; vorher 620) mit der
+   Bühnenfassung der Signatur aus titelstile.css. */
 [data-ce-bereich="auth"] .auth-title {
   margin: 0;
   font-family: var(--ce-pr-font-display);
   font-size: clamp(2.5rem, 4.2vw, 3.75rem);
-  font-weight: 620;
+  font-weight: var(--ce-text-display-xl-weight);
   font-style: normal;
   font-stretch: var(--ce-pr-display-stretch);
   line-height: 1.04;
@@ -1426,7 +1429,7 @@
   border-radius: var(--ce-radius-full);
   color: var(--ce-pr-on-navy);
   font-size: 0.9375rem;
-  font-weight: 500;
+  font-weight: var(--ce-weight-medium);
   line-height: 1.4;
   text-decoration: none;
 }

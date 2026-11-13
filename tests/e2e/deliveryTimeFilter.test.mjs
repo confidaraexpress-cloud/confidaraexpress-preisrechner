@@ -255,7 +255,9 @@ test("2 — frühe Karte (10:30): Datum + grünes Feld, KEINE graue Doppelzeile"
   assert.equal(stil.farbe, "rgb(47, 107, 82)");
   assert.equal(stil.flaeche, "rgb(238, 244, 241)");
   assert.equal(stil.radius, "8px");
-  assert.equal(stil.groesse, "12px");
+  // 13 px seit der Confidara Signature Typography (Betreiberentscheidung 2026-11-13): Kleinstschrift des
+  // Kundenbereichs nicht unter 13 px (bis dahin 12 px).
+  assert.equal(stil.groesse, "13px");
   assert.equal(stil.schatten, "none");
   await page.close();
 });

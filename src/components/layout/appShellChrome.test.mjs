@@ -684,15 +684,18 @@ test("29 — Seitenrand 32 / 24 / 16 px aus EINER Quelle", () => {
   assert.match(dashboardRules, /\.page-body\s*\{[^}]*var\(--shell-gutter/, ".page-body liest den Seitenrand nicht");
 });
 
-test("30 — Navigationstypografie: 15/22, Hauptpunkte 600, Unterpunkte 500 — Gruppenkopf gleichrangig", () => {
+test("30 — Navigationstypografie: 15/22, Hauptpunkte 600, Unterpunkte 550 — Gruppenkopf gleichrangig", () => {
   // Feinkorrektur 2026-10: die Kunden-Sidebar trägt eine eigene, präsentere
-  // Stufe — die allgemeine Navigationsrolle (Adminbereich) bleibt 14/20, 500.
+  // Stufe — die allgemeine Navigationsrolle (Adminbereich) bleibt 14/20. Seit
+  // der Gewichtsleiter vom 2026-11-13 tragen Unterpunkte und die allgemeine
+  // Rolle die mittlere Stufe 550; die Größen bleiben (D4: die Navigation wächst
+  // nicht mit).
   assert.equal(tok("ce-sidebar-nav-size"), "15px");
   assert.equal(tok("ce-sidebar-nav-weight"), "600");
-  assert.equal(tok("ce-sidebar-nav-weight-sub"), "500");
+  assert.equal(tok("ce-sidebar-nav-weight-sub"), "550");
   assert.equal(tok("ce-sidebar-nav-row"), "44px");
   assert.equal(tok("ce-text-nav-size"), "14px");
-  assert.equal(tok("ce-text-nav-weight"), "500");
+  assert.equal(tok("ce-text-nav-weight"), "550");
   // Gruppenkopf und Eintrag der ersten Ebene teilen sich EINE Regel.
   assert.match(premiumRules, /\.nitem,\s*\.pp-nav-group-head\s*\{/,
     "Gruppenkopf und Eintrag der ersten Ebene teilen sich keine gemeinsame Regel mehr");

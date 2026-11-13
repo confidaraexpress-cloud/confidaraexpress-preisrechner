@@ -93,6 +93,10 @@
    Foundation-Tokens, Karten/Tabs/Listen aus den gemeinsamen Mustern. Steht wie
    alle Bereichs-Stylesheets VOR patterns.css. */
 @import './partner.css';
+/* Titelstile Signatur und Relief (Betreiberentscheidungen D2/D3, 2026-11-13): ein Material für die Hauptüberschriften
+   aller Bereiche, gemeinsam mit dem öffentlichen Preisrechner. Setzt nur Füllung, Prägung und Markierung — keine
+   Schriftrolle — und steht deshalb vor der Musterebene. */
+@import './titelstile.css';
 @import './patterns.css';
 /* Premium-Redesign 2026-10, Etappe 1: Kundenbereich und Auth. Jede Regel hängt am
    Bereichsattribut <html data-ce-bereich> (hooks/useCeBereich.js); Admin, Partnerportal und

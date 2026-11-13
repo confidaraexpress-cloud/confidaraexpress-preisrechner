@@ -327,7 +327,7 @@ test("13 — jede Adminseite hat genau EINEN Seitenkopf", () => {
     assert.equal(/<h1\b/.test(src), false, `${f}: eigenes <h1> neben dem Seitenkopf`);
   }
   // Im Adminportal gibt es keine Serifenschrift. Redesign 2026-10: Kunden-
-  // und Adminbereich teilen EINE Titelrolle (DM Sans, Page Title) — es gibt
+  // und Adminbereich teilen EINE Titelrolle (Sans-Rolle, Page Title) — es gibt
   // keine eigene Admin-Titelregel mehr.
   assert.doesNotMatch(admin, /Cormorant|--ce-font-display|var\(--fd\)/);
   const titel = patterns.match(/\.ce-page-header-title \{([^}]*)\}/)[1];

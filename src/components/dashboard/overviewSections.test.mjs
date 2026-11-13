@@ -103,7 +103,8 @@ test("2b — Begrüßung (Betreiberentscheidung 2026-11-01): ein Satz in der Gru
   assert.ok(start > -1, "die Regel der Begrüßung fehlt");
   const regel = editorial.slice(start, editorial.indexOf("}", start));
   assert.match(regel, /font-size: var\(--ce-pr-ed-gruss-size\);/, "die Begrüßung steht nicht in der Gruß-Skala");
-  assert.match(regel, /font-weight: 500;/, "die Begrüßung ist wieder ein fetter Titel");
+  // Gewichtsleiter 2026-11-13: die mittlere Stufe (550) statt 500 — weiterhin kein Titelgewicht.
+  assert.match(regel, /font-weight: var\(--ce-weight-medium\);/, "die Begrüßung ist wieder ein fetter Titel");
   assert.match(regel, /font-stretch: 100%;/, "die Begrüßung steht nicht in normaler Breite");
   // Jede Stufe der Titelskala hat ihre Gruß-Stufe in derselben Medienabfrage (em: greift auch bei großer Grundschrift).
   for (const [stufe, gruss] of [["68.75em", "tablet"], ["37.5em", "mobile"]]) {

@@ -9,7 +9,7 @@
 /* Lieferschein-Zelle: Art, Nummer (eine lange eigene Nummer bricht nur am Bindestrich), Herkunft. */
 .dn-zelle { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .dn-art { font-weight: 600; color: var(--ce-color-text-primary); }
-.dn-art--none { font-weight: 400; color: var(--ce-color-text-muted); }
+.dn-art--none { font-weight: var(--ce-weight-text); color: var(--ce-color-text-muted); }
 .dn-nummer-wert { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; color: var(--ce-color-text-secondary); }
 /* Vorgangs- und Auftragsnummer in der Tabelle: ganz, ohne Fugen (Werte erlaubt bei langen Kennungen den Umbruch am
    Bindestrich — in der Spalte „Sendung“ sähe „CE-AU-“ / „2026-000007“ wie zwei Werte aus). */

@@ -54,7 +54,7 @@
    Stufe deutlicher als der Druckhinweis, aber ebenso ohne Warnfläche. */
 .sdoc-group-note--hint {
   color: var(--ce-color-text-secondary);
-  font-weight: 500;
+  font-weight: var(--ce-weight-medium);
 }
 
 .sdoc-list { display: flex; flex-direction: column; }

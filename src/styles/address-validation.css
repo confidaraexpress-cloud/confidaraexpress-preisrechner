@@ -95,7 +95,7 @@
 /* Straße und Hausnummer stehen vorn; die getippten Wortanfänge sind zurückhaltend
    hervorgehoben (nur Gewicht, keine Farbe). Straßennamen können lang sein und brechen an
    Wortgrenzen um — es wird nichts gekürzt und nichts zeichenweise zerlegt. */
-.addr-suggest-opt-text { font-weight: 400; }
+.addr-suggest-opt-text { font-weight: var(--ce-weight-text); }
 .addr-suggest-hit { font-weight: 600; }
 .addr-suggest-opt-meta { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-secondary); }
 

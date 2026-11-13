@@ -233,7 +233,7 @@ h1, h2, h3, h4 { font-family: var(--ce-font-sans); font-weight: 600; }
 .legal-dd--last { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
 
 /* Technische Bezeichner (sessionStorage, localStorage, ce_token) — dieselbe
-   bereits geladene DM Sans, nur als Bezeichner abgesetzt. */
+   bereits geladene Instrument Sans, nur als Bezeichner abgesetzt. */
 .legal-code {
   font-family: var(--ce-font-numeric);
   font-size: var(--ce-text-body-size);

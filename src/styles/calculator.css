@@ -53,7 +53,7 @@
 .calc-section-title .calc-section-badge { margin-left: var(--ce-space-2); vertical-align: middle; }
 
 .vol-weight-box { background: var(--ce-color-brand-soft); border: 1px solid var(--ce-color-brand-border); border-radius: var(--radius); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 8px; }
-.vol-weight-label { font-size: 13px; color: var(--ce-color-brand-ink); font-weight: 500; }
+.vol-weight-label { font-size: 13px; color: var(--ce-color-brand-ink); font-weight: var(--ce-weight-medium); }
 .vol-weight-value { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 15px; font-weight: 600; color: var(--navy); }
 
 /* ─── Service filter — collapsible trigger ───────────────────────────────── */
@@ -68,7 +68,7 @@
 .service-filter-trigger:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 .service-filter-trigger-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .service-filter-trigger-title { font-size: var(--ce-text-label-size); font-weight: 600; color: var(--ce-color-text-primary); font-family: var(--ce-font-sans); line-height: 1.3; }
-.service-filter-trigger-val { font-size: var(--ce-text-caption-size); color: var(--ce-color-brand-ink); margin-top: 2px; font-weight: 500; }
+.service-filter-trigger-val { font-size: var(--ce-text-caption-size); color: var(--ce-color-brand-ink); margin-top: 2px; font-weight: var(--ce-weight-medium); }
 /* Klappmarke rein per CSS (Redesign 2026-10): zwei Kanten eines gedrehten
    Quadrats in der Textfarbe — geschlossen nach unten, offen nach oben. Den
    Zustand tragen aria-expanded und der Wert, nicht das Zeichen. */
@@ -101,7 +101,7 @@
 .service-filter-option.selected { background: var(--ce-color-brand-soft); }
 .service-filter-option.selected:hover { background: var(--ce-color-brand-soft-hover); }
 .service-filter-option-text { flex: 1; min-width: 0; }
-.service-filter-option-label { font-size: var(--ce-text-body-s-size); font-weight: 500; line-height: 1.4; color: var(--ce-color-text-primary); }
+.service-filter-option-label { font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-medium); line-height: 1.4; color: var(--ce-color-text-primary); }
 .service-filter-option.selected .service-filter-option-label { color: var(--ce-color-brand-ink); font-weight: 600; }
 .service-filter-option-desc { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-secondary); margin-top: 2px; line-height: 1.4; }
 
@@ -283,7 +283,7 @@
 
 /* ── A) Filter-Auslöser: Beschriftung über Wert. ── */
 .calc-filter-bar .service-filter-trigger-title {
-  font-size: var(--ce-text-caption-size); font-weight: 500; line-height: var(--ce-text-caption-line);
+  font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); line-height: var(--ce-text-caption-line);
   color: var(--ce-color-text-secondary);
 }
 .calc-filter-bar .service-filter-trigger-val {
@@ -397,7 +397,7 @@
 .dropoff-selected-label { color: var(--ce-color-text-secondary); }
 .dropoff-selected-name { font-weight: 600; }
 .dropoff-required-hint { margin: 12px 0 0; font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-status-warning-fg); }
-.field-optional { font-size: var(--ce-text-label-size); color: var(--ce-color-text-muted); font-weight: 400; }
+.field-optional { font-size: var(--ce-text-label-size); color: var(--ce-color-text-muted); font-weight: var(--ce-weight-text); }
 /* Hilfetext 13/20 unmittelbar am Feld (Redesign 2026-10; vorher 11 px). */
 .field-hint { display: block; margin-top: 6px; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted); }
 
@@ -531,7 +531,7 @@
   flex: 1 1 auto; min-width: 0;
   font-size: 13px; font-weight: 600; color: var(--ce-color-text-primary);
 }
-.booking-voucher-applied-meta { font-weight: 400; color: var(--ce-color-text-muted); overflow-wrap: anywhere; }
+.booking-voucher-applied-meta { font-weight: var(--ce-weight-text); color: var(--ce-color-text-muted); overflow-wrap: anywhere; }
 .booking-voucher-remove { flex: 0 0 auto; }
 
 /* Rabatt- und Endbetragszeilen. „Zu zahlen" trägt dieselbe Auszeichnung wie der
@@ -654,7 +654,7 @@
 .ins-card-name { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; color: var(--navy); line-height: 1.3; min-width: 0; overflow-wrap: normal; word-break: normal; hyphens: none; }
 .ins-card-price { grid-column: 2; justify-self: end; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
 .ins-card-price-val { font-family: var(--ce-font-numeric); font-size: 15px; font-weight: 600; color: var(--navy); white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
-.ins-card-price-sub { font-size: var(--ce-text-caption-size); font-weight: 500; color: var(--ce-color-text-secondary); }
+.ins-card-price-sub { font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); color: var(--ce-color-text-secondary); }
 
 /* Leistungspunkte als ruhige Liste mit neutralem Listenpunkt (Typografie, kein
    Häkchen- oder Info-Symbol, Redesign 2026-10). Informative Punkte (z. B.
@@ -684,7 +684,7 @@
   display: inline-flex; align-items: center; gap: 5px;
   margin: 0; padding: 3px 0; background: none; border: none;
   border-bottom: 1px solid var(--ce-color-brand-border);
-  font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1.3;
+  font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1.3;
   color: var(--ce-color-brand-ink); text-decoration: none; text-align: left;
   cursor: pointer;
 }
@@ -709,15 +709,15 @@
 .ins-card--selected .ins-card-radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--ce-color-brand); }
 
 /* Premium-Badge (dezent, sachlich — keine manipulative Upsell-Optik): Badge-
-   Stufe 12 px, normale Schreibweise, Radius 8. */
-.ins-card-badge { align-self: flex-start; margin-left: 27px; font-size: 12px; font-weight: 500; line-height: 1.5; color: var(--ce-color-brand-ink); background: var(--ce-color-brand-soft); border: 1px solid var(--ce-color-brand-border); border-radius: var(--ce-radius-sm); padding: 2px 8px; white-space: nowrap; }
+   Stufe 13 px, normale Schreibweise, Radius 8. */
+.ins-card-badge { align-self: flex-start; margin-left: 27px; font-size: 13px; font-weight: var(--ce-weight-medium); line-height: 1.5; color: var(--ce-color-brand-ink); background: var(--ce-color-brand-soft); border: 1px solid var(--ce-color-brand-border); border-radius: var(--ce-radius-sm); padding: 2px 8px; white-space: nowrap; }
 /* „Preis wird berechnet" auf der ausgewählten, gerade gerepricten Karte. */
 .ins-card-calc { display: inline-flex; align-items: center; gap: 6px; padding-left: 27px; font-size: var(--ce-text-caption-size); font-weight: 600; color: var(--ce-color-brand-ink); }
 /* „Preis nach Warenwert" (kein Preselect): lesbar, NICHT deaktiviert wirkend; darf
    im schmalen Preis-Slot auf zwei Zeilen umbrechen. */
 .ins-card-price-val--muted { max-width: 84px; color: var(--ce-color-text-primary); font-weight: 600; font-size: 12px; line-height: 1.25; white-space: normal; overflow-wrap: normal; word-break: normal; hyphens: none; text-align: right; }
 /* „Versicherungswert anpassen" — dezente Sekundäraktion. */
-.ins-adjust-btn { align-self: flex-start; background: none; border: none; padding: 3px 0; font-size: 12px; font-weight: 600; color: var(--ce-color-brand-ink); cursor: pointer; border-bottom: 1px solid var(--ce-color-brand-border); }
+.ins-adjust-btn { align-self: flex-start; background: none; border: none; padding: 3px 0; font-size: 13px; font-weight: 600; color: var(--ce-color-brand-ink); cursor: pointer; border-bottom: 1px solid var(--ce-color-brand-border); }
 .ins-adjust-btn:hover { border-bottom-color: var(--blue2); }
 .ins-adjust-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: 3px; border-radius: var(--ce-radius-sm); }
 /* Warenwert über dem Versicherungsmaximum — ruhiger Warnhinweis. */
@@ -782,7 +782,7 @@
 .blsum-carrier { font-size: 15px; font-weight: 600; color: var(--navy); overflow-wrap: break-word; hyphens: auto; letter-spacing: -0.01em; }
 .blsum-service { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-secondary); overflow-wrap: break-word; }
 /* Beschriftungen in normaler Schreibweise (Redesign 2026-10, vorher Versalien). */
-.blsum-label, .blsum-price-label { font-size: var(--ce-text-caption-size); font-weight: 500; color: var(--ce-color-text-secondary); }
+.blsum-label, .blsum-price-label { font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); color: var(--ce-color-text-secondary); }
 .blsum-val { font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-primary); overflow-wrap: break-word; }
 .blsum-sub { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-secondary); }
 .blsum-price { align-items: flex-end; text-align: right; }
@@ -796,7 +796,7 @@
 /* Netto/Brutto (2026-10-02): in der Nettoanzeige ist der Nettobetrag die Hauptzahl; der zahlbare Bruttobetrag
    steht darunter, behält seine Klasse und trägt „zahlbar". Nur Gewichtung und Reihenfolge ändern sich. */
 .blsum-price-box--net .blsum-price-net { font-size: var(--ce-text-title-section-size); font-weight: 600; color: var(--ce-color-text-primary); letter-spacing: -0.01em; }
-.blsum-price-box--net .blsum-price-gross { font-size: var(--ce-text-caption-size); font-weight: 400; color: var(--ce-color-text-secondary); letter-spacing: 0; }
+.blsum-price-box--net .blsum-price-gross { font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-text); color: var(--ce-color-text-secondary); letter-spacing: 0; }
 .blsum-price-payline { display: inline; text-align: inherit; }
 .blsum-price-payable { font-size: var(--ce-text-caption-size); font-weight: 600; color: var(--ce-color-text-secondary); }
 /* Legacy (gescoped, nicht mehr aktiv genutzt). */
@@ -925,7 +925,7 @@
 }
 .bsum-delivery { display: flex; flex-direction: column; min-width: 0; }
 .bsum-delivery-label {
-  font-size: var(--ce-text-caption-size); font-weight: 500;
+  font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium);
   color: var(--ce-color-text-secondary);
 }
 .bsum-delivery-val {
@@ -936,7 +936,7 @@
 /* Rechts — geltender Preis */
 .bsum-price { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
 .bsum-price-label {
-  font-size: var(--ce-text-caption-size); font-weight: 500;
+  font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium);
   color: var(--ce-color-text-secondary); line-height: 1.3; white-space: nowrap;
 }
 .bsum-price-gross {
@@ -952,7 +952,7 @@
 }
 /* Netto/Brutto (2026-10-02): dieselbe Gewichtung wie in der großen Leiste — netto vorn, brutto darunter. */
 .bsum-price--net .bsum-price-net { font-size: 16px; font-weight: 600; color: var(--ce-color-text-primary); letter-spacing: -0.01em; }
-.bsum-price--net .bsum-price-gross { font-size: var(--ce-text-caption-size); font-weight: 400; color: var(--ce-color-text-secondary); letter-spacing: 0; }
+.bsum-price--net .bsum-price-gross { font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-text); color: var(--ce-color-text-secondary); letter-spacing: 0; }
 
 /* ≤860px → zwei Zeilen: [Produkt | Preis] über [Übergabe · Zustellung].
    Reihenfolge nach Priorität: Carrier und Preis stehen oben, die Zustellung
@@ -1172,7 +1172,7 @@
   font-size: var(--ce-text-caption-size); color: var(--ce-color-text-muted);
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
 }
-.addopt-reference-counter.is-over { color: var(--ce-color-status-error-fg); font-weight: 500; }
+.addopt-reference-counter.is-over { color: var(--ce-color-status-error-fg); font-weight: var(--ce-weight-medium); }
 .addopt-reference-label {
   margin: var(--ce-space-2) 0 0; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
   color: var(--ce-color-text-secondary);
@@ -1262,7 +1262,7 @@
 .ci-mode-radio:disabled { cursor: not-allowed; }
 .ci-mode-option-text { display: flex; flex-direction: column; gap: 2px; }
 .ci-mode-option-title { font-size: 13px; font-weight: 600; color: var(--navy); }
-.ci-mode-forced { margin: 6px 0 0; font-size: 12px; font-weight: 600; color: var(--blue2); }
+.ci-mode-forced { margin: 6px 0 0; font-size: 13px; font-weight: 600; color: var(--blue2); }
 .ci-mode-blocked { margin: 6px 0 0; }
 
 /* Handelsrechnungs-Upload */
@@ -1317,7 +1317,7 @@
   border-radius: var(--ce-radius-lg); padding: 16px; margin-bottom: 24px;
 }
 .price-drift-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
-.price-drift-col-label { font-size: var(--ce-text-caption-size); font-weight: 500; color: var(--ce-color-text-secondary); }
+.price-drift-col-label { font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); color: var(--ce-color-text-secondary); }
 .price-drift-old { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 16px; font-weight: 600; color: var(--ce-color-text-muted); }
 .price-drift-col--new { background: var(--ce-color-brand-soft); border: 1px solid var(--ce-color-brand-border); border-radius: var(--ce-radius-sm); padding: 8px 6px; }
 .price-drift-new { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 24px; font-weight: 600; color: var(--ce-color-brand-ink); }
@@ -1349,7 +1349,7 @@
 .booking-success-wrap .btn-full { white-space: normal; overflow-wrap: anywhere; }
 /* Klebehinweis bei unterschiedlichen Paketen (Canonical v2.79): eine Handlungsanweisung unter den
    Versandbelegen — in der Textfarbe, ohne Warnfläche. */
-.booking-label-hint { color: var(--ce-color-text-primary); font-weight: 500; }
+.booking-label-hint { color: var(--ce-color-text-primary); font-weight: var(--ce-weight-medium); }
 /* Kein Erfolgs-Medaillon über dem Titel (Redesign 2026-10): die Bestätigung
    steht als Text da. */
 .booking-success-title { font-size: 24px; line-height: 1.25; font-weight: 600; color: var(--ce-color-text-primary); margin-bottom: 8px; }
@@ -1438,12 +1438,12 @@
 .dc-title { font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-primary); font-family: var(--ce-font-sans); }
 .dc-weekdays, .dc-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
 .dc-weekdays { margin-bottom: 4px; }
-.dc-weekday { text-align: center; font-size: var(--ce-text-caption-size); font-weight: 500; color: var(--ce-color-text-secondary); }
+.dc-weekday { text-align: center; font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); color: var(--ce-color-text-secondary); }
 .dc-blank { aspect-ratio: 1 / 1; }
 .dc-day {
   position: relative; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center;
   border: 1px solid transparent; border-radius: var(--ce-radius-sm); background: none;
-  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-s-size); font-weight: 500; color: var(--ce-color-text-primary);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-medium); color: var(--ce-color-text-primary);
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
   cursor: pointer;
   transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard), border-color var(--ce-motion-fast) var(--ce-motion-ease-standard), color var(--ce-motion-fast) var(--ce-motion-ease-standard);

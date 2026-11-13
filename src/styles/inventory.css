@@ -78,7 +78,7 @@
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
 }
 .inv-stat-hint {
-  font-family: var(--fs); font-size: var(--ce-text-caption-size); font-weight: 400;
+  font-family: var(--fs); font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted);
 }
 /* Die sichtbare Textaktion der aufklappbaren Zelle — ersetzt den früheren Pfeil. */
@@ -106,7 +106,7 @@
    steht rechts und bricht nicht — der Text weicht („Meta hält, Text weicht"). */
 .inv-preview-lead {
   margin: 0 0 var(--ce-space-4);
-  font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: 400;
+  font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-body-line); color: var(--ce-color-text-secondary);
 }
 .inv-preview-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -125,7 +125,7 @@
   min-width: 0; overflow-wrap: break-word;
 }
 .inv-preview-secondary, .inv-preview-meta {
-  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
   min-width: 0; overflow-wrap: break-word;
 }
@@ -136,14 +136,14 @@
 }
 .inv-preview-empty, .inv-preview-note {
   margin: var(--ce-space-3) 0 0;
-  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
 }
 
 /* ── Einstieg für ein leeres Lager ── */
 .inv-onboarding-lead {
   margin: 0 0 var(--ce-space-4); max-width: 62ch;
-  font-family: var(--fs); font-size: var(--ce-text-body-l-size); font-weight: 400;
+  font-family: var(--fs); font-size: var(--ce-text-body-l-size); font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-body-l-line); color: var(--ce-color-text-secondary);
 }
 .inv-steps {
@@ -166,7 +166,7 @@
   line-height: var(--ce-text-body-line); color: var(--ce-color-text-primary);
 }
 .inv-step-hint {
-  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
 }
 .inv-onboarding-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-4); }
@@ -207,7 +207,7 @@
 /* Das Kürzel ist ein technischer String; die Zeile darüber schrumpft (min-width: 0), deshalb
    genügt break-word — kein weiteres anywhere (responsiveHardening Test 8). */
 .inv-warehouse-code {
-  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 500;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-medium);
   color: var(--ce-color-text-secondary); overflow-wrap: break-word; min-width: 0;
 }
 /* Notizen sind Freitext bis 2.000 Zeichen — sichtbar sind drei Zeilen. */
@@ -277,13 +277,13 @@
   white-space: nowrap;
 }
 .inv-cell-meta {
-  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
   min-width: 0; overflow-wrap: break-word;
 }
 /* Die SKU als sekundäre Angabe UNTER dem Namen trägt den ruhigen Ton der
    Metazeile, nicht das Gewicht einer Hauptangabe. */
-.inv-cell-meta .inv-cell-sku { font-weight: 500; color: var(--ce-color-text-secondary); }
+.inv-cell-meta .inv-cell-sku { font-weight: var(--ce-weight-medium); color: var(--ce-color-text-secondary); }
 /* Der Artikelname als Identität der Zeile (Link zur Detailseite). */
 .inv-cell-title { font-size: var(--ce-text-body-size); font-weight: 600; line-height: 1.4286; }
 /* Textlink im Fließtext einer Zelle — keine Bedieneinheit mit fester Breite.
@@ -304,13 +304,13 @@
    darüber bleibt die Hauptaussage. */
 .inv-cell-shortfall {
   display: block;
-  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-body-s-line); color: var(--ce-color-status-warning-fg);
   white-space: nowrap;
 }
 .inv-card-shortfall {
   margin: 0;
-  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-body-s-line); color: var(--ce-color-status-warning-fg);
   min-width: 0; overflow-wrap: break-word;
 }
@@ -343,7 +343,7 @@
 .inv-actions-item {
   display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
   padding: 9px 10px; border: none; background: transparent; border-radius: var(--ce-radius-sm);
-  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-primary); cursor: pointer;
   white-space: nowrap;
 }
@@ -358,7 +358,7 @@
    Elemente gedacht). Ein Satz, den der Nutzer lesen soll, darf nicht mit dem
    ausgegraut werden, was er erklärt. */
 .inv-actions-item-reason {
-  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
 }
 
@@ -398,7 +398,7 @@
    nicht hierher. Die tabellarischen Ziffern stehen deshalb direkt hier. */
 .inv-card-facts dd {
   margin: 2px 0 0;
-  font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: 400;
+  font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: var(--ce-weight-text);
   color: var(--ce-color-text-primary); overflow-wrap: break-word;
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
 }
@@ -493,7 +493,7 @@
    Farbwert — dieselbe gedämpfte Fläche wie im Hover. */
 .inv-picker-item--added { background: var(--ce-color-surface-muted); }
 .inv-picker-added {
-  font-family: var(--fs); font-size: var(--ce-text-caption-size); font-weight: 500;
+  font-family: var(--fs); font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium);
   color: var(--ce-color-text-muted); white-space: nowrap;
 }
 
@@ -570,7 +570,7 @@
    Der Meta-Bereich des Seitenkopfs bricht bei Bedarf um (patterns.css), die
    Zeile landet dann unter dem Badge. */
 .inv-order-summary {
-  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary);
   min-width: 0; overflow-wrap: break-word;
 }
@@ -756,7 +756,7 @@
 /* Sagt vor dem Aufklappen, dass hier bereits etwas steht — sonst müsste man
    jeden Abschnitt öffnen, um das herauszufinden. */
 .inv-section-filled {
-  font-size: var(--ce-text-caption-size); font-weight: 500;
+  font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium);
   color: var(--ce-color-brand-ink);
 }
 /* Klappmarke: zwei Kanten eines kleinen Quadrats, um 45° gedreht — rein per
@@ -778,7 +778,7 @@
 }
 .inv-section-hint {
   margin: 0;
-  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
 }
 /* Innerhalb eines Abschnitts trägt der Abschnitt selbst die Überschrift — das
@@ -807,7 +807,7 @@
 /* ── Bestandsbereich der Artikeldetailseite ── */
 .inv-detail-formula {
   margin: 0 0 var(--ce-space-3);
-  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
 }
 .inv-detail-actions { display: flex; flex-wrap: wrap; gap: var(--ce-space-3); margin-top: var(--ce-space-4); }
@@ -826,7 +826,7 @@
 }
 .inv-lowstock-text {
   flex: 1 1 auto; min-width: 0;
-  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-primary);
 }
 .inv-lowstock .btn { flex: 0 0 auto; }
@@ -834,7 +834,7 @@
 /* ── Sperrhistorie ── */
 .inv-detail-blocked-sum {
   margin: 0 0 var(--ce-space-3); max-width: 70ch;
-  font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: 400;
+  font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-body-line); color: var(--ce-color-text-secondary);
 }
 .inv-block-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -887,7 +887,7 @@
 }
 .inv-outcome {
   margin: var(--ce-space-2) 0 var(--ce-space-4);
-  font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: 400;
+  font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: var(--ce-weight-text);
   line-height: var(--ce-text-body-line); color: var(--ce-color-text-secondary);
   min-width: 0; overflow-wrap: break-word;
 }
@@ -1173,7 +1173,7 @@
 /* Einheit je Maßspalte, wenn die Spaltennamen verschiedene Einheiten nennen. */
 .inv-import-unit { display: grid; gap: var(--ce-space-1); min-width: 0; margin: 0; padding: 0; border: 0; }
 .inv-import-unit-label { padding: 0; color: var(--ce-color-text-primary); font-size: var(--ce-text-body-s-size); font-weight: 600; }
-.inv-import-unit-column { color: var(--ce-color-text-muted); font-weight: 400; overflow-wrap: break-word; }
+.inv-import-unit-column { color: var(--ce-color-text-muted); font-weight: var(--ce-weight-text); overflow-wrap: break-word; }
 /* Kürzel je Spalte: Segmente in Mindestbreite, auch am Telefon in einer Zeile. */
 .inv-import-segment--kurz .inv-import-segment-option { min-width: 3.5rem; justify-content: center; text-align: center; }
 @media (max-width: 640px) {

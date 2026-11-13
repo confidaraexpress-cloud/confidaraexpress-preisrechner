@@ -26,7 +26,7 @@
 /* ════════════════════════════════════════════════════════════════════════ */
 
 .app-shell {
-  /* Beide Rollen zeigen auf DM Sans: --fd war die Displayschrift
+  /* Beide Rollen zeigen auf Instrument Sans: --fd war die Displayschrift
      (Cormorant) und ist mit dem Redesign im eingeloggten Bereich entfallen.
      Der Name bleibt für bestehende Aufrufer erhalten. */
   --fs: var(--ce-font-sans);
@@ -227,7 +227,7 @@
 .pp-brand-sub {
   font-family: var(--ce-font-sans);
   font-size: var(--ce-text-caption-size);
-  font-weight: 500;
+  font-weight: var(--ce-weight-medium);
   line-height: var(--ce-text-caption-line);
   letter-spacing: 0;
   color: var(--ce-sidebar-text-muted);
@@ -443,7 +443,7 @@
   background: var(--surface);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
-  font-size: 14px; font-weight: 500; text-decoration: none; cursor: pointer;
+  font-size: 14px; font-weight: var(--ce-weight-medium); text-decoration: none; cursor: pointer;
   transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard), border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
 .ce-mail-dialog-provider:hover { background: var(--ce-color-surface-hover); border-color: var(--border-strong); }
@@ -612,10 +612,10 @@
 .profile-sections .profile-row-border { border-bottom: 1px solid var(--border-hairline); }
 .profile-row-key { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); }
 .profile-row-val {
-  font-size: var(--ce-text-body-size); line-height: 1.4286; font-weight: 500;
+  font-size: var(--ce-text-body-size); line-height: 1.4286; font-weight: var(--ce-weight-medium);
   color: var(--ce-color-text-primary); overflow-wrap: break-word;
 }
-.profile-row-empty { font-weight: 400; color: var(--ce-color-text-muted); }
+.profile-row-empty { font-weight: var(--ce-weight-text); color: var(--ce-color-text-muted); }
 
 /* ── Hinweis (Zahlungsbedingungen, Sicherheit) — Text ohne Symbol ── */
 .profile-hint {
@@ -679,7 +679,7 @@
 .dn-mode-option .field-hint { margin: 0; color: var(--ce-color-text-secondary); }
 .profile-saved {
   display: flex; align-items: center; gap: 6px; margin: var(--ce-space-3) 0 0;
-  font-size: var(--ce-text-body-s-size); font-weight: 500;
+  font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-medium);
   color: var(--ce-color-status-success-fg);
 }
 
@@ -725,7 +725,7 @@
   flex: none;
   margin-left: var(--ce-space-3);
   font-size: var(--ce-text-caption-size);
-  font-weight: 400;
+  font-weight: var(--ce-weight-text);
   color: var(--ce-color-text-muted);
   white-space: nowrap;
 }

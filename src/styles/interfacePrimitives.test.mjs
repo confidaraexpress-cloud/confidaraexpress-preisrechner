@@ -303,10 +303,11 @@ test("8 — Badges sind ruhige Statusmarken ohne Punkt, genau die zehn Statusgru
   const basis = primitivRegeln.find((r) => r.selektor === ".badge");
   assert.ok(basis, ".badge fehlt");
   assert.match(basis.body, /min-height:\s*24px/, "Kunde: mindestens 24px");
-  // Redesign 2026-10: eigene Badge-Rolle (12/18 500) statt der Label-Rolle.
+  // Redesign 2026-10: eigene Badge-Rolle statt der Label-Rolle; seit der Betreiberentscheidung 2026-11-13
+  // (D4 und Gewichtsleiter) 13/18 550.
   assert.match(basis.body, /font-size:\s*var\(--ce-text-badge-size\)/);
-  assert.equal(tok("ce-text-badge-size"), "12px");
-  assert.equal(tok("ce-text-badge-weight"), "500");
+  assert.equal(tok("ce-text-badge-size"), "13px");
+  assert.equal(tok("ce-text-badge-weight"), "550");
   assert.doesNotMatch(basis.body, /white-space:\s*nowrap/, "lange deutsche Begriffe müssen umbrechen dürfen");
   // Seit der Responsive-Härtung ist das Badge eine EINHEIT: Umbruch nur an
   // Wortgrenzen. Das frühere `overflow-wrap: anywhere` senkte die
@@ -503,24 +504,22 @@ test("12 — die Primitive-Regeln nutzen kein font-weight 700", () => {
       );
     }
   }
-  // DM Sans 700 bleibt technisch in der Schriftdatei vorhanden, aber ungenutzt:
-  // fonts.css deklariert dafür KEINE Instanz. Die früheren 700/800-Blöcke
-  // gehörten zur auslaufenden Displayschrift Libre Franklin und sind mit dem
-  // Abschlusspaket samt Fontdateien entfernt.
+  // Die Primitive bleiben bei höchstens 600 (Knopf, Badge, Beschriftung) — Titelgewichte gehören den Titeln.
+  // fonts.css deklariert seit der Betreiberentscheidung 2026-11-13 (D1/D3) nur noch Instrument Sans, und zwar
+  // genau mit der Achse der Datei (400–700): kein Gewicht, das die Datei nicht trägt, kein Kunstfett. Die
+  // früheren 700/800-Blöcke gehörten zur ausgelaufenen Displayschrift Libre Franklin.
   const fonts = stripComments(read("./fonts.css"));
   const flaechen = [...fonts.matchAll(/@font-face\s*\{([^}]*)\}/g)].map((m) => m[1]);
-  const dmSansGewichte = flaechen
-    .filter((b) => /font-family:\s*'DM Sans'/.test(b))
-    .map((b) => (b.match(/font-weight:\s*([^;]+);/) || [])[1]?.trim());
-  assert.deepEqual(dmSansGewichte, ["300", "300", "400", "500", "600"],
-    `für DM Sans darf keine 700er-Instanz deklariert werden (gefunden: ${dmSansGewichte.join(", ")})`);
+  const familien = [...new Set(flaechen.map((b) => (b.match(/font-family:\s*'([^']+)'/) || [])[1]))];
+  assert.deepEqual(familien, ["Instrument Sans"], `geladene Familien: ${familien.join(", ")}`);
+  const gewichte = flaechen.map((b) => (b.match(/font-weight:\s*([^;]+);/) || [])[1]?.trim());
+  assert.deepEqual(gewichte, ["400 700", "400 700"], `Gewichtsangaben der @font-face-Regeln: ${gewichte.join(", ")}`);
   // Keine neue oder ersetzte Schriftdatei.
   const dateien = [...fonts.matchAll(/url\('\.\.\/assets\/fonts\/([^']+)'\)/g)].map((m) => m[1]);
   // Premium-Redesign (Betreiberentscheidung 2026-10-27): Instrument Sans kam bewusst hinzu (variabel, Latin und
-  // Latin-Erweiterung, SIL OFL 1.1, docs/lizenzen/OFL-InstrumentSans.txt). Ersetzt wurde keine Datei.
+  // Latin-Erweiterung, SIL OFL 1.1, docs/lizenzen/OFL-InstrumentSans.txt). Am 2026-11-13 sind die Dateien von
+  // DM Sans und Cormorant Garamond entfallen; ersetzt wurde keine Datei.
   assert.deepEqual([...new Set(dateien)].sort(), [
-    "cormorantgaramond-400-italic.woff2", "cormorantgaramond-400.woff2",
-    "dmsans-300-italic.woff2", "dmsans-300.woff2",
     "instrumentsans-var-latin-ext.woff2", "instrumentsans-var.woff2",
   ], "es wird keine Schriftdatei ohne Entscheidung hinzugefügt und keine ersetzt");
   // Und keine @font-face-Regel verweist auf eine Datei, die es nicht gibt.

@@ -5,7 +5,8 @@
 // Dieser Test ist deshalb bewusst klein und deterministisch statt einer
 // fragilen Screenshot-Gesamtabnahme:
 //
-//   1. Die tatsächlich ausgelieferte DM-Sans-Datei wird direkt (ohne Dev-Server)
+//   1. Die tatsächlich ausgelieferte Instrument-Sans-Datei (seit der Betreiberentscheidung
+//      2026-11-13 die einzige Text- und Zahlenschrift) wird direkt (ohne Dev-Server)
 //      im Browser geladen und ihr „0"-Glyph per Canvas-Pixel-Scanline auf eine
 //      durchgestrichene/gepunktete Mitte geprüft — muss SAUBER sein.
 //   2. Als Kontrollprobe wird eine SYNTHETISCHE „bekannte durchgestrichene Null"
@@ -121,16 +122,16 @@ async function scanZero(page, { fontFamily, weight = "400", size = 640, fromData
   }, { fontFamily, weight, size, fromDataUri });
 }
 
-test("die tatsächlich ausgelieferte DM-Sans-Datei zeichnet eine normale, nicht durchgestrichene Null", async () => {
+test("die tatsächlich ausgelieferte Instrument-Sans-Datei zeichnet eine normale, nicht durchgestrichene Null", async () => {
   const page = await browser.newPage();
-  const dmSansPath = path.join(REPO_ROOT, "src/assets/fonts/dmsans-300.woff2");
-  assert.ok(existsSync(dmSansPath), "die ausgelieferte DM-Sans-Datei fehlt");
-  const b64 = readFileSync(dmSansPath).toString("base64");
+  const fontPath = path.join(REPO_ROOT, "src/assets/fonts/instrumentsans-var.woff2");
+  assert.ok(existsSync(fontPath), "die ausgelieferte Instrument-Sans-Datei fehlt");
+  const b64 = readFileSync(fontPath).toString("base64");
   const dataUri = `data:font/woff2;base64,${b64}`;
-  const result = await scanZero(page, { fontFamily: "AuditDMSans", weight: "400", fromDataUri: dataUri });
+  const result = await scanZero(page, { fontFamily: "AuditInstrumentSans", weight: "400", fromDataUri: dataUri });
   assert.ok(!result.empty, "die Null wurde nicht gerendert");
   assert.equal(result.middleRows, 0,
-    `DM Sans zeigt an ${result.middleRows}/${result.total} Zeilen ein zusätzliches Mittelsegment — das wäre eine durchgestrichene/gepunktete Null`);
+    `Instrument Sans zeigt an ${result.middleRows}/${result.total} Zeilen ein zusätzliches Mittelsegment — das wäre eine durchgestrichene/gepunktete Null`);
   await page.close();
 });
 

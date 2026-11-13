@@ -3,6 +3,9 @@
 html { scroll-behavior: smooth; }
 body {
   font-family: var(--ce-font-sans);
+  /* Gewichtsleiter (Confidara Signature Typography, 2026-11-13): Fließtext 450 statt 400 — satter, ohne dass Zeilen
+     merklich länger werden (Instrument Sans +0,7 % Laufweite). */
+  font-weight: var(--ce-weight-text);
   color: var(--navy);
   background: var(--white);
   -webkit-font-smoothing: antialiased;
@@ -11,3 +14,10 @@ body {
   overflow-x: hidden;
   max-width: 100vw;
 }
+/* Formularelemente erben die Markenschrift. Ohne diese Regel zeichnet der Browser Felder, Auswahllisten und Knöpfe ohne
+   eigene Schriftangabe in seiner Systemschrift (Befund 2026-11-13: Arial auf Anmeldung, Registrierung und
+   Partnerregistrierung). Das Gewicht setzt der Browser dort ebenfalls zurück (font: -webkit-small-control → 400);
+   ohne eigene Angabe stehen Knöpfe und Felder deshalb auf der Textstufe (450) statt auf 400. Die Größe setzt jedes
+   Element selbst. Eigene Gewichte (.btn 600 usw.) gehen dieser Elementregel vor. Einzige Ausnahme ist die geschützte
+   Admin-Anmeldung: Sie setzt den Haken --ce-steuerelement-gewicht auf den bisherigen Wert 400 (auth.css). */
+button, input, select, textarea { font-family: inherit; font-weight: var(--ce-steuerelement-gewicht, var(--ce-weight-text)); }

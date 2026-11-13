@@ -257,9 +257,11 @@ test("5 — Marke, aktive Navigation und Fokus laufen auf dem Confidara-Blau", a
   assert.equal(marke.bereich, "kunde");
   assert.equal(marke.wert, "#004afc");
 
-  // Der aktive Navigationseintrag der Navy-Sidebar: heller Text, Gewicht 600 und
+  // Der aktive Navigationseintrag der Navy-Sidebar: heller Text, Gewicht 650 und
   // der Markenstreifen als 3-px-Kante links (::before, --ce-pr-stripe-on-navy
-  // #4D84FF → #8FB0FF) statt der früheren Schattenkante.
+  // #4D84FF → #8FB0FF) statt der früheren Schattenkante. Gewicht: Gewichtsleiter
+  // der Confidara Signature Typography (Betreiberentscheidung 2026-11-13) — die
+  // Hauptpunkte stehen auf 600, der aktive Eintrag eine Stufe darüber (bis dahin 600).
   const aktiv = await page.evaluate(() => {
     const el = document.querySelector(".pp-nav .nitem.on");
     if (!el) return null;
@@ -269,7 +271,7 @@ test("5 — Marke, aktive Navigation und Fokus laufen auf dem Confidara-Blau", a
   });
   assert.ok(aktiv, "kein aktiver Navigationseintrag");
   assert.equal(aktiv.farbe, "rgb(255, 255, 255)", "der aktive Eintrag trägt keinen hellen Text");
-  assert.equal(aktiv.gewicht, "600");
+  assert.equal(aktiv.gewicht, "650");
   assert.equal(aktiv.breite, "3px", "die Kante des aktiven Eintrags fehlt");
   assert.match(aktiv.kante, /^linear-gradient\(90deg, rgb\(77, 132, 255\) 0%, rgb\(143, 176, 255\) 100%\)$/,
     "die Kante des aktiven Eintrags ist nicht der Markenstreifen");

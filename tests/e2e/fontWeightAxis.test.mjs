@@ -29,6 +29,14 @@
 // sobald fonts.css eine entsprechende Instanz deklariert — ohne neue Schriftdatei.
 // Solange das nicht geschehen ist, bleibt 600 das höchste verbindliche UI-Gewicht.
 //
+// Seit der Betreiberentscheidung vom 2026-11-13 (Confidara Signature Typography,
+// D1/D3) liefert die Plattform nur noch Instrument Sans aus; DM Sans und
+// Cormorant Garamond sind samt Dateien entfernt. Geprüft wird deshalb die
+// Instrument-Sans-Datei — und zusätzlich die TATSÄCHLICH ausgelieferte
+// Deklaration aus fonts.css (Test 2b): die Zwischengewichte der Gewichtsleiter
+// (450 Fließtext, 550 mittlere Stufe, 650 Titel) müssen eigene Schnitte zeichnen
+// und dürfen nicht auf ein Nachbargewicht zurückfallen.
+//
 // Run: npm run test:e2e
 import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -40,10 +48,9 @@ import { chromium } from "playwright";
 // fileURLToPath statt .pathname: unter Windows ergäbe .pathname „/C:/…“ und mit path.join einen doppelten
 // Laufwerksbuchstaben.
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
-// Beide ausgelieferten Textschriften sind variabel: DM Sans (Admin, Partner) und Instrument Sans (Kundenbereich,
-// Anmeldung und öffentlicher Preisrechner seit dem Premium-Redesign, Betreiberentscheidung 2026-10-27).
+// Die ausgelieferte Textschrift ist variabel: Instrument Sans (seit dem Premium-Redesign 2026-10-27 im
+// Kundenbereich, seit der Betreiberentscheidung 2026-11-13 auf der ganzen Plattform).
 const SCHRIFTEN = [
-  ["DM Sans", path.join(REPO_ROOT, "src/assets/fonts/dmsans-300.woff2")],
   ["Instrument Sans", path.join(REPO_ROOT, "src/assets/fonts/instrumentsans-var.woff2")],
 ];
 
@@ -174,6 +181,46 @@ for (const [name, FONT_DATEI] of SCHRIFTEN) test(`2 — ${name}: die Gewichtsach
   await page.close();
 });
 
+// 2b — Betreiberentscheidung 2026-11-13: die Gewichtsleiter (Fließtext 450, mittlere Stufe 550, Titel 650)
+// muss mit der AUSGELIEFERTEN Deklaration erreichbar sein. Registriert wird deshalb exakt der
+// Gewichtsbereich aus fonts.css (nicht 100–1000 wie oben), gemessen wieder ohne Kunstfettung.
+test("2b — die Deklaration aus fonts.css zeichnet die Zwischengewichte 450/550/650 als eigene Schnitte", async () => {
+  const fonts = readFileSync(path.join(REPO_ROOT, "src/styles/fonts.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  const bereiche = [...fonts.matchAll(/font-weight:\s*([^;]+);/g)].map((m) => m[1].trim());
+  assert.ok(bereiche.length > 0, "fonts.css deklariert keinen Gewichtsbereich");
+  assert.ok(bereiche.every((b) => b === bereiche[0]), `uneinheitliche Gewichtsbereiche: ${bereiche.join(", ")}`);
+  const bereich = bereiche[0];
+  assert.match(bereich, /^\d+ \d+$/, `kein Gewichtsbereich, sondern ein Einzelwert: ${bereich}`);
+
+  const page = await browser.newPage();
+  await page.goto("about:blank");
+  const dataUri = `data:font/woff2;base64,${readFileSync(SCHRIFTEN[0][1]).toString("base64")}`;
+  const STUFEN = [400, 450, 500, 550, 600, 650, 700];
+  const breiten = await page.evaluate(async ({ uri, gewichtsbereich, stufen }) => {
+    const face = new FontFace("Ausgeliefert", `url(${uri})`, { weight: gewichtsbereich });
+    await face.load();
+    document.fonts.add(face);
+    const out = {};
+    for (const g of stufen) {
+      await document.fonts.load(`${g} 100px "Ausgeliefert"`);
+      const s = document.createElement("span");
+      s.textContent = "Beträge 0123456789 Sendung";
+      s.style.cssText = "position:absolute;left:-9999px;white-space:pre;font-size:100px;" +
+        "font-synthesis:none;-webkit-font-synthesis:none;" + `font-family:"Ausgeliefert";font-weight:${g};`;
+      document.body.appendChild(s);
+      out[g] = Math.round(s.getBoundingClientRect().width * 1000) / 1000;
+      s.remove();
+    }
+    return out;
+  }, { uri: dataUri, gewichtsbereich: bereich, stufen: STUFEN });
+  for (let i = 1; i < STUFEN.length; i++) {
+    const [a, b] = [STUFEN[i - 1], STUFEN[i]];
+    assert.ok(breiten[a] < breiten[b],
+      `Gewicht ${b} zeichnet nicht schwerer als ${a} (${breiten[a]} vs ${breiten[b]}) — fällt auf ein Nachbargewicht zurück: ${JSON.stringify(breiten)}`);
+  }
+  await page.close();
+});
+
 test("3 — keine externe Schriftquelle, keine zusätzliche Schriftdatei", () => {
   const fonts = readFileSync(path.join(REPO_ROOT, "src/styles/fonts.css"), "utf8");
   assert.ok(!/https?:\/\//.test(fonts),
@@ -182,16 +229,15 @@ test("3 — keine externe Schriftquelle, keine zusätzliche Schriftdatei", () =>
   // Libre Franklin ist mit dem Abschlusspaket entfallen (Familie ausgelaufen,
   // keine Referenz, keine @font-face-Regel). Der Vergleich läuft deshalb in
   // beide Richtungen statt nur auf Existenz: er fällt jetzt auch dann, wenn
-  // jemand eine dritte Familie hinzulegt.
+  // jemand eine zweite Familie hinzulegt. Seit der Betreiberentscheidung vom
+  // 2026-11-13 (D1/D3) sind die Dateien von DM Sans und Cormorant entfallen.
   const erwartet = [
-    "cormorantgaramond-400-italic.woff2", "cormorantgaramond-400.woff2",
-    "dmsans-300-italic.woff2", "dmsans-300.woff2",
     "instrumentsans-var-latin-ext.woff2", "instrumentsans-var.woff2",
   ];
   const vorhanden = readdirSync(path.join(REPO_ROOT, "src/assets/fonts"))
     .filter((f) => f.endsWith(".woff2")).sort();
   assert.deepEqual(vorhanden, [...erwartet].sort(), "der Bestand an Schriftdateien hat sich verändert");
-  // Und fonts.css lädt genau die drei Familien, die das Produkt benutzt.
+  // Und fonts.css lädt genau die eine Familie, die das Produkt benutzt.
   const familien = [...new Set([...fonts.matchAll(/font-family:\s*'([^']+)'/g)].map((m) => m[1]))].sort();
-  assert.deepEqual(familien, ["Cormorant Garamond", "DM Sans", "Instrument Sans"]);
+  assert.deepEqual(familien, ["Instrument Sans"]);
 });

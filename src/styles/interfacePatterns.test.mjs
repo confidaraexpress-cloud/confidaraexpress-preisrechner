@@ -76,9 +76,10 @@ test("1 — es gibt genau ein PageHeader-Muster", () => {
   assert.deepEqual(reste, [], `abgelöste Seitenkopf-Muster leben noch:\n  ${reste.join("\n  ")}`);
 
   // Redesign 2026-10: Kunden- und Adminvariante teilen EINE Titelrolle (Page
-  // Title 28/36, mobil 24/32, DM Sans) und unterscheiden sich nur im Rahmen.
+  // Title, seit 2026-11-13 34/40, mobil 28/34, Instrument Sans) und
+  // unterscheiden sich nur im Rahmen und im Titelstil (Signatur/Relief).
   assert.match(patterns, /\.ce-page-header-title \{[^}]*var\(--ce-text-title-page-size\)/s, "Seitentitel: Page Title");
-  assert.match(patterns, /\.ce-page-header-title \{[^}]*var\(--ce-font-sans\)/s, "Seitentitel: DM Sans");
+  assert.match(patterns, /\.ce-page-header-title \{[^}]*var\(--ce-font-sans\)/s, "Seitentitel: Sans-Rolle");
   assert.doesNotMatch(patterns, /\.ce-page-header--admin \.ce-page-header-title \{/,
     "der Adminkopf trägt keine eigene Titelrolle");
   assert.doesNotMatch(

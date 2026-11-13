@@ -215,7 +215,7 @@
 }
 
 /* ═══════════ 4 — ZAHLEN UND BETRÄGE ════════════════════════════════════════
-   Paket A, Phase 2.5. Zahlen sind DM Sans (--ce-font-numeric zeigt auf
+   Paket A, Phase 2.5. Zahlen sind Instrument Sans (--ce-font-numeric zeigt auf
    dieselbe Datei), tabellarisch und rechtsbündig, sobald sie in einer Spalte
    stehen. `font-variant-numeric` und `font-feature-settings` stehen bewusst
    zusammen: die erste Deklaration ist die semantische, die zweite greift auch

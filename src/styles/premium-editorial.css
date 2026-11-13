@@ -106,7 +106,8 @@
   font-family: var(--ce-pr-font-display);
   font-size: var(--ce-pr-ed-headline-size);
   line-height: var(--ce-pr-ed-headline-line);
-  font-weight: 600;
+  /* Seitentitelstufe (700 seit 2026-11-13); Füllung und Prägung „Signatur“ aus titelstile.css. */
+  font-weight: var(--ce-text-title-page-weight);
   letter-spacing: var(--ce-pr-ed-headline-tracking);
   font-stretch: var(--ce-pr-ed-headline-stretch);
   color: var(--ce-color-text-primary);
@@ -126,20 +127,20 @@
 :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-sub {
   order: -1;
   font-size: var(--ce-text-label-size);
-  font-weight: 500;
+  font-weight: var(--ce-weight-medium);
   color: var(--ce-color-text-secondary);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
 :root[data-ce-bereich="kunde"] .ce-page-header-title .ov-greeting-name { color: inherit; font-weight: inherit; }
 :root[data-ce-bereich="kunde"] .ce-page-header-meta { color: var(--ce-color-text-secondary); }
-/* Übersicht: Die Begrüßung ist ein Satz, kein Plakat (Betreiberentscheidung 2026-11-01). Normale Breite und Gewicht 500
-   in der Gruß-Skala 40 / 34 / 28 px statt der Titelskala 56 / 44 / 36 px — die Kennzahlen darunter tragen die Seite.
-   Die Titel der übrigen Seiten bleiben in der Titelskala. */
+/* Übersicht: Die Begrüßung ist ein Satz, kein Plakat (Betreiberentscheidung 2026-11-01). Normale Breite und die
+   mittlere Gewichtsstufe (seit 2026-11-13 550) in der Gruß-Skala 40 / 34 / 28 px statt der Titelskala 56 / 44 / 36 px —
+   die Kennzahlen darunter tragen die Seite. Die Titel der übrigen Seiten bleiben in der Titelskala. */
 :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-title {
   font-size: var(--ce-pr-ed-gruss-size);
   line-height: var(--ce-pr-ed-gruss-line);
-  font-weight: 500;
+  font-weight: var(--ce-weight-medium);
   letter-spacing: var(--ce-pr-ed-gruss-tracking);
   font-stretch: 100%;
 }
@@ -186,7 +187,7 @@
   content: "+" / "";
   margin-right: var(--ce-space-2);
   font-size: var(--ce-text-title-section-size);
-  font-weight: 400;
+  font-weight: var(--ce-weight-text);
   line-height: 1;
 }
 /* Plus-Drehung (Betreiberentscheidung 2026-10-28, Ausnahme zu E5 nur für dieses Zeichen): Beim Zeigen dreht sich
@@ -613,7 +614,7 @@
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
-:root[data-ce-bereich="kunde"] .ov-list-empfaenger-name { font-size: var(--ce-text-body-s-size); font-weight: 500; color: var(--ce-color-text-primary); }
+:root[data-ce-bereich="kunde"] .ov-list-empfaenger-name { font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-medium); color: var(--ce-color-text-primary); }
 :root[data-ce-bereich="kunde"] .ov-list-carrier { font-size: var(--ce-text-label-size); color: var(--ce-color-text-secondary); }
 /* Datum und Ort leiser als Nummer, Empfänger und Betrag (Flow Signature). */
 :root[data-ce-bereich="kunde"] .ov-list--sendungen .ov-list-secondary { color: var(--ce-color-text-muted); }
@@ -769,7 +770,7 @@
 :root[data-ce-bereich="kunde"] .ov-page .ov-carrier-eintrag:not(.ov-carrier-eintrag--ohne-logo) .ov-carrier-name {
   color: var(--ce-pr-ed-flow-kachel-name);
   font-size: 0.8125rem;
-  font-weight: 500;
+  font-weight: var(--ce-weight-medium);
   letter-spacing: 0.01em;
 }
 /* Fuß der Übersicht: eine an den Enden auslaufende Haarlinie statt einer Kante über die ganze Breite — der Lichtsee unter
@@ -1084,7 +1085,7 @@
 :root[data-ce-bereich="kunde"] .dft-cell-package > span:last-child { font-size: var(--ce-text-micro-size); color: var(--ce-color-text-muted); }
 :root[data-ce-bereich="kunde"] .dft-cell-date {
   font-size: var(--ce-text-body-s-size);
-  font-weight: 500;
+  font-weight: var(--ce-weight-medium);
   color: var(--ce-color-text-primary);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
@@ -1253,7 +1254,7 @@
   box-shadow: none;
 }
 :root[data-ce-bereich="kunde"] .ce-list-card-key { color: var(--ce-color-text-muted); }
-:root[data-ce-bereich="kunde"] .ce-list-card-val { font-weight: 500; }
+:root[data-ce-bereich="kunde"] .ce-list-card-val { font-weight: var(--ce-weight-medium); }
 :root[data-ce-bereich="kunde"] .ce-list-card-actions { border-top-color: var(--ce-pr-hairline); }
 
 /* ═══════════ 8 · REITER, WERKZEUGLEISTEN, FILTER ══════════════════════════ */
@@ -1902,6 +1903,11 @@
     overflow-wrap: break-word;
   }
   :root[data-ce-bereich="kunde"] :is(.ce-wert--kennung, .inv-cell-sku) { white-space: normal; }
+  /* Kennzahlkarte: ihre implizite auto-Spalte wuchs auf die Breite des längsten Worts der Kontextzeile — seit dem
+     Textgewicht 450 (Confidara Signature Typography, 2026-11-13) ragte „überschritten“ bei 24 px Browserschrift und
+     320 px 2 px aus der Karte. Mit minmax(0, 1fr) bleibt die Spalte in der Karte, und der vorhandene Notumbruch der
+     Kontextzeile (overflow-wrap: break-word, Abschnitt 22) greift. */
+  :root[data-ce-bereich="kunde"] .ov-kpi { grid-template-columns: minmax(0, 1fr); }
   /* Ein langer Status („Buchungsstatus wird geprüft“) bricht an Wortgrenzen, statt aus dem Kartenkopf zu ragen. */
   :root[data-ce-bereich="kunde"] .shipment-status .badge { white-space: normal; }
   :root[data-ce-bereich="kunde"] .shipment-track-number strong { font-size: min(1em, 5.6vw); }
@@ -2038,7 +2044,7 @@
   margin: 0;
   color: var(--ce-sidebar-text-muted);
   font-size: 0.8125rem;
-  font-weight: 500;
+  font-weight: var(--ce-weight-medium);
   line-height: 1.4;
 }
 /* Einklappen: ruhige runde Taste, 32 px (mit grobem Zeiger 44 px Trefferfläche). */
@@ -2398,7 +2404,7 @@
 :root[data-ce-bereich="kunde"] .ce-stand-hinweis {
   font-size: var(--ce-text-micro-size);
   line-height: 1.4;
-  font-weight: 400;
+  font-weight: var(--ce-weight-text);
   color: var(--ce-color-text-secondary);
   white-space: normal;
   min-width: 12ch;
@@ -2646,7 +2652,7 @@
   font-weight: 600;
   color: var(--ce-color-text-primary);
 }
-:root[data-ce-bereich="kunde"] .kpf-nummer--ohne { font-weight: 500; color: var(--ce-color-text-secondary); }
+:root[data-ce-bereich="kunde"] .kpf-nummer--ohne { font-weight: var(--ce-weight-medium); color: var(--ce-color-text-secondary); }
 :root[data-ce-bereich="kunde"] .kpf-mono { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums lining-nums; }
 :root[data-ce-bereich="kunde"] .kpf-zeile-kopf .ce-sendungsstand { align-items: flex-end; }
 :root[data-ce-bereich="kunde"] .kpf-zeile-sub {
@@ -2664,7 +2670,7 @@
   content: "·";
   content: "·" / "";
   margin-right: 6px;
-  font-weight: 400;
+  font-weight: var(--ce-weight-text);
   color: var(--ce-color-text-muted);
 }
 /* Die Zeitangabe der Kennzahl steht in eigener Zeile — nie ein Trenner am Zeilenanfang, wenn Carrier und Service lang sind. */
@@ -2709,11 +2715,11 @@
   min-width: 0;
   font-size: var(--ce-text-micro-size);
   line-height: 1.5;
-  font-weight: 500;
+  font-weight: var(--ce-weight-medium);
   color: var(--ce-color-text-primary);
   overflow-wrap: break-word;
 }
-:root[data-ce-bereich="kunde"] .kpf-angabe--hinweis dd { font-weight: 400; color: var(--ce-color-text-secondary); }
+:root[data-ce-bereich="kunde"] .kpf-angabe--hinweis dd { font-weight: var(--ce-weight-text); color: var(--ce-color-text-secondary); }
 :root[data-ce-bereich="kunde"] .kpf-nummern { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
 
 /* Zustände im Fenster: Laden (ruhiges Skelett), Fehler mit „Erneut versuchen“, nicht verfügbar, leer — nie eine erfundene 0. */
@@ -2731,7 +2737,7 @@
   color: var(--ce-color-text-primary);
 }
 :root[data-ce-bereich="kunde"] .kpf-zustand--fehler .kpf-zustand-titel { color: var(--ce-color-status-error-fg); }
-:root[data-ce-bereich="kunde"] .kpf-zustand--leer .kpf-zustand-titel { font-weight: 500; color: var(--ce-color-text-secondary); }
+:root[data-ce-bereich="kunde"] .kpf-zustand--leer .kpf-zustand-titel { font-weight: var(--ce-weight-medium); color: var(--ce-color-text-secondary); }
 :root[data-ce-bereich="kunde"] .kpf-zustand-text { margin: 2px 0 0; font-size: var(--ce-text-micro-size); line-height: 1.45; color: var(--ce-color-text-secondary); }
 :root[data-ce-bereich="kunde"] .kpf-erneut { margin-top: var(--ce-space-3); }
 
@@ -2917,9 +2923,9 @@
 }
 :root[data-ce-bereich="kunde"] .ce-pm-kontoart {
   margin-top: var(--ce-space-1);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   line-height: 1.4;
-  font-weight: 500;
+  font-weight: var(--ce-weight-medium);
   letter-spacing: 0.01em;
   color: var(--ce-color-text-muted);
 }

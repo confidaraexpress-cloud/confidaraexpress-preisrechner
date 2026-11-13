@@ -4,7 +4,7 @@
 // glyphen (belegt per Pixel-Scanline-Analyse und A/B-Test gegen
 // `font-feature-settings: "zero" 0/1` in der vorangegangenen Analyse — beide
 // wirkungslos). Jede Ziffern- oder Geschäftsnummernfläche verwendet deshalb
-// ausschließlich `var(--ce-font-numeric)` (zeigt auf DM Sans). Dieser Test
+// ausschließlich `var(--ce-font-numeric)` (zeigt seit 2026-11-13 auf Instrument Sans). Dieser Test
 // deckt zwei Dinge ab, die reine Stichproben nicht erreichen:
 //   1. Es existiert AKTUELL keine aktive `'DM Mono'`-/generische-Monospace-
 //      Referenz mehr in nutzerseitig sichtbaren Quelldateien.
@@ -92,11 +92,12 @@ test("3 — kein generischer 'monospace'/'ui-monospace'-Stapel mehr für sichtba
   assert.deepEqual(jsxTreffer, [], `generischer Monospace-Stapel in Inline-Style: ${jsxTreffer.join(" | ")}`);
 });
 
-test("4 — --ce-font-numeric ist global definiert und zeigt auf DM Sans mit Sans-Fallback", () => {
+test("4 — --ce-font-numeric ist global definiert und zeigt auf Instrument Sans mit Sans-Fallback", () => {
   const vars = read(path.join(SRC, "styles", "variables.css"));
   const m = vars.match(/--ce-font-numeric:\s*([^;]+);/);
   assert.ok(m, "--ce-font-numeric fehlt in variables.css");
-  assert.match(m[1], /'DM Sans'/, "der Token muss auf DM Sans zeigen");
+  // Betreiberentscheidung 2026-11-13 (D1): eine Schrift für Text und Zahlen.
+  assert.match(m[1], /'Instrument Sans'/, "der Token muss auf Instrument Sans zeigen");
   assert.ok(!/monospace/i.test(m[1]), "der Numeric-Token darf keinen Monospace-Fallback enthalten");
   // In :root definiert (global), nicht in einem Shell-Scope gefangen —
   // sonst erreichen admin.css/calculator.css/drafts.css/offers.css/support.css
@@ -185,16 +186,16 @@ test("6 — Ausrichtung (tabular-nums) bleibt an spaltenkritischen Stellen erhal
   }
 });
 
-test("7 — das Kennzahlenband läuft in DM Sans (kein --fm, keine Regression)", () => {
+test("7 — das Kennzahlenband läuft in der Zahlenrolle (kein --fm, keine Regression)", () => {
   // Redesign 2026-10: die vier KPI-Karten sind ein flaches Kennzahlenband
-  // (.ov-kpis). Der Wert läuft über die Zahlenrolle — DM Sans, tabellarisch.
+  // (.ov-kpis). Der Wert läuft über die Zahlenrolle — Instrument Sans, tabellarisch.
   const overview = read(path.join(SRC, "styles", "overview.css"));
   const kpiStart = overview.indexOf(".ov-kpis");
   assert.ok(kpiStart > -1, "das Kennzahlenband fehlt");
   const kpiSektion = overview.slice(kpiStart, overview.indexOf(".ov-mod-grid", kpiStart));
   assert.ok(!/var\(--fm\)/.test(kpiSektion), "KPI-Sektion darf --fm nicht referenzieren");
   assert.match(kpiSektion, /\.ov-kpi-value\s*\{[^}]*font-family:\s*var\(--ce-font-numeric\)/,
-    "KPI-Wert muss die Zahlenrolle (DM Sans) nutzen");
+    "KPI-Wert muss die Zahlenrolle (Instrument Sans) nutzen");
   assert.match(kpiSektion, /\.ov-kpi-value\s*\{[^}]*font-variant-numeric:\s*tabular-nums/,
     "KPI-Wert muss tabellarische Ziffern nutzen");
 });
@@ -208,9 +209,11 @@ test("8 — DM-Mono-Fontdateien sind aus dem Repository entfernt", () => {
   assert.ok(!/font-family:\s*'DM Mono'/.test(fontsCss), "fonts.css deklariert noch eine DM-Mono-@font-face-Regel");
 });
 
-test("9 — DM Sans (der neue Zahlen-Font) ist weiterhin real eingebunden", () => {
+test("9 — Instrument Sans (Text- und Zahlenschrift) ist real eingebunden", () => {
+  // Betreiberentscheidung 2026-11-13 (D1): DM Sans ist entfernt, die Zahlenrolle liest dieselbe Datei wie der Text.
   const fontsCss = read(path.join(SRC, "styles", "fonts.css"));
-  assert.match(fontsCss, /font-family:\s*'DM Sans'/, "DM Sans muss weiterhin per @font-face geladen werden");
+  assert.match(fontsCss, /font-family:\s*'Instrument Sans'/, "Instrument Sans muss per @font-face geladen werden");
   const fontsDir = path.join(SRC, "assets", "fonts");
-  assert.ok(existsSync(path.join(fontsDir, "dmsans-300.woff2")), "die DM-Sans-Fontdatei fehlt");
+  assert.ok(existsSync(path.join(fontsDir, "instrumentsans-var.woff2")), "die Instrument-Sans-Fontdatei fehlt");
+  assert.ok(!existsSync(path.join(fontsDir, "dmsans-300.woff2")), "die entfernte DM-Sans-Datei liegt wieder im Repository");
 });

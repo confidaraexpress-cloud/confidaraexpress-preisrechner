@@ -93,8 +93,8 @@
   }
 }
 
+/* Ohne eigenen Außenabstand: titelstile.css setzt den Malrand (Titel-Clipping 2026-11-14). */
 .ce-page-header-title {
-  margin: 0;
   font-family: var(--ce-font-sans);
   font-size: var(--ce-text-title-page-size);
   font-weight: var(--ce-text-title-page-weight);

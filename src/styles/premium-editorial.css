@@ -102,7 +102,6 @@
   min-width: 0;
 }
 :root[data-ce-bereich="kunde"] .ce-page-header-title {
-  margin: 0;
   font-family: var(--ce-pr-font-display);
   font-size: var(--ce-pr-ed-headline-size);
   line-height: var(--ce-pr-ed-headline-line);

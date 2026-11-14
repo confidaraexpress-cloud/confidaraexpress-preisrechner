@@ -342,6 +342,15 @@
     drop-shadow(0 0.016em 0 #213c9e)
     drop-shadow(0 0.12em 0.18em rgba(0, 0, 0, 0.45))
     drop-shadow(0 0 0.34em rgba(122, 92, 230, 0.16));
+  /* Randband des Malrands (titelstile.css, Titel-Clipping 2026-11-14): Unterlängen und Akzente, die über die Zeilenbox
+     hinausragen, liegen im Malrand und tragen dort die Farbe am Rand ihrer Zeile — oben die erste, unten die letzte Stufe
+     der Füllung. Je genau gleich diesen Stufen (titelstile.test.mjs 15). */
+  --ce-titel-signatur-kante-oben: #1f43c8;
+  --ce-titel-signatur-kante-unten: #2c2a86;
+  --ce-titel-relief-kante-oben: #1a3aa8;
+  --ce-titel-relief-kante-unten: #0d1a4a;
+  --ce-titel-buehne-kante-oben: #ffffff;
+  --ce-titel-buehne-kante-unten: #c9d5fb;
   /* Markierter Text bleibt lesbar: Die Füllung ist transparent, die Auswahl setzt eine echte Schriftfarbe. */
   --ce-titel-auswahl-text: #ffffff;           /* auf #0041de 7,47:1 */
   --ce-titel-auswahl-grund: #0041de;

@@ -1354,7 +1354,7 @@
 .booking-label-hint { color: var(--ce-color-text-primary); font-weight: var(--ce-weight-medium); }
 /* Kein Erfolgs-Medaillon über dem Titel (Redesign 2026-10): die Bestätigung
    steht als Text da. */
-.booking-success-title { font-size: 24px; line-height: 1.25; font-weight: 600; color: var(--ce-color-text-primary); margin-bottom: 8px; }
+.booking-success-title { font-size: 24px; line-height: 1.25; font-weight: 600; color: var(--ce-color-text-primary); }
 .booking-success-recap { text-align: left; max-width: 480px; margin: 0 auto 16px; }
 
 /* Step 3 — summary rows (auch Karte 3 „Sendungsdetails") */

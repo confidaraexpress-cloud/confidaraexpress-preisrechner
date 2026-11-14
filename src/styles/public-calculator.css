@@ -78,7 +78,6 @@
   text-rendering: optimizeLegibility;
 }
 
-.pc-page h1,
 .pc-page h2,
 .pc-page h3,
 .pc-page p,
@@ -87,6 +86,13 @@
 .pc-page dl,
 .pc-page dd,
 .pc-page figure {
+  margin: 0;
+}
+
+/* Die Headline trägt den Malrand der Titelstile (titelstile.css: Innenabstand, ausgeglichen durch negativen
+   Außenabstand). Ihr Rücksatz steht deshalb ohne Klassengewicht: Mit .pc-page davor überschriebe er den Ausgleich,
+   und alles unter der Headline rückte um 0,28 em nach unten (titelstile.test.mjs 14, tests/e2e/titelMalrand). */
+:where(.pc-page) h1 {
   margin: 0;
 }
 

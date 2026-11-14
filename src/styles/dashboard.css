@@ -212,7 +212,6 @@ tr:last-child td { border-bottom: none; }
 /* Titelrolle wie jede andere Seite (PageHeader): 28/36, mobil 24/32. */
 .tracking-head { margin-bottom: var(--ce-space-6); }
 .tracking-title {
-  margin: 0;
   font-family: var(--ce-font-sans);
   font-size: var(--ce-text-title-page-size);
   font-weight: var(--ce-text-title-page-weight);

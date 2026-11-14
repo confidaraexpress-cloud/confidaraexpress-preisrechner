@@ -107,6 +107,10 @@
    (24 px gegen deren clamp-Größe), damit sie die Aussage anführt und nicht
    überlagert. Auf schmalen Breiten rückt sie eine Stufe kleiner. */
 .auth-brand { align-items: center; margin: 0 auto 26px; }
+/* Partnerregistrierung: Abstand Marke → Titel 28 px in jeder Breite (vorher fielen 26 bzw. 20 px Markenrand und 28 px
+   Titelrand auf 28 px zusammen). Titel tragen keinen eigenen Außenabstand mehr (Malrand, titelstile.css); die Anmeldung
+   (Marke in .auth-kopf) ist nicht betroffen. */
+.auth-hero > .auth-brand { margin-bottom: 28px; }
 .auth-brand .ce-brandmark-img { width: 300px; }
 @media (max-width: 640px) {
   .auth-brand { margin-bottom: 20px; }
@@ -134,7 +138,6 @@
   font-size: clamp(40px, 6vw, 86px);
   line-height: 1.05; letter-spacing: -0.015em;
   color: var(--auth-ink-1);
-  margin: 28px 0 18px;
 }
 .auth-title em {
   font-style: italic; font-weight: var(--ce-weight-medium);
@@ -146,6 +149,8 @@
   color: var(--auth-ink-1); letter-spacing: 0.005em; margin-bottom: 8px;
 }
 .auth-sub-2 { font-size: clamp(13px, 1.1vw, 15px); color: var(--auth-ink-3); font-weight: var(--ce-weight-text);
+  /* 18 px unter dem Titel, vorher dessen Außenabstand (Malrand, titelstile.css). */
+  margin-top: 18px;
   /* Gesamtauftrag D: Lesemaß — ab 768 px stand der Satz in einer Zeile mit rund 100 Zeichen. */
   max-width: 62ch; margin-inline: auto; text-wrap: balance; }
 

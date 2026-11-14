@@ -342,11 +342,65 @@
     drop-shadow(0 0.016em 0 #213c9e)
     drop-shadow(0 0.12em 0.18em rgba(0, 0, 0, 0.45))
     drop-shadow(0 0 0.34em rgba(122, 92, 230, 0.16));
+  /* Randband des Malrands (titelstile.css, Titel-Clipping 2026-11-14): Unterlängen und Akzente, die über die Zeilenbox
+     hinausragen, liegen im Malrand und tragen dort die Farbe am Rand ihrer Zeile — oben die erste, unten die letzte Stufe
+     der Füllung. Je genau gleich diesen Stufen (titelstile.test.mjs 15). */
+  --ce-titel-signatur-kante-oben: #1f43c8;
+  --ce-titel-signatur-kante-unten: #2c2a86;
+  --ce-titel-relief-kante-oben: #1a3aa8;
+  --ce-titel-relief-kante-unten: #0d1a4a;
+  --ce-titel-buehne-kante-oben: #ffffff;
+  --ce-titel-buehne-kante-unten: #c9d5fb;
   /* Markierter Text bleibt lesbar: Die Füllung ist transparent, die Auswahl setzt eine echte Schriftfarbe. */
   --ce-titel-auswahl-text: #ffffff;           /* auf #0041de 7,47:1 */
   --ce-titel-auswahl-grund: #0041de;
   --ce-titel-buehne-auswahl-text: #0a1636;    /* auf Weiß 17,78:1 */
   --ce-titel-buehne-auswahl-grund: #ffffff;
+
+  /* ── Buchungsschritte (buchungsschritte.css, Premium-Card-Stepper Variante C, Betreiberentscheidung 2026-11-14) ──
+     Aktiv ausschließlich Blau: in jedem Wert ist Blau der größte Kanal und Rot ≤ Grün (Farbton 207–230°), kein
+     Violett. Erledigt aus der Statusfamilie (Grün), offen hell. Schatten nur in Navy bzw. neutral
+     (buchungsschritte.test.mjs 1, 4 und 6). */
+  --ce-bk-aktiv-tiefe: #071a52;
+  --ce-bk-aktiv-saphir: #0b2f9e;
+  --ce-bk-aktiv-elektrisch: #1450e6;          /* Weiß darauf 6,33:1 */
+  --ce-bk-aktiv-licht: 140, 200, 255;         /* RGB-Tripel für rgba(): Halo um die Marke */
+  --ce-bk-aktiv-zeile: #dce8ff;               /* auf #1450e6 5,13:1 */
+  --ce-bk-aktiv-marke-schrift: #0a2c96;       /* auf #b9d6ff 7,79:1 */
+  --ce-bk-aktiv-marke-rand: rgba(168, 214, 255, 0.75);
+  --ce-bk-aktiv-marke-grund: radial-gradient(120% 120% at 32% 22%, #ffffff 0%, #e6f0ff 46%, #b9d6ff 100%);
+  --ce-bk-aktiv-kante: linear-gradient(180deg, rgba(168, 214, 255, 0.95), rgba(22, 103, 255, 0.55) 52%, rgba(7, 26, 82, 0.85));
+  --ce-bk-aktiv-glanzlinie: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0, rgba(255, 255, 255, 0.3) 1px, rgba(255, 255, 255, 0) 1px);
+  --ce-bk-aktiv-flaeche:
+    radial-gradient(120% 150% at 100% 0%, rgba(140, 200, 255, 0.18) 0%, rgba(140, 200, 255, 0) 46%),
+    radial-gradient(90% 70% at 60% 135%, rgba(22, 103, 255, 0.3) 0%, rgba(22, 103, 255, 0) 70%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 50%),
+    linear-gradient(118deg, var(--ce-bk-aktiv-tiefe) 0%, var(--ce-bk-aktiv-saphir) 55%, var(--ce-bk-aktiv-elektrisch) 100%);
+  --ce-bk-aktiv-lichtlauf: linear-gradient(105deg, rgba(186, 224, 255, 0) 35%, rgba(186, 224, 255, 0.2) 50%, rgba(186, 224, 255, 0) 65%);
+  --ce-bk-erledigt: var(--ce-color-success-solid);   /* Weiß darauf 6,28:1 */
+  --ce-bk-erledigt-hell: #4f9a78;
+  --ce-bk-erledigt-tief: #24533f;
+  --ce-bk-erledigt-marke-grund: radial-gradient(120% 120% at 30% 22%, var(--ce-bk-erledigt-hell) 0%, var(--ce-bk-erledigt) 55%, var(--ce-bk-erledigt-tief) 100%);
+  --ce-bk-erledigt-flaeche: linear-gradient(180deg, #ffffff 40%, #f5faf7);
+  --ce-bk-erledigt-kante: linear-gradient(180deg, rgba(47, 107, 82, 0.45), rgba(47, 107, 82, 0.14));
+  --ce-bk-offen-flaeche: linear-gradient(180deg, #ffffff 40%, #f8fafd);
+  --ce-bk-offen-kante: linear-gradient(180deg, rgba(127, 156, 207, 0.42), rgba(17, 34, 80, 0.12));
+  --ce-bk-offen-titel: #3d4966;               /* auf #f8fafd 8,57:1 */
+  --ce-bk-offen-zeile: #56637f;               /* auf #f8fafd 5,76:1, auf Weiß 6,02:1 */
+  --ce-bk-offen-ring: #c3ccdb;
+  --ce-bk-pfeil-offen: #aab6ca;
+  --ce-bk-pfeil-erledigt: rgba(47, 107, 82, 0.72);
+  --ce-bk-pfeil-aktiv: rgba(22, 103, 255, 0.72);
+  --ce-bk-text: #16223f;                      /* auf #f5faf7 14,9:1 */
+  --ce-bk-text-gedaempft: #434f6b;            /* auf #f5faf7 7,76:1 */
+  --ce-bk-kontrast-kante: #6b7893;
+  --ce-bk-shadow-marke: inset 0 0 0 1.5px var(--ce-bk-offen-ring), 0 1px 2px rgba(1, 27, 85, 0.06);
+  --ce-bk-shadow-karte-erledigt: 0 1px 2px rgba(1, 27, 85, 0.05);
+  --ce-bk-shadow-marke-erledigt: inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 -2px 3px rgba(0, 0, 0, 0.16), 0 3px 8px -3px rgba(1, 27, 85, 0.35);
+  --ce-bk-shadow-karte-aktiv: 0 1px 2px rgba(2, 16, 64, 0.24), 0 14px 26px -14px rgba(2, 22, 80, 0.62), 0 6px 14px -10px rgba(1, 27, 85, 0.45);
+  --ce-bk-shadow-marke-aktiv: inset 0 1px 0 #ffffff, inset 0 -2px 4px rgba(1, 27, 85, 0.28), 0 5px 12px -3px rgba(1, 8, 40, 0.6);
+  --ce-bk-shadow-marke-text: 0 1px 0 rgba(255, 255, 255, 0.85);
+  --ce-bk-shadow-marke-kontrast: inset 0 0 0 2px #4a5670;
 
   /* ── Abstände ──
      4-px-Basis: 4 · 8 · 12 · 16 · 20 · 24 · 32 · 40 · 48 · 64. 80/96 bleiben

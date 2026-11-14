@@ -8,7 +8,7 @@
 // Run: node --test src/styles/titelstile.test.mjs
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
 const ohneKommentare = (css) => css.replace(/\/\*[\s\S]*?\*\//g, "");
@@ -53,12 +53,20 @@ test("2 — die Mechanik greift nur mit background-clip: text und fällt ohne Zu
   const supports = block(titel, "@supports ((background-clip: text) or (-webkit-background-clip: text))");
   const [mechanik] = regeln(supports);
   assert.deepEqual(liste(mechanik.sel), TITEL);
-  assert.match(mechanik.koerper, /background-image:\s*var\(--titel-fuellung,\s*none\);/);
+  // Zwei Ebenen (Titel-Clipping 2026-11-14): oben das Randband über die ganze Rahmenbox — im Malrand oben die erste,
+  // unten die letzte Farbe der Füllung, dazwischen durchsichtig —, darunter die unveränderte Zeilenkachel.
+  assert.match(mechanik.koerper, new RegExp(String.raw`background-image:\s*linear-gradient\(180deg,\s*`
+    + String.raw`var\(--titel-kante-oben,\s*transparent\)\s+var\(--titel-malrand\),\s*transparent\s+var\(--titel-malrand\),\s*`
+    + String.raw`transparent\s+calc\(100% - var\(--titel-malrand\)\),\s*`
+    + String.raw`var\(--titel-kante-unten,\s*transparent\)\s+calc\(100% - var\(--titel-malrand\)\)\),\s*`
+    + String.raw`var\(--titel-fuellung,\s*none\);`), "Randband über der Füllung");
   assert.match(mechanik.koerper, /-webkit-text-fill-color:\s*var\(--titel-schriftfuellung,\s*currentColor\);/);
   assert.match(mechanik.koerper, /filter:\s*var\(--titel-praegung,\s*none\);/);
   assert.match(mechanik.koerper, /-webkit-background-clip:\s*text;/);
   assert.match(mechanik.koerper, /(?<![\w-])background-clip:\s*text;/);
-  assert.match(mechanik.koerper, /background-size:\s*100% 1lh;/, "je Zeile ein Verlauf");
+  assert.match(mechanik.koerper, /background-size:\s*100% 100%,\s*100% 1lh;/, "Randband ganz, je Zeile ein Verlauf");
+  assert.match(mechanik.koerper, /background-repeat:\s*no-repeat,\s*repeat-y;/);
+  assert.match(mechanik.koerper, /background-origin:\s*border-box,\s*content-box;/, "Band ab der Rahmenbox, Kachel ab dem Inhalt");
   // Außerhalb von @supports wird die Füllung nie transparent gesetzt.
   const aussen = titel.replace(supports, "");
   assert.doesNotMatch(aussen, /-webkit-text-fill-color:\s*transparent/);
@@ -196,6 +204,38 @@ test("11 — die Prüflogik greift tatsächlich", () => {
   // Die Kontrastfunktion rechnet richtig (Schwarz auf Weiß 21:1, gleiche Farben 1:1).
   assert.equal(Math.round(kontrast("#000000", "#ffffff")), 21);
   assert.equal(kontrast("#5367e8", "#5367e8"), 1);
+  // Test 14 fände einen eigenen Titelrand — auch im Medienblock, als Kurzform und mit Zusatzklasse —, nicht aber einen
+  // Nachfahren, ein Pseudoelement, ein :has()-Subjekt oder die lokale Größe --titel-polster-oben.
+  const verstoesse = eigeneAbstaende({ "x.css": [
+    ".legal-title { margin-top: 4px; }",
+    "@media (max-width: 640px) { .auth-title.auth-anim { padding: 0 0 2px; } }",
+    ".pc-hero > .pc-display { margin-block: 12px; }",
+    ".auth-title em { margin: 0; } .tracking-title::after { padding: 0; } .x:has(.insinfo-title) { margin: 0; }",
+    ".bsx .booking-success-title { --titel-polster-oben: 2px; } .ce-page-header-title-x { margin: 0; }",
+  ].join("\n") });
+  assert.deepEqual(verstoesse.map((v) => v.split(" → ")[0]),
+    ["x.css: .legal-title", "x.css: .auth-title.auth-anim", "x.css: .pc-hero > .pc-display"]);
+  // … und eine Element- oder Allregel mit Gewicht, die den Malrand überschriebe — nicht aber dieselbe Regel in :where(),
+  // ohne Gewicht, nur seitlich, für h2 oder für ein Pseudoelement.
+  const element = ueberschreibendeElementregeln({ "x.css": [
+    "@import './y.css'; .pc-page h1, .pc-page p { margin: 0; }",
+    "@media print { [data-ce-bereich=\"kunde\"] .stapel > * + * { margin-top: 8px; } }",
+    "h1:first-child { padding-block-start: 0; }",
+    ":where(.pc-page) h1 { margin: 0; } h1 { margin: 0; } * { padding: 0; } .x > * { padding-left: 4px; }",
+    ".adm h2 { margin: 0; } .x h1::before { margin: 0; } .x h1 { color: red; }",
+  ].join("\n") });
+  assert.deepEqual(element.map((v) => v.split(" → ")[0]),
+    ["x.css: .pc-page h1", "x.css: [data-ce-bereich=\"kunde\"] .stapel > * + *", "x.css: h1:first-child"]);
+  // Test 15 fände ein Randband, das nicht mehr zur Füllung passt, und eine Zuordnung mit fremder Kante.
+  const fremd = kantenAbweichungen(
+    "--ce-titel-relief-fuellung: linear-gradient(180deg, #1a3aa8 0%, #0d1a4a 100%); "
+    + "--ce-titel-relief-kante-oben: #1a3aa8; --ce-titel-relief-kante-unten: #0b1b50;",
+    ".legal-title { --titel-fuellung: var(--ce-titel-relief-fuellung); --titel-kante-oben: var(--ce-titel-signatur-kante-oben); "
+    + "--titel-kante-unten: var(--ce-titel-relief-kante-unten); }");
+  assert.equal(fremd.length, 2, fremd.join(" | "));
+  // Test 13 fände eine Titelzeilenhöhe unter 1,0, für die der Malrand nicht reicht.
+  assert.deepEqual(zuEngeZeilen({ "x.css": ".legal-title { line-height: 0.96; } .tracking-title { line-height: 1.04; }" }),
+    ["x.css: .legal-title line-height 0.96"]);
 });
 
 /* Premium-Typografie 2.0 (Betreiberauftrag 2026-11-13): „Wirkung erhalten, aber weniger dunkler Schattenhof, feinere
@@ -264,3 +304,138 @@ function kontrast(a, b) {
   const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
   return (x + 0.05) / (y + 0.05);
 }
+
+/* ══════════ Malrand (Titel-Clipping, 2026-11-14) ═══════════════════════════════════════════════════════════════════
+   background-clip: text malt nur in der Rahmenbox. Bei Zeilenhöhe 1,04 ragen Unterlängen von Instrument Sans bis
+   0,06 em unter und Akzente großer Buchstaben bis 0,11 em über die Box; ein Malrand von 0,14 em (Innenabstand,
+   ausgeglichen durch denselben negativen Außenabstand) holt sie in den Malbereich, ohne dass sich eine Zeile bewegt.
+   Neutral ist der Ausgleich nur, solange kein Titel einen eigenen Außen- oder Innenabstand trägt (Test 14). */
+const STIL_DATEIEN = Object.fromEntries(readdirSync(new URL("./", import.meta.url))
+  .filter((f) => f.endsWith(".css") && f !== "titelstile.css")
+  .map((f) => [f, ohneKommentare(read(`./${f}`))]));
+const TITEL_KLASSE = new RegExp(String.raw`\.(${TITEL.map((s) => s.slice(1)).join("|")})(?![\w-])`);
+
+/** Subjekt eines Selektors: der letzte zusammengesetzte Selektor, ohne Klammerinhalte (:has, :is, :not). */
+function subjekt(selektor) {
+  let s = selektor;
+  for (let alt = ""; alt !== s;) { alt = s; s = s.replace(/\([^()]*\)/g, "()"); }
+  return s.trim().split(/\s*[\s>+~]\s*/).filter(Boolean).pop() || "";
+}
+/** Regeln, deren Subjekt ein Titel ist (ohne Pseudoelemente), je Datei. */
+function titelRegeln(dateien) {
+  const aus = [];
+  for (const [datei, text] of Object.entries(dateien)) {
+    for (const { sel, koerper } of regeln(text)) {
+      if (sel.startsWith("@")) continue;
+      for (const s of liste(sel.replace(/^.*@[^{]*$/, ""))) {
+        const sub = subjekt(s);
+        if (TITEL_KLASSE.test(sub) && !sub.includes("::")) aus.push({ datei, sel: s, koerper });
+      }
+    }
+  }
+  return aus;
+}
+function eigeneAbstaende(dateien) {
+  return titelRegeln(dateien)
+    .filter((r) => /(?<![\w-])(margin|padding)(-[a-z]+)*\s*:/.test(r.koerper))
+    .map((r) => `${r.datei}: ${r.sel} → ${r.koerper.trim().replace(/\s+/g, " ").slice(0, 80)}`);
+}
+/** Regeln ohne Titelklasse, die einen Titel trotzdem treffen und seinen Malrand überschreiben: Subjekt h1 (alle sieben
+    Titel sind h1) oder *, mit Gewicht aus Klasse, Attribut, ID oder Pseudoklasse außerhalb von :where() — also
+    mindestens so spezifisch wie die Titelklasse — und mit einem Außen- oder Innenabstand in Blockrichtung. */
+function ueberschreibendeElementregeln(dateien) {
+  const aus = [];
+  for (const [datei, text] of Object.entries(dateien)) {
+    for (const { sel, koerper } of regeln(text)) {
+      const kopf = sel.replace(/^(?:@[^;{]*;\s*)+/, "");
+      if (kopf.startsWith("@") || !/(?<![\w-])(margin|padding)(-top|-bottom|-block|-block-start|-block-end)?\s*:/.test(koerper)) continue;
+      for (const s of liste(kopf)) {
+        if (!/^(h1|\*)(:[\w-]+(\(\))?)*$/.test(subjekt(s))) continue;
+        let gefaltet = s;
+        for (let alt = ""; alt !== gefaltet;) { alt = gefaltet; gefaltet = gefaltet.replace(/\([^()]*\)/g, "()"); }
+        if (/[.#[]|:(?!where\(\))/.test(gefaltet)) aus.push(`${datei}: ${s} → ${koerper.trim().replace(/\s+/g, " ").slice(0, 80)}`);
+      }
+    }
+  }
+  return aus;
+}
+function zuEngeZeilen(dateien) {
+  const aus = [];
+  for (const r of titelRegeln(dateien)) {
+    for (const [, wert] of r.koerper.matchAll(/(?<![\w-])line-height:\s*([^;]+);/g)) {
+      const v = wert.trim();
+      const tokens = [...v.matchAll(/var\((--[\w-]+)\)/g)].map((m) => m[1]);
+      const zahlen = /^[\d.]+$/.test(v) ? [Number(v)]
+        : tokens.flatMap((t) => [...variables.matchAll(new RegExp(String.raw`${t}:\s*([\d.]+)\s*;`, "g"))].map((m) => Number(m[1])));
+      for (const z of zahlen) if (z < 1) aus.push(`${r.datei}: ${r.sel} line-height ${z}`);
+    }
+  }
+  return aus;
+}
+function stufen(vars, name) {
+  const m = vars.match(new RegExp(String.raw`${name}:\s*linear-gradient\(([^;]+)\);`));
+  return m ? [...m[1].matchAll(/#[0-9a-f]{6}/gi)].map((x) => x[0].toLowerCase()) : [];
+}
+function kantenAbweichungen(vars, titelCss) {
+  const aus = [];
+  for (const material of [...vars.matchAll(/--ce-titel-([a-z]+)-fuellung:/g)].map((m) => m[1])) {
+    const s = stufen(vars, `--ce-titel-${material}-fuellung`);
+    const oben = vars.match(new RegExp(String.raw`--ce-titel-${material}-kante-oben:\s*(#[0-9a-f]{6})`, "i"))?.[1]?.toLowerCase();
+    const unten = vars.match(new RegExp(String.raw`--ce-titel-${material}-kante-unten:\s*(#[0-9a-f]{6})`, "i"))?.[1]?.toLowerCase();
+    if (oben !== s[0]) aus.push(`${material}: Kante oben ${oben} statt erster Stufe ${s[0]}`);
+    if (unten !== s[s.length - 1]) aus.push(`${material}: Kante unten ${unten} statt letzter Stufe ${s[s.length - 1]}`);
+  }
+  for (const { sel, koerper } of regeln(titelCss)) {
+    const f = koerper.match(/--titel-fuellung:\s*var\(--ce-titel-([a-z]+)-fuellung\)/);
+    if (!f) continue;
+    for (const seite of ["oben", "unten"]) {
+      if (!new RegExp(String.raw`--titel-kante-${seite}:\s*var\(--ce-titel-${f[1]}-kante-${seite}\)`).test(koerper)) {
+        aus.push(`${sel}: Füllung ${f[1]} ohne passende Kante ${seite}`);
+      }
+    }
+  }
+  return aus;
+}
+
+test("13 — Malrand: alle sieben Titel, unbedingt (auch im Rückfall), ausgeglichen; jede Titelzeilenhöhe ist gedeckt", () => {
+  const supports = block(titel, "@supports ((background-clip: text) or (-webkit-background-clip: text))");
+  const rueckfall = block(titel, "@media (forced-colors: active), (prefers-contrast: more), print");
+  const aussen = titel.replace(supports, "").replace(rueckfall, "");
+  const malrand = regeln(aussen).filter((r) => r.koerper.includes("--titel-malrand:"));
+  assert.equal(malrand.length, 1, "genau eine Malrand-Regel außerhalb von @supports und @media");
+  assert.deepEqual(liste(malrand[0].sel), TITEL);
+  assert.match(malrand[0].koerper, /--titel-malrand:\s*0\.14em;/);
+  assert.match(malrand[0].koerper,
+    /padding-block:\s*calc\(var\(--titel-polster-oben,\s*0px\) \+ var\(--titel-malrand\)\)\s+var\(--titel-malrand\);/);
+  assert.match(malrand[0].koerper, /margin-block:\s*calc\(-1 \* var\(--titel-malrand\)\);/, "Ausgleich per negativem Außenabstand");
+  assert.doesNotMatch(supports + rueckfall, /--titel-malrand:|padding|margin/, "der Malrand hängt an keinem Zweig");
+  // 0,14 em reicht für Zeilenhöhen ab 1,0 (Akzent „Å“ oben 0,99 − 0,86 = 0,13 em). Keine Titelregel setzt weniger.
+  assert.deepEqual(zuEngeZeilen(STIL_DATEIEN), [], "Titelzeilenhöhe unter 1,0");
+});
+
+test("14 — Titel tragen keine eigenen Außen- oder Innenabstände (der Malrand-Ausgleich bleibt neutral)", () => {
+  // Ein eigener positiver Außenabstand fiele per Margin-Collapsing mit dem negativen Ausgleich zusammen und verschöbe
+  // die Nachbarn (gemessen: Partnerregistrierung +10 px). Abstände stehen an den Nachbarn; ein Innenabstand oben als
+  // --titel-polster-oben. Geprüft wird jede Regel, deren Subjekt eine der sieben Titelklassen ist.
+  assert.ok(titelRegeln(STIL_DATEIEN).length >= 7, "die Titelregeln wurden nicht gefunden");
+  assert.deepEqual(eigeneAbstaende(STIL_DATEIEN), [], "Titel mit eigenem Abstand");
+  // Dasselbe über Element- und Allregeln: .pc-page h1 { margin: 0 } (0,1,1) schlug .pc-display (0,1,0) — der Preisrechner
+  // behielt den Innenabstand ohne Ausgleich, alles darunter rückte 0,28 em tiefer (gemessen in tests/e2e/titelMalrand).
+  assert.deepEqual(ueberschreibendeElementregeln(STIL_DATEIEN), [], "Element- oder Allregel überschreibt den Malrand");
+  assert.match(STIL_DATEIEN["public-calculator.css"], /:where\(\.pc-page\) h1 \{\s*margin: 0;\s*\}/, "Rücksatz der h1 ohne Klassengewicht");
+  // Die zwei früheren Titelabstände stehen jetzt an den Nachbarn.
+  const auth = STIL_DATEIEN["auth.css"];
+  assert.match(auth, /\.auth-hero > \.auth-brand \{ margin-bottom: 28px; \}/, "Partnerregistrierung: Marke → Titel 28 px");
+  assert.match(auth, /\.auth-sub-2 \{[^}]*margin-top: 18px;/, "Partnerregistrierung: Titel → Unterzeile 18 px");
+  assert.match(STIL_DATEIEN["insurance-info.css"], /\.insinfo-lead \{\s*margin: var\(--ce-space-2\) 0 0;/,
+    "Versicherungsinfo: Titel → Einleitung 8 px");
+  assert.match(STIL_DATEIEN["premium-redesign.css"],
+    /\[data-ce-bereich="kunde"\] \.bsx \.booking-success-title \{\s*--titel-polster-oben: 2px;/, "Buchungserfolg: 2 px oben");
+});
+
+test("15 — das Randband trägt die erste und letzte Farbe der jeweiligen Füllung, die Zuordnung passt zum Material", () => {
+  assert.deepEqual(kantenAbweichungen(variables, titel), []);
+  for (const material of ["signatur", "relief", "buehne"]) {
+    assert.ok(stufen(variables, `--ce-titel-${material}-fuellung`).length >= 2, `${material}: Füllung nicht gelesen`);
+  }
+});

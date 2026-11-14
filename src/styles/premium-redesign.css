@@ -560,10 +560,11 @@
 [data-ce-bereich="kunde"] .booking-blatt .summary-detail-row > :first-child { color: var(--ce-color-text-secondary); }
 [data-ce-bereich="kunde"] .booking-blatt .summary-detail-row > :last-child { font-size: 0.9375rem; font-weight: 600; color: var(--ce-color-text-primary); }
 
-/* Schrittanzeige: ruhige Spur, Nummern in Instrument Sans, Beschriftung lesbar. */
-[data-ce-bereich="kunde"] .booking-wrap .steps-bar .step-circle { width: 30px; height: 30px; border-width: 1.5px; font-size: 0.8125rem; font-weight: 650; }
-[data-ce-bereich="kunde"] .booking-wrap .steps-bar .step-label { margin-top: 6px; font-size: 0.8125rem; font-weight: 600; }
-[data-ce-bereich="kunde"] .booking-wrap .steps-bar .step-line { height: 1.5px; }
+/* Schrittanzeige der Buchung: eigene Karten in buchungsschritte.css (Premium-Card-Stepper, 2026-11-14). In der breiten
+   Fassung tragen sie den Radius der Abschnitte des Bereichs; kompakt (unter 34 em Leistenbreite) bleibt die Skala. */
+@container bk-schritte (min-width: 34em) {
+  [data-ce-bereich="kunde"] .bk-karte { border-radius: var(--ce-pr-radius-panel); }
+}
 
 /* Beleg neben dem Blatt ab 1440 px: dieselbe Live-Zusammenfassung, gestapelt, mit dem Markenstreifen oben — nur,
    wenn der Inhaltsbereich das Blatt, den Abstand und den Beleg trägt (800 + 32 + 296 + 2 × 32 = 1192 px, Container
@@ -744,8 +745,8 @@
 [data-ce-bereich="kunde"] .bsx-kopf:has(.bsx-status) > .bsx-aktionen { padding-left: 0; }
 [data-ce-bereich="kunde"] .bsx-bestaetigung-text { display: grid; justify-items: start; min-width: 0; }
 [data-ce-bereich="kunde"] .bsx .booking-success-title {
-  margin: 0;
-  padding-top: 2px;
+  /* 2 px Luft über dem Titel; titelstile.css rechnet sie in den Malrand ein (kein eigener Innenabstand am Titel). */
+  --titel-polster-oben: 2px;
   font-family: var(--ce-pr-font-display);
   font-size: 2.5rem;
   line-height: 1.12;
@@ -1346,7 +1347,6 @@
    2026-11-13 die Displaystufe 700 (Auftrag: große Titel 750–800, soweit die Schrift es trägt; vorher 620) mit der
    Bühnenfassung der Signatur aus titelstile.css. */
 [data-ce-bereich="auth"] .auth-title {
-  margin: 0;
   font-family: var(--ce-pr-font-display);
   font-size: clamp(2.5rem, 4.2vw, 3.75rem);
   font-weight: var(--ce-text-display-xl-weight);

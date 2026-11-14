@@ -93,6 +93,10 @@
    Foundation-Tokens, Karten/Tabs/Listen aus den gemeinsamen Mustern. Steht wie
    alle Bereichs-Stylesheets VOR patterns.css. */
 @import './partner.css';
+/* Buchungsschritte (Premium-Card-Stepper, Betreiberentscheidung 2026-11-14): nur .booking-wrap > .steps-bar und
+   .bk-*; ersetzt dort die gemeinsamen .steps-bar-Regeln aus dashboard.css, die Sendungsverfolgung bleibt unberührt.
+   Wie jedes Bereichs-Stylesheet vor der Musterebene — die trägt keine Regel für Schrittleisten oder .bk-*. */
+@import './buchungsschritte.css';
 /* Titelstile Signatur und Relief (Betreiberentscheidungen D2/D3, 2026-11-13): ein Material für die Hauptüberschriften
    aller Bereiche, gemeinsam mit dem öffentlichen Preisrechner. Setzt nur Füllung, Prägung und Markierung — keine
    Schriftrolle — und steht deshalb vor der Musterebene. */

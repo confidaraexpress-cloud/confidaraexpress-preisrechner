@@ -10,11 +10,21 @@
    Material hell auf dunkel — für Anmeldung, Registrierung, Partnerregistrierung (D3) und Preisrechner. Die
    Admin-Anmeldung trägt keinen dieser Titel und bleibt unverändert (.auth-admin-titel).
 
+   Malrand (Titel-Clipping, 2026-11-14): background-clip: text malt nur innerhalb der Rahmenbox. Instrument Sans ist
+   1,22 em hoch, die Titelzeilen nur 1,04 bis 1,18 em — Unterlängen (g, j, p, q, y) ragten unten und Akzente großer
+   Buchstaben (Ä, Ö, Ü, Å, É) oben aus der Box und blieben durchsichtig. Ein Innenabstand von 0,14 em oben und unten,
+   ausgeglichen durch denselben negativen Außenabstand, vergrößert den Malbereich, ohne dass sich eine Zeile bewegt;
+   ein Randband in der ersten und letzten Farbe der Füllung färbt den Malrand wie den Rand der Zeile.
+   Vorbedingung: Titel tragen keine eigenen Außen- oder Innenabstände (titelstile.test.mjs 14). Ein eigener positiver
+   Außenabstand fiele mit dem negativen Ausgleich zusammen und verschöbe die Nachbarn; Abstände stehen an den Nachbarn,
+   ein Innenabstand oben als --titel-polster-oben.
+
    Sicherheit der Darstellung:
    • Die Mechanik liest lokale Größen (--titel-*) mit Rückfall. Ein Titel ohne Zuordnung bleibt deshalb ein normaler
      Titel in seiner Schriftfarbe — nie unsichtbar.
    • Nur wo der Browser background-clip: text kann (@supports); sonst bleibt die flache Schriftfarbe.
-   • Erzwungene Farben, erhöhter Kontrast und Druck: flache Schriftfarbe ohne Verlauf und Schatten.
+   • Erzwungene Farben, erhöhter Kontrast und Druck: flache Schriftfarbe ohne Verlauf und Schatten. Der Malrand gilt
+     auch dort, damit das Layout in jedem Zweig gleich bleibt.
    • Markierter Text erhält eine echte Schriftfarbe (die Füllung selbst ist transparent).
    Die Bündel laden diese Datei je einmal: index.css vor der Musterebene, public-calculator.css nach den Tokens.
    ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -25,6 +35,8 @@
 .legal-title {
   --titel-fuellung: var(--ce-titel-relief-fuellung);
   --titel-praegung: var(--ce-titel-relief-praegung);
+  --titel-kante-oben: var(--ce-titel-relief-kante-oben);
+  --titel-kante-unten: var(--ce-titel-relief-kante-unten);
   --titel-schriftfuellung: transparent;
 }
 /* Signatur: Kundenbereich (Seitenkopf, Sendungsverfolgung, Buchungserfolg) und die öffentlichen Einstiegsseiten. */
@@ -34,6 +46,8 @@
 .insinfo-title {
   --titel-fuellung: var(--ce-titel-signatur-fuellung);
   --titel-praegung: var(--ce-titel-signatur-praegung);
+  --titel-kante-oben: var(--ce-titel-signatur-kante-oben);
+  --titel-kante-unten: var(--ce-titel-signatur-kante-unten);
   --titel-schriftfuellung: transparent;
 }
 /* Der Gruß der Übersicht ist ein Satz, kein Plakat (2026-11-01): dasselbe Material, eine Stufe ruhiger. */
@@ -45,7 +59,24 @@
 .pc-display {
   --titel-fuellung: var(--ce-titel-buehne-fuellung);
   --titel-praegung: var(--ce-titel-buehne-praegung);
+  --titel-kante-oben: var(--ce-titel-buehne-kante-oben);
+  --titel-kante-unten: var(--ce-titel-buehne-kante-unten);
   --titel-schriftfuellung: transparent;
+}
+
+/* ── Malrand ───────────────────────────────────────────────────────────────────────────────────────────────────── */
+/* Unbedingt, also auch ohne background-clip: text, bei erzwungenen Farben, erhöhtem Kontrast und im Druck. 0,14 em
+   deckt mit Instrument Sans jede Zeilenhöhe ab 1,0 (oben nötig 0,13 em für „Å“, unten 0,08 em für „g“). */
+.ce-page-header-title,
+.legal-title,
+.tracking-title,
+.insinfo-title,
+.booking-success-title,
+.auth-title,
+.pc-display {
+  --titel-malrand: 0.14em;
+  padding-block: calc(var(--titel-polster-oben, 0px) + var(--titel-malrand)) var(--titel-malrand);
+  margin-block: calc(-1 * var(--titel-malrand));
 }
 
 /* ── Mechanik ──────────────────────────────────────────────────────────────────────────────────────────────────── */
@@ -57,11 +88,17 @@
   .booking-success-title,
   .auth-title,
   .pc-display {
-    background-image: var(--titel-fuellung, none);
-    /* Je Zeile ein Verlauf: Mehrzeilige Titel sehen in jeder Zeile gleich aus. */
-    background-size: 100% 1lh;
-    background-repeat: repeat-y;
-    background-origin: content-box;
+    /* Oberste Ebene: das Randband — im Malrand oben die erste, unten die letzte Farbe der Füllung. Es deckt die
+       Zeilenkachel, die sich sonst in den Malrand hinein wiederholt (das „g“ bekäme das helle Blau vom Kachelanfang).
+       Darunter je Zeile ein Verlauf: Mehrzeilige Titel sehen in jeder Zeile gleich aus. */
+    background-image:
+      linear-gradient(180deg,
+        var(--titel-kante-oben, transparent) var(--titel-malrand), transparent var(--titel-malrand),
+        transparent calc(100% - var(--titel-malrand)), var(--titel-kante-unten, transparent) calc(100% - var(--titel-malrand))),
+      var(--titel-fuellung, none);
+    background-size: 100% 100%, 100% 1lh;
+    background-repeat: no-repeat, repeat-y;
+    background-origin: border-box, content-box;
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: var(--titel-schriftfuellung, currentColor);

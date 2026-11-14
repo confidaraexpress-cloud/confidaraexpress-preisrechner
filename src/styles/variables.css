@@ -93,11 +93,15 @@
      gedämpfter und Platzhaltertext stehen in der Navy-Familie (Farbton um 222°
      wie das Logo-Navy) statt in Blaugrau — drei unterscheidbare Stufen unter dem
      Haupttext, Nebentext auf jeder hellen Fläche über 7:1. Dieselben Werte
-     gelten im Bereichsblock (Kunde, Anmeldung, Preisrechner). */
+     gelten im Bereichsblock (Kunde, Anmeldung, Preisrechner).
+     Premium-Typografie 2.0 (Betreiberauftrag 2026-11-13): gedämpfter Text
+     (Hilfetexte, Tabellen-Nebenangaben, KPI-Erklärungen) eine Stufe dunkler —
+     jetzt auch auf jeder hellen Fläche über 7:1; Platzhalter ebenso eine Stufe
+     dunkler, bleibt aber sichtbar heller als jeder eingegebene Wert. */
   --ce-color-text-primary: #111a33;                   /* weiß 17,22:1 · Grund 16,36:1 */
   --ce-color-text-secondary: #3a4662;                 /* weiß 9,41:1 · Grund 8,94:1 · surface-muted 8,54:1 */
-  --ce-color-text-muted: #4a5672;                     /* weiß 7,33:1 · Grund 6,96:1 · surface-muted 6,66:1 */
-  --ce-color-text-placeholder: #5a6681;               /* weiß 5,75:1 · Grund 5,46:1 · surface-muted 5,22:1 */
+  --ce-color-text-muted: #434f6b;                     /* weiß 8,17:1 · Grund 7,76:1 · surface-muted 7,42:1 */
+  --ce-color-text-placeholder: #525e7a;               /* weiß 6,48:1 · Grund 6,15:1 · surface-muted 5,88:1 */
   --ce-color-text-disabled: #97a1b0;                  /* 2,61:1 — nur inaktive Elemente */
   --ce-color-text-inverse: #ffffff;
   --ce-color-text-inverse-soft: rgba(226, 232, 246, 0.78);
@@ -220,10 +224,15 @@
 
   /* ── Gewichtsleiter ──
      Präzise Zwischengewichte statt Fettdruck (Betreiberentscheidung 2026-11-13):
-     Fließ-, Neben- und Tabellentext 450, Beschriftungen, Unternavigation und
-     Badges 550. Die variable Schriftdatei zeichnet jeden Wert echt. Komponenten
-     schreiben für diese beiden Stufen kein Zahlenliteral, sondern den Token. */
-  --ce-weight-text: 450;
+     Fließ-, Neben- und Tabellentext --ce-weight-text, Unternavigation und
+     Navigation --ce-weight-medium (550). Die variable Schriftdatei zeichnet
+     jeden Wert echt. Komponenten schreiben für diese beiden Stufen kein
+     Zahlenliteral, sondern den Token.
+     Premium-Typografie 2.0 (Betreiberauftrag 2026-11-13, Zielwert „normaler
+     Text 500“): der Textschnitt steigt von 450 auf 500 — 450 wirkte bei 100 %
+     Zoom in Hilfetexten, Tabellen und Feldern zu dünn. Beschriftungen (Label-
+     Rolle) und Badges tragen seitdem 600, siehe Typografierollen. */
+  --ce-weight-text: 500;
   --ce-weight-medium: 550;
 
   /* ── Typografierollen ──
@@ -240,9 +249,14 @@
 
      Rollen:  Page Title 34/40 (700) · mobil 28/34 · Section 18/26 (650) ·
               Card 16/24 (620) · Body 15/23 · Lesetext 16/24 · Small 14/21 ·
-              Label 14/20 (550) · Caption 13/20 · Tabellenkopf 12/18 (600) ·
-              Badge 13/18 (550) · Button 14/20 (600) ·
+              Label 14/20 (600) · Caption 14/20 · Micro 13/18 (600) ·
+              Tabellenkopf 14/20 (600, Label-Größe) · Badge 13/18 (600) ·
+              Button 14/20 (600) · kleiner Knopf 13/18 ·
               Navigation 14/20 (550, aktiv 600) · KPI 32/38 · Display S 24.
+     Premium-Typografie 2.0 (Betreiberauftrag 2026-11-13): Caption (Hilfe-,
+     Meta- und KPI-Erklärungstext) 13 → 14 px und Micro 12 → 13 px bei
+     unveränderter Zeilenhöhe — Tabellenzeilen, Karten und die Seitenleiste
+     wachsen dadurch nicht in der Höhe. Beschriftungen und Badges 600.
      Seitentitel 700: Der Auftrag vom 2026-11-13 nennt für große Titel 750–800,
      soweit die Schrift es trägt — die Datei endet bei 700.
      display-xl/-l tragen bewusst dieselben Werte wie der Page Title: es gibt
@@ -266,18 +280,19 @@
   --ce-text-body-s-size: 14px;          --ce-text-body-s-size-mobile: 14px;
   --ce-text-body-s-weight: var(--ce-weight-text); --ce-text-body-s-line: 1.5; --ce-text-body-s-tracking: 0;
   --ce-text-label-size: 14px;           --ce-text-label-size-mobile: 14px;
-  --ce-text-label-weight: var(--ce-weight-medium); --ce-text-label-line: 1.4286; --ce-text-label-tracking: 0;
-  --ce-text-micro-size: 12px;           --ce-text-micro-size-mobile: 12px;
-  --ce-text-micro-weight: 600;          --ce-text-micro-line: 1.5;            --ce-text-micro-tracking: 0;
+  --ce-text-label-weight: 600;          --ce-text-label-line: 1.4286;         --ce-text-label-tracking: 0;
+  --ce-text-micro-size: 13px;           --ce-text-micro-size-mobile: 13px;
+  --ce-text-micro-weight: 600;          --ce-text-micro-line: 1.3846;         --ce-text-micro-tracking: 0;
   --ce-text-numeric-display-size: 32px; --ce-text-numeric-display-size-mobile: 28px;
   --ce-text-numeric-display-weight: 600; --ce-text-numeric-display-line: 1.1875; --ce-text-numeric-display-tracking: -0.02em;
   /* Display S 24 px: Kennwerte in Karten, Beträge, Bühnen- und Dialogtitel. Bis
      D4 (2026-11-13) war das dieselbe Stufe wie der mobile Seitentitel; seitdem
      eine eigene Stufe — die Größe dieser Aufrufer bleibt unverändert. */
   --ce-text-display-s-size: 24px;       --ce-text-display-s-size-mobile: 24px;
-  --ce-text-caption-size: 13px;         --ce-text-caption-weight: var(--ce-weight-text); --ce-text-caption-line: 1.5385;
-  --ce-text-badge-size: 13px;           --ce-text-badge-weight: var(--ce-weight-medium); --ce-text-badge-line: 1.3846;
+  --ce-text-caption-size: 14px;         --ce-text-caption-weight: var(--ce-weight-text); --ce-text-caption-line: 1.4286;
+  --ce-text-badge-size: 13px;           --ce-text-badge-weight: 600;          --ce-text-badge-line: 1.3846;
   --ce-text-button-size: 14px;          --ce-text-button-weight: 600;         --ce-text-button-line: 1.4286;
+  --ce-text-button-sm-size: 13px;
   /* Allgemeine Navigationsrolle (Adminbereich, öffentlicher Drawer). Die
      Kunden-Sidebar trägt seit der Feinkorrektur 2026-10 eine eigene, präsentere
      Stufe (--ce-sidebar-nav-*, unten bei der Sidebar). */
@@ -291,29 +306,36 @@
      Partnerportal und Rechtstexten; die Bühnenfassung (hell auf dunkel) auf Anmeldung, Registrierung,
      Partnerregistrierung und Preisrechner. Palette ausschließlich Navy-Stufen, Logo-Blau, Markenviolett #7a5ce6,
      Weiß und Schwarz (designSystemClosure Test 4). Die Schatten stehen in em und wachsen mit der Titelgröße.
-     Kontrast der hellsten Füllstufe #2a46a8 auf Weiß 8,3:1; der Bühnenfüllung #c9d5fb auf #0a1636 12,3:1. */
-  --ce-titel-signatur-fuellung: linear-gradient(180deg, #2a46a8 0%, #152b78 20%, #0b1b50 46%, #071234 74%, #1d1d63 100%);
+     Kontrast der hellsten Füllstufe #1f43c8 auf Weiß 7,8:1 (auf der Kundenfläche #f4f6fa 7,2:1); der Bühnenfüllung
+     #c9d5fb auf #0a1636 12,3:1.
+     Premium-Typografie 2.0 (Betreiberauftrag 2026-11-13: „Wirkung erhalten, weniger dunkler Schattenhof“): Die
+     Prägung ist eine Stufe feiner — zwei dünne Extrusionsstufen (Blau, dann Navy; zusammen 0,024 em statt drei
+     Navy-Stufen mit 0,048 em), eine feine Lichtkante oben, eine haarfeine Kante in Logo-Blau und eine kleinere,
+     hellere Tiefe (0,08/0,1 em bei 13 % statt 0,16/0,2 em bei 22 %). Die Füllung beginnt oben im elektrischen
+     Blau und endet im tiefen Navy mit einer leisen Violettreflexion an den Unterlängen. Relief bleibt die ruhigere,
+     sachlichere Fassung: dunklere Füllung, eine Extrusionsstufe, kaum Violett. Signatur trägt einen drop-shadow()
+     weniger als zuvor (sechs statt sieben) — etwas weniger Filterarbeit beim Zeichnen. */
+  --ce-titel-signatur-fuellung: linear-gradient(180deg, #1f43c8 0%, #1f43c8 14%, #1a3aa8 30%, #0f2a8a 52%, #0b1b50 80%, #2c2a86 100%);
   --ce-titel-signatur-praegung:
-    drop-shadow(0 -0.014em 0 rgba(255, 255, 255, 0.95))
-    drop-shadow(0 0.016em 0 #10246a)
-    drop-shadow(0 0.016em 0 #0a1a52)
-    drop-shadow(0 0.016em 0 #071440)
-    drop-shadow(0 0.012em 0 rgba(0, 74, 252, 0.5))
-    drop-shadow(0 0.16em 0.2em rgba(1, 27, 85, 0.22))
-    drop-shadow(0 0.26em 0.42em rgba(122, 92, 230, 0.12));
+    drop-shadow(0 -0.012em 0 rgba(255, 255, 255, 0.9))
+    drop-shadow(0 0.012em 0 #1a3aa8)
+    drop-shadow(0 0.012em 0 #10246a)
+    drop-shadow(0 0.008em 0 rgba(0, 74, 252, 0.45))
+    drop-shadow(0 0.08em 0.1em rgba(1, 27, 85, 0.13))
+    drop-shadow(0 0.16em 0.28em rgba(122, 92, 230, 0.08));
   /* Gruß der Übersicht: dasselbe Material eine Stufe ruhiger (ein Satz, kein Plakat — 2026-11-01). */
   --ce-titel-gruss-praegung:
-    drop-shadow(0 -0.014em 0 rgba(255, 255, 255, 0.95))
-    drop-shadow(0 0.016em 0 #10246a)
-    drop-shadow(0 0.012em 0 rgba(0, 74, 252, 0.3))
-    drop-shadow(0 0.1em 0.14em rgba(1, 27, 85, 0.14));
-  --ce-titel-relief-fuellung: linear-gradient(180deg, #2a46a8 0%, #152b78 24%, #0b1b50 46%, #071234 74%, #0d1a4a 100%);
+    drop-shadow(0 -0.012em 0 rgba(255, 255, 255, 0.9))
+    drop-shadow(0 0.012em 0 #1a3aa8)
+    drop-shadow(0 0.008em 0 rgba(0, 74, 252, 0.3))
+    drop-shadow(0 0.06em 0.09em rgba(1, 27, 85, 0.1));
+  --ce-titel-relief-fuellung: linear-gradient(180deg, #1a3aa8 0%, #152f8c 28%, #0f2470 54%, #0b1b50 82%, #0d1a4a 100%);
   --ce-titel-relief-praegung:
-    drop-shadow(0 -0.014em 0 rgba(255, 255, 255, 0.95))
-    drop-shadow(0 0.016em 0 #10246a)
-    drop-shadow(0 0.012em 0 rgba(0, 74, 252, 0.32))
-    drop-shadow(0 0.1em 0.14em rgba(1, 27, 85, 0.16))
-    drop-shadow(0 0.18em 0.3em rgba(122, 92, 230, 0.07));
+    drop-shadow(0 -0.01em 0 rgba(255, 255, 255, 0.88))
+    drop-shadow(0 0.012em 0 #142d80)
+    drop-shadow(0 0.006em 0 rgba(0, 74, 252, 0.24))
+    drop-shadow(0 0.05em 0.08em rgba(1, 27, 85, 0.1))
+    drop-shadow(0 0.12em 0.2em rgba(122, 92, 230, 0.04));
   --ce-titel-buehne-fuellung: linear-gradient(180deg, #ffffff 0%, #f3f6ff 40%, #c9d5fb 100%);
   --ce-titel-buehne-praegung:
     drop-shadow(0 0.016em 0 #3d63f0)
@@ -580,14 +602,16 @@
   --ce-kpi-context: #5a6780;                          /* weiß 5,70:1 */
 
   /* ── AUTH Premium-Tokens (isoliertes --auth-* Präfix) ─────────────────────
-     Unverändert: der Auth-Bereich ist vom Redesign ausdrücklich ausgenommen. */
+     Dunkle Bühne der Partnerregistrierung (ohne Bereich); Kundenanmeldung und Registrierung setzen eigene Werte im
+     Bereich „auth“ (premium-redesign.css), die Admin-Anmeldung nutzt eigene Tokens. Premium-Typografie 2.0: Tinte 4
+     und Platzhalter heller, damit kleine Texte auf der Karte AA erreichen (5,4 : 1 bzw. 4,9 : 1; vorher 3,2 und 4,0). */
   --auth-card-fill: rgba(8, 14, 32, 0.55);
   --auth-line-2: rgba(120, 160, 255, 0.18);
   --auth-ink-1: #ffffff;
   --auth-ink-2: #c6d0e6;
   --auth-ink-3: #8a93ad;
-  --auth-ink-4: #5b6480;
-  --auth-ink-placeholder: #6b7390;
+  --auth-ink-4: #808aa6;
+  --auth-ink-placeholder: #7a829e;
   --auth-blue: #2e5cff;
   --auth-blue-2: #3b6cff;
   --auth-blue-3: #6189ff;
@@ -713,11 +737,12 @@
   --ce-color-focus-ring: rgba(0, 74, 252, 0.28);
 
   /* ── Text ── Navy-Familie wie im Grundblock (Confidara Signature Typography, 2026-11-13). Kontrast auf Weiß, auf
-     der Arbeitsfläche --ce-pr-papier (#f4f6fa) und auf surface-muted (#f1f3f7). */
+     der Arbeitsfläche --ce-pr-papier (#f4f6fa) und auf surface-muted (#f1f3f7). Premium-Typografie 2.0: gedämpft
+     und Platzhalter eine Stufe dunkler, wie im Grundblock (gedämpft jetzt auf jeder hellen Fläche über 7:1). */
   --ce-color-text-primary: #0b1532;     /* 17,99:1 · 16,62:1 · 16,19:1 */
   --ce-color-text-secondary: #3a4662;   /* 9,41:1 · 8,69:1 · 8,47:1 */
-  --ce-color-text-muted: #4a5672;       /* 7,33:1 · 6,77:1 · 6,60:1 */
-  --ce-color-text-placeholder: #5a6681; /* 5,75:1 · 5,31:1 · 5,18:1 */
+  --ce-color-text-muted: #434f6b;       /* 8,17:1 · 7,55:1 · 7,36:1 */
+  --ce-color-text-placeholder: #525e7a; /* 6,48:1 · 5,99:1 · 5,83:1 */
 
   /* ── Flächen ──
      Betreiberentscheidung G4 (2026-10-27, ersetzt „Weiß auf Weiß“ im Kundenbereich): die Arbeitsfläche der
@@ -770,8 +795,11 @@
      Tabellenköpfe, Status und Kleinstschrift 13 — nichts Lesbares unter 13. Titel mit offener Laufweite
      (−0,02 em statt −0,03), Zahlen tabellarisch. Größen in rem (E13), bei 16 px Grundgröße ganze Pixel; sie
      wachsen mit der Schriftgröße des Browsers. Admin und Partner lesen diesen Block nie (sie tragen die Grundskala).
-     Gewichtsleiter (Confidara Signature Typography, 2026-11-13): Text 450 und Beschriftung 550 kommen aus dem
-     Grundblock; Seitentitel 700, Abschnittstitel 650, Kartentitel 620, aktive Navigation 650. */
+     Gewichtsleiter (Confidara Signature Typography, 2026-11-13): Text und Beschriftung kommen aus dem
+     Grundblock; Seitentitel 700, Abschnittstitel 650, Kartentitel 620, aktive Navigation 650.
+     Premium-Typografie 2.0 (Betreiberauftrag 2026-11-13): Text 500, Beschriftung 600; Hilfe-, Meta- und
+     KPI-Erklärungstext (Caption) sowie Tabellenköpfe und Kleinstschrift (Micro) 14 px statt 13 px bei
+     unveränderter Zeilenhöhe von 20 px; kleine Knöpfe 14 px. Nur Badges und Status bleiben bei 13 px. */
   --ce-font-sans: 'Instrument Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --ce-font-numeric: 'Instrument Sans', system-ui, sans-serif;
   --ce-pr-font-display: 'Instrument Sans', system-ui, sans-serif;
@@ -792,12 +820,14 @@
   --ce-text-body-s-size: 0.9375rem;     --ce-text-body-s-size-mobile: 0.9375rem;     --ce-text-body-s-line: 1.5333;
   --ce-text-label-size: 0.875rem;       --ce-text-label-size-mobile: 0.875rem;       --ce-text-label-line: 1.4286;
   --ce-text-label-tracking: 0.002em;
-  --ce-text-micro-size: 0.8125rem;      --ce-text-micro-size-mobile: 0.8125rem;      --ce-text-micro-tracking: 0.006em;
+  --ce-text-micro-size: 0.875rem;       --ce-text-micro-size-mobile: 0.875rem;       --ce-text-micro-tracking: 0.004em;
+  --ce-text-micro-line: 1.4286;
   --ce-text-numeric-display-size: 2.5rem; --ce-text-numeric-display-size-mobile: 2rem; --ce-text-numeric-display-line: 1.1;
   --ce-text-numeric-display-weight: 600; --ce-text-numeric-display-tracking: -0.024em;
-  --ce-text-caption-size: 0.8125rem;    --ce-text-caption-line: 1.5385;
+  --ce-text-caption-size: 0.875rem;     --ce-text-caption-line: 1.4286;
   --ce-text-badge-size: 0.8125rem;      --ce-text-badge-weight: 600;                 --ce-text-badge-line: 1.3846;
   --ce-text-button-size: 0.9375rem;     --ce-text-button-line: 1.3333;               --ce-text-button-weight: 600;
+  --ce-text-button-sm-size: 0.875rem;
   --ce-text-nav-size: 0.9375rem;        --ce-text-nav-weight-active: 650;
   --ce-sidebar-nav-size: 0.9375rem;
 
@@ -992,6 +1022,7 @@
   --ce-pr-ed-figure-size-mobile: 2rem;          /* 32 px */
   --ce-pr-ed-figure-stretch: 78%;
   --ce-pr-ed-amount-stretch: 88%;               /* Beträge und Kennungen in Tabellen */
+  --ce-pr-ed-tagline-stretch: 88%;              /* Unterzeile der Marke in der Seitenleiste (Typografie 2.0) */
   /* Plus der Anlegen-Aktionen (Betreiberentscheidung 2026-10-28): zwei Umdrehungen, anfahren und lang
      auslaufen. Spitze rund 28° je Bild bei 60 Hz — unter der Schwelle, ab der ein Plus rückwärts zu laufen scheint. */
   --ce-pr-ed-plus-dauer: 1150ms;

@@ -63,11 +63,11 @@
 /* Betreffvorschau: nutzergenerierter Freitext, in der Liste auf zwei Zeilen begrenzt.
    Den vollen Text zeigt ausschließlich die Detailseite. */
 .adm-sup-subject {
-  margin: 0; font-size: 13px; line-height: 1.5; color: var(--ce-color-text-primary);
+  margin: 0; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-primary);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .adm-sup-ticket { font-weight: 600; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
-.adm-sup-sub { display: block; font-size: 12px; color: var(--ce-color-text-muted); margin-top: 2px; }
+.adm-sup-sub { display: block; font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); margin-top: 2px; }
 .adm-sup-cust { display: flex; flex-direction: column; }
 .adm-sup-cust-name { font-weight: 600; }
 /* Verlinkte Ticket- und Kundennamen: Markenfarbe wie jeder Adminlink, kein
@@ -92,14 +92,14 @@ a.adm-sup-cust-name:hover { text-decoration: underline; }
 .adm-sup-mailrow {
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
   padding: 10px 12px; border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-sm);
-  font-size: 13px; line-height: 1.5;
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
 }
 .adm-sup-mailrow-name { font-weight: 600; color: var(--ce-color-text-primary); }
 .adm-sup-mailrow-state { color: var(--ce-color-text-muted); }
 .adm-sup-mailrow-fail .adm-sup-mailrow-state { color: var(--ce-color-status-error-fg); font-weight: 600; }
 /* Der technische Providerhinweis: kleiner, umbruchfest, volle Breite. */
 .adm-sup-mailrow-err {
-  flex-basis: 100%; font-size: 12px; color: var(--ce-color-text-muted);
+  flex-basis: 100%; font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted);
   overflow-wrap: anywhere;
 }
 
@@ -121,7 +121,7 @@ a.adm-sup-cust-name:hover { text-decoration: underline; }
   margin: 0; padding: 14px 16px; border-radius: var(--ce-radius-sm);
   background: var(--ce-color-surface-muted);
   border: 1px solid var(--ce-color-border-subtle);
-  font-size: 13px; line-height: 1.6; color: var(--ce-color-text-primary);
+  font-size: var(--ce-text-body-s-size); line-height: 1.6; color: var(--ce-color-text-primary);
   white-space: pre-wrap; overflow-wrap: anywhere;
 }
 
@@ -132,7 +132,7 @@ a.adm-sup-cust-name:hover { text-decoration: underline; }
 .adm-sup-note { min-height: 96px; }
 
 .adm-sup-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
-.adm-sup-hint { font-size: 12px; color: var(--ce-color-text-muted); line-height: 1.5; }
+.adm-sup-hint { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-muted); line-height: var(--ce-text-caption-line); }
 
 /* Supportspalte im Kundenprofil — kompakte Liste, kein zweiter Tabellenrahmen. */
 .adm-sup-mini { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
@@ -142,7 +142,7 @@ a.adm-sup-cust-name:hover { text-decoration: underline; }
 }
 .adm-sup-mini-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .adm-sup-mini-subject {
-  font-size: 13px; color: var(--ce-color-text-primary); overflow: hidden;
+  font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-primary); overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
 }
 
@@ -366,7 +366,7 @@ a.adm-sup-cust-name:hover { text-decoration: underline; }
 .adm-sup-msg-time { font-size: var(--ce-text-micro-size); font-weight: var(--ce-weight-text); color: var(--ce-color-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 .adm-sup-msg-body {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--ce-text-body-s-size);
   line-height: 1.55;
   white-space: pre-wrap;
   overflow-wrap: anywhere;

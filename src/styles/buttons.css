@@ -100,7 +100,7 @@
 .btn-sm {
   --ce-btn-height: var(--ce-size-control-sm);
   --ce-btn-padding-x: var(--ce-space-3);
-  --ce-btn-font-size: 13px;
+  --ce-btn-font-size: var(--ce-text-button-sm-size); /* 13 px Grundskala, 14 px im Bereich (Premium-Typografie 2.0) */
   --ce-btn-icon-size: 16px;
   --ce-btn-gap: 6px;
 }
@@ -109,7 +109,7 @@
 .btn-xs {
   --ce-btn-height: var(--ce-size-control-sm);
   --ce-btn-padding-x: var(--ce-space-3);
-  --ce-btn-font-size: 13px;
+  --ce-btn-font-size: var(--ce-text-button-sm-size); /* 13 px Grundskala, 14 px im Bereich (Premium-Typografie 2.0) */
   --ce-btn-icon-size: 16px;
   --ce-btn-gap: 6px;
 }

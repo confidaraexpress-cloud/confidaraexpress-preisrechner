@@ -92,7 +92,7 @@
 
 /* ── Abschnitte und Titel ── */
 .inv-section-title {
-  font-family: var(--fs); font-size: var(--ce-text-title-section-size); font-weight: 600;
+  font-family: var(--fs); font-size: var(--ce-text-title-section-size); font-weight: var(--ce-text-title-section-weight);
   line-height: var(--ce-text-title-section-line); color: var(--ce-color-text-primary);
   margin: 0 0 var(--ce-space-3);
 }

@@ -304,10 +304,11 @@ test("8 — Badges sind ruhige Statusmarken ohne Punkt, genau die zehn Statusgru
   assert.ok(basis, ".badge fehlt");
   assert.match(basis.body, /min-height:\s*24px/, "Kunde: mindestens 24px");
   // Redesign 2026-10: eigene Badge-Rolle statt der Label-Rolle; seit der Betreiberentscheidung 2026-11-13
-  // (D4 und Gewichtsleiter) 13/18 550.
+  // (D4 und Gewichtsleiter) 13/18; seit Premium-Typografie 2.0 (Betreiberauftrag 2026-11-13) 600 wie im
+  // Bereichsblock — die Statusmarke bleibt 13 px, wird aber kräftiger.
   assert.match(basis.body, /font-size:\s*var\(--ce-text-badge-size\)/);
   assert.equal(tok("ce-text-badge-size"), "13px");
-  assert.equal(tok("ce-text-badge-weight"), "550");
+  assert.equal(tok("ce-text-badge-weight"), "600");
   assert.doesNotMatch(basis.body, /white-space:\s*nowrap/, "lange deutsche Begriffe müssen umbrechen dürfen");
   // Seit der Responsive-Härtung ist das Badge eine EINHEIT: Umbruch nur an
   // Wortgrenzen. Das frühere `overflow-wrap: anywhere` senkte die

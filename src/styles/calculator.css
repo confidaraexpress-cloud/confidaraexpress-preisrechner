@@ -397,7 +397,9 @@
 .dropoff-selected-label { color: var(--ce-color-text-secondary); }
 .dropoff-selected-name { font-weight: 600; }
 .dropoff-required-hint { margin: 12px 0 0; font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-status-warning-fg); }
-.field-optional { font-size: var(--ce-text-label-size); color: var(--ce-color-text-muted); font-weight: var(--ce-weight-text); }
+/* Premium-Typografie 2.0: in der Größe der eigenen Beschriftung (1em) — ruhend 16 px, angehoben und über dem Feld
+   14 px. Mit fester Labelstufe stand „(optional)“ im ruhenden Feld kleiner als die Beschriftung davor. */
+.field-optional { font-size: 1em; color: var(--ce-color-text-muted); font-weight: var(--ce-weight-text); }
 /* Hilfetext 13/20 unmittelbar am Feld (Redesign 2026-10; vorher 11 px). */
 .field-hint { display: block; margin-top: 6px; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted); }
 
@@ -570,7 +572,7 @@
    ÜBER den beiden Bestätigungen, bewusst keine zweite Karte: sie gehört in die bestehende
    Übersichtskarte, direkt zu den Checkboxen, auf die sie sich bezieht. */
 .booking-legal-docs { margin-bottom: 18px; }
-.booking-legal-docs-title { font-size: 12px; font-weight: 600; color: var(--ce-color-text-primary); margin: 0 0 6px; }
+.booking-legal-docs-title { font-size: 13px; font-weight: 600; color: var(--ce-color-text-primary); margin: 0 0 6px; }
 .booking-legal-docs-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .booking-legal-docs-list li { font-size: 13px; line-height: 1.6; color: var(--ce-color-text-secondary); }
 .booking-legal-docs-version { color: var(--ce-color-text-muted); white-space: nowrap; }
@@ -590,7 +592,7 @@
 .booking-legal-notice-text { font-size: 13px; line-height: 1.6; color: var(--ce-color-text-primary); margin: 0; white-space: pre-line; }
 /* Die eine finale Buchungsaktion — Primary in der großen Stufe (48 px). */
 .booking-book-btn { --ce-btn-height: var(--ce-size-control-lg); }
-.booking-email-note { text-align: center; font-size: 12px; color: var(--ce-color-text-muted); margin-top: 12px; }
+.booking-email-note { text-align: center; font-size: 13px; color: var(--ce-color-text-muted); margin-top: 12px; }
 .booking-tracking-note {
   max-width: 480px; margin: 0 auto 16px; padding: 10px 14px; text-align: left;
   font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-primary);
@@ -666,12 +668,12 @@
   width: 4px; height: 4px; border-radius: 50%; background: var(--ce-color-text-muted);
 }
 .ins-card-bullet--info .ins-bullet-txt { color: var(--ce-color-text-secondary); }
-.ins-bullet-txt { font-size: 12px; color: var(--ce-color-text-primary); line-height: 1.4; overflow-wrap: normal; word-break: normal; hyphens: none; }
+.ins-bullet-txt { font-size: 13px; color: var(--ce-color-text-primary); line-height: 1.4; overflow-wrap: normal; word-break: normal; hyphens: none; }
 .ins-nowrap { white-space: nowrap; }
 
 /* Ein Satz je Karte, direkt unter Name/Badge: worin sich diese Option
    unterscheidet. Bewusst ruhiger als die Bullets — er ordnet ein, er wirbt nicht. */
-.ins-card-desc { font-size: 12px; line-height: 1.45; color: var(--ce-color-text-secondary); overflow-wrap: break-word; word-break: normal; hyphens: none; }
+.ins-card-desc { font-size: 13px; line-height: 1.45; color: var(--ce-color-text-secondary); overflow-wrap: break-word; word-break: normal; hyphens: none; }
 
 .ins-card-cond { margin-top: auto; padding-top: 2px; display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px; }
 /* Die Kartenfußzeile trägt genau EINE Aktion. Beide Varianten sehen gleich aus
@@ -715,19 +717,19 @@
 .ins-card-calc { display: inline-flex; align-items: center; gap: 6px; padding-left: 27px; font-size: var(--ce-text-caption-size); font-weight: 600; color: var(--ce-color-brand-ink); }
 /* „Preis nach Warenwert" (kein Preselect): lesbar, NICHT deaktiviert wirkend; darf
    im schmalen Preis-Slot auf zwei Zeilen umbrechen. */
-.ins-card-price-val--muted { max-width: 84px; color: var(--ce-color-text-primary); font-weight: 600; font-size: 12px; line-height: 1.25; white-space: normal; overflow-wrap: normal; word-break: normal; hyphens: none; text-align: right; }
+.ins-card-price-val--muted { max-width: 84px; color: var(--ce-color-text-primary); font-weight: 600; font-size: 13px; line-height: 1.25; white-space: normal; overflow-wrap: normal; word-break: normal; hyphens: none; text-align: right; }
 /* „Versicherungswert anpassen" — dezente Sekundäraktion. */
 .ins-adjust-btn { align-self: flex-start; background: none; border: none; padding: 3px 0; font-size: 13px; font-weight: 600; color: var(--ce-color-brand-ink); cursor: pointer; border-bottom: 1px solid var(--ce-color-brand-border); }
 .ins-adjust-btn:hover { border-bottom-color: var(--blue2); }
 .ins-adjust-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: 3px; border-radius: var(--ce-radius-sm); }
 /* Warenwert über dem Versicherungsmaximum — ruhiger Warnhinweis. */
-.ins-overmax { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-primary); background: var(--ce-color-status-warning-surface); border: 1px solid var(--ce-color-status-warning-border); border-radius: var(--ce-radius-sm); }
+.ins-overmax { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; font-size: 13px; line-height: 1.5; color: var(--ce-color-text-primary); background: var(--ce-color-status-warning-surface); border: 1px solid var(--ce-color-status-warning-border); border-radius: var(--ce-radius-sm); }
 /* Preiszusammenfassung: noch nicht bestätigter Preis (Repricing/stale/Fehler). */
 
 /* Versicherungszustand im UNBESTÄTIGTEN Preisblock — reine Anzeige, NIE ein Gesamtpreis.
    Der Versandpreis bleibt darüber sichtbar; hier steht nur der „ab"-Hinweis bzw. der
    Repricing-/Fehler-/„nach Warenwert"-Zustand. */
-.booking-ins-state { display: flex; align-items: center; gap: 8px; margin: 10px 0 2px; padding: 9px 11px; border-radius: var(--ce-radius-sm); font-size: 12px; font-weight: 600; line-height: 1.4; background: var(--gray50); border: 1px solid var(--border); color: var(--navy); }
+.booking-ins-state { display: flex; align-items: center; gap: 8px; margin: 10px 0 2px; padding: 9px 11px; border-radius: var(--ce-radius-sm); font-size: 13px; font-weight: 600; line-height: 1.4; background: var(--gray50); border: 1px solid var(--border); color: var(--navy); }
 .booking-ins-state--preselect { color: var(--blue2); background: var(--blue-light); border-color: var(--ce-color-brand-border-soft); }
 .booking-ins-state--loading { color: var(--blue2); }
 .booking-ins-state--unknown { color: var(--ce-color-text-secondary); }
@@ -1021,12 +1023,12 @@
   .ins-card { padding: 14px; }
 }
 
-.ins-status { min-height: 18px; display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; }
+.ins-status { min-height: 18px; display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; }
 .ins-status-loading { display: inline-flex; align-items: center; gap: 7px; color: var(--blue2); }
 .ins-status-ok { color: var(--success); }
 .ins-status-error { display: inline-flex; align-items: center; gap: 6px; color: var(--danger); }
 .ins-note { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-secondary); line-height: 1.5; margin: 0; }
-.booking-ins-unavailable { font-size: 12px; color: var(--ce-color-text-muted); margin-bottom: 16px; }
+.booking-ins-unavailable { font-size: 13px; color: var(--ce-color-text-muted); margin-bottom: 16px; }
 
 /* ─── TG22 Residential: „Art der Lieferadresse" nach der Angebotsauswahl ─────────
    Zwei Auswahlkarten im Muster der übrigen Auswahlkarten des Versandprozesses: neutral im
@@ -1053,11 +1055,11 @@
 .res-card-name { font-size: 14px; font-weight: 600; color: var(--navy); line-height: 1.3; min-width: 0; overflow-wrap: break-word; }
 .res-card-price { display: flex; flex-direction: column; gap: 2px; padding-left: 27px; min-width: 0; }
 .res-card-price-val { font-family: var(--ce-font-numeric); font-size: 15px; font-weight: 600; color: var(--navy); white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
-.res-card-price-sub { font-family: var(--ce-font-numeric); font-size: 12px; color: var(--ce-color-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.res-card-price-sub { font-family: var(--ce-font-numeric); font-size: 13px; color: var(--ce-color-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 .res-state { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; font-size: 13px; }
 .res-state--loading { color: var(--blue2); }
 .res-state--error { color: var(--danger); flex-wrap: wrap; }
-.res-notice { margin: 10px 0 0; font-size: 12px; line-height: 1.45; color: var(--ce-color-text-muted); }
+.res-notice { margin: 10px 0 0; font-size: 13px; line-height: 1.45; color: var(--ce-color-text-muted); }
 
 /* ── Versicherungsdetails-Dialog ────────────────────────────────────────────
    Läuft vollständig auf dem globalen Dialogsystem (.ce-dialog* aus patterns.css):
@@ -1216,7 +1218,7 @@
    gestapelt; zwei volle Zeilen wären hier mehr Fläche, nicht mehr Ruhe. */
 
 /* ─── Zollangaben (Angaben zum Wareninhalt) ──────────────────────────────────── */
-.customs-hint { font-size: 12px; line-height: 1.5; color: var(--ce-color-text-secondary); margin: 0 0 16px; }
+.customs-hint { font-size: 13px; line-height: 1.5; color: var(--ce-color-text-secondary); margin: 0 0 16px; }
 
 /* EORI-Erfassung im Zollabschnitt. Bewusst eine ruhige, vertiefte Fläche und KEIN
    Alarmton: die fehlende Nummer ist eine offene Angabe, kein Fehler des Kunden. Alle
@@ -1256,7 +1258,7 @@
 
 /* Zollrechnung — Rechnungstyp-Radiogruppe (Proforma / eigene Handelsrechnung) */
 .ci-mode { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin: 4px 0 14px; }
-.ci-mode-legend { padding: 0 6px; font-size: 12px; font-weight: 600; color: var(--navy); }
+.ci-mode-legend { padding: 0 6px; font-size: 13px; font-weight: 600; color: var(--navy); }
 .ci-mode-option { display: flex; align-items: flex-start; gap: 10px; padding: 8px 4px; cursor: pointer; }
 .ci-mode-radio { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--ce-color-brand); flex-shrink: 0; }
 .ci-mode-radio:disabled { cursor: not-allowed; }
@@ -1273,7 +1275,7 @@
 .ci-status-busy { color: var(--ce-color-text-secondary); }
 .ci-status-ok { color: var(--ce-color-status-success-fg); }
 .ci-upload-msg { display: block; margin-top: 6px; }
-.ci-notice { font-size: 12px; color: var(--blue2); font-weight: 600; }
+.ci-notice { font-size: 13px; color: var(--blue2); font-weight: 600; }
 .ci-remove-btn { margin-top: 10px; }
 .ci-remove-danger { background: var(--ce-color-danger-solid); color: var(--ce-color-text-inverse); border: 1px solid var(--ce-color-danger-solid); }
 .ci-remove-danger:hover { background: var(--ce-color-danger-hover); border-color: var(--ce-color-danger-hover); }
@@ -1549,7 +1551,7 @@
 .pw-range:active::-moz-range-thumb { cursor: grabbing; border-color: var(--ce-color-brand-ink); box-shadow: var(--ce-elevation-2); }
 .pw-range:focus-visible::-moz-range-thumb { border-color: var(--ce-color-brand); box-shadow: var(--ce-elevation-focus-ring); }
 
-.pw-caption { font-size: 12px; }
+.pw-caption { font-size: 13px; }
 .pw-saved { display: inline-flex; align-items: center; gap: 6px; color: var(--success); font-weight: 600; }
 
 /* Mobile: größere Griffe / Trefferfläche */
@@ -1579,5 +1581,5 @@
 }
 .bk-savedraft-link:hover { border-bottom-color: var(--blue2); }
 .bk-savedraft-link:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
-.bk-savedraft-error { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--danger); }
+.bk-savedraft-error { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--danger); }
 

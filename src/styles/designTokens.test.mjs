@@ -7,8 +7,9 @@
 //
 //   • Die Foundation ist vollständig und trägt die Werte der freigegebenen
 //     Spezifikation — inklusive der vier Werte, an denen die ganze Farbwelt hängt.
-//     Das sind #5367e8 (Marke), #111a33 (Primärtext), #4a5672 (gedämpfter Text,
-//     seit der Betreiberentscheidung 2026-11-13 in der Navy-Familie)
+//     Das sind #5367e8 (Marke), #111a33 (Primärtext), #434f6b (gedämpfter Text,
+//     seit der Betreiberentscheidung 2026-11-13 in der Navy-Familie, seit
+//     Premium-Typografie 2.0 eine Stufe dunkler)
 //     und #8891a3 (Kante bedienbarer Elemente) — die ConfidaraExpress-Farbwelt;
 //     die zwischenzeitliche Petrol-Fassung des Redesigns 2026-10 ist
 //     zurückgenommen (Betreiberentscheidung).
@@ -142,8 +143,9 @@ test("3 — die vier tragenden Farbwerte stimmen exakt (ConfidaraExpress-Farbwel
   assert.equal(wert("ce-color-brand"), "#5367e8", "Markenakzent");
   assert.equal(wert("ce-color-text-primary"), "#111a33", "Navy / Primärtext");
   // Betreiberentscheidung 2026-11-13: Neben- und gedämpfter Text in der Navy-Familie — deutlich dunkler und
-  // kontrastreicher (vorher #5f6d80 und #667284).
-  assert.equal(wert("ce-color-text-muted"), "#4a5672", "gedämpfter Text");
+  // kontrastreicher (vorher #5f6d80 und #667284). Premium-Typografie 2.0 (Betreiberauftrag 2026-11-13): gedämpfter
+  // Text eine Stufe dunkler (vorher #4a5672), damit er auf jeder hellen Fläche über 7:1 liegt.
+  assert.equal(wert("ce-color-text-muted"), "#434f6b", "gedämpfter Text");
   assert.equal(wert("ce-color-border-interactive"), "#8891a3", "Kante bedienbarer Elemente");
   // Die abgeleiteten Markenzustände hängen an denselben Entscheidungen.
   assert.equal(wert("ce-color-brand-hover"), "#4658d9");

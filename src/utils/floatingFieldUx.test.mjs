@@ -348,3 +348,37 @@ test("17 — alle Adress- und Paketfelder laufen über <Field /> bzw. den Picker
   assert.match(seite, /<AddressStatusLine\b/);
   assert.match(seite, /<AddressPickerButton\b/);
 });
+
+/* ══════════ 18 — Premium-Typografie 2.0 ══════════════════════════════════ */
+
+test("18 — Premium-Typografie 2.0: Feldtext in der Body-Rolle, Ruhe-Beschriftung gedämpft statt Platzhaltergrau, oben 600", () => {
+  // Betreiberauftrag 2026-11-13: „Unternehmen, Vorname, PLZ …“ waren in 14 px Platzhaltergrau zu klein und zu hell;
+  // eingegebener Text soll deutlich und kräftig sein, die Unterscheidung leer/ausgefüllt bleibt.
+  const regel = (sel) => {
+    const r = floatingRegeln.find((x) => x.selektor === sel); // die erste Fundstelle ist die Desktopregel
+    assert.ok(r, `${sel} fehlt`);
+    return r.body;
+  };
+  const eingabe = regel(".ce-field.ce-field--floating .ce-field-input");
+  assert.match(eingabe, /font-size:\s*var\(--ce-text-body-size\)/, "Feldtext nicht in der Body-Rolle");
+  assert.match(eingabe, /line-height:\s*1\.25;/, "Feldtext: 16 × 1,25 = 20 px füllen das 20-px-Textfeld");
+  const ruhe = regel(".ce-field.ce-field--floating .ce-field-label");
+  assert.match(ruhe, /font-size:\s*var\(--ce-text-body-size\)/, "Ruhezustand nicht in der Größe des Feldtexts");
+  assert.match(ruhe, /color:\s*var\(--ce-color-text-muted\)/, "Ruhe-Beschriftung nicht im gedämpften Text");
+  assert.doesNotMatch(ruhe, /text-placeholder/, "die Beschriftung ist kein Platzhalter");
+  assert.match(ruhe, /top:\s*calc\(27px - 0\.7em\)/, "Ruhezustand nicht auf der Feldmitte");
+  const oben = regel(".ce-field.ce-field--floating.is-floating .ce-field-label");
+  assert.match(oben, /top:\s*7px/);
+  assert.match(oben, /font-size:\s*var\(--ce-text-label-size\)/);
+  assert.match(oben, /font-weight:\s*var\(--ce-text-label-weight\)/);
+  // Autofill hebt genauso an wie der React-Zustand.
+  for (const sel of [".ce-field.ce-field--floating .ce-field-input:-webkit-autofill ~ .ce-field-label",
+                     ".ce-field.ce-field--floating .ce-field-input:autofill ~ .ce-field-label"]) {
+    assert.match(regel(sel), /font-size:\s*var\(--ce-text-label-size\);[^}]*font-weight:\s*var\(--ce-text-label-weight\)/, sel);
+  }
+  // Einheit auf demselben Zeilenkasten wie der Feldtext (27–47 px).
+  const einheit = regel(".ce-field.ce-field--floating .ce-field-unit");
+  assert.match(einheit, /bottom:\s*7px/);
+  assert.match(einheit, /font-size:\s*var\(--ce-text-body-size\)/);
+  assert.match(einheit, /line-height:\s*1\.25/);
+});

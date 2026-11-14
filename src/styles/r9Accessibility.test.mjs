@@ -71,7 +71,8 @@ test("Kontrast: Hinweistexte in Lieferschein- und Abrechnungsart erreichen AA, a
 
 test("Token-Kommentar nennt den gemessenen Kontrast von --ce-color-text-muted", () => {
   const k = kontrast(token("ce-color-text-muted"), "#ffffff").toFixed(2).replace(".", ",");
-  assert.match(variablen, new RegExp(`--ce-color-text-muted: #4a5672;\\s*/\\* weiß ${k}:1`), `erwartet „weiß ${k}:1“`);
+  // Der Wert selbst steht in designTokens/typography; hier zählt nur, dass der Kommentar den echten Kontrast nennt.
+  assert.match(variablen, new RegExp(`--ce-color-text-muted: ${token("ce-color-text-muted")};\\s*/\\* weiß ${k}:1`), `erwartet „weiß ${k}:1“`);
 });
 
 test("Nutzer-Chip: der Name entsteht aus dem sichtbaren Text, die Aktion wird ergänzt (WCAG 2.5.3)", () => {

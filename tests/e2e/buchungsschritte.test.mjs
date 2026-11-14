@@ -57,7 +57,8 @@ test.after(async () => {
   if (server) stopDevServer(server, "SIGKILL");
 });
 
-/** Demo-Browser: jede Anfrage an den Server wird abgebrochen und gezählt (Muster aus premiumParityApp D2). */
+/** Demo-Browser: jede Anfrage an den Server wird abgebrochen und gezählt (Muster aus premiumParityApp D2); Anfragen an
+ *  fremde Hosts werden abgebrochen — nur der lokale Vite-Server antwortet. */
 async function demoBrowser(viewport, optionen = {}) {
   const ctx = await browser.newContext({ viewport, locale: "de-DE", timezoneId: "Europe/Berlin", colorScheme: "light", ...optionen });
   const serverAnfragen = [];
@@ -65,7 +66,7 @@ async function demoBrowser(viewport, optionen = {}) {
     const req = route.request();
     const ziel = new URL(req.url());
     const serverziel = ziel.origin === API || /^\/(api|kunde|kundenbereich|login|register|auth)(\/|$)/.test(ziel.pathname) && req.resourceType() === "fetch";
-    if (!serverziel) return route.continue();
+    if (!serverziel) return ziel.hostname === "127.0.0.1" ? route.continue() : route.abort();
     // Den Rechtskontext beantwortet in der Demo die Demo-Datenquelle; kommt er doch hier an, ist er aus.
     if (ziel.pathname === "/api/legal/booking-context") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ enabled: false }) });
     serverAnfragen.push(`${req.method()} ${ziel.pathname}`);
@@ -314,6 +315,8 @@ test("S5 — die Stufenleiste der Sendungsverfolgung bleibt unverändert (Regeln
     fremd.push(p);
     return route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: "unauthorized" }) });
   });
+  // Isoliert: Außer dem lokalen Vite-Server und der API-Attrappe verlässt keine Anfrage den Rechner.
+  await ctx.route((url) => url.hostname !== "127.0.0.1" && url.origin !== API, (route) => route.abort());
   const page = await ctx.newPage();
   const fehler = [];
   page.on("pageerror", (e) => fehler.push(String(e)));

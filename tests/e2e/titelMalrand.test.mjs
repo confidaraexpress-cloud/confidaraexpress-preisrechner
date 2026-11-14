@@ -122,6 +122,8 @@ async function oeffne(seite, viewport) {
     if (pfad === "/api/public/launch-scope") return json({ countries: ["DE", "AT"], destinationCountries: ["DE", "AT"], originCountries: ["DE"] });
     return json({});
   });
+  // Isoliert: Außer den beiden lokalen Vite-Servern und der API-Attrappe verlässt keine Anfrage den Rechner.
+  await ctx.route((url) => url.hostname !== "127.0.0.1" && url.origin !== API, (route) => route.abort());
   const page = await ctx.newPage();
   const fehler = [];
   page.on("pageerror", (e) => fehler.push(String(e)));

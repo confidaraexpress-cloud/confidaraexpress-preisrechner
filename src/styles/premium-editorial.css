@@ -1899,8 +1899,11 @@
    große Beträge und lange Trackingnummern so klein, dass sie in die Karte passen. In allen anderen Breiten wirkt
    nichts davon (Responsive-Prüfung 2026-10-28). */
 @media (width < 20em) {
+  /* .ce-page-header-sub seit Typografie 2.0: mit Textgewicht 500 ragte „Versanddienstleistungen“ im Untertitel der
+     Rechnungen bei 24 px Browserschrift und 320 px 2 px heraus (Linux-Rendering, responsiveLayoutIntegrity L4). */
   :root[data-ce-bereich="kunde"] :is(h1, h2, h3, h4, .table-card-title, .dn-mode-label, .field-hint, .profile-account-name,
-    .offer-service-type, .inv-stat-hint, .inv-detail-k, .dft-card-info-row dt, .blsum-label, .pp-brand-sub) {
+    .offer-service-type, .inv-stat-hint, .inv-detail-k, .dft-card-info-row dt, .blsum-label, .pp-brand-sub,
+    .ce-page-header-sub) {
     hyphens: auto;
     overflow-wrap: break-word;
   }

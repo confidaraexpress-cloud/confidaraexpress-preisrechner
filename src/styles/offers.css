@@ -1688,6 +1688,16 @@
 }
 .ap-map-marker--active { background: var(--ce-color-brand-active); transform: scale(1.22); }
 
+/* Das offene Popup liegt über dem Abdeckungshinweis (.ap-map-context, im DOM
+   danach) und unter den Bedienelementen der Karte (MapLibre: z-index 2). Mit der
+   Caption 14 px (Premium-Typografie 2.0) wird der Hinweis bei schmaler Karte
+   höher und lag sonst über der Auswahl im Popup (390 px, parcelShopTg124Map 5).
+   Zwei Ebenen, weil die Hülle der Bibliothek (will-change: transform) einen
+   eigenen Stapelkontext bildet: .ap-map-popup hebt die Hülle der echten Karte,
+   .ap-map-popup-card (unten) hebt den Inhalt unabhängig von der Engine
+   (Adaptervertrag in src/utils/mapEngine.js). */
+.ap-map-popup { z-index: 1; }
+
 /* Die Popup-Hülle stellt die Kartenbibliothek; hier bekommt sie das Material
    des Designsystems (Rundung, Kante, Popover-Tiefe) statt ihrer Vorgabe. */
 .ap-map-popup .maplibregl-popup-content {
@@ -1697,7 +1707,7 @@
 }
 .ap-map-popup .maplibregl-popup-tip { border-top-color: var(--ce-color-surface); border-bottom-color: var(--ce-color-surface); }
 
-.ap-map-popup-card { min-width: 0; }
+.ap-map-popup-card { position: relative; z-index: 1; min-width: 0; }
 .ap-map-popup-name {
   display: flex; align-items: center; gap: 8px; margin: 0 0 2px;
   font-size: var(--ce-text-body-size); font-weight: 600; line-height: 1.3; color: var(--ce-color-text-primary);

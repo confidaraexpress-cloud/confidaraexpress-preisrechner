@@ -8,6 +8,7 @@ import { PackageLinesDisclosure } from "../components/booking/PackageLinesDisclo
 import { bookingBillingNotice, BILLING_MODE_TEXT, BILLING_MODE_UNAVAILABLE_CODE } from "../utils/billingModeView.mjs";
 import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher, loadPriceInputOptions, bindPriceInputs } from "../api/client";
 import { FormAlert } from "../components/ui/FormAlert";
+import { Icon } from "../components/ui/Icon";
 import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess, istOffenerAusgang,
   fordertNeuberechnung, erlaubtSpaeterenVersuch, istUnklarerAusgang, BOOK_FEHLER, OFFER_ALREADY_USED_TEXT,
   referenceRejectionText, lagerkonfliktBeimBuchen, preisangabenFehlenHandlung,
@@ -2260,7 +2261,11 @@ export default function BookingPage() {
     setError(""); setStep(2);
   };
 
-  const steps = ["Übersicht", "Buchung", "Fertig"];
+  const steps = [
+    { titel: "Übersicht", zeile: "Daten prüfen" },
+    { titel: "Buchung", zeile: "Verbindlich buchen" },
+    { titel: "Fertig", zeile: "Bestätigung erhalten" },
+  ];
 
   return (
     <div className="page-with-navbar">
@@ -2268,26 +2273,31 @@ export default function BookingPage() {
         {/* Seitentitel kommt aus dem PageHeader der App-Shell (DashboardLayout,
             ROUTE_HEADERS.booking) — kein zweiter Titel hier (Paket B). */}
 
-        {/* Step-Indicator — ruhig und textbasiert (Redesign 2026-10): jeder Schritt trägt
-            seine Nummer, ein erledigter Schritt ist an der Fläche UND für Screenreader am
-            Zusatz „abgeschlossen" erkennbar; kein Häkchen-Symbol. */}
-        {/* Phase 1 (Variante A): auf der Erfolgsseite entfällt die Schrittleiste — die Bestätigung selbst ist der
-            Abschluss. In den Schritten 1 und 2 bleibt sie unverändert. */}
+        {/* Buchungsschritte als Premium-Card-Stepper (Variante C, Betreiberentscheidung 2026-11-14,
+            buchungsschritte.css): eine Karte je Schritt mit Titel und Unterzeile. Der aktive Schritt steht in
+            Blautönen (aria-current="step"), ein erledigter trägt einen Haken und für Screenreader den Zusatz
+            „abgeschlossen", ein offener seine Nummer. Reine Anzeige — keine Navigation, kein Knopf, kein Link.
+            Phase 1 (Variante A): Auf der Erfolgsseite entfällt die Leiste, die Bestätigung selbst ist der Abschluss. */}
         {step !== 3 && (
         <div className="steps-bar mb-24">
-          {steps.map((s, i) => (
-            <div key={i} className="step-item" aria-current={i + 1 === step ? "step" : undefined}>
-              <div className="step-wrap">
-                <div className={`step-circle ${i + 1 === step ? "active" : i + 1 < step ? "done" : ""}`}>
-                  {i + 1}
-                </div>
-                <span className={`step-label ${i + 1 === step ? "active" : i + 1 < step ? "done" : ""}`}>
-                  {s}{i + 1 < step && <span className="sr-only"> (abgeschlossen)</span>}
-                </span>
-              </div>
-              {i < steps.length - 1 && <div className={`step-line ${i + 1 < step ? "done" : ""}`} />}
-            </div>
-          ))}
+          <ol className="bk-schritte" aria-label="Buchungsfortschritt">
+            {steps.map((s, i) => {
+              const zustand = i + 1 < step ? "erledigt" : i + 1 === step ? "aktiv" : "offen";
+              return (
+                <li key={s.titel} className={`bk-schritt bk-schritt--${zustand}`} aria-current={zustand === "aktiv" ? "step" : undefined}>
+                  <span className="bk-karte">
+                    <span className="bk-marke" aria-hidden={zustand === "erledigt" ? "true" : undefined}>
+                      {zustand === "erledigt" ? <Icon n="check" s={18} /> : i + 1}
+                    </span>
+                    <span className="bk-text">
+                      <span className="bk-titel">{s.titel}{zustand === "erledigt" && <span className="sr-only"> (abgeschlossen)</span>}</span>
+                      <span className="bk-zeile">{s.zeile}</span>
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
         </div>
         )}
 

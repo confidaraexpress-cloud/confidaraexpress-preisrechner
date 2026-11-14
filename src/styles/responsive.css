@@ -34,7 +34,8 @@
 @media (max-width: 480px) {
   .field-row-2, .field-row-3, .field-row-4 { grid-template-columns: 1fr; }
 
-  /* Booking step bar — hide labels, shrink circles */
+  /* Stufenleiste der Sendungsverfolgung — Beschriftung aus, Kreise kleiner (die Buchung hat eigene Karten,
+     buchungsschritte.css) */
   .step-label { display: none; }
   .step-circle { width: 28px; height: 28px; font-size: var(--ce-text-micro-size); }
   .booking-wrap { padding-top: 16px; padding-bottom: 32px; }

@@ -1,0 +1,247 @@
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   BUCHUNGSSCHRITTE — Premium-Card-Stepper (Variante C, Betreiberentscheidung 2026-11-14)
+
+   Gilt ausschließlich für die Buchungsstrecke: .booking-wrap > .steps-bar > ol.bk-schritte (BookingPage.jsx). Die
+   Sendungsverfolgung (.steps-bar.tracking-steps mit .step-item/.step-circle/.step-label/.step-line) erfasst keine
+   Regel dieser Datei. Werte als Tokens --ce-bk-* in variables.css.
+
+   • Eine Karte je Schritt mit Marke (Zahl bzw. Haken), Titel und Unterzeile; auf schmalen Leisten (Smartphone,
+     200 % Zoom) drei kompakte Karten nebeneinander, Marke über dem Titel, ohne Unterzeile.
+   • Aktiver Schritt ausschließlich in Blautönen — Navy, Saphir, elektrisches Blau, hellblaues Licht; in jedem Wert ist
+     Blau der größte Kanal und Rot ≤ Grün (Farbton 207–230°), kein Violett. Das Leuchten bleibt IN der Fläche
+     (Verläufe, Lichtkante, Halo um die Marke): kein farbiger Außenschein, Schatten nur in Navy (designSystemClosure 4).
+   • Erledigt: ruhiges Grün mit Haken. Offen: helle Karte mit Nummer.
+   • Bewegung: ein einmaliger Lichtlauf über die aktive Karte (nur transform) und ein weiches Überblenden beim Wechsel;
+     beides entfällt bei reduzierter Bewegung, erhöhtem Kontrast, erzwungenen Farben und im Druck.
+   • Reine Anzeige: keine Navigation, kein Zeigerzustand.
+   ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* Hülle: bleibt div.steps-bar.mb-24 (Haken für Tests und Layoutverträge); für die Karten ohne Flex und ohne
+   Scrollbereich — overflow-x: auto schnitte Schatten und Lichtkante ab. */
+.booking-wrap > .steps-bar {
+  display: block;
+  overflow: visible;
+  container: bk-schritte / inline-size;
+  --bk-luecke: 28px;
+}
+
+.bk-schritte {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: var(--bk-luecke);
+}
+.bk-schritt { position: relative; display: flex; min-width: 0; }
+
+/* Karte: helle Fläche, Lichtkante als Rand-Verlauf, Radius — ruhig, ohne Schatten. */
+.bk-karte {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 11px 16px 11px 12px;
+  border: 1px solid transparent;
+  /* Radius der Skala; im Kundenbereich setzt premium-redesign.css für die breite Fassung den Abschnittsradius
+     --ce-pr-radius-panel (14 px) — eine Radienfamilie (designTokens.test.mjs 10). */
+  border-radius: var(--ce-radius-lg);
+  background: var(--ce-bk-offen-flaeche) padding-box, var(--ce-bk-offen-kante) border-box;
+  color: var(--ce-bk-offen-titel);
+  transition: color var(--ce-motion-slow) var(--ce-motion-ease-standard), box-shadow var(--ce-motion-slow) var(--ce-motion-ease-standard);
+}
+/* Aktive Fläche als eigene Ebene: Beim Wechsel 1 → 2 blendet sie weich über (Verläufe selbst sind nicht animierbar).
+   Der Halo folgt der Marke (--bk-halo), deshalb steht er hier und nicht im Token. */
+.bk-karte::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--ce-motion-slow) var(--ce-motion-ease-standard);
+  background:
+    var(--ce-bk-aktiv-glanzlinie),
+    radial-gradient(52px 52px at var(--bk-halo, 30px 50%), rgba(var(--ce-bk-aktiv-licht), 0.26) 0%, rgba(var(--ce-bk-aktiv-licht), 0) 72%),
+    var(--ce-bk-aktiv-flaeche);
+}
+
+/* Marke: kleine plastische Münze mit Zahl oder Haken. */
+.bk-marke {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-family: var(--ce-font-numeric);
+  font-size: var(--ce-text-body-s-size);
+  font-weight: var(--ce-text-title-section-weight);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  color: var(--ce-bk-offen-zeile);
+  background: white;
+  box-shadow: var(--ce-bk-shadow-marke);
+}
+.bk-marke svg { display: block; }
+
+.bk-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bk-titel {
+  font-size: var(--ce-text-body-s-size);
+  font-weight: var(--ce-text-title-section-weight);
+  line-height: 1.25;
+  letter-spacing: -0.005em;
+  color: inherit;
+}
+/* 13 px auch im Kundenbereich: kleinste Schrift des freigegebenen Entwurfs (Desktop), Kontrast ≥ 5,8 : 1. */
+.bk-zeile {
+  font-size: 0.8125rem;
+  font-weight: var(--ce-weight-text);
+  line-height: 1.3;
+  color: var(--ce-bk-offen-zeile);
+}
+
+/* Verbindung: feiner Richtungspfeil mittig in der Lücke (kein eigenes Element, für Screenreader unsichtbar). */
+.bk-schritt:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: calc(100% + var(--bk-luecke) / 2 - 5px);
+  width: 7px;
+  height: 7px;
+  border-top: 1.5px solid currentColor;
+  border-right: 1.5px solid currentColor;
+  transform: translateY(-50%) rotate(45deg);
+  color: var(--ce-bk-pfeil-offen);
+  pointer-events: none;
+}
+.bk-schritt--erledigt:not(:last-child)::after { color: var(--ce-bk-pfeil-erledigt); }
+.bk-schritt--aktiv:not(:last-child)::after { color: var(--ce-bk-pfeil-aktiv); }
+
+/* ── Erledigt: ruhiges Grün, Haken ── */
+.bk-schritt--erledigt .bk-karte {
+  color: var(--ce-bk-text);
+  background: var(--ce-bk-erledigt-flaeche) padding-box, var(--ce-bk-erledigt-kante) border-box;
+  box-shadow: var(--ce-bk-shadow-karte-erledigt);
+}
+.bk-schritt--erledigt .bk-marke {
+  color: white;
+  background: var(--ce-bk-erledigt-marke-grund);
+  box-shadow: var(--ce-bk-shadow-marke-erledigt);
+}
+.bk-schritt--erledigt .bk-zeile { color: var(--ce-bk-text-gedaempft); }
+
+/* ── Aktiv: Navy → Saphir → elektrisches Blau, Glasglanz, hellblaue Lichtkante, Tiefe in Navy ── */
+.bk-schritt--aktiv .bk-karte {
+  color: white;
+  background: linear-gradient(var(--ce-bk-aktiv-tiefe), var(--ce-bk-aktiv-tiefe)) padding-box, var(--ce-bk-aktiv-kante) border-box;
+  box-shadow: var(--ce-bk-shadow-karte-aktiv);
+}
+.bk-schritt--aktiv .bk-karte::before { opacity: 1; }
+.bk-schritt--aktiv .bk-marke {
+  color: var(--ce-bk-aktiv-marke-schrift);
+  border: 1px solid var(--ce-bk-aktiv-marke-rand);
+  background: var(--ce-bk-aktiv-marke-grund);
+  box-shadow: var(--ce-bk-shadow-marke-aktiv);
+  text-shadow: var(--ce-bk-shadow-marke-text);
+}
+.bk-schritt--aktiv .bk-zeile { color: var(--ce-bk-aktiv-zeile); }
+/* Einmaliger Lichtlauf beim Erreichen des Schritts (nur transform, danach Ruhe). */
+.bk-schritt--aktiv .bk-karte::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--ce-bk-aktiv-lichtlauf);
+  transform: translateX(-100%);
+  animation: bk-licht 1600ms cubic-bezier(0.45, 0, 0.25, 1) 300ms 1 both;
+}
+@keyframes bk-licht { to { transform: translateX(100%); } }
+
+/* ── Kompakt (Smartphone, 200 % Zoom auf schmalen Fenstern): drei Karten nebeneinander, Marke über dem Titel ── */
+@container bk-schritte (max-width: 33.99em) {
+  .bk-schritte { column-gap: 16px; }
+  .bk-karte {
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    min-height: 0;
+    padding: 10px 6px;
+    text-align: center;
+    --bk-halo: 50% 26px;
+  }
+  .bk-marke { width: 32px; height: 32px; font-size: 0.875rem; }
+  .bk-marke svg { width: 16px; height: 16px; }
+  .bk-titel { font-size: 0.875rem; line-height: 1.2; }
+  .bk-zeile { display: none; }
+  .bk-schritt:not(:last-child)::after { width: 6px; height: 6px; left: calc(100% + 8px - 4px); }
+}
+
+/* ── Bewegung nur ohne Wunsch nach reduzierter Bewegung ── */
+@media (prefers-reduced-motion: reduce) {
+  .bk-karte, .bk-karte::before { transition: none; }
+  .bk-schritt--aktiv .bk-karte::after { animation: none; content: none; }
+}
+
+/* ── Erhöhter Kontrast: flache Flächen, kräftige Kanten, Nebenzeilen in Textfarbe, keine Lichtakzente ── */
+@media (prefers-contrast: more) {
+  .bk-karte { background: linear-gradient(white, white) padding-box, linear-gradient(var(--ce-bk-kontrast-kante), var(--ce-bk-kontrast-kante)) border-box; }
+  .bk-schritt--erledigt .bk-karte { background: linear-gradient(white, white) padding-box, linear-gradient(var(--ce-bk-erledigt), var(--ce-bk-erledigt)) border-box; }
+  .bk-schritt--aktiv .bk-karte {
+    background: linear-gradient(var(--ce-bk-aktiv-tiefe), var(--ce-bk-aktiv-tiefe)) padding-box, linear-gradient(white, white) border-box;
+    box-shadow: 0 0 0 2px var(--ce-bk-aktiv-tiefe);
+  }
+  .bk-schritt--aktiv .bk-karte::before { background: var(--ce-bk-aktiv-tiefe); }
+  .bk-schritt--aktiv .bk-karte::after { content: none; animation: none; }
+  .bk-zeile, .bk-schritt--erledigt .bk-zeile { color: var(--ce-bk-text); }
+  .bk-schritt--aktiv .bk-zeile { color: white; }
+  .bk-marke { box-shadow: var(--ce-bk-shadow-marke-kontrast); }
+}
+
+/* ── Erzwungene Farben (Windows-Kontrastdesign): Systemfarben, der Zustand liegt in der Rahmenstärke und im Haken ──
+   Textfarben setzt der Browser selbst (CanvasText). Bewusst kein Systemakzent für den aktiven Schritt: Dessen Farbe
+   wählt das Kontrastdesign (in Chromiums Emulation violett) — der aktive Schritt soll auch hier keine fremde
+   Akzentfarbe bekommen. */
+@media (forced-colors: active) {
+  .bk-karte, .bk-schritt--erledigt .bk-karte, .bk-schritt--aktiv .bk-karte { border: 1px solid CanvasText; background: Canvas; box-shadow: none; }
+  .bk-schritt--aktiv .bk-karte { border-width: 3px; }
+  .bk-karte::before, .bk-karte::after, .bk-schritt--aktiv .bk-karte::after { content: none; animation: none; }
+  .bk-marke, .bk-schritt--erledigt .bk-marke, .bk-schritt--aktiv .bk-marke {
+    border: 1px solid CanvasText;
+    background: Canvas;
+    box-shadow: none;
+    text-shadow: none;
+  }
+}
+
+/* ── Druck: Ohne Hintergrundgrafik bliebe weiße Schrift auf weißem Papier — flach, dunkel, der Rahmen zeigt den
+   Zustand (Rahmen druckt auch ohne Hintergrundgrafik). ── */
+@media print {
+  .bk-karte, .bk-schritt--erledigt .bk-karte, .bk-schritt--aktiv .bk-karte {
+    background: none;
+    border: 1px solid var(--ce-bk-text-gedaempft);
+    color: var(--ce-bk-text);
+    box-shadow: none;
+  }
+  .bk-schritt--aktiv .bk-karte { border: 2px solid currentColor; }
+  .bk-karte::before, .bk-karte::after, .bk-schritt--aktiv .bk-karte::after { content: none; animation: none; }
+  .bk-marke, .bk-schritt--erledigt .bk-marke, .bk-schritt--aktiv .bk-marke {
+    border: 1px solid currentColor;
+    background: none;
+    color: var(--ce-bk-text);
+    box-shadow: none;
+    text-shadow: none;
+  }
+  .bk-zeile, .bk-schritt--aktiv .bk-zeile, .bk-schritt--erledigt .bk-zeile { color: var(--ce-bk-text-gedaempft); }
+  .bk-schritt:not(:last-child)::after,
+  .bk-schritt--erledigt:not(:last-child)::after,
+  .bk-schritt--aktiv:not(:last-child)::after { color: var(--ce-bk-text-gedaempft); }
+}

@@ -285,8 +285,9 @@ tr:last-child td { border-bottom: none; }
 .tracking-steps { margin-bottom: var(--ce-space-6); }
 /* Stufenleiste der Sendungsverfolgung (Betreiberentscheidung 2026-10-04): erreichte UND aktuelle
    Stufe grün, zukünftige neutral — bei der Zustellung sind alle vier grün. Ausschließlich unter
-   .tracking-steps: der Buchungs-Stepper (.steps-bar ohne diese Klasse) behält für den aktuellen
-   Schritt seine Markenfarbe. Bei einer belegten Ausnahme ist keine Stufe markiert (trackingView.mjs). */
+   .tracking-steps. Die Buchungsstrecke nutzt die .step-*-Klassen nicht mehr: Ihre Schritte stehen seit
+   2026-11-14 als eigene Karten in buchungsschritte.css (.bk-*). Bei einer belegten Ausnahme ist keine
+   Stufe markiert (trackingView.mjs). */
 .tracking-steps .step-circle.active {
   border-color: var(--ce-color-success-solid); background: var(--ce-color-success-solid);
   color: var(--ce-color-text-inverse);

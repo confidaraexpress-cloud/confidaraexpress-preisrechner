@@ -131,19 +131,20 @@ test("1 — es gibt keine Halb-Pixel-Schriftgrößen mehr", () => {
 
 /* ══════════ 2 — Untergrenze 11 px ════════════════════════════════════════ */
 
-test("2 — nichts unter 11 px; außerhalb des Auth-Bereichs nichts unter 12 px", () => {
+test("2 — nichts unter 11 px; außerhalb des Auth-Bereichs nichts unter 13 px", () => {
   const treffer = GROESSEN.filter((g) => g.wert < 11)
     .map((g) => `${g.datei}:${g.zeile} (${g.wert}px)`);
   assert.deepEqual(treffer, [], `zu kleine Schrift:\n  ${treffer.join("\n  ")}`);
-  // Die kleinste Stufe ist Micro mit 12 px (Tabellenkopf, Gewicht 600). Caption
-  // und Badge liegen seit D4 (Betreiberentscheidung 2026-11-13, Lesbarkeit der
-  // Grundskala +1 px) auf 13 px. 11 px bleibt allein dem eingefrorenen Auth-Bereich.
-  assert.equal(tok("ce-text-micro-size"), "12px", "die kleinste Stufe ist Micro (12px)");
-  assert.equal(tok("ce-text-caption-size"), "13px", "Caption liegt auf 13px (D4)");
+  // Premium-Typografie 2.0 (Betreiberauftrag 2026-11-13: „kleine Texte deutlich kräftiger und besser lesbar“):
+  // Die kleinste Stufe ist Micro mit 13 px (zuvor 12 px), Badge bleibt 13 px, Caption (Hilfe-, Meta- und
+  // KPI-Erklärungstext) steigt auf 14 px (zuvor 13 px seit D4). 11 und 12 px bleiben allein dem eingefrorenen
+  // Auth-Bereich.
+  assert.equal(tok("ce-text-micro-size"), "13px", "die kleinste Stufe ist Micro (13px)");
+  assert.equal(tok("ce-text-caption-size"), "14px", "Caption liegt auf 14px (Premium-Typografie 2.0)");
   assert.equal(tok("ce-text-badge-size"), "13px", "Badges liegen auf 13px (D4)");
-  const klein = GROESSEN.filter((g) => g.wert < 12 && !istAuth(g))
+  const klein = GROESSEN.filter((g) => g.wert < 13 && !istAuth(g))
     .map((g) => `${g.datei}:${g.zeile} ${g.selektor} (${g.wert}px)`);
-  assert.deepEqual(klein, [], `unter 12 px außerhalb von Auth:\n  ${klein.join("\n  ")}`);
+  assert.deepEqual(klein, [], `unter 13 px außerhalb von Auth:\n  ${klein.join("\n  ")}`);
 
   const jsx = [];
   for (const pfad of quelldateien()) {
@@ -175,20 +176,27 @@ test("3 — jede Schriftgröße liegt auf einer definierten Stufe der Skala", ()
     ["title-page", "34px", "28px"], ["title-section", "18px", "18px"],
     ["title-card", "16px", "16px"], ["body-l", "16px", "16px"],
     ["body", "15px", "15px"], ["body-s", "14px", "14px"],
-    ["label", "14px", "14px"], ["micro", "12px", "12px"],
+    ["label", "14px", "14px"], ["micro", "13px", "13px"],
     ["numeric-display", "32px", "28px"], ["display-s", "24px", "24px"],
   ]) {
     assert.equal(tok(`ce-text-${stufe}-size`), desktop, `--ce-text-${stufe}-size`);
     assert.equal(tok(`ce-text-${stufe}-size-mobile`), mobil, `--ce-text-${stufe}-size-mobile`);
   }
-  // Rollen ohne Mobilwert.
-  for (const [rolle, wert] of [["caption", "13px"], ["badge", "13px"], ["button", "14px"], ["nav", "14px"]]) {
+  // Rollen ohne Mobilwert. Premium-Typografie 2.0: Caption 14 px, kleiner Knopf eigene Stufe (13 px Grundskala).
+  for (const [rolle, wert] of [["caption", "14px"], ["badge", "13px"], ["button", "14px"], ["button-sm", "13px"], ["nav", "14px"]]) {
     assert.equal(tok(`ce-text-${rolle}-size`), wert, `--ce-text-${rolle}-size`);
   }
+  // Caption und Micro wachsen ohne höhere Zeilen: 14 × 1,4286 = 20 px und 13 × 1,3846 = 18 px wie zuvor.
+  assert.equal(tok("ce-text-caption-line"), "1.4286", "Caption 14/20");
+  assert.equal(tok("ce-text-micro-line"), "1.3846", "Micro 13/18");
   assert.equal(tok("ce-text-button-weight"), "600", "Buttons 14/20 600");
-  // Gewichtsleiter (Betreiberentscheidung 2026-11-13): Fließtext 450, mittlere Stufe 550.
-  assert.equal(tok("ce-weight-text"), "450", "Fließtext 450");
+  // Gewichtsleiter (Betreiberentscheidung 2026-11-13): mittlere Stufe 550. Premium-Typografie 2.0
+  // (Betreiberauftrag 2026-11-13, Zielwerte „normaler Text 500“, „Formularbeschriftungen 600“): Fließtext 500,
+  // Beschriftungen und Badges 600.
+  assert.equal(tok("ce-weight-text"), "500", "Fließtext 500");
   assert.equal(tok("ce-weight-medium"), "550", "mittlere Stufe 550");
+  assert.equal(tok("ce-text-label-weight"), "600", "Beschriftungen 600");
+  assert.equal(tok("ce-text-badge-weight"), "600", "Badges 600");
   assert.equal(tok("ce-text-nav-weight"), "550", "Navigation 14/20 550 (Adminbereich, öffentlicher Drawer)");
   assert.equal(tok("ce-text-nav-weight-active"), "600", "aktive Navigation 600");
   // Die Kunden-Sidebar trägt seit der Feinkorrektur 2026-10 eine eigene,
@@ -233,8 +241,9 @@ test("4 — kein font-weight über 700 (Achse der Schriftdatei) außerhalb der @
   for (const m of variables.matchAll(/--ce-text-[\w-]+-weight:\s*(\d+)/g)) {
     assert.ok(Number(m[1]) <= GEWICHT_MAX, `Skalengewicht ${m[1]} überschreitet ${GEWICHT_MAX}`);
   }
+  // Premium-Typografie 2.0: Fließtextgewicht 500 (zuvor 450) — weiterhin für alle Lesestufen dasselbe.
   for (const rolle of ["body-l", "body", "body-s", "caption"]) {
-    assert.equal(tok(`ce-text-${rolle}-weight`), "450", `--ce-text-${rolle}-weight trägt das Fließtextgewicht 450`);
+    assert.equal(tok(`ce-text-${rolle}-weight`), "500", `--ce-text-${rolle}-weight trägt das Fließtextgewicht 500`);
   }
   // Kein künstlicher Fettdruck.
   for (const [datei, text] of Object.entries(css)) {
@@ -367,13 +376,21 @@ test("8 — die Legacy-Graustufen tragen keine Textrolle mehr", () => {
   // Metatexte. Der Nachfolger erfüllt AA. Seit der Betreiberentscheidung vom
   // 2026-11-13 stehen die drei Nebenrollen in der Navy-Familie und deutlich
   // dunkler: Nebentext mindestens 9:1, gedämpft mindestens 7:1, Platzhalter
-  // mindestens 4,5:1 auf Weiß.
-  assert.equal(tok("ce-color-text-muted"), "#4a5672");
+  // mindestens 4,5:1 auf Weiß. Premium-Typografie 2.0 (2026-11-13): gedämpft und
+  // Platzhalter eine Stufe dunkler — gedämpft hält 7:1 jetzt auch auf den getönten
+  // Flächen (Arbeitsfläche, surface-muted), der Platzhalter bleibt sichtbar heller
+  // als der gedämpfte Text, damit leere und ausgefüllte Felder unterscheidbar bleiben.
+  assert.equal(tok("ce-color-text-muted"), "#434f6b");
   assert.equal(tok("ce-color-text-secondary"), "#3a4662");
-  assert.equal(tok("ce-color-text-placeholder"), "#5a6681");
+  assert.equal(tok("ce-color-text-placeholder"), "#525e7a");
   assert.ok(kontrast(tok("ce-color-text-secondary"), "#ffffff") >= 9, "Nebentext auf Weiß mindestens 9:1");
   assert.ok(kontrast(tok("ce-color-text-muted"), "#ffffff") >= 7, "gedämpfter Text auf Weiß mindestens 7:1");
+  for (const flaeche of ["ce-color-surface-muted", "ce-color-bg-canvas-mid"]) {
+    assert.ok(kontrast(tok("ce-color-text-muted"), tok(flaeche)) >= 7, `gedämpfter Text auf --${flaeche} mindestens 7:1`);
+  }
   assert.ok(kontrast(tok("ce-color-text-placeholder"), "#ffffff") >= 4.5, "Platzhalter auf Weiß mindestens 4,5:1");
+  assert.ok(kontrast(tok("ce-color-text-placeholder"), "#ffffff") < kontrast(tok("ce-color-text-muted"), "#ffffff"),
+    "der Platzhalter bleibt heller als der gedämpfte Text");
   assert.ok(kontrast(tok("ce-color-text-muted"), "#ffffff") >= 4.5,
     "Muted-Text muss auf Weiß mindestens 4,5:1 erreichen");
   assert.ok(kontrast(tok("ce-color-text-secondary"), "#ffffff") >= 4.5);
@@ -383,6 +400,62 @@ test("8 — die Legacy-Graustufen tragen keine Textrolle mehr", () => {
     assert.ok(kontrast(tok(rolle), tok("ce-color-bg-canvas-top")) >= 4.5,
       `--${rolle} unterschreitet auf der Ivory-Fläche 4,5:1`);
   }
+  // tok() liest nur die erste Fundstelle (Grundblock). Der Bereichsblock (Kunde, Anmeldung, Preisrechner) trägt
+  // dieselben Nebenrollen — jede Deklaration wird geprüft, sonst bliebe eine Kopie unbemerkt auf dem alten Wert.
+  for (const [rolle, wert] of [["ce-color-text-muted", "#434f6b"], ["ce-color-text-placeholder", "#525e7a"], ["ce-color-text-secondary", "#3a4662"]]) {
+    const alle = [...variables.matchAll(new RegExp(`--${rolle}:\\s*([^;]+);`, "g"))].map((m) => m[1].trim());
+    assert.ok(alle.length >= 2, `--${rolle}: Grund- und Bereichsblock erwartet`);
+    assert.deepEqual([...new Set(alle)], [wert], `--${rolle} in einem Block abweichend: ${alle.join(", ")}`);
+  }
+});
+
+test("8b — Premium-Typografie 2.0: die Bereichsskala hebt Hilfe-, Meta- und Tabellenkopftext auf 14 px", () => {
+  // Der Bereichsblock steht in rem (E13). Caption und Micro 0,875 rem = 14 px (zuvor 0,8125 rem = 13 px), beide mit
+  // 20 px Zeilenhöhe wie zuvor; kleine Knöpfe 14 px. Badges und Status bleiben bei 0,8125 rem.
+  const bereich = (name) => {
+    const alle = [...variables.matchAll(new RegExp(`--${name}:\\s*([^;]+);`, "g"))].map((m) => m[1].trim());
+    assert.ok(alle.length >= 2, `--${name}: kein Bereichswert`);
+    return alle[alle.length - 1];
+  };
+  assert.equal(bereich("ce-text-caption-size"), "0.875rem");
+  assert.equal(bereich("ce-text-caption-line"), "1.4286");
+  assert.equal(bereich("ce-text-micro-size"), "0.875rem");
+  assert.equal(bereich("ce-text-micro-size-mobile"), "0.875rem");
+  assert.equal(bereich("ce-text-micro-line"), "1.4286");
+  assert.equal(bereich("ce-text-button-sm-size"), "0.875rem");
+  assert.equal(bereich("ce-text-badge-size"), "0.8125rem");
+  // Kleine Knöpfe lesen die Stufe statt eines festen Werts (zuvor 13 px fest, auch im Kundenbereich).
+  assert.match(css["buttons.css"], /\.btn-sm \{[^}]*--ce-btn-font-size:\s*var\(--ce-text-button-sm-size\)/);
+  // Tabellenköpfe außerhalb des Bereichs (Admin, Partnerportal) stehen in der Label-Größe mit 600.
+  const th = css["dashboard.css"].match(/(?:^|\n)th \{([^}]*)\}/);
+  assert.ok(th, "th-Regel in dashboard.css fehlt");
+  assert.match(th[1], /font-size:\s*var\(--ce-text-label-size\)/);
+  assert.match(th[1], /font-weight:\s*var\(--ce-text-micro-weight\)/);
+  // Die Admin-Navigation wächst nicht mit (Höhenbudget der Seitenleiste): Kategorie auf der Badge-Stufe.
+  assert.match(css["admin.css"], /\.adm-nsec \{[^}]*font-size:\s*var\(--ce-text-badge-size\)/);
+});
+
+test("8c — Premium-Typografie 2.0: die Partnerregistrierung (dunkle Bühne ohne Bereich) hat lesbare kleine Texte", () => {
+  // Ohne Bereich gelten die Werte aus auth.css: Beschriftungen und Zustimmungstext 14 px, Hinweise, Fehler und
+  // Rechtslinks 13 px (zuvor 13 bzw. 12 px). Kundenanmeldung und Registrierung überschreiben im Bereich „auth“.
+  const auth = css["auth.css"];
+  const groesse = (sel) => {
+    const m = auth.match(new RegExp(`(?:^|\\n)${sel.replace(/\./g, "\\.")} \\{([^}]*)\\}`));
+    assert.ok(m, `${sel} fehlt in auth.css`);
+    const g = m[1].match(/font-size:\s*([^;]+);/);
+    assert.ok(g, `${sel}: keine Schriftgröße`);
+    return g[1].trim();
+  };
+  for (const sel of [".auth-field-label", ".auth-check"]) assert.equal(groesse(sel), "14px", sel);
+  for (const sel of [".auth-field-link", ".auth-field-error", ".auth-legal", ".auth-declaration-hint", ".auth-form-legal",
+    ".auth-required-hint", ".auth-field-hint", ".auth-b2b-notice-sub"]) assert.equal(groesse(sel), "13px", sel);
+  assert.equal(groesse(".auth-optional"), "max(13px, 0.92em)");
+  // Gedämpfte Tinte und Platzhalter erreichen auf der Karte (gemessen #0b1120) mindestens AA.
+  const tinte = (name) => variables.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6});`, "i"))[1];
+  assert.ok(kontrast(tinte("auth-ink-4"), "#0b1120") >= 5, `--auth-ink-4 ${tinte("auth-ink-4")} unter 5:1 auf der Karte`);
+  assert.ok(kontrast(tinte("auth-ink-placeholder"), "#0b1120") >= 4.5, "--auth-ink-placeholder unter AA auf der Karte");
+  // Der Platzhalter bleibt leiser als die gedämpfte Tinte (Rangfolge erhalten).
+  assert.ok(kontrast(tinte("auth-ink-placeholder"), "#0b1120") < kontrast(tinte("auth-ink-4"), "#0b1120"));
 });
 
 test("9 — Textfarben kommen aus den Foundation-Rollen, nicht aus Literalen", () => {

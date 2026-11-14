@@ -2062,7 +2062,7 @@
 [data-ce-bereich="kunde"] .tracking-schnellwahl-title {
   margin: 0;
   font-size: var(--ce-text-title-card-size);
-  font-weight: 600;
+  font-weight: var(--ce-text-title-card-weight);
   line-height: var(--ce-text-title-card-line);
   color: var(--ce-color-text-primary);
 }

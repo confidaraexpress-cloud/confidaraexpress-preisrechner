@@ -281,9 +281,12 @@ test("17 — die Zahl steht in der Zahlenrolle 32/38, Gewicht 600, eng und tabel
 test("18 — Beschriftung auf der Label-Stufe, keine Versalien; Kontext auf der Caption-Stufe", () => {
   assert.equal(decl(".ov-kpi-label", "font-size"), "var(--ce-text-label-size)");
   assert.equal(decl(".ov-kpi-label", "font-weight"), "var(--ce-text-label-weight)");
-  // Betreiberentscheidung 2026-11-13: Lesestufen der Grundskala +1 px (D4), mittlere Gewichtsstufe 550.
+  // Betreiberentscheidung 2026-11-13: Lesestufen der Grundskala +1 px (D4); Premium-Typografie 2.0
+  // (Betreiberauftrag 2026-11-13, Zielwert „Formularbeschriftungen 600“): die Label-Rolle trägt 600.
   assert.equal(tok("ce-text-label-size"), "14px");
-  assert.equal(tok("ce-text-label-weight"), "550");
+  assert.equal(tok("ce-text-label-weight"), "600");
+  // Die KPI-Erklärung steht in der Caption-Stufe — seit Premium-Typografie 2.0 14 px statt 13 px.
+  assert.equal(tok("ce-text-caption-size"), "14px");
   assert.ok(!/text-transform|letter-spacing/.test(rule(".ov-kpi-label")), "keine Versalzeile");
   assert.equal(decl(".ov-kpi-context", "font-size"), "var(--ce-text-caption-size)");
 });

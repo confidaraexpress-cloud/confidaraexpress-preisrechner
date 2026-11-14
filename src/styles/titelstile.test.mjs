@@ -198,6 +198,63 @@ test("11 — die Prüflogik greift tatsächlich", () => {
   assert.equal(kontrast("#5367e8", "#5367e8"), 1);
 });
 
+/* Premium-Typografie 2.0 (Betreiberauftrag 2026-11-13): „Wirkung erhalten, aber weniger dunkler Schattenhof, feinere
+   Schattenabstufungen, elegantere Lichtkanten; keine überladene Extrusion; Signatur markanter, Relief zurückhaltender“.
+   Dieser Test hält das als Messgrößen fest — Extrusionstiefe, Deckkraft und Versatz des Schattenhofs. */
+function praegung(wert) {
+  const teile = [...wert.matchAll(/drop-shadow\(\s*(-?[\d.]+)\s+(-?[\d.]+)em\s+(-?[\d.]+)(?:em)?\s+(#[0-9a-f]{3,8}|rgba?\([^)]*\))\s*\)/gi)]
+    .map(([, x, y, unschaerfe, farbe]) => ({
+      x: Number(x), y: Number(y), unschaerfe: Number(unschaerfe), farbe,
+      deckkraft: /^rgba/i.test(farbe) ? Number(farbe.match(/,\s*([\d.]+)\s*\)$/)[1]) : 1,
+    }));
+  assert.equal(teile.length, (wert.match(/drop-shadow\(/g) || []).length, `Prägung nicht vollständig gelesen: ${wert}`);
+  return teile;
+}
+const praegungAus = (name) => {
+  const m = variables.match(new RegExp(`--${name}:\\s*([^;]+);`));
+  assert.ok(m, `--${name} fehlt`);
+  return praegung(m[1]);
+};
+const hart = (s) => s.filter((d) => d.unschaerfe === 0 && d.y > 0);
+const tiefe = (s) => Math.round(hart(s).reduce((a, d) => a + d.y, 0) * 1000) / 1000;
+const navyHof = (s) => s.filter((d) => d.unschaerfe > 0 && /^rgba\(\s*1,\s*27,\s*85,/i.test(d.farbe));
+const violettHof = (s) => s.filter((d) => d.unschaerfe > 0 && /^rgba\(\s*122,\s*92,\s*230,/i.test(d.farbe));
+
+test("12 — Premium-Typografie 2.0: die Prägung bleibt fein — wenig Extrusion, kleiner und heller Schattenhof", () => {
+  const signatur = praegungAus("ce-titel-signatur-praegung");
+  const relief = praegungAus("ce-titel-relief-praegung");
+  const gruss = praegungAus("ce-titel-gruss-praegung");
+  for (const [name, s] of [["Signatur", signatur], ["Relief", relief], ["Gruß", gruss]]) {
+    // Höchstens zwei Extrusionsstufen plus die haarfeine Kante in Logo-Blau, zusammen höchstens 0,035 em
+    // (zuvor drei Navy-Stufen plus Kante: 0,06 em — der „massive“ Unterrand).
+    assert.ok(hart(s).length <= 3, `${name}: ${hart(s).length} harte Stufen unter dem Titel`);
+    assert.ok(tiefe(s) <= 0.035, `${name}: Extrusion ${tiefe(s)} em`);
+    // Lichtkante oben: weiß, höchstens 0,014 em.
+    assert.ok(s.some((d) => d.y < 0 && d.y >= -0.014 && /255,\s*255,\s*255/.test(d.farbe)), `${name}: keine feine Lichtkante`);
+    // Schattenhof: Navy höchstens 15 % Deckkraft und 0,1 em Versatz (zuvor 22 % und 0,16 em); Violett nur als Hauch.
+    for (const d of navyHof(s)) {
+      assert.ok(d.deckkraft <= 0.15, `${name}: Schattenhof ${d.deckkraft * 100} % Deckkraft`);
+      assert.ok(d.y <= 0.1 && d.unschaerfe <= 0.12, `${name}: Schattenhof ${d.y}/${d.unschaerfe} em`);
+    }
+    for (const d of violettHof(s)) assert.ok(d.deckkraft <= 0.1, `${name}: Violettreflexion ${d.deckkraft * 100} %`);
+  }
+  // Signatur bleibt die markantere Fassung, Relief und Gruß sind ruhiger.
+  assert.ok(tiefe(relief) <= tiefe(signatur) && tiefe(gruss) <= tiefe(signatur), "Relief/Gruß tiefer geprägt als Signatur");
+  const staerksterHof = (s) => Math.max(0, ...navyHof(s).map((d) => d.deckkraft));
+  assert.ok(staerksterHof(relief) <= staerksterHof(signatur), "Relief mit dunklerem Schattenhof als Signatur");
+  // Balance Navy / elektrisches Blau: Signatur beginnt oben im elektrischen Blau, Relief sachlicher und dunkler.
+  const ersteStufe = (name) => variables.match(new RegExp(`--${name}:\\s*linear-gradient\\([^#]*(#[0-9a-f]{6})`, "i"))[1];
+  const sigOben = ersteStufe("ce-titel-signatur-fuellung");
+  assert.ok(parseInt(sigOben.slice(5, 7), 16) >= 0xc0, `Signatur beginnt nicht im elektrischen Blau: ${sigOben}`);
+  assert.ok(kontrast(ersteStufe("ce-titel-relief-fuellung"), "#ffffff") > kontrast(sigOben, "#ffffff"),
+    "Relief beginnt nicht dunkler als Signatur");
+  // Die Prüfung greift: die frühere Signatur-Prägung fiele durch.
+  const frueher = praegung("drop-shadow(0 -0.014em 0 rgba(255, 255, 255, 0.95)) drop-shadow(0 0.016em 0 #10246a) "
+    + "drop-shadow(0 0.016em 0 #0a1a52) drop-shadow(0 0.016em 0 #071440) drop-shadow(0 0.012em 0 rgba(0, 74, 252, 0.5)) "
+    + "drop-shadow(0 0.16em 0.2em rgba(1, 27, 85, 0.22)) drop-shadow(0 0.26em 0.42em rgba(122, 92, 230, 0.12))");
+  assert.ok(tiefe(frueher) > 0.035 && hart(frueher).length > 3 && navyHof(frueher)[0].deckkraft > 0.15);
+});
+
 function kontrast(a, b) {
   const lum = (hex) => {
     const [r, g, bl] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)

@@ -230,7 +230,10 @@ test("11 — die Kopfleiste schneidet ihre Aufklapper nicht ab (Mitteilungen, Su
    premium-editorial.css ist die letzte Ebene im Bündel. Sie hängt ausschließlich am Kundenbereich — strenger
    als die Bereichsebene: auch die Anmeldung (Auth) und der Preisrechner lesen sie nie. Es gelten dieselben
    Regeln wie oben: Farben nur über Tokens, Knöpfe ohne Bewegung, Verlauf und Deckkraft, Schatten der Knöpfe
-   nur über die Knopf-Tokens, Umbruch nur über text-wrap-style. */
+   nur über die Knopf-Tokens, Umbruch nur über text-wrap-style.
+   Bediensystem (Betreiberentscheidungen D1/D6, 2026-11-14): Im Kundenbereich tragen Knöpfe dezente Tiefe — die
+   Schatten kommen dann aus der Familie --ce-pr-bs-schatten-* (variables.css). Bewegung, Verlauf und Deckkraft
+   bleiben an Knöpfen ausgeschlossen. */
 const EDITORIAL = ohneKommentare(lies(path.join(HIER, "premium-editorial.css")));
 const EDITORIAL_REGELN = regeln(EDITORIAL);
 
@@ -262,10 +265,17 @@ test("12 — Editorial-Ebene: nur Kundenbereich, keine Farbliterale, Knöpfe nac
     if (deckkraft && Number(deckkraft[1]) !== 1) knopf.push(`${sel}: opacity ${deckkraft[1]}`);
     for (const m of koerper.matchAll(/box-shadow\s*:\s*([^;]+)/g)) {
       const v = m[1].trim();
-      if (v !== "none" && !/^var\(--ce-pr-btn-shadow(-hover|-secondary)?\)$/.test(v)) knopf.push(`${sel}: Schatten ${v}`);
+      if (v !== "none" && !/^var\(--ce-pr-(btn-shadow(-hover|-secondary)?|bs-schatten-[a-z-]+)\)$/.test(v)) knopf.push(`${sel}: Schatten ${v}`);
     }
   }
   assert.deepEqual(knopf, [], knopf.join("\n"));
+  // Die Schattenfamilie des Bediensystems ist definiert und navygetönt — kein Leuchten in der Signalfarbe.
+  const tokens = lies(path.join(HIER, "variables.css"));
+  for (const name of ["primaer", "primaer-zeigen", "gedrueckt", "sekundaer", "sekundaer-zeigen", "gefahr", "menue"]) {
+    const m = tokens.match(new RegExp(`--ce-pr-bs-schatten-${name}:\\s*([^;]+);`));
+    assert.ok(m, `--ce-pr-bs-schatten-${name} fehlt`);
+    assert.doesNotMatch(m[1], /rgba\(0, 74, 252/, `--ce-pr-bs-schatten-${name}: Leuchten in der Signalfarbe`);
+  }
 
   const kurzform = [...EDITORIAL.matchAll(/text-wrap\s*:[^;}]*/g)].map((m) => m[0].trim());
   assert.deepEqual(kurzform, [], `Kurzform text-wrap in premium-editorial.css: ${kurzform.join(", ")}`);
@@ -415,10 +425,13 @@ test("16 — Sehr schmal im Verhältnis zur Schrift: Kennungen brechen nur dort 
 /* ══════════ 17 — Seitenkante und Menütaste (Betreiberentscheidung 2026-10-29) ══════════
    Die kurze Kante unter Seitenkopf, Angebotsblatt und Sendungsverfolgung und an der Oberkante der Dialoge ist grau
    (--ce-color-border-strong) — keine Kante aus Navy und Signal mehr. Die Menütaste „Weitere Aktionen“ ist ein Block
-   für Entwürfe, Adressbuch und Lager: Größe aus einer Variablen (so hoch wie die Kapsel daneben, Touch und schmal
-   44 px), drei Punkte auch im Kontrastmodus, Zeigen nur mit echtem Zeiger, keine Bewegung und keine Deckkraft.
+   für Entwürfe, Adressbuch, Lager und Sendungen: Größe aus einer Variablen, drei Punkte auch im Kontrastmodus,
+   Zeigen nur mit echtem Zeiger, keine Bewegung und keine Deckkraft.
+   Bediensystem (Betreiberentscheidungen D3/D7, 2026-11-14): Die Taste ist eine Symboltaste in der Sprache der
+   Sekundäraktion — leicht gerundetes Quadrat (Radius des Bediensystems), feine Kontur, Navy-Punkte — und so hoch wie
+   die kompakte Aktion daneben (36 px; Touch, schmal und Entwurfskarten 44 px).
    Größe und Mitte im Browser: tests/e2e/premiumParityApp.test.mjs D8. */
-test("17 — Seitenkante grau; die Menütaste spricht die Sprache der Kapsel daneben", () => {
+test("17 — Seitenkante grau; die Menütaste spricht die Sprache der Aktion daneben", () => {
   assert.doesNotMatch(EDITORIAL, /linear-gradient\([^;]*--ce-pr-navy-800[^;]*--ce-pr-signal/, "eine Kante aus Navy und Signal ist zurück");
   for (const kante of [".ce-page-header-main::after", ".offers-result-header::after", ".tracking-head::after", ".price-drift-card)::before"]) {
     const regel = EDITORIAL_REGELN.find(({ sel }) => sel.endsWith(kante));
@@ -433,13 +446,25 @@ test("17 — Seitenkante grau; die Menütaste spricht die Sprache der Kapsel dan
   for (const mass of ["width", "height", "min-width", "min-height"]) {
     assert.match(basis.koerper, new RegExp(`(^|;)\\s*${mass}: var\\(--ce-menue-groesse\\);`), `${mass} nicht aus --ce-menue-groesse`);
   }
-  assert.match(basis.koerper, /--ce-menue-groesse: var\(--ce-size-control-md\);/, "Entwurfstabelle: nicht so hoch wie „Fortsetzen“");
-  assert.match(basis.koerper, /border: 1px solid var\(--ce-pr-navy-800\);/, "keine Navy-Kontur wie die Kapsel");
+  assert.match(basis.koerper, /--ce-menue-groesse: var\(--ce-pr-bs-hoehe-kompakt\);/, "Tabellenzeilen: nicht so hoch wie die kompakte Aktion daneben");
+  assert.match(basis.koerper, /border: 1px solid var\(--ce-pr-bs-kontur\);/, "keine feine Kontur wie die Sekundäraktion");
+  assert.match(basis.koerper, /border-radius: var\(--ce-pr-bs-radius\);/, "nicht der Radius des Bediensystems");
+  assert.doesNotMatch(basis.koerper, /--ce-radius-full/, "die Taste ist wieder rund");
   assert.match(basis.koerper, /(^|;)\s*color: var\(--ce-pr-navy-800\);/, "die Punkte sind nicht Navy");
-  assert.ok(EDITORIAL_REGELN.some(({ sel, koerper }) => sel === K + ":is(.abk-actions-trigger, .inv-actions-trigger)"
-    && /--ce-menue-groesse: var\(--ce-size-control-sm\);/.test(koerper)), "Adressbuch und Lager: nicht so hoch wie die kleine Kapsel");
-  const grob = mediaBloecke(EDITORIAL).find((b) => b.bedingung === "(pointer: coarse), (max-width: 860px)" && /abk-actions-trigger, \.inv-actions-trigger/.test(b.inhalt));
+  assert.match(basis.koerper, /box-shadow: var\(--ce-pr-bs-schatten-sekundaer\);/, "nicht der leise Schatten der Sekundäraktion");
+  const grob = mediaBloecke(EDITORIAL).find((b) => b.bedingung === "(pointer: coarse), (max-width: 860px)" && b.inhalt.includes(TASTEN));
   assert.ok(grob && /--ce-menue-groesse: var\(--ce-size-touch-target\);/.test(grob.inhalt), "Touch und schmal: nicht 44 px");
+  // Die kompakte Aktion daneben ist genauso hoch. D2: kompakt nur mit nachgewiesenem Platzbedarf — Tabellenzeilen und
+  // Zeilenaktionen neben der Taste stehen auf 36 px, schmal und mit grobem Zeiger auf 44 px; freistehende kleine Knöpfe
+  // tragen das Standardmaß, keine Bereichsregel setzt .btn-sm pauschal kompakt.
+  const ZEILEN = ":is(td, th, .abk-row-actions, .inv-actions-row, .inv-warehouse-actions, .sdoc-row) :is(.btn-sm, .btn-xs)";
+  const kompakt = EDITORIAL_REGELN.filter(({ koerper }) => /--ce-btn-height: var\(--ce-pr-bs-hoehe-kompakt\);/.test(koerper));
+  assert.ok(kompakt.some(({ sel }) => teile(sel).includes(K + ZEILEN)), "die kompakte Aktion in Zeilen steht nicht auf 36 px");
+  assert.ok(!kompakt.some(({ sel }) => teile(sel).includes(K + ":is(.btn-sm, .btn-xs)")), "D2: .btn-sm steht pauschal auf 36 px");
+  for (const bedingung of ["(max-width: 860px)", "(pointer: coarse)"]) {
+    const block = mediaBloecke(EDITORIAL).find((b) => b.bedingung === bedingung && b.inhalt.includes(K + ZEILEN));
+    assert.ok(block && /--ce-btn-height: var\(--ce-size-touch-target\);/.test(block.inhalt), `${bedingung}: die Zeilenaktion erreicht nicht 44 px`);
+  }
   assert.ok(EDITORIAL_REGELN.some(({ sel, koerper }) => sel === K + ".dft-card-actions .dft-actions-trigger"
     && /--ce-menue-groesse: var\(--ce-size-touch-target\);/.test(koerper)), "Entwurfskarten: nicht 44 px");
 

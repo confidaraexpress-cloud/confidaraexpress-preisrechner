@@ -28,6 +28,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import { weitereAktion } from "./helpers/weitereAktionen.mjs";
 import { chromium } from "playwright";
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
@@ -831,7 +832,7 @@ test("G — Meine Sendungen: Mehrpaketsendung mit einer Nummer und zwei Belegen;
   assert.doesNotMatch(await einzel.innerText(), /Trackingnummern/);
 
   // Die Belege der Mehrpaketsendung: ein Versandlabel in zwei Formaten, dieselbe Nummer, kein Abholetikett.
-  await mehrpaket.getByRole("button", { name: "Dokumente" }).click();
+  await weitereAktion(mehrpaket, "Dokumente");
   await page.waitForSelector(".sdoc-group-title", { timeout: 15000 });
   const belege = page.locator(".sdoc-group").first();
   assert.deepEqual(await alleTexte(belege.locator(".sdoc-row-name")), ["Versandlabel (A4)", "Versandlabel (Thermodruck)"]);
@@ -860,7 +861,7 @@ test("G — Meine Sendungen: Mehrpaketsendung mit einer Nummer und zwei Belegen;
   assert.doesNotMatch(norm(await detail.innerText()), /Paket \d|transglobal|UTC|GMT/i);
   await mehr.getByRole("button", { name: "Tracking", exact: true }).click(); // einklappen
 
-  await mehr.getByRole("button", { name: "Dokumente" }).click();
+  await weitereAktion(mehr, "Dokumente");
   await page.waitForSelector(".sdoc-group-title", { timeout: 15000 });
   const versand = page.locator(".sdoc-group").first();
   assert.deepEqual(await alleTexte(versand.locator(".sdoc-row-name")), [
@@ -882,7 +883,7 @@ test("G — Meine Sendungen: Mehrpaketsendung mit einer Nummer und zwei Belegen;
   // UPS · Express: eine Nummer, zwei Formate desselben Labels.
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForSelector("table tbody tr", { timeout: 20000 });
-  await zeileVon(page, AB_EXPRESS).getByRole("button", { name: "Dokumente" }).click();
+  await weitereAktion(zeileVon(page, AB_EXPRESS), "Dokumente");
   await page.waitForSelector(".sdoc-group-title", { timeout: 15000 });
   assert.deepEqual(await alleTexte(page.locator(".sdoc-group").first().locator(".sdoc-row-name")),
     ["Versandlabel (A4)", "Versandlabel (Thermodruck)"]);

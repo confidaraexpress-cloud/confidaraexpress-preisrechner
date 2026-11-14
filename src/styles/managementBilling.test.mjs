@@ -66,10 +66,15 @@ test("1 — der gemeinsame Seitenkopf stellt keine Eyebrow mehr dar", () => {
 // „Stornierung anfragen" (Audit-Vertrag „Row Actions"). Der frühere englische
 // Rohtext „Track" bleibt ausgeschlossen; adressiert wird weiterhin über den
 // ConfidaraExpress-Sendungshandle (shipments.id), nie über die Providerreferenz.
+// Bediensystem (Betreiberentscheidung D3, 2026-11-14): „Tracking" bleibt sichtbar,
+// „Dokumente" und „Stornierung anfragen" stehen mit denselben Namen im Menü
+// „Weitere Aktionen" (RowActionsMenu); die Stornierung ist dort ein gefährlicher Eintrag.
 test("2 — die Trackingaktion heißt „Tracking“ und hängt am CE-Handle", () => {
   assert.ok(!/>Track</.test(shipmentsList), "der rohe Button-Text „Track“ darf nicht mehr vorkommen");
   assert.match(shipmentsList, /onTrack\(s\.id\)\}>Tracking</);
-  assert.match(shipmentsList, />Stornierung anfragen</, "die Stornoaktion ist nicht als Anfrage benannt");
+  assert.match(shipmentsList, /label: "Stornierung anfragen", tone: "danger", onClick: \(\) => onCancel\(s\)/, "die Stornoaktion ist nicht als Anfrage im Menü benannt");
+  assert.match(shipmentsList, /label: DOCUMENTS_TEXT\.action, onClick: \(\) => onDocuments\(s\)/, "„Dokumente“ steht nicht im Menü");
+  assert.match(shipmentsList, /<RowActionsMenu items=\{eintraege\}/, "die Sendungszeile nutzt nicht das gemeinsame Menü „Weitere Aktionen“");
   assert.match(shipmentsList, /className="ce-row-actions stn-actions"/, "die Zeilenaktionen sind nicht als Textgruppe gebündelt");
 });
 

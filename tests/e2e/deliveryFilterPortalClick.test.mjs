@@ -4,8 +4,10 @@
 // Die Uhrzeitliste (DeliveryTimeSelect) hängt als Portal an document.body. Unten schloss der Außenklick der
 // Filterzone (OffersList) bei jedem mousedown, dessen Ziel kein DOM-Nachfahre der Zone war — also auch auf dem
 // Scrollbalken und dem Innenabstand der Liste. Optionen waren geschützt (sie wählen vorher selbst), diese Flächen
-// nicht: das Dropdown verschwand, die Uhrzeit blieb ungesetzt. Oben (ShipmentFilterBar) gibt es keinen solchen
-// Zonen-Listener; dort trat der Fehler nie auf. Bis hierher drückte keine Suite auf etwas anderes als eine Option,
+// nicht: das Dropdown verschwand, die Uhrzeit blieb ungesetzt. Oben (ShipmentFilterBar) gab es lange keinen solchen
+// Zonen-Listener; seit dem Bediensystem (2026-11-14) schließt auch oben ein Druck außerhalb das offene Panel — der
+// Druck aus der Portal-Liste zählt dort über den React-Baum als innen (P5, P9). Bis hierher drückte keine Suite auf
+// etwas anderes als eine Option,
 // und Playwright zeichnet headless keine Scrollbalken (`--hide-scrollbars`) — der Weg war in CI unsichtbar.
 //
 //   P1  unten: Innenabstand und Rand der Liste → Dropdown und Liste bleiben; danach 18:00 → Chip, oben und Gruppen
@@ -16,6 +18,9 @@
 //   P6  Mausrad und Tastatur unten: Liste scrollt bzw. wird per Pfeiltasten bedient, die Wahl wirkt sofort
 //   P7  Reihenfolge und schneller Wechsel: unten zuerst, oben, unten zurücksetzen — ein Zustand, keine Preisanfrage
 //   P8  Touch 390 und 768: Wischen in der Liste schließt nichts, Tipp auf eine Uhrzeit wählt sie
+//   P9  oben: höchstens ein offenes Filterpanel — Öffnen schließt die übrigen, zweiter Druck, Escape (Fokus zurück),
+//       Tab aus dem Panel und Außenklick schließen; kein Filterwert ändert sich, keine Preisanfrage
+//   P10 schmal (768 Maus, 390 Touch): der Druck auf den nächsten Filter wechselt, obwohl das offene Panel im Fluss liegt
 //
 // Bedienung der Portal-Liste per Koordinate, nachdem die Seite ruht: `locator.click()` scrollt mit
 // `html { scroll-behavior: smooth }` erst NACH dem Klick sanft nach (gemessen 641 px), und die fixierte Liste folgt
@@ -539,6 +544,91 @@ test("P8 — Touch 390 und 768: Wischen in der Liste schließt nichts, Tipp auf 
     assert.equal(await liste(page).count(), 1, `${viewport.width}px: Wischen in der Liste schloss die Liste`);
     await optionWaehlen(page, "18:00 Uhr", true);
     await pruefeFrist1800(page);
+    assert.equal(p.calc, 1);
+    assert.deepEqual(fehler, [], `${viewport.width}px`);
+    await ctx.close();
+  }
+});
+
+/* ══════════ P9 — oben: höchstens ein offenes Filterpanel (Bediensystem, Betreiberauftrag 2026-11-14) ══════════
+   Die fünf Filter der Leiste (Service, Versanddatum, Carrier, Versandart, Späteste Lieferzeit) teilen sich einen
+   Bedienzustand: Öffnen schließt die übrigen, ein zweiter Druck auf den Auslöser schließt, Escape schließt und gibt den
+   Fokus an den Auslöser zurück, ein Fokuswechsel aus dem Panel heraus (Tab) und ein Druck außerhalb schließen. Kein
+   Filterwert ändert sich dadurch, und es entsteht keine Preisanfrage. */
+test("P9 — oben: die fünf Filter schließen sich gegenseitig; zweiter Druck, Escape, Tab und Außenklick schließen", async () => {
+  const { ctx, page, fehler, p } = await neueSeite(browser);
+  await zuDenAngeboten(page);
+  const ausloeser = page.locator(".calc-filter-bar .service-filter-trigger");
+  assert.equal(await ausloeser.count(), 5, "oben stehen nicht genau fünf Filter");
+  const offene = () => page.locator('.calc-filter-bar .service-filter-trigger[aria-expanded="true"]').count();
+  const werteVorher = await page.locator(".calc-filter-bar .service-filter-trigger-val").allInnerTexts();
+
+  // Jeder Auslöser öffnet sein Panel und schließt das zuvor offene.
+  for (let i = 0; i < 5; i += 1) {
+    await betaetige(page, ausloeser.nth(i));
+    await frames(page);
+    assert.equal(await ausloeser.nth(i).getAttribute("aria-expanded"), "true", `Filter ${i + 1} öffnet nicht`);
+    assert.equal(await offene(), 1, `nach Filter ${i + 1} sind ${await offene()} Panels offen`);
+  }
+  // Zweiter Druck auf den offenen Auslöser schließt.
+  await betaetige(page, ausloeser.nth(4));
+  await frames(page);
+  assert.equal(await offene(), 0, "der zweite Druck auf den Auslöser schließt nicht");
+
+  // Tastatur: Enter öffnet, Escape schließt und lässt den Fokus auf dem Auslöser.
+  await ausloeser.nth(0).focus();
+  await page.keyboard.press("Enter");
+  await frames(page);
+  assert.equal(await ausloeser.nth(0).getAttribute("aria-expanded"), "true", "Enter öffnet nicht");
+  await page.keyboard.press("Escape");
+  await frames(page);
+  assert.equal(await offene(), 0, "Escape schließt nicht");
+  assert.ok(await ausloeser.nth(0).evaluate((el) => el === document.activeElement), "nach Escape steht der Fokus nicht auf dem Auslöser");
+
+  // Tab aus dem Panel heraus schließt es; der Fokus landet außerhalb, nichts bleibt offen hängen.
+  await page.keyboard.press("Enter");
+  await frames(page);
+  assert.equal(await offene(), 1);
+  const imPanel = () => page.evaluate(() => !!document.activeElement?.closest(".calc-filter-bar .calc-panel:first-child"));
+  for (let n = 0; n < 40 && (await imPanel()); n += 1) await page.keyboard.press("Tab");
+  await frames(page);
+  assert.equal(await imPanel(), false, "Vorbedingung: der Fokus hat das Panel verlassen");
+  assert.equal(await ausloeser.nth(0).getAttribute("aria-expanded"), "false", "Tab aus dem Panel schließt es nicht");
+
+  // Druck außerhalb schließt; ein Druck in das offene Panel nicht.
+  await betaetige(page, ausloeser.nth(1));
+  await frames(page);
+  assert.equal(await offene(), 1);
+  await betaetige(page, page.locator(".offers-result-count"));
+  await frames(page);
+  assert.equal(await offene(), 0, "der Druck außerhalb schließt nicht");
+
+  assert.deepEqual(await page.locator(".calc-filter-bar .service-filter-trigger-val").allInnerTexts(), werteVorher,
+    "Öffnen und Schließen hat einen Filterwert verändert");
+  assert.equal(p.calc, 1, "Öffnen und Schließen hat eine Preisanfrage ausgelöst");
+  assert.deepEqual(fehler, []);
+  await ctx.close();
+});
+
+/* ══════════ P10 — schmal: der Druck auf den nächsten Filter wechselt, obwohl das offene Panel im Fluss liegt ══════════
+   Auf schmalen Breiten schieben offene Panels die folgenden Auslöser nach unten. Schlösse das offene Panel schon beim
+   Drücken, rückte der gedrückte Auslöser unter dem Zeiger weg und der Klick ginge ins Leere (gemessen 2026-11-14 bei
+   768, 390 und 360 px: kein Panel offen). Der Wechsel geschieht deshalb mit dem Klick — mit Maus und mit Touch. */
+test("P10 — schmal (768 Maus, 390 Touch): der Druck auf den nächsten Filter wechselt das Panel", async () => {
+  for (const [viewport, touch] of [[{ width: 768, height: 1024 }, false], [{ width: 390, height: 844 }, true]]) {
+    const { ctx, page, fehler, p } = await neueSeite(browser, { viewport, touch });
+    await zuDenAngeboten(page);
+    const ausloeser = page.locator(".calc-filter-bar .service-filter-trigger");
+    const offene = () => page.locator('.calc-filter-bar .service-filter-trigger[aria-expanded="true"]').count();
+    await betaetige(page, ausloeser.nth(0), touch);
+    await frames(page);
+    assert.equal(await ausloeser.nth(0).getAttribute("aria-expanded"), "true", `${viewport.width}px: Filter 1 öffnet nicht`);
+    for (const i of [3, 1, 4]) {
+      await betaetige(page, ausloeser.nth(i), touch);
+      await frames(page);
+      assert.equal(await ausloeser.nth(i).getAttribute("aria-expanded"), "true", `${viewport.width}px: der Druck auf Filter ${i + 1} wechselt nicht`);
+      assert.equal(await offene(), 1, `${viewport.width}px: ${await offene()} Panels offen`);
+    }
     assert.equal(p.calc, 1);
     assert.deepEqual(fehler, [], `${viewport.width}px`);
     await ctx.close();

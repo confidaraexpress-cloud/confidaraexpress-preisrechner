@@ -24,6 +24,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { layoutBefunde } from "./helpers/layoutIntegrity.mjs";
+import { weitereAktion } from "./helpers/weitereAktionen.mjs";
 import { verlaengere } from "./helpers/langeInhalte.mjs";
 import { fuelleVersandformular, berechneAngebote } from "./helpers/newShipmentForm.mjs";
 import { demoAntwort, demoZuruecksetzen } from "../../src/demo/demoBackend.mjs";
@@ -265,7 +266,7 @@ test("L3 — Demo: Angebote, Buchung, Dialoge und Schublade ohne Befund", async 
 
     await oeffne(page, "/demo/dashboard?page=shipments");
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.locator(".stn-act--dokumente:visible").first().click();
+    await weitereAktion(page, "Dokumente"); // Bediensystem D3: „Dokumente“ liegt unter „Weitere Aktionen“
     await page.waitForSelector("[role=dialog]", { timeout: 15000 });
     await pruefe(page, KERN, "Dokumente");
 

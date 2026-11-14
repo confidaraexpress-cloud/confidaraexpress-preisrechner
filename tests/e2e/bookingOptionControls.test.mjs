@@ -6,8 +6,12 @@
 // Zwei Leitsätze halten diese Datei zusammen:
 //   1. Der Schalter ist ein Steuerelement, keine Überschrift — er muss kleiner
 //      wirken als der Text, den er bedient.
-//   2. Klein sichtbar heißt NICHT klein bedienbar: die Trefferfläche bleibt die
-//      ganze Zeile, auf Touchgeräten mindestens 44 px.
+//   2. Die Trefferfläche ist die ganze Zeile, auf Touchgeräten mindestens 44 px.
+//
+// Bediensystem (Betreiberentscheidung D5, 2026-11-14): EIN moderner, klar sichtbarer
+// Schalter — Spur 44×24, Knopf 18 mit leichtem Schatten, AN in Navy mit Häkchen,
+// AUS hell mit sichtbarer Kante. Der frühere Kleinstschalter (höchstens 34×20,
+// Knopf 15) ist damit abgelöst; die Leitsätze oben gelten weiter.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -123,18 +127,17 @@ test.after(async () => {
 
 /* ══════════ Schaltergeometrie ══════════ */
 
-test("1 — alle vier Schalter sind klein: höchstens 34×20, Knopf höchstens 15", async () => {
+test("1 — alle vier Schalter haben das Maß des Bediensystems: Spur 44×24, Knopf 18 (D5)", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
   await setupRoutes(page);
   await zurBuchung(page);
 
   for (const sel of TOGGLES) {
     const spur = await page.locator(`${sel} ~ .ce-switch-track`).boundingBox();
-    assert.ok(spur.width <= 34, `${sel}: Spur ${spur.width}px breit (max 34)`);
-    assert.ok(spur.height <= 20, `${sel}: Spur ${spur.height}px hoch (max 20)`);
-    assert.ok(spur.width >= 28 && spur.height >= 16, `${sel}: zu klein geraten (${spur.width}×${spur.height})`);
+    assert.ok(Math.abs(spur.width - 44) <= 0.5, `${sel}: Spur ${spur.width}px breit (soll 44)`);
+    assert.ok(Math.abs(spur.height - 24) <= 0.5, `${sel}: Spur ${spur.height}px hoch (soll 24)`);
     const knopf = await page.locator(`${sel} ~ .ce-switch-track .ce-switch-knob`).boundingBox();
-    assert.ok(knopf.width <= 15 && knopf.height <= 15, `${sel}: Knopf ${knopf.width}×${knopf.height} (max 15)`);
+    assert.ok(Math.abs(knopf.width - 18) <= 0.5 && Math.abs(knopf.height - 18) <= 0.5, `${sel}: Knopf ${knopf.width}×${knopf.height} (soll 18)`);
   }
   await page.close();
 });
@@ -230,7 +233,7 @@ test("5 — der Zustand steht nicht allein in der Farbe", async () => {
   await page.close();
 });
 
-test("6 — der Fokus bleibt trotz kleinerem Schalter gut sichtbar", async () => {
+test("6 — der Fokus ist am Schalter gut sichtbar", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
   await setupRoutes(page);
   await zurBuchung(page);
@@ -254,7 +257,7 @@ test("6 — der Fokus bleibt trotz kleinerem Schalter gut sichtbar", async () =>
 
 /* ══════════ Trefferfläche ══════════ */
 
-test("7 — klein sichtbar, groß bedienbar: 44px Zeile auf Touchbreiten", async () => {
+test("7 — überall dasselbe Maß, groß bedienbar: 44px Zeile auf Touchbreiten", async () => {
   for (const w of [1440, 1280, 1024, 768, 430, 390, 360]) {
     const page = await browser.newPage({ viewport: { width: w, height: 1300 } });
     await setupRoutes(page);
@@ -262,7 +265,7 @@ test("7 — klein sichtbar, groß bedienbar: 44px Zeile auf Touchbreiten", async
 
     for (const sel of TOGGLES) {
       const spur = await page.locator(`${sel} ~ .ce-switch-track`).boundingBox();
-      assert.ok(spur.width <= 34, `${sel} bei ${w}px: Spur ${spur.width}px — auch mobil klein bleiben`);
+      assert.ok(Math.abs(spur.width - 44) <= 0.5, `${sel} bei ${w}px: Spur ${spur.width}px — auf jeder Breite dasselbe Maß (44)`);
       const zeile = await page.locator(sel).locator("xpath=ancestor::label[1]").boundingBox();
       if (w <= 860) {
         assert.ok(zeile.height >= 44, `${sel} bei ${w}px: Zeile nur ${zeile.height}px (WCAG 2.5.5)`);

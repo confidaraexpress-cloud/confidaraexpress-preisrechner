@@ -10,6 +10,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import { weitereAktion, weitereAktionenEintraege } from "./helpers/weitereAktionen.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -105,7 +106,7 @@ async function zurSendungsliste(page) {
   await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("table tbody tr", { timeout: 20000 });
 }
-const dokumenteKnopf = (page) => page.getByRole("button", { name: "Dokumente" }).first();
+// „Dokumente“ liegt seit dem Bediensystem (D3, 2026-11-14) im Menü „Weitere Aktionen“ der Zeile: helpers/weitereAktionen.mjs.
 
 test.before(async () => {
   server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { ...DEV_SERVER_SPAWN, stdio: "ignore" });
@@ -135,7 +136,7 @@ test("A — Dokumente öffnen: drei Gruppen, Proforma ladbar, Serverpfad angespr
   await setupRoutes(page, { protokoll, dokumente: () => ({ body: { shipmentId: CE_ID, documents: VIER } }) });
   await zurSendungsliste(page);
 
-  await dokumenteKnopf(page).click();
+  await weitereAktion(page, "Dokumente");
   // Auf die GELADENE Liste warten, nicht auf die Drawerhülle: `.sdoc-drawer` steht
   // unbedingt im Markup, während der Rumpf noch das Skeleton zeigt. Lokal löst der
   // Abruf im selben Tick auf, auf einem ausgelasteten Runner nicht — dort las die
@@ -185,7 +186,7 @@ test("B — der Wartezustand weicht dem Downloadknopf, sobald der Server fertig 
     ] } }),
   });
   await zurSendungsliste(page);
-  await dokumenteKnopf(page).click();
+  await weitereAktion(page, "Dokumente");
 
   await page.waitForSelector("text=Wird erstellt", { timeout: 15000 });
   const proformaZeile = page.locator(".sdoc-row", { hasText: "Proforma-Rechnung" });
@@ -198,20 +199,21 @@ test("B — der Wartezustand weicht dem Downloadknopf, sobald der Server fertig 
   await page.close();
 });
 
-/* ══════════ Smoke C — Tracking und Stornierung bleiben ══════════ */
+/* ══════════ Smoke C — Tracking sichtbar, Dokumente und Stornierung unter „Weitere Aktionen“ (D3) ══════════ */
 
-test("C — Tracking und Stornierung bleiben eigenständige Aktionen", async () => {
+test("C — Tracking bleibt sichtbar; Dokumente und Stornierung liegen unter „Weitere Aktionen“", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await setupRoutes(page, { dokumente: () => ({ body: { shipmentId: CE_ID, documents: VIER } }) });
   await zurSendungsliste(page);
 
   const zeile = page.locator("table tbody tr").first();
   await zeile.getByRole("button", { name: "Tracking", exact: true }).waitFor({ timeout: 10000 });
-  await zeile.getByRole("button", { name: "Stornierung anfragen", exact: true }).waitFor({ timeout: 10000 });
-  await zeile.getByRole("button", { name: "Dokumente" }).waitFor({ timeout: 10000 });
-  // Die beiden früheren Einzelaktionen sind aus der Liste verschwunden.
-  assert.equal(await zeile.getByRole("button", { name: "Label" }).count(), 0);
-  assert.equal(await zeile.getByRole("button", { name: "Auftragsbestätigung" }).count(), 0);
+  assert.deepEqual(await weitereAktionenEintraege(zeile), ["Dokumente", "Stornierung anfragen"],
+    "das Menü der Zeile bietet nicht genau Dokumente und Stornierung an");
+  // Keine zweite, sichtbare Fassung derselben Aktionen neben dem Menü — und die früheren Einzelaktionen bleiben weg.
+  for (const name of ["Dokumente", "Stornierung anfragen", "Label", "Auftragsbestätigung"]) {
+    assert.equal(await zeile.getByRole("button", { name, exact: true }).count(), 0, `„${name}“ steht als Taste in der Zeile`);
+  }
   await page.close();
 });
 
@@ -227,7 +229,7 @@ test("D — beim Laden der Liste wird KEINE Dokumentliste geholt", async () => {
   assert.equal(protokoll.filter((p) => p.endsWith("/documents")).length, 0,
     `die Liste hat vorab geladen: ${protokoll.join(", ")}`);
   // Erst der Klick löst genau EINEN Abruf aus.
-  await dokumenteKnopf(page).click();
+  await weitereAktion(page, "Dokumente");
   await page.waitForSelector(".sdoc-drawer", { timeout: 15000 });
   await page.waitForTimeout(1000);
   assert.equal(protokoll.filter((p) => p.endsWith("/documents")).length, 1,
@@ -241,7 +243,7 @@ test("E — leere Dokumentliste zeigt einen ruhigen Zustand, kein Fehler", async
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await setupRoutes(page, { dokumente: () => ({ body: { shipmentId: CE_ID, documents: [] } }) });
   await zurSendungsliste(page);
-  await dokumenteKnopf(page).click();
+  await weitereAktion(page, "Dokumente");
 
   await page.waitForSelector("text=Für diese Sendung sind derzeit keine Dokumente verfügbar", { timeout: 15000 });
   assert.equal(await page.locator(".sdoc-drawer .alert-error").count(), 0, "eine leere Liste ist kein Fehler");
@@ -258,7 +260,7 @@ test("F — ein Ladefehler lässt den Drawer offen und bietet erneutes Laden", a
       : { body: { shipmentId: CE_ID, documents: VIER } }),
   });
   await zurSendungsliste(page);
-  await dokumenteKnopf(page).click();
+  await weitereAktion(page, "Dokumente");
 
   await page.waitForSelector("text=Dokumente konnten derzeit nicht geladen werden", { timeout: 15000 });
   assert.equal(await page.locator(".sdoc-drawer").count(), 1, "der Drawer hat sich geschlossen");
@@ -290,7 +292,7 @@ test("G — ein fremder downloadPath erzeugt keine Aktion und keinen Abruf", asy
   await page.route("**evil.example/**", async (route) => { fremd += 1; await route.abort(); });
 
   await zurSendungsliste(page);
-  await dokumenteKnopf(page).click();
+  await weitereAktion(page, "Dokumente");
   await page.waitForSelector(".sdoc-row", { timeout: 15000 });
   await page.waitForTimeout(800);
 
@@ -315,7 +317,7 @@ test("H — auf 390 px läuft nichts aus dem Bild, auch mit langer Belegnummer",
   await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
   // Unter 768 px zeigt die Liste Karten statt der Tabelle — dieselbe Aktion.
   await page.waitForSelector(".ce-list-card", { timeout: 20000 });
-  await dokumenteKnopf(page).click();
+  await weitereAktion(page, "Dokumente");
   await page.waitForSelector(".sdoc-drawer", { timeout: 15000 });
   // Gemessen wird erst, wenn die ZEILEN da sind: der Drawer-Rahmen erscheint vor
   // der geladenen Dokumentliste, und auf einem langsamen Runner war `.sdoc-row`
@@ -352,7 +354,7 @@ test("I — Mehrpaketsendung: jedes Etikett eine Zeile, jede Zeile lädt ihren e
   const protokoll = [];
   await setupRoutes(page, { protokoll, dokumente: () => ({ body: { shipmentId: CE_ID, documents: MEHRPAKET } }) });
   await zurSendungsliste(page);
-  await dokumenteKnopf(page).click();
+  await weitereAktion(page, "Dokumente");
   await page.waitForSelector(".sdoc-group-title", { timeout: 15000 });
 
   const versand = page.locator(".sdoc-group").first();
@@ -392,7 +394,7 @@ test("J — Mehrpaketsendung auf 390 px: alle Downloads in ihrer Zeile, kein Que
   await setupRoutes(page, { dokumente: () => ({ body: { shipmentId: CE_ID, documents: MEHRPAKET } }) });
   await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".ce-list-card", { timeout: 20000 });
-  await dokumenteKnopf(page).click();
+  await weitereAktion(page, "Dokumente");
   await page.waitForSelector(".sdoc-row-action .btn", { timeout: 15000 });
 
   const messung = await page.evaluate(() => ({
@@ -421,7 +423,7 @@ test("K — außerhalb von CE bereitgestellt: „Nicht im Kundenkonto verfügbar
     DOK("ORDER_CONFIRMATION", "ORDER", "ready", { number: "CE-AB-2026-000001" }),
   ] } }; } });
   await zurSendungsliste(page);
-  await dokumenteKnopf(page).click();
+  await weitereAktion(page, "Dokumente");
   const zeile = page.locator(".sdoc-row", { hasText: "Versandlabel" });
   await zeile.getByText("Nicht im Kundenkonto verfügbar").waitFor({ timeout: 15000 });
   assert.equal(await zeile.getByRole("button", { name: /Herunterladen/ }).count(), 0, "ein Download wird angeboten");

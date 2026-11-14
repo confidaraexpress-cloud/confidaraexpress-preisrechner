@@ -349,6 +349,9 @@
 }
 .inv-actions-item:hover, .inv-actions-item:focus-visible { background: var(--ce-color-surface-hover); }
 .inv-actions-item:disabled { color: var(--ce-color-text-disabled); cursor: not-allowed; }
+/* Gefährlicher Eintrag (tone: "danger", z. B. „Stornierung anfragen" in der Sendungszeile): rot wie in Adressbuch und
+   Entwürfen; die Bestätigung bleibt im Dialog der Aktion. */
+.inv-actions-item--danger { color: var(--ce-color-status-error-fg); }
 /* Beschriftung und (nur im deaktivierten Zustand) ihre Begründung stehen
    untereinander. Der Eintrag richtet sich dann oben aus. */
 .inv-actions-item-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }

@@ -444,11 +444,12 @@ test("17 — lange Texte brechen sauber um, 44px Trefferfläche, kein Überlauf"
     const zeile = page.locator(LABEL_TOGGLE).locator("xpath=ancestor::label[1]");
     const box = await zeile.boundingBox();
     if (w <= 860) assert.ok(box.height >= 44, `Schalterzeile nur ${box.height}px bei ${w}px`);
-    // Der Schalter ist bewusst klein (32×18). Geprüft wird, dass er auf keiner
-    // Breite darunter gedrückt wird — die Trefferfläche liefert die Zeile.
+    // Der Schalter hat das Maß des Bediensystems (44×24, Betreiberentscheidung D5,
+    // 2026-11-14). Geprüft wird, dass er auf keiner Breite darunter gedrückt wird —
+    // die Trefferfläche liefert die Zeile.
     const spur = await page.locator(`${LABEL_TOGGLE} ~ .ce-switch-track`).boundingBox();
-    assert.ok(spur.width >= 32, `Schalter gequetscht bei ${w}px: ${spur.width}px`);
-    assert.ok(spur.height >= 18, `Schalter gequetscht bei ${w}px: ${spur.height}px`);
+    assert.ok(spur.width >= 43.5, `Schalter gequetscht bei ${w}px: ${spur.width}px`);
+    assert.ok(spur.height >= 23.5, `Schalter gequetscht bei ${w}px: ${spur.height}px`);
     const abgeschnitten = await page.locator(`${LABEL_TOGGLE} ~ .ce-switch-text`).evaluate(
       el => el.scrollWidth > el.clientWidth + 1);
     assert.ok(!abgeschnitten, `Text abgeschnitten bei ${w}px`);

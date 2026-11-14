@@ -1950,26 +1950,25 @@
 }
 [data-ce-bereich="kunde"] .shipment-versand-logo { flex: none; width: 32px; height: 20px; object-fit: contain; }
 
-/* Feste Aktionsplätze: Tracking, Dokumente, Stornierung — in jeder Zeile an derselben Stelle, linksbündig. */
+/* Feste Aktionsplätze: Tracking, das Menü „Weitere Aktionen“ (Dokumente, Stornierung anfragen) und der Stornostatus —
+   in jeder Zeile an derselben Stelle, linksbündig (Bediensystem D3, 2026-11-14). */
 [data-ce-bereich="kunde"] .shipment-table td.ce-col-actions { width: 1%; text-align: left; }
 [data-ce-bereich="kunde"] .shipment-table .stn-actions--plaetze {
   display: grid;
-  grid-template-columns: [tracking] max-content [dokumente] max-content [storno] max-content;
+  grid-template-columns: [tracking] max-content [menue] max-content [storno] max-content;
   justify-content: start;
   justify-items: start;
   align-items: center;
-  column-gap: var(--ce-space-2);
+  gap: var(--ce-space-2);
 }
 [data-ce-bereich="kunde"] .shipment-table .stn-act--tracking { grid-column: tracking; }
-[data-ce-bereich="kunde"] .shipment-table .stn-act--dokumente { grid-column: dokumente; }
+[data-ce-bereich="kunde"] .shipment-table .stn-act--menue { grid-column: menue; display: flex; }
 [data-ce-bereich="kunde"] .shipment-table .stn-act--storno { grid-column: storno; }
-[data-ce-bereich="kunde"] .shipment-table .stn-actions--plaetze .btn { padding-left: var(--ce-space-2); padding-right: var(--ce-space-2); }
-/* Die drei Aktionen stehen untereinander, solange der Inhaltsrahmen (Container ce-seite, premium-editorial.css)
-   schmaler als 72rem ist — dieselbe Reihenfolge, keine gequetschten Spalten. Vorher galt die Fensterbreite bis
-   1439 px; darüber lief die Tabelle bei langen Inhalten bis rund 1500 px über den Rahmen. */
+/* Schmaler Inhaltsrahmen (Container ce-seite unter 72rem): Tracking und Menü bleiben nebeneinander — zusammen rund
+   130 px —, der Stornostatus steht darunter. Vorher standen drei Textaktionen untereinander. */
 @container ce-seite (width < 72rem) {
-  [data-ce-bereich="kunde"] .shipment-table .stn-actions--plaetze { grid-template-columns: max-content; row-gap: 0; }
-  [data-ce-bereich="kunde"] .shipment-table :is(.stn-act--tracking, .stn-act--dokumente, .stn-act--storno) { grid-column: 1; }
+  [data-ce-bereich="kunde"] .shipment-table .stn-actions--plaetze { grid-template-columns: [tracking] max-content [menue] max-content; }
+  [data-ce-bereich="kunde"] .shipment-table .stn-act--storno { grid-column: 1 / -1; }
 }
 
 /* ── Rechnungen: Rechnung · Datum · Betrag · Zahlungsstatus · Dokument (mit Aktionen) ──

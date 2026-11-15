@@ -21,8 +21,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fuelleVersandformular, STANDARD_PAKET } from "./helpers/newShipmentForm.mjs";
 import {
-  LIEFERADRESSE_ID, lieferadressZustand, mockeLieferadresse, waehleLieferadresse, bestandteile,
-  invalidiereLieferadresse,
+  LIEFERADRESSE_ID, lieferadressZustand, mockeLieferadresse, waehleLieferadresse, bestandteile, invalidiereLieferadresse, warteAufLieferadressAuswahl, warteAufLieferadresse, lieferadressWert, lieferadressOptionen, schliesseLieferadresse,
 } from "./helpers/residentialPriceInputs.mjs";
 
 const PORT = 5490, BASE = `http://127.0.0.1:${PORT}`;
@@ -216,10 +215,11 @@ test("B — Staging privat: „+ 0,00 €“ bestätigt, gebunden ohne Zuschlags
   const p = await setup(page, { preise: STAGING });
   await zuDenAngeboten(page);
   await waehle(page, DHL);
-  const privatKarte = page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`);
-  await privatKarte.waitFor({ timeout: 20000 });
+  // Die Optionen stehen in der offenen Liste des Auswahlmenüs (Premium Control System 2.0).
+  const { geschaeft: geschaeftKarte, privat: privatKarte } = await lieferadressOptionen(page);
   assert.match(await inhalt(privatKarte), /\+ 0,00 € netto/);
-  assert.match(await inhalt(page.locator(`label[for="${LIEFERADRESSE_ID.geschaeft}"]`)), /\+ 0,00 € netto/);
+  assert.match(await inhalt(geschaeftKarte), /\+ 0,00 € netto/);
+  await schliesseLieferadresse(page);
 
   await waehleLieferadresse(page, true);
   assert.deepEqual(p.lz.bindCalls, [{
@@ -250,9 +250,10 @@ test("C — Live privat: „+ 6,50 € netto“, gebunden mit Zuschlagszeile, /b
   const p = await setup(page, { preise: LIVE });
   await zuDenAngeboten(page);
   await waehle(page, DHL);
-  const privatKarte = page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`);
-  await privatKarte.waitFor({ timeout: 20000 });
+  // Die Optionen stehen in der offenen Liste des Auswahlmenüs (Premium Control System 2.0).
+  const { privat: privatKarte } = await lieferadressOptionen(page);
   const pr = await inhalt(privatKarte);
+  await schliesseLieferadresse(page);
   assert.match(pr, /\+ 6,50 € netto/);
   assert.match(pr, /7,74 € brutto/);
 
@@ -319,10 +320,11 @@ test("E — Preisänderung bei /book (Staging-Preis → Live-Zuschlag): kein Üb
   await hinweis.waitFor({ timeout: 20000 });
   assert.equal(await inhalt(hinweis), "Der Preis für dieses Angebot hat sich geändert. Bitte wählen Sie die Art der Lieferadresse erneut.");
   assert.equal(await page.locator("#price-drift-accept").count(), 0, "eine Neubestätigung bietet eine Übernahme an");
-  const privatKarte = page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`);
-  await privatKarte.waitFor({ timeout: 20000 });
-  assert.equal(await page.locator('input[name="residential-delivery"]:checked').count(), 0, "die alte Wahl gilt still weiter");
+  await warteAufLieferadressAuswahl(page);
+  assert.equal(await lieferadressWert(page), "", "die alte Wahl gilt still weiter");
+  const { privat: privatKarte } = await lieferadressOptionen(page);
   assert.match(await inhalt(privatKarte), /\+ 6,50 € netto/);
+  await schliesseLieferadresse(page);
 
   await waehleLieferadresse(page, true);
   assert.deepEqual(p.lz.bindCalls.at(-1), {
@@ -354,8 +356,8 @@ test("F — zurück zu den Angeboten und wieder hinein: die Privatwahl ohne Zusc
 
   const optionsVorher = p.lz.optionsCalls.length;
   await karte.locator("button.offer-cta-btn").click();
-  await page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`).waitFor({ timeout: 20000 });
-  await page.waitForFunction((id) => document.getElementById(id)?.checked === true, LIEFERADRESSE_ID.privat, { timeout: 10000 });
+  await warteAufLieferadressAuswahl(page);
+  await warteAufLieferadresse(page, true, { timeout: 10000 });
   assert.equal(p.lz.optionsCalls.length, optionsVorher + 1);
   assert.equal(p.lz.bindCalls.length, 1, "die Rückkehr hat erneut gebunden");
   await warteAufText(page, ".blsum-price-gross", "37,78");

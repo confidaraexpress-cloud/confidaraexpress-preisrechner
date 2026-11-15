@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { money } from "../../utils/formatters";
 import { InsuranceDetailsDialog } from "./InsuranceDetailsDialog";
+import { AuswahlMenue } from "../ui/AuswahlMenue";
 import {
   INSURANCE_CARD_COPY,
   INSURANCE_TEXT,
@@ -22,8 +23,8 @@ import { EXTERNAL_LINK_REL, EXTERNAL_LINK_TARGET } from "../../utils/externalLin
 // Inhaltsbeschreibungs-Feld ist bewusst entfernt (der technische
 // contentDescription-Default bleibt im Orchestrator unverändert erhalten).
 //
-// Karten: neutraler Grundzustand, nur die AUSGEWÄHLTE Karte ist blau hervorgehoben.
-// Preise stammen aus dem zentralen Price-View-Model (nur „ab"-Preselect ODER exakter
+// Auswahl: kompaktes Menü (AuswahlMenue) statt dreier Karten; die gewählte Option ist hell hinterlegt mit blauer
+// Kante. Preise stammen aus dem zentralen Price-View-Model (nur „ab"-Preselect ODER exakter
 // Aufpreis der ausgewählten, bestätigten Stufe) — keine lokale Prämienberechnung,
 // keine zweite Reprice-Anfrage für die nicht gewählte Stufe.
 //
@@ -70,23 +71,14 @@ function withAmountNoWrap(text) {
   );
 }
 
-function CardPrice({ price, unknownText }) {
+// Preis einer Option als Text: exakter Aufpreis der gewählten, bestätigten Stufe („+ x“), sonst der „ab“-Preis,
+// sonst der Hinweis, dass der Preis erst nach den Angaben feststeht. „steuerfrei“ steht bei jedem Betrag.
+function cardPrice(price, unknownText) {
   const p = price || { kind: "zero", value: 0 };
-  if (p.kind === "unknown") {
-    return (
-      <span className="ins-card-price">
-        <span className="ins-card-price-val ins-card-price-val--muted">{unknownText}</span>
-      </span>
-    );
-  }
+  if (p.kind === "unknown") return { text: unknownText, sub: undefined };
   const prefix = p.kind === "exact" ? "+ " : p.kind === "preselect" ? "ab " : "";
   const withSub = p.kind === "exact" || p.kind === "preselect";
-  return (
-    <span className="ins-card-price">
-      <span className="ins-card-price-val">{prefix}{money(p.value)}</span>
-      {withSub && <span className="ins-card-price-sub">steuerfrei</span>}
-    </span>
-  );
+  return { text: `${prefix}${money(p.value)}`, sub: withSub ? "steuerfrei" : undefined };
 }
 
 // Pflichtfrage zur Ware — zwei Radios OHNE Vorauswahl (dasselbe Muster wie die Angaben
@@ -165,6 +157,31 @@ export function InsuranceModule({
   const detailsTrigger = useRef(null);
   const openDetails = (e) => { detailsTrigger.current = e.currentTarget; setDetailsOpen(true); };
 
+  // Optionen des Menüs: dieselben Karteninhalte wie bisher (zentrales Datenmodul), dieselben Preise aus dem
+  // Price-View-Model — hier wird nichts gerechnet. Der barrierefreie Name bleibt Name plus Preis in Worten.
+  const optionen = insCards.map((karte) => {
+    const c = { ...karte, unknownText };
+    const copy = coverModel ? coverInsuranceCardCopy(c.id, excessValue) : (CARD_COPY[c.id] || { bullets: [] });
+    const preis = cardPrice(c.price, unknownText);
+    return {
+      value: c.id,
+      label: c.name,
+      badge: copy.badge,
+      description: copy.description,
+      hint: copy.bullets[0]?.text,
+      aside: preis.text,
+      asideSub: preis.sub,
+      ariaLabel: cardAriaLabel(c),
+      copy,
+    };
+  });
+  const gewaehlt = optionen.find((o) => o.value === insuranceType) || null;
+  // Details und Bedingungen stehen UNABHÄNGIG von der Wahl: Lesen darf nie eine Wahl erfordern — jede Wahl löst eine
+  // Neubepreisung aus (Server, gegebenenfalls Anbieter). Wie früher auf den Karten, die beide Wege ohne Wahl zeigten.
+  const mitDetails = !coverModel && optionen.some((o) => o.copy.hasDetails);
+  const mitBedingungen = optionen.some((o) => o.copy.hasCarrierTerms);
+  const mitVerweisen = mitDetails || (mitBedingungen && Boolean(carrierTerms));
+
   return (
     <div className="booking-insurance-box">
       <div className="ins-head">
@@ -173,89 +190,73 @@ export function InsuranceModule({
       </div>
       <p className="ins-head-sub">{coverModel ? COVER_INSURANCE_TEXT.sectionIntro : INSURANCE_TEXT.sectionIntro}</p>
 
-      {/* Optionskarten — Grundzustand neutral, nur die Auswahl blau. */}
-      <div
-        className="ins-cards" role="radiogroup"
-        aria-label={coverModel ? `${COVER_INSURANCE_TEXT.sectionTitle} wählen` : "Transportversicherung wählen"}
-      >
-        {insCards.map((karte) => ({ ...karte, unknownText })).map(c => {
-          const selected = insuranceType === c.id;
-          const copy = coverModel
-            ? coverInsuranceCardCopy(c.id, excessValue)
-            : (CARD_COPY[c.id] || { bullets: [] });
-          return (
-            <label key={c.id} className={`ins-card ce-wahl${selected ? " ins-card--selected" : ""}`}>
-              <input
-                type="radio"
-                name="insuranceType"
-                value={c.id}
-                checked={selected}
-                onChange={() => onSelectType(c.id)}
-                aria-label={cardAriaLabel(c)}
-              />
-              {/* Stabiler Kartenkopf als 2-Spalten-Grid: links Titelbereich (Name +
-                  Badge darunter), rechts der Preis. Name und Preis konkurrieren nie
-                  um dieselbe Zeile; das Badge sitzt immer direkt unter dem Namen. */}
-              <span className="ins-card-head">
-                <span className="ins-card-title-area">
-                  <span className="ins-card-head-name">
-                    <span className="ins-card-radio" aria-hidden="true" />
-                    <span className="ins-card-name" lang="de">{c.name}</span>
-                  </span>
-                  {copy.badge && <span className="ins-card-badge">{copy.badge}</span>}
-                </span>
-                <CardPrice price={c.price} unknownText={unknownText} />
-              </span>
+      {/* Auswahl als kompaktes Menü (Premium Control System 2.0, 2026-11-14): je Option Name, Preis und die zwei
+          Aussagen, in denen sie sich unterscheidet. Darunter steht für die GEWÄHLTE Option, was vorher ihre Karte trug —
+          Beschreibung, Selbstbeteiligung, Ladezustand —, und für ALLE die Wege zu Details und Bedingungen. Die Wahl
+          selbst bleibt beim Orchestrator (onSelectType): Neubepreisung, Sperren und Buchungsschranken sind unverändert. */}
+      <span className="field-label ins-auswahl-label" id="ins-auswahl-label">
+        {coverModel ? `${COVER_INSURANCE_TEXT.sectionTitle} wählen` : "Transportversicherung wählen"}
+      </span>
+      <AuswahlMenue
+        name="insuranceType"
+        id="ins-auswahl"
+        labelId="ins-auswahl-label"
+        value={insuranceType}
+        options={optionen}
+        onChange={onSelectType}
+        busy={isInsured && pending}
+      />
 
-              {selected && isInsured && pending && (
+      {(gewaehlt || mitVerweisen) && (
+        <div className="ins-auswahl-info" id="ins-auswahl-info">
+          {gewaehlt && (gewaehlt.copy.badge || (isInsured && pending)) && (
+            <div className="ins-auswahl-info-kopf">
+              {gewaehlt.copy.badge && <span className="ins-card-badge">{gewaehlt.copy.badge}</span>}
+              {isInsured && pending && (
                 <span className="ins-card-calc" aria-live="polite">
                   <span className="spinner spinner-dark" /> Preis wird berechnet …
                 </span>
               )}
+            </div>
+          )}
 
-              {/* Ein Satz je Karte: worin sich diese Option unterscheidet. */}
-              {copy.description && <span className="ins-card-desc">{copy.description}</span>}
+          {/* Ein Satz: worin sich diese Option unterscheidet. */}
+          {gewaehlt?.copy.description && <p className="ins-card-desc">{gewaehlt.copy.description}</p>}
 
-              {copy.bullets.length > 0 && (
-                <ul className="ins-card-bullets">
-                  {copy.bullets.map((b, i) => (
-                    <li key={i} className={`ins-card-bullet${b.info ? " ins-card-bullet--info" : ""}`}>
-                      <span className="ins-bullet-txt">{withAmountNoWrap(b.text)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+          {gewaehlt && gewaehlt.copy.bullets.length > 0 && (
+            <ul className="ins-card-bullets">
+              {gewaehlt.copy.bullets.map((b, i) => (
+                <li key={i} className={`ins-card-bullet${b.info ? " ins-card-bullet--info" : ""}`}>
+                  <span className="ins-bullet-txt">{withAmountNoWrap(b.text)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
 
-              {/* Fußzeile der Karte: genau EIN Weg zu den Details.
-                  Standard/Premium → CE-Zusammenfassung im Dialog.
-                  Keine Zusatzversicherung → Bedingungen DIESES Tarifs, sofern
-                  der Tarif welche liefert; sonst gar nichts (der neutrale Satz
-                  steht bereits als Beschreibung oben). Ein <button>/<a> ist
-                  interaktiver Inhalt und schaltet das Radio des umgebenden
-                  <label> nicht mit — die Auswahl bleibt unberührt. */}
-              {copy.hasDetails && (
-                <span className="ins-card-cond">
-                  <button type="button" className="ins-card-details-btn" onClick={openDetails}>
-                    {INSURANCE_TEXT.detailsAction}
-                  </button>
-                </span>
-              )}
-              {copy.hasCarrierTerms && carrierTerms && (
-                <span className="ins-card-cond">
-                  <a
-                    className="ins-card-terms-link"
-                    href={carrierTerms}
-                    target={EXTERNAL_LINK_TARGET}
-                    rel={EXTERNAL_LINK_REL}
-                  >
-                    <span>{INSURANCE_TEXT.carrierTerms}</span>
-                  </a>
-                </span>
-              )}
-            </label>
-          );
-        })}
-      </div>
+          {/* Je EIN Weg, unabhängig von der Wahl: Standard/Premium → CE-Zusammenfassung im Dialog; Bedingungen DIESES
+              Tarifs, sofern er welche liefert — sonst kein Link (der neutrale Satz steht bei „keine Zusatzversicherung“).
+              Ein <button>/<a> wählt nichts: die Auswahl und damit der Preis bleiben unberührt. */}
+          {mitDetails && (
+            <p className="ins-card-cond">
+              <button type="button" className="ins-card-details-btn" onClick={openDetails}>
+                {INSURANCE_TEXT.detailsAction}
+              </button>
+            </p>
+          )}
+          {mitBedingungen && carrierTerms && (
+            <p className="ins-card-cond">
+              <a
+                className="ins-card-terms-link"
+                href={carrierTerms}
+                target={EXTERNAL_LINK_TARGET}
+                rel={EXTERNAL_LINK_REL}
+              >
+                <span>{INSURANCE_TEXT.carrierTerms}</span>
+              </a>
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Der Stufendialog beschreibt Standard/Premium — im Deckungsbetragsmodell gibt es
           keinen Auslöser, also auch keinen Dialog. */}

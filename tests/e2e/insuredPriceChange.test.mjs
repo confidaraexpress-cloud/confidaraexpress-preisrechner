@@ -21,6 +21,7 @@ import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fuelleVersandformular, STANDARD_PAKET } from "./helpers/newShipmentForm.mjs";
+import { MENUE, waehleOption } from "./helpers/auswahlMenue.mjs";
 
 const PORT = 5377, BASE = `http://127.0.0.1:${PORT}`;
 const CE_SHIPMENT_ID = 4733;
@@ -159,9 +160,9 @@ async function zurVersichertenBuchung(page, { preisaenderungFolgt = false } = {}
   await page.waitForSelector(".offer-card", { timeout: 20000 });
   await page.locator(".offer-card:not(.offer-card--unavailable)").first().locator("button.offer-cta-btn").click();
   await page.waitForSelector(".steps-bar", { timeout: 20000 });
-  if (await page.locator(".ins-cards").count() === 0) await page.getByRole("button", { name: /^Weiter/ }).first().click();
-  await page.waitForSelector(".ins-cards", { timeout: 20000 });
-  await page.locator(`.ins-card:has(input[value="transit_cover"]) .ins-card-name`).click();
+  if (await page.locator(MENUE("insuranceType")).count() === 0) await page.getByRole("button", { name: /^Weiter/ }).first().click();
+  await page.waitForSelector(MENUE("insuranceType"), { timeout: 20000 });
+  await waehleOption(page, "insuranceType", "transit_cover");
   const checks = page.getByRole("checkbox"); // AGB + Gefahrgut
   const haken = async () => { await checks.nth(0).check(); await checks.nth(1).check(); };
   // Meldet die Neubepreisung eine Preisänderung, öffnet die Seite 500 ms nach der letzten Antwort den Dialog, und

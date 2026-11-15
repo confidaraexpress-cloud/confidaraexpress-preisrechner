@@ -28,6 +28,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import { gewaehlterWert, waehleOption } from "./helpers/auswahlMenue.mjs";
 import { chromium } from "playwright";
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
@@ -35,7 +36,8 @@ import {
   adressvorschlaegeAbgeschlossen, fuelleVersandformular, STANDARD_PAKET, STANDARD_SENDUNGSANGABEN,
 } from "./helpers/newShipmentForm.mjs";
 import {
-  LIEFERADRESSE_ID, lieferadressZustand, mockeLieferadresse, waehleLieferadresse,
+  lieferadressOptionen, lieferadressWert, lieferadressZustand, mockeLieferadresse, schliesseLieferadresse,
+  waehleLieferadresse, warteAufLieferadressAuswahl,
 } from "./helpers/residentialPriceInputs.mjs";
 
 const PORT = 5444, BASE = `http://127.0.0.1:${PORT}`;
@@ -271,7 +273,7 @@ async function zuSchritt2(page) {
 }
 
 async function absichern(page) {
-  await page.locator(`.ins-card:has(input[value="transit_cover"]) .ins-card-name`).click();
+  await waehleOption(page, "insuranceType", "transit_cover");
   await page.locator("#ins-goodsAreNew-ja").check();
   await page.locator("#ins-goodsAreFragile-nein").check();
   await page.waitForSelector(".ins-status-ok", { timeout: 10000 });
@@ -611,7 +613,7 @@ test("N9 — steuerfreie Absicherung: Gesamtbetrag netto vom Server, Absicherung
 
   await schalte(page, p, BRUTTO, "Schritt 2 mit Absicherung");
   assert.equal(p.reprice.length, bepreist, "das Umschalten hat die Absicherung neu bepreist");
-  assert.equal(await page.locator('.ins-card input[value="transit_cover"]').isChecked(), true, "die Absicherung ist abgewählt");
+  assert.equal((await gewaehlterWert(page, "insuranceType")) === "transit_cover", true, "die Absicherung ist abgewählt");
   assert.equal(await page.locator("#ins-goodsAreNew-ja").isChecked(), true);
   assert.equal(await page.locator(".ins-status-ok").count(), 1);
   assert.equal(await box.locator('[data-vat-total="net"]').count(), 0);
@@ -660,13 +662,20 @@ test("N10 — Privatadresse + Abholung heute: Zuschlagskarten im Modus, Hinweise
   const p = await setup(page, { tariffs: [TG, JM] });
   await zuDenAngeboten(page);
   await waehle(page, TG);
-  const geschaeft = page.locator(`label[for="${LIEFERADRESSE_ID.geschaeft}"]`);
-  const privat = page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`);
-  await privat.waitFor({ timeout: 20000 });
-  assert.equal(await inhalt(geschaeft.locator(".res-card-price-val")), "+ 0,00 € netto");
-  assert.equal(await inhalt(geschaeft.locator(".res-card-price-sub")), "0,00 € brutto");
-  assert.equal(await inhalt(privat.locator(".res-card-price-val")), "+ 3,18 € netto");
-  assert.equal(await inhalt(privat.locator(".res-card-price-sub")), "3,78 € brutto");
+  // Seit dem Premium Control System 2.0 (2026-11-14) stehen beide Arten im Auswahlmenü; ihre Zuschläge trägt die offene
+  // Liste als Zusatz je Option. Gelesen wird ohne Wahl — eine Wahl bände die Art.
+  await warteAufLieferadressAuswahl(page);
+  const zuschlaege = async ({ belegName = null } = {}) => {
+    const { geschaeft, privat } = await lieferadressOptionen(page);
+    const lies = async (o) => [await inhalt(o.locator(".ce-auswahl-zusatz-wert")), await inhalt(o.locator(".ce-auswahl-zusatz-unter"))];
+    const werte = { geschaeft: await lies(geschaeft), privat: await lies(privat) };
+    if (belegName) await beleg(page, belegName);
+    await schliesseLieferadresse(page);
+    return werte;
+  };
+  let z = await zuschlaege();
+  assert.deepEqual(z.geschaeft, ["+ 0,00 € netto", "0,00 € brutto"]);
+  assert.deepEqual(z.privat, ["+ 3,18 € netto", "3,78 € brutto"]);
   assert.equal(await inhalt(page.locator(".blsum-price-label")), "Vorläufiger Preis");
   assert.equal(await inhalt(page.locator(".blsum-price-net")), "15,36 € netto");
   assert.equal(await inhalt(page.locator(".blsum-price-gross")), "18,28 € brutto");
@@ -674,15 +683,15 @@ test("N10 — Privatadresse + Abholung heute: Zuschlagskarten im Modus, Hinweise
 
   const optionen = p.lz.optionsCalls.length;
   await schalte(page, p, BRUTTO, "Art der Lieferadresse");
-  assert.equal(await inhalt(privat.locator(".res-card-price-val")), "+ 3,78 € brutto");
-  assert.equal(await inhalt(privat.locator(".res-card-price-sub")), "3,18 € netto");
-  assert.equal(await inhalt(geschaeft.locator(".res-card-price-val")), "+ 0,00 € brutto");
+  z = await zuschlaege({ belegName: "lieferadresse-brutto" });
+  assert.deepEqual(z.privat, ["+ 3,78 € brutto", "3,18 € netto"]);
+  assert.equal(z.geschaeft[0], "+ 0,00 € brutto");
   assert.equal((await flaechen(page)).kopf.nettoVorn, false);
   assert.equal(await inhalt(page.locator("#booking-live-sameday-note")), "inkl. Zuschlag für Abholung am selben Tag 3,60 €");
+  // Auch das Öffnen der Liste lädt nichts nach und bindet nichts.
   assert.equal(p.lz.optionsCalls.length, optionen, "das Umschalten hat die Optionen neu geladen");
   assert.equal(p.lz.bindCalls.length, 0, "das Umschalten hat eine Art gebunden");
-  assert.equal(await page.locator('input[name="residential-delivery"]:checked').count(), 0);
-  await beleg(page, "lieferadresse-brutto");
+  assert.equal(await lieferadressWert(page), "", "ohne Wahl steht eine Art im Feld");
 
   await schalte(page, p, NETTO, "Art der Lieferadresse");
   await waehleLieferadresse(page, true);
@@ -697,7 +706,7 @@ test("N10 — Privatadresse + Abholung heute: Zuschlagskarten im Modus, Hinweise
   assert.equal(p.lz.bindCalls.length, 1, "das Umschalten hat neu gebunden");
   assert.equal(p.lz.optionsCalls.length, optionen);
   assert.equal(p.lz.revision, revision, "das Umschalten hat die Revision verändert");
-  assert.equal(await page.locator(`#${LIEFERADRESSE_ID.privat}`).isChecked(), true);
+  assert.equal(await lieferadressWert(page), "true", "die gebundene Privatadresse steht nicht mehr im Feld");
   assert.equal(await inhalt(page.locator("#booking-live-surcharge-note")), "inkl. Zuschlag Privatadresse 3,78 €");
   await schalte(page, p, NETTO, "gebundene Privatadresse");
 

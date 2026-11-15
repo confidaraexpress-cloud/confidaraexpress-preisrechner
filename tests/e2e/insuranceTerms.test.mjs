@@ -25,6 +25,9 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fuelleVersandformular, STANDARD_SENDUNGSANGABEN }
   from "./helpers/newShipmentForm.mjs";
+import {
+  LISTE, MENUE, gewaehlterName, oeffneMenue, optionNachName, schliesseMenue, waehleOptionNachName,
+} from "./helpers/auswahlMenue.mjs";
 
 const PORT = 5251, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -74,11 +77,14 @@ const TARIFF_ANDERER  = basisTarif({
 });
 const TARIFF_OHNE_LINK = basisTarif({ id: 3, shipper_tariff_id: 3, carrierLinks: { agb: null, tracking: null, transitTime: null } });
 
+// Seit dem Premium Control System 2.0 (2026-11-14) wählt der Kunde im Auswahlmenü; Beschreibung und Abzeichen der
+// GEWÄHLTEN Option stehen im Infoblock darunter. Details und Bedingungslink stehen dort UNABHÄNGIG von der Wahl — wie
+// früher auf den Karten: Lesen darf nie eine Wahl erfordern, denn jede Wahl löst eine Neubepreisung aus.
 const SEL = {
-  cards:     ".ins-cards",
-  card:      ".ins-card",
-  details:   ".ins-card-details-btn",
-  terms:     ".ins-card-terms-link",
+  menue:     MENUE("insuranceType"),
+  info:      ".ins-auswahl-info",
+  details:   ".ins-auswahl-info .ins-card-details-btn",
+  terms:     ".ins-auswahl-info .ins-card-terms-link",
   dialog:    ".insdlg",
   dlgClose:  ".insdlg-close",
   dlgMore:   ".insdlg-more-link",
@@ -142,16 +148,24 @@ async function zurBuchung(page, angebot = 0) {
 
 // Schritt 1 → 2. Idempotent: steht der Versicherungsbereich schon, passiert nichts.
 async function zuSchritt2(page) {
-  if (await page.locator(SEL.cards).count() > 0) return;
+  if (await page.locator(SEL.menue).count() > 0) return;
   await page.getByRole("button", { name: /^Weiter/ }).first().click();
-  await page.waitForSelector(SEL.cards, { timeout: 20000 });
+  await page.waitForSelector(SEL.menue, { timeout: 20000 });
 }
 
-// Die Radios der Karten sind visuell versteckt (Projektmuster) — bedient wird
-// über das umgebende Label, genau wie ein Mensch es tut.
+// Bedient wird wie ein Mensch: Feld öffnen, Option anklicken. Gefunden wird die Option über ihren Namen — exakt, denn
+// der Satz der Premiumoption nennt die Standardversicherung.
+const option = (page, name) => optionNachName(page, "insuranceType", name);
 async function waehle(page, name) {
-  await karte(page, name).locator(".ins-card-name").click();
+  await waehleOptionNachName(page, "insuranceType", name);
   await page.waitForTimeout(150);
+}
+// Was die Liste über eine Option sagt, bevor sie gewählt ist: Name, Abzeichen, Satz, Kernaussage, Preis.
+async function optionsText(page, name) {
+  await oeffneMenue(page, "insuranceType");
+  const text = await option(page, name).innerText();
+  await schliesseMenue(page, "insuranceType");
+  return text;
 }
 
 // White Label am gerenderten DOM: weder im sichtbaren Text noch in irgendeinem
@@ -171,8 +185,7 @@ async function pruefeWhiteLabel(page, wo) {
   }
 }
 
-const karte = (page, name) => page.locator(`${SEL.card}:has-text("${name}")`).first();
-const gewaehlt = (page) => page.locator(".ins-card--selected .ins-card-name").innerText();
+const gewaehlt = (page) => gewaehlterName(page, "insuranceType");
 
 test.before(async () => {
   server = spawn("npm", ["run", "dev", "--", "--port", String(PORT), "--strictPort"], {
@@ -203,17 +216,21 @@ test("1 — Standard: Preis, neue Texte, keine 100-%-Aussage, neutraler Dialog",
   assert.ok(!/gewichtsabhängig/.test(modul), "die statische Gewichtsaussage ist noch sichtbar");
   assert.match(modul, /Wählen Sie optional eine zusätzliche Transportversicherung/);
 
-  const std = karte(page, "Standardversicherung");
-  const stdText = await std.innerText();
+  const stdText = await optionsText(page, "Standardversicherung");
   assert.match(stdText, /nach Maßgabe der Versicherungsbedingungen/);
   assert.match(stdText, /50,00 €\s*Selbstbeteiligung je Schadenfall/);
   assert.match(stdText, /ab\s*3,99\s*€/, `Preselect-Preis fehlt:\n${stdText}`);
 
   await waehle(page, "Standardversicherung");
   assert.match(await gewaehlt(page), /Standardversicherung/);
+  // Nach der Wahl steht unter dem Feld alles, was vorher die Karte trug.
+  const info = await page.locator(SEL.info).innerText();
+  assert.match(info, /nach Maßgabe der Versicherungsbedingungen/);
+  assert.match(info, /50,00 €\s*Selbstbeteiligung je Schadenfall/);
+  assert.match(info, /Reguläre Schadenbearbeitung/);
 
   // Detaildialog öffnen und Inhalt prüfen.
-  await std.locator(SEL.details).click();
+  await page.locator(SEL.details).click();
   await page.waitForSelector(SEL.dialog, { timeout: 5000 });
   const dlg = await page.locator(SEL.dialog).innerText();
   assert.match(dlg, /Transportversicherung/);
@@ -234,20 +251,24 @@ test("2 — Premium: Servicevorteile, kein besserer Schutz behauptet, Dialogabsc
   await setupRoutes(page, [TARIFF_MIT_LINK]);
   await zurBuchung(page);
 
-  const prem = karte(page, "Premiumversicherung");
-  const text = await prem.innerText();
+  const text = await optionsText(page, "Premiumversicherung");
   assert.match(text, /ERWEITERTER SERVICE/i, `Badge fehlt:\n${text}`);
   assert.ok(!/Erweiterter Schutz/i.test(text), "das Badge behauptet wieder besseren Schutz");
   assert.match(text, /[Gg]leiche zugrunde liegende Versicherungsbedingungen/);
   assert.match(text, /Keine Selbstbeteiligung für Sie/);
-  assert.match(text, /Priorisierter Support/i);
-  assert.match(text, /Wöchentliche Status-Updates/);
   assert.match(text, /ab\s*7,49\s*€/, `Premium-Preselect fehlt:\n${text}`);
 
   await waehle(page, "Premiumversicherung");
   assert.match(await gewaehlt(page), /Premiumversicherung/);
+  // Die übrigen Servicevorteile stehen nach der Wahl im Infoblock.
+  const info = await page.locator(SEL.info).innerText();
+  assert.match(info, /ERWEITERTER SERVICE/i);
+  assert.ok(!/Erweiterter Schutz/i.test(info), "das Badge behauptet wieder besseren Schutz");
+  assert.match(info, /Keine Selbstbeteiligung für Sie/);
+  assert.match(info, /Priorisierter Support/i);
+  assert.match(info, /Wöchentliche Status-Updates/);
 
-  await prem.locator(SEL.details).click();
+  await page.locator(SEL.details).click();
   await page.waitForSelector(SEL.dialog, { timeout: 5000 });
   const abschnitt = await page.locator(".insdlg-sec--premium").innerText();
   assert.match(abschnitt, /Premiumversicherung/);
@@ -293,7 +314,9 @@ test("4 — vorhandener carrierLinks.agb wird als sicherer externer Link gezeigt
   await setupRoutes(page, [TARIFF_MIT_LINK]);
   await zurBuchung(page);
 
-  const link = karte(page, "Keine zusätzliche Transportversicherung").locator(SEL.terms);
+  // „Keine zusätzliche Transportversicherung“ ist der Startzustand — ihr Infoblock trägt den Link des Tarifs.
+  assert.match(await gewaehlt(page), /Keine zusätzliche Transportversicherung/);
+  const link = page.locator(SEL.terms);
   assert.equal(await link.count(), 1, "der Bedingungslink des Tarifs fehlt");
   assert.match(await link.innerText(), /Haftungs- & Beförderungsbedingungen öffnen/);
   assert.equal(await link.getAttribute("href"), AGB_A, "der href stammt nicht aus dem Tarif");
@@ -311,10 +334,10 @@ test("5 — fehlender carrierLinks.agb erzeugt weder Link noch Pseudo-Link", asy
   await setupRoutes(page, [TARIFF_OHNE_LINK]);
   await zurBuchung(page);
 
-  const none = karte(page, "Keine zusätzliche Transportversicherung");
-  assert.equal(await none.locator(SEL.terms).count(), 0, "es wird ein Link gezeigt, obwohl der Tarif keinen liefert");
+  assert.match(await gewaehlt(page), /Keine zusätzliche Transportversicherung/);
+  assert.equal(await page.locator(SEL.terms).count(), 0, "es wird ein Link gezeigt, obwohl der Tarif keinen liefert");
   // Der neutrale Satz steht trotzdem da.
-  assert.match(await none.innerText(), /gesetzliche und vertragliche Haftung für Verlust und Beschädigung/);
+  assert.match(await page.locator(SEL.info).innerText(), /gesetzliche und vertragliche Haftung für Verlust und Beschädigung/);
   // Kein Element, das wie ein Link aussieht, aber keiner ist.
   assert.equal(await page.locator(".ins-card-cond-link--static").count(), 0, "der inerte Pseudo-Link lebt noch");
   assert.equal(await page.locator(".booking-insurance-box a").count(), 0,
@@ -328,12 +351,12 @@ test("6 — zwei Tarife, zwei verschiedene Links (kein Carriername-Mapping)", as
   await setupRoutes(page, [TARIFF_MIT_LINK, TARIFF_ANDERER]);
 
   await zurBuchung(page, 0);
-  const ersterLink = await karte(page, "Keine zusätzliche Transportversicherung").locator(SEL.terms).getAttribute("href");
+  const ersterLink = await page.locator(SEL.terms).getAttribute("href");
   assert.equal(ersterLink, AGB_A);
 
   // Zurück zu den Angeboten und den ZWEITEN Tarif wählen.
   await zurBuchung(page, 1);
-  const zweiterLink = await karte(page, "Keine zusätzliche Transportversicherung").locator(SEL.terms).getAttribute("href");
+  const zweiterLink = await page.locator(SEL.terms).getAttribute("href");
   assert.equal(zweiterLink, AGB_B);
   assert.notEqual(ersterLink, zweiterLink, "beide Tarife zeigen denselben Link — das riecht nach fester Zuordnung");
 
@@ -379,7 +402,7 @@ test("7 — der Bedingungslink übersteht einen Reload; die Versicherungswahl be
   assert.equal(await page.locator(SEL.goods).count(), 0,
     "ohne gewählte Versicherung darf es kein Warenwertfeld geben");
 
-  const link = karte(page, "Keine zusätzliche Transportversicherung").locator(SEL.terms);
+  const link = page.locator(SEL.terms);
   assert.equal(await link.getAttribute("href"), AGB_A,
     "der Bedingungslink des Tarifs hat den Reload nicht überlebt");
 
@@ -453,11 +476,14 @@ test("9 — „Versicherungsdetails“ öffnet nur den Dialog und ändert die Au
   await setupRoutes(page, [TARIFF_MIT_LINK]);
   await zurBuchung(page);
 
-  // Ausgangslage: „keine Zusatzversicherung“ (Standardzustand).
-  assert.match(await gewaehlt(page), /Keine zusätzliche Transportversicherung/);
+  // Jede Neubepreisung wird gezählt: Lesen darf keine auslösen (eine Wahl täte es — Server und gegebenenfalls Anbieter).
+  let neubepreisungen = 0;
+  page.on("request", (r) => { if (r.url().includes("/api/insurance/reprice")) neubepreisungen += 1; });
 
-  // Klick auf „Versicherungsdetails“ IN der Premiumkarte.
-  await karte(page, "Premiumversicherung").locator(SEL.details).click();
+  // Ausgangslage: „keine Zusatzversicherung“ (Standardzustand). Der Weg zu den Details steht trotzdem da — wie
+  // früher auf der Premiumkarte, ohne dass eine Stufe gewählt werden muss.
+  assert.match(await gewaehlt(page), /Keine zusätzliche Transportversicherung/);
+  await page.locator(SEL.details).click();
   await page.waitForSelector(SEL.dialog, { timeout: 5000 });
   assert.match(await gewaehlt(page), /Keine zusätzliche Transportversicherung/,
     "der Detailklick hat die Versicherungsoption umgeschaltet");
@@ -466,10 +492,14 @@ test("9 — „Versicherungsdetails“ öffnet nur den Dialog und ändert die Au
   await page.waitForTimeout(150);
   assert.match(await gewaehlt(page), /Keine zusätzliche Transportversicherung/, "das Schließen hat die Auswahl geändert");
 
-  // Und der Klick auf den Bedingungslink darf sie ebenfalls nicht ändern
-  // (nur der href zählt — die Seite selbst wird nie geladen).
-  const link = karte(page, "Keine zusätzliche Transportversicherung").locator(SEL.terms);
+  // Und der Bedingungslink darf sie ebenfalls nicht ändern: er öffnet in einem neuen Tab und verlässt die Buchung
+  // nicht (nur der href zählt — die Seite selbst wird nie geladen).
+  const link = page.locator(SEL.terms);
   assert.equal(await link.getAttribute("target"), "_blank", "ohne _blank würde der Klick die Buchung verlassen");
+
+  // Länger als die Entprellung der Neubepreisung (500 ms) warten, dann zählen.
+  await page.waitForTimeout(800);
+  assert.equal(neubepreisungen, 0, `das Lesen der Details hat ${neubepreisungen} Neubepreisung(en) ausgelöst`);
 
   await page.close();
 });
@@ -481,8 +511,8 @@ test("10 — Dialog: Tastaturbedienung, Fokusfalle, Escape, Fokusrückgabe", asy
   await setupRoutes(page, [TARIFF_MIT_LINK]);
   await zurBuchung(page);
 
-  // Per Tastatur öffnen: den Auslöser fokussieren und mit Enter auslösen.
-  const trigger = karte(page, "Standardversicherung").locator(SEL.details);
+  // Per Tastatur öffnen: den Auslöser fokussieren und mit Enter auslösen — aus dem Startzustand, ohne Wahl.
+  const trigger = page.locator(SEL.details);
   await trigger.focus();
   await page.keyboard.press("Enter");
   await page.waitForSelector(SEL.dialog, { timeout: 5000 });
@@ -523,7 +553,8 @@ test("10b — der Dialog nennt den Upstream-Anbieter nicht und lässt keine Attr
   const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
   await setupRoutes(page, [TARIFF_MIT_LINK]);
   await zurBuchung(page);
-  await karte(page, "Standardversicherung").locator(SEL.details).click();
+  await waehle(page, "Standardversicherung");
+  await page.locator(SEL.details).click();
   await page.waitForSelector(SEL.dialog, { timeout: 5000 });
 
   await pruefeWhiteLabel(page, "Dialog");
@@ -560,7 +591,7 @@ test("10c — Karte → Dialog → interne Informationsseite, ohne Verlust der B
   // (siehe Test 8). Fuer den Weg Karte -> Dialog -> Informationsseite ist er ohnehin
   // ohne Bedeutung.
   await page.waitForTimeout(700);
-  await karte(page, "Standardversicherung").locator(SEL.details).click();
+  await page.locator(SEL.details).click();
   await page.waitForSelector(SEL.dialog, { timeout: 5000 });
 
   // Der Dialog trägt die drei wichtigen Hinweise.
@@ -601,7 +632,7 @@ test("10c — Karte → Dialog → interne Informationsseite, ohne Verlust der B
 
   // Zurück: die Buchung steht unverändert da (Auswahl UND Warenwert).
   await page.goBack({ waitUntil: "domcontentloaded" });
-  await page.waitForSelector(SEL.cards, { timeout: 20000 });
+  await page.waitForSelector(SEL.menue, { timeout: 20000 });
   await zuSchritt2(page);
   assert.match(await gewaehlt(page), /Standardversicherung/, "die Versicherungsauswahl ging verloren");
   // Der uebernommene Warenwert stammt seit Paket 9A aus dem Sendungsformular — der Test
@@ -655,7 +686,7 @@ test("10d — die Sprungnavigation der Informationsseite führt zu echten Zielen
 
 /* ── 11. Responsive ──────────────────────────────────────────────────────── */
 
-test("11 — kein Seiten-Overflow und lesbare Karten über alle Breiten", async () => {
+test("11 — kein Seiten-Overflow; Feld, Infoblock und offene Liste lesbar über alle Breiten", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
   await setupRoutes(page, [TARIFF_MIT_LINK]);
   await zurBuchung(page);
@@ -665,34 +696,49 @@ test("11 — kein Seiten-Overflow und lesbare Karten über alle Breiten", async 
     await page.setViewportSize({ width, height: 950 });
     await page.waitForTimeout(120);
 
-    const mass = await page.evaluate(() => {
+    const mass = await page.evaluate((menue) => {
       const de = document.documentElement;
       const box = document.querySelector(".booking-insurance-box");
-      const badge = document.querySelector(".ins-card-badge");
-      const link = document.querySelector(".ins-card-terms-link");
+      const badge = document.querySelector(".ins-auswahl-info .ins-card-badge");
+      const details = document.querySelector(".ins-auswahl-info .ins-card-details-btn");
+      const info = document.querySelector(".ins-auswahl-info");
+      const feld = document.querySelector(`${menue} [role="combobox"]`);
       const rect = (el) => (el ? el.getBoundingClientRect() : null);
       const zeilen = (el) => {
         if (!el) return 0;
         const lh = parseFloat(getComputedStyle(el).lineHeight) || 16;
         return Math.round(el.getBoundingClientRect().height / lh);
       };
-      const karten = [...document.querySelectorAll(".ins-card")].map(c => c.getBoundingClientRect().height);
       return {
         seitenUeberlauf: de.scrollWidth - de.clientWidth,
         modulUeberlauf: box ? Math.round(box.scrollWidth - box.clientWidth) : 0,
+        feldUeberlauf: feld ? Math.round(feld.scrollWidth - feld.clientWidth) : -1,
         badgeZeilen: zeilen(badge),
         badgeBreite: rect(badge)?.width || 0,
-        linkVorhanden: !!link,
-        maxKartenhoehe: Math.max(...karten, 0),
+        detailsVorhanden: !!details,
+        infoHoehe: Math.round(rect(info)?.height || 0),
       };
-    });
+    }, SEL.menue);
 
     assert.ok(mass.seitenUeberlauf <= 0, `@${width}: Seiten-Overflow ${mass.seitenUeberlauf}px`);
     assert.ok(mass.modulUeberlauf <= 1, `@${width}: der Versicherungsblock läuft ${mass.modulUeberlauf}px über`);
+    assert.ok(mass.feldUeberlauf >= 0 && mass.feldUeberlauf <= 1, `@${width}: das Auswahlfeld läuft ${mass.feldUeberlauf}px über`);
     assert.equal(mass.badgeZeilen, 1, `@${width}: das Premium-Badge ist auf ${mass.badgeZeilen} Zeilen zerlegt`);
     assert.ok(mass.badgeBreite > 60, `@${width}: das Badge ist mit ${mass.badgeBreite}px unplausibel schmal`);
-    assert.equal(mass.linkVorhanden, true, `@${width}: der Bedingungslink ist verschwunden`);
-    assert.ok(mass.maxKartenhoehe < 460, `@${width}: eine Karte ist mit ${mass.maxKartenhoehe}px zu hoch`);
+    assert.equal(mass.detailsVorhanden, true, `@${width}: der Weg zu den Versicherungsdetails ist verschwunden`);
+    assert.ok(mass.infoHoehe > 0 && mass.infoHoehe < 460, `@${width}: der Infoblock ist mit ${mass.infoHoehe}px unplausibel`);
+
+    // Die offene Liste steht ganz im Bild und läuft nicht quer über.
+    await oeffneMenue(page, "insuranceType");
+    const liste = await page.locator(LISTE("insuranceType")).evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { links: r.left, rechts: r.right, oben: r.top, unten: r.bottom, vw: document.documentElement.clientWidth,
+        vh: window.innerHeight, quer: el.scrollWidth - el.clientWidth };
+    });
+    assert.ok(liste.links >= 0 && liste.rechts <= liste.vw, `@${width}: die Liste ragt seitlich heraus (${liste.links}…${liste.rechts})`);
+    assert.ok(liste.oben >= 0 && liste.unten <= liste.vh, `@${width}: die Liste ragt aus dem Bild (${liste.oben}…${liste.unten})`);
+    assert.ok(liste.quer <= 1, `@${width}: die Liste scrollt horizontal (${liste.quer}px)`);
+    await schliesseMenue(page, "insuranceType");
   }
 
   await page.close();
@@ -702,12 +748,13 @@ test("12 — der Dialog bleibt auf schmalen Viewports vollständig im Bild", asy
   const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
   await setupRoutes(page, [TARIFF_MIT_LINK]);
   await zurBuchung(page);
+  await waehle(page, "Standardversicherung");
 
   for (const [width, height] of [[1440, 950], [900, 800], [390, 780], [360, 720]]) {
     await page.setViewportSize({ width, height });
     await page.waitForTimeout(120);
     if (await page.locator(SEL.dialog).count() === 0) {
-      await karte(page, "Standardversicherung").locator(SEL.details).click();
+      await page.locator(SEL.details).click();
       await page.waitForSelector(SEL.dialog, { timeout: 5000 });
     }
 

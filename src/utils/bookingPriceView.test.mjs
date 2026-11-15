@@ -380,15 +380,18 @@ test("(P18) BookingLiveSummary: kontextuelles Label (Gesamt/Versand) statt fixem
   assert.ok(/\{preis\.label\}/.test(bls), "die Live-Leiste zeigt das kontextuelle Label nicht");
   assert.ok(!/Aktueller Preis/.test(bls), "statischer Aktueller-Preis-Kopf soll entfallen");
 });
-test("(P19) InsuranceModule: stabiler Grid-Kopf (Name links, Preis rechts) + Badge", () => {
+test("(P19) InsuranceModule: Name und Preis getrennt (Name links, Preis rechts) + Badge", () => {
   const ins = read("../components/booking/InsuranceModule.jsx");
   const copy = read("../utils/insuranceTerms.mjs");
-  assert.ok(/ins-card-head-name/.test(ins), "Grid-Kopf-Namensspalte fehlt");
-  // Das Badge wird weiterhin gerendert, sein Text kommt jetzt aus dem zentralen
-  // Textmodul. Der frühere Wortlaut „Erweiterter Schutz" ist bewusst weg: er
+  // Seit dem Premium Control System 2.0 (2026-11-14) wählt das kompakte Auswahlmenü: Name und Preis reisen als
+  // getrennte Felder je Option (das Menü setzt den Preis rechts neben den Namen, insuranceCardTypography Test 1).
+  assert.ok(/label: c\.name,/.test(ins) && /aside: preis\.text,/.test(ins), "Name und Preis der Option fehlen getrennt");
+  // Das Badge wird weiterhin gerendert — in der Option (badge) und im Infofeld der gewählten Option; sein Text kommt
+  // aus dem zentralen Textmodul. Der frühere Wortlaut „Erweiterter Schutz" ist bewusst weg: er
   // behauptete einen besseren VERSICHERUNGSSCHUTZ, den Premium nicht bietet —
   // Premium erweitert den Service auf derselben Versicherung.
-  assert.ok(/\{copy\.badge && <span className="ins-card-badge">/.test(ins), "Premium-Badge fehlt");
+  assert.ok(/badge: copy\.badge,/.test(ins), "Premium-Badge fehlt an der Option");
+  assert.ok(/\{gewaehlt\.copy\.badge && <span className="ins-card-badge">/.test(ins), "Premium-Badge fehlt im Infofeld");
   assert.ok(/badge: "Erweiterter Service"/.test(copy), "Badge-Text fehlt im Textmodul");
   // Kommentare abziehen: die Begründung der Umbenennung DARF den alten Wortlaut
   // nennen — verboten ist er als ausgelieferter Text.
@@ -396,9 +399,11 @@ test("(P19) InsuranceModule: stabiler Grid-Kopf (Name links, Preis rechts) + Bad
   assert.ok(!/Erweiterter Schutz/.test(ohneKommentare(ins)) && !/Erweiterter Schutz/.test(ohneKommentare(copy)),
     `„Erweiterter Schutz" überzeichnet den Versicherungsumfang und darf nicht zurückkehren`);
 });
-test("(P20) InsuranceModule: natives Radio trägt Preis im barrierefreien Namen (aria-label)", () => {
+test("(P20) InsuranceModule: die Option trägt den Preis im barrierefreien Namen (aria-label)", () => {
   const ins = read("../components/booking/InsuranceModule.jsx");
-  assert.ok(/aria-label=\{cardAriaLabel\(c\)\}/.test(ins), "aria-label am Radio fehlt");
+  const menue = read("../components/ui/AuswahlMenue.jsx");
+  assert.ok(/ariaLabel: cardAriaLabel\(c\),/.test(ins), "barrierefreier Name an der Option fehlt");
+  assert.ok(/aria-label=\{o\.ariaLabel \|\| undefined\}/.test(menue), "das Auswahlmenü setzt den barrierefreien Namen nicht");
   assert.ok(/function cardAriaLabel/.test(ins), "cardAriaLabel-Helfer fehlt");
 });
 test("(P21) calculator.css: Grid-Kartenkopf + Live-Leisten-Trenner + Ins-State-Klassen", () => {

@@ -9,7 +9,9 @@ const paths = {
   lock:       "M8 11V8a4 4 0 0 1 8 0v3M4.5 11h15a.5.5 0 0 1 .5.5v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a.5.5 0 0 1 .5-.5Z",
   arrowRight: "M5 12h14M13 6l6 6-6 6",
   /* ── Bestehende Icons ─────────────────────────────────────────────── */
-  dashboard: "M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z",
+  /* Jede Teilfläche beginnt mit einem absoluten M (vorher relativ „m11 0“): dieselbe Geometrie, aber in Teile
+     zerlegbar für die Seitenleiste (iconTeile unten, NavSymbol.jsx). */
+  dashboard: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z",
   package:
     "M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16zM3.27 6.96L12 12.01l8.73-5.05M12 22.08V12",
   invoice:
@@ -131,6 +133,14 @@ const paths = {
    `s` bleibt eine freie Pixelzahl: bestehende Aufrufe außerhalb der Leiter sind
    kompatibel und wandern in ihren jeweiligen Seitenpaketen. */
 export const ICON_SIZE = { sm: 16, md: 18, lg: 24, xl: 40 };
+
+// Die Teilpfade eines Symbols — dieselbe Geometrie wie <Icon>, getrennt an jedem absoluten M. Die Seitenleiste
+// bewegt damit einzelne Teile (NavSymbol.jsx, Premium Control System 2.0); in Ruhe liegen sie deckungsgleich.
+// Nur sinnvoll für Symbole, deren Teilpfade mit einem absoluten M beginnen (relative „m“ hingen am Vorgänger).
+export function iconTeile(n) {
+  const d = paths[n];
+  return typeof d === "string" ? d.split(/(?=M)/).filter(Boolean) : [];
+}
 
 export function Icon({ n, s = ICON_SIZE.md, c = "currentColor", title }) {
   // Ein Icon MIT Textnamen ist Inhalt (role="img" + <title>), eines ohne ist

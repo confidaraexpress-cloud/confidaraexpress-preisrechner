@@ -1,5 +1,6 @@
 import React from "react";
 import { RESIDENTIAL_TEXT, RESIDENTIAL_ACTION } from "../../utils/residentialPriceInputs.mjs";
+import { AuswahlMenue } from "../ui/AuswahlMenue";
 
 /* „Art der Lieferadresse" — nach der Auswahl eines Angebots, das diese Angabe braucht.
 
@@ -12,15 +13,16 @@ import { RESIDENTIAL_TEXT, RESIDENTIAL_ACTION } from "../../utils/residentialPri
    „+ X,XX € brutto" und „Y,YY € netto" sind der Zuschlag aus der Optionsantwort. Es wird
    nichts gerechnet und kein Gesamtpreis gebildet.
 
-   ─── ZWEI RADIOS OHNE VORAUSWAHL ─────────────────────────────────────────────
+   ─── ZWEI OPTIONEN OHNE VORAUSWAHL ───────────────────────────────────────────
    Die Angabe ist dreiwertig: Geschäftsadresse, Privatadresse, noch nicht gewählt. `checked`
-   vergleicht deshalb strikt; ohne Bindung ist keine Karte markiert. Gesperrt werden die Radios
-   ausschließlich, solange eine Bindung läuft — ein zweiter Klick soll keine zweite auslösen.
+   vergleicht deshalb strikt; ohne Bindung ist keine Option gewählt. Gesperrt werden die Optionen
+   ausschließlich, solange eine Bindung läuft — eine zweite Wahl soll keine zweite auslösen.
 
    Kein Providername, kein Anbieterbegriff: alle Texte kommen aus residentialPriceInputs.mjs. */
 export function ResidentialPriceInputModule({ view, onSelect, onRetry, onRecalculate, onNavigateShipments }) {
   const v = view || {};
   const karten = Array.isArray(v.cards) ? v.cards : [];
+  const gewaehlt = karten.find((k) => k.checked === true) || null;
   return (
     <div className="calc-panel mb-16 res-price-inputs" id="residential-price-inputs">
       <div className="calc-panel-body">
@@ -56,40 +58,27 @@ export function ResidentialPriceInputModule({ view, onSelect, onRetry, onRecalcu
           </div>
         )}
 
+        {/* Kompaktes Auswahlmenü (Premium Control System 2.0, 2026-11-14). Ohne Bindung steht „Bitte wählen“ im Feld —
+            keine Vorauswahl. Netto/Brutto (2026-10-02): vorn der Zuschlag im gewählten Anzeigemodus, darunter der
+            andere — beide unverändert aus der Optionsantwort des Servers. Während einer Bindung sind die Optionen
+            gesperrt (eine zweite Wahl löst keine zweite Bindung aus), das Feld selbst nicht: es behält den Fokus. */}
         {karten.length > 0 && (
-          <div
-            className="res-cards"
-            role="radiogroup"
-            aria-labelledby="residential-price-inputs-title"
-            aria-busy={v.locked ? true : undefined}
-          >
-            {karten.map((k) => (
-              <label
-                key={k.id}
-                htmlFor={k.id}
-                className={`res-card ce-wahl${k.checked ? " res-card--selected" : ""}${k.disabled ? " res-card--locked" : ""}`}
-              >
-                <input
-                  type="radio"
-                  id={k.id}
-                  name="residential-delivery"
-                  checked={k.checked === true}
-                  disabled={k.disabled === true}
-                  onChange={() => onSelect(k.value)}
-                />
-                <span className="res-card-head">
-                  <span className="res-card-radio" aria-hidden="true" />
-                  <span className="res-card-name">{k.label}</span>
-                </span>
-                {/* Netto/Brutto (2026-10-02): vorn der Zuschlag im gewählten Anzeigemodus, darunter der andere —
-                    beide unverändert aus der Optionsantwort des Servers. */}
-                <span className="res-card-price">
-                  <span className="res-card-price-val">{k.primaryText}</span>
-                  <span className="res-card-price-sub">{k.secondaryText}</span>
-                </span>
-              </label>
-            ))}
-          </div>
+          <AuswahlMenue
+            name="residential-delivery"
+            id="residential-delivery"
+            labelId="residential-price-inputs-title"
+            value={gewaehlt ? gewaehlt.value : null}
+            options={karten.map((k) => ({
+              value: k.value,
+              id: k.id,
+              label: k.label,
+              aside: k.primaryText,
+              asideSub: k.secondaryText,
+              disabled: k.disabled === true,
+            }))}
+            onChange={onSelect}
+            busy={v.locked === true}
+          />
         )}
 
         {v.bindingText && (

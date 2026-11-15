@@ -7,6 +7,7 @@ import {
   DELIVERY_NOTE_MODES, DELIVERY_NOTE_TEXT, deliveryNoteMode, buildDeliveryNotePatch,
 } from "../../utils/profileView.mjs";
 import { SettingsSection } from "./ProfileCardHead";
+import { AuswahlMenue } from "../ui/AuswahlMenue";
 
 // Lieferscheineinstellung der Kontoseite. Eigener Speicherzustand statt der
 // Ein-Karten-Editregel von Profile.jsx: eine Auswahl aus drei Optionen hat
@@ -55,39 +56,36 @@ export function DeliveryNoteCard({ user }) {
     setDnSaving(false);
   };
 
-  // Native Radios — dasselbe Muster wie die Zollrechnungsauswahl der Buchung.
-  // Kein zweites Auswahlbauteil; `ce-wahl` zeigt sie im Kundenbereich als
-  // Navy-Wahl (premium-editorial.css, Abschnitt 21).
-  // Während des Speicherns sind nur die übrigen Optionen gesperrt: die gewählte
-  // behält den Tastaturfokus. Ein gesperrtes `fieldset` nahm ihn ihr, der Browser
-  // setzte ihn auf die Seite zurück (tests/e2e/billingMode.test.mjs, B12).
+  // Kompaktes Auswahlmenü (Premium Control System 2.0, 2026-11-14) — dasselbe Bauteil wie Abrechnung, Absicherung
+  // und Lieferadresse. Jede Option nennt ihre Erklärung in der Liste; die gewählte steht im Feld und darunter.
+  // Während des Speicherns sind nur die übrigen Optionen gesperrt, nie das Feld selbst: es behält den
+  // Tastaturfokus. Ein gesperrtes Feld nähme ihn ihm, der Browser setzte ihn auf die Seite zurück
+  // (tests/e2e/billingMode.test.mjs, B12).
+  const optionen = DELIVERY_NOTE_MODES.map((mode) => ({
+    value: mode,
+    id: `dn-mode-${mode}`,
+    label: DELIVERY_NOTE_TEXT.options[mode].label,
+    description: DELIVERY_NOTE_TEXT.options[mode].hint,
+    disabled: dnSaving && dnMode !== mode,
+  }));
+  const gewaehlteErklaerung = DELIVERY_NOTE_TEXT.options[dnMode]?.hint;
   return (
     <SettingsSection title={DELIVERY_NOTE_TEXT.title} subtitle={DELIVERY_NOTE_TEXT.subtitle}>
       <div className="profile-section-body">
-        <fieldset className="dn-mode-fieldset">
-          <legend className="field-label">{DELIVERY_NOTE_TEXT.fieldLabel}</legend>
-          {DELIVERY_NOTE_MODES.map((mode) => {
-            const opt = DELIVERY_NOTE_TEXT.options[mode];
-            const id = `dn-mode-${mode}`;
-            return (
-              <label key={mode} className={`dn-mode-option ce-wahl${dnMode === mode ? " selected" : ""}`} htmlFor={id}>
-                <input
-                  id={id}
-                  type="radio"
-                  name="deliveryNoteMode"
-                  value={mode}
-                  checked={dnMode === mode}
-                  disabled={dnSaving && dnMode !== mode}
-                  onChange={() => saveDeliveryNoteMode(mode)}
-                />
-                <span className="dn-mode-text">
-                  <span className="dn-mode-label">{opt.label}</span>
-                  <span className="field-hint">{opt.hint}</span>
-                </span>
-              </label>
-            );
-          })}
-        </fieldset>
+        <div className="dn-mode-feld">
+          <span className="field-label" id="dn-mode-label">{DELIVERY_NOTE_TEXT.fieldLabel}</span>
+          <AuswahlMenue
+            name="deliveryNoteMode"
+            id="dn-mode"
+            labelId="dn-mode-label"
+            value={dnMode}
+            options={optionen}
+            onChange={saveDeliveryNoteMode}
+            busy={dnSaving}
+            describedBy={gewaehlteErklaerung ? "dn-mode-erklaerung" : undefined}
+          />
+          {gewaehlteErklaerung && <p className="field-hint dn-mode-erklaerung" id="dn-mode-erklaerung">{gewaehlteErklaerung}</p>}
+        </div>
         {dnError && <FormAlert tone="error" message={dnError} className="mt-16" />}
         {dnSaved && !dnError && (
           <p className="profile-saved" role="status">

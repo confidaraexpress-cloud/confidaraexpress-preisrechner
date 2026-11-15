@@ -95,6 +95,10 @@ export function BookingStickySummary({ tariff, priceView, observeRef, vatMode })
       ref={layerRef}
       className={`booking-sticky-layer${stuck ? " is-stuck" : ""}`}
       aria-hidden="true"
+      // Meldet die Leiste bei Auswahlmenüs an (AuswahlMenue, angemeldeteOberkante): Sie erscheint erst beim Scrollen
+      // und ist vorher nicht zu treffen — ein Menü, das zum Öffnen die Seite hochrückt, hielte den Auslöser sonst
+      // nicht von ihr frei (gemessen 390 × 844, Transportabsicherung).
+      data-klebt-oben=""
     >
       {/* Deckende Trägerfläche in Seitenfarbe: Sie liegt UNTER der Karte und
           schließt deren abgerundete Ecken sowie den Abstand nach unten. Ohne

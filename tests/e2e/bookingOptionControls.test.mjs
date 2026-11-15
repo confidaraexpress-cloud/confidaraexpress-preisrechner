@@ -300,9 +300,11 @@ test("8 — die A4/A6-Felder sind kompakt statt kartenhaft", async () => {
   await page.close();
 });
 
-// Betreiberentscheidung 2026-10-28 (Editorial-Kundenbereich): Das Labelformat ist eine Segmentsteuerung — das gewählte
-// Segment Navy mit heller Schrift, das offene hell auf der Spur, kein runder Radiopunkt mehr. Bis dahin galt hier
-// „erkennbar, aber nicht dominant“ mit sehr heller Wahl und sichtbarem Punkt.
+// Betreiberentscheidung 2026-10-28 (Editorial-Kundenbereich): Das Labelformat ist eine Segmentsteuerung — das offene
+// Segment hell auf der Spur, kein runder Radiopunkt mehr. Premium Control System 2.0 (Betreiberauftrag 2026-11-14,
+// nur lokal): das gewählte Segment trägt dieselbe Wahlsprache wie jede Auswahl — helle Wahlfläche, blaue Kante
+// (1 px Rand + 1 px Innenring), Schrift in Navy. Das frühere Navy-Segment ist damit abgelöst; Navy als Fläche bleibt
+// der Hauptaktion vorbehalten.
 const leuchtdichte = (farbe) => {
   const [r, g, b] = farbe.match(/[\d.]+/g).slice(0, 3).map(Number).map((k) => {
     const c = k / 255;
@@ -311,8 +313,12 @@ const leuchtdichte = (farbe) => {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 };
 const deckend = (farbe) => { const a = farbe.match(/[\d.]+/g); return a.length < 4 || Number(a[3]) > 0; };
+const kontrastVon = (a, b) => {
+  const [hell, dunkel] = [leuchtdichte(a), leuchtdichte(b)].sort((x, y) => y - x);
+  return (hell + 0.05) / (dunkel + 0.05);
+};
 
-test("9 — die aktive Wahl ist eindeutig: Navy-Segment mit heller Schrift, die offene bleibt hell", async () => {
+test("9 — die aktive Wahl ist eindeutig: helle Wahlfläche mit blauer Kante und Navy-Schrift, die offene bleibt hell", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
   await setupRoutes(page);
   await zurBuchung(page);
@@ -321,19 +327,24 @@ test("9 — die aktive Wahl ist eindeutig: Navy-Segment mit heller Schrift, die 
 
   const stil = (sel) => page.locator(sel).first().evaluate((el) => {
     const s = getComputedStyle(el);
-    return { bg: s.backgroundColor, farbe: s.color, borderBreite: s.borderTopWidth, spur: getComputedStyle(el.parentElement).backgroundColor };
+    return { bg: s.backgroundColor, farbe: s.color, borderBreite: s.borderTopWidth, kante: s.borderTopColor,
+      ring: s.boxShadow, spur: getComputedStyle(el.parentElement).backgroundColor };
   });
 
   const gewaehlt = await stil(".labelfmt-card--selected");
   assert.ok(parseFloat(gewaehlt.borderBreite) <= 1, `Kante ${gewaehlt.borderBreite} — zu kräftig`);
-  assert.ok(leuchtdichte(gewaehlt.bg) < 0.05, `die aktive Fläche muss Navy sein, ist ${gewaehlt.bg}`);
-  const kontrast = (leuchtdichte(gewaehlt.farbe) + 0.05) / (leuchtdichte(gewaehlt.bg) + 0.05);
-  assert.ok(kontrast >= 7, `Schrift auf dem gewählten Segment ${kontrast.toFixed(1)}:1 — zu schwach`);
+  assert.ok(leuchtdichte(gewaehlt.bg) > 0.8, `die Wahlfläche muss hell sein (kein Navy-Segment mehr), ist ${gewaehlt.bg}`);
+  assert.ok(kontrastVon(gewaehlt.kante, gewaehlt.bg) >= 3,
+    `die blaue Kante hebt sich nur ${kontrastVon(gewaehlt.kante, gewaehlt.bg).toFixed(1)}:1 von der Wahlfläche ab`);
+  assert.match(gewaehlt.ring, /inset/, "der Innenring fehlt — die Wahl hinge an einer einzelnen 1-px-Kante");
+  assert.ok(kontrastVon(gewaehlt.farbe, gewaehlt.bg) >= 7,
+    `Schrift auf dem gewählten Segment ${kontrastVon(gewaehlt.farbe, gewaehlt.bg).toFixed(1)}:1 — zu schwach`);
 
   const offen = await stil(".labelfmt-card:not(.labelfmt-card--selected)");
   const flaeche = deckend(offen.bg) ? offen.bg : offen.spur;
   assert.ok(leuchtdichte(flaeche) > 0.85, `die offene Fläche muss hell und ruhig bleiben, ist ${flaeche}`);
   assert.notEqual(gewaehlt.bg, offen.bg, "die Wahl ist nicht von der offenen Option zu unterscheiden");
+  assert.notEqual(gewaehlt.kante, offen.kante, "die Kante unterscheidet die Wahl nicht von der offenen Option");
   await page.close();
 });
 

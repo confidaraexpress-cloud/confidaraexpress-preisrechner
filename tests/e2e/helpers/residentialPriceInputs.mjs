@@ -18,6 +18,7 @@
  * deshalb NACH dem Sammel-Mock einer Suite registriert werden — sonst beantwortet der Sammel-Mock
  * die beiden Endpunkte mit einem leeren Objekt, und die Buchungsseite zeigt (richtig) den Fehler.
  */
+import { AUSLOESER, LISTE, MENUE, gewaehlterWert, oeffneMenue, schliesseMenue } from "./auswahlMenue.mjs";
 
 export const LIEFERADRESSE_ID = Object.freeze({
   geschaeft: "residential-delivery-business",
@@ -174,23 +175,62 @@ export async function mockeLieferadresse(page, zustaende, anfragen = []) {
   return anfragen;
 }
 
+// ── Bedienung des Auswahlmenüs (Premium Control System 2.0, 2026-11-14) ─────────────────────
+// Die Art der Lieferadresse ist ein kompaktes Auswahlmenü (AuswahlMenue, name="residential-delivery"). Die beiden
+// Optionen behalten ihre Kennungen (LIEFERADRESSE_ID) — sie stehen aber nur in der OFFENEN Liste. Der gebundene Wert
+// steht am Feld (data-wert: "true" Privat-, "false" Geschäftsadresse, "" noch keine Wahl); während einer Bindung
+// trägt das Feld aria-busy und beide Optionen aria-disabled.
+export const LIEFERADRESSE_MENUE = "residential-delivery";
+/** Der Umschlag der Auswahl — fehlt, solange keine Optionen da sind (Laden, Fehler). */
+export const LIEFERADRESSE_AUSWAHL = MENUE(LIEFERADRESSE_MENUE);
+
+/** Gebundene Wahl am Feld: "true", "false", "" (noch keine) oder null (keine Auswahl sichtbar). */
+export const lieferadressWert = (page) => gewaehlterWert(page, LIEFERADRESSE_MENUE);
+
+/** Wartet, bis die Auswahl erscheint (die Optionen sind geladen). */
+export const warteAufLieferadressAuswahl = (page, { timeout = 20000 } = {}) =>
+  page.locator(AUSLOESER(LIEFERADRESSE_MENUE)).waitFor({ state: "visible", timeout });
+
+/** Öffnet die Auswahl (falls zu) und liefert beide Optionen, wie der Kunde sie in der Liste sieht. */
+export async function lieferadressOptionen(page, { timeout = 20000 } = {}) {
+  await oeffneMenue(page, LIEFERADRESSE_MENUE, { timeout });
+  return {
+    geschaeft: page.locator(`#${LIEFERADRESSE_ID.geschaeft}`),
+    privat: page.locator(`#${LIEFERADRESSE_ID.privat}`),
+  };
+}
+
+/** Schließt die Liste ohne Wahl (Escape). */
+export const schliesseLieferadresse = (page) => schliesseMenue(page, LIEFERADRESSE_MENUE);
+
+/** Wartet, bis die Wahl gebunden ist: der Wert steht am Feld, und keine Bindung läuft mehr. */
+export async function warteAufLieferadresse(page, privat, { timeout = 10000 } = {}) {
+  await page.waitForFunction(({ sel, wert }) => {
+    const knopf = document.querySelector(sel);
+    return !!knopf && knopf.getAttribute("data-wert") === wert && knopf.getAttribute("aria-busy") !== "true";
+  }, { sel: AUSLOESER(LIEFERADRESSE_MENUE), wert: String(privat) }, { timeout });
+}
+
 /**
- * Wählt die Art der Lieferadresse wie ein Kunde: Klick auf die Karte, dann warten, bis die
- * Bindung zurück ist (Radio gewählt und wieder bedienbar) UND die Seite das gebundene Angebot
- * trägt. Das gebundene Angebot erreicht die Seite über den Verlaufseintrag — einen Render nach dem
- * Radio; bis dahin steht dort (richtig) noch der vorläufige Preis. Nichts wird erzwungen; ist die
- * Wahl bereits gebunden, bleibt es beim Warten.
+ * Wählt die Art der Lieferadresse wie ein Kunde: Feld öffnen, Option anklicken, dann warten, bis
+ * die Bindung zurück ist (Wert am Feld, keine laufende Bindung) UND die Seite das gebundene Angebot
+ * trägt. Das gebundene Angebot erreicht die Seite über den Verlaufseintrag — einen Render nach der
+ * Wahl; bis dahin steht dort (richtig) noch der vorläufige Preis. Nichts wird erzwungen: eine
+ * gesperrte Option wird erst geklickt, wenn sie wieder wählbar ist; ist die Wahl bereits gebunden,
+ * schließt der Klick die Liste ohne Wechsel.
  */
 export async function waehleLieferadresse(page, privat, { timeout = 20000 } = {}) {
   const id = privat ? LIEFERADRESSE_ID.privat : LIEFERADRESSE_ID.geschaeft;
-  const karte = page.locator(`label[for="${id}"]`);
-  await karte.waitFor({ state: "visible", timeout });
-  await page.waitForFunction((rid) => { const el = document.getElementById(rid); return !!el && !el.disabled; }, id, { timeout });
-  if (!(await page.locator(`#${id}`).isChecked())) await karte.click();
+  await oeffneMenue(page, LIEFERADRESSE_MENUE, { timeout });
   await page.waitForFunction((rid) => {
     const el = document.getElementById(rid);
-    if (!el || !el.checked || el.disabled) return false;
+    return !!el && el.getAttribute("aria-disabled") !== "true";
+  }, id, { timeout });
+  await page.locator(`#${id}`).click({ timeout });
+  await page.locator(LISTE(LIEFERADRESSE_MENUE)).waitFor({ state: "detached", timeout });
+  await warteAufLieferadresse(page, privat, { timeout });
+  await page.waitForFunction(() => {
     const label = document.querySelector(".blsum-price-label");
     return !label || !/Vorläufiger Preis/.test(label.textContent || "");
-  }, id, { timeout });
+  }, null, { timeout });
 }

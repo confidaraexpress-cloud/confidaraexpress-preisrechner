@@ -267,11 +267,14 @@ test("10 — die Navigation: Icons nur vor dem Text der Hauptpunkte (E7), keine 
   const code = stripJsxComments(sidebarJsx);
   // Betreiberentscheidung 2026-10-27 (E7) löst die reine Textnavigation ab. Jedes Icon steht vor einer
   // Beschriftung; Symbole ohne Text (Iconleiste) gibt es nicht.
+  // Seit dem Premium Control System 2.0 (2026-11-14) rendert die Leiste <NavSymbol> — die Geometrie stammt weiter aus
+  // der eigenen Icon-Komponente (sidebarNavigation.test.mjs, Test 15).
   assert.match(code, /from "\.\.\/ui\/Icon"/, "Icons kommen nur aus der eigenen Icon-Komponente");
-  assert.equal((code.match(/<Icon\b/g) || []).length, 2, "Icons nur im Eintrag der ersten Ebene und im Gruppenkopf");
-  assert.match(code, /<Icon n=\{item\.icon\} s=\{ICON_SIZE\.md\} \/><\/span>\}\s*<span>\{item\.label\}<\/span>/,
+  assert.match(code, /from "\.\/NavSymbol"/, "das Navigationssymbol kommt nicht aus der eigenen Komponente");
+  assert.equal((code.match(/<NavSymbol\b/g) || []).length, 2, "Icons nur im Eintrag der ersten Ebene und im Gruppenkopf");
+  assert.match(code, /<NavSymbol n=\{item\.icon\} s=\{ICON_SIZE\.md\} \/><\/span>\}\s*<span>\{item\.label\}<\/span>/,
     "das Icon des Eintrags steht nicht vor seiner Beschriftung");
-  assert.match(code, /<Icon n=\{group\.icon\} s=\{ICON_SIZE\.md\} \/><\/span>\s*<span className="pp-nav-group-label">\{group\.label\}<\/span>/,
+  assert.match(code, /<NavSymbol n=\{group\.icon\} s=\{ICON_SIZE\.md\} \/><\/span>\s*<span className="pp-nav-group-label">\{group\.label\}<\/span>/,
     "das Icon des Gruppenkopfs steht nicht vor seiner Beschriftung");
   assert.doesNotMatch(code, /lucide-react/, "lucide-react ist im Projekt nicht zulässig");
   // Die Klappmarke der Gruppen ist eine reine CSS-Form ohne Glyphe.

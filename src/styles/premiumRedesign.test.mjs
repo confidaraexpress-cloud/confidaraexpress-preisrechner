@@ -348,11 +348,15 @@ function mediaBloecke(css) {
 
 test("14 — Auswahl: jede Gruppe trägt ihre Variante, die Bedienung bleibt nativ und zugänglich", () => {
   const ANKER = [
-    ["components/dashboard/BillingModeCard.jsx", [/className=\{`dn-mode-option ce-wahl\$\{/, /type="radio"/]],
-    ["components/dashboard/DeliveryNoteCard.jsx", [/className=\{`dn-mode-option ce-wahl\$\{/, /type="radio"/]],
+    // Premium Control System 2.0 (Betreiberauftrag 2026-11-14): Abrechnung, Lieferscheine, Transportabsicherung und
+    // Art der Lieferadresse wählen über das kompakte Auswahlmenü (AuswahlMenue.jsx) statt über große Karten.
+    ["components/dashboard/BillingModeCard.jsx", [/<AuswahlMenue\s+name="billingMode"\s+id="bm-mode"\s+labelId="bm-mode-label"/]],
+    ["components/dashboard/DeliveryNoteCard.jsx", [/<AuswahlMenue\s+name="deliveryNoteMode"\s+id="dn-mode"\s+labelId="dn-mode-label"/]],
     ["components/booking/CustomsInvoiceModeSection.jsx", [/className="ci-mode-option ce-wahl" htmlFor="ci-mode-proforma"/, /className="ci-mode-option ce-wahl" htmlFor="ci-mode-commercial"/]],
-    ["components/booking/InsuranceModule.jsx", [/className=\{`ins-card ce-wahl\$\{/, /<div className="ce-segment">/, /className="ci-mode-option ce-segment-option" htmlFor=\{`ins-\$\{feld\}-ja`\}/, /className="ci-mode-option ce-segment-option" htmlFor=\{`ins-\$\{feld\}-nein`\}/, /role="radiogroup"/]],
-    ["components/booking/ResidentialPriceInputModule.jsx", [/className=\{`res-card ce-wahl\$\{/, /role="radiogroup"/]],
+    ["components/booking/InsuranceModule.jsx", [/<AuswahlMenue\s+name="insuranceType"\s+id="ins-auswahl"\s+labelId="ins-auswahl-label"/, /<div className="ce-segment">/, /className="ci-mode-option ce-segment-option" htmlFor=\{`ins-\$\{feld\}-ja`\}/, /className="ci-mode-option ce-segment-option" htmlFor=\{`ins-\$\{feld\}-nein`\}/]],
+    ["components/booking/ResidentialPriceInputModule.jsx", [/<AuswahlMenue\s+name="residential-delivery"\s+id="residential-delivery"\s+labelId="residential-price-inputs-title"/]],
+    // Das Auswahlmenü selbst: select-only combobox nach WAI-ARIA 1.2 — Fokus am Auslöser, Optionen mit Zustand.
+    ["components/ui/AuswahlMenue.jsx", [/role="combobox"/, /aria-haspopup="listbox"/, /aria-expanded=\{offen\}/, /aria-activedescendant=/, /role="listbox"/, /role="option"/, /aria-selected=\{o\.value === value\}/, /aria-disabled=\{o\.disabled \? true : undefined\}/]],
     ["components/booking/AdditionalOptionsModule.jsx", [/className="labelfmt-group ce-segment" role="radiogroup"/, /className=\{`labelfmt-card ce-segment-option\$\{/, /type="radio"/]],
     ["components/offers/ShipmentFilterBar.jsx", [/service-filter-option--radio ce-wahl ce-wahl--zeile \$\{serviceFilter === opt\.id/, /service-filter-option--radio ce-wahl ce-wahl--zeile \$\{shippingModeFilter === opt\.id/, /role="radio"/, /aria-checked=\{serviceFilter === opt\.id\}/]],
     ["components/offers/OffersList.jsx", [/className="offers-segment offers-segment--primary ce-segment" role="group"/, /offers-segment-item ce-segment-option\$\{sortMode === o\.id/, /aria-pressed=\{sortMode === o\.id\}/, /className="date-quick-options ce-segment"/]],
@@ -392,10 +396,10 @@ test("14 — Auswahl: jede Gruppe trägt ihre Variante, die Bedienung bleibt nat
 
 test("15 — Überlagerte Auswahl: unter dem unsichtbaren Radio steht kein weiteres Bedienelement", () => {
   // Das Radio liegt unsichtbar über der ganzen Option (inset: 0, Abschnitte 21 und 22). Ein Link oder Knopf darin wäre
-  // nicht mehr erreichbar — ein Klick wählte die Option (Härtung aus dem Security-Review 2026-10-28). Absicherungs- und
-  // Adressartkarten haben keine Überlagerung (gezeichneter Punkt) und behalten ihre Details-Knöpfe.
-  const dateien = ["components/dashboard/BillingModeCard.jsx", "components/dashboard/DeliveryNoteCard.jsx",
-    "components/booking/CustomsInvoiceModeSection.jsx", "components/booking/InsuranceModule.jsx",
+  // nicht mehr erreichbar — ein Klick wählte die Option (Härtung aus dem Security-Review 2026-10-28). Abrechnung,
+  // Lieferscheine, Absicherung und Adressart wählen seit 2026-11-14 über das Auswahlmenü (keine Überlagerung); der
+  // Details-Knopf der Absicherung steht im Infofeld unter dem Menü, nie in einer Option (geprüft unten).
+  const dateien = ["components/booking/CustomsInvoiceModeSection.jsx", "components/booking/InsuranceModule.jsx",
     "components/booking/AdditionalOptionsModule.jsx", "components/addressbook/AddressFormDrawer.jsx"];
   let geprueft = 0;
   for (const datei of dateien) {
@@ -406,7 +410,13 @@ test("15 — Überlagerte Auswahl: unter dem unsichtbaren Radio steht kein weite
       assert.doesNotMatch(m[1], /<(a|button|Link)\b/, `${datei}: Bedienelement unter dem unsichtbaren Radio`);
     }
   }
-  assert.ok(geprueft >= 8, `nur ${geprueft} überlagerte Optionen gefunden — Anker verschoben?`);
+  assert.ok(geprueft >= 6, `nur ${geprueft} überlagerte Optionen gefunden — Anker verschoben?`);
+
+  // Optionen des Auswahlmenüs enthalten kein Bedienelement: Das <li role="option"> wird als Ganzes gewählt.
+  const menue = ohneJsKommentare(lies(path.join(SRC, "components/ui/AuswahlMenue.jsx")));
+  const option = menue.match(/<li\b[\s\S]*?<\/li>/);
+  assert.ok(option, "die Option des Auswahlmenüs fehlt");
+  assert.doesNotMatch(option[0], /<(a|button|Link|input)\b/, "Bedienelement in einer Option des Auswahlmenüs");
 });
 
 test("16 — Sehr schmal im Verhältnis zur Schrift: Kennungen brechen nur dort und nur nach einem Bindestrich", () => {

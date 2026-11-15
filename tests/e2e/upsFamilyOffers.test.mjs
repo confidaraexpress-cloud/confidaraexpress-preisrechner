@@ -29,6 +29,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { weitereAktion } from "./helpers/weitereAktionen.mjs";
+import { waehleOption } from "./helpers/auswahlMenue.mjs";
 import { chromium } from "playwright";
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
@@ -519,7 +520,7 @@ async function zuSchritt2(page) {
 }
 
 async function absichern(page) {
-  await page.locator(`.ins-card:has(input[value="transit_cover"]) .ins-card-name`).click();
+  await waehleOption(page, "insuranceType", "transit_cover");
   await page.locator("#ins-goodsAreNew-ja").check();
   await page.locator("#ins-goodsAreFragile-nein").check();
 }

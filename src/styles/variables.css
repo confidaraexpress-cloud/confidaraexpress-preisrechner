@@ -1110,6 +1110,12 @@
   --ce-pr-bs-kontur: #c3cce0;                   /* feine Kontur: Zweitaktion, Menütaste, Filter (Name trägt der Text) */
   --ce-pr-bs-kontur-zeigen: #8d9cc0;            /* Kontur beim Zeigen · 2,9:1 auf Weiß */
   --ce-pr-bs-flaeche-zeigen: #f4f7ff;           /* heller Ton der Zweitaktion beim Zeigen */
+  /* Gewählt (Premium Control System 2.0, 2026-11-14): EINE Sprache für jede Auswahl — Menüoption, Filterzeile,
+     Segment, Kalendertag, Uhrzeit. Hell hinterlegt, blaue Kante (1 px Rand + 1 px Innenring, ohne Layoutsprung),
+     blauer Haken. Navy bleibt der Hauptaktion vorbehalten. */
+  --ce-pr-bs-wahl-flaeche: #edf2ff;             /* Signal-Tinte #0041de darauf 6,7:1, Navy-Text 15:1 */
+  --ce-pr-bs-wahl-flaeche-zeigen: #e2eaff;      /* gewählt unter Zeiger oder Tastaturmarkierung */
+  --ce-pr-bs-wahl-kante: #004afc;               /* Kante und Haken · 6,2:1 auf Weiß, 5,5:1 auf der Wahlfläche */
   --ce-pr-bs-gefahr-flaeche: #fdf1f1;           /* gefährlicher Menüeintrag beim Zeigen */
   --ce-pr-bs-schalter-aus: #e6eaf2;             /* Spur AUS: hell … */
   --ce-pr-bs-schalter-aus-kante: #8692ab;       /* … mit klarer Kante · 3,1:1 auf Weiß (WCAG 1.4.11) */

@@ -121,10 +121,10 @@
   line-height: var(--ce-text-body-line);
   color: var(--ce-color-text-secondary);
 }
-/* Übersicht: Die Datumszeile steht als Kopfzeile über dem Gruß; Gruß und Name sprechen mit einer Stimme. Seit dem
-   Feinschliff (2026-11-01) im Nebentext (6,92:1) statt im gedämpften Ton (5,36:1). */
+/* Übersicht: Gruß mit Namen zuerst, die Datumszeile darunter (Betreiberauftrag 2026-11-14, Premium Control System 2.0:
+   „Name über dem Datum“) — das ist auch die Reihenfolge im DOM, Screenreader und Bild lesen gleich. Gruß und Name
+   sprechen mit einer Stimme. Seit dem Feinschliff (2026-11-01) im Nebentext (6,92:1) statt im gedämpften Ton. */
 :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-sub {
-  order: -1;
   font-size: var(--ce-text-label-size);
   font-weight: var(--ce-weight-medium);
   color: var(--ce-color-text-secondary);
@@ -502,6 +502,326 @@
 @media (max-width: 1000px) {
   :root[data-ce-bereich="kunde"] .calc-filter-bar :is(.service-filter-dropdown, .date-picker-body, .carrier-dropdown) { box-shadow: none; }
 }
+/* Premium Control System 2.0 (2026-11-14): Die fünf Aufklappfelder sind EIN Aufbau. Listen (Abholung/Shopabgabe,
+   Versanddienst, Versandart) mit 4 px Innenrand und Zeilen von 44 px, Radius 8 (konzentrisch: 12 − 4), 2 px Luft;
+   Kalenderfelder (Versanddatum, Späteste Lieferzeit) mit 12 px Innenrand. Gewählt ist überall dasselbe: helle
+   Wahlfläche, blaue Kante, blauer Haken (Einfachauswahl) bzw. blau gefülltes Kästchen (Mehrfachauswahl). */
+:root[data-ce-bereich="kunde"] .calc-filter-bar .date-picker-body { padding: var(--ce-space-3); }
+:root[data-ce-bereich="kunde"] .calc-filter-bar :is(.service-filter-dropdown, .carrier-dropdown) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+}
+:root[data-ce-bereich="kunde"] .calc-filter-bar :is(.service-filter-dropdown, .carrier-dropdown) .service-filter-option {
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--ce-pr-bs-hoehe);
+  padding: 9px 12px;
+  border-radius: calc(var(--ce-pr-bs-radius-flaeche) - 4px);
+}
+/* Die Kante der Einfachauswahl trägt `.ce-wahl` (Abschnitt 21); die Mehrfachauswahl bekommt hier dieselbe Ruhekante. */
+:root[data-ce-bereich="kunde"] .calc-filter-bar .carrier-dropdown .service-filter-option--check { border: 1px solid transparent; }
+:root[data-ce-bereich="kunde"] .calc-filter-bar .carrier-dropdown .carrier-empty-hint {
+  padding: 10px 12px 10px calc(12px + 18px + 10px);
+  color: var(--ce-color-text-secondary);
+  font-size: var(--ce-text-body-s-size);
+  line-height: 1.45;
+  text-align: left;
+}
+:root[data-ce-bereich="kunde"] .calc-filter-bar .carrier-dropdown .service-filter-option--check:is(.selected, [aria-checked="true"]) {
+  border-color: var(--ce-pr-bs-wahl-kante);
+  background: var(--ce-pr-bs-wahl-flaeche);
+  box-shadow: inset 0 0 0 1px var(--ce-pr-bs-wahl-kante);
+}
+:root[data-ce-bereich="kunde"] .calc-filter-bar .carrier-dropdown .service-filter-check {
+  width: 18px;
+  height: 18px;
+  margin-top: 0;
+  border: 1.5px solid var(--ce-pr-bs-kontur-zeigen);
+  border-radius: 5px;
+}
+:root[data-ce-bereich="kunde"] .calc-filter-bar .carrier-dropdown .service-filter-option--check:is(.selected, [aria-checked="true"]) .service-filter-check {
+  border-color: var(--ce-pr-bs-wahl-kante);
+  background: var(--ce-pr-bs-wahl-kante);
+}
+:root[data-ce-bereich="kunde"] .calc-filter-bar .carrier-dropdown .service-filter-option--check:is(.selected, [aria-checked="true"]) .service-filter-check::after {
+  left: 5px;
+  top: 2px;
+  width: 5px;
+  height: 9px;
+}
+:root[data-ce-bereich="kunde"] .calc-filter-bar :is(.service-filter-option-label) { color: var(--ce-color-text-primary); }
+:root[data-ce-bereich="kunde"] .calc-filter-bar .service-filter-option:is(.selected, [aria-checked="true"]) .service-filter-option-label {
+  color: var(--ce-pr-navy-800);
+  font-weight: 600;
+}
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .calc-filter-bar .carrier-dropdown .service-filter-option--check:not(.selected, [aria-checked="true"]):hover {
+    border-color: transparent;
+    background: var(--ce-pr-bs-flaeche-zeigen);
+  }
+  :root[data-ce-bereich="kunde"] .calc-filter-bar .carrier-dropdown .service-filter-option--check:is(.selected, [aria-checked="true"]):hover { background: var(--ce-pr-bs-wahl-flaeche-zeigen); }
+}
+
+/* Kalender (Versanddatum, Späteste Lieferzeit, Datumsfilter der Angebote): der gewählte Tag in derselben Wahlsprache
+   statt einer vollen Blaufläche; heute nur in Signal-Tinte und kräftiger — eine Kante trägt allein die Wahl. */
+:root[data-ce-bereich="kunde"] .dc-day { border-radius: calc(var(--ce-pr-bs-radius) - 2px); }
+:root[data-ce-bereich="kunde"] .dc-day--today:not(.dc-day--selected) {
+  border-color: transparent;
+  color: var(--ce-pr-signal-ink);
+  font-weight: 700;
+}
+:root[data-ce-bereich="kunde"] .dc-day--selected {
+  border-color: var(--ce-pr-bs-wahl-kante);
+  background: var(--ce-pr-bs-wahl-flaeche);
+  box-shadow: inset 0 0 0 1px var(--ce-pr-bs-wahl-kante);
+  color: var(--ce-pr-navy-800);
+  font-weight: 700;
+}
+:root[data-ce-bereich="kunde"] .dc-day--selected .dc-day-dot { background: var(--ce-pr-bs-wahl-kante); }
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .dc-day:hover:not(:disabled):not(.dc-day--selected) {
+    border-color: transparent;
+    background: var(--ce-pr-bs-flaeche-zeigen);
+  }
+}
+
+/* Uhrzeitliste (DeliveryTimeSelect): gewählt in derselben Sprache; der Innenring steht für die Kante, die Zeile hat
+   keinen eigenen Rand. */
+:root[data-ce-bereich="kunde"] .offers-time-option.is-selected {
+  background: var(--ce-pr-bs-wahl-flaeche);
+  box-shadow: inset 0 0 0 2px var(--ce-pr-bs-wahl-kante);
+  color: var(--ce-pr-navy-800);
+}
+:root[data-ce-bereich="kunde"] .offers-time-option.is-selected.is-marked { background: var(--ce-pr-bs-wahl-flaeche-zeigen); }
+:root[data-ce-bereich="kunde"] .offers-time-option.is-marked:not(.is-selected) { background: var(--ce-pr-bs-flaeche-zeigen); }
+
+/* ── Auswahlmenü (AuswahlMenue.jsx): Transportabsicherung, Art der Lieferadresse, Lieferscheine, Abrechnung ──
+   Geschlossen ein Auswahlfeld (`.field-select`: 44 px, Radius 10, feine Kontur, leiser Schatten) mit dem gewählten
+   Namen links und dem Zusatz (Preis) rechts; offen eine Liste mit dem Radius und Schatten der Menüs. Jede Option
+   hat eine feste Hakenspalte links — die Texte aller Optionen stehen bündig, gewählt oder nicht. Ebene 60 wie die
+   Uhrzeitliste: über Karten und Formularfeldern, unter Schubladen (999) und Navigationsleiste (1000). */
+:root[data-ce-bereich="kunde"] .ce-auswahl { position: relative; width: 100%; min-width: 0; }
+:root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser {
+  display: flex;
+  align-items: center;
+  gap: var(--ce-space-3);
+  width: 100%;
+  min-height: var(--ce-pr-bs-hoehe);
+  padding: 9px 14px;
+  border-color: var(--ce-pr-bs-kontur);
+  background-image: none;
+  text-align: left;
+  transition:
+    border-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    box-shadow var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    background-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser:hover:not(:focus):not(:disabled) { border-color: var(--ce-pr-bs-kontur); }
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser:not(.is-open):not(:disabled):hover {
+    border-color: var(--ce-pr-bs-kontur-zeigen);
+    box-shadow: var(--ce-pr-bs-schatten-sekundaer-zeigen);
+  }
+}
+/* Offen wie die Filter auf „Neue Sendung“ (einheitlicher Offen-Zustand): Signalkante auf hellem Signalgrund. */
+:root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser.is-open {
+  border-color: var(--ce-pr-signal);
+  background-color: var(--ce-pr-signal-soft);
+  box-shadow: none;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser:focus:not(:focus-visible) { outline: none; }
+:root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser[aria-busy="true"] { cursor: progress; }
+:root[data-ce-bereich="kunde"] .ce-auswahl-wert {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--ce-space-3);
+  min-width: 0;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-wert-text {
+  min-width: 0;
+  color: var(--ce-pr-navy-800);
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-wert-text.is-platzhalter { color: var(--ce-color-text-secondary); font-weight: var(--ce-weight-text); }
+:root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser .ce-auswahl-zusatz { flex-direction: row; align-items: baseline; gap: 6px; }
+:root[data-ce-bereich="kunde"] .ce-auswahl-marke {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--ce-color-text-secondary);
+  border-bottom: 2px solid var(--ce-color-text-secondary);
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser.is-open .ce-auswahl-marke { transform: translateY(2px) rotate(225deg); }
+:root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser:disabled .ce-auswahl-marke { border-color: var(--ce-color-text-disabled); }
+
+:root[data-ce-bereich="kunde"] .ce-auswahl-liste {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-bs-radius-flaeche);
+  background: var(--ce-color-surface);
+  box-shadow: var(--ce-pr-bs-schatten-menue);
+  animation: ce-auswahl-auf var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
+}
+@keyframes ce-auswahl-auf {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-option {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 10px;
+  flex: 0 0 auto;
+  min-height: var(--ce-pr-bs-hoehe);
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: calc(var(--ce-pr-bs-radius-flaeche) - 4px);
+  color: var(--ce-color-text-primary);
+  cursor: pointer;
+  transition: background-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard), border-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-option.is-marked { background: var(--ce-pr-bs-flaeche-zeigen); }
+:root[data-ce-bereich="kunde"] .ce-auswahl-option[aria-selected="true"] {
+  border-color: var(--ce-pr-bs-wahl-kante);
+  background: var(--ce-pr-bs-wahl-flaeche);
+  box-shadow: inset 0 0 0 1px var(--ce-pr-bs-wahl-kante);
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-option[aria-selected="true"].is-marked { background: var(--ce-pr-bs-wahl-flaeche-zeigen); }
+:root[data-ce-bereich="kunde"] .ce-auswahl-option[aria-disabled="true"] { cursor: not-allowed; }
+:root[data-ce-bereich="kunde"] .ce-auswahl-option[aria-disabled="true"]:not([aria-selected="true"]) { background: transparent; }
+:root[data-ce-bereich="kunde"] .ce-auswahl-option[aria-disabled="true"]:not([aria-selected="true"]) :is(.ce-auswahl-name, .ce-auswahl-zusatz-wert) { color: var(--ce-color-text-secondary); }
+:root[data-ce-bereich="kunde"] .ce-auswahl-haken {
+  position: relative;
+  width: 18px;
+  height: 1.4em;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-haken::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.4375rem;
+  height: 0.8125rem;
+  border: solid transparent;
+  border-width: 0 2px 2px 0;
+  border-radius: 0 0 1px 0;
+  translate: -50% -62%;
+  rotate: 45deg;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-option[aria-selected="true"] .ce-auswahl-haken::after { border-color: var(--ce-pr-bs-wahl-kante); }
+:root[data-ce-bereich="kunde"] .ce-auswahl-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+:root[data-ce-bereich="kunde"] .ce-auswahl-kopf { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+:root[data-ce-bereich="kunde"] .ce-auswahl-name {
+  color: var(--ce-pr-navy-800);
+  font-size: var(--ce-text-body-size);
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-abzeichen {
+  padding: 1px 8px;
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: 999px;
+  background: var(--ce-pr-inset);
+  color: var(--ce-pr-signal-ink);
+  font-size: var(--ce-text-caption-size);
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-beschreibung,
+:root[data-ce-bereich="kunde"] .ce-auswahl-hinweis {
+  color: var(--ce-color-text-secondary);
+  font-size: var(--ce-text-body-s-size);
+  line-height: 1.45;
+  overflow-wrap: break-word;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-hinweis { color: var(--ce-color-text-muted); }
+:root[data-ce-bereich="kunde"] .ce-auswahl-zusatz {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  text-align: right;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-zusatz-wert {
+  color: var(--ce-pr-navy-800);
+  font-family: var(--ce-font-numeric);
+  font-size: var(--ce-text-body-size);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  line-height: 1.4;
+  white-space: nowrap;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-zusatz-unter {
+  color: var(--ce-color-text-secondary);
+  font-size: var(--ce-text-caption-size);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  line-height: 1.4;
+  white-space: nowrap;
+}
+/* Schmal: der Zusatz rückt unter den Namen, statt den Text auf eine Wortbreite zu pressen. */
+@media (max-width: 30em) {
+  :root[data-ce-bereich="kunde"] .ce-auswahl-option { grid-template-columns: 18px minmax(0, 1fr); }
+  :root[data-ce-bereich="kunde"] .ce-auswahl-option > .ce-auswahl-zusatz {
+    grid-column: 2;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 6px;
+    margin-top: 4px;
+    text-align: left;
+  }
+}
+@media (pointer: coarse) {
+  :root[data-ce-bereich="kunde"] .ce-auswahl-option { min-height: var(--ce-size-touch-target); }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ce-bereich="kunde"] .ce-auswahl-liste { animation: none; }
+  :root[data-ce-bereich="kunde"] :is(.ce-auswahl-ausloeser, .ce-auswahl-option, .ce-auswahl-marke) { transition: none; }
+}
+
+/* Felder mit Auswahlmenü in den Kontokarten und der Absicherung: Beschriftung, Feld, Erklärung der Wahl. */
+:root[data-ce-bereich="kunde"] .dn-mode-feld { display: flex; flex-direction: column; gap: var(--ce-space-2); }
+:root[data-ce-bereich="kunde"] .dn-mode-feld > .field-label { margin: 0; }
+:root[data-ce-bereich="kunde"] .dn-mode-erklaerung { margin: 0; color: var(--ce-color-text-secondary); }
+:root[data-ce-bereich="kunde"] .ins-auswahl-label { display: block; margin: var(--ce-space-3) 0 var(--ce-space-2); }
+:root[data-ce-bereich="kunde"] .ins-auswahl-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ce-space-2);
+  margin-top: var(--ce-space-3);
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-bs-radius-flaeche);
+  background: var(--ce-pr-inset);
+}
+:root[data-ce-bereich="kunde"] .ins-auswahl-info-kopf { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2) var(--ce-space-3); }
+:root[data-ce-bereich="kunde"] .ins-auswahl-info .ins-card-badge { align-self: auto; margin-left: 0; }
+:root[data-ce-bereich="kunde"] .ins-auswahl-info .ins-card-calc { padding-left: 0; }
+:root[data-ce-bereich="kunde"] .ins-auswahl-info .ins-card-desc { margin: 0; }
+:root[data-ce-bereich="kunde"] .ins-auswahl-info .ins-card-cond { margin: 0; padding-top: 0; }
+/* Die Wertfelder folgen dem Infofeld (nur bei gewählter Absicherung) — ohne eigenen Abstand klebten sie daran (4 px). */
+:root[data-ce-bereich="kunde"] .ins-auswahl-info ~ .ins-inputs { margin-top: var(--ce-space-5); }
 
 /* ── Schalter (D5): groß genug, um den Zustand auf einen Blick zu lesen ──
    44 × 24 px statt 32 × 18 px. AUS: helle Spur mit klarer Kante (3,1:1), weißer Knopf links. AN: Navy der Wortmarke,
@@ -1903,7 +2223,11 @@
   color: var(--ce-color-text-primary);
 }
 
-/* ═══════════ 21 · AUSWAHL MIT ERKLÄRUNG — NAVY-WAHL (Variante B) ══════════
+/* ═══════════ 21 · AUSWAHL MIT ERKLÄRUNG (seit 2026-11-14 helle Wahl statt Navy) ═══
+   Premium Control System 2.0 (Betreiberauftrag 2026-11-14): Transportabsicherung, Art der Lieferadresse,
+   Lieferscheine und Abrechnung sind kompakte Auswahlmenüs (Abschnitt 3, AuswahlMenue.jsx). Als Karte bleiben die
+   Zollrechnung, der Importmodus und die Aufklappzeilen; gewählt tragen sie die helle Wahlfläche mit blauer Kante.
+   Der folgende Absatz beschreibt die Herkunft (Variante B, 2026-10-28). 
    Betreiberentscheidung 2026-10-28: Trägt jede Option einen erklärenden Satz, steht sie als helle Karte; die gewählte
    wird zur Navy-Fläche mit heller Schrift. Wo bisher der runde Radiopunkt stand, steht der Haken im hellen Signal —
    an derselben Stelle, damit Titel, Preise und Einrückungen jeder Karte bleiben, wie sie freigegeben sind. Gilt für
@@ -1994,34 +2318,18 @@
   left: calc(var(--ce-space-4) + var(--ce-wahl-platz) / 2);
 }
 
-/* Gewählt: Navy-Fläche der Wortmarke, helle Schrift, der Haken im hellen Signal. */
+/* Gewählt (Premium Control System 2.0, 2026-11-14): helle Wahlfläche, blaue Kante (1 px Rand + 1 px Innenring, kein
+   Layoutsprung), blauer Haken — dieselbe Sprache wie Auswahlmenü, Filterzeilen, Segmente und Kalender. Navy bleibt
+   der Hauptaktion vorbehalten. Der Titel steht in Navy und kräftig. */
 :root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) {
-  --ce-wahl-haken: var(--ce-pr-signal-on-navy);
-  border-color: var(--ce-pr-navy-800);
-  background: var(--ce-pr-navy-800);
-  color: var(--ce-pr-on-navy);
-  box-shadow: var(--ce-wahl-schatten-gewaehlt);
+  --ce-wahl-haken: var(--ce-pr-bs-wahl-kante);
+  border-color: var(--ce-pr-bs-wahl-kante);
+  background: var(--ce-pr-bs-wahl-flaeche);
+  box-shadow: inset 0 0 0 1px var(--ce-pr-bs-wahl-kante);
 }
-:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) :is(.dn-mode-label, .ci-mode-option-title, .ins-card-name, .ins-card-price-val, .ins-bullet-txt, .ins-card-calc, .res-card-name, .res-card-price-val, .service-filter-option-label) {
-  color: var(--ce-pr-on-navy);
-}
-:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) :is(.field-hint, .ins-card-desc, .ins-card-price-sub, .ins-card-provider, .ins-card-bullet--info .ins-bullet-txt, .res-card-price-sub, .service-filter-option-desc) {
-  color: var(--ce-pr-on-navy-2);
-}
-:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) .ins-card-bullet::before { background: var(--ce-pr-on-navy-3); }
-:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) .ins-card-badge {
-  border-color: var(--ce-pr-on-navy-line);
-  background: transparent;
-  color: var(--ce-pr-signal-on-navy);
-}
-:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) :is(.ins-card-details-btn, .ins-card-terms-link) {
-  border-bottom-color: var(--ce-pr-on-navy-line);
-  color: var(--ce-pr-on-navy);
-}
-:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) :is(.ins-card-details-btn, .ins-card-terms-link):focus-visible { outline-color: var(--ce-pr-signal-on-navy); }
-:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) .spinner {
-  border-color: var(--ce-pr-on-navy-line);
-  border-top-color: var(--ce-pr-on-navy);
+:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) :is(.ci-mode-option-title, .service-filter-option-label) {
+  color: var(--ce-pr-navy-800);
+  font-weight: 600;
 }
 
 /* Gesperrt und nicht gewählt: ruhige Mulde, Titel gedämpft, die Erklärung bleibt lesbar stehen. Eine gesperrte, aber
@@ -2040,7 +2348,7 @@
   outline-offset: var(--ce-focus-ring-offset);
 }
 
-/* Zeigen nur mit echtem Zeiger: Die offene Option zeigt ihren Haken leise vor, die gewählte wird einen Ton heller. */
+/* Zeigen nur mit echtem Zeiger: Die offene Option zeigt ihren Haken leise vor, die gewählte wird einen Ton kräftiger. */
 @media (hover: hover) {
   :root[data-ce-bereich="kunde"] .ce-wahl:not(:has(> input:checked), [aria-checked="true"], :has(> input:disabled)):hover {
     --ce-wahl-haken: var(--ce-color-border-strong);
@@ -2049,32 +2357,30 @@
     box-shadow: var(--ce-wahl-schatten-zeigen);
   }
   :root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]):not(:has(> input:disabled)):hover {
-    border-color: var(--ce-pr-navy-700);
-    background: var(--ce-pr-navy-700);
+    border-color: var(--ce-pr-bs-wahl-kante);
+    background: var(--ce-pr-bs-wahl-flaeche-zeigen);
   }
-  :root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) :is(.ins-card-details-btn, .ins-card-terms-link):hover { border-bottom-color: var(--ce-pr-signal-on-navy); }
 }
 
 /* Gruppen. Zollrechnung: Die Titel stehen kleiner als in den Kontokarten (Zeilenmitte entsprechend höher). */
 :root[data-ce-bereich="kunde"] .ci-mode-option.ce-wahl { --ce-wahl-zeilenmitte: calc(var(--ce-space-3) + 0.6125rem); }
 :root[data-ce-bereich="kunde"] .ci-mode:has(> .ce-wahl) { display: flex; flex-direction: column; gap: var(--ce-space-2); }
 /* Zeilen im Aufklappfeld: keine eigene Kante und kein Schatten in Ruhe, Radius konzentrisch zum Feld (12 − 4 px
-   Innenrand); gewählt trägt die Zeile den Schatten der Hauptaktion. */
+   Innenrand); gewählt trägt die Zeile die Wahlfläche mit blauer Kante wie jede Auswahl. */
 :root[data-ce-bereich="kunde"] .ce-wahl.ce-wahl--zeile {
   --ce-wahl-kante: transparent;
   --ce-wahl-grund: transparent;
   --ce-wahl-kante-zeigen: transparent;
   --ce-wahl-schatten: none;
   --ce-wahl-schatten-zeigen: none;
-  --ce-wahl-schatten-gewaehlt: var(--ce-pr-bs-schatten-primaer);
-  border-radius: var(--ce-radius-sm);
+  border-radius: calc(var(--ce-pr-bs-radius-flaeche) - 4px);
 }
 :root[data-ce-bereich="kunde"] .service-filter-dropdown:has(> .ce-wahl--zeile) { display: flex; flex-direction: column; gap: 2px; }
 
 /* ═══════════ 22 · KURZE AUSWAHL — SEGMENTSTEUERUNG (Variante C) ═══════════
-   Betreiberentscheidung 2026-10-28: Kurze Optionen ohne Erklärung stehen als zusammenhängende Spur; das gewählte
-   Segment ist Navy mit heller Schrift — das ersetzt im Kundenbereich den weißen Daumen aus premium-redesign.css
-   („kein Navy“). Spur `.ce-segment`, Segment `.ce-segment-option`: Sortierung und Preisanzeige (Angebote, Buchung),
+   Betreiberentscheidung 2026-10-28: Kurze Optionen ohne Erklärung stehen als zusammenhängende Spur. Seit dem
+   Premium Control System 2.0 (2026-11-14) trägt das gewählte Segment die helle Wahlfläche mit blauer Kante statt
+   Navy. Spur `.ce-segment`, Segment `.ce-segment-option`: Sortierung und Preisanzeige (Angebote, Buchung),
    Rechnungsfilter, Adresstyp, Labelformat, die Pflichtfragen zur Ware und die Datumsschnellwahl.
    Der Zustand kommt aus der Bedienung, wie sie ist — natives Radio, `aria-pressed` oder `.active`; keine Rolle, kein
    Handler und kein Wert ändert sich. Ein Radio im Segment liegt unsichtbar über dem ganzen Segment. Telefon: Die Spur
@@ -2129,14 +2435,14 @@
   color: inherit;
   font-weight: inherit;
 }
-/* Gewählt: Navy mit heller Schrift, auch unter dem Zeiger. */
+/* Gewählt (Premium Control System 2.0, 2026-11-14): die helle Wahlfläche mit blauer Kante wie jede Auswahl, Schrift
+   in Navy — kein Navy-Segment mehr (Navy trägt nur die Hauptaktion). */
 :root[data-ce-bereich="kunde"] .ce-segment .ce-segment-option:is([aria-pressed="true"], :has(> input:checked), .active) {
-  border-color: var(--ce-pr-navy-800);
-  background: var(--ce-pr-navy-800);
-  color: var(--ce-pr-on-navy);
-  box-shadow: var(--ce-pr-bs-schatten-primaer);
+  border-color: var(--ce-pr-bs-wahl-kante);
+  background: var(--ce-pr-bs-wahl-flaeche);
+  color: var(--ce-pr-navy-800);
+  box-shadow: inset 0 0 0 1px var(--ce-pr-bs-wahl-kante);
 }
-:root[data-ce-bereich="kunde"] .ce-segment .ce-segment-option:is([aria-pressed="true"], :has(> input:checked), .active) .labelfmt-desc { color: var(--ce-pr-on-navy-2); }
 :root[data-ce-bereich="kunde"] .ce-segment .ce-segment-option:is(:focus-visible, :has(> input:focus-visible)) {
   outline: var(--ce-focus-ring);
   outline-offset: var(--ce-focus-ring-offset);
@@ -2147,8 +2453,8 @@
     color: var(--ce-color-text-primary);
   }
   :root[data-ce-bereich="kunde"] .ce-segment .ce-segment-option:is([aria-pressed="true"], :has(> input:checked), .active):hover {
-    border-color: var(--ce-pr-navy-700);
-    background: var(--ce-pr-navy-700);
+    border-color: var(--ce-pr-bs-wahl-kante);
+    background: var(--ce-pr-bs-wahl-flaeche-zeigen);
   }
 }
 /* Grober Zeiger, Tablet und Telefon: jedes Segment ein volles Bedienziel. */
@@ -3390,4 +3696,64 @@
 }
 @media print {
   :root[data-ce-bereich="kunde"] .ce-pm { display: none; }
+}
+
+/* ═══════════ 29 · NAVIGATIONSSYMBOLE IN BEWEGUNG ══════════════════════════════════════════════════════════════
+   Premium Control System 2.0 (Betreiberauftrag 2026-11-14): Jedes Symbol der ersten Ebene antwortet auf Zeigen und
+   Tastaturfokus mit einer eigenen kurzen Bewegung, die seine Sache zeigt (NavSymbol.jsx). Regeln:
+   - nur Transform und Deckkraft, 260–340 ms, einmal je Zeigen — kein Dauerlauf, kein Springen der Zeile;
+   - in Ruhe deckungsgleich mit dem bisherigen Symbol (gleiche Teilpfade, kein Versatz);
+   - Zeigen nur mit echtem Zeiger (hover: hover); Tastaturfokus immer; bei reduzierter Bewegung gar nicht.
+   SVG-Teile drehen und skalieren um ihre eigene Mitte (transform-box: fill-box). */
+:root[data-ce-bereich="kunde"] .nav-sym { display: block; flex-shrink: 0; }
+:root[data-ce-bereich="kunde"] .nav-sym-teil { transform-box: fill-box; transform-origin: center; }
+:root[data-ce-bereich="kunde"] .nav-sym-licht {
+  fill: var(--ce-pr-signal-on-navy);
+  stroke: none;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+:root[data-ce-bereich="kunde"] .nav-sym--dashboard .nav-sym-teil--1 { --nav-dx: -1.5px; --nav-dy: -1.5px; }
+:root[data-ce-bereich="kunde"] .nav-sym--dashboard .nav-sym-teil--2 { --nav-dx: 1.5px; --nav-dy: -1.5px; }
+:root[data-ce-bereich="kunde"] .nav-sym--dashboard .nav-sym-teil--3 { --nav-dx: -1.5px; --nav-dy: 1.5px; }
+:root[data-ce-bereich="kunde"] .nav-sym--dashboard .nav-sym-teil--4 { --nav-dx: 1.5px; --nav-dy: 1.5px; }
+
+/* Nacheinander: erst der Startpunkt, dann der Weg, dann Pfeil und Ziel bzw. Zeile für Zeile (Verzug je Teil). */
+:root[data-ce-bereich="kunde"] .nav-sym--routeArrow .nav-sym-teil--3 { --nav-verzug: 70ms; }
+:root[data-ce-bereich="kunde"] .nav-sym--routeArrow :is(.nav-sym-teil--2, .nav-sym-teil--4) { --nav-verzug: 140ms; }
+:root[data-ce-bereich="kunde"] .nav-sym--invoice .nav-sym-teil--3 { --nav-verzug: 60ms; }
+:root[data-ce-bereich="kunde"] .nav-sym--invoice .nav-sym-teil--4 { --nav-verzug: 120ms; }
+
+@keyframes nav-sym-auseinander { 45% { translate: var(--nav-dx) var(--nav-dy); } }
+@keyframes nav-sym-drehen { to { rotate: 90deg; } }
+@keyframes nav-sym-anfahren { 0% { translate: 0 0; } 40% { translate: 3px 0; } 70% { translate: -0.5px 0; } 100% { translate: 0 0; } }
+@keyframes nav-sym-aufleuchten { 50% { scale: 1.22; } }
+@keyframes nav-sym-aufklappen { 50% { transform: perspective(48px) rotateY(-32deg); } }
+@keyframes nav-sym-heben { 50% { translate: 0 -2px; } }
+@keyframes nav-sym-zeile { 50% { opacity: 0.35; } }
+@keyframes nav-sym-kippen { 50% { transform: perspective(56px) rotateX(16deg) rotateY(-18deg); } }
+@keyframes nav-sym-licht { 0% { opacity: 0; scale: 0.8; } 35% { opacity: 0.55; } 100% { opacity: 0; scale: 2; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):focus-visible .nav-sym--dashboard .nav-sym-teil { animation: nav-sym-auseinander 300ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):focus-visible .nav-sym--plus { animation: nav-sym-drehen 260ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):focus-visible .nav-sym--truck { animation: nav-sym-anfahren 340ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):focus-visible .nav-sym--routeArrow :is(.nav-sym-teil--1, .nav-sym-teil--3, .nav-sym-teil--2, .nav-sym-teil--4) { animation: nav-sym-aufleuchten 220ms var(--ce-motion-ease-standard) var(--nav-verzug, 0ms) both; }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):focus-visible .nav-sym--idcard { animation: nav-sym-aufklappen 320ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):focus-visible .nav-sym--invoice { animation: nav-sym-heben 300ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):focus-visible .nav-sym--invoice :is(.nav-sym-teil--3, .nav-sym-teil--4, .nav-sym-teil--5) { animation: nav-sym-zeile 200ms var(--ce-motion-ease-standard) var(--nav-verzug, 0ms) both; }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):focus-visible .nav-sym--package { animation: nav-sym-kippen 320ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):focus-visible .nav-sym--user .nav-sym-licht { animation: nav-sym-licht 340ms var(--ce-motion-ease-standard); }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):hover .nav-sym--dashboard .nav-sym-teil { animation: nav-sym-auseinander 300ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):hover .nav-sym--plus { animation: nav-sym-drehen 260ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):hover .nav-sym--truck { animation: nav-sym-anfahren 340ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):hover .nav-sym--routeArrow :is(.nav-sym-teil--1, .nav-sym-teil--3, .nav-sym-teil--2, .nav-sym-teil--4) { animation: nav-sym-aufleuchten 220ms var(--ce-motion-ease-standard) var(--nav-verzug, 0ms) both; }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):hover .nav-sym--idcard { animation: nav-sym-aufklappen 320ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):hover .nav-sym--invoice { animation: nav-sym-heben 300ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):hover .nav-sym--invoice :is(.nav-sym-teil--3, .nav-sym-teil--4, .nav-sym-teil--5) { animation: nav-sym-zeile 200ms var(--ce-motion-ease-standard) var(--nav-verzug, 0ms) both; }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):hover .nav-sym--package { animation: nav-sym-kippen 320ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):hover .nav-sym--user .nav-sym-licht { animation: nav-sym-licht 340ms var(--ce-motion-ease-standard); }
 }

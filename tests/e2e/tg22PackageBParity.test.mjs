@@ -29,6 +29,7 @@ import {
   fuelleVersandformular, STANDARD_PAKET, ueberSidebar,
 } from "./helpers/newShipmentForm.mjs";
 import { mockeLieferadresse, lieferadressZustand, waehleLieferadresse } from "./helpers/residentialPriceInputs.mjs";
+import { MENUE, gewaehlterWert, waehleOption } from "./helpers/auswahlMenue.mjs";
 
 const PORT = 5378, BASE = `http://127.0.0.1:${PORT}`;
 const CE_ID = 4790;
@@ -268,7 +269,7 @@ async function zuSchritt2(page) {
 }
 
 async function absichern(page) {
-  await page.locator(`.ins-card:has(input[value="transit_cover"]) .ins-card-name`).click();
+  await waehleOption(page, "insuranceType", "transit_cover");
   await page.locator("#ins-goodsAreNew-ja").check();
   await page.locator("#ins-goodsAreFragile-nein").check();
   await page.waitForSelector(".ins-status-ok", { timeout: 10000 });
@@ -375,7 +376,7 @@ for (const [name, viewport] of [["834", { width: 834, height: 1112 }], ["390", {
     assert.ok(await querUeberlauf(page) <= 0, "Angebote: horizontaler Überlauf");
     await waehle(page, TG_A);
     await zuSchritt2(page);
-    await page.locator(`.ins-card:has(input[value="transit_cover"]) .ins-card-name`).click();
+    await waehleOption(page, "insuranceType", "transit_cover");
     const zeilen = page.locator(".ins-goods-question .ci-mode-option");
     await zeilen.first().waitFor({ timeout: 10000 });
     assert.equal(await zeilen.count(), 4);
@@ -486,11 +487,11 @@ test("K/L — Absicherung an A; B startet neutral ohne Neubepreisung; zurück zu
   await page.waitForSelector(".offer-card", { timeout: 20000 });
   await waehle(page, TG_B);
   const nachB = protokoll.reprice.length;
-  assert.equal(await page.locator(".ins-cards").count(), 0, "B startet nicht bei Schritt 1");
+  assert.equal(await page.locator(MENUE("insuranceType")).count(), 0, "B startet nicht bei Schritt 1");
   await zuSchritt2(page);
   await kurz(1200);
-  assert.equal(await page.locator('.ins-card input[value="none"]').isChecked(), true, "B übernimmt die Absicherung von A");
-  assert.equal(await page.locator('.ins-card input[value="transit_cover"]').isChecked(), false);
+  assert.equal((await gewaehlterWert(page, "insuranceType")) === "none", true, "B übernimmt die Absicherung von A");
+  assert.equal((await gewaehlterWert(page, "insuranceType")) === "transit_cover", false);
   assert.equal(await page.locator("#ins-goodsAreNew-ja").count(), 0, "die Antworten von A stehen an B");
   assert.equal(protokoll.reprice.length, nachB, "B hat beim Öffnen neu bepreist");
 
@@ -502,7 +503,7 @@ test("K/L — Absicherung an A; B startet neutral ohne Neubepreisung; zurück zu
   await zuSchritt2(page);
   // Kein erneutes Absichern: B war zuletzt gespiegelt, A trägt deshalb keinen passenden Schlüssel mehr.
   // Genau das ist die Regel — der Schlüssel des ZULETZT gespiegelten Angebots entscheidet.
-  assert.equal(await page.locator('.ins-card input[value="none"]').isChecked(), true);
+  assert.equal((await gewaehlterWert(page, "insuranceType")) === "none", true);
   await absichern(page);
   await page.getByRole("button", { name: "Zurück zur Übersicht" }).click();
   await page.getByRole("button", { name: "Zurück", exact: true }).click();
@@ -510,7 +511,7 @@ test("K/L — Absicherung an A; B startet neutral ohne Neubepreisung; zurück zu
   const vorRueckkehr = protokoll.reprice.length;
   await waehle(page, TG_A);
   await zuSchritt2(page);
-  assert.equal(await page.locator('.ins-card input[value="transit_cover"]').isChecked(), true, "dasselbe Angebot verlor seine Absicherung");
+  assert.equal((await gewaehlterWert(page, "insuranceType")) === "transit_cover", true, "dasselbe Angebot verlor seine Absicherung");
   assert.equal(await page.locator("#ins-goodsAreNew-ja").isChecked(), true);
   assert.equal(await page.locator("#ins-goodsAreFragile-nein").isChecked(), true);
   await page.waitForSelector(".ins-status-ok", { timeout: 10000 });
@@ -890,7 +891,7 @@ test("T — Vertragscodes: Abholtag fehlt, Format unbekannt, Referenz ungültig,
     await zuDenAngeboten(page);
     await waehle(page, TG_A);
     await zuSchritt2(page);
-    await page.locator(`.ins-card:has(input[value="transit_cover"]) .ins-card-name`).click();
+    await waehleOption(page, "insuranceType", "transit_cover");
     await page.locator("#ins-goodsAreNew-ja").check();
     await page.locator("#ins-goodsAreFragile-nein").check();
     const box = page.locator(".booking-conflict-box");

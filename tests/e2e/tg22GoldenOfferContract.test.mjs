@@ -27,6 +27,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fuelleVersandformular, STANDARD_PAKET, STANDARD_SENDUNGSANGABEN } from "./helpers/newShipmentForm.mjs";
 import { mockeLieferadresse, lieferadressZustand, waehleLieferadresse } from "./helpers/residentialPriceInputs.mjs";
+import { MENUE, waehleOption } from "./helpers/auswahlMenue.mjs";
 
 const PORT = 5393, BASE = `http://127.0.0.1:${PORT}`;
 const CE_ID = 4822;
@@ -245,7 +246,7 @@ async function zuSchritt1(page) {
 }
 
 async function absichern(page) {
-  await page.locator(`.ins-card:has(input[value="transit_cover"]) .ins-card-name`).click();
+  await waehleOption(page, "insuranceType", "transit_cover");
   await page.locator("#ins-goodsAreNew-ja").check();
   await page.locator("#ins-goodsAreFragile-nein").check();
   await page.waitForSelector(".ins-status-ok", { timeout: 10000 });
@@ -425,7 +426,7 @@ test("C — TG22 mit Warenwert ≤ 50 €: Grundabsicherung ohne Neubepreisung, 
   await zuSchritt2(page);
   await page.locator("#ins-cover-notice").waitFor({ timeout: 10000 });
   assert.match(await inhalt(page.locator("#ins-cover-notice")), /Grundabsicherung/);
-  assert.equal(await page.locator(".ins-cards").count(), 0, "bei Grundabsicherung erscheint eine kaufbare Absicherung");
+  assert.equal(await page.locator(MENUE("insuranceType")).count(), 0, "bei Grundabsicherung erscheint eine kaufbare Absicherung");
   const f = await preisflaechen(page);
   assert.deepEqual(f.kopf, { label: "Gesamt", brutto: "18,24 € brutto", netto: "15,33 € netto" });
   assert.deepEqual(f.sticky, f.kopf);
@@ -512,7 +513,7 @@ test("D — TG-Preisänderung: geschlossen bleibt gesperrt; übernommen aktualis
 
   // Ohne Absicherung gilt der NEUE Versandpreis — nicht der alte des Angebots.
   await zuSchritt2(page);
-  await page.locator(`.ins-card:has(input[value="none"]) .ins-card-name`).click();
+  await waehleOption(page, "insuranceType", "none");
   await warteAufText(page, ".blsum-price-gross", "20,24");
   f = await preisflaechen(page);
   assert.deepEqual(f.kopf, { label: "Gesamt", brutto: "20,24 € brutto", netto: "17,01 € netto" });
@@ -553,7 +554,7 @@ test("E — Vergleichsangebot versichert + Drift ohne Neubindung: nur „Angebot
 
   // Versichert: Gesamt 19,84 / 17,39 netto aus der Serverantwort.
   await zuSchritt2(page);
-  await page.locator(`.ins-card:has(input[value="standard"]) .ins-card-name`).click();
+  await waehleOption(page, "insuranceType", "standard");
   await warteAufText(page, ".blsum-price-gross", "19,84");
   let f = await preisflaechen(page);
   assert.deepEqual(f.kopf, { label: "Gesamt", brutto: "19,84 € brutto", netto: "17,39 € netto" });

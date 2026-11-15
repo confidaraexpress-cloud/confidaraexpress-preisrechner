@@ -237,6 +237,24 @@ function zahl(v) {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
+// Premium Control System 2.0 (2026-11-14): Zwei Beispielangebote zeigen die kompakten Auswahlmenüs der Buchung —
+// UPS mit gestufter Zusatzversicherung (Standard/Premium), GLS mit der Angabe „Art der Lieferadresse“. Alle Beträge
+// sind feste Beispielwerte dieser Demo, keine Rechenregel und kein Tarif: Die Zusatzversicherung kostet hier immer
+// dasselbe („ab“-Preis = genauer Preis), der Privatzuschlag ist ein runder Beispielbetrag.
+export const DEMO_ZUSATZVERSICHERUNG = Object.freeze({ standard: 3.99, premium: 7.49 });
+export const DEMO_ABSICHERUNGSGRENZE = 20000;
+export const DEMO_PRIVATZUSCHLAG = Object.freeze({ net: 2.94, vat: 0.56, gross: 3.5 });
+
+/** Grenzen der Stufen wie die Tarifantwort (insuranceCover je Stufe): Warenwert in ganzen Euro bis zur Beispielgrenze. */
+function demoStufengrenzen(warenwert) {
+  const w = Math.floor(zahl(warenwert));
+  if (w < 1) return null;
+  const stufe = w <= DEMO_ABSICHERUNGSGRENZE
+    ? { state: "available", coverLimit: DEMO_ABSICHERUNGSGRENZE, maxInsuredValue: w }
+    : { state: "above_cover_limit", coverLimit: DEMO_ABSICHERUNGSGRENZE, maxInsuredValue: null };
+  return { standard: { ...stufe }, premium: { ...stufe } };
+}
+
 /** Beispielangebote zu einer Anfrage: Preise aus Gewicht und Strecke, nachvollziehbar und klar als Beispiel. */
 export function demoAngebote(body) {
   const b = body && typeof body === "object" ? body : {};
@@ -247,6 +265,7 @@ export function demoAngebote(body) {
     : zahl(paket.weight ?? b.weight) * (Number(paket.count ?? b.packageCount ?? 1) || 1);
   const g = Math.max(1, gewicht || 2);
   const ziel = String((b.recipient && b.recipient.country) || b.to_country || b.toCountry || "DE").toUpperCase();
+  const grenzen = demoStufengrenzen(b.declarations && b.declarations.goodsValue);
   const ausland = ziel !== "DE";
   const abhol = werktag(1);
   const zustellung = (tage) => werktag(1 + tage);
@@ -268,11 +287,21 @@ export function demoAngebote(body) {
   const tarife = [
     angebot("DEMO0000000000000000000000000001", "dhl", "DHL", "Paket", preis(6.9, 0.38), ausland ? [2, 4] : [1, 2],
       { pickupWindowAdjustable: true }),
-    angebot("DEMO0000000000000000000000000002", "ups", "UPS", "Standardversand", preis(8.4, 0.42), ausland ? [2, 3] : [1, 2]),
+    angebot("DEMO0000000000000000000000000002", "ups", "UPS", "Standardversand", preis(8.4, 0.42), ausland ? [2, 3] : [1, 2],
+      grenzen ? {
+        insuranceAvailable: true,
+        insuranceDetails: {
+          isInsurable: true,
+          extraInsurancePriceBruttoPreselect: DEMO_ZUSATZVERSICHERUNG.standard,
+          extraInsurancePremiumPriceBruttoPreselect: DEMO_ZUSATZVERSICHERUNG.premium,
+        },
+        insuranceCover: grenzen,
+      } : {}),
     // Die Referenzaussagen spiegeln die echten Gegenstücke: GLS/DPD übermitteln die Referenz seit dem Portal-
     // Referenzauftrag (2026-11-06), ihr Druck ist nicht belegt (Standard „übermittelt"); DHL Express mit belegtem Druck
     // (Staging-Etiketten bis 17 Zeichen). Kein echtes Angebot sagt mehr „erscheint nicht auf dem Versandlabel".
-    angebot("DEMO0000000000000000000000000003", "gls", "GLS", "BusinessParcel", preis(6.4, 0.33), ausland ? [2, 4] : [1, 3]),
+    angebot("DEMO0000000000000000000000000003", "gls", "GLS", "BusinessParcel", preis(6.4, 0.33), ausland ? [2, 4] : [1, 3],
+      { bookable: false, unavailableReason: "price_inputs_required", priceCompleteness: "indicative", requiredPriceInputs: ["deliveryIsResidential"] }),
     angebot("DEMO0000000000000000000000000004", "dpd", "DPD", "Classic", preis(7.1, 0.35), ausland ? [2, 3] : [1, 2]),
     angebot("DEMO0000000000000000000000000005", "dhlexpress", "DHL Express", "Domestic Express 12:00", preis(24.5, 0.9), [1, 1],
       { deliveryProjection: { kind: "estimated", dateMin: isoDatum(zustellung(1)), dateMax: isoDatum(zustellung(1)), timeUntil: ausland ? null : "12:00" },
@@ -298,6 +327,8 @@ function z() {
     zustand = {
       konto: konto(),
       adressen: ADRESSEN(),
+      absicherung: new Map(),
+      lieferadresse: new Map(),
       sendungen: sendungen(),
       rechnungen: rechnungen(),
       mitteilungen: mitteilungen(),
@@ -504,6 +535,93 @@ const LS_VORLAGE = () => ({
     bottomMm: { min: 10, max: 80 } }, defaults: { topFirstMm: 45, topNextMm: 30, bottomMm: 25 } },
 });
 
+// ── Zusatzversicherung und Art der Lieferadresse (nur Beispielwerte, siehe oben) ─────────────────────────────
+function summen(net, vat, gross, zusatz = 0) {
+  return { customerShippingNet: net, shippingVat: vat, customerShippingGross: gross, insuranceGross: zusatz,
+    customerTotalNet: runde(net + zusatz), customerTotalGross: runde(gross + zusatz) };
+}
+
+/** POST /api/insurance/reprice — Stufenmodell. Kein Angebot mit Zusatzversicherung → wie der Server: abgelehnt. */
+function neubepreisung(body) {
+  const st = z();
+  const angebot = st.angebote.get(body.offerId) || null;
+  const typ = body.insuranceType;
+  const zusatz = typ === "none" ? 0 : DEMO_ZUSATZVERSICHERUNG[typ];
+  if (!angebot || angebot.insuranceAvailable !== true || typeof zusatz !== "number") return nichtVerfuegbar();
+  st.absicherung.set(body.offerId, typ);
+  return json({ selectedInsurance: typ, totals: summen(angebot.netPrice, angebot.vatAmount, angebot.finalPrice, zusatz) });
+}
+
+function lieferadressStand(st, offerId) {
+  if (!st.lieferadresse.has(offerId)) st.lieferadresse.set(offerId, { revision: 0, optionsId: null, bound: null });
+  return st.lieferadresse.get(offerId);
+}
+/** Grundpreis (vor einer Bindung der Angebotspreis) und Privatpreis = Grundpreis + Beispielzuschlag. */
+function lieferadressPreise(angebot) {
+  const basis = { net: angebot.basisNet ?? angebot.netPrice, vat: angebot.basisVat ?? angebot.vatAmount, gross: angebot.basisGross ?? angebot.finalPrice };
+  const privat = { net: runde(basis.net + DEMO_PRIVATZUSCHLAG.net), vat: runde(basis.vat + DEMO_PRIVATZUSCHLAG.vat), gross: runde(basis.gross + DEMO_PRIVATZUSCHLAG.gross) };
+  return { basis, privat };
+}
+const braucheLieferadresse = (angebot) => Array.isArray(angebot.requiredPriceInputs) && angebot.requiredPriceInputs.includes("deliveryIsResidential");
+
+/** POST /api/offers/price-input-options — beide Möglichkeiten mit Zuschlag und Summen, wie der Vertrag. */
+function preisangabeOptionen(body) {
+  const st = z();
+  const angebot = st.angebote.get(body.offerId) || null;
+  if (!angebot || !braucheLieferadresse(angebot)) return json({ error: "Angebot nicht gefunden.", code: "OFFER_NOT_FOUND" }, 404);
+  const stand = lieferadressStand(st, body.offerId);
+  if (Number(body.offerRevision ?? 0) !== stand.revision) {
+    return json({ error: "Der Preis wurde aktualisiert.", code: "OFFER_PRICE_CONFLICT", offerRevision: stand.revision }, 409);
+  }
+  stand.optionsId = ("demo" + String(st.naechsteNummer) + "r" + String(stand.revision)).padEnd(32, "0");
+  const { basis, privat } = lieferadressPreise(angebot);
+  return json({
+    offerId: body.offerId, offerRevision: stand.revision, optionsId: stand.optionsId,
+    expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(), priceInput: "deliveryIsResidential", boundValue: stand.bound,
+    options: [
+      { value: false, surcharge: { net: 0, vat: 0, gross: 0 }, totals: summen(basis.net, basis.vat, basis.gross) },
+      { value: true, surcharge: { ...DEMO_PRIVATZUSCHLAG }, totals: summen(privat.net, privat.vat, privat.gross) },
+    ],
+  });
+}
+
+/** POST /api/offers/price-inputs — bindet die Wahl; danach ist das Angebot buchbar und trägt den gebundenen Preis. */
+function preisangabeBinden(body) {
+  const st = z();
+  const angebot = st.angebote.get(body.offerId) || null;
+  if (!angebot || !braucheLieferadresse(angebot)) return json({ error: "Angebot nicht gefunden.", code: "OFFER_NOT_FOUND" }, 404);
+  const stand = lieferadressStand(st, body.offerId);
+  const wert = body.deliveryIsResidential === true;
+  const { basis, privat } = lieferadressPreise(angebot);
+  const preis = wert ? privat : basis;
+  const antwort = (idempotent) => json({
+    offerId: body.offerId, offerRevision: stand.revision, priceInputs: { deliveryIsResidential: wert },
+    priceCompleteness: "complete",
+    components: wert
+      ? [{ type: "shipping_base", taxable: true, ...basis }, { type: "residential_delivery_surcharge", taxable: true, ...DEMO_PRIVATZUSCHLAG }]
+      : [{ type: "shipping_base", taxable: true, ...basis }],
+    totals: summen(preis.net, preis.vat, preis.gross),
+    offer: { netPrice: preis.net, vatAmount: preis.vat, finalPrice: preis.gross, bookable: true, unavailableReason: null,
+      priceCompleteness: "complete", insuranceAvailable: false, insuranceDetails: null },
+    insuranceReset: false, idempotent,
+  });
+  if (stand.bound === wert && body.optionsId === stand.optionsId) return antwort(true);
+  if (Number(body.offerRevision ?? 0) !== stand.revision) {
+    return json({ error: "Der Preis wurde aktualisiert.", code: "OFFER_PRICE_CONFLICT", offerRevision: stand.revision }, 409);
+  }
+  if (body.optionsId !== stand.optionsId) return json({ error: "Die Angaben sind abgelaufen.", code: "PRICE_INPUT_OPTIONS_EXPIRED" }, 409);
+  if (body.expectedShippingGross !== preis.gross) {
+    return json({ error: "Bitte bestätigen Sie den Preis erneut.", code: "PRICE_CONFIRMATION_REQUIRED" }, 409);
+  }
+  stand.revision += 1;
+  stand.bound = wert;
+  st.angebote.set(body.offerId, {
+    ...angebot, basisNet: basis.net, basisVat: basis.vat, basisGross: basis.gross,
+    netPrice: preis.net, vatAmount: preis.vat, finalPrice: preis.gross, bookable: true, unavailableReason: null, priceCompleteness: "complete",
+  });
+  return antwort(false);
+}
+
 function sendungZu(id) {
   return z().sendungen.find((s) => String(s.id) === String(id)) || null;
 }
@@ -515,7 +633,11 @@ function buchen(body) {
   const id = 7000 + nr;
   const ab = `SIM-AB26-000${nr}`;
   const tracking = `DEMO${String(Date.now()).slice(-12)}`;
-  const brutto = angebot ? angebot.finalPrice : 14.28;
+  // Zusatzversicherung nur, wo das Angebot sie trägt — dieselbe Bedingung wie die Neubepreisung oben.
+  const zusatzTyp = body.insuranceSelection && body.insuranceSelection.type;
+  const zusatz = angebot && angebot.insuranceAvailable === true && typeof DEMO_ZUSATZVERSICHERUNG[zusatzTyp] === "number"
+    ? DEMO_ZUSATZVERSICHERUNG[zusatzTyp] : 0;
+  const brutto = runde((angebot ? angebot.finalPrice : 14.28) + zusatz);
   st.sendungen.unshift({
     id, status: "label_ready", selected_carrier: angebot ? angebot.publicCarrierId : "dhl", price_final: brutto, weight: 2,
     created_at: new Date().toISOString(), order_number: null, order_confirmation_number: ab, tracking_number: tracking,
@@ -848,6 +970,9 @@ function route(methode, pfad, query, optionen) {
   }
   if (pfad === "/api/jumingo/cart-total") return json({ voucher: { applied: false }, totals: null });
   if (pfad === "/api/jumingo/book") return json(buchen(body), 201);
+  if (pfad === "/api/insurance/reprice") return methode === "POST" ? neubepreisung(body) : nichtVerfuegbar();
+  if (pfad === "/api/offers/price-input-options") return methode === "POST" ? preisangabeOptionen(body) : nichtVerfuegbar();
+  if (pfad === "/api/offers/price-inputs") return methode === "POST" ? preisangabeBinden(body) : nichtVerfuegbar();
   if (pfad === "/api/legal/booking-context") return json({ enabled: false });
   if (pfad.startsWith("/api/legal/")) return json({ error: DEMO_TEXTE.nichtVerfuegbar }, 404);
   // Adresshilfe: die Demo prüft keine Anschriften — Antwort wie ein nicht eingerichteter Dienst (kein Hinweis am Feld).
@@ -864,6 +989,9 @@ function route(methode, pfad, query, optionen) {
 function wartezeit(pfad) {
   if (pfad === "/api/jumingo/calculate-price") return 1400;
   if (pfad === "/api/jumingo/book") return 1800;
+  // Neubepreisung und Bindung brauchen einen Moment — so sind Lade- und Sperrzustand der Auswahl zu sehen.
+  if (pfad === "/api/insurance/reprice" || pfad === "/api/offers/price-inputs") return 700;
+  if (pfad === "/api/offers/price-input-options") return 600;
   return 120;
 }
 

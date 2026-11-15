@@ -24,8 +24,9 @@ import { chromium } from "playwright";
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { fuelleVersandformular, STANDARD_PAKET } from "./helpers/newShipmentForm.mjs";
+import { waehleOption } from "./helpers/auswahlMenue.mjs";
 import {
-  LIEFERADRESSE_ID, lieferadressZustand, mockeLieferadresse, waehleLieferadresse, bestandteile,
+  LIEFERADRESSE_ID, lieferadressZustand, mockeLieferadresse, waehleLieferadresse, bestandteile, LIEFERADRESSE_AUSWAHL, lieferadressOptionen, schliesseLieferadresse,
 } from "./helpers/residentialPriceInputs.mjs";
 
 const PORT = 5395, BASE = `http://127.0.0.1:${PORT}`;
@@ -271,7 +272,7 @@ async function zuSchritt2(page) {
 }
 
 async function absichern(page) {
-  await page.locator(`.ins-card:has(input[value="transit_cover"]) .ins-card-name`).click();
+  await waehleOption(page, "insuranceType", "transit_cover");
   await page.locator("#ins-goodsAreNew-ja").check();
   await page.locator("#ins-goodsAreFragile-nein").check();
 }
@@ -446,13 +447,13 @@ test("C — Buchung heute + Privatadresse + Absicherung: Zeilen auf allen Fläch
   await zuDenAngeboten(page);
   await waehle(page, TG);
 
-  const geschaeftKarte = page.locator(`label[for="${LIEFERADRESSE_ID.geschaeft}"]`);
-  const privatKarte = page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`);
-  await privatKarte.waitFor({ timeout: 20000 });
+  // Die Optionen stehen in der offenen Liste des Auswahlmenüs (Premium Control System 2.0).
+  const { geschaeft: geschaeftKarte, privat: privatKarte } = await lieferadressOptionen(page);
   // Netto/Brutto-Vertrag (2026-10-02): eine neue Berechnung zeigt netto — vorn der Nettozuschlag, darunter brutto.
   assert.match(await inhalt(geschaeftKarte), /\+ 0,00 € netto/);
   assert.match(await inhalt(privatKarte), /\+ 3,18 € netto/);
   assert.match(await inhalt(privatKarte), /3,78 € brutto/);
+  await schliesseLieferadresse(page);
 
   // Vorläufig: der Preis enthält den Zuschlag, die Zeilen stammen aus den Serverfeldern des Angebots.
   assert.equal(await inhalt(page.locator(".blsum-price-label")), "Vorläufiger Preis");
@@ -576,7 +577,7 @@ test("E — Optionen melden SAME_DAY_COLLECTION_UNAVAILABLE: Fehlerfläche mit N
   assert.match(await inhalt(box), /Abholung heute nicht mehr möglich\. Bitte wählen Sie einen späteren Abholtag\./);
   assert.equal(await page.locator("#residential-options-recalculate").count(), 1, "der Weg zur Neuberechnung fehlt");
   assert.equal(await page.locator("#residential-options-retry").count(), 0, "„Erneut versuchen“ nach dem Abholschluss");
-  assert.equal(await page.locator('input[name="residential-delivery"]').count(), 0, "neben dem Hinweis steht eine Auswahl");
+  assert.equal(await page.locator(LIEFERADRESSE_AUSWAHL).count(), 0, "neben dem Hinweis steht eine Auswahl");
   assert.equal(p.lz.bindCalls.length, 0);
   assert.deepEqual(fehler, []);
   await page.close();
@@ -597,7 +598,7 @@ test("E2 — Optionen je Art: „nicht bestätigt“ und — ohne Art — „nic
     assert.doesNotMatch(text, /nicht mehr möglich|Rohtext/, String(art));
     assert.equal(await page.locator("#residential-options-recalculate").count(), 1, `${art}: der Weg zur Neuberechnung fehlt`);
     assert.equal(await page.locator("#residential-options-retry").count(), 0, `${art}: „Erneut versuchen“`);
-    assert.equal(await page.locator('input[name="residential-delivery"]').count(), 0, `${art}: Auswahl neben dem Hinweis`);
+    assert.equal(await page.locator(LIEFERADRESSE_AUSWAHL).count(), 0, `${art}: Auswahl neben dem Hinweis`);
     assert.equal(p.lz.bindCalls.length, 0);
     assert.deepEqual(fehler, [], String(art));
     await page.close();

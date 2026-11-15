@@ -5,7 +5,8 @@ import { useAuth } from "../../context/AuthContext";
 import { SupportRequestDialog } from "../support/SupportRequestDialog";
 import { SUPPORT_CARD } from "../../utils/supportRequest.mjs";
 import { BrandLogo } from "../ui/BrandLogo";
-import { Icon, ICON_SIZE } from "../ui/Icon";
+import { ICON_SIZE } from "../ui/Icon";
+import { NavSymbol } from "./NavSymbol";
 import { AccountManagerCard } from "./AccountManagerCard";
 import { usePwaInstall } from "../../hooks/usePwaInstall";
 import { useNavigationDrawer } from "../../hooks/useNavigationDrawer";
@@ -156,7 +157,7 @@ function NavItem({ item, page, onNavigate, variant }) {
       aria-current={aktiv ? "page" : undefined}
       onClick={() => onNavigate(item)}
     >
-      {item.icon && <span className="pp-nav-icon" aria-hidden="true"><Icon n={item.icon} s={ICON_SIZE.md} /></span>}
+      {item.icon && <span className="pp-nav-icon" aria-hidden="true"><NavSymbol n={item.icon} s={ICON_SIZE.md} /></span>}
       <span>{item.label}</span>
     </button>
   );
@@ -194,7 +195,7 @@ function SidebarGroup({ group, page, open, onToggle, onNavigate }) {
         aria-controls={itemsId}
         onClick={onToggle}
       >
-        <span className="pp-nav-icon" aria-hidden="true"><Icon n={group.icon} s={ICON_SIZE.md} /></span>
+        <span className="pp-nav-icon" aria-hidden="true"><NavSymbol n={group.icon} s={ICON_SIZE.md} /></span>
         <span className="pp-nav-group-label">{group.label}</span>
         <span className="pp-nav-group-chevron" aria-hidden="true" />
       </button>

@@ -30,6 +30,7 @@ import { readFileSync } from "node:fs";
 
 const lies = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
 const sidebar    = lies("./DashboardSidebar.jsx");
+const navSymbol  = lies("./NavSymbol.jsx");
 const layout     = lies("./DashboardLayout.jsx");
 const premium    = lies("../../styles/dashboard-premium.css");
 const responsive = lies("../../styles/responsive.css");
@@ -334,10 +335,18 @@ test("15 — Icons nur an den acht Hauptpunkten (E7, G5), aus der eigenen Kompon
   // Sendung, Sendungen, Adressbuch, Rechnungen und die drei Gruppenköpfe — tragen ein dekoratives Icon vor dem
   // Text. Unterpunkte und sekundäre Aktionen bleiben reiner Text; lucide-react bleibt verboten.
   assert.ok(!/from\s+["']lucide-react["']/.test(sidebar), "lucide-react darf nicht zurückkehren");
-  assert.match(code, /import \{ Icon, ICON_SIZE \} from "\.\.\/ui\/Icon";/, "das Icon kommt nicht aus der eigenen Komponente");
-  assert.equal((code.match(/<Icon\b/g) || []).length, 2, "genau zwei Renderstellen: Eintrag der ersten Ebene und Gruppenkopf");
-  assert.equal((code.match(/<span className="pp-nav-icon" aria-hidden="true"><Icon /g) || []).length, 2,
-    "jedes Icon sitzt dekorativ im festen Slot");
+  // Premium Control System 2.0 (Betreiberauftrag 2026-11-14): Gerendert wird <NavSymbol> — dieselbe Geometrie wie
+  // <Icon> (Teilpfade aus iconTeile), damit jedes Symbol beim Zeigen seine eigene Bewegung haben kann
+  // (premium-editorial.css, Abschnitt 29). Eine zweite Symbolquelle entsteht dadurch nicht.
+  assert.match(code, /import \{ ICON_SIZE \} from "\.\.\/ui\/Icon";/, "die Symbolgröße kommt nicht aus der eigenen Komponente");
+  assert.match(code, /import \{ NavSymbol \} from "\.\/NavSymbol";/, "das Symbol kommt nicht aus der eigenen Komponente");
+  assert.match(navSymbol, /import \{ Icon, ICON_SIZE, iconTeile \} from "\.\.\/ui\/Icon";/,
+    "NavSymbol nimmt seine Geometrie nicht aus <Icon>");
+  assert.doesNotMatch(navSymbol, /\sd="M/, "NavSymbol trägt eigene Pfaddaten statt der aus <Icon>");
+  assert.match(navSymbol, /aria-hidden="true"/, "NavSymbol ist nicht dekorativ");
+  assert.equal((code.match(/<NavSymbol\b/g) || []).length, 2, "genau zwei Renderstellen: Eintrag der ersten Ebene und Gruppenkopf");
+  assert.equal((code.match(/<span className="pp-nav-icon" aria-hidden="true"><NavSymbol /g) || []).length, 2,
+    "jedes Symbol sitzt dekorativ im festen Slot");
   assert.equal((code.match(/icon: "/g) || []).length, 8, "Icons gehören genau an die acht Hauptpunkte");
   for (const gruppe of ["shipping", "warehouse", "account"]) {
     const start = code.indexOf(`id: "${gruppe}"`);

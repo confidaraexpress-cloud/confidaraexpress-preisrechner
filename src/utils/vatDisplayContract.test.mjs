@@ -280,9 +280,10 @@ test("17 — Optionen (Art der Lieferadresse): Zuschlag im Modus vorn, der ander
   // Ohne Modus: die Standardanzeige netto.
   const ohne = residentialModuleView({ status: RESIDENTIAL_STATUS.READY, options: optionen });
   assert.equal(nbsp(privat(ohne).primaryText), "+ 3,18 € netto");
+  // Seit dem Premium Control System 2.0 (2026-11-14) im Auswahlmenü: der Betrag im Modus als Zusatz, der andere darunter.
   const modul = code(ADRESSART);
-  assert.match(modul, /<span className="res-card-price-val">\{k\.primaryText\}<\/span>/);
-  assert.match(modul, /<span className="res-card-price-sub">\{k\.secondaryText\}<\/span>/);
+  assert.match(modul, /aside: k\.primaryText,/);
+  assert.match(modul, /asideSub: k\.secondaryText,/);
 });
 
 test("18 — Preisänderung: beide Beträge sind ausdrücklich Bruttobeträge", () => {

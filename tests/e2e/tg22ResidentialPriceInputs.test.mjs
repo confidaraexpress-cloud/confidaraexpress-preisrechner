@@ -24,9 +24,9 @@ import { chromium } from "playwright";
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { fuelleVersandformular, STANDARD_PAKET } from "./helpers/newShipmentForm.mjs";
+import { gewaehlterWert, waehleOption } from "./helpers/auswahlMenue.mjs";
 import {
-  LIEFERADRESSE_ID, lieferadressZustand, mockeLieferadresse, waehleLieferadresse, bestandteile,
-  invalidiereLieferadresse,
+  LIEFERADRESSE_ID, lieferadressZustand, mockeLieferadresse, waehleLieferadresse, bestandteile, invalidiereLieferadresse, warteAufLieferadressAuswahl, warteAufLieferadresse, lieferadressWert, LIEFERADRESSE_AUSWAHL, lieferadressOptionen, schliesseLieferadresse,
 } from "./helpers/residentialPriceInputs.mjs";
 
 const PORT = 5394, BASE = `http://127.0.0.1:${PORT}`;
@@ -213,7 +213,7 @@ async function zuSchritt2(page) {
 }
 
 async function absichern(page) {
-  await page.locator(`.ins-card:has(input[value="transit_cover"]) .ins-card-name`).click();
+  await waehleOption(page, "insuranceType", "transit_cover");
   await page.locator("#ins-goodsAreNew-ja").check();
   await page.locator("#ins-goodsAreFragile-nein").check();
 }
@@ -340,9 +340,8 @@ test("B — Buchungsseite: Laden, Serverbeträge, Sperre ohne Wahl, Privatadress
   const laden = page.locator("#residential-options-loading");
   await laden.waitFor({ timeout: 20000 });
   assert.equal(await inhalt(laden), "Zuschlag wird berechnet …");
-  const geschaeftKarte = page.locator(`label[for="${LIEFERADRESSE_ID.geschaeft}"]`);
-  const privatKarte = page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`);
-  await privatKarte.waitFor({ timeout: 20000 });
+  // Die Optionen stehen in der offenen Liste des Auswahlmenüs (Premium Control System 2.0).
+  const { geschaeft: geschaeftKarte, privat: privatKarte } = await lieferadressOptionen(page);
   assert.deepEqual(p.lz.optionsCalls, [{ offerId: TG.offerId, offerRevision: 0 }]);
   assert.equal(await inhalt(page.locator("#residential-price-inputs-title")), "Art der Lieferadresse");
   // Netto/Brutto-Vertrag (2026-10-02): eine neue Berechnung zeigt netto — vorn der Nettozuschlag, darunter der
@@ -356,7 +355,8 @@ test("B — Buchungsseite: Laden, Serverbeträge, Sperre ohne Wahl, Privatadress
   assert.match(pr, /\+ 3,18 € netto/);
   assert.match(pr, /3,79 € brutto/);
   assert.doesNotMatch(`${g} ${pr}`, /MwSt/);
-  assert.equal(await page.locator('input[name="residential-delivery"]:checked').count(), 0, "eine Art ist vorausgewählt");
+  await schliesseLieferadresse(page);
+  assert.equal(await lieferadressWert(page), "", "eine Art ist vorausgewählt");
 
   // Ohne Wahl: vorläufiger Preis, keine Neubepreisung, kein Schritt 2.
   assert.equal(await inhalt(page.locator(".blsum-price-label")), "Vorläufiger Preis");
@@ -413,10 +413,10 @@ test("C — Optionen scheitern: Fehlertext und „Erneut versuchen“, danach w�
   const box = page.locator("#residential-options-error");
   await box.waitFor({ timeout: 20000 });
   assert.match(await inhalt(box), /Der Zuschlag konnte nicht berechnet werden\./);
-  assert.equal(await page.locator('input[name="residential-delivery"]').count(), 0, "neben dem Fehler steht eine Option");
+  assert.equal(await page.locator(LIEFERADRESSE_AUSWAHL).count(), 0, "neben dem Fehler steht eine Option");
   assert.equal(await inhalt(page.locator("#residential-options-retry")), "Erneut versuchen");
   await page.locator("#residential-options-retry").click();
-  await page.locator(`label[for="${LIEFERADRESSE_ID.geschaeft}"]`).waitFor({ timeout: 20000 });
+  await warteAufLieferadressAuswahl(page);
   assert.equal(p.lz.optionsCalls.length, 2);
   assert.equal(p.lz.bindCalls.length, 0);
   assert.equal(await page.locator("#residential-options-error").count(), 0);
@@ -429,14 +429,18 @@ test("D — Doppelklick bindet genau einmal; der Wechsel zur Geschäftsadresse b
   const p = await setup(page, { bindDelayMs: 900 });
   await zuDenAngeboten(page);
   await waehle(page, TG);
-  const privatKarte = page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`);
-  await privatKarte.waitFor({ timeout: 20000 });
+  // Die Optionen stehen in der offenen Liste des Auswahlmenüs (Premium Control System 2.0).
+  const { privat: privatKarte } = await lieferadressOptionen(page);
   await privatKarte.click();
-  // Während der Bindung sind beide Karten gesperrt — der zweite Klick erreicht keine Bindung.
-  await page.waitForFunction((id) => document.getElementById(id)?.disabled === true, LIEFERADRESSE_ID.geschaeft, { timeout: 5000 });
-  await privatKarte.click();
-  await page.waitForFunction((id) => { const el = document.getElementById(id); return !!el && el.checked && !el.disabled; },
-    LIEFERADRESSE_ID.privat, { timeout: 10000 });
+  // Während der Bindung sind beide Optionen gesperrt (aria-disabled) — ein zweiter, echter Mausklick auf die
+  // gesperrte Option erreicht keine Bindung. Der Klick geht bewusst an die Koordinaten: eine gesperrte Option nimmt
+  // Playwright nicht an, ein Kunde kann sie trotzdem treffen.
+  await lieferadressOptionen(page);
+  await page.waitForFunction((id) => document.getElementById(id)?.getAttribute("aria-disabled") === "true", LIEFERADRESSE_ID.geschaeft, { timeout: 5000 });
+  const gesperrt = await page.locator(`#${LIEFERADRESSE_ID.privat}`).boundingBox();
+  if (gesperrt) await page.mouse.click(gesperrt.x + gesperrt.width / 2, gesperrt.y + gesperrt.height / 2);
+  await schliesseLieferadresse(page);
+  await warteAufLieferadresse(page, true, { timeout: 10000 });
   await kurz(300);
   assert.equal(p.lz.bindCalls.length, 1, "ein Doppelklick band zweimal");
 
@@ -472,8 +476,8 @@ test("E — Zurück zu den Angeboten und wieder hinein: gebundener Preis in der 
 
   const optionsVorher = p.lz.optionsCalls.length;
   await karte.locator("button.offer-cta-btn").click();
-  await page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`).waitFor({ timeout: 20000 });
-  await page.waitForFunction((id) => document.getElementById(id)?.checked === true, LIEFERADRESSE_ID.privat, { timeout: 10000 });
+  await warteAufLieferadressAuswahl(page);
+  await warteAufLieferadresse(page, true, { timeout: 10000 });
   assert.equal(p.lz.optionsCalls.length, optionsVorher + 1);
   assert.deepEqual(p.lz.optionsCalls.at(-1), { offerId: TG.offerId, offerRevision: 1 });
   assert.equal(p.lz.bindCalls.length, 1, "die Rückkehr hat erneut gebunden");
@@ -504,8 +508,8 @@ test("F — /book meldet eine Preisänderung mit Neubestätigung: kein Übernahm
   assert.equal(await inhalt(hinweis), "Der Preis für dieses Angebot hat sich geändert. Bitte wählen Sie die Art der Lieferadresse erneut.");
   assert.equal(await page.locator("#price-drift-accept").count(), 0, "eine Neubestätigung bietet eine Übernahme an");
   assert.equal(await page.locator(".price-drift-card").count(), 0, "eine Neubestätigung öffnet den Preisdialog");
-  await page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`).waitFor({ timeout: 20000 });
-  assert.equal(await page.locator('input[name="residential-delivery"]:checked').count(), 0, "die alte Wahl gilt still weiter");
+  await warteAufLieferadressAuswahl(page);
+  assert.equal(await lieferadressWert(page), "", "die alte Wahl gilt still weiter");
   assert.equal(await inhalt(page.locator(".blsum-price-label")), "Vorläufiger Preis");
 
   await waehleLieferadresse(page, true);
@@ -527,7 +531,7 @@ test("G — Absicherung erst nach der Bindung; ein Wechsel der Lieferadresse set
   const p = await setup(page, { insuranceAvailable: true });
   await zuDenAngeboten(page);
   await waehle(page, TG);
-  await page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`).waitFor({ timeout: 20000 });
+  await warteAufLieferadressAuswahl(page);
   assert.equal(p.reprice.length, 0, "vor der Bindung wurde bepreist");
 
   await waehleLieferadresse(page, true);
@@ -543,7 +547,7 @@ test("G — Absicherung erst nach der Bindung; ein Wechsel der Lieferadresse set
   await waehleLieferadresse(page, false);
   await warteAufText(page, "#residential-options-notice", "Die Art der Lieferadresse wurde geändert.");
   await zuSchritt2(page);
-  assert.equal(await page.locator('.ins-card input[value="none"]').isChecked(), true, "die Absicherung blieb nach dem Wechsel gewählt");
+  assert.equal((await gewaehlterWert(page, "insuranceType")) === "none", true, "die Absicherung blieb nach dem Wechsel gewählt");
   assert.equal(await page.locator("#ins-goodsAreNew-ja").count(), 0, "die alten Antworten stehen noch da");
   await warteAufText(page, ".blsum-price-gross", "14,68");
   assert.deepEqual(fehler, []);
@@ -565,8 +569,8 @@ test("H — Neubepreisung verlangt eine Neubestätigung: kein Dialog, keine Übe
   assert.equal(await page.locator(".price-drift-card").count(), 0, "eine Neubestätigung öffnet den Preisdialog");
   assert.equal(await page.locator(".booking-confirm-panel").count(), 0, "die Seite blieb in Schritt 2");
   assert.ok(p.reprice.every((b) => !b.acceptPriceChange), "es wurde eine Übernahme gesendet");
-  await page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`).waitFor({ timeout: 20000 });
-  assert.equal(await page.locator('input[name="residential-delivery"]:checked').count(), 0);
+  await warteAufLieferadressAuswahl(page);
+  assert.equal(await lieferadressWert(page), "");
   assert.equal(p.book.length, 0);
   assert.deepEqual(fehler, []);
   await page.close();
@@ -579,13 +583,19 @@ for (const breite of [1440, 834, 390]) {
     await zuDenAngeboten(page);
     assert.ok(await querUeberlauf(page) <= 0, `${breite}px: Angebote mit horizontalem Überlauf`);
     await waehle(page, TG);
-    await page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`).waitFor({ timeout: 20000 });
+    await warteAufLieferadressAuswahl(page);
     await pruefeFlaeche(page, breite, "offen");
+    // Feld und beide Optionen der offenen Liste: innerhalb der Breite, Trefferfläche mindestens 44 px.
+    const feld = await page.locator(`${LIEFERADRESSE_AUSWAHL} [role="combobox"]`).boundingBox();
+    assert.ok(feld && feld.x >= 0 && feld.x + feld.width <= breite + 1, `${breite}px: das Auswahlfeld liegt außerhalb`);
+    assert.ok(feld.height >= 44, `${breite}px: das Auswahlfeld nur ${feld.height}px hoch`);
+    await lieferadressOptionen(page);
     for (const id of Object.values(LIEFERADRESSE_ID)) {
-      const box = await page.locator(`label[for="${id}"]`).boundingBox();
+      const box = await page.locator(`#${id}`).boundingBox();
       assert.ok(box && box.x >= 0 && box.x + box.width <= breite + 1, `${breite}px: ${id} liegt außerhalb`);
       assert.ok(box.height >= 44, `${breite}px: ${id} nur ${box.height}px hoch`);
     }
+    await schliesseLieferadresse(page);
     await waehleLieferadresse(page, true);
     await pruefeFlaeche(page, breite, "gebunden");
     await zuSchritt2(page);

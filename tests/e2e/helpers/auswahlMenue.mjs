@@ -1,6 +1,7 @@
 // Kompakte Auswahlmenüs des Kundenbereichs (src/components/ui/AuswahlMenue.jsx, Premium Control System 2.0) im E2E
 // bedienen — wie ein Kunde: Feld öffnen, Option anklicken. Nichts wird erzwungen (kein force, kein Entfernen von
-// disabled oder aria-disabled). Die Liste hängt als Portal an <body>; Umschlag und Liste tragen beide
+// disabled oder aria-disabled). Die Liste steht als Popover direkt hinter dem Auslöser (ohne Popover-API als Portal
+// an <body>) — die Selektoren hängen deshalb nicht an ihrer Lage: Umschlag und Liste tragen beide
 // data-auswahl="<name>", jede Option ihren Wert als data-wert, der Auslöser den gewählten Wert als data-wert
 // ("" = noch nichts gewählt).
 

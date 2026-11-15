@@ -100,21 +100,27 @@ test("B3 — Zeiger: mousedown hält den Fokus am Auslöser, gewählt wird erst 
     "Klick daneben schließt (Umschlag und Portal-Liste einzeln geprüft)");
 });
 
-test("B4 — Lage: Portal an <body>, immer nach unten, Platz ohne Animation, feste Leisten werden gemessen", () => {
-  assert.match(menue, /createPortal\(/);
-  assert.match(menue, /document\.body,\s*\)\}/);
+test("B4 — Lage: oberste Ebene (ohne Popover-API Portal an <body>), immer nach unten, Platz ohne Animation, feste Leisten werden gemessen", () => {
+  assert.match(menue, /\{listeElement && \(MIT_POPOVER \? listeElement : createPortal\(listeElement, document\.body\)\)\}/,
+    "ohne Popover-API muss die Liste weiter als Portal an <body> hängen (kein Abschneiden durch Vorfahren)");
   assert.match(menue, /const top = t\.bottom \+ ABSTAND;/, "die Liste öffnet unter dem Auslöser");
   assert.match(menue, /wurzel\.style\.scrollBehavior = "auto";\s*window\.scrollBy\(0, hoch\);\s*wurzel\.style\.scrollBehavior = vorher;/,
     "das Hochrücken läuft ohne Animation und stellt den Stil wieder her");
-  assert.match(menue, /Math\.max\(freieOberkante\(x\), angemeldeteOberkante\(t\.top\)\)/,
+  assert.match(menue, /Math\.max\(freieOberkante\(x, liste\), angemeldeteOberkante\(t\.top\)\)/,
     "der Auslöser darf nie unter eine feste oder angemeldete Leiste geschoben werden");
+  assert.match(menue, /Math\.max\(freieOberkante\(x, listeRef\.current\), angemeldeteOberkante\(t\.top\)\) \+ RAND;/,
+    "ins Bild holen misst die Leisten oben ohne die Liste selbst");
+  // Oben wie unten wird die offene Liste beim Abtasten übersprungen — als Popover steht sie vor dem ersten Platzieren
+  // oben links in der obersten Ebene und gälte sonst als feste Leiste (gemessen 2026-11-15).
+  assert.match(menue, /leisteAn\(document\.elementsFromPoint\(x, y \+ 1\)\.find\(\(el\) => !liste \|\| !liste\.contains\(el\)\)\)/);
+  assert.doesNotMatch(menue, /document\.elementFromPoint\(/, "ein Abtasten ohne Ausnahme der Liste träfe die Liste selbst");
   assert.match(menue, /freieUnterkante\(t\.left \+ t\.width \/ 2, liste\)/, "feste Leisten unten begrenzen die Liste");
   assert.match(menue, /if \(t\.bottom < 0 \|\| t\.top > window\.innerHeight\) \{ setOffen\(false\); return; \}/,
     "weggescrollt schließt die Liste statt losgelöst zu schweben");
   // …aber beim Öffnen holt das Menü den Auslöser zuerst ins Bild — sonst schlösse die Liste per Tastatur sofort wieder
   // (Fokus scrollt sanft, Enter kommt vorher; gemessen in billingMode B12).
-  assert.match(menue, /if \(!offen\) return undefined;\s*insBild\(\);\s*platziere\(\);\s*platzSchaffen\(\);\s*startScroll\(\);/,
-    "die Reihenfolge beim Öffnen: ins Bild, platzieren, Platz schaffen, Startscroll");
+  assert.match(menue, /if \(!offen\) return undefined;\s*zeigeObenauf\(listeRef\.current\);\s*insBild\(\);\s*platziere\(\);\s*platzSchaffen\(\);\s*startScroll\(\);/,
+    "die Reihenfolge beim Öffnen: obenauf zeigen (erst dann hat die Liste Geometrie), ins Bild, platzieren, Platz schaffen, Startscroll");
   assert.match(menue, /const dy = t\.top < oben \? t\.top - oben : t\.bottom > unten \? t\.bottom - unten : 0;/);
   // Knapper Platz (200 % Zoom): erst fällt der Rand, dann die Mindesthöhe — die Liste reicht nie unter eine feste Leiste.
   assert.match(menue, /Math\.max\(Math\.min\(MIN_HOEHE, bisLeiste\), Math\.min\(MAX_HOEHE, bisLeiste - RAND\), NAMENSZEILE\)/,
@@ -130,6 +136,29 @@ test("B5 — Leisten, die erst beim Scrollen erscheinen, melden sich an: die kle
   const leiste = ohneKommentare(lies("../booking/BookingStickySummary.jsx"));
   assert.match(leiste, /className=\{`booking-sticky-layer\$\{stuck \? " is-stuck" : ""\}`\}\s*aria-hidden="true"\s*data-klebt-oben=""/,
     "die klebende Zusammenfassung meldet sich nicht an — ein Menü schöbe seinen Auslöser darunter");
+});
+
+test("B7 — Lesereihenfolge: die Liste steht im DOM direkt hinter dem Auslöser (Popover, oberste Ebene, kein Fokuswechsel)", () => {
+  // Freigabeprüfung 2026-11-15: Als Portal am Ende von <body> erreichten Wischgesten (VoiceOver iOS, TalkBack) die
+  // Optionen nicht — dazwischen lag der Rest der Seite. Die Liste wird jetzt im Umschlag gerendert, gleich nach dem
+  // Auslöser, und über die Popover-API obenauf gezeichnet.
+  assert.match(menue, /const MIT_POPOVER = typeof HTMLElement !== "undefined" && typeof HTMLElement\.prototype\.showPopover === "function";/);
+  assert.match(menue, /popover=\{MIT_POPOVER \? "manual" : undefined\}/,
+    "nur „manual“: kein eigenes Schließen des Browsers, kein Fokuswechsel — das Bauteil regelt Escape und Klick daneben");
+  assert.doesNotMatch(menue, /popover=\{?"auto"/, "„auto“ schlösse die Liste beim Klick auf den Auslöser selbst (Licht-Schließen)");
+  assert.match(menue, /if \(!MIT_POPOVER \|\| !liste \|\| liste\.matches\(":popover-open"\)\) return;\s*try \{ liste\.showPopover\(\); \}/,
+    "showPopover nur einmal und nur mit Popover-API (ein zweiter Aufruf wirft)");
+  // Die Liste folgt im JSX unmittelbar auf den Auslöser — beides Kinder desselben Umschlags.
+  assert.match(menue, /<\/button>\s*\{listeElement && \(MIT_POPOVER \? listeElement/,
+    "zwischen Auslöser und Liste darf nichts stehen — sonst läge es beim Wischen dazwischen");
+  assert.doesNotMatch(menue, /listeRef\.current\??\.focus\(/, "der Fokus bleibt am Auslöser (select-only combobox)");
+  // Browser-Vorgaben für [popover] (inset 0, fit-content, CanvasText) sind aufgehoben, sonst stünde die Liste mittig.
+  const css = readFileSync(new URL("../../styles/premium-editorial.css", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const regel = css.match(/:root\[data-ce-bereich="kunde"\] \.ce-auswahl-liste \{([^}]*)\}/);
+  assert.ok(regel, "Regel .ce-auswahl-liste fehlt");
+  for (const d of [/inset: auto;/, /height: auto;/, /margin: 0;/, /color: var\(--ce-color-text-primary\);/]) {
+    assert.match(regel[1], d, `.ce-auswahl-liste: ${d} fehlt`);
+  }
 });
 
 test("B6 — Zugänglichkeit: Combobox mit Liste, Zustand je Option, beschriftet über das sichtbare Etikett", () => {

@@ -663,14 +663,21 @@
 :root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser.is-open .ce-auswahl-marke { transform: translateY(2px) rotate(225deg); }
 :root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser:disabled .ce-auswahl-marke { border-color: var(--ce-color-text-disabled); }
 
+/* Die Liste steht als Popover (popover="manual") direkt hinter dem Auslöser und liegt in der obersten Ebene — dort gilt
+   z-index nicht, sie liegt über allem (auch über der schwebenden Kundenservice-Karte). Ohne Popover-API bleibt sie ein
+   Portal an <body> auf Ebene 60. `inset`, `height` und `color` heben die Browser-Vorgaben für [popover] auf (inset 0,
+   fit-content, CanvasText); Lage und Breite setzt die Komponente direkt am Knoten (Freigabeprüfung 2026-11-15). */
 :root[data-ce-bereich="kunde"] .ce-auswahl-liste {
   position: fixed;
   z-index: 60;
+  inset: auto;
+  height: auto;
   display: flex;
   flex-direction: column;
   gap: 2px;
   margin: 0;
   padding: 4px;
+  color: var(--ce-color-text-primary);
   list-style: none;
   overflow-y: auto;
   overscroll-behavior: contain;

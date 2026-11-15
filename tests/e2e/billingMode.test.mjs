@@ -154,14 +154,15 @@ async function setupRoutes(ziel, opts) {
   });
 }
 
-async function neueSeite(mode, extra = {}, viewport = { width: 1280, height: 1000 }) {
+async function neueSeite(mode, extra = {}, viewport = { width: 1280, height: 1000 }, kontext = {}) {
   // `capabilities` undefined = älteres Backend ohne das Feld in /kundenbereich.
   const state = {
     mode, dnMode: BASE_USER.delivery_note_mode, patchDelayMs: 0,
     patches: [], periodCalls: 0, periodFails: false, periodBody: null, capabilities: undefined,
     request: null, readMode: null, requestReads: 0, requestReadFails: false, posts: [], deletes: 0, adminCalls: 0, ...extra,
   };
-  const ctx = await browser.newContext({ viewport });
+  // `kontext`: weitere Browsereinstellungen, etwa Touch (hasTouch, isMobile) für B20.
+  const ctx = await browser.newContext({ viewport, ...kontext });
   await setupRoutes(ctx, { state });
   const page = await ctx.newPage();
   const fehler = [];
@@ -506,6 +507,167 @@ test("B17 — Stand nicht lesbar: kein Antragsformular (kein Doppelantrag aus Un
   assert.equal(state.posts.length, 0);
   assert.equal(await modus(page), "single");
   assert.equal(await page.locator(AUSLOESER(BM)).isEnabled(), true, "die Auswahl bleibt bedienbar");
+  assert.deepEqual(fehler, []);
+  await ctx.close();
+});
+
+// ─── Lesereihenfolge (Freigabeprüfung 2026-11-15) ─────────────────────────────────────────────────────────────────
+
+test("B18 — Lesereihenfolge: die offene Liste folgt im DOM und im Barrierefreiheitsbaum direkt auf das Feld, obenauf und unverändert platziert", async () => {
+  // Als Portal am Ende von <body> lagen zwischen Feld und erster Option 27 sichtbare Elemente (gemessen 1440 px): wer
+  // mit VoiceOver (iOS) oder TalkBack wischt, kam nach dem Öffnen nicht zu den Optionen, und die Liste schloss, sobald
+  // das Feld aus dem Bild scrollte. Jetzt steht die Liste gleich hinter dem Feld und wird über die Popover-API in der
+  // obersten Ebene gezeichnet — Lage, Fokus und Bedienung bleiben, wie sie waren.
+  // 720 × 450 entspricht 200 % Zoom eines 1440 × 900-Fensters (WCAG 1.4.4/1.4.10).
+  for (const viewport of [{ width: 1280, height: 1000 }, { width: 390, height: 844 }, { width: 720, height: 450 }]) {
+    const { ctx, page, state, fehler } = await neueSeite("single", {}, viewport);
+    await zumProfil(page);
+    for (const name of [BM, DN]) {
+      // Ein Vorfahr mit transform und overflow: hidden — die Lage, gegen die früher nur das Portal half.
+      await page.locator(`.profile-section-body:has(.ce-auswahl[data-auswahl="${name}"])`).evaluate((el) => {
+        el.style.transform = "translateX(0)"; el.style.overflow = "hidden";
+      });
+      await oeffneMenue(page, name);
+      const lage = await page.evaluate((n) => {
+        const k = document.querySelector(`.ce-auswahl[data-auswahl="${n}"] [role="combobox"]`);
+        const l = document.querySelector(`[role="listbox"][data-auswahl="${n}"]`);
+        const rk = k.getBoundingClientRect(), rl = l.getBoundingClientRect();
+        const erste = l.querySelector('[role="option"]').getBoundingClientRect();
+        const treffer = document.elementFromPoint(erste.left + erste.width / 2, erste.top + erste.height / 2);
+        return {
+          direktHinterDemFeld: k.nextElementSibling === l,
+          obenauf: l.matches(":popover-open"),
+          unterDemFeld: rl.top >= rk.bottom && rl.top - rk.bottom <= 8,
+          buendig: Math.abs(rl.left - rk.left) < 1 && Math.abs(rl.width - rk.width) < 1,
+          ersteOptionSichtbar: !!treffer && l.contains(treffer),
+          imBild: rl.left >= 0 && rl.right <= window.innerWidth && rl.bottom <= window.innerHeight,
+          fokusAmFeld: document.activeElement === k,
+        };
+      }, name);
+      assert.deepEqual(lage, {
+        direktHinterDemFeld: true, obenauf: true, unterDemFeld: true, buendig: true,
+        ersteOptionSichtbar: true, imBild: true, fokusAmFeld: true,
+      }, `${name} @ ${viewport.width} px`);
+      // Barrierefreiheitsbaum: auf das Feld folgt unmittelbar die Liste mit ihren Optionen.
+      const baum = await page.locator(`.ce-auswahl[data-auswahl="${name}"]`).ariaSnapshot();
+      assert.match(baum, /^- combobox "[^\n]*\[expanded\][^\n]*\n- listbox "[^"\n]+":\n\s+- option "/,
+        `${name}: die Liste folgt im Barrierefreiheitsbaum nicht direkt auf das Feld\n${baum}`);
+      await schliesseMenue(page, name);
+    }
+    // Bedienung unverändert: Tastatur wählt (Enter öffnet, Pos1 markiert die erste Option, Enter wählt), gespeichert
+    // wird genau einmal — Ausgangswert ist „none“, die letzte Option.
+    await page.locator(AUSLOESER(DN)).focus();
+    const vorher = state.patches.length;
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Home");
+    await page.keyboard.press("Enter");
+    await page.locator(".profile-section-body", { has: page.locator(AUSLOESER(DN)) }).locator(".profile-saved").waitFor({ timeout: 15000 });
+    assert.equal(state.patches.length, vorher + 1);
+    assert.deepEqual(state.patches.at(-1), { delivery_note_mode: "confidara" });
+    assert.equal(await gewaehlterWert(page, DN), "confidara");
+    assert.deepEqual(fehler, []);
+    await ctx.close();
+  }
+});
+
+test("B19 — Tastatur und Screenreader-Semantik: Leertaste, Pfeile, Pos1/Ende, gesperrte Option, Escape und Tab wählen nie beiläufig", async () => {
+  // Einzelrechnungskonto: „Sammelrechnung alle 7 Tage“ ist gesperrt („Nur auf Antrag.“) — die Fälle, in denen eine
+  // beiläufige Wahl Geschäftswirkung hätte (Speichern), dürfen nie eine auslösen.
+  const { ctx, page, state, fehler } = await neueSeite("single");
+  await zumProfil(page);
+  const knopf = page.locator(AUSLOESER(BM));
+  const liste = page.locator(`[role="listbox"][data-auswahl="${BM}"]`);
+  const stand = () => page.evaluate(() => {
+    const k = document.querySelector('.ce-auswahl[data-auswahl="billingMode"] [role="combobox"]');
+    return { offen: k.getAttribute("aria-expanded"), marke: k.getAttribute("aria-activedescendant"), fokusAmFeld: document.activeElement === k };
+  });
+
+  // Tastaturfokus (wie per Tab erreicht) — sichtbarer Fokusring.
+  await knopf.focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  assert.equal(await knopf.evaluate((k) => document.activeElement === k && k.matches(":focus-visible")), true, "kein sichtbarer Tastaturfokus am Feld");
+
+  // Leertaste öffnet, die Markierung steht auf der gewählten Option, der Fokus bleibt am Feld.
+  await page.keyboard.press(" ");
+  await liste.waitFor({ state: "visible", timeout: 5000 });
+  assert.deepEqual(await stand(), { offen: "true", marke: "bm-mode-single", fokusAmFeld: true });
+  // Pfeile ohne Umlauf, Pos1 und Ende.
+  await page.keyboard.press("ArrowDown");
+  assert.equal((await stand()).marke, "bm-mode-consolidated_7d");
+  await page.keyboard.press("ArrowDown");
+  assert.equal((await stand()).marke, "bm-mode-consolidated_7d", "kein Umlauf am Ende");
+  await page.keyboard.press("Home");
+  assert.equal((await stand()).marke, "bm-mode-single");
+  await page.keyboard.press("ArrowUp");
+  assert.equal((await stand()).marke, "bm-mode-single", "kein Umlauf am Anfang");
+  await page.keyboard.press("End");
+  assert.equal((await stand()).marke, "bm-mode-consolidated_7d");
+
+  // Semantik, wie ein Screenreader sie liest: benanntes Feld, aufgeklappt, benannte Liste, Zustände je Option, der
+  // Sperrgrund als Teil der Option.
+  const baum = await page.locator(`.ce-auswahl[data-auswahl="${BM}"]`).ariaSnapshot();
+  assert.match(baum, /- combobox "Rechnungsstellung Einzelrechnung je Sendung" \[expanded\]/, baum);
+  assert.match(baum, /- listbox "Rechnungsstellung":/, baum);
+  assert.match(baum, /- option "Einzelrechnung je Sendung[^"]*" \[selected\]/, baum);
+  assert.match(baum, /- option "Sammelrechnung alle 7 Tage[^"]*Nur auf Antrag\.[^"]*" \[disabled\]/, baum);
+
+  // Enter auf der gesperrten Option: keine Wahl, kein Speichern, die Liste bleibt offen.
+  await page.keyboard.press("Enter");
+  assert.equal((await stand()).offen, "true", "die Liste muss bei einer gesperrten Option offen bleiben");
+  assert.equal(await gewaehlterWert(page, BM), "single");
+  // Escape schließt ohne Wahl, der Fokus bleibt am Feld.
+  await page.keyboard.press("Escape");
+  await liste.waitFor({ state: "detached", timeout: 5000 });
+  assert.deepEqual(await stand(), { offen: "false", marke: null, fokusAmFeld: true });
+
+  // Tab bei offener Liste schließt ohne Wahl und geht zum nächsten Bedienelement NACH dem Feld (nicht ans Seitenende).
+  await page.locator(AUSLOESER(DN)).focus();
+  await page.keyboard.press("Enter");
+  await page.locator(`[role="listbox"][data-auswahl="${DN}"]`).waitFor({ state: "visible", timeout: 5000 });
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("Tab");
+  await page.locator(`[role="listbox"][data-auswahl="${DN}"]`).waitFor({ state: "detached", timeout: 5000 });
+  const nachTab = await page.evaluate(() => {
+    const k = document.querySelector('.ce-auswahl[data-auswahl="deliveryNoteMode"] [role="combobox"]');
+    const a = document.activeElement;
+    return { weiter: a !== k && a !== document.body && !!(k.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING) };
+  });
+  assert.deepEqual(nachTab, { weiter: true });
+  assert.equal(await gewaehlterWert(page, DN), "none", "Tab darf nie wählen");
+
+  // Klick daneben schließt ohne Wahl.
+  await oeffneMenue(page, BM);
+  await page.mouse.click(5, 5);
+  await liste.waitFor({ state: "detached", timeout: 5000 });
+  assert.equal(await gewaehlterWert(page, BM), "single");
+
+  assert.equal(state.patches.length, 0, "keine dieser Bedienungen darf speichern");
+  assert.deepEqual(fehler, []);
+  await ctx.close();
+});
+
+test("B20 — Touch (Smartphone, 390 px): Tippen öffnet und wählt, eine gesperrte Option bleibt wirkungslos", async () => {
+  const { ctx, page, state, fehler } = await neueSeite("single", {}, { width: 390, height: 844 }, { hasTouch: true, isMobile: true });
+  await zumProfil(page);
+  // Gesperrte Sammelrechnung antippen: nichts geschieht, kein PATCH.
+  await page.locator(AUSLOESER(BM)).tap();
+  await page.locator(`[role="listbox"][data-auswahl="${BM}"]`).waitFor({ state: "visible", timeout: 5000 });
+  const gesperrt = await page.locator(OPTION(BM, "consolidated_7d")).boundingBox();
+  await page.touchscreen.tap(gesperrt.x + gesperrt.width / 2, gesperrt.y + gesperrt.height / 2);
+  assert.equal(await gewaehlterWert(page, BM), "single");
+  assert.equal(state.patches.length, 0);
+  // Lieferschein: Feld antippen, Option antippen — genau eine Speicherung, Liste zu.
+  await page.locator(AUSLOESER(DN)).tap();
+  await page.locator(`[role="listbox"][data-auswahl="${DN}"]`).waitFor({ state: "visible", timeout: 5000 });
+  await page.locator(OPTION(DN, "external")).tap();
+  await page.locator(`[role="listbox"][data-auswahl="${DN}"]`).waitFor({ state: "detached", timeout: 5000 });
+  await page.locator(".profile-section-body", { has: page.locator(AUSLOESER(DN)) }).locator(".profile-saved").waitFor({ timeout: 15000 });
+  assert.deepEqual(state.patches, [{ delivery_note_mode: "external" }]);
+  // Touch-Ziele: jede Option mindestens 44 px hoch (WCAG 2.5.8 verlangt 24, die Plattform 44/48).
+  await page.locator(AUSLOESER(DN)).tap();
+  const hoehen = await page.locator(`[role="listbox"][data-auswahl="${DN}"] [role="option"]`).evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
+  assert.ok(hoehen.every((h) => h >= 44), `Optionen zu niedrig für Touch: ${hoehen.join(", ")}`);
   assert.deepEqual(fehler, []);
   await ctx.close();
 });

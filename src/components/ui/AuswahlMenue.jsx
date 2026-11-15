@@ -14,9 +14,18 @@ import { bewegeMarke, istWechsel, optionsIndex, startMarke } from "./auswahlLogi
  * die schon gewählte Option und gesperrte Optionen lösen nichts aus.
  *
  * MUSTER: „select-only combobox“ (WAI-ARIA 1.2), dasselbe wie die Uhrzeitauswahl (DeliveryTimeSelect). Der Fokus
- * bleibt auf dem Auslöser, die markierte Option steht in `aria-activedescendant`. Die Liste hängt im Portal an
- * `document.body`: so schneidet sie kein Vorfahr mit `overflow: hidden` ab und kein Vorfahr mit `transform`
- * verankert `position: fixed` neu (beide Fallen sind in DeliveryTimeSelect beschrieben).
+ * bleibt auf dem Auslöser, die markierte Option steht in `aria-activedescendant`.
+ *
+ * LAGE IM DOKUMENT = LESEREIHENFOLGE (Freigabeprüfung 2026-11-15). Die Liste steht im DOM direkt hinter dem Auslöser und
+ * wird über die Popover-API (`popover="manual"`, `showPopover()`) in der obersten Ebene gezeichnet: Kein Vorfahr mit
+ * `overflow: hidden` schneidet sie ab, kein Vorfahr mit `transform` verankert `position: fixed` neu (beide Fallen sind
+ * in DeliveryTimeSelect beschrieben). Gemessener Anlass: Als Portal am Ende von `<body>` lagen in der Lesereihenfolge
+ * 27 sichtbare Elemente zwischen Auslöser und erster Option (Rechnungsstellung, 1440 px). Wer mit VoiceOver (iOS) oder
+ * TalkBack wischt — dort gibt es keine Pfeiltasten und `aria-activedescendant` wirkt nicht —, kam nach dem Öffnen nicht
+ * zu den Optionen, sondern über den Rest der Seite, und die Liste schloss, sobald der Auslöser aus dem Bild scrollte.
+ * Jetzt folgt auf den Auslöser beim Wischen unmittelbar die Liste. Ohne Popover-API (ältere Browser) bleibt es beim
+ * Portal an `document.body` — dieselbe Lage und Bedienung wie zuvor. `popover="manual"`: kein eigenes Schließen des
+ * Browsers, kein Fokuswechsel; Schließen, Escape und Klick daneben regelt weiter dieses Bauteil.
  *
  * ÖFFNUNGSRICHTUNG IST FEST: IMMER NACH UNTEN, wie in DeliveryTimeSelect. Fehlt unter dem Auslöser Platz für die ganze
  * Liste, rückt die Seite vor dem ersten Zeichnen ohne Animation nach oben — höchstens so weit, dass der Auslöser unter
@@ -38,6 +47,16 @@ const MAX_HOEHE = 560;  // wenige Optionen mit Erklärung: mobil rund 520 px (Tr
 const MIN_HOEHE = 150;  // darunter wäre eine Liste mit Erklärungen nicht mehr sinnvoll bedienbar
 const NAMENSZEILE = 48; // Polster und Namenszeile einer Option — so viel muss von der gewählten beim Öffnen zu sehen sein
 
+// Popover-API vorhanden (Chrome/Edge 114+, Safari 17+, Firefox 125+)? Sonst Portal an <body> (siehe Kopf, LAGE).
+const MIT_POPOVER = typeof HTMLElement !== "undefined" && typeof HTMLElement.prototype.showPopover === "function";
+
+/** Zeigt die Liste in der obersten Ebene — vor jeder Messung, denn erst dann hat sie ihre Geometrie. Schon offen oder
+ *  nicht verbunden: nichts zu tun (die Liste bleibt dann eine gewöhnliche feste Fläche, dieselbe Lage). */
+function zeigeObenauf(liste) {
+  if (!MIT_POPOVER || !liste || liste.matches(":popover-open")) return;
+  try { liste.showPopover(); } catch { /* nicht verbunden */ }
+}
+
 /** Feste Leiste unter einem Punkt: das Rechteck vom getroffenen Element bis zu seinem Vorfahren mit position
  *  fixed/sticky. Über die ganze Kette gemessen, weil der klebende Träger selbst die Höhe 0 haben kann und nur sein
  *  Inhalt herausragt (BookingStickySummary). null = der Punkt liegt auf mitscrollendem Inhalt. */
@@ -53,11 +72,14 @@ function leisteAn(el) {
   return null;
 }
 
-/** Unterkante der am oberen Bildrand übereinanderliegenden festen Leisten an der Stelle x (0 = keine Leiste). */
-function freieOberkante(x) {
+/** Unterkante der am oberen Bildrand übereinanderliegenden festen Leisten an der Stelle x (0 = keine Leiste). Die offene
+ *  Liste selbst wird übersprungen wie in freieUnterkante: Als Popover steht sie vor dem ersten Platzieren oben links in
+ *  der obersten Ebene und galt sonst als feste Leiste — gemessen rückte die Seite dadurch beim Öffnen von
+ *  „Rechnungsstellung“ zu weit (390 px: Liste bei 382 statt 119 px). */
+function freieOberkante(x, liste) {
   let y = 0;
   for (let i = 0; i < 4; i += 1) {
-    const leiste = leisteAn(document.elementFromPoint(x, y + 1));
+    const leiste = leisteAn(document.elementsFromPoint(x, y + 1).find((el) => !liste || !liste.contains(el)));
     if (!leiste || leiste.unten <= y + 1) break;
     y = leiste.unten;
   }
@@ -139,7 +161,7 @@ export function AuswahlMenue({
     const t = ausloeserRef.current?.getBoundingClientRect();
     if (!t) return;
     const x = t.left + t.width / 2;
-    const oben = Math.max(freieOberkante(x), angemeldeteOberkante(t.top)) + RAND;
+    const oben = Math.max(freieOberkante(x, listeRef.current), angemeldeteOberkante(t.top)) + RAND;
     const unten = freieUnterkante(x, listeRef.current) - RAND;
     const dy = t.top < oben ? t.top - oben : t.bottom > unten ? t.bottom - unten : 0;
     if (dy === 0) return;
@@ -161,7 +183,7 @@ export function AuswahlMenue({
     const bedarf = liste.scrollHeight + (liste.offsetHeight - liste.clientHeight);
     const fehlt = Math.min(MAX_HOEHE, bedarf) - (freieUnterkante(x, liste) - t.bottom - ABSTAND - RAND);
     if (fehlt <= 0) return;
-    const hoch = Math.min(fehlt, t.top - Math.max(freieOberkante(x), angemeldeteOberkante(t.top)) - RAND);
+    const hoch = Math.min(fehlt, t.top - Math.max(freieOberkante(x, liste), angemeldeteOberkante(t.top)) - RAND);
     if (hoch <= 0) return;
     const wurzel = document.documentElement;
     const vorher = wurzel.style.scrollBehavior;
@@ -187,6 +209,7 @@ export function AuswahlMenue({
   // Messen vor dem Zeichnen; ein zweites Mal im nächsten Frame, falls sich der Auslöser noch bewegt.
   useLayoutEffect(() => {
     if (!offen) return undefined;
+    zeigeObenauf(listeRef.current);
     insBild();
     platziere();
     platzSchaffen();
@@ -206,7 +229,7 @@ export function AuswahlMenue({
     };
   }, [offen, platziere]);
 
-  // Klick außerhalb schließt. Die Liste hängt im Portal — Umschlag und Liste werden einzeln geprüft.
+  // Klick außerhalb schließt. Ohne Popover-API hängt die Liste im Portal — Umschlag und Liste werden einzeln geprüft.
   useEffect(() => {
     if (!offen) return undefined;
     const aussen = (e) => {
@@ -297,6 +320,53 @@ export function AuswahlMenue({
     </span>
   ) : null);
 
+  const listeElement = offen ? (
+    <ul
+      className="ce-auswahl-liste"
+      id={listeId}
+      ref={listeRef}
+      role="listbox"
+      data-auswahl={name}
+      aria-labelledby={labelId || undefined}
+      popover={MIT_POPOVER ? "manual" : undefined}
+      // Ein Klick in Rand oder Fuge (kein <li> getroffen) nähme sonst dem Auslöser den Fokus: die Liste stünde offen,
+      // Pfeile und Escape gingen ins Leere. Rechts von clientWidth liegt die Bildlaufleiste — sie bleibt bedienbar.
+      onMouseDown={(e) => { if (e.target === e.currentTarget && e.nativeEvent.offsetX < e.currentTarget.clientWidth) e.preventDefault(); }}
+    >
+      {optionen.map((o, i) => (
+        <li
+          key={String(o.value)}
+          id={optionId(o, i)}
+          role="option"
+          aria-selected={o.value === value}
+          aria-disabled={o.disabled ? true : undefined}
+          aria-label={o.ariaLabel || undefined}
+          aria-describedby={beschreibungVon(o, i)}
+          data-wert={String(o.value)}
+          data-markiert={i === markiert ? "true" : undefined}
+          className={`ce-auswahl-option${i === markiert ? " is-marked" : ""}`}
+          // mousedown verhindert nur den Fokuswechsel (der Fokus bleibt am Auslöser); gewählt wird mit dem Klick.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => waehle(i)}
+          // Markiert wird erst bei echter Zeigerbewegung: Unter einem ruhenden Zeiger, über den die Liste aufgeht oder
+          // per Tastatur weiterscrollt, feuert mouseenter auch ohne Bewegung und verschöbe die Tastaturmarkierung.
+          onMouseMove={() => { if (i !== markiert) { durchZeiger.current = true; setMarkiert(i); } }}
+        >
+          <span className="ce-auswahl-haken" aria-hidden="true" />
+          <span className="ce-auswahl-text">
+            <span className="ce-auswahl-kopf">
+              <span className="ce-auswahl-name" lang="de">{o.label}</span>
+              {o.badge && <span className="ce-auswahl-abzeichen" id={`${optionId(o, i)}-abzeichen`}>{o.badge}</span>}
+            </span>
+            {o.description && <span className="ce-auswahl-beschreibung" id={`${optionId(o, i)}-beschreibung`}>{o.description}</span>}
+            {o.hint && <span className="ce-auswahl-hinweis" id={`${optionId(o, i)}-hinweis`}>{o.hint}</span>}
+          </span>
+          {zusatz(o)}
+        </li>
+      ))}
+    </ul>
+  ) : null;
+
   return (
     <div className={`ce-auswahl${className ? ` ${className}` : ""}`} ref={wrapRef} data-auswahl={name}>
       <button
@@ -324,52 +394,8 @@ export function AuswahlMenue({
         <span className="ce-auswahl-marke" aria-hidden="true" />
       </button>
 
-      {offen && createPortal(
-        <ul
-          className="ce-auswahl-liste"
-          id={listeId}
-          ref={listeRef}
-          role="listbox"
-          data-auswahl={name}
-          aria-labelledby={labelId || undefined}
-          // Ein Klick in Rand oder Fuge (kein <li> getroffen) nähme sonst dem Auslöser den Fokus: die Liste stünde offen,
-          // Pfeile und Escape gingen ins Leere. Rechts von clientWidth liegt die Bildlaufleiste — sie bleibt bedienbar.
-          onMouseDown={(e) => { if (e.target === e.currentTarget && e.nativeEvent.offsetX < e.currentTarget.clientWidth) e.preventDefault(); }}
-        >
-          {optionen.map((o, i) => (
-            <li
-              key={String(o.value)}
-              id={optionId(o, i)}
-              role="option"
-              aria-selected={o.value === value}
-              aria-disabled={o.disabled ? true : undefined}
-              aria-label={o.ariaLabel || undefined}
-              aria-describedby={beschreibungVon(o, i)}
-              data-wert={String(o.value)}
-              data-markiert={i === markiert ? "true" : undefined}
-              className={`ce-auswahl-option${i === markiert ? " is-marked" : ""}`}
-              // mousedown verhindert nur den Fokuswechsel (der Fokus bleibt am Auslöser); gewählt wird mit dem Klick.
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => waehle(i)}
-              // Markiert wird erst bei echter Zeigerbewegung: Unter einem ruhenden Zeiger, über den die Liste aufgeht oder
-              // per Tastatur weiterscrollt, feuert mouseenter auch ohne Bewegung und verschöbe die Tastaturmarkierung.
-              onMouseMove={() => { if (i !== markiert) { durchZeiger.current = true; setMarkiert(i); } }}
-            >
-              <span className="ce-auswahl-haken" aria-hidden="true" />
-              <span className="ce-auswahl-text">
-                <span className="ce-auswahl-kopf">
-                  <span className="ce-auswahl-name" lang="de">{o.label}</span>
-                  {o.badge && <span className="ce-auswahl-abzeichen" id={`${optionId(o, i)}-abzeichen`}>{o.badge}</span>}
-                </span>
-                {o.description && <span className="ce-auswahl-beschreibung" id={`${optionId(o, i)}-beschreibung`}>{o.description}</span>}
-                {o.hint && <span className="ce-auswahl-hinweis" id={`${optionId(o, i)}-hinweis`}>{o.hint}</span>}
-              </span>
-              {zusatz(o)}
-            </li>
-          ))}
-        </ul>,
-        document.body,
-      )}
+      {/* Direkt hinter dem Auslöser, gezeichnet in der obersten Ebene; ohne Popover-API als Portal (siehe Kopf, LAGE). */}
+      {listeElement && (MIT_POPOVER ? listeElement : createPortal(listeElement, document.body))}
     </div>
   );
 }

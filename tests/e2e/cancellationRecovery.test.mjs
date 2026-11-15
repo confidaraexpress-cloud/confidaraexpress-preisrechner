@@ -16,6 +16,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import { weitereAktion, weitereAktionenEintraege } from "./helpers/weitereAktionen.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -86,11 +87,11 @@ async function setupRoutes(page, { stornoAntwort, protokoll } = {}) {
 async function stornoAbsenden(page) {
   await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("table tbody tr", { timeout: 20000 });
-  await page.getByRole("button", { name: "Stornierung anfragen", exact: true }).first().click();
+  await weitereAktion(page, "Stornierung anfragen"); // Bediensystem D3: Eintrag im Menü „Weitere Aktionen“
   await page.waitForSelector(".stn-dialog-textarea", { timeout: 10000 });
   await page.locator(".stn-dialog-textarea").fill("Die Ware wird doch nicht mehr benötigt.");
-  // Im DIALOG klicken, nicht in der Zeile dahinter: „Stornierung anfragen" heißt
-  // der Auslöser der Liste, „Anfrage absenden" der Knopf des Dialogs.
+  // Im DIALOG klicken, nicht in der Zeile dahinter: „Stornierung anfragen" heißt der Menüeintrag
+  // der Liste, „Anfrage absenden" der Knopf des Dialogs.
   await page.locator(".stn-dialog-card").getByRole("button", { name: "Anfrage absenden" }).click();
 }
 
@@ -154,7 +155,7 @@ test("1 — geänderter Serverzustand: kein Laufzeitfehler, Abgleich läuft, Zei
 
   // Die Oberfläche bleibt bedienbar.
   await page.getByRole("button", { name: "Tracking", exact: true }).first().waitFor({ timeout: 5000 });
-  await page.getByRole("button", { name: "Dokumente" }).first().waitFor({ timeout: 5000 });
+  assert.ok((await weitereAktionenEintraege(page, { timeout: 5000 })).includes("Dokumente"), "„Dokumente“ fehlt im Menü „Weitere Aktionen“");
   await page.close();
 });
 

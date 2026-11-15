@@ -4,6 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import { weitereAktion } from "./helpers/weitereAktionen.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -84,12 +85,12 @@ test.after(async () => {
 });
 
 /* Der Weg zum Label führt seit dem Dokumente-Drawer über die zentrale Aktion
-   „Dokumente" der Sendungsliste: die Liste bietet keinen eigenen Labelknopf mehr
+   „Dokumente" der Sendungsliste (seit dem Bediensystem im Menü „Weitere Aktionen“): die Liste bietet keinen eigenen Labelknopf mehr
    an. Der Download selbst ist unverändert derselbe Request auf denselben Pfad —
    die drei Fehlerfälle darunter prüfen genau das. */
 async function ladeLabelUeberDenDrawer(page) {
   await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: "Dokumente" }).first().click();
+  await weitereAktion(page, "Dokumente");
   await page.waitForSelector(".sdoc-drawer", { timeout: 15000 });
   await page.locator(".sdoc-row", { hasText: "Versandlabel" })
     .getByRole("button", { name: /Herunterladen/ }).click();

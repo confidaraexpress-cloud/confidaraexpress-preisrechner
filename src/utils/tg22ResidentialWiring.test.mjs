@@ -160,7 +160,13 @@ test("W11 — die Auswahl: stabile Kennungen, dreiwertig, Texte nur aus dem Modu
                     'id="residential-options-retry"', 'id="residential-options-recalculate"', 'id="residential-options-shipments"']) {
     assert.ok(modul.includes(id), `Kennung fehlt: ${id}`);
   }
-  assert.match(modul, /type="radio"\s+id=\{k\.id\}\s+name="residential-delivery"\s+checked=\{k\.checked === true\}\s+disabled=\{k\.disabled === true\}/);
+  // Seit dem Premium Control System 2.0 (2026-11-14) ein Auswahlmenü: dieselben Kennungen je Option, gewählt ist nur
+  // eine Karte mit checked === true — sonst steht der Platzhalter (dreiwertig, keine Vorauswahl).
+  assert.match(modul, /<AuswahlMenue\s+name="residential-delivery"\s+id="residential-delivery"/);
+  assert.match(modul, /const gewaehlt = karten\.find\(\(k\) => k\.checked === true\) \|\| null;/);
+  assert.match(modul, /value=\{gewaehlt \? gewaehlt\.value : null\}/);
+  assert.match(modul, /id: k\.id,/);
+  assert.match(modul, /disabled: k\.disabled === true,/);
   assert.doesNotMatch(modul, /Geschäftsadresse|Privatadresse|Zuschlag wird berechnet|Erneut versuchen|brutto|netto/,
     "ein Kundentext steht als Literal im Bauteil");
   assert.doesNotMatch(modul, /<Switch/);

@@ -15,6 +15,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import { weitereAktion } from "./helpers/weitereAktionen.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -204,7 +205,7 @@ test("(5) Stornodialog benennt die Sendung ohne Providerreferenz und ohne CE-BS"
   await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("table", { timeout: 20000 });
 
-  await page.getByRole("button", { name: /storn/i }).first().click();
+  await weitereAktion(page, "Stornierung anfragen"); // Bediensystem D3: Eintrag im Menü „Weitere Aktionen“
   await page.waitForSelector("[role=dialog]", { timeout: 10000 });
   const dialogText = await page.locator("[role=dialog]").innerText();
   // Die EIGENE Referenz des Kunden gewinnt — sie erkennt er am schnellsten.

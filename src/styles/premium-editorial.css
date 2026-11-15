@@ -121,10 +121,10 @@
   line-height: var(--ce-text-body-line);
   color: var(--ce-color-text-secondary);
 }
-/* Übersicht: Die Datumszeile steht als Kopfzeile über dem Gruß; Gruß und Name sprechen mit einer Stimme. Seit dem
-   Feinschliff (2026-11-01) im Nebentext (6,92:1) statt im gedämpften Ton (5,36:1). */
+/* Übersicht: Gruß mit Namen zuerst, die Datumszeile darunter (Betreiberauftrag 2026-11-14, Premium Control System 2.0:
+   „Name über dem Datum“) — das ist auch die Reihenfolge im DOM, Screenreader und Bild lesen gleich. Gruß und Name
+   sprechen mit einer Stimme. Seit dem Feinschliff (2026-11-01) im Nebentext (6,92:1) statt im gedämpften Ton. */
 :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-sub {
-  order: -1;
   font-size: var(--ce-text-label-size);
   font-weight: var(--ce-weight-medium);
   color: var(--ce-color-text-secondary);
@@ -157,25 +157,122 @@
   :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-title { font-size: var(--ce-pr-ed-gruss-size-mobile); }
 }
 
-/* ═══════════ 3 · KNÖPFE ═══════════════════════════════════════════════════
-   Handlungen als Kapseln: Navy gefüllt für die Hauptaktion, Navy-Kontur für die
-   Zweitaktion, Text mit Unterstreichung für leise Wege. Farbe und Schatten aus den
-   Knopf-Tokens (E5) — keine Bewegung, kein Verlauf, keine Deckkraft. Einzige Ausnahme:
-   das Pluszeichen der Anlegen-Aktionen dreht sich beim Zeigen (unten); der Knopf selbst
-   bleibt stehen. */
+/* ═══════════ 3 · BEDIENSYSTEM ═════════════════════════════════════════════
+   Premium Control System (Betreiberentscheidungen D1–D7, 2026-11-14). Zehn Rollen sprechen eine Sprache: Primär,
+   Sekundär, Text (Ghost und Link), Gefahr, Aktionsmenü, Auswahlfeld, Auswahlkarte (Abschnitt 21), Schalter, Reiter
+   und Symboltaste. Gemeinsam sind
+     Maß      Standard 44 px, Hauptaktion 48 px, kompakt 36 px nur in Tabellenzeilen und dichten Leisten (D2); mit
+              grobem Zeiger jedes Bedienziel mindestens 44 px.
+     Form     leicht gerundete Rechtecke (D7): Bedienelemente 10 px, Menüs, Aufklappfelder und Karten 12 px, Einträge
+              und Segmente darin konzentrisch.
+     Farbe    Navy der Wortmarke für Handlung und Auswahl, Signal-Tinte für Textwege, Signal für den Fokus.
+     Tiefe    eine Innenkante von oben und ein kurzer, navygetönter Schatten (D1/D6) — kein Verlauf, kein Leuchten,
+              keine Verschiebung, kein Pulsieren.
+     Zustände Zeigen hellt auf, Drücken senkt die Fläche (Innenschatten), Fokus ist der Ring der Foundation, gesperrt
+              bleibt lesbar ohne Schatten und ohne Deckkraft; Übergänge nur für Farbe und Schatten, 160 ms.
+   Ersetzt die Kapseln (2026-10-28) und die runde Menütaste (2026-10-29). Tokens: --ce-pr-bs-* (variables.css).
+   Einzige Bewegung an einem Knopf bleibt das Pluszeichen der Anlegen-Aktionen (unten). */
+
+/* ── Maß und Form aller Knöpfe ──
+   Die Höhe läuft über die Variable aus buttons.css, damit Ladezustand und Symboltaste (Breite = Höhe) mitgehen. */
+:root[data-ce-bereich="kunde"] .btn {
+  --ce-btn-height: var(--ce-pr-bs-hoehe);
+  transition:
+    background-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    border-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    box-shadow var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
+}
+/* Auch .btn-sm trägt im Bereich das Standardmaß (D2). Kompakt nur mit nachgewiesenem Platzbedarf: in Tabellenzeilen, in
+   den Zeilenaktionen neben der Menütaste (Adressen, Rechnungen, Lager, Dokumente — dort so hoch wie die Taste), für
+   Textwege ohne Fläche und für die Kopiertaste im Fließtext. Schmal wachsen die Zeilenaktionen mit der Taste auf 44 px,
+   mit grobem Zeiger jedes Ziel. */
+:root[data-ce-bereich="kunde"] :is(td, th, .abk-row-actions, .inv-actions-row, .inv-warehouse-actions, .sdoc-row) :is(.btn-sm, .btn-xs),
+:root[data-ce-bereich="kunde"] :is(.btn-sm, .btn-xs):is(.btn-link, .ce-copynum-btn) { --ce-btn-height: var(--ce-pr-bs-hoehe-kompakt); }
+:root[data-ce-bereich="kunde"] .btn-lg { --ce-btn-height: var(--ce-pr-bs-hoehe-gross); }
+@media (max-width: 860px) {
+  :root[data-ce-bereich="kunde"] :is(td, th, .abk-row-actions, .inv-actions-row, .inv-warehouse-actions, .sdoc-row) :is(.btn-sm, .btn-xs) { --ce-btn-height: var(--ce-size-touch-target); }
+}
+@media (pointer: coarse) {
+  :root[data-ce-bereich="kunde"] :is(td, th, .abk-row-actions, .inv-actions-row, .inv-warehouse-actions, .sdoc-row) :is(.btn-sm, .btn-xs),
+  :root[data-ce-bereich="kunde"] :is(.btn-sm, .btn-xs):is(.btn-link, .ce-copynum-btn) { --ce-btn-height: var(--ce-size-touch-target); }
+}
+/* Eigene Höhen, die den Bereichsregeln oben nicht weichen (diese sind spezifischer als die Einzelregeln der Module):
+   Paketeditor — jede Aktion erreicht 44 px, auch mit Maus und als kleine Stufe (Canonical §15, calculator.css);
+   verbindliche Buchung — die Hauptaktion des Blatts, 48 px (D2). */
+:root[data-ce-bereich="kunde"] :is(.pkg-lines-add, .pkg-line-action) { --ce-btn-height: var(--ce-size-touch-target); }
+:root[data-ce-bereich="kunde"] .booking-book-btn { --ce-btn-height: var(--ce-pr-bs-hoehe-gross); }
 /* Ausnahme: der Rückweg am Fuß eines Buchungsblatts ist die Unterkante des Blatts, kein Knopf (premium-redesign 5b). */
-:root[data-ce-bereich="kunde"] .btn:not(.booking-blatt-zurueck) { border-radius: var(--ce-radius-full); }
-:root[data-ce-bereich="kunde"] .btn-outline:not(.booking-blatt-zurueck) {
+:root[data-ce-bereich="kunde"] .btn:not(.booking-blatt-zurueck) { border-radius: var(--ce-pr-bs-radius); }
+
+/* ── Primär: Navy der Wortmarke, weiße Schrift, Tiefe aus Innenkante und kurzem Schatten ── */
+:root[data-ce-bereich="kunde"] .btn-primary {
   border-color: var(--ce-pr-navy-800);
+  background: var(--ce-pr-navy-800);
+  color: var(--ce-color-text-inverse);
+  box-shadow: var(--ce-pr-bs-schatten-primaer);
+}
+:root[data-ce-bereich="kunde"] .btn-primary:hover:not(:disabled) {
+  border-color: var(--ce-pr-navy-700);
+  background: var(--ce-pr-navy-700);
+  box-shadow: var(--ce-pr-bs-schatten-primaer-zeigen);
+}
+:root[data-ce-bereich="kunde"] .btn-primary:active:not(:disabled) {
+  border-color: var(--ce-pr-navy-600);
+  background: var(--ce-pr-navy-600);
+  box-shadow: var(--ce-pr-bs-schatten-gedrueckt);
+}
+
+/* ── Sekundär: weiß, feine Kontur, Navy-Schrift, leiser Schatten ── */
+:root[data-ce-bereich="kunde"] .btn-outline:not(.booking-blatt-zurueck) {
+  border-color: var(--ce-pr-bs-kontur);
+  background: var(--ce-color-surface);
   color: var(--ce-pr-navy-800);
+  box-shadow: var(--ce-pr-bs-schatten-sekundaer);
 }
 :root[data-ce-bereich="kunde"] .btn-outline:not(.booking-blatt-zurueck):hover:not(:disabled) {
-  background: var(--ce-pr-signal-soft);
-  border-color: var(--ce-pr-navy-800);
+  border-color: var(--ce-pr-bs-kontur-zeigen);
+  background: var(--ce-pr-bs-flaeche-zeigen);
   color: var(--ce-pr-navy-800);
+  box-shadow: var(--ce-pr-bs-schatten-sekundaer-zeigen);
 }
+:root[data-ce-bereich="kunde"] .btn-outline:not(.booking-blatt-zurueck):active:not(:disabled) {
+  border-color: var(--ce-pr-bs-kontur-zeigen);
+  background: var(--ce-pr-signal-soft);
+  box-shadow: none;
+}
+
+/* ── Text: Signal-Tinte ohne Fläche (Ghost tönt beim Zeigen, Link unterstreicht) — Farben aus premium-redesign. ── */
+:root[data-ce-bereich="kunde"] :is(.btn-ghost, .btn-link) { box-shadow: none; }
+
+/* ── Gefahr: dieselbe Tiefe in Rot, nur für die bestätigende Aktion eines Gefahrdialogs ──
+   In Listen und Menüs stehen gefährliche Wege als Text bzw. Menüeintrag; die Bestätigung bleibt im Dialog. */
+:root[data-ce-bereich="kunde"] .btn-danger {
+  border-color: var(--ce-color-danger-solid);
+  background: var(--ce-color-danger-solid);
+  color: var(--ce-color-text-inverse);
+  box-shadow: var(--ce-pr-bs-schatten-gefahr);
+}
+:root[data-ce-bereich="kunde"] .btn-danger:hover:not(:disabled) {
+  border-color: var(--ce-color-danger-hover);
+  background: var(--ce-color-danger-hover);
+}
+:root[data-ce-bereich="kunde"] .btn-danger:active:not(:disabled) {
+  border-color: var(--ce-color-danger-active);
+  background: var(--ce-color-danger-active);
+  box-shadow: var(--ce-pr-bs-schatten-gedrueckt);
+}
+
+/* ── Gesperrt: lesbar (5,50:1), ohne Schatten, ohne Deckkraft; den Grund nennt die Seite daneben ── */
+:root[data-ce-bereich="kunde"] :is(.btn-primary, .btn-danger, .btn-outline:not(.booking-blatt-zurueck)):disabled {
+  border-color: var(--ce-color-border-default);
+  background: var(--ce-pr-btn-disabled-bg);
+  color: var(--ce-pr-btn-disabled-fg);
+  box-shadow: none;
+}
+
 :root[data-ce-bereich="kunde"] .ce-page-header-actions .btn {
-  min-height: var(--ce-size-control-lg);
+  min-height: var(--ce-pr-bs-hoehe-gross);
   padding-inline: var(--ce-space-6);
 }
 /* Anlegen-Aktionen („Neue Sendung“, „Neue Adresse“ …) tragen ein Pluszeichen vor dem Wort. Das Zeichen ist Schmuck:
@@ -225,19 +322,19 @@
   color: var(--ce-pr-signal-ink);
   text-decoration-color: currentColor;
 }
-/* ── Menütaste „Weitere Aktionen“ (Entwürfe, Adressbuch, Lager; Betreiberentscheidung 2026-10-29) ──
-   Die Zweitaktion als Zeichen: rund, Navy-Kontur und drei Punkte in Navy wie die Kapsel daneben, genau so hoch wie
-   sie und auf ihrer Mitte (Entwurfstabelle 40 px, Adressbuch und Lager 32 px; mit grobem Zeiger und schmal 44 px).
-   Die Punkte liegen auf ganzen Pixeln und ganz in der Fläche — vorher schnitt sie den dritten an, und die Taste saß
-   auf der Grundlinie 3 px über „Fortsetzen“. Zeigen tönt die Fläche wie bei der Kapsel, Drücken und das geöffnete
-   Menü eine Stufe kräftiger; Fokusring des Bereichs; gesperrt grau; beim Löschen steht nur der Ladekreis. Keine
-   Bewegung, keine Deckkraft (E5). Die Beschriftung bleibt im Zugänglichkeitsbaum; im Kontrastmodus zeichnet das
-   System die Punkte in seiner Schriftfarbe. */
+
+/* ── Aktionsmenü „Weitere Aktionen“: Symboltaste und Menü (D3) ──
+   Entwürfe, Adressbuch, Lager und Sendungen: Die häufigste Aktion steht sichtbar daneben, die übrigen stehen mit vollem
+   Namen im Menü; gefährliche Einträge öffnen weiter ihre Bestätigung. Die Taste ist eine Symboltaste in der Sprache der
+   Sekundäraktion — weiß, feine Kontur, leiser Schatten, drei Punkte in Navy — und genau so hoch wie die kompakte Aktion
+   daneben (36 px; mit grobem Zeiger, schmal und in Karten 44 px). Zeigen hellt auf, Drücken und das geöffnete Menü
+   tragen den Signal-Ton. Die Beschriftung bleibt im Zugänglichkeitsbaum; im Kontrastmodus zeichnet das System die
+   Punkte in seiner Schriftfarbe. Keine Bewegung, keine Deckkraft. */
 :root[data-ce-bereich="kunde"] :is(.dft-actions, .abk-actions) { display: flex; }
 :root[data-ce-bereich="kunde"] :is(.dft-actions-trigger, .abk-actions-trigger, .inv-actions-trigger) {
-  --ce-menue-groesse: var(--ce-size-control-md);
-  --ce-menue-punkt: 2px;
-  --ce-menue-abstand: 7px;
+  --ce-menue-groesse: var(--ce-pr-bs-hoehe-kompakt);
+  --ce-menue-punkt: 1.75px;
+  --ce-menue-abstand: 6px;
   position: relative;
   flex: none;
   width: var(--ce-menue-groesse);
@@ -245,20 +342,19 @@
   min-width: var(--ce-menue-groesse);
   min-height: var(--ce-menue-groesse);
   padding: 0;
-  border: 1px solid var(--ce-pr-navy-800);
-  border-radius: var(--ce-radius-full);
+  border: 1px solid var(--ce-pr-bs-kontur);
+  border-radius: var(--ce-pr-bs-radius);
   background: var(--ce-color-surface);
+  box-shadow: var(--ce-pr-bs-schatten-sekundaer);
   color: var(--ce-pr-navy-800);
   font-size: 0;
-  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
-}
-:root[data-ce-bereich="kunde"] :is(.abk-actions-trigger, .inv-actions-trigger) {
-  --ce-menue-groesse: var(--ce-size-control-sm);
-  --ce-menue-punkt: 1.75px;
-  --ce-menue-abstand: 6px;
+  transition:
+    background-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    border-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    box-shadow var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
 }
 @media (pointer: coarse), (max-width: 860px) {
-  :root[data-ce-bereich="kunde"] :is(.abk-actions-trigger, .inv-actions-trigger) {
+  :root[data-ce-bereich="kunde"] :is(.dft-actions-trigger, .abk-actions-trigger, .inv-actions-trigger) {
     --ce-menue-groesse: var(--ce-size-touch-target);
     --ce-menue-punkt: 2px;
     --ce-menue-abstand: 7px;
@@ -291,15 +387,586 @@
 }
 :root[data-ce-bereich="kunde"] :is(.dft-actions-trigger, .abk-actions-trigger):has(> .spinner)::before { content: none; }
 @media (hover: hover) {
-  :root[data-ce-bereich="kunde"] :is(.dft-actions-trigger, .abk-actions-trigger, .inv-actions-trigger):hover:not(:disabled) { background: var(--ce-pr-signal-soft); color: var(--ce-pr-navy-800); }
+  :root[data-ce-bereich="kunde"] :is(.dft-actions-trigger, .abk-actions-trigger, .inv-actions-trigger):hover:not(:disabled) {
+    border-color: var(--ce-pr-bs-kontur-zeigen);
+    background: var(--ce-pr-bs-flaeche-zeigen);
+    box-shadow: var(--ce-pr-bs-schatten-sekundaer-zeigen);
+    color: var(--ce-pr-navy-800);
+  }
 }
-:root[data-ce-bereich="kunde"] :is(.dft-actions-trigger, .abk-actions-trigger, .inv-actions-trigger):is(:active, [aria-expanded="true"]):not(:disabled) { background: var(--ce-pr-signal-soft-hover); color: var(--ce-pr-navy-800); }
+:root[data-ce-bereich="kunde"] :is(.dft-actions-trigger, .abk-actions-trigger, .inv-actions-trigger):is(:active, [aria-expanded="true"]):not(:disabled) {
+  border-color: var(--ce-pr-bs-kontur-zeigen);
+  background: var(--ce-pr-signal-soft);
+  box-shadow: none;
+  color: var(--ce-pr-navy-800);
+}
 :root[data-ce-bereich="kunde"] :is(.dft-actions-trigger, .abk-actions-trigger, .inv-actions-trigger):focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 :root[data-ce-bereich="kunde"] :is(.dft-actions-trigger, .abk-actions-trigger, .inv-actions-trigger):disabled {
   border-color: var(--ce-color-border-default);
   background: var(--ce-color-surface);
+  box-shadow: none;
   color: var(--ce-color-text-disabled);
   cursor: not-allowed;
+}
+/* Das Menü: weiße Fläche mit Haarlinie und weichem Schatten, Einträge 40 px (Touch 44 px) konzentrisch darin.
+   Zeigen und Tastaturfokus tönen den Eintrag; gefährliche Einträge sprechen Rot und tönen rot. */
+:root[data-ce-bereich="kunde"] :is(.dft-actions-menu, .abk-actions-menu, .inv-actions-menu) {
+  padding: var(--ce-space-1);
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-bs-radius-flaeche);
+  background: var(--ce-color-surface);
+  box-shadow: var(--ce-pr-bs-schatten-menue);
+}
+:root[data-ce-bereich="kunde"] :is(.dft-actions-item, .abk-actions-item, .inv-actions-item) {
+  min-height: var(--ce-size-control-md);
+  padding: var(--ce-space-2) var(--ce-space-3);
+  border-radius: var(--ce-radius-sm);
+  color: var(--ce-color-text-primary);
+  font-size: var(--ce-text-body-s-size);
+  font-weight: var(--ce-weight-medium);
+  line-height: var(--ce-text-body-s-line);
+  transition: background-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard), color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
+}
+:root[data-ce-bereich="kunde"] :is(.dft-actions-item, .abk-actions-item, .inv-actions-item):focus-visible {
+  background: var(--ce-pr-signal-soft);
+  color: var(--ce-pr-navy-800);
+  outline: 2px solid var(--ce-pr-signal);
+  outline-offset: -2px;
+}
+:root[data-ce-bereich="kunde"] :is(.dft-actions-item--danger, .abk-actions-item--danger, .inv-actions-item--danger) { color: var(--ce-color-status-error-fg); }
+:root[data-ce-bereich="kunde"] :is(.dft-actions-item--danger, .abk-actions-item--danger, .inv-actions-item--danger):focus-visible {
+  background: var(--ce-pr-bs-gefahr-flaeche);
+  color: var(--ce-color-status-error-fg);
+}
+:root[data-ce-bereich="kunde"] :is(.dft-actions-item, .abk-actions-item, .inv-actions-item):disabled {
+  background: transparent;
+  color: var(--ce-color-text-disabled);
+}
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] :is(.dft-actions-item, .abk-actions-item, .inv-actions-item):hover:not(:disabled) {
+    background: var(--ce-pr-signal-soft);
+    color: var(--ce-pr-navy-800);
+  }
+  :root[data-ce-bereich="kunde"] :is(.dft-actions-item--danger, .abk-actions-item--danger, .inv-actions-item--danger):hover:not(:disabled) {
+    background: var(--ce-pr-bs-gefahr-flaeche);
+    color: var(--ce-color-status-error-fg);
+  }
+}
+@media (pointer: coarse) {
+  :root[data-ce-bereich="kunde"] :is(.dft-actions-item, .abk-actions-item, .inv-actions-item) { min-height: var(--ce-size-touch-target); }
+}
+
+/* ── Auswahlfeld (natives select) und Feld: dieselbe Kontur-Familie, derselbe Radius wie die Knöpfe ──
+   Stehende Felder und Auswahlfelder (Filter über Tabellen, Dialoge) stehen auf der Standardhöhe 44 px, damit sie in
+   einer Leiste mit Knöpfen bündig sind; schwebende Felder der Versandformulare behalten ihre Höhe. Bedienung und
+   Pfeil bleiben nativ (forms.css). */
+:root[data-ce-bereich="kunde"] :is(.field-input, .field-select):not(.ce-field-input, td *) { min-height: var(--ce-pr-bs-hoehe); }
+:root[data-ce-bereich="kunde"] .field-select { box-shadow: var(--ce-pr-bs-schatten-sekundaer); cursor: pointer; }
+:root[data-ce-bereich="kunde"] .field-select:disabled { box-shadow: none; cursor: not-allowed; }
+
+/* ── Filter „Neue Sendung“ und Versandkostenrechner: Auslöser wie ein Auswahlfeld, Aufklappfeld wie ein Menü ──
+   Fünf Auslöser (Abholung/Shopabgabe, Versanddatum, Versanddienst, Versandart, Späteste Lieferzeit): weiß, feine
+   Kontur, leiser Schatten; offen im Signal-Ton mit Signal-Kante. Es ist immer höchstens eines offen
+   (ShipmentFilterBar). Das Aufklappfeld trägt Radius, Haarlinie und Schatten der Menüs. */
+:root[data-ce-bereich="kunde"] .calc-filter-bar .service-filter-trigger {
+  border-color: var(--ce-pr-bs-kontur);
+  border-radius: var(--ce-pr-bs-radius);
+  background: var(--ce-color-surface);
+  box-shadow: var(--ce-pr-bs-schatten-sekundaer);
+  transition:
+    background-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    border-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    box-shadow var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
+}
+:root[data-ce-bereich="kunde"] .calc-filter-bar .service-filter-trigger:hover {
+  border-color: var(--ce-pr-bs-kontur);
+  background: var(--ce-color-surface);
+}
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .calc-filter-bar .service-filter-trigger:not([aria-expanded="true"]):hover {
+    border-color: var(--ce-pr-bs-kontur-zeigen);
+    box-shadow: var(--ce-pr-bs-schatten-sekundaer-zeigen);
+  }
+}
+:root[data-ce-bereich="kunde"] .calc-filter-bar .service-filter-trigger[aria-expanded="true"] {
+  border-color: var(--ce-pr-signal);
+  background: var(--ce-pr-signal-soft);
+  box-shadow: none;
+}
+:root[data-ce-bereich="kunde"] .calc-filter-bar .calc-panel--error .service-filter-trigger { border-color: var(--ce-color-status-error-fg); }
+:root[data-ce-bereich="kunde"] .calc-filter-bar :is(.service-filter-dropdown, .date-picker-body, .carrier-dropdown) {
+  border-color: var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-bs-radius-flaeche);
+  box-shadow: var(--ce-pr-bs-schatten-menue);
+}
+@media (max-width: 1000px) {
+  :root[data-ce-bereich="kunde"] .calc-filter-bar :is(.service-filter-dropdown, .date-picker-body, .carrier-dropdown) { box-shadow: none; }
+}
+/* Premium Control System 2.0 (2026-11-14): Die fünf Aufklappfelder sind EIN Aufbau. Listen (Abholung/Shopabgabe,
+   Versanddienst, Versandart) mit 4 px Innenrand und Zeilen von 44 px, Radius 8 (konzentrisch: 12 − 4), 2 px Luft;
+   Kalenderfelder (Versanddatum, Späteste Lieferzeit) mit 12 px Innenrand. Gewählt ist überall dasselbe: helle
+   Wahlfläche, blaue Kante, blauer Haken (Einfachauswahl) bzw. blau gefülltes Kästchen (Mehrfachauswahl). */
+:root[data-ce-bereich="kunde"] .calc-filter-bar .date-picker-body { padding: var(--ce-space-3); }
+:root[data-ce-bereich="kunde"] .calc-filter-bar :is(.service-filter-dropdown, .carrier-dropdown) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+}
+:root[data-ce-bereich="kunde"] .calc-filter-bar :is(.service-filter-dropdown, .carrier-dropdown) .service-filter-option {
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--ce-pr-bs-hoehe);
+  padding: 9px 12px;
+  border-radius: calc(var(--ce-pr-bs-radius-flaeche) - 4px);
+}
+/* Die Kante der Einfachauswahl trägt `.ce-wahl` (Abschnitt 21); die Mehrfachauswahl bekommt hier dieselbe Ruhekante. */
+:root[data-ce-bereich="kunde"] .calc-filter-bar .carrier-dropdown .service-filter-option--check { border: 1px solid transparent; }
+:root[data-ce-bereich="kunde"] .calc-filter-bar .carrier-dropdown .carrier-empty-hint {
+  padding: 10px 12px 10px calc(12px + 18px + 10px);
+  color: var(--ce-color-text-secondary);
+  font-size: var(--ce-text-body-s-size);
+  line-height: 1.45;
+  text-align: left;
+}
+:root[data-ce-bereich="kunde"] .calc-filter-bar .carrier-dropdown .service-filter-option--check:is(.selected, [aria-checked="true"]) {
+  border-color: var(--ce-pr-bs-wahl-kante);
+  background: var(--ce-pr-bs-wahl-flaeche);
+  box-shadow: inset 0 0 0 1px var(--ce-pr-bs-wahl-kante);
+}
+:root[data-ce-bereich="kunde"] .calc-filter-bar .carrier-dropdown .service-filter-check {
+  width: 18px;
+  height: 18px;
+  margin-top: 0;
+  border: 1.5px solid var(--ce-pr-bs-kontur-zeigen);
+  border-radius: 5px;
+}
+:root[data-ce-bereich="kunde"] .calc-filter-bar .carrier-dropdown .service-filter-option--check:is(.selected, [aria-checked="true"]) .service-filter-check {
+  border-color: var(--ce-pr-bs-wahl-kante);
+  background: var(--ce-pr-bs-wahl-kante);
+}
+:root[data-ce-bereich="kunde"] .calc-filter-bar .carrier-dropdown .service-filter-option--check:is(.selected, [aria-checked="true"]) .service-filter-check::after {
+  left: 5px;
+  top: 2px;
+  width: 5px;
+  height: 9px;
+}
+:root[data-ce-bereich="kunde"] .calc-filter-bar :is(.service-filter-option-label) { color: var(--ce-color-text-primary); }
+:root[data-ce-bereich="kunde"] .calc-filter-bar .service-filter-option:is(.selected, [aria-checked="true"]) .service-filter-option-label {
+  color: var(--ce-pr-navy-800);
+  font-weight: 600;
+}
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .calc-filter-bar .carrier-dropdown .service-filter-option--check:not(.selected, [aria-checked="true"]):hover {
+    border-color: transparent;
+    background: var(--ce-pr-bs-flaeche-zeigen);
+  }
+  :root[data-ce-bereich="kunde"] .calc-filter-bar .carrier-dropdown .service-filter-option--check:is(.selected, [aria-checked="true"]):hover { background: var(--ce-pr-bs-wahl-flaeche-zeigen); }
+}
+
+/* Kalender (Versanddatum, Späteste Lieferzeit, Datumsfilter der Angebote): der gewählte Tag in derselben Wahlsprache
+   statt einer vollen Blaufläche; heute nur in Signal-Tinte und kräftiger — eine Kante trägt allein die Wahl. */
+:root[data-ce-bereich="kunde"] .dc-day { border-radius: calc(var(--ce-pr-bs-radius) - 2px); }
+:root[data-ce-bereich="kunde"] .dc-day--today:not(.dc-day--selected) {
+  border-color: transparent;
+  color: var(--ce-pr-signal-ink);
+  font-weight: 700;
+}
+:root[data-ce-bereich="kunde"] .dc-day--selected {
+  border-color: var(--ce-pr-bs-wahl-kante);
+  background: var(--ce-pr-bs-wahl-flaeche);
+  box-shadow: inset 0 0 0 1px var(--ce-pr-bs-wahl-kante);
+  color: var(--ce-pr-navy-800);
+  font-weight: 700;
+}
+:root[data-ce-bereich="kunde"] .dc-day--selected .dc-day-dot { background: var(--ce-pr-bs-wahl-kante); }
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .dc-day:hover:not(:disabled):not(.dc-day--selected) {
+    border-color: transparent;
+    background: var(--ce-pr-bs-flaeche-zeigen);
+  }
+}
+
+/* Uhrzeitliste (DeliveryTimeSelect): gewählt in derselben Sprache; der Innenring steht für die Kante, die Zeile hat
+   keinen eigenen Rand. */
+:root[data-ce-bereich="kunde"] .offers-time-option.is-selected {
+  background: var(--ce-pr-bs-wahl-flaeche);
+  box-shadow: inset 0 0 0 2px var(--ce-pr-bs-wahl-kante);
+  color: var(--ce-pr-navy-800);
+}
+:root[data-ce-bereich="kunde"] .offers-time-option.is-selected.is-marked { background: var(--ce-pr-bs-wahl-flaeche-zeigen); }
+:root[data-ce-bereich="kunde"] .offers-time-option.is-marked:not(.is-selected) { background: var(--ce-pr-bs-flaeche-zeigen); }
+
+/* ── Auswahlmenü (AuswahlMenue.jsx): Transportabsicherung, Art der Lieferadresse, Lieferscheine, Abrechnung ──
+   Geschlossen ein Auswahlfeld (`.field-select`: 44 px, Radius 10, feine Kontur, leiser Schatten) mit dem gewählten
+   Namen links und dem Zusatz (Preis) rechts; offen eine Liste mit dem Radius und Schatten der Menüs. Jede Option
+   hat eine feste Hakenspalte links — die Texte aller Optionen stehen bündig, gewählt oder nicht. Ebene 60 wie die
+   Uhrzeitliste: über Karten und Formularfeldern, unter Schubladen (999) und Navigationsleiste (1000). */
+:root[data-ce-bereich="kunde"] .ce-auswahl { position: relative; width: 100%; min-width: 0; }
+:root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser {
+  display: flex;
+  align-items: center;
+  gap: var(--ce-space-3);
+  width: 100%;
+  min-height: var(--ce-pr-bs-hoehe);
+  padding: 9px 14px;
+  border-color: var(--ce-pr-bs-kontur);
+  background-image: none;
+  text-align: left;
+  transition:
+    border-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    box-shadow var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    background-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser:hover:not(:focus):not(:disabled) { border-color: var(--ce-pr-bs-kontur); }
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser:not(.is-open):not(:disabled):hover {
+    border-color: var(--ce-pr-bs-kontur-zeigen);
+    box-shadow: var(--ce-pr-bs-schatten-sekundaer-zeigen);
+  }
+}
+/* Offen wie die Filter auf „Neue Sendung“ (einheitlicher Offen-Zustand): Signalkante auf hellem Signalgrund. */
+:root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser.is-open {
+  border-color: var(--ce-pr-signal);
+  background-color: var(--ce-pr-signal-soft);
+  box-shadow: none;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser:focus:not(:focus-visible) { outline: none; }
+:root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser[aria-busy="true"] { cursor: progress; }
+:root[data-ce-bereich="kunde"] .ce-auswahl-wert {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--ce-space-3);
+  min-width: 0;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-wert-text {
+  min-width: 0;
+  color: var(--ce-pr-navy-800);
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-wert-text.is-platzhalter { color: var(--ce-color-text-secondary); font-weight: var(--ce-weight-text); }
+:root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser .ce-auswahl-zusatz { flex-direction: row; align-items: baseline; gap: 6px; }
+:root[data-ce-bereich="kunde"] .ce-auswahl-marke {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--ce-color-text-secondary);
+  border-bottom: 2px solid var(--ce-color-text-secondary);
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser.is-open .ce-auswahl-marke { transform: translateY(2px) rotate(225deg); }
+:root[data-ce-bereich="kunde"] .ce-auswahl-ausloeser:disabled .ce-auswahl-marke { border-color: var(--ce-color-text-disabled); }
+
+/* Die Liste steht als Popover (popover="manual") direkt hinter dem Auslöser und liegt in der obersten Ebene — dort gilt
+   z-index nicht, sie liegt über allem (auch über der schwebenden Kundenservice-Karte). Ohne Popover-API bleibt sie ein
+   Portal an <body> auf Ebene 60. `inset`, `height` und `color` heben die Browser-Vorgaben für [popover] auf (inset 0,
+   fit-content, CanvasText); Lage und Breite setzt die Komponente direkt am Knoten (Freigabeprüfung 2026-11-15). */
+:root[data-ce-bereich="kunde"] .ce-auswahl-liste {
+  position: fixed;
+  z-index: 60;
+  inset: auto;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 4px;
+  color: var(--ce-color-text-primary);
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-bs-radius-flaeche);
+  background: var(--ce-color-surface);
+  box-shadow: var(--ce-pr-bs-schatten-menue);
+  animation: ce-auswahl-auf var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
+}
+@keyframes ce-auswahl-auf {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-option {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 10px;
+  flex: 0 0 auto;
+  min-height: var(--ce-pr-bs-hoehe);
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: calc(var(--ce-pr-bs-radius-flaeche) - 4px);
+  color: var(--ce-color-text-primary);
+  cursor: pointer;
+  transition: background-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard), border-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-option.is-marked { background: var(--ce-pr-bs-flaeche-zeigen); }
+:root[data-ce-bereich="kunde"] .ce-auswahl-option[aria-selected="true"] {
+  border-color: var(--ce-pr-bs-wahl-kante);
+  background: var(--ce-pr-bs-wahl-flaeche);
+  box-shadow: inset 0 0 0 1px var(--ce-pr-bs-wahl-kante);
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-option[aria-selected="true"].is-marked { background: var(--ce-pr-bs-wahl-flaeche-zeigen); }
+:root[data-ce-bereich="kunde"] .ce-auswahl-option[aria-disabled="true"] { cursor: not-allowed; }
+:root[data-ce-bereich="kunde"] .ce-auswahl-option[aria-disabled="true"]:not([aria-selected="true"]) { background: transparent; }
+:root[data-ce-bereich="kunde"] .ce-auswahl-option[aria-disabled="true"]:not([aria-selected="true"]) :is(.ce-auswahl-name, .ce-auswahl-zusatz-wert) { color: var(--ce-color-text-secondary); }
+:root[data-ce-bereich="kunde"] .ce-auswahl-haken {
+  position: relative;
+  width: 18px;
+  height: 1.4em;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-haken::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.4375rem;
+  height: 0.8125rem;
+  border: solid transparent;
+  border-width: 0 2px 2px 0;
+  border-radius: 0 0 1px 0;
+  translate: -50% -62%;
+  rotate: 45deg;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-option[aria-selected="true"] .ce-auswahl-haken::after { border-color: var(--ce-pr-bs-wahl-kante); }
+:root[data-ce-bereich="kunde"] .ce-auswahl-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+:root[data-ce-bereich="kunde"] .ce-auswahl-kopf { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+:root[data-ce-bereich="kunde"] .ce-auswahl-name {
+  color: var(--ce-pr-navy-800);
+  font-size: var(--ce-text-body-size);
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-abzeichen {
+  padding: 1px 8px;
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: 999px;
+  background: var(--ce-pr-inset);
+  color: var(--ce-pr-signal-ink);
+  font-size: var(--ce-text-caption-size);
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-beschreibung,
+:root[data-ce-bereich="kunde"] .ce-auswahl-hinweis {
+  color: var(--ce-color-text-secondary);
+  font-size: var(--ce-text-body-s-size);
+  line-height: 1.45;
+  overflow-wrap: break-word;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-hinweis { color: var(--ce-color-text-muted); }
+:root[data-ce-bereich="kunde"] .ce-auswahl-zusatz {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  text-align: right;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-zusatz-wert {
+  color: var(--ce-pr-navy-800);
+  font-family: var(--ce-font-numeric);
+  font-size: var(--ce-text-body-size);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  line-height: 1.4;
+  white-space: nowrap;
+}
+:root[data-ce-bereich="kunde"] .ce-auswahl-zusatz-unter {
+  color: var(--ce-color-text-secondary);
+  font-size: var(--ce-text-caption-size);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  line-height: 1.4;
+  white-space: nowrap;
+}
+/* Schmal: der Zusatz rückt unter den Namen, statt den Text auf eine Wortbreite zu pressen. */
+@media (max-width: 30em) {
+  :root[data-ce-bereich="kunde"] .ce-auswahl-option { grid-template-columns: 18px minmax(0, 1fr); }
+  :root[data-ce-bereich="kunde"] .ce-auswahl-option > .ce-auswahl-zusatz {
+    grid-column: 2;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 6px;
+    margin-top: 4px;
+    text-align: left;
+  }
+}
+@media (pointer: coarse) {
+  :root[data-ce-bereich="kunde"] .ce-auswahl-option { min-height: var(--ce-size-touch-target); }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ce-bereich="kunde"] .ce-auswahl-liste { animation: none; }
+  :root[data-ce-bereich="kunde"] :is(.ce-auswahl-ausloeser, .ce-auswahl-option, .ce-auswahl-marke) { transition: none; }
+}
+
+/* Felder mit Auswahlmenü in den Kontokarten und der Absicherung: Beschriftung, Feld, Erklärung der Wahl. */
+:root[data-ce-bereich="kunde"] .dn-mode-feld { display: flex; flex-direction: column; gap: var(--ce-space-2); }
+:root[data-ce-bereich="kunde"] .dn-mode-feld > .field-label { margin: 0; }
+:root[data-ce-bereich="kunde"] .dn-mode-erklaerung { margin: 0; color: var(--ce-color-text-secondary); }
+:root[data-ce-bereich="kunde"] .ins-auswahl-label { display: block; margin: var(--ce-space-3) 0 var(--ce-space-2); }
+:root[data-ce-bereich="kunde"] .ins-auswahl-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ce-space-2);
+  margin-top: var(--ce-space-3);
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-bs-radius-flaeche);
+  background: var(--ce-pr-inset);
+}
+:root[data-ce-bereich="kunde"] .ins-auswahl-info-kopf { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2) var(--ce-space-3); }
+:root[data-ce-bereich="kunde"] .ins-auswahl-info .ins-card-badge { align-self: auto; margin-left: 0; }
+:root[data-ce-bereich="kunde"] .ins-auswahl-info .ins-card-calc { padding-left: 0; }
+:root[data-ce-bereich="kunde"] .ins-auswahl-info .ins-card-desc { margin: 0; }
+:root[data-ce-bereich="kunde"] .ins-auswahl-info .ins-card-cond { margin: 0; padding-top: 0; }
+/* Die Wertfelder folgen dem Infofeld (nur bei gewählter Absicherung) — ohne eigenen Abstand klebten sie daran (4 px). */
+:root[data-ce-bereich="kunde"] .ins-auswahl-info ~ .ins-inputs { margin-top: var(--ce-space-5); }
+
+/* ── Schalter (D5): groß genug, um den Zustand auf einen Blick zu lesen ──
+   44 × 24 px statt 32 × 18 px. AUS: helle Spur mit klarer Kante (3,1:1), weißer Knopf links. AN: Navy der Wortmarke,
+   der Knopf rechts mit einem Haken — der Zustand steht in Lage, Form und Farbe, nie allein in der Farbe. Der Knopf
+   gleitet 160 ms (bei reduzierter Bewegung sofort). Bedienung bleibt das native Kontrollkästchen mit role="switch";
+   Ziel ist die ganze Zeile, der Fokusring liegt an der Spur. Nur im Kundenbereich — der Adminbereich behält
+   seinen kleinen Schalter (forms.css). */
+:root[data-ce-bereich="kunde"] .ce-switch-track {
+  width: var(--ce-pr-bs-schalter-breite);
+  height: var(--ce-pr-bs-schalter-hoehe);
+  margin-top: 0;
+  border: 1px solid var(--ce-pr-bs-schalter-aus-kante);
+  background: var(--ce-pr-bs-schalter-aus);
+  transition:
+    background-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    border-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
+}
+:root[data-ce-bereich="kunde"] .ce-switch-knob {
+  top: 2px;
+  left: 2px;
+  width: var(--ce-pr-bs-schalter-knopf);
+  height: var(--ce-pr-bs-schalter-knopf);
+  background: var(--ce-color-surface);
+  box-shadow: var(--ce-pr-bs-schatten-schalterknopf);
+  transition: transform var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
+}
+/* Der Haken im Knopf: zwei Kanten eines gedrehten Rechtecks wie in der Navy-Wahl, in Ruhe unsichtbar. */
+:root[data-ce-bereich="kunde"] .ce-switch-knob::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.3125rem;
+  height: 0.5625rem;
+  border: solid transparent;
+  border-width: 0 2px 2px 0;
+  translate: -50% -60%;
+  rotate: 45deg;
+  transition: border-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
+}
+:root[data-ce-bereich="kunde"] .ce-switch-input:checked ~ .ce-switch-track {
+  border-color: var(--ce-pr-navy-800);
+  background: var(--ce-pr-navy-800);
+}
+:root[data-ce-bereich="kunde"] .ce-switch-input:checked ~ .ce-switch-track .ce-switch-knob {
+  transform: translateX(calc(var(--ce-pr-bs-schalter-breite) - var(--ce-pr-bs-schalter-knopf) - 6px));
+}
+:root[data-ce-bereich="kunde"] .ce-switch-input:checked ~ .ce-switch-track .ce-switch-knob::after { border-color: var(--ce-pr-navy-800); }
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .ce-switch:hover .ce-switch-input:not(:checked, :disabled) ~ .ce-switch-track { border-color: var(--ce-pr-navy-800); }
+  :root[data-ce-bereich="kunde"] .ce-switch:hover .ce-switch-input:checked:not(:disabled) ~ .ce-switch-track {
+    border-color: var(--ce-pr-navy-700);
+    background: var(--ce-pr-navy-700);
+  }
+}
+:root[data-ce-bereich="kunde"] .ce-switch-input:focus-visible ~ .ce-switch-track {
+  outline: var(--ce-focus-ring);
+  outline-offset: var(--ce-focus-ring-offset);
+}
+:root[data-ce-bereich="kunde"] .ce-switch-input:disabled ~ .ce-switch-track {
+  border-color: var(--ce-color-border-default);
+  background: var(--ce-color-surface-muted);
+}
+:root[data-ce-bereich="kunde"] .ce-switch-input:disabled ~ .ce-switch-track .ce-switch-knob { background: var(--ce-color-surface); box-shadow: none; }
+:root[data-ce-bereich="kunde"] .ce-switch-input:checked:disabled ~ .ce-switch-track .ce-switch-knob::after { border-color: var(--ce-color-text-disabled); }
+
+/* ── Reiter: Text mit Unterkante — aktiv Navy mit Signal-Kante, Zeigen dunkler mit leiser Kante ── */
+:root[data-ce-bereich="kunde"] .ce-tabs { gap: var(--ce-space-5); border-bottom-color: var(--ce-pr-hairline); }
+:root[data-ce-bereich="kunde"] .ce-tab {
+  min-height: var(--ce-pr-bs-hoehe);
+  padding-inline: var(--ce-space-1);
+  color: var(--ce-color-text-secondary);
+  font-weight: 600;
+  transition:
+    color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    border-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
+}
+:root[data-ce-bereich="kunde"] .ce-tab:hover { color: var(--ce-color-text-secondary); border-bottom-color: transparent; }
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .ce-tab:not([aria-selected="true"], .active, .ce-tab--active, .is-active):hover {
+    color: var(--ce-pr-navy-800);
+    border-bottom-color: var(--ce-pr-bs-kontur);
+  }
+}
+:root[data-ce-bereich="kunde"] :is(.ce-tab[aria-selected="true"], .ce-tab.active, .ce-tab--active, .ce-tab.is-active) {
+  border-bottom-color: var(--ce-pr-signal);
+  color: var(--ce-pr-navy-800);
+}
+:root[data-ce-bereich="kunde"] .ce-tab:focus-visible { outline: var(--ce-focus-ring); outline-offset: -2px; border-radius: var(--ce-radius-sm) var(--ce-radius-sm) 0 0; }
+
+/* ── Einzelschalter „Nur Favoriten“: ein Umschaltknopf in Sekundärsprache; gewählt im Signal-Ton mit Navy-Kante ── */
+:root[data-ce-bereich="kunde"] .abk-filter-pill {
+  min-height: var(--ce-pr-bs-hoehe);
+  border-color: var(--ce-pr-bs-kontur);
+  border-radius: var(--ce-pr-bs-radius);
+  background: var(--ce-color-surface);
+  box-shadow: var(--ce-pr-bs-schatten-sekundaer);
+  color: var(--ce-pr-navy-800);
+  font-weight: 600;
+  transition:
+    background-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    border-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    box-shadow var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
+}
+:root[data-ce-bereich="kunde"] .abk-filter-pill:hover { border-color: var(--ce-pr-bs-kontur); background: var(--ce-color-surface); }
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .abk-filter-pill:not(.abk-filter-pill--active):hover {
+    border-color: var(--ce-pr-bs-kontur-zeigen);
+    background: var(--ce-pr-bs-flaeche-zeigen);
+    box-shadow: var(--ce-pr-bs-schatten-sekundaer-zeigen);
+  }
+}
+:root[data-ce-bereich="kunde"] :is(.abk-filter-pill--active, .abk-filter-pill--active:hover) {
+  border-color: var(--ce-pr-navy-800);
+  background: var(--ce-pr-signal-soft);
+  box-shadow: none;
+  color: var(--ce-pr-navy-800);
+}
+
+/* ── Filter- und Sortierknöpfe der Angebote: Auslöser wie ein Auswahlfeld ── */
+:root[data-ce-bereich="kunde"] .offers-filter-chip {
+  min-height: var(--ce-pr-bs-hoehe);
+  border-color: var(--ce-pr-bs-kontur);
+  border-radius: var(--ce-pr-bs-radius);
+  box-shadow: var(--ce-pr-bs-schatten-sekundaer);
+}
+:root[data-ce-bereich="kunde"] .offers-filter-chip[aria-expanded="true"] {
+  border-color: var(--ce-pr-signal);
+  background: var(--ce-pr-signal-soft);
+  box-shadow: none;
+}
+
+/* ── Bei reduzierter Bewegung stehen alle Zustände sofort (Abschnitt 23 ergänzt die Pseudo-Elemente). ── */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ce-bereich="kunde"] :is(.btn, .field-select, .calc-filter-bar .service-filter-trigger, .ce-switch-track, .ce-switch-knob, .ce-tab, .abk-filter-pill, .dft-actions-item, .abk-actions-item, .inv-actions-item) {
+    transition: none;
+  }
+  :root[data-ce-bereich="kunde"] .ce-switch-knob::after { transition: none; }
 }
 
 /* ═══════════ 4 · STATUS ═══════════════════════════════════════════════════
@@ -1095,12 +1762,11 @@
 
 /* Aktionen der Zeile */
 :root[data-ce-bereich="kunde"] .dft-cell-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--ce-space-2); flex-wrap: nowrap; }
+/* „Fortsetzen“ ist eine kompakte Sekundäraktion des Bediensystems (Abschnitt 3); unter dem Zeiger und mit der Zeile
+   wird sie zur Navy-Fläche — sie setzt den Entwurf fort. */
 :root[data-ce-bereich="kunde"] .btn.dft-resume-btn {
-  min-height: var(--ce-size-control-md);
+  min-height: var(--ce-btn-height);
   padding: 0 var(--ce-space-4) 0 var(--ce-space-5);
-  border-color: var(--ce-pr-navy-800);
-  background: var(--ce-color-surface);
-  color: var(--ce-pr-navy-800);
   font-size: var(--ce-text-label-size);
   font-weight: 600;
   white-space: nowrap;
@@ -1119,22 +1785,18 @@
 :root[data-ce-bereich="kunde"] .btn.dft-resume-btn:hover:not(:disabled) {
   background: var(--ce-pr-navy-700);
   border-color: var(--ce-pr-navy-700);
+  box-shadow: var(--ce-pr-bs-schatten-primaer-zeigen);
   color: var(--ce-color-text-inverse);
 }
 @media (hover: hover) {
   :root[data-ce-bereich="kunde"] .dft-table tbody tr:hover .btn.dft-resume-btn:not(:disabled) {
     background: var(--ce-pr-navy-800);
     border-color: var(--ce-pr-navy-800);
+    box-shadow: var(--ce-pr-bs-schatten-primaer);
     color: var(--ce-color-text-inverse);
   }
 }
-:root[data-ce-bereich="kunde"] .dft-actions-menu {
-  padding: var(--ce-space-1);
-  border: 1px solid var(--ce-pr-hairline);
-  border-radius: var(--ce-radius-lg);
-  box-shadow: var(--ce-elevation-3);
-}
-:root[data-ce-bereich="kunde"] .dft-actions-item { border-radius: var(--ce-radius-md); font-weight: 600; }
+/* Menü und Einträge der Entwurfszeile: gemeinsames Aktionsmenü (Abschnitt 3). */
 
 /* Entwürfe zwischen 1001 und 1100 px: Aktionen bleiben einzeilig, die Metazeile bricht ohne Trennstrich um. */
 @media (max-width: 68.75em) and (min-width: 62.5625em) {
@@ -1258,31 +1920,19 @@
 :root[data-ce-bereich="kunde"] .ce-list-card-val { font-weight: var(--ce-weight-medium); }
 :root[data-ce-bereich="kunde"] .ce-list-card-actions { border-top-color: var(--ce-pr-hairline); }
 
-/* ═══════════ 8 · REITER, WERKZEUGLEISTEN, FILTER ══════════════════════════ */
-:root[data-ce-bereich="kunde"] .ce-tabs { border-bottom-color: var(--ce-pr-hairline); }
-:root[data-ce-bereich="kunde"] .ce-tab { color: var(--ce-color-text-secondary); font-weight: 600; }
-:root[data-ce-bereich="kunde"] .ce-tab:hover { color: var(--ce-color-text-primary); }
-:root[data-ce-bereich="kunde"] :is(.ce-tab[aria-selected="true"], .ce-tab.active, .ce-tab--active) {
-  border-bottom-color: var(--ce-pr-signal);
-  color: var(--ce-color-text-primary);
-}
-
-/* Einzelschalter „Nur Favoriten“: Kapsel; gewählt in Navy-Kontur auf Signal-Soft. Die Rechnungsfilter sind seit
-   2026-10-28 eine Segmentsteuerung (Abschnitt 22). */
-:root[data-ce-bereich="kunde"] .abk-filter-pill { border-radius: var(--ce-radius-full); }
-:root[data-ce-bereich="kunde"] .abk-filter-pill--active {
-  border-color: var(--ce-pr-navy-800);
-  background: var(--ce-pr-signal-soft);
-  color: var(--ce-pr-navy-800);
-}
+/* ═══════════ 8 · REITER, WERKZEUGLEISTEN, FILTER ══════════════════════════
+   Reiter, der Einzelschalter „Nur Favoriten“ und die Filterauslöser gehören seit 2026-11-14 zum Bediensystem
+   (Abschnitt 3). Die Rechnungsfilter sind eine Segmentsteuerung (Abschnitt 22). */
 
 /* ═══════════ 9 · FORMULARE ════════════════════════════════════════════════
    Felder weiß mit klarer Kante und 12 px Radius, Beschriftung in Tinte, Hinweise ruhig. Formulargruppen
    (Abschnitte von „Neue Sendung“ und Versandkostenrechner) stehen offen auf dem Papier: ein Abschnittskopf
    mit Tintenlinie statt eines Kastens je Gruppe. */
+/* Radius seit 2026-11-14 der des Bediensystems (10 px, Abschnitt 3): Felder, Auswahlfelder und Knöpfe einer Leiste
+   tragen dieselbe Form. */
 :root[data-ce-bereich="kunde"] :is(.field-input, .field-select, .field-textarea) {
   border-color: var(--ce-color-border-default);
-  border-radius: var(--ce-pr-radius-control-lg);
+  border-radius: var(--ce-pr-bs-radius);
 }
 :root[data-ce-bereich="kunde"] :is(.field-input, .field-select, .field-textarea):hover:not(:focus):not(:disabled) { border-color: var(--ce-color-text-muted); }
 /* Nur stehende Beschriftungen; schwebende (Versandformulare) behalten ihren ruhigen Ruhezustand. */
@@ -1296,12 +1946,13 @@
   box-shadow: none;
   overflow: visible;
 }
-/* Die Optionsleiste über dem Formular (Abholung, Versanddatum, Versanddienst …) bleibt eine Reihe von Feldern:
-   weiße Fläche, klare Kante, 12 px Radius — und der Fehlerrahmen des Versanddatums bleibt sichtbar. */
+/* Die Optionsleiste über dem Formular (Abholung, Versanddatum, Versanddienst …) bleibt eine Reihe von Feldern; ihre
+   Auslöser und Aufklappfelder gehören zum Bediensystem (Abschnitt 3), der Fehlerrahmen des Versanddatums bleibt
+   sichtbar. Die Kachel selbst ist nur Positionierungsrahmen. */
 :root[data-ce-bereich="kunde"] .calc-page-wrap .calc-filter-bar { margin-bottom: var(--ce-space-8); }
 :root[data-ce-bereich="kunde"] .calc-filter-bar .calc-panel {
   border-color: var(--ce-color-border-default);
-  border-radius: var(--ce-pr-radius-control-lg);
+  border-radius: var(--ce-pr-bs-radius);
   box-shadow: none;
 }
 :root[data-ce-bereich="kunde"] .calc-filter-bar .calc-panel:hover { border-color: var(--ce-color-text-muted); }
@@ -1579,7 +2230,11 @@
   color: var(--ce-color-text-primary);
 }
 
-/* ═══════════ 21 · AUSWAHL MIT ERKLÄRUNG — NAVY-WAHL (Variante B) ══════════
+/* ═══════════ 21 · AUSWAHL MIT ERKLÄRUNG (seit 2026-11-14 helle Wahl statt Navy) ═══
+   Premium Control System 2.0 (Betreiberauftrag 2026-11-14): Transportabsicherung, Art der Lieferadresse,
+   Lieferscheine und Abrechnung sind kompakte Auswahlmenüs (Abschnitt 3, AuswahlMenue.jsx). Als Karte bleiben die
+   Zollrechnung, der Importmodus und die Aufklappzeilen; gewählt tragen sie die helle Wahlfläche mit blauer Kante.
+   Der folgende Absatz beschreibt die Herkunft (Variante B, 2026-10-28). 
    Betreiberentscheidung 2026-10-28: Trägt jede Option einen erklärenden Satz, steht sie als helle Karte; die gewählte
    wird zur Navy-Fläche mit heller Schrift. Wo bisher der runde Radiopunkt stand, steht der Haken im hellen Signal —
    an derselben Stelle, damit Titel, Preise und Einrückungen jeder Karte bleiben, wie sie freigegeben sind. Gilt für
@@ -1590,25 +2245,34 @@
    sichtbar war, liegt es jetzt unsichtbar über der ganzen Karte — Klick, Tastatur, Screenreader und Prüfwerkzeuge
    treffen weiter das Eingabefeld. Gesperrte Optionen bleiben gesperrt und behalten ihre Erklärung.
    `--ce-wahl-kante`/`--ce-wahl-grund` tragen den Ruhezustand, damit eine Zeige-Regel ohne echten Zeiger (Touch) ihn
-   nie verändert; `--ce-wahl-haken` ist die Farbe des Hakens (in Ruhe unsichtbar). */
+   nie verändert; `--ce-wahl-haken` ist die Farbe des Hakens (in Ruhe unsichtbar).
+   Premium-Auswahlkarte des Bediensystems (D4/D6, 2026-11-14): feine Kontur, leiser Schatten in Ruhe, beim Zeigen etwas
+   mehr Tiefe; gewählt trägt die Navy-Fläche den Schatten der Hauptaktion. `--ce-wahl-schatten` trägt die Ruhe, die
+   Zeilen im Aufklappfeld setzen ihn auf none. */
 :root[data-ce-bereich="kunde"] .ce-wahl {
-  --ce-wahl-kante: var(--ce-color-border-default);
+  --ce-wahl-kante: var(--ce-pr-bs-kontur);
   --ce-wahl-grund: var(--ce-color-surface);
-  --ce-wahl-kante-zeigen: var(--ce-color-border-strong);
+  --ce-wahl-kante-zeigen: var(--ce-pr-bs-kontur-zeigen);
+  --ce-wahl-schatten: var(--ce-pr-bs-schatten-wahl);
+  --ce-wahl-schatten-zeigen: var(--ce-pr-bs-schatten-wahl-zeigen);
+  --ce-wahl-schatten-gewaehlt: var(--ce-pr-bs-schatten-wahl-gewaehlt);
   --ce-wahl-haken: transparent;
   position: relative;
   border: 1px solid var(--ce-wahl-kante);
-  border-radius: var(--ce-pr-radius-control-lg);
+  border-radius: var(--ce-pr-bs-radius-flaeche);
   background: var(--ce-wahl-grund);
-  box-shadow: none;
+  box-shadow: var(--ce-wahl-schatten);
   cursor: pointer;
-  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard), border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+  transition:
+    background-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    border-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    box-shadow var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
 }
 /* Ruhezustand auch unter einem Zeiger ohne echtes Zeigen; das sichtbare Zeigen steht unten in (hover: hover). */
 :root[data-ce-bereich="kunde"] :where(.ce-wahl):hover {
   border-color: var(--ce-wahl-kante);
   background: var(--ce-wahl-grund);
-  box-shadow: none;
+  box-shadow: var(--ce-wahl-schatten);
 }
 
 /* Karten mit nativem Radio (Rechnungsstellung, Lieferschein, Zollrechnung): Das Radio liegt unsichtbar über der Karte,
@@ -1661,34 +2325,18 @@
   left: calc(var(--ce-space-4) + var(--ce-wahl-platz) / 2);
 }
 
-/* Gewählt: Navy-Fläche der Wortmarke, helle Schrift, der Haken im hellen Signal. */
+/* Gewählt (Premium Control System 2.0, 2026-11-14): helle Wahlfläche, blaue Kante (1 px Rand + 1 px Innenring, kein
+   Layoutsprung), blauer Haken — dieselbe Sprache wie Auswahlmenü, Filterzeilen, Segmente und Kalender. Navy bleibt
+   der Hauptaktion vorbehalten. Der Titel steht in Navy und kräftig. */
 :root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) {
-  --ce-wahl-haken: var(--ce-pr-signal-on-navy);
-  border-color: var(--ce-pr-navy-800);
-  background: var(--ce-pr-navy-800);
-  color: var(--ce-pr-on-navy);
-  box-shadow: var(--ce-pr-btn-shadow);
+  --ce-wahl-haken: var(--ce-pr-bs-wahl-kante);
+  border-color: var(--ce-pr-bs-wahl-kante);
+  background: var(--ce-pr-bs-wahl-flaeche);
+  box-shadow: inset 0 0 0 1px var(--ce-pr-bs-wahl-kante);
 }
-:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) :is(.dn-mode-label, .ci-mode-option-title, .ins-card-name, .ins-card-price-val, .ins-bullet-txt, .ins-card-calc, .res-card-name, .res-card-price-val, .service-filter-option-label) {
-  color: var(--ce-pr-on-navy);
-}
-:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) :is(.field-hint, .ins-card-desc, .ins-card-price-sub, .ins-card-provider, .ins-card-bullet--info .ins-bullet-txt, .res-card-price-sub, .service-filter-option-desc) {
-  color: var(--ce-pr-on-navy-2);
-}
-:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) .ins-card-bullet::before { background: var(--ce-pr-on-navy-3); }
-:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) .ins-card-badge {
-  border-color: var(--ce-pr-on-navy-line);
-  background: transparent;
-  color: var(--ce-pr-signal-on-navy);
-}
-:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) :is(.ins-card-details-btn, .ins-card-terms-link) {
-  border-bottom-color: var(--ce-pr-on-navy-line);
-  color: var(--ce-pr-on-navy);
-}
-:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) :is(.ins-card-details-btn, .ins-card-terms-link):focus-visible { outline-color: var(--ce-pr-signal-on-navy); }
-:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) .spinner {
-  border-color: var(--ce-pr-on-navy-line);
-  border-top-color: var(--ce-pr-on-navy);
+:root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) :is(.ci-mode-option-title, .service-filter-option-label) {
+  color: var(--ce-pr-navy-800);
+  font-weight: 600;
 }
 
 /* Gesperrt und nicht gewählt: ruhige Mulde, Titel gedämpft, die Erklärung bleibt lesbar stehen. Eine gesperrte, aber
@@ -1707,45 +2355,51 @@
   outline-offset: var(--ce-focus-ring-offset);
 }
 
-/* Zeigen nur mit echtem Zeiger: Die offene Option zeigt ihren Haken leise vor, die gewählte wird einen Ton heller. */
+/* Zeigen nur mit echtem Zeiger: Die offene Option zeigt ihren Haken leise vor, die gewählte wird einen Ton kräftiger. */
 @media (hover: hover) {
   :root[data-ce-bereich="kunde"] .ce-wahl:not(:has(> input:checked), [aria-checked="true"], :has(> input:disabled)):hover {
     --ce-wahl-haken: var(--ce-color-border-strong);
     border-color: var(--ce-wahl-kante-zeigen);
     background: var(--ce-pr-inset);
+    box-shadow: var(--ce-wahl-schatten-zeigen);
   }
   :root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]):not(:has(> input:disabled)):hover {
-    border-color: var(--ce-pr-navy-700);
-    background: var(--ce-pr-navy-700);
+    border-color: var(--ce-pr-bs-wahl-kante);
+    background: var(--ce-pr-bs-wahl-flaeche-zeigen);
   }
-  :root[data-ce-bereich="kunde"] .ce-wahl:is(:has(> input:checked), [aria-checked="true"]) :is(.ins-card-details-btn, .ins-card-terms-link):hover { border-bottom-color: var(--ce-pr-signal-on-navy); }
 }
 
 /* Gruppen. Zollrechnung: Die Titel stehen kleiner als in den Kontokarten (Zeilenmitte entsprechend höher). */
 :root[data-ce-bereich="kunde"] .ci-mode-option.ce-wahl { --ce-wahl-zeilenmitte: calc(var(--ce-space-3) + 0.6125rem); }
 :root[data-ce-bereich="kunde"] .ci-mode:has(> .ce-wahl) { display: flex; flex-direction: column; gap: var(--ce-space-2); }
-/* Zeilen im Aufklappfeld: keine eigene Kante, Radius konzentrisch zum Feld (12 − 4 px Innenrand). */
+/* Zeilen im Aufklappfeld: keine eigene Kante und kein Schatten in Ruhe, Radius konzentrisch zum Feld (12 − 4 px
+   Innenrand); gewählt trägt die Zeile die Wahlfläche mit blauer Kante wie jede Auswahl. */
 :root[data-ce-bereich="kunde"] .ce-wahl.ce-wahl--zeile {
   --ce-wahl-kante: transparent;
   --ce-wahl-grund: transparent;
   --ce-wahl-kante-zeigen: transparent;
-  border-radius: var(--ce-radius-sm);
+  --ce-wahl-schatten: none;
+  --ce-wahl-schatten-zeigen: none;
+  border-radius: calc(var(--ce-pr-bs-radius-flaeche) - 4px);
 }
 :root[data-ce-bereich="kunde"] .service-filter-dropdown:has(> .ce-wahl--zeile) { display: flex; flex-direction: column; gap: 2px; }
 
 /* ═══════════ 22 · KURZE AUSWAHL — SEGMENTSTEUERUNG (Variante C) ═══════════
-   Betreiberentscheidung 2026-10-28: Kurze Optionen ohne Erklärung stehen als zusammenhängende Spur; das gewählte
-   Segment ist Navy mit heller Schrift — das ersetzt im Kundenbereich den weißen Daumen aus premium-redesign.css
-   („kein Navy“). Spur `.ce-segment`, Segment `.ce-segment-option`: Sortierung und Preisanzeige (Angebote, Buchung),
+   Betreiberentscheidung 2026-10-28: Kurze Optionen ohne Erklärung stehen als zusammenhängende Spur. Seit dem
+   Premium Control System 2.0 (2026-11-14) trägt das gewählte Segment die helle Wahlfläche mit blauer Kante statt
+   Navy. Spur `.ce-segment`, Segment `.ce-segment-option`: Sortierung und Preisanzeige (Angebote, Buchung),
    Rechnungsfilter, Adresstyp, Labelformat, die Pflichtfragen zur Ware und die Datumsschnellwahl.
    Der Zustand kommt aus der Bedienung, wie sie ist — natives Radio, `aria-pressed` oder `.active`; keine Rolle, kein
    Handler und kein Wert ändert sich. Ein Radio im Segment liegt unsichtbar über dem ganzen Segment. Telefon: Die Spur
-   nimmt die Breite, Beschriftungen brechen um statt abgeschnitten zu werden; Bedienziele 44 px. */
+   nimmt die Breite, Beschriftungen brechen um statt abgeschnitten zu werden; Bedienziele 44 px.
+   Bediensystem (2026-11-14): Die Spur ist außen so hoch wie ein Standardknopf (36 px Segment + 2 × 3 px Innenrand +
+   2 × 1 px Kante = 44 px) und trägt seinen Radius; die Segmente liegen konzentrisch darin (10 − 3 px). Das gewählte
+   Segment hat die Tiefe der Hauptaktion. */
 :root[data-ce-bereich="kunde"] .ce-segment {
   gap: 2px;
   padding: 3px;
   border: 1px solid var(--ce-pr-hairline);
-  border-radius: var(--ce-pr-radius-control-lg);
+  border-radius: var(--ce-pr-bs-radius);
   background: var(--ce-pr-inset);
 }
 :root[data-ce-bereich="kunde"] .ce-segment .ce-segment-option {
@@ -1754,18 +2408,21 @@
   align-items: center;
   justify-content: center;
   min-width: 0;
-  min-height: var(--ce-segment-hoehe, var(--ce-size-control-sm));
+  min-height: var(--ce-segment-hoehe, calc(var(--ce-pr-bs-hoehe) - 8px));
   padding-block: 0;
   padding-inline: var(--ce-segment-innen, var(--ce-space-3));
   border: 1px solid transparent;
-  border-radius: var(--ce-radius-sm);
+  border-radius: var(--ce-pr-bs-radius-innen);
   background: transparent;
   box-shadow: none;
   color: var(--ce-color-text-secondary);
   font-weight: 600;
   text-align: center;
   cursor: pointer;
-  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard), color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+  transition:
+    background-color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    color var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard),
+    box-shadow var(--ce-pr-bs-dauer) var(--ce-motion-ease-standard);
 }
 :root[data-ce-bereich="kunde"] .ce-segment :where(.ce-segment-option):hover {
   border-color: transparent;
@@ -1785,14 +2442,14 @@
   color: inherit;
   font-weight: inherit;
 }
-/* Gewählt: Navy mit heller Schrift, auch unter dem Zeiger. */
+/* Gewählt (Premium Control System 2.0, 2026-11-14): die helle Wahlfläche mit blauer Kante wie jede Auswahl, Schrift
+   in Navy — kein Navy-Segment mehr (Navy trägt nur die Hauptaktion). */
 :root[data-ce-bereich="kunde"] .ce-segment .ce-segment-option:is([aria-pressed="true"], :has(> input:checked), .active) {
-  border-color: var(--ce-pr-navy-800);
-  background: var(--ce-pr-navy-800);
-  color: var(--ce-pr-on-navy);
-  box-shadow: var(--ce-pr-btn-shadow);
+  border-color: var(--ce-pr-bs-wahl-kante);
+  background: var(--ce-pr-bs-wahl-flaeche);
+  color: var(--ce-pr-navy-800);
+  box-shadow: inset 0 0 0 1px var(--ce-pr-bs-wahl-kante);
 }
-:root[data-ce-bereich="kunde"] .ce-segment .ce-segment-option:is([aria-pressed="true"], :has(> input:checked), .active) .labelfmt-desc { color: var(--ce-pr-on-navy-2); }
 :root[data-ce-bereich="kunde"] .ce-segment .ce-segment-option:is(:focus-visible, :has(> input:focus-visible)) {
   outline: var(--ce-focus-ring);
   outline-offset: var(--ce-focus-ring-offset);
@@ -1803,8 +2460,8 @@
     color: var(--ce-color-text-primary);
   }
   :root[data-ce-bereich="kunde"] .ce-segment .ce-segment-option:is([aria-pressed="true"], :has(> input:checked), .active):hover {
-    border-color: var(--ce-pr-navy-700);
-    background: var(--ce-pr-navy-700);
+    border-color: var(--ce-pr-bs-wahl-kante);
+    background: var(--ce-pr-bs-wahl-flaeche-zeigen);
   }
 }
 /* Grober Zeiger, Tablet und Telefon: jedes Segment ein volles Bedienziel. */
@@ -1831,15 +2488,14 @@
 /* Datumsschnellwahl im schmalen Aufklappfeld: eine Zeile, die Segmente geben Innenrand ab statt umzubrechen. */
 :root[data-ce-bereich="kunde"] .date-quick-options.ce-segment { --ce-segment-innen: 0.625rem; flex-wrap: nowrap; }
 :root[data-ce-bereich="kunde"] .date-quick-options.ce-segment .ce-segment-option { flex: 0 1 auto; }
+/* Adresstyp und Pflichtfragen zur Ware: Standardspur (44 px außen), bündig mit den Feldern daneben. */
 :root[data-ce-bereich="kunde"] .abk-role-options.ce-segment {
-  --ce-segment-hoehe: var(--ce-size-control-md);
   --ce-segment-innen: var(--ce-space-2);
   display: flex;
 }
 /* Nach Inhalt teilen: „Eigene Adresse“ bleibt bis 360 px einzeilig; bei großer Schrift bricht es im Segment um. */
 :root[data-ce-bereich="kunde"] .abk-role-options.ce-segment .ce-segment-option { flex: 1 1 auto; }
 :root[data-ce-bereich="kunde"] .ins-goods-question .ce-segment {
-  --ce-segment-hoehe: var(--ce-size-control-md);
   display: flex;
   align-self: flex-start;
   width: fit-content;
@@ -3047,4 +3703,64 @@
 }
 @media print {
   :root[data-ce-bereich="kunde"] .ce-pm { display: none; }
+}
+
+/* ═══════════ 29 · NAVIGATIONSSYMBOLE IN BEWEGUNG ══════════════════════════════════════════════════════════════
+   Premium Control System 2.0 (Betreiberauftrag 2026-11-14): Jedes Symbol der ersten Ebene antwortet auf Zeigen und
+   Tastaturfokus mit einer eigenen kurzen Bewegung, die seine Sache zeigt (NavSymbol.jsx). Regeln:
+   - nur Transform und Deckkraft, 260–340 ms, einmal je Zeigen — kein Dauerlauf, kein Springen der Zeile;
+   - in Ruhe deckungsgleich mit dem bisherigen Symbol (gleiche Teilpfade, kein Versatz);
+   - Zeigen nur mit echtem Zeiger (hover: hover); Tastaturfokus immer; bei reduzierter Bewegung gar nicht.
+   SVG-Teile drehen und skalieren um ihre eigene Mitte (transform-box: fill-box). */
+:root[data-ce-bereich="kunde"] .nav-sym { display: block; flex-shrink: 0; }
+:root[data-ce-bereich="kunde"] .nav-sym-teil { transform-box: fill-box; transform-origin: center; }
+:root[data-ce-bereich="kunde"] .nav-sym-licht {
+  fill: var(--ce-pr-signal-on-navy);
+  stroke: none;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+:root[data-ce-bereich="kunde"] .nav-sym--dashboard .nav-sym-teil--1 { --nav-dx: -1.5px; --nav-dy: -1.5px; }
+:root[data-ce-bereich="kunde"] .nav-sym--dashboard .nav-sym-teil--2 { --nav-dx: 1.5px; --nav-dy: -1.5px; }
+:root[data-ce-bereich="kunde"] .nav-sym--dashboard .nav-sym-teil--3 { --nav-dx: -1.5px; --nav-dy: 1.5px; }
+:root[data-ce-bereich="kunde"] .nav-sym--dashboard .nav-sym-teil--4 { --nav-dx: 1.5px; --nav-dy: 1.5px; }
+
+/* Nacheinander: erst der Startpunkt, dann der Weg, dann Pfeil und Ziel bzw. Zeile für Zeile (Verzug je Teil). */
+:root[data-ce-bereich="kunde"] .nav-sym--routeArrow .nav-sym-teil--3 { --nav-verzug: 70ms; }
+:root[data-ce-bereich="kunde"] .nav-sym--routeArrow :is(.nav-sym-teil--2, .nav-sym-teil--4) { --nav-verzug: 140ms; }
+:root[data-ce-bereich="kunde"] .nav-sym--invoice .nav-sym-teil--3 { --nav-verzug: 60ms; }
+:root[data-ce-bereich="kunde"] .nav-sym--invoice .nav-sym-teil--4 { --nav-verzug: 120ms; }
+
+@keyframes nav-sym-auseinander { 45% { translate: var(--nav-dx) var(--nav-dy); } }
+@keyframes nav-sym-drehen { to { rotate: 90deg; } }
+@keyframes nav-sym-anfahren { 0% { translate: 0 0; } 40% { translate: 3px 0; } 70% { translate: -0.5px 0; } 100% { translate: 0 0; } }
+@keyframes nav-sym-aufleuchten { 50% { scale: 1.22; } }
+@keyframes nav-sym-aufklappen { 50% { transform: perspective(48px) rotateY(-32deg); } }
+@keyframes nav-sym-heben { 50% { translate: 0 -2px; } }
+@keyframes nav-sym-zeile { 50% { opacity: 0.35; } }
+@keyframes nav-sym-kippen { 50% { transform: perspective(56px) rotateX(16deg) rotateY(-18deg); } }
+@keyframes nav-sym-licht { 0% { opacity: 0; scale: 0.8; } 35% { opacity: 0.55; } 100% { opacity: 0; scale: 2; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):focus-visible .nav-sym--dashboard .nav-sym-teil { animation: nav-sym-auseinander 300ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):focus-visible .nav-sym--plus { animation: nav-sym-drehen 260ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):focus-visible .nav-sym--truck { animation: nav-sym-anfahren 340ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):focus-visible .nav-sym--routeArrow :is(.nav-sym-teil--1, .nav-sym-teil--3, .nav-sym-teil--2, .nav-sym-teil--4) { animation: nav-sym-aufleuchten 220ms var(--ce-motion-ease-standard) var(--nav-verzug, 0ms) both; }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):focus-visible .nav-sym--idcard { animation: nav-sym-aufklappen 320ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):focus-visible .nav-sym--invoice { animation: nav-sym-heben 300ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):focus-visible .nav-sym--invoice :is(.nav-sym-teil--3, .nav-sym-teil--4, .nav-sym-teil--5) { animation: nav-sym-zeile 200ms var(--ce-motion-ease-standard) var(--nav-verzug, 0ms) both; }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):focus-visible .nav-sym--package { animation: nav-sym-kippen 320ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):focus-visible .nav-sym--user .nav-sym-licht { animation: nav-sym-licht 340ms var(--ce-motion-ease-standard); }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):hover .nav-sym--dashboard .nav-sym-teil { animation: nav-sym-auseinander 300ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):hover .nav-sym--plus { animation: nav-sym-drehen 260ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):hover .nav-sym--truck { animation: nav-sym-anfahren 340ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):hover .nav-sym--routeArrow :is(.nav-sym-teil--1, .nav-sym-teil--3, .nav-sym-teil--2, .nav-sym-teil--4) { animation: nav-sym-aufleuchten 220ms var(--ce-motion-ease-standard) var(--nav-verzug, 0ms) both; }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):hover .nav-sym--idcard { animation: nav-sym-aufklappen 320ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):hover .nav-sym--invoice { animation: nav-sym-heben 300ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):hover .nav-sym--invoice :is(.nav-sym-teil--3, .nav-sym-teil--4, .nav-sym-teil--5) { animation: nav-sym-zeile 200ms var(--ce-motion-ease-standard) var(--nav-verzug, 0ms) both; }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):hover .nav-sym--package { animation: nav-sym-kippen 320ms var(--ce-motion-ease-standard); }
+  :root[data-ce-bereich="kunde"] :is(.nitem, .pp-nav-group-head):hover .nav-sym--user .nav-sym-licht { animation: nav-sym-licht 340ms var(--ce-motion-ease-standard); }
 }

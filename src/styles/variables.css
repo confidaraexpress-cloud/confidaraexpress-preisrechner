@@ -1093,4 +1093,45 @@
   --ce-pr-ed-ansprech-punkt-ring: rgba(92, 212, 154, 0.32);
   --ce-pr-ed-ansprech-puls-dauer: 2800ms;
   --ce-pr-ed-ansprech-puls-kurve: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* ── Bediensystem (Premium Control System, Betreiberentscheidungen D1–D7, 2026-11-14) ──
+     Eine Familie für Knöpfe, Auswahlfelder, Aktionsmenüs, Auswahlkarten, Schalter und Reiter des Kundenbereichs
+     (premium-editorial.css, Abschnitt 3). Gelesen wird sie nur unter :root[data-ce-bereich="kunde"]; Anmeldung und
+     Preisrechner tragen den Block, nutzen ihn aber nicht. Höhen: Standard 44, Hauptaktion 48, kompakt 36 nur in
+     Tabellenzeilen und dichten Leisten (D2). Leicht gerundete Rechtecke statt Kapseln (D7). Tiefe nur über Schatten,
+     nie über Bewegung, Verlauf oder Leuchten (D1/D6). */
+  --ce-pr-bs-hoehe: 44px;
+  --ce-pr-bs-hoehe-gross: 48px;
+  --ce-pr-bs-hoehe-kompakt: 36px;
+  --ce-pr-bs-radius: 10px;                      /* Knöpfe, Felder, Menütasten, Filter, Segmentspur */
+  --ce-pr-bs-radius-innen: 7px;                 /* Segment und Menüeintrag: 10 px minus 3 px Innenrand */
+  --ce-pr-bs-radius-flaeche: 12px;              /* Menüs, Aufklappfelder, Auswahlkarten */
+  --ce-pr-bs-dauer: 160ms;                      /* Zeigen, Drücken, Öffnen (D6: 150–200 ms) */
+  --ce-pr-bs-kontur: #c3cce0;                   /* feine Kontur: Zweitaktion, Menütaste, Filter (Name trägt der Text) */
+  --ce-pr-bs-kontur-zeigen: #8d9cc0;            /* Kontur beim Zeigen · 2,9:1 auf Weiß */
+  --ce-pr-bs-flaeche-zeigen: #f4f7ff;           /* heller Ton der Zweitaktion beim Zeigen */
+  /* Gewählt (Premium Control System 2.0, 2026-11-14): EINE Sprache für jede Auswahl — Menüoption, Filterzeile,
+     Segment, Kalendertag, Uhrzeit. Hell hinterlegt, blaue Kante (1 px Rand + 1 px Innenring, ohne Layoutsprung),
+     blauer Haken. Navy bleibt der Hauptaktion vorbehalten. */
+  --ce-pr-bs-wahl-flaeche: #edf2ff;             /* Signal-Tinte #0041de darauf 6,7:1, Navy-Text 15:1 */
+  --ce-pr-bs-wahl-flaeche-zeigen: #e2eaff;      /* gewählt unter Zeiger oder Tastaturmarkierung */
+  --ce-pr-bs-wahl-kante: #004afc;               /* Kante und Haken · 6,2:1 auf Weiß, 5,5:1 auf der Wahlfläche */
+  --ce-pr-bs-gefahr-flaeche: #fdf1f1;           /* gefährlicher Menüeintrag beim Zeigen */
+  --ce-pr-bs-schalter-aus: #e6eaf2;             /* Spur AUS: hell … */
+  --ce-pr-bs-schalter-aus-kante: #8692ab;       /* … mit klarer Kante · 3,1:1 auf Weiß (WCAG 1.4.11) */
+  --ce-pr-bs-schalter-breite: 44px;
+  --ce-pr-bs-schalter-hoehe: 24px;
+  --ce-pr-bs-schalter-knopf: 18px;
+  /* Schatten: navygetönt, kurz und weich — eine Lage Licht von oben (Innenkante) und ein leiser Schlagschatten. */
+  --ce-pr-bs-schatten-primaer: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 1px 2px rgba(10, 22, 54, 0.22), 0 3px 8px -3px rgba(1, 27, 85, 0.32);
+  --ce-pr-bs-schatten-primaer-zeigen: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 4px rgba(10, 22, 54, 0.18), 0 8px 18px -8px rgba(1, 27, 85, 0.48);
+  --ce-pr-bs-schatten-gedrueckt: inset 0 1px 3px rgba(0, 8, 32, 0.38);
+  --ce-pr-bs-schatten-sekundaer: inset 0 -1px 0 rgba(10, 22, 54, 0.04), 0 1px 2px rgba(10, 22, 54, 0.06);
+  --ce-pr-bs-schatten-sekundaer-zeigen: inset 0 -1px 0 rgba(10, 22, 54, 0.04), 0 3px 8px -3px rgba(10, 22, 54, 0.16);
+  --ce-pr-bs-schatten-gefahr: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 1px 2px rgba(80, 12, 12, 0.22), 0 3px 8px -3px rgba(150, 20, 20, 0.30);
+  --ce-pr-bs-schatten-menue: 0 14px 32px -10px rgba(10, 22, 54, 0.26), 0 2px 6px rgba(10, 22, 54, 0.08);
+  --ce-pr-bs-schatten-wahl: 0 1px 2px rgba(10, 22, 54, 0.05);
+  --ce-pr-bs-schatten-wahl-zeigen: 0 4px 12px -6px rgba(10, 22, 54, 0.18);
+  --ce-pr-bs-schatten-wahl-gewaehlt: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 8px 20px -10px rgba(1, 27, 85, 0.55), 0 1px 2px rgba(10, 22, 54, 0.2);
+  --ce-pr-bs-schatten-schalterknopf: 0 1px 3px rgba(10, 22, 54, 0.30), 0 0 0 0.5px rgba(10, 22, 54, 0.12);
 }

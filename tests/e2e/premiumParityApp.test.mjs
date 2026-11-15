@@ -11,8 +11,9 @@
 //   D5  Kopfsuche (Vorschau A/B): Sendung, Rechnung und Adresse finden, per Tastatur und Maus öffnen, hervorgehoben.
 //   D6  Die Kopfsuche erscheint erst ab 1024 px.
 //   D7  Suche von einer Seite außerhalb des Dashboards: hervorgehoben, im Browserverlauf nur Art und Kennung.
-//   D8  Menütaste „Weitere Aktionen“ (Entwürfe, Adressbuch, Bestand): rund, so hoch wie die Kapsel daneben und auf
-//       ihrer Mitte, die Punkte ganz in der Fläche; auf dem Telefon 44 px.
+//   D8  Menütaste „Weitere Aktionen“ (Entwürfe, Adressbuch, Bestand, Sendungen): leicht gerundetes Quadrat im Radius
+//       des Bediensystems, so hoch wie die Aktion daneben und auf ihrer Mitte, die Punkte ganz in der Fläche; auf dem
+//       Telefon 44 px.
 //   D9  Demo ohne Carrier-Logos (P2, 2026-11-04): Übersicht samt Navy-Bühne, Sendungen, Tarifkarten und Buchung
 //       nennen den Carrier als Text — keine Logokachel, kein Paket-Zeichen, kein Logo auch nur für einen Augenblick,
 //       data-ce-demo schon am ersten Bild; die geschwungenen Linien der Bühne bleiben.
@@ -334,14 +335,18 @@ test("D7 — Kopfsuche von einer Seite außerhalb des Dashboards: Treffer hervor
   } finally { await ctx.close(); }
 });
 
-test("D8 — Menütaste „Weitere Aktionen“: rund, so hoch wie die Kapsel daneben und auf ihrer Mitte, Telefon 44 px", async () => {
-  // Betreiberentscheidung 2026-10-29: Entwurfstabelle neben „Fortsetzen“ (40 px), Adressbuch und Bestand neben der
-  // kleinen Kapsel (32 px); auf dem Telefon alle 44 px. Vorher saß die Taste in den Entwürfen 3 px über „Fortsetzen“,
-  // in Adressbuch und Lager war sie 40 px neben 32 px hohen Kapseln.
+test("D8 — Menütaste „Weitere Aktionen“: gerundetes Quadrat, so hoch wie die Aktion daneben und auf ihrer Mitte, Telefon 44 px", async () => {
+  // Betreiberentscheidung 2026-10-29: die Taste so hoch wie die Aktion daneben und auf ihrer Mitte; auf dem Telefon
+  // alle 44 px. Vorher saß die Taste in den Entwürfen 3 px über „Fortsetzen“, in Adressbuch und Lager war sie 40 px
+  // neben 32 px hohen Kapseln.
+  // Bediensystem (D3/D7, 2026-11-14): leicht gerundetes Quadrat im Radius des Bediensystems (10 px) statt Kreis; die
+  // kompakte Aktion daneben („Fortsetzen“, „Tracking“, die kleinen Zeilenaktionen) und die Taste stehen auf 36 px.
+  // Neu im Kreis: die Sendungsliste, deren Dokumente und Stornierung jetzt im selben Menü liegen.
   const FAELLE = [
     ["drafts", ".dft-actions-trigger", ".dft-cell-actions, .dft-card-actions"],
     ["addressbook", ".abk-actions-trigger", ".abk-row-actions, .abk-card-actions"],
     ["stock", ".inv-actions-trigger", ".inv-row-actions, .inv-card-actions"],
+    ["shipments", ".stn-act--menue .inv-actions-trigger", ".stn-actions"],
   ];
   for (const [viewport, telefon] of [[{ width: 1648, height: 1000 }, false], [{ width: 390, height: 844 }, true]]) {
     const { ctx, page, fehler, ausDerDemo } = await demoBrowser(viewport);
@@ -357,11 +362,13 @@ test("D8 — Menütaste „Weitere Aktionen“: rund, so hoch wie die Kapsel dan
           return {
             breite: a.width, hoehe: a.height, mitte: a.top + a.height / 2, nachbarHoehe: b.height, nachbarMitte: b.top + b.height / 2,
             punkte: parseFloat(getComputedStyle(knopf, "::before").width), innen: knopf.clientWidth,
+            radius: getComputedStyle(knopf).borderTopLeftRadius,
           };
         }, [taste, reihe]);
         const ort = `${bereich} @${viewport.width}`;
-        assert.equal(m.breite, m.hoehe, `${ort}: Menütaste nicht rund (${m.breite}×${m.hoehe})`);
-        assert.ok(Math.abs(m.hoehe - m.nachbarHoehe) < 0.5, `${ort}: Menütaste ${m.hoehe}px, Kapsel daneben ${m.nachbarHoehe}px`);
+        assert.equal(m.breite, m.hoehe, `${ort}: Menütaste nicht quadratisch (${m.breite}×${m.hoehe})`);
+        assert.equal(m.radius, "10px", `${ort}: Menütaste mit Radius ${m.radius} statt dem des Bediensystems (10px)`);
+        assert.ok(Math.abs(m.hoehe - m.nachbarHoehe) < 0.5, `${ort}: Menütaste ${m.hoehe}px, Aktion daneben ${m.nachbarHoehe}px`);
         assert.ok(Math.abs(m.mitte - m.nachbarMitte) < 0.5, `${ort}: Mitte um ${(m.mitte - m.nachbarMitte).toFixed(1)}px versetzt`);
         if (telefon) assert.equal(m.hoehe, 44, `${ort}: auf dem Telefon ${m.hoehe}px statt 44px`);
         assert.ok(m.punkte + 4 <= m.innen, `${ort}: die Punkte (${m.punkte}px) reichen an den Rand (${m.innen}px)`);

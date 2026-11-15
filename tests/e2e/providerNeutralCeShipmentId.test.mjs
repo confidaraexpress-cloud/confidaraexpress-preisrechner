@@ -27,6 +27,7 @@ import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fuelleVersandformular, STANDARD_SENDUNGSANGABEN } from "./helpers/newShipmentForm.mjs";
+import { MENUE, waehleOption } from "./helpers/auswahlMenue.mjs";
 
 const PORT = 5375, BASE = `http://127.0.0.1:${PORT}`;
 const CE_SHIPMENT_ID = 4711;
@@ -122,7 +123,6 @@ async function setupRoutes(page, protokoll) {
   await page.addInitScript(() => localStorage.setItem("ce_token", "e2e-token"));
 }
 
-const karte = (page, id) => page.locator(`.ins-card:has(input[value="${id}"])`);
 
 async function sichtbarerText(page) {
   return (await page.evaluate(() => document.body.innerText)).replace(/\u00a0/g, " ");
@@ -180,13 +180,13 @@ test("1 — Angebot ohne JUMiNGO-Referenz: Wiederherstellung, Absicherung und Bu
   assert.match(await sichtbarerText(page), /Express Saver/);
 
   // Schritt 2 — idempotent: steht der Absicherungsbereich schon, passiert nichts.
-  if (await page.locator(".ins-cards").count() === 0) {
+  if (await page.locator(MENUE("insuranceType")).count() === 0) {
     await page.getByRole("button", { name: /^Weiter/ }).first().click();
   }
-  await page.waitForSelector(".ins-cards", { timeout: 20000 });
+  await page.waitForSelector(MENUE("insuranceType"), { timeout: 20000 });
 
   // Zusätzliche Transportabsicherung — neu bepreist über die Angebotskennung.
-  await karte(page, "transit_cover").locator(".ins-card-name").click();
+  await waehleOption(page, "insuranceType", "transit_cover");
   await page.locator("#ins-goodsAreNew-ja").check();
   await page.locator("#ins-goodsAreFragile-nein").check();
   await page.waitForSelector(".ins-status-ok", { timeout: 10000 });

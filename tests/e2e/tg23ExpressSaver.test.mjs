@@ -24,6 +24,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import { MENUE, waehleOption } from "./helpers/auswahlMenue.mjs";
 import { chromium } from "playwright";
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
@@ -31,7 +32,7 @@ import {
   fuelleVersandformular, STANDARD_ABSENDER, STANDARD_EMPFAENGER,
 } from "./helpers/newShipmentForm.mjs";
 import {
-  LIEFERADRESSE_ID, lieferadressZustand, mockeLieferadresse, waehleLieferadresse, bestandteile,
+  LIEFERADRESSE_ID, lieferadressZustand, mockeLieferadresse, waehleLieferadresse, bestandteile, warteAufLieferadressAuswahl, lieferadressWert, lieferadressOptionen, schliesseLieferadresse, LIEFERADRESSE_AUSWAHL,
 } from "./helpers/residentialPriceInputs.mjs";
 
 const PORT = 5398, BASE = `http://127.0.0.1:${PORT}`;
@@ -366,7 +367,7 @@ async function zuSchritt2(page) {
 }
 
 async function absichern(page) {
-  await page.locator(`.ins-card:has(input[value="transit_cover"]) .ins-card-name`).click();
+  await waehleOption(page, "insuranceType", "transit_cover");
   await page.locator("#ins-goodsAreNew-ja").check();
   await page.locator("#ins-goodsAreFragile-nein").check();
 }
@@ -572,9 +573,8 @@ test("C — Art der Lieferadresse: vorläufiger Preis, Serverbeträge, Sperre oh
   assert.match(await inhalt(karteVon(page, TG_MO)), /Vorläufiger Preis/);
   await waehle(page, TG_MO);
 
-  const geschaeftKarte = page.locator(`label[for="${LIEFERADRESSE_ID.geschaeft}"]`);
-  const privatKarte = page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`);
-  await privatKarte.waitFor({ timeout: 20000 });
+  // Die Optionen stehen in der offenen Liste des Auswahlmenüs (Premium Control System 2.0).
+  const { geschaeft: geschaeftKarte, privat: privatKarte } = await lieferadressOptionen(page);
   assert.deepEqual(p.lz.optionsCalls, [{ offerId: TG_MO.offerId, offerRevision: 0 }]);
   assert.equal(await inhalt(page.locator("#residential-price-inputs-title")), "Art der Lieferadresse");
   // Netto/Brutto-Vertrag (2026-10-02): eine neue Berechnung zeigt netto — vorn der Nettozuschlag, darunter brutto.
@@ -585,7 +585,8 @@ test("C — Art der Lieferadresse: vorläufiger Preis, Serverbeträge, Sperre oh
   assert.match(pr, /Privatadresse/);
   assert.match(pr, /\+ 3,44 € netto/);
   assert.match(pr, /4,09 € brutto/);
-  assert.equal(await page.locator('input[name="residential-delivery"]:checked').count(), 0, "eine Art ist vorausgewählt");
+  await schliesseLieferadresse(page);
+  assert.equal(await lieferadressWert(page), "", "eine Art ist vorausgewählt");
 
   // Ohne Wahl: vorläufiger Preis, keine Absicherung, kein Schritt 2.
   assert.equal(await inhalt(page.locator(".blsum-price-label")), "Vorläufiger Preis");
@@ -637,10 +638,11 @@ test("D — Abholung am selben Tag: Zuschlag, wirksamer Abholschluss, frische un
   assert.doesNotMatch(await inhalt(karte), /17:00/, "der Abholschluss des Anbieters ist sichtbar");
 
   await waehle(page, TG_HEUTE);
-  const privatKarte = page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`);
-  await privatKarte.waitFor({ timeout: 20000 });
+  // Die Optionen stehen in der offenen Liste des Auswahlmenüs (Premium Control System 2.0).
+  const { privat: privatKarte } = await lieferadressOptionen(page);
   assert.match(await inhalt(privatKarte), /\+ 4,10 € brutto/);
   assert.match(await inhalt(privatKarte), /3,45 € netto/);
+  await schliesseLieferadresse(page);
   assert.equal(await inhalt(page.locator("#booking-live-sameday-note")), "inkl. Zuschlag für Abholung am selben Tag 3,89 €");
   assert.equal(await inhalt(page.locator("#offer-summary-sameday-until")), "Abholung heute bei Buchung bis 16:45 Uhr");
   assert.match(await inhalt(page.locator(".blsum-handover")), /bereit ab 11:30 Uhr/);
@@ -782,7 +784,7 @@ test("F2 — Warenwert 50 €: Grundabsicherung · über 2.500 €: keine bezahl
     const hinweis = page.locator("#ins-cover-notice");
     await hinweis.waitFor({ timeout: 10000 });
     assert.equal(await inhalt(hinweis), erwartet, `${warenwert} €`);
-    assert.equal(await page.locator(".ins-cards").count(), 0, `${warenwert} €: ohne kaufbaren Zusatz erscheinen Karten`);
+    assert.equal(await page.locator(MENUE("insuranceType")).count(), 0, `${warenwert} €: ohne kaufbaren Zusatz erscheinen Karten`);
     assert.equal(await page.locator(".booking-ins-unavailable").count(), 0, `${warenwert} €: als „nicht verfügbar“ gezeigt`);
     await kurzWarten(900);
     assert.equal(p.reprice.length, 0, `${warenwert} €: ohne kaufbaren Zusatz wurde neu bepreist`);
@@ -989,7 +991,7 @@ test("J — White Label: keine Einkaufsquelle, keine ServiceID, keine Quote- ode
   await keinAnbieter(page, "Angebotsliste mit Details");
 
   await waehle(page, TG_HEUTE);
-  await page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`).waitFor({ timeout: 20000 });
+  await warteAufLieferadressAuswahl(page);
   await keinAnbieter(page, "Art der Lieferadresse");
   await waehleLieferadresse(page, true);
   await zuSchritt2(page);
@@ -1057,10 +1059,15 @@ for (const breite of [1440, 834, 390]) {
 
     await waehle(page, TG_HEUTE);
     await waehleLieferadresse(page, true);
+    // Feld und beide Optionen der offenen Liste liegen innerhalb der Breite.
+    const feld = await page.locator(`${LIEFERADRESSE_AUSWAHL} [role="combobox"]`).boundingBox();
+    assert.ok(feld && feld.x >= 0 && feld.x + feld.width <= breite + 1, `${breite}px: das Auswahlfeld liegt außerhalb`);
+    await lieferadressOptionen(page);
     for (const id of Object.values(LIEFERADRESSE_ID)) {
-      const box = await page.locator(`label[for="${id}"]`).boundingBox();
+      const box = await page.locator(`#${id}`).boundingBox();
       assert.ok(box && box.x >= 0 && box.x + box.width <= breite + 1, `${breite}px: ${id} liegt außerhalb`);
     }
+    await schliesseLieferadresse(page);
     for (const sel of ["#booking-live-sameday-note", "#offer-summary-sameday-until", ".blsum-delivery"]) {
       assert.ok(await page.locator(sel).isVisible(), `${breite}px: ${sel} ist nicht sichtbar`);
     }

@@ -25,6 +25,7 @@ import {
   adressvorschlaegeAbgeschlossen, fuelleVersandformular, STANDARD_PAKET, STANDARD_SENDUNGSANGABEN,
 } from "./helpers/newShipmentForm.mjs";
 import { lieferadressZustand, mockeLieferadresse, waehleLieferadresse } from "./helpers/residentialPriceInputs.mjs";
+import { waehleOption } from "./helpers/auswahlMenue.mjs";
 
 const PORT = 5491, BASE = `http://127.0.0.1:${PORT}`;
 const CE_ID = 4991;
@@ -173,7 +174,7 @@ async function zurBuchungsseite(page, tarif) {
 }
 
 async function absichern(page) {
-  await page.locator(`.ins-card:has(input[value="transit_cover"]) .ins-card-name`).click();
+  await waehleOption(page, "insuranceType", "transit_cover");
   await page.locator("#ins-goodsAreNew-ja").check();
   await page.locator("#ins-goodsAreFragile-nein").check();
   await page.waitForSelector(".ins-status-ok", { timeout: 10000 });

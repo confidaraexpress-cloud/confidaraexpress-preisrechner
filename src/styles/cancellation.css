@@ -12,18 +12,10 @@
 
 /* ── Zeilenaktion „Stornierung anfragen" ──────────────────────────────────────
    Eine Anfrage, keine Sofortaktion: sie öffnet erst den Bestätigungsdialog.
-   In der Liste steht sie deshalb als leise, neutrale Textaktion — in JEDER
-   Zeile Rot wirkte wie eine zweite Akzentfarbe (Redesign 2026-10). Die
-   Warnrolle bleibt dem Dialog und seiner bestätigenden Aktion vorbehalten. */
-.stn-request-btn.btn-ghost { color: var(--ce-color-text-secondary); }
-.stn-request-btn.btn-ghost:hover:not(:disabled) {
-  background: var(--ce-color-surface-hover);
-  color: var(--ce-color-text-primary);
-}
-.stn-request-btn.btn-ghost:active:not(:disabled) {
-  background: var(--ce-color-surface-pressed);
-  color: var(--ce-color-text-primary);
-}
+   Seit dem Bediensystem (2026-11-14) steht sie nicht mehr in jeder Zeile,
+   sondern als roter Eintrag im Menü „Weitere Aktionen" (ShipmentsList,
+   RowActionsMenu) — die Farbe erscheint nur im geöffneten Menü. Die
+   Bestätigung bleibt dem Dialog und seiner bestätigenden Aktion vorbehalten. */
 /* Der Stornostatus ist ein ganzer Begriff — er bricht nie. */
 .stn-status { white-space: nowrap; }
 

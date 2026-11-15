@@ -12,6 +12,7 @@ import {
   BILLING_MODE_REQUEST_TEXT, BILLING_MODE_REQUEST_NOTE_MAX, billingModeRequestView, noteLength,
 } from "../../utils/billingModeView.mjs";
 import { SettingsSection } from "./ProfileCardHead";
+import { AuswahlMenue } from "../ui/AuswahlMenue";
 
 // Abrechnungsart der Kontoseite. Dasselbe Muster wie die Lieferscheineinstellung: eine
 // Auswahl aus zwei Optionen ohne Bearbeiten-Modus, gespeichert über denselben PATCH
@@ -158,11 +159,23 @@ export function BillingModeCard({ user }) {
     setAntragBusy(false);
   };
 
-  // Dieselben nativen Radios wie die Lieferscheinauswahl — kein zweites
-  // Auswahlbauteil. `ce-wahl` zeigt sie im Kundenbereich als Navy-Wahl
-  // (premium-editorial.css, Abschnitt 21); Wert, Sperre und Speichern bleiben.
-  // Während des Speicherns sind nur die übrigen Optionen gesperrt — die gewählte
-  // behält den Tastaturfokus (wie DeliveryNoteCard; tests/e2e/billingMode.test.mjs, B12).
+  // Dasselbe Auswahlmenü wie die Lieferscheine (Premium Control System 2.0, 2026-11-14); Wert, Sperre und Speichern
+  // bleiben. Die Sammelrechnung ist in der Liste nur wählbar, wenn das Konto sie führt — sonst gesperrt mit dem
+  // Grund „nur auf Antrag“; beantragt wird sie im Formular darunter, nie durch bloßes Auswählen.
+  // Während des Speicherns sind nur die übrigen Optionen gesperrt, nie das Feld — es behält den Tastaturfokus
+  // (wie DeliveryNoteCard; tests/e2e/billingMode.test.mjs, B12).
+  const optionen = BILLING_MODES.map((mode) => {
+    const selectable = billingModeOptionSelectable(user, mode);
+    return {
+      value: mode,
+      id: `bm-mode-${mode}`,
+      label: BILLING_MODE_TEXT.options[mode].label,
+      description: BILLING_MODE_TEXT.options[mode].hint,
+      hint: selectable ? undefined : BILLING_MODE_TEXT.consolidatedByRequest,
+      disabled: !selectable || (bmSaving && bmMode !== mode),
+    };
+  });
+  const gewaehlteErklaerung = BILLING_MODE_TEXT.options[bmMode]?.hint;
   const period = periodData ? consolidatedPeriodView(periodData) : null;
   const verfuegbar = consolidatedBillingAvailable(user);
   const ansicht = billingModeRequestView({
@@ -173,33 +186,20 @@ export function BillingModeCard({ user }) {
   return (
     <SettingsSection title={BILLING_MODE_TEXT.title} subtitle={BILLING_MODE_TEXT.subtitle}>
       <div className="profile-section-body">
-        <fieldset className="dn-mode-fieldset">
-          <legend className="field-label">{BILLING_MODE_TEXT.fieldLabel}</legend>
-          {BILLING_MODES.map((mode) => {
-            const opt = BILLING_MODE_TEXT.options[mode];
-            const id = `bm-mode-${mode}`;
-            // Die Sammelrechnung ist nur gewählt, wenn das Konto sie führt — sonst wird sie beantragt.
-            const selectable = billingModeOptionSelectable(user, mode);
-            return (
-              <label key={mode} className={`dn-mode-option ce-wahl${bmMode === mode ? " selected" : ""}`} htmlFor={id}>
-                <input
-                  id={id}
-                  type="radio"
-                  name="billingMode"
-                  value={mode}
-                  checked={bmMode === mode}
-                  disabled={!selectable || (bmSaving && bmMode !== mode)}
-                  onChange={() => saveBillingMode(mode)}
-                />
-                <span className="dn-mode-text">
-                  <span className="dn-mode-label">{opt.label}</span>
-                  <span className="field-hint">{opt.hint}</span>
-                  {!selectable && <span className="field-hint">{BILLING_MODE_TEXT.consolidatedByRequest}</span>}
-                </span>
-              </label>
-            );
-          })}
-        </fieldset>
+        <div className="dn-mode-feld">
+          <span className="field-label" id="bm-mode-label">{BILLING_MODE_TEXT.fieldLabel}</span>
+          <AuswahlMenue
+            name="billingMode"
+            id="bm-mode"
+            labelId="bm-mode-label"
+            value={bmMode}
+            options={optionen}
+            onChange={saveBillingMode}
+            busy={bmSaving}
+            describedBy={gewaehlteErklaerung ? "bm-mode-erklaerung" : undefined}
+          />
+          {gewaehlteErklaerung && <p className="field-hint dn-mode-erklaerung" id="bm-mode-erklaerung">{gewaehlteErklaerung}</p>}
+        </div>
         {serverBmMode === "consolidated_7d" && !verfuegbar && (
           <p className="field-hint mt-8">{BILLING_MODE_TEXT.consolidatedKeptNote}</p>
         )}

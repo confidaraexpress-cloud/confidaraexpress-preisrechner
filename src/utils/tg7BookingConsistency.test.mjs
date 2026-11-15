@@ -78,7 +78,9 @@ test("A2 — die Wahl entsteht ausschließlich über die Serverbindung, der Buch
 
 test("A3 — die Auswahl ist dreiwertig und ohne Vorauswahl", () => {
   const jsx = ohneKommentar("components/booking/ResidentialPriceInputModule.jsx");
-  assert.ok(/checked=\{k\.checked === true\}/.test(jsx), "die Auswahl wertet Truthiness aus");
+  // Auswahlmenü (2026-11-14): gewählt ist nur eine Karte mit checked === true, sonst null → Platzhalter.
+  assert.ok(/karten\.find\(\(k\) => k\.checked === true\)/.test(jsx), "die Auswahl wertet Truthiness aus");
+  assert.ok(/value=\{gewaehlt \? gewaehlt\.value : null\}/.test(jsx), "ohne Wahl muss das Menü leer bleiben");
   assert.ok(!/<Switch/.test(jsx), "eine dreiwertige Angabe steht als Schalter da");
 });
 

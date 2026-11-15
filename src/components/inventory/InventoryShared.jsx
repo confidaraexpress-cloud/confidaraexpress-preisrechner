@@ -214,7 +214,10 @@ export function CollapsibleSection({ id, title, hint, open, onToggle, filled, ch
    Aktion; die selteneren stehen mit vollem Namen im Menü.
 
    Seit dem Redesign (2026-10) ist der Auslöser eine Textaktion „Weitere
-   Aktionen" statt eines Drei-Punkte-Symbols; die Einträge tragen nur Text. */
+   Aktionen" statt eines Drei-Punkte-Symbols; die Einträge tragen nur Text.
+   Bediensystem (2026-11-14): dasselbe Menü trägt auch die Sendungszeile
+   (ShipmentsList). Ein Eintrag mit `tone: "danger"` steht rot — seine
+   Bestätigung bleibt Sache der aufgerufenen Aktion (Dialog). */
 export function RowActionsMenu({ items, label = "Weitere Aktionen", disabled }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
@@ -304,7 +307,7 @@ export function RowActionsMenu({ items, label = "Weitere Aktionen", disabled }) 
               ref={i === 0 ? firstItemRef : undefined}
               type="button"
               role="menuitem"
-              className="inv-actions-item"
+              className={item.tone === "danger" ? "inv-actions-item inv-actions-item--danger" : "inv-actions-item"}
               onClick={() => fuehreAus(item)}
               disabled={item.disabled}
             >

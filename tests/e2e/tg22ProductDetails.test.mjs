@@ -24,8 +24,9 @@ import { chromium } from "playwright";
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { fuelleVersandformular, STANDARD_PAKET } from "./helpers/newShipmentForm.mjs";
+import { waehleOption } from "./helpers/auswahlMenue.mjs";
 import {
-  LIEFERADRESSE_ID, lieferadressZustand, mockeLieferadresse, waehleLieferadresse, bestandteile,
+  LIEFERADRESSE_ID, lieferadressZustand, mockeLieferadresse, waehleLieferadresse, bestandteile, lieferadressOptionen, schliesseLieferadresse,
 } from "./helpers/residentialPriceInputs.mjs";
 
 const PORT = 5396, BASE = `http://127.0.0.1:${PORT}`;
@@ -239,7 +240,7 @@ async function zuSchritt2(page) {
 }
 
 async function absichern(page) {
-  await page.locator(`.ins-card:has(input[value="transit_cover"]) .ins-card-name`).click();
+  await waehleOption(page, "insuranceType", "transit_cover");
   await page.locator("#ins-goodsAreNew-ja").check();
   await page.locator("#ins-goodsAreFragile-nein").check();
 }
@@ -404,11 +405,12 @@ test("D — Privatadresse und Absicherung unverändert: Hinweis, vorläufiger Pr
     "Bei einer privaten Lieferadresse kann ein Zuschlag anfallen.");
 
   await waehle(page, TG);
-  const privatKarte = page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`);
-  await privatKarte.waitFor({ timeout: 20000 });
+  // Die Optionen stehen in der offenen Liste des Auswahlmenüs (Premium Control System 2.0).
+  const { privat: privatKarte } = await lieferadressOptionen(page);
   // Netto/Brutto-Vertrag (2026-10-02): netto vorn, der Bruttobetrag darunter.
   assert.match(await inhalt(privatKarte), /\+ 3,18 € netto/);
   assert.match(await inhalt(privatKarte), /3,78 € brutto/);
+  await schliesseLieferadresse(page);
   assert.equal(p.reprice.length, 0, "vor der Bindung wurde die Absicherung bepreist");
   await waehleLieferadresse(page, true);
   await warteAufText(page, ".blsum-price-gross", "18,94");

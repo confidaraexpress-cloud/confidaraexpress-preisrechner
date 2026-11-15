@@ -6,8 +6,12 @@
 // Zwei Leitsätze halten diese Datei zusammen:
 //   1. Der Schalter ist ein Steuerelement, keine Überschrift — er muss kleiner
 //      wirken als der Text, den er bedient.
-//   2. Klein sichtbar heißt NICHT klein bedienbar: die Trefferfläche bleibt die
-//      ganze Zeile, auf Touchgeräten mindestens 44 px.
+//   2. Die Trefferfläche ist die ganze Zeile, auf Touchgeräten mindestens 44 px.
+//
+// Bediensystem (Betreiberentscheidung D5, 2026-11-14): EIN moderner, klar sichtbarer
+// Schalter — Spur 44×24, Knopf 18 mit leichtem Schatten, AN in Navy mit Häkchen,
+// AUS hell mit sichtbarer Kante. Der frühere Kleinstschalter (höchstens 34×20,
+// Knopf 15) ist damit abgelöst; die Leitsätze oben gelten weiter.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -123,18 +127,17 @@ test.after(async () => {
 
 /* ══════════ Schaltergeometrie ══════════ */
 
-test("1 — alle vier Schalter sind klein: höchstens 34×20, Knopf höchstens 15", async () => {
+test("1 — alle vier Schalter haben das Maß des Bediensystems: Spur 44×24, Knopf 18 (D5)", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
   await setupRoutes(page);
   await zurBuchung(page);
 
   for (const sel of TOGGLES) {
     const spur = await page.locator(`${sel} ~ .ce-switch-track`).boundingBox();
-    assert.ok(spur.width <= 34, `${sel}: Spur ${spur.width}px breit (max 34)`);
-    assert.ok(spur.height <= 20, `${sel}: Spur ${spur.height}px hoch (max 20)`);
-    assert.ok(spur.width >= 28 && spur.height >= 16, `${sel}: zu klein geraten (${spur.width}×${spur.height})`);
+    assert.ok(Math.abs(spur.width - 44) <= 0.5, `${sel}: Spur ${spur.width}px breit (soll 44)`);
+    assert.ok(Math.abs(spur.height - 24) <= 0.5, `${sel}: Spur ${spur.height}px hoch (soll 24)`);
     const knopf = await page.locator(`${sel} ~ .ce-switch-track .ce-switch-knob`).boundingBox();
-    assert.ok(knopf.width <= 15 && knopf.height <= 15, `${sel}: Knopf ${knopf.width}×${knopf.height} (max 15)`);
+    assert.ok(Math.abs(knopf.width - 18) <= 0.5 && Math.abs(knopf.height - 18) <= 0.5, `${sel}: Knopf ${knopf.width}×${knopf.height} (soll 18)`);
   }
   await page.close();
 });
@@ -230,7 +233,7 @@ test("5 — der Zustand steht nicht allein in der Farbe", async () => {
   await page.close();
 });
 
-test("6 — der Fokus bleibt trotz kleinerem Schalter gut sichtbar", async () => {
+test("6 — der Fokus ist am Schalter gut sichtbar", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
   await setupRoutes(page);
   await zurBuchung(page);
@@ -254,7 +257,7 @@ test("6 — der Fokus bleibt trotz kleinerem Schalter gut sichtbar", async () =>
 
 /* ══════════ Trefferfläche ══════════ */
 
-test("7 — klein sichtbar, groß bedienbar: 44px Zeile auf Touchbreiten", async () => {
+test("7 — überall dasselbe Maß, groß bedienbar: 44px Zeile auf Touchbreiten", async () => {
   for (const w of [1440, 1280, 1024, 768, 430, 390, 360]) {
     const page = await browser.newPage({ viewport: { width: w, height: 1300 } });
     await setupRoutes(page);
@@ -262,7 +265,7 @@ test("7 — klein sichtbar, groß bedienbar: 44px Zeile auf Touchbreiten", async
 
     for (const sel of TOGGLES) {
       const spur = await page.locator(`${sel} ~ .ce-switch-track`).boundingBox();
-      assert.ok(spur.width <= 34, `${sel} bei ${w}px: Spur ${spur.width}px — auch mobil klein bleiben`);
+      assert.ok(Math.abs(spur.width - 44) <= 0.5, `${sel} bei ${w}px: Spur ${spur.width}px — auf jeder Breite dasselbe Maß (44)`);
       const zeile = await page.locator(sel).locator("xpath=ancestor::label[1]").boundingBox();
       if (w <= 860) {
         assert.ok(zeile.height >= 44, `${sel} bei ${w}px: Zeile nur ${zeile.height}px (WCAG 2.5.5)`);
@@ -297,9 +300,11 @@ test("8 — die A4/A6-Felder sind kompakt statt kartenhaft", async () => {
   await page.close();
 });
 
-// Betreiberentscheidung 2026-10-28 (Editorial-Kundenbereich): Das Labelformat ist eine Segmentsteuerung — das gewählte
-// Segment Navy mit heller Schrift, das offene hell auf der Spur, kein runder Radiopunkt mehr. Bis dahin galt hier
-// „erkennbar, aber nicht dominant“ mit sehr heller Wahl und sichtbarem Punkt.
+// Betreiberentscheidung 2026-10-28 (Editorial-Kundenbereich): Das Labelformat ist eine Segmentsteuerung — das offene
+// Segment hell auf der Spur, kein runder Radiopunkt mehr. Premium Control System 2.0 (Betreiberauftrag 2026-11-14,
+// nur lokal): das gewählte Segment trägt dieselbe Wahlsprache wie jede Auswahl — helle Wahlfläche, blaue Kante
+// (1 px Rand + 1 px Innenring), Schrift in Navy. Das frühere Navy-Segment ist damit abgelöst; Navy als Fläche bleibt
+// der Hauptaktion vorbehalten.
 const leuchtdichte = (farbe) => {
   const [r, g, b] = farbe.match(/[\d.]+/g).slice(0, 3).map(Number).map((k) => {
     const c = k / 255;
@@ -308,8 +313,12 @@ const leuchtdichte = (farbe) => {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 };
 const deckend = (farbe) => { const a = farbe.match(/[\d.]+/g); return a.length < 4 || Number(a[3]) > 0; };
+const kontrastVon = (a, b) => {
+  const [hell, dunkel] = [leuchtdichte(a), leuchtdichte(b)].sort((x, y) => y - x);
+  return (hell + 0.05) / (dunkel + 0.05);
+};
 
-test("9 — die aktive Wahl ist eindeutig: Navy-Segment mit heller Schrift, die offene bleibt hell", async () => {
+test("9 — die aktive Wahl ist eindeutig: helle Wahlfläche mit blauer Kante und Navy-Schrift, die offene bleibt hell", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
   await setupRoutes(page);
   await zurBuchung(page);
@@ -318,19 +327,24 @@ test("9 — die aktive Wahl ist eindeutig: Navy-Segment mit heller Schrift, die 
 
   const stil = (sel) => page.locator(sel).first().evaluate((el) => {
     const s = getComputedStyle(el);
-    return { bg: s.backgroundColor, farbe: s.color, borderBreite: s.borderTopWidth, spur: getComputedStyle(el.parentElement).backgroundColor };
+    return { bg: s.backgroundColor, farbe: s.color, borderBreite: s.borderTopWidth, kante: s.borderTopColor,
+      ring: s.boxShadow, spur: getComputedStyle(el.parentElement).backgroundColor };
   });
 
   const gewaehlt = await stil(".labelfmt-card--selected");
   assert.ok(parseFloat(gewaehlt.borderBreite) <= 1, `Kante ${gewaehlt.borderBreite} — zu kräftig`);
-  assert.ok(leuchtdichte(gewaehlt.bg) < 0.05, `die aktive Fläche muss Navy sein, ist ${gewaehlt.bg}`);
-  const kontrast = (leuchtdichte(gewaehlt.farbe) + 0.05) / (leuchtdichte(gewaehlt.bg) + 0.05);
-  assert.ok(kontrast >= 7, `Schrift auf dem gewählten Segment ${kontrast.toFixed(1)}:1 — zu schwach`);
+  assert.ok(leuchtdichte(gewaehlt.bg) > 0.8, `die Wahlfläche muss hell sein (kein Navy-Segment mehr), ist ${gewaehlt.bg}`);
+  assert.ok(kontrastVon(gewaehlt.kante, gewaehlt.bg) >= 3,
+    `die blaue Kante hebt sich nur ${kontrastVon(gewaehlt.kante, gewaehlt.bg).toFixed(1)}:1 von der Wahlfläche ab`);
+  assert.match(gewaehlt.ring, /inset/, "der Innenring fehlt — die Wahl hinge an einer einzelnen 1-px-Kante");
+  assert.ok(kontrastVon(gewaehlt.farbe, gewaehlt.bg) >= 7,
+    `Schrift auf dem gewählten Segment ${kontrastVon(gewaehlt.farbe, gewaehlt.bg).toFixed(1)}:1 — zu schwach`);
 
   const offen = await stil(".labelfmt-card:not(.labelfmt-card--selected)");
   const flaeche = deckend(offen.bg) ? offen.bg : offen.spur;
   assert.ok(leuchtdichte(flaeche) > 0.85, `die offene Fläche muss hell und ruhig bleiben, ist ${flaeche}`);
   assert.notEqual(gewaehlt.bg, offen.bg, "die Wahl ist nicht von der offenen Option zu unterscheiden");
+  assert.notEqual(gewaehlt.kante, offen.kante, "die Kante unterscheidet die Wahl nicht von der offenen Option");
   await page.close();
 });
 

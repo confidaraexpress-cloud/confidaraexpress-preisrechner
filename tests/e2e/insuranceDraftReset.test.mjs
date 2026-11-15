@@ -29,6 +29,7 @@ import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fuelleVersandformular } from "./helpers/newShipmentForm.mjs";
+import { MENUE, waehleOptionNachName } from "./helpers/auswahlMenue.mjs";
 
 const PORT = 5418, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -142,11 +143,11 @@ async function zurVersicherung(page) {
   await page.locator(".offer-card:not(.offer-card--unavailable)").first().locator("button.offer-cta-btn").click();
   await page.waitForSelector(".steps-bar", { timeout: 20000 });
   await page.getByRole("button", { name: /^Weiter/ }).first().click();
-  await page.waitForSelector(".ins-cards", { timeout: 20000 });
+  await page.waitForSelector(MENUE("insuranceType"), { timeout: 20000 });
 }
 
 const waehle = async (page, name) => {
-  await page.locator(`.ins-card:has-text("${name}")`).first().locator(".ins-card-name").click();
+  await waehleOptionNachName(page, "insuranceType", name);
 };
 const buchenKnopf = (page) => page.getByRole("button", { name: /Kostenpflichtig buchen/ });
 

@@ -26,8 +26,26 @@ import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import {
+  AUSLOESER, OPTION, gewaehlterWert, oeffneMenue, optionen, schliesseMenue, waehleOption,
+} from "./helpers/auswahlMenue.mjs";
 
 const PORT = 5247, BASE = `http://127.0.0.1:${PORT}`;
+
+// Abrechnungsart und Lieferscheine sind kompakte Auswahlmenüs (Premium Control System 2.0, 2026-11-14). Die Optionen
+// behalten ihre Kennungen (bm-mode-…, dn-mode-…), stehen aber nur in der OFFENEN Liste; der gewählte Wert steht am
+// Feld (data-wert), gesperrte Optionen tragen aria-disabled.
+const BM = "billingMode", DN = "deliveryNoteMode";
+const modus = (page) => gewaehlterWert(page, BM);
+const bmOption = async (page, wert) => (await optionen(page, BM)).find((o) => o.wert === wert);
+/** Echter Mausklick auf eine Option der offenen Liste — auch auf eine gesperrte, die Playwright nicht annimmt (kein
+ *  force): ein Kunde kann sie treffen, das Bauteil muss sie ignorieren. */
+async function klickeOption(page, name, wert) {
+  await oeffneMenue(page, name);
+  const box = await page.locator(OPTION(name, wert)).boundingBox();
+  assert.ok(box, `${name}/${wert}: die Option steht nicht in der Liste`);
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+}
 
 function chromiumExecutablePath() {
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH;
@@ -136,14 +154,15 @@ async function setupRoutes(ziel, opts) {
   });
 }
 
-async function neueSeite(mode, extra = {}, viewport = { width: 1280, height: 1000 }) {
+async function neueSeite(mode, extra = {}, viewport = { width: 1280, height: 1000 }, kontext = {}) {
   // `capabilities` undefined = älteres Backend ohne das Feld in /kundenbereich.
   const state = {
     mode, dnMode: BASE_USER.delivery_note_mode, patchDelayMs: 0,
     patches: [], periodCalls: 0, periodFails: false, periodBody: null, capabilities: undefined,
     request: null, readMode: null, requestReads: 0, requestReadFails: false, posts: [], deletes: 0, adminCalls: 0, ...extra,
   };
-  const ctx = await browser.newContext({ viewport });
+  // `kontext`: weitere Browsereinstellungen, etwa Touch (hasTouch, isMobile) für B20.
+  const ctx = await browser.newContext({ viewport, ...kontext });
   await setupRoutes(ctx, { state });
   const page = await ctx.newPage();
   const fehler = [];
@@ -154,7 +173,7 @@ async function neueSeite(mode, extra = {}, viewport = { width: 1280, height: 100
 
 async function zumProfil(page) {
   await page.goto(`${BASE}/dashboard?page=profile`, { waitUntil: "networkidle" });
-  await page.waitForSelector("#bm-mode-single", { timeout: 15000 });
+  await page.waitForSelector(AUSLOESER(BM), { timeout: 15000 });
 }
 
 test.before(async () => {
@@ -185,8 +204,9 @@ test.after(async () => {
 test("B1 — die Karte zeigt den GESPEICHERTEN Modus, nicht einen Standard", async () => {
   const { ctx, page, fehler } = await neueSeite("consolidated_7d");
   await zumProfil(page);
-  assert.equal(await page.locator("#bm-mode-consolidated_7d").isChecked(), true);
-  assert.equal(await page.locator("#bm-mode-single").isChecked(), false);
+  assert.equal(await modus(page), "consolidated_7d");
+  const liste = await optionen(page, BM);
+  assert.deepEqual(liste.map((o) => [o.id, o.gewaehlt]), [["bm-mode-single", false], ["bm-mode-consolidated_7d", true]]);
   assert.deepEqual(fehler, []);
   await ctx.close();
 });
@@ -234,7 +254,8 @@ test("B5 — ein Ausfall der Vorschau bricht die Karte nicht", async () => {
   await zumProfil(page);
   await page.waitForSelector(".bm-period", { timeout: 15000 });
   // Die Auswahl bleibt bedienbar, es steht nur eine ruhige Hinweiszeile darüber.
-  assert.equal(await page.locator("#bm-mode-consolidated_7d").isChecked(), true);
+  assert.equal(await modus(page), "consolidated_7d");
+  assert.equal(await page.locator(AUSLOESER(BM)).isEnabled(), true);
   assert.match(await page.locator(".bm-period").innerText(), /konnte nicht geladen werden/);
   assert.deepEqual(fehler, [], "ein Ladefehler darf keinen Renderfehler erzeugen");
   await ctx.close();
@@ -255,7 +276,7 @@ test("B6 — P5: ein Einzelrechnungskonto BEANTRAGT die Sammelrechnung — POST 
   assert.match(status, /Beantragt am 04\.11\.2026 – wird geprüft/);
   assert.match(status, /weiterhin eine Einzelrechnung/);
   assert.match(status, /Ihre Begründung: Etwa 40 Pakete pro Woche/);
-  assert.equal(await page.locator("#bm-mode-single").isChecked(), true, "die Abrechnungsart bleibt die Einzelrechnung");
+  assert.equal(await modus(page), "single", "die Abrechnungsart bleibt die Einzelrechnung");
   assert.equal(await page.locator("#bm-request-submit").count(), 0, "ein offener Antrag erlaubt keinen zweiten");
   assert.equal(await page.locator("#bm-request-withdraw").count(), 1);
   assert.equal(state.periodCalls, 0, "kein Sammelzeitraum ohne Sammelrechnung");
@@ -267,9 +288,11 @@ test("B6 — P5: ein Einzelrechnungskonto BEANTRAGT die Sammelrechnung — POST 
 test("B7 — ein erneuter Klick auf denselben Modus sendet nichts", async () => {
   const { ctx, page, state, fehler } = await neueSeite("consolidated_7d");
   await zumProfil(page);
-  await page.locator("#bm-mode-consolidated_7d").click({ force: true });
+  // Die gewählte Option noch einmal anklicken: die Liste schließt, nichts wird gemeldet.
+  await waehleOption(page, BM, "consolidated_7d");
   await page.waitForTimeout(500);
   assert.equal(state.patches.length, 0, "ein No-Op darf keinen Request erzeugen");
+  assert.equal(await modus(page), "consolidated_7d");
   assert.deepEqual(fehler, []);
   await ctx.close();
 });
@@ -294,13 +317,17 @@ test("B9 — die Sammelrechnung ist nie direkt wählbar (mit und ohne Fähigkeit
     const fall = JSON.stringify(capabilities) ?? "ohne Feld";
     const { ctx, page, state, fehler } = await neueSeite("single", { capabilities });
     await zumProfil(page);
-    assert.equal(await page.locator("#bm-mode-consolidated_7d").isDisabled(), true, `${fall}: Option nicht gesperrt`);
-    assert.equal(await page.locator("#bm-mode-single").isChecked(), true);
-    assert.equal(await page.getByText("Nur auf Antrag.", { exact: true }).count(), 1, `${fall}: der Hinweis fehlt`);
-    await page.locator("#bm-mode-consolidated_7d").click({ force: true });
+    assert.equal((await bmOption(page, "consolidated_7d"))?.gesperrt, true, `${fall}: Option nicht gesperrt`);
+    assert.equal(await modus(page), "single");
+    // Der Grund steht an der gesperrten Option in der Liste.
+    await oeffneMenue(page, BM);
+    assert.equal(await page.locator(OPTION(BM, "consolidated_7d")).getByText("Nur auf Antrag.", { exact: true }).count(), 1,
+      `${fall}: der Hinweis fehlt`);
+    await klickeOption(page, BM, "consolidated_7d");
     await page.waitForTimeout(500);
+    await schliesseMenue(page, BM);
     assert.equal(state.patches.length, 0, `${fall}: eine gesperrte Option darf keinen Request erzeugen`);
-    assert.equal(await page.locator("#bm-mode-single").isChecked(), true, `${fall}: die Auswahl ist gewandert`);
+    assert.equal(await modus(page), "single", `${fall}: die Auswahl ist gewandert`);
     assert.equal(state.periodCalls, 0, `${fall}: kein Sammelzeitraum für ein Einzelrechnungskonto`);
     assert.deepEqual(fehler, []);
     await ctx.close();
@@ -310,19 +337,22 @@ test("B9 — die Sammelrechnung ist nie direkt wählbar (mit und ohne Fähigkeit
 test("B10 — Bestandskonto: behält die Sammelrechnung, erfährt die Folge des Rückwegs, kann zurück — danach nur per Antrag", async () => {
   const { ctx, page, state, fehler } = await neueSeite("consolidated_7d", { capabilities: { consolidated7dAvailable: false } });
   await zumProfil(page);
-  assert.equal(await page.locator("#bm-mode-consolidated_7d").isChecked(), true, "das Bestandskonto wird nie umgedeutet");
-  assert.equal(await page.locator("#bm-mode-consolidated_7d").isDisabled(), false, "die gespeicherte Wahl bleibt wählbar");
+  assert.equal(await modus(page), "consolidated_7d", "das Bestandskonto wird nie umgedeutet");
+  assert.equal((await bmOption(page, "consolidated_7d"))?.gesperrt, false, "die gespeicherte Wahl bleibt wählbar");
   const vermerk = page.getByText("Ihr Konto nutzt weiterhin die Sammelrechnung.", { exact: false });
   assert.equal(await vermerk.count(), 1, "der Hinweis auf die gesperrte Buchung fehlt");
   assert.match(norm(await page.locator("#bm-switch-back-note").innerText()), /neuer Antrag nötig/);
   assert.match(norm(await page.locator("#bm-request-status").innerText()), /Sammelrechnung aktiv/);
-  await page.locator("#bm-mode-single").click();
+  await waehleOption(page, BM, "single");
   await page.waitForSelector(".profile-saved", { timeout: 15000 });
   assert.deepEqual(state.patches, [{ billing_mode: "single" }], "der Rückweg sendet genau diesen einen Schlüssel");
   // Danach ist die Sammelrechnung ein NEUER Wechsel — gesperrt, und der Antrag steht offen.
-  await page.waitForFunction(() => document.querySelector("#bm-mode-consolidated_7d")?.disabled === true, null, { timeout: 15000 });
   await page.waitForSelector("#bm-request-submit", { timeout: 15000 });
-  assert.equal(await page.locator("#bm-mode-single").isChecked(), true);
+  await oeffneMenue(page, BM);
+  await page.waitForFunction(() => document.querySelector("#bm-mode-consolidated_7d")?.getAttribute("aria-disabled") === "true",
+    null, { timeout: 15000 });
+  await schliesseMenue(page, BM);
+  assert.equal(await modus(page), "single");
   assert.equal(await vermerk.count(), 0, "der Bestandsvermerk gilt nur, solange das Konto die Sammelrechnung führt");
   assert.deepEqual(fehler, []);
   await ctx.close();
@@ -354,31 +384,45 @@ test("B12 — Tastatur: beim Speichern bleibt der Fokus auf der Auswahl (Rückwe
   });
   await zumProfil(page);
   const fokus = () => page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName);
-  const gesperrt = (ids) => Promise.all(ids.map((id) => page.locator(`#${id}`).isDisabled()));
+  // Sperren der übrigen Optionen: mit der Tastatur öffnen (der Fokus bleibt am Feld), lesen, mit Escape schließen.
+  const gesperrt = async (name, ids) => {
+    await page.keyboard.press("ArrowDown");
+    await page.locator(`[role="listbox"][data-auswahl="${name}"]`).waitFor({ state: "visible", timeout: 5000 });
+    const werte = await Promise.all(ids.map((id) => page.locator(`#${id}`).getAttribute("aria-disabled")));
+    await page.keyboard.press("Escape");
+    await page.locator(`[role="listbox"][data-auswahl="${name}"]`).waitFor({ state: "detached", timeout: 5000 });
+    return werte.map((w) => w === "true");
+  };
 
+  // Tastatur wie ein Kunde: Feld fokussieren, Enter öffnet (Markierung auf der gewählten Option), ArrowUp markiert die
+  // Option darüber, Enter wählt — die Liste schließt, gespeichert wird.
   const faelle = [
     // P5: der Rückweg auf die Einzelrechnung; danach ist die Sammelrechnung gesperrt (nur auf Antrag).
-    { start: "bm-mode-consolidated_7d", taste: "ArrowUp", ziel: "bm-mode-single", andere: ["bm-mode-consolidated_7d"],
+    { name: BM, feld: "bm-mode", ziel: "single", andere: ["bm-mode-consolidated_7d"],
       danachGesperrt: [true], body: { billing_mode: "single" } },
-    { start: "dn-mode-none", taste: "ArrowUp", ziel: "dn-mode-external", andere: ["dn-mode-confidara", "dn-mode-none"],
+    { name: DN, feld: "dn-mode", ziel: "external", andere: ["dn-mode-confidara", "dn-mode-none"],
       danachGesperrt: [false, false], body: { delivery_note_mode: "external" } },
   ];
   for (const f of faelle) {
-    if (f.start) await page.locator(`#${f.start}`).focus();
+    await page.locator(AUSLOESER(f.name)).focus();
     const vorher = state.patches.length;
-    await page.keyboard.press(f.taste);
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("Enter");
 
-    // Während des Speicherns: Fokus und Auswahl auf der neuen Option, die übrigen bleiben gesperrt.
-    assert.equal(await fokus(), f.ziel, `${f.ziel}: Fokus während des Speicherns verloren`);
-    assert.equal(await page.locator(`#${f.ziel}`).isChecked(), true);
-    assert.deepEqual(await gesperrt(f.andere), f.andere.map(() => true),
+    // Während des Speicherns: Fokus am Feld, der neue Wert steht schon da, die übrigen Optionen bleiben gesperrt.
+    assert.equal(await fokus(), f.feld, `${f.ziel}: Fokus während des Speicherns verloren`);
+    assert.equal(await gewaehlterWert(page, f.name), f.ziel);
+    assert.equal(await page.locator(AUSLOESER(f.name)).getAttribute("aria-busy"), "true", `${f.ziel}: kein Speicherzustand am Feld`);
+    assert.deepEqual(await gesperrt(f.name, f.andere), f.andere.map(() => true),
       `${f.ziel}: während des Speicherns darf keine zweite Umstellung möglich sein`);
 
-    await page.locator(".profile-section-body", { has: page.locator(`#${f.ziel}`) })
+    await page.locator(".profile-section-body", { has: page.locator(AUSLOESER(f.name)) })
       .locator(".profile-saved").waitFor({ timeout: 15000 });
-    assert.equal(await fokus(), f.ziel, `${f.ziel}: Fokus nach dem Speichern verloren`);
-    assert.equal(await page.locator(`#${f.ziel}`).isChecked(), true);
-    assert.deepEqual(await gesperrt(f.andere), f.danachGesperrt, `${f.ziel}: Sperre nach dem Speichern`);
+    assert.equal(await fokus(), f.feld, `${f.ziel}: Fokus nach dem Speichern verloren`);
+    assert.equal(await gewaehlterWert(page, f.name), f.ziel);
+    assert.deepEqual(await gesperrt(f.name, f.andere), f.danachGesperrt, `${f.ziel}: Sperre nach dem Speichern`);
+    assert.equal(await fokus(), f.feld, `${f.ziel}: Fokus nach dem Schließen der Liste verloren`);
     assert.equal(state.patches.length, vorher + 1, `${f.ziel}: genau ein PATCH je Umstellung`);
     assert.deepEqual(state.patches.at(-1), f.body);
   }
@@ -434,7 +478,7 @@ test("B15 — Genehmigung seit dem Anmelden: die Karte übernimmt die Serverwahr
   await zumProfil(page);
   await page.locator("#bm-request-status", { hasText: "Sammelrechnung aktiv" }).waitFor({ timeout: 15000 });
   assert.match(norm(await page.locator("#bm-request-status").innerText()), /Genehmigt am 05\.11\.2026/);
-  assert.equal(await page.locator("#bm-mode-consolidated_7d").isChecked(), true);
+  assert.equal(await modus(page), "consolidated_7d");
   assert.equal(await page.locator("#bm-request-submit").count(), 0, "kein Antragsformular bei aktiver Sammelrechnung");
   await page.waitForSelector(".bm-period", { timeout: 15000 });
   assert.deepEqual(fehler, []);
@@ -449,7 +493,7 @@ test("B16 — vor der Verfügbarkeit: der Antrag ist möglich, die Karte sagt wa
   await page.locator("#bm-request-submit").click();
   await page.waitForSelector("#bm-request-done", { timeout: 15000 });
   assert.match(norm(await page.locator("#bm-request").innerText()), /Ihr Antrag bleibt bis dahin in Prüfung/);
-  assert.equal(await page.locator("#bm-mode-single").isChecked(), true);
+  assert.equal(await modus(page), "single");
   assert.equal(state.patches.length, 0);
   assert.deepEqual(fehler, []);
   await ctx.close();
@@ -461,7 +505,169 @@ test("B17 — Stand nicht lesbar: kein Antragsformular (kein Doppelantrag aus Un
   await page.waitForSelector("#bm-request-load-error", { timeout: 15000 });
   assert.equal(await page.locator("#bm-request-submit").count(), 0);
   assert.equal(state.posts.length, 0);
-  assert.equal(await page.locator("#bm-mode-single").isChecked(), true, "die Auswahl bleibt bedienbar");
+  assert.equal(await modus(page), "single");
+  assert.equal(await page.locator(AUSLOESER(BM)).isEnabled(), true, "die Auswahl bleibt bedienbar");
+  assert.deepEqual(fehler, []);
+  await ctx.close();
+});
+
+// ─── Lesereihenfolge (Freigabeprüfung 2026-11-15) ─────────────────────────────────────────────────────────────────
+
+test("B18 — Lesereihenfolge: die offene Liste folgt im DOM und im Barrierefreiheitsbaum direkt auf das Feld, obenauf und unverändert platziert", async () => {
+  // Als Portal am Ende von <body> lagen zwischen Feld und erster Option 27 sichtbare Elemente (gemessen 1440 px): wer
+  // mit VoiceOver (iOS) oder TalkBack wischt, kam nach dem Öffnen nicht zu den Optionen, und die Liste schloss, sobald
+  // das Feld aus dem Bild scrollte. Jetzt steht die Liste gleich hinter dem Feld und wird über die Popover-API in der
+  // obersten Ebene gezeichnet — Lage, Fokus und Bedienung bleiben, wie sie waren.
+  // 720 × 450 entspricht 200 % Zoom eines 1440 × 900-Fensters (WCAG 1.4.4/1.4.10).
+  for (const viewport of [{ width: 1280, height: 1000 }, { width: 390, height: 844 }, { width: 720, height: 450 }]) {
+    const { ctx, page, state, fehler } = await neueSeite("single", {}, viewport);
+    await zumProfil(page);
+    for (const name of [BM, DN]) {
+      // Ein Vorfahr mit transform und overflow: hidden — die Lage, gegen die früher nur das Portal half.
+      await page.locator(`.profile-section-body:has(.ce-auswahl[data-auswahl="${name}"])`).evaluate((el) => {
+        el.style.transform = "translateX(0)"; el.style.overflow = "hidden";
+      });
+      await oeffneMenue(page, name);
+      const lage = await page.evaluate((n) => {
+        const k = document.querySelector(`.ce-auswahl[data-auswahl="${n}"] [role="combobox"]`);
+        const l = document.querySelector(`[role="listbox"][data-auswahl="${n}"]`);
+        const rk = k.getBoundingClientRect(), rl = l.getBoundingClientRect();
+        const erste = l.querySelector('[role="option"]').getBoundingClientRect();
+        const treffer = document.elementFromPoint(erste.left + erste.width / 2, erste.top + erste.height / 2);
+        return {
+          direktHinterDemFeld: k.nextElementSibling === l,
+          obenauf: l.matches(":popover-open"),
+          unterDemFeld: rl.top >= rk.bottom && rl.top - rk.bottom <= 8,
+          buendig: Math.abs(rl.left - rk.left) < 1 && Math.abs(rl.width - rk.width) < 1,
+          ersteOptionSichtbar: !!treffer && l.contains(treffer),
+          imBild: rl.left >= 0 && rl.right <= window.innerWidth && rl.bottom <= window.innerHeight,
+          fokusAmFeld: document.activeElement === k,
+        };
+      }, name);
+      assert.deepEqual(lage, {
+        direktHinterDemFeld: true, obenauf: true, unterDemFeld: true, buendig: true,
+        ersteOptionSichtbar: true, imBild: true, fokusAmFeld: true,
+      }, `${name} @ ${viewport.width} px`);
+      // Barrierefreiheitsbaum: auf das Feld folgt unmittelbar die Liste mit ihren Optionen.
+      const baum = await page.locator(`.ce-auswahl[data-auswahl="${name}"]`).ariaSnapshot();
+      assert.match(baum, /^- combobox "[^\n]*\[expanded\][^\n]*\n- listbox "[^"\n]+":\n\s+- option "/,
+        `${name}: die Liste folgt im Barrierefreiheitsbaum nicht direkt auf das Feld\n${baum}`);
+      await schliesseMenue(page, name);
+    }
+    // Bedienung unverändert: Tastatur wählt (Enter öffnet, Pos1 markiert die erste Option, Enter wählt), gespeichert
+    // wird genau einmal — Ausgangswert ist „none“, die letzte Option.
+    await page.locator(AUSLOESER(DN)).focus();
+    const vorher = state.patches.length;
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Home");
+    await page.keyboard.press("Enter");
+    await page.locator(".profile-section-body", { has: page.locator(AUSLOESER(DN)) }).locator(".profile-saved").waitFor({ timeout: 15000 });
+    assert.equal(state.patches.length, vorher + 1);
+    assert.deepEqual(state.patches.at(-1), { delivery_note_mode: "confidara" });
+    assert.equal(await gewaehlterWert(page, DN), "confidara");
+    assert.deepEqual(fehler, []);
+    await ctx.close();
+  }
+});
+
+test("B19 — Tastatur und Screenreader-Semantik: Leertaste, Pfeile, Pos1/Ende, gesperrte Option, Escape und Tab wählen nie beiläufig", async () => {
+  // Einzelrechnungskonto: „Sammelrechnung alle 7 Tage“ ist gesperrt („Nur auf Antrag.“) — die Fälle, in denen eine
+  // beiläufige Wahl Geschäftswirkung hätte (Speichern), dürfen nie eine auslösen.
+  const { ctx, page, state, fehler } = await neueSeite("single");
+  await zumProfil(page);
+  const knopf = page.locator(AUSLOESER(BM));
+  const liste = page.locator(`[role="listbox"][data-auswahl="${BM}"]`);
+  const stand = () => page.evaluate(() => {
+    const k = document.querySelector('.ce-auswahl[data-auswahl="billingMode"] [role="combobox"]');
+    return { offen: k.getAttribute("aria-expanded"), marke: k.getAttribute("aria-activedescendant"), fokusAmFeld: document.activeElement === k };
+  });
+
+  // Tastaturfokus (wie per Tab erreicht) — sichtbarer Fokusring.
+  await knopf.focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  assert.equal(await knopf.evaluate((k) => document.activeElement === k && k.matches(":focus-visible")), true, "kein sichtbarer Tastaturfokus am Feld");
+
+  // Leertaste öffnet, die Markierung steht auf der gewählten Option, der Fokus bleibt am Feld.
+  await page.keyboard.press(" ");
+  await liste.waitFor({ state: "visible", timeout: 5000 });
+  assert.deepEqual(await stand(), { offen: "true", marke: "bm-mode-single", fokusAmFeld: true });
+  // Pfeile ohne Umlauf, Pos1 und Ende.
+  await page.keyboard.press("ArrowDown");
+  assert.equal((await stand()).marke, "bm-mode-consolidated_7d");
+  await page.keyboard.press("ArrowDown");
+  assert.equal((await stand()).marke, "bm-mode-consolidated_7d", "kein Umlauf am Ende");
+  await page.keyboard.press("Home");
+  assert.equal((await stand()).marke, "bm-mode-single");
+  await page.keyboard.press("ArrowUp");
+  assert.equal((await stand()).marke, "bm-mode-single", "kein Umlauf am Anfang");
+  await page.keyboard.press("End");
+  assert.equal((await stand()).marke, "bm-mode-consolidated_7d");
+
+  // Semantik, wie ein Screenreader sie liest: benanntes Feld, aufgeklappt, benannte Liste, Zustände je Option, der
+  // Sperrgrund als Teil der Option.
+  const baum = await page.locator(`.ce-auswahl[data-auswahl="${BM}"]`).ariaSnapshot();
+  assert.match(baum, /- combobox "Rechnungsstellung Einzelrechnung je Sendung" \[expanded\]/, baum);
+  assert.match(baum, /- listbox "Rechnungsstellung":/, baum);
+  assert.match(baum, /- option "Einzelrechnung je Sendung[^"]*" \[selected\]/, baum);
+  assert.match(baum, /- option "Sammelrechnung alle 7 Tage[^"]*Nur auf Antrag\.[^"]*" \[disabled\]/, baum);
+
+  // Enter auf der gesperrten Option: keine Wahl, kein Speichern, die Liste bleibt offen.
+  await page.keyboard.press("Enter");
+  assert.equal((await stand()).offen, "true", "die Liste muss bei einer gesperrten Option offen bleiben");
+  assert.equal(await gewaehlterWert(page, BM), "single");
+  // Escape schließt ohne Wahl, der Fokus bleibt am Feld.
+  await page.keyboard.press("Escape");
+  await liste.waitFor({ state: "detached", timeout: 5000 });
+  assert.deepEqual(await stand(), { offen: "false", marke: null, fokusAmFeld: true });
+
+  // Tab bei offener Liste schließt ohne Wahl und geht zum nächsten Bedienelement NACH dem Feld (nicht ans Seitenende).
+  await page.locator(AUSLOESER(DN)).focus();
+  await page.keyboard.press("Enter");
+  await page.locator(`[role="listbox"][data-auswahl="${DN}"]`).waitFor({ state: "visible", timeout: 5000 });
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("Tab");
+  await page.locator(`[role="listbox"][data-auswahl="${DN}"]`).waitFor({ state: "detached", timeout: 5000 });
+  const nachTab = await page.evaluate(() => {
+    const k = document.querySelector('.ce-auswahl[data-auswahl="deliveryNoteMode"] [role="combobox"]');
+    const a = document.activeElement;
+    return { weiter: a !== k && a !== document.body && !!(k.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING) };
+  });
+  assert.deepEqual(nachTab, { weiter: true });
+  assert.equal(await gewaehlterWert(page, DN), "none", "Tab darf nie wählen");
+
+  // Klick daneben schließt ohne Wahl.
+  await oeffneMenue(page, BM);
+  await page.mouse.click(5, 5);
+  await liste.waitFor({ state: "detached", timeout: 5000 });
+  assert.equal(await gewaehlterWert(page, BM), "single");
+
+  assert.equal(state.patches.length, 0, "keine dieser Bedienungen darf speichern");
+  assert.deepEqual(fehler, []);
+  await ctx.close();
+});
+
+test("B20 — Touch (Smartphone, 390 px): Tippen öffnet und wählt, eine gesperrte Option bleibt wirkungslos", async () => {
+  const { ctx, page, state, fehler } = await neueSeite("single", {}, { width: 390, height: 844 }, { hasTouch: true, isMobile: true });
+  await zumProfil(page);
+  // Gesperrte Sammelrechnung antippen: nichts geschieht, kein PATCH.
+  await page.locator(AUSLOESER(BM)).tap();
+  await page.locator(`[role="listbox"][data-auswahl="${BM}"]`).waitFor({ state: "visible", timeout: 5000 });
+  const gesperrt = await page.locator(OPTION(BM, "consolidated_7d")).boundingBox();
+  await page.touchscreen.tap(gesperrt.x + gesperrt.width / 2, gesperrt.y + gesperrt.height / 2);
+  assert.equal(await gewaehlterWert(page, BM), "single");
+  assert.equal(state.patches.length, 0);
+  // Lieferschein: Feld antippen, Option antippen — genau eine Speicherung, Liste zu.
+  await page.locator(AUSLOESER(DN)).tap();
+  await page.locator(`[role="listbox"][data-auswahl="${DN}"]`).waitFor({ state: "visible", timeout: 5000 });
+  await page.locator(OPTION(DN, "external")).tap();
+  await page.locator(`[role="listbox"][data-auswahl="${DN}"]`).waitFor({ state: "detached", timeout: 5000 });
+  await page.locator(".profile-section-body", { has: page.locator(AUSLOESER(DN)) }).locator(".profile-saved").waitFor({ timeout: 15000 });
+  assert.deepEqual(state.patches, [{ delivery_note_mode: "external" }]);
+  // Touch-Ziele: jede Option mindestens 44 px hoch (WCAG 2.5.8 verlangt 24, die Plattform 44/48).
+  await page.locator(AUSLOESER(DN)).tap();
+  const hoehen = await page.locator(`[role="listbox"][data-auswahl="${DN}"] [role="option"]`).evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
+  assert.ok(hoehen.every((h) => h >= 44), `Optionen zu niedrig für Touch: ${hoehen.join(", ")}`);
   assert.deepEqual(fehler, []);
   await ctx.close();
 });

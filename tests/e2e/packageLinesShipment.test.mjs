@@ -20,6 +20,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import { SENDUNGS_MENUE, weitereAktion } from "./helpers/weitereAktionen.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -467,12 +468,12 @@ test("S10 — „Meine Sendungen“: Summe in der Liste, Klebehinweis des Server
   await page.route(/\/api\/shipments\/\d+\/documents$/, (r) => r.fulfill(json({ shipmentId: CE_SHIPMENT_ID,
     documents: [etikett(0), etikett(1)], packageLabelHint: "weight" })));
   await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
-  const dokumente = page.getByRole("button", { name: "Dokumente" }).first();
-  await dokumente.waitFor({ timeout: 20000 });
+  // „Dokumente“ liegt seit dem Bediensystem (D3, 2026-11-14) im Menü „Weitere Aktionen“ der Zeile.
+  await page.getByRole("button", { name: SENDUNGS_MENUE }).first().waitFor({ timeout: 20000 });
   // Seit dem Komplettabschluss (2026-10-27) steht das Gewicht in der Spalte „Versand“ unter dem Carrier, nach dem
   // Dienst: „<Dienst> · 3 Pakete · 31 kg gesamt“ — die Summe bleibt die Angabe der Liste.
   assert.match(norm(await page.locator(".shipment-versand-detail").first().textContent()), /(^|· )3 Pakete · 31 kg gesamt$/);
-  await dokumente.click();
+  await weitereAktion(page, "Dokumente");
   await page.waitForSelector("#sdoc-label-hint", { timeout: 20000 });
   assert.equal(norm(await page.locator("#sdoc-label-hint").textContent()),
     "Jedes Versandlabel nennt das Gewicht seines Pakets (z. B. „2.0/10.0 kg“) sowie „Piece 1/2“. Bitte jedes Label auf das Paket mit diesem Gewicht kleben. Die Seite „WAYBILL DOC“ erhält der Fahrer.");

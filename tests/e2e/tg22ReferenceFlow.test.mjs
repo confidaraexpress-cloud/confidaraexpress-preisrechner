@@ -30,6 +30,7 @@ import {
   fuelleVersandformular, STANDARD_PAKET, STANDARD_EMPFAENGER, STANDARD_SENDUNGSANGABEN,
 } from "./helpers/newShipmentForm.mjs";
 import { mockeLieferadresse, lieferadressZustand, waehleLieferadresse } from "./helpers/residentialPriceInputs.mjs";
+import { MENUE, waehleOption } from "./helpers/auswahlMenue.mjs";
 
 const PORT = 5376, BASE = `http://127.0.0.1:${PORT}`;
 const CE_SHIPMENT_ID = 4722;
@@ -200,7 +201,6 @@ async function setupRoutes(page, protokoll, { tarif = TARIF_22 } = {}) {
 }
 
 const neuesProtokoll = () => ({ pfade: [], reprice: [], book: [], lieferadresse: [] });
-const karte = (page, id) => page.locator(`.ins-card:has(input[value="${id}"])`);
 
 async function sichtbarerText(page) {
   return (await page.evaluate(() => document.body.innerText)).replace(/ /g, " ");
@@ -228,10 +228,10 @@ async function zurBuchungsseite(page) {
   await page.waitForSelector(".steps-bar", { timeout: 20000 });
   // TG22 Residential: erst die Art der Lieferadresse — danach ist das Angebot buchbar und absicherbar.
   await waehleLieferadresse(page, false);
-  if (await page.locator(".ins-cards").count() === 0) {
+  if (await page.locator(MENUE("insuranceType")).count() === 0) {
     await page.getByRole("button", { name: /^Weiter/ }).first().click();
   }
-  await page.waitForSelector(".ins-cards", { timeout: 20000 });
+  await page.waitForSelector(MENUE("insuranceType"), { timeout: 20000 });
 }
 
 async function buchen(page) {
@@ -410,7 +410,7 @@ test("B — mit zusätzlicher Transportabsicherung: Neubepreisung über die Ange
   await zuDenAngeboten(page);
   await zurBuchungsseite(page);
 
-  await karte(page, "transit_cover").locator(".ins-card-name").click();
+  await waehleOption(page, "insuranceType", "transit_cover");
   await page.locator("#ins-goodsAreNew-ja").check();
   await page.locator("#ins-goodsAreFragile-nein").check();
   await page.waitForSelector(".ins-status-ok", { timeout: 10000 });

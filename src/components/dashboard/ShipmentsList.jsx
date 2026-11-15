@@ -12,6 +12,7 @@ import { TRACKING_NOT_FOUND } from "../../utils/trackingMessages";
 import { CancellationRequestDialog } from "./CancellationRequestDialog";
 import { ShipmentDocumentsDrawer } from "./ShipmentDocumentsDrawer";
 import { DOCUMENTS_TEXT } from "../../utils/shipmentDocumentsView.mjs";
+import { RowActionsMenu } from "../inventory/InventoryShared";
 import { customerShipmentNumbers, NO_ORDER_CONFIRMATION_TEXT, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
 import { dezimal, packageLinesSummaryText } from "../../utils/packageLines.mjs";
@@ -64,11 +65,14 @@ function CancellationStatusPill({ status }) {
    dieselben Handler, keine geänderte Logik. `expanded` sagt Vorlesesoftware,
    ob die Trackingansicht dieser Sendung gerade offen ist.
 
-   Redesign 2026-10: drei klar benannte Textaktionen in EINER Gruppe
-   (.ce-row-actions) — „Tracking" klappt die bestehende Trackingansicht auf,
-   „Dokumente" öffnet den bestehenden Drawer, „Stornierung anfragen" den
-   bestehenden Dialog. Die Stornierung ist als einzige gefährliche Aktion
-   erkennbar sekundär (rote Textaktion), kein Symbol, keine Fläche. */
+   Bediensystem (Betreiberentscheidung D3, 2026-11-14): „Tracking" steht als
+   kompakte Sekundäraktion sichtbar in der Zeile und klappt die bestehende
+   Trackingansicht auf. „Dokumente" (bestehender Drawer) und „Stornierung
+   anfragen" (bestehender Bestätigungsdialog — die Anfrage geht erst dort raus)
+   stehen mit vollem Namen im einheitlichen Menü „Weitere Aktionen"
+   (RowActionsMenu wie in Lager und Bestand). Bedingungen und Handler sind
+   dieselben wie zuvor; die Stornierung ist im Menü als gefährlicher Eintrag
+   erkennbar. */
 function ShipmentRowActions({ s, expanded, onTrack, onDocuments, onCancel }) {
   /* Package C: eine Sendung in Buchungsklärung hat noch nichts, worauf sich eine
      Aktion beziehen könnte — keine Trackingnummer, keine Dokumente, nichts zu
@@ -81,26 +85,34 @@ function ShipmentRowActions({ s, expanded, onTrack, onDocuments, onCancel }) {
       </div>
     );
   }
-  /* Feste Plätze (Audit B.4, 2026-10-27): Tracking, Dokumente und Stornierung stehen in jeder Zeile an derselben
+  /* Feste Plätze (Audit B.4, 2026-10-27): Tracking, Menü und Stornostatus stehen in jeder Zeile an derselben
      Stelle — fehlt eine Aktion, bleibt ihr Platz frei, statt dass die folgenden nach links rutschen. */
   return (
     <div className="ce-row-actions stn-actions stn-actions--plaetze">
       {s.id && (
-        <button type="button" className="btn btn-ghost btn-sm stn-act stn-act--tracking" aria-expanded={expanded === true} onClick={() => onTrack(s.id)}>Tracking</button>
+        <button type="button" className="btn btn-outline btn-sm stn-act stn-act--tracking" aria-expanded={expanded === true} onClick={() => onTrack(s.id)}>Tracking</button>
       )}
-      {/* EINE dokumentbezogene Aktion statt wachsender Einzelknöpfe: welche
-          Dokumente es gibt, sagt der Server im Drawer, nicht diese Liste.
-          Tracking und Stornierung bleiben eigenständig — sie sind keine Dokumente. */}
-      {s.id && (
-        <button type="button" className="btn btn-ghost btn-sm stn-act stn-act--dokumente" onClick={() => onDocuments(s)}>
-          {DOCUMENTS_TEXT.action}
-        </button>
-      )}
-      {canRequestCancellation(s) && (
-        <button type="button" className="btn btn-ghost btn-sm stn-act stn-act--storno stn-request-btn" onClick={() => onCancel(s)}>Stornierung anfragen</button>
-      )}
+      <WeitereSendungsAktionen s={s} onDocuments={onDocuments} onCancel={onCancel} />
       {hasCancellationRequest(s) && <span className="stn-act stn-act--storno"><CancellationStatusPill status={s.cancellation_status} /></span>}
     </div>
+  );
+}
+
+/* Das Menü „Weitere Aktionen“ einer Sendungszeile (Bediensystem D3, 2026-11-14): Sichtbar bleibt „Tracking“ als
+   wichtigste Aktion, „Dokumente“ und „Stornierung anfragen“ liegen hier. EINE dokumentbezogene Aktion statt wachsender
+   Einzelknöpfe: welche Dokumente es gibt, sagt der Server im Drawer, nicht diese Liste. „Stornierung anfragen“ heißt
+   bewusst so: der Eintrag öffnet den Bestätigungsdialog, die Anfrage geht erst dort raus. Ohne Eintrag kein Menü. */
+function WeitereSendungsAktionen({ s, onDocuments, onCancel }) {
+  const eintraege = [
+    s.id && { key: "dokumente", label: DOCUMENTS_TEXT.action, onClick: () => onDocuments(s) },
+    canRequestCancellation(s) && { key: "storno", label: "Stornierung anfragen", tone: "danger", onClick: () => onCancel(s) },
+  ].filter(Boolean);
+  if (eintraege.length === 0) return null;
+  const nummer = customerShipmentNumbers(s).orderConfirmationNumber;
+  return (
+    <span className="stn-act stn-act--menue">
+      <RowActionsMenu items={eintraege} label={nummer ? `Weitere Aktionen für Sendung ${nummer}` : "Weitere Aktionen für diese Sendung"} />
+    </span>
   );
 }
 

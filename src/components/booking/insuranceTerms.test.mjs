@@ -134,9 +134,14 @@ test("7 — fehlender oder unsicherer carrierLinks.agb erzeugt keinen Link", () 
   ]) {
     assert.equal(carrierTermsHref(eingabe), null, `unsicherer Wert durchgelassen: ${JSON.stringify(eingabe)}`);
   }
-  // Und die Karte rendert den Linkblock nur, wenn ein Link existiert.
-  assert.match(modul, /copy\.hasCarrierTerms && carrierTerms && \(/,
+  // Und der Infoblock rendert den Linkblock nur, wenn ein Link existiert — UNABHÄNGIG von der Wahl (Premium Control
+  // System 2.0): Lesen darf keine Wahl erfordern, denn jede Wahl löst eine Neubepreisung aus.
+  assert.match(modul, /const mitBedingungen = optionen\.some\(\(o\) => o\.copy\.hasCarrierTerms\);/);
+  assert.match(modul, /mitBedingungen && carrierTerms && \(/,
     "der Linkblock hängt nicht an der Existenz des Links");
+  assert.match(modul, /const mitDetails = !coverModel && optionen\.some\(\(o\) => o\.copy\.hasDetails\);/);
+  assert.doesNotMatch(modul, /gewaehlt\.copy\.has(?:Details|CarrierTerms)/,
+    "Details oder Bedingungen hängen an der gewählten Option — zum Lesen müsste man wählen (und neu bepreisen)");
 });
 
 /* ── 8. Keine Carriername-Tabelle ────────────────────────────────────────── */

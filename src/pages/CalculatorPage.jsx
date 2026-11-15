@@ -138,7 +138,6 @@ export default function CalculatorPage() {
   const [selectedPublicCarrierIds, setSelectedPublicCarrierIds] = useState(flowInit ? flowInit.selectedPublicCarrierIds : []);
   const [carrierDropdownOpen, setCarrierDropdownOpen] = useState(false);
   const [publicCarriers, setPublicCarriers]           = useState(flowInit ? flowInit.publicCarriers : []);
-  const carrierRef = useRef(null);
 
   // ── Späteste Lieferzeit — Popover-Status (Wert latestDeliveryDate liegt im form) ──
   const [latestOpen, setLatestOpen] = useState(false);
@@ -372,20 +371,7 @@ export default function CalculatorPage() {
     upd("latestDeliveryTime", "");
   };
 
-  useEffect(() => {
-    if (!carrierDropdownOpen) return;
-    const onOutside = (e) => {
-      if (carrierRef.current && !carrierRef.current.contains(e.target))
-        setCarrierDropdownOpen(false);
-    };
-    const onEscape = (e) => { if (e.key === "Escape") setCarrierDropdownOpen(false); };
-    document.addEventListener("mousedown", onOutside);
-    document.addEventListener("keydown", onEscape);
-    return () => {
-      document.removeEventListener("mousedown", onOutside);
-      document.removeEventListener("keydown", onEscape);
-    };
-  }, [carrierDropdownOpen]);
+  // Außendruck und Escape schließen die Filterpanels zentral in ShipmentFilterBar (Bediensystem, 2026-11-14).
 
   // Der Versanddienst-Filter wird ausschließlich aus der publicCarriers-Liste der
   // calculate-price-Antwort gespeist (öffentlicher Carrier-Vertrag). Vor der ersten
@@ -720,7 +706,7 @@ export default function CalculatorPage() {
             serviceFilter={serviceFilter} handleServiceFilter={handleServiceFilter}
             datePickerOpen={datePickerOpen} setDatePickerOpen={setDatePickerOpen}
             shippingDate={shippingDate} handleDateChange={handleDateChange}
-            carrierRef={carrierRef} carrierDropdownOpen={carrierDropdownOpen} setCarrierDropdownOpen={setCarrierDropdownOpen}
+            carrierDropdownOpen={carrierDropdownOpen} setCarrierDropdownOpen={setCarrierDropdownOpen}
             carrierLabel={carrierLabel} selectedPublicCarrierIds={selectedPublicCarrierIds}
             setSelectedPublicCarrierIds={setSelectedPublicCarrierIds} resetResults={resetResults}
             publicCarriers={publicCarriers} selectedPublicSet={selectedPublicSet}

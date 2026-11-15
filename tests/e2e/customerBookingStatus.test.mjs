@@ -11,6 +11,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import { weitereAktionenEintraege } from "./helpers/weitereAktionen.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -107,9 +108,10 @@ test("1 — Tabelle: die Buchungsklärung ist neutral und ohne Aktion; die gebuc
   assert.equal(await pruefung.getByRole("button").count(), 0, "die Buchungsklärung bietet eine Aktion an");
 
   const gebucht = page.locator("table tbody tr", { hasText: "CE-AB-2026-000050" }).first();
-  for (const name of ["Tracking", "Dokumente", "Stornierung anfragen"]) {
-    assert.equal(await gebucht.getByRole("button", { name }).count(), 1, `die gebuchte Sendung verliert „${name}"`);
-  }
+  // Bediensystem D3 (2026-11-14): „Tracking“ bleibt sichtbar, Dokumente und Stornierung liegen unter „Weitere Aktionen“.
+  assert.equal(await gebucht.getByRole("button", { name: "Tracking", exact: true }).count(), 1, "die gebuchte Sendung verliert „Tracking“");
+  assert.deepEqual(await weitereAktionenEintraege(gebucht), ["Dokumente", "Stornierung anfragen"],
+    "die gebuchte Sendung verliert eine Aktion im Menü „Weitere Aktionen“");
   assert.ok(!(await gebucht.innerText()).includes(HINWEIS_TEXT), "der Satz steht an der gebuchten Sendung");
 
   const tabelle = await page.locator(".ce-list-table").innerText();

@@ -26,6 +26,9 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fuelleVersandformular, STANDARD_SENDUNGSANGABEN }
   from "./helpers/newShipmentForm.mjs";
+import {
+  MENUE, gewaehlterName, gewaehlterWert, oeffneMenue, optionen, schliesseMenue, waehleOption,
+} from "./helpers/auswahlMenue.mjs";
 
 const PORT = 5374, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -155,10 +158,9 @@ async function zurBuchung(page, sendungsangaben = STANDARD_SENDUNGSANGABEN) {
   await page.waitForSelector(".booking-confirm-panel", { timeout: 20000 });
 }
 
-// Karten über den Wert ihres Radios — `:has-text` wäre hier mehrdeutig, weil
-// „Keine zusätzliche Transportabsicherung" den Namen der anderen Karte enthält.
-const karte = (page, id) => page.locator(`.ins-card:has(input[value="${id}"])`);
-const waehle = async (page, id) => { await karte(page, id).locator(".ins-card-name").click(); await page.waitForTimeout(150); };
+// Optionen über ihren Wert (data-wert) — ein Namensvergleich wäre hier mehrdeutig, weil
+// „Keine zusätzliche Transportabsicherung" den Namen der anderen Option enthält.
+const waehle = async (page, id) => { await waehleOption(page, "insuranceType", id); await page.waitForTimeout(150); };
 
 // AGB und Gefahrgut bestätigen; zurück kommt der Bestellknopf.
 async function bestellbereit(page) {
@@ -217,17 +219,25 @@ test("1 — zwei neutrale Karten, Selbstbeteiligung 20,00 €, kein Stufen- oder
   await zurBuchung(page);
 
   const modul = page.locator(".booking-insurance-box");
-  assert.equal(await page.locator(".ins-card").count(), 2, "erwartet genau zwei Karten");
-  assert.match(await karte(page, "transit_cover").innerText(), /Zusätzliche Transportabsicherung/);
-  assert.match(await karte(page, "none").innerText(), /Keine zusätzliche Transportabsicherung/);
-  const kartenText = flach(await karte(page, "transit_cover").innerText());
+  const liste = await optionen(page, "insuranceType");
+  assert.equal(liste.length, 2, "erwartet genau zwei Optionen");
+  const zusatz = liste.find((o) => o.wert === "transit_cover");
+  const keine = liste.find((o) => o.wert === "none");
+  assert.match(zusatz?.name || "", /Zusätzliche Transportabsicherung/);
+  assert.match(keine?.name || "", /Keine zusätzliche Transportabsicherung/);
+  const kartenText = flach(zusatz.text);
   assert.match(kartenText, /Selbstbeteiligung: 20,00 €/);
   assert.match(kartenText, /Preis nach Ihren Angaben/, "vor der Neubepreisung darf kein Preis erscheinen");
   assert.equal(await modul.locator(".ins-card-details-btn").count(), 0, "der Stufendialog hat hier keinen Auslöser");
 
+  // Sichtbarer Text mit offener Liste (die Optionstexte) und ohne.
+  await oeffneMenue(page, "insuranceType");
+  pruefeKeinVerbotenerText(await sichtbarerText(page));
+  await schliesseMenue(page, "insuranceType");
   pruefeKeinVerbotenerText(await sichtbarerText(page));
   // Standard ist „keine Absicherung": keine Wertfelder, keine Fragen, kein Request.
-  assert.match(await page.locator(".ins-card--selected .ins-card-name").innerText(), /Keine zusätzliche Transportabsicherung/);
+  assert.equal(await gewaehlterWert(page, "insuranceType"), "none");
+  assert.match(await gewaehlterName(page, "insuranceType"), /Keine zusätzliche Transportabsicherung/);
   assert.equal(await page.locator("#ins-value").count(), 0);
   assert.equal(await page.locator(".ins-goods-question").count(), 0);
   assert.equal(protokoll.length, 0);
@@ -367,7 +377,7 @@ test("4 — ein Tarif ohne Absicherung zeigt kein Modul und bepreist nichts", as
   const protokoll = [];
   await setupRoutes(page, [TARIF_OHNE], protokoll);
   await zurBuchung(page);
-  assert.equal(await page.locator(".ins-cards").count(), 0, "ein nicht versicherbarer Tarif zeigt Versicherungskarten");
+  assert.equal(await page.locator(MENUE("insuranceType")).count(), 0, "ein nicht versicherbarer Tarif zeigt Versicherungskarten");
   assert.equal(await page.locator(".booking-ins-unavailable").count(), 1);
   assert.equal(await page.locator("#ins-cover-notice").count(), 0, "ohne Aussage des Servers erscheint ein Hinweis");
   await page.waitForTimeout(700);
@@ -466,7 +476,7 @@ test("7 — Warenwert bis 50 €: Hinweis auf die Grundabsicherung statt Fehler,
   const hinweis = page.locator("#ins-cover-notice");
   assert.equal(await hinweis.count(), 1, "der Hinweis auf die Grundabsicherung fehlt");
   assert.equal(flach(await hinweis.innerText()).trim(), GRUNDSCHUTZ_TEXT);
-  assert.equal(await page.locator(".ins-cards").count(), 0, "ohne kaufbaren Zusatz erscheinen Karten");
+  assert.equal(await page.locator(MENUE("insuranceType")).count(), 0, "ohne kaufbaren Zusatz erscheinen Karten");
   assert.equal(await page.locator(".booking-ins-unavailable").count(), 0, "die Grundabsicherung wird als „nicht verfügbar“ gezeigt");
   assert.equal(await page.locator(".booking-insurance-box .ins-status-error, .booking-insurance-box .field-error").count(), 0);
   assert.equal(await page.locator(".booking-insurance-box input").count(), 0, "der Hinweis trägt ein Bedienelement");

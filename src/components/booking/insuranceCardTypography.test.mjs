@@ -7,6 +7,10 @@ import { readFileSync } from "node:fs";
 
 const css = readFileSync(new URL("../../styles/calculator.css", import.meta.url), "utf8");
 const jsx = readFileSync(new URL("./InsuranceModule.jsx", import.meta.url), "utf8");
+// Seit dem Premium Control System 2.0 (Betreiberauftrag 2026-11-14) wählt der Kunde die Absicherung über das kompakte
+// Auswahlmenü statt über drei Karten. Die Tests 1, 7, 12–14 prüfen dieselben Zusagen jetzt an Menü und Infofeld.
+const menue = readFileSync(new URL("../ui/AuswahlMenue.jsx", import.meta.url), "utf8");
+const editorial = readFileSync(new URL("../../styles/premium-editorial.css", import.meta.url), "utf8");
 
 // Deklarationsblock eines Selektors extrahieren (erste Übereinstimmung).
 function block(selector) {
@@ -15,11 +19,14 @@ function block(selector) {
   return m ? m[1] : null;
 }
 
-test("1 — Kartenkopf hat getrennten Titel- und Preisbereich", () => {
-  assert.match(jsx, /ins-card-title-area/, "Titelbereich fehlt");
-  assert.match(jsx, /<CardPrice\s+price=/, "separater Preisbereich (CardPrice) fehlt");
-  // Preis liegt NICHT im Titelbereich (Name + Badge), sondern als eigenes Element daneben.
-  assert.match(jsx, /ins-card-title-area[\s\S]*?<\/span>\s*<CardPrice/, "CardPrice muss neben dem Titelbereich stehen");
+test("1 — Option hat getrennten Namens- und Preisbereich", () => {
+  // Name und Preis reisen als getrennte Felder ins Menü …
+  assert.match(jsx, /label: c\.name,/, "der Name der Option fehlt");
+  assert.match(jsx, /aside: preis\.text,/, "der Preis der Option fehlt als eigener Bereich");
+  // … und das Menü setzt den Preis NEBEN den Textbereich (Name, Abzeichen, Erklärung), nicht hinein.
+  assert.match(menue, /<span className="ce-auswahl-text">[\s\S]*?<\/span>\s*\{zusatz\(o\)\}\s*<\/li>/,
+    "der Preis muss neben dem Textbereich der Option stehen");
+  assert.match(editorial, /\.ce-auswahl-zusatz-wert \{[^}]*white-space: nowrap;/, "Preiswert im Menü muss nowrap sein");
 });
 
 test("2 — Preisbetrag ist nicht umbrechbar (white-space: nowrap)", () => {
@@ -60,8 +67,12 @@ test("7 — Premium-Badge liegt NICHT in der Preis-Spalte", () => {
   const b = block(".ins-card-badge");
   assert.ok(b);
   assert.doesNotMatch(b, /grid-column:\s*2/, "Badge darf nicht in Spalte 2 (Preis) liegen");
-  // Badge steht im Titelbereich, also im Quelltext VOR dem CardPrice.
-  assert.ok(jsx.indexOf("ins-card-badge") < jsx.indexOf("<CardPrice"), "Badge muss vor dem Preis (im Titelbereich) stehen");
+  // Im Menü steht das Abzeichen im Kopf der Option neben dem Namen — vor dem Preisbereich, nie darin.
+  assert.match(jsx, /badge: copy\.badge,/, "das Abzeichen reist nicht mit der Option");
+  assert.match(menue, /<span className="ce-auswahl-kopf">[\s\S]*?ce-auswahl-abzeichen[\s\S]*?<\/span>[\s\S]*?\{zusatz\(o\)\}/,
+    "das Abzeichen muss im Kopf der Option vor dem Preis stehen");
+  // Im Infofeld der gewählten Option steht es im Kopf, vor Beschreibung und Bedingungen.
+  assert.ok(jsx.indexOf("ins-card-badge") < jsx.indexOf("ins-card-desc"), "Badge muss im Kopf des Infofelds stehen");
   // Badge lesbar (>= 10px).
   assert.match(b, /font-size:\s*1[0-9](?:\.\d+)?px/, "Badge muss >= 10px sein");
 });
@@ -89,19 +100,26 @@ test("11 — Bedingungen-Link am Kartenende ausrichtbar", () => {
   assert.match(b, /margin-top:\s*auto/, "Link muss per margin-top:auto nach unten rutschen");
 });
 
-test("12 — Radio-Semantik erhalten (native radios + radiogroup)", () => {
-  assert.match(jsx, /role="radiogroup"/, "radiogroup fehlt");
-  assert.match(jsx, /type="radio"/, "native radios fehlen");
+test("12 — Auswahl-Semantik erhalten (Combobox mit Liste, Zustand je Option)", () => {
+  // Statt nativer Radios: select-only combobox (WAI-ARIA 1.2) — eine Wahl, Zustand je Option hörbar.
+  assert.match(jsx, /<AuswahlMenue\s+name="insuranceType"/, "die Absicherung wählt nicht über das Auswahlmenü");
+  assert.match(menue, /role="combobox"/, "combobox fehlt");
+  assert.match(menue, /role="listbox"/, "listbox fehlt");
+  assert.match(menue, /role="option"/, "Optionen fehlen");
+  assert.match(menue, /aria-selected=\{o\.value === value\}/, "Auswahlzustand der Option fehlt");
 });
 
 test("13 — Preis ist Teil der zugänglichen Option (aria-label enthält Preis)", () => {
-  assert.match(jsx, /aria-label=\{cardAriaLabel\(c\)\}/, "aria-label am radio fehlt");
+  assert.match(jsx, /ariaLabel: cardAriaLabel\(c\),/, "barrierefreier Name der Option fehlt");
+  assert.match(menue, /aria-label=\{o\.ariaLabel \|\| undefined\}/, "das Menü gibt den barrierefreien Namen nicht weiter");
   assert.match(jsx, /function cardAriaLabel[\s\S]*?money\(/, "aria-label muss den Preis (money) enthalten");
 });
 
 test("14 — keine Preis-/Versicherungslogik verändert (reine Darstellung)", () => {
   // Preise kommen weiterhin als c.price aus dem Orchestrator; keine lokale Berechnung.
-  assert.match(jsx, /price=\{c\.price\}/, "Karte muss den vom Orchestrator gelieferten Preis rendern");
+  assert.match(jsx, /cardPrice\(c\.price, unknownText\)/, "Option muss den vom Orchestrator gelieferten Preis zeigen");
+  // Die Wahl bleibt beim Orchestrator (Neubepreisung, Sperren, Buchungsschranken).
+  assert.match(jsx, /onChange=\{onSelectType\}/, "die Wahl läuft nicht mehr über den Orchestrator");
   // money() wird nur zum Formatieren genutzt — keine Arithmetik auf Preiswerten.
   assert.doesNotMatch(jsx, /money\([^)]*[*+/%-][^)]*\)/, "keine Preisberechnung innerhalb money()");
   assert.doesNotMatch(jsx, /extraInsurancePrice|goodsValue\s*[*+/-]/, "keine lokale Prämien-/Wertberechnung");

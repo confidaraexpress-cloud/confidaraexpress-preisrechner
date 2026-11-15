@@ -36,6 +36,8 @@ const ohneVergleichsmodusTokens = {
     // Editorial Business Premium (2026-10-28): Diese Tokens liest nur der Kundenbereich (premium-editorial.css);
     // der Preisrechner trägt den gemeinsamen Bereichsblock, braucht sie aber nicht.
     if (decl.prop.startsWith("--ce-pr-ed-")) decl.remove();
+    // Bediensystem (2026-11-14): ebenso nur im Kundenbereich gelesen (premium-editorial.css, Abschnitt 3).
+    if (decl.prop.startsWith("--ce-pr-bs-")) decl.remove();
   },
 };
 

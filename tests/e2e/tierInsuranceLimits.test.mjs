@@ -26,6 +26,7 @@ import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fuelleVersandformular } from "./helpers/newShipmentForm.mjs";
+import { MENUE, optionen, waehleOptionNachName } from "./helpers/auswahlMenue.mjs";
 
 const PORT = 5781, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -121,7 +122,7 @@ async function bestaetigeHinweise(page) {
   await checks.nth(1).check();
 }
 const buchenKnopf = (page) => page.getByRole("button", { name: /Kostenpflichtig buchen/ });
-const waehle = (page, name) => page.locator(`.ins-card:has-text("${name}")`).first().locator(".ins-card-name").click();
+const waehle = (page, name) => waehleOptionNachName(page, "insuranceType", name);
 const flach = (s) => String(s || "").replace(/\s+/g, " ").trim();
 async function warteAuf(page, bedingung, ms = 4000) {
   for (let i = 0; i < ms / 100 && !bedingung(); i++) await page.waitForTimeout(100);
@@ -148,7 +149,7 @@ test("(1) E1: über der Grenze keine Stufe und keine Neubepreisung — gebucht w
   const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
   const mock = await setupRoutes(page, TARIF({ standard: UEBER_GRENZE, premium: UEBER_GRENZE }));
   await zurBuchung(page);
-  assert.equal(await page.locator(".ins-cards").count(), 0, "über der Grenze erscheinen Stufenkarten");
+  assert.equal(await page.locator(MENUE("insuranceType")).count(), 0, "über der Grenze erscheinen Stufenkarten");
   assert.equal(await page.locator("#ins-value").count(), 0, "über der Grenze erscheint ein Versicherungswert-Feld");
   const hinweis = page.locator('.booking-insurance-box[role="note"]');
   await hinweis.waitFor({ timeout: 10000 });
@@ -225,8 +226,8 @@ test("(4) nur die Stufe, die der Server für diesen Warenwert anbietet, erschein
   const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
   await setupRoutes(page, TARIF({ standard: VERFUEGBAR, premium: { state: "above_cover_limit", coverLimit: 200, maxInsuredValue: null } }));
   await zurBuchung(page);
-  await page.waitForSelector(".ins-cards", { timeout: 10000 });
-  const namen = (await page.locator(".ins-card .ins-card-name").allTextContents()).map(flach);
+  await page.waitForSelector(MENUE("insuranceType"), { timeout: 10000 });
+  const namen = (await optionen(page, "insuranceType")).map((o) => flach(o.name));
   assert.deepEqual(namen, ["Standardversicherung", "Keine zusätzliche Transportversicherung"]);
   await page.close();
 });

@@ -158,7 +158,7 @@ for (const anzahl of [1, 3, 5, 8]) {
             deckt: Math.abs(lr.left - f.left) <= 1.5 && Math.abs(lr.right - f.right) <= 1.5 && Math.abs(lr.top - f.top) <= 1.5 && Math.abs(lr.bottom - f.bottom) <= 1.5 } : null,
           namen: [...flaeche.querySelectorAll(".ov-carrier-name")].map((n) => n.textContent.trim()),
           titel: getComputedStyle(flaeche.querySelector(".ov-carrier-titel")).color,
-          tinte: getComputedStyle(document.documentElement).getPropertyValue("--ce-ob-tinte").trim(),
+          navy: getComputedStyle(document.documentElement).getPropertyValue("--ce-pr-navy-900").trim(),
           grund: getComputedStyle(flaeche).backgroundColor,
           kacheln, fLinks: f.left, fRechts: f.right, lLinks: l.left, lRechts: l.right,
           ueberlauf: document.documentElement.scrollWidth - innerWidth,
@@ -172,11 +172,11 @@ for (const anzahl of [1, 3, 5, 8]) {
       assert.equal(m.ebenen.svg, 1, "außer den Linien steht eine Zeichnung im Markup der Fläche, oder die Linien fehlen");
       assert.deepEqual(m.linien, { versteckt: "true", pfade: 3, knoten: 3, lage: "absolute", ebene: "-1", zeiger: "none", deckt: true },
         `die Linien fehlen, sind nicht dekorativ oder liegen nicht hinter dem Inhalt der ganzen Fläche bei ${breite} px`);
-      // Confidara Premium Blue Light (Betreiberauftrag 2026-11-16): Im Kundenbereich ist die Bühne hell, Eisblau mit
-      // Kobaltlicht (kunde-obsidian.css). Vorher war sie Navy, in Confidara Obsidian Schwarz. Der Titel steht in der Tinte
-      // der Ebene (Dunkelblau). Geprüft wird gegen den Token und auf mindestens 7:1 Kontrast zur Grundfarbe der Bühne.
-      assert.match(m.tinte, /^#[0-9a-f]{6}$/i, `Token der Tinte nicht lesbar („${m.tinte}“)`);
-      assert.equal(m.titel, rgbAusHex(m.tinte), "der Titel steht nicht in der Tinte der Ebene");
+      // Confidara Premium Blue Light, Final Master Release (Betreiberentscheidung 2026-11-16): Die Bühne bleibt die
+      // Navy-Bühne der Live-Fassung, auch unter der hellen Ebene kunde-obsidian.css. Der Titel steht weiß auf Navy;
+      // geprüft wird zusätzlich der Kontrast zur Grundfarbe der Bühne (mindestens 7:1) und dass sie Navy ist.
+      assert.equal(m.titel, "rgb(255, 255, 255)", "der Titel steht nicht weiß auf Navy");
+      assert.equal(m.grund, rgbAusHex(m.navy), `die Bühne ist nicht Navy (${m.grund})`);
       assert.ok(kontrast(m.titel, m.grund) >= 7, `der Titel hebt sich nicht von der Bühne ab (${m.titel} auf ${m.grund})`);
       assert.deepEqual(m.namen, liste.map((c) => c.name), "die Fläche zeigt nicht die Liste des Servers");
       assert.equal(m.ueberlauf, 0, "horizontales Scrollen");

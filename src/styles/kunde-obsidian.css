@@ -317,7 +317,8 @@
   --ce-pr-ed-raum-wolke: rgba(127, 160, 220, 0.1), rgba(127, 160, 220, 0.05) 40%;
   --ce-pr-ed-raum-auslauf: rgba(77, 132, 255, 0.05), rgba(77, 132, 255, 0.025) 40%;
   --ce-pr-ed-raum-kopfleiste-linie: rgba(16, 36, 72, 0.08);
-  --ce-pr-ed-flaeche-uebersicht: var(--ce-ob-grund);
+  /* Die Übersicht behält Fläche und Lichter der Live-Fassung (Flow Signature, premium-editorial.css): kein Token
+     --ce-pr-ed-flaeche-uebersicht hier (Betreiberentscheidung 2026-11-16, „Final Master Release“). */
   --ce-pr-ed-shadow-flaeche: var(--ce-ob-schatten-karte);
   --ce-pr-ed-kennzahl-zahl: var(--ce-ob-tinte);
   --ce-pr-ed-kennzahl-tinte: var(--ce-ob-tinte-2);
@@ -339,11 +340,8 @@
   --ce-pr-ed-flow-kopf-linie: var(--ce-ob-linie);
   --ce-pr-ed-flow-kopfleiste-linie: transparent;
   --ce-pr-ed-flow-fuss-linie: linear-gradient(90deg, transparent, rgba(16, 36, 72, 0.12) 12%, rgba(16, 36, 72, 0.12) 88%, transparent);
-  --ce-pr-ed-flow-kachel: linear-gradient(180deg, #ffffff, #f3f7ff);
-  --ce-pr-ed-flow-kachel-name: var(--ce-ob-tinte);
-  --ce-pr-ed-shadow-kachel: var(--ce-ob-lichtkante-logo);
-  --ce-pr-ed-flow-buehne-grund: linear-gradient(165deg, #ffffff 0%, #f2f6ff 52%, #e6eeff 100%);
-  --ce-pr-ed-shadow-buehne: var(--ce-ob-schatten-karte);
+  /* Versanddienstleister-Bühne: Navy der Live-Fassung — Bühne, Kacheln und Schatten kommen unverändert aus
+     variables.css (--ce-pr-ed-flow-buehne-*, --ce-pr-ed-flow-kachel*, --ce-pr-ed-shadow-buehne/-kachel). */
 
   /* Paketbühne: das Kraftpapier bleibt, die Werkbank wird eisblau */
   --ce-pr-paket-buehne: var(--ce-ob-flaeche-2);
@@ -354,7 +352,6 @@
   --ce-kpi-border: var(--ce-ob-kante);
   --ce-kpi-label: var(--ce-ob-tinte-2);
   --ce-kpi-context: var(--ce-ob-tinte-3);
-  --ce-pr-stage: var(--ce-pr-ed-flow-buehne-grund);
 
   /* Demo-Leiste (nur /demo): Navy-Glas wie die Seitenleiste, weiße Aktion */
   --ce-demo-flaeche: rgba(7, 23, 53, 0.92);
@@ -756,31 +753,11 @@
 }
 
 /* ═══════════ 9 · ÜBERSICHT — DIE PREMIUM-BÜHNE ════════════════════════════
-   Die hellste und lebendigste Fläche des Kundenbereichs: ein Eisblau-Band, ein Kobaltlicht an „Neue Sendung“, ein
-   Sky-Licht hinter der Begrüßung, ein gläsernes Streiflicht und ein Azurlicht in der freien Fläche rechts. Darauf die
+   Fläche und Lichter der Übersicht sind die der Live-Fassung (Confidara Flow Signature, premium-editorial.css: hellblaue
+   Atmosphäre mit Kobaltfeld an „Neue Sendung“, Lichtbahn, Hof und Glut unter der Navy-Bühne) — Betreiberentscheidung
+   2026-11-16 („Final Master Release“). Diese Ebene setzt dort keinen eigenen Hintergrund mehr; die Regel der
+   Editorial-Ebene ist mit :has(.ov-page) spezifischer als der Grund der Arbeitsseiten (Abschnitt 2). Darauf die
    Begrüßung in Instrument Serif im Navy-Verlauf, die Datumszeile darunter. Kein Korn, kein Muster, keine Bewegung. */
-:root[data-ce-bereich="kunde"] .main-content:has(.ov-page) {
-  background-color: var(--ce-ob-grund);
-  background-image:
-    linear-gradient(112deg, transparent 36%, rgba(255, 255, 255, 0.62) 48%, rgba(255, 255, 255, 0.16) 54%, transparent 62%),
-    radial-gradient(54rem 30rem at 86% -6rem, rgba(0, 74, 252, 0.26), rgba(0, 74, 252, 0.08) 45%, transparent 72%),
-    radial-gradient(44rem 24rem at 22% -11rem, rgba(77, 132, 255, 0.2), transparent 70%),
-    radial-gradient(32rem 18rem at 100% 26rem, rgba(56, 132, 255, 0.1), transparent 70%),
-    linear-gradient(180deg, #e6efff 0, rgba(230, 239, 255, 0) 34rem);
-  background-size: 100% 44rem, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
-  background-repeat: no-repeat;
-}
-@media (max-width: 1023px) {
-  :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) {
-    background-image:
-      linear-gradient(112deg, transparent 30%, rgba(255, 255, 255, 0.56) 46%, transparent 62%),
-      radial-gradient(30rem 20rem at 90% -4rem, rgba(0, 74, 252, 0.22), rgba(0, 74, 252, 0.06) 45%, transparent 72%),
-      radial-gradient(24rem 14rem at 20% -8rem, rgba(77, 132, 255, 0.16), transparent 70%),
-      linear-gradient(180deg, #e6efff 0, rgba(230, 239, 255, 0) 24rem);
-    background-size: 100% 32rem, 100% 100%, 100% 100%, 100% 100%;
-    background-repeat: no-repeat;
-  }
-}
 :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-main { border-bottom-color: transparent; }
 :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-title {
   font-family: var(--ce-ob-schrift-editorial);
@@ -894,13 +871,14 @@
 :root[data-ce-bereich="kunde"] .ov-kpi-pfeil { color: var(--ce-ob-tinte-3); transition: translate var(--ce-ob-dauer) var(--ce-ob-kurve), color var(--ce-ob-dauer) var(--ce-ob-kurve); }
 :root[data-ce-bereich="kunde"] .ov-kpi:hover .ov-kpi-pfeil { color: var(--ce-ob-signal-tinte); translate: 3px 0; }
 
-/* Module: Köpfe in Host Grotesk, Listen zwischen Haarlinien */
+/* Module: Köpfe in Host Grotesk, Listen zwischen Haarlinien. Der Titel der Versanddienstleister-Bühne steht weiß auf
+   Navy (Grundgestaltung) — er bekommt nur die Schrift, nicht die Tinte. */
 :root[data-ce-bereich="kunde"] :is(.ov-mod-title, .ov-section-title, .ov-carrier-titel, .ov-lager-titel) {
   font-family: var(--ce-ob-schrift-titel);
   font-weight: 500;
   letter-spacing: -0.015em;
-  color: var(--ce-ob-tinte);
 }
+:root[data-ce-bereich="kunde"] :is(.ov-mod-title, .ov-section-title, .ov-lager-titel) { color: var(--ce-ob-tinte); }
 :root[data-ce-bereich="kunde"] .ov-card { border-radius: var(--ce-pr-radius-panel); }
 :root[data-ce-bereich="kunde"] .ov-list-row { border-color: var(--ce-ob-linie); }
 :root[data-ce-bereich="kunde"] .ov-list-row--button:hover { background: var(--ce-ob-flaeche-2); }
@@ -918,55 +896,19 @@
 :root[data-ce-bereich="kunde"] .ov-credit-bar { background: var(--ce-ob-flaeche-4); }
 :root[data-ce-bereich="kunde"] .ov-credit-bar-fill { background: linear-gradient(90deg, var(--ce-ob-signal), var(--ce-ob-himmel)); }
 
-/* Ihre Versanddienstleister: statt der Navy-Bühne eine helle Eisblau-Bühne — Kobaltlicht oben rechts an der Aktion, ein
-   Sky-Horizont unten, die geschwungenen Linien in leisem Confidara-Blau. Die Grundgestaltung schreibt hier Töne für
-   Navy (overview.css: --ce-pr-on-navy*) — auf der hellen Bühne setzt diese Ebene Tinte. Logo- und Namenskacheln weiß
-   mit feiner Kante und Navy-Schatten; die Markenzeichen der Versanddienstleister sind für hellen Grund gezeichnet. */
-:root[data-ce-bereich="kunde"] .ov-page .ov-carrier-zeile,
-:root[data-ce-bereich="kunde"] .ov-carrier-zeile {
-  border: 1px solid var(--ce-ob-kante);
-  background:
-    radial-gradient(34rem 16rem at 88% -5rem, rgba(0, 74, 252, 0.14), rgba(0, 74, 252, 0.04) 48%, transparent 72%),
-    radial-gradient(56rem 12rem at 50% 118%, rgba(77, 132, 255, 0.16), transparent 70%),
-    var(--ce-pr-ed-flow-buehne-grund);
-  background-color: #eef4ff;
-  box-shadow: var(--ce-ob-schatten-karte);
-  color: var(--ce-ob-tinte);
+/* Ihre Versanddienstleister: die Navy-Bühne der Live-Fassung bleibt der Markenabschluss der Übersicht (Flow Signature;
+   Fläche, Lichter, Linien, Kacheln und heller Knopf aus overview.css und premium-editorial.css) —
+   Betreiberentscheidung 2026-11-16 („Final Master Release“). Diese Ebene gibt ihr nur die Blue-Light-Schrift (Titel
+   oben, Namen ohne Logodatei in Host Grotesk) und den Fokusring für Navy: Der Ring der Ebene (#004AFC, Abschnitt 7)
+   ist für helle Flächen gezeichnet und stünde auf #0A1636 unter 3:1; das helle Signal der Grundgestaltung hält 8,3:1. */
+:root[data-ce-bereich="kunde"] .ov-carrier-zeile .ov-carrier-aktion:focus-visible {
+  outline: 2px solid var(--ce-pr-signal-on-navy);
+  outline-offset: 3px;
 }
-:root[data-ce-bereich="kunde"] .ov-carrier-titel { color: var(--ce-ob-tinte); }
-:root[data-ce-bereich="kunde"] .ov-carrier-hinweis { color: var(--ce-ob-tinte-2); }
-:root[data-ce-bereich="kunde"] .ov-carrier-routen { opacity: 0.55; }
-:root[data-ce-bereich="kunde"] .ov-carrier-routen path { stroke: rgba(0, 74, 252, 0.3); }
-:root[data-ce-bereich="kunde"] .ov-carrier-routen .ov-carrier-route-hell { stroke: var(--ce-ob-signal); }
-:root[data-ce-bereich="kunde"] .ov-carrier-knoten circle { fill: var(--ce-ob-signal); }
-:root[data-ce-bereich="kunde"] .ov-carrier-zeile .ov-carrier-aktion {
-  border: 1px solid var(--ce-ob-kante-blau);
-  background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
-  color: var(--ce-ob-tinte);
-  box-shadow: var(--ce-pr-bs-schatten-sekundaer);
-}
-@media (hover: hover) {
-  :root[data-ce-bereich="kunde"] .ov-carrier-zeile .ov-carrier-aktion:hover {
-    border-color: var(--ce-ob-signal);
-    background: linear-gradient(180deg, #f7faff 0%, var(--ce-ob-signal-ton) 100%);
-    color: var(--ce-ob-signal-tinte-zeigen);
-  }
-}
-:root[data-ce-bereich="kunde"] .ov-carrier-name { color: var(--ce-ob-tinte-2); }
-:root[data-ce-bereich="kunde"] .ov-page .ov-carrier-eintrag--ohne-logo .ov-carrier-name,
-:root[data-ce-bereich="kunde"] .ov-carrier-eintrag--ohne-logo .ov-carrier-name {
-  border: 1px solid var(--ce-ob-kante);
-  background: var(--ce-pr-ed-flow-kachel);
-  box-shadow: var(--ce-ob-lichtkante-logo);
-  color: var(--ce-ob-tinte);
+:root[data-ce-bereich="kunde"] .ov-page .ov-carrier-eintrag--ohne-logo .ov-carrier-name {
   font-family: var(--ce-ob-schrift-titel);
   font-weight: 500;
   letter-spacing: -0.01em;
-}
-:root[data-ce-bereich="kunde"] .ov-page .ov-carrier-logo,
-:root[data-ce-bereich="kunde"] .ov-carrier-logo {
-  background: var(--ce-pr-ed-flow-kachel);
-  box-shadow: var(--ce-ob-lichtkante-logo);
 }
 
 /* ═══════════ 10 · LINIEN, MARKEN, KENNUNGEN ══════════════════════════════

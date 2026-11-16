@@ -92,19 +92,19 @@ async function bereit(page, selektor = ".main-content") {
   await page.waitForFunction(() => !document.querySelector(".loading-center"), null, { timeout: 30000 });
 }
 
-// Confidara Premium Blue Light (Betreiberauftrag 2026-11-16; davor Confidara Obsidian, 2026-11-15): Die
-// Gestaltungsebene kunde-obsidian.css löst das Portal-Hintergrundsystem im Kundenbereich ab. Übersicht und Arbeitsseiten
-// stehen auf demselben Grund (beide Tokens zeigen auf das Blauweiß der Ebene); die Übersicht trägt die Lichtbühne (fünf
-// Lichtflächen, schmal vier), jede übrige Seite das ruhige Eisband (genau drei). Das Dokument trägt denselben Grund statt
-// Weiß. Geprüft bleibt, was der Test sichern soll: die richtige Fläche je Seite, nie doppelt, nie zurückgeblieben, keine
-// Zeichnung, nichts davon außerhalb des Kundenbereichs.
-const LICHT_UEBERSICHT_MIN = 4, LICHT_ARBEIT = 3;
+// Confidara Premium Blue Light, Final Master Release (Betreiberentscheidungen 2026-11-16; davor Confidara Obsidian,
+// 2026-11-15): Die Gestaltungsebene kunde-obsidian.css setzt den Grund der Arbeitsseiten (Blauweiß der Ebene, das ruhige
+// Eisband mit genau drei Lichtflächen) und den Grund des Dokuments. Die Übersicht behält Fläche und Lichter der
+// Live-Fassung (Flow Signature: eigener Token, mindestens acht Lichtflächen, schmal ebenso). Geprüft bleibt, was der
+// Test sichern soll: die richtige Fläche je Seite, nie doppelt, nie zurückgeblieben, keine Zeichnung.
+const LICHT_UEBERSICHT_MIN = 8, LICHT_ARBEIT = 3;
 function istSignatur(f, wo) {
   assert.equal(f.bereich, "kunde", `${wo}: nicht im Kundenbereich`);
   assert.equal(f.inhaltsflaechen, 1, `${wo}: ${f.inhaltsflaechen} Inhaltsflächen`);
   assert.ok(f.uebersicht, `${wo}: keine Übersicht`);
   assert.equal(f.grund, f.sollSignatur, `${wo}: Grund ${f.grund} statt der Übersichtsfläche ${f.sollSignatur}`);
-  assert.ok(f.verlaeufe >= LICHT_UEBERSICHT_MIN, `${wo}: nur ${f.verlaeufe} Lichtflächen — die Bühne der Übersicht fehlt`);
+  assert.ok(f.sollArbeit && f.sollSignatur !== f.sollArbeit, `${wo}: Übersicht und Arbeitsseiten teilen den Grund — die Live-Fläche der Übersicht fehlt`);
+  assert.ok(f.verlaeufe >= LICHT_UEBERSICHT_MIN, `${wo}: nur ${f.verlaeufe} Lichtflächen — die Signature-Fassung fehlt`);
 }
 function istArbeitsflaeche(f, wo) {
   assert.equal(f.bereich, "kunde", `${wo}: nicht im Kundenbereich`);
@@ -123,7 +123,7 @@ test("A — Desktop: die Übersicht trägt die Signature-Fläche, jede übrige K
     await bereit(page, ".ov-kpis");
     const start = await flaeche(page);
     istSignatur(start, "Übersicht");
-    assert.equal(start.body, start.sollSignatur, "das Dokument trägt nicht den Grund des Kundenbereichs");
+    assert.equal(start.body, start.sollArbeit, "das Dokument trägt nicht den Grund des Kundenbereichs");
     for (const [name, ziel] of Object.entries(ARBEITSSEITEN)) {
       await page.goto(`${BASE}${ziel}`, { waitUntil: "domcontentloaded" });
       await bereit(page);

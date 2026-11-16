@@ -148,10 +148,13 @@ test("5 — Partnerregistrierung behält die Aurora, die Kunden-Anmeldung trägt
 
 test("6 — die Bereichsebene steht zuletzt im Bündel und die Werte halten zusammen", () => {
   const index = lies(path.join(HIER, "index.css"));
-  // Editorial Business Premium (2026-10-28): die Editorial-Ebene folgt als letzte direkt auf die Bereichsebene.
+  // Editorial Business Premium (2026-10-28): die Editorial-Ebene folgt direkt auf die Bereichsebene.
+  // Confidara Obsidian (Betreiberauftrag 2026-11-15): danach nur noch Schrift- und Gestaltungsebene des
+  // Kundenbereichs, die Gestaltungsebene als letzter Import (kundeObsidian.test.mjs).
   const importe = [...index.matchAll(/@import '\.\/([\w-]+\.css)';/g)].map((m) => m[1]);
-  assert.deepEqual(importe.slice(-2), ["premium-redesign.css", "premium-editorial.css"], "Bereichs- und Editorial-Ebene stehen nicht zuletzt");
-  assert.ok(index.trim().endsWith("@import './premium-editorial.css';"), "premium-editorial.css ist nicht der letzte Import");
+  assert.deepEqual(importe.slice(-4), ["premium-redesign.css", "premium-editorial.css", "kunde-schriften.css", "kunde-obsidian.css"],
+    "Bereichs-, Editorial- und Obsidian-Ebene stehen nicht zuletzt");
+  assert.ok(index.trim().endsWith("@import './kunde-obsidian.css';"), "kunde-obsidian.css ist nicht der letzte Import");
   const werte = lies(path.join(SRC, "components/ui/Werte.jsx"));
   assert.match(werte, /if \(!teile\.some\(\(s\) => s\.wert\)\) return children;/);
   assert.match(werte, /<span>\s*\{teile\.map/, "Werte liefert kein einzelnes umschließendes Element");

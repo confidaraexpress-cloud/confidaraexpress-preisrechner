@@ -18,9 +18,15 @@ import { LoadingScreen } from "./components/common/LoadingScreen";
 import { AuthSeite, EmailBestaetigungSeite, AdminAnmeldungSeite } from "./pages/authSeite";
 import { ADMIN_LOGIN_PATH } from "./utils/roleLanding.mjs";
 import { istKundenAuthPfad } from "./utils/kundenAuthPfad.mjs";
+import { istKundenbereichPfad, ohneDemoBasis } from "./utils/kundenBereichPfad.mjs";
 
 // Die Demo lädt ihren eigenen Teil nur unter /demo (eigener Chunk, keine Last für den Kundenbereich).
 const DemoApp = React.lazy(() => import("./demo/DemoApp.jsx"));
+
+// Pfad innerhalb der Demo (ohne /demo); der Einstieg /demo führt auf die Übersicht. Nur für die Ladefläche.
+function demoInnenpfad() {
+  return ohneDemoBasis(window.location.pathname);
+}
 
 /* Unter /demo, falls der Browser den Speicher nicht abschirmen lässt: ein ruhiger Hinweis statt einer Demo, die in
    die echte Sitzung schreiben könnte. */
@@ -74,7 +80,7 @@ function starten() {
 createRoot(document.getElementById("root")).render(
   <ContentErrorBoundary bereich="wurzel">
     {DEMO_ZUSTAND.aktiv ? (
-      <Suspense fallback={<LoadingScreen />}>
+      <Suspense fallback={<LoadingScreen kunde={istKundenbereichPfad(demoInnenpfad())} />}>
         {DEMO_ZUSTAND.abgeschirmt ? <DemoApp /> : <DemoNichtVerfuegbar />}
       </Suspense>
     ) : (

@@ -164,13 +164,19 @@ test("4 — kein freier Schatten und kein farbiger Glow außerhalb des Auth-Bere
   }
   assert.deepEqual(fremdeTitelfarbe, [], `fremde Farbe im Titelmaterial:\n  ${fremdeTitelfarbe.join("\n  ")}`);
 
-  // backdrop-filter und Blur ausschließlich im Auth-Bereich.
+  // backdrop-filter und Blur ausschließlich im Auth-Bereich — und in der Gestaltungsebene des Kundenbereichs
+  // (Confidara Obsidian, Betreiberauftrag 2026-11-15): dort genau EINE Weichzeichnung als Token
+  // (--ce-ob-glas-weichzeichnung) und die Unschärfe der einmaligen Begrüßung (@keyframes ce-ob-gruss). Beide
+  // begrenzt kundeObsidian.test.mjs; jede andere Stelle der Datei bleibt dieser Regel unterworfen.
   for (const f of ALLE_CSS) {
     if (f === "auth.css") continue;
+    const obsidian = f === "kunde-obsidian.css";
     for (const m of css[f].matchAll(/backdrop-filter:\s*([^;}]+)/g)) {
+      if (obsidian && m[1].trim() === "var(--ce-ob-glas-weichzeichnung)") continue;
       assert.equal(m[1].trim(), "none", `${f}: backdrop-filter ${m[1]}`);
     }
-    assert.doesNotMatch(css[f], /filter:\s*blur\(/, `${f}: Blur außerhalb des Auth-Bereichs`);
+    const ohneBegruessung = obsidian ? css[f].replace(/@keyframes ce-ob-gruss \{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/, "") : css[f];
+    assert.doesNotMatch(ohneBegruessung, /filter:\s*blur\(/, `${f}: Blur außerhalb des Auth-Bereichs`);
   }
 });
 
@@ -197,10 +203,16 @@ test("6 — es wird nur die eine benutzte Schriftfamilie geladen", () => {
   // Premium-Redesign (Betreiberentscheidung 2026-10-27): Instrument Sans für Kunde, Anmeldung und Preisrechner.
   // Seit D1/D3 (Betreiberentscheidung 2026-11-13) für die ganze Plattform; DM Sans und Cormorant sind entfernt.
   assert.deepEqual(familien, ["Instrument Sans"]);
+  // Confidara Obsidian (Betreiberauftrag 2026-11-15): Der Kundenbereich liest weiter Instrument Sans für die Arbeit und
+  // lädt dazu zwei Familien (OFL, lokal) aus kunde-schriften.css — Host Grotesk für Überschriften, Instrument Serif für
+  // die Begrüßung; nur im Hauptbündel, nie im Preisrechner. Rollen, Lizenzen und Bündel prüft kundeObsidian.test.mjs.
+  const kundeSchriften = ohneKommentare(read("./kunde-schriften.css"));
+  assert.deepEqual([...new Set([...kundeSchriften.matchAll(/font-family:\s*'([^']+)'/g)].map((m) => m[1]))].sort(),
+    ["Host Grotesk", "Instrument Serif"]);
   // Jede geladene Datei existiert, und es liegt keine ungenutzte Datei herum.
-  const geladen = new Set([...fonts.matchAll(/url\('\.\.\/assets\/fonts\/([^']+)'\)/g)].map((m) => m[1]));
+  const geladen = new Set([...`${fonts}\n${kundeSchriften}`.matchAll(/url\('\.\.\/assets\/fonts\/([^']+)'\)/g)].map((m) => m[1]));
   const vorhanden = new Set(readdirSync(new URL("../assets/fonts/", import.meta.url)));
-  for (const d of geladen) assert.ok(vorhanden.has(d), `fonts.css lädt ${d}, die Datei fehlt`);
+  for (const d of geladen) assert.ok(vorhanden.has(d), `fonts.css bzw. kunde-schriften.css lädt ${d}, die Datei fehlt`);
   for (const d of vorhanden) assert.ok(geladen.has(d), `${d} liegt ungenutzt im Repository`);
   // Kein UI-Gewicht über 700 — die Achse der Schriftdatei (400–700). Bis 2026-11-13 galt außerhalb des
   // Premium-Bereichs 600; seit D1 liest die ganze Plattform Instrument Sans mit derselben Gewichtsleiter.

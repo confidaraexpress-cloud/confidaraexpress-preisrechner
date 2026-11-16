@@ -3,6 +3,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { LoadingScreen } from "../components/common/LoadingScreen";
 import { isSalesPartner, PARTNER_HOME } from "../utils/roleLanding.mjs";
+import { istKundenbereichPfad } from "../utils/kundenBereichPfad.mjs";
 
 // Sitzungsprüfung an Netz-/Serverfehler gescheitert (Token vorhanden, aber
 // /kundenbereich nicht erreichbar): Vorher wurde das Token gelöscht und der
@@ -40,7 +41,8 @@ export function SessionCheckFailedView({
 export function ProtectedRoute({ children }) {
   const { authed, loadingUser, sessionCheckFailed, retrySessionCheck, logout, user } = useAuth();
   const location = useLocation();
-  if (loadingUser) return <LoadingScreen />;
+  // Nur Darstellung: auf den Kundenpfaden steht der Ladebildschirm auf dem Schwarz des Kundenbereichs.
+  if (loadingUser) return <LoadingScreen kunde={istKundenbereichPfad(location.pathname)} />;
 
   if (sessionCheckFailed) {
     return <SessionCheckFailedView onRetry={retrySessionCheck} onLogout={logout} />;

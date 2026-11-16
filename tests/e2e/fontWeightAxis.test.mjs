@@ -230,9 +230,13 @@ test("3 — keine externe Schriftquelle, keine zusätzliche Schriftdatei", () =>
   // keine Referenz, keine @font-face-Regel). Der Vergleich läuft deshalb in
   // beide Richtungen statt nur auf Existenz: er fällt jetzt auch dann, wenn
   // jemand eine zweite Familie hinzulegt. Seit der Betreiberentscheidung vom
-  // 2026-11-13 (D1/D3) sind die Dateien von DM Sans und Cormorant entfallen.
+  // 2026-11-13 (D1/D3) sind die Dateien von DM Sans und Cormorant entfallen. Seit Confidara Obsidian
+  // (Betreiberauftrag 2026-11-15) liegen dazu Host Grotesk (Überschriften) und Instrument Serif (Begrüßung) des
+  // Kundenbereichs — OFL, lokal, geladen allein von kunde-schriften.css.
   const erwartet = [
     "instrumentsans-var-latin-ext.woff2", "instrumentsans-var.woff2",
+    "hostgrotesk-var-latin-ext.woff2", "hostgrotesk-var.woff2",
+    "instrumentserif-latin-ext.woff2", "instrumentserif.woff2",
   ];
   const vorhanden = readdirSync(path.join(REPO_ROOT, "src/assets/fonts"))
     .filter((f) => f.endsWith(".woff2")).sort();
@@ -240,4 +244,9 @@ test("3 — keine externe Schriftquelle, keine zusätzliche Schriftdatei", () =>
   // Und fonts.css lädt genau die eine Familie, die das Produkt benutzt.
   const familien = [...new Set([...fonts.matchAll(/font-family:\s*'([^']+)'/g)].map((m) => m[1]))].sort();
   assert.deepEqual(familien, ["Instrument Sans"]);
+  // Die beiden Familien des Kundenbereichs lädt nur kunde-schriften.css, ebenfalls ohne externe Quelle.
+  const kunde = readFileSync(path.join(REPO_ROOT, "src/styles/kunde-schriften.css"), "utf8");
+  assert.ok(!/https?:\/\//.test(kunde), "kunde-schriften.css darf keine externe Schriftquelle laden");
+  assert.deepEqual([...new Set([...kunde.matchAll(/url\('\.\.\/assets\/fonts\/([^']+)'\)/g)].map((m) => m[1]))].sort(),
+    erwartet.filter((f) => !f.startsWith("instrumentsans")).sort());
 });

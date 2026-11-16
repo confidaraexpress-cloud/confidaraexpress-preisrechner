@@ -110,3 +110,10 @@
 
 /* Editorial Business Premium (Betreiberentscheidung 2026-10-28): die letzte Ebene, nur am Kundenbereich. */
 @import './premium-editorial.css';
+
+/* Confidara Obsidian (Betreiberauftrag „Resend-inspired Total Dashboard Redesign“, 2026-11-15, zunächst nur lokal):
+   Schriften und Gestaltungsebene des Kundenbereichs. Beide Dateien gehören NUR zu diesem Bündel — der öffentliche
+   Preisrechner (public-calculator.css) importiert sie nicht. Jede Regel hängt an :root[data-ce-bereich="kunde"];
+   als letzte Ebene gewinnt sie bei gleicher Spezifität gegen premium-editorial.css. */
+@import './kunde-schriften.css';
+@import './kunde-obsidian.css';

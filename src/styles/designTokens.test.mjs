@@ -375,6 +375,9 @@ test("10 — es gibt genau EINE Radienfamilie im Produkt", () => {
       // Die Paketbühne (Konzept B) gehört zur Bereichsebene: jede ihrer Regeln hängt am Bereichsattribut
       // (premiumRedesign.test.mjs, 9) — sie trägt deshalb dieselben Radien.
       if (f === "paketbuehne.css" && /^var\(--ce-pr-radius-[\w-]+\)$/.test(v)) continue;
+      // Confidara Obsidian (Betreiberauftrag 2026-11-15): Auch die Gestaltungsebene des Kundenbereichs hängt mit jeder
+      // Regel am Bereichsattribut (kundeObsidian.test.mjs) und trägt deshalb die Bereichsradien — keine freien Werte.
+      if (f === "kunde-obsidian.css" && /^var\(--ce-pr-radius-[\w-]+\)$/.test(v)) continue;
       // Der Griff einer Bildlaufleiste ist Browser-Chrome, keine Fläche des
       // Designsystems: er ist 4 px breit, ein 8-px-Radius wäre größer als das
       // Element. Das ist die EINZIGE zugelassene Ausnahme.

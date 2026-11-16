@@ -16,6 +16,7 @@ import { AdminLayout } from "./components/layout/AdminLayout";
 import { demoAusgangsziel } from "./demo/demoModus.mjs";
 import { AuthSeite, EmailBestaetigungSeite, AdminAnmeldungSeite } from "./pages/authSeite";
 import { statischeAuthSeite } from "./utils/kundenAuthPfad.mjs";
+import { istKundenbereichPfad } from "./utils/kundenBereichPfad.mjs";
 
 // Die Kunden-Anmeldung: eigener Codeabschnitt wie jede Seite, aber vorladbar (pages/authSeite.js) — main.jsx lädt
 // sie vor dem ersten Rendern, damit sie das statische Seitengerüst ohne Ladefläche ersetzt (Abschnitt 5, 2026-10-27).
@@ -123,8 +124,10 @@ export default function App() {
   // Die Sitzungsprüfung eines gespeicherten Tokens hält die Anwendung an — auf jedem Pfad, wie bisher: liefe die
   // Anmeldung daneben, überschriebe eine verspätete Antwort eine neue Anmeldung oder die E-Mail-Bestätigung. Ohne
   // Token gibt es keine Prüfung und keinen Ladebildschirm (AuthContext, Audit B.1). Auf den Seiten mit statischem
-  // Gerüst steht er auf dessen dunklem Grund statt auf hellem.
-  if (loadingUser) return <LoadingScreen dunkel={statischeAuthSeite(pathname) !== null} />;
+  // Gerüst steht er auf dessen dunklem Grund statt auf hellem. Auf den Pfaden des Kundenbereichs (Confidara Obsidian)
+  // steht er — wie die Ladefläche des Seitenwechsels unten — auf dessen Schwarz: nur Darstellung, keine Weiche.
+  const kundenPfad = istKundenbereichPfad(pathname);
+  if (loadingUser) return <LoadingScreen dunkel={statischeAuthSeite(pathname) !== null} kunde={kundenPfad} />;
 
   return (
     // ShippingFlowProvider steht bewusst AUSSERHALB von <Routes> und INNERHALB
@@ -142,7 +145,7 @@ export default function App() {
         Suchpräferenz erhalten bleiben sollen, wären jedes Mal weg.
         Er hält KEINE Buchungsdaten und schreibt nichts in den Versandvorgang. */}
     <ParcelShopFinderProvider>
-    <Suspense fallback={<LoadingScreen />}>
+    <Suspense fallback={<LoadingScreen kunde={kundenPfad} />}>
       <ScrollToTop />
       <Routes>
         <Route element={<AuthAreaBoundary />}>

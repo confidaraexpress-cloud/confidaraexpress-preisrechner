@@ -178,9 +178,14 @@ test("4 — es gibt genau einen Overlay-Grundton", () => {
   // Auth-Bereich ist davon ausgenommen: seine Glasflächen sind das tragende
   // Material einer eigenen, isolierten Welt (--auth-*) und nicht Teil des
   // Dialogsystems — sie folgen erst mit einem eigenen Auth-Paket.
+  // Confidara Obsidian (Betreiberauftrag 2026-11-15): Die Gestaltungsebene des Kundenbereichs legt Kopfleiste, Menüs
+  // und Demo-Leiste auf Glas — genau ein Token (--ce-ob-glas-weichzeichnung), nie auf einen Schleier: Dialoge und
+  // Overlays bleiben auch dort ohne Weichzeichnung.
   for (const f of ALLE_CSS.filter((f) => f !== "auth.css")) {
     const inhalt = stripComments(read(`./${f}`));
     for (const m of inhalt.matchAll(/backdrop-filter:\s*([^;]+);/g)) {
+      const selektor = inhalt.slice(inhalt.lastIndexOf("}", m.index) + 1, inhalt.lastIndexOf("{", m.index));
+      if (f === "kunde-obsidian.css" && m[1].trim() === "var(--ce-ob-glas-weichzeichnung)" && !/overlay|dialog/i.test(selektor)) continue;
       assert.equal(m[1].trim(), "none", `${f}: backdrop-filter ${m[1]}`);
     }
   }
@@ -367,9 +372,12 @@ test("11 — Tokens, Primitives und Typografie bleiben eingehalten", () => {
   const reihenfolge = [...indexCss.matchAll(/@import '\.\/([\w-]+\.css)'/g)].map((m) => m[1]);
   // Premium-Redesign Etappe 1: Die Bereichsebene (premium-redesign.css) steht als einzige Datei NACH der
   // Musterebene. Jede ihrer Regeln hängt am Bereichsattribut (premiumRedesign.test.mjs).
-  // Editorial Business Premium (2026-10-28): die Editorial-Ebene folgt als letzte; auch sie hängt nur am Kundenbereich.
-  assert.deepEqual(reihenfolge.slice(-3), ["patterns.css", "premium-redesign.css", "premium-editorial.css"],
-    "die Musterebene steht zuletzt vor der Bereichs- und der Editorial-Ebene des Redesigns");
+  // Editorial Business Premium (2026-10-28): die Editorial-Ebene folgt; auch sie hängt nur am Kundenbereich.
+  // Confidara Obsidian (Betreiberauftrag 2026-11-15): Schrift- und Gestaltungsebene des Kundenbereichs folgen als
+  // letzte — ebenfalls nur am Kundenbereich (kundeObsidian.test.mjs).
+  assert.deepEqual(reihenfolge.slice(-5),
+    ["patterns.css", "premium-redesign.css", "premium-editorial.css", "kunde-schriften.css", "kunde-obsidian.css"],
+    "die Musterebene steht zuletzt vor der Bereichs-, der Editorial- und der Obsidian-Ebene des Redesigns");
   assert.equal(reihenfolge.filter((f) => f === "patterns.css").length, 1);
 
   // Die Governance der Vorphasen läuft weiterhin mit. Gemessen wird seit der

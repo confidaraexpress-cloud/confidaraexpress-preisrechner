@@ -10,10 +10,14 @@ import { BrandLogo } from "../ui/BrandLogo";
    mit vorlesen. Die Statusmeldung darunter sagt bereits, was passiert.
 
    `dunkel`: auf den Anmeldeseiten mit statischem Gerüst (Navy-Bühne) derselbe dunkle Grund mit hellem Signet und
-   Ladepunkt — kein heller Zwischenbildschirm, während ein gespeichertes Token geprüft wird (App.jsx). */
-export function LoadingScreen({ dunkel = false }) {
+   Ladepunkt — kein heller Zwischenbildschirm, während ein gespeichertes Token geprüft wird (App.jsx).
+   `kunde`: auf den Pfaden des Kundenbereichs (utils/kundenBereichPfad.mjs) dasselbe helle Signet auf dem Schwarz des
+   Kundenbereichs (Confidara Obsidian, kunde-obsidian.css) — kein heller Zwischenbildschirm vor der dunklen Seite. */
+export function LoadingScreen({ dunkel: dunklerGrund = false, kunde = false }) {
+  // Dunkler Grund: das Navy der Anmeldegerüste oder das Schwarz des Kundenbereichs — in beiden Fällen Reverse.
+  const dunkel = dunklerGrund || kunde;
   return (
-    <div className={`loading-screen${dunkel ? " loading-screen--dunkel" : ""}`} role="status" aria-live="polite">
+    <div className={`loading-screen${dunkel ? " loading-screen--dunkel" : ""}${kunde ? " loading-screen--kunde" : ""}`} role="status" aria-live="polite">
       <div className="text-center">
         <BrandLogo variant="signet" tone={dunkel ? "reverse" : "standard"} alt="" className="loading-screen-mark" />
         <div className={dunkel ? "spinner" : "spinner spinner-dark"} />

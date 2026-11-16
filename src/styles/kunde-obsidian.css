@@ -1,0 +1,1041 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONFIDARA OBSIDIAN — KUNDENBEREICH (Betreiberauftrag „Resend-inspired Total Dashboard Redesign“, 2026-11-15,
+   zunächst nur lokal; Veröffentlichung erst nach ausdrücklicher Designfreigabe)
+   ───────────────────────────────────────────────────────────────────────────
+   These: Eine schwarze, präzise Versandkonsole. Resends Designsprache — Schwarz als Grund, Weiß als Tinte und
+   Hauptaktion, haarfeine Lichtkanten statt Schatten, Farbe nur als Zustand — mit dem Confidara-Blau als einzigem
+   Signal für Bewegung und Auswahl. Mut an einer Stelle: die persönliche Begrüßung der Übersicht in editorialer
+   Serife mit Lichtverlauf auf einer leisen Aurora. Alles andere ruhig, dicht und klar.
+
+   Referenz (Gestaltung, keine Übernahme von Marke, Logo, Illustration, Code oder Schriftdateien): resend.com,
+   resend.com/brand, Handbook „Brand guidelines“, Blog „Rebranding Resend“, github.com/resend/design-skills, die
+   Produktansicht „Metrics“ auf resend.com. Übernommen sind Prinzipien und messbare Werte: dark-first, Schwarz #000
+   als Grund und Weiß als Tinte, Statusfarben als getönte Flächen (Grau, Rot, Bernstein, Grün, Blau mit Alpha),
+   Schriftverlauf 97° Weiß → 50 %, Glas mit 25 px Weichzeichnung, Rollen Produkt · Überschrift · Editorial.
+
+   Architektur:
+   • Diese Datei ist die EINE Gestaltungsebene des Kundenbereichs. Sie steht als letzte im Bündel (styles/index.css),
+     hinter premium-editorial.css; jede Regel hängt an :root[data-ce-bereich="kunde"]. Admin, Partnerportal,
+     Partnerregistrierung, Anmeldung („auth“) und der öffentliche Preisrechner (eigenes Bündel) lesen sie nie.
+   • Abschnitt 1 ordnet die vorhandenen Tokens um (Flächen, Tinte, Kanten, Status, Seitenleiste, Bediensystem,
+     Titelmaterial, Tiefe). Weil die Bereichs-Stylesheets keine Farbliterale tragen, wechselt damit fast die ganze
+     Oberfläche. Die Abschnitte danach setzen Material, Form und Typografie der Bausteine.
+   • Neue Werte als --ce-ob-* (nur hier). Keine Änderung an Inhalten, Texten, Routen, API, Preisen, Sperren oder
+     Abläufen — reine Darstellung.
+   • Nur für den Bildschirm: Die ganze Ebene steht in @media screen. Gedruckt (auch „Als PDF drucken“) gelten die
+     getesteten Druckregeln der Plattform — helles Blatt, dunkle Schrift (buchungsschritte.css, premium-editorial.css).
+   • Geometrie und Schrift der Arbeit bleiben die des Bereichs: Radius-Skala (variables.css) und Instrument Sans mit
+     ihrer Breitenachse, auf die das Layout vermessen ist. Obsidian ändert Licht, Material, Farbe und Titel.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media screen {
+
+/* ═══════════ 1 · TOKENS ═══════════════════════════════════════════════════
+   Kontraste nach WCAG 2.x gegen #0b0b0d (Karte), wenn nichts anderes steht. */
+:root[data-ce-bereich="kunde"] {
+  color-scheme: dark;
+
+  /* ── Obsidian: Grund, Flächen, Tinte ── */
+  --ce-ob-schwarz: #000000;                 /* Resend Black: Seitengrund */
+  --ce-ob-flaeche-1: #0b0b0d;               /* Karten, Tabellen, Blätter */
+  --ce-ob-flaeche-2: #121215;               /* Mulden, Zeilen beim Zeigen, Felder */
+  --ce-ob-flaeche-3: #19191d;               /* gedrückt, aktive Spur */
+  --ce-ob-flaeche-4: #222227;               /* kräftige Fläche (Schalter-Spur, Griff) */
+  --ce-ob-glas: rgba(20, 21, 24, 0.86);     /* Menüs, Fenster, Kopfleiste: Resend Gray #16171A mit Alpha … */
+  --ce-ob-glas-blur: 25px;                  /* … und 25 px Weichzeichnung (Resend „Glass“) */
+  --ce-ob-tinte: #ffffff;                   /* Weiß · 19,7:1 */
+  --ce-ob-tinte-2: #b8b8be;                 /* Beschreibungen · 10,0:1 — bewusst kräftig (Betreiber: nicht ausgewaschen) */
+  --ce-ob-tinte-3: #9b9ba3;                 /* Nebeninformation · 7,1:1 */
+  --ce-ob-tinte-4: #7c7c85;                 /* Platzhalter, Achsen · 4,7:1 */
+  --ce-ob-tinte-aus: #5f5f67;               /* nur gesperrte Elemente */
+  --ce-ob-tinte-symbol: #8a8a92;            /* Symbole der Seitenleiste in Ruhe · gegen Schwarz 6,0:1 */
+  --ce-ob-tinte-invers: #08080a;            /* Schrift auf der weißen Hauptaktion */
+  --ce-ob-glas-weichzeichnung: blur(var(--ce-ob-glas-blur)) saturate(140%); /* die EINE Weichzeichnung (Kopfleiste, Menüs, Demo-Leiste) */
+
+  /* ── Linien: Licht statt Schatten ── */
+  --ce-ob-linie: rgba(255, 255, 255, 0.075);      /* Haarlinie zwischen Zeilen */
+  --ce-ob-kante: rgba(255, 255, 255, 0.1);        /* Kante von Karten und Tabellen */
+  --ce-ob-kante-stark: rgba(255, 255, 255, 0.16); /* Kante beim Zeigen */
+  --ce-ob-kante-feld: #63636b;                    /* Kontur von Feldern und Zweitaktionen · 3,2:1 (WCAG 1.4.11) */
+  --ce-ob-kante-feld-zeigen: #85858e;             /* · 5,0:1 */
+  --ce-ob-lichtkante: inset 0 1px 0 rgba(255, 255, 255, 0.06); /* Oberkante im Licht */
+  /* Tiefe nur aus weißem Streiflicht und schwarzem Schlagschatten — kein farbiger Schein (kundeObsidian.test.mjs). */
+  --ce-ob-lichtkante-zeigen: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  --ce-ob-lichtkante-aktiv: inset 0 1px 0 rgba(255, 255, 255, 0.07), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --ce-ob-lichtkante-logo: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --ce-ob-schatten-schwebend: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 24px 48px -16px rgba(0, 0, 0, 0.9);
+  /* Resend „Border“: Kante von oben hell nach unten leiser; „Smooth“: leiser Flächenverlauf. */
+  --ce-ob-kantenverlauf: linear-gradient(180deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0.05) 100%);
+  --ce-ob-flaechenverlauf: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.012) 100%);
+  --ce-ob-schriftverlauf: linear-gradient(97deg, #ffffff 30%, rgba(255, 255, 255, 0.52) 100%);
+
+  /* ── Signal: Confidara-Blau #004AFC aus dem Logo als Fläche (Betreiberentscheidung E1, Premium-Redesign Etappe 1).
+     Kanten, Fokus und Textwege in Aufhellungen desselben Tons: #004AFC selbst erreicht gegen die Flächen nur
+     2,8–3,4:1 (WCAG 1.4.11 verlangt 3:1, Text 4,5:1). ── */
+  --ce-ob-signal: #004afc;                  /* Fläche · Weiß darauf 6,2:1 · gegen Schwarz 3,4:1 */
+  --ce-ob-signal-zeigen: #1f5fff;           /* Fläche beim Zeigen · Weiß darauf 5,1:1 */
+  --ce-ob-signal-kante: #5b8cff;            /* Fokus, gewählte Kante · 6,6:1 */
+  --ce-ob-signal-tinte: #8db0ff;            /* Textwege · 9,1:1 */
+  --ce-ob-signal-tinte-zeigen: #b3cbff;     /* Textwege beim Zeigen */
+  --ce-ob-signal-ton: rgba(0, 74, 252, 0.16);
+  --ce-ob-signal-ton-zeigen: rgba(0, 74, 252, 0.24);
+
+  /* ── Zustände (Resend Semantic Colors: getönte Fläche + helle Schrift) ── */
+  --ce-ob-gruen: #3dd68c;    --ce-ob-gruen-ton: rgba(34, 255, 153, 0.11);  --ce-ob-gruen-kante: rgba(61, 214, 140, 0.26);
+  --ce-ob-bernstein: #ffca16; --ce-ob-bernstein-ton: rgba(250, 130, 0, 0.14); --ce-ob-bernstein-kante: rgba(255, 202, 22, 0.24);
+  --ce-ob-rot: #ff9592;      --ce-ob-rot-ton: rgba(255, 23, 63, 0.16);     --ce-ob-rot-kante: rgba(255, 149, 146, 0.26);
+  --ce-ob-blau: #70b8ff;     --ce-ob-blau-ton: rgba(0, 119, 255, 0.2);     --ce-ob-blau-kante: rgba(112, 184, 255, 0.26);
+  --ce-ob-grau: #c3c3c9;     --ce-ob-grau-ton: rgba(255, 255, 255, 0.07);  --ce-ob-grau-kante: rgba(255, 255, 255, 0.12);
+  --ce-ob-violett: #baa7ff;  --ce-ob-violett-ton: rgba(122, 92, 230, 0.18);
+
+  /* ── Bewegung ── */
+  --ce-ob-kurve: cubic-bezier(0.16, 1, 0.3, 1);       /* weich auslaufend (Fenster, Menüs, Einstieg) */
+  --ce-ob-kurve-feder: cubic-bezier(0.34, 1.4, 0.64, 1); /* Symbole der Seitenleiste */
+  --ce-ob-dauer: 180ms;
+  --ce-ob-dauer-lang: 260ms;
+
+  /* ── Schriftrollen: die Arbeit in der Produktschrift Instrument Sans (fonts.css), Überschriften und Kennzahlen in
+     Host Grotesk, die Begrüßung in Instrument Serif (beide kunde-schriften.css) ── */
+  --ce-ob-schrift-text: var(--ce-font-sans);
+  --ce-ob-schrift-titel: 'Host Grotesk', var(--ce-font-sans);
+  --ce-ob-schrift-editorial: 'Instrument Serif', 'Times New Roman', serif;
+  --ce-ob-gruss-size: 3.75rem;              /* 60 px — editoriale Begrüßung */
+  --ce-ob-gruss-size-tablet: 3.125rem;      /* 50 px */
+  --ce-ob-gruss-size-mobile: 2.5rem;        /* 40 px */
+  --ce-ob-titel-size: 2.25rem;              /* 36 px — Seitentitel */
+  --ce-ob-titel-size-tablet: 2rem;
+  --ce-ob-titel-size-mobile: 1.75rem;
+
+  /* ── Umgeordnete Tokens der Foundation ──
+     Text, Beträge und Kennungen behalten Instrument Sans mit ihrer Breitenachse (Beträge 88 %, Kennzahlen 78 %,
+     Unterzeile der Marke 88 %): Seitenleiste, Zeitleiste der Angebote bei 390 px und Tabellen sind auf diese Breiten
+     vermessen. Host Grotesk hat keine Breitenachse — für Überschriften gilt 100 %. */
+  --ce-font-display: var(--ce-ob-schrift-titel);
+  --ce-pr-font-display: var(--ce-ob-schrift-titel);
+  --ce-pr-display-stretch: 100%;
+  --ce-pr-ed-headline-stretch: 100%;
+  --ce-weight-text: 450;
+  --ce-weight-medium: 520;
+  --ce-text-label-weight: 550;
+  --ce-text-badge-weight: 550;
+  --ce-text-button-weight: 560;
+  --ce-text-nav-weight-active: 560;
+  --ce-text-title-page-weight: 500;
+  --ce-text-title-section-weight: 500;
+  --ce-text-title-card-weight: 520;
+  --ce-text-display-xl-weight: 500;
+  --ce-text-display-l-weight: 500;
+  --ce-text-numeric-display-weight: 400;
+  --ce-text-title-page-tracking: -0.03em;
+  --ce-text-title-section-tracking: -0.018em;
+  --ce-text-title-card-tracking: -0.01em;
+  --ce-text-label-tracking: 0;
+  --ce-text-micro-tracking: 0;
+  --ce-text-body-line: 1.6;
+  --ce-text-body-s-line: 1.6;
+  --ce-pr-ed-headline-size: var(--ce-ob-titel-size);
+  --ce-pr-ed-headline-size-tablet: var(--ce-ob-titel-size-tablet);
+  --ce-pr-ed-headline-size-mobile: var(--ce-ob-titel-size-mobile);
+  --ce-pr-ed-headline-line: 1.15;
+  --ce-pr-ed-headline-tracking: -0.032em;
+  --ce-pr-ed-gruss-size: var(--ce-ob-gruss-size);
+  --ce-pr-ed-gruss-size-tablet: var(--ce-ob-gruss-size-tablet);
+  --ce-pr-ed-gruss-size-mobile: var(--ce-ob-gruss-size-mobile);
+  --ce-pr-ed-gruss-line: 1.04;
+  --ce-pr-ed-gruss-tracking: -0.012em;
+  --ce-pr-ed-figure-size: 2.5rem;
+  --ce-pr-ed-figure-size-mobile: 2.125rem;
+  --ce-pr-ed-modul-titel: 1.125rem;
+
+  /* Marke und Signal */
+  --ce-color-brand: var(--ce-ob-signal);
+  --ce-color-brand-hover: var(--ce-ob-signal-zeigen);
+  --ce-color-brand-active: #0040dc;
+  --ce-color-brand-ink: var(--ce-ob-signal-tinte);
+  --ce-color-brand-soft: var(--ce-ob-signal-ton);
+  --ce-color-brand-soft-hover: var(--ce-ob-signal-ton-zeigen);
+  --ce-color-brand-border: rgba(91, 140, 255, 0.42);
+  --ce-color-brand-border-soft: rgba(91, 140, 255, 0.24);
+  --ce-color-brand-violet: #8f76f0;
+  --ce-color-brand-violet-ink: var(--ce-ob-violett);
+  --ce-color-border-focus: var(--ce-ob-signal-kante);
+  --ce-color-focus-ring: rgba(91, 140, 255, 0.36);
+  --ce-pr-signal: var(--ce-ob-signal-kante);
+  --ce-pr-signal-hover: #7aa2ff;
+  --ce-pr-signal-ink: var(--ce-ob-signal-tinte);
+  --ce-pr-signal-soft: var(--ce-ob-signal-ton);
+  --ce-pr-signal-soft-hover: var(--ce-ob-signal-ton-zeigen);
+  --ce-pr-signal-on-navy: var(--ce-ob-signal-tinte);
+  /* Die Markenstreifen (--ce-pr-stripe, --ce-pr-stripe-on-navy) bleiben die des Bereichs: Logo-Blau, aufgehellt. */
+  /* Das Navy war im hellen Bild Tinte UND Fläche der Hauptaktion. Im dunklen Bild übernimmt Weiß beide Rollen — wie
+     bei Resend: weiße Schrift, weiße Hauptaktion. Flächenstellen setzen ihre Schrift unten ausdrücklich dunkel. */
+  --ce-pr-navy-950: var(--ce-ob-schwarz);
+  --ce-pr-navy-900: var(--ce-ob-flaeche-1);
+  --ce-pr-navy-850: var(--ce-ob-flaeche-2);
+  --ce-pr-navy-800: var(--ce-ob-tinte);
+  --ce-pr-navy-700: #e7e7ea;
+  --ce-pr-navy-600: #d2d2d7;
+  --ce-pr-paper: var(--ce-ob-tinte);
+
+  /* Text */
+  --ce-color-text-primary: var(--ce-ob-tinte);
+  --ce-color-text-secondary: var(--ce-ob-tinte-2);
+  --ce-color-text-muted: var(--ce-ob-tinte-3);
+  --ce-color-text-placeholder: var(--ce-ob-tinte-4);
+  --ce-color-text-disabled: var(--ce-ob-tinte-aus);
+  --ce-color-text-inverse: #ffffff;
+  --ce-color-text-inverse-soft: rgba(255, 255, 255, 0.74);
+  --navy: var(--ce-ob-tinte);
+  --gray50: var(--ce-ob-flaeche-2);
+  --gray100: var(--ce-ob-flaeche-3);
+  --gray400: var(--ce-ob-tinte-4);
+
+  /* Flächen */
+  --ce-color-bg-canvas-top: var(--ce-ob-schwarz);
+  --ce-color-bg-canvas-mid: var(--ce-ob-schwarz);
+  --ce-color-bg-canvas-bottom: var(--ce-ob-schwarz);
+  --ce-color-bg-light-brand: rgba(0, 74, 252, 0.1);
+  --ce-color-bg-light-violet: rgba(122, 92, 230, 0.1);
+  --ce-app-bg: none;
+  --ce-pr-papier: var(--ce-ob-schwarz);
+  --ce-app-bg-mid: var(--ce-ob-schwarz);
+  --ce-app-bg-bottom: var(--ce-ob-schwarz);
+  --ce-app-divider: var(--ce-ob-linie);
+  --ce-color-surface: var(--ce-ob-flaeche-1);
+  --ce-color-surface-subtle: #0f0f12;
+  --ce-color-surface-muted: var(--ce-ob-flaeche-2);
+  --ce-color-surface-hover: var(--ce-ob-flaeche-2);
+  --ce-color-surface-pressed: var(--ce-ob-flaeche-3);
+  --ce-color-surface-raised: var(--ce-ob-flaechenverlauf), var(--ce-ob-flaeche-1);
+  --ce-color-surface-inverse: linear-gradient(180deg, #0d1430 0%, #070b1c 100%);
+  --ce-color-surface-inverse-edge: rgba(141, 176, 255, 0.18);
+  --ce-color-border-subtle: var(--ce-ob-linie);
+  --ce-color-border-default: var(--ce-ob-kante);
+  --ce-color-border-strong: var(--ce-ob-kante-stark);
+  --ce-color-border-interactive: var(--ce-ob-kante-feld);
+  --ce-color-border-interactive-hover: var(--ce-ob-kante-feld-zeigen);
+  --border-hairline: var(--ce-ob-linie);
+  --ce-pr-inset: var(--ce-ob-flaeche-2);
+  --ce-pr-hairline: var(--ce-ob-linie);
+  --ce-color-overlay: rgba(0, 0, 0, 0.72);
+  --ce-color-overlay-drawer: rgba(0, 0, 0, 0.72);
+
+  /* Zustände */
+  --ce-color-status-neutral-surface: var(--ce-ob-grau-ton);    --ce-color-status-neutral-fg: var(--ce-ob-grau);     --ce-color-status-neutral-border: var(--ce-ob-grau-kante);
+  --ce-color-status-info-surface: var(--ce-ob-blau-ton);       --ce-color-status-info-fg: var(--ce-ob-blau);        --ce-color-status-info-border: var(--ce-ob-blau-kante);
+  --ce-color-status-progress-surface: var(--ce-ob-signal-ton); --ce-color-status-progress-fg: var(--ce-ob-signal-tinte); --ce-color-status-progress-border: rgba(141, 176, 255, 0.26);
+  --ce-color-status-success-surface: var(--ce-ob-gruen-ton);   --ce-color-status-success-fg: var(--ce-ob-gruen);    --ce-color-status-success-border: var(--ce-ob-gruen-kante);
+  --ce-color-status-warning-surface: var(--ce-ob-bernstein-ton); --ce-color-status-warning-fg: var(--ce-ob-bernstein); --ce-color-status-warning-border: var(--ce-ob-bernstein-kante);
+  --ce-color-status-overdue-surface: var(--ce-ob-rot-ton);     --ce-color-status-overdue-fg: var(--ce-ob-rot);      --ce-color-status-overdue-border: var(--ce-ob-rot-kante);
+  --ce-color-status-error-surface: var(--ce-ob-rot-ton);       --ce-color-status-error-fg: var(--ce-ob-rot);        --ce-color-status-error-border: var(--ce-ob-rot-kante);
+  --ce-color-status-blocked-surface: var(--ce-ob-grau-ton);    --ce-color-status-blocked-fg: var(--ce-ob-tinte-2);  --ce-color-status-blocked-border: var(--ce-ob-grau-kante);
+  --ce-color-status-cancelled-surface: var(--ce-ob-grau-ton);  --ce-color-status-cancelled-fg: var(--ce-ob-tinte-3); --ce-color-status-cancelled-border: var(--ce-ob-grau-kante);
+  --ce-color-status-archived-surface: var(--ce-ob-grau-ton);   --ce-color-status-archived-fg: var(--ce-ob-tinte-3); --ce-color-status-archived-border: var(--ce-ob-grau-kante);
+  --ce-color-danger-solid: #ce2c31;         /* Weiß darauf 5,2:1 */
+  --ce-color-danger-hover: #b5242a;
+  --ce-color-danger-active: #9e1f24;
+  --ce-color-success-solid: #17834f;        /* Weiß darauf 4,8:1 */
+  --ce-color-success-ring: rgba(61, 214, 140, 0.32);
+
+  /* Tiefe: auf Schwarz tragen Kanten und Licht, Schlagschatten nur unter schwebenden Ebenen */
+  --ce-elevation-1: var(--ce-ob-lichtkante);
+  --ce-elevation-2: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 12px 32px -16px rgba(0, 0, 0, 0.9);
+  --ce-elevation-3: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 28px 60px -18px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --ce-elevation-dropdown: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 20px 44px -14px rgba(0, 0, 0, 0.95);
+  --ce-elevation-inset: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+  --ce-pr-shadow-card: var(--ce-ob-lichtkante);
+  --ce-pr-shadow-card-hover: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 16px 40px -20px rgba(0, 0, 0, 0.9);
+  --ce-pr-shadow-sheet: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 30px 80px -24px rgba(0, 0, 0, 0.95);
+  --ce-pr-btn-shadow: none;
+  --ce-pr-btn-shadow-hover: none;
+  --ce-pr-btn-shadow-secondary: none;
+  --ce-pr-btn-disabled-bg: rgba(255, 255, 255, 0.04);
+  --ce-pr-btn-disabled-fg: #8a8a92;         /* 5,6:1 — lesbar, auch wenn gesperrt */
+
+  /* Form: die Radius-Skala des Bereichs gilt unverändert (variables.css: Bedienelemente 10, Abschnitte 14,
+     Objekte 16, Status 6). */
+
+  /* Seitenleiste: Schwarz wie der Grund, getrennt durch eine Haarlinie (Resend) */
+  --ce-sidebar-bg: var(--ce-ob-schwarz);
+  --ce-sidebar-edge: var(--ce-ob-linie);
+  --ce-sidebar-shadow: none;
+  --ce-sidebar-border: var(--ce-ob-linie);
+  --ce-sidebar-divider: var(--ce-ob-linie);
+  --ce-sidebar-hover: rgba(255, 255, 255, 0.045);
+  --ce-sidebar-active-bg: rgba(255, 255, 255, 0.075);
+  --ce-sidebar-active-accent: var(--ce-ob-tinte);
+  --ce-sidebar-active-icon: var(--ce-ob-tinte);
+  --ce-sidebar-text: #a9a9b0;               /* 8,4:1 auf Schwarz */
+  --ce-sidebar-text-strong: var(--ce-ob-tinte);
+  --ce-sidebar-text-muted: #8c8c94;         /* 5,9:1 */
+  --ce-sidebar-section: #85858e;            /* 5,4:1 */
+  --ce-sidebar-scroll-thumb: rgba(255, 255, 255, 0.12);
+  --ce-sidebar-scroll-thumb-hover: rgba(255, 255, 255, 0.22);
+
+  /* Titelmaterial: das Navy-Relief wird zur hellen Resend-Tinte — flach, ohne Prägung. Die Begrüßung trägt den
+     Schriftverlauf (Abschnitt 9). */
+  --ce-titel-signatur-fuellung: linear-gradient(var(--ce-ob-tinte), var(--ce-ob-tinte));
+  --ce-titel-signatur-praegung: none;
+  --ce-titel-signatur-kante-oben: var(--ce-ob-tinte);
+  --ce-titel-signatur-kante-unten: var(--ce-ob-tinte);
+  --ce-titel-gruss-praegung: none;
+  --ce-titel-auswahl-text: #000000;
+  --ce-titel-auswahl-grund: var(--ce-ob-signal-tinte);
+
+  /* Bediensystem (Premium Control System) in Obsidian — Radien und Maße wie im Bereich */
+  --ce-pr-bs-kontur: var(--ce-ob-kante-feld);
+  --ce-pr-bs-kontur-zeigen: var(--ce-ob-kante-feld-zeigen);
+  --ce-pr-bs-flaeche-zeigen: rgba(255, 255, 255, 0.08);
+  --ce-pr-bs-wahl-flaeche: rgba(0, 74, 252, 0.15);
+  --ce-pr-bs-wahl-flaeche-zeigen: rgba(0, 74, 252, 0.24);
+  --ce-pr-bs-wahl-kante: var(--ce-ob-signal-kante);
+  --ce-pr-bs-gefahr-flaeche: var(--ce-ob-rot-ton);
+  --ce-pr-bs-schalter-aus: var(--ce-ob-flaeche-4);
+  --ce-pr-bs-schalter-aus-kante: var(--ce-ob-kante-feld);
+  --ce-pr-bs-schatten-primaer: inset 0 -1px 0 rgba(0, 0, 0, 0.14), 0 1px 2px rgba(0, 0, 0, 0.6);
+  --ce-pr-bs-schatten-primaer-zeigen: inset 0 -1px 0 rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.24), 0 6px 22px -8px rgba(255, 255, 255, 0.28);
+  --ce-pr-bs-schatten-gedrueckt: inset 0 1px 3px rgba(0, 0, 0, 0.35);
+  --ce-pr-bs-schatten-sekundaer: var(--ce-ob-lichtkante);
+  --ce-pr-bs-schatten-sekundaer-zeigen: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  --ce-pr-bs-schatten-gefahr: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 1px 2px rgba(0, 0, 0, 0.6);
+  --ce-pr-bs-schatten-menue: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 24px 48px -16px rgba(0, 0, 0, 0.95);
+  --ce-pr-bs-schatten-wahl: none;
+  --ce-pr-bs-schatten-wahl-zeigen: none;
+  --ce-pr-bs-schatten-wahl-gewaehlt: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --ce-pr-bs-schatten-schalterknopf: 0 1px 3px rgba(0, 0, 0, 0.6);
+
+  /* Editorial-Flächen (Übersicht, Arbeitsfläche): ohne helle Lichter — die Aurora setzt Abschnitt 2 */
+  --ce-pr-ed-raum-flaeche: var(--ce-ob-schwarz);
+  --ce-pr-ed-raum-band: transparent;
+  --ce-pr-ed-raum-schimmer: transparent, transparent;
+  --ce-pr-ed-raum-wolke: transparent, transparent;
+  --ce-pr-ed-raum-auslauf: transparent, transparent;
+  --ce-pr-ed-raum-kopfleiste-linie: transparent;
+  --ce-pr-ed-flaeche-uebersicht: var(--ce-ob-schwarz);
+  --ce-pr-ed-shadow-flaeche: var(--ce-ob-lichtkante);
+  --ce-pr-ed-kennzahl-zahl: var(--ce-ob-tinte);
+  --ce-pr-ed-kennzahl-tinte: var(--ce-ob-tinte-2);
+  --ce-pr-ed-kante-licht: var(--ce-ob-kantenverlauf);
+  --ce-pr-ed-karte-licht: var(--ce-ob-flaechenverlauf);
+  --ce-pr-ed-shadow-kennzahl: var(--ce-ob-lichtkante);
+  --ce-pr-ed-shadow-kennzahl-klein: var(--ce-ob-lichtkante);
+  --ce-pr-ed-kante-signal: rgba(141, 176, 255, 0.5);
+  --ce-pr-ed-shadow-kennzahl-hover: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  --ce-pr-ed-ton-signal: rgba(0, 74, 252, 0.08);
+  --ce-pr-ed-filter-kante: rgba(141, 176, 255, 0.3);
+  --ce-pr-ed-shadow-fenster: var(--ce-elevation-3);
+  --ce-pr-ed-shadow-sheet: 0 -1px 0 rgba(255, 255, 255, 0.08), 0 -24px 56px -24px rgba(0, 0, 0, 0.9);
+  --ce-pr-ed-schleier: rgba(0, 0, 0, 0.6);
+  --ce-pr-ed-zeile-offen: rgba(0, 74, 252, 0.08);
+  --ce-pr-ed-griff: rgba(255, 255, 255, 0.24);
+  --ce-pr-ed-row-mark: var(--ce-ob-signal-kante);
+  --ce-pr-ed-neu-kante: rgba(141, 176, 255, 0.32);
+  --ce-pr-ed-mark-delivered: var(--ce-ob-gruen);
+  --ce-pr-ed-ansprech-punkt-ring: rgba(61, 214, 140, 0.32);
+  --ce-pr-ed-flow-kopf-linie: var(--ce-ob-linie);
+  --ce-pr-ed-flow-kopfleiste-linie: transparent;
+  --ce-pr-ed-flow-fuss-linie: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1) 12%, rgba(255, 255, 255, 0.1) 88%, transparent);
+  --ce-pr-ed-flow-kachel: linear-gradient(180deg, #f7f7f9, #e9e9ee);
+  --ce-pr-ed-flow-kachel-name: var(--ce-ob-tinte-2);
+  --ce-pr-ed-shadow-kachel: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 10px 24px -14px rgba(0, 0, 0, 0.9);
+  --ce-pr-ed-flow-buehne-grund: linear-gradient(180deg, #0c0c0f 0%, #070709 100%);
+  --ce-pr-ed-shadow-buehne: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+
+  /* Paketbühne: das Kraftpapier bleibt, die Werkbank wird dunkel */
+  --ce-pr-paket-buehne: var(--ce-ob-flaeche-2);
+  --ce-pr-paket-raster: rgba(255, 255, 255, 0.05);
+  --ce-pr-paket-schatten: rgba(0, 0, 0, 0.6);
+
+  /* Kennzahl- und Demo-Bausteine */
+  --ce-pr-on-navy: var(--ce-ob-tinte);
+  --ce-pr-on-navy-2: var(--ce-ob-tinte-2);
+  --ce-pr-on-navy-3: var(--ce-ob-tinte-3);
+  --ce-pr-on-navy-line: var(--ce-ob-kante);
+  --ce-kpi-border: var(--ce-ob-kante);
+  --ce-kpi-label: var(--ce-ob-tinte-2);
+  --ce-kpi-context: var(--ce-ob-tinte-3);
+  --ce-pr-stage: none;
+
+  /* Seitenleiste: die Navy-Verläufe der Foundation laufen auf Schwarz */
+  --ce-sidebar-bg-top: var(--ce-ob-schwarz);
+  --ce-sidebar-bg-mid: var(--ce-ob-schwarz);
+  --ce-sidebar-bg-bottom: var(--ce-ob-schwarz);
+  --ce-sidebar-light: transparent;
+  --ce-sidebar-depth: transparent;
+
+  /* Buchungsschritte (Card-Stepper): offen eine dunkle Karte mit leiser Lichtkante, erledigt grün getönt mit grüner
+     Kante, aktiv bleibt das Kobalt der Foundation — Blau ist auch hier das einzige Signal für „jetzt“. */
+  --ce-bk-offen-flaeche: linear-gradient(180deg, #131316 0%, #0c0c0f 100%);
+  --ce-bk-offen-kante: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.06));
+  --ce-bk-offen-titel: var(--ce-ob-tinte-2);
+  --ce-bk-offen-zeile: var(--ce-ob-tinte-3);
+  --ce-bk-offen-ring: rgba(255, 255, 255, 0.2);
+  --ce-bk-pfeil-offen: #62626a;
+  --ce-bk-text: var(--ce-ob-tinte);
+  --ce-bk-text-gedaempft: var(--ce-ob-tinte-2);
+  --ce-bk-erledigt-flaeche: linear-gradient(180deg, #0f1814 0%, #0a100d 100%);
+  --ce-bk-erledigt-kante: linear-gradient(180deg, rgba(61, 214, 140, 0.44), rgba(61, 214, 140, 0.14));
+  --ce-bk-pfeil-erledigt: rgba(61, 214, 140, 0.72);
+  --ce-bk-shadow-karte-erledigt: var(--ce-ob-lichtkante);
+  --ce-bk-shadow-marke: inset 0 0 0 1.5px var(--ce-bk-offen-ring);
+  --ce-bk-kontrast-kante: #85858e;
+  --ce-bk-shadow-marke-kontrast: inset 0 0 0 2px #85858e;
+  --ce-bk-shadow-karte-aktiv: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 14px 30px -16px rgba(0, 0, 0, 0.9);
+
+  /* Demo-Leiste (nur /demo): Glas statt Navy, weiße Hauptaktion wie im Kundenbereich */
+  --ce-demo-flaeche: rgba(18, 18, 21, 0.88);
+  --ce-demo-linie: rgba(255, 255, 255, 0.14);
+  --ce-demo-streifen: linear-gradient(90deg, rgba(91, 140, 255, 0) 0%, #5b8cff 50%, rgba(91, 140, 255, 0) 100%);
+  --ce-demo-text: var(--ce-ob-tinte);
+  --ce-demo-text-2: var(--ce-ob-tinte-2);
+  --ce-demo-hover: rgba(255, 255, 255, 0.08);
+  --ce-demo-fokus: var(--ce-ob-signal-kante);
+  --ce-demo-knopf: #ffffff;
+  --ce-demo-knopf-hover: #f1f1f3;
+  --ce-demo-knopf-text: #08080a;
+}
+
+/* ═══════════ 2 · GRUND ════════════════════════════════════════════════════
+   Schwarz bis an den Rand, eine leise Lichtkuppel über jeder Seite (die Bühne der Übersicht steht in Abschnitt 9).
+   Alles als Hintergrundbild von .main-content — keine Ebene, kein Stapelkontext, keine Bewegung. */
+:root[data-ce-bereich="kunde"],
+:root[data-ce-bereich="kunde"] :is(body, .app-shell) {
+  background: var(--ce-ob-schwarz);
+  color: var(--ce-ob-tinte);
+}
+:root[data-ce-bereich="kunde"] body {
+  font-family: var(--ce-ob-schrift-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+:root[data-ce-bereich="kunde"] .main-content {
+  background-color: var(--ce-ob-schwarz);
+  background-image:
+    radial-gradient(64rem 22rem at 62% -10rem, rgba(255, 255, 255, 0.05), transparent 72%),
+    radial-gradient(40rem 18rem at 100% -6rem, rgba(0, 74, 252, 0.07), transparent 70%);
+  background-repeat: no-repeat;
+}
+@media (max-width: 1023px) {
+  :root[data-ce-bereich="kunde"] .main-content {
+    background-image:
+      radial-gradient(34rem 16rem at 70% -8rem, rgba(255, 255, 255, 0.05), transparent 72%),
+      radial-gradient(24rem 12rem at 100% -4rem, rgba(0, 74, 252, 0.07), transparent 70%);
+  }
+}
+:root[data-ce-bereich="kunde"] ::selection { background: rgba(91, 140, 255, 0.42); color: #ffffff; }
+:root[data-ce-bereich="kunde"] * { scrollbar-color: rgba(255, 255, 255, 0.16) transparent; }
+
+/* ═══════════ 3 · TYPOGRAFIE ═══════════════════════════════════════════════
+   Instrument Sans trägt die Arbeit mit den Ziffern- und Breitenregeln des Bereichs, Host Grotesk die Überschriften
+   und Kennzahlen, Instrument Serif nur die Begrüßung. */
+:root[data-ce-bereich="kunde"] :is(h1, h2, h3, h4) { font-family: var(--ce-ob-schrift-titel); }
+:root[data-ce-bereich="kunde"] :is(h2, h3) { letter-spacing: -0.015em; }
+:root[data-ce-bereich="kunde"] :is(button, input, select, textarea) { font-family: inherit; }
+:root[data-ce-bereich="kunde"] :is(a:not(.btn), .btn-link) { text-underline-offset: 3px; }
+
+/* ═══════════ 4 · SEITENLEISTE ═════════════════════════════════════════════
+   Resend-Navigation: schwarze Spalte, Haarlinie zum Inhalt, Einträge als ruhige Zeilen. Zeigen hellt Schrift und
+   Fläche leise auf; die aktive Seite liegt auf einer Glasfläche mit Lichtkante, Symbol und Schrift weiß. */
+:root[data-ce-bereich="kunde"] .pp-side {
+  background: var(--ce-ob-schwarz);
+  border-right: 1px solid var(--ce-ob-linie);
+  box-shadow: none;
+}
+:root[data-ce-bereich="kunde"] .pp-side .nitem,
+:root[data-ce-bereich="kunde"] .pp-side .pp-nav-group-head {
+  border-radius: var(--ce-pr-radius-control);
+  color: var(--ce-sidebar-text);
+  font-weight: 500;
+  letter-spacing: -0.003em;
+  transition:
+    background-color var(--ce-ob-dauer) var(--ce-ob-kurve),
+    color var(--ce-ob-dauer) var(--ce-ob-kurve),
+    box-shadow var(--ce-ob-dauer) var(--ce-ob-kurve);
+}
+:root[data-ce-bereich="kunde"] .pp-side :is(.nitem, .pp-nav-group-head):hover {
+  background: var(--ce-sidebar-hover);
+  color: var(--ce-ob-tinte);
+}
+:root[data-ce-bereich="kunde"] .pp-side :is(.nitem, .pp-nav-group-head) :is(.pp-nav-icon, .nav-sym) {
+  color: var(--ce-ob-tinte-symbol);
+  transition: color var(--ce-ob-dauer) var(--ce-ob-kurve);
+}
+:root[data-ce-bereich="kunde"] .pp-side :is(.nitem, .pp-nav-group-head):is(:hover, :focus-visible) :is(.pp-nav-icon, .nav-sym) {
+  color: var(--ce-ob-tinte);
+}
+:root[data-ce-bereich="kunde"] .pp-side :is(.nitem.on, .pp-nav-group--aktiv:not(.pp-nav-group--open) > .pp-nav-group-head) {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.05));
+  color: var(--ce-ob-tinte);
+  box-shadow: var(--ce-ob-lichtkante-aktiv);
+}
+:root[data-ce-bereich="kunde"] .pp-side :is(.nitem.on, .pp-nav-group--aktiv > .pp-nav-group-head) { color: var(--ce-ob-tinte); }
+:root[data-ce-bereich="kunde"] .pp-side :is(.nitem.on, .pp-nav-group--aktiv > .pp-nav-group-head) :is(.pp-nav-icon, .nav-sym) {
+  color: var(--ce-ob-tinte);
+}
+/* Kein Seitenbalken: die Glasfläche markiert die Seite allein (Resend). */
+:root[data-ce-bereich="kunde"] .pp-side :is(.nitem.on, .pp-nav-group--aktiv:not(.pp-nav-group--open) > .pp-nav-group-head)::before {
+  content: none;
+}
+/* Unterpunkte: eingerückt, leiser; aktiv weiß auf leiser Fläche */
+:root[data-ce-bereich="kunde"] .pp-side .pp-nav-group-items .nitem { color: var(--ce-sidebar-text-muted); }
+:root[data-ce-bereich="kunde"] .pp-side .pp-nav-group-items .nitem:hover { color: var(--ce-ob-tinte); }
+:root[data-ce-bereich="kunde"] .pp-side .pp-nav-group-items .nitem.on {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ce-ob-tinte);
+  box-shadow: none;
+}
+:root[data-ce-bereich="kunde"] .pp-side :is(.pp-nav-group-label) { color: inherit; }
+:root[data-ce-bereich="kunde"] .pp-side .pp-nav-group-chevron { color: var(--ce-ob-tinte-4); }
+:root[data-ce-bereich="kunde"] .pp-side .pp-foot { border-top: 1px solid var(--ce-ob-linie); }
+
+/* Symbolbewegung der acht Hauptpunkte (Premium Control System 2.0, hier neu gedeutet): Die Bewegungen aus
+   premium-editorial.css (Abschnitt 29) laufen weiter — nur Transform und Deckkraft, einmal je Zeigen bzw. Fokus,
+   nie bei reduzierter Bewegung. Obsidian gibt ihnen eine federnde Kurve und einen leisen Lichthof hinter dem Symbol,
+   der mit der Bewegung aufscheint und vergeht. */
+:root[data-ce-bereich="kunde"] .pp-side :is(.nitem, .pp-nav-group-head) .pp-nav-icon { position: relative; }
+:root[data-ce-bereich="kunde"] .pp-side :is(.nitem, .pp-nav-group-head) .pp-nav-icon::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(141, 176, 255, 0.34), rgba(141, 176, 255, 0));
+  opacity: 0;
+  scale: 0.6;
+  pointer-events: none;
+}
+@keyframes ce-ob-symbol-licht {
+  0% { opacity: 0; scale: 0.6; }
+  40% { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: 1.25; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-ce-bereich="kunde"] .pp-side :is(.nitem, .pp-nav-group-head):focus-visible .pp-nav-icon::after {
+    animation: ce-ob-symbol-licht 560ms var(--ce-ob-kurve) 1 both;
+  }
+  :root[data-ce-bereich="kunde"] .pp-side :is(.nitem, .pp-nav-group-head) :is(.nav-sym, .nav-sym-teil) {
+    animation-timing-function: var(--ce-ob-kurve-feder) !important;
+  }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  :root[data-ce-bereich="kunde"] .pp-side :is(.nitem, .pp-nav-group-head):hover .pp-nav-icon::after {
+    animation: ce-ob-symbol-licht 560ms var(--ce-ob-kurve) 1 both;
+  }
+}
+
+/* ═══════════ 5 · KOPFLEISTE, SUCHE, MITTEILUNGEN, BENUTZER ════════════════ */
+:root[data-ce-bereich="kunde"] .ce-page-header-utility {
+  background: transparent;
+  border-image-source: none;
+  border-bottom: 1px solid transparent;
+  box-shadow: none;
+}
+:root[data-ce-bereich="kunde"] .mobile-topbar {
+  background: transparent;
+  border-bottom: 1px solid var(--ce-ob-linie);
+  box-shadow: none;
+}
+/* Das Glas der Kopfleiste liegt auf einer eigenen Fläche hinter ihrem Inhalt. Ein backdrop-filter an der Leiste selbst
+   machte sie zum Bezugsrahmen ihrer festen Kinder: Klickfang und Mitteilungsfeld (notifications.css, mobil
+   position: fixed) deckten dann nur noch die Leiste statt des Bildschirms. Die Leiste ist sticky mit z-index —
+   die Fläche (z-index -1) liegt damit über ihrem Grund und unter ihrem Inhalt. */
+:root[data-ce-bereich="kunde"] .mobile-topbar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(0, 0, 0, 0.78);
+  -webkit-backdrop-filter: var(--ce-ob-glas-weichzeichnung);
+  backdrop-filter: var(--ce-ob-glas-weichzeichnung);
+  pointer-events: none;
+}
+:root[data-ce-bereich="kunde"] .ce-suche {
+  border: 1px solid var(--ce-ob-kante);
+  border-radius: var(--ce-pr-radius-control);
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: var(--ce-ob-lichtkante);
+  color: var(--ce-ob-tinte);
+}
+:root[data-ce-bereich="kunde"] .ce-suche:hover { border-color: var(--ce-ob-kante-stark); }
+:root[data-ce-bereich="kunde"] .ce-suche:focus-within {
+  border-color: var(--ce-ob-signal-kante);
+  box-shadow: var(--ce-elevation-focus-ring);
+}
+:root[data-ce-bereich="kunde"] .ce-suche input { color: var(--ce-ob-tinte); background: transparent; }
+
+/* ═══════════ 6 · SEITENKOPF ═══════════════════════════════════════════════
+   Titel in Host Grotesk, weiß und eng gesetzt; Untertitel in kräftigem Nebentext. Die graue Seitenkante entfällt —
+   eine Haarlinie gliedert genug. */
+:root[data-ce-bereich="kunde"] .ce-page-header-main { border-bottom: 1px solid var(--ce-ob-linie); }
+:root[data-ce-bereich="kunde"] .ce-page-header-main::after { content: none; }
+:root[data-ce-bereich="kunde"] .ce-page-header-title {
+  font-family: var(--ce-ob-schrift-titel);
+  font-weight: 500;
+  letter-spacing: var(--ce-pr-ed-headline-tracking);
+  color: var(--ce-ob-tinte);
+  /* Host Grotesk zeichnet Unterlängen und Akzente höher als Instrument Sans: der Malrand wächst mit. */
+  --titel-malrand: 0.2em;
+}
+:root[data-ce-bereich="kunde"] .ce-page-header-sub {
+  color: var(--ce-ob-tinte-2);
+  font-size: var(--ce-text-body-size);
+  line-height: 1.55;
+}
+:root[data-ce-bereich="kunde"] .ce-page-header-meta { color: var(--ce-ob-tinte-3); }
+
+/* ═══════════ 7 · BEDIENSYSTEM ═════════════════════════════════════════════
+   Primär: weißes Metall mit schwarzer Schrift (Resend). Sekundär: Glas mit Lichtkante. Text: leise. Gefahr: Rot nur
+   als bestätigende Aktion. Höhen, Abstände und Rollen bleiben die des Premium Control System. */
+:root[data-ce-bereich="kunde"] .btn {
+  font-family: var(--ce-ob-schrift-text);
+  font-weight: 560;
+  letter-spacing: -0.006em;
+  transition:
+    background-color var(--ce-ob-dauer) var(--ce-ob-kurve),
+    background-image var(--ce-ob-dauer) var(--ce-ob-kurve),
+    border-color var(--ce-ob-dauer) var(--ce-ob-kurve),
+    color var(--ce-ob-dauer) var(--ce-ob-kurve),
+    box-shadow var(--ce-ob-dauer) var(--ce-ob-kurve);
+}
+:root[data-ce-bereich="kunde"] :is(.btn-primary, .offer-cta-btn--primary) {
+  border: 1px solid #ffffff;
+  background: linear-gradient(180deg, #ffffff 0%, #ececef 100%);
+  color: var(--ce-ob-tinte-invers);
+  box-shadow: var(--ce-pr-bs-schatten-primaer);
+}
+:root[data-ce-bereich="kunde"] :is(.btn-primary, .offer-cta-btn--primary):hover:not(:disabled) {
+  border-color: #ffffff;
+  background: linear-gradient(180deg, #ffffff 0%, #f6f6f8 100%);
+  color: var(--ce-ob-schwarz);
+  box-shadow: var(--ce-pr-bs-schatten-primaer-zeigen);
+}
+:root[data-ce-bereich="kunde"] :is(.btn-primary, .offer-cta-btn--primary):active:not(:disabled) {
+  background: linear-gradient(180deg, #e2e2e6 0%, #d8d8dd 100%);
+  box-shadow: var(--ce-pr-bs-schatten-gedrueckt);
+}
+:root[data-ce-bereich="kunde"] .btn-outline:not(.booking-blatt-zurueck),
+:root[data-ce-bereich="kunde"] .btn-secondary {
+  border: 1px solid var(--ce-ob-kante-feld);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.035) 100%);
+  color: var(--ce-ob-tinte);
+  box-shadow: var(--ce-ob-lichtkante);
+}
+:root[data-ce-bereich="kunde"] .btn-outline:not(.booking-blatt-zurueck):hover:not(:disabled),
+:root[data-ce-bereich="kunde"] .btn-secondary:hover:not(:disabled) {
+  border-color: var(--ce-ob-kante-feld-zeigen);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.07) 100%);
+  color: #ffffff;
+  box-shadow: var(--ce-pr-bs-schatten-sekundaer-zeigen);
+}
+:root[data-ce-bereich="kunde"] .btn-outline:not(.booking-blatt-zurueck):active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: var(--ce-pr-bs-schatten-gedrueckt);
+}
+:root[data-ce-bereich="kunde"] .btn-ghost { color: var(--ce-ob-tinte-2); background: transparent; }
+:root[data-ce-bereich="kunde"] .btn-ghost:hover:not(:disabled) { color: var(--ce-ob-tinte); background: rgba(255, 255, 255, 0.06); }
+:root[data-ce-bereich="kunde"] .btn-link { color: var(--ce-ob-signal-tinte); }
+:root[data-ce-bereich="kunde"] .btn-link:hover:not(:disabled) { color: var(--ce-ob-signal-tinte-zeigen); background: transparent; }
+:root[data-ce-bereich="kunde"] .btn-danger {
+  border: 1px solid var(--ce-color-danger-solid);
+  background: linear-gradient(180deg, #d93a3f 0%, var(--ce-color-danger-solid) 100%);
+  color: #ffffff;
+}
+:root[data-ce-bereich="kunde"] :is(.btn-primary, .btn-danger, .btn-outline:not(.booking-blatt-zurueck), .btn-secondary, .offer-cta-btn--primary):disabled {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: var(--ce-pr-btn-disabled-bg);
+  color: var(--ce-pr-btn-disabled-fg);
+  box-shadow: none;
+}
+/* Fokus: der Ring der Foundation in Signal-Blau, auf Schwarz mit Abstand */
+:root[data-ce-bereich="kunde"] :is(.btn, a, button, [role="button"], [role="tab"], [role="option"], [role="menuitem"], summary):focus-visible {
+  outline: 2px solid var(--ce-ob-signal-kante);
+  outline-offset: 2px;
+}
+
+/* Felder: Fläche, Kontur (3,2:1) und Fokus kommen aus den umgeordneten Tokens (Abschnitt 1) — die Feldregeln der
+   Bereichs-Stylesheets bleiben zuständig, auch für Sonderfelder wie die Suche (eigene, transparente Mulde). Hier nur,
+   was kein Token trägt: Platzhalter, Optionen der nativen Auswahl, Farbe von Kästchen und Optionsfeldern. */
+:root[data-ce-bereich="kunde"] :is(input, textarea)::placeholder { color: var(--ce-ob-tinte-4); }
+:root[data-ce-bereich="kunde"] select option { background: #141417; color: var(--ce-ob-tinte); }
+:root[data-ce-bereich="kunde"] :is(input[type="checkbox"], input[type="radio"]) { accent-color: var(--ce-ob-signal); }
+:root[data-ce-bereich="kunde"] .field-label { color: var(--ce-ob-tinte-2); }
+:root[data-ce-bereich="kunde"] :is(.field-error, .field-input-error ~ .field-error) { color: var(--ce-ob-rot); }
+
+/* Aufklappfelder, Menüs, Auswahllisten: Glas mit 25 px Weichzeichnung */
+:root[data-ce-bereich="kunde"] :is(.ce-auswahl-liste, .ce-pm-liste, .ce-suche-treffer, .ntf-panel, [role="listbox"], [role="menu"]) {
+  background: var(--ce-ob-glas);
+  -webkit-backdrop-filter: var(--ce-ob-glas-weichzeichnung);
+  backdrop-filter: var(--ce-ob-glas-weichzeichnung);
+  border-color: var(--ce-ob-kante);
+  box-shadow: var(--ce-pr-bs-schatten-menue);
+}
+
+/* Reiter: Unterkante weiß statt Navy */
+:root[data-ce-bereich="kunde"] .ce-tabs { border-bottom-color: var(--ce-ob-linie); }
+:root[data-ce-bereich="kunde"] .ce-tab { color: var(--ce-ob-tinte-3); }
+:root[data-ce-bereich="kunde"] .ce-tab:hover { color: var(--ce-ob-tinte); }
+:root[data-ce-bereich="kunde"] :is(.ce-tab.active, .ce-tab[aria-selected="true"]) {
+  color: var(--ce-ob-tinte);
+  border-bottom-color: var(--ce-ob-tinte);
+  box-shadow: inset 0 -2px 0 var(--ce-ob-tinte);
+}
+
+/* Schalter: aus als dunkle Spur mit hellgrauem Knopf, an im Confidara-Blau mit weißem Knopf, gesperrt mit leisem
+   Knopf. Zeigen hellt die Kante (aus) oder das Blau (an) — nie über die Navy-Töne des hellen Bilds, die hier Weiß
+   bedeuten (premium-editorial.css). */
+:root[data-ce-bereich="kunde"] .ce-switch-knob { background: var(--ce-ob-tinte-2); }
+:root[data-ce-bereich="kunde"] .ce-switch-input:checked ~ .ce-switch-track {
+  border-color: var(--ce-ob-signal);
+  background: var(--ce-ob-signal);
+}
+:root[data-ce-bereich="kunde"] .ce-switch-input:checked ~ .ce-switch-track .ce-switch-knob { background: var(--ce-ob-tinte); }
+:root[data-ce-bereich="kunde"] .ce-switch-input:checked ~ .ce-switch-track .ce-switch-knob::after { border-color: var(--ce-ob-signal); }
+:root[data-ce-bereich="kunde"] .ce-switch-input:disabled ~ .ce-switch-track .ce-switch-knob { background: var(--ce-ob-tinte-aus); }
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .ce-switch:hover .ce-switch-input:not(:checked, :disabled) ~ .ce-switch-track {
+    border-color: var(--ce-ob-kante-feld-zeigen);
+  }
+  :root[data-ce-bereich="kunde"] .ce-switch:hover .ce-switch-input:checked:not(:disabled) ~ .ce-switch-track {
+    border-color: var(--ce-ob-signal-zeigen);
+    background: var(--ce-ob-signal-zeigen);
+  }
+}
+
+/* ═══════════ 8 · FLÄCHEN ═════════════════════════════════════════════════
+   Karten, Blätter und Tabellenrahmen: fast schwarz, Lichtkante oben, Kante 10 %. Kein grauer Schlagschatten —
+   auf Schwarz trägt die Kante. */
+:root[data-ce-bereich="kunde"] :is(.ce-card, .card, .table-card, .ce-table-container, .ce-list-card, .booking-blatt,
+  .tile, .ov-card, .price-drift-card) {
+  background-color: var(--ce-ob-flaeche-1);
+  background-image: var(--ce-ob-flaechenverlauf);
+  border-color: var(--ce-ob-kante);
+  box-shadow: var(--ce-ob-lichtkante);
+}
+:root[data-ce-bereich="kunde"] .ce-card-inverse { background: var(--ce-color-surface-inverse); border-color: var(--ce-color-surface-inverse-edge); }
+
+/* Tabellen: Köpfe leise in 13/550 ohne Versalien, Zeilen zwischen Haarlinien, Zeigen hellt die Zeile */
+:root[data-ce-bereich="kunde"] table { border-color: var(--ce-ob-linie); }
+:root[data-ce-bereich="kunde"] thead th,
+:root[data-ce-bereich="kunde"] th {
+  color: var(--ce-ob-tinte-3);
+  font-family: var(--ce-ob-schrift-text);
+  font-weight: 550;
+  letter-spacing: 0;
+  text-transform: none;
+  background-color: transparent;
+  border-bottom-color: var(--ce-ob-kante);
+}
+:root[data-ce-bereich="kunde"] td { border-bottom-color: var(--ce-ob-linie); color: var(--ce-ob-tinte); }
+:root[data-ce-bereich="kunde"] tbody tr { transition: background-color var(--ce-ob-dauer) var(--ce-ob-kurve); }
+:root[data-ce-bereich="kunde"] tbody tr:hover { background-color: rgba(255, 255, 255, 0.025); }
+
+/* Statusmarken: Resend-Badges — getönte Fläche, helle Schrift, feine Kante, eckig 6 px */
+:root[data-ce-bereich="kunde"] .badge {
+  border-radius: var(--ce-pr-radius-status);
+  font-family: var(--ce-ob-schrift-text);
+  font-weight: 550;
+  letter-spacing: 0;
+}
+
+/* Zustände: leer, laden, Fehler */
+:root[data-ce-bereich="kunde"] .ce-skeleton,
+:root[data-ce-bereich="kunde"] .ce-skeleton-line {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.09) 50%, rgba(255, 255, 255, 0.04) 100%);
+  background-size: 200% 100%;
+}
+:root[data-ce-bereich="kunde"] :is(.ce-state-title, .empty-title) { font-family: var(--ce-ob-schrift-titel); font-weight: 500; color: var(--ce-ob-tinte); }
+:root[data-ce-bereich="kunde"] :is(.ce-state-text, .empty-text) { color: var(--ce-ob-tinte-2); }
+
+/* Dialoge und Schubladen: Fenster aus Glas, Öffnen als weiches Aufziehen. Der Schleier bleibt der EINE Overlayton
+   (patterns.css: --ce-color-overlay, ohne Weichzeichnung) — Abschnitt 1 setzt ihn auf 72 % Schwarz. */
+:root[data-ce-bereich="kunde"] :is(.ce-dialog, .abk-dialog-card, .dft-dialog-card, .stn-dialog-card, .sup-dialog-card,
+  .email-change-modal, .price-drift-card) {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)), #0d0d10;
+  border: 1px solid var(--ce-ob-kante);
+  box-shadow: var(--ce-elevation-3);
+}
+:root[data-ce-bereich="kunde"] :is(.ce-drawer, .abk-drawer) {
+  background: #0b0b0d;
+  border-left: 1px solid var(--ce-ob-kante);
+  box-shadow: var(--ce-elevation-3);
+}
+:root[data-ce-bereich="kunde"] :is(.ce-dialog-title) { font-family: var(--ce-ob-schrift-titel); font-weight: 500; letter-spacing: -0.015em; }
+@keyframes ce-ob-fenster-auf {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ce-ob-schleier-auf { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-ce-bereich="kunde"] :is(.ce-dialog, .abk-dialog-card, .dft-dialog-card, .stn-dialog-card, .sup-dialog-card,
+    .email-change-modal, .price-drift-card) {
+    animation: ce-ob-fenster-auf var(--ce-ob-dauer-lang) var(--ce-ob-kurve) both;
+  }
+  :root[data-ce-bereich="kunde"] :is(.ce-dialog-overlay, .abk-dialog-overlay, .dft-dialog-overlay, .stn-dialog-overlay,
+    .sup-dialog-overlay, .email-change-overlay, .price-drift-overlay) {
+    animation: ce-ob-schleier-auf var(--ce-ob-dauer) linear both;
+  }
+}
+
+/* ═══════════ 9 · ÜBERSICHT — DIE VORZEIGESEITE ════════════════════════════
+   Bühne: eine leise Aurora im Confidara-Blau oben rechts, ein weißes Streiflicht und feines Korn (statisch, ohne
+   Blend-Modus). Darauf die Begrüßung in Instrument Serif mit dem Schriftverlauf, die Datumszeile darunter. */
+:root[data-ce-bereich="kunde"] .main-content:has(.ov-page) {
+  background-color: var(--ce-ob-schwarz);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='k'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.055 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23k)'/%3E%3C/svg%3E"),
+    linear-gradient(112deg, transparent 38%, rgba(255, 255, 255, 0.045) 49%, rgba(255, 255, 255, 0.012) 54%, transparent 62%),
+    radial-gradient(54rem 30rem at 82% -9rem, rgba(0, 74, 252, 0.26), rgba(0, 74, 252, 0.08) 45%, transparent 72%),
+    radial-gradient(40rem 22rem at 30% -12rem, rgba(255, 255, 255, 0.07), transparent 70%),
+    radial-gradient(30rem 18rem at 100% 24rem, rgba(122, 92, 230, 0.07), transparent 70%);
+  background-size: 160px 160px, 100% 44rem, 100% 100%, 100% 100%, 100% 100%;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+}
+@media (max-width: 1023px) {
+  :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) {
+    background-image:
+      linear-gradient(112deg, transparent 30%, rgba(255, 255, 255, 0.04) 46%, transparent 62%),
+      radial-gradient(30rem 20rem at 90% -6rem, rgba(0, 74, 252, 0.24), rgba(0, 74, 252, 0.06) 45%, transparent 72%),
+      radial-gradient(24rem 14rem at 20% -8rem, rgba(255, 255, 255, 0.06), transparent 70%);
+    background-size: 100% 32rem, 100% 100%, 100% 100%;
+    background-repeat: no-repeat;
+  }
+}
+:root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-main { border-bottom-color: transparent; }
+:root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-title {
+  font-family: var(--ce-ob-schrift-editorial);
+  font-weight: 400;
+  font-size: var(--ce-ob-gruss-size);
+  line-height: 1.04;
+  letter-spacing: -0.012em;
+  --titel-fuellung: var(--ce-ob-schriftverlauf);
+  --titel-kante-oben: #ffffff;
+  --titel-kante-unten: #ffffff;
+  --titel-malrand: 0.22em;
+  hyphens: manual;
+}
+:root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-sub {
+  margin-top: var(--ce-space-1);
+  font-size: var(--ce-text-body-size);
+  font-weight: 450;
+  color: var(--ce-ob-tinte-2);
+  letter-spacing: 0;
+}
+@media (max-width: 68.75em) {
+  :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-title { font-size: var(--ce-ob-gruss-size-tablet); }
+}
+@media (max-width: 37.5em) {
+  :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-title { font-size: var(--ce-ob-gruss-size-mobile); }
+}
+/* Der eine inszenierte Moment: die Begrüßung tritt einmal aus der Unschärfe (700 ms), danach Ruhe. Endzustand ohne
+   Animation; bei reduzierter Bewegung steht sie sofort. Der Endwert ist „none“, nicht blur(0)/0 0: mit fill-mode both
+   bliebe sonst dauerhaft ein Filter samt eigenem Bezugsrahmen und Stapelkontext am Kopf stehen. */
+@keyframes ce-ob-gruss {
+  from { opacity: 0; filter: blur(10px); translate: 0 6px; }
+  to { opacity: 1; filter: none; translate: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-text {
+    animation: ce-ob-gruss 720ms var(--ce-ob-kurve) both;
+  }
+}
+
+/* Kennzahlkarten: die „Metrics“-Karte — Punkt in der Zustandsfarbe, große ruhige Zahl, Kontext leise; ein Lichthof
+   der Zustandsfarbe glimmt in der Ecke und wird beim Zeigen und Öffnen heller. */
+:root[data-ce-bereich="kunde"] .ov-kpi {
+  --ce-ob-kpi-farbe: var(--ce-ob-tinte-2);
+  --ce-ob-kpi-schein: rgba(255, 255, 255, 0.06);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid var(--ce-ob-kante);
+  border-radius: var(--ce-pr-radius-card);
+  background-color: var(--ce-ob-flaeche-1);
+  background-image: var(--ce-ob-flaechenverlauf);
+  box-shadow: var(--ce-ob-lichtkante);
+  color: var(--ce-ob-tinte);
+  transition:
+    border-color var(--ce-ob-dauer) var(--ce-ob-kurve),
+    background-color var(--ce-ob-dauer) var(--ce-ob-kurve),
+    box-shadow var(--ce-ob-dauer) var(--ce-ob-kurve);
+}
+:root[data-ce-bereich="kunde"] .ov-kpi--active { --ce-ob-kpi-farbe: #fdfdfd; --ce-ob-kpi-schein: rgba(255, 255, 255, 0.11); }
+:root[data-ce-bereich="kunde"] .ov-kpi--transit { --ce-ob-kpi-farbe: var(--ce-ob-signal-tinte); --ce-ob-kpi-schein: rgba(0, 74, 252, 0.34); }
+:root[data-ce-bereich="kunde"] .ov-kpi--delivered { --ce-ob-kpi-farbe: var(--ce-ob-gruen); --ce-ob-kpi-schein: rgba(34, 214, 140, 0.26); }
+:root[data-ce-bereich="kunde"] .ov-kpi--delayed { --ce-ob-kpi-farbe: var(--ce-ob-bernstein); --ce-ob-kpi-schein: rgba(250, 160, 0, 0.24); }
+:root[data-ce-bereich="kunde"] .ov-kpi::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: -55%;
+  right: -30%;
+  width: 85%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--ce-ob-kpi-schein), transparent);
+  opacity: 0.55;
+  transition: opacity var(--ce-ob-dauer-lang) var(--ce-ob-kurve), scale var(--ce-ob-dauer-lang) var(--ce-ob-kurve);
+  pointer-events: none;
+}
+:root[data-ce-bereich="kunde"] .ov-kpi:is(:hover, [aria-expanded="true"]) {
+  border-color: var(--ce-ob-kante-stark);
+  background-color: #0e0e11;
+  box-shadow: var(--ce-ob-lichtkante-zeigen);
+}
+:root[data-ce-bereich="kunde"] .ov-kpi:is(:hover, [aria-expanded="true"])::before { opacity: 1; scale: 1.12; }
+:root[data-ce-bereich="kunde"] .ov-kpi-label {
+  color: var(--ce-ob-tinte-2);
+  font-family: var(--ce-ob-schrift-text);
+  font-weight: 520;
+  letter-spacing: 0;
+  text-transform: none;
+}
+:root[data-ce-bereich="kunde"] .ov-kpi-label-text { display: inline-flex; align-items: center; gap: 0.5rem; }
+:root[data-ce-bereich="kunde"] .ov-kpi-label-text::before {
+  content: "";
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ce-ob-kpi-farbe);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ce-ob-kpi-farbe) 18%, transparent);
+}
+:root[data-ce-bereich="kunde"] .ov-kpi-value {
+  font-family: var(--ce-ob-schrift-titel);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  color: var(--ce-ob-tinte);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+:root[data-ce-bereich="kunde"] .ov-kpi-context { color: var(--ce-ob-tinte-3); }
+:root[data-ce-bereich="kunde"] .ov-kpi-note { color: var(--ce-ob-tinte-2); }
+:root[data-ce-bereich="kunde"] .ov-kpi-pfeil { color: var(--ce-ob-tinte-3); transition: translate var(--ce-ob-dauer) var(--ce-ob-kurve), color var(--ce-ob-dauer) var(--ce-ob-kurve); }
+:root[data-ce-bereich="kunde"] .ov-kpi:hover .ov-kpi-pfeil { color: var(--ce-ob-tinte); translate: 3px 0; }
+
+/* Module: Köpfe in Host Grotesk, Listen zwischen Haarlinien */
+:root[data-ce-bereich="kunde"] :is(.ov-mod-title, .ov-section-title, .ov-carrier-titel, .ov-lager-titel) {
+  font-family: var(--ce-ob-schrift-titel);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  color: var(--ce-ob-tinte);
+}
+:root[data-ce-bereich="kunde"] .ov-card { border-radius: var(--ce-pr-radius-panel); }
+:root[data-ce-bereich="kunde"] .ov-list-row { border-color: var(--ce-ob-linie); }
+:root[data-ce-bereich="kunde"] .ov-list-row--button:hover { background: rgba(255, 255, 255, 0.03); }
+:root[data-ce-bereich="kunde"] :is(.ov-mod-head .btn-link, .ov-lager-alle) {
+  color: var(--ce-ob-tinte-2);
+  text-decoration-color: rgba(255, 255, 255, 0.24);
+}
+:root[data-ce-bereich="kunde"] :is(.ov-mod-head .btn-link, .ov-lager-alle):hover { color: var(--ce-ob-tinte); }
+:root[data-ce-bereich="kunde"] :is(.ov-inv-amount, .ov-lager-zahl) {
+  font-family: var(--ce-ob-schrift-titel);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  color: var(--ce-ob-tinte);
+}
+:root[data-ce-bereich="kunde"] .ov-credit-bar { background: rgba(255, 255, 255, 0.08); }
+:root[data-ce-bereich="kunde"] .ov-credit-bar-fill { background: linear-gradient(90deg, #2563ff, #8db0ff); }
+
+/* Ihre Versanddienstleister: statt der Navy-Bühne eine schwarze Glasbühne — Kobaltlicht oben rechts an der Aktion, ein
+   leiser Horizont unten, Lichtkante oben. Namenskacheln aus Glas mit weißer Schrift; Logokacheln bleiben hell, weil
+   die Markenzeichen der Versanddienstleister für hellen Grund gezeichnet sind (bewusste helle Insel). */
+:root[data-ce-bereich="kunde"] .ov-page .ov-carrier-zeile,
+:root[data-ce-bereich="kunde"] .ov-carrier-zeile {
+  border: 1px solid var(--ce-ob-kante);
+  background:
+    radial-gradient(34rem 16rem at 88% -5rem, rgba(0, 74, 252, 0.24), rgba(0, 74, 252, 0.06) 48%, transparent 72%),
+    radial-gradient(56rem 12rem at 50% 118%, rgba(91, 140, 255, 0.12), transparent 70%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 100%),
+    var(--ce-ob-flaeche-1);
+  background-color: var(--ce-ob-flaeche-1);
+  box-shadow: var(--ce-ob-lichtkante);
+}
+:root[data-ce-bereich="kunde"] .ov-carrier-titel { color: var(--ce-ob-tinte); }
+:root[data-ce-bereich="kunde"] .ov-carrier-hinweis { color: var(--ce-ob-tinte-2); }
+:root[data-ce-bereich="kunde"] .ov-carrier-routen { opacity: 0.4; }
+:root[data-ce-bereich="kunde"] .ov-carrier-zeile .ov-carrier-aktion {
+  border: 1px solid var(--ce-ob-kante-feld);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  color: var(--ce-ob-tinte);
+  box-shadow: var(--ce-ob-lichtkante);
+}
+@media (hover: hover) {
+  :root[data-ce-bereich="kunde"] .ov-carrier-zeile .ov-carrier-aktion:hover {
+    border-color: var(--ce-ob-kante-feld-zeigen);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%);
+    color: #ffffff;
+  }
+}
+:root[data-ce-bereich="kunde"] .ov-page .ov-carrier-eintrag--ohne-logo .ov-carrier-name,
+:root[data-ce-bereich="kunde"] .ov-carrier-eintrag--ohne-logo .ov-carrier-name {
+  border: 1px solid var(--ce-ob-kante);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075) 0%, rgba(255, 255, 255, 0.03) 100%), #0e0e11;
+  box-shadow: var(--ce-ob-lichtkante);
+  color: var(--ce-ob-tinte);
+  font-family: var(--ce-ob-schrift-titel);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+:root[data-ce-bereich="kunde"] .ov-page .ov-carrier-logo,
+:root[data-ce-bereich="kunde"] .ov-carrier-logo {
+  background: linear-gradient(180deg, #f7f7f9 0%, #e8e8ec 100%);
+  box-shadow: var(--ce-ob-lichtkante-logo);
+}
+
+/* ═══════════ 10 · LINIEN, MARKEN, KENNUNGEN ══════════════════════════════
+   Die Editorial-Ebene gliedert Listen, Tabellenköpfe und Abschnitte mit 2 px Tinte. Auf Schwarz wäre das ein weißer
+   Strich — Obsidian setzt dort die Haarlinie (1 px, 16 % Weiß), wie Resend seine Tabellen gliedert. */
+:root[data-ce-bereich="kunde"] :is(.dft-table thead th, :is(.table-card, .ce-table-container) thead th,
+  .calc-page-wrap .calc-panel-header, .ce-drawer-head, .abk-drawer-header, .ntf-head, .inv-ops-head,
+  .inv-warehouses-head, .inv-section-head) {
+  border-bottom: 1px solid var(--ce-ob-kante-stark);
+}
+:root[data-ce-bereich="kunde"] :is(.ce-list-cards, .inv-summary, .abk-desktop-list, .sup-list, .inv-stat-band,
+  .inv-cards, .abk-cards) {
+  border-top: 1px solid var(--ce-ob-kante-stark);
+}
+
+/* Offene Schrittmarke der Buchung: dunkle Münze mit Ring statt der weißen Scheibe */
+:root[data-ce-bereich="kunde"] .bk-schritt--offen .bk-marke { background: var(--ce-ob-flaeche-3); }
+
+/* Demo-Leiste: Glas mit Weichzeichnung */
+:root[data-ce-bereich="kunde"][data-ce-demo] .demo-leiste {
+  -webkit-backdrop-filter: var(--ce-ob-glas-weichzeichnung);
+  backdrop-filter: var(--ce-ob-glas-weichzeichnung);
+  box-shadow: var(--ce-ob-schatten-schwebend);
+}
+
+/* Schwebende Kundenservice-Schaltfläche (Ansprechpartner, eingeklappt): Schwarz auf Schwarz las sie sich mobil als
+   Fleck über den Werten. Eigene Fläche, Feldkante als Ring und der Schatten schwebender Elemente machen sie als
+   Bedienelement lesbar. Der Ring liegt im Schatten, nicht in der Rahmenfarbe: So bleibt die Regel für erzwungene Farben
+   (premium-editorial.css) unberührt. Lage und Überdeckung bleiben Bestand der schwebenden Karte. */
+:root[data-ce-bereich="kunde"] .pp-ansprech-foto-knopf {
+  background: var(--ce-ob-flaeche-2);
+  box-shadow: 0 0 0 1px var(--ce-ob-kante-feld), var(--ce-ob-schatten-schwebend), var(--ce-ob-lichtkante);
+}
+
+/* Initial im Benutzerchip: das SVG nennt die alte Schrift als Attribut — CSS geht vor, die Familie folgt der Rolle. */
+:root[data-ce-bereich="kunde"] svg.ce-comark text,
+:root[data-ce-bereich="kunde"] .pp-uchip svg text { font-family: var(--ce-ob-schrift-titel); font-weight: 600; }
+
+/* ═══════════ 11 · REDUZIERTE BEWEGUNG UND KONTRAST ═════════════════════════
+   Gedruckt gilt die Ebene nicht (@media screen am Kopf der Datei): Das Blatt trägt die Druckregeln der Plattform. */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ce-bereich="kunde"] :is(.ov-kpi, .ov-kpi::before, .btn, .pp-side .nitem) { transition: none; }
+}
+@media (prefers-contrast: more) {
+  :root[data-ce-bereich="kunde"] {
+    --ce-ob-kante: rgba(255, 255, 255, 0.32);
+    --ce-ob-linie: rgba(255, 255, 255, 0.22);
+    --ce-ob-tinte-2: #e0e0e4;
+    --ce-ob-tinte-3: #cfcfd5;
+  }
+}
+
+/* ═══════════ 12 · LADEBILDSCHIRM AUF DEN KUNDENPFADEN ═════════════════════
+   Während der Sitzungsprüfung und während ein Seitenblock nachlädt, steht noch kein Bereichsattribut am Wurzelelement.
+   Auf den Pfaden des Kundenbereichs (utils/kundenBereichPfad.mjs) trägt der Ladebildschirm deshalb die Klasse
+   loading-screen--kunde: dasselbe Schwarz wie die Seite danach, helles Signet (LoadingScreen.jsx). Die einzige Regel
+   dieser Datei ohne :root[data-ce-bereich="kunde"] — die Klasse kommt nur auf diesen Pfaden vor. */
+.loading-screen.loading-screen--kunde { background: #000000; }
+
+} /* Ende @media screen */

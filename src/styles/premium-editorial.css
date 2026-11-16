@@ -1456,12 +1456,15 @@
   :root[data-ce-bereich="kunde"] :is(.ov-mod-grid, .ov-mod-grid--lager) { grid-template-columns: minmax(0, 1fr); gap: 0; margin-bottom: 0; }
   :root[data-ce-bereich="kunde"] .ov-mod-grid > .ov-mod { margin-bottom: var(--ce-space-8); }
 }
-/* Rechnungen quer: Betrag links, Buchungsrahmen rechts — nur, wenn die Karte mindestens 35.3125rem breit ist (bei
-   16 px Grundschrift in dieser Fensterstufe immer, ab 861 px misst sie 565 px; bei großer Schrift stehen Betrag und
-   Rahmen sonst untereinander, statt dass „135.802,45 €“ aus seiner Spalte ragt). */
+/* Rechnungen quer: Betrag links, Buchungsrahmen rechts — nur, wenn die Karte mindestens 39rem breit ist. So viel braucht
+   „135.802,45 €“ in der Titelschrift der Blue-Light-Familie (Host Grotesk, 40 px: 250 px Text; die linke Spalte misst
+   bei 39rem 254 px). Bei 16 px Grundschrift gilt das ab etwa 920 px Fenster (bei 861 px misst die Karte 565 px); darunter
+   und bei großer Schrift stehen Betrag und Rahmen untereinander, statt dass der Betrag aus seiner Spalte ragt. Vorher
+   35.3125rem, auf Instrument Sans bemessen — mit Host Grotesk ragte der Betrag bei 900 px 5 px hinaus
+   (responsiveLayoutIntegrity L1, 2026-11-16). */
 :root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:nth-child(2) { container: ov-rechnungen / inline-size; }
 @media (max-width: 1120px) {
-  @container ov-rechnungen (width >= 35.3125rem) {
+  @container ov-rechnungen (width >= 39rem) {
     :root[data-ce-bereich="kunde"] .ov-mod-grid:not(.ov-mod-grid--lager) > .ov-mod:nth-child(2) > .ov-card {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);

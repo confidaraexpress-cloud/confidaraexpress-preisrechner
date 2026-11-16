@@ -176,12 +176,16 @@ test("9 — die Admin-Anmeldung (Hologramm) trägt keinen Titelstil und bleibt u
   assert.doesNotMatch(titelRegel, /background-clip|text-fill|filter/, "der Admintitel trägt kein Titelmaterial");
 });
 
-test("10 — große Titel stehen auf 700, dem höchsten Gewicht der Schriftdatei", () => {
-  for (const t of ["ce-text-title-page-weight", "ce-text-display-xl-weight"]) {
-    const werte = [...variables.matchAll(new RegExp(`--${t}:\\s*([^;]+);`, "g"))].map((m) => m[1].trim());
-    assert.ok(werte.length >= 2, `${t}: Grund- und Bereichsblock`);
-    assert.ok(werte.every((w) => w === "700"), `${t}: ${werte.join(", ")}`);
-  }
+test("10 — Titelgewichte: Grundskala 700, Bühnentitel in Host Grotesk 500 (Blue Light)", () => {
+  // Grundskala (Flächen ohne Bereich) 700. Seit Blue Light (Betreiberauftrag „Final Master Release“, 2026-11-16) stehen
+  // die Bühnentitel der Anmeldung und des Preisrechners wie die Titel des Kundenbereichs in Host Grotesk 500; die
+  // Familie (Kunde, Admin, Partner, öffentlich) setzt ihre Titel in kunde-obsidian.css auf 500.
+  const titel = [...variables.matchAll(/--ce-text-title-page-weight:\s*([^;]+);/g)].map((m) => m[1].trim());
+  assert.ok(titel.length >= 1 && titel.every((w) => w === "700"), `title-page-weight: ${titel.join(", ")}`);
+  const display = [...variables.matchAll(/--ce-text-display-xl-weight:\s*([^;]+);/g)].map((m) => m[1].trim());
+  assert.deepEqual(display, ["700", "500"], "display-xl: Grundskala 700, Bereichsblock 500");
+  assert.match(variables, /--ce-pr-font-display: 'Host Grotesk', 'Instrument Sans', system-ui, sans-serif;/);
+  assert.match(variables, /--ce-pr-display-stretch: 100%;/);
   const kunde = ohneKommentare(read("./premium-editorial.css")).match(/:root\[data-ce-bereich="kunde"\] \.ce-page-header-title \{([^}]*)\}/)[1];
   assert.match(kunde, /font-weight:\s*var\(--ce-text-title-page-weight\);/);
   const buehne = ohneKommentare(read("./premium-redesign.css")).match(/\[data-ce-bereich="auth"\] \.auth-title \{([^}]*)\}/)[1];

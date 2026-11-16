@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   CONFIDARA PREMIUM BLUE LIGHT — KUNDENBEREICH (Betreiberauftrag „Premium Blue Light Edition“, 2026-11-16,
-   nur lokal; Veröffentlichung erst nach ausdrücklicher Freigabe)
+   CONFIDARA PREMIUM BLUE LIGHT — DESIGNFAMILIE (Betreiberauftrag „Premium Blue Light Edition“, 2026-11-16; vom
+   Betreiber freigegeben und mit „Final Master Release“ am 2026-11-16 auf Adminpanel, Partnerportal und öffentliche
+   Seiten übertragen)
    ───────────────────────────────────────────────────────────────────────────
    These: Die Resend-inspirierte Konsole aus „Confidara Obsidian“ (2026-11-15) im hellen Licht der Marke. Schrift,
    Maße, Raster, Formen und Bewegungen bleiben exakt die der Obsidian-Fassung — diese Ebene tauscht nur Farbe, Licht,
@@ -13,11 +14,15 @@
    und Dokumentation brauchen keine Umbenennung. Die dunkle Fassung liegt unverändert auf ihrem eigenen Branch.
 
    Architektur:
-   • Diese Datei ist die EINE Gestaltungsebene des Kundenbereichs. Sie steht als letzte im Bündel (styles/index.css),
-     hinter premium-editorial.css; jede Regel hängt an :root[data-ce-bereich="kunde"]. Admin, Partnerportal,
-     Partnerregistrierung, Anmeldung („auth“) und der öffentliche Preisrechner (eigenes Bündel) lesen sie nie.
-   • Abschnitt 1 ordnet die vorhandenen Tokens um (Flächen, Tinte, Kanten, Status, Seitenleiste, Bediensystem,
-     Titelmaterial, Tiefe). Weil die Bereichs-Stylesheets keine Farbliterale tragen, wechselt damit fast die ganze
+   • Diese Datei ist die EINE Gestaltungsebene der Familie Blue Light: Kundenbereich, Adminpanel, Partnerportal und
+     öffentliche Seiten (hooks/useCeBereich.js setzt dort data-ce-familie="blue-light"). Sie steht als letzte im Bündel
+     (styles/index.css), hinter premium-editorial.css; jede Regel hängt an :root[data-ce-familie="blue-light"]
+     (gemeinsame Grundlage) oder an einem Bereich der Familie (:root[data-ce-bereich="kunde" | "admin" | "partner" |
+     "oeffentlich"]). Anmeldung („auth“), Admin-Anmeldung, Partnerregistrierung und der öffentliche Preisrechner (eigenes
+     Bündel) lesen sie nie.
+   • Abschnitt 1 ordnet die vorhandenen Tokens in zwei Blöcken um — Familie: Flächen, Tinte, Kanten, Status,
+     Seitenleiste, Bediensystem, Titelmaterial, Tiefe; Kundenbereich: Zeilenhöhen, Editorial, Paketbühne, Kennzahlen,
+     Demo. Weil die Bereichs-Stylesheets keine Farbliterale tragen, wechselt damit fast die ganze
      Oberfläche. Wo die helle Grundgestaltung (variables.css) schon den Wert der Marke trägt — Navy-Skala, Töne auf
      Navy, Statusfarben Grün/Bernstein/Rot, Buchungsschritte —, ordnet diese Ebene nichts um und erbt den geprüften
      Wert.
@@ -32,7 +37,7 @@
 
 /* ═══════════ 1 · TOKENS ═══════════════════════════════════════════════════
    Kontraste nach WCAG 2.x gegen den Seitengrund #f5f8ff, wenn nichts anderes steht (gegen Weiß je etwas höher). */
-:root[data-ce-bereich="kunde"] {
+:root[data-ce-familie="blue-light"] {
   color-scheme: light;
 
   /* ── Blue Light: Grund, Flächen, Tinte ── */
@@ -116,7 +121,8 @@
   --ce-ob-dauer-lang: 260ms;
 
   /* ── Schriftrollen: die Arbeit in der Produktschrift Instrument Sans (fonts.css), Überschriften und Kennzahlen in
-     Host Grotesk, die Begrüßung in Instrument Serif (beide kunde-schriften.css) — unverändert aus Obsidian ── */
+     Host Grotesk (fonts.css, seit „Final Master Release“ Titelschrift der Plattform), die Begrüßung in Instrument
+     Serif (kunde-schriften.css) — Rollen unverändert aus Obsidian ── */
   --ce-ob-schrift-text: var(--ce-font-sans);
   --ce-ob-schrift-titel: 'Host Grotesk', var(--ce-font-sans);
   --ce-ob-schrift-editorial: 'Instrument Serif', 'Times New Roman', serif;
@@ -152,21 +158,7 @@
   --ce-text-title-card-tracking: -0.01em;
   --ce-text-label-tracking: 0;
   --ce-text-micro-tracking: 0;
-  --ce-text-body-line: 1.6;
-  --ce-text-body-s-line: 1.6;
-  --ce-pr-ed-headline-size: var(--ce-ob-titel-size);
-  --ce-pr-ed-headline-size-tablet: var(--ce-ob-titel-size-tablet);
-  --ce-pr-ed-headline-size-mobile: var(--ce-ob-titel-size-mobile);
-  --ce-pr-ed-headline-line: 1.15;
   --ce-pr-ed-headline-tracking: -0.032em;
-  --ce-pr-ed-gruss-size: var(--ce-ob-gruss-size);
-  --ce-pr-ed-gruss-size-tablet: var(--ce-ob-gruss-size-tablet);
-  --ce-pr-ed-gruss-size-mobile: var(--ce-ob-gruss-size-mobile);
-  --ce-pr-ed-gruss-line: 1.04;
-  --ce-pr-ed-gruss-tracking: -0.012em;
-  --ce-pr-ed-figure-size: 2.5rem;
-  --ce-pr-ed-figure-size-mobile: 2.125rem;
-  --ce-pr-ed-modul-titel: 1.125rem;
 
   /* Marke und Signal. Die Navy-Skala (--ce-pr-navy-*), --ce-pr-paper und die Töne auf Navy (--ce-pr-on-navy*,
      --ce-pr-signal-on-navy) bleiben die der Grundgestaltung: Navy ist hier wieder Navy. */
@@ -204,6 +196,7 @@
   --ce-color-bg-canvas-bottom: var(--ce-ob-grund);
   --ce-color-bg-light-brand: rgba(0, 74, 252, 0.07);
   --ce-app-bg: none;
+  --ce-color-bg-atmosphere: none;
   --ce-pr-papier: var(--ce-ob-grund);
   --ce-app-bg-mid: var(--ce-ob-grund);
   --ce-app-bg-bottom: var(--ce-ob-grund);
@@ -287,6 +280,10 @@
   --ce-titel-signatur-kante-oben: var(--ce-ob-tinte);
   --ce-titel-signatur-kante-unten: var(--ce-ob-tinte);
   --ce-titel-gruss-praegung: none;
+  --ce-titel-relief-fuellung: linear-gradient(var(--ce-ob-tinte), var(--ce-ob-tinte));
+  --ce-titel-relief-praegung: none;
+  --ce-titel-relief-kante-oben: var(--ce-ob-tinte);
+  --ce-titel-relief-kante-unten: var(--ce-ob-tinte);
   --ce-titel-auswahl-text: #ffffff;
   --ce-titel-auswahl-grund: var(--ce-ob-signal-tinte);
 
@@ -309,6 +306,26 @@
   --ce-pr-bs-schatten-wahl-zeigen: 0 6px 14px -8px rgba(16, 36, 72, 0.2);
   --ce-pr-bs-schatten-wahl-gewaehlt: 0 6px 16px -10px rgba(0, 74, 252, 0.4);
   --ce-pr-bs-schatten-schalterknopf: 0 1px 3px rgba(16, 36, 72, 0.3), 0 0 0 0.5px rgba(16, 36, 72, 0.12);
+
+}
+
+/* Nur der Kundenbereich: Lesezeilen und editoriale Maße (Admin und Partnerportal behalten ihre Dichte, die öffentlichen
+   Seiten ihre Lesezeilen), die Lichter und Kennzahl-Bausteine der Übersicht, die Paketbühne und die Demo-Leiste. */
+:root[data-ce-bereich="kunde"] {
+  --ce-text-body-line: 1.6;
+  --ce-text-body-s-line: 1.6;
+  --ce-pr-ed-headline-size: var(--ce-ob-titel-size);
+  --ce-pr-ed-headline-size-tablet: var(--ce-ob-titel-size-tablet);
+  --ce-pr-ed-headline-size-mobile: var(--ce-ob-titel-size-mobile);
+  --ce-pr-ed-headline-line: 1.15;
+  --ce-pr-ed-gruss-size: var(--ce-ob-gruss-size);
+  --ce-pr-ed-gruss-size-tablet: var(--ce-ob-gruss-size-tablet);
+  --ce-pr-ed-gruss-size-mobile: var(--ce-ob-gruss-size-mobile);
+  --ce-pr-ed-gruss-line: 1.04;
+  --ce-pr-ed-gruss-tracking: -0.012em;
+  --ce-pr-ed-figure-size: 2.5rem;
+  --ce-pr-ed-figure-size-mobile: 2.125rem;
+  --ce-pr-ed-modul-titel: 1.125rem;
 
   /* Editorial-Flächen (Übersicht, Arbeitsfläche): die Lichter selbst setzen Abschnitt 2 und 9 */
   --ce-pr-ed-raum-flaeche: var(--ce-ob-grund);
@@ -370,18 +387,21 @@
    Blauweiß bis an den Rand. Über jeder Unterseite ein ruhiges Eisblau-Band mit leisem Kobaltschimmer rechts und
    einer Stahlblau-Wolke links — deutlich leiser als die Bühne der Übersicht (Abschnitt 9). Alles als Hintergrundbild
    von .main-content — keine Ebene, kein Stapelkontext, keine Bewegung. */
-:root[data-ce-bereich="kunde"],
-:root[data-ce-bereich="kunde"] :is(body, .app-shell) {
+:root[data-ce-familie="blue-light"],
+:root[data-ce-familie="blue-light"] :is(body, .app-shell) {
   background: var(--ce-ob-grund);
   color: var(--ce-ob-tinte);
 }
-:root[data-ce-bereich="kunde"] body {
+:root[data-ce-familie="blue-light"] body {
   font-family: var(--ce-ob-schrift-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
-:root[data-ce-bereich="kunde"] .main-content {
+/* Je Bereich seine eigene Hauptfläche; .page-with-navbar nur auf den öffentlichen Seiten — im Kundenbereich ist sie ein
+   innerer Rahmen und läge als zweites Band über dem der .main-content. */
+:root[data-ce-familie="blue-light"] :is(.main-content, .adm-main, .spp-main),
+:root[data-ce-bereich="oeffentlich"] .page-with-navbar {
   background-color: var(--ce-ob-grund);
   background-image:
     linear-gradient(180deg, var(--ce-ob-eisband) 0, rgba(232, 240, 255, 0) 20rem),
@@ -390,23 +410,24 @@
   background-repeat: no-repeat;
 }
 @media (max-width: 1023px) {
-  :root[data-ce-bereich="kunde"] .main-content {
+  :root[data-ce-familie="blue-light"] :is(.main-content, .adm-main, .spp-main),
+  :root[data-ce-bereich="oeffentlich"] .page-with-navbar {
     background-image:
       linear-gradient(180deg, var(--ce-ob-eisband) 0, rgba(232, 240, 255, 0) 14rem),
       radial-gradient(26rem 12rem at 100% -4rem, rgba(0, 74, 252, 0.07), transparent 70%),
       radial-gradient(24rem 11rem at 10% -6rem, rgba(127, 160, 220, 0.12), transparent 70%);
   }
 }
-:root[data-ce-bereich="kunde"] ::selection { background: rgba(0, 74, 252, 0.18); color: var(--ce-ob-tinte); }
-:root[data-ce-bereich="kunde"] * { scrollbar-color: rgba(16, 36, 72, 0.22) transparent; }
+:root[data-ce-familie="blue-light"] ::selection { background: rgba(0, 74, 252, 0.18); color: var(--ce-ob-tinte); }
+:root[data-ce-familie="blue-light"] * { scrollbar-color: rgba(16, 36, 72, 0.22) transparent; }
 
 /* ═══════════ 3 · TYPOGRAFIE ═══════════════════════════════════════════════
    Instrument Sans trägt die Arbeit mit den Ziffern- und Breitenregeln des Bereichs, Host Grotesk die Überschriften
    und Kennzahlen, Instrument Serif nur die Begrüßung. */
-:root[data-ce-bereich="kunde"] :is(h1, h2, h3, h4) { font-family: var(--ce-ob-schrift-titel); }
-:root[data-ce-bereich="kunde"] :is(h2, h3) { letter-spacing: -0.015em; }
-:root[data-ce-bereich="kunde"] :is(button, input, select, textarea) { font-family: inherit; }
-:root[data-ce-bereich="kunde"] :is(a:not(.btn), .btn-link) { text-underline-offset: 3px; }
+:root[data-ce-familie="blue-light"] :is(h1, h2, h3, h4) { font-family: var(--ce-ob-schrift-titel); }
+:root[data-ce-familie="blue-light"] :is(h2, h3) { letter-spacing: -0.015em; }
+:root[data-ce-familie="blue-light"] :is(button, input, select, textarea) { font-family: inherit; }
+:root[data-ce-familie="blue-light"] :is(a:not(.btn), .btn-link) { text-underline-offset: 3px; }
 
 /* ═══════════ 4 · SEITENLEISTE ═════════════════════════════════════════════
    Tiefdunkles Confidara-Navy, getrennt durch eine feine blaue Lichtkante. Einträge als ruhige Zeilen in hellem
@@ -541,9 +562,9 @@
 /* ═══════════ 6 · SEITENKOPF ═══════════════════════════════════════════════
    Titel in Host Grotesk, tintenblau und eng gesetzt; Untertitel in kräftigem Nebentext. Die graue Seitenkante
    entfällt — eine Haarlinie gliedert genug. */
-:root[data-ce-bereich="kunde"] .ce-page-header-main { border-bottom: 1px solid var(--ce-ob-linie); }
-:root[data-ce-bereich="kunde"] .ce-page-header-main::after { content: none; }
-:root[data-ce-bereich="kunde"] .ce-page-header-title {
+:root[data-ce-familie="blue-light"] .ce-page-header-main { border-bottom: 1px solid var(--ce-ob-linie); }
+:root[data-ce-familie="blue-light"] .ce-page-header-main::after { content: none; }
+:root[data-ce-familie="blue-light"] .ce-page-header-title {
   font-family: var(--ce-ob-schrift-titel);
   font-weight: 500;
   letter-spacing: var(--ce-pr-ed-headline-tracking);
@@ -551,18 +572,18 @@
   /* Host Grotesk zeichnet Unterlängen und Akzente höher als Instrument Sans: der Malrand wächst mit. */
   --titel-malrand: 0.2em;
 }
-:root[data-ce-bereich="kunde"] .ce-page-header-sub {
+:root[data-ce-familie="blue-light"] .ce-page-header-sub {
   color: var(--ce-ob-tinte-2);
   font-size: var(--ce-text-body-size);
   line-height: 1.55;
 }
-:root[data-ce-bereich="kunde"] .ce-page-header-meta { color: var(--ce-ob-tinte-3); }
+:root[data-ce-familie="blue-light"] .ce-page-header-meta { color: var(--ce-ob-tinte-3); }
 
 /* ═══════════ 7 · BEDIENSYSTEM ═════════════════════════════════════════════
    Primär: kräftiges Confidara-Blau mit weißer Schrift, Lichtseite oben und ein blauer Schein darunter. Sekundär:
    helle Fläche mit blauer Kontur und Tinte. Text: leise. Gefahr: Rot nur als bestätigende Aktion. Höhen, Abstände
    und Rollen bleiben die des Premium Control System. */
-:root[data-ce-bereich="kunde"] .btn {
+:root[data-ce-familie="blue-light"] .btn {
   font-family: var(--ce-ob-schrift-text);
   font-weight: 560;
   letter-spacing: -0.006em;
@@ -573,57 +594,57 @@
     color var(--ce-ob-dauer) var(--ce-ob-kurve),
     box-shadow var(--ce-ob-dauer) var(--ce-ob-kurve);
 }
-:root[data-ce-bereich="kunde"] :is(.btn-primary, .offer-cta-btn--primary) {
+:root[data-ce-familie="blue-light"] :is(.btn-primary, .offer-cta-btn--primary) {
   border: 1px solid var(--ce-ob-signal);
   background: linear-gradient(180deg, var(--ce-ob-signal-licht) 0%, var(--ce-ob-signal) 100%);
   color: var(--ce-ob-tinte-invers);
   box-shadow: var(--ce-pr-bs-schatten-primaer);
 }
-:root[data-ce-bereich="kunde"] :is(.btn-primary, .offer-cta-btn--primary):hover:not(:disabled) {
+:root[data-ce-familie="blue-light"] :is(.btn-primary, .offer-cta-btn--primary):hover:not(:disabled) {
   border-color: var(--ce-ob-signal-zeigen);
   background: linear-gradient(180deg, var(--ce-ob-signal-zeigen-licht) 0%, var(--ce-ob-signal-zeigen) 100%);
   color: var(--ce-ob-tinte-invers);
   box-shadow: var(--ce-pr-bs-schatten-primaer-zeigen);
 }
-:root[data-ce-bereich="kunde"] :is(.btn-primary, .offer-cta-btn--primary):active:not(:disabled) {
+:root[data-ce-familie="blue-light"] :is(.btn-primary, .offer-cta-btn--primary):active:not(:disabled) {
   background: linear-gradient(180deg, var(--ce-ob-signal-gedrueckt) 0%, var(--ce-ob-signal-gedrueckt) 100%);
   box-shadow: var(--ce-pr-bs-schatten-gedrueckt);
 }
-:root[data-ce-bereich="kunde"] .btn-outline:not(.booking-blatt-zurueck),
-:root[data-ce-bereich="kunde"] .btn-secondary {
+:root[data-ce-familie="blue-light"] .btn-outline:not(.booking-blatt-zurueck),
+:root[data-ce-familie="blue-light"] .btn-secondary {
   border: 1px solid var(--ce-ob-kante-blau);
   background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
   color: var(--ce-ob-tinte);
   box-shadow: var(--ce-pr-bs-schatten-sekundaer);
 }
-:root[data-ce-bereich="kunde"] .btn-outline:not(.booking-blatt-zurueck):hover:not(:disabled),
-:root[data-ce-bereich="kunde"] .btn-secondary:hover:not(:disabled) {
+:root[data-ce-familie="blue-light"] .btn-outline:not(.booking-blatt-zurueck):hover:not(:disabled),
+:root[data-ce-familie="blue-light"] .btn-secondary:hover:not(:disabled) {
   border-color: var(--ce-ob-signal);
   background: linear-gradient(180deg, #f7faff 0%, var(--ce-ob-signal-ton) 100%);
   color: var(--ce-ob-signal-tinte-zeigen);
   box-shadow: var(--ce-pr-bs-schatten-sekundaer-zeigen);
 }
-:root[data-ce-bereich="kunde"] .btn-outline:not(.booking-blatt-zurueck):active:not(:disabled) {
+:root[data-ce-familie="blue-light"] .btn-outline:not(.booking-blatt-zurueck):active:not(:disabled) {
   background: var(--ce-ob-signal-ton-zeigen);
   box-shadow: var(--ce-pr-bs-schatten-gedrueckt);
 }
-:root[data-ce-bereich="kunde"] .btn-ghost { color: var(--ce-ob-tinte-2); background: transparent; }
-:root[data-ce-bereich="kunde"] .btn-ghost:hover:not(:disabled) { color: var(--ce-ob-signal-tinte-zeigen); background: var(--ce-ob-signal-hauch); }
-:root[data-ce-bereich="kunde"] .btn-link { color: var(--ce-ob-signal-tinte); }
-:root[data-ce-bereich="kunde"] .btn-link:hover:not(:disabled) { color: var(--ce-ob-signal-tinte-zeigen); background: transparent; }
-:root[data-ce-bereich="kunde"] .btn-danger {
+:root[data-ce-familie="blue-light"] .btn-ghost { color: var(--ce-ob-tinte-2); background: transparent; }
+:root[data-ce-familie="blue-light"] .btn-ghost:hover:not(:disabled) { color: var(--ce-ob-signal-tinte-zeigen); background: var(--ce-ob-signal-hauch); }
+:root[data-ce-familie="blue-light"] .btn-link { color: var(--ce-ob-signal-tinte); }
+:root[data-ce-familie="blue-light"] .btn-link:hover:not(:disabled) { color: var(--ce-ob-signal-tinte-zeigen); background: transparent; }
+:root[data-ce-familie="blue-light"] .btn-danger {
   border: 1px solid var(--ce-color-danger-solid);
   background: linear-gradient(180deg, #ad4141 0%, var(--ce-color-danger-solid) 100%);
   color: #ffffff;
 }
-:root[data-ce-bereich="kunde"] :is(.btn-primary, .btn-danger, .btn-outline:not(.booking-blatt-zurueck), .btn-secondary, .offer-cta-btn--primary):disabled {
+:root[data-ce-familie="blue-light"] :is(.btn-primary, .btn-danger, .btn-outline:not(.booking-blatt-zurueck), .btn-secondary, .offer-cta-btn--primary):disabled {
   border-color: var(--ce-ob-kante);
   background: var(--ce-pr-btn-disabled-bg);
   color: var(--ce-pr-btn-disabled-fg);
   box-shadow: none;
 }
 /* Fokus: der Ring der Foundation im Confidara-Blau, mit Abstand */
-:root[data-ce-bereich="kunde"] :is(.btn, a, button, [role="button"], [role="tab"], [role="option"], [role="menuitem"], summary):focus-visible {
+:root[data-ce-familie="blue-light"] :is(.btn, a, button, [role="button"], [role="tab"], [role="option"], [role="menuitem"], summary):focus-visible {
   outline: 2px solid var(--ce-ob-signal-kante);
   outline-offset: 2px;
 }
@@ -631,14 +652,14 @@
 /* Felder: Fläche, Kontur (3,2:1) und Fokus kommen aus den umgeordneten Tokens (Abschnitt 1) — die Feldregeln der
    Bereichs-Stylesheets bleiben zuständig, auch für Sonderfelder wie die Suche (eigene, transparente Mulde). Hier nur,
    was kein Token trägt: Platzhalter, Optionen der nativen Auswahl, Farbe von Kästchen und Optionsfeldern. */
-:root[data-ce-bereich="kunde"] :is(input, textarea)::placeholder { color: var(--ce-ob-tinte-4); }
-:root[data-ce-bereich="kunde"] select option { background: var(--ce-ob-flaeche-1); color: var(--ce-ob-tinte); }
-:root[data-ce-bereich="kunde"] :is(input[type="checkbox"], input[type="radio"]) { accent-color: var(--ce-ob-signal); }
-:root[data-ce-bereich="kunde"] .field-label { color: var(--ce-ob-tinte-2); }
-:root[data-ce-bereich="kunde"] :is(.field-error, .field-input-error ~ .field-error) { color: var(--ce-color-status-error-fg); }
+:root[data-ce-familie="blue-light"] :is(input, textarea)::placeholder { color: var(--ce-ob-tinte-4); }
+:root[data-ce-familie="blue-light"] select option { background: var(--ce-ob-flaeche-1); color: var(--ce-ob-tinte); }
+:root[data-ce-familie="blue-light"] :is(input[type="checkbox"], input[type="radio"]) { accent-color: var(--ce-ob-signal); }
+:root[data-ce-familie="blue-light"] .field-label { color: var(--ce-ob-tinte-2); }
+:root[data-ce-familie="blue-light"] :is(.field-error, .field-input-error ~ .field-error) { color: var(--ce-color-status-error-fg); }
 
 /* Aufklappfelder, Menüs, Auswahllisten: Weißglas mit 25 px Weichzeichnung */
-:root[data-ce-bereich="kunde"] :is(.ce-auswahl-liste, .ce-pm-liste, .ce-suche-treffer, .ntf-panel, [role="listbox"], [role="menu"]) {
+:root[data-ce-familie="blue-light"] :is(.ce-auswahl-liste, .ce-pm-liste, .ce-suche-treffer, .ntf-panel, [role="listbox"], [role="menu"]) {
   background: var(--ce-ob-glas);
   -webkit-backdrop-filter: var(--ce-ob-glas-weichzeichnung);
   backdrop-filter: var(--ce-ob-glas-weichzeichnung);
@@ -647,10 +668,10 @@
 }
 
 /* Reiter: Unterkante im Confidara-Blau */
-:root[data-ce-bereich="kunde"] .ce-tabs { border-bottom-color: var(--ce-ob-linie); }
-:root[data-ce-bereich="kunde"] .ce-tab { color: var(--ce-ob-tinte-3); }
-:root[data-ce-bereich="kunde"] .ce-tab:hover { color: var(--ce-ob-tinte); }
-:root[data-ce-bereich="kunde"] :is(.ce-tab.active, .ce-tab[aria-selected="true"]) {
+:root[data-ce-familie="blue-light"] .ce-tabs { border-bottom-color: var(--ce-ob-linie); }
+:root[data-ce-familie="blue-light"] .ce-tab { color: var(--ce-ob-tinte-3); }
+:root[data-ce-familie="blue-light"] .ce-tab:hover { color: var(--ce-ob-tinte); }
+:root[data-ce-familie="blue-light"] :is(.ce-tab.active, .ce-tab[aria-selected="true"]) {
   color: var(--ce-ob-tinte);
   border-bottom-color: var(--ce-ob-signal);
   box-shadow: inset 0 -2px 0 var(--ce-ob-signal);
@@ -659,19 +680,19 @@
 /* Schalter: aus als eisblaue Spur mit weißem Knopf, an im Confidara-Blau mit weißem Knopf, gesperrt mit leisem
    Knopf. Zeigen dunkelt die Kante (aus) oder das Blau (an) — nie über die Navy-Töne der Grundebene
    (premium-editorial.css), damit „an“ überall dasselbe Blau bleibt. */
-:root[data-ce-bereich="kunde"] .ce-switch-knob { background: var(--ce-ob-flaeche-1); }
-:root[data-ce-bereich="kunde"] .ce-switch-input:checked ~ .ce-switch-track {
+:root[data-ce-familie="blue-light"] .ce-switch-knob { background: var(--ce-ob-flaeche-1); }
+:root[data-ce-familie="blue-light"] .ce-switch-input:checked ~ .ce-switch-track {
   border-color: var(--ce-ob-signal);
   background: var(--ce-ob-signal);
 }
-:root[data-ce-bereich="kunde"] .ce-switch-input:checked ~ .ce-switch-track .ce-switch-knob { background: var(--ce-ob-flaeche-1); }
-:root[data-ce-bereich="kunde"] .ce-switch-input:checked ~ .ce-switch-track .ce-switch-knob::after { border-color: var(--ce-ob-signal); }
-:root[data-ce-bereich="kunde"] .ce-switch-input:disabled ~ .ce-switch-track .ce-switch-knob { background: #f3f5fa; }
+:root[data-ce-familie="blue-light"] .ce-switch-input:checked ~ .ce-switch-track .ce-switch-knob { background: var(--ce-ob-flaeche-1); }
+:root[data-ce-familie="blue-light"] .ce-switch-input:checked ~ .ce-switch-track .ce-switch-knob::after { border-color: var(--ce-ob-signal); }
+:root[data-ce-familie="blue-light"] .ce-switch-input:disabled ~ .ce-switch-track .ce-switch-knob { background: #f3f5fa; }
 @media (hover: hover) {
-  :root[data-ce-bereich="kunde"] .ce-switch:hover .ce-switch-input:not(:checked, :disabled) ~ .ce-switch-track {
+  :root[data-ce-familie="blue-light"] .ce-switch:hover .ce-switch-input:not(:checked, :disabled) ~ .ce-switch-track {
     border-color: var(--ce-ob-kante-feld-zeigen);
   }
-  :root[data-ce-bereich="kunde"] .ce-switch:hover .ce-switch-input:checked:not(:disabled) ~ .ce-switch-track {
+  :root[data-ce-familie="blue-light"] .ce-switch:hover .ce-switch-input:checked:not(:disabled) ~ .ce-switch-track {
     border-color: var(--ce-ob-signal-zeigen);
     background: var(--ce-ob-signal-zeigen);
   }
@@ -679,19 +700,19 @@
 
 /* ═══════════ 8 · FLÄCHEN ═════════════════════════════════════════════════
    Karten, Blätter und Tabellenrahmen: weiß mit einem Hauch Eisblau am Fuß, blaugraue Kante, leiser Navy-Schatten. */
-:root[data-ce-bereich="kunde"] :is(.ce-card, .card, .table-card, .ce-table-container, .ce-list-card, .booking-blatt,
+:root[data-ce-familie="blue-light"] :is(.ce-card, .card, .table-card, .ce-table-container, .ce-list-card, .booking-blatt,
   .tile, .ov-card, .price-drift-card) {
   background-color: var(--ce-ob-flaeche-1);
   background-image: var(--ce-ob-flaechenverlauf);
   border-color: var(--ce-ob-kante);
   box-shadow: var(--ce-ob-schatten-karte);
 }
-:root[data-ce-bereich="kunde"] .ce-card-inverse { background: var(--ce-color-surface-inverse); border-color: var(--ce-color-surface-inverse-edge); }
+:root[data-ce-familie="blue-light"] .ce-card-inverse { background: var(--ce-color-surface-inverse); border-color: var(--ce-color-surface-inverse-edge); }
 
 /* Tabellen: Köpfe leise in 13/550 ohne Versalien, Zeilen zwischen Haarlinien, Zeigen tönt die Zeile eisblau */
-:root[data-ce-bereich="kunde"] table { border-color: var(--ce-ob-linie); }
-:root[data-ce-bereich="kunde"] thead th,
-:root[data-ce-bereich="kunde"] th {
+:root[data-ce-familie="blue-light"] table { border-color: var(--ce-ob-linie); }
+:root[data-ce-familie="blue-light"] thead th,
+:root[data-ce-familie="blue-light"] th {
   color: var(--ce-ob-tinte-3);
   font-family: var(--ce-ob-schrift-text);
   font-weight: 550;
@@ -700,53 +721,54 @@
   background-color: transparent;
   border-bottom-color: var(--ce-ob-kante);
 }
-:root[data-ce-bereich="kunde"] td { border-bottom-color: var(--ce-ob-linie); color: var(--ce-ob-tinte); }
-:root[data-ce-bereich="kunde"] tbody tr { transition: background-color var(--ce-ob-dauer) var(--ce-ob-kurve); }
-:root[data-ce-bereich="kunde"] tbody tr:hover { background-color: var(--ce-ob-flaeche-2); }
+:root[data-ce-familie="blue-light"] td { border-bottom-color: var(--ce-ob-linie); color: var(--ce-ob-tinte); }
+:root[data-ce-familie="blue-light"] tbody tr { transition: background-color var(--ce-ob-dauer) var(--ce-ob-kurve); }
+:root[data-ce-familie="blue-light"] tbody tr:hover { background-color: var(--ce-ob-flaeche-2); }
 
-/* Statusmarken: getönte Fläche, Zustandsschrift, feine Kante, eckig 6 px */
-:root[data-ce-bereich="kunde"] .badge {
-  border-radius: var(--ce-pr-radius-status);
+/* Statusmarken: getönte Fläche, Zustandsschrift, feine Kante; im Kundenbereich eckig 6 px (Radius der Bereichsskala,
+   die Admin, Partnerportal und öffentliche Seiten nicht tragen — dort bleibt der Radius der Grundgestaltung). */
+:root[data-ce-familie="blue-light"] .badge {
   font-family: var(--ce-ob-schrift-text);
   font-weight: 550;
   letter-spacing: 0;
 }
+:root[data-ce-bereich="kunde"] .badge { border-radius: var(--ce-pr-radius-status); }
 
 /* Zustände: leer, laden, Fehler */
-:root[data-ce-bereich="kunde"] .ce-skeleton,
-:root[data-ce-bereich="kunde"] .ce-skeleton-line {
+:root[data-ce-familie="blue-light"] .ce-skeleton,
+:root[data-ce-familie="blue-light"] .ce-skeleton-line {
   background: linear-gradient(90deg, #eaf0fb 0%, #f5f8ff 50%, #eaf0fb 100%);
   background-size: 200% 100%;
 }
-:root[data-ce-bereich="kunde"] :is(.ce-state-title, .empty-title) { font-family: var(--ce-ob-schrift-titel); font-weight: 500; color: var(--ce-ob-tinte); }
-:root[data-ce-bereich="kunde"] :is(.ce-state-text, .empty-text) { color: var(--ce-ob-tinte-2); }
+:root[data-ce-familie="blue-light"] :is(.ce-state-title, .empty-title) { font-family: var(--ce-ob-schrift-titel); font-weight: 500; color: var(--ce-ob-tinte); }
+:root[data-ce-familie="blue-light"] :is(.ce-state-text, .empty-text) { color: var(--ce-ob-tinte-2); }
 
 /* Dialoge und Schubladen: helle Premium-Fläche mit tiefem Navy-Schatten, Öffnen als weiches Aufziehen. Der Schleier
    bleibt der EINE Overlayton (patterns.css: --ce-color-overlay, ohne Weichzeichnung) — Abschnitt 1 setzt ihn auf
    46 % Navy. */
-:root[data-ce-bereich="kunde"] :is(.ce-dialog, .abk-dialog-card, .dft-dialog-card, .stn-dialog-card, .sup-dialog-card,
+:root[data-ce-familie="blue-light"] :is(.ce-dialog, .abk-dialog-card, .dft-dialog-card, .stn-dialog-card, .sup-dialog-card,
   .email-change-modal, .price-drift-card) {
   background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
   border: 1px solid var(--ce-ob-kante);
   box-shadow: var(--ce-elevation-3);
 }
-:root[data-ce-bereich="kunde"] :is(.ce-drawer, .abk-drawer) {
+:root[data-ce-familie="blue-light"] :is(.ce-drawer, .abk-drawer) {
   background: var(--ce-ob-flaeche-1);
   border-left: 1px solid var(--ce-ob-kante);
   box-shadow: var(--ce-elevation-3);
 }
-:root[data-ce-bereich="kunde"] :is(.ce-dialog-title) { font-family: var(--ce-ob-schrift-titel); font-weight: 500; letter-spacing: -0.015em; }
+:root[data-ce-familie="blue-light"] :is(.ce-dialog-title) { font-family: var(--ce-ob-schrift-titel); font-weight: 500; letter-spacing: -0.015em; }
 @keyframes ce-ob-fenster-auf {
   from { opacity: 0; transform: translateY(8px) scale(0.985); }
   to { opacity: 1; transform: none; }
 }
 @keyframes ce-ob-schleier-auf { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: no-preference) {
-  :root[data-ce-bereich="kunde"] :is(.ce-dialog, .abk-dialog-card, .dft-dialog-card, .stn-dialog-card, .sup-dialog-card,
+  :root[data-ce-familie="blue-light"] :is(.ce-dialog, .abk-dialog-card, .dft-dialog-card, .stn-dialog-card, .sup-dialog-card,
     .email-change-modal, .price-drift-card) {
     animation: ce-ob-fenster-auf var(--ce-ob-dauer-lang) var(--ce-ob-kurve) both;
   }
-  :root[data-ce-bereich="kunde"] :is(.ce-dialog-overlay, .abk-dialog-overlay, .dft-dialog-overlay, .stn-dialog-overlay,
+  :root[data-ce-familie="blue-light"] :is(.ce-dialog-overlay, .abk-dialog-overlay, .dft-dialog-overlay, .stn-dialog-overlay,
     .sup-dialog-overlay, .email-change-overlay, .price-drift-overlay) {
     animation: ce-ob-schleier-auf var(--ce-ob-dauer) linear both;
   }
@@ -914,12 +936,12 @@
 /* ═══════════ 10 · LINIEN, MARKEN, KENNUNGEN ══════════════════════════════
    Die Editorial-Ebene gliedert Listen, Tabellenköpfe und Abschnitte mit 2 px Tinte. Die Konsole setzt dort die
    Haarlinie (1 px) — sie bleibt, jetzt im kräftigen Blaugrau. */
-:root[data-ce-bereich="kunde"] :is(.dft-table thead th, :is(.table-card, .ce-table-container) thead th,
+:root[data-ce-familie="blue-light"] :is(.dft-table thead th, :is(.table-card, .ce-table-container) thead th,
   .calc-page-wrap .calc-panel-header, .ce-drawer-head, .abk-drawer-header, .ntf-head, .inv-ops-head,
   .inv-warehouses-head, .inv-section-head) {
   border-bottom: 1px solid var(--ce-ob-kante-stark);
 }
-:root[data-ce-bereich="kunde"] :is(.ce-list-cards, .inv-summary, .abk-desktop-list, .sup-list, .inv-stat-band,
+:root[data-ce-familie="blue-light"] :is(.ce-list-cards, .inv-summary, .abk-desktop-list, .sup-list, .inv-stat-band,
   .inv-cards, .abk-cards) {
   border-top: 1px solid var(--ce-ob-kante-stark);
 }
@@ -939,16 +961,16 @@
    der dunklen Fassung entfällt. */
 
 /* Initial im Benutzerchip: das SVG nennt die alte Schrift als Attribut — CSS geht vor, die Familie folgt der Rolle. */
-:root[data-ce-bereich="kunde"] svg.ce-comark text,
-:root[data-ce-bereich="kunde"] .pp-uchip svg text { font-family: var(--ce-ob-schrift-titel); font-weight: 600; }
+:root[data-ce-familie="blue-light"] svg.ce-comark text,
+:root[data-ce-familie="blue-light"] .pp-uchip svg text { font-family: var(--ce-ob-schrift-titel); font-weight: 600; }
 
 /* ═══════════ 11 · REDUZIERTE BEWEGUNG UND KONTRAST ═════════════════════════
    Gedruckt gilt die Ebene nicht (@media screen am Kopf der Datei): Das Blatt trägt die Druckregeln der Plattform. */
 @media (prefers-reduced-motion: reduce) {
-  :root[data-ce-bereich="kunde"] :is(.ov-kpi, .ov-kpi::before, .btn, .pp-side .nitem) { transition: none; }
+  :root[data-ce-familie="blue-light"] :is(.ov-kpi, .ov-kpi::before, .btn, .pp-side .nitem) { transition: none; }
 }
 @media (prefers-contrast: more) {
-  :root[data-ce-bereich="kunde"] {
+  :root[data-ce-familie="blue-light"] {
     --ce-ob-kante: #8a99b8;
     --ce-ob-linie: #b4c1d9;
     --ce-ob-kante-blau: #3f6fd8;
@@ -957,7 +979,83 @@
   }
 }
 
-/* ═══════════ 12 · LADEBILDSCHIRM AUF DEN KUNDENPFADEN ═════════════════════
+/* ═══════════ 12 · ADMINPANEL ════════════════════════════════════════════════
+   Dieselbe Familie in der Dichte des Adminbereichs (Betreiberauftrag „Final Master Release“, 2026-11-16, 7.5): die
+   Seitenleiste im tiefdunklen Confidara-Navy wie im Kundenbereich, die Marke in der Fassung für dunkle Flächen
+   (AdminSidebar.jsx). Maße, Schriftgrößen und Abstände bleiben die von admin.css — das Höhenbudget der Seitenleiste
+   (E2E premiumAdminPaketE 1c) gilt unverändert. Gefahrenaktionen und Statusfarben bleiben die der Grundgestaltung. */
+:root[data-ce-bereich="admin"] .adm-side {
+  background: var(--ce-ob-seitenleiste-verlauf);
+  border-right-color: var(--ce-sidebar-border);
+  box-shadow: var(--ce-sidebar-shadow);
+}
+:root[data-ce-bereich="admin"] .adm-side * { scrollbar-color: var(--ce-sidebar-scroll-thumb) transparent; }
+:root[data-ce-bereich="admin"] .adm-brand-tag { background: var(--ce-sidebar-hover); color: var(--ce-sidebar-text); }
+:root[data-ce-bereich="admin"] :is(.adm-nitem, .adm-foot-btn, .adm-side-close) {
+  color: var(--ce-sidebar-text);
+  transition:
+    background-color var(--ce-ob-dauer) var(--ce-ob-kurve),
+    color var(--ce-ob-dauer) var(--ce-ob-kurve),
+    box-shadow var(--ce-ob-dauer) var(--ce-ob-kurve);
+}
+:root[data-ce-bereich="admin"] :is(.adm-nitem, .adm-foot-btn, .adm-side-close):hover {
+  background: var(--ce-sidebar-hover);
+  color: var(--ce-sidebar-text-strong);
+}
+:root[data-ce-bereich="admin"] .adm-nitem-icon { color: var(--ce-ob-seite-symbol); }
+:root[data-ce-bereich="admin"] .adm-nitem:hover .adm-nitem-icon { color: var(--ce-sidebar-text-strong); }
+/* Aktive Seite: das Blauglas mit Lichtkante der Kunden-Seitenleiste statt der Akzentkante links */
+:root[data-ce-bereich="admin"] :is(.adm-nitem-on, .adm-nitem-on:hover) {
+  background: var(--ce-sidebar-active-bg);
+  color: var(--ce-sidebar-text-strong);
+  box-shadow: var(--ce-ob-lichtkante-aktiv);
+}
+:root[data-ce-bereich="admin"] .adm-nitem-on .adm-nitem-icon { color: var(--ce-sidebar-active-icon); }
+/* Kategorie: leise Lichtfläche in Stahlblau — Text, kein Bedienelement */
+:root[data-ce-bereich="admin"] .adm-nsec { background: var(--ce-sidebar-hover); color: var(--ce-sidebar-section); }
+:root[data-ce-bereich="admin"] :is(.adm-nitem-soon, .adm-nitem-soon:hover) { background: none; color: var(--ce-sidebar-section); }
+:root[data-ce-bereich="admin"] .adm-side-foot { border-top-color: var(--ce-sidebar-divider); }
+:root[data-ce-bereich="admin"] :is(.adm-foot-btn-switch, .adm-foot-btn-switch:hover) { color: var(--ce-sidebar-active-accent); }
+:root[data-ce-bereich="admin"] .adm-identity-name { color: var(--ce-sidebar-text-strong); }
+:root[data-ce-bereich="admin"] .adm-identity-role { color: var(--ce-sidebar-text-muted); }
+/* Fokus auf Navy: die helle Akzentfarbe (6,6:1) — das Confidara-Blau erreicht auf Navy keine 3:1 */
+:root[data-ce-bereich="admin"] .adm-side :is(a, button):focus-visible { outline-color: var(--ce-sidebar-active-accent); }
+
+/* ═══════════ 13 · VERTRIEBSPARTNERPORTAL ════════════════════════════════════
+   Eigene Navigation (Kopfleiste und Reiter), Kennzahlen und Provisionsanzeigen bleiben (7.6); Farben aus der Familie,
+   Überschriften und Kennzahlen in Host Grotesk wie im Kundenbereich. */
+:root[data-ce-bereich="partner"] :is(.spp-section-title, .spp-card-title) {
+  font-family: var(--ce-ob-schrift-titel);
+  font-weight: 500;
+  letter-spacing: var(--ce-text-title-section-tracking);
+}
+:root[data-ce-bereich="partner"] .spp-kpi-value {
+  font-family: var(--ce-ob-schrift-titel);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ═══════════ 14 · ÖFFENTLICHE SEITEN ════════════════════════════════════════
+   Sendungsverfolgung, Rechtstexte, Versicherungsinformationen, Partnervereinbarung und Preisrechner-Übernahme (7.2,
+   7.7): Blauweiß mit Eisblau-Band (Abschnitt 2), weiße Blätter mit kühler Kante, Titel in Host Grotesk und flach in
+   Tintenblau (Titelmaterial im Tokenblock). Texte, Inhalte und Rechtstexte bleiben unberührt. */
+:root[data-ce-bereich="oeffentlich"] :is(.legal-title, .tracking-title, .insinfo-title) {
+  font-family: var(--ce-ob-schrift-titel);
+  font-weight: 500;
+  letter-spacing: var(--ce-pr-ed-headline-tracking);
+  /* Host Grotesk zeichnet Unterlängen und Akzente höher als Instrument Sans: der Malrand wächst mit. */
+  --titel-malrand: 0.2em;
+}
+:root[data-ce-bereich="oeffentlich"] .legal-sheet {
+  background-color: var(--ce-ob-flaeche-1);
+  background-image: var(--ce-ob-flaechenverlauf);
+  border-color: var(--ce-ob-kante);
+  box-shadow: var(--ce-ob-schatten-karte);
+}
+
+/* ═══════════ 15 · LADEBILDSCHIRM AUF DEN KUNDENPFADEN ═════════════════════
    Während der Sitzungsprüfung und während ein Seitenblock nachlädt, steht noch kein Bereichsattribut am Wurzelelement.
    Auf den Pfaden des Kundenbereichs (utils/kundenBereichPfad.mjs) trägt der Ladebildschirm deshalb die Klasse
    loading-screen--kunde: dasselbe Blauweiß wie die Seite danach, Signet in den Markenfarben (LoadingScreen.jsx). Die

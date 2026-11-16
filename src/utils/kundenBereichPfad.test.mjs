@@ -67,5 +67,5 @@ test("K6: der Bereich „kunde“ bleibt beim Seitenwechsel im Kundenbereich ste
   assert.equal(bleibtImKundenbereich("auth", "/dashboard"), false);
   // Der Hook fragt vor dem Aufräumen — und räumt sonst nur ab, was ihm noch gehört (premiumRedesign.test.mjs).
   const hook = fs.readFileSync(new URL("../hooks/useCeBereich.js", import.meta.url), "utf8");
-  assert.match(hook, /return \(\) => \{\s*if \(bleibtImKundenbereich\(bereich, window\.location\.pathname\)\) return;\s*if \(root\.getAttribute\("data-ce-bereich"\) === bereich\) root\.removeAttribute\("data-ce-bereich"\);/);
+  assert.match(hook, /return \(\) => \{\s*if \(bleibtImKundenbereich\(bereich, window\.location\.pathname\)\) return;\s*if \(root\.getAttribute\("data-ce-bereich"\) === bereich\) \{\s*root\.removeAttribute\("data-ce-bereich"\);/);
 });

@@ -52,7 +52,8 @@
   box-shadow: none;
 }
 /* Marke: die Originalkomposition aus dem gemeinsamen Bauteil (BrandLogo
-   variant="lockup", Standardfassung auf der hellen Fläche) — im Adminportal
+   variant="lockup"; auf der Navy-Seitenleiste der Blue-Light-Familie in der
+   Fassung für dunkle Flächen, kunde-obsidian.css Abschnitt 12) — im Adminportal
    eine Stufe kleiner als im Kundenportal (Admin-Dichte), wie vor dem
    Redesign. Der Admin-Kontext steht als eigene, leise Kennzeichnung darunter —
    er ist UI-Text, nicht Teil der Marke. Rechts sitzt im Drawer der

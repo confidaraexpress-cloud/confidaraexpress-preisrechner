@@ -228,7 +228,7 @@
 }
 
 .pc-page .pc-link-button {
-  color: var(--ce-pr-navy-800);
+  color: var(--ce-pr-signal-ink);
 }
 
 @media (hover: hover) {
@@ -1068,30 +1068,31 @@
   cursor: pointer;
 }
 
-/* Primäraktion auf dem Papier: Navy mit feiner Innenkante (E1, E5). */
+/* Primäraktion auf dem Papier: kräftiges Confidara-Blau mit feiner Innenkante wie im Kundenbereich (Blue Light,
+   2026-11-16; vorher Navy, E1, E5). */
 .pc-button--primary {
-  border-color: var(--ce-pr-navy-800);
-  background: var(--ce-pr-navy-800);
+  border-color: var(--ce-pr-signal);
+  background: var(--ce-pr-signal);
   color: var(--ce-color-text-inverse);
   box-shadow: var(--ce-pr-btn-shadow);
 }
 
 @media (hover: hover) {
   .pc-button--primary:hover {
-    border-color: var(--ce-pr-navy-700);
-    background: var(--ce-pr-navy-700);
+    border-color: var(--ce-pr-signal-hover);
+    background: var(--ce-pr-signal-hover);
     box-shadow: var(--ce-pr-btn-shadow-hover);
   }
 }
 
 .pc-button--primary:active {
-  background: var(--ce-pr-navy-600);
+  background: var(--ce-color-brand-active);
 }
 
 .pc-button--primary:disabled {
   cursor: progress;
-  border-color: var(--ce-pr-navy-700);
-  background: var(--ce-pr-navy-700);
+  border-color: var(--ce-pr-signal-hover);
+  background: var(--ce-pr-signal-hover);
 }
 
 .pc-button--submit {
@@ -1101,11 +1102,11 @@
 }
 
 
-/* Zweitaktionen („Angaben ändern“, „Erneut versuchen“, „Auswahl zurücksetzen“) in derselben Navy-Kontur wie die
-   Aktion der Tarifkarte in Ruhe (UX-Korrektur E3, 2026-10-27; vorher Signalblau). */
+/* Zweitaktionen („Angaben ändern“, „Erneut versuchen“, „Auswahl zurücksetzen“): weiße Fläche mit blauer Kontur wie die
+   Aktion der Tarifkarte in Ruhe (Blue Light, 2026-11-16; zuvor Navy-Kontur, UX-Korrektur E3, 2026-10-27). */
 .pc-button--secondary {
-  border-color: var(--ce-pr-navy-800);
-  color: var(--ce-pr-navy-800);
+  border-color: var(--ce-pr-signal);
+  color: var(--ce-pr-signal-ink);
 }
 
 @media (hover: hover) {
@@ -1800,9 +1801,9 @@
   width: 100%;
   min-height: 44px;
   padding-inline: var(--ce-space-5);
-  border-color: var(--ce-pr-navy-800);
+  border-color: var(--ce-pr-signal);
   background: var(--ce-color-surface);
-  color: var(--ce-pr-navy-800);
+  color: var(--ce-pr-signal-ink);
   white-space: nowrap;
 }
 
@@ -1810,7 +1811,7 @@
    Tippen kein gefüllter Knopf stehen (UX-Korrektur E2, 2026-10-27). */
 .pc-page .pc-button--offer:focus-visible,
 .pc-page .pc-button--offer:active {
-  background: var(--ce-pr-navy-800);
+  background: var(--ce-pr-signal);
   color: var(--ce-color-text-inverse);
   box-shadow: var(--ce-pr-btn-shadow);
 }
@@ -1818,7 +1819,7 @@
 @media (hover: hover) {
   .pc-page .pc-button--offer:hover,
   .pc-page .pc-offer:hover .pc-button--offer {
-    background: var(--ce-pr-navy-800);
+    background: var(--ce-pr-signal);
     color: var(--ce-color-text-inverse);
     box-shadow: var(--ce-pr-btn-shadow);
   }
@@ -2110,7 +2111,7 @@
   min-height: 40px;
   padding-inline: var(--ce-space-4);
   border-radius: var(--ce-pr-radius-control);
-  background: var(--ce-pr-navy-800);
+  background: var(--ce-pr-signal);
   color: var(--ce-color-text-inverse);
   font-size: 0.875rem;
   font-weight: 600;
@@ -2265,7 +2266,7 @@
   flex: none;
   padding: 0.55em 1em;
   border-radius: var(--ce-pr-radius-status);
-  background: var(--ce-pr-navy-800);
+  background: var(--ce-pr-signal);
   color: var(--ce-color-text-inverse);
   font-weight: 600;
 }
@@ -2597,13 +2598,13 @@
   overflow-wrap: anywhere;
 }
 
-/* Auf dem hellen Serviceblock trägt der Registrierknopf eine Navy-Kontur — der Papierknopf des Kopfs ist für die
+/* Auf dem hellen Serviceblock trägt der Registrierknopf die blaue Kontur der Zweitaktion (Blue Light; vorher Navy) — der Papierknopf des Kopfs ist für die
    Navy-Bühne gedacht und stand hier als blasse Fläche auf Weiß. */
 .pc-page .pc-service-cta {
   max-width: 100%;
-  border-color: var(--ce-pr-navy-800);
+  border-color: var(--ce-pr-signal);
   background: var(--ce-color-surface);
-  color: var(--ce-pr-navy-800);
+  color: var(--ce-pr-signal-ink);
   /* Bei großer Browserschrift bricht die Beschriftung um, statt die Spalte über den Rand zu schieben (UX-Korrektur
      A, 2026-10-27: vorher bei 200 % Schrift 86 px Querscrollen auf dem Telefon). */
   white-space: normal;
@@ -2612,8 +2613,8 @@
 
 @media (hover: hover) {
   .pc-page .pc-service-cta:hover {
-    border-color: var(--ce-pr-navy-800);
-    background: var(--ce-pr-navy-800);
+    border-color: var(--ce-pr-signal);
+    background: var(--ce-pr-signal);
     color: var(--ce-color-text-inverse);
   }
 }
@@ -2786,9 +2787,9 @@
   margin-top: var(--ce-space-6);
 }
 
-/* „Demo ansehen“ ist ein Link: in der Navy-Kontur der Zweitaktion, nicht in der Linkfarbe der Seite. */
+/* „Demo ansehen“ ist ein Link: in der blauen Kontur der Zweitaktion. */
 .pc-page .pc-dialog-aktionen a.pc-button--secondary {
-  color: var(--ce-pr-navy-800);
+  color: var(--ce-pr-signal-ink);
 }
 
 @media (max-width: 599px) {

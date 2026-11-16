@@ -856,12 +856,14 @@
      unveränderter Zeilenhöhe von 20 px; kleine Knöpfe 14 px. Nur Badges und Status bleiben bei 13 px. */
   --ce-font-sans: 'Instrument Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --ce-font-numeric: 'Instrument Sans', system-ui, sans-serif;
-  --ce-pr-font-display: 'Instrument Sans', system-ui, sans-serif;
-  --ce-pr-display-stretch: 96%;         /* Display und Seitentitel: kaum schmaler — präzise statt gepresst */
+  /* Blue Light (Betreiberauftrag „Final Master Release“, 2026-11-16): Bühnentitel der Anmeldung und des Preisrechners in
+     Host Grotesk wie die Titel der Designfamilie (fonts.css); ohne Breitenachse, daher 100 %. */
+  --ce-pr-font-display: 'Host Grotesk', 'Instrument Sans', system-ui, sans-serif;
+  --ce-pr-display-stretch: 100%;         /* Display und Seitentitel: kaum schmaler — präzise statt gepresst */
   --ce-text-display-xl-size: 2.5rem;    --ce-text-display-xl-size-mobile: 2rem;      --ce-text-display-xl-line: 1.1;
-  --ce-text-display-xl-weight: 700;     --ce-text-display-xl-tracking: -0.024em;
+  --ce-text-display-xl-weight: 500;     --ce-text-display-xl-tracking: -0.024em;
   --ce-text-display-l-size: 2.25rem;    --ce-text-display-l-size-mobile: 1.75rem;    --ce-text-display-l-line: 1.1667;
-  --ce-text-display-l-weight: 700;      --ce-text-display-l-tracking: -0.02em;
+  --ce-text-display-l-weight: 500;      --ce-text-display-l-tracking: -0.02em;
   --ce-text-title-page-size: 2.25rem;   --ce-text-title-page-size-mobile: 1.75rem;   --ce-text-title-page-weight: 700;
   --ce-text-title-page-line: 1.1667;    --ce-text-title-page-line-mobile: 1.2143;    --ce-text-title-page-tracking: -0.02em;
   --ce-text-title-page-tracking-mobile: -0.018em;

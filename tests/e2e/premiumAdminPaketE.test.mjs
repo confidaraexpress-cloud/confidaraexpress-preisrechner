@@ -107,12 +107,14 @@ test("1 — der aktive Navigationseintrag ist mehrfach codiert", async () => {
   await aktiv.waitFor({ state: "visible" });
   const stil = await aktiv.evaluate((el) => {
     const s = getComputedStyle(el);
-    return { bg: s.backgroundColor, color: s.color, weight: s.fontWeight, current: el.getAttribute("aria-current") };
+    return { bg: `${s.backgroundColor} ${s.backgroundImage}`, color: s.color, weight: s.fontWeight, current: el.getAttribute("aria-current") };
   });
   const inaktiv = await page.locator(".adm-nitem:not(.adm-nitem-on)").first().evaluate((el) => {
     const s = getComputedStyle(el);
-    return { bg: s.backgroundColor, color: s.color, weight: s.fontWeight };
+    return { bg: `${s.backgroundColor} ${s.backgroundImage}`, color: s.color, weight: s.fontWeight };
   });
+  // Blue Light (2026-11-16): Die Fläche des aktiven Eintrags ist ein Verlauf (Blauglas mit Lichtkante) — verglichen wird
+  // die ganze gemalte Fläche, Farbe und Bild.
   assert.notEqual(stil.bg, inaktiv.bg, "der aktive Eintrag hat keine eigene Fläche");
   assert.notEqual(stil.color, inaktiv.color, "der aktive Eintrag hat keine eigene Textfarbe");
   assert.notEqual(stil.weight, inaktiv.weight, "der aktive Eintrag hat keinen eigenen Schriftschnitt");

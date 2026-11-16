@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { AdminSidebar, ADMIN_NAV_ID } from "./AdminSidebar";
+import { useCeBereich } from "../../hooks/useCeBereich";
 import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
 import { Icon, ICON_SIZE } from "../ui/Icon";
 
@@ -15,6 +16,8 @@ import { Icon, ICON_SIZE } from "../ui/Icon";
 // Hamburger-Symbol (statt des Textknopfs „Menü“) — mit unverändertem
 // zugänglichem Namen, aria-expanded und aria-controls auf den Drawer.
 export function AdminLayout() {
+  // Bereich „admin“ der Designfamilie Blue Light (hooks/useCeBereich.js; kunde-obsidian.css, Abschnitt 12).
+  useCeBereich("admin");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { pathname } = useLocation();
   const close = () => setSidebarOpen(false);

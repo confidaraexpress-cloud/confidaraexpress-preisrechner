@@ -2,6 +2,7 @@ import React from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { BrandLogo } from "../ui/BrandLogo";
+import { useCeBereich } from "../../hooks/useCeBereich";
 import { Footer } from "./Footer";
 import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
 import { landingPathFor } from "../../utils/roleLanding.mjs";
@@ -91,6 +92,8 @@ function Navbar() {
 }
 
 export function NavbarLayout() {
+  // Bereich „oeffentlich“ der Designfamilie Blue Light (hooks/useCeBereich.js; kunde-obsidian.css, Abschnitt 14).
+  useCeBereich("oeffentlich");
   const { pathname } = useLocation();
   return (
     <>

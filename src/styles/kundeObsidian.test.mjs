@@ -4,15 +4,18 @@
 // bereichsübergreifenden Design-Tests (designSystemClosure, designTokens, interfacePatterns, typography,
 // premiumRedesign) führen kunde-obsidian.css und kunde-schriften.css als dokumentierte Ausnahme und verweisen für
 // deren Grenzen hierher:
-//   • jede Regel hängt an :root[data-ce-bereich="kunde"] — Admin, Partnerportal, Anmeldung und öffentliche Seiten
-//     lesen die Ebene nie; einzige Ausnahme ist der Ladebildschirm der Kundenpfade;
-//   • Foundation-Tokens werden nur im Tokenblock des Bereichs umgeordnet, Layout-Tokens gar nicht;
+//   • jede Regel hängt an der Designfamilie (:root[data-ce-familie="blue-light"]: Kundenbereich, Adminpanel,
+//     Partnerportal, öffentliche Seiten — Betreiberauftrag „Final Master Release“, 2026-11-16) oder an einem ihrer
+//     Bereiche; Anmeldung, Admin-Anmeldung und Preisrechner lesen die Ebene nie; einzige Ausnahme ist der
+//     Ladebildschirm der Kundenpfade;
+//   • Foundation-Tokens werden nur in den Tokenblöcken der Familie und des Kundenbereichs umgeordnet, Layout-Tokens
+//     gar nicht;
 //   • Tiefe, Glas und Unschärfe nur über Token, Schatten kühl (neutral oder Confidara-Blau), kein Schleier mit
 //     Weichzeichnung;
 //   • jede Animation nur ohne Wunsch nach reduzierter Bewegung; die ganze Ebene nur für den Bildschirm;
 //   • Geometrie (Radien) und Produktschrift bleiben die des Bereichs;
 //   • zwei zusätzliche OFL-Schriften, lokal, mit Lizenztext; keine fremde Quelle, keine fremde Marke;
-//   • nur das Hauptbündel lädt die Ebene, der öffentliche Preisrechner nicht.
+//   • nur das Hauptbündel lädt die Ebene, der öffentliche Preisrechner nicht (Host Grotesk lädt er über fonts.css).
 //
 // Run: node --test src/styles/kundeObsidian.test.mjs
 import test from "node:test";
@@ -24,6 +27,9 @@ const ohneKommentare = (css) => css.replace(/\/\*[\s\S]*?\*\//g, "");
 const OBSIDIAN = ohneKommentare(read("./kunde-obsidian.css"));
 const SCHRIFTEN = ohneKommentare(read("./kunde-schriften.css"));
 const BEREICH = ':root[data-ce-bereich="kunde"]';
+const FAMILIE = ':root[data-ce-familie="blue-light"]';
+// Die Bereiche der Familie (hooks/useCeBereich.js, BLUE_LIGHT_FAMILIE) — nur sie tragen eigene Regeln der Ebene.
+const FAMILIENBEREICHE = ["kunde", "admin", "partner", "oeffentlich"].map((b) => `:root[data-ce-bereich="${b}"]`);
 
 /** Zerlegt CSS in Regeln { selektor, rumpf, kontext }: @media/@supports werden geöffnet, @keyframes bleibt ganz. */
 function regeln(css, kontext = []) {
@@ -67,21 +73,26 @@ const REGELN = regeln(OBSIDIAN);
 const KEYFRAMES = REGELN.filter((r) => r.selektor.startsWith("@keyframes"));
 const STILREGELN = REGELN.filter((r) => !r.selektor.startsWith("@keyframes"));
 
-test("O1 — jede Regel hängt am Kundenbereich; einzige Ausnahme ist der Ladebildschirm der Kundenpfade", () => {
-  // Der Leser erfasst die Datei vollständig: vom Tokenblock bis zur letzten Regel (Ladebildschirm).
+test("O1 — jede Regel hängt an der Familie Blue Light oder einem ihrer Bereiche; einzige Ausnahme ist der Ladebildschirm", () => {
+  // Der Leser erfasst die Datei vollständig: vom Tokenblock der Familie bis zur letzten Regel (Ladebildschirm).
   assert.ok(STILREGELN.length > 100, "die Ebene wurde nicht vollständig gelesen");
-  assert.equal(STILREGELN[0].selektor, BEREICH);
+  assert.equal(STILREGELN[0].selektor, FAMILIE);
+  assert.equal(STILREGELN.filter((r) => r.selektor === BEREICH).length, 1, "genau ein Tokenblock des Kundenbereichs");
+  // Die hook-gesetzten Werte und die der Ebene laufen nicht auseinander.
+  const hook = readFileSync(new URL("../hooks/useCeBereich.js", import.meta.url), "utf8");
+  assert.match(hook, /BLUE_LIGHT_FAMILIE = Object\.freeze\(\["kunde", "admin", "partner", "oeffentlich"\]\)/);
+  assert.match(hook, /setAttribute\("data-ce-familie", "blue-light"\)/);
   assert.equal(STILREGELN.at(-1).selektor, ".loading-screen.loading-screen--kunde");
   const fremd = [];
   const ladeschirm = [];
   for (const r of STILREGELN) {
     for (const s of teile(r.selektor)) {
-      if (s.startsWith(BEREICH)) continue;
+      if (s.startsWith(FAMILIE) || FAMILIENBEREICHE.some((b) => s.startsWith(b))) continue;
       if (s === ".loading-screen.loading-screen--kunde") { ladeschirm.push(r.rumpf.trim()); continue; }
       fremd.push(s);
     }
   }
-  assert.deepEqual(fremd, [], `Selektoren außerhalb des Kundenbereichs:\n  ${fremd.join("\n  ")}`);
+  assert.deepEqual(fremd, [], `Selektoren außerhalb der Familie:\n  ${fremd.join("\n  ")}`);
   // Nur für den Bildschirm: Gedruckt gelten die Druckregeln der Plattform (helles Blatt, dunkle Schrift) — sonst
   // druckte die helle Tinte auf weißes Papier (E2E buchungsschritte S3/S4). Darum keine eigene Druckregel.
   const ausserhalbBildschirm = REGELN.filter((r) => r.kontext[0] !== "@media screen").map((r) => r.selektor.slice(0, 80));
@@ -95,14 +106,14 @@ test("O1 — jede Regel hängt am Kundenbereich; einzige Ausnahme ist der Ladebi
   for (const k of KEYFRAMES) assert.match(k.selektor, /^@keyframes ce-ob-[\w-]+$/, k.selektor);
 });
 
-test("O2 — Foundation-Tokens werden nur im Tokenblock des Bereichs umgeordnet, Layout-Tokens gar nicht", () => {
+test("O2 — Foundation-Tokens werden nur in den Tokenblöcken der Familie und des Kundenbereichs umgeordnet, Layout-Tokens gar nicht", () => {
   const FOUNDATION = /--(ce-(?:color|radius|elevation|space|size|z|bp|font|text)-[\w-]+)\s*:/g;
   const ausserhalb = [];
   let umgeordnet = 0;
   for (const r of STILREGELN) {
     const treffer = [...r.rumpf.matchAll(FOUNDATION)].map((m) => m[1]);
     if (!treffer.length) continue;
-    if (r.selektor === BEREICH && r.kontext.join("|") === "@media screen") { umgeordnet += treffer.length; continue; }
+    if ((r.selektor === FAMILIE || r.selektor === BEREICH) && r.kontext.join("|") === "@media screen") { umgeordnet += treffer.length; continue; }
     ausserhalb.push(`${r.selektor.slice(0, 80)}: ${treffer.join(", ")}`);
   }
   assert.deepEqual(ausserhalb, [], `Foundation-Tokens außerhalb des Tokenblocks:\n  ${ausserhalb.join("\n  ")}`);
@@ -196,8 +207,12 @@ test("O4 — Schattentöne sind kühl; farbiges Licht gibt es nur als Zustand de
 });
 
 test("O5 — Schriften: Arbeit in Instrument Sans, dazu zwei OFL-Familien, lokal, mit Lizenztext; Rollen über Tokens", () => {
-  const bloecke = regeln(SCHRIFTEN);
-  assert.equal(bloecke.length, 4, "je Familie zwei Schnitte (latin, latin-ext)");
+  // Blue Light (2026-11-16): Host Grotesk ist Titelschrift der Plattform und steht in fonts.css (beide Bündel);
+  // kunde-schriften.css trägt nur noch Instrument Serif (Begrüßung, Buchungserfolg).
+  const plattform = regeln(ohneKommentare(read("./fonts.css"))).filter((r) => /font-family:\s*'Host Grotesk'/.test(r.rumpf));
+  assert.equal(plattform.length, 2, "Host Grotesk: zwei Schnitte (latin, latin-ext) in fonts.css");
+  const bloecke = [...regeln(SCHRIFTEN), ...plattform];
+  assert.equal(regeln(SCHRIFTEN).length, 2, "kunde-schriften.css: Instrument Serif in zwei Schnitten");
   assert.deepEqual([...new Set(bloecke.map((r) => r.rumpf.match(/font-family:\s*'([^']+)'/)[1]))].sort(),
     ["Host Grotesk", "Instrument Serif"]);
   for (const r of bloecke) {
@@ -234,6 +249,8 @@ test("O5 — Schriften: Arbeit in Instrument Sans, dazu zwei OFL-Familien, lokal
 test("O6 — nur das Hauptbündel lädt die Ebene; der öffentliche Preisrechner nicht", () => {
   const index = read("./index.css");
   assert.match(index, /@import '\.\/kunde-schriften\.css';\s*@import '\.\/kunde-obsidian\.css';\s*$/);
+  // Blue Light (2026-11-16): Host Grotesk für die Displayrolle des Rechners kommt aus fonts.css; Instrument Serif und
+  // die Gestaltungsebene bleiben draußen (Bündelbudget, E2E publicCalculatorBuild B2).
   assert.doesNotMatch(ohneKommentare(read("./public-calculator.css")), /kunde-(?:obsidian|schriften)\.css|index\.css/);
   assert.doesNotMatch(read("../public-calculator/main.jsx"), /styles\/index\.css|kunde-/);
   for (const f of readdirSync(new URL("./", import.meta.url)).filter((f) => f.endsWith(".css") && f !== "index.css")) {

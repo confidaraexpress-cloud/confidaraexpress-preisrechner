@@ -1,8 +1,8 @@
 /* Self-hosted webfonts (DSGVO: no external Google Fonts request).
    Latin subset covers German typography incl. äöüß, „ " – € ™ (Google latin unicode-range). */
 
-/* Confidara Signature Typography (Betreiberentscheidungen D1/D3, 2026-11-13): Instrument Sans ist die einzige
-   Schrift der Plattform — Kundenbereich, Anmeldung, Preisrechner, Admin, Partnerportal, Partnerregistrierung und
+/* Confidara Signature Typography (Betreiberentscheidungen D1/D3, 2026-11-13): Instrument Sans ist die Produktschrift
+   der Plattform — Kundenbereich, Anmeldung, Preisrechner, Admin, Partnerportal, Partnerregistrierung und
    die öffentlichen Leseseiten. DM Sans (bisher Admin, Partner, öffentliche Seiten) und Cormorant Garamond (bisher
    nur der Titel der Partnerregistrierung) sind entfallen; ihre Dateien liegen nicht mehr im Repository.
    Variabel in Gewicht (400–700) und Breite (75–100 %): jedes Zwischengewicht der Gewichtsleiter (450, 550, 620 …)
@@ -26,5 +26,29 @@
   font-stretch: 75% 100%;
   font-display: swap;
   src: url('../assets/fonts/instrumentsans-var.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Host Grotesk — Titelschrift der Familie Blue Light (Betreiberauftrag „Final Master Release“, 2026-11-16): Seitentitel
+   in Kundenbereich, Adminpanel, Partnerportal und auf den öffentlichen Seiten, die Bühnentitel der Anmeldung und des
+   Preisrechners (--ce-ob-schrift-titel, --ce-pr-font-display). Arbeit, Beträge und Kennungen bleiben in Instrument
+   Sans. Seit Confidara Obsidian (2026-11-15) im Repository, bis 2026-11-16 nur vom Kundenbereich geladen
+   (kunde-schriften.css). Variabel in Gewicht (300–800), ohne Breitenachse. Der Browser lädt sie erst, wenn ein
+   Element sie trägt; die Admin-Anmeldung trägt sie nicht. Lizenz: SIL Open Font License 1.1
+   (docs/lizenzen/OFL-HostGrotesk.txt). */
+@font-face {
+  font-family: 'Host Grotesk';
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url('../assets/fonts/hostgrotesk-var-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Host Grotesk';
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url('../assets/fonts/hostgrotesk-var.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }

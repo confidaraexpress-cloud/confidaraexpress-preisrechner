@@ -512,15 +512,18 @@ test("12 — die Primitive-Regeln nutzen kein font-weight 700", () => {
   const fonts = stripComments(read("./fonts.css"));
   const flaechen = [...fonts.matchAll(/@font-face\s*\{([^}]*)\}/g)].map((m) => m[1]);
   const familien = [...new Set(flaechen.map((b) => (b.match(/font-family:\s*'([^']+)'/) || [])[1]))];
-  assert.deepEqual(familien, ["Instrument Sans"], `geladene Familien: ${familien.join(", ")}`);
+  // Blue Light (Betreiberauftrag „Final Master Release“, 2026-11-16): dazu Host Grotesk, die Titelschrift der Plattform
+  // (seit 2026-11-15 im Repository, bis dahin nur in kunde-schriften.css) — ebenfalls genau mit der Achse ihrer Datei.
+  assert.deepEqual(familien, ["Instrument Sans", "Host Grotesk"], `geladene Familien: ${familien.join(", ")}`);
   const gewichte = flaechen.map((b) => (b.match(/font-weight:\s*([^;]+);/) || [])[1]?.trim());
-  assert.deepEqual(gewichte, ["400 700", "400 700"], `Gewichtsangaben der @font-face-Regeln: ${gewichte.join(", ")}`);
+  assert.deepEqual(gewichte, ["400 700", "400 700", "300 800", "300 800"], `Gewichtsangaben der @font-face-Regeln: ${gewichte.join(", ")}`);
   // Keine neue oder ersetzte Schriftdatei.
   const dateien = [...fonts.matchAll(/url\('\.\.\/assets\/fonts\/([^']+)'\)/g)].map((m) => m[1]);
   // Premium-Redesign (Betreiberentscheidung 2026-10-27): Instrument Sans kam bewusst hinzu (variabel, Latin und
   // Latin-Erweiterung, SIL OFL 1.1, docs/lizenzen/OFL-InstrumentSans.txt). Am 2026-11-13 sind die Dateien von
   // DM Sans und Cormorant Garamond entfallen; ersetzt wurde keine Datei.
   assert.deepEqual([...new Set(dateien)].sort(), [
+    "hostgrotesk-var-latin-ext.woff2", "hostgrotesk-var.woff2",
     "instrumentsans-var-latin-ext.woff2", "instrumentsans-var.woff2",
   ], "es wird keine Schriftdatei ohne Entscheidung hinzugefügt und keine ersetzt");
   // Und keine @font-face-Regel verweist auf eine Datei, die es nicht gibt.

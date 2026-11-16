@@ -3,8 +3,9 @@
 // Zwei Stufen derselben Markenfläche: die Übersicht trägt die kräftige Fassung („Signature Overview“), jede übrige Seite des
 // Kundenbereichs die leise Arbeitsfläche („Premium Workspace“). Geprüft wird, was eine Quelltextprüfung nicht erreicht:
 // welche Fläche der Browser auf jeder Kundenseite tatsächlich malt (beide Kunden-Shells, Desktop und Telefon), dass ein
-// Seitenwechsel ohne Neuladen nie einen falschen oder doppelten Hintergrund stehen lässt, dass Anmeldung, öffentliche
-// Seiten, Admin und Partnerportal keine der beiden Flächen bekommen, dass alle vier Kennzahlen der Übersicht exakt
+// Seitenwechsel ohne Neuladen nie einen falschen oder doppelten Hintergrund stehen lässt, dass Anmeldung und
+// Partnerregistrierung keine der beiden Flächen bekommen und öffentliche Seiten, Admin und Partnerportal seit Blue Light
+// (2026-11-16) nur den Grund der Designfamilie, dass alle vier Kennzahlen der Übersicht exakt
 // dieselbe Zahlenfarbe tragen — auch „Verzögert“, bei 0, über 0 und ohne Wert —, und dass die Übersicht seit dem Abschluss
 // (Betreiberentscheidung 2026-11-02) kein dekoratives CE-Monogramm mehr trägt, das offizielle Logo aber unverändert steht.
 import { test } from "node:test";
@@ -254,9 +255,12 @@ test("D — Kennzahlen: alle vier Zahlen exakt in derselben dunklen Navy-Farbe, 
   }
 });
 
-test("E — Anmeldung, öffentliche Seiten, Admin und Partnerportal bekommen keine der beiden Flächen", async () => {
-  const ohneFlaeche = async (page, wo) => {
-    const befund = await page.evaluate(() => {
+test("E — Anmeldung und Partnerregistrierung ohne die Flächen; öffentliche Seiten, Admin und Partnerportal nur mit dem Grund der Familie", async () => {
+  // Blue Light (Betreiberauftrag „Final Master Release“, 2026-11-16): Öffentliche Seiten, Admin und Partnerportal gehören
+  // zur Designfamilie und stehen auf ihrem Grund (Blauweiß #F5F8FF); die beiden Flächen des Kundenbereichs bekommen sie
+  // weiterhin nicht. Anmeldung, Registrierung, Partnerregistrierung und das Ende der Demo gehören nicht zur Familie.
+  const ohneFlaeche = async (page, wo, { familie = false } = {}) => {
+    const befund = await page.evaluate((familie) => {
       const rgb = (hex) => { const n = parseInt(hex.trim().slice(1), 16); return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`; };
       const root = getComputedStyle(document.documentElement);
       // Die Sollfarben stehen nur im Bereichs-Scope; außerhalb davon die bekannten Werte (Gegenprobe gegen die Tokens im Test C).
@@ -265,11 +269,17 @@ test("E — Anmeldung, öffentliche Seiten, Admin und Partnerportal bekommen kei
       // Confidara Premium Blue Light (2026-11-16): auch der Grund der Ebene (Blauweiß #F5F8FF) gehört nur in den
       // Kundenbereich. Sein Token steht nur im Bereichs-Scope, deshalb hier als bekannter Wert.
       const grundEbene = "rgb(245, 248, 255)";
-      const treffer = [...document.querySelectorAll("body, body *")].filter((e) => [arbeit, signatur, grundEbene].includes(getComputedStyle(e).backgroundColor))
-        .map((e) => `${e.tagName.toLowerCase()}.${[...e.classList].join(".")}`);
-      return { bereich: document.documentElement.getAttribute("data-ce-bereich"), treffer, ov: !!document.querySelector(".ov-page") };
-    });
+      const verboten = familie ? [arbeit, signatur] : [arbeit, signatur, grundEbene];
+      const alle = [...document.querySelectorAll("body, body *")];
+      const name = (e) => `${e.tagName.toLowerCase()}.${[...e.classList].join(".")}`;
+      const treffer = alle.filter((e) => verboten.includes(getComputedStyle(e).backgroundColor)).map(name);
+      const grund = alle.filter((e) => getComputedStyle(e).backgroundColor === grundEbene).map(name);
+      return { bereich: document.documentElement.getAttribute("data-ce-bereich"),
+        familie: document.documentElement.getAttribute("data-ce-familie"), treffer, grund, ov: !!document.querySelector(".ov-page") };
+    }, familie);
     assert.notEqual(befund.bereich, "kunde", `${wo}: trägt den Kundenbereich`);
+    assert.equal(befund.familie, familie ? "blue-light" : null, `${wo}: Designfamilie ${befund.familie}`);
+    if (familie) assert.ok(befund.grund.length > 0, `${wo}: der Grund der Designfamilie fehlt`);
     assert.deepEqual(befund.treffer, [], `${wo}: Fläche des Kundenbereichs auf ${befund.treffer.join(", ")}`);
     assert.equal(befund.ov, false);
   };
@@ -286,11 +296,11 @@ test("E — Anmeldung, öffentliche Seiten, Admin und Partnerportal bekommen kei
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   });
   try {
-    for (const [wo, ziel, sel] of [["Anmeldung", "/login", "form"], ["Registrierung", "/register", "form"], ["Sendungsverfolgung (öffentlich)", "/tracking", "h1"], ["Partnerregistrierung", "/partner-registrieren", "h1"]]) {
+    for (const [wo, ziel, sel, familie] of [["Anmeldung", "/login", "form", false], ["Registrierung", "/register", "form", false], ["Sendungsverfolgung (öffentlich)", "/tracking", "h1", true], ["Partnerregistrierung", "/partner-registrieren", "h1", false]]) {
       await oeffentlich.goto(`${BASE}${ziel}`, { waitUntil: "domcontentloaded" });
       await oeffentlich.waitForSelector(sel, { timeout: 30000 });
       await oeffentlich.waitForTimeout(300);
-      await ohneFlaeche(oeffentlich, wo);
+      await ohneFlaeche(oeffentlich, wo, { familie });
     }
     // Die Demo verlassen: „Abmelden“ beendet sie — der Bereich und seine Fläche gehen mit.
     await oeffentlich.goto(`${BASE}${ARBEITSSEITEN.Rechnungen}`, { waitUntil: "domcontentloaded" });
@@ -314,7 +324,7 @@ test("E — Anmeldung, öffentliche Seiten, Admin und Partnerportal bekommen kei
       await page.waitForURL(new RegExp(`${ziel}$`), { timeout: 30000 });
       await page.waitForSelector(warte, { timeout: 30000 });
       await page.waitForTimeout(500);
-      await ohneFlaeche(page, wo);
+      await ohneFlaeche(page, wo, { familie: true });
     } finally { await page.close(); }
   }
 });

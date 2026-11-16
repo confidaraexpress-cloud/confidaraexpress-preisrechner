@@ -202,13 +202,15 @@ test("6 — es wird nur die eine benutzte Schriftfamilie geladen", () => {
   const familien = [...new Set([...fonts.matchAll(/font-family:\s*'([^']+)'/g)].map((m) => m[1]))].sort();
   // Premium-Redesign (Betreiberentscheidung 2026-10-27): Instrument Sans für Kunde, Anmeldung und Preisrechner.
   // Seit D1/D3 (Betreiberentscheidung 2026-11-13) für die ganze Plattform; DM Sans und Cormorant sind entfernt.
-  assert.deepEqual(familien, ["Instrument Sans"]);
+  // Blue Light (Betreiberauftrag „Final Master Release“, 2026-11-16): dazu Host Grotesk, die Titelschrift der Plattform.
+  assert.deepEqual(familien, ["Host Grotesk", "Instrument Sans"]);
   // Confidara Obsidian (Betreiberauftrag 2026-11-15): Der Kundenbereich liest weiter Instrument Sans für die Arbeit und
   // lädt dazu zwei Familien (OFL, lokal) aus kunde-schriften.css — Host Grotesk für Überschriften, Instrument Serif für
   // die Begrüßung; nur im Hauptbündel, nie im Preisrechner. Rollen, Lizenzen und Bündel prüft kundeObsidian.test.mjs.
   const kundeSchriften = ohneKommentare(read("./kunde-schriften.css"));
+  // Seit Blue Light trägt kunde-schriften.css nur noch Instrument Serif (Host Grotesk steht in fonts.css).
   assert.deepEqual([...new Set([...kundeSchriften.matchAll(/font-family:\s*'([^']+)'/g)].map((m) => m[1]))].sort(),
-    ["Host Grotesk", "Instrument Serif"]);
+    ["Instrument Serif"]);
   // Jede geladene Datei existiert, und es liegt keine ungenutzte Datei herum.
   const geladen = new Set([...`${fonts}\n${kundeSchriften}`.matchAll(/url\('\.\.\/assets\/fonts\/([^']+)'\)/g)].map((m) => m[1]));
   const vorhanden = new Set(readdirSync(new URL("../assets/fonts/", import.meta.url)));
@@ -225,7 +227,8 @@ test("6 — es wird nur die eine benutzte Schriftfamilie geladen", () => {
   }
   // Jede @font-face-Regel deklariert genau die Achse der Datei — kein Gewicht, das die Datei nicht trägt.
   const achsen = [...fonts.matchAll(/font-weight:\s*([^;]+);/g)].map((m) => m[1].trim());
-  assert.ok(achsen.length > 0 && achsen.every((a) => a === "400 700"),
+  // Blue Light (2026-11-16): Instrument Sans 400–700, Host Grotesk (Titelschrift der Plattform) 300–800.
+  assert.deepEqual(achsen, ["400 700", "400 700", "300 800", "300 800"],
     `Gewichtsangaben der @font-face-Regeln: ${achsen.join(", ")}`);
 });
 

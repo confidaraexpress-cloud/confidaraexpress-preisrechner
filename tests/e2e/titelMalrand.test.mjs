@@ -48,8 +48,11 @@ const ADMIN = { id: 1, email: "admin@confidaraexpress.de", company_name: "Confid
   name: "Anna Admin", role: "admin", status: "approved", country: "DE" };
 
 const SEITEN = [
+  // Kundenbereich: Die Gestaltungsebene kunde-obsidian.css (Confidara Obsidian 2026-11-15, Farben seit Confidara Premium
+  // Blue Light 2026-11-16) setzt die Seitentitel in Host Grotesk. Sie zeichnet Unterlängen und Akzente höher, deshalb
+  // setzt die Ebene den Malrand auf 0,2 em; das ist der Vertrag dieser Seite.
   { id: "kunde-sendungen", name: "Kundenbereich, Sendungen", material: "signatur", basis: BASE,
-    pfad: "/demo/dashboard?page=shipments", titel: ".main-content .ce-page-header-title" },
+    pfad: "/demo/dashboard?page=shipments", titel: ".main-content .ce-page-header-title", malrandEm: 0.2 },
   { id: "sendungsverfolgung", name: "Sendungsverfolgung", material: "signatur", basis: BASE, pfad: "/tracking", titel: ".tracking-title" },
   { id: "versicherungsinfo", name: "Versicherungsinformationen", material: "signatur", basis: BASE,
     pfad: "/versicherungsinformationen", titel: ".insinfo-title" },
@@ -71,7 +74,10 @@ const OHNE_MALRAND = { "--titel-malrand": "0px" };
 // Plus ganze Pixel statt eines anderen em-Werts: Die Rahmenbox beginnt dann im selben Bruchteil eines Gerätepixels, und
 // die Kanten werden gleich gerastert. Mit 0,5 em wich helle Schrift auf Navy an einzelnen Kantenpixeln ab (Anmeldung
 // 1440 px: 25 Pixel mitten in der Zeile), obwohl nichts abgeschnitten war.
-const UNBEGRENZT = { "--titel-malrand": "calc(0.14em + 32px)" };
+// Seiten mit eigenem Malrand (malrandEm) rechnen von dessen Wert aus, sonst begänne die Rahmenbox in einem anderen
+// Bruchteil.
+const malrandEm = (seite) => seite.malrandEm ?? MALRAND_EM;
+const unbegrenztFuer = (seite) => ({ "--titel-malrand": `calc(${malrandEm(seite)}em + 32px)` });
 
 function chromiumExecutablePath() {
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH;
@@ -260,7 +266,7 @@ for (const seite of SEITEN) {
         const mit = await messe(page);
 
         // 3. Werte und Material
-        const malrand = MALRAND_EM * mit.fs;
+        const malrand = malrandEm(seite) * mit.fs;
         assert.ok(nah(mit.pt, malrand + mit.polster, 0.02), `${fall}: Innenabstand oben ${mit.pt} statt ${malrand + mit.polster}`);
         assert.ok(nah(mit.pb, malrand, 0.02), `${fall}: Innenabstand unten ${mit.pb} statt ${malrand}`);
         assert.ok(nah(mit.mt, -malrand, 0.02), `${fall}: Außenabstand oben ${mit.mt} statt ${-malrand}`);
@@ -284,7 +290,7 @@ for (const seite of SEITEN) {
         // 1. Vollständigkeit
         const clip = ausschnitt(mit);
         const leer = await foto(page, clip, LEER);
-        const unbegrenzt = await foto(page, clip, { ...MATERIAL, ...UNBEGRENZT });
+        const unbegrenzt = await foto(page, clip, { ...MATERIAL, ...unbegrenztFuer(seite) });
         const material = await foto(page, clip, MATERIAL);
         const ohneMalrand = await foto(page, clip, { ...MATERIAL, ...OHNE_MALRAND });
         await setzeStil(page, {});

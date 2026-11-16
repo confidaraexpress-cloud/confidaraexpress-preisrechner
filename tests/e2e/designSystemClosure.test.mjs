@@ -257,9 +257,9 @@ test("5 — Marke, aktive Navigation und Fokus laufen auf dem Confidara-Blau", a
   assert.equal(marke.bereich, "kunde");
   assert.equal(marke.wert, "#004afc");
 
-  // Der aktive Navigationseintrag der schwarzen Seitenleiste (Confidara Obsidian, Betreiberauftrag 2026-11-15; bis
-  // dahin Navy-Sidebar mit Gewicht 650 und 3-px-Markenstreifen): Die Glasfläche mit Lichtkante markiert die Seite
-  // allein — weiß, im Gewicht der übrigen Einträge (kein Gewichtssprung), ohne Seitenbalken.
+  // Der aktive Navigationseintrag der Seitenleiste (seit Confidara Obsidian, Betreiberauftrag 2026-11-15, ohne
+  // Gewichtssprung und ohne 3-px-Markenstreifen; seit Premium Blue Light, 2026-11-16, wieder auf Navy): Das Blauglas
+  // mit Lichtkante markiert die Seite allein — weiß, im Gewicht der übrigen Einträge, ohne Seitenbalken.
   const aktiv = await page.evaluate(() => {
     const el = document.querySelector(".pp-nav .nitem.on");
     if (!el) return null;
@@ -276,8 +276,8 @@ test("5 — Marke, aktive Navigation und Fokus laufen auf dem Confidara-Blau", a
   assert.match(aktiv.schatten, /inset/, "die Lichtkante des aktiven Eintrags fehlt");
   assert.equal(aktiv.balken, "none", "der Seitenbalken ist zurück");
 
-  // Fokus im Inhaltsbereich: der Ring läuft in der Aufhellung des Confidara-Blaus (#5B8CFF, derselbe Farbton).
-  // #004AFC selbst erreicht auf den dunklen Flächen nur 2,8–3,4:1 — WCAG 1.4.11 verlangt 3:1 (Confidara Obsidian).
+  // Fokus im Inhaltsbereich: der Ring läuft im Confidara-Blau #004AFC — auf den hellen Flächen von Premium Blue Light
+  // (2026-11-16) 5,8:1 und mehr (die dunkle Fassung Obsidian nutzte die Aufhellung #5B8CFF).
   await page.locator(".ce-page-header .btn-primary").first().focus();
   await page.keyboard.press("Shift+Tab");
   await page.keyboard.press("Tab");
@@ -285,7 +285,7 @@ test("5 — Marke, aktive Navigation und Fokus laufen auf dem Confidara-Blau", a
     const el = document.activeElement;
     return el && el !== document.body ? getComputedStyle(el).outlineColor : null;
   });
-  assert.equal(fokus, "rgb(91, 140, 255)", "der Fokusring läuft nicht auf der Aufhellung des Confidara-Blaus");
+  assert.equal(fokus, "rgb(0, 74, 252)", "der Fokusring läuft nicht auf #004AFC");
 
   // Weder das Legacy-Blau #1d4ed8 = rgb(29, 78, 216) noch das zurückgenommene
   // Petrol #0b5d5b = rgb(11, 93, 91) darf in einer gerenderten Farbe auftauchen.

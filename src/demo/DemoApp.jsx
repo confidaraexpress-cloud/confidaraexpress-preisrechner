@@ -30,7 +30,7 @@ const DashboardPage     = React.lazy(() => import("../pages/DashboardPage"));
 const ProductDetailPage = React.lazy(() => import("../pages/inventory/ProductDetailPage"));
 const OrderDetailPage   = React.lazy(() => import("../pages/inventory/OrderDetailPage"));
 
-/** Ladefläche des Seitenwechsels: auf den Kundenpfaden auf dem Schwarz des Kundenbereichs (utils/kundenBereichPfad.mjs). */
+/** Ladefläche des Seitenwechsels: auf den Kundenpfaden auf dem Grund des Kundenbereichs (utils/kundenBereichPfad.mjs). */
 function DemoLadeflaeche() {
   const { pathname } = useLocation();
   return <LoadingScreen kunde={istKundenbereichPfad(pathname)} />;

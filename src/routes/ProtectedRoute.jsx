@@ -41,7 +41,7 @@ export function SessionCheckFailedView({
 export function ProtectedRoute({ children }) {
   const { authed, loadingUser, sessionCheckFailed, retrySessionCheck, logout, user } = useAuth();
   const location = useLocation();
-  // Nur Darstellung: auf den Kundenpfaden steht der Ladebildschirm auf dem Schwarz des Kundenbereichs.
+  // Nur Darstellung: auf den Kundenpfaden steht der Ladebildschirm auf dem Grund des Kundenbereichs.
   if (loadingUser) return <LoadingScreen kunde={istKundenbereichPfad(location.pathname)} />;
 
   if (sessionCheckFailed) {

@@ -272,11 +272,9 @@ test("S3/S4 — einmaliger Lichtlauf je Schritt, aus bei reduzierter Bewegung, K
     const kAktiv = await stil(k2), kOffen = await stil(k3);
     assert.equal(kAktiv.hinten, "none", "Kontrast: Lichtlauf");
     assert.equal(kAktiv.zeile, "rgb(255, 255, 255)");
-    // Confidara Obsidian (Betreiberauftrag 2026-11-15): Die Textfarbe des schwarzen Kundenbereichs ist Weiß (bis dahin
-    // Navy rgb(22, 34, 63)) — die Nebenzeile der offenen Karte steht in ihr.
-    const textfarbe = await page.evaluate(() => getComputedStyle(document.body).color);
-    assert.equal(textfarbe, "rgb(255, 255, 255)");
-    assert.equal(kOffen.zeile, textfarbe);
+    // Confidara Premium Blue Light (Betreiberauftrag 2026-11-16): Die Nebenzeile der offenen Karte steht wieder in der
+    // Navy-Textfarbe der Buchungsschritte (--ce-bk-text, Grundgestaltung) — in der dunklen Fassung Obsidian war es Weiß.
+    assert.equal(kOffen.zeile, "rgb(22, 34, 63)");
     assert.match(kAktiv.schatten, /0px 0px 0px 2px/);
     assert.equal(await page.$eval(k2, (e) => getComputedStyle(e, "::before").backgroundImage), "none");
     // Erzwungene Farben: Zustand in der Rahmenstärke, keine Ebenen.

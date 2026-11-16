@@ -1,9 +1,9 @@
-/* ── Die Pfade des Kundenbereichs (Confidara Obsidian, Betreiberauftrag 2026-11-15) ─────────────────────────────────
-   Der Kundenbereich ist schwarz. Bevor DashboardLayout bzw. DashboardPage <html data-ce-bereich="kunde"> setzen
-   (hooks/useCeBereich.js), zeigt die Anwendung den Ladebildschirm — während der Sitzungsprüfung und während der
-   Seitenblock nachlädt. Auf diesen Pfaden steht er auf demselben Schwarz (LoadingScreen `kunde`), sonst blitzte vor
-   jeder dunklen Seite eine helle Fläche auf. Nur Darstellung: keine Weiche, keine Berechtigung, kein Routing hängt
-   daran — ob eine Seite tatsächlich gerendert wird, entscheiden weiterhin Router und ProtectedRoute.
+/* ── Die Pfade des Kundenbereichs (Confidara Obsidian 2026-11-15, Premium Blue Light 2026-11-16) ─────────────────────
+   Der Kundenbereich hat einen eigenen Grund (Blauweiß, kunde-obsidian.css). Bevor DashboardLayout bzw. DashboardPage
+   <html data-ce-bereich="kunde"> setzen (hooks/useCeBereich.js), zeigt die Anwendung den Ladebildschirm — während der
+   Sitzungsprüfung und während der Seitenblock nachlädt. Auf diesen Pfaden steht er auf demselben Grund (LoadingScreen
+   `kunde`), sonst wechselte vor jeder Seite die Fläche. Nur Darstellung: keine Weiche, keine Berechtigung, kein Routing
+   hängt daran — ob eine Seite tatsächlich gerendert wird, entscheiden weiterhin Router und ProtectedRoute.
 
    Eine Quelle für App.jsx (Hauptanwendung) und demo/DemoApp.jsx bzw. main.jsx (Demo unter /demo, Pfad ohne Basis).
    Reine Funktion, kein React. */
@@ -25,8 +25,8 @@ export function ohneDemoBasis(pathname) {
 
 /* Bleibt der Bereich beim Abbau einer Seite stehen? Beim Seitenwechsel innerhalb des Kundenbereichs (Übersicht →
    Buchung) baut React die alte Seite ab, bevor die neue — oft erst nach dem Nachladen ihres Seitenblocks — den Bereich
-   wieder setzt. In dieser Lücke galt das Bild ohne Bereich: im schwarzen Kundenbereich ein heller Blitz, und
-   Bedienelemente mit Übergang blendeten von Hell auf Dunkel (gemessen: Schalter der Buchungsoptionen, 160 ms).
+   wieder setzt. In dieser Lücke galt das Bild ohne Bereich: ein Farbsprung (in der dunklen Fassung gemessen: ein
+   heller Blitz, Schalter der Buchungsoptionen blendeten 160 ms von Hell auf Dunkel).
    Gefragt wird nach dem Ziel der Navigation (window.location ist beim Abbau schon umgestellt). */
 export function bleibtImKundenbereich(bereich, pathname) {
   return bereich === "kunde" && istKundenbereichPfad(ohneDemoBasis(pathname));

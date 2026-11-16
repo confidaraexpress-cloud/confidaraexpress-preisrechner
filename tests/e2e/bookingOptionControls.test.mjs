@@ -192,11 +192,11 @@ test("3 — der Schalter tritt zurück, der Text führt", async () => {
 
 /* ══════════ Zustände ══════════ */
 
-// Confidara Obsidian (Betreiberauftrag 2026-11-15): Der Kundenbereich ist schwarz. AUS ist deshalb keine helle Fläche
-// mehr, sondern eine ruhige dunkle Spur; ihre dünne Kante trägt die Sichtbarkeit (WCAG 1.4.11: mindestens 3:1 gegen den
-// schwarzen Grund). Gemessen wird gleich nach dem Erscheinen: Die Spur steht ab dem ersten Bild dunkel — bis zur
-// Korrektur in hooks/useCeBereich.js blendete sie beim Seitenwechsel von Hell auf Dunkel (160 ms).
-test("4 — AUS ist eine ruhige dunkle Spur mit sichtbarer dünner Kante, AN ein ruhiges Blau", async () => {
+// Confidara Premium Blue Light (Betreiberauftrag 2026-11-16; davor Confidara Obsidian mit dunkler Spur): AUS ist eine
+// sehr helle eisblaue Spur; ihre dünne Kante trägt die Sichtbarkeit (WCAG 1.4.11: mindestens 3:1 gegen das weiße
+// Buchungsblatt). AN ist das Confidara-Blau. Gemessen wird gleich nach dem Erscheinen: Die Spur steht ab dem ersten
+// Bild in ihrer Farbe (hooks/useCeBereich.js hält den Bereich beim Seitenwechsel).
+test("4 — AUS ist eine sehr helle Spur mit sichtbarer dünner Kante, AN ein ruhiges Blau", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
   await setupRoutes(page);
   await zurBuchung(page);
@@ -208,10 +208,10 @@ test("4 — AUS ist eine ruhige dunkle Spur mit sichtbarer dünner Kante, AN ein
 
   const aus = await lies();
   const rgbAus = aus.bg.match(/\d+/g).map(Number);
-  assert.ok(rgbAus.every(k => k < 60), `AUS muss eine dunkle Spur sein, ist ${aus.bg}`);
+  assert.ok(rgbAus.every(k => k > 220), `AUS muss sehr hell sein, ist ${aus.bg}`);
   assert.equal(aus.border, "1px", "AUS braucht eine dünne Kante, um sichtbar zu bleiben");
-  assert.ok(kontrastVon(aus.borderColor, "rgb(0, 0, 0)") >= 3,
-    `die Kante der Spur hebt sich nur ${kontrastVon(aus.borderColor, "rgb(0, 0, 0)").toFixed(1)}:1 vom Grund ab`);
+  assert.ok(kontrastVon(aus.borderColor, "rgb(255, 255, 255)") >= 3,
+    `die Kante der Spur hebt sich nur ${kontrastVon(aus.borderColor, "rgb(255, 255, 255)").toFixed(1)}:1 vom Blatt ab`);
   assert.equal(aus.schatten, "none", "kein Schatten am Schalter");
 
   await schalte(page, TOGGLES[0], true);
@@ -323,11 +323,12 @@ const kontrastVon = (a, b) => {
   return (hell + 0.05) / (dunkel + 0.05);
 };
 
-// Confidara Obsidian (Betreiberauftrag 2026-11-15): Auf dem schwarzen Kundenbereich ist die Wahl eine blau getönte
-// dunkle Fläche (Logo-Blau mit Alpha) mit heller blauer Kante und weißer Schrift; die offene Option bleibt dunkel und
-// ruhig. Weil die Wahlfläche durchscheint, zählt die sichtbare Mischfarbe über den Flächen der Vorfahren. Eindeutigkeit
-// (Kante gegen Fläche, Innenring, Schriftkontrast, Unterschied zur offenen Option) gilt unverändert.
-test("9 — die aktive Wahl ist eindeutig: blau getönte Wahlfläche mit blauer Kante und weißer Schrift, die offene bleibt dunkel", async () => {
+// Confidara Premium Blue Light (Betreiberauftrag 2026-11-16; davor Confidara Obsidian mit blau getönter dunkler Wahl):
+// Die Wahl ist wieder die helle Wahlfläche des Premium Control System — Hellblau mit Kante im Confidara-Blau und
+// Schrift in Navy; die offene Option bleibt hell und ruhig. Gemessen wird die sichtbare Mischfarbe über den Flächen der
+// Vorfahren (eine durchscheinende Fläche zählt mit ihrem Grund). Eindeutigkeit (Kante gegen Fläche, Innenring,
+// Schriftkontrast, Unterschied zur offenen Option) gilt unverändert.
+test("9 — die aktive Wahl ist eindeutig: helle Wahlfläche mit blauer Kante und Navy-Schrift, die offene bleibt hell", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
   await setupRoutes(page);
   await zurBuchung(page);
@@ -336,14 +337,15 @@ test("9 — die aktive Wahl ist eindeutig: blau getönte Wahlfläche mit blauer 
 
   const stil = (sel) => page.locator(sel).first().evaluate((el) => {
     const s = getComputedStyle(el);
-    // Sichtbare Fläche: die eigene Farbe über den Flächen der Vorfahren gemischt, bis eine deckende kommt (sonst Schwarz).
+    // Sichtbare Fläche: die eigene Farbe über den Flächen der Vorfahren gemischt, bis eine deckende kommt (sonst die
+    // weiße Leinwand).
     const schichten = [];
     for (let e = el; e; e = e.parentElement) {
       const [r, g, b, a = 1] = (getComputedStyle(e).backgroundColor.match(/[\d.]+/g) || []).map(Number);
       if (a > 0) schichten.push([r, g, b, a]);
       if (a >= 1) break;
     }
-    let [r, g, b] = [0, 0, 0];
+    let [r, g, b] = [255, 255, 255];
     for (const [fr, fg, fb, fa] of schichten.reverse()) { r = fr * fa + r * (1 - fa); g = fg * fa + g * (1 - fa); b = fb * fa + b * (1 - fa); }
     return { bg: s.backgroundColor, farbe: s.color, borderBreite: s.borderTopWidth, kante: s.borderTopColor,
       ring: s.boxShadow, sichtbar: `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})` };
@@ -352,8 +354,8 @@ test("9 — die aktive Wahl ist eindeutig: blau getönte Wahlfläche mit blauer 
   const gewaehlt = await stil(".labelfmt-card--selected");
   assert.ok(parseFloat(gewaehlt.borderBreite) <= 1, `Kante ${gewaehlt.borderBreite} — zu kräftig`);
   const [wr, wg, wb] = gewaehlt.sichtbar.match(/\d+/g).map(Number);
-  assert.ok(leuchtdichte(gewaehlt.sichtbar) < 0.1 && wb > wr && wb > wg,
-    `die Wahlfläche muss dunkel und blau getönt sein (kein leuchtendes Segment), ist ${gewaehlt.sichtbar}`);
+  assert.ok(leuchtdichte(gewaehlt.sichtbar) > 0.8 && wb > wr && wb >= wg,
+    `die Wahlfläche muss hell und blau getönt sein (kein Navy-Segment), ist ${gewaehlt.sichtbar}`);
   assert.ok(kontrastVon(gewaehlt.kante, gewaehlt.sichtbar) >= 3,
     `die blaue Kante hebt sich nur ${kontrastVon(gewaehlt.kante, gewaehlt.sichtbar).toFixed(1)}:1 von der Wahlfläche ab`);
   assert.match(gewaehlt.ring, /inset/, "der Innenring fehlt — die Wahl hinge an einer einzelnen 1-px-Kante");
@@ -361,7 +363,7 @@ test("9 — die aktive Wahl ist eindeutig: blau getönte Wahlfläche mit blauer 
     `Schrift auf dem gewählten Segment ${kontrastVon(gewaehlt.farbe, gewaehlt.sichtbar).toFixed(1)}:1 — zu schwach`);
 
   const offen = await stil(".labelfmt-card:not(.labelfmt-card--selected)");
-  assert.ok(leuchtdichte(offen.sichtbar) < 0.05, `die offene Fläche muss dunkel und ruhig bleiben, ist ${offen.sichtbar}`);
+  assert.ok(leuchtdichte(offen.sichtbar) > 0.85, `die offene Fläche muss hell und ruhig bleiben, ist ${offen.sichtbar}`);
   assert.notEqual(gewaehlt.sichtbar, offen.sichtbar, "die Wahl ist nicht von der offenen Option zu unterscheiden");
   assert.notEqual(gewaehlt.kante, offen.kante, "die Kante unterscheidet die Wahl nicht von der offenen Option");
   await page.close();

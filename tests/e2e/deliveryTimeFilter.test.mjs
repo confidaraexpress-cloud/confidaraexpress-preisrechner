@@ -252,11 +252,11 @@ test("2 — frühe Karte (10:30): Datum + grünes Feld, KEINE graue Doppelzeile"
     return { farbe: s.color, flaeche: s.backgroundColor, radius: s.borderTopLeftRadius,
              groesse: s.fontSize, schatten: s.boxShadow };
   });
-  // Confidara Obsidian (Betreiberauftrag 2026-11-15): das Erfolgsfeld des schwarzen Kundenbereichs — helles Grün auf
-  // grün getönter, durchscheinender Fläche (Status-Tokens success-fg/-surface; bis dahin rgb(47, 107, 82) auf
-  // rgb(238, 244, 241)).
-  assert.equal(stil.farbe, "rgb(61, 214, 140)");
-  assert.equal(stil.flaeche, "rgba(34, 255, 153, 0.11)");
+  // Confidara Premium Blue Light (Betreiberauftrag 2026-11-16): Das Erfolgsfeld trägt wieder die geprüften
+  // Status-Tokens der Grundgestaltung (success-fg/-surface) — in der dunklen Fassung Obsidian helles Grün auf
+  // grün getönter, durchscheinender Fläche.
+  assert.equal(stil.farbe, "rgb(47, 107, 82)");
+  assert.equal(stil.flaeche, "rgb(238, 244, 241)");
   assert.equal(stil.radius, "8px");
   // 13 px seit der Confidara Signature Typography (Betreiberentscheidung 2026-11-13): Kleinstschrift des
   // Kundenbereichs nicht unter 13 px (bis dahin 12 px).
@@ -408,12 +408,12 @@ test("7 — auf breitem Desktop ist die Angebotssektion schmaler und zentriert",
   assert.ok(mass.linksAussen > 40, "es entsteht sichtbarer Weißraum");
   // Premium-Redesign Etappe 1 (E9): Objektkarten des Kundenbereichs runden mit
   // --ce-pr-radius-card (16 px, vorher LG 12 px). In Ruhe tragen sie seit Confidara
-  // Obsidian (Betreiberauftrag 2026-11-15) ihre Tiefe als Lichtkante oben
-  // (--ce-ob-lichtkante) statt der Navy-Kontaktkante des hellen Bilds — auf Schwarz
-  // trägt Licht, kein Schlagschatten; kein farbiger Schatten, keine Overlay-Tiefe.
+  // Premium Blue Light (Betreiberauftrag 2026-11-16) den Kartenschatten der Ebene
+  // (--ce-ob-schatten-karte): eine Navy-Kontaktkante und ein weicher, tiefer Hauch im
+  // Ton der Tinte — keine Overlay-Tiefe (dunkle Fassung Obsidian: Lichtkante oben).
   assert.equal(mass.radius, "16px", "Kartenradius des Bereichs");
   assert.notEqual(mass.schatten, "none", "die Tarifkarte trägt keine Kartentiefe");
-  assert.match(mass.schatten, /^rgba\(255, 255, 255, 0\.06\) 0px 1px 0px 0px inset$/,
+  assert.match(mass.schatten, /^rgba\(16, 36, 72, 0\.04\) 0px 1px 2px 0px, rgba\(16, 36, 72, 0\.18\) 0px 10px 28px -18px$/,
     `unerwarteter Ruheschatten: ${mass.schatten}`);
 
   // Das neue Hinweisfeld darf das Layout NICHT verziehen: eine Karte mit Feld

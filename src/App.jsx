@@ -124,8 +124,8 @@ export default function App() {
   // Die Sitzungsprüfung eines gespeicherten Tokens hält die Anwendung an — auf jedem Pfad, wie bisher: liefe die
   // Anmeldung daneben, überschriebe eine verspätete Antwort eine neue Anmeldung oder die E-Mail-Bestätigung. Ohne
   // Token gibt es keine Prüfung und keinen Ladebildschirm (AuthContext, Audit B.1). Auf den Seiten mit statischem
-  // Gerüst steht er auf dessen dunklem Grund statt auf hellem. Auf den Pfaden des Kundenbereichs (Confidara Obsidian)
-  // steht er — wie die Ladefläche des Seitenwechsels unten — auf dessen Schwarz: nur Darstellung, keine Weiche.
+  // Gerüst steht er auf dessen dunklem Grund statt auf hellem. Auf den Pfaden des Kundenbereichs (Confidara Premium
+  // Blue Light) steht er — wie die Ladefläche des Seitenwechsels unten — auf dessen Blauweiß: nur Darstellung, keine Weiche.
   const kundenPfad = istKundenbereichPfad(pathname);
   if (loadingUser) return <LoadingScreen dunkel={statischeAuthSeite(pathname) !== null} kunde={kundenPfad} />;
 

@@ -115,6 +115,15 @@ const ALLE_CARRIER = [
   { id: "ups", name: "UPS" }, { id: "dhl", name: "DHL Express" }, { id: "dpd", name: "DPD" }, { id: "gls", name: "GLS" },
   { id: "tnt", name: "TNT" }, { id: "fedex", name: "FedEx" }, { id: "der-kurier", name: "DER KURIER" }, { id: "trans-o-flex", name: "trans-o-flex" },
 ];
+const rgbAusHex = (hex) => { const n = parseInt(hex.slice(1), 16); return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`; };
+function kontrast(a, b) {
+  const lum = (rgb) => {
+    const [r, g, bl] = rgb.match(/[\d.]+/g).slice(0, 3).map((v) => { const c = Number(v) / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  };
+  const [hell, dunkel] = [lum(a), lum(b)].sort((x, y) => y - x);
+  return (hell + 0.05) / (dunkel + 0.05);
+}
 for (const anzahl of [1, 3, 5, 8]) {
   for (const [breite, hoehe] of [[1440, 1000], [1024, 800], [390, 844]]) {
     test(`Versanddienstleister: Navy-Fläche mit ${anzahl} Carrier(n) bei ${breite} px`, async () => {
@@ -149,6 +158,8 @@ for (const anzahl of [1, 3, 5, 8]) {
             deckt: Math.abs(lr.left - f.left) <= 1.5 && Math.abs(lr.right - f.right) <= 1.5 && Math.abs(lr.top - f.top) <= 1.5 && Math.abs(lr.bottom - f.bottom) <= 1.5 } : null,
           namen: [...flaeche.querySelectorAll(".ov-carrier-name")].map((n) => n.textContent.trim()),
           titel: getComputedStyle(flaeche.querySelector(".ov-carrier-titel")).color,
+          tinte: getComputedStyle(document.documentElement).getPropertyValue("--ce-ob-tinte").trim(),
+          grund: getComputedStyle(flaeche).backgroundColor,
           kacheln, fLinks: f.left, fRechts: f.right, lLinks: l.left, lRechts: l.right,
           ueberlauf: document.documentElement.scrollWidth - innerWidth,
         };
@@ -161,7 +172,12 @@ for (const anzahl of [1, 3, 5, 8]) {
       assert.equal(m.ebenen.svg, 1, "außer den Linien steht eine Zeichnung im Markup der Fläche, oder die Linien fehlen");
       assert.deepEqual(m.linien, { versteckt: "true", pfade: 3, knoten: 3, lage: "absolute", ebene: "-1", zeiger: "none", deckt: true },
         `die Linien fehlen, sind nicht dekorativ oder liegen nicht hinter dem Inhalt der ganzen Fläche bei ${breite} px`);
-      assert.equal(m.titel, "rgb(255, 255, 255)", "der Titel steht nicht weiß auf Navy");
+      // Confidara Premium Blue Light (Betreiberauftrag 2026-11-16): Im Kundenbereich ist die Bühne hell, Eisblau mit
+      // Kobaltlicht (kunde-obsidian.css). Vorher war sie Navy, in Confidara Obsidian Schwarz. Der Titel steht in der Tinte
+      // der Ebene (Dunkelblau). Geprüft wird gegen den Token und auf mindestens 7:1 Kontrast zur Grundfarbe der Bühne.
+      assert.match(m.tinte, /^#[0-9a-f]{6}$/i, `Token der Tinte nicht lesbar („${m.tinte}“)`);
+      assert.equal(m.titel, rgbAusHex(m.tinte), "der Titel steht nicht in der Tinte der Ebene");
+      assert.ok(kontrast(m.titel, m.grund) >= 7, `der Titel hebt sich nicht von der Bühne ab (${m.titel} auf ${m.grund})`);
       assert.deepEqual(m.namen, liste.map((c) => c.name), "die Fläche zeigt nicht die Liste des Servers");
       assert.equal(m.ueberlauf, 0, "horizontales Scrollen");
       const reihen = new Map();

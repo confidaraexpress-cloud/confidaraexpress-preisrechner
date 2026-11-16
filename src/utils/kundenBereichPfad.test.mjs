@@ -1,4 +1,5 @@
-// Pfade des Kundenbereichs für den schwarzen Ladebildschirm (Confidara Obsidian, 2026-11-15).
+// Pfade des Kundenbereichs für den Ladebildschirm auf dem Grund des Bereichs (Confidara Obsidian 2026-11-15, Premium
+// Blue Light 2026-11-16).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";

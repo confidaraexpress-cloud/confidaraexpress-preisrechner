@@ -1,11 +1,14 @@
-// Governance der Gestaltungsebene des Kundenbereichs „Confidara Obsidian“ (Betreiberauftrag „Resend-inspired Total
-// Dashboard Redesign“, 2026-11-15). Die bereichsübergreifenden Design-Tests (designSystemClosure, designTokens,
-// interfacePatterns, typography, premiumRedesign) führen kunde-obsidian.css und kunde-schriften.css als dokumentierte
-// Ausnahme und verweisen für deren Grenzen hierher:
+// Governance der Gestaltungsebene des Kundenbereichs — eingeführt als „Confidara Obsidian“ (Betreiberauftrag
+// „Resend-inspired Total Dashboard Redesign“, 2026-11-15), seit dem Betreiberauftrag „Premium Blue Light Edition“
+// (2026-11-16) in der hellen Fassung „Confidara Premium Blue Light“; Datei- und Tokenname blieben. Die
+// bereichsübergreifenden Design-Tests (designSystemClosure, designTokens, interfacePatterns, typography,
+// premiumRedesign) führen kunde-obsidian.css und kunde-schriften.css als dokumentierte Ausnahme und verweisen für
+// deren Grenzen hierher:
 //   • jede Regel hängt an :root[data-ce-bereich="kunde"] — Admin, Partnerportal, Anmeldung und öffentliche Seiten
 //     lesen die Ebene nie; einzige Ausnahme ist der Ladebildschirm der Kundenpfade;
 //   • Foundation-Tokens werden nur im Tokenblock des Bereichs umgeordnet, Layout-Tokens gar nicht;
-//   • Tiefe, Glas und Unschärfe nur über Token, Schatten neutral, kein Schleier mit Weichzeichnung;
+//   • Tiefe, Glas und Unschärfe nur über Token, Schatten kühl (neutral oder Confidara-Blau), kein Schleier mit
+//     Weichzeichnung;
 //   • jede Animation nur ohne Wunsch nach reduzierter Bewegung; die ganze Ebene nur für den Bildschirm;
 //   • Geometrie (Radien) und Produktschrift bleiben die des Bereichs;
 //   • zwei zusätzliche OFL-Schriften, lokal, mit Lizenztext; keine fremde Quelle, keine fremde Marke;
@@ -85,8 +88,9 @@ test("O1 — jede Regel hängt am Kundenbereich; einzige Ausnahme ist der Ladebi
   assert.deepEqual(ausserhalbBildschirm, [], `Regeln außerhalb von @media screen:\n  ${ausserhalbBildschirm.join("\n  ")}`);
   assert.doesNotMatch(OBSIDIAN, /@media[^{]*\bprint\b/, "eigene Druckregel");
   // Die Ausnahme setzt nur den Grund — die Klasse vergibt LoadingScreen.jsx allein auf den Kundenpfaden
-  // (utils/kundenBereichPfad.test.mjs, K4).
-  assert.deepEqual(ladeschirm, ["background: #000000;"]);
+  // (utils/kundenBereichPfad.test.mjs, K4). Premium Blue Light (2026-11-16): das Blauweiß des Seitengrunds.
+  assert.deepEqual(ladeschirm, ["background: #f5f8ff;"]);
+  assert.match(OBSIDIAN, /--ce-ob-grund:\s*#f5f8ff;/, "Ladebildschirm und Seitengrund laufen auseinander");
   // Eigene Bewegungen tragen den Namensraum der Ebene.
   for (const k of KEYFRAMES) assert.match(k.selektor, /^@keyframes ce-ob-[\w-]+$/, k.selektor);
 });
@@ -165,7 +169,9 @@ test("O3 — Tiefe, Glas und Unschärfe nur über Token; kein Schleier mit Weich
   assert.ok(STILREGELN.some((r) => r.kontext.some((k) => /prefers-contrast:\s*more/.test(k))), "höherer Kontrast hat keine Antwort");
 });
 
-test("O4 — Schattentöne sind neutral; farbiges Licht gibt es nur als Zustand der Kennzahlkarten", () => {
+test("O4 — Schattentöne sind kühl; farbiges Licht gibt es nur als Zustand der Kennzahlkarten", () => {
+  // Premium Blue Light (Betreiberauftrag 2026-11-16): Tiefe aus dem Navy der Tinte und dem Confidara-Blau. Erlaubt
+  // ist neutral (Spreizung ≤ 12) oder die blaue Familie (Blau ≥ Grün ≥ Rot) — nie warm, grün oder violett.
   const bunt = [];
   const hexZuRgb = (h) => {
     const x = h.length <= 5 ? [...h.slice(1, 4)].map((c) => c + c).join("") : h.slice(1, 7);
@@ -175,12 +181,14 @@ test("O4 — Schattentöne sind neutral; farbiges Licht gibt es nur als Zustand 
     const farben = [...m[2].matchAll(/#[0-9a-f]{3,8}\b/gi)].map((h) => hexZuRgb(h[0]))
       .concat([...m[2].matchAll(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g)].map((c) => [+c[1], +c[2], +c[3]]));
     for (const [r, g, b] of farben) {
-      if (Math.max(r, g, b) - Math.min(r, g, b) > 12) bunt.push(`${m[1]}: rgb(${r},${g},${b})`);
+      const neutral = Math.max(r, g, b) - Math.min(r, g, b) <= 12;
+      const blau = b >= g && g >= r;
+      if (!neutral && !blau) bunt.push(`${m[1]}: rgb(${r},${g},${b})`);
     }
   }
-  assert.deepEqual(bunt, [], `farbiger Schatten:\n  ${bunt.join("\n  ")}`);
-  // Der Fokusring liest die eine Fokusfarbe des Bereichs (Kobalt auf Schwarz).
-  assert.match(OBSIDIAN, /--ce-color-focus-ring:\s*rgba\(91, 140, 255, 0\.36\);/);
+  assert.deepEqual(bunt, [], `Schatten außerhalb der kühlen Familie:\n  ${bunt.join("\n  ")}`);
+  // Der Fokusring liest die eine Fokusfarbe des Bereichs (Confidara-Blau auf Blauweiß).
+  assert.match(OBSIDIAN, /--ce-color-focus-ring:\s*rgba\(0, 74, 252, 0\.28\);/);
   // Der Lichthof der Kennzahlkarten trägt die Zustandsfarbe — gesetzt nur von den Zustandsklassen der Karte.
   const schein = STILREGELN.filter((r) => /--ce-ob-kpi-schein\s*:/.test(r.rumpf)).map((r) => r.selektor);
   assert.ok(schein.length >= 4, "die Zustände der Kennzahlkarten fehlen");

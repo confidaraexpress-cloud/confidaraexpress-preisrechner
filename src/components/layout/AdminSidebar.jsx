@@ -84,13 +84,13 @@ export function AdminSidebar({ open, onClose }) {
       >
         <div className="adm-brand">
           {/* Dieselbe Marke aus demselben Bauteil wie im Kundenportal — die
-              Originalkomposition, auf der hellen Admin-Sidebar in der
-              Standardfassung. Kein eigenes Adminlogo: „Adminbereich" ist
+              Originalkomposition, auf der Navy-Seitenleiste der Blue-Light-Familie
+              in der Fassung für dunkle Flächen. Kein eigenes Adminlogo: „Adminbereich" ist
               separater UI-Text und nicht Bestandteil der Marke; deshalb gibt der
               Aufrufer ihn mit. Er macht den Adminkontext auf jeder Seite sichtbar. */}
           <BrandLogo
             variant="lockup"
-            tone="standard"
+            tone="reverse"
             sub={<span className="adm-brand-tag">Adminbereich</span>}
           />
           <button type="button" className="adm-side-close" onClick={onClose} aria-label="Menü schließen">

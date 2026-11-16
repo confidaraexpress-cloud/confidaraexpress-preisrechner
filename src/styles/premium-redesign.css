@@ -8,9 +8,15 @@
    - Navy-Primärknöpfe mit feiner Innenkante und neutralem Schatten.
    - Statusmarken in zwei Stufen, Schriftskala in rem, Umbruchregeln je Element.
 
-   Jede Regel hängt am Bereichsattribut (hooks/useCeBereich.js). Admin,
-   Partnerportal und Partnerregistrierung setzen es nie. Ihre Darstellung
-   bleibt deshalb unverändert, obwohl alle Stylesheets im selben Bündel liegen.
+   Jede Regel hängt am Bereichsattribut (hooks/useCeBereich.js). Seit Blue Light
+   (Betreiberauftrag „Final Master Release“, 2026-11-16) tragen auch Adminpanel,
+   Partnerportal und öffentliche Seiten ein Bereichsattribut (admin, partner,
+   oeffentlich) — diese Ebene gilt dort nicht: Ihre Tokens (--ce-pr-*) definiert
+   variables.css nur für kunde, auth und preisrechner. Regeln ohne bestimmten
+   Bereich nennen deshalb diese drei ausdrücklich, über :where() ohne
+   Spezifität. Die Familie Blue Light gestaltet Admin, Partnerportal und
+   öffentliche Seiten in kunde-obsidian.css. Die Partnerregistrierung steht seit
+   Blue Light auf der Bühne der Anmeldung (auth).
 
    Farben stehen ausschließlich in variables.css (Block am Dateiende); hier
    stehen keine Farbliterale. Klassen und IDs der Komponenten sind unverändert,
@@ -157,9 +163,9 @@
    Nur die Stilkomponente text-wrap-style, nie die Kurzform text-wrap: Die
    Kurzform setzt auch den Umbruchmodus zurück und höbe jedes gesetzte
    white-space: nowrap auf (Tabellenspalten, Routen, Beträge). */
-[data-ce-bereich] :is(h1, h2, h3, h4, .ce-state-title, .table-card-title, .calc-panel-header h3, legend, .field-label) { text-wrap-style: balance; }
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) :is(h1, h2, h3, h4, .ce-state-title, .table-card-title, .calc-panel-header h3, legend, .field-label) { text-wrap-style: balance; }
 /* Vererbt für alle übrigen Texte: kein einzelnes Wort in der letzten Zeile, wo der Browser es vermeiden kann. */
-[data-ce-bereich] body { text-wrap-style: pretty; }
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) body { text-wrap-style: pretty; }
 
 /* ═══════════ 3 · KNÖPFE (E5) ══════════════════════════════════════════════
    Handlungen sind Rechtecke mit proportionalem Radius (10 px, groß 12 px).
@@ -168,7 +174,7 @@
    Schatten, Hover heller, gedrückt dunkler. Nie Bewegung, nie Glow, nie eine
    pauschale Deckkraft. Die Beschriftung bleibt beim Laden sichtbar; der
    Spinner sitzt im festen Icon-Slot (buttons.css), die Breite bleibt. */
-[data-ce-bereich] .btn {
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) .btn {
   border-radius: var(--ce-pr-radius-control);
   letter-spacing: -0.005em;
   transition:
@@ -177,55 +183,55 @@
     color var(--ce-motion-fast) var(--ce-motion-ease-standard),
     box-shadow var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-[data-ce-bereich] .btn-lg { border-radius: var(--ce-pr-radius-control-lg); }
-[data-ce-bereich] .btn:focus-visible {
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) .btn-lg { border-radius: var(--ce-pr-radius-control-lg); }
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) .btn:focus-visible {
   outline: 2px solid var(--ce-pr-signal);
   outline-offset: 2px;
 }
 
-[data-ce-bereich] .btn-primary {
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) .btn-primary {
   background: var(--ce-pr-navy-800);
   border-color: var(--ce-pr-navy-800);
   color: var(--ce-color-text-inverse);
   box-shadow: var(--ce-pr-btn-shadow);
 }
-[data-ce-bereich] .btn-primary:hover:not(:disabled) {
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) .btn-primary:hover:not(:disabled) {
   background: var(--ce-pr-navy-700);
   border-color: var(--ce-pr-navy-700);
   box-shadow: var(--ce-pr-btn-shadow-hover);
 }
-[data-ce-bereich] .btn-primary:active:not(:disabled) {
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) .btn-primary:active:not(:disabled) {
   background: var(--ce-pr-navy-600);
   border-color: var(--ce-pr-navy-600);
   box-shadow: var(--ce-pr-btn-shadow);
 }
 
-[data-ce-bereich] .btn-outline {
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) .btn-outline {
   background: var(--ce-color-surface);
   border-color: var(--ce-color-border-interactive);
   color: var(--ce-pr-navy-800);
   box-shadow: var(--ce-pr-btn-shadow-secondary);
 }
-[data-ce-bereich] .btn-outline:hover:not(:disabled) {
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) .btn-outline:hover:not(:disabled) {
   background: var(--ce-color-surface-hover);
   border-color: var(--ce-pr-navy-800);
 }
-[data-ce-bereich] .btn-outline:active:not(:disabled) {
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) .btn-outline:active:not(:disabled) {
   background: var(--ce-color-surface-pressed);
   border-color: var(--ce-pr-navy-800);
   box-shadow: none;
 }
 
-[data-ce-bereich] .btn-ghost { color: var(--ce-pr-signal-ink); }
-[data-ce-bereich] .btn-ghost:hover:not(:disabled) { background: var(--ce-pr-signal-soft); color: var(--ce-pr-signal-ink); }
-[data-ce-bereich] .btn-ghost:active:not(:disabled) { background: var(--ce-pr-signal-soft-hover); }
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) .btn-ghost { color: var(--ce-pr-signal-ink); }
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) .btn-ghost:hover:not(:disabled) { background: var(--ce-pr-signal-soft); color: var(--ce-pr-signal-ink); }
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) .btn-ghost:active:not(:disabled) { background: var(--ce-pr-signal-soft-hover); }
 
-[data-ce-bereich] .btn-link { color: var(--ce-pr-signal-ink); text-underline-offset: 3px; }
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) .btn-link { color: var(--ce-pr-signal-ink); text-underline-offset: 3px; }
 
 /* Gesperrt: lesbar (5,50:1), ohne Schatten, ohne Deckkraft. Den Grund nennt die Seite daneben. */
-[data-ce-bereich] .btn-primary:disabled,
-[data-ce-bereich] .btn-outline:disabled,
-[data-ce-bereich] .btn-danger:disabled {
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) .btn-primary:disabled,
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) .btn-outline:disabled,
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) .btn-danger:disabled {
   background: var(--ce-pr-btn-disabled-bg);
   border-color: var(--ce-color-border-default);
   color: var(--ce-pr-btn-disabled-fg);
@@ -1239,12 +1245,12 @@
 /* ═══════════ 6 · FELDER ═══════════════════════════════════════════════════
    Weiß mit interaktiver Kante (3,17:1), 10 px Radius, Fokus im Signal.
    Keine grau gefüllten Eingaben. */
-[data-ce-bereich] :is(.field-input, .field-select, .field-textarea) {
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) :is(.field-input, .field-select, .field-textarea) {
   background-color: var(--ce-color-surface);
   border-radius: var(--ce-pr-radius-control);
 }
-[data-ce-bereich] :is(.field-input, .field-select, .field-textarea):focus,
-[data-ce-bereich] :is(.field-input, .field-select, .field-textarea):focus-visible {
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) :is(.field-input, .field-select, .field-textarea):focus,
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) :is(.field-input, .field-select, .field-textarea):focus-visible {
   border-color: var(--ce-pr-signal);
   outline: 2px solid var(--ce-color-focus-ring);
   outline-offset: 0;
@@ -1288,8 +1294,9 @@
    Ladeweg (Audit B.1): login.html/register.html tragen dieselbe Bühne als statisches Seitengerüst; React ersetzt
    sie ohne Zwischenbild. Deshalb keine Einblendbewegung des Blatts, keine nachgeladene Karte: das erste Bild ist das
    Endlayout. Die Lichter der Karte starten nach dem Dekodieren des Bilds (AuthKarte, nachtkarte.css).
-   Nur AuthPage und EmailChangeConfirmPage setzen den Bereich; die Partnerregistrierung nutzt dieselben Klassen
-   und bleibt unverändert. */
+   AuthPage, EmailChangeConfirmPage und seit Blue Light (2026-11-16) die Partnerregistrierung setzen den Bereich; die
+   Partnerregistrierung steht in einer Spalte (auth-shell--partner). Die holografische Admin-Anmeldung trägt eigene
+   Klassen (auth.css, .auth-admin-*) und liest keine Regel dieses Abschnitts. */
 [data-ce-bereich="auth"] body { background-color: var(--ce-pr-navy-950); }
 [data-ce-bereich="auth"] .auth-page {
   isolation: isolate;
@@ -1480,6 +1487,18 @@
 [data-ce-bereich="auth"] .auth-card-title { font-size: 1.5rem; letter-spacing: -0.02em; color: var(--ce-color-text-primary); }
 /* Kopf des Blatts: wo man ist und was man tut. */
 [data-ce-bereich="auth"] .auth-card-kopf { margin: 0 0 20px; }
+/* Blattköpfe in der Titelschrift der Familie (Host Grotesk über die Displayrolle) */
+[data-ce-bereich="auth"] .auth-page :is(.auth-card-title, .auth-card-head) { font-family: var(--ce-pr-font-display); font-weight: 500; }
+/* Partnerregistrierung: dieselbe Bühne in einer Spalte — Marke, Satz und Blatt mittig untereinander */
+[data-ce-bereich="auth"] .auth-shell--partner > .auth-hero { margin: 0 auto 32px; text-align: center; }
+[data-ce-bereich="auth"] .auth-shell--partner .auth-brand { align-items: center; margin: 0 auto 28px; }
+/* Der Lichtkern der Aurora rückt über die Marke: in der mittigen Spalte läge er sonst hinter Titel und Untertitel
+   (gemessen 390 px: Untertitel 1,56:1). Der Kern sitzt im Kreis bei 60 % der Höhe — oben −520 px (900 px) bzw.
+   −380 px (600 px, responsive.css) legen ihn an die Oberkante. */
+[data-ce-bereich="auth"] .auth-page:has(> .auth-shell--partner) .auth-aurora-sun { top: -520px; }
+@media (max-width: 768px) {
+  [data-ce-bereich="auth"] .auth-page:has(> .auth-shell--partner) .auth-aurora-sun { top: -380px; }
+}
 [data-ce-bereich="auth"] .auth-card-head {
   margin: 0;
   font-size: 1.5rem;
@@ -1663,13 +1682,14 @@
   [data-ce-bereich="auth"] .auth-input-wrap:has(> .auth-select)::after { background: CanvasText; }
 }
 
-/* Die Primäraktion: Navy, feine Innenkante, keine Bewegung (E1, E5). */
+/* Die Primäraktion: kräftiges Confidara-Blau wie im Kundenbereich (Blue Light, 2026-11-16; vorher Navy, E1), feine
+   Innenkante, keine Bewegung (E5). */
 [data-ce-bereich="auth"] .auth-cta {
   min-height: 48px;
   padding: 12px 20px;
-  border: 1px solid var(--ce-pr-navy-800);
+  border: 1px solid var(--ce-pr-signal);
   border-radius: var(--ce-pr-radius-control-lg);
-  background: var(--ce-pr-navy-800);
+  background: var(--ce-pr-signal);
   color: var(--ce-color-text-inverse);
   font-size: 1rem;
   box-shadow: var(--ce-pr-btn-shadow);
@@ -1680,11 +1700,11 @@
 }
 [data-ce-bereich="auth"] .auth-cta:hover:not(:disabled) {
   transform: none;
-  border-color: var(--ce-pr-navy-700);
-  background: var(--ce-pr-navy-700);
+  border-color: var(--ce-pr-signal-hover);
+  background: var(--ce-pr-signal-hover);
   box-shadow: var(--ce-pr-btn-shadow-hover);
 }
-[data-ce-bereich="auth"] .auth-cta:active:not(:disabled) { border-color: var(--ce-pr-navy-600); background: var(--ce-pr-navy-600); }
+[data-ce-bereich="auth"] .auth-cta:active:not(:disabled) { border-color: var(--ce-color-brand-active); background: var(--ce-color-brand-active); }
 [data-ce-bereich="auth"] .auth-cta:disabled {
   opacity: 1;
   border-color: var(--ce-color-border-default);
@@ -1785,20 +1805,20 @@
    Nach dem Rechnen springt der Fokus auf die Ergebnisüberschrift. Für
    Screenreader bleibt das so; der grobe Standardrahmen bei Mausbedienung
    entfällt (Audit M2). Bei Tastaturbedienung bleibt der Rahmen sichtbar. */
-[data-ce-bereich] [tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) [tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
 /* Überschriften als Sprungziel (Ergebnis, Fehler, Schrittwechsel) sind nicht bedienbar: Chromium
    wertet den Skriptfokus nach einem Mausklick als sichtbar und zeichnete einen groben Rahmen um Titel
    und Trefferzahl. Der Screenreader springt weiterhin dorthin; Bedienelemente behalten ihren Ring. */
-[data-ce-bereich] :is(h1, h2, h3, h4, .offers-result-count)[tabindex="-1"]:focus { outline: none; }
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) :is(h1, h2, h3, h4, .offers-result-count)[tabindex="-1"]:focus { outline: none; }
 
 /* ═══════════ 13 · WERTE ZUSAMMENHALTEN ═══════════════════════════════════
    .ce-wert umschließt einzelne Werte (Datum, Uhrzeit, Maße, Vorgangsnummer).
    Der Text bleibt unverändert, nur der Umbruch im Wert entfällt
    (utils/keepValuesTogether.mjs). */
-[data-ce-bereich] .ce-wert { white-space: nowrap; }
+[data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) .ce-wert { white-space: nowrap; }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-ce-bereich] .btn,
+  [data-ce-bereich]:where([data-ce-bereich="kunde"], [data-ce-bereich="auth"], [data-ce-bereich="preisrechner"]) .btn,
   [data-ce-bereich="kunde"] .pp-nav-icon,
   [data-ce-bereich="kunde"] .offer-card { transition: none; }
 }

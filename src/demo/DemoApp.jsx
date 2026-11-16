@@ -11,6 +11,7 @@ import { DashboardLayout } from "../components/layout/DashboardLayout";
 import { BrandLogo } from "../components/ui/BrandLogo";
 import { DEMO_BASIS, DEMO_TEXTE, DEMO_ZIELE, demoAusgangsziel } from "./demoModus.mjs";
 import { DemoLeiste } from "./DemoLeiste.jsx";
+import { istKundenbereichPfad } from "../utils/kundenBereichPfad.mjs";
 
 /* ─────────────────────────────────────────────────────────────────────────────────────────────
    Die öffentliche Kundenbereich-Demo (Premium-Redesign, Betreiberentscheidung 2026-10-27).
@@ -28,6 +29,12 @@ const BookingPage       = React.lazy(() => import("../pages/BookingPage"));
 const DashboardPage     = React.lazy(() => import("../pages/DashboardPage"));
 const ProductDetailPage = React.lazy(() => import("../pages/inventory/ProductDetailPage"));
 const OrderDetailPage   = React.lazy(() => import("../pages/inventory/OrderDetailPage"));
+
+/** Ladefläche des Seitenwechsels: auf den Kundenpfaden auf dem Grund des Kundenbereichs (utils/kundenBereichPfad.mjs). */
+function DemoLadeflaeche() {
+  const { pathname } = useLocation();
+  return <LoadingScreen kunde={istKundenbereichPfad(pathname)} />;
+}
 
 /** Adressen außerhalb des Kundenbereichs: die echte Seite derselben Domain, in einer neuen Seitenladung. */
 function DemoVerlassen() {
@@ -81,7 +88,7 @@ export default function DemoApp() {
       <AuthProvider>
         <ShippingFlowProvider>
           <ParcelShopFinderProvider>
-            <Suspense fallback={<LoadingScreen />}>
+            <Suspense fallback={<DemoLadeflaeche />}>
               <ScrollToTop />
               <Routes>
                 <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>

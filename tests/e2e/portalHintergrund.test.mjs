@@ -3,8 +3,9 @@
 // Zwei Stufen derselben Markenfläche: die Übersicht trägt die kräftige Fassung („Signature Overview“), jede übrige Seite des
 // Kundenbereichs die leise Arbeitsfläche („Premium Workspace“). Geprüft wird, was eine Quelltextprüfung nicht erreicht:
 // welche Fläche der Browser auf jeder Kundenseite tatsächlich malt (beide Kunden-Shells, Desktop und Telefon), dass ein
-// Seitenwechsel ohne Neuladen nie einen falschen oder doppelten Hintergrund stehen lässt, dass Anmeldung, öffentliche
-// Seiten, Admin und Partnerportal keine der beiden Flächen bekommen, dass alle vier Kennzahlen der Übersicht exakt
+// Seitenwechsel ohne Neuladen nie einen falschen oder doppelten Hintergrund stehen lässt, dass Anmeldung und
+// Partnerregistrierung keine der beiden Flächen bekommen und öffentliche Seiten, Admin und Partnerportal seit Blue Light
+// (2026-11-16) nur den Grund der Designfamilie, dass alle vier Kennzahlen der Übersicht exakt
 // dieselbe Zahlenfarbe tragen — auch „Verzögert“, bei 0, über 0 und ohne Wert —, und dass die Übersicht seit dem Abschluss
 // (Betreiberentscheidung 2026-11-02) kein dekoratives CE-Monogramm mehr trägt, das offizielle Logo aber unverändert steht.
 import { test } from "node:test";
@@ -92,20 +93,27 @@ async function bereit(page, selektor = ".main-content") {
   await page.waitForFunction(() => !document.querySelector(".loading-center"), null, { timeout: 30000 });
 }
 
+// Confidara Premium Blue Light, Final Master Release (Betreiberentscheidungen 2026-11-16; davor Confidara Obsidian,
+// 2026-11-15): Die Gestaltungsebene kunde-obsidian.css setzt den Grund der Arbeitsseiten (Blauweiß der Ebene, das ruhige
+// Eisband mit genau drei Lichtflächen) und den Grund des Dokuments. Die Übersicht behält Fläche und Lichter der
+// Live-Fassung (Flow Signature: eigener Token, mindestens acht Lichtflächen, schmal ebenso). Geprüft bleibt, was der
+// Test sichern soll: die richtige Fläche je Seite, nie doppelt, nie zurückgeblieben, keine Zeichnung.
+const LICHT_UEBERSICHT_MIN = 8, LICHT_ARBEIT = 3;
 function istSignatur(f, wo) {
   assert.equal(f.bereich, "kunde", `${wo}: nicht im Kundenbereich`);
   assert.equal(f.inhaltsflaechen, 1, `${wo}: ${f.inhaltsflaechen} Inhaltsflächen`);
   assert.ok(f.uebersicht, `${wo}: keine Übersicht`);
   assert.equal(f.grund, f.sollSignatur, `${wo}: Grund ${f.grund} statt der Übersichtsfläche ${f.sollSignatur}`);
-  assert.ok(f.verlaeufe >= 8, `${wo}: nur ${f.verlaeufe} Lichtflächen — die Signature-Fassung fehlt`);
+  assert.ok(f.sollArbeit && f.sollSignatur !== f.sollArbeit, `${wo}: Übersicht und Arbeitsseiten teilen den Grund — die Live-Fläche der Übersicht fehlt`);
+  assert.ok(f.verlaeufe >= LICHT_UEBERSICHT_MIN, `${wo}: nur ${f.verlaeufe} Lichtflächen — die Signature-Fassung fehlt`);
 }
 function istArbeitsflaeche(f, wo) {
   assert.equal(f.bereich, "kunde", `${wo}: nicht im Kundenbereich`);
   assert.equal(f.inhaltsflaechen, 1, `${wo}: ${f.inhaltsflaechen} Inhaltsflächen`);
   assert.ok(!f.uebersicht, `${wo}: zeigt die Übersicht`);
-  assert.ok(f.sollArbeit && f.sollArbeit !== f.sollSignatur, "die Tokens der Arbeitsfläche fehlen");
+  assert.ok(f.sollArbeit, "die Tokens der Arbeitsfläche fehlen");
   assert.equal(f.grund, f.sollArbeit, `${wo}: Grund ${f.grund} statt der Arbeitsfläche ${f.sollArbeit}`);
-  assert.equal(f.verlaeufe, 4, `${wo}: ${f.verlaeufe} statt vier Lichtflächen`);
+  assert.equal(f.verlaeufe, LICHT_ARBEIT, `${wo}: ${f.verlaeufe} statt ${LICHT_ARBEIT} Lichtflächen`);
   assert.equal(f.bild, false, `${wo}: eine Zeichnung (CE) auf der Arbeitsfläche`);
 }
 
@@ -116,13 +124,13 @@ test("A — Desktop: die Übersicht trägt die Signature-Fläche, jede übrige K
     await bereit(page, ".ov-kpis");
     const start = await flaeche(page);
     istSignatur(start, "Übersicht");
-    assert.equal(start.body, "rgb(255, 255, 255)", "das Dokument ist nicht mehr weiß");
+    assert.equal(start.body, start.sollArbeit, "das Dokument trägt nicht den Grund des Kundenbereichs");
     for (const [name, ziel] of Object.entries(ARBEITSSEITEN)) {
       await page.goto(`${BASE}${ziel}`, { waitUntil: "domcontentloaded" });
       await bereit(page);
       const f = await flaeche(page);
       istArbeitsflaeche(f, name);
-      assert.equal(f.body, "rgb(255, 255, 255)", `${name}: das Dokument ist nicht mehr weiß`);
+      assert.equal(f.body, f.sollArbeit, `${name}: das Dokument trägt nicht den Grund des Kundenbereichs`);
       assert.equal(f.ueberlauf, 0, `${name}: waagrechter Überlauf`);
     }
   } finally { await page.close(); }
@@ -208,12 +216,18 @@ async function kennzahlen(page) {
     };
   });
 }
-function gleicheFarbe({ werte }, wo) {
+function gleicheFarbe({ navy, werte }, wo) {
   assert.equal(werte.length, 4, `${wo}: nicht vier Kennzahlen`);
   assert.deepEqual(werte.map((w) => w.art), ["ov-kpi--active", "ov-kpi--transit", "ov-kpi--delivered", "ov-kpi--delayed"]);
-  // Exakt dieselbe Farbe für alle vier, und es ist das dunkle Navy der Zahlen (#011b55), kein Bernstein.
+  // Exakt dieselbe Farbe für alle vier, und es ist das dunkle Blau der Zahlen, kein Bernstein. Confidara Premium Blue
+  // Light (Betreiberauftrag 2026-11-16): Die Farbe kommt aus dem Token der Ebene (Dunkelblau #102448 statt #011b55);
+  // geprüft wird gegen den Token und darauf, dass sie ein dunkles Blau bleibt.
   assert.deepEqual(new Set(werte.map((w) => w.farbe)).size, 1, `${wo}: verschiedene Zahlenfarben ${werte.map((w) => w.farbe).join(" / ")}`);
-  assert.equal(werte[3].farbe, "rgb(1, 27, 85)", `${wo}: „Verzögert“ in ${werte[3].farbe}`);
+  const n = parseInt(navy.slice(1), 16);
+  assert.match(navy, /^#[0-9a-f]{6}$/i, `${wo}: Token der Zahlenfarbe nicht lesbar („${navy}“)`);
+  assert.equal(werte[3].farbe, `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`, `${wo}: „Verzögert“ in ${werte[3].farbe}`);
+  const [r, g, b] = werte[3].farbe.match(/\d+/g).map(Number);
+  assert.ok(b > r && b > g && r + g + b < 200, `${wo}: „Verzögert“ in ${werte[3].farbe} ist kein dunkles Blau`);
 }
 
 test("D — Kennzahlen: alle vier Zahlen exakt in derselben dunklen Navy-Farbe, „Verzögert“ bei 0, über 0 und ohne Wert", async () => {
@@ -241,19 +255,31 @@ test("D — Kennzahlen: alle vier Zahlen exakt in derselben dunklen Navy-Farbe, 
   }
 });
 
-test("E — Anmeldung, öffentliche Seiten, Admin und Partnerportal bekommen keine der beiden Flächen", async () => {
-  const ohneFlaeche = async (page, wo) => {
-    const befund = await page.evaluate(() => {
+test("E — Anmeldung und Partnerregistrierung ohne die Flächen; öffentliche Seiten, Admin und Partnerportal nur mit dem Grund der Familie", async () => {
+  // Blue Light (Betreiberauftrag „Final Master Release“, 2026-11-16): Öffentliche Seiten, Admin und Partnerportal gehören
+  // zur Designfamilie und stehen auf ihrem Grund (Blauweiß #F5F8FF); die beiden Flächen des Kundenbereichs bekommen sie
+  // weiterhin nicht. Anmeldung, Registrierung, Partnerregistrierung und das Ende der Demo gehören nicht zur Familie.
+  const ohneFlaeche = async (page, wo, { familie = false } = {}) => {
+    const befund = await page.evaluate((familie) => {
       const rgb = (hex) => { const n = parseInt(hex.trim().slice(1), 16); return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`; };
       const root = getComputedStyle(document.documentElement);
       // Die Sollfarben stehen nur im Bereichs-Scope; außerhalb davon die bekannten Werte (Gegenprobe gegen die Tokens im Test C).
       const arbeit = root.getPropertyValue("--ce-pr-ed-raum-flaeche") ? rgb(root.getPropertyValue("--ce-pr-ed-raum-flaeche")) : "rgb(240, 244, 252)";
       const signatur = root.getPropertyValue("--ce-pr-ed-flaeche-uebersicht") ? rgb(root.getPropertyValue("--ce-pr-ed-flaeche-uebersicht")) : "rgb(233, 240, 251)";
-      const treffer = [...document.querySelectorAll("body, body *")].filter((e) => [arbeit, signatur].includes(getComputedStyle(e).backgroundColor))
-        .map((e) => `${e.tagName.toLowerCase()}.${[...e.classList].join(".")}`);
-      return { bereich: document.documentElement.getAttribute("data-ce-bereich"), treffer, ov: !!document.querySelector(".ov-page") };
-    });
+      // Confidara Premium Blue Light (2026-11-16): auch der Grund der Ebene (Blauweiß #F5F8FF) gehört nur in den
+      // Kundenbereich. Sein Token steht nur im Bereichs-Scope, deshalb hier als bekannter Wert.
+      const grundEbene = "rgb(245, 248, 255)";
+      const verboten = familie ? [arbeit, signatur] : [arbeit, signatur, grundEbene];
+      const alle = [...document.querySelectorAll("body, body *")];
+      const name = (e) => `${e.tagName.toLowerCase()}.${[...e.classList].join(".")}`;
+      const treffer = alle.filter((e) => verboten.includes(getComputedStyle(e).backgroundColor)).map(name);
+      const grund = alle.filter((e) => getComputedStyle(e).backgroundColor === grundEbene).map(name);
+      return { bereich: document.documentElement.getAttribute("data-ce-bereich"),
+        familie: document.documentElement.getAttribute("data-ce-familie"), treffer, grund, ov: !!document.querySelector(".ov-page") };
+    }, familie);
     assert.notEqual(befund.bereich, "kunde", `${wo}: trägt den Kundenbereich`);
+    assert.equal(befund.familie, familie ? "blue-light" : null, `${wo}: Designfamilie ${befund.familie}`);
+    if (familie) assert.ok(befund.grund.length > 0, `${wo}: der Grund der Designfamilie fehlt`);
     assert.deepEqual(befund.treffer, [], `${wo}: Fläche des Kundenbereichs auf ${befund.treffer.join(", ")}`);
     assert.equal(befund.ov, false);
   };
@@ -270,11 +296,11 @@ test("E — Anmeldung, öffentliche Seiten, Admin und Partnerportal bekommen kei
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   });
   try {
-    for (const [wo, ziel, sel] of [["Anmeldung", "/login", "form"], ["Registrierung", "/register", "form"], ["Sendungsverfolgung (öffentlich)", "/tracking", "h1"], ["Partnerregistrierung", "/partner-registrieren", "h1"]]) {
+    for (const [wo, ziel, sel, familie] of [["Anmeldung", "/login", "form", false], ["Registrierung", "/register", "form", false], ["Sendungsverfolgung (öffentlich)", "/tracking", "h1", true], ["Partnerregistrierung", "/partner-registrieren", "h1", false]]) {
       await oeffentlich.goto(`${BASE}${ziel}`, { waitUntil: "domcontentloaded" });
       await oeffentlich.waitForSelector(sel, { timeout: 30000 });
       await oeffentlich.waitForTimeout(300);
-      await ohneFlaeche(oeffentlich, wo);
+      await ohneFlaeche(oeffentlich, wo, { familie });
     }
     // Die Demo verlassen: „Abmelden“ beendet sie — der Bereich und seine Fläche gehen mit.
     await oeffentlich.goto(`${BASE}${ARBEITSSEITEN.Rechnungen}`, { waitUntil: "domcontentloaded" });
@@ -298,7 +324,7 @@ test("E — Anmeldung, öffentliche Seiten, Admin und Partnerportal bekommen kei
       await page.waitForURL(new RegExp(`${ziel}$`), { timeout: 30000 });
       await page.waitForSelector(warte, { timeout: 30000 });
       await page.waitForTimeout(500);
-      await ohneFlaeche(page, wo);
+      await ohneFlaeche(page, wo, { familie: true });
     } finally { await page.close(); }
   }
 });

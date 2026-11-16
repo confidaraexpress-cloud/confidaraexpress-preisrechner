@@ -363,10 +363,10 @@ test("15 — jede Fläche wählt Variante und Tonlage nach ihrer echten Größe"
   for (const d of ["DashboardSidebar.jsx", "AdminSidebar.jsx", "AuthPage.jsx"]) {
     for (const r of rufe(holen(d))) assert.match(r, /variant="lockup"/, `${d}: braucht die Lockup-Komposition`);
   }
-  for (const d of ["DashboardSidebar.jsx", "AuthPage.jsx"]) {
+  // Blue Light (2026-11-16): auch die Admin-Seitenleiste steht im tiefdunklen Confidara-Navy (kunde-obsidian.css, 12).
+  for (const d of ["DashboardSidebar.jsx", "AdminSidebar.jsx", "AuthPage.jsx"]) {
     for (const r of rufe(holen(d))) assert.match(r, /tone="reverse"/, `${d}: dunkle Fläche braucht reverse`);
   }
-  assert.match(rufe(holen("AdminSidebar.jsx"))[0], /tone="standard"/, "AdminSidebar: helle Fläche braucht standard");
   // Flache Leisten der EINGELOGGTEN App (Topbar, Ladebildschirm) bleiben beim Signet. Der Ladebildschirm steht hell
   // (standard) — nur auf dem dunklen Grund der Anmeldeseiten (`dunkel`, Komplettabschluss 2026-10-27) in Reverse.
   for (const d of ["DashboardLayout.jsx", "DashboardPage.jsx", "LoadingScreen.jsx"]) {

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthAurora } from "../components/auth/AuthAurora";
 import { BrandLogo } from "../components/ui/BrandLogo";
+import { useCeBereich } from "../hooks/useCeBereich";
 import { Icon } from "../components/ui/Icon";
 import { PasswordField } from "../components/ui/PasswordField";
 import { loadSalesPartnerPublicConfig, registerSalesPartner } from "../api/partnerApi";
@@ -76,6 +77,8 @@ const fokusBehalten = (e) => e.preventDefault();
    Feld (gesendet wird dann nichts). Der Erfolg nennt den nächsten Schritt und
    bietet keine Anmeldung an: vor der Freigabe ist keine möglich. */
 export default function PartnerRegisterPage() {
+  // Dieselbe Navy-Bühne wie Anmeldung und Registrierung (premium-redesign.css Abschnitt 10); die Lichter (AuthAurora) bleiben.
+  useCeBereich("auth");
   const navigate = useNavigate();
   const [config, setConfig] = useState({ loading: true, ok: false, data: FAIL_CLOSED_PUBLIC_CONFIG });
   const [form, setForm] = useState(LEER);
@@ -420,7 +423,7 @@ export default function PartnerRegisterPage() {
   return (
     <div className="auth-page">
       <AuthAurora />
-      <div className="auth-shell">
+      <div className="auth-shell auth-shell--partner">
         <div className="auth-hero">
           <BrandLogo variant="lockup" tone="reverse" className="auth-brand auth-anim" />
           <h1 className="auth-title auth-anim delay-1">Vertriebspartner werden</h1>

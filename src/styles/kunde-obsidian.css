@@ -1,0 +1,1065 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONFIDARA PREMIUM BLUE LIGHT — DESIGNFAMILIE (Betreiberauftrag „Premium Blue Light Edition“, 2026-11-16; vom
+   Betreiber freigegeben und mit „Final Master Release“ am 2026-11-16 auf Adminpanel, Partnerportal und öffentliche
+   Seiten übertragen)
+   ───────────────────────────────────────────────────────────────────────────
+   These: Die Resend-inspirierte Konsole aus „Confidara Obsidian“ (2026-11-15) im hellen Licht der Marke. Schrift,
+   Maße, Raster, Formen und Bewegungen bleiben exakt die der Obsidian-Fassung — diese Ebene tauscht nur Farbe, Licht,
+   Kanten und Schatten. Eine tiefdunkle Navy-Seitenleiste trägt die Marke; Arbeitsflächen sind Blauweiß, Karten weiß,
+   Tinte ist dunkles Tintenblau, Aktionen im Confidara-Blau des Logos. Mut an einer Stelle: die Übersicht als helle
+   Bühne mit Eisblau, Kobaltlicht und der Serif-Begrüßung in einem Navy-Verlauf. Die Unterseiten bleiben ruhig.
+
+   Datei- und Tokenname (kunde-obsidian.css, --ce-ob-*) stammen aus der dunklen Fassung und bleiben bewusst stehen:
+   So zeigt der Vergleich mit dem Branch der dunklen Fassung genau die Farb- und Lichtänderungen, und Tests, Importe
+   und Dokumentation brauchen keine Umbenennung. Die dunkle Fassung liegt unverändert auf ihrem eigenen Branch.
+
+   Architektur:
+   • Diese Datei ist die EINE Gestaltungsebene der Familie Blue Light: Kundenbereich, Adminpanel, Partnerportal und
+     öffentliche Seiten (hooks/useCeBereich.js setzt dort data-ce-familie="blue-light"). Sie steht als letzte im Bündel
+     (styles/index.css), hinter premium-editorial.css; jede Regel hängt an :root[data-ce-familie="blue-light"]
+     (gemeinsame Grundlage) oder an einem Bereich der Familie (:root[data-ce-bereich="kunde" | "admin" | "partner" |
+     "oeffentlich"]). Anmeldung („auth“), Admin-Anmeldung, Partnerregistrierung und der öffentliche Preisrechner (eigenes
+     Bündel) lesen sie nie.
+   • Abschnitt 1 ordnet die vorhandenen Tokens in zwei Blöcken um — Familie: Flächen, Tinte, Kanten, Status,
+     Seitenleiste, Bediensystem, Titelmaterial, Tiefe; Kundenbereich: Zeilenhöhen, Editorial, Paketbühne, Kennzahlen,
+     Demo. Weil die Bereichs-Stylesheets keine Farbliterale tragen, wechselt damit fast die ganze
+     Oberfläche. Wo die helle Grundgestaltung (variables.css) schon den Wert der Marke trägt — Navy-Skala, Töne auf
+     Navy, Statusfarben Grün/Bernstein/Rot, Buchungsschritte —, ordnet diese Ebene nichts um und erbt den geprüften
+     Wert.
+   • Neue Werte als --ce-ob-* (nur hier). Keine Änderung an Inhalten, Texten, Routen, API, Preisen, Sperren oder
+     Abläufen — reine Darstellung.
+   • Nur für den Bildschirm: Die ganze Ebene steht in @media screen. Gedruckt (auch „Als PDF drucken“) gelten die
+     getesteten Druckregeln der Plattform — helles Blatt, dunkle Schrift (buchungsschritte.css, premium-editorial.css).
+   • Geometrie und Schrift der Arbeit bleiben die des Bereichs: Radius-Skala (variables.css) und Instrument Sans mit
+     ihrer Breitenachse, auf die das Layout vermessen ist.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media screen {
+
+/* ═══════════ 1 · TOKENS ═══════════════════════════════════════════════════
+   Kontraste nach WCAG 2.x gegen den Seitengrund #f5f8ff, wenn nichts anderes steht (gegen Weiß je etwas höher). */
+:root[data-ce-familie="blue-light"] {
+  color-scheme: light;
+
+  /* ── Blue Light: Grund, Flächen, Tinte ── */
+  --ce-ob-grund: #f5f8ff;                   /* Blauweiß: Seitengrund */
+  --ce-ob-flaeche-1: #ffffff;               /* Karten, Tabellen, Blätter */
+  --ce-ob-flaeche-2: #f3f7ff;               /* Mulden, Zeilen beim Zeigen (auf Weiß; auf dem Grund nur mit Kante) */
+  --ce-ob-flaeche-3: #edf3ff;               /* gedrückt, aktive Spur */
+  --ce-ob-flaeche-4: #e5eeff;               /* kräftige dezente Fläche */
+  --ce-ob-eisband: #e8f0ff;                 /* Eisblau: Band über dem Seitenkopf */
+  --ce-ob-glas: rgba(255, 255, 255, 0.9);   /* Menüs, Auswahllisten, Mitteilungen: Weißglas … */
+  --ce-ob-glas-kopf: rgba(245, 248, 255, 0.86); /* … und die mobile Kopfleiste im Blauweiß des Grunds */
+  --ce-ob-glas-blur: 25px;                  /* 25 px Weichzeichnung */
+  --ce-ob-tinte: #102448;                   /* Tintenblau · 14,4:1 */
+  --ce-ob-tinte-2: #344769;                 /* Beschreibungen · 8,8:1 — kräftig, nie ausgewaschen */
+  --ce-ob-tinte-3: #4a5b7e;                 /* Nebeninformation, Tabellenköpfe · 6,4:1 */
+  --ce-ob-tinte-4: #5f6f92;                 /* Platzhalter, Achsen · 4,7:1 (auf Weiß 5,0:1) */
+  --ce-ob-tinte-aus: #66759a;               /* nur gesperrte Elemente · auf der Sperrfläche 4,1:1 */
+  --ce-ob-tinte-invers: #ffffff;            /* Schrift auf Confidara-Blau und Navy */
+  --ce-ob-glas-weichzeichnung: blur(var(--ce-ob-glas-blur)) saturate(140%); /* die EINE Weichzeichnung (Kopfleiste, Menüs, Demo-Leiste) */
+
+  /* ── Linien: zurückhaltendes Blaugrau ── */
+  --ce-ob-linie: #e3e9f5;                   /* Haarlinie zwischen Zeilen */
+  --ce-ob-kante: #d6dfee;                   /* Kante von Karten und Tabellen */
+  --ce-ob-kante-stark: #c1cde3;             /* Kante beim Zeigen, Gliederungslinien */
+  --ce-ob-kante-feld: #8090b2;              /* Kontur von Feldern · gegen Weiß 3,2:1 (WCAG 1.4.11) */
+  --ce-ob-kante-feld-zeigen: #5f6f95;       /* · 5,0:1 */
+  --ce-ob-kante-blau: #90ace6;              /* blaue Kontur der Zweitaktionen */
+  /* Tiefe aus einem Navy-Ton der Tinte (16, 36, 72) und dem Confidara-Blau — kühl, nie grau-warm
+     (kundeObsidian.test.mjs, O4). Weiße Streiflichter nur auf getönten Flächen. */
+  --ce-ob-lichtkante: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --ce-ob-lichtkante-zeigen: inset 0 1px 0 rgba(255, 255, 255, 1);
+  --ce-ob-lichtkante-aktiv: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(143, 176, 255, 0.26);
+  --ce-ob-lichtkante-logo: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 0 0 1px rgba(16, 36, 72, 0.06), 0 8px 20px -14px rgba(16, 36, 72, 0.32);
+  --ce-ob-schatten-feld: 0 1px 2px rgba(16, 36, 72, 0.05);
+  --ce-ob-schatten-karte: 0 1px 2px rgba(16, 36, 72, 0.04), 0 10px 28px -18px rgba(16, 36, 72, 0.18);
+  --ce-ob-schatten-karte-zeigen: 0 2px 4px rgba(16, 36, 72, 0.05), 0 18px 40px -20px rgba(16, 36, 72, 0.26);
+  --ce-ob-schatten-schwebend: 0 0 0 1px rgba(16, 36, 72, 0.06), 0 24px 48px -18px rgba(16, 36, 72, 0.34);
+  --ce-ob-schatten-seitenleiste: inset -1px 0 0 rgba(143, 176, 255, 0.08), 8px 0 28px -18px rgba(7, 23, 53, 0.4);
+  --ce-ob-schatten-kpi: 0 1px 2px rgba(16, 36, 72, 0.04), 0 14px 32px -20px rgba(16, 36, 72, 0.22), 0 6px 18px -14px rgba(0, 74, 252, 0.14);
+  --ce-ob-schatten-kpi-zeigen: 0 2px 4px rgba(16, 36, 72, 0.05), 0 22px 44px -22px rgba(16, 36, 72, 0.3), 0 10px 26px -16px rgba(0, 74, 252, 0.22);
+  /* Kante von oben kühl nach unten leiser; Flächenverlauf: Weiß in einen Hauch Eisblau. */
+  --ce-ob-kantenverlauf: linear-gradient(180deg, rgba(0, 74, 252, 0.22) 0%, rgba(16, 36, 72, 0.09) 38%, rgba(16, 36, 72, 0.07) 100%);
+  --ce-ob-flaechenverlauf: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(240, 245, 255, 0.55) 100%);
+  /* Begrüßung: senkrechter Verlauf vom Royal-Navy in das tiefe Tintenblau — jede Zeile gleich (titelstile.css). */
+  --ce-ob-schriftverlauf: linear-gradient(180deg, #23469c 0%, #163170 46%, #0c1d45 100%);
+  --ce-ob-schrift-kante-oben: #23469c;      /* erste Farbe des Verlaufs · 8,1:1 */
+  --ce-ob-schrift-kante-unten: #0c1d45;     /* letzte Farbe des Verlaufs */
+
+  /* ── Signal: Confidara-Blau #004AFC aus dem Logo (Betreiberentscheidung E1). Auf Hell trägt es Flächen, Kanten
+     und den Fokusring selbst (gegen den Grund 5,8:1); Textwege im etwas tieferen Ton. ── */
+  --ce-ob-signal: #004afc;                  /* Fläche · Weiß darauf 6,2:1 */
+  --ce-ob-signal-licht: #1f5fff;            /* Lichtseite der Hauptaktion · Weiß darauf 5,1:1 */
+  --ce-ob-signal-zeigen: #003fd6;           /* Kobalt: Fläche beim Zeigen · Weiß darauf 7,8:1 */
+  --ce-ob-signal-zeigen-licht: #0b52f0;
+  --ce-ob-signal-gedrueckt: #0035b8;        /* · Weiß darauf 9,5:1 */
+  --ce-ob-signal-kante: #004afc;            /* Fokus, gewählte Kante · 5,8:1 */
+  --ce-ob-signal-tinte: #0040dc;            /* Textwege · 7,1:1 */
+  --ce-ob-signal-tinte-zeigen: #0033b3;     /* Textwege beim Zeigen · 9,0:1 */
+  --ce-ob-signal-ton: #eaf1ff;              /* hellblaue Wahl · Signal darauf 5,5:1 */
+  --ce-ob-signal-ton-zeigen: #dee9ff;
+  --ce-ob-signal-hauch: rgba(0, 74, 252, 0.06);
+  --ce-ob-himmel: #4d84ff;                  /* Sky Blue: Lichtakzente, Verlaufsende */
+
+  /* ── Zustände der Kennzahlkarten: Punkt und Lichthof (Text trägt die Bedeutung, der Punkt ist Identität) ── */
+  --ce-ob-navy-punkt: #1b3a7c;
+  --ce-ob-gruen: #12a160;    --ce-ob-gruen-schein: rgba(18, 161, 96, 0.16);
+  --ce-ob-bernstein: #e08600; --ce-ob-bernstein-schein: rgba(224, 134, 0, 0.17);
+  --ce-ob-blau-schein: rgba(0, 74, 252, 0.18);
+  --ce-ob-himmel-schein: rgba(77, 132, 255, 0.16);
+
+  /* ── Navy der Seitenleiste ── */
+  --ce-ob-navy: #071735;                    /* Basis · Weiß darauf 17,8:1 */
+  --ce-ob-navy-2: #0b1e45;                  /* Abstufung */
+  --ce-ob-navy-3: #102752;                  /* tiefste Stelle des Verlaufs, unten */
+  --ce-ob-seite-symbol: #9cb0da;            /* Symbole in Ruhe · 8,2:1 */
+
+  /* ── Bewegung ── */
+  --ce-ob-kurve: cubic-bezier(0.16, 1, 0.3, 1);       /* weich auslaufend (Fenster, Menüs, Einstieg) */
+  --ce-ob-kurve-feder: cubic-bezier(0.34, 1.4, 0.64, 1); /* Symbole der Seitenleiste */
+  --ce-ob-dauer: 180ms;
+  --ce-ob-dauer-lang: 260ms;
+
+  /* ── Schriftrollen: die Arbeit in der Produktschrift Instrument Sans (fonts.css), Überschriften und Kennzahlen in
+     Host Grotesk (fonts.css, seit „Final Master Release“ Titelschrift der Plattform), die Begrüßung in Instrument
+     Serif (kunde-schriften.css) — Rollen unverändert aus Obsidian ── */
+  --ce-ob-schrift-text: var(--ce-font-sans);
+  --ce-ob-schrift-titel: 'Host Grotesk', var(--ce-font-sans);
+  --ce-ob-schrift-editorial: 'Instrument Serif', 'Times New Roman', serif;
+  --ce-ob-gruss-size: 3.75rem;              /* 60 px — editoriale Begrüßung */
+  --ce-ob-gruss-size-tablet: 3.125rem;      /* 50 px */
+  --ce-ob-gruss-size-mobile: 2.5rem;        /* 40 px */
+  --ce-ob-titel-size: 2.25rem;              /* 36 px — Seitentitel */
+  --ce-ob-titel-size-tablet: 2rem;
+  --ce-ob-titel-size-mobile: 1.75rem;
+
+  /* ── Umgeordnete Tokens der Foundation ──
+     Typografie unverändert aus Obsidian: Text, Beträge und Kennungen behalten Instrument Sans mit ihrer Breitenachse
+     (Beträge 88 %, Kennzahlen 78 %, Unterzeile der Marke 88 %); Host Grotesk hat keine Breitenachse — für
+     Überschriften gilt 100 %. */
+  --ce-font-display: var(--ce-ob-schrift-titel);
+  --ce-pr-font-display: var(--ce-ob-schrift-titel);
+  --ce-pr-display-stretch: 100%;
+  --ce-pr-ed-headline-stretch: 100%;
+  --ce-weight-text: 450;
+  --ce-weight-medium: 520;
+  --ce-text-label-weight: 550;
+  --ce-text-badge-weight: 550;
+  --ce-text-button-weight: 560;
+  --ce-text-nav-weight-active: 560;
+  --ce-text-title-page-weight: 500;
+  --ce-text-title-section-weight: 500;
+  --ce-text-title-card-weight: 520;
+  --ce-text-display-xl-weight: 500;
+  --ce-text-display-l-weight: 500;
+  --ce-text-numeric-display-weight: 400;
+  --ce-text-title-page-tracking: -0.03em;
+  --ce-text-title-section-tracking: -0.018em;
+  --ce-text-title-card-tracking: -0.01em;
+  --ce-text-label-tracking: 0;
+  --ce-text-micro-tracking: 0;
+  --ce-pr-ed-headline-tracking: -0.032em;
+
+  /* Marke und Signal. Die Navy-Skala (--ce-pr-navy-*), --ce-pr-paper und die Töne auf Navy (--ce-pr-on-navy*,
+     --ce-pr-signal-on-navy) bleiben die der Grundgestaltung: Navy ist hier wieder Navy. */
+  --ce-color-brand: var(--ce-ob-signal);
+  --ce-color-brand-hover: var(--ce-ob-signal-zeigen);
+  --ce-color-brand-active: var(--ce-ob-signal-gedrueckt);
+  --ce-color-brand-ink: var(--ce-ob-signal-tinte);
+  --ce-color-brand-soft: var(--ce-ob-signal-ton);
+  --ce-color-brand-soft-hover: var(--ce-ob-signal-ton-zeigen);
+  --ce-color-brand-border: rgba(0, 74, 252, 0.32);
+  --ce-color-brand-border-soft: rgba(0, 74, 252, 0.16);
+  --ce-color-border-focus: var(--ce-ob-signal-kante);
+  --ce-color-focus-ring: rgba(0, 74, 252, 0.28);
+  --ce-pr-signal: var(--ce-ob-signal);
+  --ce-pr-signal-hover: var(--ce-ob-signal-zeigen);
+  --ce-pr-signal-ink: var(--ce-ob-signal-tinte);
+  --ce-pr-signal-soft: var(--ce-ob-signal-ton);
+  --ce-pr-signal-soft-hover: var(--ce-ob-signal-ton-zeigen);
+  /* Die Markenstreifen (--ce-pr-stripe, --ce-pr-stripe-on-navy) bleiben die des Bereichs: Navy → Logo-Blau. */
+
+  /* Text */
+  --ce-color-text-primary: var(--ce-ob-tinte);
+  --ce-color-text-secondary: var(--ce-ob-tinte-2);
+  --ce-color-text-muted: var(--ce-ob-tinte-3);
+  --ce-color-text-placeholder: var(--ce-ob-tinte-4);
+  --ce-color-text-disabled: var(--ce-ob-tinte-aus);
+  --navy: var(--ce-ob-tinte);
+  --gray50: var(--ce-ob-flaeche-2);
+  --gray100: var(--ce-ob-flaeche-3);
+  --gray400: var(--ce-ob-tinte-4);
+
+  /* Flächen */
+  --ce-color-bg-canvas-top: var(--ce-ob-grund);
+  --ce-color-bg-canvas-mid: var(--ce-ob-grund);
+  --ce-color-bg-canvas-bottom: var(--ce-ob-grund);
+  --ce-color-bg-light-brand: rgba(0, 74, 252, 0.07);
+  --ce-app-bg: none;
+  --ce-color-bg-atmosphere: none;
+  --ce-pr-papier: var(--ce-ob-grund);
+  --ce-app-bg-mid: var(--ce-ob-grund);
+  --ce-app-bg-bottom: var(--ce-ob-grund);
+  --ce-app-divider: var(--ce-ob-linie);
+  --ce-color-surface: var(--ce-ob-flaeche-1);
+  --ce-color-surface-subtle: #f8faff;
+  --ce-color-surface-muted: var(--ce-ob-flaeche-2);
+  --ce-color-surface-hover: var(--ce-ob-flaeche-2);
+  --ce-color-surface-pressed: var(--ce-ob-flaeche-3);
+  --ce-color-surface-raised: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  --ce-color-surface-inverse: linear-gradient(180deg, var(--ce-ob-navy-2) 0%, var(--ce-ob-navy) 100%);
+  --ce-color-surface-inverse-edge: rgba(143, 176, 255, 0.16);
+  --ce-color-border-subtle: var(--ce-ob-linie);
+  --ce-color-border-default: var(--ce-ob-kante);
+  --ce-color-border-strong: var(--ce-ob-kante-stark);
+  --ce-color-border-interactive: var(--ce-ob-kante-feld);
+  --ce-color-border-interactive-hover: var(--ce-ob-kante-feld-zeigen);
+  --border-hairline: #e8eef8;
+  --ce-pr-inset: var(--ce-ob-flaeche-2);
+  --ce-pr-hairline: var(--ce-ob-linie);
+  --ce-color-overlay: rgba(7, 23, 53, 0.46);
+  --ce-color-overlay-drawer: rgba(7, 23, 53, 0.55);
+
+  /* Zustände: Grün, Bernstein und Rot bleiben die geprüften Statusfarben der Grundgestaltung (variables.css).
+     Nur die blauen und grauen Zustände rücken in die Confidara-Familie — Blau statt Indigo, Blaugrau statt Grau. */
+  --ce-color-status-neutral-surface: #eef2f9;  --ce-color-status-neutral-fg: #475879;  --ce-color-status-neutral-border: rgba(71, 88, 121, 0.18);
+  --ce-color-status-info-surface: var(--ce-ob-signal-ton); --ce-color-status-info-fg: #1f4fbf; --ce-color-status-info-border: rgba(31, 79, 191, 0.2);
+  --ce-color-status-progress-surface: var(--ce-ob-signal-ton); --ce-color-status-progress-fg: var(--ce-ob-signal-tinte); --ce-color-status-progress-border: rgba(0, 64, 220, 0.2);
+  --ce-color-status-blocked-surface: #ebeff7;  --ce-color-status-blocked-fg: #3c4b6b;  --ce-color-status-blocked-border: rgba(60, 75, 107, 0.2);
+  --ce-color-status-cancelled-surface: #eef2f9; --ce-color-status-cancelled-fg: #55658a; --ce-color-status-cancelled-border: rgba(85, 101, 138, 0.18);
+  --ce-color-status-archived-surface: #f1f4fa; --ce-color-status-archived-fg: #5d6c8f; --ce-color-status-archived-border: rgba(93, 108, 143, 0.18);
+
+  /* Tiefe: Navy-getönte Schatten der Tinte, unter schwebenden Ebenen tiefer */
+  --ce-elevation-1: 0 1px 2px rgba(16, 36, 72, 0.05), 0 6px 18px -10px rgba(16, 36, 72, 0.14);
+  --ce-elevation-2: 0 2px 4px rgba(16, 36, 72, 0.06), 0 14px 32px -14px rgba(16, 36, 72, 0.22);
+  --ce-elevation-3: 0 0 0 1px rgba(16, 36, 72, 0.05), 0 26px 60px -22px rgba(16, 36, 72, 0.34), 0 6px 16px -6px rgba(16, 36, 72, 0.1);
+  --ce-elevation-dropdown: 0 0 0 1px rgba(16, 36, 72, 0.05), 0 18px 40px -16px rgba(16, 36, 72, 0.28);
+  --ce-elevation-inset: inset 0 1px 2px rgba(16, 36, 72, 0.07);
+  --ce-pr-shadow-card: var(--ce-ob-schatten-karte);
+  --ce-pr-shadow-card-hover: var(--ce-ob-schatten-karte-zeigen);
+  --ce-pr-shadow-sheet: 0 1px 2px rgba(7, 23, 53, 0.1), 0 32px 80px -28px rgba(7, 23, 53, 0.42);
+  --ce-pr-btn-disabled-bg: #edf1f8;
+  --ce-pr-btn-disabled-fg: var(--ce-ob-tinte-aus);
+
+  /* Form: die Radius-Skala des Bereichs gilt unverändert (variables.css: Bedienelemente 10, Abschnitte 14,
+     Objekte 16, Status 6). */
+
+  /* Seitenleiste: tiefdunkles Confidara-Navy — der dunkelste Bereich der Anwendung. Ein äußerst leiser senkrechter
+     Verlauf zum Dunkelblau unten, oben hinter der Marke ein Kobaltlicht, zur Arbeitsfläche eine feine Lichtkante. */
+  --ce-sidebar-bg-top: var(--ce-ob-navy);
+  --ce-sidebar-bg-mid: var(--ce-ob-navy);
+  --ce-sidebar-bg-bottom: var(--ce-ob-navy-3);
+  --ce-sidebar-light: rgba(47, 107, 255, 0.2);
+  --ce-sidebar-depth: rgba(16, 39, 82, 0.6);
+  /* --ce-sidebar-bg bleibt eine Farbe: Die Grundgestaltung setzt sie auch als Ring im Schatten (Kundenservice-Knopf,
+     premium-editorial.css) — ein Verlauf machte diese Schatten ungültig. Den Verlauf trägt die Seitenleiste selbst
+     (Abschnitt 4). */
+  --ce-sidebar-bg: var(--ce-ob-navy);
+  --ce-ob-seitenleiste-verlauf:
+    radial-gradient(130% 34% at 16% 0%, var(--ce-sidebar-light), transparent 72%),
+    linear-gradient(180deg, var(--ce-ob-navy) 0%, var(--ce-ob-navy) 46%, var(--ce-ob-navy-2) 78%, var(--ce-ob-navy-3) 100%);
+  --ce-sidebar-edge: rgba(143, 176, 255, 0.1);
+  --ce-sidebar-shadow: var(--ce-ob-schatten-seitenleiste);
+  --ce-sidebar-border: rgba(143, 176, 255, 0.1);
+  --ce-sidebar-divider: rgba(143, 176, 255, 0.12);
+  --ce-sidebar-hover: rgba(143, 176, 255, 0.1);
+  --ce-sidebar-active-bg: linear-gradient(180deg, rgba(62, 116, 255, 0.4) 0%, rgba(0, 74, 252, 0.28) 100%);
+  --ce-sidebar-active-accent: #6f9bff;      /* 6,6:1 */
+  --ce-sidebar-active-icon: #ffffff;
+  --ce-sidebar-text: #c9d5ee;               /* 12,0:1 */
+  --ce-sidebar-text-strong: #ffffff;
+  --ce-sidebar-text-muted: #a3b4d8;         /* 8,4:1 */
+  --ce-sidebar-section: #8ea2cc;            /* 6,9:1 */
+  --ce-sidebar-scroll-thumb: rgba(143, 176, 255, 0.2);
+  --ce-sidebar-scroll-thumb-hover: rgba(143, 176, 255, 0.34);
+
+  /* Titelmaterial: Seitentitel flach in Tintenblau, ohne Prägung (Unterseiten bleiben ruhig). Die Begrüßung trägt
+     den Navy-Verlauf (Abschnitt 9). */
+  --ce-titel-signatur-fuellung: linear-gradient(var(--ce-ob-tinte), var(--ce-ob-tinte));
+  --ce-titel-signatur-praegung: none;
+  --ce-titel-signatur-kante-oben: var(--ce-ob-tinte);
+  --ce-titel-signatur-kante-unten: var(--ce-ob-tinte);
+  --ce-titel-gruss-praegung: none;
+  --ce-titel-relief-fuellung: linear-gradient(var(--ce-ob-tinte), var(--ce-ob-tinte));
+  --ce-titel-relief-praegung: none;
+  --ce-titel-relief-kante-oben: var(--ce-ob-tinte);
+  --ce-titel-relief-kante-unten: var(--ce-ob-tinte);
+  --ce-titel-auswahl-text: #ffffff;
+  --ce-titel-auswahl-grund: var(--ce-ob-signal-tinte);
+
+  /* Bediensystem (Premium Control System) in Blue Light — Radien und Maße wie im Bereich */
+  --ce-pr-bs-kontur: var(--ce-ob-kante-blau);
+  --ce-pr-bs-kontur-zeigen: var(--ce-ob-signal);
+  --ce-pr-bs-flaeche-zeigen: var(--ce-ob-flaeche-2);
+  --ce-pr-bs-wahl-flaeche: var(--ce-ob-signal-ton);
+  --ce-pr-bs-wahl-flaeche-zeigen: var(--ce-ob-signal-ton-zeigen);
+  --ce-pr-bs-wahl-kante: var(--ce-ob-signal);
+  --ce-pr-bs-schalter-aus: #dfe6f3;
+  --ce-pr-bs-schalter-aus-kante: var(--ce-ob-kante-feld);
+  --ce-pr-bs-schatten-primaer: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 1px 2px rgba(0, 38, 140, 0.3), 0 6px 16px -8px rgba(0, 74, 252, 0.55);
+  --ce-pr-bs-schatten-primaer-zeigen: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 2px 4px rgba(0, 38, 140, 0.28), 0 10px 24px -10px rgba(0, 74, 252, 0.62);
+  --ce-pr-bs-schatten-gedrueckt: inset 0 1px 3px rgba(0, 20, 80, 0.36);
+  --ce-pr-bs-schatten-sekundaer: 0 1px 2px rgba(16, 36, 72, 0.06);
+  --ce-pr-bs-schatten-sekundaer-zeigen: 0 1px 2px rgba(16, 36, 72, 0.06), 0 6px 16px -10px rgba(0, 74, 252, 0.34);
+  --ce-pr-bs-schatten-menue: 0 0 0 1px rgba(16, 36, 72, 0.06), 0 22px 48px -18px rgba(16, 36, 72, 0.3), 0 4px 12px -6px rgba(16, 36, 72, 0.08);
+  --ce-pr-bs-schatten-wahl: 0 1px 2px rgba(16, 36, 72, 0.05);
+  --ce-pr-bs-schatten-wahl-zeigen: 0 6px 14px -8px rgba(16, 36, 72, 0.2);
+  --ce-pr-bs-schatten-wahl-gewaehlt: 0 6px 16px -10px rgba(0, 74, 252, 0.4);
+  --ce-pr-bs-schatten-schalterknopf: 0 1px 3px rgba(16, 36, 72, 0.3), 0 0 0 0.5px rgba(16, 36, 72, 0.12);
+
+}
+
+/* Nur der Kundenbereich: Lesezeilen und editoriale Maße (Admin und Partnerportal behalten ihre Dichte, die öffentlichen
+   Seiten ihre Lesezeilen), die Lichter und Kennzahl-Bausteine der Übersicht, die Paketbühne und die Demo-Leiste. */
+:root[data-ce-bereich="kunde"] {
+  --ce-text-body-line: 1.6;
+  --ce-text-body-s-line: 1.6;
+  --ce-pr-ed-headline-size: var(--ce-ob-titel-size);
+  --ce-pr-ed-headline-size-tablet: var(--ce-ob-titel-size-tablet);
+  --ce-pr-ed-headline-size-mobile: var(--ce-ob-titel-size-mobile);
+  --ce-pr-ed-headline-line: 1.15;
+  --ce-pr-ed-gruss-size: var(--ce-ob-gruss-size);
+  --ce-pr-ed-gruss-size-tablet: var(--ce-ob-gruss-size-tablet);
+  --ce-pr-ed-gruss-size-mobile: var(--ce-ob-gruss-size-mobile);
+  --ce-pr-ed-gruss-line: 1.04;
+  --ce-pr-ed-gruss-tracking: -0.012em;
+  --ce-pr-ed-figure-size: 2.5rem;
+  --ce-pr-ed-figure-size-mobile: 2.125rem;
+  --ce-pr-ed-modul-titel: 1.125rem;
+
+  /* Editorial-Flächen (Übersicht, Arbeitsfläche): die Lichter selbst setzen Abschnitt 2 und 9 */
+  --ce-pr-ed-raum-flaeche: var(--ce-ob-grund);
+  --ce-pr-ed-raum-band: var(--ce-ob-eisband);
+  --ce-pr-ed-raum-schimmer: rgba(0, 74, 252, 0.06), rgba(77, 132, 255, 0.04) 30%, rgba(77, 132, 255, 0.015) 58%;
+  --ce-pr-ed-raum-wolke: rgba(127, 160, 220, 0.1), rgba(127, 160, 220, 0.05) 40%;
+  --ce-pr-ed-raum-auslauf: rgba(77, 132, 255, 0.05), rgba(77, 132, 255, 0.025) 40%;
+  --ce-pr-ed-raum-kopfleiste-linie: rgba(16, 36, 72, 0.08);
+  /* Die Übersicht behält Fläche und Lichter der Live-Fassung (Flow Signature, premium-editorial.css): kein Token
+     --ce-pr-ed-flaeche-uebersicht hier (Betreiberentscheidung 2026-11-16, „Final Master Release“). */
+  --ce-pr-ed-shadow-flaeche: var(--ce-ob-schatten-karte);
+  --ce-pr-ed-kennzahl-zahl: var(--ce-ob-tinte);
+  --ce-pr-ed-kennzahl-tinte: var(--ce-ob-tinte-2);
+  --ce-pr-ed-kante-licht: var(--ce-ob-kantenverlauf);
+  --ce-pr-ed-karte-licht: linear-gradient(180deg, #ffffff 40%, #fbfcff);
+  --ce-pr-ed-shadow-kennzahl: var(--ce-ob-schatten-kpi);
+  --ce-pr-ed-shadow-kennzahl-klein: 0 1px 2px rgba(16, 36, 72, 0.05), 0 10px 22px -16px rgba(16, 36, 72, 0.2);
+  --ce-pr-ed-kante-signal: rgba(0, 74, 252, 0.35);
+  --ce-pr-ed-shadow-kennzahl-hover: var(--ce-ob-schatten-kpi-zeigen);
+  --ce-pr-ed-ton-signal: rgba(0, 74, 252, 0.05);
+  --ce-pr-ed-filter-kante: rgba(0, 74, 252, 0.22);
+  --ce-pr-ed-shadow-fenster: var(--ce-elevation-3);
+  --ce-pr-ed-shadow-sheet: 0 -1px 2px rgba(16, 36, 72, 0.06), 0 -24px 56px -24px rgba(16, 36, 72, 0.36);
+  --ce-pr-ed-schleier: rgba(7, 23, 53, 0.34);
+  --ce-pr-ed-zeile-offen: rgba(0, 74, 252, 0.04);
+  --ce-pr-ed-griff: rgba(16, 36, 72, 0.22);
+  --ce-pr-ed-row-mark: var(--ce-ob-signal);
+  --ce-pr-ed-neu-kante: rgba(0, 74, 252, 0.22);
+  --ce-pr-ed-flow-kopf-linie: var(--ce-ob-linie);
+  --ce-pr-ed-flow-kopfleiste-linie: transparent;
+  --ce-pr-ed-flow-fuss-linie: linear-gradient(90deg, transparent, rgba(16, 36, 72, 0.12) 12%, rgba(16, 36, 72, 0.12) 88%, transparent);
+  /* Versanddienstleister-Bühne: Navy der Live-Fassung — Bühne, Kacheln und Schatten kommen unverändert aus
+     variables.css (--ce-pr-ed-flow-buehne-*, --ce-pr-ed-flow-kachel*, --ce-pr-ed-shadow-buehne/-kachel). */
+
+  /* Paketbühne: das Kraftpapier bleibt, die Werkbank wird eisblau */
+  --ce-pr-paket-buehne: var(--ce-ob-flaeche-2);
+  --ce-pr-paket-raster: rgba(16, 36, 72, 0.05);
+  --ce-pr-paket-schatten: rgba(16, 36, 72, 0.24);
+
+  /* Kennzahl-Bausteine und Bühne */
+  --ce-kpi-border: var(--ce-ob-kante);
+  --ce-kpi-label: var(--ce-ob-tinte-2);
+  --ce-kpi-context: var(--ce-ob-tinte-3);
+
+  /* Demo-Leiste (nur /demo): Navy-Glas wie die Seitenleiste, weiße Aktion */
+  --ce-demo-flaeche: rgba(7, 23, 53, 0.92);
+  --ce-demo-linie: rgba(143, 176, 255, 0.22);
+  --ce-demo-streifen: linear-gradient(90deg, rgba(77, 132, 255, 0) 0%, #4d84ff 50%, rgba(77, 132, 255, 0) 100%);
+  --ce-demo-text: #eef2ff;
+  --ce-demo-text-2: #aab6d8;
+  --ce-demo-hover: rgba(255, 255, 255, 0.08);
+  --ce-demo-fokus: #8fb0ff;
+  --ce-demo-knopf: #ffffff;
+  --ce-demo-knopf-hover: #eef3ff;
+  --ce-demo-knopf-text: #0b2462;
+}
+
+/* ═══════════ 2 · GRUND ════════════════════════════════════════════════════
+   Blauweiß bis an den Rand. Über jeder Unterseite ein ruhiges Eisblau-Band mit leisem Kobaltschimmer rechts und
+   einer Stahlblau-Wolke links — deutlich leiser als die Bühne der Übersicht (Abschnitt 9). Alles als Hintergrundbild
+   von .main-content — keine Ebene, kein Stapelkontext, keine Bewegung. */
+:root[data-ce-familie="blue-light"],
+:root[data-ce-familie="blue-light"] :is(body, .app-shell) {
+  background: var(--ce-ob-grund);
+  color: var(--ce-ob-tinte);
+}
+:root[data-ce-familie="blue-light"] body {
+  font-family: var(--ce-ob-schrift-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+/* Je Bereich seine eigene Hauptfläche; .page-with-navbar nur auf den öffentlichen Seiten — im Kundenbereich ist sie ein
+   innerer Rahmen und läge als zweites Band über dem der .main-content. */
+:root[data-ce-familie="blue-light"] :is(.main-content, .adm-main, .spp-main),
+:root[data-ce-bereich="oeffentlich"] .page-with-navbar {
+  background-color: var(--ce-ob-grund);
+  background-image:
+    linear-gradient(180deg, var(--ce-ob-eisband) 0, rgba(232, 240, 255, 0) 20rem),
+    radial-gradient(48rem 18rem at 100% -6rem, rgba(0, 74, 252, 0.07), transparent 70%),
+    radial-gradient(40rem 16rem at 12% -8rem, rgba(127, 160, 220, 0.12), transparent 70%);
+  background-repeat: no-repeat;
+}
+@media (max-width: 1023px) {
+  :root[data-ce-familie="blue-light"] :is(.main-content, .adm-main, .spp-main),
+  :root[data-ce-bereich="oeffentlich"] .page-with-navbar {
+    background-image:
+      linear-gradient(180deg, var(--ce-ob-eisband) 0, rgba(232, 240, 255, 0) 14rem),
+      radial-gradient(26rem 12rem at 100% -4rem, rgba(0, 74, 252, 0.07), transparent 70%),
+      radial-gradient(24rem 11rem at 10% -6rem, rgba(127, 160, 220, 0.12), transparent 70%);
+  }
+}
+:root[data-ce-familie="blue-light"] ::selection { background: rgba(0, 74, 252, 0.18); color: var(--ce-ob-tinte); }
+:root[data-ce-familie="blue-light"] * { scrollbar-color: rgba(16, 36, 72, 0.22) transparent; }
+
+/* ═══════════ 3 · TYPOGRAFIE ═══════════════════════════════════════════════
+   Instrument Sans trägt die Arbeit mit den Ziffern- und Breitenregeln des Bereichs, Host Grotesk die Überschriften
+   und Kennzahlen, Instrument Serif nur die Begrüßung. */
+:root[data-ce-familie="blue-light"] :is(h1, h2, h3, h4) { font-family: var(--ce-ob-schrift-titel); }
+:root[data-ce-familie="blue-light"] :is(h2, h3) { letter-spacing: -0.015em; }
+:root[data-ce-familie="blue-light"] :is(button, input, select, textarea) { font-family: inherit; }
+:root[data-ce-familie="blue-light"] :is(a:not(.btn), .btn-link) { text-underline-offset: 3px; }
+
+/* ═══════════ 4 · SEITENLEISTE ═════════════════════════════════════════════
+   Tiefdunkles Confidara-Navy, getrennt durch eine feine blaue Lichtkante. Einträge als ruhige Zeilen in hellem
+   Weißblau; Zeigen hellt Fläche und Schrift; die aktive Seite liegt auf einem Blauglas mit Lichtkante, Symbol und
+   Schrift weiß. */
+:root[data-ce-bereich="kunde"] .pp-side {
+  background: var(--ce-ob-seitenleiste-verlauf);
+  border-right: 1px solid var(--ce-sidebar-border);
+  box-shadow: var(--ce-sidebar-shadow);
+}
+:root[data-ce-bereich="kunde"] .pp-side .nitem,
+:root[data-ce-bereich="kunde"] .pp-side .pp-nav-group-head {
+  border-radius: var(--ce-pr-radius-control);
+  color: var(--ce-sidebar-text);
+  font-weight: 500;
+  letter-spacing: -0.003em;
+  transition:
+    background-color var(--ce-ob-dauer) var(--ce-ob-kurve),
+    color var(--ce-ob-dauer) var(--ce-ob-kurve),
+    box-shadow var(--ce-ob-dauer) var(--ce-ob-kurve);
+}
+:root[data-ce-bereich="kunde"] .pp-side :is(.nitem, .pp-nav-group-head):hover {
+  background: var(--ce-sidebar-hover);
+  color: var(--ce-sidebar-text-strong);
+}
+:root[data-ce-bereich="kunde"] .pp-side :is(.nitem, .pp-nav-group-head) :is(.pp-nav-icon, .nav-sym) {
+  color: var(--ce-ob-seite-symbol);
+  transition: color var(--ce-ob-dauer) var(--ce-ob-kurve);
+}
+:root[data-ce-bereich="kunde"] .pp-side :is(.nitem, .pp-nav-group-head):is(:hover, :focus-visible) :is(.pp-nav-icon, .nav-sym) {
+  color: var(--ce-sidebar-text-strong);
+}
+:root[data-ce-bereich="kunde"] .pp-side :is(.nitem.on, .pp-nav-group--aktiv:not(.pp-nav-group--open) > .pp-nav-group-head) {
+  background: var(--ce-sidebar-active-bg);
+  color: var(--ce-sidebar-text-strong);
+  box-shadow: var(--ce-ob-lichtkante-aktiv);
+}
+:root[data-ce-bereich="kunde"] .pp-side :is(.nitem.on, .pp-nav-group--aktiv > .pp-nav-group-head) { color: var(--ce-sidebar-text-strong); }
+:root[data-ce-bereich="kunde"] .pp-side :is(.nitem.on, .pp-nav-group--aktiv > .pp-nav-group-head) :is(.pp-nav-icon, .nav-sym) {
+  color: var(--ce-sidebar-active-icon);
+}
+/* Kein Seitenbalken: das Blauglas markiert die Seite allein. */
+:root[data-ce-bereich="kunde"] .pp-side :is(.nitem.on, .pp-nav-group--aktiv:not(.pp-nav-group--open) > .pp-nav-group-head)::before {
+  content: none;
+}
+/* Unterpunkte: eingerückt, leiser; aktiv weiß auf leisem Blauglas */
+:root[data-ce-bereich="kunde"] .pp-side .pp-nav-group-items .nitem { color: var(--ce-sidebar-text-muted); }
+:root[data-ce-bereich="kunde"] .pp-side .pp-nav-group-items .nitem:hover { color: var(--ce-sidebar-text-strong); }
+:root[data-ce-bereich="kunde"] .pp-side .pp-nav-group-items .nitem.on {
+  background: rgba(77, 132, 255, 0.2);
+  color: var(--ce-sidebar-text-strong);
+  box-shadow: none;
+}
+:root[data-ce-bereich="kunde"] .pp-side :is(.pp-nav-group-label) { color: inherit; }
+:root[data-ce-bereich="kunde"] .pp-side .pp-nav-group-chevron { color: var(--ce-sidebar-section); }
+:root[data-ce-bereich="kunde"] .pp-side .pp-foot { border-top: 1px solid var(--ce-sidebar-divider); }
+
+/* Symbolbewegung der acht Hauptpunkte (Premium Control System 2.0, in Obsidian neu gedeutet, hier unverändert): Die
+   Bewegungen aus premium-editorial.css (Abschnitt 29) laufen weiter — nur Transform und Deckkraft, einmal je Zeigen
+   bzw. Fokus, nie bei reduzierter Bewegung. Eine federnde Kurve und ein leiser Lichthof in Sky Blue hinter dem
+   Symbol, der mit der Bewegung aufscheint und vergeht. */
+:root[data-ce-bereich="kunde"] .pp-side :is(.nitem, .pp-nav-group-head) .pp-nav-icon { position: relative; }
+:root[data-ce-bereich="kunde"] .pp-side :is(.nitem, .pp-nav-group-head) .pp-nav-icon::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(143, 176, 255, 0.38), rgba(143, 176, 255, 0));
+  opacity: 0;
+  scale: 0.6;
+  pointer-events: none;
+}
+@keyframes ce-ob-symbol-licht {
+  0% { opacity: 0; scale: 0.6; }
+  40% { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: 1.25; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-ce-bereich="kunde"] .pp-side :is(.nitem, .pp-nav-group-head):focus-visible .pp-nav-icon::after {
+    animation: ce-ob-symbol-licht 560ms var(--ce-ob-kurve) 1 both;
+  }
+  :root[data-ce-bereich="kunde"] .pp-side :is(.nitem, .pp-nav-group-head) :is(.nav-sym, .nav-sym-teil) {
+    animation-timing-function: var(--ce-ob-kurve-feder) !important;
+  }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  :root[data-ce-bereich="kunde"] .pp-side :is(.nitem, .pp-nav-group-head):hover .pp-nav-icon::after {
+    animation: ce-ob-symbol-licht 560ms var(--ce-ob-kurve) 1 both;
+  }
+}
+
+/* ═══════════ 5 · KOPFLEISTE, SUCHE, MITTEILUNGEN, BENUTZER ════════════════ */
+:root[data-ce-bereich="kunde"] .ce-page-header-utility {
+  background: transparent;
+  border-image-source: none;
+  border-bottom: 1px solid transparent;
+  box-shadow: none;
+}
+:root[data-ce-bereich="kunde"] .mobile-topbar {
+  background: transparent;
+  border-bottom: 1px solid var(--ce-ob-linie);
+  box-shadow: none;
+}
+/* Das Glas der Kopfleiste liegt auf einer eigenen Fläche hinter ihrem Inhalt. Ein backdrop-filter an der Leiste selbst
+   machte sie zum Bezugsrahmen ihrer festen Kinder: Klickfang und Mitteilungsfeld (notifications.css, mobil
+   position: fixed) deckten dann nur noch die Leiste statt des Bildschirms. Die Leiste ist sticky mit z-index —
+   die Fläche (z-index -1) liegt damit über ihrem Grund und unter ihrem Inhalt. */
+:root[data-ce-bereich="kunde"] .mobile-topbar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--ce-ob-glas-kopf);
+  -webkit-backdrop-filter: var(--ce-ob-glas-weichzeichnung);
+  backdrop-filter: var(--ce-ob-glas-weichzeichnung);
+  pointer-events: none;
+}
+:root[data-ce-bereich="kunde"] .ce-suche {
+  border: 1px solid var(--ce-ob-kante);
+  border-radius: var(--ce-pr-radius-control);
+  background: var(--ce-ob-flaeche-1);
+  box-shadow: var(--ce-ob-schatten-feld);
+  color: var(--ce-ob-tinte);
+}
+:root[data-ce-bereich="kunde"] .ce-suche:hover { border-color: var(--ce-ob-kante-stark); }
+:root[data-ce-bereich="kunde"] .ce-suche:focus-within {
+  border-color: var(--ce-ob-signal-kante);
+  box-shadow: var(--ce-elevation-focus-ring);
+}
+:root[data-ce-bereich="kunde"] .ce-suche input { color: var(--ce-ob-tinte); background: transparent; }
+
+/* ═══════════ 6 · SEITENKOPF ═══════════════════════════════════════════════
+   Titel in Host Grotesk, tintenblau und eng gesetzt; Untertitel in kräftigem Nebentext. Die graue Seitenkante
+   entfällt — eine Haarlinie gliedert genug. */
+:root[data-ce-familie="blue-light"] .ce-page-header-main { border-bottom: 1px solid var(--ce-ob-linie); }
+:root[data-ce-familie="blue-light"] .ce-page-header-main::after { content: none; }
+:root[data-ce-familie="blue-light"] .ce-page-header-title {
+  font-family: var(--ce-ob-schrift-titel);
+  font-weight: 500;
+  letter-spacing: var(--ce-pr-ed-headline-tracking);
+  color: var(--ce-ob-tinte);
+  /* Host Grotesk zeichnet Unterlängen und Akzente höher als Instrument Sans: der Malrand wächst mit. */
+  --titel-malrand: 0.2em;
+}
+:root[data-ce-familie="blue-light"] .ce-page-header-sub {
+  color: var(--ce-ob-tinte-2);
+  font-size: var(--ce-text-body-size);
+  line-height: 1.55;
+}
+:root[data-ce-familie="blue-light"] .ce-page-header-meta { color: var(--ce-ob-tinte-3); }
+
+/* ═══════════ 7 · BEDIENSYSTEM ═════════════════════════════════════════════
+   Primär: kräftiges Confidara-Blau mit weißer Schrift, Lichtseite oben und ein blauer Schein darunter. Sekundär:
+   helle Fläche mit blauer Kontur und Tinte. Text: leise. Gefahr: Rot nur als bestätigende Aktion. Höhen, Abstände
+   und Rollen bleiben die des Premium Control System. */
+:root[data-ce-familie="blue-light"] .btn {
+  font-family: var(--ce-ob-schrift-text);
+  font-weight: 560;
+  letter-spacing: -0.006em;
+  transition:
+    background-color var(--ce-ob-dauer) var(--ce-ob-kurve),
+    background-image var(--ce-ob-dauer) var(--ce-ob-kurve),
+    border-color var(--ce-ob-dauer) var(--ce-ob-kurve),
+    color var(--ce-ob-dauer) var(--ce-ob-kurve),
+    box-shadow var(--ce-ob-dauer) var(--ce-ob-kurve);
+}
+:root[data-ce-familie="blue-light"] :is(.btn-primary, .offer-cta-btn--primary) {
+  border: 1px solid var(--ce-ob-signal);
+  background: linear-gradient(180deg, var(--ce-ob-signal-licht) 0%, var(--ce-ob-signal) 100%);
+  color: var(--ce-ob-tinte-invers);
+  box-shadow: var(--ce-pr-bs-schatten-primaer);
+}
+:root[data-ce-familie="blue-light"] :is(.btn-primary, .offer-cta-btn--primary):hover:not(:disabled) {
+  border-color: var(--ce-ob-signal-zeigen);
+  background: linear-gradient(180deg, var(--ce-ob-signal-zeigen-licht) 0%, var(--ce-ob-signal-zeigen) 100%);
+  color: var(--ce-ob-tinte-invers);
+  box-shadow: var(--ce-pr-bs-schatten-primaer-zeigen);
+}
+:root[data-ce-familie="blue-light"] :is(.btn-primary, .offer-cta-btn--primary):active:not(:disabled) {
+  background: linear-gradient(180deg, var(--ce-ob-signal-gedrueckt) 0%, var(--ce-ob-signal-gedrueckt) 100%);
+  box-shadow: var(--ce-pr-bs-schatten-gedrueckt);
+}
+:root[data-ce-familie="blue-light"] .btn-outline:not(.booking-blatt-zurueck),
+:root[data-ce-familie="blue-light"] .btn-secondary {
+  border: 1px solid var(--ce-ob-kante-blau);
+  background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
+  color: var(--ce-ob-tinte);
+  box-shadow: var(--ce-pr-bs-schatten-sekundaer);
+}
+:root[data-ce-familie="blue-light"] .btn-outline:not(.booking-blatt-zurueck):hover:not(:disabled),
+:root[data-ce-familie="blue-light"] .btn-secondary:hover:not(:disabled) {
+  border-color: var(--ce-ob-signal);
+  background: linear-gradient(180deg, #f7faff 0%, var(--ce-ob-signal-ton) 100%);
+  color: var(--ce-ob-signal-tinte-zeigen);
+  box-shadow: var(--ce-pr-bs-schatten-sekundaer-zeigen);
+}
+:root[data-ce-familie="blue-light"] .btn-outline:not(.booking-blatt-zurueck):active:not(:disabled) {
+  background: var(--ce-ob-signal-ton-zeigen);
+  box-shadow: var(--ce-pr-bs-schatten-gedrueckt);
+}
+:root[data-ce-familie="blue-light"] .btn-ghost { color: var(--ce-ob-tinte-2); background: transparent; }
+:root[data-ce-familie="blue-light"] .btn-ghost:hover:not(:disabled) { color: var(--ce-ob-signal-tinte-zeigen); background: var(--ce-ob-signal-hauch); }
+:root[data-ce-familie="blue-light"] .btn-link { color: var(--ce-ob-signal-tinte); }
+:root[data-ce-familie="blue-light"] .btn-link:hover:not(:disabled) { color: var(--ce-ob-signal-tinte-zeigen); background: transparent; }
+:root[data-ce-familie="blue-light"] .btn-danger {
+  border: 1px solid var(--ce-color-danger-solid);
+  background: linear-gradient(180deg, #ad4141 0%, var(--ce-color-danger-solid) 100%);
+  color: #ffffff;
+}
+:root[data-ce-familie="blue-light"] :is(.btn-primary, .btn-danger, .btn-outline:not(.booking-blatt-zurueck), .btn-secondary, .offer-cta-btn--primary):disabled {
+  border-color: var(--ce-ob-kante);
+  background: var(--ce-pr-btn-disabled-bg);
+  color: var(--ce-pr-btn-disabled-fg);
+  box-shadow: none;
+}
+/* Fokus: der Ring der Foundation im Confidara-Blau, mit Abstand */
+:root[data-ce-familie="blue-light"] :is(.btn, a, button, [role="button"], [role="tab"], [role="option"], [role="menuitem"], summary):focus-visible {
+  outline: 2px solid var(--ce-ob-signal-kante);
+  outline-offset: 2px;
+}
+
+/* Felder: Fläche, Kontur (3,2:1) und Fokus kommen aus den umgeordneten Tokens (Abschnitt 1) — die Feldregeln der
+   Bereichs-Stylesheets bleiben zuständig, auch für Sonderfelder wie die Suche (eigene, transparente Mulde). Hier nur,
+   was kein Token trägt: Platzhalter, Optionen der nativen Auswahl, Farbe von Kästchen und Optionsfeldern. */
+:root[data-ce-familie="blue-light"] :is(input, textarea)::placeholder { color: var(--ce-ob-tinte-4); }
+:root[data-ce-familie="blue-light"] select option { background: var(--ce-ob-flaeche-1); color: var(--ce-ob-tinte); }
+:root[data-ce-familie="blue-light"] :is(input[type="checkbox"], input[type="radio"]) { accent-color: var(--ce-ob-signal); }
+:root[data-ce-familie="blue-light"] .field-label { color: var(--ce-ob-tinte-2); }
+:root[data-ce-familie="blue-light"] :is(.field-error, .field-input-error ~ .field-error) { color: var(--ce-color-status-error-fg); }
+
+/* Aufklappfelder, Menüs, Auswahllisten: Weißglas mit 25 px Weichzeichnung */
+:root[data-ce-familie="blue-light"] :is(.ce-auswahl-liste, .ce-pm-liste, .ce-suche-treffer, .ntf-panel, [role="listbox"], [role="menu"]) {
+  background: var(--ce-ob-glas);
+  -webkit-backdrop-filter: var(--ce-ob-glas-weichzeichnung);
+  backdrop-filter: var(--ce-ob-glas-weichzeichnung);
+  border-color: var(--ce-ob-kante);
+  box-shadow: var(--ce-pr-bs-schatten-menue);
+}
+
+/* Reiter: Unterkante im Confidara-Blau */
+:root[data-ce-familie="blue-light"] .ce-tabs { border-bottom-color: var(--ce-ob-linie); }
+:root[data-ce-familie="blue-light"] .ce-tab { color: var(--ce-ob-tinte-3); }
+:root[data-ce-familie="blue-light"] .ce-tab:hover { color: var(--ce-ob-tinte); }
+:root[data-ce-familie="blue-light"] :is(.ce-tab.active, .ce-tab[aria-selected="true"]) {
+  color: var(--ce-ob-tinte);
+  border-bottom-color: var(--ce-ob-signal);
+  box-shadow: inset 0 -2px 0 var(--ce-ob-signal);
+}
+
+/* Schalter: aus als eisblaue Spur mit weißem Knopf, an im Confidara-Blau mit weißem Knopf, gesperrt mit leisem
+   Knopf. Zeigen dunkelt die Kante (aus) oder das Blau (an) — nie über die Navy-Töne der Grundebene
+   (premium-editorial.css), damit „an“ überall dasselbe Blau bleibt. */
+:root[data-ce-familie="blue-light"] .ce-switch-knob { background: var(--ce-ob-flaeche-1); }
+:root[data-ce-familie="blue-light"] .ce-switch-input:checked ~ .ce-switch-track {
+  border-color: var(--ce-ob-signal);
+  background: var(--ce-ob-signal);
+}
+:root[data-ce-familie="blue-light"] .ce-switch-input:checked ~ .ce-switch-track .ce-switch-knob { background: var(--ce-ob-flaeche-1); }
+:root[data-ce-familie="blue-light"] .ce-switch-input:checked ~ .ce-switch-track .ce-switch-knob::after { border-color: var(--ce-ob-signal); }
+:root[data-ce-familie="blue-light"] .ce-switch-input:disabled ~ .ce-switch-track .ce-switch-knob { background: #f3f5fa; }
+@media (hover: hover) {
+  :root[data-ce-familie="blue-light"] .ce-switch:hover .ce-switch-input:not(:checked, :disabled) ~ .ce-switch-track {
+    border-color: var(--ce-ob-kante-feld-zeigen);
+  }
+  :root[data-ce-familie="blue-light"] .ce-switch:hover .ce-switch-input:checked:not(:disabled) ~ .ce-switch-track {
+    border-color: var(--ce-ob-signal-zeigen);
+    background: var(--ce-ob-signal-zeigen);
+  }
+}
+
+/* ═══════════ 8 · FLÄCHEN ═════════════════════════════════════════════════
+   Karten, Blätter und Tabellenrahmen: weiß mit einem Hauch Eisblau am Fuß, blaugraue Kante, leiser Navy-Schatten. */
+:root[data-ce-familie="blue-light"] :is(.ce-card, .card, .table-card, .ce-table-container, .ce-list-card, .booking-blatt,
+  .tile, .ov-card, .price-drift-card) {
+  background-color: var(--ce-ob-flaeche-1);
+  background-image: var(--ce-ob-flaechenverlauf);
+  border-color: var(--ce-ob-kante);
+  box-shadow: var(--ce-ob-schatten-karte);
+}
+:root[data-ce-familie="blue-light"] .ce-card-inverse { background: var(--ce-color-surface-inverse); border-color: var(--ce-color-surface-inverse-edge); }
+
+/* Tabellen: Köpfe leise in 13/550 ohne Versalien, Zeilen zwischen Haarlinien, Zeigen tönt die Zeile eisblau */
+:root[data-ce-familie="blue-light"] table { border-color: var(--ce-ob-linie); }
+:root[data-ce-familie="blue-light"] thead th,
+:root[data-ce-familie="blue-light"] th {
+  color: var(--ce-ob-tinte-3);
+  font-family: var(--ce-ob-schrift-text);
+  font-weight: 550;
+  letter-spacing: 0;
+  text-transform: none;
+  background-color: transparent;
+  border-bottom-color: var(--ce-ob-kante);
+}
+:root[data-ce-familie="blue-light"] td { border-bottom-color: var(--ce-ob-linie); color: var(--ce-ob-tinte); }
+:root[data-ce-familie="blue-light"] tbody tr { transition: background-color var(--ce-ob-dauer) var(--ce-ob-kurve); }
+:root[data-ce-familie="blue-light"] tbody tr:hover { background-color: var(--ce-ob-flaeche-2); }
+
+/* Statusmarken: getönte Fläche, Zustandsschrift, feine Kante; im Kundenbereich eckig 6 px (Radius der Bereichsskala,
+   die Admin, Partnerportal und öffentliche Seiten nicht tragen — dort bleibt der Radius der Grundgestaltung). */
+:root[data-ce-familie="blue-light"] .badge {
+  font-family: var(--ce-ob-schrift-text);
+  font-weight: 550;
+  letter-spacing: 0;
+}
+:root[data-ce-bereich="kunde"] .badge { border-radius: var(--ce-pr-radius-status); }
+
+/* Zustände: leer, laden, Fehler */
+:root[data-ce-familie="blue-light"] .ce-skeleton,
+:root[data-ce-familie="blue-light"] .ce-skeleton-line {
+  background: linear-gradient(90deg, #eaf0fb 0%, #f5f8ff 50%, #eaf0fb 100%);
+  background-size: 200% 100%;
+}
+:root[data-ce-familie="blue-light"] :is(.ce-state-title, .empty-title) { font-family: var(--ce-ob-schrift-titel); font-weight: 500; color: var(--ce-ob-tinte); }
+:root[data-ce-familie="blue-light"] :is(.ce-state-text, .empty-text) { color: var(--ce-ob-tinte-2); }
+
+/* Dialoge und Schubladen: helle Premium-Fläche mit tiefem Navy-Schatten, Öffnen als weiches Aufziehen. Der Schleier
+   bleibt der EINE Overlayton (patterns.css: --ce-color-overlay, ohne Weichzeichnung) — Abschnitt 1 setzt ihn auf
+   46 % Navy. */
+:root[data-ce-familie="blue-light"] :is(.ce-dialog, .abk-dialog-card, .dft-dialog-card, .stn-dialog-card, .sup-dialog-card,
+  .email-change-modal, .price-drift-card) {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  border: 1px solid var(--ce-ob-kante);
+  box-shadow: var(--ce-elevation-3);
+}
+:root[data-ce-familie="blue-light"] :is(.ce-drawer, .abk-drawer) {
+  background: var(--ce-ob-flaeche-1);
+  border-left: 1px solid var(--ce-ob-kante);
+  box-shadow: var(--ce-elevation-3);
+}
+:root[data-ce-familie="blue-light"] :is(.ce-dialog-title) { font-family: var(--ce-ob-schrift-titel); font-weight: 500; letter-spacing: -0.015em; }
+@keyframes ce-ob-fenster-auf {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ce-ob-schleier-auf { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-ce-familie="blue-light"] :is(.ce-dialog, .abk-dialog-card, .dft-dialog-card, .stn-dialog-card, .sup-dialog-card,
+    .email-change-modal, .price-drift-card) {
+    animation: ce-ob-fenster-auf var(--ce-ob-dauer-lang) var(--ce-ob-kurve) both;
+  }
+  :root[data-ce-familie="blue-light"] :is(.ce-dialog-overlay, .abk-dialog-overlay, .dft-dialog-overlay, .stn-dialog-overlay,
+    .sup-dialog-overlay, .email-change-overlay, .price-drift-overlay) {
+    animation: ce-ob-schleier-auf var(--ce-ob-dauer) linear both;
+  }
+}
+
+/* ═══════════ 9 · ÜBERSICHT — DIE PREMIUM-BÜHNE ════════════════════════════
+   Fläche und Lichter der Übersicht sind die der Live-Fassung (Confidara Flow Signature, premium-editorial.css: hellblaue
+   Atmosphäre mit Kobaltfeld an „Neue Sendung“, Lichtbahn, Hof und Glut unter der Navy-Bühne) — Betreiberentscheidung
+   2026-11-16 („Final Master Release“). Diese Ebene setzt dort keinen eigenen Hintergrund mehr; die Regel der
+   Editorial-Ebene ist mit :has(.ov-page) spezifischer als der Grund der Arbeitsseiten (Abschnitt 2). Darauf die
+   Begrüßung in Instrument Serif im Navy-Verlauf, die Datumszeile darunter. Kein Korn, kein Muster, keine Bewegung. */
+:root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-main { border-bottom-color: transparent; }
+:root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-title {
+  font-family: var(--ce-ob-schrift-editorial);
+  font-weight: 400;
+  font-size: var(--ce-ob-gruss-size);
+  line-height: 1.04;
+  letter-spacing: -0.012em;
+  --titel-fuellung: var(--ce-ob-schriftverlauf);
+  --titel-kante-oben: var(--ce-ob-schrift-kante-oben);
+  --titel-kante-unten: var(--ce-ob-schrift-kante-unten);
+  --titel-malrand: 0.22em;
+  hyphens: manual;
+}
+:root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-sub {
+  margin-top: var(--ce-space-1);
+  font-size: var(--ce-text-body-size);
+  font-weight: 450;
+  color: var(--ce-ob-tinte-2);
+  letter-spacing: 0;
+}
+@media (max-width: 68.75em) {
+  :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-title { font-size: var(--ce-ob-gruss-size-tablet); }
+}
+@media (max-width: 37.5em) {
+  :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-title { font-size: var(--ce-ob-gruss-size-mobile); }
+}
+/* Der eine inszenierte Moment: die Begrüßung tritt einmal aus der Unschärfe (700 ms), danach Ruhe. Endzustand ohne
+   Animation; bei reduzierter Bewegung steht sie sofort. Der Endwert ist „none“, nicht blur(0)/0 0: mit fill-mode both
+   bliebe sonst dauerhaft ein Filter samt eigenem Bezugsrahmen und Stapelkontext am Kopf stehen. */
+@keyframes ce-ob-gruss {
+  from { opacity: 0; filter: blur(10px); translate: 0 6px; }
+  to { opacity: 1; filter: none; translate: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-ce-bereich="kunde"] .main-content:has(.ov-page) .ce-page-header-text {
+    animation: ce-ob-gruss 720ms var(--ce-ob-kurve) both;
+  }
+}
+
+/* Kennzahlkarten: weiß mit Lichtkante, Punkt in der Zustandsfarbe, große ruhige Zahl in Tinte, Kontext leise; ein
+   Lichthof der Zustandsfarbe glimmt in der Ecke und wird beim Zeigen und Öffnen heller. Die Karten dürfen hier
+   lebendiger sein als auf den Unterseiten. */
+:root[data-ce-bereich="kunde"] .ov-kpi {
+  --ce-ob-kpi-farbe: var(--ce-ob-navy-punkt);
+  --ce-ob-kpi-schein: var(--ce-ob-himmel-schein);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid var(--ce-ob-kante);
+  border-radius: var(--ce-pr-radius-card);
+  background-color: var(--ce-ob-flaeche-1);
+  background-image: linear-gradient(160deg, rgba(255, 255, 255, 0) 45%, rgba(234, 241, 255, 0.6) 100%);
+  box-shadow: var(--ce-ob-schatten-kpi);
+  color: var(--ce-ob-tinte);
+  transition:
+    border-color var(--ce-ob-dauer) var(--ce-ob-kurve),
+    background-color var(--ce-ob-dauer) var(--ce-ob-kurve),
+    box-shadow var(--ce-ob-dauer) var(--ce-ob-kurve);
+}
+:root[data-ce-bereich="kunde"] .ov-kpi--active { --ce-ob-kpi-farbe: var(--ce-ob-navy-punkt); --ce-ob-kpi-schein: var(--ce-ob-himmel-schein); }
+:root[data-ce-bereich="kunde"] .ov-kpi--transit { --ce-ob-kpi-farbe: var(--ce-ob-signal); --ce-ob-kpi-schein: var(--ce-ob-blau-schein); }
+:root[data-ce-bereich="kunde"] .ov-kpi--delivered { --ce-ob-kpi-farbe: var(--ce-ob-gruen); --ce-ob-kpi-schein: var(--ce-ob-gruen-schein); }
+:root[data-ce-bereich="kunde"] .ov-kpi--delayed { --ce-ob-kpi-farbe: var(--ce-ob-bernstein); --ce-ob-kpi-schein: var(--ce-ob-bernstein-schein); }
+:root[data-ce-bereich="kunde"] .ov-kpi::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: -55%;
+  right: -30%;
+  width: 85%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--ce-ob-kpi-schein), transparent);
+  opacity: 0.7;
+  transition: opacity var(--ce-ob-dauer-lang) var(--ce-ob-kurve), scale var(--ce-ob-dauer-lang) var(--ce-ob-kurve);
+  pointer-events: none;
+}
+:root[data-ce-bereich="kunde"] .ov-kpi:is(:hover, [aria-expanded="true"]) {
+  border-color: var(--ce-ob-kante-stark);
+  background-color: var(--ce-ob-flaeche-1);
+  box-shadow: var(--ce-ob-schatten-kpi-zeigen);
+}
+:root[data-ce-bereich="kunde"] .ov-kpi:is(:hover, [aria-expanded="true"])::before { opacity: 1; scale: 1.12; }
+:root[data-ce-bereich="kunde"] .ov-kpi-label {
+  color: var(--ce-ob-tinte-2);
+  font-family: var(--ce-ob-schrift-text);
+  font-weight: 520;
+  letter-spacing: 0;
+  text-transform: none;
+}
+:root[data-ce-bereich="kunde"] .ov-kpi-label-text { display: inline-flex; align-items: center; gap: 0.5rem; }
+:root[data-ce-bereich="kunde"] .ov-kpi-label-text::before {
+  content: "";
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ce-ob-kpi-farbe);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ce-ob-kpi-farbe) 16%, transparent);
+}
+:root[data-ce-bereich="kunde"] .ov-kpi-value {
+  font-family: var(--ce-ob-schrift-titel);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  color: var(--ce-ob-tinte);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+:root[data-ce-bereich="kunde"] .ov-kpi-context { color: var(--ce-ob-tinte-3); }
+:root[data-ce-bereich="kunde"] .ov-kpi-note { color: var(--ce-ob-tinte-2); }
+:root[data-ce-bereich="kunde"] .ov-kpi-pfeil { color: var(--ce-ob-tinte-3); transition: translate var(--ce-ob-dauer) var(--ce-ob-kurve), color var(--ce-ob-dauer) var(--ce-ob-kurve); }
+:root[data-ce-bereich="kunde"] .ov-kpi:hover .ov-kpi-pfeil { color: var(--ce-ob-signal-tinte); translate: 3px 0; }
+
+/* Module: Köpfe in Host Grotesk, Listen zwischen Haarlinien. Der Titel der Versanddienstleister-Bühne steht weiß auf
+   Navy (Grundgestaltung) — er bekommt nur die Schrift, nicht die Tinte. */
+:root[data-ce-bereich="kunde"] :is(.ov-mod-title, .ov-section-title, .ov-carrier-titel, .ov-lager-titel) {
+  font-family: var(--ce-ob-schrift-titel);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+:root[data-ce-bereich="kunde"] :is(.ov-mod-title, .ov-section-title, .ov-lager-titel) { color: var(--ce-ob-tinte); }
+:root[data-ce-bereich="kunde"] .ov-card { border-radius: var(--ce-pr-radius-panel); }
+:root[data-ce-bereich="kunde"] .ov-list-row { border-color: var(--ce-ob-linie); }
+:root[data-ce-bereich="kunde"] .ov-list-row--button:hover { background: var(--ce-ob-flaeche-2); }
+:root[data-ce-bereich="kunde"] :is(.ov-mod-head .btn-link, .ov-lager-alle) {
+  color: var(--ce-ob-signal-tinte);
+  text-decoration-color: rgba(0, 64, 220, 0.3);
+}
+:root[data-ce-bereich="kunde"] :is(.ov-mod-head .btn-link, .ov-lager-alle):hover { color: var(--ce-ob-signal-tinte-zeigen); }
+:root[data-ce-bereich="kunde"] :is(.ov-inv-amount, .ov-lager-zahl) {
+  font-family: var(--ce-ob-schrift-titel);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  color: var(--ce-ob-tinte);
+}
+:root[data-ce-bereich="kunde"] .ov-credit-bar { background: var(--ce-ob-flaeche-4); }
+:root[data-ce-bereich="kunde"] .ov-credit-bar-fill { background: linear-gradient(90deg, var(--ce-ob-signal), var(--ce-ob-himmel)); }
+
+/* Ihre Versanddienstleister: die Navy-Bühne der Live-Fassung bleibt der Markenabschluss der Übersicht (Flow Signature;
+   Fläche, Lichter, Linien, Kacheln und heller Knopf aus overview.css und premium-editorial.css) —
+   Betreiberentscheidung 2026-11-16 („Final Master Release“). Diese Ebene gibt ihr nur die Blue-Light-Schrift (Titel
+   oben, Namen ohne Logodatei in Host Grotesk) und den Fokusring für Navy: Der Ring der Ebene (#004AFC, Abschnitt 7)
+   ist für helle Flächen gezeichnet und stünde auf #0A1636 unter 3:1; das helle Signal der Grundgestaltung hält 8,3:1. */
+:root[data-ce-bereich="kunde"] .ov-carrier-zeile .ov-carrier-aktion:focus-visible {
+  outline: 2px solid var(--ce-pr-signal-on-navy);
+  outline-offset: 3px;
+}
+:root[data-ce-bereich="kunde"] .ov-page .ov-carrier-eintrag--ohne-logo .ov-carrier-name {
+  font-family: var(--ce-ob-schrift-titel);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* ═══════════ 10 · LINIEN, MARKEN, KENNUNGEN ══════════════════════════════
+   Die Editorial-Ebene gliedert Listen, Tabellenköpfe und Abschnitte mit 2 px Tinte. Die Konsole setzt dort die
+   Haarlinie (1 px) — sie bleibt, jetzt im kräftigen Blaugrau. */
+:root[data-ce-familie="blue-light"] :is(.dft-table thead th, :is(.table-card, .ce-table-container) thead th,
+  .calc-page-wrap .calc-panel-header, .ce-drawer-head, .abk-drawer-header, .ntf-head, .inv-ops-head,
+  .inv-warehouses-head, .inv-section-head) {
+  border-bottom: 1px solid var(--ce-ob-kante-stark);
+}
+:root[data-ce-familie="blue-light"] :is(.ce-list-cards, .inv-summary, .abk-desktop-list, .sup-list, .inv-stat-band,
+  .inv-cards, .abk-cards) {
+  border-top: 1px solid var(--ce-ob-kante-stark);
+}
+
+/* Offene Schrittmarke der Buchung: weiße Scheibe mit Ring (die dunkle Münze der Obsidian-Fassung entfällt) */
+:root[data-ce-bereich="kunde"] .bk-schritt--offen .bk-marke { background: var(--ce-ob-flaeche-1); }
+
+/* Demo-Leiste: Navy-Glas mit Weichzeichnung */
+:root[data-ce-bereich="kunde"][data-ce-demo] .demo-leiste {
+  -webkit-backdrop-filter: var(--ce-ob-glas-weichzeichnung);
+  backdrop-filter: var(--ce-ob-glas-weichzeichnung);
+  box-shadow: var(--ce-ob-schatten-schwebend);
+}
+
+/* Schwebende Kundenservice-Schaltfläche (Ansprechpartner, eingeklappt): Die Grundgestaltung trägt sie wieder — Navy
+   mit weißem Ring und Navy-Kante (premium-editorial.css); das Signet darin ist für Navy gezeichnet. Die Sonderfläche
+   der dunklen Fassung entfällt. */
+
+/* Initial im Benutzerchip: das SVG nennt die alte Schrift als Attribut — CSS geht vor, die Familie folgt der Rolle. */
+:root[data-ce-familie="blue-light"] svg.ce-comark text,
+:root[data-ce-familie="blue-light"] .pp-uchip svg text { font-family: var(--ce-ob-schrift-titel); font-weight: 600; }
+
+/* ═══════════ 11 · REDUZIERTE BEWEGUNG UND KONTRAST ═════════════════════════
+   Gedruckt gilt die Ebene nicht (@media screen am Kopf der Datei): Das Blatt trägt die Druckregeln der Plattform. */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ce-familie="blue-light"] :is(.ov-kpi, .ov-kpi::before, .btn, .pp-side .nitem) { transition: none; }
+}
+@media (prefers-contrast: more) {
+  :root[data-ce-familie="blue-light"] {
+    --ce-ob-kante: #8a99b8;
+    --ce-ob-linie: #b4c1d9;
+    --ce-ob-kante-blau: #3f6fd8;
+    --ce-ob-tinte-2: #1f3155;
+    --ce-ob-tinte-3: #2f4166;
+  }
+}
+
+/* ═══════════ 12 · ADMINPANEL ════════════════════════════════════════════════
+   Dieselbe Familie in der Dichte des Adminbereichs (Betreiberauftrag „Final Master Release“, 2026-11-16, 7.5): die
+   Seitenleiste im tiefdunklen Confidara-Navy wie im Kundenbereich, die Marke in der Fassung für dunkle Flächen
+   (AdminSidebar.jsx). Maße, Schriftgrößen und Abstände bleiben die von admin.css — das Höhenbudget der Seitenleiste
+   (E2E premiumAdminPaketE 1c) gilt unverändert. Gefahrenaktionen und Statusfarben bleiben die der Grundgestaltung. */
+:root[data-ce-bereich="admin"] .adm-side {
+  background: var(--ce-ob-seitenleiste-verlauf);
+  border-right-color: var(--ce-sidebar-border);
+  box-shadow: var(--ce-sidebar-shadow);
+}
+:root[data-ce-bereich="admin"] .adm-side * { scrollbar-color: var(--ce-sidebar-scroll-thumb) transparent; }
+:root[data-ce-bereich="admin"] .adm-brand-tag { background: var(--ce-sidebar-hover); color: var(--ce-sidebar-text); }
+:root[data-ce-bereich="admin"] :is(.adm-nitem, .adm-foot-btn, .adm-side-close) {
+  color: var(--ce-sidebar-text);
+  transition:
+    background-color var(--ce-ob-dauer) var(--ce-ob-kurve),
+    color var(--ce-ob-dauer) var(--ce-ob-kurve),
+    box-shadow var(--ce-ob-dauer) var(--ce-ob-kurve);
+}
+:root[data-ce-bereich="admin"] :is(.adm-nitem, .adm-foot-btn, .adm-side-close):hover {
+  background: var(--ce-sidebar-hover);
+  color: var(--ce-sidebar-text-strong);
+}
+:root[data-ce-bereich="admin"] .adm-nitem-icon { color: var(--ce-ob-seite-symbol); }
+:root[data-ce-bereich="admin"] .adm-nitem:hover .adm-nitem-icon { color: var(--ce-sidebar-text-strong); }
+/* Aktive Seite: das Blauglas mit Lichtkante der Kunden-Seitenleiste statt der Akzentkante links */
+:root[data-ce-bereich="admin"] :is(.adm-nitem-on, .adm-nitem-on:hover) {
+  background: var(--ce-sidebar-active-bg);
+  color: var(--ce-sidebar-text-strong);
+  box-shadow: var(--ce-ob-lichtkante-aktiv);
+}
+:root[data-ce-bereich="admin"] .adm-nitem-on .adm-nitem-icon { color: var(--ce-sidebar-active-icon); }
+/* Kategorie: leise Lichtfläche in Stahlblau — Text, kein Bedienelement */
+:root[data-ce-bereich="admin"] .adm-nsec { background: var(--ce-sidebar-hover); color: var(--ce-sidebar-section); }
+:root[data-ce-bereich="admin"] :is(.adm-nitem-soon, .adm-nitem-soon:hover) { background: none; color: var(--ce-sidebar-section); }
+:root[data-ce-bereich="admin"] .adm-side-foot { border-top-color: var(--ce-sidebar-divider); }
+:root[data-ce-bereich="admin"] :is(.adm-foot-btn-switch, .adm-foot-btn-switch:hover) { color: var(--ce-sidebar-active-accent); }
+:root[data-ce-bereich="admin"] .adm-identity-name { color: var(--ce-sidebar-text-strong); }
+:root[data-ce-bereich="admin"] .adm-identity-role { color: var(--ce-sidebar-text-muted); }
+/* Fokus auf Navy: die helle Akzentfarbe (6,6:1) — das Confidara-Blau erreicht auf Navy keine 3:1 */
+:root[data-ce-bereich="admin"] .adm-side :is(a, button):focus-visible { outline-color: var(--ce-sidebar-active-accent); }
+
+/* ═══════════ 13 · VERTRIEBSPARTNERPORTAL ════════════════════════════════════
+   Eigene Navigation (Kopfleiste und Reiter), Kennzahlen und Provisionsanzeigen bleiben (7.6); Farben aus der Familie,
+   Überschriften und Kennzahlen in Host Grotesk wie im Kundenbereich. */
+:root[data-ce-bereich="partner"] :is(.spp-section-title, .spp-card-title) {
+  font-family: var(--ce-ob-schrift-titel);
+  font-weight: 500;
+  letter-spacing: var(--ce-text-title-section-tracking);
+}
+:root[data-ce-bereich="partner"] .spp-kpi-value {
+  font-family: var(--ce-ob-schrift-titel);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ═══════════ 14 · ÖFFENTLICHE SEITEN ════════════════════════════════════════
+   Sendungsverfolgung, Rechtstexte, Versicherungsinformationen, Partnervereinbarung und Preisrechner-Übernahme (7.2,
+   7.7): Blauweiß mit Eisblau-Band (Abschnitt 2), weiße Blätter mit kühler Kante, Titel in Host Grotesk und flach in
+   Tintenblau (Titelmaterial im Tokenblock). Texte, Inhalte und Rechtstexte bleiben unberührt. */
+:root[data-ce-bereich="oeffentlich"] :is(.legal-title, .tracking-title, .insinfo-title) {
+  font-family: var(--ce-ob-schrift-titel);
+  font-weight: 500;
+  letter-spacing: var(--ce-pr-ed-headline-tracking);
+  /* Host Grotesk zeichnet Unterlängen und Akzente höher als Instrument Sans: der Malrand wächst mit. */
+  --titel-malrand: 0.2em;
+}
+:root[data-ce-bereich="oeffentlich"] .legal-sheet {
+  background-color: var(--ce-ob-flaeche-1);
+  background-image: var(--ce-ob-flaechenverlauf);
+  border-color: var(--ce-ob-kante);
+  box-shadow: var(--ce-ob-schatten-karte);
+}
+
+/* ═══════════ 15 · LADEBILDSCHIRM AUF DEN KUNDENPFADEN ═════════════════════
+   Während der Sitzungsprüfung und während ein Seitenblock nachlädt, steht noch kein Bereichsattribut am Wurzelelement.
+   Auf den Pfaden des Kundenbereichs (utils/kundenBereichPfad.mjs) trägt der Ladebildschirm deshalb die Klasse
+   loading-screen--kunde: dasselbe Blauweiß wie die Seite danach, Signet in den Markenfarben (LoadingScreen.jsx). Die
+   einzige Regel dieser Datei ohne :root[data-ce-bereich="kunde"] — die Klasse kommt nur auf diesen Pfaden vor. */
+.loading-screen.loading-screen--kunde { background: #f5f8ff; }
+
+} /* Ende @media screen */

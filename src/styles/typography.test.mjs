@@ -554,8 +554,14 @@ test("11 — Zahlen laufen tabellarisch und in Instrument Sans", () => {
 
 test("12 — Phase 2.5 fasst nur Typografie an", () => {
   // Die Skala definiert keine Abstände, Radien, Tiefen oder Ebenen um.
+  // Confidara Obsidian (Betreiberauftrag 2026-11-15): Die Gestaltungsebene des Kundenbereichs ordnet die Foundation-
+  // Tokens für genau diesen Bereich um — ausschließlich in Blöcken mit dem Selektor :root[data-ce-bereich="kunde"]
+  // (kundeObsidian.test.mjs). Jede andere Stelle der Datei bleibt dieser Regel unterworfen.
   for (const [datei, text] of Object.entries(css)) {
-    const fremd = [...text.matchAll(/--(ce-(?:space|radius|elevation|z|bp|size|color)-[\w-]+):/g)]
+    // Blue Light (2026-11-16): dazu der Tokenblock der Designfamilie (:root[data-ce-familie="blue-light"]).
+    const pruefText = datei === "kunde-obsidian.css"
+      ? text.replace(/:root\[data-ce-(?:bereich="kunde"|familie="blue-light")\]\s*\{[^{}]*\}/g, "") : text;
+    const fremd = [...pruefText.matchAll(/--(ce-(?:space|radius|elevation|z|bp|size|color)-[\w-]+):/g)]
       .map((m) => m[1]);
     assert.deepEqual(fremd, [], `${datei} darf keine Foundation-Tokens umdefinieren: ${fremd.join(", ")}`);
   }

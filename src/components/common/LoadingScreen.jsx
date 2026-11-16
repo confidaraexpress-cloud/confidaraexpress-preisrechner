@@ -10,10 +10,13 @@ import { BrandLogo } from "../ui/BrandLogo";
    mit vorlesen. Die Statusmeldung darunter sagt bereits, was passiert.
 
    `dunkel`: auf den Anmeldeseiten mit statischem Gerüst (Navy-Bühne) derselbe dunkle Grund mit hellem Signet und
-   Ladepunkt — kein heller Zwischenbildschirm, während ein gespeichertes Token geprüft wird (App.jsx). */
-export function LoadingScreen({ dunkel = false }) {
+   Ladepunkt — kein heller Zwischenbildschirm, während ein gespeichertes Token geprüft wird (App.jsx).
+   `kunde`: auf den Pfaden des Kundenbereichs (utils/kundenBereichPfad.mjs) dasselbe Blauweiß wie die Seite danach
+   (Confidara Premium Blue Light, kunde-obsidian.css), Signet und Ladepunkt in den Markenfarben — kein Farbsprung vor
+   der Seite. */
+export function LoadingScreen({ dunkel = false, kunde = false }) {
   return (
-    <div className={`loading-screen${dunkel ? " loading-screen--dunkel" : ""}`} role="status" aria-live="polite">
+    <div className={`loading-screen${dunkel ? " loading-screen--dunkel" : ""}${kunde ? " loading-screen--kunde" : ""}`} role="status" aria-live="polite">
       <div className="text-center">
         <BrandLogo variant="signet" tone={dunkel ? "reverse" : "standard"} alt="" className="loading-screen-mark" />
         <div className={dunkel ? "spinner" : "spinner spinner-dark"} />

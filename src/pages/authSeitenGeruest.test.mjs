@@ -37,6 +37,8 @@ test("1 — Satz, Unterzeile und Legende stehen wortgleich wie in AuthPage (AUTH
     assert.match(html, /<meta name="theme-color" content="#0A1636" \/>/);
     // Schrift und Kartenbild laden sofort; die Anwendung startet über denselben Einstieg wie index.html.
     assert.match(html, /<link rel="preload" href="\/src\/assets\/fonts\/instrumentsans-var\.woff2" as="font" type="font\/woff2" crossorigin \/>/);
+    // Blue Light (2026-11-16): die Titelschrift Host Grotesk lädt ebenso sofort — der Titel steht im ersten Bild in ihr.
+    assert.match(html, /<link rel="preload" href="\/src\/assets\/fonts\/hostgrotesk-var\.woff2" as="font" type="font\/woff2" crossorigin \/>/);
     assert.match(html, /<link rel="preload" href="\/src\/assets\/illustrations\/nachtkarte-eu\.svg" as="image" type="image\/svg\+xml" \/>/);
     assert.match(html, /<img class="auth-map-img" src="\/src\/assets\/illustrations\/nachtkarte-eu\.svg" alt="" width="536" height="497" decoding="async" \/>/);
     assert.match(html, /<script type="module" src="\/src\/main\.jsx"><\/script>/);
@@ -171,7 +173,10 @@ test("5 — main.jsx, App.jsx, AuthContext: ohne Token kein Ladebildschirm, mit 
   const app = lies("src/App.jsx");
   // Mit gespeichertem Token wartet die Anwendung auf jedem Pfad auf die Sitzungsprüfung (sonst überschriebe eine
   // verspätete Antwort eine neue Anmeldung oder die E-Mail-Bestätigung) — auf den Seiten mit Gerüst auf dunklem Grund.
-  assert.match(app, /if \(loadingUser\) return <LoadingScreen dunkel=\{statischeAuthSeite\(pathname\) !== null\} \/>;/);
+  // Confidara Obsidian (2026-11-15), seit 2026-11-16 Premium Blue Light: auf den Kundenpfaden zusätzlich auf dem Grund
+  // des Kundenbereichs — nur
+  // Darstellung, die Prüfung selbst bleibt auf jedem Pfad (utils/kundenBereichPfad.test.mjs, K4).
+  assert.match(app, /if \(loadingUser\) return <LoadingScreen dunkel=\{statischeAuthSeite\(pathname\) !== null\} kunde=\{kundenPfad\} \/>;/);
   assert.doesNotMatch(app, /istKundenAuthPfad/, "App.jsx nimmt die Anmeldepfade wieder von der Sitzungsprüfung aus");
   const lade = lies("src/components/common/LoadingScreen.jsx");
   assert.match(lade, /tone=\{dunkel \? "reverse" : "standard"\}/, "das Signet steht auf Navy nicht in der hellen Fassung");

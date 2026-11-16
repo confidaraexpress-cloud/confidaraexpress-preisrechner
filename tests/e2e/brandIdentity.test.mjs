@@ -217,7 +217,7 @@ test("1 — die Kunden-Sidebar trägt die Originalkomposition, hell auf dunkel",
 
 /* ══════════ 2 — Admin-Sidebar ══════════════════════════════════════════ */
 
-test("2 — die Admin-Sidebar trägt dieselbe Marke, lesbar auf heller Fläche", async () => {
+test("2 — die Admin-Sidebar trägt dieselbe Marke, hell auf dunkel (Blue Light)", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await setupRoutes(page, ADMIN);
   await page.goto(`${BASE}/admin`, { waitUntil: "networkidle" });
@@ -225,10 +225,10 @@ test("2 — die Admin-Sidebar trägt dieselbe Marke, lesbar auf heller Fläche",
   const m = await marke(page, ".adm-brand .ce-brand");
   assert.ok(m && m.sichtbar, "keine sichtbare Marke in der Adminnavigation");
   pruefeProportion(m, "lockup", "Admin-Sidebar");
-  assert.equal(m.ton, "standard", "helle Fläche braucht die Standardfassung");
-  // Beide Markenfarben müssen auf dieser Fläche tragen.
-  assert.ok(m.kontrastNavy >= 4.5, `Admin: Navy nur ${m.kontrastNavy.toFixed(2)}:1`);
-  assert.ok(m.kontrastBlau >= 4.5, `Admin: Blau nur ${m.kontrastBlau.toFixed(2)}:1`);
+  // Blue Light (Betreiberauftrag „Final Master Release“, 2026-11-16): Die Admin-Seitenleiste steht wie die des
+  // Kundenbereichs im tiefen Navy und trägt deshalb die Reverse-Fassung (bis dahin hell mit der Standardfassung).
+  assert.equal(m.ton, "reverse", "die dunkle Seitenleiste braucht die Reverse-Fassung");
+  assert.ok(m.kontrastHell >= 4.5, `Admin: Marke nur ${m.kontrastHell.toFixed(2)}:1`);
   // Die Bereichskennzeichnung bleibt eigener Text neben der Marke.
   assert.equal(await page.locator(".adm-brand-tag").textContent(), "Adminbereich");
   await page.close();

@@ -257,27 +257,27 @@ test("5 — Marke, aktive Navigation und Fokus laufen auf dem Confidara-Blau", a
   assert.equal(marke.bereich, "kunde");
   assert.equal(marke.wert, "#004afc");
 
-  // Der aktive Navigationseintrag der Navy-Sidebar: heller Text, Gewicht 650 und
-  // der Markenstreifen als 3-px-Kante links (::before, --ce-pr-stripe-on-navy
-  // #4D84FF → #8FB0FF) statt der früheren Schattenkante. Gewicht: Gewichtsleiter
-  // der Confidara Signature Typography (Betreiberentscheidung 2026-11-13) — die
-  // Hauptpunkte stehen auf 600, der aktive Eintrag eine Stufe darüber (bis dahin 600).
+  // Der aktive Navigationseintrag der Seitenleiste (seit Confidara Obsidian, Betreiberauftrag 2026-11-15, ohne
+  // Gewichtssprung und ohne 3-px-Markenstreifen; seit Premium Blue Light, 2026-11-16, wieder auf Navy): Das Blauglas
+  // mit Lichtkante markiert die Seite allein — weiß, im Gewicht der übrigen Einträge, ohne Seitenbalken.
   const aktiv = await page.evaluate(() => {
     const el = document.querySelector(".pp-nav .nitem.on");
     if (!el) return null;
     const s = getComputedStyle(el);
-    const kante = getComputedStyle(el, "::before");
-    return { farbe: s.color, gewicht: s.fontWeight, schatten: s.boxShadow, kante: kante.backgroundImage, breite: kante.width };
+    const ruhe = getComputedStyle(document.querySelector(".pp-nav .nitem:not(.on)"));
+    return { farbe: s.color, gewicht: s.fontWeight, farbeRuhe: ruhe.color, gewichtRuhe: ruhe.fontWeight,
+      flaeche: s.backgroundImage, schatten: s.boxShadow, balken: getComputedStyle(el, "::before").content };
   });
   assert.ok(aktiv, "kein aktiver Navigationseintrag");
   assert.equal(aktiv.farbe, "rgb(255, 255, 255)", "der aktive Eintrag trägt keinen hellen Text");
-  assert.equal(aktiv.gewicht, "650");
-  assert.equal(aktiv.breite, "3px", "die Kante des aktiven Eintrags fehlt");
-  assert.match(aktiv.kante, /^linear-gradient\(90deg, rgb\(77, 132, 255\) 0%, rgb\(143, 176, 255\) 100%\)$/,
-    "die Kante des aktiven Eintrags ist nicht der Markenstreifen");
-  assert.equal(aktiv.schatten, "none", "die frühere Schattenkante ist zurück");
+  assert.notEqual(aktiv.farbeRuhe, aktiv.farbe, "der aktive Eintrag hebt sich farblich nicht ab");
+  assert.equal(aktiv.gewicht, aktiv.gewichtRuhe, "Gewichtssprung am aktiven Eintrag");
+  assert.match(aktiv.flaeche, /^linear-gradient\(/, "die Glasfläche des aktiven Eintrags fehlt");
+  assert.match(aktiv.schatten, /inset/, "die Lichtkante des aktiven Eintrags fehlt");
+  assert.equal(aktiv.balken, "none", "der Seitenbalken ist zurück");
 
-  // Fokus im Inhaltsbereich: der Ring läuft im Confidara-Blau.
+  // Fokus im Inhaltsbereich: der Ring läuft im Confidara-Blau #004AFC — auf den hellen Flächen von Premium Blue Light
+  // (2026-11-16) 5,8:1 und mehr (die dunkle Fassung Obsidian nutzte die Aufhellung #5B8CFF).
   await page.locator(".ce-page-header .btn-primary").first().focus();
   await page.keyboard.press("Shift+Tab");
   await page.keyboard.press("Tab");

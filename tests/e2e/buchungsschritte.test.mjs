@@ -272,6 +272,8 @@ test("S3/S4 — einmaliger Lichtlauf je Schritt, aus bei reduzierter Bewegung, K
     const kAktiv = await stil(k2), kOffen = await stil(k3);
     assert.equal(kAktiv.hinten, "none", "Kontrast: Lichtlauf");
     assert.equal(kAktiv.zeile, "rgb(255, 255, 255)");
+    // Confidara Premium Blue Light (Betreiberauftrag 2026-11-16): Die Nebenzeile der offenen Karte steht wieder in der
+    // Navy-Textfarbe der Buchungsschritte (--ce-bk-text, Grundgestaltung) — in der dunklen Fassung Obsidian war es Weiß.
     assert.equal(kOffen.zeile, "rgb(22, 34, 63)");
     assert.match(kAktiv.schatten, /0px 0px 0px 2px/);
     assert.equal(await page.$eval(k2, (e) => getComputedStyle(e, "::before").backgroundImage), "none");

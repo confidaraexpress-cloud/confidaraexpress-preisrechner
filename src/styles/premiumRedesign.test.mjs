@@ -64,12 +64,15 @@ test("1 — jede Regel von premium-redesign.css hängt am Bereichsattribut", () 
   for (const { sel } of REGELN) {
     for (const teil of teile(sel)) {
       if (!/^(:root)?\[data-ce-bereich(="(kunde|auth)")?\]/.test(teil)) frei.push(teil);
+      // Blue Light (2026-11-16): Admin, Partnerportal und öffentliche Seiten tragen ebenfalls ein Bereichsattribut —
+      // eine Regel ohne bestimmten Bereich nennt deshalb die drei Bereiche dieser Ebene ausdrücklich.
+      if (/^\[data-ce-bereich\](?!:where\(\[data-ce-bereich="kunde"\], \[data-ce-bereich="auth"\], \[data-ce-bereich="preisrechner"\]\))/.test(teil)) frei.push(`ohne Skala: ${teil}`);
     }
   }
   assert.deepEqual(frei, [], `Regeln ohne Bereich:\n  ${frei.join("\n  ")}`);
 });
 
-test("2 — den Bereich setzen genau die Kunden- und Auth-Seiten; Partner und Admin nie", () => {
+test("2 — den Bereich setzen genau diese Ansichten; die Familie Blue Light vergibt der Hook", () => {
   const aufrufe = {};
   for (const datei of jsxDateien(SRC)) {
     for (const m of lies(datei).matchAll(/useCeBereich\("(\w+)"\)/g)) {
@@ -84,13 +87,18 @@ test("2 — den Bereich setzen genau die Kunden- und Auth-Seiten; Partner und Ad
     // Admin-Anmeldung (Canonical v2.130, bewusste Ankeränderung): eine Auth-Seite, nicht das Adminpanel —
     // AdminLayout setzt den Bereich weiterhin nie (unten).
     "pages/AdminAnmeldungPage.jsx": "auth",
+    // Blue Light (Betreiberauftrag „Final Master Release“, 2026-11-16): die Partnerregistrierung steht auf der Bühne der
+    // Anmeldung; Adminpanel, Partnerportal und öffentliche Seiten gehören zur Designfamilie (kunde-obsidian.css).
+    "pages/PartnerRegisterPage.jsx": "auth",
+    "components/layout/AdminLayout.jsx": "admin",
+    "components/layout/PartnerLayout.jsx": "partner",
+    "components/layout/NavbarLayout.jsx": "oeffentlich",
   });
-  for (const datei of ["components/layout/PartnerLayout.jsx", "pages/PartnerRegisterPage.jsx", "components/layout/AdminLayout.jsx"]) {
-    assert.doesNotMatch(lies(path.join(SRC, datei)), /data-ce-bereich|useCeBereich/, `${datei} setzt den Bereich`);
-  }
-  // Der Hook räumt nur auf, wenn ihm das Attribut noch gehört.
+  // Der Hook räumt nur auf, wenn ihm das Attribut noch gehört — dann beide Attribute.
   const hook = lies(path.join(SRC, "hooks/useCeBereich.js"));
-  assert.match(hook, /if \(root\.getAttribute\("data-ce-bereich"\) === bereich\) root\.removeAttribute\("data-ce-bereich"\);/);
+  assert.match(hook, /if \(root\.getAttribute\("data-ce-bereich"\) === bereich\) \{\s*root\.removeAttribute\("data-ce-bereich"\);\s*root\.removeAttribute\("data-ce-familie"\);/);
+  // Anmeldung, Admin-Anmeldung und Preisrechner gehören nicht zur Familie.
+  assert.match(hook, /BLUE_LIGHT_FAMILIE = Object\.freeze\(\["kunde", "admin", "partner", "oeffentlich"\]\)/);
   // Das Seitengerüst des Preisrechners trägt den Bereich statisch.
   for (const seite of ["preisrechner/index.html", "preisrechner/404.html"]) {
     assert.match(lies(path.join(REPO, seite)), /<html lang="de" data-ce-bereich="preisrechner">/, seite);
@@ -148,10 +156,13 @@ test("5 — Partnerregistrierung behält die Aurora, die Kunden-Anmeldung trägt
 
 test("6 — die Bereichsebene steht zuletzt im Bündel und die Werte halten zusammen", () => {
   const index = lies(path.join(HIER, "index.css"));
-  // Editorial Business Premium (2026-10-28): die Editorial-Ebene folgt als letzte direkt auf die Bereichsebene.
+  // Editorial Business Premium (2026-10-28): die Editorial-Ebene folgt direkt auf die Bereichsebene.
+  // Confidara Obsidian (Betreiberauftrag 2026-11-15): danach nur noch Schrift- und Gestaltungsebene des
+  // Kundenbereichs, die Gestaltungsebene als letzter Import (kundeObsidian.test.mjs).
   const importe = [...index.matchAll(/@import '\.\/([\w-]+\.css)';/g)].map((m) => m[1]);
-  assert.deepEqual(importe.slice(-2), ["premium-redesign.css", "premium-editorial.css"], "Bereichs- und Editorial-Ebene stehen nicht zuletzt");
-  assert.ok(index.trim().endsWith("@import './premium-editorial.css';"), "premium-editorial.css ist nicht der letzte Import");
+  assert.deepEqual(importe.slice(-4), ["premium-redesign.css", "premium-editorial.css", "kunde-schriften.css", "kunde-obsidian.css"],
+    "Bereichs-, Editorial- und Obsidian-Ebene stehen nicht zuletzt");
+  assert.ok(index.trim().endsWith("@import './kunde-obsidian.css';"), "kunde-obsidian.css ist nicht der letzte Import");
   const werte = lies(path.join(SRC, "components/ui/Werte.jsx"));
   assert.match(werte, /if \(!teile\.some\(\(s\) => s\.wert\)\) return children;/);
   assert.match(werte, /<span>\s*\{teile\.map/, "Werte liefert kein einzelnes umschließendes Element");
@@ -162,7 +173,7 @@ test("7 — Umbruch nur über text-wrap-style: die Kurzform text-wrap höbe gese
   // schlägt damit jedes white-space: nowrap mit geringerer Spezifität (Route der Entwurfstabelle, Beträge).
   const kurzform = [...CSS.matchAll(/text-wrap\s*:[^;}]*/g)].map((m) => m[0].trim());
   assert.deepEqual(kurzform, [], `Kurzform text-wrap in premium-redesign.css: ${kurzform.join(", ")}`);
-  assert.match(CSS, /\[data-ce-bereich\] body \{ text-wrap-style: pretty; \}/);
+  assert.match(CSS, /\[data-ce-bereich\]:where\(\[data-ce-bereich="kunde"\], \[data-ce-bereich="auth"\], \[data-ce-bereich="preisrechner"\]\) body \{ text-wrap-style: pretty; \}/);
 });
 
 test("8 — Touch-Ziele (R9): mit grobem Zeiger bleiben die Kontrollkästchen-Zeilen der Anmeldung 44 px hoch", () => {

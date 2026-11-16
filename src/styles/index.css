@@ -102,11 +102,21 @@
    Schriftrolle — und steht deshalb vor der Musterebene. */
 @import './titelstile.css';
 @import './patterns.css';
-/* Premium-Redesign 2026-10, Etappe 1: Kundenbereich und Auth. Jede Regel hängt am
-   Bereichsattribut <html data-ce-bereich> (hooks/useCeBereich.js); Admin, Partnerportal und
-   Partnerregistrierung setzen es nie. Steht als einzige Datei NACH patterns.css: Bei gleicher
-   Spezifität gewinnt der Bereich gegen die Musterebene. */
+/* Premium-Redesign 2026-10, Etappe 1: Kundenbereich, Auth und Preisrechner. Jede Regel hängt am
+   Bereichsattribut <html data-ce-bereich> (hooks/useCeBereich.js). Seit Blue Light (2026-11-16) setzen auch
+   Admin, Partnerportal und öffentliche Seiten ein Bereichsattribut — Regeln ohne bestimmten Bereich nennen
+   deshalb kunde, auth und preisrechner ausdrücklich (:where, ohne Spezifität). Steht als einzige Datei NACH
+   patterns.css: Bei gleicher Spezifität gewinnt der Bereich gegen die Musterebene. */
 @import './premium-redesign.css';
 
 /* Editorial Business Premium (Betreiberentscheidung 2026-10-28): die letzte Ebene, nur am Kundenbereich. */
 @import './premium-editorial.css';
+
+/* Confidara Premium Blue Light (aus „Confidara Obsidian“, 2026-11-15; freigegeben und systemweit übertragen mit
+   „Final Master Release“, 2026-11-16): Schriften und Gestaltungsebene der Designfamilie — Kundenbereich, Adminpanel,
+   Partnerportal, öffentliche Seiten. Beide Dateien gehören NUR zu diesem Bündel; der öffentliche Preisrechner
+   (public-calculator.css) lädt keine von ihnen — die Titelschrift Host Grotesk kommt dort wie hier aus fonts.css.
+   Jede Regel hängt an :root[data-ce-familie="blue-light"] oder an
+   einem Bereich der Familie; als letzte Ebene gewinnt sie bei gleicher Spezifität gegen premium-editorial.css. */
+@import './kunde-schriften.css';
+@import './kunde-obsidian.css';

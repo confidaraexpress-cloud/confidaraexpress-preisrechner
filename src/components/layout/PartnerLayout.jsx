@@ -2,6 +2,7 @@ import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { BrandLogo } from "../ui/BrandLogo";
+import { useCeBereich } from "../../hooks/useCeBereich";
 import { LegalLinks } from "./LegalLinks";
 import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
 import { accountDisplayName } from "../../utils/accountIdentity.mjs";
@@ -17,6 +18,8 @@ import { accountDisplayName } from "../../utils/accountIdentity.mjs";
    Text und „Abmelden". Darunter der Inhalt in der gemeinsamen Fehlergrenze und
    der gemeinsame Footer des eingeloggten Bereichs. */
 export function PartnerLayout({ children }) {
+  // Bereich „partner“ der Designfamilie Blue Light (hooks/useCeBereich.js; kunde-obsidian.css, Abschnitt 13).
+  useCeBereich("partner");
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();

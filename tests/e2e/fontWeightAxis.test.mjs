@@ -186,8 +186,12 @@ for (const [name, FONT_DATEI] of SCHRIFTEN) test(`2 — ${name}: die Gewichtsach
 // Gewichtsbereich aus fonts.css (nicht 100–1000 wie oben), gemessen wieder ohne Kunstfettung.
 test("2b — die Deklaration aus fonts.css zeichnet die Zwischengewichte 450/550/650 als eigene Schnitte", async () => {
   const fonts = readFileSync(path.join(REPO_ROOT, "src/styles/fonts.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
-  const bereiche = [...fonts.matchAll(/font-weight:\s*([^;]+);/g)].map((m) => m[1].trim());
-  assert.ok(bereiche.length > 0, "fonts.css deklariert keinen Gewichtsbereich");
+  // Blue Light (2026-11-16): fonts.css deklariert dazu Host Grotesk, die Titelschrift (300–800). Gemessen wird hier die
+  // Produktschrift Instrument Sans — ihre Blöcke tragen einen einheitlichen Bereich.
+  const bereiche = [...fonts.matchAll(/@font-face\s*\{([^}]*)\}/g)].map((m) => m[1])
+    .filter((b) => /font-family:\s*'Instrument Sans'/.test(b))
+    .map((b) => (b.match(/font-weight:\s*([^;]+);/) || [])[1]?.trim());
+  assert.ok(bereiche.length > 0, "fonts.css deklariert keinen Gewichtsbereich für Instrument Sans");
   assert.ok(bereiche.every((b) => b === bereiche[0]), `uneinheitliche Gewichtsbereiche: ${bereiche.join(", ")}`);
   const bereich = bereiche[0];
   assert.match(bereich, /^\d+ \d+$/, `kein Gewichtsbereich, sondern ein Einzelwert: ${bereich}`);
@@ -230,14 +234,24 @@ test("3 — keine externe Schriftquelle, keine zusätzliche Schriftdatei", () =>
   // keine Referenz, keine @font-face-Regel). Der Vergleich läuft deshalb in
   // beide Richtungen statt nur auf Existenz: er fällt jetzt auch dann, wenn
   // jemand eine zweite Familie hinzulegt. Seit der Betreiberentscheidung vom
-  // 2026-11-13 (D1/D3) sind die Dateien von DM Sans und Cormorant entfallen.
+  // 2026-11-13 (D1/D3) sind die Dateien von DM Sans und Cormorant entfallen. Seit Confidara Obsidian
+  // (Betreiberauftrag 2026-11-15) liegen dazu Host Grotesk (Überschriften) und Instrument Serif (Begrüßung) des
+  // Kundenbereichs — OFL, lokal. Seit Blue Light (2026-11-16) ist Host Grotesk Titelschrift der Plattform (fonts.css);
+  // Instrument Serif lädt allein kunde-schriften.css.
   const erwartet = [
     "instrumentsans-var-latin-ext.woff2", "instrumentsans-var.woff2",
+    "hostgrotesk-var-latin-ext.woff2", "hostgrotesk-var.woff2",
+    "instrumentserif-latin-ext.woff2", "instrumentserif.woff2",
   ];
   const vorhanden = readdirSync(path.join(REPO_ROOT, "src/assets/fonts"))
     .filter((f) => f.endsWith(".woff2")).sort();
   assert.deepEqual(vorhanden, [...erwartet].sort(), "der Bestand an Schriftdateien hat sich verändert");
-  // Und fonts.css lädt genau die eine Familie, die das Produkt benutzt.
+  // Und fonts.css lädt genau die Familien der Plattform: Produktschrift und Titelschrift.
   const familien = [...new Set([...fonts.matchAll(/font-family:\s*'([^']+)'/g)].map((m) => m[1]))].sort();
-  assert.deepEqual(familien, ["Instrument Sans"]);
+  assert.deepEqual(familien, ["Host Grotesk", "Instrument Sans"]);
+  // Die Editorialschrift des Kundenbereichs lädt nur kunde-schriften.css, ebenfalls ohne externe Quelle.
+  const kunde = readFileSync(path.join(REPO_ROOT, "src/styles/kunde-schriften.css"), "utf8");
+  assert.ok(!/https?:\/\//.test(kunde), "kunde-schriften.css darf keine externe Schriftquelle laden");
+  assert.deepEqual([...new Set([...kunde.matchAll(/url\('\.\.\/assets\/fonts\/([^']+)'\)/g)].map((m) => m[1]))].sort(),
+    erwartet.filter((f) => f.startsWith("instrumentserif")).sort());
 });

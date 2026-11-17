@@ -346,16 +346,22 @@ export function updateAdminCustomerPriceMarkup(userId, priceMarkupPercent, expre
 export function getAdminCustomerTariffMarkups(userId, { signal } = {}) {
   return apiFetch(`/admin/users/${encodeURIComponent(userId)}/tariff-markups`, { auth: true, signal });
 }
-// PUT /admin/users/:id/tariff-markups — Body { markups: { "22": 35, "84": null } } (null = Standard verwenden).
+// PUT /admin/users/:id/tariff-markups — Preisoptimierung (2026-11-17): Body { entries: [{ provider, productKey,
+// weightClass, markupPercent }] } (markupPercent null = eigenen Satz entfernen). Die bisherige Form { markups } bleibt
+// für Aufrufer ohne Gewichtsklassen gültig. Gesendet wird genau eine der beiden Formen, nie beide.
 export function updateAdminCustomerTariffMarkups(userId, body) {
-  if (!body || typeof body !== "object" || !body.markups || typeof body.markups !== "object") {
-    return Promise.reject(new Error("invalid_tariff_markups_body"));
-  }
+  const entries = body && Array.isArray(body.entries) ? body.entries : null;
+  const markups = body && !entries && body.markups && typeof body.markups === "object" ? body.markups : null;
+  if (!entries && !markups) return Promise.reject(new Error("invalid_tariff_markups_body"));
   return apiFetch(`/admin/users/${encodeURIComponent(userId)}/tariff-markups`, {
     method: "PUT",
     auth: true,
-    body: JSON.stringify({ markups: body.markups }),
+    body: JSON.stringify(entries ? { entries: entries.map(tariffEntry) } : { markups }),
   });
+}
+// Nur die vier vereinbarten Felder je Eintrag — nie Preise, nie Rechenraten, nie Kontodaten.
+function tariffEntry(e) {
+  return { provider: e.provider, productKey: e.productKey, weightClass: e.weightClass, markupPercent: e.markupPercent };
 }
 // POST /admin/users/:id/tariff-comparison — der EINZIGE Aufruf mit Providerkontakt (Betreiber: „Preise aktualisieren“).
 // Body { destinationCountry, custom?: { weightKg, lengthCm, widthCm, heightCm } }.
@@ -368,13 +374,15 @@ export function refreshAdminTariffComparison(userId, { destinationCountry, custo
     body: JSON.stringify(body),
   });
 }
-// POST /admin/users/:id/tariff-comparison/:runId/preview — Vorschau mit Entwurfssätzen, serverseitig, ohne Providerkontakt.
-export function previewAdminTariffComparison(userId, runId, markups, { signal } = {}) {
+// POST /admin/users/:id/tariff-comparison/:runId/preview — Projektion mit den gespeicherten Sätzen (ohne Einträge)
+// bzw. mit Entwurfssätzen `entries`, serverseitig gerechnet, ohne Providerkontakt.
+export function previewAdminTariffComparison(userId, runId, entries, { signal } = {}) {
+  const liste = Array.isArray(entries) ? entries : [];
   return apiFetch(`/admin/users/${encodeURIComponent(userId)}/tariff-comparison/${encodeURIComponent(runId)}/preview`, {
     method: "POST",
     auth: true,
     signal,
-    body: JSON.stringify({ markups: { ...(markups || {}) } }),
+    body: JSON.stringify(liste.length > 0 ? { entries: liste.map(tariffEntry) } : {}),
   });
 }
 

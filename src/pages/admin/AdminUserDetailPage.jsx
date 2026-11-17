@@ -799,12 +799,14 @@ export default function AdminUserDetailPage() {
           sectionRef={markupSectionRef}
         />
 
-        {/* 3a) Individuelle Versandtarife (Betreiberentscheidung 2026-11-10): sieben Transglobal-Produktsätze je
-             Kunde und der vorläufige Preisvergleich. Selbstladend; der Schlüssel erzwingt beim Kundenwechsel einen
-             frischen Zustand (keine Vermischung von Entwürfen oder Vergleichsbasen). `pricing` liefert die Kontosätze
-             für die Veraltet-Erkennung der Vergleichsbasis. Nicht für Vertriebspartner (kein Versandkonto). */}
+        {/* 3a) Versandpreise optimieren (Preisoptimierung 2026-11-17, erweitert die Tarifkarte von 2026-11-10):
+             Sätze je Tarif und Gewichtsklasse für sieben Transglobal-Produkte und neun JUMiNGO-Preisgruppen, mit
+             Empfehlung und Gewinnvorschau. Selbstladend; der Schlüssel erzwingt beim Kundenwechsel einen frischen
+             Zustand (keine Vermischung von Entwürfen oder Vergleichsbasen). `pricing` meldet geänderte Kontosätze
+             (die Karte liest dann gespeicherte Werte und Basis neu). Nicht für Vertriebspartner (kein Versandkonto). */}
         {roleOf(u) !== "sales_partner" && (
-          <CustomerTariffMarkupSection key={`tarife-${idOf(u)}`} userId={idOf(u)} pricing={pricing} />
+          <CustomerTariffMarkupSection key={`tarife-${idOf(u)}`} userId={idOf(u)} pricing={pricing}
+            customerLabel={companyOf(u) || nameOf(u) || ""} />
         )}
 
         <h2 className="adm-group-title" id="adm-user-group-abrechnung">Abrechnung</h2>

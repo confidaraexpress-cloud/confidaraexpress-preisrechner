@@ -456,6 +456,15 @@ test("26 — 400 wird verständlich direkt am Eingabefeld angezeigt", () => {
   assert.match(sectionSrc, /aria-invalid=\{fieldError \? "true" : undefined\}/);
 });
 
+test("26b — Untergrenze (MARKUP_BELOW_MINIMUM) erscheint am Feld, das der Server nennt", () => {
+  const text = "Neue Aufschläge müssen mindestens 25 % betragen. Bestehende niedrigere Werte bleiben unverändert, solange sie nicht geändert werden.";
+  const std = markupSaveError(400, { code: "MARKUP_BELOW_MINIMUM", error: text, field: "percent" });
+  assert.deepEqual(std, { field: true, target: "standard", code: "MARKUP_BELOW_MINIMUM", text });
+  const exp = markupSaveError(400, { code: "MARKUP_BELOW_MINIMUM", error: text, field: "expressPercent" });
+  assert.equal(exp.target, "express");
+  assert.equal(markupSaveError(400, { code: "MARKUP_BELOW_MINIMUM" }).text, MARKUP_SAVE_ERRORS.belowMinimum);
+});
+
 test("27 — 404 wird verständlich angezeigt", () => {
   const err = markupSaveError(404, null);
   assert.equal(err.field, false);

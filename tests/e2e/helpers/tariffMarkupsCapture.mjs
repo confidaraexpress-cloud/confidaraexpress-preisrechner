@@ -1,176 +1,181 @@
-// Sichtprüfung „Individuelle Versandtarife“ (Admin-Kundendetail): Standbilder der Karte bei 1280 und 390 px
-// gegen den Dev-Server mit demselben gemockten Backend wie tests/e2e/adminTariffMarkups.test.mjs.
-// Headless, ohne Fenster (DEV_SERVER_SPAWN), ein Browserprozess, Viewports nacheinander.
+// Sichtprüfung „Versandpreise optimieren“ (Admin-Kundendetail, Preisoptimierung 2026-11-17): Standbilder der Karte bei
+// 1440/1280/768/390 px und 200 % Zoom gegen den Dev-Server mit DEMSELBEN gemockten Backend wie die E2E-Suite
+// (helpers/tariffMarkupsMock.mjs — synthetische Werte, keine Produktivdaten, keine echten Kundenkonten). Dazu je Breite:
+// Querüberlauf je Zustand, kleine Ziele (unter 24 px; mobil unter 44 px Höhe), Konsolenfehler und — mit --axe — axe-core
+// (WCAG 2 A/AA) über Karte und Dialog. Headless, ohne Fenster (DEV_SERVER_SPAWN), ein Browserprozess, Viewports nacheinander.
 //
-//   node tests/e2e/helpers/tariffMarkupsCapture.mjs --out <ordner> [--port 5773]
+//   node tests/e2e/helpers/tariffMarkupsCapture.mjs --out <ordner> [--port 5773] [--axe <pfad/zu/axe.min.js>]
 import { spawn } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./devServer.mjs";
+import { createTariffMock } from "./tariffMarkupsMock.mjs";
 
 const arg = (name, fallback) => { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : fallback; };
-const OUT = path.resolve(arg("--out", ".visual-qa/tarifadmin"));
+const OUT = path.resolve(arg("--out", ".visual-qa/versandpreise"));
 const PORT = Number(arg("--port", "5773"));
+const AXE = arg("--axe", null);
 const BASE = `http://127.0.0.1:${PORT}`;
 mkdirSync(OUT, { recursive: true });
+if (AXE && !existsSync(AXE)) throw new Error(`axe-core nicht gefunden: ${AXE}`);
 
-const ADMIN = { id: 1, email: "admin@confidaraexpress.de", company_name: "ConfidaraExpress", name: "Anna Admin", role: "admin", status: "approved", country: "DE" };
-const KUNDE = { id: 7, name: "Max Mustermann", email: "einkauf@muster-logistik.de", company_name: "Muster Logistik GmbH", role: "customer", status: "approved", country: "DE", customer_number: "CE-K-10031" };
-const PRODUKTE = [[22, "UPS Standard", "UPS", "STANDARD"], [23, "UPS Express Saver", "UPS", "EXPRESS"], [29, "UPS Express", "UPS", "EXPRESS"], [84, "DHL Express Domestic", "DHL", "EXPRESS"], [85, "DHL Express 9:00", "DHL", "EXPRESS"], [86, "DHL Express 10:30", "DHL", "EXPRESS"], [87, "DHL Express 12:00", "DHL", "EXPRESS"]];
-const PAKETE = [{ id: "p1", weightKg: 1, lengthCm: 20, widthCm: 15, heightCm: 10 }, { id: "p5", weightKg: 5, lengthCm: 30, widthCm: 20, heightCm: 20 }, { id: "p15", weightKg: 15, lengthCm: 40, widthCm: 30, heightCm: 30 }, { id: "p20", weightKg: 20, lengthCm: 50, widthCm: 35, heightCm: 30 }, { id: "p30", weightKg: 30, lengthCm: 50, widthCm: 40, heightCm: 35 }];
-const EINKAUF = { 22: 938, 23: 1528, 29: 2551, 84: 2442, 85: 8959, 86: 5235, 87: 3373 };
-const REFERENZ = { 22: 1008, 23: 1690, 84: 2600, 85: 3900 };
-// Zellzustände wie das Backend sie liefert: nicht belastbare Referenzen mit Servergrund, ein nicht verfügbarer Tarif.
-const NICHT_BELASTBAR = { "84:p30": "collection_date_mismatch", "85:p30": "delivery_promise_unverified" };
-const NICHT_VERFUEGBAR = new Set(["86:p30"]);
-// Fehler- und Ladezustände werden über diese Schalter im Mock ausgelöst (nur Mocks, kein Providerkontakt).
-const modus = { put: 0, refresh: 0, preview: 0, verzoegerungMs: 0 };
-const DESTS = ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE"];
-const kn = (c, p) => Math.round(c * (100 + p) / 100);
-const overrides = { 22: 35 };
-
-function dto() {
-  return { userId: 7, provider: "transglobal", account: { standardPercent: 20, expressPercent: 30, standardSource: "customer_confirmed" },
-    products: PRODUKTE.map(([key, label, carrier, klasse]) => { const inh = klasse === "EXPRESS" ? 30 : 20; const ov = Object.prototype.hasOwnProperty.call(overrides, key) ? overrides[key] : null;
-      return { productKey: key, label, carrier, pricingClass: klasse, inheritedPercent: inh, inheritedSource: klasse === "EXPRESS" ? "express" : "standard", overridePercent: ov, effectivePercent: ov === null ? inh : ov, source: ov === null ? (klasse === "EXPRESS" ? "express" : "standard") : "product", setAt: ov === null ? null : "2026-11-10T10:00:00.000Z", setBy: ov === null ? null : 1 }; }),
-    comparison: { destinations: DESTS.map((c) => ({ country: c, hasExampleAddress: true })), sender: { country: "DE", postalCode: "10115", city: "Berlin", street: "Invalidenstraße 43" }, standardPackages: PAKETE, refreshLimit: { max: 10, windowMinutes: 15 }, maxAgeHours: 24 } };
-}
-function satz(key, draft) {
-  const klasse = PRODUKTE.find((p) => p[0] === key)[3];
-  if (draft && Object.prototype.hasOwnProperty.call(draft, key)) return draft[key] === null ? { percent: klasse === "EXPRESS" ? 30 : 20, source: klasse === "EXPRESS" ? "express" : "standard", draft: true } : { percent: draft[key], source: "draft", draft: true };
-  const ov = overrides[key]; if (ov !== undefined) return { percent: ov, source: "product", draft: false };
-  return klasse === "EXPRESS" ? { percent: 30, source: "express", draft: false } : { percent: 20, source: "standard", draft: false };
-}
-function projektion(run, draft) {
-  return { runId: run.id, kind: run.kind, createdAt: "2026-11-10T20:05:00.000Z", expiresAt: "2099-01-01T00:00:00.000Z", destinationCountry: run.land, collectionDate: "2026-11-11",
-    conditions: { sender: { country: "DE", postalCode: "10115", city: "Berlin", street: "Invalidenstraße 43" }, recipient: { country: "DE", postalCode: "80331", city: "München", street: "Marienplatz 8" }, handover: "pickup", addressType: "business", packageCount: 1, extras: "none", transglobalPriceBasis: "preliminary_minimal_quote", priceType: "net" },
-    accountMarkup: { standardPercent: 20, expressPercent: 30 },
-    scenarios: run.szenarien.map((s) => ({ id: s.id, package: { weightKg: s.weightKg, lengthCm: s.lengthCm, widthCm: s.widthCm, heightCm: s.heightCm }, status: "ok", providers: { transglobal: "success", jumingo: "success" } })),
-    products: PRODUKTE.map(([key, label, carrier, klasse]) => { const m = satz(key, draft); return { productKey: key, label, carrier, pricingClass: klasse, markup: m, rows: run.szenarien.map((s) => {
-      const tgOk = !NICHT_VERFUEGBAR.has(`${key}:${s.id}`);
-      const grund = NICHT_BELASTBAR[`${key}:${s.id}`] || null;
-      const tg = tgOk ? kn(EINKAUF[key], m.percent) : null; const ref = grund ? null : REFERENZ[key] || null;
-      const diff = tgOk && ref ? { cents: ref - tg, percent: Math.round(Math.abs(ref - tg) / ref * 10000) / 100 * (ref - tg < 0 ? -1 : 1), verdict: ref - tg > 0 ? "cheaper" : ref - tg < 0 ? "more_expensive" : "equal" } : null;
-      return { scenarioId: s.id, transglobal: { status: tgOk ? "ok" : "unavailable", customerNetCents: tg, collectionDate: "2026-11-11", availableWithShipmentDetails: tgOk },
-        reference: grund ? { status: "not_comparable", reason: grund, customerNetCents: null, pickupDate: "2026-11-12" } : { status: ref ? "ok" : "no_reference", reason: null, customerNetCents: ref, pickupDate: ref ? "2026-11-11" : null }, difference: diff }; }) }; }),
-    ageSeconds: 5 };
-}
-
-async function mock(page) {
-  let naechste = 1; const runs = {};
-  await page.route("**/api.confidaraexpress.de/**", async (route) => {
-    const req = route.request(); const p = new URL(req.url()).pathname;
-    const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
-    if (p.endsWith("/kundenbereich")) return json({ user: ADMIN });
-    if (/\/admin\/users\/7$/.test(p)) return json({ user: KUNDE, summary: {} });
-    if (/\/price-markup$/.test(p)) return json({ userId: 7, priceMarkupPercent: 20, expressPriceMarkupPercent: 30, effectiveExpressPriceMarkupPercent: 30, expressMarkupUsesFallback: false, confirmed: true, confirmedAt: "2026-09-01T00:00:00.000Z", confirmedBy: 1, updatedAt: "2026-09-01T00:00:00.000Z" });
-    if (/\/tariff-markups$/.test(p) && req.method() === "PUT" && modus.put) return json({ error: "Interner Fehler." }, modus.put);
-    if (/\/tariff-markups$/.test(p)) return json(dto());
-    if (/\/tariff-comparison$/.test(p)) {
-      if (modus.verzoegerungMs) await new Promise((r) => setTimeout(r, modus.verzoegerungMs));
-      if (modus.refresh === 429) return json({ error: "Zu viele Anfragen. Bitte später erneut versuchen.", code: "RATE_LIMITED" }, 429);
-      if (modus.refresh) return json({ error: "Interner Fehler." }, modus.refresh);
-      const b = req.postDataJSON(); const run = { id: String(naechste++), kind: b.custom ? "custom" : "standard", land: b.destinationCountry, szenarien: b.custom ? [{ id: "custom", ...b.custom }] : PAKETE }; runs[run.id] = run; return json(projektion(run, null));
-    }
-    const m = /\/tariff-comparison\/(\d+)\/preview$/.exec(p);
-    if (m && modus.preview === 409) return json({ error: "Der Kundenaufschlag hat sich seit der Aktualisierung geändert. Bitte die Preise aktualisieren.", code: "COMPARISON_STALE" }, 409);
-    if (m && modus.preview) return json({ error: "Interner Fehler." }, modus.preview);
-    if (m) return json(projektion(runs[m[1]], req.postDataJSON().markups));
-    if (p.endsWith("/launch-scope")) return json({ countries: DESTS, destinationCountries: DESTS, originCountries: ["DE"] });
-    if (p.includes("/notifications")) return json({ notifications: [], unreadCount: 0, snapshotAt: "", pagination: {} });
-    return json({ items: [], users: [], shipments: [], invoices: [], drafts: [], addresses: [], warehouses: [], summary: null, nextCursor: null, pagination: { total: 0 } });
-  });
-  await page.addInitScript(() => localStorage.setItem("ce_token", "e2e-admin-token"));
-}
+const KARTE = "#adm-tariff-section";
+// [Name, Viewport, Pixeldichte, Zustände mit Bild ("alle" = jeder Zustand)]. 200 % Zoom auf einem 1280er Fenster
+// = 640 CSS-Pixel bei doppelter Pixeldichte. 360 px nur als Messung (Überlauf).
+const BREITEN = [
+  ["desktop-1280", { width: 1280, height: 1000 }, 1, "alle"],
+  ["desktop-1440", { width: 1440, height: 1000 }, 1, ["2-verglichen", "3-tarif-ups-standard", "4-uebernommen"]],
+  ["tablet-768", { width: 768, height: 1024 }, 1, ["3-tarif-ups-standard", "4-uebernommen"]],
+  ["mobil-390", { width: 390, height: 844 }, 1, ["2-verglichen", "3-tarif-ups-standard", "4-uebernommen", "6-dialog", "7-gespeichert-verlauf", "8-untergrenze"]],
+  ["zoom-200", { width: 640, height: 500 }, 2, ["3-tarif-ups-standard", "4-uebernommen", "6-dialog"]],
+  ["mobil-360", { width: 360, height: 780 }, 1, []],
+];
+const KOPF_BIS_LISTE = [`${KARTE} > summary`, `${KARTE} .adm-po-facts`, `${KARTE} .adm-po-steps`, `${KARTE} .adm-po-compare`, `${KARTE} .adm-po-tariffs`];
+const OFFENER_TARIF = [`${KARTE} li.adm-po-tarif.is-open`];
 
 const server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { ...DEV_SERVER_SPAWN, stdio: "ignore" });
-const bericht = { out: OUT, bilder: [], masse: {} };
+const bericht = { out: OUT, synthetisch: true, bilder: [], breiten: {} };
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 try {
   const frist = Date.now() + 90000;
-  for (;;) { try { const r = await fetch(`${BASE}/`); if (r.ok) break; } catch { /* warten */ } if (Date.now() > frist) throw new Error("Dev-Server nicht gestartet"); await new Promise((r) => setTimeout(r, 250)); }
+  for (;;) { try { const r = await fetch(`${BASE}/`); if (r.ok) break; } catch { /* warten */ } if (Date.now() > frist) throw new Error("Dev-Server nicht gestartet"); await pause(250); }
   const browser = await chromium.launch();
-  for (const [name, viewport] of [["desktop-1280", { width: 1280, height: 1000 }], ["mobil-390", { width: 390, height: 844 }]]) {
-    const page = await browser.newPage({ viewport, timezoneId: "Europe/Berlin", locale: "de-DE" });
-    await mock(page);
+  for (const [name, viewport, dpr, bildZustaende] of BREITEN) {
+    const page = await browser.newPage({ viewport, deviceScaleFactor: dpr, timezoneId: "Europe/Berlin", locale: "de-DE", colorScheme: "light", bypassCSP: true });
+    const mock = createTariffMock();
+    await page.route("**/api.confidaraexpress.de/**", (route) => mock.handle(route));
+    await page.addInitScript(() => localStorage.setItem("ce_token", "e2e-admin-token"));
+    const konsole = [];
+    page.on("console", (m) => { if (m.type() === "error") konsole.push(m.text()); });
+    page.on("pageerror", (e) => konsole.push(`pageerror: ${e.message}`));
+    const messung = { ueberlauf: {}, kleineZiele: {}, axe: {}, konsole };
+    const mitBild = (z) => bildZustaende === "alle" || bildZustaende.includes(z);
+
+    // Bild eines Bereichs (Vereinigung mehrerer Elemente, Seitenkoordinaten) und Messung des Zustands.
+    const zustand = async (z, selektoren, { viewportBild = false } = {}) => {
+      await pause(350);
+      messung.ueberlauf[z] = await page.evaluate(() => ({ seite: document.documentElement.scrollWidth, fenster: document.documentElement.clientWidth }));
+      messung.kleineZiele[z] = await page.evaluate(({ karte, mobil }) => {
+        const wurzeln = [document.querySelector(karte), document.querySelector('[role="dialog"]')].filter(Boolean);
+        const ziele = wurzeln.flatMap((w) => [...w.querySelectorAll("button, input, select, summary, a[href], label.adm-po-radio")]);
+        return ziele.filter((el) => {
+          const ueberLabel = el.matches("input[type=radio], input[type=checkbox]") && el.closest("label");
+          const b = (ueberLabel || el).getBoundingClientRect();
+          return b.width > 0 && b.height > 0 && (b.height < 24 || b.width < 24 || (mobil && (ueberLabel || el.tagName !== "INPUT") && b.height < 44));
+        })
+          .map((el) => `${el.id || el.className || el.tagName} ${Math.round(el.getBoundingClientRect().width)}×${Math.round(el.getBoundingClientRect().height)}`);
+      }, { karte: KARTE, mobil: viewport.width < 768 });
+      if (!mitBild(z)) return;
+      const datei = path.join(OUT, `${name}-${z}.png`);
+      if (viewportBild) { await page.screenshot({ path: datei }); }
+      else {
+        const clip = await page.evaluate((sels) => {
+          const rs = sels.map((s) => document.querySelector(s)).filter(Boolean).map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0);
+          if (rs.length === 0) return null;
+          const x = Math.max(0, Math.min(...rs.map((r) => r.left)) + window.scrollX - 8);
+          const y = Math.max(0, Math.min(...rs.map((r) => r.top)) + window.scrollY - 8);
+          const rechts = Math.min(document.documentElement.scrollWidth, Math.max(...rs.map((r) => r.right)) + window.scrollX + 8);
+          const unten = Math.max(...rs.map((r) => r.bottom)) + window.scrollY + 8;
+          return { x, y, width: rechts - x, height: unten - y };
+        }, selektoren);
+        if (!clip) throw new Error(`${name}/${z}: kein Bereich gefunden`);
+        await page.screenshot({ path: datei, clip, fullPage: true });
+      }
+      bericht.bilder.push(path.basename(datei));
+    };
+    const axe = async (z, include) => {
+      if (!AXE) return;
+      if (!(await page.evaluate(() => typeof window.axe !== "undefined"))) await page.addScriptTag({ path: AXE });
+      messung.axe[z] = await page.evaluate(async (inc) => {
+        const r = await window.axe.run({ include: inc }, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] } });
+        return { verstoesse: r.violations.map((v) => ({ id: v.id, impact: v.impact, knoten: v.nodes.length, ziele: v.nodes.slice(0, 4).map((n) => n.target.join(" ")), hilfe: v.help })), bestanden: r.passes.length, unvollstaendig: r.incomplete.map((v) => v.id) };
+      }, include);
+    };
+    const kopf = (id) => page.locator(`#adm-po-head-${id}`);
+
     await page.goto(`${BASE}/admin/users/7`, { waitUntil: "domcontentloaded" });
-    const karte = page.locator("#adm-tariff-section");
-    // Seit der Admin-Vereinfachung (2026-11-10) eingeklappt — per Klick auf den Kopf öffnen.
+    const karte = page.locator(KARTE);
     await karte.locator(":scope > summary").waitFor({ timeout: 30000 });
     if (!(await karte.evaluate((d) => d.open))) await karte.locator(":scope > summary").click();
-    await karte.locator("#adm-tarif-input-22").waitFor({ timeout: 30000 });
-    await page.waitForTimeout(400);
-    const schuss = async (tag) => { const f = path.join(OUT, `${name}-${tag}.png`); await karte.screenshot({ path: f }); bericht.bilder.push(path.basename(f)); };
-    await schuss("1-geladen");
-    await page.locator("#adm-tarif-input-85").fill("50");
-    await page.locator("#adm-tarif-reset-22").click();
-    await page.waitForTimeout(200);
-    await schuss("2-entwurf");
+    await kopf("transglobal-22").waitFor({ timeout: 30000 });
+    await zustand("1-geoeffnet", KOPF_BIS_LISTE);
+
     await page.locator("#adm-tarif-refresh").click();
-    await karte.locator(".adm-tarif-table").first().waitFor({ timeout: 10000 });
-    await page.waitForTimeout(800);
-    await schuss("3-vergleich");
-    await page.locator("#adm-tarif-custom > summary").click();
-    await page.locator("#adm-tarif-custom-weight").fill("2,5"); await page.locator("#adm-tarif-custom-length").fill("25"); await page.locator("#adm-tarif-custom-width").fill("20"); await page.locator("#adm-tarif-custom-height").fill("15");
-    await page.locator("#adm-tarif-compare").click();
-    await page.locator("#adm-tarif-custom .adm-tarif-table").waitFor({ timeout: 10000 });
-    await page.locator("#adm-tarif-details > summary").click();
-    await page.waitForTimeout(300);
-    await schuss("4-eigenes-paket-details");
-    // Zellzustände: nicht belastbare Referenz mit Grund (84), nicht verfügbarer Tarif (86).
-    await page.locator("#adm-tarif-details > summary").click();
-    await page.locator("#adm-tarif-cmp-84 > summary").click();
-    await page.waitForTimeout(250);
-    await schuss("5-nicht-belastbar");
-    await page.locator("#adm-tarif-cmp-86 > summary").click();
-    await page.waitForTimeout(250);
-    await schuss("6-nicht-verfuegbar");
-    // Fehler beim Speichern (500): Meldung, Entwurf bleibt.
-    modus.put = 500;
+    await karte.locator(".adm-tarif-stand", { hasText: "Stand:" }).waitFor({ timeout: 10000 });
+    await zustand("2-verglichen", KOPF_BIS_LISTE);
+
+    await kopf("transglobal-22").click();
+    await zustand("3-tarif-ups-standard", OFFENER_TARIF);
+
+    await kopf("transglobal-23").click();
+    for (const wc of [1, 4]) await page.locator(`#adm-po-panel-transglobal-23 .adm-po-row[data-class="${wc}"] .adm-po-adopt`).click();
+    await page.locator('#adm-po-panel-transglobal-23 table.adm-po-profit tr[data-class="4"][data-art="draft"]').waitFor({ timeout: 5000 });
+    await zustand("4-uebernommen", [...OFFENER_TARIF, `${KARTE} .adm-po-save`]);
+    await axe("4-uebernommen", [[KARTE]]);
+
+    if (name === "desktop-1280") {
+      // Hover und Fokus: Tarifkopf (Maus), „Empfehlung übernehmen“ und „Änderungen prüfen“ (Tastatur).
+      await kopf("transglobal-29").hover();
+      await pause(250);
+      await kopf("transglobal-29").screenshot({ path: path.join(OUT, `${name}-hover-tarifkopf.png`) });
+      bericht.bilder.push(`${name}-hover-tarifkopf.png`);
+      await page.mouse.move(0, 0);
+      await page.locator('#adm-po-panel-transglobal-23 .adm-po-row[data-class="2"] input').focus();
+      await page.keyboard.press("Tab");
+      await pause(200);
+      await page.locator('#adm-po-panel-transglobal-23 .adm-po-row[data-class="2"]').screenshot({ path: path.join(OUT, `${name}-fokus-uebernehmen.png`) });
+      bericht.bilder.push(`${name}-fokus-uebernehmen.png`);
+      await page.locator("#adm-tarif-discard").focus();
+      await page.keyboard.press("Tab");
+      await pause(200);
+      await page.locator(`${KARTE} .adm-tarif-savebar`).screenshot({ path: path.join(OUT, `${name}-fokus-pruefen.png`) });
+      bericht.bilder.push(`${name}-fokus-pruefen.png`);
+      await page.locator("#adm-po-expert-transglobal-23 > summary").click();
+      await zustand("5-expertendetails", ["#adm-po-expert-transglobal-23"]);
+    }
+
     await page.locator("#adm-tarif-save").click();
-    await karte.locator(".alert-error").waitFor({ timeout: 5000 });
-    await page.waitForTimeout(150);
-    await schuss("7-speichern-fehler");
-    modus.put = 0;
-    // Vorschau abgelehnt (409 COMPARISON_STALE): „Aktualisierung erforderlich“, keine alten Preise.
-    modus.preview = 409;
-    await page.locator("#adm-tarif-input-23").fill("25");
-    await karte.locator(".adm-tarif-cmp .adm-tarif-note--warn").waitFor({ timeout: 5000 });
-    await page.waitForTimeout(150);
-    await schuss("8-vorschau-veraltet");
-    modus.preview = 0;
-    // Ladezustand: verzögerte Antwort, Knopf beschäftigt.
-    modus.verzoegerungMs = 2500;
+    await page.getByRole("dialog").waitFor();
+    await zustand("6-dialog", [], { viewportBild: true });
+    await axe("6-dialog", [['[role="dialog"]']]);
+    await page.locator("#adm-tarif-confirm").click();
+    await karte.locator(".alert-success").waitFor({ timeout: 5000 });
+    await page.locator("#adm-po-history > summary").click();
+    await page.locator("#adm-po-history li.adm-po-history-item").first().waitFor({ timeout: 5000 });
+    await zustand("7-gespeichert-verlauf", [`${KARTE} .adm-po-save`, "#adm-po-history"]);
+
+    await kopf("transglobal-22").click();
+    await page.locator("#adm-tarif-input-transglobal-22-0").fill("10");
+    await page.keyboard.press("Tab");
+    await page.locator("#adm-tarif-input-transglobal-22-0-error").waitFor({ timeout: 5000 });
+    await zustand("8-untergrenze", [`${KARTE} #adm-po-panel-transglobal-22 .adm-po-rows`, `${KARTE} .adm-po-save`]);
+    await page.locator("#adm-tarif-discard").click();
+
+    mock.state.refreshStatus = 429;
+    await page.locator("#adm-tarif-refresh").click();
+    await karte.locator('.adm-po-compare [role="alert"]').waitFor({ timeout: 5000 });
+    await zustand("9-abruf-limit", [`${KARTE} .adm-po-compare`]);
+    mock.state.refreshStatus = null;
+    mock.state.verzoegerungMs = 2500;
     await page.locator("#adm-tarif-refresh").click();
     await page.locator('#adm-tarif-refresh[aria-busy="true"]').waitFor({ timeout: 3000 });
-    await page.waitForTimeout(300);
-    await schuss("9-laden");
-    // Offen ist weiterhin der Vergleich von 86 – die erste Tabelle im DOM (22) bleibt eingeklappt und damit unsichtbar.
-    await karte.locator("#adm-tarif-cmp-86 .adm-tarif-table").waitFor({ timeout: 15000 });
-    modus.verzoegerungMs = 0;
-    // Fehler beim Preisabruf (500) und Limit (429).
-    modus.refresh = 500;
-    await page.locator("#adm-tarif-refresh").click();
-    await karte.locator('[role="alert"]', { hasText: "Preise konnten nicht abgerufen werden" }).waitFor({ timeout: 5000 });
-    await page.waitForTimeout(150);
-    await schuss("10-abruf-fehler");
-    modus.refresh = 429;
-    await page.locator("#adm-tarif-refresh").click();
-    await karte.locator('[role="alert"]', { hasText: "Zu viele Aktualisierungen" }).waitFor({ timeout: 5000 });
-    await page.waitForTimeout(150);
-    await schuss("11-abruf-limit");
-    modus.refresh = 0;
-    bericht.masse[name] = await page.evaluate(() => {
-      const el = document.querySelector("#adm-tariff-section");
-      const r = el.getBoundingClientRect();
-      const klein = [...el.querySelectorAll("button, input, select, summary")].filter((b) => { const bb = b.getBoundingClientRect(); return bb.width > 0 && (bb.height < 24 || bb.width < 24); }).map((b) => (b.id || b.className || b.tagName) + ` ${Math.round(b.getBoundingClientRect().width)}×${Math.round(b.getBoundingClientRect().height)}`);
-      return { kartenbreite: Math.round(r.width), kartenhoehe: Math.round(r.height), scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth, kleineZiele: klein };
-    });
+    await zustand("10-laden", [`${KARTE} .adm-po-compare`]);
+    await karte.locator(".adm-tarif-stand", { hasText: "Stand:" }).waitFor({ timeout: 15000 });
+    mock.state.verzoegerungMs = 0;
+
+    messung.netz = { refreshes: mock.state.refreshes.length, previews: mock.state.previews.length, puts: mock.state.puts.length, audits: mock.state.audits.length };
+    bericht.breiten[name] = messung;
     await page.close();
   }
   await browser.close();
   writeFileSync(path.join(OUT, "report.json"), JSON.stringify(bericht, null, 2));
-  console.log(JSON.stringify(bericht, null, 2));
+  console.log(JSON.stringify({ bilder: bericht.bilder.length, breiten: Object.fromEntries(Object.entries(bericht.breiten).map(([n, m]) => [n, {
+    ueberlauf: Object.entries(m.ueberlauf).filter(([, v]) => v.seite > v.fenster).map(([z, v]) => `${z} ${v.seite}>${v.fenster}`),
+    kleineZiele: [...new Set(Object.values(m.kleineZiele).flat())],
+    axe: Object.fromEntries(Object.entries(m.axe).map(([z, a]) => [z, a.verstoesse.map((v) => `${v.id}(${v.impact}, ${v.knoten})`)])),
+    konsole: m.konsole.slice(0, 5), netz: m.netz,
+  }])) }, null, 2));
 } finally {
   stopDevServer(server, "SIGKILL");
 }

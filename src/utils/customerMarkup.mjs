@@ -27,6 +27,7 @@ export const MARKUP_MAX_DECIMALS = 2;
 
 // Backend-Fehlercodes, die dieses Modul kennt. Keine erfundenen Codes.
 export const CODE_INVALID_PERCENT = "INVALID_PRICE_MARKUP_PERCENT";
+export const CODE_BELOW_MINIMUM = "MARKUP_BELOW_MINIMUM";
 export const CODE_CONFIRMATION_REQUIRED = "PRICE_MARKUP_CONFIRMATION_REQUIRED";
 // Eigener Code des Expressfelds — damit der Fehler am RICHTIGEN der beiden
 // Prozentfelder erscheint und nicht pauschal am Standardfeld.
@@ -366,6 +367,11 @@ export const MARKUP_SAVE_ERRORS = Object.freeze({
   expressInvalid:
     "Der Expressaufschlag muss zwischen 0 und 100 Prozent liegen und darf höchstens zwei "
     + "Nachkommastellen besitzen. Zum Entfernen das Feld leer lassen.",
+  // Preisoptimierung 2026-11-17: neue Aufschläge brauchen mindestens die Untergrenze des Servers. Der Server nennt
+  // die Zahl in seinem Text; dieser Satz gilt nur, wenn die Antwort keinen Text trägt.
+  belowMinimum:
+    "Neue Aufschläge müssen mindestens die Untergrenze erreichen. Bestehende niedrigere Werte bleiben "
+    + "unverändert, solange sie nicht geändert werden.",
 });
 
 // → null bei 401/403 (zentrales Auth-Verhalten übernimmt: Logout/Redirect —
@@ -378,6 +384,11 @@ export function markupSaveError(status, body) {
   // Standardfeld. `target` benennt das betroffene Eingabefeld eindeutig.
   if (code === CODE_INVALID_EXPRESS_PERCENT) {
     return { field: true, target: "express", code, text: MARKUP_SAVE_ERRORS.expressInvalid };
+  }
+  // Untergrenze (MARKUP_BELOW_MINIMUM): am Feld, das der Server nennt (`field: percent | expressPercent`).
+  if (code === CODE_BELOW_MINIMUM) {
+    const serverText = typeof body.error === "string" && body.error.trim() !== "" ? body.error : null;
+    return { field: true, target: body.field === "expressPercent" ? "express" : "standard", code, text: serverText || MARKUP_SAVE_ERRORS.belowMinimum };
   }
   if (status === 400 || code === CODE_INVALID_PERCENT) {
     return { field: true, target: "standard", code: code || CODE_INVALID_PERCENT, text: MARKUP_SAVE_ERRORS[400] };

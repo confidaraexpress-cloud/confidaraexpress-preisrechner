@@ -15,12 +15,13 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import {
-  TARIFF_TEXTS, STATUS_VIEW, TARIFF_STEPS, selectTariffMarkups, countOverrides, savedOverride, savedEffective,
+  TARIFF_TEXTS, STATUS_VIEW, selectTariffMarkups, countOverrides, savedOverride, savedEffective,
   parseTariffInput, tariffInputValue, draftValue, draftKey, tariffDraftChanges, buildTariffEntriesBody, sourceText,
   formatCents, formatSignedCents, formatPercent, distanceText, kgText, comparisonBaseStatus, selectComparison,
   projectionClass, hasSameDay, exampleSample, statusOf, statusText, statusWithoutComparison, profitRow, tariffSummary,
-  rangeText, sortTariffs, changeWarnings, flowStep, selectTariffHistory, historyRevert, historyValue, customRows,
+  rangeText, sortTariffs, changeWarnings, selectTariffHistory, historyRevert, historyValue, customRows,
   destinationOptions, parseCustomPackageInput, tariffSaveError, comparisonError, floorText, formatDay,
+  weightTabLabel, fieldHint, reliableRecommendation, noRecommendationText, classMetrics, classWarnings,
 } from "./adminTariffMarkupView.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -232,18 +233,104 @@ test("Tarifliste: wichtigster Zustand, Plus je Sendung, sortiert nach Plus; ohne
   assert.deepEqual(ohne.today, { min: 0, max: 0 });
 });
 
-test("Dialoghinweise, Ablaufschritt und Schrittwortlaute", () => {
+// Eine Klasse unter der Untergrenze OHNE Vergleichsangebot: der Server schlägt die Untergrenze vor — keine Empfehlung.
+const ohneVergleich = (wc) => klasse(wc, { status: "below_target", comparisonStatus: "no_comparison", belowTarget: true, currentPercent: 0,
+  recommendedPercent: 25, suggestedPercent: 25, comparedSamples: 0, limitingScenarioId: null, exampleScenarioId: "w12",
+  samples: [probe("w12", 12, [1500, 1500], null, { atRecommended: { percent: 25, customerNetCents: 1875, contributionCents: 375, differencePercent: null } })] });
+
+test("Belastbare Empfehlung: nur mit Vergleichsangebot; Kurzgrund ohne Empfehlung", () => {
+  assert.equal(reliableRecommendation(klasse(1)), true);
+  assert.equal(reliableRecommendation(projectionClass(PROJEKTION, "transglobal", 22, 3)), false, "kein Vergleich");
+  assert.equal(reliableRecommendation(ohneVergleich(1)), false, "Untergrenze ohne Vergleich ist keine Empfehlung");
+  assert.equal(reliableRecommendation(null), false);
+  assert.equal(noRecommendationText(klasse(1, { samples: [] })), "Kein Beispielpaket");
+  assert.equal(noRecommendationText(klasse(1, { samples: [probe("w5", 5, null, null)] })), "Tarif hier nicht verfügbar");
+  assert.equal(noRecommendationText(klasse(1, { samples: [{ ...probe("w5", 5, null, null), reason: "fetch_failed" }] })), "Preise nicht abrufbar");
+  assert.equal(noRecommendationText(projectionClass(PROJEKTION, "transglobal", 22, 3)), "Kein vergleichbares Angebot");
+  // Tarifliste: Empfohlen-Spanne nur aus belastbaren Klassen (Klasse 3 ohne Vergleich zählt nicht), ohne sie weder Plus noch Spanne.
+  const d = daten();
+  assert.deepEqual(tariffSummary(d.tariffs[0], selectComparison(PROJEKTION, 7), { minimumPercent: 25 }).recommended, { min: 25, max: 35 });
+  const nurOhne = { ...PROJEKTION, tariffs: [{ provider: "transglobal", productKey: 22, label: "UPS Standard", classes: [1, 2, 3, 4].map(ohneVergleich) }] };
+  const s = tariffSummary(d.tariffs[0], selectComparison(nurOhne, 7), { minimumPercent: 25 });
+  assert.deepEqual([s.status, s.plusCents, s.recommended], ["below_target", null, null]);
+});
+
+test("Kennzahlen je Gewichtsklasse: Ihr Aufschlag, Empfohlen, Mehr pro Sendung — nur Serverwerte", () => {
+  const t = daten().tariffs[0]; // UPS Standard (Transglobal), Bestandswert 0 % für alle Gewichte
+  const k = (wc, opts) => projectionClass(PROJEKTION, "transglobal", 22, wc, opts);
+  // Ohne Preisvergleich: nur der gespeicherte Satz, keine Empfehlung, keine Zahl.
+  let m = classMetrics({ tariff: t, weightClass: 1 });
+  assert.deepEqual(m.current, { percent: 0, source: "all_weights" }, "der Satz für alle Gewichte gilt — als solcher erkennbar");
+  assert.deepEqual(m.recommended, { percent: null, note: "Erst Preise vergleichen" });
+  assert.equal(m.adoptPercent, null);
+  assert.deepEqual([m.more.value, m.more.note, m.more.label], ["—", "Erst Preise vergleichen", "Mehr pro Sendung"]);
+  // Mehr Gewinn möglich: Empfehlung 35 %, übernehmbar, +1,60 € Deckungsbeitrag am begrenzenden Beispielpaket (5 kg).
+  m = classMetrics({ tariff: t, weightClass: 1, baseClass: k(1), hasBase: true });
+  assert.deepEqual(m.recommended, { percent: 35, note: null });
+  assert.equal(m.adoptPercent, 35);
+  assert.deepEqual(m.more, { cents: 160, direction: "more", art: "recommendation", label: "Mehr pro Sendung", value: "+1,60 €",
+    note: "mit Empfehlung", example: "Deckungsbeitrag, Beispiel 5 kg" });
+  // Gut eingestellt: Empfehlung sichtbar, nichts zu übernehmen.
+  m = classMetrics({ tariff: t, weightClass: 2, baseClass: k(2), hasBase: true });
+  assert.deepEqual(m.recommended, { percent: 25, note: "Passt bereits" });
+  assert.equal(m.adoptPercent, null);
+  assert.deepEqual([m.more.value, m.more.note], ["—", "Keine Änderung vorgeschlagen"]);
+  // Kein Vergleichsangebot: „Keine Empfehlung verfügbar“ mit Grund; nichts erfunden.
+  m = classMetrics({ tariff: t, weightClass: 3, baseClass: k(3), hasBase: true });
+  assert.deepEqual(m.recommended, { percent: null, note: "Kein vergleichbares Angebot" });
+  assert.deepEqual([m.adoptPercent, m.more.value, m.more.note], [null, "—", "Keine Empfehlung verfügbar"]);
+  // Gefährdet, Empfehlung schon erreicht: kein „Passt bereits“ — der sichtbare Hinweis erklärt.
+  m = classMetrics({ tariff: t, weightClass: 4, baseClass: k(4), hasBase: true });
+  assert.deepEqual(m.recommended, { percent: 25, note: null });
+  // Unter der Untergrenze ohne Vergleich: der Server schlägt 25 % vor, die Karte bietet trotzdem nichts zum Übernehmen an.
+  m = classMetrics({ tariff: t, weightClass: 3, baseClass: ohneVergleich(3), hasBase: true });
+  assert.deepEqual([m.recommended.percent, m.adoptPercent, m.more.value], [null, null, "—"]);
+  // Mit Abholzuschlag (UPS 22): Variante des Servers, Hinweis an der Empfehlung.
+  m = classMetrics({ tariff: t, weightClass: 1, baseClass: k(1, { sameDay: true }), hasBase: true, sameDay: true });
+  assert.deepEqual(m.recommended, { percent: 25, note: "Passt bereits, mit Abholzuschlag" });
+  // Entwurf: Wert aus der Vorschau, „mit Ihrer Eingabe“; solange die Vorschau aussteht, keine veraltete Zahl.
+  const vorschau = klasse(1, { currentPercent: 30, draft: { percent: 30 }, samples: [probe("w2", 2, [938, 1219], [1158, 1390]), probe("w5", 5, [1062, 1381], [1300, 1560])] });
+  m = classMetrics({ tariff: t, weightClass: 1, baseClass: k(1), previewClass: vorschau, hasBase: true });
+  assert.deepEqual([m.more.art, m.more.value, m.more.note], ["draft", "+1,07 €", "mit Ihrer Eingabe"]);
+  m = classMetrics({ tariff: t, weightClass: 1, baseClass: k(1), previewClass: vorschau, hasBase: true, pending: true });
+  assert.deepEqual([m.more.value, m.more.note], ["—", "Vorschau wird berechnet …"]);
+  m = classMetrics({ tariff: t, weightClass: 1, baseClass: k(1), hasBase: true, pending: true, previewFailed: true });
+  assert.equal(m.more.note, "Keine Vorschau");
+  // Empfehlung senkt den Deckungsbeitrag (Preisvorteil schützen): „Weniger pro Sendung“ statt eines negativen Plus.
+  const senken = klasse(1, { status: "at_risk", comparisonStatus: "at_risk", currentPercent: 35, recommendedPercent: 25, suggestedPercent: 25,
+    samples: [probe("w5", 5, [1062, 1434], [1300, 1400], { atRecommended: { percent: 25, customerNetCents: 1328, contributionCents: 266, differencePercent: -5.14 } })] });
+  m = classMetrics({ tariff: t, weightClass: 1, baseClass: senken, hasBase: true });
+  assert.deepEqual([m.adoptPercent, m.more.direction, m.more.label, m.more.value], [25, "less", "Weniger pro Sendung", "1,06 €"]);
+});
+
+test("Sichtbare Hinweise: Preisvorteil gefährdet (mit Grund), unter der Untergrenze; Entwurf zählt über die Vorschau", () => {
+  const k4 = projectionClass(PROJEKTION, "transglobal", 22, 4);
+  assert.deepEqual(classWarnings({ baseClass: k4, currentPercent: 30, minimumPercent: 25, provider: "transglobal", hasBase: true }),
+    [{ status: "at_risk", text: `${STATUS_VIEW.at_risk.text} JUMiNGO kauft dieses Gewicht günstiger ein.`, draft: false }]);
+  assert.deepEqual(classWarnings({ currentPercent: 0, minimumPercent: 25, hasBase: false }),
+    [{ status: "below_target", text: STATUS_VIEW.below_target.text, draft: false }], "ohne Vergleich: Bestandswert unter 25 %");
+  assert.deepEqual(classWarnings({ currentPercent: 30, minimumPercent: 25, hasBase: false }), []);
+  assert.deepEqual(classWarnings({ baseClass: ohneVergleich(1), currentPercent: 0, minimumPercent: 25, provider: "transglobal", hasBase: true }).map((w) => w.status), ["below_target"]);
+  // Entwurf macht den Preisvorteil gefährdet → Hinweis aus der Vorschau; der alte „unter der Untergrenze“-Hinweis entfällt.
+  const entwurf = klasse(1, { currentPercent: 30, draft: { percent: 30 }, status: "at_risk", comparisonStatus: "at_risk" });
+  assert.deepEqual(classWarnings({ baseClass: ohneVergleich(1), previewClass: entwurf, currentPercent: 0, minimumPercent: 25, provider: "transglobal", hasBase: true })
+    .map((w) => [w.status, w.draft]), [["at_risk", true]]);
+  assert.deepEqual(classWarnings({ baseClass: projectionClass(PROJEKTION, "transglobal", 22, 1), currentPercent: 20, minimumPercent: 25, provider: "transglobal", hasBase: true }), []);
+});
+
+test("Dialoghinweise, Reiter und Wortlaute der vereinfachten Karte", () => {
   assert.deepEqual(changeWarnings(klasse(1, { status: "at_risk", comparisonStatus: "at_risk", comparedSamples: 1 })), ["at_risk", "weak"]);
   assert.deepEqual(changeWarnings(klasse(1, { status: "below_target", comparisonStatus: "no_comparison", comparedSamples: 0 })), ["no_comparison"]);
   assert.deepEqual(changeWarnings(klasse(1)), []);
-  assert.equal(flowStep({ tariffSelected: false, hasBase: false, changeCount: 0, dialogOpen: false }), 2);
-  assert.equal(flowStep({ tariffSelected: true, hasBase: false, changeCount: 0, dialogOpen: false }), 3);
-  assert.equal(flowStep({ tariffSelected: true, hasBase: true, changeCount: 0, dialogOpen: false }), 4);
-  assert.equal(flowStep({ tariffSelected: true, hasBase: true, changeCount: 2, dialogOpen: false }), 5);
-  assert.equal(flowStep({ tariffSelected: true, hasBase: true, changeCount: 2, dialogOpen: true }), 6);
-  assert.deepEqual([...TARIFF_STEPS], ["Kunde auswählen", "Tarif auswählen", "Empfohlene Gewichtsklassen ansehen", "Aufschlag eingeben oder Empfehlung übernehmen", "Gewinn und Kundenpreis prüfen", "Bestätigen und speichern"]);
-  assert.equal(TARIFF_TEXTS.sectionTitle, "Versandpreise optimieren");
-  assert.equal(TARIFF_TEXTS.goalFact, "Ziel: Transglobal mindestens 1\u00a0% günstiger als ein vergleichbares Angebot");
+  // Reiter aus den Klassenbezeichnungen des Servers — die Grenzen definiert nur der Server.
+  assert.deepEqual(KLASSEN.map(([, l]) => weightTabLabel(l)), ["Bis 5 kg", "Über 5–10 kg", "Über 10–20 kg", "Über 20 kg"]);
+  assert.equal(weightTabLabel(""), "");
+  assert.equal(fieldHint(25), "Mindestens 25 %. Leer = kein eigener Satz.");
+  assert.equal(fieldHint(null), "Leer = kein eigener Satz.");
+  const T = TARIFF_TEXTS;
+  assert.deepEqual([T.sectionTitle, T.current, T.recommended, T.metricMore, T.noRecommendation, T.adopt, T.custom, T.details, T.save, T.dialogConfirm],
+    ["Versandpreise optimieren", "Ihr Aufschlag", "Empfohlen", "Mehr pro Sendung", "Keine Empfehlung verfügbar", "Empfehlung übernehmen", "Selbst festlegen", "Details anzeigen", "Speichern", "Ja, speichern"]);
+  assert.match(T.contributionNote, /^Deckungsbeitrag = Kundenpreis minus Einkaufspreis, netto/);
 });
 
 test("Verlauf: Einträge mit Tarif und Klasse; Zurücksetzen nur, wo der alte Wert speicherbar und nicht aktuell ist", () => {
@@ -314,6 +401,18 @@ test("Komponente: Providerkontakt nur hinter zwei Buttons, Speichern nur aus dem
   assert.ok(!/Cents\s*[*/]/.test(k), "keine Rechnung mit Centbeträgen");
   assert.ok(!/\(\s*1\s*\+\s*[a-zA-Z]/.test(k), "keine Aufschlagsformel (1 + m)");
   assert.match(k, /listAuditLogs\(\{ action: "user\.tariff_markup_change", target_user_id: userId/);
+  // Vereinfachung 2026-11-17: „Empfehlung übernehmen“ füllt nur das Feld; Kennzahlen kommen aus classMetrics.
+  const uebernehmen = k.slice(k.indexOf("const uebernehmen = "), k.indexOf("const selbstFestlegen = "));
+  assert.match(uebernehmen, /setzeEntwurf\(key, tariffInputValue\(percent\)\)/);
+  assert.ok(!/update|refresh|preview|setDialogOpen/.test(uebernehmen), "übernehmen speichert, vergleicht und bestätigt nichts");
+  assert.match(k, /classMetrics\(\{ tariff: t, weightClass: wc, baseClass: bk, previewClass: pk, hasBase: baseOk/);
+  // Gewichtsklassen als Reiter nach WAI-ARIA (Rolle, Auswahl, Bezug, Pfeiltasten).
+  assert.match(k, /role="tablist"/);
+  assert.match(k, /role="tab" id=\{`adm-po-tab-\$\{s\}-\$\{c\.weightClass\}`\}/);
+  assert.match(k, /aria-selected=\{aktiv \? "true" : "false"\} aria-controls=\{`adm-po-tabpanel-\$\{s\}`\} tabIndex=\{aktiv \? 0 : -1\}/);
+  assert.match(k, /role="tabpanel" id=\{`adm-po-tabpanel-\$\{s\}`\}/);
+  assert.match(k, /e\.key === "ArrowRight"/);
+  assert.ok(!/flowStep|TARIFF_STEPS|adm-po-step/.test(k), "keine Ablaufschritte mehr");
 });
 
 test("Seite: Karte je Kunde neu montiert, Kundenbezeichnung für Schritt 1 und Dialog", () => {

@@ -2113,6 +2113,7 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
 .adm-po-cand:has(input:checked) .adm-po-cand-name { font-weight: 600; color: var(--ce-color-text-primary); }
 .adm-po-cand-rel { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-muted); }
 .adm-po-cand-dirty { font-size: var(--ce-text-caption-size); }
+.adm-po-more-dirty { white-space: nowrap; }
 
 /* Vier Zahlen je Anbieter: Bezeichnung links, große Zahl rechts; mit Entwurf „→ neu“ darunter.
    Ab 34rem Spaltenbreite (eine Spalte über die ganze Breite) vier nebeneinander. */

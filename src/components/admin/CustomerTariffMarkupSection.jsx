@@ -868,7 +868,7 @@ export function CustomerTariffMarkupSection({ userId, pricing, customerLabel = "
     return (
       <>
         {`${T.moreTariffs} (${extra.length})`}
-        {n > 0 ? <span className="adm-tarif-dirty adm-po-more-dirty"> ● {n} {n === 1 ? T.unsavedOne : T.unsaved}</span> : null}
+        {n > 0 ? <>{" "}<span className="adm-tarif-dirty adm-po-more-dirty">● {n} {n === 1 ? T.unsavedOne : T.unsaved}</span></> : null}
       </>
     );
   };

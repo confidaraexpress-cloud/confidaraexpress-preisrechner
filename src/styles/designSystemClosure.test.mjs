@@ -236,8 +236,9 @@ test("6 — es wird nur die eine benutzte Schriftfamilie geladen", () => {
 
 test("7 — es gibt keine ungenutzte UI-Abhängigkeit", () => {
   const pkg = JSON.parse(read("../../package.json"));
+  // Vite und @vitejs/plugin-react sind Buildwerkzeuge: seit 2026-11-17 unter devDependencies (dieselben Pakete).
   const deps = Object.keys(pkg.dependencies || {}).sort();
-  assert.deepEqual(deps, ["@vitejs/plugin-react", "fflate", "maplibre-gl", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen", "vite"]);
+  assert.deepEqual(deps, ["fflate", "maplibre-gl", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen"]);
   // Keine fremde Iconbibliothek — das Produkt hat sein eigenes System.
   for (const [name, inhalt] of QUELLEN) {
     assert.doesNotMatch(inhalt, /from\s+["'](lucide-react|react-icons|@heroicons|@tabler\/icons|feather-icons)/,

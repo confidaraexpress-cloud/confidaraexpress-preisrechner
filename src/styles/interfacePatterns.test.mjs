@@ -458,9 +458,10 @@ test("12 — Phase 3 fasst weder Routing noch API noch Businesslogik an", () => 
     "die Seitenliste des Dashboards hat sich geändert");
 
   const pkg = JSON.parse(read("../../package.json"));
+  // Vite und @vitejs/plugin-react sind Buildwerkzeuge: seit 2026-11-17 unter devDependencies (dieselben Pakete).
   assert.deepEqual(Object.keys(pkg.dependencies).sort(),
-    ["@vitejs/plugin-react", "fflate", "maplibre-gl", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen", "vite"]);
-  assert.deepEqual(Object.keys(pkg.devDependencies), ["playwright"]);
+    ["fflate", "maplibre-gl", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen"]);
+  assert.deepEqual(Object.keys(pkg.devDependencies), ["@vitejs/plugin-react", "playwright", "vite"]);
 
   // Die neuen Bausteine sind reine Darstellung: kein Netzwerk, kein Token.
   for (const datei of ["components/ui/PageHeader.jsx", "components/ui/StateView.jsx",

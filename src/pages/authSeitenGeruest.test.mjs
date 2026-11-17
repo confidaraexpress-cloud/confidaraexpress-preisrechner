@@ -176,7 +176,8 @@ test("5 — main.jsx, App.jsx, AuthContext: ohne Token kein Ladebildschirm, mit 
   // Confidara Obsidian (2026-11-15), seit 2026-11-16 Premium Blue Light: auf den Kundenpfaden zusätzlich auf dem Grund
   // des Kundenbereichs — nur
   // Darstellung, die Prüfung selbst bleibt auf jedem Pfad (utils/kundenBereichPfad.test.mjs, K4).
-  assert.match(app, /if \(loadingUser\) return <LoadingScreen dunkel=\{statischeAuthSeite\(pathname\) !== null\} kunde=\{kundenPfad\} \/>;/);
+  // Confidara Leitstand Nacht (2026-11-17): auch auf Adminpfaden dunkel (kundenBereichPfad.test.mjs K8).
+  assert.match(app, /if \(loadingUser\) return <LoadingScreen dunkel=\{statischeAuthSeite\(pathname\) !== null \|\| adminPfad\} kunde=\{kundenPfad\} \/>;/);
   assert.doesNotMatch(app, /istKundenAuthPfad/, "App.jsx nimmt die Anmeldepfade wieder von der Sitzungsprüfung aus");
   const lade = lies("src/components/common/LoadingScreen.jsx");
   assert.match(lade, /tone=\{dunkel \? "reverse" : "standard"\}/, "das Signet steht auf Navy nicht in der hellen Fassung");

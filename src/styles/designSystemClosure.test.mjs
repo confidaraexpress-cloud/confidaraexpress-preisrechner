@@ -168,11 +168,14 @@ test("4 — kein freier Schatten und kein farbiger Glow außerhalb des Auth-Bere
   // (Confidara Obsidian, Betreiberauftrag 2026-11-15): dort genau EINE Weichzeichnung als Token
   // (--ce-ob-glas-weichzeichnung) und die Unschärfe der einmaligen Begrüßung (@keyframes ce-ob-gruss). Beide
   // begrenzt kundeObsidian.test.mjs; jede andere Stelle der Datei bleibt dieser Regel unterworfen.
+  // Confidara Leitstand Nacht (Betreiberauftrag 2026-11-17): ebenso genau EIN Token in der Adminebene
+  // (--adm-glas-weichzeichnung), begrenzt durch adminNacht.test.mjs.
   for (const f of ALLE_CSS) {
     if (f === "auth.css") continue;
     const obsidian = f === "kunde-obsidian.css";
     for (const m of css[f].matchAll(/backdrop-filter:\s*([^;}]+)/g)) {
       if (obsidian && m[1].trim() === "var(--ce-ob-glas-weichzeichnung)") continue;
+      if (f === "admin-nacht.css" && m[1].trim() === "var(--adm-glas-weichzeichnung)") continue;
       assert.equal(m[1].trim(), "none", `${f}: backdrop-filter ${m[1]}`);
     }
     const ohneBegruessung = obsidian ? css[f].replace(/@keyframes ce-ob-gruss \{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/, "") : css[f];

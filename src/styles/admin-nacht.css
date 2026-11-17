@@ -1,0 +1,682 @@
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   Confidara Leitstand Nacht — Gestaltungsebene des Adminpanels (Betreiberauftrag „Adminpanel-Redesign im Resend-Stil“,
+   2026-11-17, Canonical v2.143)
+   ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   Das Adminpanel verlässt die helle Designfamilie Blue Light (kunde-obsidian.css) und steht auf einem eigenen, dunklen
+   Grund: tiefes Confidara-Navy statt Schwarz, Licht in Weiß und Eisblau, Glanz und Akzente in Blau-Violett — dieselbe
+   Welt wie die Admin-Anmeldung („Hologramm im Leitstand“, auth.css). Resend ist Vorbild in der Haltung, nicht in der
+   Form: Kanten aus Licht statt grauer Schatten, Glas für alles, was schwebt, Farbe nur als Zustand, die Hauptaktion
+   als helle Fläche. Keine Resend-Marke, keine fremde Schrift, kein fremder Code.
+
+   Grenzen (src/styles/adminNacht.test.mjs):
+   • jede Regel hängt an :root[data-ce-bereich="admin"] und gilt nur am Bildschirm (@media screen) — gedruckt bleibt
+     das helle Blatt der Plattform;
+   • Foundation-Tokens werden nur im Tokenblock umgeordnet; Abstände, Größen, Ebenen, Umbruchpunkte und Radien bleiben
+     die des Bereichs (Höhenbudget der Seitenleiste, Tabellenbreiten und Bedienhöhen sind darauf vermessen);
+   • die Typografie bleibt die des bisherigen Adminpanels: Instrument Sans für die Arbeit, Host Grotesk für Überschriften,
+     dieselben Gewichte — die Ebene ändert Material, Licht und Farbe;
+   • Tiefe, Glas und Unschärfe nur über Token, Weichzeichnung nie auf einem Schleier; jede Animation nur ohne Wunsch nach
+     reduzierter Bewegung; Antworten auf höheren Kontrast;
+   • keine externe Quelle, kein @import.
+   Neue Werte tragen den Namensraum --adm-* (nur Adminbereich). Bereichsweiche: hooks/useCeBereich.js.
+   ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+@media screen {
+
+/* ═══════════ 1 · TOKENS ════════════════════════════════════════════════════════════════════════════════════════════ */
+:root[data-ce-bereich="admin"] {
+  /* ── Nacht: Grund, Flächen, Glas ── */
+  --adm-grund: #060b1c;                     /* Seitengrund — tiefes Navy, nicht Schwarz */
+  --adm-grund-tief: #040814;                /* Fuß der Seitenleiste */
+  --adm-flaeche-1: #0b1328;                 /* Karten, Tabellen, Fenster */
+  --adm-flaeche-2: #0f1932;                 /* Mulden, Felder, Zeilen beim Zeigen */
+  --adm-flaeche-3: #15213f;                 /* gedrückt, aktive Spur */
+  --adm-flaeche-4: #1d2b52;                 /* kräftige Fläche (Schalterspur) */
+  --adm-glas: rgba(13, 21, 44, 0.82);       /* Menüs, Kopfleiste, Hinweisfenster */
+  --adm-glas-blur: 22px;
+  --adm-glas-weichzeichnung: blur(var(--adm-glas-blur)) saturate(150%); /* die EINE Weichzeichnung der Ebene */
+
+  /* ── Tinte (Kontraste gegen --adm-flaeche-1) ── */
+  --adm-tinte: #f3f6ff;                     /* 17,6:1 */
+  --adm-tinte-2: #b9c3dd;                   /* Beschreibungen · 10,2:1 */
+  --adm-tinte-3: #98a4c3;                   /* Nebeninformation · 7,1:1 */
+  --adm-tinte-4: #7b88aa;                   /* Platzhalter, Achsen · 4,9:1 */
+  --adm-tinte-aus: #5c6788;                 /* nur gesperrte Elemente */
+  --adm-tinte-invers: #06112d;              /* Schrift auf der hellen Hauptaktion */
+
+  /* ── Licht statt Schatten ── */
+  --adm-linie: rgba(184, 204, 255, 0.08);         /* Haarlinie zwischen Zeilen */
+  --adm-kante: rgba(184, 204, 255, 0.12);         /* Kante von Karten und Tabellen */
+  --adm-kante-stark: rgba(184, 204, 255, 0.2);    /* Kante beim Zeigen, Kopf von Tabellen */
+  --adm-kante-feld: #5a6a90;                      /* Kontur von Feldern und Zweitaktionen · ≥ 3,2:1 auf Fläche 1 und 2 (WCAG 1.4.11) */
+  --adm-kante-feld-zeigen: #6e7ea6;               /* · ≥ 4,3:1 */
+  --adm-lichtkante: inset 0 1px 0 rgba(214, 226, 255, 0.055);
+  --adm-lichtkante-zeigen: inset 0 1px 0 rgba(214, 226, 255, 0.09);
+  --adm-flaechenverlauf: linear-gradient(180deg, rgba(196, 214, 255, 0.035) 0%, rgba(196, 214, 255, 0.008) 100%);
+  --adm-kantenverlauf: linear-gradient(180deg, rgba(196, 214, 255, 0.16) 0%, rgba(196, 214, 255, 0.05) 100%);
+  /* Lichtband: Eisblau, das in Violett ausläuft — Unterkante des Seitenkopfs, aktive Reiter */
+  --adm-lichtband: linear-gradient(90deg, rgba(141, 176, 255, 0.85) 0%, rgba(160, 140, 255, 0.55) 45%, rgba(139, 92, 255, 0) 100%);
+
+  /* ── Licht und Signal: Weiß/Eisblau als Licht, Confidara-Blau #004AFC als Fläche, Blau-Violett als Glanz ── */
+  --adm-eis: #dbe6ff;
+  --adm-signal: #004afc;                    /* Fläche · Weiß darauf 6,2:1 */
+  --adm-signal-zeigen: #1f5fff;
+  --adm-signal-kante: #5b8cff;              /* Fokus, gewählte Kante · 6,0:1 */
+  --adm-signal-tinte: #8db0ff;              /* Textwege · 8,6:1 */
+  --adm-signal-tinte-zeigen: #b3cbff;
+  --adm-signal-ton: rgba(47, 107, 255, 0.16);
+  --adm-signal-ton-zeigen: rgba(47, 107, 255, 0.26);
+  --adm-violett: #8b5cff;
+  --adm-violett-hell: #b9a2ff;              /* Akzent als Text · 8,8:1 */
+  --adm-violett-ton: rgba(139, 92, 255, 0.12);
+
+  /* ── Seitenleiste ── */
+  --adm-seite-verlauf:
+    radial-gradient(130% 34% at 0% 0%, rgba(124, 77, 255, 0.14), transparent 62%),
+    radial-gradient(90% 26% at 100% 100%, rgba(47, 107, 255, 0.08), transparent 70%),
+    linear-gradient(180deg, #0a1226 0%, #070d1e 46%, #040814 100%);
+  --adm-seite-text: #a9b4d1;                /* 8,3:1 */
+  --adm-seite-text-leise: #8a96b6;          /* 5,9:1 */
+  --adm-seite-symbol: #8390b2;              /* Symbole in Ruhe · 5,4:1 */
+  --adm-seite-zeigen: rgba(184, 204, 255, 0.06);
+  --adm-seite-aktiv: linear-gradient(90deg, rgba(47, 107, 255, 0.24) 0%, rgba(124, 77, 255, 0.11) 100%);
+  --adm-seite-aktiv-kante: inset 2px 0 0 0 var(--adm-signal-tinte), inset 0 0 0 1px rgba(141, 176, 255, 0.14), inset 0 1px 0 rgba(214, 226, 255, 0.08);
+  --adm-seite-gruppe: #a593ec;              /* Kategorie · 6,9:1 */
+  --adm-seite-gruppe-flaeche: rgba(139, 92, 255, 0.09);
+  --adm-seite-scroll: rgba(184, 204, 255, 0.14);
+
+  /* ── Tiefe und Licht als Werte: Regeln verweisen nur (designSystemClosure.test.mjs, Test 4) ── */
+  --adm-ring-violett: inset 0 0 0 1px rgba(185, 162, 255, 0.22);
+  --adm-ring-violett-stark: inset 0 0 0 1px rgba(185, 162, 255, 0.32);
+  --adm-symbol-leuchten: drop-shadow(0 0 5px rgba(141, 176, 255, 0.75));
+  --adm-feld-fokuslicht: 0 0 22px -6px rgba(124, 77, 255, 0.5);
+  --adm-reiter-aktiv: inset 0 -2px 0 var(--adm-signal-tinte), 0 10px 18px -14px rgba(141, 176, 255, 0.9);
+  --adm-kennzahl-zeigen: inset 0 1px 0 rgba(214, 226, 255, 0.1);
+
+  /* ── Zustände (getönte Fläche + helle Schrift) ── */
+  --adm-gruen: #3dd68c;    --adm-gruen-ton: rgba(34, 255, 153, 0.1);    --adm-gruen-kante: rgba(61, 214, 140, 0.28);
+  --adm-bernstein: #ffca16; --adm-bernstein-ton: rgba(250, 150, 0, 0.13); --adm-bernstein-kante: rgba(255, 202, 22, 0.26);
+  --adm-rot: #ff9592;      --adm-rot-ton: rgba(255, 23, 63, 0.15);      --adm-rot-kante: rgba(255, 149, 146, 0.28);
+  --adm-blau: #70b8ff;     --adm-blau-ton: rgba(0, 119, 255, 0.18);     --adm-blau-kante: rgba(112, 184, 255, 0.28);
+  --adm-grau: #c5cde3;     --adm-grau-ton: rgba(184, 204, 255, 0.07);   --adm-grau-kante: rgba(184, 204, 255, 0.14);
+
+  /* ── Bewegung ── */
+  --adm-kurve: cubic-bezier(0.16, 1, 0.3, 1);
+  --adm-dauer: 180ms;
+  --adm-dauer-lang: 280ms;
+
+  /* ── Schriftrollen: Arbeit in der Produktschrift Instrument Sans (fonts.css), Überschriften in Host Grotesk ── */
+  --adm-schrift-text: var(--ce-font-sans);
+  --adm-schrift-titel: 'Host Grotesk', var(--ce-font-sans);
+
+  /* ── Umgeordnete Tokens der Foundation ──
+     Typografie wie bisher im Adminpanel (dieselben Werte wie die Familie Blue Light): Die Seitenleiste ist auf diese
+     Gewichte vermessen (Höhenbudget 1440 × 900, 1366 × 768, 1280 × 720), Beträge und Kennungen auf die Breitenachse. */
+  --ce-font-display: var(--adm-schrift-titel);
+  --ce-pr-font-display: var(--adm-schrift-titel);
+  --ce-pr-display-stretch: 100%;
+  --ce-pr-ed-headline-stretch: 100%;
+  --ce-weight-text: 450;
+  --ce-weight-medium: 520;
+  --ce-text-label-weight: 550;
+  --ce-text-badge-weight: 550;
+  --ce-text-button-weight: 560;
+  --ce-text-nav-weight-active: 560;
+  --ce-text-title-page-weight: 500;
+  --ce-text-title-section-weight: 500;
+  --ce-text-title-card-weight: 520;
+  --ce-text-display-xl-weight: 500;
+  --ce-text-display-l-weight: 500;
+  --ce-text-numeric-display-weight: 400;
+  --ce-text-title-page-tracking: -0.03em;
+  --ce-text-title-section-tracking: -0.018em;
+  --ce-text-title-card-tracking: -0.01em;
+  --ce-text-label-tracking: 0;
+  --ce-text-micro-tracking: 0;
+  --ce-pr-ed-headline-tracking: -0.032em;
+
+  /* Marke und Signal */
+  --ce-color-brand: var(--adm-signal);
+  --ce-color-brand-hover: var(--adm-signal-zeigen);
+  --ce-color-brand-active: #0040dc;
+  --ce-color-brand-ink: var(--adm-signal-tinte);
+  --ce-color-brand-soft: var(--adm-signal-ton);
+  --ce-color-brand-soft-hover: var(--adm-signal-ton-zeigen);
+  --ce-color-brand-border: rgba(91, 140, 255, 0.42);
+  --ce-color-brand-border-soft: rgba(91, 140, 255, 0.24);
+  --ce-color-brand-violet: var(--adm-violett);
+  --ce-color-brand-violet-ink: var(--adm-violett-hell);
+  --ce-color-border-focus: var(--adm-signal-kante);
+  --ce-color-focus-ring: rgba(91, 140, 255, 0.36);
+  --ce-pr-signal: var(--adm-signal-kante);
+  --ce-pr-signal-hover: #7aa2ff;
+  --ce-pr-signal-ink: var(--adm-signal-tinte);
+  --ce-pr-signal-soft: var(--adm-signal-ton);
+  --ce-pr-signal-soft-hover: var(--adm-signal-ton-zeigen);
+  --ce-pr-signal-on-navy: var(--adm-signal-tinte);
+  /* Das Navy war im hellen Bild Tinte UND Fläche. Im dunklen Bild trägt Weiß die Tinte; Flächenstellen (Hauptaktion)
+     setzen ihre Schrift in Abschnitt 7 ausdrücklich dunkel. */
+  --ce-pr-navy-950: var(--adm-grund);
+  --ce-pr-navy-900: var(--adm-flaeche-1);
+  --ce-pr-navy-850: var(--adm-flaeche-2);
+  --ce-pr-navy-800: var(--adm-tinte);
+  --ce-pr-navy-700: #e3e9fb;
+  --ce-pr-navy-600: #cfd8f0;
+  --ce-pr-paper: var(--adm-tinte);
+
+  /* Text */
+  --ce-color-text-primary: var(--adm-tinte);
+  --ce-color-text-secondary: var(--adm-tinte-2);
+  --ce-color-text-muted: var(--adm-tinte-3);
+  --ce-color-text-placeholder: var(--adm-tinte-4);
+  --ce-color-text-disabled: var(--adm-tinte-aus);
+  --ce-color-text-inverse: #ffffff;
+  --ce-color-text-inverse-soft: rgba(255, 255, 255, 0.74);
+  --navy: var(--adm-tinte);
+  --gray50: var(--adm-flaeche-2);
+  --gray100: var(--adm-flaeche-3);
+  --gray400: var(--adm-tinte-4);
+
+  /* Flächen */
+  --ce-color-bg-canvas-top: var(--adm-grund);
+  --ce-color-bg-canvas-mid: var(--adm-grund);
+  --ce-color-bg-canvas-bottom: var(--adm-grund);
+  --ce-color-bg-light-brand: rgba(47, 107, 255, 0.1);
+  --ce-color-bg-light-violet: var(--adm-seite-gruppe-flaeche);
+  --ce-color-bg-atmosphere: none;
+  --ce-app-bg: none;
+  --ce-pr-papier: var(--adm-grund);
+  --ce-app-bg-mid: var(--adm-grund);
+  --ce-app-bg-bottom: var(--adm-grund);
+  --ce-app-divider: var(--adm-linie);
+  --ce-color-surface: var(--adm-flaeche-1);
+  --ce-color-surface-subtle: #0d162d;
+  --ce-color-surface-muted: var(--adm-flaeche-2);
+  --ce-color-surface-hover: var(--adm-flaeche-2);
+  --ce-color-surface-pressed: var(--adm-flaeche-3);
+  --ce-color-surface-raised: var(--adm-flaechenverlauf), var(--adm-flaeche-1);
+  --ce-color-surface-inverse: linear-gradient(180deg, #14224c 0%, #0a1431 100%);
+  --ce-color-surface-inverse-edge: rgba(141, 176, 255, 0.2);
+  --ce-color-border-subtle: var(--adm-linie);
+  --ce-color-border-default: var(--adm-kante);
+  --ce-color-border-strong: var(--adm-kante-stark);
+  --ce-color-border-interactive: var(--adm-kante-feld);
+  --ce-color-border-interactive-hover: var(--adm-kante-feld-zeigen);
+  --border-hairline: var(--adm-linie);
+  --ce-pr-inset: var(--adm-flaeche-2);
+  --ce-pr-hairline: var(--adm-linie);
+  --ce-color-overlay: rgba(2, 5, 14, 0.74);
+  --ce-color-overlay-drawer: rgba(2, 5, 14, 0.74);
+
+  /* Zustände */
+  --ce-color-status-neutral-surface: var(--adm-grau-ton);       --ce-color-status-neutral-fg: var(--adm-grau);        --ce-color-status-neutral-border: var(--adm-grau-kante);
+  --ce-color-status-info-surface: var(--adm-blau-ton);          --ce-color-status-info-fg: var(--adm-blau);           --ce-color-status-info-border: var(--adm-blau-kante);
+  --ce-color-status-progress-surface: var(--adm-signal-ton);    --ce-color-status-progress-fg: var(--adm-signal-tinte); --ce-color-status-progress-border: rgba(141, 176, 255, 0.28);
+  --ce-color-status-success-surface: var(--adm-gruen-ton);      --ce-color-status-success-fg: var(--adm-gruen);       --ce-color-status-success-border: var(--adm-gruen-kante);
+  --ce-color-status-warning-surface: var(--adm-bernstein-ton);  --ce-color-status-warning-fg: var(--adm-bernstein);   --ce-color-status-warning-border: var(--adm-bernstein-kante);
+  --ce-color-status-overdue-surface: var(--adm-rot-ton);        --ce-color-status-overdue-fg: var(--adm-rot);         --ce-color-status-overdue-border: var(--adm-rot-kante);
+  --ce-color-status-error-surface: var(--adm-rot-ton);          --ce-color-status-error-fg: var(--adm-rot);           --ce-color-status-error-border: var(--adm-rot-kante);
+  --ce-color-status-blocked-surface: var(--adm-grau-ton);       --ce-color-status-blocked-fg: var(--adm-tinte-2);     --ce-color-status-blocked-border: var(--adm-grau-kante);
+  --ce-color-status-cancelled-surface: var(--adm-grau-ton);     --ce-color-status-cancelled-fg: var(--adm-tinte-3);   --ce-color-status-cancelled-border: var(--adm-grau-kante);
+  --ce-color-status-archived-surface: var(--adm-grau-ton);      --ce-color-status-archived-fg: var(--adm-tinte-3);    --ce-color-status-archived-border: var(--adm-grau-kante);
+  --ce-color-danger-solid: #ce2c31;         /* Weiß darauf 5,2:1 */
+  --ce-color-danger-hover: #b5242a;
+  --ce-color-danger-active: #9e1f24;
+  --ce-color-success-solid: #17834f;        /* Weiß darauf 4,8:1 */
+  --ce-color-success-ring: rgba(61, 214, 140, 0.32);
+
+  /* Tiefe: Kanten und Licht tragen, Schlagschatten nur unter schwebenden Ebenen */
+  --ce-elevation-1: var(--adm-lichtkante);
+  --ce-elevation-2: inset 0 1px 0 rgba(214, 226, 255, 0.07), 0 12px 32px -16px rgba(1, 3, 10, 0.9);
+  --ce-elevation-3: 0 0 0 1px rgba(184, 204, 255, 0.06), 0 28px 64px -18px rgba(1, 3, 10, 0.95), inset 0 1px 0 rgba(214, 226, 255, 0.08);
+  --ce-elevation-dropdown: 0 0 0 1px rgba(184, 204, 255, 0.05), 0 20px 44px -14px rgba(1, 3, 10, 0.95);
+  --ce-elevation-inset: inset 0 1px 2px rgba(1, 3, 10, 0.55);
+  --ce-pr-shadow-card: var(--adm-lichtkante);
+  --ce-pr-shadow-card-hover: inset 0 1px 0 rgba(214, 226, 255, 0.08), 0 16px 40px -20px rgba(1, 3, 10, 0.9);
+  --ce-pr-shadow-sheet: 0 0 0 1px rgba(184, 204, 255, 0.06), 0 30px 80px -24px rgba(1, 3, 10, 0.95);
+  --ce-pr-btn-shadow: none;
+  --ce-pr-btn-shadow-hover: none;
+  --ce-pr-btn-shadow-secondary: none;
+  --ce-pr-btn-disabled-bg: rgba(184, 204, 255, 0.05);
+  --ce-pr-btn-disabled-fg: #8591b1;         /* 5,4:1 — lesbar, auch wenn gesperrt */
+
+  /* Seitenleisten-Familie der Foundation (Schubladen, dunkler Ladebildschirm) */
+  --ce-sidebar-bg: var(--adm-grund-tief);
+  --ce-sidebar-bg-top: var(--adm-grund);
+  --ce-sidebar-bg-mid: var(--adm-grund);
+  --ce-sidebar-bg-bottom: var(--adm-grund-tief);
+  --ce-sidebar-light: transparent;
+  --ce-sidebar-depth: transparent;
+
+  /* Titelmaterial: das Navy-Relief wird zu Licht — oben Weiß, unten Eisblau, ohne Prägung */
+  --ce-titel-relief-fuellung: linear-gradient(180deg, #ffffff 22%, #d3dfff 100%);
+  --ce-titel-relief-praegung: none;
+  --ce-titel-relief-kante-oben: #ffffff;
+  --ce-titel-relief-kante-unten: #d3dfff;
+  --ce-titel-signatur-fuellung: linear-gradient(180deg, #ffffff 22%, #d3dfff 100%);
+  --ce-titel-signatur-praegung: none;
+  --ce-titel-signatur-kante-oben: #ffffff;
+  --ce-titel-signatur-kante-unten: #d3dfff;
+  --ce-titel-auswahl-text: var(--adm-tinte-invers);
+  --ce-titel-auswahl-grund: var(--adm-signal-tinte);
+
+  /* Bediensystem (Premium Control System) in der Nacht — Radien und Maße wie im Bereich */
+  --ce-pr-bs-kontur: var(--adm-kante-feld);
+  --ce-pr-bs-kontur-zeigen: var(--adm-kante-feld-zeigen);
+  --ce-pr-bs-flaeche-zeigen: rgba(184, 204, 255, 0.08);
+  --ce-pr-bs-wahl-flaeche: rgba(47, 107, 255, 0.16);
+  --ce-pr-bs-wahl-flaeche-zeigen: rgba(47, 107, 255, 0.26);
+  --ce-pr-bs-wahl-kante: var(--adm-signal-kante);
+  --ce-pr-bs-gefahr-flaeche: var(--adm-rot-ton);
+  --ce-pr-bs-schalter-aus: var(--adm-flaeche-4);
+  --ce-pr-bs-schalter-aus-kante: var(--adm-kante-feld);
+  --ce-pr-bs-schatten-primaer: inset 0 -1px 0 rgba(6, 17, 45, 0.16), 0 1px 2px rgba(1, 3, 10, 0.6);
+  /* Hauptaktion beim Zeigen: weißer Rand, eisblauer und violetter Schein (das Licht des Leitstands) */
+  --ce-pr-bs-schatten-primaer-zeigen: inset 0 -1px 0 rgba(6, 17, 45, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.3),
+    0 8px 26px -10px rgba(141, 176, 255, 0.55), 0 14px 34px -18px rgba(124, 77, 255, 0.7);
+  --ce-pr-bs-schatten-gedrueckt: inset 0 1px 3px rgba(1, 3, 10, 0.4);
+  --ce-pr-bs-schatten-sekundaer: var(--adm-lichtkante);
+  --ce-pr-bs-schatten-sekundaer-zeigen: inset 0 1px 0 rgba(214, 226, 255, 0.1);
+  --ce-pr-bs-schatten-gefahr: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 1px 2px rgba(1, 3, 10, 0.6);
+  --ce-pr-bs-schatten-menue: 0 0 0 1px rgba(184, 204, 255, 0.05), 0 24px 48px -16px rgba(1, 3, 10, 0.95);
+  --ce-pr-bs-schatten-wahl: none;
+  --ce-pr-bs-schatten-wahl-zeigen: none;
+  --ce-pr-bs-schatten-wahl-gewaehlt: inset 0 1px 0 rgba(214, 226, 255, 0.07);
+  --ce-pr-bs-schatten-schalterknopf: 0 1px 3px rgba(1, 3, 10, 0.6);
+
+  /* Editorial- und Kennzahlbausteine, die das Adminpanel mitbenutzt */
+  --ce-pr-ed-shadow-flaeche: var(--adm-lichtkante);
+  --ce-pr-ed-kennzahl-zahl: var(--adm-tinte);
+  --ce-pr-ed-kennzahl-tinte: var(--adm-tinte-2);
+  --ce-pr-ed-kante-licht: var(--adm-kantenverlauf);
+  --ce-pr-ed-karte-licht: var(--adm-flaechenverlauf);
+  --ce-pr-ed-shadow-kennzahl: var(--adm-lichtkante);
+  --ce-pr-ed-shadow-kennzahl-klein: var(--adm-lichtkante);
+  --ce-pr-ed-kante-signal: rgba(141, 176, 255, 0.5);
+  --ce-pr-ed-shadow-kennzahl-hover: inset 0 1px 0 rgba(214, 226, 255, 0.1);
+  --ce-pr-ed-ton-signal: rgba(47, 107, 255, 0.08);
+  --ce-pr-ed-filter-kante: rgba(141, 176, 255, 0.3);
+  --ce-pr-ed-shadow-fenster: var(--ce-elevation-3);
+  --ce-pr-ed-shadow-sheet: 0 -1px 0 rgba(184, 204, 255, 0.08), 0 -24px 56px -24px rgba(1, 3, 10, 0.9);
+  --ce-pr-ed-schleier: rgba(2, 5, 14, 0.6);
+  --ce-pr-ed-zeile-offen: rgba(47, 107, 255, 0.08);
+  --ce-pr-ed-griff: rgba(214, 226, 255, 0.24);
+  --ce-pr-ed-row-mark: var(--adm-signal-kante);
+  --ce-pr-on-navy: var(--adm-tinte);
+  --ce-pr-on-navy-2: var(--adm-tinte-2);
+  --ce-pr-on-navy-3: var(--adm-tinte-3);
+  --ce-pr-on-navy-line: var(--adm-kante);
+  --ce-kpi-border: var(--adm-kante);
+  --ce-kpi-label: var(--adm-tinte-2);
+  --ce-kpi-context: var(--adm-tinte-3);
+  --ce-pr-stage: none;
+}
+
+/* ═══════════ 2 · GRUND ═════════════════════════════════════════════════════════════════════════════════════════════
+   Navy bis an den Rand. Über jeder Seite eine Lichtkuppel: Violett von rechts oben, Confidara-Blau von links, ganz
+   leise — als Hintergrundbild des Inhalts, ohne eigene Ebene, ohne Bewegung (die Kuppel scrollt mit der Seite fort). */
+:root[data-ce-bereich="admin"],
+:root[data-ce-bereich="admin"] :is(body, .adm-shell) {
+  background: var(--adm-grund);
+  color: var(--adm-tinte);
+  /* Native Bedienelemente (Datumswahl, Bildlaufleisten, Auswahllisten) zeichnen dunkel. */
+  color-scheme: dark;
+}
+:root[data-ce-bereich="admin"] body {
+  font-family: var(--adm-schrift-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+:root[data-ce-bereich="admin"] .adm-main {
+  background-color: var(--adm-grund);
+  background-image:
+    radial-gradient(56rem 24rem at 86% -11rem, rgba(124, 77, 255, 0.15), transparent 70%),
+    radial-gradient(52rem 22rem at 24% -13rem, rgba(47, 107, 255, 0.13), transparent 72%),
+    radial-gradient(36rem 12rem at 60% -6rem, rgba(214, 226, 255, 0.045), transparent 70%);
+  background-repeat: no-repeat;
+}
+@media (max-width: 900px) {
+  :root[data-ce-bereich="admin"] .adm-main {
+    background-image:
+      radial-gradient(30rem 16rem at 92% -7rem, rgba(124, 77, 255, 0.15), transparent 70%),
+      radial-gradient(28rem 14rem at 10% -8rem, rgba(47, 107, 255, 0.13), transparent 72%);
+  }
+}
+:root[data-ce-bereich="admin"] ::selection { background: rgba(91, 140, 255, 0.42); color: #ffffff; }
+:root[data-ce-bereich="admin"] * { scrollbar-color: var(--adm-seite-scroll) transparent; }
+
+/* ═══════════ 3 · TYPOGRAFIE ════════════════════════════════════════════════════════════════════════════════════════
+   Unverändert gegenüber dem bisherigen Adminpanel: Instrument Sans trägt die Arbeit, Host Grotesk die Überschriften. */
+:root[data-ce-bereich="admin"] :is(h1, h2, h3, h4) { font-family: var(--adm-schrift-titel); }
+:root[data-ce-bereich="admin"] :is(h2, h3) { letter-spacing: -0.015em; }
+:root[data-ce-bereich="admin"] :is(button, input, select, textarea) { font-family: inherit; }
+:root[data-ce-bereich="admin"] :is(a:not(.btn), .btn-link) { text-underline-offset: 3px; }
+
+/* ═══════════ 4 · SEITENLEISTE ══════════════════════════════════════════════════════════════════════════════════════
+   Die Spalte des Leitstands: Navy, oben links ein violettes Licht hinter der Marke, eine Haarlinie zum Inhalt. Einträge
+   sind ruhige Zeilen; Zeigen hellt Schrift und Fläche leise auf. Die aktive Seite liegt auf einer blau-violetten
+   Glasfläche mit eisblauer Lichtkante links — mehrfach codiert (Fläche, Kante, Schrift, Symbol, aria-current).
+   Geometrie und Höhen bleiben die von admin.css (Höhenbudget, E2E premiumAdminPaketE 1c). */
+:root[data-ce-bereich="admin"] .adm-side {
+  background: var(--adm-seite-verlauf);
+  border-right-color: var(--adm-linie);
+  box-shadow: none;
+}
+:root[data-ce-bereich="admin"] .adm-side * { scrollbar-color: var(--adm-seite-scroll) transparent; }
+/* Kennzeichnung „Adminbereich“: violett getönt, die Kante als Ring im Schatten (keine Höhe, Höhenbudget). */
+:root[data-ce-bereich="admin"] .adm-brand-tag {
+  background: var(--adm-violett-ton);
+  color: var(--adm-violett-hell);
+  box-shadow: var(--adm-ring-violett);
+}
+:root[data-ce-bereich="admin"] :is(.adm-nitem, .adm-foot-btn, .adm-side-close) {
+  color: var(--adm-seite-text);
+  transition:
+    background-color var(--adm-dauer) var(--adm-kurve),
+    color var(--adm-dauer) var(--adm-kurve),
+    box-shadow var(--adm-dauer) var(--adm-kurve);
+}
+:root[data-ce-bereich="admin"] :is(.adm-nitem, .adm-foot-btn, .adm-side-close):hover {
+  background: var(--adm-seite-zeigen);
+  color: var(--adm-tinte);
+}
+:root[data-ce-bereich="admin"] .adm-nitem-icon { color: var(--adm-seite-symbol); transition: color var(--adm-dauer) var(--adm-kurve); }
+:root[data-ce-bereich="admin"] .adm-nitem:hover .adm-nitem-icon { color: var(--adm-eis); }
+:root[data-ce-bereich="admin"] :is(.adm-nitem-on, .adm-nitem-on:hover) {
+  background: var(--adm-seite-aktiv);
+  color: #ffffff;
+  box-shadow: var(--adm-seite-aktiv-kante);
+}
+/* Das Symbol der aktiven Seite leuchtet: Eisblau mit Lichthof (der Hof bleibt im Eintrag, nichts wird beschnitten). */
+:root[data-ce-bereich="admin"] .adm-nitem-on .adm-nitem-icon {
+  color: var(--adm-eis);
+  filter: var(--adm-symbol-leuchten);
+}
+:root[data-ce-bereich="admin"] .adm-nsec {
+  background: var(--adm-seite-gruppe-flaeche);
+  color: var(--adm-seite-gruppe);
+}
+:root[data-ce-bereich="admin"] :is(.adm-nitem-soon, .adm-nitem-soon:hover) { background: none; color: var(--adm-tinte-aus); }
+:root[data-ce-bereich="admin"] .adm-side-foot { border-top-color: var(--adm-linie); }
+:root[data-ce-bereich="admin"] :is(.adm-foot-btn-switch, .adm-foot-btn-switch:hover) { color: var(--adm-signal-tinte); }
+:root[data-ce-bereich="admin"] .adm-foot-btn-switch:hover { color: var(--adm-signal-tinte-zeigen); }
+:root[data-ce-bereich="admin"] .adm-identity-avatar {
+  background: linear-gradient(140deg, rgba(47, 107, 255, 0.42), rgba(124, 77, 255, 0.36));
+  color: #ffffff;
+  box-shadow: var(--adm-ring-violett-stark);
+}
+:root[data-ce-bereich="admin"] .adm-identity-name { color: var(--adm-tinte); }
+:root[data-ce-bereich="admin"] .adm-identity-role { color: var(--adm-seite-text-leise); }
+:root[data-ce-bereich="admin"] .adm-side :is(a, button):focus-visible { outline-color: var(--adm-signal-tinte); }
+
+/* ═══════════ 5 · KOPFLEISTE (mobil) ═══════════════════════════════════════════════════════════════════════════════
+   Glas über dem Inhalt, eine Haarlinie darunter. Die Kopfleiste trägt keine festen Kinder (Weichzeichnung als
+   Bezugsrahmen unbedenklich). */
+:root[data-ce-bereich="admin"] .adm-topbar {
+  background: var(--adm-glas);
+  -webkit-backdrop-filter: var(--adm-glas-weichzeichnung);
+  backdrop-filter: var(--adm-glas-weichzeichnung);
+  border-bottom-color: var(--adm-linie);
+}
+:root[data-ce-bereich="admin"] .adm-topbar-burger { color: var(--adm-tinte); }
+:root[data-ce-bereich="admin"] .adm-topbar-burger:hover { background: var(--adm-seite-zeigen); }
+:root[data-ce-bereich="admin"] .adm-topbar-title { font-family: var(--adm-schrift-titel); font-weight: 500; letter-spacing: -0.01em; }
+
+/* ═══════════ 6 · SEITENKOPF ════════════════════════════════════════════════════════════════════════════════════════
+   Titel in Host Grotesk aus Licht (Titelmaterial im Tokenblock), Untertitel in kräftigem Nebentext. Unter dem Kopf
+   eine Haarlinie, an deren Anfang ein kurzes Lichtband — Eisblau, das in Violett ausläuft: die eine Signatur der Ebene. */
+:root[data-ce-bereich="admin"] .ce-page-header-main { position: relative; border-bottom: 1px solid var(--adm-linie); }
+:root[data-ce-bereich="admin"] .ce-page-header-main::after {
+  content: "";
+  position: absolute; left: 0; bottom: -1px; top: auto; right: auto;
+  width: min(220px, 42%); height: 1px;
+  border: 0; border-radius: 0;
+  background: var(--adm-lichtband);
+  pointer-events: none;
+}
+:root[data-ce-bereich="admin"] .ce-page-header-title {
+  font-family: var(--adm-schrift-titel);
+  font-weight: 500;
+  letter-spacing: var(--ce-pr-ed-headline-tracking);
+  color: var(--adm-tinte);
+  /* Host Grotesk zeichnet Unterlängen und Akzente höher als Instrument Sans: der Malrand wächst mit. */
+  --titel-malrand: 0.2em;
+}
+:root[data-ce-bereich="admin"] .ce-page-header-sub {
+  color: var(--adm-tinte-2);
+  font-size: var(--ce-text-body-size);
+  line-height: 1.55;
+}
+:root[data-ce-bereich="admin"] .ce-page-header-meta { color: var(--adm-tinte-3); }
+
+/* ═══════════ 7 · BEDIENSYSTEM ══════════════════════════════════════════════════════════════════════════════════════
+   Hauptaktion: helles Metall aus Weiß und Eis mit Navy-Schrift; beim Zeigen ein eisblau-violetter Schein. Zweitaktion:
+   Glas mit Lichtkante. Textaktion: leise. Gefahr: Rot nur als bestätigende Aktion. Höhen und Rollen bleiben die des
+   Premium Control System. */
+:root[data-ce-bereich="admin"] .btn {
+  font-family: var(--adm-schrift-text);
+  font-weight: 560;
+  letter-spacing: -0.006em;
+  transition:
+    background-color var(--adm-dauer) var(--adm-kurve),
+    border-color var(--adm-dauer) var(--adm-kurve),
+    color var(--adm-dauer) var(--adm-kurve),
+    box-shadow var(--adm-dauer) var(--adm-kurve),
+    transform var(--adm-dauer) var(--adm-kurve);
+}
+:root[data-ce-bereich="admin"] .btn-primary {
+  border: 1px solid #f4f7ff;
+  background: linear-gradient(180deg, #ffffff 0%, #e2e9fd 100%);
+  color: var(--adm-tinte-invers);
+  box-shadow: var(--ce-pr-bs-schatten-primaer);
+}
+:root[data-ce-bereich="admin"] .btn-primary:hover:not(:disabled) {
+  border-color: #ffffff;
+  background: linear-gradient(180deg, #ffffff 0%, #eef3ff 100%);
+  color: var(--adm-tinte-invers);
+  box-shadow: var(--ce-pr-bs-schatten-primaer-zeigen);
+}
+:root[data-ce-bereich="admin"] .btn-primary:active:not(:disabled) {
+  background: linear-gradient(180deg, #dbe3f8 0%, #cfd9f2 100%);
+  box-shadow: var(--ce-pr-bs-schatten-gedrueckt);
+  transform: translateY(1px);
+}
+/* Ladepunkt in der hellen Hauptaktion: die weiße Fassung verschwände auf Weiß. */
+:root[data-ce-bereich="admin"] .btn-primary .spinner:not(.spinner-dark) { border-color: rgba(6, 17, 45, 0.22); border-top-color: var(--adm-tinte-invers); }
+:root[data-ce-bereich="admin"] .spinner-dark { border-color: rgba(184, 204, 255, 0.22); border-top-color: var(--adm-signal-tinte); }
+:root[data-ce-bereich="admin"] :is(.btn-outline, .btn-secondary) {
+  border: 1px solid var(--adm-kante-feld);
+  background: linear-gradient(180deg, rgba(196, 214, 255, 0.075) 0%, rgba(196, 214, 255, 0.035) 100%);
+  color: var(--adm-tinte);
+  box-shadow: var(--adm-lichtkante);
+}
+:root[data-ce-bereich="admin"] :is(.btn-outline, .btn-secondary):hover:not(:disabled) {
+  border-color: var(--adm-kante-feld-zeigen);
+  background: linear-gradient(180deg, rgba(196, 214, 255, 0.13) 0%, rgba(196, 214, 255, 0.07) 100%);
+  color: #ffffff;
+  box-shadow: var(--ce-pr-bs-schatten-sekundaer-zeigen);
+}
+:root[data-ce-bereich="admin"] :is(.btn-outline, .btn-secondary):active:not(:disabled) {
+  background: rgba(196, 214, 255, 0.05);
+  box-shadow: var(--ce-pr-bs-schatten-gedrueckt);
+}
+:root[data-ce-bereich="admin"] .btn-ghost { color: var(--adm-tinte-2); background: transparent; }
+:root[data-ce-bereich="admin"] .btn-ghost:hover:not(:disabled) { color: var(--adm-tinte); background: rgba(196, 214, 255, 0.07); }
+:root[data-ce-bereich="admin"] .btn-link { color: var(--adm-signal-tinte); }
+:root[data-ce-bereich="admin"] .btn-link:hover:not(:disabled) { color: var(--adm-signal-tinte-zeigen); background: transparent; }
+:root[data-ce-bereich="admin"] .btn-danger {
+  border: 1px solid var(--ce-color-danger-solid);
+  background: linear-gradient(180deg, #d93a3f 0%, var(--ce-color-danger-solid) 100%);
+  color: #ffffff;
+  box-shadow: var(--ce-pr-bs-schatten-gefahr);
+}
+:root[data-ce-bereich="admin"] .btn-danger:hover:not(:disabled) {
+  border-color: var(--ce-color-danger-hover);
+  background: linear-gradient(180deg, #c8333a 0%, var(--ce-color-danger-hover) 100%);
+}
+:root[data-ce-bereich="admin"] :is(.btn-primary, .btn-danger, .btn-outline, .btn-secondary):disabled {
+  border-color: rgba(184, 204, 255, 0.1);
+  background: var(--ce-pr-btn-disabled-bg);
+  color: var(--ce-pr-btn-disabled-fg);
+  box-shadow: none;
+}
+/* Fokus: der Ring der Foundation in Signal-Blau, auf Navy mit Abstand */
+:root[data-ce-bereich="admin"] :is(.btn, a, button, [role="button"], [role="tab"], [role="option"], [role="menuitem"], summary):focus-visible {
+  outline: 2px solid var(--adm-signal-kante);
+  outline-offset: 2px;
+}
+
+/* Felder: Fläche, Kontur (≥ 3:1) und Fokus kommen aus den umgeordneten Tokens — die Feldregeln der Bereichs-Stylesheets
+   bleiben zuständig. Hier nur, was kein Token trägt: Mulde, Fokuslicht, Platzhalter, native Optionen, Kästchenfarbe. */
+:root[data-ce-bereich="admin"] :is(.field-input, .field-select, .field-textarea, .adm-filter-field input, .adm-filter-field select,
+  .adm-edit-select, .adm-note-input, .adm-modal-input) {
+  background-color: rgba(3, 7, 19, 0.5);
+}
+/* Fokus: der Ring der Foundation bleibt (forms.css), dazu ein leiser blau-violetter Lichthof. */
+:root[data-ce-bereich="admin"] :is(.field-input, .field-select, .field-textarea, .adm-filter-field input, .adm-filter-field select,
+  .adm-edit-select, .adm-note-input, .adm-modal-input):focus {
+  background-color: rgba(3, 7, 19, 0.66);
+  box-shadow: var(--adm-feld-fokuslicht);
+}
+:root[data-ce-bereich="admin"] :is(.field-input, .field-select, .field-textarea, .adm-filter-field input, .adm-filter-field select,
+  .adm-edit-select, .adm-note-input, .adm-modal-input):disabled {
+  background-color: rgba(184, 204, 255, 0.04);
+}
+:root[data-ce-bereich="admin"] :is(input, textarea)::placeholder { color: var(--adm-tinte-4); }
+:root[data-ce-bereich="admin"] select option { background: var(--adm-flaeche-2); color: var(--adm-tinte); }
+:root[data-ce-bereich="admin"] :is(input[type="checkbox"], input[type="radio"]) { accent-color: var(--adm-signal-kante); }
+:root[data-ce-bereich="admin"] :is(.field-label, .adm-label) { color: var(--adm-tinte-2); }
+:root[data-ce-bereich="admin"] :is(.field-error, .field-input-error ~ .field-error) { color: var(--adm-rot); }
+
+/* Aufklappfelder, Menüs, Auswahllisten, Hinweisfenster: Glas */
+:root[data-ce-bereich="admin"] :is(.ce-auswahl-liste, .ce-pm-liste, .ce-suche-treffer, .adm-tip-pop, [role="listbox"], [role="menu"]) {
+  background: var(--adm-glas);
+  -webkit-backdrop-filter: var(--adm-glas-weichzeichnung);
+  backdrop-filter: var(--adm-glas-weichzeichnung);
+  border-color: var(--adm-kante-stark);
+  box-shadow: var(--ce-pr-bs-schatten-menue);
+}
+
+/* Reiter: die aktive Unterkante ist ein Lichtband */
+:root[data-ce-bereich="admin"] .ce-tabs { border-bottom-color: var(--adm-linie); }
+:root[data-ce-bereich="admin"] .ce-tab { color: var(--adm-tinte-3); transition: color var(--adm-dauer) var(--adm-kurve); }
+:root[data-ce-bereich="admin"] .ce-tab:hover { color: var(--adm-tinte); }
+:root[data-ce-bereich="admin"] :is(.ce-tab.active, .ce-tab[aria-selected="true"]) {
+  color: #ffffff;
+  border-bottom-color: var(--adm-signal-tinte);
+  box-shadow: var(--adm-reiter-aktiv);
+}
+
+/* Schalter: aus als dunkle Spur, an im Confidara-Blau mit weißem Knopf */
+:root[data-ce-bereich="admin"] .ce-switch-knob { background: var(--adm-tinte-2); }
+:root[data-ce-bereich="admin"] .ce-switch-input:checked ~ .ce-switch-track { border-color: var(--adm-signal); background: var(--adm-signal); }
+:root[data-ce-bereich="admin"] .ce-switch-input:checked ~ .ce-switch-track .ce-switch-knob { background: #ffffff; }
+:root[data-ce-bereich="admin"] .ce-switch-input:checked ~ .ce-switch-track .ce-switch-knob::after { border-color: var(--adm-signal); }
+:root[data-ce-bereich="admin"] .ce-switch-input:disabled ~ .ce-switch-track .ce-switch-knob { background: var(--adm-tinte-aus); }
+@media (hover: hover) {
+  :root[data-ce-bereich="admin"] .ce-switch:hover .ce-switch-input:not(:checked, :disabled) ~ .ce-switch-track { border-color: var(--adm-kante-feld-zeigen); }
+  :root[data-ce-bereich="admin"] .ce-switch:hover .ce-switch-input:checked:not(:disabled) ~ .ce-switch-track {
+    border-color: var(--adm-signal-zeigen);
+    background: var(--adm-signal-zeigen);
+  }
+}
+
+/* ═══════════ 8 · FLÄCHEN ═══════════════════════════════════════════════════════════════════════════════════════════
+   Karten, Kennzahlenband und Tabellenrahmen: Navy eine Stufe über dem Grund, Lichtkante oben, Kante 12 %. Kein grauer
+   Schlagschatten — auf Navy trägt die Kante. */
+:root[data-ce-bereich="admin"] :is(.ce-card, .card, .table-card, .ce-table-container, .ce-list-card, .tile, .adm-metrics) {
+  background-color: var(--adm-flaeche-1);
+  background-image: var(--adm-flaechenverlauf);
+  border-color: var(--adm-kante);
+  box-shadow: var(--adm-lichtkante);
+}
+:root[data-ce-bereich="admin"] .ce-card-inverse { background: var(--ce-color-surface-inverse); border-color: var(--ce-color-surface-inverse-edge); }
+
+/* Tabellen: Köpfe leise in 550 ohne Versalien, Zeilen zwischen Haarlinien, Zeigen hellt die Zeile eisblau */
+:root[data-ce-bereich="admin"] table { border-color: var(--adm-linie); }
+:root[data-ce-bereich="admin"] th {
+  color: var(--adm-tinte-3);
+  font-family: var(--adm-schrift-text);
+  font-weight: 550;
+  letter-spacing: 0;
+  text-transform: none;
+  background-color: transparent;
+  border-bottom-color: var(--adm-kante);
+}
+:root[data-ce-bereich="admin"] :is(.table-card, .ce-table-container) thead th { border-bottom: 1px solid var(--adm-kante-stark); }
+:root[data-ce-bereich="admin"] td { border-bottom-color: var(--adm-linie); }
+:root[data-ce-bereich="admin"] tbody tr { transition: background-color var(--adm-dauer) var(--adm-kurve); }
+:root[data-ce-bereich="admin"] tbody tr:hover { background-color: rgba(141, 176, 255, 0.04); }
+
+/* Statusmarken: getönte Fläche, helle Schrift, feine Kante */
+:root[data-ce-bereich="admin"] .badge {
+  font-family: var(--adm-schrift-text);
+  font-weight: 550;
+  letter-spacing: 0;
+}
+
+/* Zustände: leer, laden */
+:root[data-ce-bereich="admin"] :is(.ce-skeleton, .ce-skeleton-line) {
+  background: linear-gradient(90deg, rgba(184, 204, 255, 0.04) 0%, rgba(184, 204, 255, 0.1) 50%, rgba(184, 204, 255, 0.04) 100%);
+  background-size: 200% 100%;
+}
+:root[data-ce-bereich="admin"] :is(.ce-state-title, .empty-title) { font-family: var(--adm-schrift-titel); font-weight: 500; color: var(--adm-tinte); }
+:root[data-ce-bereich="admin"] :is(.ce-state-text, .empty-text) { color: var(--adm-tinte-2); }
+
+/* Dialoge und Schubladen: Fenster aus dunklem Glas mit Lichtkante, Öffnen als weiches Aufziehen. Der Schleier bleibt
+   der EINE Overlayton (patterns.css: --ce-color-overlay, ohne Weichzeichnung). */
+:root[data-ce-bereich="admin"] :is(.ce-dialog, .adm-modal) {
+  background: linear-gradient(180deg, rgba(196, 214, 255, 0.06) 0%, rgba(196, 214, 255, 0.015) 100%), #0c1429;
+  border: 1px solid var(--adm-kante-stark);
+  box-shadow: var(--ce-elevation-3);
+}
+:root[data-ce-bereich="admin"] .ce-drawer {
+  background: var(--adm-flaeche-1);
+  border-left: 1px solid var(--adm-kante);
+  box-shadow: var(--ce-elevation-3);
+}
+:root[data-ce-bereich="admin"] :is(.ce-dialog-title, .adm-modal-title) { font-family: var(--adm-schrift-titel); font-weight: 500; letter-spacing: -0.015em; }
+
+/* ═══════════ 9 · BAUSTEINE DES ADMINPANELS ═════════════════════════════════════════════════════════════════════════
+   Was in admin.css über Foundation-Rollen läuft, folgt dem Tokenblock. Hier nur, wo Licht eine Rolle übernimmt. */
+/* Kennzahlenband der Übersicht: Zeigen hebt die Kennzahl mit einem eisblauen Lichtsaum. */
+:root[data-ce-bereich="admin"] .adm-metric { transition: background-color var(--adm-dauer) var(--adm-kurve), box-shadow var(--adm-dauer) var(--adm-kurve); }
+:root[data-ce-bereich="admin"] .adm-metric:hover { background-color: rgba(141, 176, 255, 0.05); box-shadow: var(--adm-kennzahl-zeigen); }
+:root[data-ce-bereich="admin"] .adm-metric-value { color: #ffffff; }
+/* Bereichslinks der Übersicht */
+:root[data-ce-bereich="admin"] .adm-tile { transition: background-color var(--adm-dauer) var(--adm-kurve); }
+:root[data-ce-bereich="admin"] .adm-tile:hover { background-color: rgba(141, 176, 255, 0.05); }
+:root[data-ce-bereich="admin"] .adm-tile:hover .adm-tile-title { color: var(--adm-signal-tinte-zeigen); }
+/* Teilnavigation eines Bereichs: die aktive Seite trägt das Lichtband als Unterkante */
+:root[data-ce-bereich="admin"] :is(.adm-subnav-link-on, .adm-subnav-link-on:hover) { color: #ffffff; box-shadow: inset 0 -2px 0 var(--adm-signal-tinte); }
+/* Sprung zurück im Detail */
+:root[data-ce-bereich="admin"] .adm-back:hover { color: var(--adm-signal-tinte-zeigen); }
+
+/* ═══════════ 10 · BEWEGUNG UND KONTRAST ════════════════════════════════════════════════════════════════════════════
+   Gedruckt gilt die Ebene nicht (@media screen am Kopf der Datei). */
+@keyframes ce-adm-fenster-auf {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ce-adm-schleier-auf { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-ce-bereich="admin"] :is(.ce-dialog, .adm-modal) { animation: ce-adm-fenster-auf var(--adm-dauer-lang) var(--adm-kurve) both; }
+  :root[data-ce-bereich="admin"] :is(.ce-dialog-overlay, .adm-modal-overlay) { animation: ce-adm-schleier-auf var(--adm-dauer) linear both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ce-bereich="admin"] :is(.btn, .adm-nitem, .adm-nitem-icon, .adm-foot-btn, .adm-side-close, .ce-tab, tbody tr, .adm-metric, .adm-tile) { transition: none; }
+}
+@media (prefers-contrast: more) {
+  :root[data-ce-bereich="admin"] {
+    --adm-kante: rgba(184, 204, 255, 0.34);
+    --adm-linie: rgba(184, 204, 255, 0.24);
+    --adm-tinte-2: #dfe5f5;
+    --adm-tinte-3: #cdd5ea;
+    --adm-seite-text: #dfe5f5;
+  }
+}
+@media (forced-colors: active) {
+  :root[data-ce-bereich="admin"] .ce-page-header-main::after { content: none; }
+  :root[data-ce-bereich="admin"] .adm-nitem-on .adm-nitem-icon { filter: none; }
+}
+
+}

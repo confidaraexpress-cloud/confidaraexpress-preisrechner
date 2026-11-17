@@ -27,7 +27,7 @@ const BREITEN = [
   ["desktop-1280", { width: 1280, height: 1000 }, 1, "alle"],
   ["desktop-1440", { width: 1440, height: 1000 }, 1, ["2-verglichen", "3-tarif-ups-standard", "4-uebernommen"]],
   ["tablet-768", { width: 768, height: 1024 }, 1, ["2-verglichen", "3-tarif-ups-standard", "4-uebernommen"]],
-  ["mobil-390", { width: 390, height: 844 }, 1, ["2-verglichen", "3-tarif-ups-standard", "4-uebernommen", "5-details", "6-dialog", "7-gespeichert-verlauf", "8-untergrenze", "11-kandidaten", "13-kein-vergleich"]],
+  ["mobil-390", { width: 390, height: 844 }, 1, ["2-verglichen", "3-tarif-ups-standard", "4-uebernommen", "5-details", "6-dialog", "7-gespeichert-verlauf", "8-formfehler", "11-kandidaten", "13-kein-vergleich"]],
   ["zoom-200", { width: 640, height: 500 }, 2, ["2-verglichen", "3-tarif-ups-standard", "4-uebernommen", "5-details", "6-dialog"]],
   ["mobil-360", { width: 360, height: 780 }, 1, []],
 ];
@@ -114,14 +114,16 @@ try {
     await oeffneBereich("transglobal-22");
     await zustand("3-tarif-ups-standard", OFFENER_TARIF);
 
-    // UPS Express Saver: „Empfehlung übernehmen“ für Transglobal (Über 20 kg, Bis 5 kg) und JUMiNGO (Bis 5 kg) —
-    // füllt nur die Felder, gespeichert wird erst nach dem Dialog.
+    // UPS Express Saver: „Empfehlung übernehmen“ für Transglobal (Über 20 kg, Bis 5 kg) — füllt nur die Felder, gespeichert
+    // wird erst nach dem Dialog. JUMiNGO (Bis 5 kg) hat keinen sicheren Spielraum, also keine Empfehlung: dort 0 % über
+    // „Selbst festlegen“ — ein gewöhnlicher Satz (keine Untergrenze, v2.142) mit dem Hinweis „Kein Verdienst“.
     await oeffneBereich("transglobal-23");
     await reiter("transglobal-23", 4).click();
     await spalte("transglobal-23", "transglobal").locator(".adm-po-adopt").click();
     await reiter("transglobal-23", 1).click();
     await spalte("transglobal-23", "transglobal").locator(".adm-po-adopt").click();
-    await spalte("transglobal-23", "jumingo").locator(".adm-po-adopt").click();
+    await spalte("transglobal-23", "jumingo").locator(".adm-po-custom").click();
+    await page.locator("#adm-tarif-input-jumingo-2-1").fill("0");
     await spalte("transglobal-23", "jumingo").locator(".adm-po-figure-new").first().waitFor({ timeout: 5000 });
     await zustand("4-uebernommen", OFFENER_TARIF);
     await axe("4-uebernommen", [[KARTE]]);
@@ -164,14 +166,16 @@ try {
     await page.locator("#adm-po-history li.adm-po-history-item").first().waitFor({ timeout: 5000 });
     await zustand("7-gespeichert-verlauf", [`${KARTE} .adm-po-save`, "#adm-po-history"]);
 
-    // „Alle Gewichte“ über die eigene Zeile ändern — ein neuer Wert unter der Untergrenze wird am Feld gesperrt.
+    // „Alle Gewichte“ über die eigene Zeile ändern — gesperrt sind nur Formfehler (hier über 100 %), keine Untergrenze.
     await oeffneBereich("transglobal-22");
     await spalte("transglobal-22", "transglobal").locator(".adm-po-all-change").click();
-    await page.locator("#adm-tarif-input-transglobal-22-0").fill("10");
+    await page.locator("#adm-tarif-input-transglobal-22-0").fill("100,01");
     await page.keyboard.press("Tab");
     await page.locator("#adm-tarif-input-transglobal-22-0-error").waitFor({ timeout: 5000 });
-    await zustand("8-untergrenze", [`#adm-po-tabpanel-transglobal-22 section.adm-po-col[data-provider="transglobal"] .adm-po-all`, `${KARTE} .adm-po-save`]);
-    await page.locator("#adm-tarif-discard").click();
+    await zustand("8-formfehler", [`#adm-po-tabpanel-transglobal-22 section.adm-po-col[data-provider="transglobal"] .adm-po-all`, `${KARTE} .adm-po-save`]);
+    // Ein ungültiger Wert ist keine speicherbare Änderung (kein „Verwerfen“): den gespeicherten Wert wieder eintragen.
+    await page.locator("#adm-tarif-input-transglobal-22-0").fill("0");
+    await page.keyboard.press("Tab");
 
     mock.state.refreshStatus = 429;
     await page.locator("#adm-tarif-refresh").click();

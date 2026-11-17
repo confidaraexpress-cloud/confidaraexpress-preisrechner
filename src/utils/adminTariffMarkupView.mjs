@@ -6,10 +6,13 @@
 // „alle Gewichte“ und je ein Satz für vier Gewichtsklassen (Betreiberentscheidung
 // M.1). Ein Satz ERSETZT den Konto- bzw. Expressaufschlag, er addiert nie.
 //
-// Vereinfachung 2026-11-17: je Tarif und Gewichtsklasse drei Kennzahlen (Ihr
-// Aufschlag, Empfohlen, Mehr pro Sendung) aus classMetrics; eine Empfehlung gilt nur
-// mit vergleichbarem Angebot (reliableRecommendation) — ohne Vergleich ist der
-// Serverwert die Untergrenze, keine Empfehlung.
+// Gemeinsame Tarifübersicht (finale Vereinfachung 2026-11-17): je Transglobal-Produkt
+// ein Bereich mit Transglobal links und dem JUMiNGO-Registerpaar rechts (tariffAreas),
+// je Gewichtsklasse dasselbe Beispielpaket für beide Seiten (commonScenarioId) und vier
+// Zahlen je Anbieter — Unser Einkauf, Kunde zahlt, Unser Verdienst, Ihr Aufschlag —
+// aus classMetrics. Kernaussage (verdictOf) und Vergleichsbeziehung (pairLink) nur aus
+// Vergleichsurteilen des Servers; eine Empfehlung gilt nur mit vergleichbarem Angebot
+// (reliableRecommendation) — ohne Vergleich ist der Serverwert die Untergrenze.
 //
 // PROZENTVERTRAG wie utils/customerMarkup.mjs: 35 = 35 %, 17,5 = 17,5 %, 0 = 0 %
 // (ein echter Wert), leer = „kein eigener Satz“ (das Backend erhält null).
@@ -61,6 +64,7 @@ export const TARIFF_TEXTS = Object.freeze({
   withSameDay: "mit Abholzuschlag",
   gapUnavailable: "Tarif hier nicht verfügbar",
   gapFetch: "Preise nicht abrufbar",
+  gapFetchComparison: "Vergleichspreise nicht abrufbar",
   gapNoComparable: "Kein vergleichbares Angebot",
   noExample: "Kein Beispielpaket",
   noChange: "Keine Änderung vorgeschlagen",
@@ -116,9 +120,9 @@ export const TARIFF_TEXTS = Object.freeze({
   detailCollection: "Abholung",
   detailConditions: "Bedingungen",
   detailConditionsText: "Fahrerabholung, Geschäftsadressen, ein Packstück, keine Zusatzleistungen. Transglobal: Vorabpreis der Preisauskunft. Alle Beträge netto.",
-  contributionNote: "Deckungsbeitrag = Kundenpreis minus Einkaufspreis, netto, je Beispielsendung – ohne Fixkosten und ohne Prognose. Beispielpreise für diese Versanddaten, keine Preisgarantie für andere Sendungen.",
+  contributionNote: "„Unser Verdienst“ ist der Deckungsbeitrag: Kundenpreis minus Einkaufspreis, netto, je Beispielsendung. Er ist kein Nettogewinn – Fixkosten, Zahlungs- und Personalkosten sind nicht abgezogen, und er ist keine Prognose. Beispielpreise für diese Versanddaten, keine Preisgarantie für andere Sendungen.",
   noChanges: "Keine Änderungen",
-  save: "Speichern",
+  save: "Änderungen prüfen",
   discard: "Verwerfen",
   dialogTitle: "Neue Aufschläge speichern?",
   dialogText: "Die Aufschläge gelten danach für neue Preisanfragen dieses Kunden.",
@@ -155,6 +159,31 @@ export const TARIFF_TEXTS = Object.freeze({
   colCustomer: "Kunde zahlt",
   colCompare: "Vergleichsangebot",
   fetchFailed: "Preise konnten nicht abgerufen werden",
+  // Gemeinsame Tarifübersicht (finale Vereinfachung 2026-11-17)
+  overview: "Tarifübersicht",
+  purchase: "Unser Einkauf",
+  customerPays: "Kunde zahlt",
+  earnings: "Unser Verdienst",
+  numbersAfterCompare: "Einkauf, Kundenpreis und Verdienst erscheinen nach „Preise vergleichen“.",
+  possible: "Möglich",
+  possibleUpTo: "Möglich bis",
+  withDraftLead: "Mit Ihrer Eingabe",
+  exampleCalc: "Beispielrechnung",
+  noHigherRate: "Ein höherer Aufschlag wird nicht empfohlen.",
+  candidateLegend: "JUMiNGO-Tarif zum Vergleich",
+  noPartner: "Kein JUMiNGO-Tarif zugeordnet",
+  moreTariffs: "Weitere JUMiNGO-Tarife",
+  moreTariffsHint: "JUMiNGO-Preisgruppen ohne festes Transglobal-Gegenstück. Ihr Aufschlag lässt sich hier genauso einstellen.",
+  similarTo: "Im Preisvergleich ähnlich zu",
+  before: "Bisher",
+  after: "Neu",
+  belowMinimumShort: "Unter",
+  detailPackage: "Gewicht und Maße",
+  detailPickup: "Abholtag",
+  detailSurcharges: "Zuschläge",
+  deviating: "abweichend",
+  purchaseAdvantage: "Einkaufsvorteil",
+  validUntil: "gültig bis",
 });
 
 // Fünf Zustände (Auftrag §13), je mit Farbton UND Wortlaut — nie Farbe allein.
@@ -302,11 +331,12 @@ export const fieldHint = (minimum) => (numOrNull(minimum) === null
   ? TARIFF_TEXTS.emptyMeans
   : `${TARIFF_TEXTS.minimum} ${formatPercent(minimum)}. ${TARIFF_TEXTS.emptyMeans}`);
 
-// Reiter der Gewichtsklassen: „über 5 bis 10 kg“ → „Über 5–10 kg“. Die Grenzen kommen nur aus der
-// Klassenbezeichnung des Servers; diese Funktion kürzt den Wortlaut, sie kennt keine Gewichte.
+// Reiter der Gewichtsklassen (Betreiberauftrag 2026-11-17: „Bis 5 kg | 5–10 kg | 10–20 kg | Über 20 kg“):
+// „über 5 bis 10 kg“ → „5–10 kg“. Die Grenzen kommen nur aus der Klassenbezeichnung des Servers; diese Funktion
+// kürzt den Wortlaut, sie kennt keine Gewichte.
 export function weightTabLabel(label) {
   const s = text(label).trim()
-    .replace(/(\d+(?:[.,]\d+)?)\s+bis\s+(\d+(?:[.,]\d+)?)/, "$1–$2")
+    .replace(/^(?:über\s+)?(\d+(?:[.,]\d+)?)\s+bis\s+(\d+(?:[.,]\d+)?)/i, "$1–$2")
     .replace(/\s+kg$/, `${NB}kg`);
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 }
@@ -455,13 +485,15 @@ export function statusWithoutComparison(effectivePercent, minimumPercent) {
   return e !== null && m !== null && e < m ? "below_target" : "not_compared";
 }
 
-// Gewinn und Kundenpreis je Klasse (Schritt 5): heute (gespeicherte Projektion) gegen neu (Entwurf aus der
-// Vorschau, sonst die Empfehlung). Immer dasselbe Beispielpaket — das der gespeicherten Projektion.
-export function profitRow(baseClass, previewClass) {
-  const b = exampleSample(baseClass);
-  if (!b || !b.own) return { available: false };
+// Gewinn und Kundenpreis je Klasse: heute (gespeicherte Projektion) gegen neu (Entwurf aus der Vorschau, sonst die
+// Empfehlung). Immer dasselbe Beispielpaket — das gezeigte (scenarioId) bzw. das der gespeicherten Projektion.
+// Ohne eigenen Preis im Paket: available false mit dem Grund des Servers (own_unavailable, fetch_failed).
+export function profitRow(baseClass, previewClass, scenarioId = null) {
+  const b = scenarioId ? sampleById(baseClass, scenarioId) : exampleSample(baseClass);
+  if (!b || !b.own) return { available: false, scenarioId: b ? b.scenarioId : scenarioId, reason: b ? b.reason || null : null, weightKg: b ? numOrNull(b.weightKg) : null };
   const heute = {
     percent: numOrNull(baseClass.currentPercent),
+    purchaseNetCents: b.own.purchaseNetCents,
     customerNetCents: b.own.customerNetCents,
     contributionCents: b.own.contributionCents,
     comparisonNetCents: b.comparison ? b.comparison.customerNetCents : null,
@@ -470,7 +502,7 @@ export function profitRow(baseClass, previewClass) {
   let neu = null;
   let art = null;
   const entwurf = !!previewClass && (!!previewClass.draft || numOrNull(previewClass.currentPercent) !== heute.percent);
-  const p = entwurf ? sampleById(previewClass, baseClass.exampleScenarioId) : null;
+  const p = entwurf ? sampleById(previewClass, b.scenarioId) : null;
   if (p && p.own) {
     art = "draft";
     neu = {
@@ -493,6 +525,7 @@ export function profitRow(baseClass, previewClass) {
   return {
     available: true,
     scenarioId: b.scenarioId,
+    reason: null,
     weightKg: numOrNull(b.weightKg),
     chargeableKg: numOrNull(b.chargeableKg),
     heute,
@@ -512,17 +545,20 @@ export function noRecommendationText(cls) {
   const proben = cls && Array.isArray(cls.samples) ? cls.samples : [];
   if (proben.length === 0) return TARIFF_TEXTS.noExample;
   if (proben.every((p) => p && p.reason === "own_unavailable")) return TARIFF_TEXTS.gapUnavailable;
-  if (proben.every((p) => p && p.reason === "fetch_failed")) return TARIFF_TEXTS.gapFetch;
+  // fetch_failed mit eigenem Preis: der ANDERE Anbieter war nicht erreichbar (Server: own gesetzt, comparison null).
+  if (proben.every((p) => p && p.reason === "fetch_failed")) return proben.every((p) => p.own) ? TARIFF_TEXTS.gapFetchComparison : TARIFF_TEXTS.gapFetch;
   return TARIFF_TEXTS.gapNoComparable;
 }
 
-// Die drei Kennzahlen einer Gewichtsklasse — alle Werte vom Server, hier wird nur ausgewählt:
+// Die Zahlen eines Anbieters in einer Gewichtsklasse — alle Werte vom Server, hier wird nur ausgewählt:
 //   current      gespeicherter wirksamer Satz und seine Herkunft (Klasse, alle Gewichte, Konto)
 //   recommended  Empfehlung nur, wenn belastbar; sonst null mit Kurzgrund
 //   adoptPercent Wert für „Empfehlung übernehmen“ (suggestedPercent des Servers; null = nichts zu übernehmen)
 //   more         Änderung des Deckungsbeitrags am Beispielpaket: mit Ihrer Eingabe (Vorschau) oder mit Empfehlung
+//   numbers      Unser Einkauf, Kunde zahlt, Unser Verdienst am gezeigten Beispielpaket (scenarioId); mit Entwurf
+//                zusätzlich Kundenpreis und Verdienst laut Vorschau. Ohne eigenen Preis der Grund des Servers.
 // pending: es gibt Entwürfe in diesem Tarif, die Vorschau steht aber noch aus — dann keine veraltete Zahl.
-export function classMetrics({ tariff, weightClass, baseClass = null, previewClass = null, hasBase = false, pending = false, previewFailed = false, sameDay = false } = {}) {
+export function classMetrics({ tariff, weightClass, baseClass = null, previewClass = null, hasBase = false, pending = false, previewFailed = false, sameDay = false, scenarioId = null } = {}) {
   const T = TARIFF_TEXTS;
   const current = savedEffective(tariff, weightClass);
   const belastbar = hasBase && reliableRecommendation(baseClass);
@@ -533,7 +569,7 @@ export function classMetrics({ tariff, weightClass, baseClass = null, previewCla
     ? { percent: numOrNull(baseClass.recommendedPercent), note: [passt && !gefaehrdet ? T.fits : null, sameDay ? T.withSameDay : null].filter(Boolean).join(", ") || null }
     : { percent: null, note: !hasBase ? T.needsComparison : noRecommendationText(baseClass) };
   const adoptPercent = belastbar && !passt ? numOrNull(baseClass.suggestedPercent) : null;
-  const row = hasBase && baseClass ? profitRow(baseClass, pending ? null : previewClass) : { available: false };
+  const row = hasBase && baseClass ? profitRow(baseClass, pending ? null : previewClass, scenarioId) : { available: false, reason: null, weightKg: null };
   const ohneZahl = (note) => ({ cents: null, direction: null, art: null, label: T.metricMore, value: "—", note, example: null });
   let more;
   if (!hasBase) more = ohneZahl(T.needsComparison);
@@ -552,7 +588,19 @@ export function classMetrics({ tariff, weightClass, baseClass = null, previewCla
       example: `${T.contributionExample} ${kgText(row.weightKg)}`,
     };
   } else more = ohneZahl(belastbar ? T.noChange : T.noRecommendation);
-  return { current, recommended, adoptPercent, more, row };
+  const numbers = !hasBase ? { available: false, reason: "not_compared" }
+    : !row.available ? { available: false, reason: row.reason || "no_sample", weightKg: row.weightKg }
+      : {
+        available: true,
+        reason: null,
+        weightKg: row.weightKg,
+        purchaseCents: row.heute.purchaseNetCents,
+        customerCents: row.heute.customerNetCents,
+        contributionCents: row.heute.contributionCents,
+        draft: row.art === "draft" && row.neu
+          ? { percent: row.neu.percent, customerCents: row.neu.customerNetCents, contributionCents: row.neu.contributionCents } : null,
+      };
+  return { current, recommended, adoptPercent, more, row, numbers };
 }
 
 // Hinweise, die die Entscheidung beeinflussen und deshalb vorne sichtbar bleiben: Preisvorteil gefährdet und
@@ -599,12 +647,167 @@ export function rangeText(r) {
   if (!r) return "—";
   return r.min === r.max ? formatPercent(r.min) : `${formatPercent(r.min).replace(`${NB}%`, "")}–${formatPercent(r.max)}`;
 }
-// Sortierung: größter möglicher Mehrgewinn zuerst; ohne Plus in der Auftragsreihenfolge des Servers.
-export function sortTariffs(tariffs, summaries) {
-  return tariffs
-    .map((t, i) => ({ t, i, plus: summaries[t.id] && Number.isInteger(summaries[t.id].plusCents) ? summaries[t.id].plusCents : -1 }))
-    .sort((a, b) => (b.plus - a.plus) || (a.i - b.i))
-    .map((x) => x.t);
+// ── Gemeinsame Tarifübersicht (finale Vereinfachung 2026-11-17) ─────────────
+// Vergleichsbeziehung zweier Angebote, je mit Wortlaut; die Farbe ist nur Zusatz (none ohne Marke).
+export const RELATION_VIEW = Object.freeze({
+  equivalent: Object.freeze({ tone: "info", label: "Gleichwertig" }),
+  similar: Object.freeze({ tone: "neutral", label: "Ähnlicher Tarif" }),
+  none: Object.freeze({ tone: null, label: "Kein direkter Vergleich möglich" }),
+});
+export const VERDICT_TEXTS = Object.freeze({
+  transglobal: "Transglobal kauft günstiger ein.",
+  jumingo: "JUMiNGO kauft günstiger ein.",
+  same: "Beide kaufen gleich günstig ein.",
+  none: "Diese Angebote sind nicht direkt vergleichbar.",
+  not_compared: "Noch nicht verglichen",
+});
+export const JU_KIND_REGISTER = "register";
+
+// Bereiche: je Transglobal-Produkt einer, in der Reihenfolge des Servers. Das JUMiNGO-Gegenstück ist die
+// Registergruppe des Servers (kind "register") mit derselben Bezeichnung und demselben Carrier — im Backend dasselbe
+// kanonische Produkt (config/customerTariffMarkupProducts.js ↔ config/jumingoMarkupGroups.js). Nur eine auf beiden
+// Seiten eindeutige Entsprechung wird gepaart. Preisgruppen (kind "price_group") und jede nicht eindeutig zuordenbare
+// Gruppe stehen unter „Weitere JUMiNGO-Tarife“: keine Zuordnung aus Namensähnlichkeit, nichts wird zusammengelegt.
+export function tariffAreas(tariffs) {
+  const liste = Array.isArray(tariffs) ? tariffs : [];
+  const tg = liste.filter((t) => t.provider === "transglobal");
+  const ju = liste.filter((t) => t.provider === "jumingo");
+  const passt = (t, j) => !!t.carrier && j.kind === JU_KIND_REGISTER && j.label === t.label && j.carrier === t.carrier;
+  const vergeben = new Set();
+  const areas = tg.map((t) => {
+    const treffer = ju.filter((j) => passt(t, j));
+    const pair = treffer.length === 1 && tg.filter((x) => passt(x, treffer[0])).length === 1 ? treffer[0] : null;
+    if (pair) vergeben.add(pair.id);
+    return { id: t.id, label: t.label, transglobal: t, pair };
+  });
+  return { areas, extra: ju.filter((j) => !vergeben.has(j.id)) };
+}
+
+// Ein Beispielpaket vergleicht der Server mit genau diesem Transglobal-Produkt (Tarif-ID = Produktschlüssel).
+function vergleichtMit(sample, productKey) {
+  const c = sample && sample.comparison;
+  return !!c && c.provider === "transglobal" && String(c.tariffId) === String(productKey);
+}
+// Mit welchen Transglobal-Produkten der Server die Beispielpakete einer JUMiNGO-Gruppe verglichen hat (alle Klassen).
+function verglicheneProdukte(base, juTariff) {
+  const out = new Map();
+  for (const k of juTariff.classes || []) {
+    const cls = projectionClass(base, juTariff.provider, juTariff.productKey, k.weightClass);
+    for (const s of cls && Array.isArray(cls.samples) ? cls.samples : []) {
+      const c = s && s.comparison;
+      if (!c || c.provider !== "transglobal" || !/^\d+$/.test(String(c.tariffId))) continue;
+      const key = Number(c.tariffId);
+      if (out.get(key) !== "equivalent") out.set(key, c.relation === "equivalent" ? "equivalent" : "similar");
+    }
+  }
+  return out;
+}
+// JUMiNGO-Kandidaten eines Bereichs: das Registerpaar, dazu jede Gruppe aus „Weitere JUMiNGO-Tarife“, deren eigene
+// Beispielpakete der Server im Preisvergleich mit genau diesem Transglobal-Produkt vergleicht. Ohne Vergleich nur das Paar.
+export function areaCandidates(area, extra, base) {
+  const out = area && area.pair ? [{ tariff: area.pair, relation: "equivalent" }] : [];
+  if (!area || !base) return out;
+  for (const j of extra || []) {
+    const rel = verglicheneProdukte(base, j).get(area.transglobal.productKey);
+    if (rel) out.push({ tariff: j, relation: rel });
+  }
+  return out;
+}
+// „Weitere JUMiNGO-Tarife“: Transglobal-Produkte, mit denen der Server diese Gruppe verglichen hat.
+export function extraComparedWith(base, juTariff, tgTariffs) {
+  if (!base || !juTariff) return [];
+  const m = verglicheneProdukte(base, juTariff);
+  return (tgTariffs || []).filter((t) => m.has(t.productKey)).map((t) => ({ tariff: t, relation: m.get(t.productKey) }));
+}
+
+// Ein Beispielpaket je Bereich und Gewichtsklasse, damit beide Spalten dasselbe Paket zeigen: bevorzugt eines, für das
+// BEIDE Seiten einen eigenen Preis haben — zuerst das Beispielpaket des Servers für Transglobal, dann das für JUMiNGO,
+// dann das erste weitere der Klasse. Sonst das Beispielpaket einer Seite (die andere zeigt ihren Grund).
+export function commonScenarioId(tgClass, juClass) {
+  const eigen = (cls, id) => { const s = sampleById(cls, id); return !!(s && s.own); };
+  const beide = (id) => !!id && eigen(tgClass, id) && eigen(juClass, id);
+  const tgEx = tgClass ? tgClass.exampleScenarioId || null : null;
+  const juEx = juClass ? juClass.exampleScenarioId || null : null;
+  const alle = [tgEx, juEx, ...[tgClass, juClass].flatMap((c) => (c && Array.isArray(c.samples) ? c.samples.map((s) => s && s.scenarioId) : []))].filter(Boolean);
+  return alle.find(beide) || tgEx || juEx || alle[0] || null;
+}
+
+// Verbindung der beiden Spalten im gezeigten Beispielpaket — nur aus Vergleichsurteilen des Servers:
+//   Transglobal-Seite (nur Registerpaar): das Vergleichsangebot ist „gleichwertig“, also dasselbe kanonische Produkt;
+//   JUMiNGO-Seite: das Beispielpaket der Gruppe hat genau dieses Transglobal-Produkt als Vergleichsangebot.
+// null = kein direkter Vergleich (kein Preis, andere Leistung, Uhrzeit oder Abholtag, Abruffehler).
+export function pairLink({ tgClass = null, juClass = null, tgProductKey = null, isPair = false, scenarioId = null } = {}) {
+  const tgS = sampleById(tgClass, scenarioId);
+  const juS = sampleById(juClass, scenarioId);
+  const vt = tgS && tgS.own ? tgS.comparison : null;
+  if (isPair && vt && vt.provider === "jumingo" && vt.relation === "equivalent") return { relation: "equivalent", from: "transglobal", comparison: vt };
+  if (juS && juS.own && vergleichtMit(juS, tgProductKey)) {
+    return { relation: juS.comparison.relation === "equivalent" ? "equivalent" : "similar", from: "jumingo", comparison: juS.comparison };
+  }
+  return null;
+}
+
+// Kernaussage: nur für Angebote, die der Server im gezeigten Paket vergleicht; verglichen werden die beiden
+// Einkaufspreise, die die Spalten zeigen (Serverwerte). Ohne Basis „not_compared“, ohne Verbindung „none“.
+export function verdictOf({ hasBase = false, link = null, tgPurchaseCents = null, juPurchaseCents = null } = {}) {
+  if (!hasBase) return "not_compared";
+  if (!link || !Number.isInteger(tgPurchaseCents) || !Number.isInteger(juPurchaseCents)) return "none";
+  return tgPurchaseCents < juPurchaseCents ? "transglobal" : juPurchaseCents < tgPurchaseCents ? "jumingo" : "same";
+}
+
+// „Möglich: +X € pro Sendung“ je Anbieter: nur aus einer belastbaren Empfehlung des Servers mit mehr Deckungsbeitrag
+// am gezeigten Beispielpaket; mit Entwurf die Wirkung Ihrer Eingabe laut Vorschau (auch weniger). Sonst null.
+export function chanceLine(provider, metrics) {
+  const more = metrics && metrics.more;
+  const row = metrics && metrics.row;
+  if (!more || !more.art || !Number.isInteger(more.cents) || !row || !row.heute || !row.neu) return null;
+  if (more.art === "recommendation" && more.direction !== "more") return null;
+  return { provider, art: more.art, cents: more.cents, fromPercent: row.heute.percent, toPercent: row.neu.percent, weightKg: row.weightKg };
+}
+export function chanceText(line) {
+  const anbieter = PROVIDER_LABELS[line.provider] || "";
+  const paket = line.weightKg !== null && line.weightKg !== undefined ? ` (${TARIFF_TEXTS.detailExample} ${kgText(line.weightKg)})` : "";
+  if (line.art === "draft") {
+    return { lead: `${TARIFF_TEXTS.withDraftLead}: ${formatSignedCents(line.cents)} ${TARIFF_TEXTS.perShipment}`,
+      detail: `${anbieter}-Aufschlag ${formatPercent(line.fromPercent)} → ${formatPercent(line.toPercent)}${paket}.` };
+  }
+  return { lead: `${TARIFF_TEXTS.possible}: ${formatSignedCents(line.cents)} ${TARIFF_TEXTS.perShipment}`,
+    detail: `wenn der ${anbieter}-Aufschlag von ${formatPercent(line.fromPercent)} auf ${formatPercent(line.toPercent)} steigt${paket}.` };
+}
+
+// „Möglich bis“ in der Übersicht: der größte Mehrverdienst je Sendung aus belastbaren Empfehlungen über alle
+// Gewichtsklassen beider Spalten — je Klasse am selben Beispielpaket wie in der geöffneten Fläche (commonScenarioId),
+// damit Übersicht und Fläche dieselbe Zahl zeigen. Entwürfe zählen hier nicht. null = keine solche Empfehlung.
+export function bestChanceCents({ base = null, transglobal = null, jumingo = null, sameDay = false } = {}) {
+  if (!base) return null;
+  const klassen = [...new Set([transglobal, jumingo].flatMap((t) => (t ? t.classes.map((c) => c.weightClass) : [])))];
+  let best = null;
+  for (const wc of klassen) {
+    const tgBk = transglobal ? projectionClass(base, transglobal.provider, transglobal.productKey, wc, { sameDay }) : null;
+    const juBk = jumingo ? projectionClass(base, jumingo.provider, jumingo.productKey, wc) : null;
+    const sz = commonScenarioId(tgBk, juBk);
+    for (const [t, bk] of [[transglobal, tgBk], [jumingo, juBk]]) {
+      if (!t || !bk) continue;
+      const l = chanceLine(t.provider, classMetrics({ tariff: t, weightClass: wc, baseClass: bk, hasBase: true, scenarioId: sz }));
+      if (l && l.art === "recommendation" && l.cents > 0) best = Math.max(best ?? 0, l.cents);
+    }
+  }
+  return best;
+}
+
+// Einkaufsvorteil laut Server (purchaseAdvantagePercent = (Einkauf Vergleich − eigener Einkauf) / Einkauf Vergleich).
+export function advantageText(provider, comparison) {
+  const a = comparison ? numOrNull(comparison.purchaseAdvantagePercent) : null;
+  if (a === null) return null;
+  const eigen = PROVIDER_LABELS[provider] || "";
+  const anderer = PROVIDER_LABELS[comparison.provider] || "";
+  if (a === 0) return `${eigen} kauft gleich teuer ein wie ${anderer}`;
+  const betrag = Math.abs(a).toLocaleString("de-DE", { maximumFractionDigits: 1 });
+  return `${eigen} kauft ${betrag}${NB}% ${a > 0 ? "günstiger" : "teurer"} ein als ${anderer}`;
+}
+export function scenarioOf(base, scenarioId) {
+  if (!base || !Array.isArray(base.scenarios) || !scenarioId) return null;
+  return base.scenarios.find((s) => s && s.id === scenarioId) || null;
 }
 
 // Hinweise für den Bestätigungsdialog je Änderung (aus der Vorschau): gefährdet, kein Vergleich, wenig belegt.

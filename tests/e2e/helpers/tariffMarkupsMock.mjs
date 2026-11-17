@@ -1,6 +1,7 @@
 // Gemeinsames Mock-Backend für „Versandpreise optimieren“ (E2E-Suite adminTariffMarkups und Sichtprüfung
 // tariffMarkupsCapture). Vertrag wie routes/admin/tariffMarkups.js und lib/admin/tariffRecommendation.js
-// (Felder, Zustände, Obergrenze je Paket, begrenzendes Beispielpaket, Untergrenze, Audit) — die Zahlen rechnet NUR
+// (Felder, Zustände, Obergrenze je Paket, begrenzendes Beispielpaket, Untergrenze, Audit; JUMiNGO-Gruppen 8 und 9 als
+// Preisgruppen kind "price_group", 1–7 als Registergruppen) — die Zahlen rechnet NUR
 // dieser Mock, nach denselben Regeln wie werteKlasseAus im Backend.
 //
 // SYNTHETISCH: glatte Einkaufspreise und Gewichtsfaktoren, keine Messwerte, keine Produktivdaten, keine echten
@@ -40,6 +41,8 @@ const AEHNLICH_JU = { 8: 84, 9: 29 };
 const NUR_INLAND = new Set(["transglobal:84", "jumingo:4"]);
 const KEIN_VERGLEICH = new Set(["transglobal:86:4", "jumingo:6:4", "transglobal:85:3", "jumingo:5:3"]);
 const NICHT_VERFUEGBAR = new Set(["transglobal:87:4"]);
+// Abruf fehlgeschlagen (eigene Preise fehlen, die Gegenseite hat dann kein Vergleichsangebot) — Zustand „Providerfehler“.
+const AUSFALL = new Set(["jumingo:6:3"]);
 // Erfundener Abholzuschlag (nicht der echte Betrag des Kontos — dieses Repository ist öffentlich).
 export const SAME_DAY_FEE = 390;
 export const STANDARD_AUDIT = [
@@ -88,7 +91,7 @@ export function createTariffMock({ overrides = STANDARD_OVERRIDES, konto = { sta
   };
   const alleTarife = () => [
     ...TG.map(([key, label, carrier, pc]) => ({ provider: "transglobal", key, label, carrier, pc, note: null, kind: "product" })),
-    ...JU.map(([key, label, carrier, pc, note]) => ({ provider: "jumingo", key, label, carrier, pc, note, kind: key >= 8 ? "special" : "register" })),
+    ...JU.map(([key, label, carrier, pc, note]) => ({ provider: "jumingo", key, label, carrier, pc, note, kind: key >= 8 ? "price_group" : "register" })),
   ];
   const dto = (uid) => {
     const ov = state.overrides[uid] || {};
@@ -131,12 +134,14 @@ export function createTariffMock({ overrides = STANDARD_OVERRIDES, konto = { sta
       const basis = { scenarioId: sz.id, weightKg: sz.weightKg, chargeableKg: sz.chargeableGrams / 1000 };
       const leer = { upperBoundPercent: null, belowFloor: false, differencePercent: null };
       if (!verfuegbar(run.land, provider, key, wc)) { samples.push({ ...basis, own: null, comparison: null, reason: "own_unavailable", ...leer }); continue; }
+      if (AUSFALL.has(`${provider}:${key}:${wc}`)) { samples.push({ ...basis, own: null, comparison: null, reason: "fetch_failed", ...leer }); continue; }
       const eigenEk = ek(provider, key, sz) + aufschlag;
       const eigenNetto = netto(eigenEk, eigen.percent);
       const own = { purchaseNetCents: eigenEk, customerNetCents: eigenNetto, contributionCents: eigenNetto - eigenEk, pickupDate: "2026-11-18" };
       const partner = partnerVon(provider, key);
-      if (!partner || KEIN_VERGLEICH.has(`${provider}:${key}:${wc}`) || !verfuegbar(run.land, partner.provider, partner.key, wc)) {
-        samples.push({ ...basis, own, comparison: null, reason: "no_comparable", ...leer });
+      const partnerAusfall = !!partner && AUSFALL.has(`${partner.provider}:${partner.key}:${wc}`);
+      if (!partner || partnerAusfall || KEIN_VERGLEICH.has(`${provider}:${key}:${wc}`) || !verfuegbar(run.land, partner.provider, partner.key, wc)) {
+        samples.push({ ...basis, own, comparison: null, reason: partnerAusfall ? "fetch_failed" : "no_comparable", ...leer });
         continue;
       }
       const r = satz(run.uid, partner.provider, partner.key, wc, draft);
@@ -149,7 +154,7 @@ export function createTariffMock({ overrides = STANDARD_OVERRIDES, konto = { sta
       samples.push({ ...basis, own, reason: null, upperBoundPercent: stufe, upperBoundRawPercent: Math.round(roh * 100) / 100, belowFloor: boden,
         comparison: { relation: aehnlich ? "similar" : "equivalent", provider: partner.provider, label: eintrag(partner.provider, partner.key)[1],
           tariffId: partner.provider === "jumingo" ? String(3700 + partner.key) : String(partner.key), purchaseNetCents: vEk, ratePercent: r.percent,
-          customerNetCents: vNetto, pickupDate: "2026-11-18", purchaseAdvantagePercent: abstand(vEk, eigenEk) },
+          customerNetCents: vNetto, pickupDate: "2026-11-18", purchaseAdvantagePercent: vEk > 0 ? Math.round(((vEk - eigenEk) * 10000) / vEk) / 100 : null },
         differencePercent: abstand(eigenNetto, vNetto) });
       if (boden) unterBoden = true;
       if (obergrenze === null || stufe < obergrenze || (stufe === obergrenze && roh < begrenzend.roh)) { obergrenze = stufe; begrenzend = { scenarioId: sz.id, roh }; }

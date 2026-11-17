@@ -1970,128 +1970,127 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
   .adm-tarif-table td.adm-tarif-num { text-align: right; }
 }
 
-/* ══════════ Versandpreise optimieren (Preisoptimierung 2026-11-17) ═══════════
-   Erweitert die Tarifkarte: Ablauf in sechs Schritten, Tarifkarten je Produkt bzw.
-   JUMiNGO-Preisgruppe, vier Gewichtsklassen mit Zustand, Gewinnvorschau.
-   Nur Tokens der Designfamilie (Blue Light); Zustände tragen immer einen Wortlaut,
-   die Farbe ist nur Zusatz. */
-.adm-po-facts { display: flex; flex-wrap: wrap; gap: var(--ce-space-2); margin-bottom: var(--ce-space-3); }
-.adm-po-fact {
-  display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 10px;
-  border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-sm);
-  background: var(--ce-color-surface-subtle); color: var(--ce-color-text-secondary);
-  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
-}
-.adm-po-fact--floor { background: var(--ce-color-brand-soft); border-color: var(--ce-color-brand-border-soft); color: var(--ce-color-brand-ink); }
-.adm-po-intro { margin-bottom: var(--ce-space-4); }
+/* ══════════ Versandpreise optimieren (vereinfacht 2026-11-17) ═══════════════
+   Tarifliste → Tarifkarte mit vier Gewichtsreitern → drei Kennzahlen (Ihr Aufschlag,
+   Empfohlen, Mehr pro Sendung) → „Empfehlung übernehmen“ / „Selbst festlegen“ →
+   Speichern. Alles Weitere unter „Details anzeigen“. Nur Tokens der Designfamilie
+   (Blue Light); Zustände tragen immer einen Wortlaut, die Farbe ist nur Zusatz.
+   Die Anordnung folgt der Breite der Tarifkarte (Container `adm-po`), nicht dem Fenster. */
 .adm-po-num { font-weight: 600; color: var(--ce-color-text-primary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap; }
 .adm-po-src { font-size: var(--ce-text-caption-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted); }
-
-/* Ablauf: echte Schrittfolge, deshalb nummeriert. */
-.adm-po-steps {
-  list-style: none; margin: 0 0 var(--ce-space-5); padding: 0;
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ce-space-3) var(--ce-space-4);
-}
-@media (min-width: 40rem) { .adm-po-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.adm-po-step { display: flex; align-items: flex-start; gap: var(--ce-space-2); min-width: 0; }
-.adm-po-step-num {
-  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
-  width: 24px; height: 24px; border-radius: var(--ce-radius-full);
-  border: 1px solid var(--ce-color-border-subtle); color: var(--ce-color-text-muted);
-  font-size: var(--ce-text-caption-size); font-weight: 600; font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
-}
-.adm-po-step-text { display: flex; flex-direction: column; min-width: 0; padding-top: 2px; }
-.adm-po-step-label { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted); }
-.adm-po-step-meta { font-size: var(--ce-text-caption-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); overflow-wrap: break-word; }
-.adm-po-step--done .adm-po-step-num { border-color: var(--ce-color-brand-border-soft); background: var(--ce-color-brand-soft); color: var(--ce-color-brand-ink); }
-.adm-po-step--done .adm-po-step-label { color: var(--ce-color-text-secondary); }
-.adm-po-step--current .adm-po-step-num { border-color: var(--ce-color-brand); background: var(--ce-color-brand); color: var(--ce-color-text-inverse); }
-.adm-po-step--current .adm-po-step-label { color: var(--ce-color-text-primary); font-weight: 600; }
+.adm-po-nowrap { white-space: nowrap; }
+.adm-po-badge .adm-po-dot { width: 7px; height: 7px; border-radius: var(--ce-radius-full); background: currentColor; flex: 0 0 auto; }
 
 .adm-po-compare .adm-tarif-stand { align-self: flex-end; padding-bottom: 5px; }
-.adm-po-compare, .adm-po-tariffs, .adm-po-save { display: flex; flex-direction: column; gap: var(--ce-space-3); margin-bottom: var(--ce-space-5); }
+.adm-po-compare, .adm-po-tariffs { display: flex; flex-direction: column; gap: var(--ce-space-3); margin-bottom: var(--ce-space-5); }
 .adm-po-group { display: flex; flex-direction: column; gap: var(--ce-space-2); }
 .adm-po-group-title { margin: var(--ce-space-2) 0 0; font-size: var(--ce-text-label-size); font-weight: 600; color: var(--ce-color-text-secondary); }
 .adm-po-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ce-space-2); }
 
-/* Tarifkarte: Kopf = Auswahl (aria-expanded), darunter die Gewichtsklassen. */
+/* Tarifzeile: Kopf = Auswahl (aria-expanded) mit Ihr Aufschlag, Empfohlen und möglichem Plus. */
 .adm-po-tarif { border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-md); background: var(--ce-color-surface); min-width: 0; }
-.adm-po-tarif.is-open { border-color: var(--ce-color-brand-border-soft); }
+.adm-po-tarif.is-open { border-color: var(--ce-color-brand-border-soft); box-shadow: var(--ce-elevation-1); }
 .adm-po-tarif-head {
   display: grid; grid-template-columns: minmax(12rem, 1fr) minmax(0, auto) auto; align-items: center; gap: var(--ce-space-1) var(--ce-space-4);
-  width: 100%; padding: var(--ce-space-3) var(--ce-space-4); border: 0; border-radius: inherit; background: transparent;
+  width: 100%; min-height: var(--ce-size-touch-target); padding: var(--ce-space-3) var(--ce-space-4); border: 0; border-radius: inherit; background: transparent;
   text-align: left; cursor: pointer; color: var(--ce-color-text-primary); font: inherit;
 }
 .adm-po-tarif-head:hover { background: var(--ce-color-surface-subtle); }
 .adm-po-tarif-head:focus-visible { outline: 2px solid var(--ce-color-brand); outline-offset: 2px; }
 .adm-po-tarif-name { grid-column: 1; font-size: var(--ce-text-body-size); line-height: var(--ce-text-body-line); font-weight: 600; }
-.adm-po-tarif-meta { grid-column: 1; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.adm-po-tarif-meta {
+  grid-column: 1; display: flex; flex-wrap: wrap; gap: 2px var(--ce-space-4);
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary);
+}
 .adm-po-tarif-side { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--ce-space-2); }
 .adm-po-tarif-head .adm-tech-caret { grid-column: 3; grid-row: 1 / span 2; margin-left: 0; }
 .adm-po-tarif-head[aria-expanded="true"] .adm-tech-caret { transform: translateY(1px) rotate(-135deg); }
-.adm-po-nowrap { white-space: nowrap; }
-.adm-po-plus { font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-brand-ink); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap; }
+.adm-po-plus { font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-status-success-fg); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap; }
 .adm-po-tarif-dirty { white-space: nowrap; }
-.adm-po-badge .adm-po-dot { width: 7px; height: 7px; border-radius: var(--ce-radius-full); background: currentColor; flex: 0 0 auto; }
-.adm-po-panel { padding: 0 var(--ce-space-4) var(--ce-space-4); border-top: 1px solid var(--ce-color-border-subtle); min-width: 0; }
-.adm-po-note { margin-top: var(--ce-space-3); }
-.adm-po-sub { margin: var(--ce-space-4) 0 var(--ce-space-2); font-size: var(--ce-text-label-size); font-weight: 600; color: var(--ce-color-text-primary); }
-.adm-po-sameday { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2) var(--ce-space-4); margin: var(--ce-space-3) 0 0; padding: 0; border: 0; }
+
+/* Geöffnete Tarifkarte. */
+.adm-po-panel { container: adm-po / inline-size; padding: 0 var(--ce-space-4) var(--ce-space-4); border-top: 1px solid var(--ce-color-border-subtle); min-width: 0; }
+.adm-po-note { margin: var(--ce-space-3) 0 0; }
+.adm-po-tabs { margin-top: var(--ce-space-2); }
+.adm-po-tab-dot { width: 6px; height: 6px; border-radius: var(--ce-radius-full); background: var(--ce-color-brand); flex: 0 0 auto; }
+.adm-po-tabpanel { padding-top: var(--ce-space-4); min-width: 0; }
+
+/* Drei Kennzahlen: schmal je Zeile (Wert rechts), ab 36rem Kartenbreite nebeneinander. */
+.adm-po-metrics { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
+.adm-po-metric {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "label value" "note value";
+  align-items: center; gap: 2px var(--ce-space-3); min-width: 0;
+  padding: var(--ce-space-3) 0; border-bottom: 1px solid var(--ce-color-border-subtle);
+}
+.adm-po-metric:first-child { padding-top: 0; }
+.adm-po-metric-label { grid-area: label; font-size: var(--ce-text-label-size); font-weight: var(--ce-weight-medium); line-height: var(--ce-text-label-line); color: var(--ce-color-text-secondary); }
+.adm-po-metric-value {
+  grid-area: value; margin: 0; text-align: right;
+  font-family: var(--ce-font-numeric); font-size: var(--ce-text-display-s-size); font-weight: 600; line-height: 1.2; letter-spacing: -0.01em;
+  color: var(--ce-color-text-primary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap;
+}
+.adm-po-metric-value--text {
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-medium); line-height: var(--ce-text-body-s-line);
+  letter-spacing: 0; color: var(--ce-color-text-secondary); white-space: normal; max-width: 12rem;
+}
+.adm-po-metric--plus .adm-po-metric-value { color: var(--ce-color-status-success-fg); }
+.adm-po-metric-note { grid-area: note; margin: 0; font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); overflow-wrap: break-word; }
+.adm-po-metric-note > span { display: block; }
+@container adm-po (min-width: 36rem) {
+  .adm-po-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .adm-po-metric {
+    grid-template-columns: minmax(0, 1fr); grid-template-areas: "label" "value" "note"; align-content: start; align-items: start;
+    padding: 0 var(--ce-space-5); border-bottom: 0; border-left: 1px solid var(--ce-color-border-subtle);
+  }
+  .adm-po-metric:first-child { padding-left: 0; border-left: 0; }
+  .adm-po-metric-value { text-align: left; font-size: var(--ce-text-numeric-display-size); line-height: var(--ce-text-numeric-display-line); }
+  .adm-po-metric-value--text { font-size: var(--ce-text-body-size); line-height: var(--ce-text-body-line); max-width: none; padding-block: 4px; }
+  .adm-po-metric-note { margin-top: 2px; }
+}
+
+/* Entscheidungsrelevante Hinweise bleiben vorne sichtbar. */
+.adm-po-warnings { list-style: none; margin: var(--ce-space-4) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--ce-space-2); }
+.adm-po-warning {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ce-space-1) var(--ce-space-2);
+  padding: var(--ce-space-2) var(--ce-space-3); border: 1px solid var(--ce-color-status-warning-border); border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-status-warning-surface);
+}
+.adm-po-warning[data-status="below_target"] { background: var(--ce-color-status-error-surface); }
+.adm-po-warning-text { flex: 1 1 16rem; min-width: 0; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-primary); }
+
+/* Zwei Aktionen und das Eingabefeld. */
+.adm-po-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2) var(--ce-space-3); margin-top: var(--ce-space-4); }
+.adm-po-adopted { display: inline-flex; align-items: center; min-height: var(--ce-size-control-sm); font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-brand-ink); }
+.adm-po-edit { display: flex; flex-direction: column; gap: 6px; margin-top: var(--ce-space-3); min-width: 0; }
+.adm-po-edit-label { font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-secondary); }
+.adm-po-edit-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2) var(--ce-space-3); }
+.adm-po-input-wrap { width: 100%; max-width: 10rem; }
+.adm-po-pending { font-size: var(--ce-text-caption-size); font-style: normal; font-weight: 600; color: var(--ce-color-brand-ink); }
+.adm-po-edit-hint { margin: 0; font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
+.adm-po-error { margin: 0; }
+.adm-po-tabpanel > .adm-sp-fold { margin-top: var(--ce-space-4); }
+
+/* Details: Preise des Beispielpakets, Vergleich, Begründung, Datenbasis. */
+.adm-po-details { display: flex; flex-direction: column; gap: var(--ce-space-3); min-width: 0; }
+.adm-po-detail-lead { margin: 0; font-size: var(--ce-text-body-s-size); font-weight: 600; line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-primary); }
+.adm-po-detail-list { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px var(--ce-space-4); font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); }
+.adm-po-detail-list > div { display: contents; }
+.adm-po-detail-list dt { font-weight: var(--ce-weight-medium); color: var(--ce-color-text-muted); }
+.adm-po-detail-list dd { margin: 0 0 var(--ce-space-2); color: var(--ce-color-text-primary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; overflow-wrap: break-word; }
+.adm-po-detail-text { margin: 0; max-width: 72ch; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); }
+.adm-po-detail-text strong { color: var(--ce-color-text-primary); }
+.adm-po-detail-note { font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
+@container adm-po (min-width: 30rem) {
+  .adm-po-detail-list { grid-template-columns: max-content minmax(0, 1fr); row-gap: 6px; }
+  .adm-po-detail-list dd { margin-bottom: 0; }
+}
+.adm-po-sameday { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2) var(--ce-space-4); margin: 0; padding: 0; border: 0; }
 .adm-po-sameday legend { float: left; margin-right: var(--ce-space-2); padding: 0; }
 .adm-po-radio { display: inline-flex; align-items: center; gap: 8px; min-height: 2rem; font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-primary); cursor: pointer; }
-.adm-po-radio input { width: 1.125rem; height: 1.125rem; margin: 0; }
-.adm-po-radio input { accent-color: var(--ce-color-brand); }
+.adm-po-radio input { width: 1.125rem; height: 1.125rem; margin: 0; accent-color: var(--ce-color-brand); }
 
-/* Gewichtsklassen: Die Anordnung folgt der Breite der Tarifkarte (Container), nicht dem Fenster.
-   Bei 768 px reichte die Karte nicht für fünf Spalten; Zustand und Gewinntabelle wurden rechts
-   abgeschnitten (Sichtprüfung 2026-11-17).
-   Schmal: Gewicht und Eingabe oben, darunter jede Angabe mit Beschriftung.
-   Ab 40rem: Aktuell, Empfehlung und Zustand nebeneinander unter Gewicht und Eingabe.
-   Ab 52rem: eine Zeile je Klasse mit Spaltenköpfen. */
-.adm-po-panel {
-  container: adm-po / inline-size;
-  --adm-po-cols: minmax(6.5rem, .75fr) minmax(7.5rem, .75fr) minmax(8.5rem, .95fr) minmax(10.5rem, 1fr) minmax(13.5rem, 1.3fr);
-}
-.adm-po-rows { display: flex; flex-direction: column; border-top: 1px solid var(--ce-color-border-subtle); }
-.adm-po-head { display: none; }
-.adm-po-row {
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 9rem); gap: var(--ce-space-2) var(--ce-space-4); align-items: center;
-  padding: var(--ce-space-3) var(--ce-space-2); border-bottom: 1px solid var(--ce-color-border-subtle);
-}
-.adm-po-row > * { min-width: 0; }
-.adm-po-row--dirty { padding-left: var(--ce-space-3); }
-.adm-po-row > .adm-po-cell { grid-column: 1 / -1; }
-.adm-po-row--all { background: var(--ce-color-surface-subtle); }
-.adm-po-row--dirty { box-shadow: inset 3px 0 0 var(--ce-color-brand); }
-.adm-po-weight label { font-size: var(--ce-text-body-size); font-weight: 600; color: var(--ce-color-text-primary); }
-.adm-po-input-wrap { max-width: none; }
-.adm-po-cell { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--ce-space-2); font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); }
-.adm-po-reco { align-items: center; }
-.adm-po-pending { flex-basis: 100%; font-size: var(--ce-text-caption-size); }
-.adm-po-why { grid-column: 1 / -1; margin: 0; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); max-width: 72ch; }
-.adm-po-error { grid-column: 1 / -1; margin: 0; }
-.adm-po-cell-label { flex: 0 0 100%; font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); color: var(--ce-color-text-muted); }
-@container adm-po (min-width: 40rem) {
-  .adm-po-row { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; padding: var(--ce-space-3) var(--ce-space-2); }
-  .adm-po-weight, .adm-po-field { align-self: center; }
-  .adm-po-row > .adm-po-cell { grid-column: auto; }
-  .adm-po-field + .adm-po-cell { grid-column: 1; }
-  .adm-po-input-wrap { max-width: 9rem; }
-}
-@container adm-po (min-width: 52rem) {
-  .adm-po-head {
-    display: grid; grid-template-columns: var(--adm-po-cols);
-    gap: var(--ce-space-4); padding: var(--ce-space-2); font-size: var(--ce-text-caption-size); font-weight: 600; color: var(--ce-color-text-muted);
-  }
-  .adm-po-row { grid-template-columns: var(--adm-po-cols); align-items: center; }
-  .adm-po-field + .adm-po-cell { grid-column: auto; }
-  .adm-po-cell-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .adm-po-row--dirty { padding-left: var(--ce-space-2); }
-  .adm-po-profit td:first-child { white-space: nowrap; }
-}
-
-/* Gewinnvorschau und Expertendetails: Tabellen der Tarifkarte. Gestapelt gilt die feste Zellhöhe aus
-   dashboard.css (56 px) nicht — sonst steht jede Angabe 56 px unter der vorigen. */
+/* Tabelle aller Beispielpakete (in den Details). Gestapelt gilt die feste Zellhöhe aus dashboard.css
+   (56 px) nicht — sonst steht jede Angabe 56 px unter der vorigen. */
 .adm-po-tablewrap { max-width: 100%; overflow-x: auto; }
 .adm-po-panel .adm-tarif-table th { white-space: normal; }
 @container adm-po (max-width: 51.99rem) {
@@ -2109,14 +2108,33 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
   .adm-po-panel .adm-tarif-table td:first-child { justify-content: flex-start; text-align: left; font-weight: 600; color: var(--ce-color-text-primary); }
   .adm-po-panel .adm-tarif-table td:first-child::before { content: none; }
 }
-.adm-po-art { display: block; font-size: var(--ce-text-caption-size); font-weight: var(--ce-weight-medium); color: var(--ce-color-text-muted); white-space: nowrap; }
-.adm-po-delta { margin-left: 2px; font-weight: 600; color: var(--ce-color-text-primary); white-space: nowrap; }
-.adm-po-delta--plus { color: var(--ce-color-status-success-fg); }
-.adm-po-expert { display: flex; flex-direction: column; gap: var(--ce-space-3); }
-.adm-po-expert-class { display: flex; flex-direction: column; gap: var(--ce-space-1); }
-.adm-po-expert-title { margin: 0; font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-primary); }
 
+/* „Alle Gewichte“: eigene Zeile unter den Reitern — gilt für jede Klasse ohne eigenen Satz. */
+.adm-po-all {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ce-space-2) var(--ce-space-3);
+  margin-top: var(--ce-space-5); padding: var(--ce-space-3); border-radius: var(--ce-radius-sm); background: var(--ce-color-surface-subtle);
+}
+.adm-po-all-line { flex: 1 1 18rem; min-width: 0; margin: 0; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); }
+.adm-po-all-label { font-weight: 600; color: var(--ce-color-text-primary); }
+.adm-po-all > .adm-po-edit { flex: 1 1 100%; margin-top: 0; }
+
+/* Speichern: in der offenen Tarifkarte, sonst unter der Liste. */
+.adm-po-save { display: flex; flex-direction: column; gap: var(--ce-space-3); margin-bottom: var(--ce-space-5); }
+.adm-po-panel .adm-po-save { margin: var(--ce-space-4) 0 0; border-top: 1px solid var(--ce-color-border-subtle); }
+.adm-po-save .alert:focus { outline: none; }
+.adm-po-save .alert:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 .adm-po-save-actions { display: inline-flex; flex-wrap: wrap; gap: var(--ce-space-2); }
+
+/* Schmale Karte: Reiter als 2 × 2 statt verdeckter Querscrollleiste, Aktionen in voller Breite.
+   Doppelte Klasse: patterns.css (.ce-tabs, flex mit Querscrollen) wird nach admin.css geladen. */
+@container adm-po (max-width: 29.99rem) {
+  .ce-tabs.adm-po-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--ce-space-3); border-bottom: 0; overflow: visible; }
+  .adm-po-tabs .ce-tab { justify-content: flex-start; margin-bottom: 0; padding-bottom: 1px; border-bottom: 1px solid var(--ce-color-border-subtle); white-space: normal; }
+  .adm-po-tabs .ce-tab[aria-selected="true"] { padding-bottom: 0; border-bottom: 2px solid var(--ce-color-brand); }
+  .adm-po-actions .btn { flex: 1 1 auto; justify-content: center; }
+  .adm-po-input-wrap { max-width: none; flex: 1 1 8rem; }
+  .adm-po-all-change { flex: 1 1 auto; justify-content: center; }
+}
 
 /* Bestätigungsdialog: jede Änderung als eigener Eintrag (bisher → neu, Wirkung, Hinweise). */
 .adm-po-dialog { display: flex; flex-direction: column; gap: var(--ce-space-2); }

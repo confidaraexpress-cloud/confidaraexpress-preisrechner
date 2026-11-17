@@ -6,6 +6,11 @@
 // „alle Gewichte“ und je ein Satz für vier Gewichtsklassen (Betreiberentscheidung
 // M.1). Ein Satz ERSETZT den Konto- bzw. Expressaufschlag, er addiert nie.
 //
+// Vereinfachung 2026-11-17: je Tarif und Gewichtsklasse drei Kennzahlen (Ihr
+// Aufschlag, Empfohlen, Mehr pro Sendung) aus classMetrics; eine Empfehlung gilt nur
+// mit vergleichbarem Angebot (reliableRecommendation) — ohne Vergleich ist der
+// Serverwert die Untergrenze, keine Empfehlung.
+//
 // PROZENTVERTRAG wie utils/customerMarkup.mjs: 35 = 35 %, 17,5 = 17,5 %, 0 = 0 %
 // (ein echter Wert), leer = „kein eigener Satz“ (das Backend erhält null).
 //
@@ -21,77 +26,79 @@ import { parseMarkupInput, markupInputValue, MARKUP_INPUT_ERRORS } from "./custo
 export const TARIFF_PROVIDERS = Object.freeze(["transglobal", "jumingo"]);
 export const PROVIDER_LABELS = Object.freeze({ transglobal: "Transglobal", jumingo: "JUMiNGO" });
 export const WEIGHT_CLASS_ALL = 0;
-export const TARIFF_STEPS = Object.freeze([
-  "Kunde auswählen",
-  "Tarif auswählen",
-  "Empfohlene Gewichtsklassen ansehen",
-  "Aufschlag eingeben oder Empfehlung übernehmen",
-  "Gewinn und Kundenpreis prüfen",
-  "Bestätigen und speichern",
-]);
 
+// Wortlaute der Karte. Vereinfachung 2026-11-17: vorne nur drei Kennzahlen und zwei Aktionen je Gewichtsklasse,
+// alles Weitere steht unter „Details anzeigen“.
 export const TARIFF_TEXTS = Object.freeze({
   sectionTitle: "Versandpreise optimieren",
   individual: "individuell",
   loading: "Versandpreise werden geladen …",
   loadError: "Die Versandpreise dieses Kunden konnten nicht geladen werden.",
   reload: "Erneut laden",
-  floorFact: "Untergrenze",
-  goalFact: "Ziel: Transglobal mindestens 1\u00a0% günstiger als ein vergleichbares Angebot",
-  intro: "Ein eigener Satz ersetzt für diesen Tarif den Aufschlag des Kontos. Leer heißt: kein eigener Satz. Gespeichert wird nur, was Sie bestätigen.",
-  stepsLabel: "Ablauf",
-  customer: "Kunde",
-  comparisonTitle: "Preisvergleich",
-  comparisonHint: "Fragt für zehn Beispielpakete die aktuellen Einkaufspreise bei Transglobal und JUMiNGO ab – nur auf Klick, nie automatisch.",
   destination: "Zielland",
   refresh: "Preise vergleichen",
   refreshing: "Preise werden verglichen …",
   stand: "Stand",
-  noBase: "Noch kein Preisvergleich. Empfehlungen und Gewinnvorschau erscheinen nach „Preise vergleichen“.",
+  noBase: "Empfehlungen erscheinen nach „Preise vergleichen“.",
   refreshRequired: "Preisvergleich erneut ausführen",
   refreshRequiredDetail: "Der letzte Preisvergleich ist älter als 24 Stunden oder gehört zu einem anderen Zielland.",
   previewing: "Vorschau wird berechnet …",
-  tariffsTitle: "Tarif auswählen",
-  tariffsHint: "Sortiert nach dem möglichen Mehrgewinn je Sendung.",
-  plusPerShipment: "je Sendung möglich",
-  today: "Heute",
-  recommended: "Empfohlen",
+  previewFailed: "Keine Vorschau",
   notCompared: "Noch nicht verglichen",
   notComparedText: "„Preise vergleichen“ holt die Einkaufspreise für Empfehlung und Zustand.",
-  classesTitle: "Empfohlene Gewichtsklassen",
+  current: "Ihr Aufschlag",
+  recommended: "Empfohlen",
+  upTo: "bis",
+  perShipment: "pro Sendung",
+  unsaved: "ungespeicherte Änderungen",
+  unsavedOne: "ungespeicherte Änderung",
+  weightTabs: "Gewichtsklasse",
+  metricMore: "Mehr pro Sendung",
+  metricLess: "Weniger pro Sendung",
+  noRecommendation: "Keine Empfehlung verfügbar",
+  fits: "Passt bereits",
+  needsComparison: "Erst Preise vergleichen",
+  withSameDay: "mit Abholzuschlag",
+  gapUnavailable: "Tarif hier nicht verfügbar",
+  gapFetch: "Preise nicht abrufbar",
+  gapNoComparable: "Kein vergleichbares Angebot",
+  noExample: "Kein Beispielpaket",
+  noChange: "Keine Änderung vorgeschlagen",
+  withDraft: "mit Ihrer Eingabe",
+  withRecommendation: "mit Empfehlung",
+  contributionExample: "Deckungsbeitrag, Beispiel",
+  adopt: "Empfehlung übernehmen",
+  adopted: "Empfehlung eingetragen",
+  custom: "Selbst festlegen",
+  newValue: "Neuer Aufschlag",
+  minimum: "Mindestens",
+  emptyMeans: "Leer = kein eigener Satz.",
+  draftPending: "noch nicht gespeichert",
+  draftWarning: "Mit Ihrer Eingabe:",
   allWeights: "Alle Gewichte",
   allWeightsHint: "Gilt für jedes Gewicht ohne eigenen Satz.",
-  colTariff: "Tarif",
-  colWeight: "Gewicht",
-  colInput: "Aufschlag",
-  colCurrent: "Aktuell",
-  colRecommendation: "Empfehlung",
-  colStatus: "Zustand",
-  adopt: "Empfehlung übernehmen",
-  noChangeNeeded: "passt",
+  change: "Ändern",
+  ownRate: "eigener Satz",
   noInput: "kein eigener Satz",
-  draftPending: "noch nicht gespeichert",
+  details: "Details anzeigen",
+  detailExample: "Beispielpaket",
+  chargeable: "abrechenbar",
+  detailPurchase: "Einkaufspreis",
+  detailCustomer: "Kundenpreis",
+  detailComparison: "Vergleichsangebot",
+  detailContribution: "Deckungsbeitrag",
+  detailReason: "Begründung",
+  detailBasis: "Datenbasis",
   sameDayLegend: "Vergleich für UPS Standard",
   sameDayWithout: "Ohne Abholzuschlag",
   sameDayWith: "Mit Abholzuschlag",
-  profitTitle: "Gewinn und Kundenpreis prüfen",
-  profitIntro: "Je Gewichtsklasse ein Beispielpaket aus dem Preisvergleich, netto je Sendung. Keine Monatsprognose.",
-  colExample: "Beispielpaket",
-  colRate: "Aufschlag",
-  colProfit: "Gewinn je Sendung",
-  colCustomer: "Kunde zahlt",
-  colCompare: "Vergleichsangebot",
-  profitDraft: "mit Ihrer Eingabe",
-  profitRecommendation: "mit Empfehlung",
-  profitNone: "keine Änderung nötig",
-  profitUnavailable: "kein Beispielpaket",
-  expertTitle: "Expertendetails",
-  expertIntro: "So entsteht die Empfehlung: Die sichere Obergrenze ist der höchste Aufschlag, bei dem der Kunde auch nach 3\u00a0% Einkaufsschwankung mindestens 1\u00a0% weniger zahlt als beim günstigsten vergleichbaren Angebot. Empfohlen wird die Mitte zwischen Untergrenze und Obergrenze, auf 5\u00a0% abgerundet.",
+  howRecommended: "Die sichere Obergrenze ist der höchste Aufschlag, bei dem der Kunde auch nach 3 % Einkaufsschwankung mindestens 1 % weniger zahlt als beim günstigsten vergleichbaren Angebot. Empfohlen wird die Mitte zwischen Untergrenze und Obergrenze, auf 5 % abgerundet.",
   upperBound: "Sichere Obergrenze",
   upperBoundNone: "kein sicherer Spielraum über der Untergrenze",
   limitedBy: "begrenzt durch",
   comparedSamples: "Verglichene Pakete",
   of: "von",
+  samplesTitle: "Alle Beispielpakete",
   colPackage: "Paket",
   colPurchase: "Einkauf",
   colOffer: "Vergleichsangebot",
@@ -100,19 +107,22 @@ export const TARIFF_TEXTS = Object.freeze({
   colOfferCustomer: "Kunde zahlt dort",
   colDistance: "Abstand",
   colBound: "Obergrenze",
-  chargeable: "abrechenbar",
   tariffId: "Tarif-ID",
   equivalent: "gleichwertig",
   similar: "ähnlich",
-  saveTitle: "Bestätigen und speichern",
-  unsaved: "ungespeicherte Änderungen",
-  unsavedOne: "ungespeicherte Änderung",
+  detailDestination: "Zielland",
+  detailSender: "Absender",
+  detailRecipient: "Empfänger",
+  detailCollection: "Abholung",
+  detailConditions: "Bedingungen",
+  detailConditionsText: "Fahrerabholung, Geschäftsadressen, ein Packstück, keine Zusatzleistungen. Transglobal: Vorabpreis der Preisauskunft. Alle Beträge netto.",
+  contributionNote: "Deckungsbeitrag = Kundenpreis minus Einkaufspreis, netto, je Beispielsendung – ohne Fixkosten und ohne Prognose. Beispielpreise für diese Versanddaten, keine Preisgarantie für andere Sendungen.",
   noChanges: "Keine Änderungen",
-  review: "Änderungen prüfen",
+  save: "Speichern",
   discard: "Verwerfen",
   dialogTitle: "Neue Aufschläge speichern?",
   dialogText: "Die Aufschläge gelten danach für neue Preisanfragen dieses Kunden.",
-  dialogConfirm: "Speichern",
+  dialogConfirm: "Ja, speichern",
   dialogBusy: "Wird gespeichert …",
   dialogNote: "Bereits angezeigte Angebote melden beim Buchen eine Preisänderung. Jede Änderung wird mit Ihrem Namen protokolliert.",
   dialogBasis: "Grundlage: Preisvergleich vom",
@@ -134,20 +144,16 @@ export const TARIFF_TEXTS = Object.freeze({
   revertUnknown: "Tarif nicht mehr vorhanden.",
   revertDone: "Der alte Wert ist eingetragen. Bitte prüfen und speichern.",
   customTitle: "Eigenes Paket vergleichen",
-  customHint: "Zielland und Versandbedingungen wie oben, mit den gespeicherten Aufschlägen. Fragt beide Einkaufsquellen für genau dieses Paket an.",
+  customHint: "Zielland und Versandbedingungen wie beim Preisvergleich, mit den gespeicherten Aufschlägen. Fragt beide Einkaufsquellen für genau dieses Paket an.",
   customWeight: "Gewicht",
   customLength: "Länge",
   customWidth: "Breite",
   customHeight: "Höhe",
   compare: "Vergleichen",
   comparing: "Vergleich läuft …",
-  detailsTitle: "Vergleichsbedingungen",
-  detailSender: "Absender",
-  detailRecipient: "Empfänger",
-  detailCollection: "Abholung",
-  detailConditions: "Bedingungen",
-  detailConditionsText: "Fahrerabholung, Geschäftsadressen, ein Packstück, keine Zusatzleistungen. Transglobal: Vorabpreis der Preisauskunft. Alle Beträge netto.",
-  disclaimer: "Beispielpreise für diese Versanddaten – keine Preisgarantie für andere Sendungen.",
+  colTariff: "Tarif",
+  colCustomer: "Kunde zahlt",
+  colCompare: "Vergleichsangebot",
   fetchFailed: "Preise konnten nicht abgerufen werden",
 });
 
@@ -291,6 +297,19 @@ export function draftValue(drafts, tariff, weightClass) {
 export const floorText = (minimum) => (minimum === null || minimum === undefined
   ? TARIFF_SAVE_ERRORS.MARKUP_BELOW_MINIMUM
   : `Neue Aufschläge müssen mindestens ${formatPercent(minimum)} betragen. Ein bestehender niedrigerer Wert bleibt, solange Sie ihn nicht ändern.`);
+// Kurzhinweis am Eingabefeld.
+export const fieldHint = (minimum) => (numOrNull(minimum) === null
+  ? TARIFF_TEXTS.emptyMeans
+  : `${TARIFF_TEXTS.minimum} ${formatPercent(minimum)}. ${TARIFF_TEXTS.emptyMeans}`);
+
+// Reiter der Gewichtsklassen: „über 5 bis 10 kg“ → „Über 5–10 kg“. Die Grenzen kommen nur aus der
+// Klassenbezeichnung des Servers; diese Funktion kürzt den Wortlaut, sie kennt keine Gewichte.
+export function weightTabLabel(label) {
+  const s = text(label).trim()
+    .replace(/(\d+(?:[.,]\d+)?)\s+bis\s+(\d+(?:[.,]\d+)?)/, "$1–$2")
+    .replace(/\s+kg$/, `${NB}kg`);
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
+}
 
 // Änderungen gegenüber dem gespeicherten Stand.
 //   entries  alle gültig geparsten Abweichungen (auch unter der Untergrenze — die Vorschau zeigt ihre Wirkung)
@@ -483,8 +502,80 @@ export function profitRow(baseClass, previewClass) {
   };
 }
 
-// Kurzfassung eines Tarifs für die Tarifliste: wichtigster Zustand, möglicher Mehrgewinn je Sendung (bei Empfehlung),
-// Spanne der heutigen und empfohlenen Sätze.
+// Belastbar ist eine Empfehlung nur mit vergleichbarem Angebot. Ohne Vergleich liefert der Server die Untergrenze —
+// die Karte zeigt dann „Keine Empfehlung verfügbar“ und bietet nichts zum Übernehmen an.
+export function reliableRecommendation(cls) {
+  return !!cls && cls.status !== "no_comparison" && cls.comparisonStatus !== "no_comparison" && numOrNull(cls.recommendedPercent) !== null;
+}
+// Kurzgrund unter „Keine Empfehlung verfügbar“.
+export function noRecommendationText(cls) {
+  const proben = cls && Array.isArray(cls.samples) ? cls.samples : [];
+  if (proben.length === 0) return TARIFF_TEXTS.noExample;
+  if (proben.every((p) => p && p.reason === "own_unavailable")) return TARIFF_TEXTS.gapUnavailable;
+  if (proben.every((p) => p && p.reason === "fetch_failed")) return TARIFF_TEXTS.gapFetch;
+  return TARIFF_TEXTS.gapNoComparable;
+}
+
+// Die drei Kennzahlen einer Gewichtsklasse — alle Werte vom Server, hier wird nur ausgewählt:
+//   current      gespeicherter wirksamer Satz und seine Herkunft (Klasse, alle Gewichte, Konto)
+//   recommended  Empfehlung nur, wenn belastbar; sonst null mit Kurzgrund
+//   adoptPercent Wert für „Empfehlung übernehmen“ (suggestedPercent des Servers; null = nichts zu übernehmen)
+//   more         Änderung des Deckungsbeitrags am Beispielpaket: mit Ihrer Eingabe (Vorschau) oder mit Empfehlung
+// pending: es gibt Entwürfe in diesem Tarif, die Vorschau steht aber noch aus — dann keine veraltete Zahl.
+export function classMetrics({ tariff, weightClass, baseClass = null, previewClass = null, hasBase = false, pending = false, previewFailed = false, sameDay = false } = {}) {
+  const T = TARIFF_TEXTS;
+  const current = savedEffective(tariff, weightClass);
+  const belastbar = hasBase && reliableRecommendation(baseClass);
+  const passt = belastbar && (baseClass.suggestedPercent === null || baseClass.suggestedPercent === undefined);
+  // „Passt bereits“ nur ohne Risiko: Ist der Preisvorteil gefährdet und die Empfehlung schon erreicht, erklärt der Hinweis.
+  const gefaehrdet = belastbar && (baseClass.status === "at_risk" || baseClass.comparisonStatus === "at_risk");
+  const recommended = belastbar
+    ? { percent: numOrNull(baseClass.recommendedPercent), note: [passt && !gefaehrdet ? T.fits : null, sameDay ? T.withSameDay : null].filter(Boolean).join(", ") || null }
+    : { percent: null, note: !hasBase ? T.needsComparison : noRecommendationText(baseClass) };
+  const adoptPercent = belastbar && !passt ? numOrNull(baseClass.suggestedPercent) : null;
+  const row = hasBase && baseClass ? profitRow(baseClass, pending ? null : previewClass) : { available: false };
+  const ohneZahl = (note) => ({ cents: null, direction: null, art: null, label: T.metricMore, value: "—", note, example: null });
+  let more;
+  if (!hasBase) more = ohneZahl(T.needsComparison);
+  else if (pending) more = ohneZahl(previewFailed ? T.previewFailed : T.previewing);
+  else if (!row.available) more = ohneZahl(T.noExample);
+  else if (Number.isInteger(row.plusCents) && (row.art === "draft" || (row.art === "recommendation" && belastbar))) {
+    const direction = row.plusCents > 0 ? "more" : row.plusCents < 0 ? "less" : "same";
+    more = {
+      cents: row.plusCents,
+      direction,
+      art: row.art,
+      // Sinkt der Deckungsbeitrag (Empfehlung schützt den Preisvorteil), heißt die Kennzahl „Weniger pro Sendung“.
+      label: direction === "less" ? T.metricLess : T.metricMore,
+      value: direction === "less" ? formatCents(Math.abs(row.plusCents)) : formatSignedCents(row.plusCents),
+      note: row.art === "draft" ? T.withDraft : T.withRecommendation,
+      example: `${T.contributionExample} ${kgText(row.weightKg)}`,
+    };
+  } else more = ohneZahl(belastbar ? T.noChange : T.noRecommendation);
+  return { current, recommended, adoptPercent, more, row };
+}
+
+// Hinweise, die die Entscheidung beeinflussen und deshalb vorne sichtbar bleiben: Preisvorteil gefährdet und
+// gespeicherter Satz unter der Untergrenze. Mit Entwurf zählt die Vorschau (draft: true).
+export function classWarnings({ baseClass = null, previewClass = null, currentPercent = null, minimumPercent = null, provider = null, hasBase = false } = {}) {
+  const entwurf = !!previewClass && !!baseClass
+    && (!!previewClass.draft || numOrNull(previewClass.currentPercent) !== numOrNull(baseClass.currentPercent));
+  const k = entwurf ? previewClass : baseClass;
+  const out = [];
+  if (hasBase && k) {
+    // Ein Entwurf unter der Untergrenze meldet das Feld selbst.
+    if (!entwurf && k.status === "below_target") out.push({ status: "below_target", text: STATUS_VIEW.below_target.text, draft: false });
+    if (k.status === "at_risk" || k.comparisonStatus === "at_risk") {
+      out.push({ status: "at_risk", text: [STATUS_VIEW.at_risk.text, hintText(k.hint, provider)].filter(Boolean).join(" "), draft: entwurf });
+    }
+  } else if (statusWithoutComparison(currentPercent, minimumPercent) === "below_target") {
+    out.push({ status: "below_target", text: STATUS_VIEW.below_target.text, draft: false });
+  }
+  return out;
+}
+
+// Kurzfassung eines Tarifs für die Tarifliste: wichtigster Zustand, möglicher Mehrgewinn je Sendung (nur aus
+// belastbaren Empfehlungen), Spanne der heutigen und empfohlenen Sätze.
 export function tariffSummary(tariff, base, { sameDay = false, minimumPercent = null } = {}) {
   const heute = tariff.classes.map((c) => c.effectivePercent).filter((v) => v !== null);
   const spanne = (werte) => (werte.length === 0 ? null : { min: Math.min(...werte), max: Math.max(...werte) });
@@ -495,12 +586,13 @@ export function tariffSummary(tariff, base, { sameDay = false, minimumPercent = 
   const klassen = tariff.classes.map((c) => projectionClass(base, tariff.provider, tariff.productKey, c.weightClass, { sameDay })).filter(Boolean);
   const zustaende = klassen.map(statusOf);
   const status = STATUS_RANG.find((s) => zustaende.includes(s)) || "not_compared";
+  const belastbar = klassen.filter(reliableRecommendation);
   let plus = null;
-  for (const k of klassen) {
+  for (const k of belastbar) {
     const r = profitRow(k, null);
     if (r.available && r.art === "recommendation" && Number.isInteger(r.plusCents) && r.plusCents > 0) plus = Math.max(plus || 0, r.plusCents);
   }
-  const empfohlen = klassen.map((k) => numOrNull(k.recommendedPercent)).filter((v) => v !== null);
+  const empfohlen = belastbar.map((k) => numOrNull(k.recommendedPercent)).filter((v) => v !== null);
   return { status, plusCents: plus, today: spanne(heute), recommended: spanne(empfohlen) };
 }
 export function rangeText(r) {
@@ -523,15 +615,6 @@ export function changeWarnings(previewClass) {
   if (previewClass.comparisonStatus === "no_comparison") w.push("no_comparison");
   else if (Number.isInteger(previewClass.comparedSamples) && previewClass.comparedSamples < 2) w.push("weak");
   return w;
-}
-
-// Schritt im Ablauf (1 ist auf der Kundendetailseite immer erledigt).
-export function flowStep({ tariffSelected, hasBase, changeCount, dialogOpen }) {
-  if (dialogOpen) return 6;
-  if (changeCount) return 5;
-  if (!tariffSelected) return 2;
-  if (!hasBase) return 3;
-  return 4;
 }
 
 // ── Verlauf (GET /admin/audit-logs?action=user.tariff_markup_change) ────────

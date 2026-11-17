@@ -1,4 +1,4 @@
-// Sichtprüfung „Versandpreise optimieren“ (Admin-Kundendetail, Preisoptimierung 2026-11-17): Standbilder der Karte bei
+// Sichtprüfung „Versandpreise optimieren“ (Admin-Kundendetail, vereinfacht 2026-11-17): Standbilder der Karte bei
 // 1440/1280/768/390 px und 200 % Zoom gegen den Dev-Server mit DEMSELBEN gemockten Backend wie die E2E-Suite
 // (helpers/tariffMarkupsMock.mjs — synthetische Werte, keine Produktivdaten, keine echten Kundenkonten). Dazu je Breite:
 // Querüberlauf je Zustand, kleine Ziele (unter 24 px; mobil unter 44 px Höhe), Konsolenfehler und — mit --axe — axe-core
@@ -27,11 +27,11 @@ const BREITEN = [
   ["desktop-1280", { width: 1280, height: 1000 }, 1, "alle"],
   ["desktop-1440", { width: 1440, height: 1000 }, 1, ["2-verglichen", "3-tarif-ups-standard", "4-uebernommen"]],
   ["tablet-768", { width: 768, height: 1024 }, 1, ["3-tarif-ups-standard", "4-uebernommen"]],
-  ["mobil-390", { width: 390, height: 844 }, 1, ["2-verglichen", "3-tarif-ups-standard", "4-uebernommen", "6-dialog", "7-gespeichert-verlauf", "8-untergrenze"]],
-  ["zoom-200", { width: 640, height: 500 }, 2, ["3-tarif-ups-standard", "4-uebernommen", "6-dialog"]],
+  ["mobil-390", { width: 390, height: 844 }, 1, ["2-verglichen", "3-tarif-ups-standard", "4-uebernommen", "5-details", "6-dialog", "7-gespeichert-verlauf", "8-untergrenze"]],
+  ["zoom-200", { width: 640, height: 500 }, 2, ["3-tarif-ups-standard", "4-uebernommen", "5-details", "6-dialog"]],
   ["mobil-360", { width: 360, height: 780 }, 1, []],
 ];
-const KOPF_BIS_LISTE = [`${KARTE} > summary`, `${KARTE} .adm-po-facts`, `${KARTE} .adm-po-steps`, `${KARTE} .adm-po-compare`, `${KARTE} .adm-po-tariffs`];
+const KOPF_BIS_LISTE = [`${KARTE} > summary`, `${KARTE} .adm-po-compare`, `${KARTE} .adm-po-tariffs`];
 const OFFENER_TARIF = [`${KARTE} li.adm-po-tarif.is-open`];
 
 const server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { ...DEV_SERVER_SPAWN, stdio: "ignore" });
@@ -108,32 +108,43 @@ try {
     await kopf("transglobal-22").click();
     await zustand("3-tarif-ups-standard", OFFENER_TARIF);
 
+    // UPS Express Saver: „Empfehlung übernehmen“ in „Bis 5 kg“ und „Über 20 kg“ (füllt nur die Felder).
     await kopf("transglobal-23").click();
-    for (const wc of [1, 4]) await page.locator(`#adm-po-panel-transglobal-23 .adm-po-row[data-class="${wc}"] .adm-po-adopt`).click();
-    await page.locator('#adm-po-panel-transglobal-23 table.adm-po-profit tr[data-class="4"][data-art="draft"]').waitFor({ timeout: 5000 });
-    await zustand("4-uebernommen", [...OFFENER_TARIF, `${KARTE} .adm-po-save`]);
+    for (const wc of [1, 4]) {
+      await page.locator(`#adm-po-tab-transglobal-23-${wc}`).click();
+      await page.locator("#adm-po-tabpanel-transglobal-23 .adm-po-adopt").click();
+    }
+    await page.locator('#adm-po-tabpanel-transglobal-23 .adm-po-metric[data-metric="more"]', { hasText: "mit Ihrer Eingabe" }).waitFor({ timeout: 5000 });
+    await zustand("4-uebernommen", OFFENER_TARIF);
     await axe("4-uebernommen", [[KARTE]]);
 
     if (name === "desktop-1280") {
-      // Hover und Fokus: Tarifkopf (Maus), „Empfehlung übernehmen“ und „Änderungen prüfen“ (Tastatur).
+      // Hover und Fokus: Tarifkopf (Maus), Reiter, „Empfehlung übernehmen“ und „Speichern“ (Tastatur).
       await kopf("transglobal-29").hover();
       await pause(250);
       await kopf("transglobal-29").screenshot({ path: path.join(OUT, `${name}-hover-tarifkopf.png`) });
       bericht.bilder.push(`${name}-hover-tarifkopf.png`);
       await page.mouse.move(0, 0);
-      await page.locator('#adm-po-panel-transglobal-23 .adm-po-row[data-class="2"] input').focus();
+      await page.locator("#adm-po-tab-transglobal-23-4").focus();
+      await page.keyboard.press("ArrowLeft");
+      await page.keyboard.press("ArrowLeft");
+      await pause(200);
+      await page.locator('#adm-po-panel-transglobal-23 [role="tablist"]').screenshot({ path: path.join(OUT, `${name}-fokus-reiter.png`) });
+      bericht.bilder.push(`${name}-fokus-reiter.png`);
       await page.keyboard.press("Tab");
       await pause(200);
-      await page.locator('#adm-po-panel-transglobal-23 .adm-po-row[data-class="2"]').screenshot({ path: path.join(OUT, `${name}-fokus-uebernehmen.png`) });
+      await page.locator("#adm-po-tabpanel-transglobal-23 .adm-po-actions").screenshot({ path: path.join(OUT, `${name}-fokus-uebernehmen.png`) });
       bericht.bilder.push(`${name}-fokus-uebernehmen.png`);
       await page.locator("#adm-tarif-discard").focus();
       await page.keyboard.press("Tab");
       await pause(200);
-      await page.locator(`${KARTE} .adm-tarif-savebar`).screenshot({ path: path.join(OUT, `${name}-fokus-pruefen.png`) });
-      bericht.bilder.push(`${name}-fokus-pruefen.png`);
-      await page.locator("#adm-po-expert-transglobal-23 > summary").click();
-      await zustand("5-expertendetails", ["#adm-po-expert-transglobal-23"]);
+      await page.locator(`${KARTE} .adm-tarif-savebar`).screenshot({ path: path.join(OUT, `${name}-fokus-speichern.png`) });
+      bericht.bilder.push(`${name}-fokus-speichern.png`);
+      await page.locator("#adm-po-tab-transglobal-23-1").click();
     }
+    // Details der Klasse „Bis 5 kg“: Einkauf, Kundenpreis, Vergleich, Grenze, Datenbasis, Beispielpakete.
+    await page.locator("#adm-po-details-transglobal-23 > summary").click();
+    await zustand("5-details", ["#adm-po-tabpanel-transglobal-23"]);
 
     await page.locator("#adm-tarif-save").click();
     await page.getByRole("dialog").waitFor();
@@ -145,11 +156,13 @@ try {
     await page.locator("#adm-po-history li.adm-po-history-item").first().waitFor({ timeout: 5000 });
     await zustand("7-gespeichert-verlauf", [`${KARTE} .adm-po-save`, "#adm-po-history"]);
 
+    // „Alle Gewichte“ über die eigene Zeile ändern — ein neuer Wert unter der Untergrenze wird am Feld gesperrt.
     await kopf("transglobal-22").click();
+    await page.locator("#adm-po-panel-transglobal-22 .adm-po-all-change").click();
     await page.locator("#adm-tarif-input-transglobal-22-0").fill("10");
     await page.keyboard.press("Tab");
     await page.locator("#adm-tarif-input-transglobal-22-0-error").waitFor({ timeout: 5000 });
-    await zustand("8-untergrenze", [`${KARTE} #adm-po-panel-transglobal-22 .adm-po-rows`, `${KARTE} .adm-po-save`]);
+    await zustand("8-untergrenze", ["#adm-po-panel-transglobal-22 .adm-po-all", `${KARTE} .adm-po-save`]);
     await page.locator("#adm-tarif-discard").click();
 
     mock.state.refreshStatus = 429;

@@ -19,9 +19,11 @@ import {
   parseTariffInput, tariffInputValue, draftValue, draftKey, tariffDraftChanges, buildTariffEntriesBody, sourceText,
   formatCents, formatSignedCents, formatPercent, distanceText, kgText, comparisonBaseStatus, selectComparison,
   projectionClass, hasSameDay, exampleSample, statusOf, statusText, statusWithoutComparison, profitRow, tariffSummary,
-  rangeText, sortTariffs, changeWarnings, selectTariffHistory, historyRevert, historyValue, customRows,
+  rangeText, changeWarnings, selectTariffHistory, historyRevert, historyValue, customRows,
   destinationOptions, parseCustomPackageInput, tariffSaveError, comparisonError, floorText, formatDay,
   weightTabLabel, fieldHint, reliableRecommendation, noRecommendationText, classMetrics, classWarnings,
+  RELATION_VIEW, VERDICT_TEXTS, tariffAreas, areaCandidates, extraComparedWith, commonScenarioId, pairLink, verdictOf,
+  chanceLine, chanceText, advantageText, scenarioOf, bestChanceCents,
 } from "./adminTariffMarkupView.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -198,7 +200,7 @@ test("Gewinnvorschau: heute gegen Empfehlung bzw. Entwurf — Werte nur aus der 
   const heute = projectionClass(PROJEKTION, "transglobal", 22, 1);
   const r = profitRow(heute, null);
   assert.equal(r.art, "recommendation");
-  assert.deepEqual(r.heute, { percent: 20, customerNetCents: 1274, contributionCents: 212, comparisonNetCents: 1560, differencePercent: -18.33 });
+  assert.deepEqual(r.heute, { percent: 20, purchaseNetCents: 1062, customerNetCents: 1274, contributionCents: 212, comparisonNetCents: 1560, differencePercent: -18.33 });
   assert.equal(r.neu.customerNetCents, 1434);
   assert.equal(r.plusCents, 372 - 212);
   // Entwurf 30 % aus der Vorschau: anderes begrenzendes Paket in der Vorschau ändert das Beispiel nicht.
@@ -218,7 +220,7 @@ test("Gewinnvorschau: heute gegen Empfehlung bzw. Entwurf — Werte nur aus der 
   assert.equal(profitRow(klasse(1, { samples: [probe("w5", 5, null, null)] }), null).available, false);
 });
 
-test("Tarifliste: wichtigster Zustand, Plus je Sendung, sortiert nach Plus; ohne Basis rot nur unter der Untergrenze", () => {
+test("Tarifliste: wichtigster Zustand, Plus je Sendung; ohne Basis rot nur unter der Untergrenze", () => {
   const d = daten();
   const base = selectComparison(PROJEKTION, 7);
   const s = Object.fromEntries(d.tariffs.map((t) => [t.id, tariffSummary(t, base, { minimumPercent: 25 })]));
@@ -226,7 +228,6 @@ test("Tarifliste: wichtigster Zustand, Plus je Sendung, sortiert nach Plus; ohne
   assert.equal(s["transglobal:22"].plusCents, 160);
   assert.equal(s["jumingo:1"].plusCents, 638 - 212);
   assert.equal(s["transglobal:23"].plusCents, null);
-  assert.deepEqual(sortTariffs(d.tariffs, s).map((t) => t.id), ["jumingo:1", "transglobal:22", "transglobal:23"]);
   const ohne = tariffSummary(d.tariffs[0], null, { minimumPercent: 25 });
   assert.equal(ohne.status, "below_target", "Bestandswert 0 % ist unter dem Zielaufschlag");
   assert.equal(tariffSummary(d.tariffs[1], null, { minimumPercent: 25 }).status, "not_compared");
@@ -246,6 +247,7 @@ test("Belastbare Empfehlung: nur mit Vergleichsangebot; Kurzgrund ohne Empfehlun
   assert.equal(noRecommendationText(klasse(1, { samples: [] })), "Kein Beispielpaket");
   assert.equal(noRecommendationText(klasse(1, { samples: [probe("w5", 5, null, null)] })), "Tarif hier nicht verfügbar");
   assert.equal(noRecommendationText(klasse(1, { samples: [{ ...probe("w5", 5, null, null), reason: "fetch_failed" }] })), "Preise nicht abrufbar");
+  assert.equal(noRecommendationText(klasse(1, { samples: [{ ...probe("w5", 5, [1000, 1300], null), reason: "fetch_failed" }] })), "Vergleichspreise nicht abrufbar", "eigener Preis da, der andere Anbieter fiel aus");
   assert.equal(noRecommendationText(projectionClass(PROJEKTION, "transglobal", 22, 3)), "Kein vergleichbares Angebot");
   // Tarifliste: Empfohlen-Spanne nur aus belastbaren Klassen (Klasse 3 ohne Vergleich zählt nicht), ohne sie weder Plus noch Spanne.
   const d = daten();
@@ -323,14 +325,150 @@ test("Dialoghinweise, Reiter und Wortlaute der vereinfachten Karte", () => {
   assert.deepEqual(changeWarnings(klasse(1, { status: "below_target", comparisonStatus: "no_comparison", comparedSamples: 0 })), ["no_comparison"]);
   assert.deepEqual(changeWarnings(klasse(1)), []);
   // Reiter aus den Klassenbezeichnungen des Servers — die Grenzen definiert nur der Server.
-  assert.deepEqual(KLASSEN.map(([, l]) => weightTabLabel(l)), ["Bis 5 kg", "Über 5–10 kg", "Über 10–20 kg", "Über 20 kg"]);
+  assert.deepEqual(KLASSEN.map(([, l]) => weightTabLabel(l)), ["Bis 5 kg", "5–10 kg", "10–20 kg", "Über 20 kg"]);
   assert.equal(weightTabLabel(""), "");
   assert.equal(fieldHint(25), "Mindestens 25 %. Leer = kein eigener Satz.");
   assert.equal(fieldHint(null), "Leer = kein eigener Satz.");
   const T = TARIFF_TEXTS;
   assert.deepEqual([T.sectionTitle, T.current, T.recommended, T.metricMore, T.noRecommendation, T.adopt, T.custom, T.details, T.save, T.dialogConfirm],
-    ["Versandpreise optimieren", "Ihr Aufschlag", "Empfohlen", "Mehr pro Sendung", "Keine Empfehlung verfügbar", "Empfehlung übernehmen", "Selbst festlegen", "Details anzeigen", "Speichern", "Ja, speichern"]);
-  assert.match(T.contributionNote, /^Deckungsbeitrag = Kundenpreis minus Einkaufspreis, netto/);
+    ["Versandpreise optimieren", "Ihr Aufschlag", "Empfohlen", "Mehr pro Sendung", "Keine Empfehlung verfügbar", "Empfehlung übernehmen", "Selbst festlegen", "Details anzeigen", "Änderungen prüfen", "Ja, speichern"]);
+  assert.deepEqual([T.purchase, T.customerPays, T.earnings, T.moreTariffs, T.possible, T.exampleCalc],
+    ["Unser Einkauf", "Kunde zahlt", "Unser Verdienst", "Weitere JUMiNGO-Tarife", "Möglich", "Beispielrechnung"]);
+  assert.match(T.contributionNote, /^„Unser Verdienst“ ist der Deckungsbeitrag: Kundenpreis minus Einkaufspreis, netto/);
+  assert.match(T.contributionNote, /kein Nettogewinn/);
+});
+
+// ── Gemeinsame Tarifübersicht (finale Vereinfachung 2026-11-17) ─────────────
+const tg = (productKey, label, x = {}) => ({ ...tarif("transglobal", productKey, label), ...x });
+const ju = (productKey, label, x = {}) => ({ ...tarif("jumingo", productKey, label), ...x });
+const tarifeAus = (liste) => selectTariffMarkups({ ...ANTWORT, tariffs: liste }).tariffs;
+// Vergleichsangebot eines JUMiNGO-Pakets: ein Transglobal-Produkt (Tarif-ID = Produktschlüssel).
+const vergleichMitTg = (productKey, relation = "similar") => ({ relation, provider: "transglobal", label: "UPS Standard", tariffId: String(productKey),
+  purchaseNetCents: 900, ratePercent: 20, customerNetCents: 1080, pickupDate: "2026-11-18", purchaseAdvantagePercent: -10 });
+const juKlasse = (wc, cmp) => klasse(wc, { exampleScenarioId: "w2", samples: [probe("w2", 2, [990, 1188], null, { comparison: cmp, reason: cmp ? null : "no_comparable" })] });
+const nurPaar = (l) => (l ? { relation: l.relation, from: l.from } : null);
+
+test("Tarifübersicht: je Transglobal-Produkt ein Bereich; Paar nur als eindeutige Registergruppe mit gleicher Bezeichnung und gleichem Carrier", () => {
+  const tarife = tarifeAus([
+    tg(22, "UPS Standard"), tg(23, "UPS Express Saver"), tg(84, "DHL Express 9:00", { carrier: "DHL" }),
+    ju(1, "UPS Standard"),                                   // Registerpaar zu 22
+    ju(2, "UPS Express Saver", { carrier: "DHL" }),          // anderer Carrier → kein Paar
+    ju(4, "DHL Express 9:00", { carrier: "DHL" }),
+    ju(14, "DHL Express 9:00", { carrier: "DHL" }),           // zweite gleichnamige Registergruppe → mehrdeutig, kein Paar
+    ju(8, "UPS Standard", { kind: "price_group" }),          // Preisgruppe: nie gepaart, auch bei gleicher Bezeichnung
+  ]);
+  const { areas, extra } = tariffAreas(tarife);
+  assert.deepEqual(areas.map((a) => [a.id, a.label, a.pair ? a.pair.id : null]), [
+    ["transglobal:22", "UPS Standard", "jumingo:1"],
+    ["transglobal:23", "UPS Express Saver", null],
+    ["transglobal:84", "DHL Express 9:00", null],
+  ]);
+  assert.deepEqual(extra.map((j) => j.id), ["jumingo:2", "jumingo:4", "jumingo:14", "jumingo:8"], "nichts geht verloren, Reihenfolge des Servers");
+  assert.equal(areas.length + areas.filter((a) => a.pair).length + extra.length, tarife.length, "jeder Tarif genau einmal");
+  // Mehrdeutig auf der Transglobal-Seite: zwei Produkte gleicher Bezeichnung → keines gepaart.
+  const zweiTg = tariffAreas(tarifeAus([tg(85, "DHL X", { carrier: "DHL" }), tg(86, "DHL X", { carrier: "DHL" }), ju(5, "DHL X", { carrier: "DHL" })]));
+  assert.deepEqual(zweiTg.areas.map((a) => a.pair), [null, null]);
+  assert.deepEqual(zweiTg.extra.map((j) => j.id), ["jumingo:5"]);
+  // Ohne Carrier keine Zuordnung.
+  assert.equal(tariffAreas(tarifeAus([tg(22, "UPS Standard", { carrier: "" }), ju(1, "UPS Standard", { carrier: "" })])).areas[0].pair, null);
+  assert.deepEqual(tariffAreas(null), { areas: [], extra: [] });
+});
+
+test("Kandidaten: Registerpaar plus weitere Gruppen nur, wenn der Server sie mit genau diesem Produkt vergleicht", () => {
+  const tarife = tarifeAus([tg(22, "UPS Standard"), tg(23, "UPS Express Saver"), ju(1, "UPS Standard"), ju(8, "UPS Sondertarif", { kind: "price_group" })]);
+  const base = selectComparison({ ...PROJEKTION, tariffs: [...PROJEKTION.tariffs,
+    { provider: "jumingo", productKey: 8, label: "UPS Sondertarif", classes: [juKlasse(1, vergleichMitTg(22)), juKlasse(2, null), juKlasse(3, vergleichMitTg(23)), juKlasse(4, null)] }] }, 7);
+  const { areas, extra } = tariffAreas(tarife);
+  const ids = (liste) => liste.map((c) => [c.tariff.id, c.relation]);
+  assert.deepEqual(ids(areaCandidates(areas[0], extra, base)), [["jumingo:1", "equivalent"], ["jumingo:8", "similar"]]);
+  assert.deepEqual(ids(areaCandidates(areas[1], extra, base)), [["jumingo:8", "similar"]], "auch ohne Registerpaar wählbar");
+  assert.deepEqual(ids(areaCandidates(areas[0], extra, null)), [["jumingo:1", "equivalent"]], "ohne Vergleich nur das Registerpaar");
+  const tgListe = tarife.filter((t) => t.provider === "transglobal");
+  assert.deepEqual(extraComparedWith(base, extra[0], tgListe).map((x) => [x.tariff.id, x.relation]), [["transglobal:22", "similar"], ["transglobal:23", "similar"]]);
+  assert.deepEqual(extraComparedWith(null, extra[0], tgListe), []);
+});
+
+test("Gemeinsames Beispielpaket: beide Seiten mit eigenem Preis, sonst das Beispielpaket einer Seite", () => {
+  const tgK = klasse(1); // w2 und w5 mit Preis, Beispielpaket w5
+  const juOhneW5 = klasse(1, { exampleScenarioId: "w2", samples: [probe("w2", 2, [990, 1188], null), probe("w5", 5, null, null)] });
+  assert.equal(commonScenarioId(tgK, klasse(1)), "w5", "zuerst das Beispielpaket des Servers für Transglobal");
+  assert.equal(commonScenarioId(tgK, juOhneW5), "w2", "sonst das erste Paket mit Preis auf beiden Seiten");
+  assert.equal(commonScenarioId(tgK, null), "w5");
+  assert.equal(commonScenarioId(null, juOhneW5), "w2");
+  assert.equal(commonScenarioId(tgK, klasse(1, { exampleScenarioId: "w9", samples: [probe("w9", 9, [990, 1188], null)] })), "w5", "kein gemeinsames Paket");
+  assert.equal(commonScenarioId(null, null), null);
+  const base = selectComparison(PROJEKTION, 7);
+  assert.deepEqual(scenarioOf(base, "w5"), { id: "w5", weightClass: 1 });
+  assert.equal(scenarioOf(base, "w9"), null);
+  assert.equal(scenarioOf(null, "w5"), null);
+});
+
+test("Verbindung und Kernaussage nur aus Vergleichsurteilen des Servers", () => {
+  const tgK = klasse(1); // Vergleichsangebot: JUMiNGO „UPS Standard“, gleichwertig
+  const juK = klasse(1, { samples: [probe("w5", 5, [1100, 1320], null, { comparison: vergleichMitTg(22, "equivalent"), reason: null })] });
+  assert.deepEqual(nurPaar(pairLink({ tgClass: tgK, juClass: juK, tgProductKey: 22, isPair: true, scenarioId: "w5" })), { relation: "equivalent", from: "transglobal" });
+  assert.deepEqual(nurPaar(pairLink({ tgClass: tgK, juClass: juK, tgProductKey: 22, isPair: false, scenarioId: "w5" })), { relation: "equivalent", from: "jumingo" },
+    "ohne Registerpaar zählt nur der Vergleich der JUMiNGO-Seite mit genau diesem Produkt");
+  assert.equal(pairLink({ tgClass: tgK, juClass: juK, tgProductKey: 23, isPair: false, scenarioId: "w5" }), null, "verglichen mit einem anderen Produkt");
+  const juAehnlich = klasse(1, { samples: [probe("w5", 5, [1100, 1320], null, { comparison: vergleichMitTg(22), reason: null })] });
+  assert.equal(pairLink({ juClass: juAehnlich, tgProductKey: 22, scenarioId: "w5" }).relation, "similar");
+  assert.equal(pairLink({ tgClass: tgK, juClass: juK, tgProductKey: 22, isPair: true, scenarioId: "w9" }), null, "anderes Paket");
+  const ohnePreis = klasse(1, { samples: [probe("w5", 5, null, null)] });
+  assert.equal(pairLink({ tgClass: ohnePreis, juClass: ohnePreis, tgProductKey: 22, isPair: true, scenarioId: "w5" }), null);
+
+  const link = { relation: "equivalent", from: "transglobal" };
+  assert.equal(verdictOf({ hasBase: false, link, tgPurchaseCents: 1, juPurchaseCents: 2 }), "not_compared");
+  assert.equal(verdictOf({ hasBase: true, link: null, tgPurchaseCents: 1062, juPurchaseCents: 1300 }), "none", "ohne Verbindung keine Aussage");
+  assert.equal(verdictOf({ hasBase: true, link, tgPurchaseCents: 1062, juPurchaseCents: null }), "none");
+  assert.equal(verdictOf({ hasBase: true, link, tgPurchaseCents: 1062, juPurchaseCents: 1300 }), "transglobal");
+  assert.equal(verdictOf({ hasBase: true, link, tgPurchaseCents: 1400, juPurchaseCents: 1300 }), "jumingo");
+  assert.equal(verdictOf({ hasBase: true, link, tgPurchaseCents: 1300, juPurchaseCents: 1300 }), "same");
+  assert.deepEqual([VERDICT_TEXTS.transglobal, VERDICT_TEXTS.jumingo, VERDICT_TEXTS.none],
+    ["Transglobal kauft günstiger ein.", "JUMiNGO kauft günstiger ein.", "Diese Angebote sind nicht direkt vergleichbar."]);
+  assert.deepEqual(Object.values(RELATION_VIEW).map((v) => v.label), ["Gleichwertig", "Ähnlicher Tarif", "Kein direkter Vergleich möglich"]);
+  assert.equal(advantageText("transglobal", { provider: "jumingo", purchaseAdvantagePercent: 18.31 }), "Transglobal kauft 18,3 % günstiger ein als JUMiNGO");
+  assert.equal(advantageText("jumingo", { provider: "transglobal", purchaseAdvantagePercent: -12.5 }), "JUMiNGO kauft 12,5 % teurer ein als Transglobal");
+  assert.equal(advantageText("transglobal", { provider: "jumingo", purchaseAdvantagePercent: 0 }), "Transglobal kauft gleich teuer ein wie JUMiNGO");
+  assert.equal(advantageText("transglobal", { provider: "jumingo", purchaseAdvantagePercent: null }), null);
+  assert.equal(advantageText("transglobal", null), null);
+});
+
+test("Vier Zahlen je Anbieter am gezeigten Paket; „Möglich“ nur aus belastbarer Empfehlung, mit Entwurf die Wirkung laut Vorschau", () => {
+  const t22 = daten().tariffs.find((t) => t.id === "transglobal:22");
+  const base = selectComparison(PROJEKTION, 7);
+  const bk = projectionClass(base, "transglobal", 22, 1);
+  assert.deepEqual(classMetrics({ tariff: t22, weightClass: 1, hasBase: false }).numbers, { available: false, reason: "not_compared" });
+  const m = classMetrics({ tariff: t22, weightClass: 1, baseClass: bk, hasBase: true, scenarioId: "w2" });
+  assert.deepEqual(m.numbers, { available: true, reason: null, weightKg: 2, purchaseCents: 938, customerCents: 1126, contributionCents: 188, draft: null });
+  assert.deepEqual(chanceLine("transglobal", m), { provider: "transglobal", art: "recommendation", cents: 140, fromPercent: 20, toPercent: 35, weightKg: 2 });
+  assert.deepEqual(chanceText(chanceLine("transglobal", m)), {
+    lead: "Möglich: +1,40 € pro Sendung", detail: "wenn der Transglobal-Aufschlag von 20 % auf 35 % steigt (Beispielpaket 2 kg).",
+  });
+  // Ohne scenarioId das Beispielpaket des Servers (w5).
+  assert.equal(classMetrics({ tariff: t22, weightClass: 1, baseClass: bk, hasBase: true }).numbers.purchaseCents, 1062);
+  // Entwurf: Kundenpreis und Verdienst laut Vorschau, auch wenn weniger.
+  const vorschau = (prozent, kunde) => klasse(1, { currentPercent: prozent, draft: { percent: prozent }, samples: [probe("w2", 2, [938, kunde], [1158, 1390])] });
+  const hoeher = classMetrics({ tariff: t22, weightClass: 1, baseClass: bk, previewClass: vorschau(45, 1360), hasBase: true, scenarioId: "w2" });
+  assert.deepEqual(hoeher.numbers.draft, { percent: 45, customerCents: 1360, contributionCents: 422 });
+  assert.deepEqual(chanceText(chanceLine("transglobal", hoeher)), {
+    lead: "Mit Ihrer Eingabe: +2,34 € pro Sendung", detail: "Transglobal-Aufschlag 20 % → 45 % (Beispielpaket 2 kg).",
+  });
+  const niedriger = classMetrics({ tariff: t22, weightClass: 1, baseClass: bk, previewClass: vorschau(10, 1032), hasBase: true, scenarioId: "w2" });
+  assert.equal(chanceText(chanceLine("transglobal", niedriger)).lead, "Mit Ihrer Eingabe: −0,94 € pro Sendung");
+  // Vorschau ausstehend: keine veraltete Zahl, keine Zeile.
+  const wartet = classMetrics({ tariff: t22, weightClass: 1, baseClass: bk, previewClass: vorschau(45, 1360), hasBase: true, pending: true, scenarioId: "w2" });
+  assert.equal(wartet.numbers.draft, null);
+  assert.equal(chanceLine("transglobal", wartet), null);
+  // Empfehlung mit weniger Verdienst (schützt den Preisvorteil) und Klasse ohne Vergleich: kein „Möglich“.
+  const schuetzt = klasse(1, { currentPercent: 40, suggestedPercent: 25, recommendedPercent: 25, status: "at_risk", comparisonStatus: "at_risk",
+    samples: [probe("w5", 5, [1062, 1487], [1300, 1560], { atRecommended: { percent: 25, customerNetCents: 1328, contributionCents: 266, differencePercent: -14.87 } })] });
+  assert.equal(chanceLine("transglobal", classMetrics({ tariff: t22, weightClass: 1, baseClass: schuetzt, hasBase: true, scenarioId: "w5" })), null);
+  assert.equal(chanceLine("transglobal", classMetrics({ tariff: t22, weightClass: 3, baseClass: projectionClass(base, "transglobal", 22, 3), hasBase: true })), null);
+  // Ohne eigenen Preis im gezeigten Paket: der Grund des Servers.
+  const ausfall = klasse(1, { samples: [{ ...probe("w5", 5, null, null), reason: "fetch_failed" }] });
+  assert.deepEqual(classMetrics({ tariff: t22, weightClass: 1, baseClass: ausfall, hasBase: true, scenarioId: "w5" }).numbers, { available: false, reason: "fetch_failed", weightKg: 5 });
+  assert.deepEqual(profitRow(klasse(1), null, "w9"), { available: false, scenarioId: "w9", reason: null, weightKg: null });
+  assert.equal(profitRow(klasse(1), null, "w2").heute.purchaseNetCents, 938);
 });
 
 test("Verlauf: Einträge mit Tarif und Klasse; Zurücksetzen nur, wo der alte Wert speicherbar und nicht aktuell ist", () => {
@@ -380,6 +518,16 @@ test("Eigenes Paket und Zielländer", () => {
   assert.equal(parseCustomPackageInput({ weight: "", length: "30", width: "20", height: "10" }).ok, false);
 });
 
+test("„Möglich bis“ in der Übersicht: größter Mehrverdienst aus belastbaren Empfehlungen, am selben Beispielpaket wie die Fläche", () => {
+  const d = daten();
+  const base = selectComparison(PROJEKTION, 7);
+  const t = (id) => d.tariffs.find((x) => x.id === id);
+  assert.equal(bestChanceCents({ base, transglobal: t("transglobal:22"), jumingo: t("jumingo:1") }), 638 - 212, "der größere Wert beider Spalten");
+  assert.equal(bestChanceCents({ base, transglobal: t("transglobal:22") }), 372 - 212, "nur Klasse 1 hat eine Empfehlung nach oben (Beispielpaket 5 kg)");
+  assert.equal(bestChanceCents({ base, transglobal: t("transglobal:23") }), null, "gut eingestellt: nichts möglich");
+  assert.equal(bestChanceCents({ base: null, transglobal: t("transglobal:22") }), null);
+});
+
 // ── B) Contract (Quelltext) ─────────────────────────────────────────────────
 test("API-Wrapper: PUT sendet genau eine Form (entries oder markups), Vorschau sendet entries oder einen leeren Body", () => {
   const api = src("api/adminApi.js");
@@ -413,6 +561,13 @@ test("Komponente: Providerkontakt nur hinter zwei Buttons, Speichern nur aus dem
   assert.match(k, /role="tabpanel" id=\{`adm-po-tabpanel-\$\{s\}`\}/);
   assert.match(k, /e\.key === "ArrowRight"/);
   assert.ok(!/flowStep|TARIFF_STEPS|adm-po-step/.test(k), "keine Ablaufschritte mehr");
+  // Finale Vereinfachung 2026-11-17: eine Tarifübersicht; die Kandidatenwahl ändert nur die Anzeige; „Weitere
+  // JUMiNGO-Tarife“ bleiben erreichbar; die Kernaussage kommt aus verdictOf.
+  assert.match(k, /const \{ areas, extra \} = useMemo\(\(\) => tariffAreas\(tariffs\), \[tariffs\]\)/);
+  assert.match(k, /onChange=\{\(\) => setKandidaten\(\(k\) => \(\{ \.\.\.k, \[area\.id\]: c\.tariff\.id \}\)\)\}/);
+  assert.match(k, /id="adm-po-more"/);
+  assert.match(k, /const urteil = verdictOf\(\{/);
+  assert.ok(!/sortTariffs/.test(k), "keine Sortierung nach Plus mehr");
 });
 
 test("Seite: Karte je Kunde neu montiert, Kundenbezeichnung für Schritt 1 und Dialog", () => {

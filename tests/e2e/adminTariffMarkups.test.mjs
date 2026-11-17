@@ -15,7 +15,8 @@
 //   E  UPS Standard mit/ohne Abholzuschlag: Kernaussage, Zahlen, „Möglich“ und Übersicht folgen der Variante
 //   F  „Empfehlung übernehmen“ und „Selbst festlegen“ je Anbieter getrennt; entprellte Vorschau; Verwerfen
 //   G  Prüfen → Bestätigungsdialog mit mehreren Anbietern und Klassen → genau EIN PUT; Verlauf; Zurücksetzen
-//   H  Untergrenze: neuer Wert unter 25 % gesperrt, Bestandswert erlaubt; Server-400 am betroffenen Feld
+//   H  Keine Untergrenze (v2.142): 0 bis 100 % speicherbar — auch 0 % und Werte unter 25 % —, gesperrt sind nur
+//      Formfehler; ein PUT über den Dialog; Server-400 am betroffenen Feld; Hinweis „Kein Verdienst“ am Beispiel
 //   I  Fehlerpfade: Abruf 500/429, Vorschau 410 ohne automatischen Abruf, Speichern 500, Verlauf 500
 //   J  Tastatur: Bereichskopf, Reiter mit Pfeiltasten/Pos1/Ende, „Empfehlung übernehmen“, Dialog mit Escape
 //   K  390 px und 200 % Zoom: kein Querüberlauf, Reiter 2 × 2, Spalten untereinander, Ziele groß genug
@@ -42,8 +43,8 @@ const KARTE = "#adm-tariff-section";
 const ORT = Object.freeze({ timezoneId: "Europe/Berlin", locale: "de-DE" });
 const norm = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
 const slug = (id) => String(id).replace(/[^a-z0-9]+/gi, "-");
-const FLOOR = "Neue Aufschläge müssen mindestens 25 % betragen. Ein bestehender niedrigerer Wert bleibt, solange Sie ihn nicht ändern.";
-const UNTER_ZIEL = "Der Aufschlag liegt unter der Untergrenze. Er bleibt, bis Sie ihn ändern; neue Werte brauchen mindestens die Untergrenze.";
+const KEIN_VERDIENST = "Bei diesem Beispielpaket zahlt der Kunde genau unseren Einkaufspreis – es bleibt kein Verdienst.";
+const BEREICH_FEHLER = "Der Kundenaufschlag muss zwischen 0 und 100 Prozent liegen.";
 const GEFAEHRDET = "Der Kunde zahlt fast so viel wie beim vergleichbaren Angebot oder mehr.";
 const OHNE_BASIS = "Empfehlungen erscheinen nach „Preise vergleichen“.";
 const NACH_VERGLEICH = "Einkauf, Kundenpreis und Verdienst erscheinen nach „Preise vergleichen“.";
@@ -155,8 +156,8 @@ test("A — Öffnen: eine Übersicht, sieben Bereiche mit Registerpaar, Preisgru
     assert.equal(await beziehung(page, `transglobal:${tg}`), "Gleichwertig");
   }
   assert.equal(norm(await kopf(page, "transglobal:85").locator(".adm-po-tarif-name").innerText()), "DHL Express 9:00");
-  // Ohne Vergleich: Ihr Aufschlag je Anbieter; markiert nur unter der Untergrenze (Bestandswert 0 %, geerbte 20 %).
-  assert.deepEqual(await zellen(page, "transglobal:22"), [["transglobal:22", "Transglobal 0 % Unter 25 %"], ["jumingo:1", "JUMiNGO 20–30 % Unter 25 %"]]);
+  // Ohne Vergleich: Ihr Aufschlag je Anbieter — ohne Marke für niedrige Sätze (keine Untergrenze, v2.142).
+  assert.deepEqual(await zellen(page, "transglobal:22"), [["transglobal:22", "Transglobal 0 %"], ["jumingo:1", "JUMiNGO 20–30 %"]]);
   assert.deepEqual(await zellen(page, "transglobal:23"), [["transglobal:23", "Transglobal 30 %"], ["jumingo:2", "JUMiNGO 30 %"]]);
   assert.deepEqual(await zellen(page, "transglobal:85"), [["transglobal:85", "Transglobal 35 %"], ["jumingo:5", "JUMiNGO 30 %"]]);
   assert.equal(await page.locator(`${KARTE} .adm-po-plus`).count(), 0, "ohne Vergleich kein „Möglich bis“");
@@ -203,7 +204,7 @@ test("B — Bereich ohne Vergleich: vier Reiter, Transglobal links | JUMiNGO rec
   });
   assert.equal((await zahlen(page, "transglobal:22", "jumingo")).markup, "Ihr Aufschlag: 30 % | eigener Satz für dieses Gewicht");
   assert.equal(await empfehlung(page, "transglobal:22", "transglobal"), "Empfohlen Keine Empfehlung verfügbar Erst Preise vergleichen");
-  assert.deepEqual(await hinweise(page, "transglobal:22", "transglobal"), [["below_target", UNTER_ZIEL]], "entscheidungsrelevant: bleibt vorne sichtbar");
+  assert.deepEqual(await hinweise(page, "transglobal:22", "transglobal"), [], "ohne Vergleich kein Hinweis — ein niedriger Satz ist kein Zustand (v2.142)");
   assert.deepEqual(await hinweise(page, "transglobal:22", "jumingo"), []);
   assert.equal(await flaeche(page, "transglobal:22").locator(".adm-po-adopt").count(), 0, "ohne Vergleich nichts zu übernehmen");
   assert.deepEqual((await flaeche(page, "transglobal:22").locator(".adm-po-custom").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")))).map(norm),
@@ -221,7 +222,7 @@ test("B — Bereich ohne Vergleich: vier Reiter, Transglobal links | JUMiNGO rec
   assert.equal(await flaeche(page, "transglobal:22").getAttribute("data-class"), "2");
   assert.equal((await zahlen(page, "transglobal:22", "transglobal")).markup, "Ihr Aufschlag: 0 % | Satz für alle Gewichte");
   assert.equal((await zahlen(page, "transglobal:22", "jumingo")).markup, "Ihr Aufschlag: 20 % | Standardaufschlag des Kontos");
-  assert.deepEqual((await hinweise(page, "transglobal:22", "jumingo")).map(([s]) => s), ["below_target"]);
+  assert.deepEqual(await hinweise(page, "transglobal:22", "jumingo"), [], "20 % ist kein Hinweis");
   // Ein anderer Bereich schließt den ersten.
   await kopf(page, "transglobal:23").click();
   assert.equal(await kopf(page, "transglobal:22").getAttribute("aria-expanded"), "false");
@@ -260,11 +261,12 @@ test("C — Preise vergleichen: genau ein Abruf; „Möglich bis“; Kernaussage
   assert.deepEqual(await chancen(page, "transglobal:23"), ["Möglich: +0,72 € pro Sendung wenn der Transglobal-Aufschlag von 30 % auf 35 % steigt (Beispielpaket 5 kg)."]);
   assert.equal(norm(await flaeche(page, "transglobal:23").locator(".adm-po-chance-tag").innerText()), "Beispielrechnung");
   assert.equal(await empfehlung(page, "transglobal:23", "transglobal"), "Empfohlen 35 %");
-  assert.equal(await empfehlung(page, "transglobal:23", "jumingo"), "Empfohlen 25 %");
+  assert.equal(await empfehlung(page, "transglobal:23", "jumingo"), "Empfohlen Keine Empfehlung verfügbar Kein sicherer Spielraum, auch nicht bei 0 %",
+    "verglichen, aber selbst 0 % hält das Ziel nicht — früher stand hier die Untergrenze 25 % als Empfehlung");
   assert.deepEqual(await hinweise(page, "transglobal:23", "transglobal"), []);
   assert.deepEqual(await hinweise(page, "transglobal:23", "jumingo"), [["at_risk", `${GEFAEHRDET} Transglobal kauft dieses Gewicht günstiger ein.`]]);
   assert.deepEqual((await flaeche(page, "transglobal:23").locator(".adm-po-adopt").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")))).map(norm),
-    ["Empfehlung übernehmen: UPS Express Saver, Transglobal, Bis 5 kg, 35 %", "Empfehlung übernehmen: UPS Express Saver, JUMiNGO, Bis 5 kg, 25 %"]);
+    ["Empfehlung übernehmen: UPS Express Saver, Transglobal, Bis 5 kg, 35 %"]);
   // Details: Beispielpaket und Bedingungen, je Anbieter Preise, Vergleichsangebot und Einkaufsvorteil, Datenbasis.
   await details(page, "transglobal:23").locator("> summary").click();
   assert.equal(norm(await details(page, "transglobal:23").locator("> summary").innerText()), "Details anzeigen");
@@ -397,11 +399,13 @@ test("E — UPS Standard mit Abholzuschlag: Kernaussage, Zahlen, „Möglich“ 
     purchase: "Unser Einkauf: 13,50 €", customer: "Kunde zahlt: 13,50 €", earnings: "Unser Verdienst: 0,00 €", markup: "Ihr Aufschlag: 0 % | Satz für alle Gewichte",
   });
   assert.equal(norm(await spalte(page, "transglobal:22", "transglobal").locator(".adm-po-col-head").innerText()), "Transglobal UPS Standard mit Abholzuschlag");
-  assert.deepEqual(await chancen(page, "transglobal:22"), ["Möglich: +3,38 € pro Sendung wenn der Transglobal-Aufschlag von 0 % auf 25 % steigt (Beispielpaket 5 kg)."]);
-  assert.equal(await empfehlung(page, "transglobal:22", "transglobal"), "Empfohlen 25 % mit Abholzuschlag");
-  assert.deepEqual(await hinweise(page, "transglobal:22", "transglobal"), [["below_target", UNTER_ZIEL], ["at_risk", `${GEFAEHRDET} JUMiNGO kauft dieses Gewicht günstiger ein.`]]);
+  // Sichere Obergrenze mit Abholzuschlag bis 5 kg: 0 % (früher als Untergrenze 25 % empfohlen — das hätte den Preisvorteil gekostet).
+  assert.deepEqual(await chancen(page, "transglobal:22"), ["Ein höherer Aufschlag wird nicht empfohlen."]);
+  assert.equal(await empfehlung(page, "transglobal:22", "transglobal"), "Empfohlen 0 % mit Abholzuschlag");
+  assert.deepEqual(await hinweise(page, "transglobal:22", "transglobal"), [["at_risk", `${GEFAEHRDET} JUMiNGO kauft dieses Gewicht günstiger ein.`], ["no_earnings", KEIN_VERDIENST]],
+    "0 % am Beispielpaket: kein Verdienst — ein Hinweis, keine Sperre");
   assert.deepEqual((await detailListe(page, "transglobal:22")).find(([k]) => k === "Zuschläge"), ["Zuschläge", "Mit Abholzuschlag 3,90 € (Transglobal, UPS Standard)"]);
-  assert.equal(norm(await plus(page, "transglobal:22").innerText()), "Möglich bis +6,78 € pro Sendung", "die Übersicht folgt der Variante");
+  assert.equal(norm(await plus(page, "transglobal:22").innerText()), "Möglich bis +4,07 € pro Sendung", "die Übersicht folgt der Variante (über 20 kg: 0 % → 15 %)");
   await sd.locator("label", { hasText: "Ohne Abholzuschlag" }).click();
   assert.equal((await urteil(page, "transglobal:22")).art, "transglobal");
   assert.equal(norm(await plus(page, "transglobal:22").innerText()), "Möglich bis +6,96 € pro Sendung");
@@ -421,9 +425,9 @@ test("F — „Empfehlung übernehmen“ und „Selbst festlegen“ je Anbieter 
   await warte(async () => (await page.evaluate(aktiv)) === "adm-tarif-input-transglobal-23-1");
   assert.equal(await feld(page, "jumingo:2", 1).count(), 0, "JUMiNGO bleibt unberührt");
   assert.equal(norm(await spalte(page, "transglobal:23", "transglobal").locator(".adm-po-adopted").innerText()), "Empfehlung eingetragen");
-  assert.equal(await spalte(page, "transglobal:23", "jumingo").locator(".adm-po-adopt").count(), 1, "die JUMiNGO-Empfehlung bleibt ein eigenes Angebot");
-  assert.equal(norm(await spalte(page, "transglobal:23", "transglobal").locator(".adm-po-edit-label").innerText()), "Neuer Aufschlag · Bis 5 kg");
-  assert.equal(norm(await page.locator("#adm-tarif-input-transglobal-23-1-hint").innerText()), "Mindestens 25 %. Leer = kein eigener Satz.");
+  assert.equal(await spalte(page, "transglobal:23", "jumingo").locator(".adm-po-adopt").count(), 0, "JUMiNGO: kein sicherer Spielraum — nichts zu übernehmen");
+  assert.equal(norm(await spalte(page, "transglobal:23", "transglobal").locator(".adm-po-edit-label").innerText()), "Ihr Aufschlag · Bis 5 kg");
+  assert.equal(norm(await page.locator("#adm-tarif-input-transglobal-23-1-hint").innerText()), "0–100 % frei wählbar. Leer = kein eigener Satz.");
   assert.equal(await zaehler(page), "● 1 ungespeicherte Änderung");
   assert.equal(norm(await kopf(page, "transglobal:23").locator(".adm-po-tarif-dirty").innerText()), "● 1 ungespeicherte Änderung");
   assert.equal(norm(await reiter(page, "transglobal:23", 1).innerText()), "Bis 5 kg (noch nicht gespeichert)");
@@ -484,6 +488,18 @@ test("F — „Empfehlung übernehmen“ und „Selbst festlegen“ je Anbieter 
   await reiter(page, "transglobal:23", 1).click();
   assert.equal(await feld(page, "transglobal:23", 1).count(), 0);
   assert.equal(await spalte(page, "transglobal:23", "transglobal").locator(".adm-po-adopt").count(), 1, "nach dem Verwerfen wieder übernehmbar");
+  // Empfehlungen unter 25 % (v2.142): je Anbieter getrennt übernehmbar, ohne Fehler am Feld.
+  await kopf(page, "transglobal:86").click();
+  assert.equal(await empfehlung(page, "transglobal:86", "transglobal"), "Empfohlen 20 %");
+  assert.equal(await empfehlung(page, "transglobal:86", "jumingo"), "Empfohlen 15 %");
+  await spalte(page, "transglobal:86", "jumingo").locator(".adm-po-adopt").click();
+  assert.equal(await feld(page, "jumingo:6", 1).inputValue(), "15,00");
+  assert.equal(await feld(page, "transglobal:86", 1).count(), 0, "Transglobal bleibt unberührt");
+  assert.equal(await page.locator("#adm-tarif-input-jumingo-6-1-error").count(), 0, "kein Fehler unter 25 %");
+  assert.equal(await zaehler(page), "● 1 ungespeicherte Änderung");
+  await warte(() => state.previews.length === 4);
+  assert.deepEqual(state.previews[3].body, { entries: [{ provider: "jumingo", productKey: 6, weightClass: 1, markupPercent: 15 }] });
+  assert.equal(state.puts.length, 0, "Übernehmen speichert nicht");
   assert.deepEqual(fehler, []);
   await page.close();
 });
@@ -494,8 +510,8 @@ test("G — Prüfen → Bestätigungsdialog mit mehreren Anbietern und Klassen �
   await vergleiche(page, state);
   await kopf(page, "transglobal:23").click();
   await spalte(page, "transglobal:23", "transglobal").locator(".adm-po-adopt").click();
-  await spalte(page, "transglobal:23", "jumingo").locator(".adm-po-adopt").click();
-  assert.equal(await feld(page, "jumingo:2", 1).inputValue(), "25,00");
+  await spalte(page, "transglobal:23", "jumingo").locator(".adm-po-custom").click();
+  await feld(page, "jumingo:2", 1).fill("25");
   // DHL Express 9:00: „Alle Gewichte“ nur über die eigene Zeile ändern.
   await kopf(page, "transglobal:85").click();
   assert.equal(await alleZeile(page, "transglobal:85", "transglobal"), `Alle Gewichte 35 % eigener Satz. ${ALLE}`);
@@ -568,8 +584,7 @@ test("G — Prüfen → Bestätigungsdialog mit mehreren Anbietern und Klassen �
   assert.equal(norm(await page.locator('#adm-po-history li[data-entry="101"] .adm-po-history-when').innerText()), "17.11.2026, 11:15 Uhr · Anna Admin");
   assert.equal(await was("100"), "UPS Express Saver · Transglobal · Bis 5 kg: kein eigener Satz → 35 %");
   assert.equal(await was("1"), "UPS Standard · Transglobal · Alle Gewichte: 20 % → 0 %");
-  assert.equal(norm(await page.locator('#adm-po-history li[data-entry="1"] .adm-po-src').innerText()), "Alter Wert unter der Untergrenze – nicht mehr speicherbar.");
-  assert.equal(await page.locator('#adm-po-history li[data-entry="1"] button').count(), 0, "20 % wäre ein neuer Wert unter 25 %");
+  assert.equal(await page.locator('#adm-po-history li[data-entry="1"] button', { hasText: "Auf alten Wert zurücksetzen" }).count(), 1, "auch 20 % ist wieder speicherbar (v2.142)");
   // Zurücksetzen trägt den alten Wert als Entwurf ein — gespeichert wird nur über denselben Dialog.
   await page.locator('#adm-po-history li[data-entry="101"] button', { hasText: "Auf alten Wert zurücksetzen" }).click();
   assert.equal(await kopf(page, "transglobal:85").getAttribute("aria-expanded"), "true");
@@ -590,44 +605,76 @@ test("G — Prüfen → Bestätigungsdialog mit mehreren Anbietern und Klassen �
   await page.close();
 });
 
-test("H — Untergrenze: neuer Wert unter 25 % gesperrt, unveränderter Bestandswert erlaubt, Server-400 am betroffenen Feld", async () => {
+test("H — keine Untergrenze: 0 bis 100 % speicherbar (auch 0 % und unter 25 %), nur Formfehler gesperrt, ein PUT; Server-400 am betroffenen Feld", async () => {
   const { page, state, fehler } = await neueSeite();
   await oeffne(page);
   await kopf(page, "transglobal:22").click();
   await spalte(page, "transglobal:22", "transglobal").locator(".adm-po-all-change").click();
   assert.equal(await feld(page, "transglobal:22", 0).inputValue(), "0,00", "der Bestandswert 0 % steht im Feld");
+  assert.equal(norm(await page.locator("#adm-tarif-input-transglobal-22-0-hint").innerText()), "0–100 % frei wählbar. Leer = kein eigener Satz.");
   await feld(page, "transglobal:22", 0).fill("0");
   assert.equal(await zaehler(page), "Keine Änderungen", "derselbe Bestandswert ist keine Änderung");
+  // Ein Wert unter 25 % ist eine gewöhnliche Änderung: kein Fehler, keine Sperre.
+  const err = page.locator("#adm-tarif-input-transglobal-22-0-error");
   await feld(page, "transglobal:22", 0).fill("10");
   await page.keyboard.press("Tab");
-  const err = page.locator("#adm-tarif-input-transglobal-22-0-error");
-  assert.equal(norm(await err.innerText()), FLOOR);
-  assert.equal(await feld(page, "transglobal:22", 0).getAttribute("aria-invalid"), "true");
-  assert.match(await feld(page, "transglobal:22", 0).getAttribute("aria-describedby"), /adm-tarif-input-transglobal-22-0-error/);
+  assert.equal(await err.count(), 0, "kein Fehler unter 25 %");
+  assert.equal(await feld(page, "transglobal:22", 0).getAttribute("aria-invalid"), null);
   assert.equal(await zaehler(page), "● 1 ungespeicherte Änderung");
-  await page.locator("#adm-tarif-save").click();
-  assert.equal(await page.getByRole("dialog").count(), 0, "unter der Untergrenze öffnet kein Dialog");
-  assert.match(norm(await page.locator(`${KARTE} .adm-po-save p.field-error`).innerText()), /UPS Standard \(Transglobal\) · Alle Gewichte: Neue Aufschläge müssen mindestens 25 % betragen/);
-  await feld(page, "transglobal:22", 0).fill("25");
-  assert.equal(await err.count(), 0);
-  // Der Server lehnt trotzdem ab (z. B. andere Untergrenze): Meldung am Feld, das er nennt — Bereich und Reiter öffnen sich.
+  // Gesperrt sind nur Formfehler: über 100, negativ, zu viele Nachkommastellen.
+  for (const [roh, text] of [["100,01", BEREICH_FEHLER], ["-1", null], ["17,555", "Bitte höchstens zwei Nachkommastellen angeben."]]) {
+    await feld(page, "transglobal:22", 0).fill(roh);
+    await page.keyboard.press("Tab");
+    await err.waitFor();
+    if (text) assert.equal(norm(await err.innerText()), text, roh);
+    assert.equal(await feld(page, "transglobal:22", 0).getAttribute("aria-invalid"), "true", roh);
+  }
+  assert.equal(await zaehler(page), "Keine Änderungen", "ein ungültiger Wert ist keine speicherbare Änderung");
+  assert.equal(await page.locator("#adm-tarif-save").isDisabled(), true);
+  // Daneben 0 % für JUMiNGO, 5–10 kg: gültig. „Änderungen prüfen“ zeigt trotzdem nur den Formfehler — kein Dialog.
   await reiter(page, "transglobal:22", 2).click();
   await spalte(page, "transglobal:22", "jumingo").locator(".adm-po-custom").click();
-  await feld(page, "jumingo:1", 2).fill("25");
-  state.putFehler = { status: 400, body: { error: "Neue Aufschläge müssen mindestens 25 % betragen. Bestehende niedrigere Werte bleiben unverändert, solange sie nicht geändert werden.",
-    code: "MARKUP_BELOW_MINIMUM", provider: "jumingo", productKey: 1, weightClass: 2 } };
+  await feld(page, "jumingo:1", 2).fill("0");
+  assert.equal(await zaehler(page), "● 1 ungespeicherte Änderung", "0 % ist ein Satz, kein leeres Feld");
+  await page.locator("#adm-tarif-save").click();
+  assert.equal(await page.getByRole("dialog").count(), 0, "ein Formfehler öffnet keinen Dialog");
+  assert.equal(norm(await page.locator(`${KARTE} .adm-po-save p.field-error`).innerText()), "UPS Standard (Transglobal) · Alle Gewichte: Bitte höchstens zwei Nachkommastellen angeben.");
+  // 24,99 % für „Alle Gewichte“ (Transglobal): jetzt beide gültig — ein Dialog, ein PUT.
+  await feld(page, "transglobal:22", 0).fill("24,99");
+  await page.keyboard.press("Tab");
+  assert.equal(await err.count(), 0);
+  assert.equal(await zaehler(page), "● 2 ungespeicherte Änderungen");
+  await page.locator("#adm-tarif-save").click();
+  const dialog = page.getByRole("dialog");
+  await dialog.waitFor();
+  assert.equal(norm(await dialog.locator('li[data-key="transglobal:22:0"] .adm-po-change-values').innerText()), "Bisher: 0 % → Neu: 24,99 %");
+  assert.equal(norm(await dialog.locator('li[data-key="jumingo:1:2"] .adm-po-change-values').innerText()), "Bisher: kein eigener Satz (20 %) → Neu: 0 %");
+  assert.equal(state.puts.length, 0, "erst der Dialog speichert");
+  await page.locator("#adm-tarif-confirm").click();
+  await warte(() => state.puts.length === 1);
+  assert.deepEqual(state.puts[0].body, { entries: [
+    { provider: "transglobal", productKey: 22, weightClass: 0, markupPercent: 24.99 },
+    { provider: "jumingo", productKey: 1, weightClass: 2, markupPercent: 0 },
+  ] }, "0 bleibt 0 (nicht null), 24,99 bleibt 24,99");
+  await warte(async () => (await zaehler(page)) === "Keine Änderungen");
+  // Der Server lehnt trotzdem ab: Meldung am Feld, das er nennt — Bereich und Reiter öffnen sich.
+  await reiter(page, "transglobal:22", 2).click();
+  await spalte(page, "transglobal:22", "jumingo").locator(".adm-po-custom").click();
+  await feld(page, "jumingo:1", 2).fill("5");
+  state.putFehler = { status: 400, body: { error: "Ungültiger Aufschlag.", code: "INVALID_TARIFF_MARKUP_PERCENT", provider: "jumingo", productKey: 1, weightClass: 2 } };
   await kopf(page, "transglobal:23").click();
   await reiter(page, "transglobal:23", 1).click();
   await page.locator("#adm-tarif-save").click();
   await page.locator("#adm-tarif-confirm").click();
   await page.locator(`${KARTE} .adm-po-save .alert-error`).waitFor();
   assert.equal(await page.getByRole("dialog").count(), 0);
-  assert.equal(state.puts.length, 1);
+  assert.equal(state.puts.length, 2);
   assert.equal(await kopf(page, "transglobal:22").getAttribute("aria-expanded"), "true", "der Bereich des betroffenen JUMiNGO-Tarifs öffnet sich");
   assert.equal(await reiter(page, "transglobal:22", 2).getAttribute("aria-selected"), "true", "auf dem betroffenen Gewicht");
   assert.equal(await feld(page, "jumingo:1", 2).getAttribute("aria-invalid"), "true");
-  assert.match(norm(await page.locator("#adm-tarif-input-jumingo-1-2-error").innerText()), /mindestens 25 %/);
-  assert.equal(await zaehler(page), "● 2 ungespeicherte Änderungen", "Entwürfe bleiben erhalten");
+  assert.match(norm(await page.locator("#adm-tarif-input-jumingo-1-2-error").innerText()), /0 bis 100 Prozent/);
+  assert.ok(!/Untergrenze|mindestens 25/.test(norm(await page.locator(KARTE).innerText())), "nirgends ein Untergrenzentext");
+  assert.equal(await zaehler(page), "● 1 ungespeicherte Änderung", "der Entwurf bleibt erhalten");
   assert.equal(state.refreshes.length, 0);
   assert.deepEqual(fehler, []);
   await page.close();

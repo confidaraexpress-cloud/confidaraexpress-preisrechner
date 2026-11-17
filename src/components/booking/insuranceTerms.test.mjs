@@ -326,9 +326,10 @@ test("16 — Tarifobjekte überleben die Persistenz unverändert (inkl. carrierL
 /* ── 17. Keine neue Abhängigkeit ─────────────────────────────────────────── */
 
 test("17 — keine neue Abhängigkeit", () => {
+  // Vite und @vitejs/plugin-react sind Buildwerkzeuge: seit 2026-11-17 unter devDependencies (dieselben Pakete).
   assert.deepEqual(Object.keys(pkg.dependencies).sort(),
-    ["@vitejs/plugin-react", "fflate", "maplibre-gl", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen", "vite"]);
-  assert.deepEqual(Object.keys(pkg.devDependencies).sort(), ["playwright"]);
+    ["fflate", "maplibre-gl", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen"]);
+  assert.deepEqual(Object.keys(pkg.devDependencies).sort(), ["@vitejs/plugin-react", "playwright", "vite"]);
   for (const quelle of [modul, dialog, terms]) {
     for (const fremd of ["lucide-react", "react-modal", "@headlessui", "react-aria"]) {
       assert.ok(!quelle.includes(`from "${fremd}`), `fremde UI-Bibliothek importiert: ${fremd}`);

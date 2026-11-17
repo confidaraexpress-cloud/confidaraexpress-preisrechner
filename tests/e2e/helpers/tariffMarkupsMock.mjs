@@ -1,6 +1,6 @@
 // Gemeinsames Mock-Backend für „Versandpreise optimieren“ (E2E-Suite adminTariffMarkups und Sichtprüfung
 // tariffMarkupsCapture). Vertrag wie routes/admin/tariffMarkups.js und lib/admin/tariffRecommendation.js
-// (Felder, Zustände, Obergrenze je Paket, begrenzendes Beispielpaket, Untergrenze, Audit; JUMiNGO-Gruppen 8 und 9 als
+// (Felder, Zustände, Obergrenze je Paket, begrenzendes Beispielpaket, Audit; seit v2.142 ohne Untergrenze; JUMiNGO-Gruppen 8 und 9 als
 // Preisgruppen kind "price_group", 1–7 als Registergruppen) — die Zahlen rechnet NUR
 // dieser Mock, nach denselben Regeln wie werteKlasseAus im Backend.
 //
@@ -97,7 +97,7 @@ export function createTariffMock({ overrides = STANDARD_OVERRIDES, konto = { sta
     const ov = state.overrides[uid] || {};
     const zeit = (k) => (hat(ov, k) ? { setAt: "2026-11-10T10:00:00.000Z", setBy: 1 } : { setAt: null, setBy: null });
     return {
-      userId: uid, provider: "transglobal", minimumMarkupPercent: 25, account: { ...konto, standardSource: "customer_confirmed" },
+      userId: uid, provider: "transglobal", minimumMarkupPercent: 0, account: { ...konto, standardSource: "customer_confirmed" },
       weightClasses: KLASSEN.map(([weightClass, label, shortLabel]) => ({ weightClass, label, shortLabel })),
       products: TG.map(([key, label, carrier, pc]) => {
         const erbt = kontoSatz("transglobal", key);
@@ -148,8 +148,9 @@ export function createTariffMock({ overrides = STANDARD_OVERRIDES, konto = { sta
       const vEk = ek(partner.provider, partner.key, sz);
       const vNetto = netto(vEk, r.percent);
       const roh = ((0.99 / 1.03) * (vEk / eigenEk) * (1 + r.percent / 100) - 1) * 100;
-      const boden = roh < 25;
-      const stufe = boden ? 25 : Math.min(100, floor5(roh));
+      // Keine Untergrenze (v2.142): unter 0 % erreicht kein gültiger Satz das Ziel — „kein sicherer Spielraum“.
+      const boden = roh < 0;
+      const stufe = boden ? 0 : Math.min(100, floor5(roh));
       const aehnlich = provider === "jumingo" && hat(AEHNLICH_JU, key);
       samples.push({ ...basis, own, reason: null, upperBoundPercent: stufe, upperBoundRawPercent: Math.round(roh * 100) / 100, belowFloor: boden,
         comparison: { relation: aehnlich ? "similar" : "equivalent", provider: partner.provider, label: eintrag(partner.provider, partner.key)[1],
@@ -161,21 +162,23 @@ export function createTariffMock({ overrides = STANDARD_OVERRIDES, konto = { sta
     }
     const verglichen = samples.filter((x) => x.comparison).length;
     const andereGuenstiger = samples.some((x) => x.comparison && x.own && x.comparison.purchaseNetCents < x.own.purchaseNetCents);
-    const empfohlen = verglichen === 0 || unterBoden || andereGuenstiger ? 25 : Math.max(25, floor5((25 + obergrenze) / 2));
+    // Empfehlung wie werteKlasseAus (v2.142): nie über der sicheren Obergrenze; ohne Vergleich oder sicheren
+    // Spielraum keine; andere Seite günstiger höchstens 25 %; sonst die Mitte zwischen 25 % und der Obergrenze.
+    const empfohlen = verglichen === 0 || unterBoden ? null
+      : andereGuenstiger ? Math.min(obergrenze, 25) : Math.min(obergrenze, floor5((25 + obergrenze) / 2));
     const vergleich = verglichen === 0 ? "no_comparison"
-      : andereGuenstiger || eigen.percent > obergrenze ? "at_risk"
-        : empfohlen - eigen.percent >= 5 ? "more_profit" : "good";
-    const belowTarget = eigen.percent < 25;
-    let vorschlag = belowTarget ? Math.max(25, empfohlen) : vergleich === "more_profit" || vergleich === "at_risk" ? empfohlen : null;
+      : andereGuenstiger || unterBoden || eigen.percent > obergrenze ? "at_risk"
+        : empfohlen !== null && empfohlen - eigen.percent >= 5 ? "more_profit" : "good";
+    let vorschlag = empfohlen !== null && (vergleich === "more_profit" || vergleich === "at_risk") ? empfohlen : null;
     if (vorschlag === eigen.percent) vorschlag = null;
     for (const x of samples) {
-      if (!x.own) { x.atRecommended = null; continue; }
+      if (!x.own || empfohlen === null) { x.atRecommended = null; continue; }
       const n = netto(x.own.purchaseNetCents, empfohlen);
       x.atRecommended = { percent: empfohlen, customerNetCents: n, contributionCents: n - x.own.purchaseNetCents,
         differencePercent: x.comparison ? abstand(n, x.comparison.customerNetCents) : null };
     }
     return {
-      status: belowTarget ? "below_target" : vergleich, comparisonStatus: vergleich, belowTarget,
+      status: vergleich, comparisonStatus: vergleich,
       hint: verglichen === 0 ? null : andereGuenstiger ? "other_provider_cheaper" : obergrenze <= 30 ? "little_headroom" : null,
       currentPercent: eigen.percent, upperBoundPercent: obergrenze, recommendedPercent: empfohlen, suggestedPercent: vorschlag, belowFloor: unterBoden,
       limitingScenarioId: begrenzend ? begrenzend.scenarioId : null,
@@ -195,7 +198,7 @@ export function createTariffMock({ overrides = STANDARD_OVERRIDES, konto = { sta
       scenarios: run.szenarien.map((s) => ({ id: s.id, package: { weightKg: s.weightKg, lengthCm: s.lengthCm, widthCm: s.widthCm, heightCm: s.heightCm },
         weightClass: s.weightClass, chargeableKg: s.chargeableGrams / 1000, status: "ok", providers: { transglobal: "success", jumingo: "success" } })),
       weightClasses: KLASSEN.map(([weightClass, label, shortLabel]) => ({ weightClass, label, shortLabel })),
-      minimumMarkupPercent: 25,
+      minimumMarkupPercent: 0,
       recommendationParameters: { priceAdvantagePercent: 1, purchaseBufferPercent: 3, stepPercent: 5, maxPercent: 100 },
       sameDayReference: { productKey: 22, feeNetCents: SAME_DAY_FEE },
       tariffs: alleTarife().map((t) => ({
@@ -210,7 +213,6 @@ export function createTariffMock({ overrides = STANDARD_OVERRIDES, konto = { sta
             saved: { percent: gespeichert.percent, source: gespeichert.source, overridePercent: ov[k] ?? null },
             effective: { percent: wirksam.percent, source: c && c.percent !== null ? "draft" : wirksam.source },
             draft: c,
-            belowMinimum: !!(c && c.percent !== null && c.percent < 25 && c.percent !== (ov[k] ?? null)),
             ...auswertung(run, t.provider, t.key, wc, draft),
           };
           if (t.provider === "transglobal" && t.key === 22) out.sameDay = { feeNetCents: SAME_DAY_FEE, ...auswertung(run, t.provider, t.key, wc, draft, SAME_DAY_FEE) };
@@ -245,14 +247,7 @@ export function createTariffMock({ overrides = STANDARD_OVERRIDES, konto = { sta
       if (state.putFehler) return json(state.putFehler.body, state.putFehler.status);
       const ov = (state.overrides[uid] = state.overrides[uid] || {});
       const eintraege = Array.isArray(body.entries) ? body.entries : [];
-      // Untergrenze wie checkRegularMarkupFloor: zuerst alle prüfen, dann schreiben (alles oder nichts).
-      for (const e of eintraege) {
-        const k = `${e.provider}:${e.productKey}:${e.weightClass}`;
-        if (e.markupPercent !== null && e.markupPercent < 25 && e.markupPercent !== (ov[k] ?? null)) {
-          return json({ error: "Neue Aufschläge müssen mindestens 25 % betragen. Bestehende niedrigere Werte bleiben unverändert, solange sie nicht geändert werden.",
-            code: "MARKUP_BELOW_MINIMUM", provider: e.provider, productKey: e.productKey, weightClass: e.weightClass }, 400);
-        }
-      }
+      // Keine Untergrenze (v2.142): jeder gültige Satz von 0 bis 100 % wird gespeichert; 0 ist ein Satz, null setzt zurück.
       for (const e of eintraege) {
         const k = `${e.provider}:${e.productKey}:${e.weightClass}`;
         const alt = ov[k] ?? null;

@@ -15,7 +15,10 @@ COPY package*.json ./
 #
 # `npm ci` bricht ab, wenn package.json und package-lock.json auseinanderlaufen.
 # Das ist erwünscht: ein solcher Build DARF nicht durchgehen.
-RUN npm ci
+#
+# `--include=dev`: Vite und @vitejs/plugin-react sind Buildwerkzeuge und stehen unter devDependencies (2026-11-17).
+# Diese Stufe braucht sie auch dann, wenn NODE_ENV=production gesetzt wäre; ins Image kommt nur das fertige Bündel.
+RUN npm ci --include=dev
 COPY . .
 RUN npm run build
 

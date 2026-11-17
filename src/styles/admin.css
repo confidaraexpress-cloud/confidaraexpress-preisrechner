@@ -2014,7 +2014,6 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
 .adm-po-cell-label { font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
 .adm-po-cell-value { font-size: var(--ce-text-body-size); line-height: var(--ce-text-body-line); }
 .adm-po-flag { font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); font-weight: 600; white-space: nowrap; }
-.adm-po-flag[data-status="below_target"] { color: var(--ce-color-status-error-fg); }
 .adm-po-flag[data-status="at_risk"] { color: var(--ce-color-status-warning-fg); }
 .adm-po-tarif-meta {
   grid-area: meta; display: flex; flex-wrap: wrap; gap: 2px var(--ce-space-4);
@@ -2158,7 +2157,6 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
   padding: var(--ce-space-2) var(--ce-space-3); border: 1px solid var(--ce-color-status-warning-border); border-radius: var(--ce-radius-sm);
   background: var(--ce-color-status-warning-surface);
 }
-.adm-po-warning[data-status="below_target"] { background: var(--ce-color-status-error-surface); }
 .adm-po-warning-text { flex: 1 1 14rem; min-width: 0; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-primary); }
 
 /* Zwei Aktionen und das Eingabefeld. */

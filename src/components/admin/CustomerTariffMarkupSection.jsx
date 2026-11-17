@@ -15,7 +15,7 @@ import {
   classMetrics, classWarnings, profitRow, tariffSummary, rangeText, changeWarnings,
   tariffAreas, areaCandidates, extraComparedWith, commonScenarioId, pairLink, verdictOf, chanceLine, chanceText, advantageText, scenarioOf, bestChanceCents,
   selectTariffHistory, historyRevert, historyValue, customRows, destinationOptions, parseCustomPackageInput,
-  tariffSaveError, comparisonError,
+  tariffSaveError, comparisonError, WARNING_VIEW,
 } from "../../utils/adminTariffMarkupView.mjs";
 
 /* ── Versandpreise optimieren (Admin-Kundendetail; finale Vereinfachung 2026-11-17) ─────────────────────
@@ -52,7 +52,7 @@ const fokussiere = (id) => {
 };
 
 function StatusBadge({ status }) {
-  const v = STATUS_VIEW[status] || STATUS_VIEW.not_compared;
+  const v = STATUS_VIEW[status] || WARNING_VIEW[status] || STATUS_VIEW.not_compared;
   return (
     <span className={`badge badge--${v.tone} adm-po-badge`} data-status={status}>
       <span className="adm-po-dot" aria-hidden="true" />{v.label}
@@ -125,8 +125,7 @@ export function CustomerTariffMarkupSection({ userId, pricing, customerLabel = "
 
   const data = state.data;
   const tariffs = useMemo(() => (data ? data.tariffs : []), [data]);
-  const minimum = data ? data.minimumMarkupPercent : null;
-  const changes = useMemo(() => tariffDraftChanges(tariffs, drafts, minimum), [tariffs, drafts, minimum]);
+  const changes = useMemo(() => tariffDraftChanges(tariffs, drafts), [tariffs, drafts]);
   const invalidKeys = Object.keys(changes.invalid);
   const baseStatus = comparisonBaseStatus({ base, userId, destination });
   const baseOk = baseStatus === "ok";
@@ -286,7 +285,7 @@ export function CustomerTariffMarkupSection({ userId, pricing, customerLabel = "
       const r = await updateAdminCustomerTariffMarkups(userId, buildTariffEntriesBody(changes.entries));
       if (!r.ok) {
         let body = null; try { body = await r.json(); } catch { body = null; }
-        const err = tariffSaveError(r.status, body, minimum);
+        const err = tariffSaveError(r.status, body);
         if (!mounted.current) return;
         setDialogOpen(false);
         if (err) {
@@ -381,8 +380,8 @@ export function CustomerTariffMarkupSection({ userId, pricing, customerLabel = "
 
   // ── Ableitungen für die Anzeige ────────────────────────────────────────────
   const summaries = useMemo(() => Object.fromEntries(tariffs.map((t) => [
-    t.id, tariffSummary(t, basis, { sameDay: sameDay && !!basis && hasSameDay(basis, t.provider, t.productKey), minimumPercent: minimum }),
-  ])), [tariffs, basis, sameDay, minimum]);
+    t.id, tariffSummary(t, basis, { sameDay: sameDay && !!basis && hasSameDay(basis, t.provider, t.productKey) }),
+  ])), [tariffs, basis, sameDay]);
   const geaenderteJeTarif = useMemo(() => {
     const out = {};
     for (const e of changes.entries) { const k = tariffKey(e.provider, e.productKey); out[k] = (out[k] || 0) + 1; }
@@ -397,9 +396,7 @@ export function CustomerTariffMarkupSection({ userId, pricing, customerLabel = "
   const vergleichText = (x) => (Number.isInteger(x.comparisonNetCents)
     ? `${formatCents(x.comparisonNetCents)}${distanceText(x.differencePercent) ? ` · ${distanceText(x.differencePercent)}` : ""}`
     : SAMPLE_REASON_TEXTS.no_comparable);
-  const markeKurz = (status) => (status === "below_target"
-    ? <span className="adm-po-flag" data-status="below_target">{minimum === null ? STATUS_VIEW.below_target.label : `${T.belowMinimumShort} ${formatPercent(minimum)}`}</span>
-    : status === "at_risk" ? <span className="adm-po-flag" data-status="at_risk">{STATUS_VIEW.at_risk.label}</span> : null);
+  const markeKurz = (status) => (status === "at_risk" ? <span className="adm-po-flag" data-status="at_risk">{STATUS_VIEW.at_risk.label}</span> : null);
 
   // Werte eines Anbieters in einer Klasse — alles Serverwerte, für das gezeigte Beispielpaket.
   const auswertungFuer = (t, wc, sd, scenarioId) => {
@@ -468,7 +465,7 @@ export function CustomerTariffMarkupSection({ userId, pricing, customerLabel = "
           </div>
           {geaendert(key) && <span className="adm-po-pending">{T.draftPending}</span>}
         </div>
-        <p className="adm-po-edit-hint" id={hinweisId}>{fieldHint(minimum)}</p>
+        <p className="adm-po-edit-hint" id={hinweisId}>{fieldHint()}</p>
         {fehler && <p id={fehlerId} className="field-error adm-po-error" role="alert">{fehler}</p>}
       </div>
     );
@@ -481,7 +478,7 @@ export function CustomerTariffMarkupSection({ userId, pricing, customerLabel = "
     const key = draftKey(t.provider, t.productKey, wc);
     const inputId = `adm-tarif-input-${slug(key)}`;
     const kurz = klassenKurz(t, wc);
-    const warnungen = classWarnings({ baseClass: x.bk, previewClass: x.wartet ? null : x.pk, currentPercent: m.current.percent, minimumPercent: minimum, provider: t.provider, hasBase: baseOk });
+    const warnungen = classWarnings({ baseClass: x.bk, previewClass: x.wartet ? null : x.pk, provider: t.provider, hasBase: baseOk, numbers: m.numbers });
     const eingetragen = parseTariffInput(draftValue(drafts, t, wc));
     const uebernommen = m.adoptPercent !== null && eingetragen.ok && eingetragen.value === m.adoptPercent;
     const n = m.numbers;
@@ -643,7 +640,7 @@ export function CustomerTariffMarkupSection({ userId, pricing, customerLabel = "
     const r = m.row;
     const neu = r.available && m.more.art ? r.neu : null;
     const pfeil = (heute, morgen) => (morgen === null || morgen === undefined ? formatCents(heute) : `${formatCents(heute)} → ${formatCents(morgen)} (${m.more.note})`);
-    const grenze = (p, belowFloor) => (p === null || p === undefined ? "—" : belowFloor ? `unter ${formatPercent(minimum)}` : formatPercent(p));
+    const grenze = (p, belowFloor) => (p === null || p === undefined ? "—" : belowFloor ? T.upperBoundNoneShort : formatPercent(p));
     const schwach = quelle ? changeWarnings(quelle).includes("weak") : false;
     const abholung = probe && probe.own && probe.own.pickupDate ? probe.own.pickupDate : null;
     const abweichend = !!abholung && !!base.collectionDate && abholung !== base.collectionDate;
@@ -965,7 +962,7 @@ export function CustomerTariffMarkupSection({ userId, pricing, customerLabel = "
               const r = profitRow(projectionClass(base, t.provider, t.productKey, wc, { sameDay: sd }), pk, paketFuer(t, wc));
               if (r.available && r.art === "draft") {
                 wirkungen.push({ wc, r });
-                for (const w of changeWarnings(pk)) warnungen.add(w);
+                for (const w of changeWarnings(pk, r)) warnungen.add(w);
               }
             }
           }
@@ -985,9 +982,9 @@ export function CustomerTariffMarkupSection({ userId, pricing, customerLabel = "
               {warnungen.size > 0 && (
                 <span className="adm-po-change-warn">
                   {[...warnungen].map((w) => (
-                    <span key={w} className={`badge badge--${w === "at_risk" ? "warning" : "neutral"} adm-po-badge`}>
+                    <span key={w} className={`badge badge--${w === "at_risk" || w === "no_earnings" ? "warning" : "neutral"} adm-po-badge`} data-warning={w}>
                       <span className="adm-po-dot" aria-hidden="true" />
-                      {w === "at_risk" ? T.dialogWarnAtRisk : w === "weak" ? T.dialogWarnWeak : T.dialogWarnNone}
+                      {w === "at_risk" ? T.dialogWarnAtRisk : w === "no_earnings" ? T.dialogWarnNoEarnings : w === "weak" ? T.dialogWarnWeak : T.dialogWarnNone}
                     </span>
                   ))}
                 </span>
@@ -1000,7 +997,7 @@ export function CustomerTariffMarkupSection({ userId, pricing, customerLabel = "
   );
 
   const verlauf = history.payload ? selectTariffHistory(history.payload, tariffs) : null;
-  const revertGrund = (reason) => (reason === "floor" ? T.revertFloor : reason === "current" ? T.revertCurrent : T.revertUnknown);
+  const revertGrund = (reason) => (reason === "current" ? T.revertCurrent : T.revertUnknown);
   const eigeneZeilen = customBase ? customRows(customBase) : [];
   const weitereOffenGezeigt = weitereOffen || extra.some((j) => j.id === selected);
 
@@ -1081,7 +1078,7 @@ export function CustomerTariffMarkupSection({ userId, pricing, customerLabel = "
                   : verlauf ? (
                     <ul className="adm-po-history">
                       {verlauf.map((e) => {
-                        const rv = historyRevert(e, tariffs, minimum);
+                        const rv = historyRevert(e, tariffs);
                         return (
                           <li key={e.id} className="adm-po-history-item" data-entry={e.id}>
                             <span className="adm-po-history-when">{formatStand(e.at)} · {e.actorName}</span>

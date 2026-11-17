@@ -12,16 +12,16 @@
 // Zahlen je Anbieter — Unser Einkauf, Kunde zahlt, Unser Verdienst, Ihr Aufschlag —
 // aus classMetrics. Kernaussage (verdictOf) und Vergleichsbeziehung (pairLink) nur aus
 // Vergleichsurteilen des Servers; eine Empfehlung gilt nur mit vergleichbarem Angebot
-// (reliableRecommendation) — ohne Vergleich ist der Serverwert die Untergrenze.
+// (reliableRecommendation) — ohne Vergleich liefert der Server keine Empfehlung.
 //
 // PROZENTVERTRAG wie utils/customerMarkup.mjs: 35 = 35 %, 17,5 = 17,5 %, 0 = 0 %
 // (ein echter Wert), leer = „kein eigener Satz“ (das Backend erhält null).
 //
 // AUTORITÄT: Der Server rechnet. Diese Datei wählt aus und formatiert Cent-Beträge
 // und Prozentwerte, die der Server liefert (Projektion des Preisvergleichs); sie
-// enthält keine Preisformel. Die Untergrenze prüft sie nur vorab für eine sofortige
-// Meldung am Feld — dieselbe Regel wie der Server (neuer Wert ≥ Untergrenze, ein
-// unverändert gebliebener Bestandswert bleibt erlaubt); verbindlich ist der Server.
+// enthält keine Preisformel. Eine Untergrenze gibt es nicht (Betreiberentscheidung
+// 2026-11-17, v2.142): jeder Satz von 0 bis 100 % mit höchstens zwei Nachkommastellen
+// ist frei wählbar; Empfehlungen sind freiwillig. Verbindlich prüft der Server.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { parseMarkupInput, markupInputValue, MARKUP_INPUT_ERRORS } from "./customerMarkup.mjs";
@@ -66,6 +66,7 @@ export const TARIFF_TEXTS = Object.freeze({
   gapFetch: "Preise nicht abrufbar",
   gapFetchComparison: "Vergleichspreise nicht abrufbar",
   gapNoComparable: "Kein vergleichbares Angebot",
+  gapNoHeadroom: "Kein sicherer Spielraum, auch nicht bei 0\u00a0%",
   noExample: "Kein Beispielpaket",
   noChange: "Keine Änderung vorgeschlagen",
   withDraft: "mit Ihrer Eingabe",
@@ -74,8 +75,8 @@ export const TARIFF_TEXTS = Object.freeze({
   adopt: "Empfehlung übernehmen",
   adopted: "Empfehlung eingetragen",
   custom: "Selbst festlegen",
-  newValue: "Neuer Aufschlag",
-  minimum: "Mindestens",
+  newValue: "Ihr Aufschlag",
+  rangeHint: "0–100\u00a0% frei wählbar.",
   emptyMeans: "Leer = kein eigener Satz.",
   draftPending: "noch nicht gespeichert",
   draftWarning: "Mit Ihrer Eingabe:",
@@ -96,9 +97,10 @@ export const TARIFF_TEXTS = Object.freeze({
   sameDayLegend: "Vergleich für UPS Standard",
   sameDayWithout: "Ohne Abholzuschlag",
   sameDayWith: "Mit Abholzuschlag",
-  howRecommended: "Die sichere Obergrenze ist der höchste Aufschlag, bei dem der Kunde auch nach 3 % Einkaufsschwankung mindestens 1 % weniger zahlt als beim günstigsten vergleichbaren Angebot. Empfohlen wird die Mitte zwischen Untergrenze und Obergrenze, auf 5 % abgerundet.",
+  howRecommended: "Die sichere Obergrenze ist der höchste Aufschlag, bei dem der Kunde auch nach 3 % Einkaufsschwankung mindestens 1 % weniger zahlt als beim günstigsten vergleichbaren Angebot. Empfohlen wird die Mitte zwischen 25 % und der Obergrenze, auf 5 % abgerundet – nie mehr als die Obergrenze; liegt sie unter 25 %, die Obergrenze selbst. Die Empfehlung ist freiwillig: jeder Satz von 0 bis 100 % lässt sich speichern.",
   upperBound: "Sichere Obergrenze",
-  upperBoundNone: "kein sicherer Spielraum über der Untergrenze",
+  upperBoundNone: "kein sicherer Spielraum, auch nicht bei 0\u00a0%",
+  upperBoundNoneShort: "kein Spielraum",
   limitedBy: "begrenzt durch",
   comparedSamples: "Verglichene Pakete",
   of: "von",
@@ -137,6 +139,7 @@ export const TARIFF_TEXTS = Object.freeze({
   dialogWarnAtRisk: "Preisvorteil gefährdet",
   dialogWarnWeak: "Empfehlung wenig belegt",
   dialogWarnNone: "Kein verlässlicher Vergleich",
+  dialogWarnNoEarnings: "Kein Verdienst bei diesem Beispiel",
   saved: "Gespeichert. Die Aufschläge gelten ab jetzt für neue Preisanfragen dieses Kunden.",
   historyTitle: "Verlauf",
   historyLoading: "Verlauf wird geladen …",
@@ -144,7 +147,6 @@ export const TARIFF_TEXTS = Object.freeze({
   historyError: "Der Verlauf konnte nicht geladen werden.",
   revert: "Auf alten Wert zurücksetzen",
   revertCurrent: "Entspricht dem aktuellen Wert.",
-  revertFloor: "Alter Wert unter der Untergrenze – nicht mehr speicherbar.",
   revertUnknown: "Tarif nicht mehr vorhanden.",
   revertDone: "Der alte Wert ist eingetragen. Bitte prüfen und speichern.",
   customTitle: "Eigenes Paket vergleichen",
@@ -177,7 +179,6 @@ export const TARIFF_TEXTS = Object.freeze({
   similarTo: "Im Preisvergleich ähnlich zu",
   before: "Bisher",
   after: "Neu",
-  belowMinimumShort: "Unter",
   detailPackage: "Gewicht und Maße",
   detailPickup: "Abholtag",
   detailSurcharges: "Zuschläge",
@@ -191,11 +192,20 @@ export const STATUS_VIEW = Object.freeze({
   good: Object.freeze({ tone: "success", label: "Gut eingestellt", text: "Der Kunde zahlt sicher weniger als beim vergleichbaren Angebot, und der Aufschlag liegt nahe an der Empfehlung." }),
   more_profit: Object.freeze({ tone: "info", label: "Hier ist mehr Gewinn möglich", text: "Der Aufschlag kann steigen – der Kunde zahlt dann immer noch mindestens 1\u00a0% weniger als beim vergleichbaren Angebot." }),
   at_risk: Object.freeze({ tone: "warning", label: "Preisvorteil gefährdet", text: "Der Kunde zahlt fast so viel wie beim vergleichbaren Angebot oder mehr." }),
-  below_target: Object.freeze({ tone: "error", label: "Unter dem Zielaufschlag", text: "Der Aufschlag liegt unter der Untergrenze. Er bleibt, bis Sie ihn ändern; neue Werte brauchen mindestens die Untergrenze." }),
-  no_comparison: Object.freeze({ tone: "neutral", label: "Kein verlässlicher Vergleich", text: "Für dieses Gewicht gibt es kein vergleichbares Angebot – empfohlen wird die Untergrenze." }),
+  no_comparison: Object.freeze({ tone: "neutral", label: "Kein verlässlicher Vergleich", text: "Für dieses Gewicht gibt es kein vergleichbares Angebot – deshalb keine Empfehlung." }),
   not_compared: Object.freeze({ tone: "neutral", label: TARIFF_TEXTS.notCompared, text: TARIFF_TEXTS.notComparedText }),
 });
-const STATUS_RANG = Object.freeze(["below_target", "at_risk", "more_profit", "good", "no_comparison", "not_compared"]);
+const STATUS_RANG = Object.freeze(["at_risk", "more_profit", "good", "no_comparison", "not_compared"]);
+
+// Hinweis „Kein Verdienst“ (v2.142): kein Zustand einer Klasse, sondern ein nicht blockierender Hinweis am gezeigten
+// Beispielpaket — nur aus Serverzahlen (Deckungsbeitrag ≤ 0 Cent), ohne feste Gewinnschwelle über 0.
+export const WARNING_VIEW = Object.freeze({
+  no_earnings: Object.freeze({ tone: "warning", label: "Kein Verdienst" }),
+});
+export const NO_EARNINGS_TEXTS = Object.freeze({
+  zero: "Bei diesem Beispielpaket zahlt der Kunde genau unseren Einkaufspreis – es bleibt kein Verdienst.",
+  negative: "Bei diesem Beispielpaket zahlt der Kunde weniger als unseren Einkaufspreis – es bleibt kein Verdienst.",
+});
 
 export const HINT_TEXTS = Object.freeze({
   little_headroom: "Wenig Spielraum: schon kleine Preisänderungen können den Preisvorteil aufheben.",
@@ -219,7 +229,6 @@ export const TARIFF_SAVE_ERRORS = Object.freeze({
   UNKNOWN_TARIFF_PROVIDER: "Für diese Einkaufsquelle ist kein eigener Aufschlag vorgesehen.",
   INVALID_WEIGHT_CLASS: "Diese Gewichtsklasse gibt es nicht. Bitte die Seite neu laden.",
   INVALID_TARIFF_MARKUP_REQUEST: "Die Änderung konnte nicht übermittelt werden. Bitte die Seite neu laden.",
-  MARKUP_BELOW_MINIMUM: "Neue Aufschläge müssen mindestens die Untergrenze erreichen. Ein bestehender niedrigerer Wert bleibt, solange Sie ihn nicht ändern.",
   404: "Das Kundenkonto wurde nicht gefunden.",
   429: "Zu viele Änderungen in kurzer Zeit. Bitte in einigen Minuten erneut versuchen.",
   default: "Die Aufschläge konnten nicht gespeichert werden. Es wurde nichts geändert.",
@@ -275,7 +284,6 @@ export function selectTariffMarkups(payload) {
   const comparison = p.comparison && typeof p.comparison === "object" ? p.comparison : {};
   return {
     userId: numOrNull(p.userId),
-    minimumMarkupPercent: numOrNull(p.minimumMarkupPercent),
     account: { standardPercent: numOrNull(account.standardPercent), expressPercent: numOrNull(account.expressPercent) },
     tariffs,
     comparison: {
@@ -323,13 +331,8 @@ export function draftValue(drafts, tariff, weightClass) {
   return drafts && hat(drafts, k) ? drafts[k] : tariffInputValue(savedOverride(tariff, weightClass));
 }
 
-export const floorText = (minimum) => (minimum === null || minimum === undefined
-  ? TARIFF_SAVE_ERRORS.MARKUP_BELOW_MINIMUM
-  : `Neue Aufschläge müssen mindestens ${formatPercent(minimum)} betragen. Ein bestehender niedrigerer Wert bleibt, solange Sie ihn nicht ändern.`);
-// Kurzhinweis am Eingabefeld.
-export const fieldHint = (minimum) => (numOrNull(minimum) === null
-  ? TARIFF_TEXTS.emptyMeans
-  : `${TARIFF_TEXTS.minimum} ${formatPercent(minimum)}. ${TARIFF_TEXTS.emptyMeans}`);
+// Kurzhinweis am Eingabefeld: 0–100 % frei wählbar, leer = kein eigener Satz (keine Untergrenze, v2.142).
+export const fieldHint = () => `${TARIFF_TEXTS.rangeHint} ${TARIFF_TEXTS.emptyMeans}`;
 
 // Reiter der Gewichtsklassen (Betreiberauftrag 2026-11-17: „Bis 5 kg | 5–10 kg | 10–20 kg | Über 20 kg“):
 // „über 5 bis 10 kg“ → „5–10 kg“. Die Grenzen kommen nur aus der Klassenbezeichnung des Servers; diese Funktion
@@ -342,14 +345,11 @@ export function weightTabLabel(label) {
 }
 
 // Änderungen gegenüber dem gespeicherten Stand.
-//   entries  alle gültig geparsten Abweichungen (auch unter der Untergrenze — die Vorschau zeigt ihre Wirkung)
-//   invalid  { key: Text } — Eingabefehler UND neue Werte unter der Untergrenze; sperrt das Speichern
-//   floor    { key: true } — nur die Untergrenzenfälle
-export function tariffDraftChanges(tariffs, drafts, minimumPercent) {
+//   entries  alle gültig geparsten Abweichungen — jeder Satz von 0 bis 100 % (0 ist ein Satz, leer = null)
+//   invalid  { key: Text } — nur Eingabefehler (Format, Bereich, Stellen); sperrt das Speichern
+export function tariffDraftChanges(tariffs, drafts) {
   const entries = [];
   const invalid = {};
-  const floor = {};
-  const minimum = numOrNull(minimumPercent);
   for (const t of tariffs || []) {
     for (const wc of [WEIGHT_CLASS_ALL, ...t.classes.map((c) => c.weightClass)]) {
       const key = draftKey(t.provider, t.productKey, wc);
@@ -359,10 +359,9 @@ export function tariffDraftChanges(tariffs, drafts, minimumPercent) {
       const saved = savedOverride(t, wc);
       if (parsed.value === saved) continue;
       entries.push({ provider: t.provider, productKey: t.productKey, weightClass: wc, markupPercent: parsed.value });
-      if (parsed.value !== null && minimum !== null && parsed.value < minimum) { invalid[key] = floorText(minimum); floor[key] = true; }
     }
   }
-  return { entries, count: entries.length, invalid, floor };
+  return { entries, count: entries.length, invalid };
 }
 export const buildTariffEntriesBody = (entries) => ({
   entries: (entries || []).map((e) => ({ provider: e.provider, productKey: e.productKey, weightClass: e.weightClass, markupPercent: e.markupPercent })),
@@ -478,12 +477,6 @@ export function statusText(cls, provider) {
   const hinweis = cls ? hintText(cls.hint, provider) : null;
   return hinweis ? `${satz} ${hinweis}` : satz;
 }
-// Ohne Vergleichsbasis: rot nur, wenn der gespeicherte Satz unter der Untergrenze des Servers liegt.
-export function statusWithoutComparison(effectivePercent, minimumPercent) {
-  const e = numOrNull(effectivePercent);
-  const m = numOrNull(minimumPercent);
-  return e !== null && m !== null && e < m ? "below_target" : "not_compared";
-}
 
 // Gewinn und Kundenpreis je Klasse: heute (gespeicherte Projektion) gegen neu (Entwurf aus der Vorschau, sonst die
 // Empfehlung). Immer dasselbe Beispielpaket — das gezeigte (scenarioId) bzw. das der gespeicherten Projektion.
@@ -535,8 +528,8 @@ export function profitRow(baseClass, previewClass, scenarioId = null) {
   };
 }
 
-// Belastbar ist eine Empfehlung nur mit vergleichbarem Angebot. Ohne Vergleich liefert der Server die Untergrenze —
-// die Karte zeigt dann „Keine Empfehlung verfügbar“ und bietet nichts zum Übernehmen an.
+// Belastbar ist eine Empfehlung nur mit vergleichbarem Angebot und sicherem Spielraum. Ohne beides liefert der Server
+// keine Empfehlung (null) — die Karte zeigt dann „Keine Empfehlung verfügbar“ und bietet nichts zum Übernehmen an.
 export function reliableRecommendation(cls) {
   return !!cls && cls.status !== "no_comparison" && cls.comparisonStatus !== "no_comparison" && numOrNull(cls.recommendedPercent) !== null;
 }
@@ -547,6 +540,8 @@ export function noRecommendationText(cls) {
   if (proben.every((p) => p && p.reason === "own_unavailable")) return TARIFF_TEXTS.gapUnavailable;
   // fetch_failed mit eigenem Preis: der ANDERE Anbieter war nicht erreichbar (Server: own gesetzt, comparison null).
   if (proben.every((p) => p && p.reason === "fetch_failed")) return proben.every((p) => p.own) ? TARIFF_TEXTS.gapFetchComparison : TARIFF_TEXTS.gapFetch;
+  // Verglichen, aber selbst 0 % hält das Ziel nicht (Server: belowFloor) — ein anderer Grund als „kein Vergleichsangebot“.
+  if (cls && cls.belowFloor === true) return TARIFF_TEXTS.gapNoHeadroom;
   return TARIFF_TEXTS.gapNoComparable;
 }
 
@@ -603,34 +598,38 @@ export function classMetrics({ tariff, weightClass, baseClass = null, previewCla
   return { current, recommended, adoptPercent, more, row, numbers };
 }
 
-// Hinweise, die die Entscheidung beeinflussen und deshalb vorne sichtbar bleiben: Preisvorteil gefährdet und
-// gespeicherter Satz unter der Untergrenze. Mit Entwurf zählt die Vorschau (draft: true).
-export function classWarnings({ baseClass = null, previewClass = null, currentPercent = null, minimumPercent = null, provider = null, hasBase = false } = {}) {
+// „Kein Verdienst bei diesem Beispiel“: Deckungsbeitrag am gezeigten Beispielpaket ≤ 0 Cent — mit Entwurf laut
+// Vorschau, sonst gespeichert. Nur aus Serverzahlen (numbers aus classMetrics); ohne Zahl kein Hinweis. Es gibt
+// bewusst keine Schwelle über 0 (keine feste Gewinnuntergrenze, v2.142), und der Hinweis sperrt nichts.
+export function earningsWarning(numbers) {
+  if (!numbers || !numbers.available) return null;
+  const entwurf = numbers.draft && Number.isInteger(numbers.draft.contributionCents) ? numbers.draft : null;
+  const cents = entwurf ? entwurf.contributionCents : numbers.contributionCents;
+  if (!Number.isInteger(cents) || cents > 0) return null;
+  return { status: "no_earnings", text: cents < 0 ? NO_EARNINGS_TEXTS.negative : NO_EARNINGS_TEXTS.zero, draft: !!entwurf };
+}
+
+// Hinweise, die die Entscheidung beeinflussen und deshalb vorne sichtbar bleiben: Preisvorteil gefährdet und kein
+// Verdienst am gezeigten Beispiel. Mit Entwurf zählt die Vorschau (draft: true). Ein niedriger Satz ist kein Hinweis.
+export function classWarnings({ baseClass = null, previewClass = null, provider = null, hasBase = false, numbers = null } = {}) {
   const entwurf = !!previewClass && !!baseClass
     && (!!previewClass.draft || numOrNull(previewClass.currentPercent) !== numOrNull(baseClass.currentPercent));
   const k = entwurf ? previewClass : baseClass;
   const out = [];
-  if (hasBase && k) {
-    // Ein Entwurf unter der Untergrenze meldet das Feld selbst.
-    if (!entwurf && k.status === "below_target") out.push({ status: "below_target", text: STATUS_VIEW.below_target.text, draft: false });
-    if (k.status === "at_risk" || k.comparisonStatus === "at_risk") {
-      out.push({ status: "at_risk", text: [STATUS_VIEW.at_risk.text, hintText(k.hint, provider)].filter(Boolean).join(" "), draft: entwurf });
-    }
-  } else if (statusWithoutComparison(currentPercent, minimumPercent) === "below_target") {
-    out.push({ status: "below_target", text: STATUS_VIEW.below_target.text, draft: false });
+  if (hasBase && k && (k.status === "at_risk" || k.comparisonStatus === "at_risk")) {
+    out.push({ status: "at_risk", text: [STATUS_VIEW.at_risk.text, hintText(k.hint, provider)].filter(Boolean).join(" "), draft: entwurf });
   }
+  const verdienst = hasBase ? earningsWarning(numbers) : null;
+  if (verdienst) out.push(verdienst);
   return out;
 }
 
 // Kurzfassung eines Tarifs für die Tarifliste: wichtigster Zustand, möglicher Mehrgewinn je Sendung (nur aus
 // belastbaren Empfehlungen), Spanne der heutigen und empfohlenen Sätze.
-export function tariffSummary(tariff, base, { sameDay = false, minimumPercent = null } = {}) {
+export function tariffSummary(tariff, base, { sameDay = false } = {}) {
   const heute = tariff.classes.map((c) => c.effectivePercent).filter((v) => v !== null);
   const spanne = (werte) => (werte.length === 0 ? null : { min: Math.min(...werte), max: Math.max(...werte) });
-  if (!base) {
-    const status = tariff.classes.some((c) => statusWithoutComparison(c.effectivePercent, minimumPercent) === "below_target") ? "below_target" : "not_compared";
-    return { status, plusCents: null, today: spanne(heute), recommended: null };
-  }
+  if (!base) return { status: "not_compared", plusCents: null, today: spanne(heute), recommended: null };
   const klassen = tariff.classes.map((c) => projectionClass(base, tariff.provider, tariff.productKey, c.weightClass, { sameDay })).filter(Boolean);
   const zustaende = klassen.map(statusOf);
   const status = STATUS_RANG.find((s) => zustaende.includes(s)) || "not_compared";
@@ -810,13 +809,15 @@ export function scenarioOf(base, scenarioId) {
   return base.scenarios.find((s) => s && s.id === scenarioId) || null;
 }
 
-// Hinweise für den Bestätigungsdialog je Änderung (aus der Vorschau): gefährdet, kein Vergleich, wenig belegt.
-export function changeWarnings(previewClass) {
+// Hinweise für den Bestätigungsdialog je Änderung (aus der Vorschau): gefährdet, kein Vergleich, wenig belegt und —
+// mit der Beispielzeile (profitRow) — kein Verdienst am Beispielpaket (Deckungsbeitrag laut Vorschau ≤ 0 Cent).
+export function changeWarnings(previewClass, row = null) {
   if (!previewClass) return [];
   const w = [];
   if (previewClass.status === "at_risk" || previewClass.comparisonStatus === "at_risk") w.push("at_risk");
   if (previewClass.comparisonStatus === "no_comparison") w.push("no_comparison");
   else if (Number.isInteger(previewClass.comparedSamples) && previewClass.comparedSamples < 2) w.push("weak");
+  if (row && row.available && row.neu && Number.isInteger(row.neu.contributionCents) && row.neu.contributionCents <= 0) w.push("no_earnings");
   return w;
 }
 
@@ -847,13 +848,12 @@ export function selectTariffHistory(payload, tariffs) {
     })
     .filter((e) => e.productKey !== null);
 }
-export function historyRevert(entry, tariffs, minimumPercent) {
+// Rücknahme auf den alten Wert: jeder alte Wert (auch unter 25 % und 0 %) ist wieder speicherbar (v2.142).
+export function historyRevert(entry, tariffs) {
   const tariff = (tariffs || []).find((t) => t.provider === entry.provider && t.productKey === entry.productKey) || null;
   if (!tariff) return { allowed: false, reason: "unknown" };
   const saved = savedOverride(tariff, entry.weightClass);
   if (entry.before === saved) return { allowed: false, reason: "current" };
-  const m = numOrNull(minimumPercent);
-  if (entry.before !== null && m !== null && entry.before < m) return { allowed: false, reason: "floor" };
   return { allowed: true, reason: null, key: draftKey(entry.provider, entry.productKey, entry.weightClass), value: tariffInputValue(entry.before) };
 }
 export const historyValue = (v) => (v === null ? TARIFF_TEXTS.noInput : formatPercent(v));
@@ -895,11 +895,10 @@ export function parseCustomPackageInput({ weight, length, width, height } = {}) 
 }
 
 // ── Fehlerübersetzung ───────────────────────────────────────────────────────
-export function tariffSaveError(status, body, minimumPercent = null) {
+export function tariffSaveError(status, body) {
   if (status === 401 || status === 403) return null; // zentraler Redirect
   const code = body && typeof body.code === "string" ? body.code : null;
-  const basis = code === "MARKUP_BELOW_MINIMUM" ? floorText(numOrNull(minimumPercent))
-    : (code && TARIFF_SAVE_ERRORS[code]) || TARIFF_SAVE_ERRORS[status] || TARIFF_SAVE_ERRORS.default;
+  const basis = (code && TARIFF_SAVE_ERRORS[code]) || TARIFF_SAVE_ERRORS[status] || TARIFF_SAVE_ERRORS.default;
   const key = body && TARIFF_PROVIDERS.includes(body.provider) && Number.isInteger(Number(body.productKey)) && Number.isInteger(Number(body.weightClass))
     ? draftKey(body.provider, Number(body.productKey), Number(body.weightClass)) : null;
   return { text: basis, key, code };

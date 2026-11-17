@@ -456,13 +456,14 @@ test("26 — 400 wird verständlich direkt am Eingabefeld angezeigt", () => {
   assert.match(sectionSrc, /aria-invalid=\{fieldError \? "true" : undefined\}/);
 });
 
-test("26b — Untergrenze (MARKUP_BELOW_MINIMUM) erscheint am Feld, das der Server nennt", () => {
-  const text = "Neue Aufschläge müssen mindestens 25 % betragen. Bestehende niedrigere Werte bleiben unverändert, solange sie nicht geändert werden.";
-  const std = markupSaveError(400, { code: "MARKUP_BELOW_MINIMUM", error: text, field: "percent" });
-  assert.deepEqual(std, { field: true, target: "standard", code: "MARKUP_BELOW_MINIMUM", text });
-  const exp = markupSaveError(400, { code: "MARKUP_BELOW_MINIMUM", error: text, field: "expressPercent" });
-  assert.equal(exp.target, "express");
-  assert.equal(markupSaveError(400, { code: "MARKUP_BELOW_MINIMUM" }).text, MARKUP_SAVE_ERRORS.belowMinimum);
+test("26b — keine Untergrenze (v2.142): 0 bis 100 % sind gültig, es gibt keinen Untergrenzencode und -text mehr", () => {
+  for (const [roh, wert] of [["0", 0], ["0,01", 0.01], ["5", 5], ["10", 10], ["17,55", 17.55], ["20", 20], ["24,99", 24.99], ["25", 25], ["100", 100]]) {
+    const r = parseMarkupInput(roh);
+    assert.equal(r.ok, true, roh);
+    assert.equal(r.value, wert, roh);
+  }
+  assert.ok(!("belowMinimum" in MARKUP_SAVE_ERRORS), "kein Untergrenzentext");
+  assert.ok(!/MARKUP_BELOW_MINIMUM|Untergrenze/.test(markupSrc), "kein Untergrenzenzweig im Modul");
 });
 
 test("27 — 404 wird verständlich angezeigt", () => {

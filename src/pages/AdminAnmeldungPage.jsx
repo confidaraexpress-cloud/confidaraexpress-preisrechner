@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCeBereich } from "../hooks/useCeBereich";
+import { useLeitstandZeiger } from "../hooks/useLeitstandZeiger";
 import { BrandLogo } from "../components/ui/BrandLogo";
 import { Icon } from "../components/ui/Icon";
 import { AdminLeitstand } from "../components/auth/AdminLeitstand";
@@ -22,7 +23,8 @@ import { passwordLengthError, PASSWORD_MIN_LEN, PASSWORD_MAX_LEN } from "../util
    Setzen des eigenen Passworts über den Einmallink (…/admin/login?reset=…). Wer Admin ist, entscheidet der Server;
    diese Seite zeigt nur, was er antwortet, und führt danach ins Adminpanel (geprüftes Rücksprungziel, sonst /admin).
    Gestaltung: styles/auth.css, Abschnitt „Admin-Anmeldung“; Bühne: components/auth/AdminLeitstand.jsx, Hauptmotiv:
-   components/auth/AdminHologramm.jsx. Das statische Seitengerüst admin-login.html zeigt dieselbe Komposition ruhend. */
+   components/auth/AdminHologramm.jsx. Das statische Seitengerüst admin-login.html zeigt dieselbe Komposition ruhend.
+   Leitstand 2.0 (Canonical v2.143): Die Bühne reagiert leise auf die Maus (hooks/useLeitstandZeiger.js, nur Darstellung). */
 
 const PASSWORT_TEXTE = Object.freeze({
   tooShort: `Das Passwort muss mindestens ${PASSWORD_MIN_LEN} Zeichen haben.`,
@@ -114,6 +116,8 @@ export default function AdminAnmeldungPage() {
   const vergessenRef = useRef(null);
   const neuRef = useRef(null);
   const titelRef = useRef(null);
+  const seiteRef = useRef(null);
+  useLeitstandZeiger(seiteRef);
 
   // Den Einmallink nicht in der Adresszeile stehen lassen: er bleibt nur im Zustand dieser Seite.
   useEffect(() => {
@@ -237,7 +241,7 @@ export default function AdminAnmeldungPage() {
   );
 
   return (
-    <div className="auth-admin-seite">
+    <div className="auth-admin-seite" ref={seiteRef}>
       <AdminLeitstand />
       <main className="auth-admin-mitte">
         <AdminHologramm />

@@ -199,3 +199,34 @@ test("12 — Seitengerüst admin-login.html: dieselbe Bühne, dasselbe Hologramm
     assert.ok(panel.includes(`<path d="${d}" />`), `Symbol ${n} weicht von Icon.jsx ab`);
   }
 });
+
+test("13 — Leitstand 2.0 (Canonical v2.143): Zeigerwerte nur bei feinem Zeiger, nur Darstellung, Ruhelage ohne Werte", () => {
+  const hook = ohneKommentare(lies("hooks/useLeitstandZeiger.js"));
+  // Nur Maus oder Stift mit Hover, nie bei reduzierter Bewegung; ein Schreibvorgang je Bild, passive Listener.
+  assert.match(hook, /matchMedia\("\(hover: hover\) and \(pointer: fine\)"\)\.matches\) return undefined;/);
+  assert.match(hook, /matchMedia\("\(prefers-reduced-motion: reduce\)"\)\.matches\) return undefined;/);
+  assert.match(hook, /addEventListener\("pointermove", bewegen, \{ passive: true \}\)/);
+  assert.match(hook, /requestAnimationFrame\(zeichnen\)/);
+  // Aufräumen: Listener weg, jede gesetzte Variable weg.
+  assert.match(hook, /removeEventListener\("pointermove", bewegen\)/);
+  assert.match(hook, /for \(const e of EIGENSCHAFTEN\) wurzel\.style\.removeProperty\(e\);/);
+  // Nur CSS-Variablen --auth-*: kein Zustand, keine Logik, kein anderer Stil, keine Daten.
+  const gesetzt = [...hook.matchAll(/setProperty\("([^"]+)"/g)].map((m) => m[1]);
+  assert.ok(gesetzt.length >= 7);
+  for (const g of gesetzt) assert.match(g, /^--auth-(?:px|py|zx|zy|lx|ly|licht)$/, g);
+  assert.doesNotMatch(hook, /useState|fetch\(|localStorage|sessionStorage|style\.(?!setProperty|removeProperty)\w+\s*=/);
+  // Die Seite gibt dem Hook ihre Wurzel; Leitstand und Hologramm bleiben ohne Handler (Test 9).
+  const seite = ohneKommentare(lies("pages/AdminAnmeldungPage.jsx"));
+  assert.match(seite, /const seiteRef = useRef\(null\);\s*useLeitstandZeiger\(seiteRef\);/);
+  assert.match(seite, /<div className="auth-admin-seite" ref=\{seiteRef\}>/);
+  // Im Stil hat jede Zeigervariable eine Ruhelage (Rückfallwert): ohne Zeiger steht alles wie im Seitengerüst.
+  const css = lies("styles/auth.css");
+  const abschnitt = css.slice(css.indexOf("Admin-Anmeldung /admin/login (Canonical v2.131)"));
+  const ohneRuhe = [...abschnitt.matchAll(/var\(--auth-(?:px|py|zx|zy|lx|ly|licht)\)/g)].map((m) => m[0]);
+  assert.deepEqual(ohneRuhe, [], `Zeigervariable ohne Ruhelage: ${ohneRuhe.join(", ")}`);
+  assert.match(abschnitt, /opacity: var\(--auth-licht, 0\);/, "das Zeigerlicht ist ohne Zeiger unsichtbar");
+  const rm = abschnitt.slice(abschnitt.indexOf("@media (prefers-reduced-motion: reduce)"));
+  assert.match(rm, /\.auth-admin-buehne \*, \.auth-admin-buehne \*::before, \.auth-admin-buehne \*::after \{ animation: none; \}/);
+  assert.match(rm, /\.auth-admin-zeigerlicht, \.auth-admin-glanz::after \{ display: none; \}/);
+  assert.match(abschnitt, /\.auth-admin-geruest \.auth-admin-buehne \*,\s*\.auth-admin-geruest \.auth-admin-buehne \*::before,\s*\.auth-admin-geruest \.auth-admin-buehne \*::after \{ animation: none; \}/);
+});

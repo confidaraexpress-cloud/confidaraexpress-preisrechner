@@ -4,10 +4,11 @@
 // bereichsübergreifenden Design-Tests (designSystemClosure, designTokens, interfacePatterns, typography,
 // premiumRedesign) führen kunde-obsidian.css und kunde-schriften.css als dokumentierte Ausnahme und verweisen für
 // deren Grenzen hierher:
-//   • jede Regel hängt an der Designfamilie (:root[data-ce-familie="blue-light"]: Kundenbereich, Adminpanel,
-//     Partnerportal, öffentliche Seiten — Betreiberauftrag „Final Master Release“, 2026-11-16) oder an einem ihrer
-//     Bereiche; Anmeldung, Admin-Anmeldung und Preisrechner lesen die Ebene nie; einzige Ausnahme ist der
-//     Ladebildschirm der Kundenpfade;
+//   • jede Regel hängt an der Designfamilie (:root[data-ce-familie="blue-light"]: Kundenbereich, Partnerportal,
+//     öffentliche Seiten — Betreiberauftrag „Final Master Release“, 2026-11-16; das Adminpanel trägt seit dem
+//     2026-11-17 die eigene Ebene admin-nacht.css, adminNacht.test.mjs) oder an einem ihrer Bereiche; Anmeldung,
+//     Admin-Anmeldung, Adminpanel und Preisrechner lesen die Ebene nie; einzige Ausnahme ist der Ladebildschirm der
+//     Kundenpfade;
 //   • Foundation-Tokens werden nur in den Tokenblöcken der Familie und des Kundenbereichs umgeordnet, Layout-Tokens
 //     gar nicht;
 //   • Tiefe, Glas und Unschärfe nur über Token, Schatten kühl (neutral oder Confidara-Blau), kein Schleier mit
@@ -29,7 +30,9 @@ const SCHRIFTEN = ohneKommentare(read("./kunde-schriften.css"));
 const BEREICH = ':root[data-ce-bereich="kunde"]';
 const FAMILIE = ':root[data-ce-familie="blue-light"]';
 // Die Bereiche der Familie (hooks/useCeBereich.js, BLUE_LIGHT_FAMILIE) — nur sie tragen eigene Regeln der Ebene.
-const FAMILIENBEREICHE = ["kunde", "admin", "partner", "oeffentlich"].map((b) => `:root[data-ce-bereich="${b}"]`);
+// Das Adminpanel gehört seit dem Betreiberauftrag vom 2026-11-17 nicht mehr zur Familie (eigene Ebene admin-nacht.css):
+// Eine Regel am Adminbereich wäre hier ein fremder Selektor.
+const FAMILIENBEREICHE = ["kunde", "partner", "oeffentlich"].map((b) => `:root[data-ce-bereich="${b}"]`);
 
 /** Zerlegt CSS in Regeln { selektor, rumpf, kontext }: @media/@supports werden geöffnet, @keyframes bleibt ganz. */
 function regeln(css, kontext = []) {
@@ -80,7 +83,7 @@ test("O1 — jede Regel hängt an der Familie Blue Light oder einem ihrer Bereic
   assert.equal(STILREGELN.filter((r) => r.selektor === BEREICH).length, 1, "genau ein Tokenblock des Kundenbereichs");
   // Die hook-gesetzten Werte und die der Ebene laufen nicht auseinander.
   const hook = readFileSync(new URL("../hooks/useCeBereich.js", import.meta.url), "utf8");
-  assert.match(hook, /BLUE_LIGHT_FAMILIE = Object\.freeze\(\["kunde", "admin", "partner", "oeffentlich"\]\)/);
+  assert.match(hook, /BLUE_LIGHT_FAMILIE = Object\.freeze\(\["kunde", "partner", "oeffentlich"\]\)/);
   assert.match(hook, /setAttribute\("data-ce-familie", "blue-light"\)/);
   assert.equal(STILREGELN.at(-1).selektor, ".loading-screen.loading-screen--kunde");
   const fremd = [];
@@ -248,7 +251,8 @@ test("O5 — Schriften: Arbeit in Instrument Sans, dazu zwei OFL-Familien, lokal
 
 test("O6 — nur das Hauptbündel lädt die Ebene; der öffentliche Preisrechner nicht", () => {
   const index = read("./index.css");
-  assert.match(index, /@import '\.\/kunde-schriften\.css';\s*@import '\.\/kunde-obsidian\.css';\s*$/);
+  // Danach nur noch die Adminebene (Confidara Leitstand Nacht, 2026-11-17; adminNacht.test.mjs).
+  assert.match(index, /@import '\.\/kunde-schriften\.css';\s*@import '\.\/kunde-obsidian\.css';\s*(?:\/\*[\s\S]*?\*\/\s*)?@import '\.\/admin-nacht\.css';\s*$/);
   // Blue Light (2026-11-16): Host Grotesk für die Displayrolle des Rechners kommt aus fonts.css; Instrument Serif und
   // die Gestaltungsebene bleiben draußen (Bündelbudget, E2E publicCalculatorBuild B2).
   assert.doesNotMatch(ohneKommentare(read("./public-calculator.css")), /kunde-(?:obsidian|schriften)\.css|index\.css/);

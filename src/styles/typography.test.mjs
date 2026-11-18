@@ -559,8 +559,11 @@ test("12 — Phase 2.5 fasst nur Typografie an", () => {
   // (kundeObsidian.test.mjs). Jede andere Stelle der Datei bleibt dieser Regel unterworfen.
   for (const [datei, text] of Object.entries(css)) {
     // Blue Light (2026-11-16): dazu der Tokenblock der Designfamilie (:root[data-ce-familie="blue-light"]).
+    // Confidara Leitstand Nacht (Betreiberauftrag 2026-11-17): die Adminebene ordnet sie für das Adminpanel um — nur im
+    // Tokenblock :root[data-ce-bereich="admin"] (adminNacht.test.mjs prüft: ein Block, keine Layout-Tokens).
     const pruefText = datei === "kunde-obsidian.css"
-      ? text.replace(/:root\[data-ce-(?:bereich="kunde"|familie="blue-light")\]\s*\{[^{}]*\}/g, "") : text;
+      ? text.replace(/:root\[data-ce-(?:bereich="kunde"|familie="blue-light")\]\s*\{[^{}]*\}/g, "")
+      : datei === "admin-nacht.css" ? text.replace(/:root\[data-ce-bereich="admin"\]\s*\{[^{}]*\}/g, "") : text;
     const fremd = [...pruefText.matchAll(/--(ce-(?:space|radius|elevation|z|bp|size|color)-[\w-]+):/g)]
       .map((m) => m[1]);
     assert.deepEqual(fremd, [], `${datei} darf keine Foundation-Tokens umdefinieren: ${fremd.join(", ")}`);

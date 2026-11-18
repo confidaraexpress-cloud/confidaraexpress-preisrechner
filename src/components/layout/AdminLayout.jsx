@@ -5,18 +5,19 @@ import { useCeBereich } from "../../hooks/useCeBereich";
 import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
 import { Icon, ICON_SIZE } from "../ui/Icon";
 
-// Eigenständiger Adminbereich-Rahmen (Light-Theme, adm- Prefix, URL-basiertes
-// Routing). Kein Bezug zum State-basierten Kunden-Dashboard und keine
-// Vermischung mit ce-dark-/auth-Themes. Die eigentlichen Seiten werden über
-// <Outlet /> gerendert.
+// Eigenständiger Adminbereich-Rahmen (adm- Prefix, URL-basiertes Routing). Kein
+// Bezug zum State-basierten Kunden-Dashboard und keine Vermischung mit den
+// auth-Themes. Die eigentlichen Seiten werden über <Outlet /> gerendert. Das
+// Material ist seit dem Betreiberauftrag vom 2026-11-17 dunkel (Confidara
+// Leitstand Nacht, styles/admin-nacht.css); Struktur und Geometrie blieben.
 //
-// Seit dem Redesign (2026-10) dieselbe Geometrie wie die Kunden-Shell: helle
+// Seit dem Redesign (2026-10) dieselbe Geometrie wie die Kunden-Shell:
 // Sidebar (248 px, Trennlinie statt Schatten), reine Textnavigation. Die mobile
 // Topbar trägt seit der Betreiberentscheidung 2026-10-17 wieder das
 // Hamburger-Symbol (statt des Textknopfs „Menü“) — mit unverändertem
 // zugänglichem Namen, aria-expanded und aria-controls auf den Drawer.
 export function AdminLayout() {
-  // Bereich „admin“ der Designfamilie Blue Light (hooks/useCeBereich.js; kunde-obsidian.css, Abschnitt 12).
+  // Bereich „admin“: eigene dunkle Ebene Confidara Leitstand Nacht (hooks/useCeBereich.js; admin-nacht.css).
   useCeBereich("admin");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { pathname } = useLocation();

@@ -16,7 +16,7 @@ import { AdminLayout } from "./components/layout/AdminLayout";
 import { demoAusgangsziel } from "./demo/demoModus.mjs";
 import { AuthSeite, EmailBestaetigungSeite, AdminAnmeldungSeite } from "./pages/authSeite";
 import { statischeAuthSeite } from "./utils/kundenAuthPfad.mjs";
-import { istKundenbereichPfad } from "./utils/kundenBereichPfad.mjs";
+import { istAdminbereichPfad, istKundenbereichPfad } from "./utils/kundenBereichPfad.mjs";
 
 // Die Kunden-Anmeldung: eigener Codeabschnitt wie jede Seite, aber vorladbar (pages/authSeite.js) — main.jsx lädt
 // sie vor dem ersten Rendern, damit sie das statische Seitengerüst ohne Ladefläche ersetzt (Abschnitt 5, 2026-10-27).
@@ -126,8 +126,10 @@ export default function App() {
   // Token gibt es keine Prüfung und keinen Ladebildschirm (AuthContext, Audit B.1). Auf den Seiten mit statischem
   // Gerüst steht er auf dessen dunklem Grund statt auf hellem. Auf den Pfaden des Kundenbereichs (Confidara Premium
   // Blue Light) steht er — wie die Ladefläche des Seitenwechsels unten — auf dessen Blauweiß: nur Darstellung, keine Weiche.
+  // Auf den Pfaden des Adminpanels (Confidara Leitstand Nacht) steht er dunkel wie das Panel danach.
   const kundenPfad = istKundenbereichPfad(pathname);
-  if (loadingUser) return <LoadingScreen dunkel={statischeAuthSeite(pathname) !== null} kunde={kundenPfad} />;
+  const adminPfad = istAdminbereichPfad(pathname);
+  if (loadingUser) return <LoadingScreen dunkel={statischeAuthSeite(pathname) !== null || adminPfad} kunde={kundenPfad} />;
 
   return (
     // ShippingFlowProvider steht bewusst AUSSERHALB von <Routes> und INNERHALB
@@ -145,7 +147,7 @@ export default function App() {
         Suchpräferenz erhalten bleiben sollen, wären jedes Mal weg.
         Er hält KEINE Buchungsdaten und schreibt nichts in den Versandvorgang. */}
     <ParcelShopFinderProvider>
-    <Suspense fallback={<LoadingScreen kunde={kundenPfad} />}>
+    <Suspense fallback={<LoadingScreen dunkel={adminPfad} kunde={kundenPfad} />}>
       <ScrollToTop />
       <Routes>
         <Route element={<AuthAreaBoundary />}>

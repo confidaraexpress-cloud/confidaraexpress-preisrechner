@@ -255,10 +255,13 @@ test("D — Kennzahlen: alle vier Zahlen exakt in derselben dunklen Navy-Farbe, 
   }
 });
 
-test("E — Anmeldung und Partnerregistrierung ohne die Flächen; öffentliche Seiten, Admin und Partnerportal nur mit dem Grund der Familie", async () => {
-  // Blue Light (Betreiberauftrag „Final Master Release“, 2026-11-16): Öffentliche Seiten, Admin und Partnerportal gehören
+test("E — Anmeldung und Partnerregistrierung ohne die Flächen; öffentliche Seiten und Partnerportal nur mit dem Grund der Familie, Admin auf dem Grund von Leitstand Nacht", async () => {
+  // Blue Light (Betreiberauftrag „Final Master Release“, 2026-11-16): Öffentliche Seiten und Partnerportal gehören
   // zur Designfamilie und stehen auf ihrem Grund (Blauweiß #F5F8FF); die beiden Flächen des Kundenbereichs bekommen sie
   // weiterhin nicht. Anmeldung, Registrierung, Partnerregistrierung und das Ende der Demo gehören nicht zur Familie.
+  // Confidara Leitstand Nacht (Betreiberauftrag 2026-11-17, Canonical v2.143): Das Adminpanel gehört nicht mehr zur
+  // Familie; es steht auf dem tiefen Navy seiner eigenen Ebene (admin-nacht.css), nie auf Blauweiß oder einer Fläche des
+  // Kundenbereichs.
   const ohneFlaeche = async (page, wo, { familie = false } = {}) => {
     const befund = await page.evaluate((familie) => {
       const rgb = (hex) => { const n = parseInt(hex.trim().slice(1), 16); return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`; };
@@ -324,7 +327,11 @@ test("E — Anmeldung und Partnerregistrierung ohne die Flächen; öffentliche S
       await page.waitForURL(new RegExp(`${ziel}$`), { timeout: 30000 });
       await page.waitForSelector(warte, { timeout: 30000 });
       await page.waitForTimeout(500);
-      await ohneFlaeche(page, wo, { familie: true });
+      await ohneFlaeche(page, wo, { familie: wo !== "Admin" });
+      if (wo === "Admin") {
+        const grund = await page.evaluate(() => getComputedStyle(document.querySelector("main.adm-main")).backgroundColor);
+        assert.equal(grund, "rgb(6, 11, 28)", `Admin: Grund ${grund} statt Navy #060B1C (Confidara Leitstand Nacht)`);
+      }
     } finally { await page.close(); }
   }
 });

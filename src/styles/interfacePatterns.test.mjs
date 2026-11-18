@@ -186,6 +186,9 @@ test("4 — es gibt genau einen Overlay-Grundton", () => {
     for (const m of inhalt.matchAll(/backdrop-filter:\s*([^;]+);/g)) {
       const selektor = inhalt.slice(inhalt.lastIndexOf("}", m.index) + 1, inhalt.lastIndexOf("{", m.index));
       if (f === "kunde-obsidian.css" && m[1].trim() === "var(--ce-ob-glas-weichzeichnung)" && !/overlay|dialog/i.test(selektor)) continue;
+      // Confidara Leitstand Nacht (Betreiberauftrag 2026-11-17): dieselbe Regel für das Adminpanel — Kopfleiste und Menüs
+      // auf Glas über genau ein Token, nie ein Schleier oder Dialog.
+      if (f === "admin-nacht.css" && m[1].trim() === "var(--adm-glas-weichzeichnung)" && !/overlay|dialog|modal/i.test(selektor)) continue;
       assert.equal(m[1].trim(), "none", `${f}: backdrop-filter ${m[1]}`);
     }
   }
@@ -375,8 +378,10 @@ test("11 — Tokens, Primitives und Typografie bleiben eingehalten", () => {
   // Editorial Business Premium (2026-10-28): die Editorial-Ebene folgt; auch sie hängt nur am Kundenbereich.
   // Confidara Obsidian (Betreiberauftrag 2026-11-15): Schrift- und Gestaltungsebene des Kundenbereichs folgen als
   // letzte — ebenfalls nur am Kundenbereich (kundeObsidian.test.mjs).
-  assert.deepEqual(reihenfolge.slice(-5),
-    ["patterns.css", "premium-redesign.css", "premium-editorial.css", "kunde-schriften.css", "kunde-obsidian.css"],
+  // Confidara Leitstand Nacht (Betreiberauftrag 2026-11-17): ganz zuletzt die Adminebene, nur am Adminbereich
+  // (adminNacht.test.mjs).
+  assert.deepEqual(reihenfolge.slice(-6),
+    ["patterns.css", "premium-redesign.css", "premium-editorial.css", "kunde-schriften.css", "kunde-obsidian.css", "admin-nacht.css"],
     "die Musterebene steht zuletzt vor der Bereichs-, der Editorial- und der Obsidian-Ebene des Redesigns");
   assert.equal(reihenfolge.filter((f) => f === "patterns.css").length, 1);
 

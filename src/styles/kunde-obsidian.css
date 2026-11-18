@@ -1,7 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    CONFIDARA PREMIUM BLUE LIGHT — DESIGNFAMILIE (Betreiberauftrag „Premium Blue Light Edition“, 2026-11-16; vom
    Betreiber freigegeben und mit „Final Master Release“ am 2026-11-16 auf Adminpanel, Partnerportal und öffentliche
-   Seiten übertragen)
+   Seiten übertragen; das Adminpanel trägt seit dem Betreiberauftrag „Adminpanel-Redesign im Resend-Stil“ vom
+   2026-11-17 die eigene dunkle Ebene admin-nacht.css)
    ───────────────────────────────────────────────────────────────────────────
    These: Die Resend-inspirierte Konsole aus „Confidara Obsidian“ (2026-11-15) im hellen Licht der Marke. Schrift,
    Maße, Raster, Formen und Bewegungen bleiben exakt die der Obsidian-Fassung — diese Ebene tauscht nur Farbe, Licht,
@@ -14,12 +15,12 @@
    und Dokumentation brauchen keine Umbenennung. Die dunkle Fassung liegt unverändert auf ihrem eigenen Branch.
 
    Architektur:
-   • Diese Datei ist die EINE Gestaltungsebene der Familie Blue Light: Kundenbereich, Adminpanel, Partnerportal und
-     öffentliche Seiten (hooks/useCeBereich.js setzt dort data-ce-familie="blue-light"). Sie steht als letzte im Bündel
-     (styles/index.css), hinter premium-editorial.css; jede Regel hängt an :root[data-ce-familie="blue-light"]
-     (gemeinsame Grundlage) oder an einem Bereich der Familie (:root[data-ce-bereich="kunde" | "admin" | "partner" |
-     "oeffentlich"]). Anmeldung („auth“), Admin-Anmeldung, Partnerregistrierung und der öffentliche Preisrechner (eigenes
-     Bündel) lesen sie nie.
+   • Diese Datei ist die EINE Gestaltungsebene der Familie Blue Light: Kundenbereich, Partnerportal und öffentliche
+     Seiten (hooks/useCeBereich.js setzt dort data-ce-familie="blue-light"). Sie steht im Bündel (styles/index.css)
+     hinter premium-editorial.css, gefolgt nur von der Adminebene admin-nacht.css; jede Regel hängt an
+     :root[data-ce-familie="blue-light"] (gemeinsame Grundlage) oder an einem Bereich der Familie
+     (:root[data-ce-bereich="kunde" | "partner" | "oeffentlich"]). Anmeldung („auth“), Admin-Anmeldung, Adminpanel
+     (eigene Ebene), Partnerregistrierung und der öffentliche Preisrechner (eigenes Bündel) lesen sie nie.
    • Abschnitt 1 ordnet die vorhandenen Tokens in zwei Blöcken um — Familie: Flächen, Tinte, Kanten, Status,
      Seitenleiste, Bediensystem, Titelmaterial, Tiefe; Kundenbereich: Zeilenhöhen, Editorial, Paketbühne, Kennzahlen,
      Demo. Weil die Bereichs-Stylesheets keine Farbliterale tragen, wechselt damit fast die ganze
@@ -400,7 +401,7 @@
 }
 /* Je Bereich seine eigene Hauptfläche; .page-with-navbar nur auf den öffentlichen Seiten — im Kundenbereich ist sie ein
    innerer Rahmen und läge als zweites Band über dem der .main-content. */
-:root[data-ce-familie="blue-light"] :is(.main-content, .adm-main, .spp-main),
+:root[data-ce-familie="blue-light"] :is(.main-content, .spp-main),
 :root[data-ce-bereich="oeffentlich"] .page-with-navbar {
   background-color: var(--ce-ob-grund);
   background-image:
@@ -410,7 +411,7 @@
   background-repeat: no-repeat;
 }
 @media (max-width: 1023px) {
-  :root[data-ce-familie="blue-light"] :is(.main-content, .adm-main, .spp-main),
+  :root[data-ce-familie="blue-light"] :is(.main-content, .spp-main),
   :root[data-ce-bereich="oeffentlich"] .page-with-navbar {
     background-image:
       linear-gradient(180deg, var(--ce-ob-eisband) 0, rgba(232, 240, 255, 0) 14rem),
@@ -980,46 +981,8 @@
 }
 
 /* ═══════════ 12 · ADMINPANEL ════════════════════════════════════════════════
-   Dieselbe Familie in der Dichte des Adminbereichs (Betreiberauftrag „Final Master Release“, 2026-11-16, 7.5): die
-   Seitenleiste im tiefdunklen Confidara-Navy wie im Kundenbereich, die Marke in der Fassung für dunkle Flächen
-   (AdminSidebar.jsx). Maße, Schriftgrößen und Abstände bleiben die von admin.css — das Höhenbudget der Seitenleiste
-   (E2E premiumAdminPaketE 1c) gilt unverändert. Gefahrenaktionen und Statusfarben bleiben die der Grundgestaltung. */
-:root[data-ce-bereich="admin"] .adm-side {
-  background: var(--ce-ob-seitenleiste-verlauf);
-  border-right-color: var(--ce-sidebar-border);
-  box-shadow: var(--ce-sidebar-shadow);
-}
-:root[data-ce-bereich="admin"] .adm-side * { scrollbar-color: var(--ce-sidebar-scroll-thumb) transparent; }
-:root[data-ce-bereich="admin"] .adm-brand-tag { background: var(--ce-sidebar-hover); color: var(--ce-sidebar-text); }
-:root[data-ce-bereich="admin"] :is(.adm-nitem, .adm-foot-btn, .adm-side-close) {
-  color: var(--ce-sidebar-text);
-  transition:
-    background-color var(--ce-ob-dauer) var(--ce-ob-kurve),
-    color var(--ce-ob-dauer) var(--ce-ob-kurve),
-    box-shadow var(--ce-ob-dauer) var(--ce-ob-kurve);
-}
-:root[data-ce-bereich="admin"] :is(.adm-nitem, .adm-foot-btn, .adm-side-close):hover {
-  background: var(--ce-sidebar-hover);
-  color: var(--ce-sidebar-text-strong);
-}
-:root[data-ce-bereich="admin"] .adm-nitem-icon { color: var(--ce-ob-seite-symbol); }
-:root[data-ce-bereich="admin"] .adm-nitem:hover .adm-nitem-icon { color: var(--ce-sidebar-text-strong); }
-/* Aktive Seite: das Blauglas mit Lichtkante der Kunden-Seitenleiste statt der Akzentkante links */
-:root[data-ce-bereich="admin"] :is(.adm-nitem-on, .adm-nitem-on:hover) {
-  background: var(--ce-sidebar-active-bg);
-  color: var(--ce-sidebar-text-strong);
-  box-shadow: var(--ce-ob-lichtkante-aktiv);
-}
-:root[data-ce-bereich="admin"] .adm-nitem-on .adm-nitem-icon { color: var(--ce-sidebar-active-icon); }
-/* Kategorie: leise Lichtfläche in Stahlblau — Text, kein Bedienelement */
-:root[data-ce-bereich="admin"] .adm-nsec { background: var(--ce-sidebar-hover); color: var(--ce-sidebar-section); }
-:root[data-ce-bereich="admin"] :is(.adm-nitem-soon, .adm-nitem-soon:hover) { background: none; color: var(--ce-sidebar-section); }
-:root[data-ce-bereich="admin"] .adm-side-foot { border-top-color: var(--ce-sidebar-divider); }
-:root[data-ce-bereich="admin"] :is(.adm-foot-btn-switch, .adm-foot-btn-switch:hover) { color: var(--ce-sidebar-active-accent); }
-:root[data-ce-bereich="admin"] .adm-identity-name { color: var(--ce-sidebar-text-strong); }
-:root[data-ce-bereich="admin"] .adm-identity-role { color: var(--ce-sidebar-text-muted); }
-/* Fokus auf Navy: die helle Akzentfarbe (6,6:1) — das Confidara-Blau erreicht auf Navy keine 3:1 */
-:root[data-ce-bereich="admin"] .adm-side :is(a, button):focus-visible { outline-color: var(--ce-sidebar-active-accent); }
+   Seit dem Betreiberauftrag „Adminpanel-Redesign im Resend-Stil“ (2026-11-17, Canonical v2.143) gehört das Adminpanel
+   nicht mehr zur Familie: Es trägt die eigene dunkle Ebene Confidara Leitstand Nacht (admin-nacht.css). */
 
 /* ═══════════ 13 · VERTRIEBSPARTNERPORTAL ════════════════════════════════════
    Eigene Navigation (Kopfleiste und Reiter), Kennzahlen und Provisionsanzeigen bleiben (7.6); Farben aus der Familie,

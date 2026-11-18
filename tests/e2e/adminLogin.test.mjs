@@ -435,3 +435,51 @@ for (const [name, viewport, mobil] of [["1440", { width: 1440, height: 900 }, fa
     await ctx.close();
   });
 }
+
+// Confidara Leitstand Nacht (Betreiberauftrag 2026-11-17, Canonical v2.143): Hinter dem Glaspanel (backdrop-filter)
+// bewegt sich nichts — sonst müsste der Browser die Weichzeichnung in jedem Bild neu rechnen. Abgetastet werden alle
+// Animationen der Bühnenelemente (Partikel, Netzknoten, Bodenimpulse) über ihre ganze Dauer; ein sichtbares Element
+// (Deckkraft > 0,02) darf das Panel in keiner Breite berühren. Und die Bühne lebt: In jeder Breite ist mindestens ein
+// bewegtes Element im Bild.
+for (const [name, viewport] of [["390", { width: 390, height: 844 }], ["768", { width: 768, height: 1024 }],
+  ["960", { width: 960, height: 600 }], ["1100", { width: 1100, height: 700 }], ["1280", { width: 1280, height: 800 }],
+  ["1366", { width: 1366, height: 768 }], ["1440", { width: 1440, height: 900 }], ["1920", { width: 1920, height: 1080 }]]) {
+  test(`R — Leitstand ${name} px: hinter dem Glaspanel bewegt sich nichts, die Bühne lebt`, async () => {
+    const { ctx, page, fehler } = await neueSeite({ viewport });
+    backend(page);
+    await page.goto(`${BASE}/admin/login`);
+    await page.waitForSelector(".auth-admin-panel input");
+    const befund = await page.evaluate(() => {
+      const p = document.querySelector(".auth-admin-panel").getBoundingClientRect();
+      const treffer = [];
+      let imBild = 0;
+      for (const sel of [".auth-admin-partikel > span", ".auth-admin-knoten > span", ".auth-admin-boden-impuls"]) {
+        document.querySelectorAll(sel).forEach((el, i) => {
+          if (getComputedStyle(el).display === "none" || !el.getClientRects().length) return;
+          const anims = el.getAnimations();
+          anims.forEach((a) => a.pause());
+          let sichtbar = false;
+          for (const a of anims) {
+            const { duration, delay } = a.effect.getTiming();
+            for (let k = 0; k <= 48; k++) {
+              a.currentTime = (Number(delay) || 0) + (Number(duration) * k) / 48;
+              if (Number(getComputedStyle(el).opacity) <= 0.02) continue;
+              const r = el.getBoundingClientRect();
+              if (r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight) sichtbar = true;
+              if (r.right > p.left && r.left < p.right && r.bottom > p.top && r.top < p.bottom) {
+                treffer.push(`${sel} #${i + 1} bei ${Math.round((Number(duration) * k) / 48)} ms`);
+                break;
+              }
+            }
+          }
+          if (sichtbar) imBild += 1;
+        });
+      }
+      return { treffer, imBild };
+    });
+    assert.deepEqual(befund.treffer, [], `hinter dem Panel: ${befund.treffer.join(", ")}`);
+    assert.ok(befund.imBild >= 1, "keine Bewegung auf der Bühne");
+    assert.deepEqual(fehler, []);
+    await ctx.close();
+  });
+}

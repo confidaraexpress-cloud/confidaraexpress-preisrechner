@@ -14,7 +14,9 @@
          wie das Formular, ohne Formularelemente, ohne ids, nicht bedienbar (inert). React ersetzt es beim ersten Rendern
          (main.jsx lädt die Seite vorher), ohne Zwischenbild und ohne Sprung; erst dann beginnt die Bewegung. Struktur von
          Bühne und Hologramm wie components/auth/AdminLeitstand.jsx und AdminHologramm.jsx, das Panel wie
-         pages/AdminAnmeldungPage.jsx (adminAnmeldung.test.mjs gleicht ab). Stil: styles/auth.css. -->
+         pages/AdminAnmeldungPage.jsx (adminAnmeldung.test.mjs gleicht ab). Stil: styles/auth.css. Leitstand 2.0 (Canonical
+         v2.143): Boden, Partikel, Knoten, Zeigerlicht, Glanz, Reflex und Sendeimpuls stehen hier in ihrer
+         Ruhelage — jede Bewegung beginnt dort. -->
     <link rel="preload" href="/src/assets/fonts/instrumentsans-var.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/src/assets/brand/lockup-reverse.svg" as="image" type="image/svg+xml" />
   </head>
@@ -24,9 +26,28 @@
         <div class="auth-admin-grund"></div>
         <div class="auth-admin-tiefe auth-admin-tiefe--blau"></div>
         <div class="auth-admin-tiefe auth-admin-tiefe--violett"></div>
+        <div class="auth-admin-boden"></div>
+        <div class="auth-admin-bahnen">
+          <div class="auth-admin-bahnen-ebene">
+            <span class="auth-admin-boden-impuls"></span>
+            <span class="auth-admin-boden-impuls"></span>
+            <span class="auth-admin-boden-impuls"></span>
+            <span class="auth-admin-boden-impuls"></span>
+          </div>
+        </div>
         <div class="auth-admin-netz"></div>
+        <div class="auth-admin-knoten">
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="auth-admin-partikel auth-admin-partikel--fern">
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="auth-admin-partikel auth-admin-partikel--nah">
+          <span></span><span></span><span></span><span></span>
+        </div>
         <div class="auth-admin-daten auth-admin-daten--1"><span></span><span></span><span></span></div>
         <div class="auth-admin-daten auth-admin-daten--2"><span></span><span></span><span></span></div>
+        <div class="auth-admin-zeigerlicht"></div>
         <div class="auth-admin-korn"></div>
         <div class="auth-admin-vignette"></div>
       </div>
@@ -42,18 +63,29 @@
                 <div class="auth-admin-holo-route auth-admin-holo-route--3"><span class="auth-admin-holo-impuls"></span></div>
                 <div class="auth-admin-holo-route auth-admin-holo-route--4"><span class="auth-admin-holo-impuls"></span></div>
               </div>
-              <div class="auth-admin-holo-projektor"><span class="auth-admin-holo-projektor-ring"></span></div>
+              <div class="auth-admin-holo-projektor">
+                <span class="auth-admin-holo-projektor-ring"></span>
+                <span class="auth-admin-holo-projektor-puls"></span>
+              </div>
               <div class="auth-admin-holo-schwebe">
                 <div class="auth-admin-holo-paket">
                   <div class="auth-admin-holo-flaeche auth-admin-holo-flaeche--vorn">
                     <span class="auth-admin-holo-etikett"><span class="auth-admin-holo-strichcode"></span></span>
                     <span class="auth-admin-holo-scan"></span>
+                    <span class="auth-admin-holo-glanz"></span>
                   </div>
-                  <div class="auth-admin-holo-flaeche auth-admin-holo-flaeche--hinten"><span class="auth-admin-holo-scan"></span></div>
-                  <div class="auth-admin-holo-flaeche auth-admin-holo-flaeche--links"><span class="auth-admin-holo-scan"></span></div>
+                  <div class="auth-admin-holo-flaeche auth-admin-holo-flaeche--hinten">
+                    <span class="auth-admin-holo-scan"></span>
+                    <span class="auth-admin-holo-glanz"></span>
+                  </div>
+                  <div class="auth-admin-holo-flaeche auth-admin-holo-flaeche--links">
+                    <span class="auth-admin-holo-scan"></span>
+                    <span class="auth-admin-holo-glanz"></span>
+                  </div>
                   <div class="auth-admin-holo-flaeche auth-admin-holo-flaeche--rechts">
                     <span class="auth-admin-holo-pfeile"></span>
                     <span class="auth-admin-holo-scan"></span>
+                    <span class="auth-admin-holo-glanz"></span>
                   </div>
                   <div class="auth-admin-holo-flaeche auth-admin-holo-flaeche--oben"></div>
                   <div class="auth-admin-holo-flaeche auth-admin-holo-flaeche--unten"></div>

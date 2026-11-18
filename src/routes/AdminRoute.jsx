@@ -18,8 +18,9 @@ export function AdminRoute({ children }) {
   const location = useLocation();
 
   // Während der initiale /kundenbereich-Check läuft: neutraler Ladezustand —
-  // verhindert ein Aufblitzen des Redirects, bevor die Rolle bekannt ist.
-  if (loadingUser) return <LoadingScreen />;
+  // verhindert ein Aufblitzen des Redirects, bevor die Rolle bekannt ist. Dunkel wie das Adminpanel danach
+  // (Confidara Leitstand Nacht, admin-nacht.css) — nur Darstellung.
+  if (loadingUser) return <LoadingScreen dunkel />;
 
   // Nicht eingeloggt → Admin-Anmeldung (Canonical v2.130); die Adresse geht als Rücksprungwunsch mit
   // (geprüft wird sie erst auf der Seite, siehe adminReturnTarget in utils/loginReturnTarget.mjs).

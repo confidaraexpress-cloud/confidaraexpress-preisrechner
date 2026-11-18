@@ -31,3 +31,20 @@ export function ohneDemoBasis(pathname) {
 export function bleibtImKundenbereich(bereich, pathname) {
   return bereich === "kunde" && istKundenbereichPfad(ohneDemoBasis(pathname));
 }
+
+/* ── Die Pfade des Adminpanels (Confidara Leitstand Nacht, 2026-11-17) ──────────────────────────────────────────────
+   Das Adminpanel steht auf dunklem Grund (admin-nacht.css). Während die Sitzung geprüft wird oder eine Adminseite
+   nachlädt, steht der Ladebildschirm auf diesen Pfaden dunkel (LoadingScreen `dunkel`), und beim Seitenwechsel
+   innerhalb des Adminpanels bleibt „admin“ am Wurzelelement stehen — sonst blitzte das helle Bild ohne Bereich auf.
+   /admin/login gehört nicht dazu: Die Admin-Anmeldung ist eine Anmeldeseite (Bereich „auth“, eigene Bühne).
+   Nur Darstellung: keine Weiche, keine Berechtigung — ob eine Adminseite gerendert wird, entscheidet AdminRoute. */
+export function istAdminbereichPfad(pathname) {
+  if (typeof pathname !== "string") return false;
+  const p = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+  return (p === "/admin" || p.startsWith("/admin/")) && p !== "/admin/login";
+}
+
+/** Bleibt „admin“ beim Abbau einer Seite stehen? Nur, wenn die Navigation auf einen Pfad des Adminpanels führt. */
+export function bleibtImAdminbereich(bereich, pathname) {
+  return bereich === "admin" && istAdminbereichPfad(pathname);
+}

@@ -95,7 +95,9 @@ export const TODO_TEXTS = Object.freeze({
   empty: "Nichts zu erledigen – es gibt keine offenen Vorgänge.",
   unavailable: "Anzahl nicht verfügbar:",
   loading: "Wird noch geladen:",
-  done: "Keine offenen Fälle:",
+  // Admin Premium Finish 3.0: die erledigten Aufgaben stehen eingeklappt in einer ruhigen Zeile (Name der Liste).
+  done: "Aufgaben ohne offene Fälle",
+  calm: "Keine weiteren offenen Aufgaben",
   partialError: "Einige Zahlen konnten nicht geladen werden.",
   fullError: "Die Übersicht konnte nicht geladen werden.",
   fullErrorText: "Die Bereiche unten sind davon unabhängig erreichbar.",
@@ -161,6 +163,39 @@ export function groupAdminTodo(views) {
     loading: list.filter((v) => v.state === "loading"),
     done: list.filter((v) => v.state === "ready" && v.count === 0),
   };
+}
+
+// ── Texte rund um die Zahlen (Admin Premium Finish 3.0) ──
+// Gezählt werden Aufgaben (Karten), nie Fälle über Aufgaben hinweg: dieselbe Sendung kann in mehreren Mengen stehen
+// (etwa Trackingnummer und Label), eine Summe wäre falsch.
+
+/** Einheit neben der Zahl einer offenen Aufgabe: „1 offener Fall“, „3 offene Fälle“. */
+export function openCasesUnit(count) {
+  return count === 1 ? "offener Fall" : "offene Fälle";
+}
+
+/**
+ * Zahl der offenen Aufgaben neben „Zu erledigen“: „1 offene Aufgabe“, „4 offene Aufgaben“. Ist eine Zahl unbekannt oder
+ * lädt sie noch, ist die Zahl der Karten nur eine Untergrenze: „mindestens 4 offene Aufgaben“.
+ */
+export function openTasksText(n, mindestens = false) {
+  const text = n === 1 ? "1 offene Aufgabe" : `${n} offene Aufgaben`;
+  return mindestens ? `mindestens ${text}` : text;
+}
+
+/** Zeile der erledigten Aufgaben: „1 Aufgabe ohne offene Fälle“, „18 Aufgaben ohne offene Fälle“. */
+export function doneTasksText(n) {
+  return `${n} ${n === 1 ? "Aufgabe" : "Aufgaben"} ohne offene Fälle`;
+}
+
+/**
+ * „Keine weiteren offenen Aufgaben“ gilt nur, wenn es offene Aufgaben gibt und KEINE Zahl unbekannt ist oder noch
+ * lädt — sonst wäre es eine Behauptung über Zahlen, die nicht vorliegen. Ohne offene Aufgabe sagt das die leere Zeile.
+ */
+export function todoRestIsCalm(gruppen) {
+  const g = gruppen && typeof gruppen === "object" ? gruppen : {};
+  const anzahl = (k) => (Array.isArray(g[k]) ? g[k].length : 0);
+  return anzahl("open") > 0 && anzahl("unavailable") === 0 && anzahl("loading") === 0;
 }
 
 /** Die ruhigen Kennzahlen (Bestand) im Muster der bisherigen Kennzahlenkarten. */

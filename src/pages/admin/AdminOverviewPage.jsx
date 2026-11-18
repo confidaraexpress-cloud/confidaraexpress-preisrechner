@@ -13,7 +13,8 @@ import {
 } from "../../utils/adminOperations.mjs";
 import {
   ADMIN_COUNTS, TODO_TEXTS, adminDiagnosticViews, adminFigureViews, adminTodoViews,
-  diagnosticsSummary, groupAdminTodo, overviewWithoutValues,
+  diagnosticsSummary, doneTasksText, groupAdminTodo, openCasesUnit, openTasksText, overviewWithoutValues,
+  todoRestIsCalm,
 } from "../../utils/adminTodo.mjs";
 
 // ── Adminübersicht ───────────────────────────────────────────────────────────
@@ -103,7 +104,9 @@ function fmtDateTime(v) {
 // Eine Aufgabe bzw. Diagnose. Queues tragen ihren Schlüssel als `data-queue`
 // und — wie bisher — den ältesten Fall; Listenzähler (`data-task`) führen zur
 // gefilterten Liste. Eine Diagnose ist nie eine Handlungsaufforderung.
-function TaskCard({ view, loading }) {
+// Unter „Zu erledigen" steht neben der Zahl ihre Einheit („3 offene Fälle"); die Zahl selbst bleibt allein in
+// `.adm-ops-count` (Tests und Screenreader lesen sie dort).
+function TaskCard({ view, loading, mitEinheit = false }) {
   const queue = view.source === "queue";
   // Ein Listenzähler kann den ältesten Fall aus der Queue derselben Menge tragen.
   const oldest = queue ? oldestDescription(view)
@@ -116,6 +119,9 @@ function TaskCard({ view, loading }) {
       <span className="adm-ops-label">{view.label}</span>
       <span className="adm-ops-row">
         <span className="adm-ops-count" aria-live="off">{loading ? "…" : view.display}</span>
+        {mitEinheit && !loading && view.state === "ready" && (
+          <span className="adm-ops-unit">{openCasesUnit(view.count)}</span>
+        )}
       </span>
       <span className="adm-ops-hint">{!loading && view.state === "unavailable" ? OPERATIONS_UNAVAILABLE : view.hint}</span>
       {oldest.kind === "date" && <span className="adm-ops-oldest">Ältester Fall: {fmtDateTime(oldest.at)}</span>}
@@ -226,6 +232,7 @@ export default function AdminOverviewPage() {
     counts.failed + (ops.failed ? 1 : 0),
   );
   const ohneWerte = !laedt && overviewWithoutValues(todo, figures);
+  const restRuhig = todoRestIsCalm(gruppen);
 
   return (
     <div className="adm-page">
@@ -265,14 +272,21 @@ export default function AdminOverviewPage() {
       ) : (
         <>
           <section className="adm-section" aria-labelledby="adm-ov-todo" id="adm-todo">
-            <h2 className="adm-section-title" id="adm-ov-todo">{TODO_TEXTS.title}</h2>
+            {/* Kopf: Überschrift und — neben ihr, nicht in ihr — die Zahl der offenen Aufgaben (Karten, keine Summe).
+                Ist eine Zahl unbekannt oder lädt sie noch, ist sie nur eine Untergrenze („mindestens …“). */}
+            <div className="adm-todo-kopf">
+              <h2 className="adm-section-title" id="adm-ov-todo">{TODO_TEXTS.title}</h2>
+              {!erstesLaden && gruppen.open.length > 0 && (
+                <span className="adm-todo-zahl">{openTasksText(gruppen.open.length, !restRuhig)}</span>
+              )}
+            </div>
             {erstesLaden ? (
               <div className="ce-card"><ListSkeleton rows={3} label="Offene Vorgänge werden geladen …" /></div>
             ) : (
               <>
                 {gruppen.open.length > 0 && (
                   <ul className="adm-ops adm-todo" aria-label="Offene Vorgänge">
-                    {gruppen.open.map((v) => <TaskCard key={v.key} view={v} />)}
+                    {gruppen.open.map((v) => <TaskCard key={v.key} view={v} mitEinheit />)}
                   </ul>
                 )}
                 {gruppen.open.length === 0 && gruppen.unavailable.length === 0 && gruppen.loading.length === 0 && (
@@ -290,11 +304,18 @@ export default function AdminOverviewPage() {
                     <TaskNames views={gruppen.loading} />
                   </p>
                 )}
+                {/* Erledigte Aufgaben (Zahl 0): eine ruhige, aufklappbare Zeile. „Keine weiteren offenen Aufgaben"
+                    nur, wenn keine Zahl unbekannt ist oder noch lädt; unbekannte Zahlen stehen offen darüber. */}
                 {gruppen.done.length > 0 && (
-                  <p className="adm-todo-line adm-todo-done" id="adm-todo-done">
-                    <span className="adm-todo-line-label">{TODO_TEXTS.done}</span>{" "}
-                    <TaskNames views={gruppen.done} />
-                  </p>
+                  <details className={restRuhig ? "adm-todo-rest adm-todo-rest--ruhig" : "adm-todo-rest"}>
+                    <summary className="adm-todo-rest-summary">
+                      {restRuhig && <span className="adm-todo-rest-titel">{TODO_TEXTS.calm}</span>}
+                      <span>{doneTasksText(gruppen.done.length)}</span>
+                    </summary>
+                    <ul className="adm-todo-rest-list adm-todo-done" id="adm-todo-done" aria-label={TODO_TEXTS.done}>
+                      {gruppen.done.map((v) => <li key={v.key}>{v.label}</li>)}
+                    </ul>
+                  </details>
                 )}
               </>
             )}
@@ -309,7 +330,7 @@ export default function AdminOverviewPage() {
         </>
       )}
 
-      {/* Sekundäre Bereichslinks: eine ruhige Textliste — dieselben Ziele stehen
+      {/* Sekundäre Bereichslinks als Navigationskarten — dieselben Ziele stehen
           in der Navigation; hier ergänzen sie nur die kurze Beschreibung. */}
       <section className="adm-section" aria-labelledby="adm-ov-bereiche">
         <h2 className="adm-section-title" id="adm-ov-bereiche">Bereiche</h2>

@@ -4,7 +4,8 @@ import { useAuth } from "../../context/AuthContext";
 import { AdminAnmeldungSeite } from "../../pages/authSeite";
 import { accountInitials, accountDisplayName } from "../../utils/accountIdentity.mjs";
 import { BrandLogo } from "../ui/BrandLogo";
-import { Icon, ICON_SIZE } from "../ui/Icon";
+import { ICON_SIZE } from "../ui/Icon";
+import { NavSymbol } from "./NavSymbol";
 import { useNavigationDrawer } from "../../hooks/useNavigationDrawer";
 
 // Kennung der Adminsidebar — Ziel von aria-controls am Menüknopf der mobilen Topbar
@@ -19,9 +20,15 @@ const DRAWER_BIS_PX = 900;
 // Kunden, Sendungen und Rechnungen stehen direkt unter der Übersicht, darunter
 // zwei benannte Gruppen. Jede Adminseite ist jetzt über die Navigation
 // erreichbar — auch Sammelrechnungsanträge und Preisrechner, die vorher nur über
-// Kacheln der Übersicht zu finden waren. Je Eintrag ein dekoratives Symbol der
-// eigenen Icon-Komponente vor dem Text (wie die Hauptpunkte der Kunden-Sidebar,
-// E7); der Name bleibt Text. Ziele und `end`-Regeln unverändert, keine Route neu.
+// Kacheln der Übersicht zu finden waren. Je Eintrag ein dekoratives Symbol vor dem
+// Text (wie die Hauptpunkte der Kunden-Sidebar, E7); der Name bleibt Text. Ziele und
+// `end`-Regeln unverändert, keine Route neu.
+//
+// Admin Premium Finish 3.0 (Betreiberauftrag 2026-11-18): das Symbol kommt aus
+// NavSymbol (dieselbe Geometrie wie <Icon>, in Teile zerlegt). Jedes der zwölf
+// Symbole hat beim Zeigen und beim Tastaturfokus eine eigene Bewegung; sie steht
+// allein in admin-nacht.css (Abschnitt 4 und 10) und hängt an der Klasse
+// `adm-nitem-icon--<symbol>` — kein JavaScript für die Bewegung.
 const NAV_GROUPS = [
   {
     label: null,
@@ -108,7 +115,7 @@ export function AdminSidebar({ open, onClose }) {
                 onClick={onClose}
                 className={({ isActive }) => `adm-nitem${isActive ? " adm-nitem-on" : ""}`}
               >
-                <span className="adm-nitem-icon" aria-hidden="true"><Icon n={item.icon} s={ICON_SIZE.md} /></span>
+                <span className={`adm-nitem-icon adm-nitem-icon--${item.icon}`} aria-hidden="true"><NavSymbol n={item.icon} s={ICON_SIZE.md} /></span>
                 <span>{item.label}</span>
               </NavLink>
             ));

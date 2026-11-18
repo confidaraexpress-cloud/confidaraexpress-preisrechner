@@ -13,10 +13,12 @@
      das helle Blatt der Plattform;
    • Foundation-Tokens werden nur im Tokenblock umgeordnet; Abstände, Größen, Ebenen, Umbruchpunkte und Radien bleiben
      die des Bereichs (Höhenbudget der Seitenleiste, Tabellenbreiten und Bedienhöhen sind darauf vermessen);
-   • die Typografie bleibt die des bisherigen Adminpanels: Instrument Sans für die Arbeit, Host Grotesk für Überschriften,
-     dieselben Gewichte — die Ebene ändert Material, Licht und Farbe;
+   • Schriften und Gewichte bleiben die des bisherigen Adminpanels: Instrument Sans für die Arbeit, Host Grotesk für
+     Überschriften. Die Größen folgen seit „Admin Premium Finish 3.0“ (Betreiberauftrag 2026-11-18) einer eigenen,
+     lesbareren Adminskala auf Stufen der Plattformskala (Tokenblock);
    • Tiefe, Glas und Unschärfe nur über Token, Weichzeichnung nie auf einem Schleier; jede Animation nur ohne Wunsch nach
-     reduzierter Bewegung; Antworten auf höheren Kontrast;
+     reduzierter Bewegung — lebendig ist allein die Seitenleiste (zwölf Symbole in Bewegung, Abschnitt 4), die Übersicht
+     trägt mehr Licht, Tabellen und Formulare bleiben ruhig; Antworten auf höheren Kontrast;
    • keine externe Quelle, kein @import.
    Neue Werte tragen den Namensraum --adm-* (nur Adminbereich). Bereichsweiche: hooks/useCeBereich.js.
    ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -92,6 +94,30 @@
   --adm-reiter-aktiv: inset 0 -2px 0 var(--adm-signal-tinte), 0 10px 18px -14px rgba(141, 176, 255, 0.9);
   --adm-kennzahl-zeigen: inset 0 1px 0 rgba(214, 226, 255, 0.1);
 
+  /* ── Material der Arbeitsflächen (Admin Premium Finish 3.0): ein blauer Reflex oben links, Tiefe unter der Kante ── */
+  --adm-reflex: radial-gradient(120% 70% at 0% 0%, rgba(91, 140, 255, 0.075) 0%, rgba(91, 140, 255, 0) 62%);
+  --adm-reflex-stark: radial-gradient(110% 90% at 0% 0%, rgba(91, 140, 255, 0.15) 0%, rgba(124, 77, 255, 0.05) 46%, rgba(124, 77, 255, 0) 72%);
+  --adm-karte-tiefe: inset 0 1px 0 rgba(214, 226, 255, 0.06), 0 1px 0 rgba(1, 3, 10, 0.45), 0 22px 44px -30px rgba(1, 3, 10, 0.95);
+  --adm-karte-zeigen: inset 0 1px 0 rgba(214, 226, 255, 0.1), 0 0 0 1px rgba(141, 176, 255, 0.14), 0 22px 48px -26px rgba(47, 107, 255, 0.5);
+  --adm-kopfband: linear-gradient(180deg, rgba(184, 204, 255, 0.05) 0%, rgba(184, 204, 255, 0.02) 100%);
+  --adm-zeile-zeigen: rgba(141, 176, 255, 0.055);
+  --adm-zeile-marke: inset 2px 0 0 rgba(141, 176, 255, 0.6);
+  /* Übersicht: eine offene Aufgabe trägt Bernsteinlicht an der Oberkante (Farbe nur als Zustand), große Zahlen leuchten
+     leise; die ruhige Zeile zeigt Grün als Punkt mit Hof. */
+  --adm-offen-licht: linear-gradient(90deg, rgba(255, 202, 22, 0.8) 0%, rgba(255, 202, 22, 0.22) 36%, rgba(255, 202, 22, 0) 70%);
+  --adm-zahl-schein: 0 0 28px rgba(141, 176, 255, 0.32);
+  --adm-punkt-ruhig: 0 0 0 3px rgba(61, 214, 140, 0.16);
+
+  /* ── Seitenleiste in Bewegung (Admin Premium Finish 3.0): zwölf eigene Bewegungen, nur Transform und Deckkraft ── */
+  --adm-sym-dauer: 440ms;                   /* Hauptbewegung, 250–450 ms (adminNacht.test.mjs, N8) */
+  --adm-sym-dauer-kurz: 300ms;              /* Nachklang einzelner Teile, Signalwellen */
+  --adm-sym-dauer-licht: 560ms;             /* Lichtwellen und Lichtlinien laufen nach der Bewegung aus */
+  --adm-sym-kurve: cubic-bezier(0.22, 1, 0.36, 1);
+  --adm-sym-schein: radial-gradient(circle, rgba(141, 176, 255, 0.36) 0%, rgba(141, 176, 255, 0.12) 44%, rgba(141, 176, 255, 0) 70%);
+  --adm-sym-strahl: radial-gradient(ellipse at center, rgba(219, 230, 255, 0.85) 0%, rgba(141, 176, 255, 0.35) 42%, rgba(141, 176, 255, 0) 72%);
+  --adm-sym-linie: linear-gradient(0deg, rgba(219, 230, 255, 0) 0%, rgba(219, 230, 255, 0.95) 100%);
+  --adm-sym-fahrtwind: linear-gradient(90deg, rgba(141, 176, 255, 0) 0%, rgba(141, 176, 255, 0.9) 100%);
+
   /* ── Zustände (getönte Fläche + helle Schrift) ── */
   --adm-gruen: #3dd68c;    --adm-gruen-ton: rgba(34, 255, 153, 0.1);    --adm-gruen-kante: rgba(61, 214, 140, 0.28);
   --adm-bernstein: #ffca16; --adm-bernstein-ton: rgba(250, 150, 0, 0.13); --adm-bernstein-kante: rgba(255, 202, 22, 0.26);
@@ -109,8 +135,34 @@
   --adm-schrift-titel: 'Host Grotesk', var(--ce-font-sans);
 
   /* ── Umgeordnete Tokens der Foundation ──
-     Typografie wie bisher im Adminpanel (dieselben Werte wie die Familie Blue Light): Die Seitenleiste ist auf diese
-     Gewichte vermessen (Höhenbudget 1440 × 900, 1366 × 768, 1280 × 720), Beträge und Kennungen auf die Breitenachse. */
+     Schriftschnitte, Gewichte und Laufweiten wie bisher im Adminpanel (dieselben Werte wie die Familie Blue Light).
+     Größen: die Adminskala (Admin Premium Finish 3.0, Betreiberauftrag 2026-11-18) — ganze Pixel auf Stufen der
+     Plattformskala. Seitentitel 28/24 statt 34/28 (Zielbereich 24–30 px), Abschnittstitel 20 statt 18, Kartentitel
+     17 statt 16 (beide auch mobil: die Grundskala kennt für sie keine eigene mobile Zeilenhöhe), Kennzahlen 40
+     statt 32 (auch mobil: Kennzahl und Aufgabenzahl im Admin schalten nicht auf -mobile, der Wert steht gleich, damit
+     Skala und Darstellung übereinstimmen; bei 360 px ohne Überlauf gemessen), Kleinstschrift und kleine Knöpfe 14
+     statt 13. Unverändert: Fließtext 15, Tabellen, Felder und Beschriftungen 14, Navigation 14/20 (Höhenbudget der
+     Seitenleiste 1440 × 900, 1366 × 768, 1280 × 720), Badges 13 (Zustand, kein Lesetext). Jede Zeilenhöhe ergibt
+     ganze Pixel: 32/30, 28, 24, 20, 45 (adminNacht.test, N2b). Seitentitel am Desktop auf 32 px Zeile (1,14, enger als
+     die 1,176 der Grundskala): Unterlängen und Akzente ragen dann aus der Zeile, und titelMalrand prüft den Malrand des Reliefs
+     auch hier wirklich (mit 34 px blieb alle Tinte in der Zeile, die Gegenprobe griff nicht). */
+  --ce-text-title-page-size: 28px;
+  --ce-text-title-page-size-mobile: 24px;
+  --ce-text-title-page-line: 1.1429;
+  --ce-text-title-page-line-mobile: 1.25;
+  --ce-text-title-section-size: 20px;
+  --ce-text-title-section-size-mobile: 20px;
+  --ce-text-title-section-line: 1.4;
+  --ce-text-title-card-size: 17px;
+  --ce-text-title-card-size-mobile: 17px;
+  --ce-text-title-card-line: 1.4118;
+  --ce-text-micro-size: 14px;
+  --ce-text-micro-size-mobile: 14px;
+  --ce-text-micro-line: 1.4286;
+  --ce-text-button-sm-size: 14px;
+  --ce-text-numeric-display-size: 40px;
+  --ce-text-numeric-display-size-mobile: 40px;
+  --ce-text-numeric-display-line: 1.125;
   --ce-font-display: var(--adm-schrift-titel);
   --ce-pr-font-display: var(--adm-schrift-titel);
   --ce-pr-display-stretch: 100%;
@@ -345,7 +397,7 @@
 :root[data-ce-bereich="admin"] * { scrollbar-color: var(--adm-seite-scroll) transparent; }
 
 /* ═══════════ 3 · TYPOGRAFIE ════════════════════════════════════════════════════════════════════════════════════════
-   Unverändert gegenüber dem bisherigen Adminpanel: Instrument Sans trägt die Arbeit, Host Grotesk die Überschriften. */
+   Instrument Sans trägt die Arbeit, Host Grotesk die Überschriften; die Größen kommen aus der Adminskala (Tokenblock). */
 :root[data-ce-bereich="admin"] :is(h1, h2, h3, h4) { font-family: var(--adm-schrift-titel); }
 :root[data-ce-bereich="admin"] :is(h2, h3) { letter-spacing: -0.015em; }
 :root[data-ce-bereich="admin"] :is(button, input, select, textarea) { font-family: inherit; }
@@ -407,6 +459,146 @@
 :root[data-ce-bereich="admin"] .adm-identity-name { color: var(--adm-tinte); }
 :root[data-ce-bereich="admin"] .adm-identity-role { color: var(--adm-seite-text-leise); }
 :root[data-ce-bereich="admin"] .adm-side :is(a, button):focus-visible { outline-color: var(--adm-signal-tinte); }
+
+/* Symbole in Bewegung (Admin Premium Finish 3.0, Betreiberauftrag 2026-11-18) — das eine lebendige Element des
+   Leitstands. Jedes der zwölf Symbole antwortet auf Zeigen (der ganze Eintrag, auch über dem Text) und auf den
+   Tastaturfokus mit einer eigenen Bewegung, die seine Sache zeigt; dahinter glimmt ein eisblauer Schein, solange gezeigt
+   wird. Regeln (adminNacht.test.mjs, N8):
+   • die Teile kommen aus NavSymbol.jsx (Geometrie aus <Icon>, in Ruhe deckungsgleich); Licht ist das ::after des Rahmens;
+   • nur Transform und Deckkraft, Hauptbewegung 250–450 ms, einmal je Zeigen — kein Dauerlauf, keine Maß- oder
+     Lageänderung des Eintrags (Klickfläche und Höhenbudget bleiben);
+   • Zeigen nur mit echtem Zeiger (hover: hover, pointer: fine), Fokus immer; bei reduzierter Bewegung nur der Schein.
+   Je Teil nennt --adm-an die Bewegung, je Rahmen --adm-an-licht das Licht; Auslöser und Keyframes in Abschnitt 10. */
+:root[data-ce-bereich="admin"] .adm-nitem-icon { position: relative; isolation: isolate; --adm-an-licht: none; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon .nav-sym { display: block; flex-shrink: 0; overflow: visible; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon .nav-sym > svg { display: block; }   /* Lieferwagen: ohne Grundlinienlücke */
+:root[data-ce-bereich="admin"] .adm-nitem-icon .nav-sym-teil { transform-box: fill-box; transform-origin: center; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon .nav-sym-licht {
+  fill: var(--adm-eis);
+  stroke: none;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+:root[data-ce-bereich="admin"] .adm-nitem-icon :is(.nav-sym, .nav-sym-teil, .nav-sym-licht) { --adm-an: none; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon::before,
+:root[data-ce-bereich="admin"] .adm-nitem-icon::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+}
+/* Der Schein hinter jedem Symbol: glimmt beim Zeigen und im Fokus auf und bleibt ruhig stehen. */
+:root[data-ce-bereich="admin"] .adm-nitem-icon::before {
+  inset: -6px;
+  border-radius: 50%;
+  background: var(--adm-sym-schein);
+  transform: scale(0.55);
+  transition: opacity var(--adm-dauer-lang) var(--adm-kurve), transform var(--adm-dauer-lang) var(--adm-kurve);
+}
+:root[data-ce-bereich="admin"] .adm-nitem:focus-visible .adm-nitem-icon::before { opacity: 1; transform: none; }
+@media (hover: hover) and (pointer: fine) {
+  :root[data-ce-bereich="admin"] .adm-nitem:hover .adm-nitem-icon::before { opacity: 1; transform: none; }
+}
+
+/* Übersicht: die vier Kacheln rücken auseinander, drehen sich leicht und setzen sich wieder zusammen — im Kreis versetzt. */
+:root[data-ce-bereich="admin"] .adm-nitem-icon--dashboard .nav-sym-teil { --adm-an: ce-adm-sym-kacheln var(--adm-sym-dauer) var(--adm-sym-kurve) var(--adm-verzug, 0ms) both; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--dashboard .nav-sym-teil--1 { --adm-dx: -2.6px; --adm-dy: -2.6px; --adm-dr: -14deg; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--dashboard .nav-sym-teil--2 { --adm-dx: 2.6px; --adm-dy: -2.6px; --adm-dr: 14deg; --adm-verzug: 30ms; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--dashboard .nav-sym-teil--4 { --adm-dx: 2.6px; --adm-dy: 2.6px; --adm-dr: -14deg; --adm-verzug: 60ms; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--dashboard .nav-sym-teil--3 { --adm-dx: -2.6px; --adm-dy: 2.6px; --adm-dr: 14deg; --adm-verzug: 90ms; }
+/* Kunden: die Person kommt räumlich nach vorn, der Kopf hebt sich, eine eisblaue Lichtwelle läuft aus. */
+:root[data-ce-bereich="admin"] .adm-nitem-icon--user { --adm-an-licht: ce-adm-sym-welle var(--adm-sym-dauer-licht) var(--adm-sym-kurve) 80ms both; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--user .nav-sym { --adm-an: ce-adm-sym-impuls var(--adm-sym-dauer) var(--adm-sym-kurve); }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--user .nav-sym-teil--2 { --adm-an: ce-adm-sym-kopf var(--adm-sym-dauer) var(--adm-sym-kurve) 40ms both; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--user .nav-sym-licht { --adm-an: ce-adm-sym-glimmen var(--adm-sym-dauer-licht) var(--adm-sym-kurve) 60ms both; }
+/* Sendungen: der Lieferwagen holt Schwung, fährt nach rechts und federt zurück; dahinter Fahrtwind. */
+:root[data-ce-bereich="admin"] .adm-nitem-icon--truck { --adm-an-licht: ce-adm-sym-fahrtwind var(--adm-sym-dauer) var(--adm-sym-kurve) 40ms both; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--truck .nav-sym { --adm-an: ce-adm-sym-fahrt var(--adm-sym-dauer) var(--adm-sym-kurve); }
+/* Rechnungen: das Blatt öffnet sich leicht, die Ecke springt auf, die Zeilen leuchten nacheinander, ein Lichtstreif wandert. */
+:root[data-ce-bereich="admin"] .adm-nitem-icon--invoice { --adm-an-licht: ce-adm-sym-scan var(--adm-sym-dauer-licht) var(--adm-sym-kurve) 40ms both; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--invoice .nav-sym { --adm-an: ce-adm-sym-blatt var(--adm-sym-dauer) var(--adm-sym-kurve); transform-origin: 25% 50%; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--invoice .nav-sym-teil--2 { --adm-an: ce-adm-sym-ecke var(--adm-sym-dauer) var(--adm-sym-kurve) 60ms both; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--invoice :is(.nav-sym-teil--3, .nav-sym-teil--4, .nav-sym-teil--5) { --adm-an: ce-adm-sym-zeile var(--adm-sym-dauer-kurz) var(--adm-sym-kurve) var(--adm-verzug, 0ms) both; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--invoice .nav-sym-teil--5 { --adm-verzug: 60ms; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--invoice .nav-sym-teil--3 { --adm-verzug: 130ms; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--invoice .nav-sym-teil--4 { --adm-verzug: 200ms; }
+/* Supportanfragen: das Headset neigt sich, die Hörer pulsieren, kleine Signalwellen gehen hinaus. */
+:root[data-ce-bereich="admin"] .adm-nitem-icon--headset { --adm-an-licht: ce-adm-sym-signal var(--adm-sym-dauer-kurz) var(--adm-sym-kurve) 120ms 2 both; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--headset .nav-sym { --adm-an: ce-adm-sym-neigen var(--adm-sym-dauer) var(--adm-sym-kurve); transform-origin: 50% 85%; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--headset :is(.nav-sym-teil--2, .nav-sym-teil--3) { --adm-an: ce-adm-sym-puls var(--adm-sym-dauer-kurz) var(--adm-sym-kurve) 80ms both; }
+/* Stornierungsanfragen: das Sperrzeichen dreht sich entschlossen um eine halbe Umdrehung, der Riegel rastet ein. */
+:root[data-ce-bereich="admin"] .adm-nitem-icon--ban { --adm-an-licht: ce-adm-sym-klick var(--adm-sym-dauer-kurz) var(--adm-sym-kurve) 220ms both; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--ban .nav-sym { --adm-an: ce-adm-sym-sperre var(--adm-sym-dauer) var(--adm-sym-kurve); }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--ban .nav-sym-teil--2 { --adm-an: ce-adm-sym-riegel var(--adm-sym-dauer) var(--adm-sym-kurve) both; }
+/* Buchungsklärung: das Schild kippt räumlich nach vorn, ein Schutzlicht pulsiert. */
+:root[data-ce-bereich="admin"] .adm-nitem-icon--shield { --adm-an-licht: ce-adm-sym-schutz var(--adm-sym-dauer-licht) var(--adm-sym-kurve) 120ms both; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--shield .nav-sym { --adm-an: ce-adm-sym-schild var(--adm-sym-dauer) var(--adm-sym-kurve); transform-origin: 50% 100%; }
+/* Sammelrechnungsanträge: die Ebenen schieben sich gegeneinander und ordnen sich neu. */
+:root[data-ce-bereich="admin"] .adm-nitem-icon--layers .nav-sym-teil { --adm-an: ce-adm-sym-schichten var(--adm-sym-dauer) var(--adm-sym-kurve) var(--adm-verzug, 0ms) both; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--layers .nav-sym-teil--1 { --adm-dx: -2px; --adm-dy: -3.2px; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--layers .nav-sym-teil--2 { --adm-dx: 3.2px; --adm-dy: 0px; --adm-verzug: 50ms; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--layers .nav-sym-teil--3 { --adm-dx: -1.6px; --adm-dy: 2.6px; --adm-verzug: 100ms; }
+/* Vertriebspartner: der Koffer hebt sich, der Griff zieht nach, darunter ein Lichtschatten. */
+:root[data-ce-bereich="admin"] .adm-nitem-icon--briefcase { --adm-an-licht: ce-adm-sym-abheben var(--adm-sym-dauer) var(--adm-sym-kurve) both; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--briefcase .nav-sym { --adm-an: ce-adm-sym-koffer var(--adm-sym-dauer) var(--adm-sym-kurve); }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--briefcase .nav-sym-teil--2 { --adm-an: ce-adm-sym-griff var(--adm-sym-dauer) var(--adm-sym-kurve) 70ms both; transform-origin: 50% 100%; }
+/* Preisrechner: das Euro-Zeichen dreht sich wie eine Münze, die Striche ziehen nach, eine Lichtlinie steigt auf. */
+:root[data-ce-bereich="admin"] .adm-nitem-icon--euro { --adm-an-licht: ce-adm-sym-steigen var(--adm-sym-dauer-licht) var(--adm-sym-kurve) 100ms both; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--euro .nav-sym { --adm-an: ce-adm-sym-muenze var(--adm-sym-dauer) var(--adm-sym-kurve); }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--euro :is(.nav-sym-teil--2, .nav-sym-teil--3) { --adm-an: ce-adm-sym-strich var(--adm-sym-dauer-kurz) var(--adm-sym-kurve) var(--adm-verzug, 0ms) both; transform-origin: 0% 50%; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--euro .nav-sym-teil--2 { --adm-verzug: 140ms; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--euro .nav-sym-teil--3 { --adm-verzug: 190ms; }
+/* Vorschau-PDFs: der Drucker zieht das Blatt ein, das Druckwerk arbeitet, das Papier wird ausgeworfen und leuchtet. */
+:root[data-ce-bereich="admin"] .adm-nitem-icon--printer { --adm-an-licht: ce-adm-sym-papier var(--adm-sym-dauer-licht) var(--adm-sym-kurve) 140ms both; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--printer .nav-sym-teil--1 { --adm-an: ce-adm-sym-einzug var(--adm-sym-dauer) var(--adm-sym-kurve) both; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--printer .nav-sym-teil--2 { --adm-an: ce-adm-sym-druckwerk var(--adm-sym-dauer) linear both; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--printer .nav-sym-teil--3 { --adm-an: ce-adm-sym-ausgabe var(--adm-sym-dauer) var(--adm-sym-kurve) 60ms both; }
+/* Protokoll: die Zeiger spulen eine volle Runde präzise zurück, das Zifferblatt atmet mit. */
+:root[data-ce-bereich="admin"] .adm-nitem-icon--clock .nav-sym-teil--1 { --adm-an: ce-adm-sym-ziffernblatt var(--adm-sym-dauer) var(--adm-sym-kurve) both; }
+:root[data-ce-bereich="admin"] .adm-nitem-icon--clock .nav-sym-teil--2 { --adm-an: ce-adm-sym-zurueck var(--adm-sym-dauer) var(--adm-sym-kurve) both; transform-box: view-box; transform-origin: 50% 50%; }
+
+/* Das Licht je Symbol (::after, in Ruhe unsichtbar): Ring, Fahrtwind, Lichtstreif, Signalwelle, Schutzlicht, Lichtlinie. */
+:root[data-ce-bereich="admin"] :is(.adm-nitem-icon--user, .adm-nitem-icon--ban)::after {
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--adm-eis);
+}
+:root[data-ce-bereich="admin"] .adm-nitem-icon--truck::after {
+  left: -9px; top: 4px; width: 8px; height: 8px;
+  background: var(--adm-sym-fahrtwind) 0 1px / 100% 1.5px no-repeat, var(--adm-sym-fahrtwind) 3px 6px / 62% 1.5px no-repeat;
+  transform-origin: 100% 50%;
+}
+:root[data-ce-bereich="admin"] .adm-nitem-icon--invoice::after {
+  left: 1px; right: 1px; top: 1px; height: 5px;
+  border-radius: 50%;
+  background: var(--adm-sym-strahl);
+}
+:root[data-ce-bereich="admin"] .adm-nitem-icon--headset::after {
+  /* Rechter Rand höchstens 7,8 px neben dem Symbol: die Welle bleibt vor dem Label (Abstand 8 px) */
+  right: -5px; top: 3px; width: 11px; height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  border-right-color: var(--adm-signal-tinte);
+}
+:root[data-ce-bereich="admin"] .adm-nitem-icon--shield::after {
+  inset: -2px -1px;
+  border-radius: 50%;                       /* Schutzfeld als Ellipse — Radien nur von der Skala (designTokens.test, 10) */
+  border: 1.5px solid var(--adm-signal-tinte);
+  background: var(--adm-sym-schein);
+}
+:root[data-ce-bereich="admin"] :is(.adm-nitem-icon--briefcase, .adm-nitem-icon--printer)::after {
+  left: 2px; right: 2px; bottom: -4px; height: 4px;
+  border-radius: 50%;
+  background: var(--adm-sym-strahl);
+}
+:root[data-ce-bereich="admin"] .adm-nitem-icon--euro::after {
+  right: -5px; top: 3px; width: 2px; height: 12px;
+  border-radius: var(--ce-radius-full);
+  background: var(--adm-sym-linie);
+  transform-origin: 50% 100%;
+}
 
 /* ═══════════ 5 · KOPFLEISTE (mobil) ═══════════════════════════════════════════════════════════════════════════════
    Glas über dem Inhalt, eine Haarlinie darunter. Die Kopfleiste trägt keine festen Kinder (Weichzeichnung als
@@ -581,20 +773,22 @@
 }
 
 /* ═══════════ 8 · FLÄCHEN ═══════════════════════════════════════════════════════════════════════════════════════════
-   Karten, Kennzahlenband und Tabellenrahmen: Navy eine Stufe über dem Grund, Lichtkante oben, Kante 12 %. Kein grauer
-   Schlagschatten — auf Navy trägt die Kante. */
+   Karten, Kennzahlenband und Tabellenrahmen: Navy eine Stufe über dem Grund, Lichtkante oben, Kante 12 %, ein leiser
+   blauer Reflex oben links und Tiefe unter der Kante (Admin Premium Finish 3.0). Kein grauer Schlagschatten — auf Navy
+   tragen Kante und Licht. */
 :root[data-ce-bereich="admin"] :is(.ce-card, .card, .table-card, .ce-table-container, .ce-list-card, .tile, .adm-metrics) {
   background-color: var(--adm-flaeche-1);
-  background-image: var(--adm-flaechenverlauf);
+  background-image: var(--adm-reflex), var(--adm-flaechenverlauf);
   border-color: var(--adm-kante);
-  box-shadow: var(--adm-lichtkante);
+  box-shadow: var(--adm-karte-tiefe);
 }
 :root[data-ce-bereich="admin"] .ce-card-inverse { background: var(--ce-color-surface-inverse); border-color: var(--ce-color-surface-inverse-edge); }
 
-/* Tabellen: Köpfe leise in 550 ohne Versalien, Zeilen zwischen Haarlinien, Zeigen hellt die Zeile eisblau */
+/* Tabellen: ruhig. Köpfe in 550 ohne Versalien auf einem leisen Kopfband, in Zweittinte statt gedämpfter Tinte (lesbarer);
+   Zeilen zwischen Haarlinien; Zeigen hellt die Zeile eisblau und setzt links eine feine Lichtmarke. */
 :root[data-ce-bereich="admin"] table { border-color: var(--adm-linie); }
 :root[data-ce-bereich="admin"] th {
-  color: var(--adm-tinte-3);
+  color: var(--adm-tinte-2);
   font-family: var(--adm-schrift-text);
   font-weight: 550;
   letter-spacing: 0;
@@ -602,10 +796,17 @@
   background-color: transparent;
   border-bottom-color: var(--adm-kante);
 }
-:root[data-ce-bereich="admin"] :is(.table-card, .ce-table-container) thead th { border-bottom: 1px solid var(--adm-kante-stark); }
+:root[data-ce-bereich="admin"] :is(.table-card, .ce-table-container) thead th {
+  border-bottom: 1px solid var(--adm-kante-stark);
+  background-image: var(--adm-kopfband);
+}
 :root[data-ce-bereich="admin"] td { border-bottom-color: var(--adm-linie); }
 :root[data-ce-bereich="admin"] tbody tr { transition: background-color var(--adm-dauer) var(--adm-kurve); }
-:root[data-ce-bereich="admin"] tbody tr:hover { background-color: rgba(141, 176, 255, 0.04); }
+:root[data-ce-bereich="admin"] tbody td:first-child { transition: box-shadow var(--adm-dauer) var(--adm-kurve); }
+:root[data-ce-bereich="admin"] tbody tr:hover { background-color: var(--adm-zeile-zeigen); }
+@media (hover: hover) and (min-width: 901px) {
+  :root[data-ce-bereich="admin"] :is(.table-card, .ce-table-container) tbody tr:hover > td:first-child { box-shadow: var(--adm-zeile-marke); }
+}
 
 /* Statusmarken: getönte Fläche, helle Schrift, feine Kante */
 :root[data-ce-bereich="admin"] .badge {
@@ -638,14 +839,73 @@
 
 /* ═══════════ 9 · BAUSTEINE DES ADMINPANELS ═════════════════════════════════════════════════════════════════════════
    Was in admin.css über Foundation-Rollen läuft, folgt dem Tokenblock. Hier nur, wo Licht eine Rolle übernimmt. */
-/* Kennzahlenband der Übersicht: Zeigen hebt die Kennzahl mit einem eisblauen Lichtsaum. */
+/* Übersicht als Leitstand (Admin Premium Finish 3.0): mehr Licht als jede andere Seite, aber nur dort, wo es eine Rolle
+   hat. Offene Aufgaben tragen Bernsteinlicht an der Oberkante und einen kräftigen Reflex; die Zahl leuchtet leise, die
+   Einheit („offene Fälle“) steht daneben. Die Zeile darunter ist ruhig (grüner Punkt), unbekannte Zahlen bleiben als
+   Bernsteinhinweis sichtbar. Die Karten selbst sind keine Links — nur ihre Aktionen reagieren. */
+:root[data-ce-bereich="admin"] .adm-todo .adm-ops-item {
+  background-color: var(--adm-flaeche-1);
+  background-image: var(--adm-offen-licht), var(--adm-reflex-stark), var(--adm-flaechenverlauf);
+  background-size: 100% 2px, auto, auto;
+  background-repeat: no-repeat;
+  border-color: var(--adm-kante-stark);
+}
+:root[data-ce-bereich="admin"] .adm-todo .adm-ops-label { color: var(--adm-tinte); }
+:root[data-ce-bereich="admin"] .adm-todo .adm-ops-count { color: #ffffff; text-shadow: var(--adm-zahl-schein); }
+:root[data-ce-bereich="admin"] .adm-ops-unit { color: var(--adm-tinte-2); }
+:root[data-ce-bereich="admin"] .adm-todo .adm-ops-hint { color: var(--adm-tinte-2); }
+:root[data-ce-bereich="admin"] .adm-todo .adm-ops-links a { color: var(--adm-signal-tinte); transition: color var(--adm-dauer) var(--adm-kurve); }
+:root[data-ce-bereich="admin"] .adm-todo .adm-ops-links a:hover { color: var(--adm-signal-tinte-zeigen); }
+:root[data-ce-bereich="admin"] .adm-todo-zahl {
+  background: var(--adm-bernstein-ton);
+  color: var(--adm-bernstein);
+  box-shadow: inset 0 0 0 1px var(--adm-bernstein-kante);
+}
+:root[data-ce-bereich="admin"] .adm-todo-unavailable {
+  background: var(--adm-bernstein-ton);
+  border-color: var(--adm-bernstein-kante);
+  color: var(--adm-tinte);
+}
+:root[data-ce-bereich="admin"] .adm-todo-unavailable .adm-todo-line-label { color: var(--adm-bernstein); }
+:root[data-ce-bereich="admin"] .adm-todo-unavailable a { color: var(--adm-signal-tinte); }
+:root[data-ce-bereich="admin"] .adm-todo-rest-summary {
+  border-color: var(--adm-linie);
+  background-color: rgba(184, 204, 255, 0.03);
+  color: var(--adm-tinte-2);
+  transition: background-color var(--adm-dauer) var(--adm-kurve), border-color var(--adm-dauer) var(--adm-kurve);
+}
+:root[data-ce-bereich="admin"] .adm-todo-rest-summary:hover { background-color: rgba(184, 204, 255, 0.06); border-color: var(--adm-kante); }
+:root[data-ce-bereich="admin"] .adm-todo-rest-titel { color: var(--adm-tinte); }
+:root[data-ce-bereich="admin"] .adm-todo-rest--ruhig .adm-todo-rest-titel::before { background: var(--adm-gruen); box-shadow: var(--adm-punkt-ruhig); }
+:root[data-ce-bereich="admin"] .adm-todo-rest-summary::after { border-color: var(--adm-tinte-3); }
+:root[data-ce-bereich="admin"] .adm-todo-rest-list { color: var(--adm-tinte-2); }
+:root[data-ce-bereich="admin"] .adm-todo-empty::before { background: var(--adm-gruen); box-shadow: var(--adm-punkt-ruhig); }
+
+/* Kennzahlenband: großer Wert mit leisem Lichtschein, kräftiger Reflex; Zeigen hebt die Zelle mit einem Lichtsaum. */
+:root[data-ce-bereich="admin"] .adm-metrics { background-image: var(--adm-reflex-stark), var(--adm-flaechenverlauf); }
 :root[data-ce-bereich="admin"] .adm-metric { transition: background-color var(--adm-dauer) var(--adm-kurve), box-shadow var(--adm-dauer) var(--adm-kurve); }
-:root[data-ce-bereich="admin"] .adm-metric:hover { background-color: rgba(141, 176, 255, 0.05); box-shadow: var(--adm-kennzahl-zeigen); }
-:root[data-ce-bereich="admin"] .adm-metric-value { color: #ffffff; }
-/* Bereichslinks der Übersicht */
-:root[data-ce-bereich="admin"] .adm-tile { transition: background-color var(--adm-dauer) var(--adm-kurve); }
-:root[data-ce-bereich="admin"] .adm-tile:hover { background-color: rgba(141, 176, 255, 0.05); }
-:root[data-ce-bereich="admin"] .adm-tile:hover .adm-tile-title { color: var(--adm-signal-tinte-zeigen); }
+:root[data-ce-bereich="admin"] .adm-metric:hover { background-color: rgba(141, 176, 255, 0.06); box-shadow: var(--adm-kennzahl-zeigen); }
+:root[data-ce-bereich="admin"] .adm-metric-value { color: #ffffff; text-shadow: var(--adm-zahl-schein); }
+:root[data-ce-bereich="admin"] .adm-metric-hint { color: var(--adm-tinte-2); }
+
+/* Bereiche als Navigationskarten: dasselbe Material wie die Arbeitsflächen; Zeigen zieht eine Lichtkante und einen
+   blauen Schein, ohne die Karte zu bewegen. */
+:root[data-ce-bereich="admin"] .adm-tile {
+  background-color: var(--adm-flaeche-1);
+  background-image: var(--adm-reflex), var(--adm-flaechenverlauf);
+  border-color: var(--adm-kante);
+  box-shadow: var(--adm-karte-tiefe);
+  transition: background-color var(--adm-dauer) var(--adm-kurve), border-color var(--adm-dauer) var(--adm-kurve), box-shadow var(--adm-dauer) var(--adm-kurve);
+}
+:root[data-ce-bereich="admin"] .adm-tile:hover {
+  background-color: var(--adm-flaeche-2);
+  background-image: var(--adm-reflex-stark), var(--adm-flaechenverlauf);
+  border-color: var(--adm-kante-stark);
+  box-shadow: var(--adm-karte-zeigen);
+}
+:root[data-ce-bereich="admin"] .adm-tile-title { color: var(--adm-eis); transition: color var(--adm-dauer) var(--adm-kurve); }
+:root[data-ce-bereich="admin"] .adm-tile:hover .adm-tile-title { color: #ffffff; }
+:root[data-ce-bereich="admin"] .adm-tile-desc { color: var(--adm-tinte-2); }
 /* Teilnavigation eines Bereichs: die aktive Seite trägt das Lichtband als Unterkante */
 :root[data-ce-bereich="admin"] :is(.adm-subnav-link-on, .adm-subnav-link-on:hover) { color: #ffffff; box-shadow: inset 0 -2px 0 var(--adm-signal-tinte); }
 /* Sprung zurück im Detail */
@@ -658,12 +918,192 @@
   to { opacity: 1; transform: none; }
 }
 @keyframes ce-adm-schleier-auf { from { opacity: 0; } to { opacity: 1; } }
+
+/* Die zwölf Bewegungen der Seitenleiste (Abschnitt 4). Jede endet deckungsgleich mit der Ruhelage; Drehungen um eine
+   halbe oder ganze Umdrehung enden auf einer symmetrischen Lage (Sperrzeichen 180°, Münze und Zeiger 360°). */
+@keyframes ce-adm-sym-kacheln {
+  0% { transform: none; }
+  40% { transform: translate(var(--adm-dx), var(--adm-dy)) rotate(var(--adm-dr)) scale(0.84); }
+  72% { transform: translate(calc(var(--adm-dx) * -0.16), calc(var(--adm-dy) * -0.16)) rotate(calc(var(--adm-dr) * -0.25)) scale(1.04); }
+  100% { transform: none; }
+}
+@keyframes ce-adm-sym-impuls {
+  0% { transform: perspective(40px) translateZ(0) translateY(0); }
+  35% { transform: perspective(40px) translateZ(5px) translateY(-0.5px); }
+  70% { transform: perspective(40px) translateZ(-1.5px) translateY(0); }
+  100% { transform: perspective(40px) translateZ(0) translateY(0); }
+}
+@keyframes ce-adm-sym-kopf {
+  0%, 100% { transform: none; }
+  35% { transform: translateY(-2.4px) scale(1.1); }
+  68% { transform: translateY(0.6px) scale(0.97); }
+}
+@keyframes ce-adm-sym-glimmen {
+  0% { opacity: 0; transform: scale(0.7); }
+  30% { opacity: 0.6; }
+  100% { opacity: 0; transform: scale(2.2); }
+}
+@keyframes ce-adm-sym-welle {
+  0% { opacity: 0; transform: scale(0.45); }
+  25% { opacity: 0.9; }
+  100% { opacity: 0; transform: scale(2); }
+}
+@keyframes ce-adm-sym-fahrt {
+  0% { transform: none; }
+  20% { transform: translateX(-1.2px) skewX(5deg); }
+  48% { transform: translateX(5px) skewX(-9deg); }
+  70% { transform: translateX(-1.4px) skewX(3deg); }
+  86% { transform: translateX(0.5px) skewX(-1deg); }
+  100% { transform: none; }
+}
+@keyframes ce-adm-sym-fahrtwind {
+  0% { opacity: 0; transform: translateX(3px) scaleX(0.3); }
+  45% { opacity: 1; transform: translateX(0) scaleX(1); }
+  100% { opacity: 0; transform: translateX(-4px) scaleX(0.6); }
+}
+@keyframes ce-adm-sym-blatt {
+  0% { transform: perspective(36px) rotateY(0deg) translateY(0); }
+  42% { transform: perspective(36px) rotateY(-26deg) translateY(-1px); }
+  74% { transform: perspective(36px) rotateY(5deg) translateY(0); }
+  100% { transform: perspective(36px) rotateY(0deg) translateY(0); }
+}
+@keyframes ce-adm-sym-ecke {
+  0%, 100% { transform: none; }
+  45% { transform: translate(1px, -1px) scale(1.3); }
+}
+@keyframes ce-adm-sym-zeile {
+  0%, 100% { opacity: 1; transform: none; }
+  45% { opacity: 0.3; transform: scaleX(0.55); }
+}
+@keyframes ce-adm-sym-scan {
+  0% { opacity: 0; transform: translateY(0); }
+  25% { opacity: 1; }
+  80% { opacity: 0.85; transform: translateY(11px); }
+  100% { opacity: 0; transform: translateY(13px); }
+}
+@keyframes ce-adm-sym-neigen {
+  0%, 100% { transform: none; }
+  28% { transform: rotate(-13deg) translateY(-0.5px); }
+  58% { transform: rotate(7deg) translateY(0); }
+  80% { transform: rotate(-2deg) translateY(0); }
+}
+@keyframes ce-adm-sym-puls {
+  0%, 100% { transform: none; }
+  45% { transform: scale(1.18); }
+}
+@keyframes ce-adm-sym-signal {
+  0% { opacity: 0; transform: translateX(-2px) scale(0.5); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(2px) scale(1.15); }
+}
+@keyframes ce-adm-sym-sperre {
+  0% { transform: rotate(0deg) scale(1); }
+  55% { transform: rotate(204deg) scale(0.88); }
+  80% { transform: rotate(176deg) scale(1.06); }
+  100% { transform: rotate(180deg) scale(1); }
+}
+@keyframes ce-adm-sym-riegel {
+  0%, 100% { transform: none; }
+  30% { transform: scale(0.25); }
+  68% { transform: scale(1.14); }
+}
+@keyframes ce-adm-sym-klick {
+  0% { opacity: 0; transform: scale(0.8); }
+  30% { opacity: 0.95; }
+  100% { opacity: 0; transform: scale(1.65); }
+}
+@keyframes ce-adm-sym-schild {
+  0% { transform: perspective(26px) rotateX(0deg) scale(1); }
+  40% { transform: perspective(26px) rotateX(28deg) scale(0.94); }
+  72% { transform: perspective(26px) rotateX(-7deg) scale(1.05); }
+  100% { transform: perspective(26px) rotateX(0deg) scale(1); }
+}
+@keyframes ce-adm-sym-schutz {
+  0% { opacity: 0; transform: scale(0.7); }
+  35% { opacity: 0.9; }
+  100% { opacity: 0; transform: scale(1.6); }
+}
+@keyframes ce-adm-sym-schichten {
+  0%, 100% { transform: none; }
+  40% { transform: translate(var(--adm-dx), var(--adm-dy)); }
+  72% { transform: translate(calc(var(--adm-dx) * -0.22), calc(var(--adm-dy) * -0.22)); }
+}
+@keyframes ce-adm-sym-koffer {
+  0%, 100% { transform: none; }
+  40% { transform: translateY(-2.8px) rotate(-4deg); }
+  72% { transform: translateY(0.6px) rotate(1.5deg); }
+}
+@keyframes ce-adm-sym-griff {
+  0%, 100% { transform: none; }
+  25% { transform: translateY(0.6px) scaleY(0.8); }
+  55% { transform: translateY(-1.8px) scaleY(1.2); }
+  80% { transform: translateY(0.3px) scaleY(0.96); }
+}
+@keyframes ce-adm-sym-abheben {
+  0% { opacity: 0; transform: scaleX(1); }
+  40% { opacity: 0.85; transform: scaleX(0.55); }
+  100% { opacity: 0; transform: scaleX(1); }
+}
+@keyframes ce-adm-sym-muenze {
+  0% { transform: perspective(40px) rotateY(0deg); }
+  70% { transform: perspective(40px) rotateY(380deg); }
+  100% { transform: perspective(40px) rotateY(360deg); }
+}
+@keyframes ce-adm-sym-strich {
+  0%, 100% { transform: none; }
+  50% { transform: translateX(-1.5px) scaleX(1.3); }
+}
+@keyframes ce-adm-sym-steigen {
+  0% { opacity: 0; transform: translateY(6px) scaleY(0.3); }
+  35% { opacity: 1; transform: translateY(1px) scaleY(1); }
+  100% { opacity: 0; transform: translateY(-8px) scaleY(0.7); }
+}
+@keyframes ce-adm-sym-einzug {
+  0%, 100% { transform: none; }
+  35% { transform: translateY(1.8px) scaleY(0.82); }
+}
+@keyframes ce-adm-sym-druckwerk {
+  0%, 60%, 100% { transform: none; }
+  15% { transform: translateY(0.9px); }
+  30% { transform: translateY(-0.5px); }
+  45% { transform: translateY(0.6px); }
+}
+@keyframes ce-adm-sym-ausgabe {
+  0%, 100% { transform: none; }
+  30% { transform: translateY(-1.2px); }
+  62% { transform: translateY(3.2px); }
+  84% { transform: translateY(-0.4px); }
+}
+@keyframes ce-adm-sym-papier {
+  0% { opacity: 0; transform: translateY(-3px) scaleX(0.6); }
+  45% { opacity: 0.9; transform: translateY(1px) scaleX(1); }
+  100% { opacity: 0; transform: translateY(3px) scaleX(1.1); }
+}
+@keyframes ce-adm-sym-zurueck {
+  0% { transform: rotate(0deg); }
+  72% { transform: rotate(-390deg); }
+  100% { transform: rotate(-360deg); }
+}
+@keyframes ce-adm-sym-ziffernblatt {
+  0%, 100% { transform: none; }
+  30% { transform: scale(0.9); }
+  70% { transform: scale(1.05); }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   :root[data-ce-bereich="admin"] :is(.ce-dialog, .adm-modal) { animation: ce-adm-fenster-auf var(--adm-dauer-lang) var(--adm-kurve) both; }
   :root[data-ce-bereich="admin"] :is(.ce-dialog-overlay, .adm-modal-overlay) { animation: ce-adm-schleier-auf var(--adm-dauer) linear both; }
+  /* Auslöser der Symbolbewegungen: Tastaturfokus immer, Zeigen nur mit echtem Zeiger (kein Nachlaufen nach Antippen). */
+  :root[data-ce-bereich="admin"] .adm-nitem:focus-visible .adm-nitem-icon :is(.nav-sym, .nav-sym-teil, .nav-sym-licht) { animation: var(--adm-an); }
+  :root[data-ce-bereich="admin"] .adm-nitem:focus-visible .adm-nitem-icon::after { animation: var(--adm-an-licht); }
+  @media (hover: hover) and (pointer: fine) {
+    :root[data-ce-bereich="admin"] .adm-nitem:hover .adm-nitem-icon :is(.nav-sym, .nav-sym-teil, .nav-sym-licht) { animation: var(--adm-an); }
+    :root[data-ce-bereich="admin"] .adm-nitem:hover .adm-nitem-icon::after { animation: var(--adm-an-licht); }
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  :root[data-ce-bereich="admin"] :is(.btn, .adm-nitem, .adm-nitem-icon, .adm-foot-btn, .adm-side-close, .ce-tab, tbody tr, .adm-metric, .adm-tile) { transition: none; }
+  :root[data-ce-bereich="admin"] :is(.btn, .adm-nitem, .adm-nitem-icon, .adm-foot-btn, .adm-side-close, .ce-tab, tbody tr, tbody td, .adm-metric, .adm-tile, .adm-tile-title, .adm-todo-rest-summary, .adm-ops-links a),
+  :root[data-ce-bereich="admin"] .adm-nitem-icon::before { transition: none; }
 }
 @media (prefers-contrast: more) {
   :root[data-ce-bereich="admin"] {
@@ -677,6 +1117,10 @@
 @media (forced-colors: active) {
   :root[data-ce-bereich="admin"] .ce-page-header-main::after { content: none; }
   :root[data-ce-bereich="admin"] .adm-nitem-on .adm-nitem-icon { filter: none; }
+  /* Schein und Licht der Symbole sind Dekoration — in erzwungenen Farben entfallen sie, die Bewegung der Striche bleibt. */
+  :root[data-ce-bereich="admin"] .adm-nitem-icon::before,
+  :root[data-ce-bereich="admin"] .adm-nitem-icon::after { content: none; }
+  :root[data-ce-bereich="admin"] :is(.adm-todo .adm-ops-count, .adm-metric-value) { text-shadow: none; }
 }
 
 }

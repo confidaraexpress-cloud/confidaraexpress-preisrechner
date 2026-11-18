@@ -34,9 +34,10 @@ test("1 — Sidebar: Hauptbereiche oben, zwei benannte Gruppen, jedes Ziel genau
   assert.match(src, /\{ to: "\/admin\/audit-logs", label: "Protokoll", icon: "clock" \}/);
   assert.match(src, /\{ to: "\/admin\/support-requests", label: "Supportanfragen", icon: "headset" \}/);
   assert.doesNotMatch(src, /Backfill"|Audit-Logs"/);
-  // Jeder Eintrag trägt ein Symbol der eigenen Icon-Komponente, dekorativ vor dem Text.
+  // Jeder Eintrag trägt ein Symbol aus NavSymbol (Geometrie der eigenen Icon-Komponente), dekorativ vor dem Text; die
+  // Klasse adm-nitem-icon--<symbol> trägt seine Bewegung (Admin Premium Finish 3.0, adminNacht.test.mjs N8).
   assert.equal([...src.matchAll(/\{ to: "\/admin[^}]*icon: "[a-zA-Z]+"/g)].length, ZIELE.length, "Eintrag ohne Symbol");
-  assert.match(src, /<span className="adm-nitem-icon" aria-hidden="true"><Icon n=\{item\.icon\} s=\{ICON_SIZE\.md\} \/><\/span>\s*<span>\{item\.label\}<\/span>/);
+  assert.match(src, /<span className=\{`adm-nitem-icon adm-nitem-icon--\$\{item\.icon\}`\} aria-hidden="true"><NavSymbol n=\{item\.icon\} s=\{ICON_SIZE\.md\} \/><\/span>\s*<span>\{item\.label\}<\/span>/);
   // Gruppen sind für Screenreader benannt; kein Zähler, keine Glocke, keine neue Abfrage.
   assert.match(src, /role="group" aria-labelledby=\{id\}/);
   assert.doesNotMatch(src, /apiFetch|api\/adminApi|useEffect/);

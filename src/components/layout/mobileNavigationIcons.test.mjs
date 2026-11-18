@@ -169,10 +169,13 @@ test("7 — die Symbolknöpfe sind quadratische 44-px-Ziele ohne Textpolster", (
 
 test("8 — die Navigation bleibt Textnavigation, ohne fremde Iconbibliothek (Kunde: Icons nur vor Hauptpunkten, E7; Admin: je Eintrag)", () => {
   // Admin (Admin-Vereinfachung, Betreiberauftrag 2026-11-10): genau eine Renderstelle — das dekorative
-  // Symbol vor dem Text jedes Eintrags, aus dem eigenen Icon-System; der Name bleibt Text.
-  assert.equal((adminSidebar.match(/<Icon\b/g) || []).length, 1, "AdminSidebar: Symbole außerhalb der Einträge");
-  assert.match(adminSidebar, /import \{ Icon, ICON_SIZE \} from "\.\.\/ui\/Icon";/, "AdminSidebar: Icon nicht aus dem eigenen System");
-  assert.match(adminSidebar, /<span className="adm-nitem-icon" aria-hidden="true"><Icon n=\{item\.icon\}/);
+  // Symbol vor dem Text jedes Eintrags, aus dem eigenen Icon-System; der Name bleibt Text. Seit Admin Premium
+  // Finish 3.0 (2026-11-18) wie die Kunden-Sidebar als <NavSymbol> (Geometrie aus iconTeile) — nie an ihm vorbei.
+  assert.equal((adminSidebar.match(/<NavSymbol\b/g) || []).length, 1, "AdminSidebar: Symbole außerhalb der Einträge");
+  assert.equal((adminSidebar.match(/<Icon\b/g) || []).length, 0, "AdminSidebar: Symbol an NavSymbol vorbei gerendert");
+  assert.match(adminSidebar, /import \{ ICON_SIZE \} from "\.\.\/ui\/Icon";/, "AdminSidebar: Größe nicht aus dem eigenen System");
+  assert.match(adminSidebar, /import \{ NavSymbol \} from "\.\/NavSymbol";/, "AdminSidebar: Symbol nicht aus dem eigenen System");
+  assert.match(adminSidebar, /<span className=\{`adm-nitem-icon adm-nitem-icon--\$\{item\.icon\}`\} aria-hidden="true"><NavSymbol n=\{item\.icon\}/);
   // Kunde (E7): genau zwei Renderstellen, jede vor einer Beschriftung (sidebarNavigation.test.mjs, Test 15). Seit dem
   // Premium Control System 2.0 (2026-11-14) als <NavSymbol> — Geometrie aus dem eigenen Icon-System (iconTeile).
   assert.equal((sidebar.match(/<NavSymbol\b/g) || []).length, 2, "DashboardSidebar: Icons außerhalb der Hauptpunkte");

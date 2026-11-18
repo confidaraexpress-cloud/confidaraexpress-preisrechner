@@ -7,8 +7,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   ADMIN_COUNTS, ADMIN_DIAGNOSTICS, ADMIN_FIGURES, ADMIN_TODO, ADMIN_TODO_EXCLUDED_QUEUES, PARTNER_TASK_COUNTS,
-  TODO_TEXTS, adminDiagnosticViews, adminFigureViews, adminTodoViews, diagnosticsSummary, groupAdminTodo,
-  overviewWithoutValues,
+  TODO_TEXTS, adminDiagnosticViews, adminFigureViews, adminTodoViews, diagnosticsSummary, doneTasksText, groupAdminTodo,
+  openCasesUnit, openTasksText, overviewWithoutValues, todoRestIsCalm,
 } from "./adminTodo.mjs";
 import { ADMIN_METRICS } from "./adminOverview.mjs";
 import { OPERATIONS_DIAGNOSTICS, OPERATIONS_QUEUES } from "./adminOperations.mjs";
@@ -186,4 +186,42 @@ test("7 — die Übersicht lädt nur vorhandene Listen mit pageSize 1 und rechne
   for (const t of Object.values(TODO_TEXTS)) {
     assert.doesNotMatch(t, /Server|Backend|Queue|API|endpoint/i, t);
   }
+});
+
+test("8 — Admin Premium Finish 3.0: Einheit und Zahlen der Aufgaben, „Keine weiteren offenen Aufgaben“ nur mit allen Zahlen", () => {
+  // Einheit neben der Zahl einer offenen Aufgabe (Betreiberauftrag: „3 offene Fälle“).
+  assert.equal(openCasesUnit(1), "offener Fall");
+  assert.equal(openCasesUnit(3), "offene Fälle");
+  assert.equal(openCasesUnit(12), "offene Fälle");
+  // Gezählt werden Aufgaben (Karten), keine Fälle über Aufgaben hinweg.
+  assert.equal(openTasksText(1), "1 offene Aufgabe");
+  assert.equal(openTasksText(6), "6 offene Aufgaben");
+  // Mit unbekannter oder ladender Zahl ist die Zahl der Karten nur eine Untergrenze — nie eine vollständige Angabe.
+  assert.equal(openTasksText(1, true), "mindestens 1 offene Aufgabe");
+  assert.equal(openTasksText(6, true), "mindestens 6 offene Aufgaben");
+  assert.equal(openTasksText(6, false), "6 offene Aufgaben");
+  assert.equal(doneTasksText(1), "1 Aufgabe ohne offene Fälle");
+  assert.equal(doneTasksText(15), "15 Aufgaben ohne offene Fälle");
+  assert.equal(TODO_TEXTS.calm, "Keine weiteren offenen Aufgaben");
+
+  // Mit allen Zahlen und offenen Aufgaben: ruhig. Die Zahl der Karten ist die Länge der offenen Gruppe — keine Summe.
+  const alle = groupAdminTodo(adminTodoViews({ entries: ENTRIES, ops: OPS }));
+  assert.equal(todoRestIsCalm(alle), true);
+  assert.equal(openTasksText(alle.open.length), "6 offene Aufgaben");
+  assert.equal(alle.open.length + alle.done.length, ADMIN_TODO.length, "jede Aufgabe ist offen oder erledigt");
+  // Eine unbekannte Zahl: nie „keine weiteren“ — sie könnte offen sein.
+  const unbekannt = groupAdminTodo(adminTodoViews({ entries: { ...ENTRIES, support: { total: null, loading: false } }, ops: OPS }));
+  assert.equal(todoRestIsCalm(unbekannt), false);
+  // Noch ladende Queues: ebenfalls nicht.
+  const laedt = groupAdminTodo(adminTodoViews({ entries: ENTRIES, ops: null, opsLoading: true }));
+  assert.equal(todoRestIsCalm(laedt), false);
+  // Ohne offene Aufgabe sagt das die leere Zeile („Nichts zu erledigen“), nicht die ruhige Zeile.
+  const nichts = groupAdminTodo(adminTodoViews({
+    entries: Object.fromEntries(Object.keys(ENTRIES).map((k) => [k, bereit(0)])),
+    ops: { queues: Object.fromEntries(Object.keys(OPS.queues).map((k) => [k, { count: 0 }])) },
+  }));
+  assert.equal(nichts.open.length, 0);
+  assert.equal(todoRestIsCalm(nichts), false);
+  assert.equal(todoRestIsCalm(null), false);
+  assert.equal(todoRestIsCalm({}), false);
 });

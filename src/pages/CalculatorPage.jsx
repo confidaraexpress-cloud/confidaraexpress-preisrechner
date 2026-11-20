@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { HANDOVER_FILTER_OPTIONS } from "../utils/handoverMode.mjs";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/client";
 import { normalizeCountryCode } from "../utils/countries";
@@ -38,6 +39,7 @@ import { OFFER_SELECTION_STAGE } from "../utils/offerIdentity.mjs";
 import { AddressSuggestInput } from "../components/address/AddressSuggestInput";
 import { useAddressValidation } from "../hooks/useAddressValidation";
 import { cityFromSuggestion } from "../utils/addressValidationView.mjs";
+import { sortOffers } from "../utils/offerSort.mjs";
 
 // Reine Client-Filter (kein neuer /calculate-price-Request nötig): Änderungen
 // hieran verwerfen KEINE bestehenden Angebote. Alle übrigen Formularfelder
@@ -48,32 +50,13 @@ import { cityFromSuggestion } from "../utils/addressValidationView.mjs";
 // calcKey — der Schlüssel beschreibt die Payload, nicht die Anzeige.
 const FILTER_ONLY_FIELDS = new Set(["max_price", "latestDeliveryDate", "latestDeliveryTime"]);
 
-// Die Sortierung der Angebotsliste — für die sichtbare Liste UND die eingeklappte Gruppe „Zu spät" (TG-L2).
-// Reine Funktion; die Eingabe bleibt unverändert („recommended" gibt sie unverändert zurück).
-function sortiereAngebote(liste, sortMode) {
-  if (sortMode === "recommended") return liste;
-  const copy = [...liste];
-  if (sortMode === "cheapest") return copy.sort((a, b) => (a.netPrice ?? Infinity) - (b.netPrice ?? Infinity));
-  if (sortMode === "priciest") return copy.sort((a, b) => (b.netPrice ?? -1) - (a.netPrice ?? -1));
-  if (sortMode === "fastest")  return copy.sort((a, b) => {
-    const aMax = a.transitDaysMax ?? 999;
-    const bMax = b.transitDaysMax ?? 999;
-    if (aMax !== bMax) return aMax - bMax;
-    const aMin = a.transitDaysMin ?? 999;
-    const bMin = b.transitDaysMin ?? 999;
-    if (aMin !== bMin) return aMin - bMin;
-    return (a.netPrice ?? Infinity) - (b.netPrice ?? Infinity);
-  });
-  return copy;
-}
+// Die Sortierung der Angebotsliste — für die sichtbare Liste UND die eingeklappte Gruppe „Zu spät" (TG-L2). Die Ordnung
+// steht seit E3 (Masteranalyse Angebotskarten 2026-11-20) an EINER Stelle (utils/offerSort.mjs).
+const sortiereAngebote = sortOffers;
 
 // ─── Service options ─────────────────────────────────────────────────────────
-const SERVICE_OPTIONS = [
-  { id: "all",          icon: "dashboard", label: "Alle Dienstleistungen", desc: "Tarife für die Abholung Zuhause / im Büro und für die Shopabgabe anzeigen" },
-  { id: "pickup",       icon: "truck",     label: "Nur Abholung",          desc: "Tarife für die Abholung Zuhause / im Büro anzeigen"  },
-  { id: "dropoff",      icon: "map",       label: "Nur Abgabe",            desc: "Tarife für die Abgabe in einem Paketshop anzeigen"      },
-  { id: "pickup_today", icon: "zap",       label: "Abholung heute",        desc: "Tarife mit Abholung noch heute anzeigen" },
-];
+// E4 (2026-11-20): der eine Übergabefilter aus utils/handoverMode.mjs — dieselben Texte in allen Rechnern.
+const SERVICE_OPTIONS = HANDOVER_FILTER_OPTIONS;
 
 // Gesamtauftrag F (2026-10-24): drei Optionen. „Economy" ist keine Filteroption mehr — Economy-Produkte (etwa
 // TNT Economy Express, DHL Economy Select) bleiben angeboten und erscheinen unter „Alle Versandarten". Ein
@@ -184,6 +167,10 @@ export default function CalculatorPage() {
   const [hasResults, setHasResults] = useState(!!(flowInit && flowInit.tariffs.length > 0));
   // Zeitpunkt der Preisberechnung — trägt die Ablauffrist des Vorgangs.
   const calculatedAtRef = useRef(flowInit ? flowInit.calculatedAt : null);
+  // Serverzeit der Antwort (`quotedAt`, Masteranalyse Angebotskarten 2026-11-20, §5.3): mit dem Eingang (oben) die Uhr
+  // der Angebotsliste — eine falsch gehende Geräteuhr verlängert so keine Angebotsaussage. Fehlt sie, gilt nur die Frist
+  // jedes Angebots und der nächste Tagesbeginn nach dem Eingang.
+  const quotedAtRef = useRef(flowInit ? flowInit.quotedAt : null);
 
   // ── Race-Schutz für /calculate-price (Audit F1) ──
   // Verhindert, dass eine spät eintreffende Antwort neuere Eingaben überschreibt.
@@ -230,6 +217,7 @@ export default function CalculatorPage() {
       form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds,
       sortMode, vatMode, tariffs, publicCarriers, selected,
       calculatedAt: calculatedAtRef.current,
+      quotedAt: quotedAtRef.current,
     });
   }, [form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds,
       sortMode, vatMode, tariffs, publicCarriers, selected, setFlowScope]);
@@ -344,6 +332,7 @@ export default function CalculatorPage() {
     // Feldmarkierungen bleiben: ob ein Feld rot ist, entscheidet seine eigene Prüfung (siehe
     // `fieldErrors`). Bis 2026-10 löschte jede Eingabe hier ALLE Markierungen (Auftrag 1, P11).
     calculatedAtRef.current = null;
+    quotedAtRef.current = null;
     setFlowNotice(null);
   };
 
@@ -609,6 +598,7 @@ export default function CalculatorPage() {
       // Hinweis über der Liste — die gelieferten Angebote bleiben, nichts wird wiederholt.
       setCoverageNotice(sourceCoverageNotice(d));
       calculatedAtRef.current = Date.now();   // Ablauffrist des Vorgangs beginnt jetzt
+      quotedAtRef.current = typeof d.quotedAt === "string" ? d.quotedAt : null;
       // Erst JETZT gilt der Schlüssel als berechnet: `reqKey` ist der Stand beim
       // ABSENDEN — eine zwischenzeitliche Eingabe hätte den Request oben schon
       // verworfen.
@@ -877,6 +867,8 @@ export default function CalculatorPage() {
             sortMode={sortMode}
             onSortChange={setSortMode}
             onRecalculate={calculate}
+            quotedAt={quotedAtRef.current}
+            receivedAtMs={calculatedAtRef.current}
             maxPrice={form.max_price}
             onMaxPriceChange={v => upd("max_price", v)}
             latestDeliveryDate={form.latestDeliveryDate}

@@ -67,7 +67,11 @@ const TG_OFFEN = {
 
 let server, browser;
 
+// FE-6: der Versandtag der letzten Preisanfrage — der Abgabetag einer Abgabe ohne eigenen Tag ist genau dieser Tag.
+let anfrageVersandtag = null;
+
 async function setupRoutes(page) {
+  anfrageVersandtag = null;
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const p = new URL(route.request().url()).pathname;
     const json = (b) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(b) });
@@ -81,6 +85,9 @@ async function setupRoutes(page) {
     if (p.includes("/api/kunde/form-drafts")) return json({ drafts: [], nextCursor: null });
     if (p.includes("/api/kunde/drafts")) return json({ items: [], nextCursor: null });
     if (p.includes("/api/kunde/addresses")) return json({ addresses: [], pagination: { total: 0 } });
+    if (p.includes("/api/jumingo/calculate-price")) {
+      try { anfrageVersandtag = JSON.parse(route.request().postData() || "{}").shippingDate ?? null; } catch { anfrageVersandtag = null; }
+    }
     if (p.includes("/api/jumingo/calculate-price")) return json({
       // EINE Liste fuer beide Einkaufsquellen — genau so liefert der Server sie
       // (routes/jumingo.js: `tariffs: [...publicTariffs, ...publicTransglobalOffers]`).
@@ -219,12 +226,30 @@ test("3 — TG zeigt Laufzeit statt eines erfundenen Zustelldatums", async () =>
   assert.match(alle, /1–2 Tage/);
   assert.match(alle, /ab 1 Tag/, "die nach oben offene Laufzeit fehlt");
 
-  // Und KEIN Kalenderdatum auf einer Karte ohne Kalenderdaten.
-  for (const t of tgTexte) {
+  // Und KEIN erfundenes Datum auf einer Karte ohne Kalenderdaten. FE-6 (Masteranalyse 2026-11-20): eine Abgabe nennt
+  // im Startknoten den Tag, ab dem sie möglich ist — den Versandtag der Anfrage („Abgabe ab …"), kein Datum des
+  // Anbieters. Der Zielknoten bleibt ohne Datum, eine Abholung ohne Abholtag ohne Starttag.
+  assert.match(String(anfrageVersandtag), /^\d{4}-\d{2}-\d{2}$/, "die Preisanfrage trug keinen Versandtag");
+  const versandtag = `${anfrageVersandtag.slice(8, 10)}.${anfrageVersandtag.slice(5, 7)}.`;
+  let abgaben = 0;
+  for (let i = 1; i < 4; i++) {
+    const t = tgTexte[i - 1];
+    const karte = page.locator(".offer-card").nth(i);
     assert.ok(!/\d{2}\.\d{2}\.\d{4}/.test(t), `erfundenes Datum auf einer TG-Karte: ${t.slice(0, 120)}`);
-    assert.ok(!/\b(Mo|Di|Mi|Do|Fr|Sa|So)\.,/.test(t), `erfundener Wochentag: ${t.slice(0, 120)}`);
     assert.ok(!/\bZustellung\b/.test(t), `eine Laufzeit ist als Zustellung benannt: ${t.slice(0, 120)}`);
+    const ende = await karte.locator(".offer-tl-node--end").innerText();
+    assert.ok(!/\d{2}\.\d{2}\./.test(ende) && !/\b(Mo|Di|Mi|Do|Fr|Sa|So)\.,/.test(ende), `erfundener Zustelltag: ${ende}`);
+    const start = karte.locator(".offer-tl-node--start");
+    const titel = (await start.locator(".offer-tl-title").innerText()).trim();
+    const tag = (await start.locator(".offer-tl-primary").count()) > 0 ? (await start.locator(".offer-tl-primary").innerText()).trim() : null;
+    if (titel === "Abgabe ab") {
+      abgaben += 1;
+      assert.ok(tag && tag.includes(versandtag), `der Abgabetag ist nicht der Versandtag ${anfrageVersandtag}: ${tag}`);
+    } else {
+      assert.equal(tag, null, `ein Starttag ohne Kalenderdaten: ${titel} ${tag}`);
+    }
   }
+  assert.equal(abgaben, 2, "die beiden Abgaben nennen keinen Abgabetag");
   await page.close();
 });
 
@@ -234,7 +259,8 @@ test("4 — Abholung und Paketshopabgabe stehen prominent und unterscheidbar", a
   await zuDenAngeboten(page);
   const texte = [];
   for (let i = 0; i < 4; i++) texte.push((await karteMessen(page, `.offer-card >> nth=${i}`)).text);
-  assert.match(texte.join("\n"), /Abholung an Ihrer Adresse/);
+  // Konzept A (E6, 2026-11-20): das Kennzeichen unter dem Titel.
+  assert.match(texte.join("\n"), /Abholung bei Ihnen/);
   assert.match(texte.join("\n"), /Paketshop/);
   await page.close();
 });
@@ -338,7 +364,10 @@ test("8b — Zeitleiste: Daten auf einer Höhe, Textkanten an den Punkten, gleic
    Übergabeart, Punkte, Linie und Beschriftung stehen als eine Einheit in der horizontalen Kartenmitte — breit
    (Identität · Ablauf · Preis), zweizeilig und gestapelt. Bis dahin bekam in der breiten Karte allein die Identität
    den Überschuss, und der Ablauf stand bis 131 px rechts der Mitte (1222 px Kartenbreite); gestapelt stand die
-   Übergabeart linksbündig. Preis und Aktion bleiben 235 px breit am rechten Rand, der Ablauf 400 px breit. */
+   Übergabeart linksbündig. Preis und Aktion bleiben 235 px breit am rechten Rand, der Ablauf 400 px breit.
+   Konzept A (Entscheidung E6, 2026-11-20): die Übergabeart steht als Kennzeichen unter dem Titel (Zone 1) und gehört
+   nicht mehr zur Einheit; Punkte, Linie und Beschriftung bleiben zentriert. Auf der schmalen Karte (≤ 294 px, FE-8)
+   stehen Abholung und Zustellung linksbündig untereinander, ohne waagerechte Schiene. */
 test("8c — Zeitleiste in der Kartenmitte, Preis und Aktion am rechten Rand", async () => {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1400 } });
   await setupRoutes(page);
@@ -349,12 +378,13 @@ test("8c — Zeitleiste in der Kartenmitte, Preis und Aktion am rechten Rand", a
     const m = await page.evaluate(() => [...document.querySelectorAll(".offer-card")].map((k) => {
       k.style.contentVisibility = "visible";
       const r = (e) => e.getBoundingClientRect();
-      // Die Übergabeart ist ein Block über die ganze Zone — gemessen wird ihr Text.
-      const text = (e) => { const g = document.createRange(); g.selectNodeContents(e); return g.getBoundingClientRect(); };
       const kr = r(k), mitte = (kr.left + kr.right) / 2;
       const ps = r(k.querySelector(".offer-tl-dot--start")), pz = r(k.querySelector(".offer-tl-dot--end"));
-      const ho = k.querySelector(".offer-handover"), hb = ho ? text(ho) : null;
-      const teile = [ps, pz, ...[...k.querySelectorAll(".offer-tl-node > *")].map(r), ...(hb ? [hb] : [])];
+      // Konzept A (E6, 2026-11-20): das Kennzeichen steht unter dem Titel in Zone 1 — nicht mehr Teil der Einheit.
+      const ho = k.querySelector(".offer-handover"), hb = ho ? r(ho) : null, titelBox = r(k.querySelector(".offer-title"));
+      const gestapelt = getComputedStyle(k.querySelector(".offer-tl-rail")).display === "none";
+      const knotenBoxen = [...k.querySelectorAll(".offer-tl-node")].map(r);
+      const teile = [ps, pz, ...[...k.querySelectorAll(".offer-tl-node > *")].map(r)];
       const links = Math.min(...teile.map((b) => b.left)), rechts = Math.max(...teile.map((b) => b.right));
       const cs = getComputedStyle(k);
       const innenRechts = kr.right - parseFloat(cs.paddingRight) - parseFloat(cs.borderRightWidth);
@@ -363,7 +393,11 @@ test("8c — Zeitleiste in der Kartenmitte, Preis und Aktion am rechten Rand", a
         breite: kr.width,
         einheit: (links + rechts) / 2 - mitte,
         achse: (ps.left + pz.right) / 2 - mitte,
-        titel: hb ? (hb.left + hb.right) / 2 - mitte : 0,
+        gestapelt,
+        kennzeichenLinks: hb ? Math.abs(hb.left - titelBox.left) : 0,
+        kennzeichenInZone1: hb ? hb.top >= z1.top - 1 && hb.bottom <= z1.bottom + 1 : true,
+        knotenLinks: knotenBoxen.length === 2 ? Math.abs(knotenBoxen[0].left - knotenBoxen[1].left) : 0,
+        knotenFolge: knotenBoxen.length === 2 ? knotenBoxen[1].top - knotenBoxen[0].bottom : 0,
         preisRand: innenRechts - z3.right,
         zone3: z3.width,
         ablauf: r(k.querySelector(".offer-timeline")).width,
@@ -372,9 +406,16 @@ test("8c — Zeitleiste in der Kartenmitte, Preis und Aktion am rechten Rand", a
     }));
     assert.ok(m.length >= 4, `${breite}px: ${m.length} Karten`);
     m.forEach((k, i) => {
-      assert.ok(Math.abs(k.einheit) <= 1, `${breite}px Karte ${i}: die Zeitleiste steht ${k.einheit.toFixed(1)} px neben der Kartenmitte`);
-      assert.ok(Math.abs(k.achse) <= 1, `${breite}px Karte ${i}: Punkte und Linie ${k.achse.toFixed(1)} px neben der Kartenmitte`);
-      assert.ok(Math.abs(k.titel) <= 1, `${breite}px Karte ${i}: die Übergabeart steht ${k.titel.toFixed(1)} px neben der Kartenmitte`);
+      assert.ok(k.kennzeichenLinks <= 2, `${breite}px Karte ${i}: das Kennzeichen steht ${k.kennzeichenLinks.toFixed(1)} px neben der Titelkante`);
+      assert.ok(k.kennzeichenInZone1, `${breite}px Karte ${i}: das Kennzeichen steht nicht in Zone 1`);
+      if (k.gestapelt) {
+        // FE-8: schmale Karte — Abholung über Zustellung, linksbündig untereinander, keine waagerechte Schiene.
+        assert.ok(k.knotenLinks <= 1, `${breite}px Karte ${i}: die gestapelten Knoten stehen ${k.knotenLinks.toFixed(1)} px versetzt`);
+        assert.ok(k.knotenFolge >= 0, `${breite}px Karte ${i}: die Zustellung steht nicht unter der Abholung`);
+      } else {
+        assert.ok(Math.abs(k.einheit) <= 1, `${breite}px Karte ${i}: die Zeitleiste steht ${k.einheit.toFixed(1)} px neben der Kartenmitte`);
+        assert.ok(Math.abs(k.achse) <= 1, `${breite}px Karte ${i}: Punkte und Linie ${k.achse.toFixed(1)} px neben der Kartenmitte`);
+      }
       assert.ok(Math.abs(k.preisRand) <= 1, `${breite}px Karte ${i}: Preis und Aktion ${k.preisRand.toFixed(1)} px vor dem rechten Rand`);
       if (k.breite >= 950) {
         assert.ok(Math.abs(k.zone3 - 235) <= 0.5, `${breite}px Karte ${i}: Preis und Aktion ${k.zone3.toFixed(1)} px statt 235 px breit`);

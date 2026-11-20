@@ -74,7 +74,7 @@ const TG124 = Object.freeze({
 
 test("(gls1) GLS-110 ist eine Fahrerabholung, kein Dropoff", () => {
   assert.equal(handoverMode(GLS110), HANDOVER_PICKUP);
-  assert.equal(handoverLabelForTariff(GLS110), "Abholung an Ihrer Adresse");
+  assert.equal(handoverLabelForTariff(GLS110), "Abholung bei Ihnen");
 });
 
 test("(gls2) GLS-110 bietet KEINEN Paketshop-Finder (Pickup)", () => {

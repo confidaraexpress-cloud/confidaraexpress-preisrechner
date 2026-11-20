@@ -35,10 +35,24 @@ export function handoverMode(tariff) {
    Stylesheet (text-transform). Grund: ein Screenreader spricht „ABGABE" sonst
    je nach Stimme als Buchstabenfolge, und die Suche im Browser fände den Text
    nicht mehr. Die Optik ist identisch. */
+// Konzept A (Betreiberentscheidung E6, Masteranalyse Angebotskarten 2026-11-20): der Text des Kennzeichens unter dem
+// Kartentitel — „Abholung bei Ihnen" / „Abgabe im Paketshop".
 const HANDOVER_LABELS = {
-  [HANDOVER_PICKUP]: "Abholung an Ihrer Adresse",
+  [HANDOVER_PICKUP]: "Abholung bei Ihnen",
   [HANDOVER_DROPOFF]: "Abgabe im Paketshop",
 };
+
+// Betreiberentscheidung E4 (Masteranalyse Angebotskarten 2026-11-20): EIN Übergabefilter für „Neue Sendung", den
+// Preisrechner und den öffentlichen Rechner — „Alle / Abholung / Paketshop", dazu das bestehende „Abholung heute".
+// Die Kennungen sind der Vertrag des Servers (`serviceFilter`); gefiltert wird dort, nicht hier. Kein Carrierfilter,
+// keine Sortierung nach frühester Abholung. Die Symbole sind Schmuck; der öffentliche Rechner zeigt keine.
+export const HANDOVER_FILTER_TITLE = "Abholung / Paketshop";
+export const HANDOVER_FILTER_OPTIONS = Object.freeze([
+  Object.freeze({ id: "all",          icon: "dashboard", label: "Alle",           desc: "Tarife mit Abholung bei Ihnen und mit Abgabe im Paketshop" }),
+  Object.freeze({ id: "pickup",       icon: "truck",     label: "Abholung",       desc: "Nur Tarife mit Abholung bei Ihnen" }),
+  Object.freeze({ id: "dropoff",      icon: "mapPin",    label: "Paketshop",      desc: "Nur Tarife mit Abgabe im Paketshop" }),
+  Object.freeze({ id: "pickup_today", icon: "zap",       label: "Abholung heute", desc: "Nur Tarife mit Abholung noch heute" }),
+]);
 
 /**
  * Die Kennzeichnung zu einer Übergabeart — oder null, wenn keine belegt ist.

@@ -121,7 +121,7 @@ test("B1 — „Neue Sendung“ ohne buchbaren Tarif: der Leerzustand nennt es s
     await page.waitForSelector(".offers-empty", { timeout: 20000 });
     assert.equal(norm(await page.locator(".offers-empty-title").textContent()), "Keine direkt buchbaren Tarife", String(width));
     assert.match(norm(await page.locator(".offers-empty-sub").first().textContent()),
-      /^Für diese Sendung ist derzeit kein Tarif direkt buchbar\. Ändern Sie das Datum oder wählen Sie „Alle Dienstleistungen"\./);
+      /^Für diese Sendung ist derzeit kein Tarif direkt buchbar\. Ändern Sie das Datum oder wählen Sie bei „Abholung \/ Paketshop" die Option „Alle"\./);
     assert.equal(await page.locator(".offer-card").count(), 0);
     const quer = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     assert.ok(quer <= 0, `${width}: ${quer} px Querscrollen`);

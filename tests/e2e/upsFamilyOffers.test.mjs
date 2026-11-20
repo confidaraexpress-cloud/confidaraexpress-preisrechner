@@ -150,7 +150,7 @@ const MEHRPAKET = angebot({
   tariffLimits: [{ operant: "packages_count", operator: "<=", value: 2 }], serviceDetails: null,
 });
 
-// JUMiNGO daneben — unverändert: Anbieterdatum mit Uhrzeit, Tarif-ID, Formatwahl, kein Profil.
+// JUMiNGO daneben — unverändert: Anbieterdatum mit Uhrzeit, Formatwahl, kein Profil (die Tarif-ID entfällt seit FE-3).
 const JM_EXPRESS = {
   id: 21, shipper_tariff_id: 3264, offerId: "ju-es-000000000000000000000003264",
   publicCarrierId: "ups", publicCarrierName: "UPS", publicServiceName: "Expressversand", serviceType: "pickup",

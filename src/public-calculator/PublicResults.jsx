@@ -6,6 +6,8 @@ import {
   sortPublicOffers,
 } from "../utils/publicCalculatorView.mjs";
 import { PublicOfferCard } from "./PublicOfferCard.jsx";
+import { useOfferRefresh } from "../hooks/useOfferRefresh";
+import { OFFER_REFRESH_TEXT } from "../utils/offerRefresh.mjs";
 import { Werte } from "../components/ui/Werte.jsx";
 import { OFFERS_MIXED_PACKAGES_NOTE, OFFERS_MIXED_PACKAGES_EMPTY_HINT } from "../utils/offerIdentity.mjs";
 
@@ -17,6 +19,8 @@ import { OFFERS_MIXED_PACKAGES_NOTE, OFFERS_MIXED_PACKAGES_EMPTY_HINT } from "..
 
 const WIEDERHOLBAR = new Set([OUTCOME.NETWORK, OUTCOME.TIMEOUT, OUTCOME.UPSTREAM, OUTCOME.SERVER]);
 const SKELETTE = [0, 1, 2];
+// Stabile leere Liste: useOfferRefresh beginnt bei einer NEUEN Liste neu — ein frisches [] je Rendern wäre jedes Mal neu.
+const KEINE_ANGEBOTE = [];
 
 function Hinweis({ ton, titel, text, id, role = "status", children = null }) {
   return (
@@ -58,8 +62,14 @@ function Warten({ langsam, sekunden }) {
 // Die Laufzeitpunkte der Karten pulsieren dauerhaft (public-calculator.css); ein Schalter in der Werkzeugleiste hält
 // das an (WCAG 2.2.2) — für die Dauer des Seitenbesuchs, ohne Speicher. Bei reduzierter Bewegung pulsiert nichts, und
 // der Schalter ist ausgeblendet (CSS).
-function Liste({ ergebnis, puls, onPuls }) {
-  const angebote = ergebnis.result ? ergebnis.result.offers : [];
+function Liste({ ergebnis, puls, onPuls, onRefresh }) {
+  const angebote = ergebnis.result && Array.isArray(ergebnis.result.offers) ? ergebnis.result.offers : KEINE_ANGEBOTE;
+  // §5.3: EIN Zeitgeber für die Liste — Serverzeit der Antwort und ihr Eingang im Browser (PublicCalculatorApp).
+  const aktualitaet = useOfferRefresh(angebote, {
+    quotedAt: ergebnis.result ? ergebnis.result.quotedAt : null,
+    receivedAtMs: Number.isFinite(ergebnis.receivedAt) ? ergebnis.receivedAt : null,
+  });
+  const versandtag = ergebnis.request && typeof ergebnis.request.shippingDate === "string" ? ergebnis.request.shippingDate : null;
   const [carrier, setCarrier] = useState([]);
   const [ordnung, setOrdnung] = useState("recommended");
   const auswahl = useMemo(() => carrierChoices(ergebnis.result ? ergebnis.result.publicCarriers : [], angebote),
@@ -101,13 +111,24 @@ function Liste({ ergebnis, puls, onPuls }) {
           </button>
         )}
       </div>
+      {aktualitaet.anyExpired && (
+        <Hinweis ton="info" titel={aktualitaet.allExpired ? OFFER_REFRESH_TEXT.noticeAll : OFFER_REFRESH_TEXT.noticeSome}
+          text={null} id="pc-refresh">
+          {typeof onRefresh === "function" && (
+            <button type="button" className="pc-button pc-button--secondary" id="pc-refresh-button" onClick={onRefresh}>
+              {OFFER_REFRESH_TEXT.action}
+            </button>
+          )}
+        </Hinweis>
+      )}
       {sichtbar.length === 0 ? (
         <Hinweis ton="info" titel="Keine Angebote für diese Auswahl" text="Für die gewählten Versanddienstleister liegt kein Angebot vor." id="pc-filter-empty">
           <button type="button" className="pc-button pc-button--secondary" onClick={() => setCarrier([])}>Auswahl zurücksetzen</button>
         </Hinweis>
       ) : (
         <ul className="pc-offers pc-offers--list" id="pc-offers" data-puls={puls ? "an" : "aus"}>
-          {sichtbar.map((o, i) => <li key={o.productKey || `angebot-${i}`} className="pc-offers-item"><PublicOfferCard offer={o} index={i} /></li>)}
+          {sichtbar.map((o, i) => <li key={o.productKey || `angebot-${i}`} className="pc-offers-item"><PublicOfferCard offer={o} index={i} shippingDate={versandtag}
+            expired={aktualitaet.isExpired(o)} onRefresh={onRefresh} /></li>)}
         </ul>
       )}
     </>
@@ -137,7 +158,7 @@ export function PublicResults({ host, phase, ergebnis, anfrage, langsam, sekunde
           {ausgang === OUTCOME.PARTIAL && <Hinweis ton="warning" titel={t.title} text={t.message} id="pc-partial" />}
           {gemischt && <p className="pc-packages-note" id="pc-packages-note">{OFFERS_MIXED_PACKAGES_NOTE}</p>}
           <Liste key={ergebnis.request ? JSON.stringify(ergebnis.request) : "liste"} ergebnis={ergebnis}
-            puls={puls} onPuls={() => setPuls((an) => !an)} />
+            puls={puls} onPuls={() => setPuls((an) => !an)} onRefresh={onRetry} />
         </>
       );
     } else if (ausgang === OUTCOME.NO_OFFERS || ausgang === OUTCOME.PARTIAL) {

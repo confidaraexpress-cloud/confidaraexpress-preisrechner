@@ -184,7 +184,8 @@ export function PublicCalculatorApp({ availability, launchScope, resultsHost, ma
       setFieldErrors({ [ausgang.field]: ausgang.fieldMessage });
     }
     letzterSchluessel.current = ERGEBNISZUSTAENDE.has(ausgang.outcome) ? schluessel : null;
-    setErgebnis({ ...ausgang, request: body });
+    // §5.3: der Eingang im Browser — mit `quotedAt` die Uhr der Angebotsliste (hooks/useOfferRefresh.js).
+    setErgebnis({ ...ausgang, request: body, receivedAt: Date.now() });
     setPhase("done");
   }
 

@@ -61,7 +61,8 @@ const T_UNBEKANNT = {
 
 const ABSENDER = { zip: "73207", city: "Plochingen", street: "Weiherstraße 25" };
 
-const PICKUP_TEXT = "Abholung an Ihrer Adresse";
+// Konzept A (Betreiberentscheidung E6, 2026-11-20): das Kennzeichen unter dem Titel.
+const PICKUP_TEXT = "Abholung bei Ihnen";
 const DROPOFF_TEXT = "Abgabe im Paketshop";
 
 let server, browser;
@@ -131,7 +132,8 @@ test("1 — das Shopabgabe-Angebot nennt die Abgabe im Paketshop", async () => {
   // textContent = die Quellschreibung; innerText wäre bereits versalisiert.
   assert.equal((await zeile.textContent()).trim(), DROPOFF_TEXT);
   // Und der Prozessknoten passt dazu.
-  assert.equal((await ups.locator(".offer-tl-node--start .offer-tl-title").textContent()).trim(), "Shopabgabe");
+  // Konzept A: der Startknoten einer Abgabe heißt „Abgabe ab" (mit Tag).
+  assert.equal((await ups.locator(".offer-tl-node--start .offer-tl-title").textContent()).trim(), "Abgabe ab");
   await page.close();
 });
 
@@ -142,7 +144,7 @@ test("2 — das Abholangebot nennt die Abholung an der eigenen Adresse", async (
 
   const gls = karteVon(page, "GLS");
   assert.equal((await gls.locator(".offer-handover").textContent()).trim(), PICKUP_TEXT);
-  assert.equal((await gls.locator(".offer-tl-node--start .offer-tl-title").textContent()).trim(), "Abholung");
+  assert.equal((await gls.locator(".offer-tl-node--start .offer-tl-title").textContent()).trim(), "Früheste Abholung");
   await page.close();
 });
 
@@ -209,8 +211,8 @@ test("6 — gemischte Liste: jede Karte trägt ihren eigenen Typ", async () => {
   })));
   assert.equal(paare.length, 4);
   for (const { handover, knoten } of paare) {
-    if (handover === "Abgabe im Paketshop") assert.equal(knoten, "Shopabgabe", JSON.stringify(paare));
-    else if (handover === "Abholung an Ihrer Adresse") assert.equal(knoten, "Abholung", JSON.stringify(paare));
+    if (handover === DROPOFF_TEXT) assert.ok(knoten === "Abgabe ab" || knoten === "Abgabe", JSON.stringify(paare));
+    else if (handover === PICKUP_TEXT) assert.equal(knoten, "Früheste Abholung", JSON.stringify(paare));
     else assert.fail(`unerwarteter Übergabetext: ${handover}`);
   }
   // Beide Typen kommen wirklich vor — sonst prüfte der Test nichts.
@@ -256,55 +258,51 @@ test("8 — Preis, Hauptaktion und Datumsangaben sind unberührt", async () => {
   await page.close();
 });
 
-test("9 — die Zeile wirkt als kleine Überschrift des Prozessbereichs", async () => {
+test("9 — das Kennzeichen steht als kleine Pille direkt unter dem Titel (Konzept A)", async () => {
+  // Konzept A (Betreiberentscheidung E6, 2026-11-20): das Kennzeichen ist keine zentrierte Zeile über der
+  // Prozesslinie mehr, sondern eine Pille mit Symbolscheibe direkt unter Carrier und Produkt (Zone 1). Das Symbol ist
+  // Schmuck (aria-hidden), die Aussage trägt der Text. Es bleibt kleiner als Titel und Preis und eine Zeile hoch.
   const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
   await setupRoutes(page);
   await zeigeAngebote(page);
 
   const mass = await karteVon(page, "UPS").evaluate((karte) => {
     const h = karte.querySelector(".offer-handover");
-    const rail = karte.querySelector(".offer-tl-rail");
+    const symbol = h.querySelector(".offer-handover-icon");
+    const titel = karte.querySelector(".offer-title");
     const preis = karte.querySelector(".offer-price");
     const carrier = karte.querySelector(".offer-carrier-name");
     const zone1 = karte.querySelector(".offer-zone-1");
     const cs = getComputedStyle(h);
     const px = (v) => parseFloat(v);
     const hBox = h.getBoundingClientRect();
+    const titelBox = titel.getBoundingClientRect();
     const zone1Box = zone1.getBoundingClientRect();
     return {
       hoehe: hBox.height,
       groesse: px(cs.fontSize), gewicht: cs.fontWeight,
-      transform: cs.textTransform, spacing: cs.letterSpacing, align: cs.textAlign,
+      transform: cs.textTransform, spacing: cs.letterSpacing, display: cs.display,
       preisGroesse: px(getComputedStyle(preis).fontSize),
       carrierGroesse: px(getComputedStyle(carrier).fontSize),
-      abstandZurLinie: rail.getBoundingClientRect().top - hBox.bottom,
-      topDiffZuZone1: hBox.top - zone1Box.top,
+      symbolVersteckt: symbol !== null && symbol.getAttribute("aria-hidden") === "true" && symbol.querySelector("svg") !== null,
+      unterTitel: hBox.top - titelBox.bottom,
+      linksBuendig: Math.abs(hBox.left - titelBox.left),
+      inZone1: hBox.top >= zone1Box.top - 1 && hBox.bottom <= zone1Box.bottom + 1,
     };
   });
 
-  // Typografie: Body-Stufe statt Label — im Kundenbereich seit dem Abschluss des
-  // Premium-Redesigns (2026-10-27) 16 px (1 rem; Etappe 1: 15 px, davor 14 px).
-  // Gewicht bleibt bei 600.
-  assert.equal(mass.groesse, 16);
+  assert.equal(mass.groesse, 13, "das Kennzeichen steht nicht auf der Badge-Stufe (13 px)");
   assert.equal(mass.gewicht, "600");
-  assert.equal(mass.transform, "none", "die Zeile darf nicht versalisiert werden");
+  assert.equal(mass.transform, "none", "das Kennzeichen darf nicht versalisiert werden");
   assert.equal(mass.spacing, "normal", "die Laufweite muss auf normal stehen");
-  assert.equal(mass.align, "center");
-  // Hierarchie: weiterhin deutlich kleiner als Preis und Carriername — die
-  // größere Stufe plus Navy machen sie kräftiger, ohne mit ihnen zu konkurrieren.
-  assert.ok(mass.groesse < mass.preisGroesse, "die Zeile konkurriert mit dem Preis");
-  assert.ok(mass.groesse < mass.carrierGroesse, "die Zeile konkurriert mit dem Carriernamen");
-  // Höhenbedarf bleibt klein (eine Zeile). Der Abstand zur Prozesslinie ist seit
-  // dem Feinschliff (2026-10, kompaktere Tarifkarten) 8 px statt 16 px — die Zeile
-  // bleibt die Überschrift des Ablaufs, ohne eine eigene Ebene zu öffnen.
-  assert.ok(mass.hoehe <= 20, `die Zeile ist ${mass.hoehe}px hoch`);
-  assert.ok(mass.abstandZurLinie >= 7 && mass.abstandZurLinie <= 9,
-    `Abstand zur Prozesslinie außerhalb 7–9px: ${mass.abstandZurLinie}px`);
-  // Position: die Zeile beginnt jetzt auf derselben Höhe wie Zone 1 (Carrier-
-  // Logo/-Name) statt mittig im Prozessbereich zu stehen — „fast am oberen
-  // Rand", ohne dass die Kartenzeile dafür wachsen musste.
-  assert.ok(Math.abs(mass.topDiffZuZone1) <= 2,
-    `die Zeile beginnt nicht auf Höhe von Zone 1: Differenz ${mass.topDiffZuZone1}px`);
+  assert.equal(mass.display, "inline-flex");
+  assert.ok(mass.symbolVersteckt, "das Symbol fehlt oder ist nicht aria-hidden");
+  assert.ok(mass.groesse < mass.preisGroesse, "das Kennzeichen konkurriert mit dem Preis");
+  assert.ok(mass.groesse < mass.carrierGroesse, "das Kennzeichen konkurriert mit dem Carriernamen");
+  assert.ok(mass.hoehe <= 30, `das Kennzeichen ist ${mass.hoehe}px hoch`);
+  assert.ok(mass.unterTitel >= 0 && mass.unterTitel <= 10, `das Kennzeichen steht nicht direkt unter dem Titel: ${mass.unterTitel}px`);
+  assert.ok(mass.linksBuendig <= 2, `das Kennzeichen ist nicht bündig mit dem Titel: ${mass.linksBuendig}px`);
+  assert.ok(mass.inZone1, "das Kennzeichen steht nicht in Zone 1");
   await page.close();
 });
 

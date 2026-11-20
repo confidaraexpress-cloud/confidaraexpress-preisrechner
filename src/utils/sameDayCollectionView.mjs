@@ -141,6 +141,25 @@ export function sameDayDetailValue(view) {
   return `+${money(view.surchargeNet)} netto · +${money(view.surchargeGross)} brutto`;
 }
 
+/**
+ * „buchbar bis HH:MM Uhr" — der belegte Buchungsschluss einer Abholung heute, auch OHNE Zuschlag (Masteranalyse
+ * Angebotskarten 2026-11-20, FE-2). Steht auf der Karte neben dem Abholtag. Nur aus `pickupTodayUntil` des Servers —
+ * ohne belegten Schluss (etwa ein Abholfenster, dessen Ende keine Buchungsfrist ist) gibt es kein „buchbar bis" (E1).
+ */
+export function sameDayDeadlineText(tariff) {
+  const t = istObjekt(tariff) ? tariff : {};
+  if (t.pickupToday !== true) return null;
+  const u = uhrzeit(t.pickupTodayUntil);
+  return u === null ? null : `buchbar bis ${u} Uhr`;
+}
+
+/** „inkl. 2,52 € für Abholung heute" am Kartenpreis — der Zuschlag des Servers, netto oder brutto wie der Preis. */
+export function sameDayPriceNote(tariff, vatMode) {
+  const v = sameDayOfferView(tariff);
+  if (!v) return null;
+  return `inkl. ${money(vatMode === "gross" ? v.surchargeGross : v.surchargeNet)} für Abholung heute`;
+}
+
 /** „Abholung heute bei Buchung bis HH:MM Uhr" eines Angebots — oder `null`. */
 export function sameDayUntilText(tariff) {
   const v = sameDayOfferView(tariff);

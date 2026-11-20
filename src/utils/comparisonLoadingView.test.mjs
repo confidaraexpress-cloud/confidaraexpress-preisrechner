@@ -207,22 +207,26 @@ test("14 — Karten außerhalb des Bildes sparen Renderarbeit, mit gemessenem Pl
   // dazu die schmale Stufe bis 320 px Kartenbreite.
   // P1 (2026-11-04): Zeitleiste als Raster mit Reserve je Zeile — alle Stufen neu gemessen (Demo, eingeklappt), dazu die
   // Stufen bis 24rem (zweite Titelzeile) und bis 18.25rem (zweite Datumszeile).
-  assert.match(offers, /\n\.offer-card \{\s*content-visibility: auto;\s*contain-intrinsic-size: auto 198px;\s*\}/);
+  // Konzept A (2026-11-20): alle Stufen neu gemessen (Demo, eingeklappt, häufigste Höhe — eine Karte mit Auszeichnung,
+  // Buchungsschluss oder Zuschlagssatz ist eine Zeile höher), dazu die gestapelte Stufe bis 294 px.
+  assert.match(offers, /\n\.offer-card \{\s*content-visibility: auto;\s*contain-intrinsic-size: auto 197px;\s*\}/);
   assert.match(offers, /\.offers-body \{ container-type: inline-size; container-name: offers; \}/);
   assert.match(schnitt(offers, "@container offers (max-width: 949px)", "@container offers (max-width: 639px)"),
-    /\.offer-card \{ contain-intrinsic-size: auto 302px; \}/);
+    /\.offer-card \{ contain-intrinsic-size: auto 301px; \}/);
   // TG-L2: die Stufe bis 354 px (Reserve für den entfallenen Kartenhinweis „Zustelltermin nicht bewertbar") gibt es
   // nicht mehr — die 639er-Stufe reicht bis zur Titelreserve.
   assert.match(schnitt(offers, "@container offers (max-width: 639px)", "@container offers (max-width: 24rem)"),
-    /\.offer-card \{ contain-intrinsic-size: auto 392px; \}/);
+    /\.offer-card \{ contain-intrinsic-size: auto 371px; \}/);
   assert.match(schnitt(offers, "@container offers (max-width: 24rem)", "@container offers (max-width: 344px)"),
-    /\.offer-card \{ contain-intrinsic-size: auto 411px; \}/);
+    /\.offer-card \{ contain-intrinsic-size: auto 390px; \}/);
   assert.match(schnitt(offers, "@container offers (max-width: 344px)", "@container offers (max-width: 320px)"),
-    /\.offer-card \{ contain-intrinsic-size: auto 427px; \}/);
+    /\.offer-card \{ contain-intrinsic-size: auto 444px; \}/);
   assert.match(schnitt(offers, "@container offers (max-width: 320px)", "@container offers (max-width: 18.25rem)"),
-    /\.offer-card \{ contain-intrinsic-size: auto 489px; \}/);
-  assert.match(schnitt(offers, "@container offers (max-width: 18.25rem)", "@supports not (container-type: inline-size)"),
-    /\.offer-card \{ contain-intrinsic-size: auto 509px; \}/);
+    /\.offer-card \{ contain-intrinsic-size: auto 468px; \}/);
+  assert.match(schnitt(offers, "@container offers (max-width: 18.25rem)", "@container offers (max-width: 294px)"),
+    /\.offer-card \{ contain-intrinsic-size: auto 487px; \}/);
+  assert.match(schnitt(offers, "@container offers (max-width: 294px)", "@supports not (container-type: inline-size)"),
+    /\.offer-card \{ contain-intrinsic-size: auto 487px; \}/);
   // Kein Ausblenden, keine Virtualisierung.
   assert.doesNotMatch(offers, /content-visibility: hidden/);
   const pkg = leseQuelle("package.json");

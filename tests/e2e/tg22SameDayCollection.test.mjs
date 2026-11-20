@@ -338,10 +338,15 @@ test("A — Angebotsliste: Preis inkl. Zuschlag; Zuschlag netto/brutto und Abhol
 
   const tg = karteVon(page, TG);
   assert.equal(await inhalt(tg.locator(".offer-price")), "15,36 €", "der Kartenpreis ist nicht der Serverpreis mit Zuschlag");
-  // Gleich hohe Karten (2026-10-04): die Fläche sagt „Abholung heute"; Zuschlag und Abholschluss stehen in den Details.
+  // Konzept A / FE-2 (2026-11-20): der Startknoten heißt „Früheste Abholung", sein Tag trägt „heute" (allein das Datum
+  // entscheidet, §5.1); Bereitzeit und belegter Buchungsschluss stehen darunter, der Zuschlag als Satz am Preis. Die
+  // Zuschlagszeile netto/brutto und „Abholung heute bei Buchung bis …" bleiben in den Details.
   assert.equal(await flaecheVon(tg).locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0);
-  assert.equal(await inhalt(tg.locator(".offer-tl-node--start .offer-tl-title")), "Abholung heute");
+  assert.equal(await inhalt(tg.locator(".offer-tl-node--start .offer-tl-title")), "Früheste Abholung");
+  assert.match(await inhalt(tg.locator(".offer-tl-node--start .offer-tl-primary")), /^heute, /);
   assert.match(await inhalt(tg.locator(".offer-tl-node--start")), /bereit ab 11:30 Uhr/);
+  assert.equal(await inhalt(tg.locator(".offer-tl-node--start .offer-tl-deadline")), "buchbar bis 16:45 Uhr");
+  assert.match(await inhalt(tg.locator(".offer-price-hint")), /^inkl\. \d+,\d{2}\s€ für Abholung heute$/);
   assert.equal(await tg.evaluate((el) => el.classList.contains("offer-card--unavailable")), false, "die Karte ist gesperrt");
   assert.equal(await tg.locator("button.offer-cta-btn").isEnabled(), true, "der CTA ist gesperrt");
   assert.equal(await tg.locator(".offer-badge").count(), 0, "ein vorläufiges Angebot trägt eine Auszeichnung");
@@ -357,9 +362,12 @@ test("A — Angebotsliste: Preis inkl. Zuschlag; Zuschlag netto/brutto und Abhol
   assert.equal(await inhalt(detail.locator(".offer-detail-value")), "+3,02 € netto · +3,60 € brutto");
   assert.equal(await inhalt(panel.locator(".offer-sameday-until")), "Abholung heute bei Buchung bis 16:45 Uhr");
 
-  // JUMiNGO mit eigener Abholung heute: der Titel bleibt, eine Zuschlagszeile entsteht nicht — auch nicht in den Details.
+  // JUMiNGO mit eigener Abholung heute (Konzept A): der Starttag trägt „heute" aus dem Datum, ein Buchungsschluss steht
+  // nicht (E1: kein belegter Buchungszeitpunkt), eine Zuschlagszeile entsteht nicht — auch nicht in den Details.
   const jm = karteVon(page, JM);
-  assert.equal(await inhalt(jm.locator(".offer-tl-node--start .offer-tl-title")), "Abholung heute");
+  assert.equal(await inhalt(jm.locator(".offer-tl-node--start .offer-tl-title")), "Früheste Abholung");
+  assert.match(await inhalt(jm.locator(".offer-tl-node--start .offer-tl-primary")), /^heute, /);
+  assert.equal(await jm.locator(".offer-tl-node--start .offer-tl-deadline").count(), 0);
   await oeffneDetails(jm);
   assert.equal(await jm.locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0);
   assert.equal(await jm.locator('.offer-detail-label:text-is("Zuschlag für Abholung am selben Tag")').count(), 0);
@@ -430,9 +438,12 @@ test("B2 — Grundvertrag: drei Gründe, drei Sätze, ein Hinweis; TG23 identisc
   const morgen = karteVon(page, TG_MORGEN);
   assert.match(await inhalt(morgen.locator(".offer-tl-node--start")), /bereit ab 09:00 Uhr/);
   assert.equal(await morgen.locator("button.offer-cta-btn").isEnabled(), true);
-  // JUMiNGO bleibt mit eigener Abholung heute und bedienbar.
+  // JUMiNGO bleibt mit eigener Abholung heute und bedienbar — „heute" sagt allein der Tag (§5.1); ohne belegte
+  // Buchungszeit kein „buchbar bis" (E1).
   const jm = karteVon(page, JM);
-  assert.equal(await inhalt(jm.locator(".offer-tl-node--start .offer-tl-title")), "Abholung heute");
+  assert.equal(await inhalt(jm.locator(".offer-tl-node--start .offer-tl-title")), "Früheste Abholung");
+  assert.match(await inhalt(jm.locator(".offer-tl-node--start .offer-tl-primary")), /^heute, /);
+  assert.equal(await jm.locator(".offer-tl-deadline").count(), 0, "JUMiNGO nennt einen Buchungsschluss ohne Beleg");
   assert.equal(await jm.locator("button.offer-cta-btn").isEnabled(), true);
   assert.equal(p.anfragen.length, 0);
   await keinAnbieter(page, "Angebotsliste Grundvertrag");

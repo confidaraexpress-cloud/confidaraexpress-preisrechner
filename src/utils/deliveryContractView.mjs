@@ -8,7 +8,8 @@
  * dieselbe Aussage. Bis hierher hiess sie je Flaeche anders („Lieferung", „Laufzeit",
  * „Zustellung") — fuer dieselben Daten. Die Regel steht deshalb HIER:
  *
- *   Zustelldaten des Anbieters (Zeitraum oder Tag)  → „Zustellung"
+ *   Zustelldaten des Anbieters (Zeitraum oder Tag)  → „Voraussichtliche Zustellung"  (Betreiberentscheidung E2, 2026-11-20:
+ *                                                     auch ein Anbietertermin ist keine Zusage)
  *   Prognose des Servers (`deliveryProjection`)     → „Voraussichtliche Zustellung"  (TG22 Package B, TG-L2)
  *   nur eine Laufzeit (etwa „1–2 Tage")             → „Voraussichtliche Laufzeit"
  *   nichts davon                                     → „Zustellung" · „Auf Anfrage"
@@ -32,7 +33,7 @@ import { fmtDelivery } from "./formatters.js";
 import { readDeliveryProjection, DELIVERY_PROJECTION_TEXT } from "./deliveryProjectionView.mjs";
 
 export const DELIVERY_LABEL = Object.freeze({
-  DATED: "Zustellung",
+  DATED: "Voraussichtliche Zustellung",
   TRANSIT: "Voraussichtliche Laufzeit",
   ESTIMATED: DELIVERY_PROJECTION_TEXT.label,
 });

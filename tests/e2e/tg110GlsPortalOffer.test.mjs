@@ -6,7 +6,7 @@
 // KEINE eigene Oberflaeche: dasselbe Angebotsformat wie UPS 22/23/26, andere Serverwerte. Gemessen wird, dass der
 // gemeinsame Flow genau das zeigt:
 //   • die Karte erscheint als vollwertiges, buchbares Angebot (nicht gesperrt)
-//   • Carrier „GLS" + Servicename „Pick&Ship", Uebergabe „Abholung an Ihrer Adresse"
+//   • Carrier „GLS" + Servicename „Pick&Ship", Uebergabe „Abholung bei Ihnen" (Konzept A, 2026-11-20)
 //   • KEIN Paketshop-Finder (der ist Abgabe/dropoff vorbehalten)
 //   • White Label: nirgends „Transglobal", keine ServiceID/QuoteID
 // Alle Betraege sind Fixturewerte des gemockten Servers (Portalnachweis: netto 15,44 / brutto 18,37).
@@ -126,7 +126,7 @@ test("GLS-110: buchbare Fahrerabholung mit GLS-Carrier, ohne Paketshop, White La
   // Carrier GLS + Servicename + Fahrerabholung.
   assert.match(kartentext, /GLS/, "Carriername GLS fehlt");
   assert.match(kartentext, /Pick&Ship|Pick&amp;Ship|Pick&Ship/, "Servicename Pick&Ship fehlt");
-  assert.match(kartentext, /Abholung an Ihrer Adresse/, "Uebergabeart Abholung fehlt");
+  assert.match(kartentext, /Abholung bei Ihnen/, "Uebergabeart Abholung fehlt");
   // Preis sichtbar (netto 15,44 oder brutto 18,37 — die Oberflaeche rechnet nichts).
   assert.match(kartentext, /15,44|18,37/, "Preis fehlt");
 

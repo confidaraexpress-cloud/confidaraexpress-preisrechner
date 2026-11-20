@@ -406,7 +406,9 @@ test("K5 — die Liste gliedert über die EINE Regel; Gruppentexte stehen nur im
   assert.match(liste, /const FRISTGRUPPEN = Object\.freeze\(\["confirmed", "projected", "unconfirmed"\]\);/);
   // Auszeichnungen nur unter den Angeboten, die die Frist einhalten (bestätigt oder voraussichtlich).
   assert.match(liste, /gruppen \? \[\.\.\.gruppen\.confirmed, \.\.\.gruppen\.projected\] : sorted/);
-  assert.match(liste, /assignBadges\(auszeichnungsBasis\)/);
+  // §5.3 (2026-11-20): ein abgelaufenes Angebot trägt keine Auszeichnung — dieselbe Ablaufprüfung wie Karte und Auswahl.
+  assert.match(liste, /assignBadges\(auszeichnungsBasis, \{ isExpired: istAbgelaufen \}\)/);
+  assert.match(liste, /const istAbgelaufen = aktualitaet\.isExpired;/);
   // „Zu spät": eingeklappt, mit aria-expanded, und mit jeder neuen Frist wieder zu.
   assert.match(liste, /const \[spaetOffen, setSpaetOffen\] = useState\(false\);/);
   assert.match(liste, /useEffect\(\(\) => \{ setSpaetOffen\(false\); \}, \[latestDeliveryDate, latestDeliveryTime\]\);/);

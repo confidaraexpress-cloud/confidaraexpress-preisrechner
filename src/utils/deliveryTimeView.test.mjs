@@ -235,7 +235,9 @@ test("C6 — das Hinweisfeld steht IM Endknoten direkt unter dem Lieferdatum, ni
     "die Spuren der Timeline-Beschriftung teilen nicht 2 : 3");
   const raster = css.slice(css.indexOf("@supports (grid-template-rows: subgrid) {\n  .offer-tl-labels"));
   assert.match(raster, /\.offer-tl-node \{ display: grid; grid-row: 1 \/ -1; grid-template-rows: subgrid;/, "die Knoten teilen keine Zeilen");
-  assert.match(raster, /\.offer-tl-sub,\s*\.offer-early-note \{ grid-row: 3; \}/, "das Feld steht nicht in der Zusatzzeile");
+  // Konzept A (2026-11-20): `.offer-tl-subs` fasst Bereitzeit und Buchungsschluss des Startknotens in EINEM Element
+  // der Zusatzzeile zusammen — zwei einzelne Elemente in Zeile 3 überlagerten sich.
+  assert.match(raster, /\.offer-tl-sub,\s*\.offer-tl-subs,\s*\.offer-early-note \{ grid-row: 3; \}/, "das Feld steht nicht in der Zusatzzeile");
 });
 
 /* ══════════ U) Uhrzeitauswahl — ein Feld statt vieler Pillen ══════════════ */

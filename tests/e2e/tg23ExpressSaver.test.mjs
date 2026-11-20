@@ -620,10 +620,14 @@ test("D — Abholung am selben Tag: Zuschlag, wirksamer Abholschluss, frische un
 
   const karte = karteVon(page, TG_HEUTE);
   assert.equal(await inhalt(karte.locator(".offer-price")), "29,52 €", "der Kartenpreis enthält den Zuschlag nicht");
-  // Gleich hohe Karten (2026-10-04): Zuschlag und Abholschluss stehen in den Details, nicht auf der Fläche.
+  // Konzept A / FE-2 (2026-11-20): der Startknoten heißt „Früheste Abholung", sein Tag trägt „heute" (allein das Datum
+  // entscheidet, §5.1); Bereitzeit und belegter Buchungsschluss stehen darunter, der Zuschlag als Satz am Preis. Die
+  // Zuschlagszeile netto/brutto und „Abholung heute bei Buchung bis …" bleiben in den Details.
   assert.equal(await karte.locator(".offer-card-inner").locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0);
-  assert.equal(await inhalt(karte.locator(".offer-tl-node--start .offer-tl-title")), "Abholung heute");
+  assert.equal(await inhalt(karte.locator(".offer-tl-node--start .offer-tl-title")), "Früheste Abholung");
+  assert.match(await inhalt(karte.locator(".offer-tl-node--start .offer-tl-primary")), /^heute, /);
   assert.match(await inhalt(karte.locator(".offer-tl-node--start")), /bereit ab 11:30 Uhr/);
+  assert.equal(await inhalt(karte.locator(".offer-tl-node--start .offer-tl-deadline")), "buchbar bis 16:45 Uhr");
   assert.equal(await inhalt(karte.locator(".offer-tl-node--end .offer-tl-primary")), kurz(HEUTE_PLUS_1));
 
   await page.getByRole("button", { name: "inkl. MwSt.", exact: true }).click();
@@ -940,7 +944,8 @@ test("I — JUMiNGO-Pendant „Expressversand“ daneben: beide sichtbar, JUMiNG
   }
   assert.equal(await inhalt(tg.locator(".offer-tl-node--end .offer-tl-title")), "Voraussichtliche Zustellung");
   const jmEnde = jm.locator(".offer-tl-node--end");
-  assert.equal(await inhalt(jmEnde.locator(".offer-tl-title")), "Zustellung");
+  // E2 (2026-11-20): „Voraussichtliche Zustellung" überall; Anbieterdatum und Uhrzeit bleiben.
+  assert.equal(await inhalt(jmEnde.locator(".offer-tl-title")), "Voraussichtliche Zustellung");
   assert.ok((await inhalt(jmEnde.locator(".offer-tl-primary"))).includes(`${DIENSTAG.slice(8, 10)}.${DIENSTAG.slice(5, 7)}.`),
     "das Anbieterdatum fehlt");
   assert.match(await inhalt(jmEnde), /18:00/, "die Zustelluhrzeit des Anbieters fehlt");
@@ -953,9 +958,11 @@ test("I — JUMiNGO-Pendant „Expressversand“ daneben: beide sichtbar, JUMiNG
   const panel = await oeffneDetails(page, JM);
   assert.equal(await panel.locator("[data-profile-section]").count(), 0, "das JUMiNGO-Pendant zeigt ein Produktprofil");
   const merkmale = await alleTexte(panel.locator(".offer-feature-label"));
-  for (const label of ["Voraussichtliche Laufzeit", "Sendungsverfolgung", "Tarif-ID"]) {
+  for (const label of ["Voraussichtliche Laufzeit", "Sendungsverfolgung"]) {
     assert.ok(merkmale.includes(label), `„${label}“ fehlt im bisherigen Merkmalsraster`);
   }
+  // FE-3 (Masteranalyse Angebotskarten 2026-11-20, §7): die Tarifkennung des Anbieters steht nicht mehr in den Kundendetails.
+  assert.ok(!merkmale.includes("Tarif-ID"), "die Kundendetails zeigen wieder die Tarif-ID des Anbieters");
   assert.doesNotMatch(norm(await panel.textContent()), /Voraussichtliche Zustellung|Expressversand für eilige|Volumengewicht/,
     "das JUMiNGO-Pendant zeigt TG23-Angaben");
 

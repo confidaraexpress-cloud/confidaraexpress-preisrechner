@@ -11,7 +11,7 @@
 //      Zuschlag — neben dem Profil
 //   D  Privatadresse und Absicherung: Hinweis und vorläufiger Preis, Wahl der Lieferadresse, Transportabsicherung
 //      mit Neubepreisung — unverändert
-//   E  Regression JUMiNGO: bisheriger Detailbereich (Merkmalsraster, Einschränkungen, Tarif-ID), kein Profil
+//   E  Regression JUMiNGO: bisheriger Detailbereich (Merkmalsraster, Einschränkungen; seit FE-3 ohne Tarif-ID), kein Profil
 //   F  1440 / 834 / 390 px: alle Abschnitte sichtbar, jede Zeile innerhalb der Karte, kein horizontaler Überlauf;
 //      auf 390 px steht die Beschriftung über dem Wert
 //
@@ -375,9 +375,13 @@ test("C — Abholung am selben Tag: Zuschlag in der Preisaufschlüsselung und au
   const p = await setup(page, { tariffs: [TG_HEUTE, JM], lz });
   await zuDenAngeboten(page);
   const karte = karteVon(page, TG_HEUTE);
-  // Gleich hohe Karten (2026-10-04): die Fläche sagt „Abholung heute"; Zuschlag und Abholschluss stehen in den Details.
+  // Konzept A / FE-2 (2026-11-20): der Startknoten heißt „Früheste Abholung", sein Tag trägt „heute" (allein das Datum
+  // entscheidet, §5.1); Bereitzeit und belegter Buchungsschluss stehen darunter, der Zuschlag als Satz am Preis. Die
+  // Zuschlagszeile netto/brutto und „Abholung heute bei Buchung bis …" bleiben in den Details.
   assert.equal(await karte.locator(".offer-card-inner").locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0);
-  assert.equal(await inhalt(karte.locator(".offer-tl-node--start .offer-tl-title")), "Abholung heute");
+  assert.equal(await inhalt(karte.locator(".offer-tl-node--start .offer-tl-title")), "Früheste Abholung");
+  assert.match(await inhalt(karte.locator(".offer-tl-node--start .offer-tl-primary")), /^heute, /);
+  assert.equal(await inhalt(karte.locator(".offer-tl-node--start .offer-tl-deadline")), "buchbar bis 16:45 Uhr");
 
   const panel = await oeffneDetails(page, TG_HEUTE);
   assert.equal(await inhalt(panel.locator(".offer-sameday-until")), "Abholung heute bei Buchung bis 16:45 Uhr");
@@ -426,7 +430,7 @@ test("D — Privatadresse und Absicherung unverändert: Hinweis, vorläufiger Pr
   await page.close();
 });
 
-test("E — Regression JUMiNGO: bisheriger Detailbereich mit Merkmalsraster, Einschränkungen und Tarif-ID, kein Profil", async () => {
+test("E — Regression JUMiNGO: bisheriger Detailbereich mit Merkmalsraster und Einschränkungen, ohne Tarif-ID, kein Profil", async () => {
   const { page, fehler } = await neueSeite();
   await setup(page);
   await zuDenAngeboten(page);
@@ -435,9 +439,11 @@ test("E — Regression JUMiNGO: bisheriger Detailbereich mit Merkmalsraster, Ein
   const titel = await alleTexte(panel.locator(".offer-detail-section-title"));
   assert.deepEqual(titel.slice(0, 2), ["Hauptmerkmale", "Einschränkungen"]);
   const merkmale = await alleTexte(panel.locator(".offer-feature-label"));
-  for (const label of ["Voraussichtliche Laufzeit", "Drucker", "Sendungsverfolgung", "Versandart", "Abrechnungsgewicht", "Tarif-ID"]) {
+  for (const label of ["Voraussichtliche Laufzeit", "Drucker", "Sendungsverfolgung", "Versandart", "Abrechnungsgewicht"]) {
     assert.ok(merkmale.includes(label), `„${label}“ fehlt im bisherigen Merkmalsraster`);
   }
+  // FE-3 / P1-3 (2026-11-20, White Label): die Tarifkennung des Anbieters steht nicht mehr in den Kundendetails.
+  assert.ok(!merkmale.includes("Tarif-ID"), "die Kundendetails zeigen wieder die Tarif-ID des Anbieters");
   assert.deepEqual(await alleTexte(panel.locator(".offer-limit-item")), ["Packstücke dürfen max. 31,5 kg wiegen."]);
   assert.doesNotMatch(norm(await panel.textContent()), /Paletten|Koffer|Volumengewicht|Grundabsicherung/);
   assert.deepEqual(fehler, []);

@@ -115,9 +115,11 @@ test("8 — ein gesperrtes Angebot navigiert nicht und bekommt keinen Folgeschri
 });
 
 test("9 — kein Badge auf einem gesperrten Angebot, aus welchem Grund auch immer", () => {
+  // „Schnellste" entscheidet seit E3 (2026-11-20) der Zustelltag, nicht die Laufzeit: das teurere Angebot kommt früher an.
   const m = assignBadges([transglobal({ netPrice: 1, transitDaysMax: 1, transitDaysMin: 1 }),
                           jumingo({ netPrice: 20, transitDaysMax: 3, transitDaysMin: 2 }),
-                          jumingo({ offerId: "3".repeat(32), id: 29, netPrice: 12, transitDaysMax: 4, transitDaysMin: 3 })]);
+                          jumingo({ offerId: "3".repeat(32), id: 29, netPrice: 12, transitDaysMax: 4, transitDaysMin: 3,
+                                    deliveryDate: "2026-09-08", deliveryDateMin: "2026-09-08", deliveryDateMax: "2026-09-09" })]);
   assert.equal(m.has("2".repeat(32)), false, "das gesperrte Angebot trägt ein Badge");
   assert.equal(m.get("3".repeat(32))?.key, "cheapest");
 });

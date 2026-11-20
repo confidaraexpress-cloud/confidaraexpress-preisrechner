@@ -20,7 +20,8 @@ test("1 — die beiden belegten Übergabearten werden erkannt", () => {
 });
 
 test("2 — die Texte benennen die Handlung, nicht den Carrier", () => {
-  assert.equal(handoverLabel(HANDOVER_PICKUP), "Abholung an Ihrer Adresse");
+  // Konzept A (E6, 2026-11-20): der Text des Kennzeichens unter dem Kartentitel.
+  assert.equal(handoverLabel(HANDOVER_PICKUP), "Abholung bei Ihnen");
   assert.equal(handoverLabel(HANDOVER_DROPOFF), "Abgabe im Paketshop");
   // Carrierunabhängig: derselbe Satz für DPD wie für UPS.
   for (const id of ["dpd", "ups", "gls", "dhl", "other"]) {
@@ -64,7 +65,7 @@ test("5 — Namen ändern das Ergebnis NICHT", () => {
     tariffName: "Paketshop Direkt", carrier: "Paketshop",
   };
   assert.equal(handoverMode(irrefuehrenderAbholtarif), HANDOVER_PICKUP);
-  assert.equal(handoverLabelForTariff(irrefuehrenderAbholtarif), "Abholung an Ihrer Adresse");
+  assert.equal(handoverLabelForTariff(irrefuehrenderAbholtarif), "Abholung bei Ihnen");
 
   const irrefuehrenderShoptarif = {
     serviceType: "dropoff",
@@ -118,17 +119,19 @@ test("die Übergabeart hängt nicht an der Buchbarkeit", () => {
   // denn innerhalb wäre sie auf einem gesperrten Angebot unsichtbar gewesen, und eine
   // Paketshopabgabe ließe sich nicht mehr von einer Türabholung unterscheiden.
   //
-  // Die Verzweigung gibt es nicht mehr: Zone 2 rendert Übergabeart UND Timeline
-  // unabhängig davon, ob man das Angebot gerade bestellen kann. Damit ist die
-  // ursprüngliche Sorge stärker erledigt als durch eine Reihenfolge — es gibt keinen
-  // Zweig, in den etwas hineinrutschen könnte.
+  // Die Verzweigung gibt es nicht mehr: Übergabeart und Timeline stehen unabhängig davon, ob man das Angebot gerade
+  // bestellen kann. Seit Konzept A (E6, 2026-11-20) steht die Übergabeart als Kennzeichen unter dem Titel (Zone 1),
+  // die Timeline in Zone 2 — beide ohne Zweig, in den etwas hineinrutschen könnte.
   const src = readFileSync(new URL("../components/offers/OfferCard.jsx", import.meta.url), "utf8");
+  const zone1 = src.slice(src.indexOf("className={`offer-zone-1"), src.indexOf('className="offer-zone-2"'));
   const zone2 = src.slice(src.indexOf('className="offer-zone-2"'),
                           src.indexOf('className="offer-zone-3"'));
 
-  assert.ok(zone2.indexOf('className="offer-handover"') > 0, "die Übergabeart fehlt in Zone 2");
+  assert.ok(zone1.indexOf("className={`offer-handover offer-handover--${uebergabe}`}") > 0, "die Übergabeart fehlt unter dem Titel");
   assert.ok(zone2.indexOf('className="offer-timeline"') > 0, "die Timeline fehlt in Zone 2");
-  assert.ok(!zone2.includes("{unavailable ? ("),
-    "Zone 2 verzweigt wieder auf die Buchbarkeit — damit verschwindet auf einem "
-    + "gesperrten Angebot entweder die Übergabeart oder der Ablauf");
+  for (const [name, zone] of [["Zone 1", zone1], ["Zone 2", zone2]]) {
+    assert.ok(!/\{\s*!?unavailable\s*(\?|&&)/.test(zone),
+      `${name} verzweigt wieder auf die Buchbarkeit — damit verschwindet auf einem `
+      + "gesperrten Angebot entweder die Übergabeart oder der Ablauf");
+  }
 });

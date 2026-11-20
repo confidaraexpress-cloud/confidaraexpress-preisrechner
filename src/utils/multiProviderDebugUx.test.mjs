@@ -27,6 +27,7 @@ const CSS_INDEX   = lies("../styles/index.css");
 const OFFER_CARD  = lies("../components/offers/OfferCard.jsx");
 const OFFER_LIST  = lies("../components/offers/OffersList.jsx");
 const BADGES      = lies("./offerBadges.js");
+const SORT        = lies("./offerSort.mjs");
 const MODUL       = lies("./offerDebugView.mjs");
 
 const angebot = (debug) => (debug === undefined ? { netPrice: 10 } : { netPrice: 10, debug });
@@ -232,10 +233,13 @@ test("D1 — Sortierung, Preisfilter und Empfehlung lesen dieselben Preisfelder 
   // Der Server schreibt den Debugpreis GENAU in `netPrice`/`vatAmount`/`finalPrice`.
   // Solange Sortierung, Filter und Badges auf denselben Feldern arbeiten, koennen sie
   // strukturell nicht auf einem anderen Wert rechnen als die Karte anzeigt.
-  assert.match(BADGES, /a\.netPrice <= b\.netPrice/, "die Empfehlung liest nicht netPrice");
+  // Seit E3 (2026-11-20) liest die EINE Ordnung (offerSort.mjs) den Preis; die Auszeichnung ruft sie.
+  assert.match(BADGES, /from "\.\/offerSort\.mjs"/, "die Empfehlung nutzt nicht die gemeinsame Ordnung");
+  assert.match(SORT, /const preis = \(o\) => zahl\(o && o\.netPrice\)/, "die Ordnung liest nicht netPrice");
   assert.match(OFFER_LIST, /\.map\(t => t\.netPrice\)/, "der Preisfilter liest nicht netPrice");
   // Und keine dieser Stellen kennt ein eigenes Debugfeld.
   assert.ok(!ohneKommentare(BADGES).includes("debug"), "die Empfehlung wertet Debugfelder aus");
+  assert.ok(!ohneKommentare(SORT).includes("debug"), "die Ordnung wertet Debugfelder aus");
 });
 
 test("D2 — der Vergleichsmodus schreibt keinen Preis im Frontend", () => {

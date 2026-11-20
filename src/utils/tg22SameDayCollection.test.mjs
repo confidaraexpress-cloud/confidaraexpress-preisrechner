@@ -16,7 +16,7 @@ import {
   sameDayOfferView, sameDaySurchargeLine, sameDayDetailValue, sameDayUntilText, sameDaySummaryNote,
   readSameDayCollectionBlock, sameDaySuccessPickupText, SAME_DAY_TEXT, SAME_DAY_COLLECTION_UNAVAILABLE_CODE,
   SAME_DAY_UNAVAILABLE_REASON, SAME_DAY_UNAVAILABLE_REASONS, SAME_DAY_UNAVAILABLE_KIND, sameDayUnavailableKindOf,
-  sameDayUnavailableView, sameDayUnavailableBookingText,
+  sameDayUnavailableView, sameDayUnavailableBookingText, sameDayDeadlineText, sameDayPriceNote,
 } from "./sameDayCollectionView.mjs";
 import {
   offerSelectable, offerBookable, offerBlockedLabel, offerBlockedHint, offerAwaitsPriceInputs,
@@ -165,18 +165,30 @@ test("1 — sichtbar: ein Angebot mit Abholung heute ist auswählbar und trägt 
   assert.equal(offerAwaitsPriceInputs(TG22_HEUTE), true);
   assert.equal(offerBlockedLabel(TG22_HEUTE), null, "der Knopf trägt einen Sperrgrund statt „Angebot auswählen“");
   const karte = code(KARTE);
-  assert.match(karte, /import \{\s*sameDayOfferView, sameDayDetailValue, SAME_DAY_TEXT,\s*\} from "\.\.\/\.\.\/utils\/sameDayCollectionView\.mjs";/);
-  // Gleich hohe Karten (2026-10-04): die Kartenfläche trägt weder die Zuschlagszeile noch den Abholschluss — der
-  // Startknoten sagt „Abholung heute", der Kartenpreis enthält den Zuschlag. Beides steht im Detailbereich:
-  // der Zuschlag mit beiden Beträgen in der Preisaufschlüsselung (Test 4), der Abholschluss unter „Termin & Abholung".
+  assert.match(karte, /import \{\s*sameDayOfferView, sameDayDetailValue, SAME_DAY_TEXT, sameDayDeadlineText, sameDayPriceNote,\s*\} from "\.\.\/\.\.\/utils\/sameDayCollectionView\.mjs";/);
+  // Der Zuschlag mit beiden Beträgen steht in der Preisaufschlüsselung (Test 4), der Abholschluss mit Satz unter
+  // „Termin & Abholung". Masteranalyse Angebotskarten 2026-11-20 §7: die Kartenfläche trägt zusätzlich den belegten
+  // Buchungsschluss an der Abholzeile und „inkl. … für Abholung heute" am Preis — beides fertig aus dem Modul.
   const details = abschnitt(karte, "function DetailsPanel", "function OfferCardBase");
   assert.match(details, /const sameDay = sameDayOfferView\(t\);/);
   const termin = abschnitt(details, "{hasTermin && (", "{hasPrice && (");
   assert.match(termin, /\{sameDay && <p className="offer-detail-note offer-sameday-until">\{sameDay\.untilText\}<\/p>\}/);
   const flaeche = karte.slice(karte.indexOf("function OfferCardBase"));
-  assert.doesNotMatch(flaeche, /sameDay|offer-sameday-surcharge|offer-sameday-until/, "die Kartenfläche trägt wieder eine Same-Day-Zeile");
+  assert.deepEqual([...new Set(flaeche.match(/sameDay\w*/g) || [])], ["sameDayPriceNote"],
+    "die Kartenfläche liest mehr als den einen Preissatz aus dem Modul");
+  assert.match(flaeche, /const preisHinweis = sameDayPriceNote\(t, vatMode\);/);
+  assert.match(flaeche, /\{preisHinweis && <p className="offer-price-hint">\{preisHinweis\}<\/p>\}/);
+  assert.doesNotMatch(flaeche, /offer-sameday-surcharge|offer-sameday-until/, "die Kartenfläche trägt wieder die Detailzeilen");
+  const start = abschnitt(karte, "function buildStart", "function buildEnd");
+  assert.match(start, /const deadline = modus === HANDOVER_PICKUP \? sameDayDeadlineText\(t\) : null;/);
   const timeline = abschnitt(karte, 'className="offer-zone-2"', 'className="offer-zone-3"');
-  assert.doesNotMatch(timeline, /sameDay/, "die Timeline trägt die Zuschlagszeile");
+  assert.doesNotMatch(timeline, /sameDay/, "die Timeline liest Same-Day-Felder selbst");
+  assert.match(timeline, /start\.deadline/);
+  // Die Sätze selbst: der Buchungsschluss nur mit belegter Uhrzeit, der Zuschlag aus den beiden Serverbeträgen.
+  assert.equal(sameDayDeadlineText(TG22_HEUTE), "buchbar bis 16:45 Uhr");
+  // money() setzt ein geschütztes Leerzeichen vor das Euro-Zeichen.
+  assert.match(sameDayPriceNote(TG22_HEUTE, "gross"), /^inkl\. \d+,\d{2}\s€ für Abholung heute$/);
+  assert.notEqual(sameDayPriceNote(TG22_HEUTE, "gross"), sameDayPriceNote(TG22_HEUTE, "net"));
 });
 
 test("2 — der Kartenpreis ist der Serverpreis: der Zuschlag steckt darin, nichts wird addiert", () => {
@@ -253,7 +265,9 @@ test("7 — nach dem Abholschluss nicht auswählbar und nicht buchbar", () => {
   assert.equal(offerSurchargeHint(TG22_HEUTE_VORBEI), null);
   const karte = code(KARTE);
   assert.ok(karte.includes("const handleSelect = () => { if (!unavailable) onSelect(t); };"));
-  assert.match(karte, /const unavailable = !offerSelectableFor\(t, selectionStage\);/);
+  // §5.3 (2026-11-20): eine abgelaufene Angebotsaussage sperrt über denselben EINEN Zustand — strikt `=== true`.
+  assert.match(karte, /const abgelaufen = expired === true;/);
+  assert.match(karte, /const unavailable = !offerSelectableFor\(t, selectionStage\) \|\| abgelaufen;/);
   assert.match(karte, /disabled=\{unavailable\}/);
 });
 
@@ -530,7 +544,13 @@ test("19 — JUMiNGO unverändert: „Abholung heute“ ohne Zuschlagszeile, ohn
   assert.equal(offerBlockedHint(JUMINGO_HEUTE), null);
   assert.deepEqual(residentialBookPayload(JUMINGO_HEUTE), {});
   assert.equal(pickupTimeText(pickupContractOf(JUMINGO_HEUTE)), "13:00–17:00 Uhr");
-  assert.match(code(KARTE), /title = t\.pickupToday \? "Abholung heute" : "Abholung";/);
+  // §5.1/E1 (2026-11-20): der Startknoten heißt „Früheste Abholung"; „heute" kommt allein aus dem Datum. Ohne belegte
+  // Buchungszeit kein „buchbar bis" — JUMiNGO trägt keinen Buchungsschluss, also entsteht keiner.
+  const start = abschnitt(code(KARTE), "function buildStart", "function buildEnd");
+  assert.match(start, /title = "Früheste Abholung";/);
+  assert.doesNotMatch(start, /pickupToday/, "der Startknoten liest wieder `pickupToday` statt des Datums");
+  assert.equal(sameDayDeadlineText(JUMINGO_HEUTE), null);
+  assert.equal(sameDayPriceNote(JUMINGO_HEUTE, "gross"), null);
   for (const c of ["OFFER_NOT_BOOKABLE", "BOOKING_FAILED", "PRICE_UNCONFIRMED", "BOOKING_PENDING"]) {
     for (const k of ["ABHOLUNG_HEUTE_VORBEI", "ABHOLUNG_HEUTE_UNBESTAETIGT", "ABHOLUNG_HEUTE_NICHT_PRUEFBAR"]) {
       assert.notEqual(mapBookRestError(409, { code: c, sameDayUnavailableKind: "expired" }), BOOK_FEHLER[k], `${c} ${k}`);
@@ -655,8 +675,14 @@ test("Abholung heute ohne Zuschlag: der Tag gilt, die Zuschlagszeile entsteht ni
   assert.equal(sameDayOfferView(DHL84_HEUTE_FREI), null);
   assert.equal(sameDaySurchargeLine(sameDayOfferView(DHL84_HEUTE_FREI), "gross"), null);
   assert.equal(sameDayDetailValue(sameDayOfferView(DHL84_HEUTE_FREI)), null);
-  // Der Knotentitel der Timeline liest AUSSCHLIESSLICH `pickupToday` — er steht deshalb auch hier.
-  assert.match(code(KARTE), /title = t\.pickupToday \? "Abholung heute" : "Abholung"/);
+  // Der Startknoten (§5.1, 2026-11-20): „Früheste Abholung" mit dem Tag — „heute, " davor entscheidet allein das Datum
+  // gegen den Geschäftstag Europe/Berlin. Der belegte Buchungsschluss steht daneben; ohne Zuschlag kein Preissatz.
+  const karte = code(KARTE);
+  assert.match(karte, /=== businessTodayISO\(\) \? `heute, \$\{tag\}` : tag;/);
+  assert.match(abschnitt(karte, "function buildStart", "function buildEnd"), /const primary = tag \? fmtTagMitHeute\(tag\) : null;/);
+  assert.equal(sameDayDeadlineText(DHL84_HEUTE_FREI), "buchbar bis 14:45 Uhr");
+  assert.equal(sameDayPriceNote(DHL84_HEUTE_FREI, "gross"), null);
+  assert.equal(sameDayPriceNote(DHL84_HEUTE_FREI, "net"), null);
   // Und der Abholvertrag der Karte ist unverändert vollständig: Tag und „bereit ab"-Zeit.
   const vertrag = pickupContractOf(DHL84_HEUTE_FREI);
   assert.equal(vertrag.day, HEUTE);

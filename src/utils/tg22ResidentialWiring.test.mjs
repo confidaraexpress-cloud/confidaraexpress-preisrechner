@@ -145,7 +145,9 @@ test("W9 — der Absicherungsstand gehört zu Angebot UND Preisstand", () => {
 });
 
 test("W10 — Angebotskarte: auswählbar über die eine Regel, Zuschlagshinweis aus dem Helfer", () => {
-  assert.match(karte, /const unavailable = !offerSelectableFor\(t, selectionStage\);/);
+  // §5.3 (2026-11-20): eine abgelaufene Angebotsaussage sperrt über denselben EINEN Zustand — strikt `=== true`.
+  assert.match(karte, /const abgelaufen = expired === true;/);
+  assert.match(karte, /const unavailable = !offerSelectableFor\(t, selectionStage\) \|\| abgelaufen;/);
   assert.match(karte, /const surchargeHint = offerSurchargeHint\(t\);/);
   // Gleich hohe Karten (2026-10-04): der Satz steht in der Preisaufschlüsselung der Details, nicht mehr unter dem CTA.
   const preisDetails = karte.slice(karte.indexOf('className="offer-details-section offer-details-section--price"'),

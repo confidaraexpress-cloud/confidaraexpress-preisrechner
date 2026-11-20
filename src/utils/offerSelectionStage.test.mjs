@@ -79,7 +79,9 @@ test("4 — Verdrahtung: Preisrechner wählt vor den Sendungsangaben, die Karte 
   const liste = lies("components/offers/OffersList.jsx");
   assert.match(liste, /selectionStage=\{selectionStage\}/);
   const karte = lies("components/offers/OfferCard.jsx");
-  assert.match(karte, /const unavailable = !offerSelectableFor\(t, selectionStage\);/);
+  // §5.3 (2026-11-20): eine abgelaufene Angebotsaussage sperrt über denselben EINEN Zustand — strikt `=== true`.
+  assert.match(karte, /const abgelaufen = expired === true;/);
+  assert.match(karte, /const unavailable = !offerSelectableFor\(t, selectionStage\) \|\| abgelaufen;/);
   assert.match(karte, /const korrektur = offerCustomerCorrection\(t\);/);
   const seite = lies("pages/NewShipmentPage.jsx");
   // Die Korrektur kommt VOR der Firmenpflicht und merkt Feld und Ausgangswert.

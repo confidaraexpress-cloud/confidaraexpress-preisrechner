@@ -318,9 +318,14 @@ test("D — Abholung am selben Tag: Zuschlag, Abholschluss und Prognose nebenein
   await setup(page, { tariffs: [TG_HEUTE, JM], lzOffer: TG_HEUTE });
   await zuDenAngeboten(page);
   const karte = karteVon(page, TG_HEUTE);
-  // Gleich hohe Karten (2026-10-04): Zuschlagszeile und Abholschluss stehen in den Details, nicht auf der Fläche.
+  // Konzept A / FE-2 (2026-11-20): der Startknoten heißt „Früheste Abholung", sein Tag trägt „heute" (allein das Datum
+  // entscheidet, §5.1); Bereitzeit und belegter Buchungsschluss stehen darunter, der Zuschlag als Satz am Preis. Die
+  // Zuschlagszeile netto/brutto und „Abholung heute bei Buchung bis …" bleiben in den Details.
   assert.equal(await karte.locator(".offer-card-inner").locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0);
-  assert.equal(await inhalt(karte.locator(".offer-tl-node--start .offer-tl-title")), "Abholung heute");
+  assert.equal(await inhalt(karte.locator(".offer-tl-node--start .offer-tl-title")), "Früheste Abholung");
+  assert.match(await inhalt(karte.locator(".offer-tl-node--start .offer-tl-primary")), /^heute, /);
+  assert.equal(await inhalt(karte.locator(".offer-tl-node--start .offer-tl-deadline")), "buchbar bis 16:45 Uhr");
+  assert.match(await inhalt(karte.locator(".offer-price-hint")), /^inkl\. 3,02\s€ für Abholung heute$/);
   const ende = karte.locator(".offer-tl-node--end");
   assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(ende.locator(".offer-tl-primary")), `${kurz(HEUTE_MIN)} – ${kurz(HEUTE_MAX)}`);
@@ -361,7 +366,8 @@ test("F — Regression JUMiNGO: Zustellung mit Anbieterdaten und Uhrzeit — kei
   await zuDenAngeboten(page);
   const karte = karteVon(page, JM);
   const ende = karte.locator(".offer-tl-node--end");
-  assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Zustellung");
+  // E2 (2026-11-20): „Voraussichtliche Zustellung" überall — die Anbieterdaten und die Uhrzeit bleiben, wie sie sind.
+  assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Zustellung");
   const primaer = await inhalt(ende.locator(".offer-tl-primary"));
   for (const tag of [JM_MIN, JM_MAX]) {
     assert.ok(primaer.includes(`${tag.slice(8, 10)}.${tag.slice(5, 7)}.`), `der Anbieterzeitraum fehlt: ${primaer}`);

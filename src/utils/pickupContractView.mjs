@@ -174,6 +174,11 @@ export const PICKUP_PROFILE = Object.freeze({
 });
 
 // Die Kundentexte des Abschnitts — an EINER Stelle, damit Abschnitt, Tests und Dokumentation nicht driften.
+// FE-6 (Masteranalyse Angebotskarten 2026-11-20): Öffnungszeiten einer Abgabestelle kennt kein Angebot. Der Hinweis
+// steht in den Details jeder Shopabgabe — er nennt keine Uhrzeit und verspricht keinen Tag.
+export const DROPOFF_OPENING_NOTE =
+  "Abgabe zu den Öffnungszeiten des Paketshops. Bei späterer Abgabe verschiebt sich die voraussichtliche Zustellung.";
+
 export const PICKUP_SECTION_TEXT = Object.freeze({
   titleChoice: "Gewünschter Abholtermin",
   title: "Abholtermin",

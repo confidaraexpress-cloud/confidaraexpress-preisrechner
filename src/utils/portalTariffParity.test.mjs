@@ -83,7 +83,7 @@ test("(pp2) Abholung vs. Abgabe und Paketshop — nur aus `serviceType` und `par
   assert.equal(handoverMode(TNT47), HANDOVER_PICKUP);
   assert.equal(handoverMode(GLS110), HANDOVER_PICKUP);
   assert.equal(handoverMode(DPD124), HANDOVER_DROPOFF);
-  assert.equal(handoverLabelForTariff(GLS110), "Abholung an Ihrer Adresse");
+  assert.equal(handoverLabelForTariff(GLS110), "Abholung bei Ihnen");
   assert.equal(offerSupportsAccessPointSearch(TNT47), false);
   assert.equal(offerSupportsAccessPointSearch(GLS110), false);
   assert.equal(offerSupportsAccessPointSearch(DPD124), true);

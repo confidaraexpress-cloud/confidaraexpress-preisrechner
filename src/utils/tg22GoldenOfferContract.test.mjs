@@ -349,12 +349,12 @@ test("E1 — nur eine Laufzeit: „Voraussichtliche Laufzeit · 1–2 Tage“, k
   assert.deepEqual(deliveryInfo(TG22), { label: "Voraussichtliche Laufzeit", value: "1–2 Tage", timeOfDay: null, isRange: false });
 });
 
-test("E2 — Zustelldaten des Angebots: „Zustellung“ mit Zeitraum und „bis“-Uhrzeit bleiben erhalten", () => {
+test("E2 — Zustelldaten des Angebots: „Voraussichtliche Zustellung“ (E2, 2026-11-20) mit Zeitraum und „bis“-Uhrzeit bleiben erhalten", () => {
   const z = deliveryContractOf(JUMINGO);
   assert.equal(z.kind, "range");
   assert.equal(z.label, DELIVERY_LABEL.DATED);
   assert.deepEqual(deliveryInfo(JUMINGO), {
-    label: "Zustellung", value: "16.09.2026 – 17.09.2026", timeOfDay: "bis 18:00 Uhr", isRange: true,
+    label: "Voraussichtliche Zustellung", value: "16.09.2026 – 17.09.2026", timeOfDay: "bis 18:00 Uhr", isRange: true,
   });
 });
 
@@ -363,9 +363,9 @@ test("E3 — gleicher Tag, Einzeldatum, nichts: Tag, Tag, „Auf Anfrage“", ()
   assert.equal(deliveryContractOf(gleich).kind, "date");
   assert.equal(deliveryInfo(gleich).value, "16.09.2026");
   assert.equal(deliveryInfo({ deliveryDate: "2026-09-18" }).value, "18.09.2026");
-  assert.equal(deliveryInfo({ deliveryDate: "2026-09-18" }).label, "Zustellung");
+  assert.equal(deliveryInfo({ deliveryDate: "2026-09-18" }).label, "Voraussichtliche Zustellung");
   const nichts = deliveryInfo({});
-  assert.deepEqual(nichts, { label: "Zustellung", value: DELIVERY_ON_REQUEST, timeOfDay: null, isRange: false });
+  assert.deepEqual(nichts, { label: "Voraussichtliche Zustellung", value: DELIVERY_ON_REQUEST, timeOfDay: null, isRange: false });
   assert.equal(deliveryContractOf(null).kind, "unknown");
   assert.equal(deliveryContractOf({ deliveryTimeUntil: "bis 12:00" }).until, "bis 12:00");
 });
@@ -476,12 +476,12 @@ test("H1 — der Leistungsname kommt aus dem Angebot („Standardversand“), oh
   assert.match(karte, /standard: "Standardversand"/);
 });
 
-test("H2 — Produktentscheidung Tarif-ID: sichtbar für Angebote MIT Tarifkennung, nie als Rohfeldname", () => {
+test("H2 — Produktentscheidung Tarif-ID (2026-11-20): keine Tarifkennung auf der Karte, nie als Rohfeldname", () => {
+  // Masteranalyse Angebotskarten 2026-11-20 §7: die Zeile „Tarif-ID" entfällt — sie ist eine interne Kennung, keine
+  // Kundenaussage. Die Karte liest das Feld nicht mehr, und weder Label noch Feldname stehen im Code.
   const karte = code(KARTE);
-  assert.match(karte, /const tariffId = t\.shipper_tariff_id \?\? t\.id \?\? null;/);
-  assert.match(karte, /if \(tariffId != null\)\s+features\.push\(\{ icon: "info",\s+label: "Tarif-ID",/);
-  // Das Label ist „Tarif-ID“ — der technische Feldname steht nie als Text im JSX.
-  assert.ok(!/>\s*shipper_tariff_id|label: "shipper_tariff_id"|"shipper_tariff_id"/.test(karte));
+  assert.doesNotMatch(karte, /Tarif-ID/, "die Karte zeigt wieder eine Tarif-ID");
+  assert.doesNotMatch(karte, /shipper_tariff_id|\bt\.id\b|const tariffId/, "die Karte liest die Tarifkennung");
   assert.ok(!/jumingo|transglobal/i.test(karte), "die Karte nennt eine Einkaufsquelle");
   // Das öffentliche TG22-Angebot trägt weder Tarif-ID noch ServiceID — dort entsteht keine Zeile.
   for (const feld of ["id", "shipper_tariff_id", "serviceId", "providerServiceRef", "provider"]) {

@@ -219,13 +219,17 @@ test("F15 — die Auswahlreife bleibt unverändert an Buchbarkeit gebunden", () 
 });
 
 test("F16 — die Sortierung liest die Preisgrundlage NICHT", () => {
+  // Seit E3 (2026-11-20) steht die Ordnung an EINER Stelle (utils/offerSort.mjs); die Seite ruft sie nur.
   const code = ohneKommentar(rechner);
-  const sortIndex = code.indexOf('sortMode === "cheapest"');
-  assert.ok(sortIndex > 0, "die Preissortierung wurde umgebaut");
-  assert.ok(!code.includes("priceCompleteness"),
-    "die Sortierung hängt an der Preisgrundlage — sie soll unverändert bleiben");
-  assert.ok(!code.includes("isIndicativePrice"),
-    "die Seite leitet den Preisstatus selbst ab statt ihn zu lesen");
+  assert.match(code, /const sortiereAngebote = sortOffers;/, "die Seite sortiert nicht über die gemeinsame Ordnung");
+  const ordnung = ohneKommentar(lies("utils/offerSort.mjs"));
+  assert.ok(ordnung.includes("export function compareCheapest"), "die Preissortierung wurde umgebaut");
+  for (const quelle of [code, ordnung]) {
+    assert.ok(!quelle.includes("priceCompleteness"),
+      "die Sortierung hängt an der Preisgrundlage — sie soll unverändert bleiben");
+    assert.ok(!quelle.includes("isIndicativePrice"),
+      "die Seite leitet den Preisstatus selbst ab statt ihn zu lesen");
+  }
 });
 
 test("F17 — die Preisgrundlage überlebt die Wiederherstellung", () => {

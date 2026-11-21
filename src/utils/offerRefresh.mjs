@@ -15,6 +15,7 @@
  */
 
 import { businessTodayISO } from "./businessDate.mjs";
+import { handoverMode, HANDOVER_PICKUP } from "./handoverMode.mjs";
 
 export const OFFER_REFRESH_TEXT = Object.freeze({
   status: "Bitte Angebote aktualisieren",
@@ -84,4 +85,30 @@ export function nextOfferRefreshAtMs(offers, serverNowMs, fallbackMs = null) {
     if (frist !== null && frist > serverNowMs && (naechste === null || frist < naechste)) naechste = frist;
   }
   return naechste;
+}
+
+/** Der heutige Berliner Geschäftstag nach der SERVERZEIT (`serverNowMs`) — oder null. */
+export function serverTodayISO(serverNowMs) {
+  return Number.isFinite(serverNowMs) ? businessTodayISO(new Date(serverNowMs)) : null;
+}
+
+/* Restprüfung Angebotskarten 2026-11-21 — darf der Tag eines Angebots „heute" heißen?
+ *
+ * Bisher allein nach dem Datum und der Geräteuhr: um 18:30 Uhr hieß ein heutiger Abholtag mit Fenster 09:00–17:00 noch
+ * „Früheste Abholung heute", obwohl der Server `pickupToday: false` meldete und die Buchung mit 409 endete; eine
+ * vorgehende Geräteuhr nahm einer echten Abholung heute ihr „heute".
+ *
+ *   immer      der Tag des Angebots ist der heutige Berliner Geschäftstag — nach der Serverzeit der Liste (`todayISO`,
+ *              useOfferRefresh), nur ohne sie nach dem Gerät. Ein Kennzeichen macht nie einen anderen Tag zu „heute"
+ *              (§5.1); eine abgelaufene Aussage (`expired`) heißt nie „heute".
+ *   Abholung   zusätzlich die Serveraussage `pickupToday === true` (Abholung heute tatsächlich möglich — Transglobal bis
+ *              zum wirksamen Abholschluss, JUMiNGO bis zum Fensterende). Ein heutiger Tag mit `pickupToday: false` ist
+ *              keine Abholung heute.
+ * Reine Beschriftung: auswählbar oder buchbar macht das nichts. */
+export function offerDayIsToday(offer, day, { todayISO = null, expired = false } = {}) {
+  const tag = typeof day === "string" ? day.split("T")[0] : "";
+  if (!tag || expired === true) return false;
+  const heute = typeof todayISO === "string" && todayISO ? todayISO : businessTodayISO();
+  if (tag !== heute) return false;
+  return handoverMode(offer) === HANDOVER_PICKUP ? !!offer && offer.pickupToday === true : true;
 }

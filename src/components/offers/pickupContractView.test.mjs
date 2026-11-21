@@ -26,7 +26,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   pickupContractOf, pickupTimeText, pickupWindowDetailText, pickupSummaryOf,
-  pickupDayLabel, pickupAdjustedNote, pickupSectionTitle,
+  pickupDayLabel, pickupAdjustedNote, pickupAdjustedCardNote, pickupSectionTitle,
 } from "../../utils/pickupContractView.mjs";
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
@@ -293,7 +293,14 @@ test("(14) Karte und Beleg zeigen die Verschiebung — ueber denselben Helfer", 
 
   const karte = ohneKommentar(lies(KARTE));
   const start = karte.slice(karte.indexOf("function buildStart"), karte.indexOf("function buildEnd"));
-  assert.ok(start.includes("pickupAdjustedNote(abholung)"), "die Timeline zeigt den fruehesten Abholtag nicht");
+  // Restprüfung 2026-11-21: die Karte nennt die Verschiebung als „später als gewählt" — ihr Knoten heißt schon
+  // „Früheste Abholung", „frühester Abholtag" darunter war eine Wiederholung.
+  assert.ok(start.includes("pickupAdjustedCardNote(abholung)"), "die Timeline zeigt die Verschiebung nicht");
+  assert.ok(!start.includes("pickupAdjustedNote("), "die Timeline wiederholt „frühester Abholtag“ unter „Früheste Abholung“");
+  assert.equal(pickupAdjustedCardNote(pickupContractOf(VERSCHOBEN)), "später als gewählt");
+  assert.equal(pickupAdjustedCardNote(pickupContractOf(TG_PICKUP)), null);
+  assert.equal(pickupAdjustedCardNote(null), null);
+  assert.ok(!/später als gewählt/.test(ohneKommentar(lies(KARTE))), "die Karte formuliert die Verschiebung selbst");
   const details = karte.slice(karte.indexOf("function DetailsPanel"), karte.indexOf("function OfferCardBase"));
   assert.ok(details.includes("pickupDayLabel(abholung)"), "der Detailbereich beschriftet den Tag nicht neu");
   // G6/M9 (2026-10-27): das ausgewählte Angebot zeigt den Abholtag nicht mehr — der Beleg trägt den Hinweis.

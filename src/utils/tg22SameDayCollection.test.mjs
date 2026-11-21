@@ -38,6 +38,7 @@ import { replaceOffer } from "./acceptedOfferPrice.mjs";
 import { buildResumeInitialState } from "./formDraftsView.mjs";
 import { BOOKING_KEYS, SHIPMENT_FORM_KEYS } from "./shippingFlowState.mjs";
 import { pickupContractOf, pickupTimeText } from "./pickupContractView.mjs";
+import { offerDayIsToday } from "./offerRefresh.mjs";
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 // CRLF-Checkouts (Windows) auf LF bringen — mehrere Anker enthalten Zeilenumbrüche.
@@ -675,11 +676,13 @@ test("Abholung heute ohne Zuschlag: der Tag gilt, die Zuschlagszeile entsteht ni
   assert.equal(sameDayOfferView(DHL84_HEUTE_FREI), null);
   assert.equal(sameDaySurchargeLine(sameDayOfferView(DHL84_HEUTE_FREI), "gross"), null);
   assert.equal(sameDayDetailValue(sameDayOfferView(DHL84_HEUTE_FREI)), null);
-  // Der Startknoten (§5.1, 2026-11-20): „Früheste Abholung" mit dem Tag — „heute, " davor entscheidet allein das Datum
-  // gegen den Geschäftstag Europe/Berlin. Der belegte Buchungsschluss steht daneben; ohne Zuschlag kein Preissatz.
+  // Der Startknoten (§5.1, 2026-11-20): „Früheste Abholung" mit dem Tag. Restprüfung 2026-11-21: „heute, " davor
+  // entscheidet bei einer Abholung die Serveraussage `pickupToday` (offerDayIsToday) — auch ohne Zuschlag. Der belegte
+  // Buchungsschluss steht daneben; ohne Zuschlag kein Preissatz.
   const karte = code(KARTE);
-  assert.match(karte, /=== businessTodayISO\(\) \? `heute, \$\{tag\}` : tag;/);
-  assert.match(abschnitt(karte, "function buildStart", "function buildEnd"), /const primary = tag \? fmtTagMitHeute\(tag\) : null;/);
+  assert.match(abschnitt(karte, "function buildStart", "function buildEnd"),
+    /const primary = tag \? fmtTagMitHeute\(tag, offerDayIsToday\(t, tag, \{ todayISO, expired \}\)\) : null;/);
+  assert.equal(offerDayIsToday(DHL84_HEUTE_FREI, HEUTE, { todayISO: HEUTE }), true);
   assert.equal(sameDayDeadlineText(DHL84_HEUTE_FREI), "buchbar bis 14:45 Uhr");
   assert.equal(sameDayPriceNote(DHL84_HEUTE_FREI, "gross"), null);
   assert.equal(sameDayPriceNote(DHL84_HEUTE_FREI, "net"), null);

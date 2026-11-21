@@ -232,7 +232,16 @@ test("(13) Masteranalyse Angebotskarten 2026-11-20: „heute“ aus dem Datum, B
   const morgen = morgenDatum.toISOString().slice(0, 10);
   // §5.1: das Datum entscheidet — ein Kennzeichen „heute“ des Anbieters ändert einen anderen Tag nicht (P0 der Analyse).
   assert.equal(offerPickupView({ serviceType: "pickup", pickupDate: morgen, pickupToday: true }).title, "Abholung");
-  assert.equal(offerPickupView({ serviceType: "pickup", pickupDate: heute }).title, "Abholung heute");
+  // Restprüfung 2026-11-21: ein heutiger Tag allein ist keine Abholung heute — der Server muss sie auch melden. Um
+  // 18:30 Uhr mit abgelaufenem Fenster 09:00–17:00 sagt er `pickupToday: false`.
+  assert.equal(offerPickupView({ serviceType: "pickup", pickupDate: heute, pickupToday: true }).title, "Abholung heute");
+  assert.equal(offerPickupView({ serviceType: "pickup", pickupDate: heute, pickupToday: false }).title, "Abholung");
+  assert.equal(offerPickupView({ serviceType: "pickup", pickupDate: heute }).title, "Abholung");
+  // Nach Ablauf der Aussage nie „heute“; der Tag der Serverzeit gilt vor der Geräteuhr.
+  assert.equal(offerPickupView({ serviceType: "pickup", pickupDate: heute, pickupToday: true }, { expired: true }).title, "Abholung");
+  assert.equal(offerPickupView({ serviceType: "pickup", pickupDate: heute, pickupToday: true }, { todayISO: morgen }).title, "Abholung");
+  assert.equal(offerPickupView({ serviceType: "pickup", pickupDate: morgen, pickupToday: true }, { todayISO: morgen }).title, "Abholung heute",
+    "Geräteuhr einen Tag zurück: der Servertag entscheidet");
   assert.equal(offerPickupView({ serviceType: "pickup" }).title, "Abholung");
   // E1: „buchbar bis“ nur mit belegter Uhrzeit — und nur an einer Abholung.
   assert.equal(offerPickupView({ serviceType: "pickup", pickupDate: heute, pickupToday: true, pickupTodayUntil: "16:45" }).deadline,

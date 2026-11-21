@@ -60,3 +60,55 @@ test("(V5) Texte: Aktualisierungspflicht, keine Annahmefrist — kein „buchbar
   assert.match(OFFER_REFRESH_TEXT.status, /Bitte Angebote aktualisieren/);
   assert.ok(!/buchbar bis|JUMiNGO|Transglobal|garant/i.test(alles), alles);
 });
+
+// ── Restprüfung 2026-11-21: „heute“ auf Karte und öffentlichem Rechner (offerDayIsToday) ──────────────────────────
+import { offerDayIsToday, serverTodayISO } from "./offerRefresh.mjs";
+import { offerListClock as uhrDerListe } from "./offerRefresh.mjs";
+
+const abholung = (tag, pickupToday) => ({ serviceType: "pickup", pickupDate: tag, pickupToday });
+const abgabe = (tag) => ({ serviceType: "dropoff", pickupDate: tag });
+
+test("(V6) 18:30 Uhr, heutiger Abholtag mit abgelaufenem Fenster 09:00–17:00: der Server sagt false — kein „heute“", () => {
+  const heute = serverTodayISO(ms("2026-11-20T17:30:00Z"));                    // 18:30 Berlin
+  assert.equal(heute, "2026-11-20");
+  assert.equal(offerDayIsToday(abholung("2026-11-20", false), "2026-11-20", { todayISO: heute }), false);
+  // Ohne Serveraussage ebenso nicht: ein Datum allein ist keine Abholung heute.
+  assert.equal(offerDayIsToday(abholung("2026-11-20", undefined), "2026-11-20", { todayISO: heute }), false);
+});
+
+test("(V7) vor Ablauf „heute“; ab der Frist (Fensterende) nicht mehr; nach Mitternacht nie", () => {
+  const vorher = serverTodayISO(ms("2026-11-20T15:59:00Z"));                   // 16:59 Berlin
+  assert.equal(offerDayIsToday(abholung("2026-11-20", true), "2026-11-20", { todayISO: vorher }), true);
+  // Die Liste meldet die Aussage am Fensterende als abgelaufen (refreshRequiredAt) — die Karte sagt dann nicht „heute“.
+  const angebot = { ...abholung("2026-11-20", true), refreshRequiredAt: "2026-11-20T16:00:00.000Z" };
+  assert.equal(offerRefreshExpired(angebot, ms("2026-11-20T16:00:00Z")), true);
+  assert.equal(offerDayIsToday(angebot, "2026-11-20", { todayISO: vorher, expired: true }), false);
+  // 00:30 Berlin am 21.: der Servertag ist ein anderer.
+  const danach = serverTodayISO(ms("2026-11-20T23:30:00Z"));
+  assert.equal(danach, "2026-11-21");
+  assert.equal(offerDayIsToday(abholung("2026-11-20", true), "2026-11-20", { todayISO: danach }), false);
+});
+
+test("(V8) falsch gestellte Geräteuhr: der Servertag der Liste entscheidet, nicht das Gerät", () => {
+  // Gerät geht 26 Stunden nach (zeigt noch den 19.), Server antwortet am 20. um 10:00 Berlin.
+  const empfangen = ms("2026-11-19T07:00:00Z");
+  const uhr = uhrDerListe({ quotedAt: "2026-11-20T09:00:00.000Z", receivedAtMs: empfangen });
+  const servertag = serverTodayISO(empfangen + uhr.offsetMs);
+  assert.equal(servertag, "2026-11-20");
+  assert.equal(offerDayIsToday(abholung("2026-11-20", true), "2026-11-20", { todayISO: servertag }), true);
+  assert.equal(offerDayIsToday(abgabe("2026-11-20"), "2026-11-20", { todayISO: servertag }), true);
+  // Gerät geht vor (zeigt schon den 21.): eine echte Abholung heute bleibt „heute“.
+  const vor = uhrDerListe({ quotedAt: "2026-11-20T09:00:00.000Z", receivedAtMs: ms("2026-11-21T09:00:00Z") });
+  assert.equal(serverTodayISO(ms("2026-11-21T09:00:00Z") + vor.offsetMs), "2026-11-20");
+  // Ein Kennzeichen macht nie einen anderen Tag zu „heute“.
+  assert.equal(offerDayIsToday(abholung("2026-11-23", true), "2026-11-23", { todayISO: "2026-11-20" }), false);
+  assert.equal(serverTodayISO(Number.NaN), null);
+});
+
+test("(V9) Abgabe: „heute“ nach dem Tag, abgelaufen nie; ohne Tag nichts", () => {
+  assert.equal(offerDayIsToday(abgabe("2026-11-20"), "2026-11-20", { todayISO: "2026-11-20" }), true);
+  assert.equal(offerDayIsToday(abgabe("2026-11-20"), "2026-11-20", { todayISO: "2026-11-20", expired: true }), false);
+  assert.equal(offerDayIsToday(abgabe("2026-11-21"), "2026-11-21", { todayISO: "2026-11-20" }), false);
+  assert.equal(offerDayIsToday(abgabe(null), null, { todayISO: "2026-11-20" }), false);
+  assert.equal(offerDayIsToday(null, "2026-11-20", { todayISO: "2026-11-20" }), true, "ohne Übergabeart: nur der Tag");
+});

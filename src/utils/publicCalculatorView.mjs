@@ -32,7 +32,7 @@ import { carrierAppliesLabel, LABEL_HANDLING_TEXT } from "./labelHandling.mjs";
 import { deliveryTimeOfDayLabel, earlyDeliveryNote } from "./deliveryTimeView.mjs";
 import { sortOffers } from "./offerSort.mjs";
 import { sameDayDeadlineText, sameDayPriceNote } from "./sameDayCollectionView.mjs";
-import { businessTodayISO } from "./businessDate.mjs";
+import { offerDayIsToday } from "./offerRefresh.mjs";
 import { vatDisplay } from "./vatDisplayView.mjs";
 // Individuelle Mehrpaketsendungen (Canonical v2.79): derselbe Paketeditor wie im Portal.
 import {
@@ -304,13 +304,14 @@ export function shortDay(iso) {
 
 /** Übergabe und Abholtag — dieselben Felder und dieselbe Regel wie die Karte im Portal. FE-6: eine Abgabe ohne eigenen
  *  Tag nennt den Versandtag der Anfrage („Abgabe ab"); FE-2: der belegte Buchungsschluss einer Abholung heute. */
-export function offerPickupView(offer, { shippingDate = null } = {}) {
+export function offerPickupView(offer, { shippingDate = null, todayISO = null, expired = false } = {}) {
   const vertrag = pickupContractOf(offer);
   const modus = handoverMode(offer);
   const abgabeTag = modus === HANDOVER_DROPOFF && !vertrag.day && typeof shippingDate === "string" ? shippingDate : null;
   const title = modus === HANDOVER_DROPOFF ? SCHEDULE_TEXT.dropoff
-    // §5.1 (2026-11-20): „heute" entscheidet allein das Datum — nie ein Kennzeichen des Anbieters gegen den Tag.
-    : modus === HANDOVER_PICKUP ? (vertrag.day && vertrag.day === businessTodayISO() ? "Abholung heute" : SCHEDULE_TEXT.pickup)
+    // §5.1 (2026-11-20): nie ein Kennzeichen des Anbieters gegen den Tag. Restprüfung 2026-11-21: dieselbe Regel wie die
+    // Karte im Portal (`offerDayIsToday`) — die Serveraussage `pickupToday`, nie die Geräteuhr, nie nach Ablauf.
+    : modus === HANDOVER_PICKUP ? (offerDayIsToday(offer, vertrag.day, { todayISO, expired }) ? "Abholung heute" : SCHEDULE_TEXT.pickup)
       : null;
   return {
     title,

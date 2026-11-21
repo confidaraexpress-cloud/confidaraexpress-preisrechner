@@ -14,8 +14,7 @@ import { offerSurchargeHint } from "../../utils/residentialPriceInputs.mjs";
 import {
   sameDayOfferView, sameDayDetailValue, SAME_DAY_TEXT, sameDayDeadlineText, sameDayPriceNote,
 } from "../../utils/sameDayCollectionView.mjs";
-import { businessTodayISO } from "../../utils/businessDate.mjs";
-import { OFFER_REFRESH_TEXT } from "../../utils/offerRefresh.mjs";
+import { OFFER_REFRESH_TEXT, offerDayIsToday } from "../../utils/offerRefresh.mjs";
 import { isIndicativePrice, INDICATIVE_PRICE_LABEL, INDICATIVE_PRICE_EXPLANATION }
   from "../../utils/priceCompletenessView.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
@@ -25,7 +24,7 @@ import { offerDebugView, offerDebugCardClass } from "../../utils/offerDebugView.
 import { chargeableWeightLine, labelCapabilityLine, OFFER_METADATA_LABEL } from "../../utils/offerMetadataView.mjs";
 import { offerCardInsurance } from "../../utils/coverInsuranceView.mjs";
 import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
-import { pickupContractOf, pickupTimeText, pickupWindowDetailText, pickupDayLabel, pickupAdjustedNote, DROPOFF_OPENING_NOTE,
+import { pickupContractOf, pickupTimeText, pickupWindowDetailText, pickupDayLabel, pickupAdjustedCardNote, DROPOFF_OPENING_NOTE,
          pickupSectionTitle }
   from "../../utils/pickupContractView.mjs";
 import { deliveryContractOf } from "../../utils/deliveryContractView.mjs";
@@ -62,16 +61,16 @@ const fmtDay = (iso) => {
 // Knoten als { title, primary, secondary[] }: der Titel (Abholung/Lieferung)
 // und die primäre Zeile (Datum bzw. relative Laufzeit) tragen das visuelle
 // Gewicht; Hinweis und Uhrzeit bleiben sekundär und dezent.
-// Konzept A (Masteranalyse Angebotskarten 2026-11-20): der Kalendertag mit „heute" davor, wenn er der heutige Berliner
-// Geschäftstag ist — „heute, Fr., 20.11.". Reine Beschriftung des Datums; ob eine Abholung heute angeboten wird,
-// sagt allein der Server.
-const fmtTagMitHeute = (iso) => {
+// Konzept A (Masteranalyse Angebotskarten 2026-11-20): der Kalendertag mit „heute" davor — „heute, Fr., 20.11.".
+// Restprüfung 2026-11-21: ob der Tag „heute" heißt, entscheidet `offerDayIsToday` (utils/offerRefresh.mjs) — bei einer
+// Abholung allein die Serveraussage `pickupToday`, nie die Geräteuhr; eine abgelaufene Aussage heißt nie „heute".
+const fmtTagMitHeute = (iso, heute) => {
   const tag = fmtDay(iso);
   if (!tag) return "";
-  return (iso || "").split("T")[0] === businessTodayISO() ? `heute, ${tag}` : tag;
+  return heute ? `heute, ${tag}` : tag;
 };
 
-function buildStart(t, abgabeTag) {
+function buildStart(t, abgabeTag, { todayISO = null, expired = false } = {}) {
   // Die Übergabeart kommt aus dem gemeinsamen Helfer, damit Knotentitel und
   // Kennzeichnung darüber nie auseinanderlaufen können — es gibt genau eine
   // Auslegung von „Abholung" und „Shopabgabe" (utils/handoverMode.mjs).
@@ -98,13 +97,14 @@ function buildStart(t, abgabeTag) {
   // sonst das gewählte Versanddatum, für das gerechnet wurde („Abgabe ab heute, Fr., 20.11."). Öffnungszeiten kennt
   // die Karte nicht; der Hinweis dazu steht in den Details. Ohne jeden Tag heißt der Knoten nur „Abgabe".
   const tag = abholung.day || (modus === HANDOVER_DROPOFF && abgabeTag ? abgabeTag : null);
-  const primary = tag ? fmtTagMitHeute(tag) : null;
+  const primary = tag ? fmtTagMitHeute(tag, offerDayIsToday(t, tag, { todayISO, expired })) : null;
   if (modus === HANDOVER_DROPOFF && !primary) title = "Abgabe";
   const secondary = [];
   // War der gewaehlte Versandtag fuer dieses Angebot nicht abholbar, steht hier der FRUEHESTE
   // moegliche Tag — und die Unterzeile sagt genau das. Kein Grund, kein Wunschtag, kein Anbieter:
   // ein stillschweigend verschobenes Datum waere die einzige Variante, die den Kunden taeuscht.
-  const abholHinweis = pickupAdjustedNote(abholung);
+  // Restprüfung 2026-11-21: „später als gewählt" statt „frühester Abholtag" — der Titel sagt „Früheste Abholung" schon.
+  const abholHinweis = pickupAdjustedCardNote(abholung);
   if (abholHinweis)                              secondary.push(abholHinweis);
   const abholZeit = pickupTimeText(abholung);
   if (abholZeit)                                 secondary.push(abholZeit);
@@ -586,6 +586,8 @@ function OfferCardBase({
   // Masteranalyse Angebotskarten 2026-11-20 (§5.3): die Aussage dieses Angebots ist abgelaufen — die Karte ist nicht
   // mehr auswählbar, trägt keine Auszeichnung und bietet „Angebote aktualisieren" (`onRefresh`, dieselbe Abfrage erneut).
   expired = false, onRefresh,
+  // Restprüfung 2026-11-21: der heutige Geschäftstag nach der Serverzeit der Liste (useOfferRefresh) — nur für „heute".
+  heuteTag = null,
 }) {
   const { name: carrierName, logo: carrierLogo } = publicCarrierDisplay(t);
   const logoAnzeige = carrierLogoAnzeige(carrierLogo);
@@ -620,7 +622,7 @@ function OfferCardBase({
   // `aria-controls` zeigte bei allen auf denselben Bereich.
   const detailsId = `offer-details-${offerKey(t) ?? "unbekannt"}`;
   const etaLabel    = fmtDelivery(t) || "Auf Anfrage";
-  const start = buildStart(t, abgabeTag);
+  const start = buildStart(t, abgabeTag, { todayISO: heuteTag, expired: abgelaufen });
   const startZusatz = start.secondary.length > 0 ? <span className="offer-tl-sub"><Werte>{start.secondary[0]}</Werte></span> : null;
   const earlyNote = earlyDeliveryNote(t);
   const end   = buildEnd(t, etaLabel, earlyNote);

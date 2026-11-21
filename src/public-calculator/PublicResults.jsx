@@ -128,7 +128,7 @@ function Liste({ ergebnis, puls, onPuls, onRefresh }) {
       ) : (
         <ul className="pc-offers pc-offers--list" id="pc-offers" data-puls={puls ? "an" : "aus"}>
           {sichtbar.map((o, i) => <li key={o.productKey || `angebot-${i}`} className="pc-offers-item"><PublicOfferCard offer={o} index={i} shippingDate={versandtag}
-            expired={aktualitaet.isExpired(o)} onRefresh={onRefresh} /></li>)}
+            expired={aktualitaet.isExpired(o)} todayISO={aktualitaet.todayISO} onRefresh={onRefresh} /></li>)}
         </ul>
       )}
     </>

@@ -173,6 +173,7 @@ export function OffersList({
       onBusinessConfirm={onBusinessConfirm}
       selectionStage={selectionStage}
       expired={istAbgelaufen(t)}
+      heuteTag={aktualitaet.todayISO}
       onRefresh={onRecalculate}
     />
   );

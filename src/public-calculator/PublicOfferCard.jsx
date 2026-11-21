@@ -22,11 +22,11 @@ import { OFFER_REFRESH_TEXT } from "../utils/offerRefresh.mjs";
 
 // Masteranalyse Angebotskarten 2026-11-20 (§5.3): `expired` — die Aussage dieses Angebots ist abgelaufen. Die Karte führt
 // dann nicht weiter, sondern bietet „Angebote aktualisieren" (`onRefresh`, dieselbe Anfrage ab dem heutigen Tag).
-export function PublicOfferCard({ offer, index, shippingDate = null, expired = false, onRefresh }) {
+export function PublicOfferCard({ offer, index, shippingDate = null, expired = false, onRefresh, todayISO = null }) {
   const carrier = publicCarrierDisplay(offer);
   const service = publicServiceName(offer);
   const preis = offerPriceView(offer);
-  const abholung = offerPickupView(offer, { shippingDate });
+  const abholung = offerPickupView(offer, { shippingDate, todayISO, expired: expired === true });
   const zustellung = offerDeliveryView(offer);
   const hinweise = offerHints(offer);
   const abgelaufen = expired === true;

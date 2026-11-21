@@ -1445,6 +1445,7 @@
   color: var(--ce-color-brand-ink); font-family: var(--ce-font-sans);
   font-size: var(--ce-text-label-size); font-weight: 600; line-height: var(--ce-text-label-line);
   cursor: pointer; text-align: left;
+  position: relative; /* Bezug für den nur vorgelesenen Zusatz (.sr-only) */
   transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
 .ps-trigger:hover { background: var(--ce-color-brand-soft); }
@@ -1461,7 +1462,9 @@
 }
 .ps-trigger-chosen-label { color: var(--ce-color-text-muted); font-weight: var(--ce-weight-medium); }
 .ps-trigger-change { flex: none; }
-.ps-trigger-change::before { content: "·"; margin-right: 6px; color: var(--ce-color-text-muted); }
+/* Der Punkt ist Gestaltung, kein Wort: leerer Alternativtext, damit er nicht in den zugänglichen Namen gerät
+   (Restprüfung 2026-11-21). Die erste Angabe bleibt für Browser ohne Alternativtext. */
+.ps-trigger-change::before { content: "·"; content: "·" / ""; margin-right: 6px; color: var(--ce-color-text-muted); }
 
 /* Gemeinsame Feld- und Zustandsregeln — vom Fenster benutzt. Material wie
    `.field-input` (forms.css): 40 px, 1-px-Kante, Radius 8, Standardfokus.

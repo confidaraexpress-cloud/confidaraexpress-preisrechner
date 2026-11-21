@@ -5,7 +5,7 @@
 // wird zusätzlich beim Sichtbarwerden, beim Fokus und bei `pageshow` (Zurück aus dem Seitencache) sofort neu geprüft.
 // Die Regeln stehen in utils/offerRefresh.mjs; hier wird nur die Uhr geführt.
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { nextOfferRefreshAtMs, offerListClock, offerRefreshExpired } from "../utils/offerRefresh.mjs";
+import { nextOfferRefreshAtMs, offerListClock, offerRefreshExpired, serverTodayISO } from "../utils/offerRefresh.mjs";
 
 const LAENGSTE_WARTEZEIT_MS = 2147483647;  // Obergrenze von setTimeout
 
@@ -42,9 +42,13 @@ export function useOfferRefresh(offers, { quotedAt = null, receivedAtMs = null }
 
   const isExpired = useCallback((o) => offerRefreshExpired(o, serverJetzt, uhr.fallbackMs), [serverJetzt, uhr]);
   const abgelaufen = useMemo(() => liste.filter(isExpired).length, [liste, isExpired]);
+  // Restprüfung 2026-11-21: der heutige Geschäftstag nach der Serverzeit — „heute" auf der Karte folgt nie der
+  // Geräteuhr allein (utils/offerRefresh.mjs, `offerDayIsToday`). Neu berechnet mit derselben Uhr wie die Fristen.
+  const todayISO = serverTodayISO(serverJetzt);
   return useMemo(() => ({
     isExpired,
     anyExpired: abgelaufen > 0,
     allExpired: liste.length > 0 && abgelaufen === liste.length,
-  }), [isExpired, abgelaufen, liste.length]);
+    todayISO,
+  }), [isExpired, abgelaufen, liste.length, todayISO]);
 }

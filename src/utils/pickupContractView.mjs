@@ -104,6 +104,17 @@ export function pickupAdjustedNote(vertrag) {
   return v.handover === HANDOVER_DROPOFF ? ABGABETAG_NOTIZ : ABHOLTAG_NOTIZ;
 }
 
+/* Restprüfung 2026-11-21: die Unterzeile unter dem Starttag der TARIFKARTE. Seit Konzept A heißt der Knoten selbst
+ * „Früheste Abholung" bzw. „Abgabe ab" — „frühester Abholtag" darunter wiederholte nur den Titel. Was die Unterzeile
+ * belegt sagen kann, ist die Verschiebung selbst (`collectionDateAdjusted`, immer auf einen späteren Tag als den
+ * gewählten Versandtag): „später als gewählt". Kein Grund, kein Wunschtag, kein Anbieter. Details, Buchungsübersicht und
+ * öffentlicher Rechner tragen keinen solchen Titel und behalten `pickupAdjustedNote`. */
+export const PICKUP_ADJUSTED_CARD_NOTE = "später als gewählt";
+export function pickupAdjustedCardNote(vertrag) {
+  const v = vertrag && typeof vertrag === "object" ? vertrag : {};
+  return v.dayAdjusted ? PICKUP_ADJUSTED_CARD_NOTE : null;
+}
+
 /** Der Titel des Terminabschnitts der Angebotsdetails — bei einer Shopabgabe ohne „Abholung". */
 export function pickupSectionTitle(vertrag) {
   const v = vertrag && typeof vertrag === "object" ? vertrag : {};

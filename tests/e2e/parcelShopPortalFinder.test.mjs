@@ -200,10 +200,14 @@ test("4 — Auswahl: eindeutige zugängliche Namen, Wählen schließt, „Ausgew
   await page.waitForSelector(".ap-modal", { state: "detached", timeout: 5000 });
   // Die Karte sagt nach dem Schließen, welcher Shop gilt — sichtbar und zugänglich.
   const einstieg = karte(page, "Shop Verbindlich").first().locator(".ps-trigger");
-  assert.equal(await einstieg.locator(".ps-trigger-chosen").innerText(), "Gewählt: Landhotel Klingerhof GmbH");
+  assert.equal(await einstieg.locator(".ps-trigger-chosen").evaluate((el) => { const k = el.cloneNode(true); k.querySelectorAll(".sr-only").forEach((n) => n.remove()); return k.textContent.replace(/\s+/g, " ").trim(); }), "Gewählt: Landhotel Klingerhof GmbH");
   assert.equal(await einstieg.locator(".ps-trigger-change").innerText(), "ändern");
-  assert.match(await einstieg.getAttribute("aria-label"), /^Gewählter Paketshop für DPD Shop Verbindlich: Landhotel Klingerhof GmbH, Am Hügel 7, 63768 Hösbach – ändern$/);
-  assert.equal(await karte(page, "Shop Orientierung").first().locator(".ps-trigger").innerText(), "Paketshops suchen", "die andere Karte bleibt unberührt");
+  // Restprüfung 2026-11-21 (WCAG 2.5.3): kein aria-label mehr — der Name beginnt mit dem sichtbaren Text, Adresse und
+  // Angebot folgen nur vorgelesen.
+  assert.equal(await einstieg.getAttribute("aria-label"), null);
+  assert.equal(await karte(page, "Shop Verbindlich").first().getByRole("button", {
+    name: /^Gewählt: Landhotel Klingerhof GmbH \(Am Hügel 7, 63768 Hösbach\) für DPD Shop Verbindlich – ändern$/ }).count(), 1);
+  assert.equal(await karte(page, "Shop Orientierung").first().locator(".ps-trigger").evaluate((el) => { const k = el.cloneNode(true); k.querySelectorAll(".sr-only").forEach((n) => n.remove()); return k.textContent.replace(/\s+/g, " ").trim(); }), "Paketshops suchen", "die andere Karte bleibt unberührt");
   await finder(page);
   const zeilen = page.locator(".ap-modal .ap-list-item");
   assert.equal(await zeilen.nth(2).getAttribute("class"), "ap-list-item ap-list-item--chosen");
@@ -230,7 +234,8 @@ test("5 — die Auswahl erreicht den /book-Payload: Kennungen, echte Zeichen, di
   await karte(page, "Shop Verbindlich").first().locator("button.offer-cta-btn").click();
   await page.waitForSelector(".steps-bar", { timeout: 20000 });
   assert.equal(await page.locator(".dropoff-selected-name").innerText(), "Rosis-toys");
-  assert.equal(await page.locator(".calc-panel .ps-trigger").innerText(), "Paketshop ändern");
+  assert.equal(await page.locator(".calc-panel .ps-trigger").evaluate((el) => { const k = el.cloneNode(true); k.querySelectorAll(".sr-only").forEach((n) => n.remove()); return k.textContent.replace(/\s+/g, " ").trim(); }), "Paketshop ändern");
+  assert.equal(await page.locator(".calc-panel").getByRole("button", { name: /^Paketshop ändern – gewählt: Rosis-toys/ }).count(), 1);
   await page.getByRole("button", { name: /^Weiter/ }).first().click();
   await page.waitForTimeout(400);
   const checks = page.getByRole("checkbox");

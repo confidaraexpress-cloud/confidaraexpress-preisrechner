@@ -63,3 +63,17 @@ OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITN
 NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+## Invoice preview in the admin area (PDF rendering)
+
+The DIN-A4 invoice editor in the admin area draws the server-generated draft PDF in the browser with
+Mozilla's PDF.js (`src/components/admin/pdfBlatt.js`). The library and its worker load only when the
+editor or its review dialog opens; the PDF bytes come from the own API and are never sent elsewhere.
+The worker file is shipped unchanged and keeps its license header.
+
+| Package | Version | Copyright | License |
+|---|---|---|---|
+| pdfjs-dist (PDF.js) | 6.5.438 | Copyright 2024 Mozilla Foundation | Apache License 2.0 |
+
+- Apache License 2.0: <https://www.apache.org/licenses/LICENSE-2.0>
+- The full license text ships with the package (`node_modules/pdfjs-dist/LICENSE`); PDF.js has no NOTICE file.

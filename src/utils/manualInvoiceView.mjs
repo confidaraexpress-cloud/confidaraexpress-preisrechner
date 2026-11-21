@@ -31,14 +31,14 @@ export const MANUAL_INVOICE_TEXT = Object.freeze({
   removePosition: "Position entfernen",
   paymentTitle: "Zahlung und Texte",
   totalsTitle: "Summen",
-  totalsHint: "Netto, Umsatzsteuer und Brutto berechnet der Server beim Speichern.",
-  unsavedHint: "Ungespeicherte Änderungen — die Summen gelten für die zuletzt gespeicherte Fassung.",
+  totalsHint: "Netto, Umsatzsteuer und Brutto berechnet der Server — in der Vorschau sofort, beim Speichern verbindlich.",
+  unsavedHint: "Ungespeicherte Änderungen. Die Vorschau zeigt sie bereits; gespeichert wird mit „Entwurf speichern“.",
   save: "Entwurf speichern",
   saving: "Wird gespeichert …",
   saved: "Entwurf gespeichert.",
   preview: "Vorschau ansehen",
   previewTitle: "Vorschau — Entwurf, keine Rechnung",
-  issue: "Rechnung ausstellen …",
+  issue: "Prüfen und ausstellen",
   discard: "Entwurf verwerfen",
   discardTitle: "Entwurf verwerfen?",
   discardText: "Der Entwurf wird gelöscht. Es entsteht keine Rechnung und keine Nummer.",
@@ -47,7 +47,6 @@ export const MANUAL_INVOICE_TEXT = Object.freeze({
   issueNote: "Die Aktion wird im Protokoll festgehalten.",
   issueConfirm: "Jetzt ausstellen",
   issueBusy: "Wird ausgestellt …",
-  issueNeedsSave: "Bitte zuerst speichern — ausgestellt wird genau die gespeicherte Fassung.",
   issueStatusFailed: "Der Ausstellungsstatus konnte nicht geladen werden.",
   conflict: "Der Entwurf wurde inzwischen an anderer Stelle geändert. Bitte neu laden — Ihre Änderungen sind nicht gespeichert.",
   alreadyIssued: "Aus diesem Entwurf wurde bereits eine Rechnung ausgestellt.",
@@ -125,6 +124,11 @@ export function emptyDraftForm() {
     introText: "",
     closingText: "",
     paymentNote: "",
+    // Bezug (Rechnungseditor 2026-11-21): none | shipment | order; nur für bestehende Kunden.
+    sourceKind: "none",
+    sourceId: null,
+    sourceLabel: "",
+    billingKind: "",
   };
 }
 
@@ -200,17 +204,26 @@ export function draftToForm(draft) {
     introText: str(d.introText),
     closingText: str(d.closingText),
     paymentNote: str(d.paymentNote),
+    sourceKind: d.sourceShipmentId != null ? "shipment" : d.sourceOrderId != null ? "order" : "none",
+    sourceId: d.sourceShipmentId != null ? Number(d.sourceShipmentId) : d.sourceOrderId != null ? Number(d.sourceOrderId) : null,
+    sourceLabel: d.source && d.source.number ? str(d.source.number) : "",
+    billingKind: d.sourceShipmentId != null || d.sourceOrderId != null ? str(d.billingKind) : "",
   };
 }
 
 // → { ok:true, payload } | { ok:false, errors: { feldschluessel: Text } }
-export function formToPayload(form) {
+//
+// `lenient` (nur Live-Vorschau): ein noch leerer Einzelpreis zählt als 0 €, ein noch nicht gewählter Kunde oder
+// Vorgang als „ohne". So erscheint das Blatt schon beim ersten Öffnen; Formfehler (z. B. „achtzig") bleiben Fehler.
+// Gespeichert wird immer streng.
+export function formToPayload(form, { lenient = false } = {}) {
   const f = form && typeof form === "object" ? form : emptyDraftForm();
   const errors = {};
   const positions = (Array.isArray(f.positions) ? f.positions : []).map((p, i) => {
     const quantity = parseQuantity(p.quantity);
     if (quantity === null || quantity === "") errors[`positions.${i}.quantity`] = "Bitte eine Menge angeben (z. B. 1 oder 1,5).";
-    const cents = parseEuroCents(p.unitPrice);
+    const leer = str(p.unitPrice).trim() === "";
+    const cents = lenient && leer ? 0 : parseEuroCents(p.unitPrice);
     if (cents === null) errors[`positions.${i}.unitPrice`] = "Bitte einen Einzelpreis in Euro angeben (z. B. 80,00).";
     const discount = parseDiscount(p.discount);
     if (discount === null) errors[`positions.${i}.discount`] = "Rabatt in Prozent, höchstens zwei Nachkommastellen.";
@@ -219,9 +232,19 @@ export function formToPayload(form) {
       quantity: quantity || "0", unitPriceNetCents: cents === null ? 0 : cents, discountPercent: discount || "",
     };
   });
-  if (f.recipientKind === "customer" && (f.recipientUserId === null || f.recipientUserId === undefined)) {
+  const kundeGewaehlt = f.recipientKind === "customer" && f.recipientUserId !== null && f.recipientUserId !== undefined;
+  if (f.recipientKind === "customer" && !kundeGewaehlt && !lenient) {
     errors.recipientUserId = "Bitte einen Kunden auswählen — oder „Externe Firma ohne Kundenkonto“ wählen.";
   }
+  // Bezug: nur mit gewähltem Kunden; Vorgang und Art gehören zusammen (die Regeln prüft der Server).
+  const quelle = kundeGewaehlt && (f.sourceKind === "shipment" || f.sourceKind === "order") ? f.sourceKind : null;
+  const quelleId = quelle && Number.isSafeInteger(Number(f.sourceId)) && Number(f.sourceId) > 0 ? Number(f.sourceId) : null;
+  const art = f.billingKind === "primary" || f.billingKind === "supplementary" ? f.billingKind : null;
+  if (quelle && !lenient) {
+    if (quelleId === null) errors.source = quelle === "shipment" ? "Bitte eine Sendung auswählen — oder „Kein Bezug“ wählen." : "Bitte einen Lagerauftrag auswählen — oder „Kein Bezug“ wählen.";
+    else if (!art) errors.billingKind = "Bitte wählen: Erstrechnung oder Nachberechnung.";
+  }
+  const mitBezug = quelle && quelleId !== null && art !== null;
   let paymentTermDays = null;
   if (str(f.paymentTermDays).trim() !== "") {
     if (!/^\d{1,2}$/.test(str(f.paymentTermDays).trim())) errors.paymentTermDays = "Zahlungsziel in ganzen Tagen.";
@@ -232,7 +255,7 @@ export function formToPayload(form) {
   return {
     ok: true,
     payload: {
-      recipientUserId: f.recipientKind === "customer" ? (f.recipientUserId ?? null) : null,
+      recipientUserId: kundeGewaehlt ? f.recipientUserId : null,
       recipient: {
         company: str(r.company), name: str(r.name), email: str(r.email), vatId: str(r.vatId),
         street: str(r.street), zip: str(r.zip), city: str(r.city), country: str(r.country),
@@ -246,6 +269,9 @@ export function formToPayload(form) {
       closingText: str(f.closingText),
       paymentNote: str(f.paymentNote),
       taxCase: "domestic_standard",
+      sourceShipmentId: mitBezug && quelle === "shipment" ? quelleId : null,
+      sourceOrderId: mitBezug && quelle === "order" ? quelleId : null,
+      billingKind: mitBezug ? art : null,
     },
   };
 }
@@ -258,6 +284,8 @@ export function applyCustomerToForm(form, customer) {
     ...form,
     recipientKind: "customer",
     recipientUserId: c.id ?? null,
+    // Ein Bezug gehört zum Konto — ein anderer Kunde hebt ihn auf.
+    ...(c.id !== form.recipientUserId ? { sourceKind: "none", sourceId: null, sourceLabel: "", billingKind: "" } : {}),
     customerLabel: `${str(r.company) || str(r.name) || "Kunde"}${c.customerNumber ? ` · ${c.customerNumber}` : ""}`,
     recipient: {
       company: str(r.company), name: str(r.name), email: str(r.email), vatId: str(r.vatId),
@@ -292,16 +320,6 @@ export function blockerText(blocker) {
   return teile.join(" ");
 }
 
-// Darf der Knopf „Rechnung ausstellen" aktiv sein? Ausgestellt wird nur die gespeicherte Fassung — mit
-// ungespeicherten Änderungen nie; die Sperren kommen vom Server (issueBlockers des Entwurfs).
-export function issueAvailability({ draft, dirty }) {
-  if (!draft || !draft.id) return { allowed: false, reasons: [MANUAL_INVOICE_TEXT.issueNeedsSave] };
-  if (dirty) return { allowed: false, reasons: [MANUAL_INVOICE_TEXT.issueNeedsSave] };
-  const blockers = Array.isArray(draft.issueBlockers) ? draft.issueBlockers : [];
-  if (blockers.length) return { allowed: false, reasons: blockers.map(blockerText) };
-  return { allowed: true, reasons: [] };
-}
-
 // Antwort einer Entwurfs-/Ausstellungsaktion → { text, fieldErrors, conflict, blockers }.
 export function manualInvoiceError(status, body) {
   const b = body && typeof body === "object" ? body : {};
@@ -317,6 +335,10 @@ export function manualInvoiceError(status, body) {
     return { text: str(b.error) || "Die Rechnung kann derzeit nicht ausgestellt werden.", blockers: blockers.map(blockerText) };
   }
   if (status === 409 && b.code === "MANUAL_INVOICE_POSITIONS_MISSING") return { text: str(b.error) };
+  // Prüfbindung (Rechnungseditor): seit der Prüfansicht hat sich am Beleg etwas geändert → neu prüfen.
+  if (status === 409 && b.code === "MANUAL_INVOICE_PREVIEW_STALE") {
+    return { text: str(b.error) || "Seit der Prüfung hat sich am Beleg etwas geändert. Bitte erneut prüfen.", stale: true };
+  }
   if (status === 404) return { text: MANUAL_INVOICE_TEXT.notFound };
   if (status === 429) return { text: MANUAL_INVOICE_TEXT.rateLimited };
   return { text: str(b.error) && status < 500 ? str(b.error) : MANUAL_INVOICE_TEXT.failed };

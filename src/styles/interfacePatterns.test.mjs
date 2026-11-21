@@ -465,7 +465,7 @@ test("12 — Phase 3 fasst weder Routing noch API noch Businesslogik an", () => 
   const pkg = JSON.parse(read("../../package.json"));
   // Vite und @vitejs/plugin-react sind Buildwerkzeuge: seit 2026-11-17 unter devDependencies (dieselben Pakete).
   assert.deepEqual(Object.keys(pkg.dependencies).sort(),
-    ["fflate", "maplibre-gl", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen"]);
+    ["fflate", "maplibre-gl", "pdfjs-dist", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen"]);
   assert.deepEqual(Object.keys(pkg.devDependencies), ["@vitejs/plugin-react", "playwright", "vite"]);
 
   // Die neuen Bausteine sind reine Darstellung: kein Netzwerk, kein Token.

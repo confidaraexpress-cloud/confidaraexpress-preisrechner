@@ -4,6 +4,7 @@ import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { listAdminInvoices, listManualInvoiceDrafts } from "../../api/adminApi";
 import { MANUAL_INVOICE_TEXT, formatCents } from "../../utils/manualInvoiceView.mjs";
+import { EDITOR_TEXT } from "../../utils/manualInvoiceEditor.mjs";
 import { money } from "../../utils/formatters";
 import { selectListTotal, selectListHasMore } from "../../utils/adminOverview.mjs";
 import {
@@ -191,6 +192,31 @@ function ManualInvoiceDrafts() {
   );
 }
 
+// Rechnungseditor (2026-11-21): Einstieg als kleine A4-Vorlage — ein Klick öffnet den Editor mit leerem Blatt.
+// Daneben die offenen Entwürfe (falls vorhanden). Der Link ist der sichtbare Titel (Name = sichtbare Beschriftung,
+// WCAG 2.5.3); seine Klickfläche deckt die ganze Kachel ab (admin.css), die Zeile darunter beschreibt ihn.
+function ManualInvoiceStart() {
+  return (
+    <div className="adm-mi-start">
+      <div className="adm-mi-entry">
+        <span className="adm-mi-mini" aria-hidden="true">
+          <span className="adm-mi-mini-kopf" />
+          <span className="adm-mi-mini-anschrift" />
+          <span className="adm-mi-mini-zeilen" />
+          <span className="adm-mi-mini-summe" />
+        </span>
+        <span className="adm-mi-entry-text">
+          <Link id="adm-new-invoice" className="adm-mi-entry-title" to="/admin/invoices/manual/new" aria-describedby="mi-entry-sub">
+            {MANUAL_INVOICE_TEXT.newButton}
+          </Link>
+          <span className="adm-mi-entry-sub" id="mi-entry-sub">{EDITOR_TEXT.entryText}</span>
+        </span>
+      </div>
+      <ManualInvoiceDrafts />
+    </div>
+  );
+}
+
 // Vorfilter aus dem Kundendetail („Rechnungen ansehen“): ?kunde=<interne ID> — nur eine Zahl gilt.
 const kundeAusAdresse = (params) => {
   const v = params.get("kunde") || "";
@@ -286,16 +312,13 @@ export default function AdminInvoicesPage() {
         title={<>Rechnungen</>}
         subtitle={<>Zahlungsstatus, Beträge und Fälligkeiten. Test- und Vorschaurechnungen sind gekennzeichnet und keine Forderung.</>}
         actions={(
-          <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
-          Aktualisieren
-        </button>
-          <Link id="adm-new-invoice" className="btn btn-primary btn-sm" to="/admin/invoices/manual/new">
-            {MANUAL_INVOICE_TEXT.newButton}
-          </Link></>
+          <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
+            Aktualisieren
+          </button>
         )}
       />
 
-      <ManualInvoiceDrafts />
+      <ManualInvoiceStart />
 
       <form className="adm-filters" onSubmit={(e) => { e.preventDefault(); applyFilters(); }}>
         <div className="adm-filter-field">

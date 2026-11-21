@@ -1057,11 +1057,32 @@ export function getManualInvoicePreview(id) {
   return apiFetch(`/admin/manual-invoices/drafts/${encodeURIComponent(id)}/preview`, { auth: true });
 }
 
-// POST /admin/manual-invoices/drafts/:id/issue — bewusst ausstellen. Der Body trägt NUR die gesehene Fassung und die
-// ausdrückliche Bestätigung; ein Doppelklick liefert serverseitig dieselbe Rechnung (alreadyIssued).
-export function issueManualInvoiceDraft(id, revision) {
+// POST /admin/manual-invoices/preview — Live-Vorschau der UNGESPEICHERTEN Felder (Rechnungseditor 2026-11-21):
+// JSON mit PDF (base64), Bereichskarte, Serversummen, Sperren und Fingerabdruck. Zustandslos: keine Nummer, kein
+// Entwurf, keine Forderung. `signal` bricht eine überholte Vorschau ab.
+export function previewManualInvoice(body, { signal } = {}) {
+  return apiFetch(`/admin/manual-invoices/preview`, { method: "POST", auth: true, body: JSON.stringify(body), signal });
+}
+
+// GET /admin/manual-invoices/drafts/:id/review — Prüfansicht des GESPEICHERTEN Entwurfs (Form wie die Vorschau,
+// dazu draftId und revision). Ihr Fingerabdruck bindet das Ausstellen an genau diesen Beleg.
+export function reviewManualInvoiceDraft(id, { signal } = {}) {
+  return apiFetch(`/admin/manual-invoices/drafts/${encodeURIComponent(id)}/review`, { auth: true, signal });
+}
+
+// GET /admin/manual-invoices/sources?kind=shipment|order&userId=&q= — gebuchte Sendungen bzw. Lageraufträge EINES
+// Kunden mit Abrechnungsstand (bestehende Rechnungen, zulässige Arten, Sperrgründe); nur lesend, höchstens 20.
+export function searchManualInvoiceSources({ kind, userId, q = "" }, { signal } = {}) {
+  const query = new URLSearchParams({ kind: String(kind || ""), userId: String(userId ?? ""), q: String(q || "") });
+  return apiFetch(`/admin/manual-invoices/sources?${query.toString()}`, { auth: true, signal });
+}
+
+// POST /admin/manual-invoices/drafts/:id/issue — bewusst ausstellen. Der Body trägt NUR die geprüfte Fassung, den
+// Fingerabdruck der Prüfansicht und die ausdrückliche Bestätigung; ein Doppelklick liefert serverseitig dieselbe
+// Rechnung (alreadyIssued). Weicht der Beleg seit der Prüfung ab, antwortet der Server 409 (neu prüfen).
+export function issueManualInvoiceDraft(id, revision, fingerprint) {
   return apiFetch(`/admin/manual-invoices/drafts/${encodeURIComponent(id)}/issue`, {
-    method: "POST", auth: true, body: JSON.stringify({ revision, confirm: true }),
+    method: "POST", auth: true, body: JSON.stringify({ revision, fingerprint, confirm: true }),
   });
 }
 

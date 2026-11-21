@@ -241,7 +241,7 @@ test("7 — es gibt keine ungenutzte UI-Abhängigkeit", () => {
   const pkg = JSON.parse(read("../../package.json"));
   // Vite und @vitejs/plugin-react sind Buildwerkzeuge: seit 2026-11-17 unter devDependencies (dieselben Pakete).
   const deps = Object.keys(pkg.dependencies || {}).sort();
-  assert.deepEqual(deps, ["fflate", "maplibre-gl", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen"]);
+  assert.deepEqual(deps, ["fflate", "maplibre-gl", "pdfjs-dist", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen"]);
   // Keine fremde Iconbibliothek — das Produkt hat sein eigenes System.
   for (const [name, inhalt] of QUELLEN) {
     assert.doesNotMatch(inhalt, /from\s+["'](lucide-react|react-icons|@heroicons|@tabler\/icons|feather-icons)/,
@@ -283,6 +283,19 @@ test("7 — es gibt keine ungenutzte UI-Abhängigkeit", () => {
   // Keine zweite Tabellenbibliothek daneben.
   for (const [name, inhalt] of QUELLEN) {
     assert.doesNotMatch(inhalt, /from\s+["'](xlsx|exceljs|papaparse|sheetjs)["']/, `${name}: zweite Tabellenbibliothek`);
+  }
+
+  // Rechnungseditor (2026-11-21): pdfjs-dist (Apache-2.0) zeichnet das echte Rechnungs-PDF des Servers auf Canvas —
+  // dieselbe Datei, die ausgestellt würde, statt einer nachgebauten HTML-Ansicht. Sie wird tatsächlich genutzt, nur
+  // dynamisch aus pdfBlatt.js (eigener Chunk, nie im Hauptbündel); der Worker ist eine Datei vom eigenen Ursprung.
+  const blatt = read("../components/admin/pdfBlatt.js");
+  assert.match(blatt, /\bimport\("pdfjs-dist"\)/, "pdfjs-dist wird nicht dynamisch geladen");
+  assert.match(blatt, /from "pdfjs-dist\/build\/pdf\.worker\.min\.mjs\?url"/, "der Worker kommt nicht als eigene Datei");
+  const statischPdf = QUELLEN.filter(([, t]) => /^import\s[^\n]*from\s+["']pdfjs-dist["']/m.test(t));
+  assert.deepEqual(statischPdf.map(([n]) => n), [], "pdfjs-dist darf nur dynamisch importiert werden");
+  // Keine zweite PDF-Bibliothek daneben.
+  for (const [name, inhalt] of QUELLEN) {
+    assert.doesNotMatch(inhalt, /from\s+["'](react-pdf|@react-pdf\/renderer|pdf-lib|jspdf)["']/, `${name}: zweite PDF-Bibliothek`);
   }
 });
 

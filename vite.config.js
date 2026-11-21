@@ -88,6 +88,16 @@ export default defineConfig({
         // Admin-Anmeldung (Canonical v2.130): dunkles Gerüst für /admin/login, ohne eigenen JavaScript-Einstieg.
         adminLogin: path.join(REPO, "admin-login.html"),
       },
+      // Rechnungseditor (2026-11-21): der pdf.js-Worker kommt als Datei vom eigenen Ursprung (CSP worker-src 'self').
+      // nginx kennt die Endung .mjs nicht (mime.types des Images: nur js) und lieferte sie als
+      // application/octet-stream — ein Modul-Worker lädt dann nicht. Darum endet jede .mjs-Datei unter assets/ auf
+      // .js; alle anderen Dateien behalten die Standardbenennung.
+      output: {
+        assetFileNames: (info) => {
+          const name = (Array.isArray(info.names) && info.names[0]) || info.name || "";
+          return name.endsWith(".mjs") ? "assets/[name]-[hash].js" : "assets/[name]-[hash][extname]";
+        },
+      },
     },
   },
 });

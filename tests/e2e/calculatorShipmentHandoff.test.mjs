@@ -256,7 +256,8 @@ test("S — Shopabgabe: „Shopabgabe“, „Abgabestelle“, „Abgabetermin“
   for (const [id, stelle] of [["2036", "DPD Paketshop"], ["3072", "DHL Express Paketshop"]]) {
     const { karte, panel } = await terminAbschnitt(page, kennung("csa", id));
     const text = norm(await panel.textContent());
-    assert.match(norm(await karte.locator(".offer-tl-node--start .offer-tl-title").textContent()), /^Shopabgabe$/);
+    // Konzept A (2026-11-20): der Startknoten einer Abgabe heißt „Abgabe ab" — nie „Abholung".
+    assert.match(norm(await karte.locator(".offer-tl-node--start .offer-tl-title").textContent()), /^Abgabe ab$/);
     assert.ok(text.includes("Termin & Abgabe"), `${id}: Abschnittstitel fehlt`);
     assert.ok(text.includes(`Abgabestelle${stelle}`), `${id}: Abgabestelle fehlt: ${text}`);
     assert.match(text, /Abgabetermin09\.10\.2026/);

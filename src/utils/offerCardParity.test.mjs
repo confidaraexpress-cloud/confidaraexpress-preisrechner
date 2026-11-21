@@ -135,7 +135,10 @@ test("(B4) die Timeline steht auf JEDEM Angebot", () => {
     "die Hinweiszeile ersetzt weiterhin die Timeline");
   const zone2 = CARD.slice(CARD.indexOf('offer-zone-2"'), CARD.indexOf('offer-zone-3"'));
   assert.ok(zone2.includes("offer-timeline"), "Zone 2 rendert keine Timeline mehr");
-  assert.ok(zone2.includes("offer-handover"), "die Übergabeart fehlt in Zone 2");
+  // Konzept A (E6, 2026-11-20): die Übergabeart steht als Kennzeichen unter dem Titel (Zone 1) — auf JEDEM Angebot.
+  const zone1 = CARD.slice(CARD.indexOf("offer-zone-1"), CARD.indexOf('offer-zone-2"'));
+  assert.ok(zone1.includes("offer-handover offer-handover--"), "die Übergabeart fehlt unter dem Titel");
+  assert.ok(!/\{\s*!?unavailable\s*(\?|&&)/.test(zone1 + zone2), "Übergabeart oder Ablauf hängen an der Buchbarkeit");
 });
 
 test("(B5) der Grund steht GENAU EINMAL, und zwar am Knopf", () => {
@@ -160,7 +163,7 @@ test("(C1) ohne Kalenderdatum heißt der Knoten NICHT „Lieferung“", () => {
     "der Knotentitel kommt nicht aus dem gemeinsamen Zustellvertrag");
   assert.equal(deliveryContractOf(TG_PICKUP).label, "Voraussichtliche Laufzeit",
     "der laufzeitbasierte Knoten trägt weiterhin den Titel eines Termins");
-  assert.equal(deliveryContractOf(JUMINGO).label, "Zustellung");
+  assert.equal(deliveryContractOf(JUMINGO).label, "Voraussichtliche Zustellung"); // E2 (2026-11-20): auch ein Anbietertermin
   assert.ok(/return \{ title, primary, secondary \}/.test(bau),
     "der Titel wird nicht durchgereicht — dann greift die Unterscheidung nicht");
 });

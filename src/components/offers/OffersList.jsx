@@ -1,6 +1,8 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { OfferCard } from "./OfferCard";
 import { assignBadges } from "../../utils/offerBadges";
+import { useOfferRefresh } from "../../hooks/useOfferRefresh";
+import { OFFER_REFRESH_TEXT } from "../../utils/offerRefresh.mjs";
 import { offerKey, sameOffer, OFFERS_MIXED_PACKAGES_NOTE, OFFERS_MIXED_PACKAGES_EMPTY_HINT } from "../../utils/offerIdentity.mjs";
 import { money } from "../../utils/formatters";
 import { DateCalendar } from "../common/DateCalendar";
@@ -11,6 +13,7 @@ import {
 } from "../../utils/offersFilterView.mjs";
 import DeliveryTimeSelect from "./DeliveryTimeSelect.jsx";
 import { VatModeToggle } from "./VatModeToggle.jsx";
+import { useAnsprechKarteKompakt } from "../layout/AccountManagerCard";
 
 const SORT_OPTIONS = [
   { id: "recommended", label: "Empfehlung" },
@@ -55,7 +58,15 @@ export function OffersList({
   mixedPackages = false,
   // 2026-10-26: die Auswahlstufe der Karten (utils/offerIdentity.mjs, OFFER_SELECTION_STAGE); ohne Angabe die strenge.
   selectionStage,
+  // Masteranalyse Angebotskarten 2026-11-20 (§5.3): Serverzeit der Antwort (`quotedAt`, ISO) und ihr Eingang im Browser
+  // (ms). Daraus gilt die Uhr der Liste; ohne Angaben gilt nur die eigene Frist jedes Angebots (`refreshRequiredAt`).
+  quotedAt = null, receivedAtMs = null,
 }) {
+  // FE-8 (Masteranalyse Angebotskarten 2026-11-20): die offene Kundenservice-Karte überdeckte bei 1440 × 1000 Preis und
+  // Aktion der vierten Karte. Solange Angebote stehen (die Liste hängt nur mit Ergebnissen oder beim Laden), fordert die
+  // Liste wie die Erfolgsseite die kleine Form an; ein Klick öffnet die Karte weiterhin. Beim Verlassen gilt wieder die
+  // Regel des Fensters.
+  useAnsprechKarteKompakt();
   // Aktives Filter-Dropdown: "price" | "delivery" | null. Es ist immer höchstens
   // eines offen; das Öffnen des einen schließt das andere. Ersetzt den früheren
   // kombinierten Inline-Panel-Toggle durch rechts angedockte JUMiNGO-Dropdowns.
@@ -83,7 +94,16 @@ export function OffersList({
   const auszeichnungsBasis = useMemo(
     () => (gruppen ? [...gruppen.confirmed, ...gruppen.projected] : sorted),
     [gruppen, sorted]);
-  const badges = useMemo(() => assignBadges(auszeichnungsBasis), [auszeichnungsBasis]);
+  // §5.3: EIN Zeitgeber für die ganze Liste (hooks/useOfferRefresh.js). Eine abgelaufene Karte trägt keine Auszeichnung,
+  // ist nicht auswählbar und bietet „Angebote aktualisieren" — Filter, Sortierung und Gruppen bleiben, wie sie sind.
+  const aktualitaet = useOfferRefresh(tariffs, { quotedAt, receivedAtMs });
+  const istAbgelaufen = aktualitaet.isExpired;
+  const badges = useMemo(() => assignBadges(auszeichnungsBasis, { isExpired: istAbgelaufen }),
+    [auszeichnungsBasis, istAbgelaufen]);
+  // Ein gewähltes Angebot, dessen Aussage abgelaufen ist, bleibt nicht gewählt — gebucht wird nur nach neuer Abfrage.
+  useEffect(() => {
+    if (selected && istAbgelaufen(selected) && typeof onSelect === "function") onSelect(null);
+  }, [selected, istAbgelaufen, onSelect]);
 
   // „Zu spät" ist standardmäßig eingeklappt — und klappt mit jeder neuen Frist wieder ein.
   const [spaetOffen, setSpaetOffen] = useState(false);
@@ -152,6 +172,9 @@ export function OffersList({
       businessConfirmError={!!(businessConfirmError && businessConfirmError === offerKey(t))}
       onBusinessConfirm={onBusinessConfirm}
       selectionStage={selectionStage}
+      expired={istAbgelaufen(t)}
+      heuteTag={aktualitaet.todayISO}
+      onRefresh={onRecalculate}
     />
   );
 
@@ -475,6 +498,19 @@ export function OffersList({
           </div>
         )}
 
+        {/* §5.3: ist die Aussage eines Angebots abgelaufen, sagt es EIN Hinweis über der Liste — mit derselben Aktion wie
+            „Neu berechnen". Kein Abfragen im Takt: erst der Klick fragt neu an. */}
+        {!loading && hasResults && aktualitaet.anyExpired && (
+          <div className="alert alert-info offers-refresh-notice" role="status" aria-live="polite" id="offers-refresh-notice">
+            <span>{aktualitaet.allExpired ? OFFER_REFRESH_TEXT.noticeAll : OFFER_REFRESH_TEXT.noticeSome}</span>
+            {typeof onRecalculate === "function" && (
+              <button className="btn btn-outline btn-sm offers-refresh-btn" onClick={onRecalculate} type="button">
+                {OFFER_REFRESH_TEXT.action}
+              </button>
+            )}
+          </div>
+        )}
+
         {!loading && hasResults && mixedPackages && tariffs.length > 0 && (
           <p className="offers-packages-note" id="offers-packages-note">{OFFERS_MIXED_PACKAGES_NOTE}</p>
         )}
@@ -486,7 +522,7 @@ export function OffersList({
             <p className="offers-empty-title">Keine direkt buchbaren Tarife</p>
             <p className="offers-empty-sub">
               Für diese Sendung ist derzeit kein Tarif direkt buchbar.
-              Ändern Sie das Datum oder wählen Sie „Alle Dienstleistungen".
+              Ändern Sie das Datum oder wählen Sie bei „Abholung / Paketshop" die Option „Alle".
               {mixedPackages ? ` ${OFFERS_MIXED_PACKAGES_EMPTY_HINT}` : null}
             </p>
           </div>

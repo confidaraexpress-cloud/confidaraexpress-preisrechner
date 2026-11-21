@@ -333,7 +333,8 @@ test("A — Angebotsliste: TG22 und Vergleichsangebot in einer Sprache, Tarif-ID
   assert.doesNotMatch(tgDetails, /Thermal|A4 \/ Thermal/);
   assert.doesNotMatch(tgDetails, /Tarif-ID/, "das TG22-Angebot zeigt eine Tarif- oder Servicekennung");
 
-  // Vergleichsangebot: Zustellung mit echten Daten, Abholfenster, Tarif-ID 3708 — ohne Einkaufsnamen.
+  // Vergleichsangebot: Zustellung mit echten Daten, Abholfenster — ohne Einkaufsnamen und seit FE-3 (2026-11-20, White
+  // Label) ohne die Tarifkennung des Anbieters („Tarif-ID 3708").
   const ju = karteVon(page, VERGLEICH());
   const juText = await inhalt(ju);
   assert.match(juText, /Zustellung/);
@@ -341,7 +342,7 @@ test("A — Angebotsliste: TG22 und Vergleichsangebot in einer Sprache, Tarif-ID
   await ju.locator(`button[aria-controls="offer-details-${VERGLEICH().offerId}"]`).click();
   await page.locator(`#offer-details-${VERGLEICH().offerId}`).waitFor({ timeout: 10000 });
   const juDetails = await inhalt(page.locator(`#offer-details-${VERGLEICH().offerId}`));
-  assert.match(juDetails, /Tarif-ID\s*3708/, "die Tarif-ID des Vergleichsangebots ist verschwunden");
+  assert.doesNotMatch(juDetails, /Tarif-ID|\b3708\b/, "die Kundendetails zeigen die Tarifkennung des Anbieters");
   assert.match(juDetails, new RegExp(`Zustellzeitraum\\s*${deDatum(ZUSTELL_MIN)} – ${deDatum(ZUSTELL_MAX)}`));
   assert.match(juDetails, /Zustellung\s*bis 18:00 Uhr/);
   assert.match(juDetails, /Zeitfenster\s*09:00 – 17:00 Uhr/);
@@ -545,10 +546,11 @@ test("E — Vergleichsangebot versichert + Drift ohne Neubindung: nur „Angebot
 
   // Zustellung mit den Daten des Angebots, Abholfenster mit Regler.
   const zeitraum = `${deDatum(ZUSTELL_MIN)} – ${deDatum(ZUSTELL_MAX)}`;
-  assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-label")), "Zustellung");
+  // E2 (2026-11-20): „Voraussichtliche Zustellung" auch in beiden Buchungsleisten.
+  assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-label")), "Voraussichtliche Zustellung");
   assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-val")), zeitraum);
   assert.equal(await inhalt(page.locator(".blsum-delivery .blsum-sub")), "bis 18:00 Uhr");
-  assert.equal(await inhalt(page.locator(".bsum-delivery-label")), "Zustellung");
+  assert.equal(await inhalt(page.locator(".bsum-delivery-label")), "Voraussichtliche Zustellung");
   await page.locator(".pw-slider").waitFor({ timeout: 10000 });
   assert.match(await inhalt(page.locator(".blsum-handover")), /Abholung\s*\d{2}\.\d{2}\.\d{4}\s*\d{2}:\d{2}–\d{2}:\d{2} Uhr/);
 

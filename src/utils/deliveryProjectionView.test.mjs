@@ -246,8 +246,8 @@ test("12 — Absicherung: die Aussage der Karte ist mit und ohne Prognose identi
 
 test("13 — JUMiNGO: Zustellzeitraum aus Anbieterdaten unverändert — eine Prognose überschreibt ihn nie", () => {
   const z = deliveryContractOf(JUMINGO);
-  assert.deepEqual([z.kind, z.label, z.estimate], ["range", "Zustellung", null]);
-  assert.deepEqual(deliveryInfo(JUMINGO), { label: "Zustellung", value: "16.09.2026 – 17.09.2026", timeOfDay: "bis 18:00 Uhr", isRange: true });
+  assert.deepEqual([z.kind, z.label, z.estimate], ["range", "Voraussichtliche Zustellung", null]);
+  assert.deepEqual(deliveryInfo(JUMINGO), { label: "Voraussichtliche Zustellung", value: "16.09.2026 – 17.09.2026", timeOfDay: "bis 18:00 Uhr", isRange: true });
   const mitFremderPrognose = { ...JUMINGO, deliveryProjection: { kind: "estimated", dateMin: "2026-09-15", dateMax: "2026-09-15" } };
   assert.deepEqual(deliveryInfo(mitFremderPrognose), deliveryInfo(JUMINGO));
 });
@@ -262,7 +262,7 @@ test("14 — JUMiNGO: die Zustelluhrzeit bleibt sichtbar", () => {
 
 /* ══════════ Keine operative Autorität: Filter, Auszeichnungen, Sortierung, Kennzahl ══════════ */
 
-test("TG-L2: der Lieferzeitfilter liest die Prognose als eigene Stufe — Auszeichnungen nicht, „Schnellste“ bleibt die Laufzeit", () => {
+test("TG-L2/E3: der Lieferzeitfilter liest die Prognose als eigene Stufe — „Schnellste“ folgt der voraussichtlichen Zustellung", () => {
   // Frist Di. 16.09.: die Prognose 15.–16.09. hält sie voraussichtlich ein (B), ohne Prognose ist sie nicht bestätigt (C).
   assert.equal(deliveryDeadlineAssessment(TG22, { latestDeliveryDate: "2026-09-16" }), "projected");
   assert.equal(deliveryDeadlineAssessment(OHNE_PROGNOSE, { latestDeliveryDate: "2026-09-16" }), "not_assessable");
@@ -273,9 +273,16 @@ test("TG-L2: der Lieferzeitfilter liest die Prognose als eigene Stufe — Auszei
   const schnell = mit({ offerId: "22pb0000000000000000000000000023", bookable: true, unavailableReason: null,
                         transitDaysMin: 2, transitDaysMax: 3, deliveryProjection: { kind: "estimated", dateMin: "2026-09-15", dateMax: "2026-09-15", timeUntil: null } });
   const alle = [{ ...TG22, bookable: true, unavailableReason: null }, schnell];
-  assert.deepEqual([...assignBadges(alle).entries()],
-                   [...assignBadges(alle.map((t) => ({ ...t, deliveryProjection: null }))).entries()]);
-  // Die Prognose liest nur die eine Filterregel — nicht die Auszeichnungen, nicht die Kennzahl, nicht die Seiten.
+  // Betreiberentscheidung E3 (2026-11-20) ersetzt die TG-L2-Regel „Schnellste bleibt die Laufzeit": die Auszeichnung folgt
+  // der frühesten voraussichtlichen Zustellung, eine Prognose des Servers zählt wie Zustelldaten des Anbieters. `schnell`
+  // (15.09.) kommt vor TG22 (15.–16.09.) an. Ohne Prognosen belegt keine reine Laufzeit einen Tag — dann keine „Schnellste".
+  const mitPrognose = assignBadges(alle);
+  assert.ok(mitPrognose.get(schnell.offerId)?.label.includes("Schnellste"), "die frühere Prognose trägt „Schnellste“");
+  assert.ok(![...mitPrognose.entries()].some(([k, b]) => k !== schnell.offerId && b.label.includes("Schnellste")));
+  const ohnePrognose = assignBadges(alle.map((t) => ({ ...t, deliveryProjection: null })));
+  assert.ok(![...ohnePrognose.values()].some((b) => b.label.includes("Schnellste")), "eine reine Laufzeit gewinnt „Schnellste“");
+  // Die Prognose lesen nur die gemeinsamen Verträge (Filterregel, deliveryContractView/offerSort) — Auszeichnungen,
+  // Kennzahl und Seiten lesen sie nicht selbst.
   for (const datei of ["offerBadges.js", "kpis.mjs", "../pages/NewShipmentPage.jsx", "../pages/CalculatorPage.jsx"]) {
     assert.ok(!/deliveryProjection|projectedDelivery/.test(code(datei)), `${datei} liest die Prognose`);
   }

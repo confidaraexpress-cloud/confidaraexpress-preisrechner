@@ -22,7 +22,7 @@ import { getCalculatorErrors, firstErrorField } from "./calculatorValidation.mjs
 import { deliveryContractOf, DELIVERY_ON_REQUEST } from "./deliveryContractView.mjs";
 import { projectedDeliveryText } from "./deliveryProjectionView.mjs";
 import { pickupContractOf, pickupTimeText, pickupAdjustedNote } from "./pickupContractView.mjs";
-import { handoverMode, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "./handoverMode.mjs";
+import { handoverMode, HANDOVER_PICKUP, HANDOVER_DROPOFF, HANDOVER_FILTER_OPTIONS } from "./handoverMode.mjs";
 import { offerBlockedLabel, offerReasonText, OFFER_BUSINESS_RECIPIENT_TEXT } from "./offerIdentity.mjs";
 import { launchRouteBlockedText, ROUTE_NOT_SUPPORTED_TITLE } from "./launchRouteText.mjs";
 import {
@@ -30,6 +30,9 @@ import {
 } from "./residentialPriceInputs.mjs";
 import { carrierAppliesLabel, LABEL_HANDLING_TEXT } from "./labelHandling.mjs";
 import { deliveryTimeOfDayLabel, earlyDeliveryNote } from "./deliveryTimeView.mjs";
+import { sortOffers } from "./offerSort.mjs";
+import { sameDayDeadlineText, sameDayPriceNote } from "./sameDayCollectionView.mjs";
+import { offerDayIsToday } from "./offerRefresh.mjs";
 import { vatDisplay } from "./vatDisplayView.mjs";
 // Individuelle Mehrpaketsendungen (Canonical v2.79): derselbe Paketeditor wie im Portal.
 import {
@@ -50,12 +53,8 @@ export const SLOW_HINT_AFTER_MS = 10000;
 // ─── Optionen: dieselben Werte wie im Kundenrechner ──────────────────────────
 // Die Kennungen sind der Vertrag des Servers; die Texte folgen dem Portal, nur
 // ohne Wertung („günstigster") — der öffentliche Auftritt verspricht nichts.
-export const SERVICE_FILTER_OPTIONS = Object.freeze([
-  Object.freeze({ id: "all", label: "Alle Dienstleistungen", desc: "Abholung an Ihrer Adresse und Abgabe im Paketshop" }),
-  Object.freeze({ id: "pickup", label: "Nur Abholung", desc: "Abholung an Ihrer Adresse" }),
-  Object.freeze({ id: "dropoff", label: "Nur Abgabe", desc: "Abgabe in einem Paketshop" }),
-  Object.freeze({ id: "pickup_today", label: "Abholung heute", desc: "Tarife mit Abholung noch heute" }),
-]);
+// E4 (2026-11-20): derselbe Übergabefilter wie im Portal (utils/handoverMode.mjs) — Kennung, Text und Erklärung.
+export const SERVICE_FILTER_OPTIONS = Object.freeze(HANDOVER_FILTER_OPTIONS.map(({ id, label, desc }) => Object.freeze({ id, label, desc })));
 // Gesamtauftrag F (2026-10-24): ohne „Economy" — Economy-Produkte erscheinen unter „Alle Versandarten"; ein
 // gespeichertes „economy" fällt über MODE_IDS auf „all".
 export const SHIPPING_MODE_OPTIONS = Object.freeze([
@@ -69,7 +68,7 @@ export const SORT_OPTIONS = Object.freeze([
   Object.freeze({ id: "recommended", label: "Standardreihenfolge" }),
   Object.freeze({ id: "cheapest", label: "Preis aufsteigend" }),
   Object.freeze({ id: "priciest", label: "Preis absteigend" }),
-  Object.freeze({ id: "fastest", label: "Laufzeit" }),
+  Object.freeze({ id: "fastest", label: "Schnellste" }),
 ]);
 
 const SERVICE_IDS = SERVICE_FILTER_OPTIONS.map((o) => o.id);
@@ -224,22 +223,10 @@ export function filterOffersByCarrier(offers, selectedIds) {
   return ids.length === 0 ? liste : liste.filter((o) => ids.includes(o.publicCarrierId));
 }
 
-/** Dieselben Ordnungen wie im Kundenrechner (CalculatorPage). Stabil; die Eingabe bleibt unverändert. */
+/** Dieselben Ordnungen wie im Kundenbereich — aus EINER Quelle (utils/offerSort.mjs, E3). Die Eingabe bleibt unverändert. */
 export function sortPublicOffers(offers, mode) {
   const liste = Array.isArray(offers) ? [...offers] : [];
-  const m = SORT_IDS.includes(mode) ? mode : "recommended";
-  if (m === "recommended") return liste;
-  if (m === "cheapest") return liste.sort((a, b) => (a.netPrice ?? Infinity) - (b.netPrice ?? Infinity));
-  if (m === "priciest") return liste.sort((a, b) => (b.netPrice ?? -1) - (a.netPrice ?? -1));
-  return liste.sort((a, b) => {
-    const aMax = a.transitDaysMax ?? 999;
-    const bMax = b.transitDaysMax ?? 999;
-    if (aMax !== bMax) return aMax - bMax;
-    const aMin = a.transitDaysMin ?? 999;
-    const bMin = b.transitDaysMin ?? 999;
-    if (aMin !== bMin) return aMin - bMin;
-    return (a.netPrice ?? Infinity) - (b.netPrice ?? Infinity);
-  });
+  return sortOffers(liste, SORT_IDS.includes(mode) ? mode : "recommended");
 }
 
 /** Die Carrierauswahl: nur Carrier, die in der Antwort Angebote tragen, in der Reihenfolge des Servers. */
@@ -286,6 +273,9 @@ export function offerPriceView(offer) {
     net: `${prefix}${netto}`,
     gross: brutto === null ? null : `${prefix}${brutto}`,
     note: status === "from" ? PRICE_TEXT.fromNote : null,
+    // FE-2 (Masteranalyse Angebotskarten 2026-11-20): der im Nettopreis enthaltene Zuschlag der Abholung heute —
+    // derselbe Satz und dieselben Serverfelder wie im Portal, hier netto wie der Preis.
+    sameDayNote: sameDayPriceNote(o, "net"),
     onRequest: false,
   };
 }
@@ -312,19 +302,24 @@ export function shortDay(iso) {
   return `${WOCHENTAG[utc.getUTCDay()]}, ${m[3]}.${m[2]}.`;
 }
 
-/** Übergabe und Abholtag — dieselben Felder und dieselbe Regel wie die Karte im Portal. */
-export function offerPickupView(offer) {
+/** Übergabe und Abholtag — dieselben Felder und dieselbe Regel wie die Karte im Portal. FE-6: eine Abgabe ohne eigenen
+ *  Tag nennt den Versandtag der Anfrage („Abgabe ab"); FE-2: der belegte Buchungsschluss einer Abholung heute. */
+export function offerPickupView(offer, { shippingDate = null, todayISO = null, expired = false } = {}) {
   const vertrag = pickupContractOf(offer);
   const modus = handoverMode(offer);
+  const abgabeTag = modus === HANDOVER_DROPOFF && !vertrag.day && typeof shippingDate === "string" ? shippingDate : null;
   const title = modus === HANDOVER_DROPOFF ? SCHEDULE_TEXT.dropoff
-    : modus === HANDOVER_PICKUP ? (offer && offer.pickupToday === true ? "Abholung heute" : SCHEDULE_TEXT.pickup)
+    // §5.1 (2026-11-20): nie ein Kennzeichen des Anbieters gegen den Tag. Restprüfung 2026-11-21: dieselbe Regel wie die
+    // Karte im Portal (`offerDayIsToday`) — die Serveraussage `pickupToday`, nie die Geräteuhr, nie nach Ablauf.
+    : modus === HANDOVER_PICKUP ? (offerDayIsToday(offer, vertrag.day, { todayISO, expired }) ? "Abholung heute" : SCHEDULE_TEXT.pickup)
       : null;
   return {
     title,
     dayLabel: modus === HANDOVER_DROPOFF ? SCHEDULE_TEXT.dropoffDay : SCHEDULE_TEXT.pickupDay,
-    day: vertrag.day ? shortDay(vertrag.day) : null,
+    day: vertrag.day ? shortDay(vertrag.day) : (abgabeTag ? shortDay(abgabeTag) : null),
     time: pickupTimeText(vertrag),
     adjustedNote: pickupAdjustedNote(vertrag),
+    deadline: modus === HANDOVER_PICKUP ? sameDayDeadlineText(offer) : null,
   };
 }
 

@@ -25,6 +25,7 @@ import { fmtDelivery, money } from "./formatters.js";
 import { handoverMode, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "./handoverMode.mjs";
 import { chargeableWeightLine, labelCapabilityLine, OFFER_METADATA_LABEL } from "./offerMetadataView.mjs";
 import { offerCardInsurance } from "./coverInsuranceView.mjs";
+import { carrierAppliesLabel } from "./labelHandling.mjs";
 import { COVER_INSURANCE_TEXT } from "./insuranceTerms.mjs";
 import { readDeliveryProjection, projectedDeliveryText, projectedDeliveryNote,
          DELIVERY_PROJECTION_TEXT } from "./deliveryProjectionView.mjs";
@@ -239,4 +240,27 @@ export function serviceDetailsView(tariff) {
     cover,
     restrictions,
   };
+}
+
+/* ─── LEISTUNGSZEILE DER KARTE (Konzept A, Betreiberentscheidung E6, Masteranalyse Angebotskarten 2026-11-20) ──────
+   Die kurze Zeile unten auf der Kartenfläche. Nur, was der Server für DIESES Angebot belegt — kein Profil nötig, kein
+   Carrierwissen. „zubuchbar" ist nicht „inklusive": eine Versicherung erscheint nur als zubuchbar (§7). Die Übergabeart
+   steht nicht hier, sondern als Kennzeichen unter dem Titel. Ohne Beleg kein Eintrag — eine leere Liste ist erlaubt. */
+export const SERVICE_LINE_TEXT = Object.freeze({
+  // „verfügbar" belegt `trackingAvailable`, „inklusive" (eine Preisaussage) nicht — die Zeile sagt nur, was belegt ist.
+  tracking:      "Sendungsverfolgung",
+  insurance:     "Versicherung zubuchbar",
+  labelAtPickup: "Kein Labeldruck nötig",
+});
+
+export function offerServiceLine(tariff) {
+  if (!istObjekt(tariff)) return [];
+  const t = tariff;
+  const zeile = [];
+  if (t.trackingAvailable === true) zeile.push(Object.freeze({ id: "tracking", label: SERVICE_LINE_TEXT.tracking }));
+  if (offerCardInsurance(t).insurable === true) {
+    zeile.push(Object.freeze({ id: "insurance", label: SERVICE_LINE_TEXT.insurance }));
+  }
+  if (carrierAppliesLabel(t)) zeile.push(Object.freeze({ id: "labelAtPickup", label: SERVICE_LINE_TEXT.labelAtPickup }));
+  return zeile;
 }

@@ -198,9 +198,9 @@ test("8 — 'Günstigste'/'Schnellste' werden nie einem gesperrten Angebot zugew
   const k = (id) => offerKey({ id });
 
   const tariffs = [
-    { id: "teuer-verfuegbar", netPrice: 20, transitDaysMax: 3, transitDaysMin: 2, availableForDate: true },
-    { id: "billig-NICHT-verfuegbar", netPrice: 5, transitDaysMax: 1, transitDaysMin: 1, availableForDate: false },
-    { id: "mittel-verfuegbar", netPrice: 12, transitDaysMax: 4, transitDaysMin: 3, availableForDate: true },
+    { id: "teuer-verfuegbar", netPrice: 20, transitDaysMax: 3, transitDaysMin: 2, availableForDate: true, deliveryDate: "2026-09-08" },
+    { id: "billig-NICHT-verfuegbar", netPrice: 5, transitDaysMax: 1, transitDaysMin: 1, availableForDate: false, deliveryDate: "2026-09-07" },
+    { id: "mittel-verfuegbar", netPrice: 12, transitDaysMax: 4, transitDaysMin: 3, availableForDate: true, deliveryDate: "2026-09-09" },
   ];
   const badges = assignBadges(tariffs);
   assert.ok(!badges.has(k("billig-NICHT-verfuegbar")),
@@ -228,11 +228,19 @@ test("8 — 'Günstigste'/'Schnellste' werden nie einem gesperrten Angebot zugew
   // Und zwei Angebote OHNE `id` sind nicht dasselbe Angebot: früher ergab
   // `undefined === undefined` das kombinierte Label unter dem Schlüssel `undefined`.
   const ohneId = assignBadges([
-    { offerId: "b".repeat(32), netPrice: 5,  transitDaysMax: 9, transitDaysMin: 9 },
-    { offerId: "c".repeat(32), netPrice: 50, transitDaysMax: 1, transitDaysMin: 1 },
+    { offerId: "b".repeat(32), netPrice: 5,  transitDaysMax: 9, transitDaysMin: 9, deliveryDate: "2026-09-18" },
+    { offerId: "c".repeat(32), netPrice: 50, transitDaysMax: 1, transitDaysMin: 1, deliveryDate: "2026-09-08" },
   ]);
   assert.equal(ohneId.get("b".repeat(32))?.key, "cheapest");
   assert.equal(ohneId.get("c".repeat(32))?.key, "fastest");
+
+  // E3 (2026-11-20): eine reine Laufzeit belegt keinen Zustelltag — „Schnellste" entsteht erst aus zwei datierten Angeboten.
+  const nurLaufzeit = assignBadges([
+    { offerId: "d".repeat(32), netPrice: 9, transitDaysMax: 1, transitDaysMin: 1 },
+    { offerId: "e".repeat(32), netPrice: 7, transitDaysMax: 4, transitDaysMin: 3 },
+  ]);
+  assert.deepEqual([...nurLaufzeit.values()].map((b) => b.key), ["cheapest"]);
+  assert.equal(nurLaufzeit.get("e".repeat(32))?.key, "cheapest");
 });
 
 test("8b — die Angebotskarte zeigt einen verständlichen Grund statt eines Rohwerts", async () => {

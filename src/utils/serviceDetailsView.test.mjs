@@ -324,7 +324,7 @@ test("21 — JUMiNGO und jedes Angebot ohne Profil behalten den bisherigen Detai
   const karte = code(KARTE);
   const details = abschnitt(karte, "function DetailsPanel", "function OfferCardBase");
   // Verdrahtung: das Profil ersetzt ausschließlich Hauptmerkmale, Einschränkungen und Versicherung.
-  assert.match(karte, /import \{ serviceDetailsView \} from "\.\.\/\.\.\/utils\/serviceDetailsView\.mjs";/);
+  assert.match(karte, /import \{ serviceDetailsView, offerServiceLine \} from "\.\.\/\.\.\/utils\/serviceDetailsView\.mjs";/);
   assert.match(karte, /import \{ ServiceProfileDetails \} from "\.\/ServiceProfileDetails";/);
   assert.match(details, /const profil = serviceDetailsView\(t\);/);
   assert.match(details, /\{profil && <ServiceProfileDetails view=\{profil\} \/>\}/);

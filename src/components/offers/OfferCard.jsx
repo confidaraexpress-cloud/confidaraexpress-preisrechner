@@ -12,8 +12,9 @@ import {
 } from "../../utils/offerIdentity.mjs";
 import { offerSurchargeHint } from "../../utils/residentialPriceInputs.mjs";
 import {
-  sameDayOfferView, sameDayDetailValue, SAME_DAY_TEXT,
+  sameDayOfferView, sameDayDetailValue, SAME_DAY_TEXT, sameDayDeadlineText, sameDayPriceNote,
 } from "../../utils/sameDayCollectionView.mjs";
+import { OFFER_REFRESH_TEXT, offerDayIsToday } from "../../utils/offerRefresh.mjs";
 import { isIndicativePrice, INDICATIVE_PRICE_LABEL, INDICATIVE_PRICE_EXPLANATION }
   from "../../utils/priceCompletenessView.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
@@ -23,11 +24,11 @@ import { offerDebugView, offerDebugCardClass } from "../../utils/offerDebugView.
 import { chargeableWeightLine, labelCapabilityLine, OFFER_METADATA_LABEL } from "../../utils/offerMetadataView.mjs";
 import { offerCardInsurance } from "../../utils/coverInsuranceView.mjs";
 import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
-import { pickupContractOf, pickupTimeText, pickupWindowDetailText, pickupDayLabel, pickupAdjustedNote,
+import { pickupContractOf, pickupTimeText, pickupWindowDetailText, pickupDayLabel, pickupAdjustedCardNote, DROPOFF_OPENING_NOTE,
          pickupSectionTitle }
   from "../../utils/pickupContractView.mjs";
 import { deliveryContractOf } from "../../utils/deliveryContractView.mjs";
-import { serviceDetailsView } from "../../utils/serviceDetailsView.mjs";
+import { serviceDetailsView, offerServiceLine } from "../../utils/serviceDetailsView.mjs";
 import { packageRulesLines } from "../../utils/packageRulesView.mjs";
 import { projectedDeliveryText, projectedDeliveryDateText, projectedDeliveryNote,
          DELIVERY_PROJECTION_TEXT } from "../../utils/deliveryProjectionView.mjs";
@@ -60,14 +61,24 @@ const fmtDay = (iso) => {
 // Knoten als { title, primary, secondary[] }: der Titel (Abholung/Lieferung)
 // und die primäre Zeile (Datum bzw. relative Laufzeit) tragen das visuelle
 // Gewicht; Hinweis und Uhrzeit bleiben sekundär und dezent.
-function buildStart(t, abgabeTag) {
+// Konzept A (Masteranalyse Angebotskarten 2026-11-20): der Kalendertag mit „heute" davor — „heute, Fr., 20.11.".
+// Restprüfung 2026-11-21: ob der Tag „heute" heißt, entscheidet `offerDayIsToday` (utils/offerRefresh.mjs) — bei einer
+// Abholung allein die Serveraussage `pickupToday`, nie die Geräteuhr; eine abgelaufene Aussage heißt nie „heute".
+const fmtTagMitHeute = (iso, heute) => {
+  const tag = fmtDay(iso);
+  if (!tag) return "";
+  return heute ? `heute, ${tag}` : tag;
+};
+
+function buildStart(t, abgabeTag, { todayISO = null, expired = false } = {}) {
   // Die Übergabeart kommt aus dem gemeinsamen Helfer, damit Knotentitel und
   // Kennzeichnung darüber nie auseinanderlaufen können — es gibt genau eine
   // Auslegung von „Abholung" und „Shopabgabe" (utils/handoverMode.mjs).
+  // Konzept A: „Früheste Abholung" bzw. „Abgabe ab" — der Tag darunter ist der früheste, nie ein zugesagter.
   const modus = handoverMode(t);
   let title;
-  if (modus === HANDOVER_DROPOFF)     title = "Shopabgabe";
-  else if (modus === HANDOVER_PICKUP) title = t.pickupToday ? "Abholung heute" : "Abholung";
+  if (modus === HANDOVER_DROPOFF)     title = "Abgabe ab";
+  else if (modus === HANDOVER_PICKUP) title = "Früheste Abholung";
   else                                title = "Versand";
 
   // ── Der Abholtermin — providerneutral, in der jeweils belegten Genauigkeit ──
@@ -82,24 +93,27 @@ function buildStart(t, abgabeTag) {
   // Es wird nirgends nach dem Provider gefragt: gezeigt wird, was DA ist. Die Regel steht
   // in utils/pickupContractView.mjs — derselbe Helfer liest den Termin im Detailbereich.
   const abholung = pickupContractOf(t);
-  // TG-L2: eine Abgabe ohne eigenen Termin zeigt den Tag, auf dem die voraussichtliche Zustellung beruht — das
-  // gewählte Versanddatum, ab dem abgegeben werden kann („ab Mo., 26.10."). Nur, wenn der Server dafür eine Prognose
-  // gerechnet hat: dann ist dieser Tag ihr Tag 0. Ohne Prognose bleibt der Knoten wie bisher ohne Tag.
-  const abgabeAb = modus === HANDOVER_DROPOFF && !abholung.day && abgabeTag && deliveryContractOf(t).kind === "estimate"
-    ? `ab ${fmtDay(abgabeTag)}` : null;
-  const primary = abholung.day ? fmtDay(abholung.day) : abgabeAb;
+  // FE-6 (Masteranalyse 2026-11-20): eine Abgabe nennt ihren Tag für beide Einkaufsquellen — den Tag des Angebots,
+  // sonst das gewählte Versanddatum, für das gerechnet wurde („Abgabe ab heute, Fr., 20.11."). Öffnungszeiten kennt
+  // die Karte nicht; der Hinweis dazu steht in den Details. Ohne jeden Tag heißt der Knoten nur „Abgabe".
+  const tag = abholung.day || (modus === HANDOVER_DROPOFF && abgabeTag ? abgabeTag : null);
+  const primary = tag ? fmtTagMitHeute(tag, offerDayIsToday(t, tag, { todayISO, expired })) : null;
+  if (modus === HANDOVER_DROPOFF && !primary) title = "Abgabe";
   const secondary = [];
   // War der gewaehlte Versandtag fuer dieses Angebot nicht abholbar, steht hier der FRUEHESTE
   // moegliche Tag — und die Unterzeile sagt genau das. Kein Grund, kein Wunschtag, kein Anbieter:
   // ein stillschweigend verschobenes Datum waere die einzige Variante, die den Kunden taeuscht.
-  const abholHinweis = pickupAdjustedNote(abholung);
+  // Restprüfung 2026-11-21: „später als gewählt" statt „frühester Abholtag" — der Titel sagt „Früheste Abholung" schon.
+  const abholHinweis = pickupAdjustedCardNote(abholung);
   if (abholHinweis)                              secondary.push(abholHinweis);
   const abholZeit = pickupTimeText(abholung);
   if (abholZeit)                                 secondary.push(abholZeit);
   // Die Abgabestelle („DPD Paketshop") steht seit 2026-10-04 nicht mehr im Knoten: sie wiederholte
   // Carrier und Kopfzeile („Abgabe im Paketshop") und machte die schmale Startspalte zweizeilig.
   // Sie steht vollständig unter „Termin & Abgabe" (Abgabestelle).
-  return { title, primary, secondary };
+  // FE-2: der belegte Buchungsschluss einer Abholung heute steht neben ihrem Tag — auch ohne Zuschlag.
+  const deadline = modus === HANDOVER_PICKUP ? sameDayDeadlineText(t) : null;
+  return { title, primary, secondary, deadline };
 }
 
 function buildEnd(t, etaLabel, earlyNote) {
@@ -267,9 +281,7 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
     serviceModus === HANDOVER_DROPOFF ? "Shopabgabe" :
     t.serviceType || null;
 
-  // Tarif-ID nur sekundär (Support/Abgleich) — Jumingo-seitige ID bevorzugt.
-  const tariffId = t.shipper_tariff_id ?? t.id ?? null;
-
+  // Keine Tarif-ID mehr in den Kundendetails (Masteranalyse 2026-11-20, FE-3): sie ist eine interne Kennung.
   // Versandlaufzeit als sachliche Detailzeile (nicht überdominant).
   const transitDetail = fmtTransitDetail(t);
 
@@ -346,7 +358,6 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
   const labelZeile   = labelCapabilityLine(t);
   if (gewichtZeile !== null)       features.push({ icon: "cube",    label: OFFER_METADATA_LABEL.chargeableWeight, value: gewichtZeile });
   if (labelZeile !== null)         features.push({ icon: "layers",  label: OFFER_METADATA_LABEL.labelCapability,  value: labelZeile });
-  if (tariffId != null)            features.push({ icon: "info",    label: "Tarif-ID",               value: String(tariffId), subtle: true });
 
   const hasPrice = t.netPrice != null || t.vatAmount != null || t.finalPrice != null;
   // TG22 Same-Day: der im Preis enthaltene Zuschlag der Abholung am selben Tag — vom Server, nicht gerechnet.
@@ -368,7 +379,7 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
   // Sendungsverfolgung. Ohne Profil bleibt der Detailbereich unverändert.
   const profil = serviceDetailsView(t);
   const zeigtPrognose = prognoseText !== null && profil === null;
-  const hasTermin = !!(dropoffLabel || abholung.day || abholung.windowFrom || abholung.readyFrom || sameDay
+  const hasTermin = !!(dropoffLabel || abholung.handover === HANDOVER_DROPOFF || abholung.day || abholung.windowFrom || abholung.readyFrom || sameDay
                    || zustellung.kind === "range" || zustellung.kind === "date"
                    || (zustellung.kind !== "estimate" && tageszeit.inline) || zeigtPrognose);
   const hasLinks = carrierLinkItems.length > 0;
@@ -459,6 +470,10 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
               (utils/pickupContractView.mjs, allein über die Übergabeart). */}
           <div className="offer-detail-section-title">{pickupSectionTitle(abholung)}</div>
           {dropoffLabel && <DetailRow label="Abgabestelle" value={dropoffLabel} />}
+          {/* FE-6: Öffnungszeiten der Abgabestelle kennt das Angebot nicht — der Hinweis sagt, was daraus folgt. */}
+          {abholung.handover === HANDOVER_DROPOFF && (
+            <p className="offer-detail-note offer-dropoff-note">{DROPOFF_OPENING_NOTE}</p>
+          )}
           {abholung.day && <DetailRow label={pickupDayLabel(abholung)} value={fmtDE(abholung.day)} />}
           {abholung.windowFrom && (
             <DetailRow label="Zeitfenster" value={pickupWindowDetailText(abholung)} />
@@ -568,6 +583,11 @@ function OfferCardBase({
   businessConfirmed = false, businessConfirmError = false, onBusinessConfirm,
   // 2026-10-26: die Auswahlstufe (utils/offerIdentity.mjs) — der Preisrechner wählt VOR den Sendungsangaben.
   selectionStage,
+  // Masteranalyse Angebotskarten 2026-11-20 (§5.3): die Aussage dieses Angebots ist abgelaufen — die Karte ist nicht
+  // mehr auswählbar, trägt keine Auszeichnung und bietet „Angebote aktualisieren" (`onRefresh`, dieselbe Abfrage erneut).
+  expired = false, onRefresh,
+  // Restprüfung 2026-11-21: der heutige Geschäftstag nach der Serverzeit der Liste (useOfferRefresh) — nur für „heute".
+  heuteTag = null,
 }) {
   const { name: carrierName, logo: carrierLogo } = publicCarrierDisplay(t);
   const logoAnzeige = carrierLogoAnzeige(carrierLogo);
@@ -579,15 +599,19 @@ function OfferCardBase({
   // oder „nur Preisauskunft". Ein FEHLENDES Feld sperrt nichts.
   // TG22 Residential: ein Angebot, das nur noch auf die Art der Lieferadresse wartet, ist
   // AUSWÄHLBAR (Karte, Knopf, Buchungsseite) — gebucht wird erst nach der Bindung dort.
-  const unavailable = !offerSelectableFor(t, selectionStage);
+  // §5.3 (Masteranalyse Angebotskarten 2026-11-20): eine abgelaufene Angebotsaussage sperrt genauso — derselbe EINE
+  // Zustand für Karte, Knopf und Folgeschritte; der Grund heißt dann „Bitte Angebote aktualisieren".
+  const abgelaufen = expired === true;
+  const unavailable = !offerSelectableFor(t, selectionStage) || abgelaufen;
   // Der Grund wird ÜBERSETZT, nie durchgereicht — ein roher Backendcode im
   // sichtbaren Text wäre dieselbe Fehlerklasse wie ein roher Status, und er
   // nennt den Einkaufsprovider nicht.
-  const unavailableText = offerBlockedLabel(t);
+  const unavailableText = abgelaufen ? OFFER_REFRESH_TEXT.status : offerBlockedLabel(t);
   // Gleich hohe Karten (Betreiberentscheidung 2026-10-04): die Kartenfläche trägt nur noch, was jedes Angebot
-  // trägt — Identität, Ablauf, Preis, Aktion. Handlungshinweis, Hinweis zur Art der Lieferadresse, Abholschluss,
-  // Zuschlagszeile, Merkmalsmarken und der zweite Betrag stehen im Detailbereich (DetailsPanel oben), mit
-  // denselben Helfern und demselben Wortlaut. Ein Angebot mit mehr Hinweisen ist damit nicht höher als sein Nachbar.
+  // trägt — Identität, Ablauf, Preis, Aktion. Handlungshinweis, Hinweis zur Art der Lieferadresse, Zuschlagszeile
+  // netto/brutto, Merkmalsmarken und der zweite Betrag stehen im Detailbereich (DetailsPanel oben), mit denselben
+  // Helfern und demselben Wortlaut. Ausnahme seit Konzept A / FE-2 (2026-11-20): eine Abholung heute zeigt ihren
+  // belegten Buchungsschluss im Startknoten und den Zuschlag als Satz am Preis — diese Karte ist eine Zeile höher.
   //
   // Netto/Brutto (Betreiberentscheidung 2026-10-02): der Kartenpreis im gewählten Modus. Gewählt wird nur
   // zwischen `netPrice` und `finalPrice`; fehlt einer, steht „—" statt eines anderen Betrags. Beide Beträge
@@ -598,12 +622,18 @@ function OfferCardBase({
   // `aria-controls` zeigte bei allen auf denselben Bereich.
   const detailsId = `offer-details-${offerKey(t) ?? "unbekannt"}`;
   const etaLabel    = fmtDelivery(t) || "Auf Anfrage";
-  const start = buildStart(t, abgabeTag);
+  const start = buildStart(t, abgabeTag, { todayISO: heuteTag, expired: abgelaufen });
+  const startZusatz = start.secondary.length > 0 ? <span className="offer-tl-sub"><Werte>{start.secondary[0]}</Werte></span> : null;
   const earlyNote = earlyDeliveryNote(t);
   const end   = buildEnd(t, etaLabel, earlyNote);
   // null, wenn das Backend die Übergabeart nicht klassifiziert hat — dann wird
   // keine behauptet.
-  const handoverText = handoverLabel(handoverMode(t));
+  const uebergabe = handoverMode(t);
+  const handoverText = handoverLabel(uebergabe);
+  // FE-2: der im Kartenpreis enthaltene Zuschlag einer Abholung heute — aus den Serverfeldern, im Modus des Preises.
+  const preisHinweis = sameDayPriceNote(t, vatMode);
+  // Konzept A: die Leistungszeile unten auf der Karte — nur belegte Serverfelder (utils/serviceDetailsView.mjs).
+  const dienste = offerServiceLine(t);
 
   // ─── VORLÄUFIGER PREIS ────────────────────────────────────────────────────────────
   // Die eine Hinweismarke, die auf der Kartenfläche bleibt: sie betrifft den Hauptpreis.
@@ -642,6 +672,11 @@ function OfferCardBase({
     e.stopPropagation();
     if (!unavailable) onBook(t);
   };
+  // §5.3: dieselbe Abfrage erneut — gewählt oder gebucht wird damit nichts.
+  const handleRefresh = (e) => {
+    e.stopPropagation();
+    if (typeof onRefresh === "function") onRefresh();
+  };
 
   // Temporaerer Vergleichsmodus: `null`, solange der Server keinen Debugblock
   // beilegt — dann entsteht weder eine Zusatzklasse noch eine Kennzeichnung, und
@@ -653,13 +688,16 @@ function OfferCardBase({
   // ConfidaraExpress-Blau, gesperrt grau mit dem Grund (Feinschliff 2026-10).
   // Den ausgewählten Zustand zeigt die Karte selbst (Kante, Fläche).
   const ctaClass = unavailable ? "offer-cta-btn--disabled" : "offer-cta-btn--primary";
+  // §5.3: ist die Aussage abgelaufen und kann die Seite neu abfragen, steht an der Stelle des Knopfs „Angebote
+  // aktualisieren" — sonst der gesperrte Knopf mit dem Grund.
+  const mitAktualisieren = abgelaufen && typeof onRefresh === "function";
 
   // Kein `aria-disabled` an der Karte: der Zustand vererbt sich auf jedes bedienbare Kind, und „Details anzeigen"
   // einer Preisauskunft hieße für Screenreader gesperrt, obwohl Profil, Laufzeit und Preis dort lesbar sind. Gesperrt
   // ist allein der CTA (`disabled`, Grund im `aria-label`).
   return (
     <div
-      className={`offer-card${selected ? " offer-card--selected" : ""}${unavailable ? " offer-card--unavailable" : ""}${offerDebugCardClass(t)}`}
+      className={`offer-card${selected ? " offer-card--selected" : ""}${unavailable ? " offer-card--unavailable" : ""}${abgelaufen ? " offer-card--expired" : ""}${offerDebugCardClass(t)}`}
       onClick={handleSelect}
     >
       <div className="offer-card-inner">
@@ -693,50 +731,52 @@ function OfferCardBase({
             </div>
           )}
           <div className="offer-zone-1-main">
-            {/* Die Auszeichnung („Günstigste", „Schnellste") steht direkt neben dem
-                Carrier (Feinschliff 2026-10). Vorher hielt ein eigener Slot über dem
-                Preis 30 px Höhe frei — auch auf jeder Karte ohne Auszeichnung. Im selben
-                Platz steht „Vorläufiger Preis" (2026-10-04, vorher in der Merkmalszeile). */}
+            {/* Konzept A (Betreiberentscheidung E6, Masteranalyse Angebotskarten 2026-11-20): Carrier und Tarif
+                bilden EINEN Titel — der Carrier kräftig, der Servicename daneben; reicht die Breite nicht, bricht der
+                Servicename unter den Carrier. Die Laufzeit ist keine Überschrift mehr, sondern die Nebenzeile über der
+                Zeitleiste (Zone 2). Die Auszeichnung steht über dem Preis (Zone 3); neben dem Titel bleibt allein
+                „Vorläufiger Preis" (2026-10-04) — er betrifft den Preis, ist aber keine Auszeichnung. */}
             <div className="offer-carrier-row">
-              <div className="offer-carrier-name">{carrierName}</div>
-              {badge && (
-                <div className={`offer-badge offer-badge-${badge.color}`}>{badge.label}</div>
-              )}
+              <div className="offer-title">
+                <span className="offer-carrier-name">{carrierName}</span>{" "}
+                {/* Servicename. Eine darin BEREITS sichtbare frühe Uhrzeit („Express 9:00")
+                    erscheint rein optisch grün (Betreiberentscheidung 2026-10-03,
+                    utils/serviceNameTimeView.mjs). Der Text bleibt Zeichen für Zeichen der
+                    Servername — keine Zustellzeit, keine Zusage, keine Filterwirkung. */}
+                <span className="offer-service-type">
+                  {serviceNameSegments(publicServiceName(t)).map((s, i) => (s.time
+                    ? <span key={i} className="offer-service-time">{s.text}</span>
+                    : <React.Fragment key={i}>{s.text}</React.Fragment>))}
+                </span>
+              </div>
               {indicativePrice && (
                 <div className="offer-price-status">{INDICATIVE_PRICE_LABEL}</div>
               )}
             </div>
-            <div className="offer-eta">{etaLabel}</div>
-            {/* Servicename. Eine darin BEREITS sichtbare frühe Uhrzeit („Express 9:00")
-                erscheint rein optisch grün (Betreiberentscheidung 2026-10-03,
-                utils/serviceNameTimeView.mjs). Der Text bleibt Zeichen für Zeichen der
-                Servername — keine Zustellzeit, keine Zusage, keine Filterwirkung. */}
-            <div className="offer-service-type">
-              {serviceNameSegments(publicServiceName(t)).map((s, i) => (s.time
-                ? <span key={i} className="offer-service-time">{s.text}</span>
-                : <React.Fragment key={i}>{s.text}</React.Fragment>))}
-            </div>
+            {/* Übergabeart — die Antwort auf „muss ich das wegbringen oder wird es geholt?". Konzept A: als
+                Kennzeichen direkt unter dem Titel, Symbol UND Text; das Symbol ist Schmuck (`aria-hidden`), die
+                Aussage trägt der Text. Sie steht auf JEDEM Angebot, auch auf einem gerade nicht auswählbaren — sie
+                ist eine Eigenschaft des PRODUKTS, nicht der Buchbarkeit (vorher verschwand sie mit der Hinweiszeile).
+                Providerneutral — allein `serviceType`; ohne Klassifizierung wird keine Übergabeart behauptet. */}
+            {handoverText && (
+              <p className={`offer-handover offer-handover--${uebergabe}`}>
+                <span className="offer-handover-icon" aria-hidden="true">
+                  <Icon n={uebergabe === HANDOVER_DROPOFF ? "mapPin" : "truck"} s={12} c="currentColor" />
+                </span>
+                <span className="offer-handover-text">{handoverText}</span>
+              </p>
+            )}
           </div>
         </div>
 
         {/* ── Zone 2: Versandablauf / Timeline ── */}
         <div className="offer-zone-2">
-          {/* Übergabeart — die Antwort auf „muss ich das wegbringen oder wird es
-              geholt?". Sie steht als Kopfzeile der Prozessdarstellung: sie
-              beschreibt genau deren linkes Ende. Neben dem Preis oder am Carrier
-              wäre sie eine Behauptung ohne Zusammenhang. Reine Typografie, kein
-              Badge — sie soll schnell lesbar sein, aber Preis und Hauptaktion
-              nicht Konkurrenz machen. Normale Schreibweise, keine Versalien.
-
-              Sie steht bewusst VOR der Verzweigung und damit auch auf einem
-              Angebot, das gerade nicht auswählbar ist. Vorher ersetzte die
-              Hinweiszeile die ganze Zone — mit ihr verschwand die Übergabeart,
-              und eine Paketshopabgabe war von einer Türabholung nicht mehr zu
-              unterscheiden. Das ist eine Eigenschaft des PRODUKTS und nicht der
-              Buchbarkeit: sie gilt unverändert weiter, auch wenn das Angebot nur
-              eine Preisauskunft ist. Providerneutral — die Zeile hängt allein an
-              `serviceType`, nicht an der Einkaufsquelle. */}
-          {handoverText && <p className="offer-handover">{handoverText}</p>}
+          {/* Konzept A: die Laufzeit des Anbieters als Nebenzeile über dem Ablauf — eine Dauer, kein Termin. Den
+              Termin trägt der Ablauf darunter. `.offer-eta` hält genau den Laufzeitwert (wie bisher). */}
+          <p className="offer-transit">
+            <span className="offer-transit-label">Laufzeit</span>{" "}
+            <span className="offer-eta">{etaLabel}</span>
+          </p>
           {/* Die Timeline steht auf JEDEM Angebot.
               Vorher ersetzte eine Hinweiszeile die ganze Zone, sobald das Angebot
               nicht buchbar war — und mit ihr verschwanden Uebergabeart, Laufzeit
@@ -754,14 +794,18 @@ function OfferCardBase({
                 <span className="offer-tl-dot offer-tl-dot--end" />
               </div>
               <div className="offer-tl-labels">
-                <div className="offer-tl-node offer-tl-node--start">
+                <div className={`offer-tl-node offer-tl-node--start${uebergabe === HANDOVER_PICKUP ? " offer-tl-node--pickup" : ""}`}>
                   <span className="offer-tl-title">{start.title}</span>
                   {start.primary && <span className="offer-tl-primary"><Werte>{start.primary}</Werte></span>}
-                  {/* Genau EINE Unterzeile (2026-10-04) — die erste ist die wichtigste: ein
-                      verschobener Tag („frühester Abholtag") vor der Zeit. Die Zeit steht dann
-                      vollständig unter „Termin & Abholung" (Abholung, Zeitfenster); die Karte
-                      wird davon nicht höher. */}
-                  {start.secondary.length > 0 && <span className="offer-tl-sub"><Werte>{start.secondary[0]}</Werte></span>}
+                  {/* Eine Unterzeile (2026-10-04): ein verschobener Tag („frühester Abholtag") vor der Zeit; die Zeit steht
+                      vollständig unter „Termin & Abholung". Konzept A (Masteranalyse F.3, Entscheidung E6): bei einer
+                      Abholung heute folgt darunter der belegte Buchungsschluss („buchbar bis 16:45 Uhr", FE-2) — die
+                      Bereitzeit bleibt dabei stehen, die Frist verdrängt sie nicht. Das Raster kennt genau drei gemeinsame
+                      Zeilen (Titel · Datum · Zusatz): beide Zeilen stehen deshalb in EINEM Element der Zusatzzeile, sonst
+                      lägen sie in derselben Zelle übereinander. */}
+                  {start.deadline
+                    ? <span className="offer-tl-subs">{startZusatz}<span className="offer-tl-sub offer-tl-deadline"><Werte>{start.deadline}</Werte></span></span>
+                    : startZusatz}
                 </div>
                 <div className="offer-tl-node offer-tl-node--end">
                   <span className="offer-tl-title">{end.title}</span>
@@ -788,6 +832,11 @@ function OfferCardBase({
 
         {/* ── Zone 3: Preis & Aktion ── */}
         <div className="offer-zone-3">
+          {/* Konzept A: die Auszeichnung („Günstigste", „Schnellste") steht über dem Preis, auf den sie sich
+              bezieht. Eine abgelaufene Karte trägt keine (OffersList reicht dann auch keine herein). */}
+          {badge && !abgelaufen && (
+            <div className={`offer-badge offer-badge-${badge.color}`}>{badge.label}</div>
+          )}
           <div className="offer-price-block">
             {t.netPrice != null ? (
               <>
@@ -805,7 +854,10 @@ function OfferCardBase({
                 </div>
                 {/* Kein zweiter Betrag mehr unter dem Preis (2026-10-04): Netto, MwSt. und Brutto
                     stehen in der Preisaufschlüsselung, der Zuschlag einer Abholung am selben Tag dort
-                    mit beiden Beträgen. Der Kartenpreis enthält ihn — addiert wird nichts. */}
+                    mit beiden Beträgen. Der Kartenpreis enthält ihn — addiert wird nichts.
+                    FE-2 (2026-11-20): unter dem Preis steht, welcher Anteil davon die Abholung heute ist — der
+                    Serverbetrag im Modus des Preises, kein zweiter Gesamtbetrag. */}
+                {preisHinweis && <p className="offer-price-hint">{preisHinweis}</p>}
               </>
             ) : (
               <div className="offer-price-na">Preis auf Anfrage</div>
@@ -816,32 +868,57 @@ function OfferCardBase({
               stand derselbe Satz dann zweimal untereinander, und die Karte wurde
               25 px hoeher als eine buchbare daneben. Beides gemessen, beides
               unnoetig: der Knopf sagt es bereits. */}
-          <button
-            className={`offer-cta-btn ${ctaClass}`}
-            onClick={handleBook}
-            type="button"
-            disabled={unavailable}
-            aria-label={
-              unavailable ? `${carrierName}: ${unavailableText}`
-              : `${carrierName} Angebot auswählen`
-            }
-          >
-            {unavailable
-              ? unavailableText
-              : "Angebot auswählen"}
-          </button>
+          {/* Abgelaufen (§5.3): an der Stelle des Knopfs „Angebote aktualisieren" — dieselbe Abfrage erneut. Gewählt
+              oder gebucht wird von hier aus nichts; ein Datum wird nicht verschoben. Ohne Rückruf bleibt der gesperrte
+              Knopf mit dem Grund „Bitte Angebote aktualisieren". */}
+          {mitAktualisieren ? (
+            <button
+              className="offer-cta-btn offer-cta-btn--refresh"
+              onClick={handleRefresh}
+              type="button"
+              aria-label={`${carrierName}: ${OFFER_REFRESH_TEXT.status}`}
+            >
+              {OFFER_REFRESH_TEXT.action}
+            </button>
+          ) : (
+            <button
+              className={`offer-cta-btn ${ctaClass}`}
+              onClick={handleBook}
+              type="button"
+              disabled={unavailable}
+              aria-label={
+                unavailable ? `${carrierName}: ${unavailableText}`
+                : `${carrierName} Angebot auswählen`
+              }
+            >
+              {unavailable
+                ? unavailableText
+                : "Angebot auswählen"}
+            </button>
+          )}
           {/* Unter der Aktion steht nichts mehr (2026-10-04): der Handlungshinweis zu einem
               Sperrgrund, der Hinweis zur Art der Lieferadresse und der Abholschluss einer
               Abholung am selben Tag stehen im Detailbereich. Der Grund selbst steht weiter
               genau einmal — im Knopf. */}
         </div>
 
-        {/* ── Zone 4: Folgeaktionen ──
+        {/* ── Zone 4: Leistungen und Folgeaktionen ──
             Die Textaktionen „Details anzeigen" und — nur wo das Angebot es kann — der
-            Paketshop-Einstieg (Feinschliff 2026-10). Die Merkmalsmarken links daneben
-            (Sendungsverfolgung, Drucker, Versandlabel) gibt es seit 2026-10-04 nicht mehr:
-            sie stehen in den Details, und die Zeile ist auf jeder Karte gleich. */}
+            Paketshop-Einstieg (Feinschliff 2026-10). Links daneben seit Konzept A (E6, 2026-11-20) wieder eine
+            ruhige Leistungszeile — nur, was der Server belegt (utils/serviceDetailsView.mjs, offerServiceLine):
+            „zubuchbar" heißt zubuchbar, nicht inklusive. Sie steht in derselben Zeile wie die Aktionen; die Zeile
+            ist damit auf jeder Karte gleich hoch, solange beide nebeneinander passen. */}
         <div className="offer-zone-4">
+          {dienste.length > 0 && (
+            <ul className="offer-services" aria-label="Leistungen">
+              {dienste.map((d) => (
+                <li key={d.id} className="offer-service">
+                  <span className="offer-service-check" aria-hidden="true"><Icon n="check" s={12} c="currentColor" /></span>
+                  {d.label}
+                </li>
+              ))}
+            </ul>
+          )}
           {firmenpflicht.party && (
             <div className="offer-business" onClick={(e) => e.stopPropagation()}>
               <p className="offer-business-note">{OFFER_BUSINESS_PARTY_TEXT[firmenpflicht.party]}</p>

@@ -34,26 +34,29 @@ export function ParcelShopFinderTrigger({ tariff, senderPrefill, className = "",
   // Ohne Provider oder ohne Paketshopfähigkeit: gar nichts rendern.
   if (!finder || !offerSupportsAccessPointSearch(tariff)) return null;
 
-  // Sprechender Name für Screenreader: „Paketshops für UPS Standardversand
-  // suchen“ statt viermal identisch „Paketshops suchen“ auf einer Seite.
+  // Sprechender Name für Screenreader: „Paketshops suchen für UPS Standardversand“
+  // statt viermal identisch „Paketshops suchen“ auf einer Seite.
+  // Restprüfung 2026-11-21 (axe `label-content-name-mismatch`, WCAG 2.5.3 „Label in Name“): bis hierher ersetzte ein
+  // `aria-label` („Paketshops für UPS … suchen“) den sichtbaren Text, ohne ihn zusammenhängend zu enthalten — wer per
+  // Sprachsteuerung „Paketshops suchen“ sagt, traf den Knopf nicht. Jetzt gibt es kein `aria-label` mehr: der Name
+  // entsteht aus dem Inhalt, beginnt mit dem sichtbaren Text und trägt Angebot und Shopadresse als nur vorgelesenen
+  // Zusatz (`.sr-only`) dahinter.
   const carrier = publicCarrierDisplay(tariff).name;
   const service = publicServiceName(tariff);
   const gewaehlt = typeof finder.selectedShopFor === "function" ? finder.selectedShopFor(tariff) : null;
   const angebot = [carrier, service].filter(Boolean).join(" ");
-  const shopText = gewaehlt
-    ? [gewaehlt.name, [gewaehlt.street, gewaehlt.houseNumber].filter(Boolean).join(" "),
+  const adresse = gewaehlt
+    ? [[gewaehlt.street, gewaehlt.houseNumber].filter(Boolean).join(" "),
        [gewaehlt.postcode, gewaehlt.city].filter(Boolean).join(" ")].filter(Boolean).join(", ")
     : "";
-  const beschriftung = gewaehlt
-    ? `Gewählter Paketshop${angebot ? ` für ${angebot}` : ""}: ${shopText} – ändern`
-    : ["Paketshops für", carrier, service, "suchen"].filter(Boolean).join(" ");
+  const shopText = gewaehlt ? [gewaehlt.name, adresse].filter(Boolean).join(", ") : "";
+  const nurVorgelesen = (text) => (text ? <span className="sr-only">{text}</span> : null);
 
   return (
     <button
       type="button"
       ref={knopfRef}
       className={`ps-trigger${gewaehlt ? " ps-trigger--chosen" : ""}${className ? ` ${className}` : ""}`}
-      aria-label={beschriftung}
       onClick={(e) => {
         // Die Angebotskarte selbst ist klickbar (Angebot auswählen) — dieser
         // Klick darf nicht zusätzlich das Angebot auswählen.
@@ -61,13 +64,19 @@ export function ParcelShopFinderTrigger({ tariff, senderPrefill, className = "",
         finder.openFinder({ tariff, senderPrefill, triggerEl: knopfRef.current });
       }}
     >
+      {/* Der vorgelesene Zusatz ist absolut positioniert und zählt damit als Block: die Namensberechnung setzt davor
+          und danach ein Leerzeichen. Er beginnt deshalb nie mit einem Satzzeichen, das am Wort davor hängen müsste
+          (sonst „GmbH , Am …“) — Klammer, „für“ und Gedankenstrich lesen sich mit Leerzeichen richtig. */}
       {!gewaehlt && <span>Paketshops suchen</span>}
+      {!gewaehlt && nurVorgelesen(angebot ? `für ${angebot}` : "")}
       {gewaehlt && !showChosen && <span>Paketshop ändern</span>}
+      {gewaehlt && !showChosen && nurVorgelesen(`– gewählt: ${shopText}${angebot ? ` (${angebot})` : ""}`)}
       {gewaehlt && showChosen && (
         <>
           <span className="ps-trigger-chosen" title={shopText}>
             <span className="ps-trigger-chosen-label">Gewählt:</span> {gewaehlt.name}
           </span>
+          {nurVorgelesen(`${adresse ? `(${adresse})` : ""}${angebot ? ` für ${angebot}` : ""} –`)}
           <span className="ps-trigger-change">ändern</span>
         </>
       )}

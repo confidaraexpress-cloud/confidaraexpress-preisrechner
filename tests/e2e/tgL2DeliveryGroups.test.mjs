@@ -286,10 +286,14 @@ test("S — Shopabgabe mit Prognose: der Startknoten nennt den Abgabetag, die De
   await setup(page, { tariffs: [t124, tOhne] });
   await zuDenAngeboten(page);
   const start = karteVon(page, t124).locator(".offer-tl-node--start");
-  assert.equal(norm(await start.locator(".offer-tl-title").textContent()), "Shopabgabe");
-  assert.match(norm(await start.locator(".offer-tl-primary").textContent()), /^ab (Mo|Di|Mi|Do|Fr)\., \d{2}\.\d{2}\.$/);
-  // Ohne Prognose kein erfundener Tag.
-  assert.equal(await karteVon(page, tOhne).locator(".offer-tl-node--start .offer-tl-primary").count(), 0);
+  // Konzept A / FE-6 (2026-11-20): „Abgabe ab" mit dem Versandtag — für jede Abgabe, mit oder ohne Prognose.
+  assert.equal(norm(await start.locator(".offer-tl-title").textContent()), "Abgabe ab");
+  const abgabetag = norm(await start.locator(".offer-tl-primary").textContent());
+  assert.match(abgabetag, /^(heute, )?(Mo|Di|Mi|Do|Fr)\., \d{2}\.\d{2}\.$/);
+  // Ohne Prognose derselbe Versandtag — kein anderer, kein erfundener; und kein Zustelltag.
+  const ohne = karteVon(page, tOhne);
+  assert.equal(norm(await ohne.locator(".offer-tl-node--start .offer-tl-primary").textContent()), abgabetag);
+  assert.doesNotMatch(norm(await ohne.locator(".offer-tl-node--end").textContent()), /\d{2}\.\d{2}\./, "ohne Prognose ein Zustelltag");
   const ende = karteVon(page, t124).locator(".offer-tl-node--end");
   assert.equal(norm(await ende.locator(".offer-tl-title").textContent()), "Voraussichtliche Zustellung");
   await karteVon(page, t124).locator("button.offer-details-link").click();

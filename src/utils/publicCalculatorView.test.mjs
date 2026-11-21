@@ -223,3 +223,40 @@ test("Paket C — der öffentliche Rechner nennt bei einer gesperrten Route das 
   assert.equal(quoteOutcomeFromResponse(422, { code: "ROUTE_NOT_SUPPORTED" }).message, OUTCOME_TEXT[OUTCOME.ROUTE].message);
   assert.equal(OUTCOME_TEXT[OUTCOME.ROUTE].title, "Versandziel nicht verfügbar");
 });
+
+test("(13) Masteranalyse Angebotskarten 2026-11-20: „heute“ aus dem Datum, Buchungsschluss und Zuschlagssatz nur aus Serverfeldern, Abgabe ab dem Versandtag", async () => {
+  const { businessTodayISO } = await import("./businessDate.mjs");
+  const heute = businessTodayISO();
+  const [y, m, d] = heute.split("-").map(Number);
+  const morgenDatum = new Date(Date.UTC(y, m - 1, d + 1));
+  const morgen = morgenDatum.toISOString().slice(0, 10);
+  // §5.1: das Datum entscheidet — ein Kennzeichen „heute“ des Anbieters ändert einen anderen Tag nicht (P0 der Analyse).
+  assert.equal(offerPickupView({ serviceType: "pickup", pickupDate: morgen, pickupToday: true }).title, "Abholung");
+  // Restprüfung 2026-11-21: ein heutiger Tag allein ist keine Abholung heute — der Server muss sie auch melden. Um
+  // 18:30 Uhr mit abgelaufenem Fenster 09:00–17:00 sagt er `pickupToday: false`.
+  assert.equal(offerPickupView({ serviceType: "pickup", pickupDate: heute, pickupToday: true }).title, "Abholung heute");
+  assert.equal(offerPickupView({ serviceType: "pickup", pickupDate: heute, pickupToday: false }).title, "Abholung");
+  assert.equal(offerPickupView({ serviceType: "pickup", pickupDate: heute }).title, "Abholung");
+  // Nach Ablauf der Aussage nie „heute“; der Tag der Serverzeit gilt vor der Geräteuhr.
+  assert.equal(offerPickupView({ serviceType: "pickup", pickupDate: heute, pickupToday: true }, { expired: true }).title, "Abholung");
+  assert.equal(offerPickupView({ serviceType: "pickup", pickupDate: heute, pickupToday: true }, { todayISO: morgen }).title, "Abholung");
+  assert.equal(offerPickupView({ serviceType: "pickup", pickupDate: morgen, pickupToday: true }, { todayISO: morgen }).title, "Abholung heute",
+    "Geräteuhr einen Tag zurück: der Servertag entscheidet");
+  assert.equal(offerPickupView({ serviceType: "pickup" }).title, "Abholung");
+  // E1: „buchbar bis“ nur mit belegter Uhrzeit — und nur an einer Abholung.
+  assert.equal(offerPickupView({ serviceType: "pickup", pickupDate: heute, pickupToday: true, pickupTodayUntil: "16:45" }).deadline,
+    "buchbar bis 16:45 Uhr");
+  assert.equal(offerPickupView({ serviceType: "pickup", pickupDate: heute, pickupToday: true }).deadline, null);
+  assert.equal(offerPickupView({ serviceType: "dropoff", pickupToday: true, pickupTodayUntil: "16:45" }).deadline, null);
+  // FE-6: eine Abgabe ohne eigenen Tag nennt den Versandtag der Anfrage; ohne ihn bleibt der Tag leer.
+  assert.equal(offerPickupView({ serviceType: "dropoff" }, { shippingDate: "2026-11-23" }).day, shortDay("2026-11-23"));
+  assert.equal(offerPickupView({ serviceType: "dropoff" }).day, null);
+  assert.equal(offerPickupView({ serviceType: "pickup" }, { shippingDate: "2026-11-23" }).day, null, "eine Abholung erbt keinen Tag");
+  // FE-2: der im Nettopreis enthaltene Zuschlag — netto wie der Preis; ohne beide Serverbeträge kein Satz.
+  const sd = { serviceType: "pickup", pickupDate: heute, pickupToday: true, pickupTodayUntil: "16:45",
+               sameDaySurchargeNet: 2.1, sameDaySurchargeGross: 2.5 };
+  assert.equal(offerPriceView({ priceStatus: "exact", netPrice: 10, finalPrice: 11.9, ...sd }).sameDayNote,
+    `inkl. 2,10${NBSP}€ für Abholung heute`);
+  assert.equal(offerPriceView({ priceStatus: "exact", netPrice: 10, finalPrice: 11.9, ...sd, sameDaySurchargeGross: null }).sameDayNote, null);
+  assert.equal(offerPriceView({ priceStatus: "exact", netPrice: 10, finalPrice: 11.9 }).sameDayNote, null);
+});

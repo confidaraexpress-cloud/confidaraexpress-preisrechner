@@ -8,7 +8,7 @@
 //   A  DE→DE, Versandart Express  → Anfrage „express"; JUMiNGO- und Transglobal-Expressangebote mit ihren Namen
 //   B  DE→FR, Alle Versandarten   → drei Optionen ohne „Economy" (Gesamtauftrag F); Anfrage „all"; JUMiNGO
 //                                    „Economy Express", TG „Economy Select"/„Economy Express" erscheinen darunter
-//   C  Nur Abgabe                  → Anfrage „dropoff"; JUMiNGO-Shoptarif und TG 124 „PaketShop" als Shopabgabe
+//   C  Paketshop                   → Anfrage „dropoff"; JUMiNGO-Shoptarif und TG 124 „PaketShop" als Shopabgabe
 //   D  Späteste Lieferzeit (TG-L2) → Gruppen „Passend" / „Voraussichtlich passend" / „Frist nicht bestätigt",
 //                                    „Zu spät" eingeklappt und aufklappbar; DHL 12:00 passt zu 12:00, nicht zu 10:00;
 //                                    ohne Filter keine Gruppen; kein neuer Preisrequest
@@ -226,7 +226,7 @@ test("B — DE→FR, Alle Versandarten: keine Economy-Option, JUMiNGO 3144 und T
   await page.close();
 });
 
-test("C — Nur Abgabe: Anfrage „dropoff“, JUMiNGO-Shoptarif und TG 124 als Shopabgabe", async () => {
+test("C — Paketshop: Anfrage „dropoff“, JUMiNGO-Shoptarif und TG 124 als Shopabgabe", async () => {
   const { page, fehler } = await neueSeite();
   const tarife = [
     J(3205, DPD, "Standard Paketshop", "standard", 6, { serviceType: "dropoff" }),
@@ -234,12 +234,14 @@ test("C — Nur Abgabe: Anfrage „dropoff“, JUMiNGO-Shoptarif und TG 124 als 
   ];
   const p = await setup(page, { tariffs: tarife, availableShippingModes: ["standard"], publicCarriers: [DPD],
     fromCountryCode: "DE", toCountryCode: "DE" });
-  await zuDenAngeboten(page, { filter: [["Abholung / Shopabgabe", "Nur Abgabe"]] });
+  // E4 (2026-11-20): ein Filter „Abholung / Paketshop" mit „Alle / Abholung / Paketshop" in allen Ansichten.
+  await zuDenAngeboten(page, { filter: [["Abholung / Paketshop", "Paketshop"]] });
   assert.equal(p.bodies[0].serviceFilter, "dropoff", "der Abgabefilter wurde nicht gesendet");
   assert.deepEqual((await kartenIds(page)).sort(), tarife.map((t) => t.offerId).sort());
   const uebergaben = (await page.locator(".offer-card .offer-handover").allTextContents()).map(norm);
   assert.equal(uebergaben.length, 2);
   assert.equal(new Set(uebergaben).size, 1, `verschiedene Übergabearten: ${uebergaben.join(" / ")}`);
+  assert.equal(uebergaben[0], "Abgabe im Paketshop");
   assert.deepEqual(fehler, []);
   await page.close();
 });

@@ -308,9 +308,17 @@ export function emptyScope(scope) {
     // genau einmal aufgelöst und ist danach `null`. Additiv ohne Versionssprung.
     calculatorIntent: null,
     calculatedAt: null,
+    // Serverzeit der Angebotsantwort (ISO, Masteranalyse Angebotskarten 2026-11-20, §5.3) — mit `calculatedAt` die Uhr
+    // der Angebotsliste nach Zurück-Navigation und Wiederherstellung. Additiv ohne Versionssprung (alt → null).
+    quotedAt: null,
     scrollY: 0,
     updatedAt: null,
   };
+}
+
+// Ein Zeitpunkt als ISO-Zeichenkette (höchstens 40 Zeichen, vom Browser lesbar) — sonst null. Unverändert übernommen.
+function isoInstantOrNull(v) {
+  return typeof v === "string" && v.length > 0 && v.length <= 40 && Number.isFinite(Date.parse(v)) ? v : null;
 }
 
 export function normalizeScope(raw, scope) {
@@ -340,6 +348,7 @@ export function normalizeScope(raw, scope) {
     inventoryContext: normalizeInventoryContext(src.inventoryContext),
     calculatorIntent: scope === "shipment" ? normalizeCalculatorIntent(src.calculatorIntent) : null,
     calculatedAt: nonNegInt(src.calculatedAt),
+    quotedAt: isoInstantOrNull(src.quotedAt),
     scrollY: nonNegInt(src.scrollY) ?? 0,
     updatedAt: nonNegInt(src.updatedAt),
   };
@@ -501,6 +510,7 @@ export function dropOffers(scopeState) {
     ceShipmentId: null,
     customs: null,
     calculatedAt: null,
+    quotedAt: null,
     scrollY: 0,
   };
 }
@@ -553,7 +563,7 @@ export function flowFingerprint(flow) {
   if (!flow) return "";
   const ohneZeit = (o) => {
     if (!o) return null;
-    const { updatedAt, calculatedAt, ...rest } = o;      // eslint-disable-line no-unused-vars
+    const { updatedAt, calculatedAt, quotedAt, ...rest } = o;      // eslint-disable-line no-unused-vars
     return rest;
   };
   try {

@@ -226,9 +226,11 @@ test("3 — der Einstieg ist ein echter Button mit sprechendem Namen und Tastatu
   assert.equal(await ups.getAttribute("type"), "button");
   // Vier gleichlautende „Paketshops suchen“ auf einer Seite wären für einen
   // Screenreader nicht unterscheidbar — der Name nennt Carrier und Service.
-  const label = await ups.getAttribute("aria-label");
-  assert.match(label, /UPS/);
-  assert.match(label, /Standardversand/);
+  // Restprüfung 2026-11-21 (axe label-content-name-mismatch, WCAG 2.5.3): der Name beginnt mit dem sichtbaren Text —
+  // kein aria-label, das ihn ersetzt; Carrier und Service folgen nur vorgelesen.
+  assert.equal(await ups.getAttribute("aria-label"), null);
+  assert.equal(await page.getByRole("button", { name: /^Paketshops suchen für UPS Standardversand$/ }).count(), 1);
+  assert.equal(await ups.evaluate((el) => { const k = el.cloneNode(true); k.querySelectorAll(".sr-only").forEach((n) => n.remove()); return k.textContent.replace(/\s+/g, " ").trim(); }), "Paketshops suchen");
 
   // Per Tastatur erreichbar und auslösbar.
   await ups.focus();

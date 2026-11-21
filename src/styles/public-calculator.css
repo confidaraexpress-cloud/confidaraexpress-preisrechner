@@ -1708,6 +1708,25 @@
   color: var(--ce-color-text-muted);
 }
 
+/* FE-2 (Masteranalyse Angebotskarten 2026-11-20): der belegte Buchungsschluss einer Abholung heute — wie im Portal
+   in brand-ink und kräftig, direkt unter dem Abholtag. */
+.pc-fact-deadline {
+  color: var(--ce-color-brand-ink);
+  font-weight: 600;
+}
+
+/* FE-2: der im Nettopreis enthaltene Zuschlag der Abholung heute, klein unter „zzgl. MwSt.". */
+.pc-price-sameday {
+  color: var(--ce-color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+/* §5.3: eine abgelaufene Karte — der Preis tritt zurück, er gilt nicht mehr ohne neue Anfrage. */
+.pc-offer--expired .pc-price-amount {
+  color: var(--ce-color-text-secondary);
+}
+
 .pc-offer-hints {
   grid-area: hints;
   display: grid;

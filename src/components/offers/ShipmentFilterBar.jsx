@@ -4,6 +4,7 @@ import DeliveryTimeSelect from "./DeliveryTimeSelect.jsx";
 import { todayISO, addDaysISO, labelForDate, fmtShortDE } from "../../utils/date";
 import { latestDeliveryFieldValue } from "../../utils/deliveryTimeView.mjs";
 import { publicCarrierChipLabel } from "../../utils/carrierMap";
+import { HANDOVER_FILTER_TITLE } from "../../utils/handoverMode.mjs";
 
 /* ── ShipmentFilterBar ───────────────────────────────────────────────────────
    Die gemeinsame Filterleiste von „Neue Sendung" und Versandkostenrechner:
@@ -136,14 +137,14 @@ export function ShipmentFilterBar({
               >
                 <div className="service-filter-trigger-left">
                   <div>
-                    <div className="service-filter-trigger-title">Abholung / Shopabgabe</div>
+                    <div className="service-filter-trigger-title">{HANDOVER_FILTER_TITLE}</div>
                     <div className="service-filter-trigger-val">{selectedOption.label}</div>
                   </div>
                 </div>
                 <span className={`service-filter-chevron ${serviceFilterOpen ? "open" : ""}`} aria-hidden="true" />
               </button>
               {serviceFilterOpen && (
-                <div className="service-filter-dropdown" role="radiogroup" aria-label="Abholung / Shopabgabe">
+                <div className="service-filter-dropdown" role="radiogroup" aria-label={HANDOVER_FILTER_TITLE}>
                   {SERVICE_OPTIONS.map(opt => (
                     <button
                       key={opt.id}
@@ -224,7 +225,7 @@ export function ShipmentFilterBar({
               {carrierDropdownOpen && (
                 <div className="carrier-dropdown" role="group" aria-label="Versanddienst">
                   {/* Mehrfachauswahl: quadratisches Auswahlfeld; die Einfachauswahl daneben
-                      („Abholung / Shopabgabe", „Versandart") ist im Kundenbereich eine Navy-Wahl
+                      („Abholung / Paketshop", „Versandart") ist im Kundenbereich eine Navy-Wahl
                       mit Haken (`ce-wahl`, reine Darstellung). Bleibt bewusst so — role="checkbox"
                       trägt die Mehrfachauswahl-Semantik; Chip-Key = publicCarrier.id, Label =
                       publicCarrier.name („other" → „Versanddienstleister"). */}

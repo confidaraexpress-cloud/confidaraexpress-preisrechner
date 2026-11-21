@@ -387,14 +387,15 @@
    Virtualisierung; Suche, Auswahl und Screenreader erreichen jede Karte.
    Browser ohne Unterstützung verhalten sich wie bisher.
 
-   Der Platzhalter ist GEMESSEN (2026-10-04, eingeklappt): die dreispaltige
-   Karte (ab 950 px Kartenbreite) misst 190 px — seit die Hinweise in den
-   Details stehen, jede Karte gleich. Die Stufen darunter stehen in den
+   Der Platzhalter ist GEMESSEN (Demo, eingeklappt): die dreispaltige Karte
+   (ab 950 px Kartenbreite) misst meist 197 px. Seit Konzept A (2026-11-20) ist
+   eine Karte mit Buchungsschluss oder Zuschlagssatz eine Zeile höher; der
+   Platzhalter trägt die häufigste Höhe. Die Stufen darunter stehen in den
    Container-Stufen der Kartenbreite. `auto` merkt sich nach dem ersten Rendern
    die echte Höhe. */
 .offer-card {
   content-visibility: auto;
-  contain-intrinsic-size: auto 198px;
+  contain-intrinsic-size: auto 197px;
 }
 /* Rückkehr auf eine gemerkte Scrollposition (NewShipmentPage): bis der Sprung
    sitzt, liegen alle Karten vollständig im Layout — sonst rechnete er mit
@@ -499,23 +500,18 @@
   display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; margin-bottom: 2px;
   min-height: calc(var(--ce-text-badge-size) * var(--ce-text-badge-line) + 6px);
 }
-.offer-carrier-name {
+/* Konzept A (Betreiberentscheidung E6, Masteranalyse Angebotskarten 2026-11-20): Carrier und Tarif sind EIN Titel auf
+   der Kartentitel-Stufe der Skala — im Kundenbereich 18 px, mobil 17 px (Konzept A nannte 19/18 px). Die
+   Abschnittsstufe ist dort 22/20 px und brach „UPS Standardversand“ schon bei 1440 px um (Sichtprüfung 2026-11-20).
+   Der Carrier kräftig, der Servicename in derselben Zeile normal und in Textfarbe statt klein und grau. Reicht die
+   Breite nicht, bricht der Servicename an einer Wortgrenze unter den Carrier. */
+.offer-title {
   min-width: 0;
-  font-family: var(--ce-font-sans); font-size: var(--ce-text-title-card-size); font-weight: 600;
-  line-height: 1.35; color: var(--ce-color-text-primary);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-title-card-size); line-height: 1.3; letter-spacing: -0.01em;
+  color: var(--ce-color-text-primary); overflow-wrap: break-word;
 }
-/* Laufzeit — wieder die markante Zeile des oberen Kartenbereichs (24/600 wie
-   in der Anfangsversion), eine Stufe unter dem Preis (28/600): der Preis
-   bleibt die eine dominante Zahl der Karte. */
-.offer-eta {
-  margin-bottom: 2px;
-  font-family: var(--ce-font-sans); font-size: 24px; font-weight: 600;
-  line-height: 1.2; letter-spacing: -0.02em; color: var(--ce-color-text-primary);
-}
-.offer-service-type {
-  font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-text); line-height: var(--ce-text-body-s-line);
-  color: var(--ce-color-text-secondary); overflow-wrap: break-word;
-}
+.offer-carrier-name { font-weight: 700; }
+.offer-service-type { font-weight: var(--ce-weight-text); }
 /* Eine im Servicenamen bereits sichtbare frühe Uhrzeit („Express 9:00“) —
    rein optisch in derselben Grünfamilie wie das Frühzeit-Hinweisfeld
    (Betreiberentscheidung 2026-10-03). Der Text bleibt vollständig und
@@ -529,21 +525,40 @@
    Kein Puls, kein Farbverlauf, kein Zwischenknoten (Redesign 2026-10). */
 .offer-timeline { display: flex; flex-direction: column; gap: 6px; max-width: 400px; margin: 0 auto; }
 
-/* Übergabeart als kleine Überschrift des Prozessbereichs: Body-Stufe 14/600 in
-   normaler Schreibweise. Den Abstand von 8 px zur Prozesslinie (Feinschliff
-   2026-10, vorher 16) trägt die Zeile selbst — sie steht VOR .offer-timeline
-   (damit sie auch auf einem nur preisauskunftsfähigen Angebot sichtbar bleibt),
-   dessen Gap hier nicht greift. */
-.offer-handover {
+/* Konzept A: die Laufzeit des Anbieters als Nebenzeile über dem Ablauf — Caption-Stufe, der Wert kräftig
+   („Laufzeit 1 Tag"). Den Abstand von 8 px zur Prozesslinie trägt die Zeile selbst; sie steht VOR .offer-timeline. */
+.offer-transit {
   margin: 0 0 8px;
   text-align: center;
-  font-family: var(--ce-font-sans);
-  font-size: var(--ce-text-body-size);
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: normal;
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-caption-size); line-height: 1.3;
+  color: var(--ce-color-text-secondary);
+}
+.offer-eta { font-weight: 600; color: var(--ce-color-text-primary); white-space: nowrap; }
+
+/* Übergabeart als Kennzeichen unter dem Titel (Konzept A): Pille mit Symbolscheibe (22 px), 13/600 in normaler
+   Schreibweise. Abholung in der Markenfamilie (Fläche brand-soft, Text brand-ink, Kante brand-border, Scheibe brand),
+   Shopabgabe neutral (Fläche surface, Text und Scheibe text-primary). Beide tragen Text — die Bedeutung hängt nie an
+   der Farbe; das Symbol ist aria-hidden. Nur vorhandene Tokens, keine neue Bewegung. */
+.offer-handover {
+  display: inline-flex; align-items: center; gap: 6px;
+  max-width: 100%;
+  margin: 6px 0 0; padding: 2px 10px 2px 2px;
+  border: 1px solid var(--ce-color-border-default); border-radius: var(--ce-radius-full);
+  background: var(--ce-color-surface); box-shadow: var(--ce-elevation-1);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-badge-size); font-weight: 600; line-height: 18px; letter-spacing: normal;
   color: var(--ce-color-text-primary);
 }
+.offer-handover--pickup {
+  background: var(--ce-color-brand-soft); border-color: var(--ce-color-brand-border); color: var(--ce-color-brand-ink);
+}
+.offer-handover-icon {
+  flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--ce-color-text-primary); color: var(--ce-color-text-inverse);
+}
+.offer-handover--pickup .offer-handover-icon { background: var(--ce-color-brand); }
+.offer-handover-icon svg { display: block; }
+.offer-handover-text { min-width: 0; overflow-wrap: break-word; }
 .offer-tl-rail { display: flex; align-items: center; padding: 0 3px; }
 /* Die zwei Punkte der Strecke tragen wieder je ihre eigene Farbe (wie in der
    Anfangsversion): Start im ConfidaraExpress-Blau, Ziel im ruhigen Grün der
@@ -599,6 +614,17 @@
 .offer-tl-title   { font-size: var(--ce-text-body-size); font-weight: 600; color: var(--ce-color-text-primary); line-height: 1.3; }
 .offer-tl-primary { font-size: var(--ce-text-body-size); font-weight: var(--ce-weight-text); color: var(--ce-color-text-primary); line-height: 1.3; }
 .offer-tl-sub     { font-size: var(--ce-text-body-s-size); font-weight: var(--ce-weight-text); color: var(--ce-color-text-secondary); line-height: 1.35; }
+/* Konzept A: der belegte Buchungsschluss einer Abholung heute („buchbar bis 16:45 Uhr") in brand-ink, kräftig — er
+   steht in der Zusatzzeile des Startknotens direkt unter dem Tag. Uhrzeiten und Zeitfenster brechen nicht um. */
+.offer-tl-deadline { color: var(--ce-color-brand-ink); font-weight: 600; }
+/* Bereitzeit und Buchungsschluss einer Abholung heute: zwei Zeilen in EINEM Element der Zusatzzeile (das Raster hat
+   genau drei gemeinsame Zeilen; zwei Elemente in Zeile 3 lägen übereinander). */
+.offer-tl-subs { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+/* Der Starttag ist immer EIN Tag; mit „heute, " davor (Konzept A) brach er in der schmalen Startspalte um („heute, Fr.," /
+   „20.11.", gemessen 375 px Viewport: 105 px Text in 104 px Spalte) und machte die Karte eine Zeile höher als ihre
+   Nachbarn. Er bleibt einzeilig; die Zielspalte behält Platz für „Voraussichtliche" (117,5 px). */
+.offer-tl-node--start .offer-tl-primary { white-space: nowrap; }
+.offer-tl-node--pickup .offer-tl-title { color: var(--ce-color-brand-ink); }
 
 /* Zusätzliches Hinweisfeld für besonders frühe Zustellzeiten — „Lieferung bis
    10:30 Uhr“. Es ersetzt die frühere Inline-Färbung IN der Datumszeile
@@ -650,6 +676,7 @@
   .offer-tl-title   { grid-row: 1; }
   .offer-tl-primary { grid-row: 2; }
   .offer-tl-sub,
+  .offer-tl-subs,
   .offer-early-note { grid-row: 3; }
   /* Im Raster steht das Hinweisfeld oben in seiner Zeile am rechten Rand (in der Spalte: align-self: flex-end). */
   .offer-early-note { align-self: start; justify-self: end; }
@@ -741,9 +768,10 @@
 }
 /* Auszeichnung („Günstigste", „Schnellste"): Badge-Stufe, Radius 8 statt
    Pillenform, Farben ausschließlich aus Status-/Markentokens. Sie steht seit
-   dem Feinschliff (2026-10) in Zone 1 direkt neben dem Carriernamen. Dieselbe
-   Form trägt die Preisstatusmarke „Vorläufiger Preis" (.offer-price-status) —
-   eine eigene Klasse, weil sie keine Auszeichnung ist. */
+   Konzept A (2026-11-20) in Zone 3 über dem Preis (vorher seit dem Feinschliff
+   2026-10 in Zone 1 neben dem Carriernamen). Dieselbe Form trägt die
+   Preisstatusmarke „Vorläufiger Preis" (.offer-price-status) — eine eigene
+   Klasse, weil sie keine Auszeichnung ist. */
 .offer-badge,
 .offer-price-status {
   display: inline-flex; align-items: center;
@@ -786,6 +814,14 @@
    (.offer-sameday-surcharge) stehen in der Preisaufschlüsselung des
    Detailbereichs. */
 .offer-price-na { font-size: var(--ce-text-body-size); font-weight: 600; color: var(--ce-color-text-secondary); text-align: right; }
+/* Konzept A: die Auszeichnung steht über dem Preis, auf den sie sich bezieht (rechtsbündig wie der Preis). */
+.offer-zone-3 > .offer-badge { align-self: flex-end; margin-bottom: 6px; }
+/* FE-2: der im Kartenpreis enthaltene Zuschlag der Abholung heute — Caption, Serverbetrag im Modus des Preises. */
+.offer-price-hint {
+  margin: 2px 0 0;
+  font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line);
+  color: var(--ce-color-text-secondary);
+}
 /* Der Preis behält auf einem nicht bestellbaren Angebot Größe und Farbe — er ist
    real, auch wenn das Angebot gerade nicht bestellbar ist. */
 
@@ -818,6 +854,13 @@
   background: var(--ce-color-surface-muted); border-color: var(--ce-color-border-default);
   color: var(--ce-color-text-secondary); cursor: not-allowed;
 }
+/* Abgelaufen (§5.3): „Angebote aktualisieren" ist die Aktion dieser Karte — sekundär in der Markenfarbe, nicht
+   gefüllt: gewählt oder gebucht wird damit nichts. Der Preis tritt zurück; er gilt nicht mehr ohne neue Abfrage. */
+.offer-cta-btn--refresh {
+  background: var(--ce-color-surface); border-color: var(--ce-color-brand-border); color: var(--ce-color-brand-ink);
+}
+.offer-cta-btn--refresh:hover { background: var(--ce-color-brand-soft); }
+.offer-card--expired .offer-price { color: var(--ce-color-text-secondary); }
 /* Unter dem CTA steht seit 2026-10-04 kein Hinweis mehr (.offer-cta-hint):
    Handlungshinweis, Art der Lieferadresse und Abholschluss stehen im
    Detailbereich (.offer-detail-note). Der Grund steht weiter im Knopf. */
@@ -857,6 +900,26 @@
   display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 8px;
 }
 .offer-actions .ps-trigger { margin: 0; }
+/* §5.3: der eine Hinweis über der Liste, wenn Angebote abgelaufen sind — Satz und Aktion in einer Zeile, auf
+   schmalen Breiten untereinander. Die Fläche ist der vorhandene Info-Hinweis (alert-info). */
+.offers-refresh-notice {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px;
+}
+/* Leistungszeile (Konzept A): links in der Folgezeile, ruhiger Sekundärtext mit grünem Häkchen (success-solid). Nur
+   belegte Leistungen (utils/serviceDetailsView.mjs, offerServiceLine); reicht die Breite nicht, brechen die Einträge
+   um, die Aktionen rücken in die nächste Reihe. Das Häkchen ist aria-hidden — die Aussage steht im Text. */
+.offer-services {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px 16px;
+  margin: 0; padding: 0; list-style: none;
+}
+.offer-service {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+.offer-service-check { display: inline-flex; color: var(--ce-color-success-solid); }
+.offer-service-check svg { display: block; }
 
 /* ── Firmenpflicht (Gesamtauftrag B, 2026-10-24) ──
    Links in der Folgezeile, die seit 2026-10-04 frei ist: die Anforderung als ruhiger Sekundärtext und — in
@@ -1102,15 +1165,15 @@
   .offer-zone-3 {
     min-height: calc(28px * 1.15 + 10px + 2 * var(--ce-text-button-size) * var(--ce-text-button-line) + 10px);
   }
-  /* Platzhalter: gemessen 302 px (eingeklappt, 654–910 px Kartenbreite, jede Karte gleich; 2026-11-04). */
-  .offer-card { contain-intrinsic-size: auto 302px; }
+  /* Platzhalter: gemessen 301 px (eingeklappt, 670–678 px Kartenbreite, häufigste Höhe; Konzept A 2026-11-20). */
+  .offer-card { contain-intrinsic-size: auto 301px; }
 }
 
 @container offers (max-width: 639px) {
   /* Karte voll gestapelt: Zone 1 → Zone 2 → Zone 3 → Zone 4 */
   .offer-card { padding: 16px; }
-  /* Platzhalter: gemessen 392 px (eingeklappt, 414–634 px Kartenbreite, jede Karte gleich; 2026-11-04). */
-  .offer-card { contain-intrinsic-size: auto 392px; }
+  /* Platzhalter: gemessen 371 px (eingeklappt, 534 px Kartenbreite, häufigste Höhe; Konzept A 2026-11-20). */
+  .offer-card { contain-intrinsic-size: auto 371px; }
   .offer-card-inner {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "zone-1" "zone-2" "zone-3" "zone-4";
@@ -1147,6 +1210,9 @@
   .offer-price-block { text-align: left; margin-bottom: 10px; }
   .offer-price-line { display: flex; justify-content: flex-start; }
   .offer-cta-btn { width: 100%; min-width: 0; }
+  /* Konzept A: der Titel in der mobilen Kartentitel-Stufe; die Auszeichnung linksbündig über dem Preis wie dieser. */
+  .offer-title { font-size: var(--ce-text-title-card-size-mobile); }
+  .offer-zone-3 > .offer-badge { align-self: flex-start; }
 
   /* Zone 4: die Textaktionen linksbündig unter der Linie; reicht die Breite
      nicht, brechen sie in eine zweite Reihe um statt überzulaufen. */
@@ -1158,8 +1224,8 @@
    zweite Titelzeile frei — eine Karte mit „Zustellung“ ist sonst niedriger als ihre Nachbarn (gleich hohe Karten,
    Betreiberentscheidung 2026-10-04). In rem, damit die Grenze mit der Schrift wächst; mit Abstand zur Messung. */
 @container offers (max-width: 24rem) {
-  /* Platzhalter: gemessen 411 px (eingeklappt, 348–374 px Kartenbreite, jede Karte gleich; 2026-11-04). */
-  .offer-card { contain-intrinsic-size: auto 411px; }
+  /* Platzhalter: gemessen 390 px (eingeklappt, 348–364 px Kartenbreite, häufigste Höhe; Konzept A 2026-11-20). */
+  .offer-card { contain-intrinsic-size: auto 390px; }
   .offer-tl-labels { --offer-tl-titel: calc(2.6 * var(--ce-text-body-s-size)); }
 }
 
@@ -1171,8 +1237,8 @@
    im Kundenbereich auch die Unterzeile des Starts um („bereit ab 09:00 Uhr“, „frühester Abholtag“ bei 13 px, gemessen
    334 px zweizeilig): Die Zusatzzeile hält zwei Zeilen frei (zwei Unterzeilen bzw. das zweizeilige Hinweisfeld). */
 @container offers (max-width: 344px) {
-  /* Platzhalter: gemessen 427 px (eingeklappt, 324–344 px Kartenbreite, jede Karte gleich; 2026-11-04). */
-  .offer-card { contain-intrinsic-size: auto 427px; }
+  /* Platzhalter: gemessen 444 px (eingeklappt, 324 px Kartenbreite, häufigste Höhe; Konzept A 2026-11-20). */
+  .offer-card { contain-intrinsic-size: auto 444px; }
   /* Zwei Zusatzzeilen (je 1,35 × Caption) oder das zweizeilige Hinweisfeld (2 × 16 px + Rahmen und Innenabstand =
      36 px) — das Größere. Premium-Typografie 2.0: mit Caption 14 px brauchen zwei Zeilen 37,8 px; die feste Reserve
      von 36 px (aus der Zeit der 13-px-Caption) machte Karten mit umbrechender Startzeile 1,8 px höher als ihre Nachbarn. */
@@ -1180,12 +1246,22 @@
     --offer-tl-zusatz: max(36px, calc(2.7 * var(--ce-text-caption-size)));
     min-height: calc(2.6 * var(--ce-text-body-s-size) + 4px + var(--offer-tl-zusatz));
   }
+  /* Konzept A (2026-11-20): die Leistungszeile („✓ Sendungsverfolgung") und die Links passen hier nicht nebeneinander
+     (gemessen 390 px Viewport: 71 px Aktionszeile mit Leistung, 43 px ohne). Wie in der schmalen Stufe darunter hält
+     JEDE Karte zwei Reihen frei — gleich hohe Karten (Betreiberentscheidung 2026-10-04), ob mit Leistung oder ohne. */
+  .offer-zone-4 { min-height: calc(11px + 2 * var(--ce-size-control-sm) + 4px); align-items: flex-start; }
+  @media (pointer: coarse) {
+    .offer-zone-4 { min-height: calc(11px + 2 * var(--ce-size-touch-target) + 4px); }
+  }
 }
 
 /* Schmale Karte (bis 320 px, etwa 320–375 px Viewport): Marke, Ablauf,
    Sperrgrund und Folgeaktionen brechen hier um. Jede Karte hält deshalb
    denselben Platz frei, ob sie ihn braucht oder nicht:
-   – die Marke steht in einer eigenen Zeile unter dem Carrier (auch leer);
+   – „Vorläufiger Preis" steht in einer eigenen Zeile unter dem Titel. Seit Konzept A (2026-11-20) steht die
+     Auszeichnung über dem Preis; ein leer freigehaltener Platz stünde nur noch als Lücke zwischen Titel und
+     Kennzeichen und entfällt. Auszeichnung, Buchungsschluss, Zuschlagssatz und Leistungszeile erhöhen eine Karte
+     um ihre Zeile (Sichtprüfung 2026-11-20);
    – der Ablauf reserviert zweizeilige Titel und ein zweizeiliges Hinweisfeld;
    – der Knopf rückt näher an den Rand, ein Sperrgrund bleibt zweizeilig;
    – die Aktionszeile hält zwei Reihen frei („Paketshops suchen" und
@@ -1193,15 +1269,12 @@
    Die Logokachel wird 36 px groß, damit der längste Servicename einzeilig
    bleibt. */
 @container offers (max-width: 320px) {
-  /* Platzhalter: gemessen 489 px (eingeklappt, 294–318 px Kartenbreite, jede Karte gleich; 2026-11-04). */
-  .offer-card { contain-intrinsic-size: auto 489px; }
+  /* Platzhalter: gemessen 468 px (eingeklappt, 309 px Kartenbreite, häufigste Höhe; Konzept A 2026-11-20). */
+  .offer-card { contain-intrinsic-size: auto 468px; }
   .offer-zone-1 { gap: 8px; }
   .offer-logo-tile { width: 36px; height: 36px; }
   .offer-logo-tile img { width: 26px; height: 26px; }
-  .offer-carrier-row {
-    flex-direction: column; align-items: flex-start;
-    min-height: calc(var(--ce-text-title-card-size) * 1.35 + 2px + var(--ce-text-badge-size) * var(--ce-text-badge-line) + 6px);
-  }
+  .offer-carrier-row { flex-direction: column; align-items: flex-start; }
   .offer-tl-labels { min-height: calc(3.9 * var(--ce-text-body-s-size) + 40px); }
   .offer-cta-btn { padding-left: 8px; padding-right: 8px; }
   .offer-zone-4 { min-height: calc(11px + 2 * var(--ce-size-control-sm) + 4px); align-items: flex-start; }
@@ -1214,13 +1287,50 @@
    Zielspalte zweizeilig um (gemessen: 286 px zweizeilig, 288 px einzeilig). Im gemeinsamen Raster hält hier JEDE Karte
    die zweite Datumszeile frei — eine Karte mit einem einzelnen Tag ist sonst niedriger als ihre Nachbarn. */
 @container offers (max-width: 18.25rem) {
-  /* Platzhalter: gemessen 509 px (eingeklappt, 254–286 px Kartenbreite, jede Karte gleich; 2026-11-04). */
-  .offer-card { contain-intrinsic-size: auto 509px; }
+  /* Platzhalter: gemessen 487 px (eingeklappt, 254–274 px Kartenbreite, häufigste Höhe; Konzept A 2026-11-20). */
+  .offer-card { contain-intrinsic-size: auto 487px; }
   .offer-tl-labels { --offer-tl-datum: calc(2.6 * var(--ce-text-body-s-size)); }
 }
 
 /* Browser ohne Container Queries: dieselben Stufen grob über den Viewport
    (die frühere Fassung) — die Karte bleibt lesbar und ohne Querscroll. */
+/* Konzept A (Masteranalyse Angebotskarten 2026-11-20, FE-8 „≤ 360 px Zeitleiste stapeln"): auf der schmalen Karte
+   (bis 294 px Kartenbreite = 360 px Viewport; ebenso Zoom oder Schriftgröße, die die Karte so schmal machen) stehen
+   Abholung und Zustellung UNTEREINANDER statt in zwei engen Spalten. Gemessen 2026-11-20 in der waagerechten Leiste:
+   „Voraussichtliche" braucht 117,5 px; die Zielspalte hat bei 360 px Viewport 139 px (neben einer Abholung heute mit
+   „bereit ab" und „buchbar bis" 126 px), bei 320 px nur 99 px — dort trennte der Titel an Silben („Voraussichtli-che"),
+   seit E2 auf jedem datierten Angebot. Ab 375 px bleibt die waagerechte Leiste der Skizze F.3. Die Schiene entfällt;
+   jeder Knoten trägt seinen Punkt (Start Markenblau, Ziel Grün), eine feine Linie verbindet sie. Reihenfolge Abholung →
+   Zustellung. Jeder Knoten hält Titel, Datum und eine Zusatzzeile frei. Keine neue Bewegung. */
+@container offers (max-width: 294px) {
+  /* Platzhalter: gemessen 487 px (eingeklappt, 294 px Kartenbreite, häufigste Höhe; Konzept A 2026-11-20). */
+  .offer-card { contain-intrinsic-size: auto 487px; }
+  .offer-transit { text-align: left; }
+  .offer-tl-rail { display: none; }
+  .offer-tl-labels {
+    display: flex; flex-direction: column; gap: 10px;
+    min-height: 0; padding: 0;
+  }
+  .offer-tl-node,
+  .offer-tl-node--start,
+  .offer-tl-node--end {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+    position: relative; padding-left: 20px; text-align: left;
+    min-height: calc(2.6 * var(--ce-text-body-s-size) + 4px + max(20px, calc(1.35 * var(--ce-text-caption-size))));
+  }
+  .offer-tl-node::before {
+    content: ""; position: absolute; left: 0; top: 4px;
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .offer-tl-node--start::before { background: var(--ce-color-brand); }
+  .offer-tl-node--end::before   { background: var(--ce-color-success-solid); }
+  .offer-tl-node--start::after {
+    content: ""; position: absolute; left: 4px; top: 18px; bottom: -8px;
+    width: 2px; background: var(--ce-color-border-default);
+  }
+  .offer-tl-title { hyphens: manual; }
+  .offer-early-note { align-self: flex-start; }
+}
 @supports not (container-type: inline-size) {
   @media (max-width: 1099px) {
     .offer-card-inner {
@@ -1335,6 +1445,7 @@
   color: var(--ce-color-brand-ink); font-family: var(--ce-font-sans);
   font-size: var(--ce-text-label-size); font-weight: 600; line-height: var(--ce-text-label-line);
   cursor: pointer; text-align: left;
+  position: relative; /* Bezug für den nur vorgelesenen Zusatz (.sr-only) */
   transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
 .ps-trigger:hover { background: var(--ce-color-brand-soft); }
@@ -1351,7 +1462,9 @@
 }
 .ps-trigger-chosen-label { color: var(--ce-color-text-muted); font-weight: var(--ce-weight-medium); }
 .ps-trigger-change { flex: none; }
-.ps-trigger-change::before { content: "·"; margin-right: 6px; color: var(--ce-color-text-muted); }
+/* Der Punkt ist Gestaltung, kein Wort: leerer Alternativtext, damit er nicht in den zugänglichen Namen gerät
+   (Restprüfung 2026-11-21). Die erste Angabe bleibt für Browser ohne Alternativtext. */
+.ps-trigger-change::before { content: "·"; content: "·" / ""; margin-right: 6px; color: var(--ce-color-text-muted); }
 
 /* Gemeinsame Feld- und Zustandsregeln — vom Fenster benutzt. Material wie
    `.field-input` (forms.css): 40 px, 1-px-Kante, Radius 8, Standardfokus.

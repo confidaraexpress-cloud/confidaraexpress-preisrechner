@@ -297,7 +297,7 @@ test("15 — keine neue Abhängigkeit, kein DOM-Hack, kein Polling", () => {
   const pkg = JSON.parse(lies("package.json"));
   // Vite und @vitejs/plugin-react sind Buildwerkzeuge: seit 2026-11-17 unter devDependencies (dieselben Pakete).
   assert.deepEqual(Object.keys(pkg.dependencies).sort(),
-    ["fflate", "maplibre-gl", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen"].sort(),
+    ["fflate", "maplibre-gl", "pdfjs-dist", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen"].sort(),
     "es ist eine Abhängigkeit hinzugekommen");
   for (const verboten of ["setInterval", "setTimeout", "querySelector", "document.", "window."]) {
     assert.ok(!feld.includes(verboten),

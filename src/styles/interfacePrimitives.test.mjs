@@ -448,7 +448,7 @@ test("10 — es kommen keine neuen Emojis dazu", () => {
 test("11 — das Iconsystem bleibt intern, ohne neue Abhängigkeit", () => {
   const pkg = JSON.parse(read("../../package.json"));
   // Vite und @vitejs/plugin-react sind Buildwerkzeuge: seit 2026-11-17 unter devDependencies (dieselben Pakete).
-  const erlaubt = ["fflate", "maplibre-gl", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen"];
+  const erlaubt = ["fflate", "maplibre-gl", "pdfjs-dist", "react", "react-dom", "react-router-dom", "read-excel-file", "saxen"];
   assert.deepEqual(Object.keys(pkg.dependencies).sort(), erlaubt.sort(),
     "es wird keine Abhängigkeit hinzugefügt"
     + " (lucide-react war nie importiert, wurde von vier Tests ausdrücklich verboten"

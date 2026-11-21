@@ -125,6 +125,17 @@
   --adm-blau: #70b8ff;     --adm-blau-ton: rgba(0, 119, 255, 0.18);     --adm-blau-kante: rgba(112, 184, 255, 0.28);
   --adm-grau: #c5cde3;     --adm-grau-ton: rgba(184, 204, 255, 0.07);   --adm-grau-kante: rgba(184, 204, 255, 0.14);
 
+  /* ── Rechnungseditor (2026-11-21): das Papier auf der Nachtbühne ── Die Werte folgen dem gedruckten Beleg, nicht dem
+     Nachtthema: Weiß, Confidara-Blau #004AFC (auf Weiß 6,2:1, Weiß darauf ebenso), Navy #011B55. Bühnenlicht nur als
+     Verlauf hinter dem Blatt, kein Leuchten am Blatt selbst. */
+  --adm-papier: #ffffff;
+  --adm-papier-tinte: #011b55;              /* Text auf dem Papier */
+  --adm-papier-linie: #dde3f0;              /* Linien der Miniatur */
+  --adm-papier-marke: #004afc;              /* Bereichskontur, Beschriftung, Kontur der Miniatur */
+  --adm-papier-marke-ton: rgba(0, 74, 252, 0.07);
+  --adm-papier-marke-zart: rgba(0, 74, 252, 0.3);
+  --adm-papier-buehne: radial-gradient(90% 55% at 50% 0%, rgba(91, 140, 255, 0.11) 0%, rgba(91, 140, 255, 0) 100%);
+
   /* ── Bewegung ── */
   --adm-kurve: cubic-bezier(0.16, 1, 0.3, 1);
   --adm-dauer: 180ms;

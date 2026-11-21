@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   parseEuroCents, formatCentsInput, parseQuantity, parseDiscount, emptyDraftForm, draftToForm, formToPayload,
-  applyCustomerToForm, formKeyOf, issueAvailability, blockerText, manualInvoiceError, reversalPayload, reversalError,
+  applyCustomerToForm, formKeyOf, blockerText, manualInvoiceError, reversalPayload, reversalError,
   isManualInvoice, isCancelledInvoice, cancellationInfo, issuedNotice, countryOptions, MANUAL_INVOICE_TEXT,
   stornoPayload,
 } from "./manualInvoiceView.mjs";
@@ -87,20 +87,44 @@ test("4 — Serverfassung → Formular → Vertrag: verlustfrei; Kundenwahl bele
   assert.match(countryOptions("AT")[1].label, /nicht freigegeben/);
 });
 
-test("5 — Ausstellen nur aus der gespeicherten Fassung und ohne Serversperre", () => {
-  assert.deepEqual(issueAvailability({ draft: null, dirty: false }), { allowed: false, reasons: [MANUAL_INVOICE_TEXT.issueNeedsSave] });
-  assert.equal(issueAvailability({ draft: { id: 1, issueBlockers: [] }, dirty: true }).allowed, false);
-  assert.deepEqual(issueAvailability({ draft: { id: 1, issueBlockers: [] }, dirty: false }), { allowed: true, reasons: [] });
-  const gesperrt = issueAvailability({ draft: { id: 1, issueBlockers: [
-    { code: "ISSUER_LEGAL_FORM_UNCONFIRMED", message: "Die Rechtsform des Ausstellers trifft nicht zu.", fields: ["issuer.legalForm"] },
-    { code: "ISSUER_NOT_READY", message: "Die Ausstellerdaten sind unvollständig.", missingFields: ["issuer.street"], placeholderFields: ["bank.name"] },
-  ] }, dirty: false });
-  assert.equal(gesperrt.allowed, false);
-  assert.equal(gesperrt.reasons.length, 2);
-  assert.match(gesperrt.reasons[1], /^Die Ausstellerdaten sind unvollständig\. Fehlend: .+\. Noch Platzhalter: .+\.$/);
-  // Feldnamen erscheinen in Klartext (dieselbe Beschriftung wie die Produktionsbereitschaft), nie als Schlüssel.
+test("5 — Sperren in Klartext; Bezug, lockere Vorschau und Prüfbindung im Vertrag", () => {
+  // Ausgestellt wird seit dem Rechnungseditor nur aus der Prüfansicht (reviewIssueState, manualInvoiceEditor.test.mjs).
   assert.equal(blockerText({ message: "Gesperrt.", missingFields: ["issuer.street"], placeholderFields: ["bank.name"] }),
     "Gesperrt. Fehlend: Straße. Noch Platzhalter: Bankname.");
+  assert.match(blockerText({ message: "Die Ausstellerdaten sind unvollständig.", missingFields: ["issuer.street"], placeholderFields: ["bank.name"] }),
+    /^Die Ausstellerdaten sind unvollständig\. Fehlend: .+\. Noch Platzhalter: .+\.$/);
+
+  // Bezug (Sendung/Lagerauftrag) nur mit gewähltem Kunden; Vorgang und Art gehören zusammen.
+  const basis = applyCustomerToForm(emptyDraftForm(), { id: 9, customerNumber: "CE-K-10009",
+    recipient: { company: "Zweitkunde AG", street: "Weg 1", zip: "10115", city: "Berlin", country: "DE" } });
+  basis.positions = [{ key: "a", description: "Nachberechnung Zoll", details: "", unit: "Stück", quantity: "1", unitPrice: "12,00", discount: "" }];
+  const ohne = formToPayload(basis).payload;
+  assert.deepEqual([ohne.sourceShipmentId, ohne.sourceOrderId, ohne.billingKind], [null, null, null]);
+  const sendung = formToPayload({ ...basis, sourceKind: "shipment", sourceId: 77, sourceLabel: "CE-77", billingKind: "supplementary" }).payload;
+  assert.deepEqual([sendung.sourceShipmentId, sendung.sourceOrderId, sendung.billingKind], [77, null, "supplementary"]);
+  const auftrag = formToPayload({ ...basis, sourceKind: "order", sourceId: "12", billingKind: "primary" }).payload;
+  assert.deepEqual([auftrag.sourceShipmentId, auftrag.sourceOrderId, auftrag.billingKind], [null, 12, "primary"]);
+  assert.ok(formToPayload({ ...basis, sourceKind: "shipment", sourceId: null }).errors.source);
+  assert.ok(formToPayload({ ...basis, sourceKind: "order", sourceId: 3, billingKind: "" }).errors.billingKind);
+  // Externer Empfänger: kein Bezug, auch wenn noch Reste im Formular stehen.
+  const extern = formToPayload({ ...basis, recipientKind: "external", recipientUserId: null, sourceKind: "shipment", sourceId: 77, billingKind: "primary" }).payload;
+  assert.deepEqual([extern.recipientUserId, extern.sourceShipmentId, extern.billingKind], [null, null, null]);
+  // Kundenwechsel setzt den Bezug zurück.
+  const gewechselt = applyCustomerToForm({ ...basis, sourceKind: "shipment", sourceId: 77, sourceLabel: "CE-77", billingKind: "primary" }, { id: 10, recipient: {} });
+  assert.deepEqual([gewechselt.sourceKind, gewechselt.sourceId, gewechselt.billingKind], ["none", null, ""]);
+
+  // Lockere Fassung (Live-Vorschau): leerer Einzelpreis zählt als 0, ein noch nicht gewählter Kunde sperrt nicht;
+  // gesendet wird dann ohne Kunde. Formfehler (Menge, Rabatt) bleiben Fehler.
+  const halb = { ...emptyDraftForm(), recipientKind: "customer", recipientUserId: null };
+  const locker = formToPayload(halb, { lenient: true });
+  assert.equal(locker.ok, true);
+  assert.deepEqual([locker.payload.recipientUserId, locker.payload.positions[0].unitPriceNetCents], [null, 0]);
+  assert.equal(formToPayload(halb).ok, false, "streng (Speichern) bleibt die Kundenwahl Pflicht");
+  assert.ok(formToPayload({ ...halb, positions: [{ ...halb.positions[0], quantity: "" }] }, { lenient: true }).errors["positions.0.quantity"]);
+
+  // Prüfbindung: weicht der Beleg seit der Prüfansicht ab, heißt die Antwort „neu prüfen".
+  const stale = manualInvoiceError(409, { code: "MANUAL_INVOICE_PREVIEW_STALE", error: "Bitte erneut prüfen." });
+  assert.deepEqual([stale.stale, stale.text], [true, "Bitte erneut prüfen."]);
 });
 
 test("6 — Fehlerabbildung: Feldfehler an der richtigen Eingabe, Konflikt, Sperren, Ausgestellt", () => {
@@ -166,28 +190,50 @@ test("8 — Listen- und Kundensicht: Herkunft, externer Empfänger, Storniert oh
   assert.equal(matchesInvoiceFilter({ status: "unpaid" }, "open"), true);
 });
 
-test("9 — Quelltextverträge: Route, Knopf, keine Summenrechnung, keine E-Mail, Ausstellen nur nach Bestätigung", () => {
+test("9 — Quelltextverträge: Route, A4-Einstieg, keine Summenrechnung, keine E-Mail, Ausstellen nur aus der Prüfansicht", () => {
   const app = ohneKommentare(lies("../App.jsx"));
   assert.match(app, /<Route path="\/admin\/invoices\/manual\/:draftId" element=\{<AdminManualInvoicePage \/>\} \/>/);
   assert.match(app, /const AdminManualInvoicePage = React\.lazy\(\(\) => import\("\.\/pages\/admin\/AdminManualInvoicePage"\)\);/);
   const liste = ohneKommentare(lies("../pages/admin/AdminInvoicesPage.jsx"));
-  assert.match(liste, /<Link id="adm-new-invoice" className="btn btn-primary btn-sm" to="\/admin\/invoices\/manual\/new">/);
+  // Einstieg ist die kleine A4-Vorlage (Rechnungseditor 2026-11-21). Der Link ist der sichtbare Titel (Name =
+  // Beschriftung, WCAG 2.5.3), seine Fläche deckt die ganze Kachel ab, die Zeile darunter beschreibt ihn.
+  assert.match(liste, /<div className="adm-mi-entry">/);
+  assert.match(liste, /<Link id="adm-new-invoice" className="adm-mi-entry-title" to="\/admin\/invoices\/manual\/new" aria-describedby="mi-entry-sub">/);
+  assert.doesNotMatch(liste, /aria-labelledby="mi-entry-title"/);
+  assert.match(liste, /<span className="adm-mi-mini" aria-hidden="true">/);
   const editor = ohneKommentare(lies("../pages/admin/AdminManualInvoicePage.jsx"));
   // Keine E-Mail aus dem Editor, kein Versandaufruf.
   assert.ok(!/sendAdminInvoiceEmail|resendAdminInvoiceEmail|send-email/.test(editor), "der Editor löst einen Versand aus");
-  // Ausstellen ausschließlich in der Bestätigung, gegen Doppelklick gesperrt.
+  // Ausstellen ausschließlich aus der Prüfansicht — mit Fassung und Fingerabdruck des geprüften Belegs, gegen
+  // Doppelklick gesperrt; weicht der Beleg inzwischen ab, wird neu geprüft.
   assert.equal((editor.match(/issueManualInvoiceDraft\(/g) || []).length, 1);
   const bestaetigung = editor.slice(editor.indexOf("const confirmIssue = async"), editor.indexOf("const confirmDiscard"));
-  assert.match(bestaetigung, /if \(issueInFlight\.current \|\| !draft\) return;/);
-  assert.match(bestaetigung, /issueManualInvoiceDraft\(draft\.id, draft\.revision\)/);
-  assert.match(editor, /onConfirm=\{confirmIssue\}/);
-  // Summen nur vom Server: der Editor liest totals aus der Serverfassung und rechnet keinen Betrag zusammen.
-  assert.match(editor, /const totals = draft && draft\.totals \? draft\.totals : null;/);
+  assert.match(bestaetigung, /if \(issueInFlight\.current \|\| !draft \|\| !review \|\| !review\.data \|\| checked !== true\) return;/);
+  assert.match(bestaetigung, /issueManualInvoiceDraft\(draft\.id, review\.data\.revision, review\.data\.fingerprint\)/);
+  assert.match(bestaetigung, /if \(e\.stale\) \{ ladePruefansicht\(draft\.id, e\.text\); return; \}/);
+  assert.match(editor, /onIssue=\{confirmIssue\}/);
+  // Vor der Prüfansicht wird gespeichert: geprüft und ausgestellt wird genau die gespeicherte Fassung.
+  assert.match(editor, /if \(!aktuell \|\| dirty\) \{\s*aktuell = await persist\(\);\s*if \(!aktuell\) return;\s*\}\s*ladePruefansicht\(aktuell\.id\);/);
+  const pruef = ohneKommentare(lies("../components/admin/ManualInvoiceReview.jsx"));
+  assert.match(pruef, /onClick=\{\(\) => onIssue\(geprueft\)\}\s*disabled=\{!lage\.allowed \|\| busy\}/);
+  assert.match(pruef, /useDialog\(\{ onClose: \(\) => \{ if \(!busy\) onClose\(\); \}, closeOnEscape: !busy \}\)/);
+  // Summen nur vom Server: aus der jüngsten Live-Vorschau, sonst aus der gespeicherten Fassung — nie zusammengerechnet.
+  assert.match(editor, /const totals = live && live\.totals \? live\.totals : draft && draft\.totals \? draft\.totals : null;/);
   assert.ok(!/\.reduce\(/.test(editor), "der Editor summiert selbst");
   assert.ok(!/unitPriceNetCents\s*\*|\*\s*unitPriceNetCents|quantity\s*\*/.test(editor), "der Editor rechnet Positionsbeträge");
-  // Vorschau und Ausstellen zeigen die gespeicherte Fassung — mit ungespeicherten Änderungen gesperrt.
-  assert.match(editor, /id="mi-preview"[\s\S]{0,160}disabled=\{!draft \|\| dirty\}/);
-  assert.match(editor, /id="mi-issue"[\s\S]{0,200}disabled=\{!availability\.allowed \|\| issueBusy\}/);
+  // Live-Vorschau: lockere Fassung der Felder, abbrechbar, nur die jüngste Antwort zählt.
+  assert.match(editor, /const p = formToPayload\(form, \{ lenient: true \}\);/);
+  assert.match(editor, /previewManualInvoice\(p\.payload, \{ signal: abbruch\.signal \}\)/);
+  assert.match(editor, /if \(!gate\.current\.isLatest\(nr\)\) return;/);
+  assert.match(editor, /id="mi-preview"[\s\S]{0,160}disabled=\{!live\}/);
+  assert.match(editor, /id="mi-issue"[\s\S]{0,200}disabled=\{saving \|\| issueBusy\}/);
+  // Fehlt zu einem Vorgang nur das PDF, führt der Editor zur Rechnungsseite — er erzeugt selbst keine Belege.
+  assert.ok(!/backfillInvoiceDocument|generateInvoiceDocument|backfill-document|generate-document/.test(editor));
+  for (const datei of ["../pages/admin/AdminManualInvoicePage.jsx", "../components/admin/InvoiceSheet.jsx", "../components/admin/ManualInvoiceReview.jsx"]) {
+    assert.ok(!/dangerouslySetInnerHTML/.test(lies(datei)), `${datei}: rohes HTML`);
+  }
+  // Das Blatt selbst spricht nicht mit dem Server.
+  assert.ok(!/api\/adminApi|fetch\(/.test(lies("../components/admin/InvoiceSheet.jsx")));
   // Detail: Drucken nur für manuelle Rechnungen, Stornovermerk nur dort, Versandtext nennt den Empfänger.
   const detail = ohneKommentare(lies("../pages/admin/AdminInvoiceDetailPage.jsx"));
   assert.match(detail, /printable=\{manual\}/);
@@ -196,8 +242,8 @@ test("9 — Quelltextverträge: Route, Knopf, keine Summenrechnung, keine E-Mail
   // API: die vereinbarten Pfade, keine zweite Abstraktion.
   const api = lies("../api/adminApi.js");
   for (const pfad of ["/admin/manual-invoices/status", "/admin/manual-invoices/customers?q=", "/admin/manual-invoices/drafts",
-    "/issue", "/preview", "/reversal-record", "/reversal-invoice"]) {
+    "/issue", "/admin/manual-invoices/preview", "/review", "/admin/manual-invoices/sources?", "/reversal-record", "/reversal-invoice"]) {
     assert.ok(api.includes(pfad), `Pfad fehlt im API-Vertrag: ${pfad}`);
   }
-  assert.match(api, /JSON\.stringify\(\{ revision, confirm: true \}\)/);
+  assert.match(api, /JSON\.stringify\(\{ revision, fingerprint, confirm: true \}\)/);
 });

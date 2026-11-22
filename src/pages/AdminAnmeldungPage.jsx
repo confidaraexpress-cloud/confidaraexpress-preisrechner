@@ -98,6 +98,9 @@ export default function AdminAnmeldungPage() {
 
   // Rücksprungziel und Einmallink werden EINMAL beim Öffnen gelesen und sofort geprüft.
   const [ziel] = useState(() => adminZielNachAnmeldung(location.state?.from));
+  // Ziel DIESER Anmeldung ({ to, state }), festgelegt vor login(): sobald das Konto gesetzt ist, leitet die Seite beim
+  // Rendern selbst weiter (unten) — mit genau diesem Ziel statt `ziel`, sonst überschriebe sie „Sicherheit“.
+  const nachAnmeldung = useRef(null);
   const [resetToken] = useState(() => resetTokenAus(location.search));
   const [schritt, setSchritt] = useState(() => (resetToken ? "reset" : "anmelden"));
 
@@ -166,22 +169,30 @@ export default function AdminAnmeldungPage() {
   // Ein angemeldeter Admin landet im Adminpanel — außer die Seite wurde mit einem Einmallink geöffnet: der gehört
   // womöglich zu einem anderen Konto (Einrichtung: der gemeinsame Zugang ist in diesem Browser noch angemeldet, Patrick
   // öffnet seinen eigenen Link). Dann bleibt es beim Link-Schritt; nach dem Speichern endet die offene Sitzung.
-  if (authed && isAdmin(user) && !resetToken) return <Navigate to={ziel} replace />;
+  if (authed && isAdmin(user) && !resetToken) {
+    const n = nachAnmeldung.current;
+    return <Navigate to={n ? n.to : ziel} state={n ? n.state : undefined} replace />;
+  }
 
   const zurAnmeldung = () => { setSchritt("anmelden"); setFehler(""); setVergessenGesendet(false); setZweiter(null); setCode(""); };
 
   // Gemeinsamer Abschluss: Token übernehmen, Konto laden, nur mit Adminrolle weiter. Ist der Pflichtschalter an und hat
   // das Konto noch keinen Passkey, geht es direkt zur Einrichtung unter „Sicherheit“.
-  const abschliessen = async (token, { einrichten = false, hinweisDanach = "" } = {}) => {
+  const abschliessen = async (token, { einrichten = false, nachCode = false, hinweisDanach = "" } = {}) => {
+    // Nach einer Anmeldung mit Wiederherstellungscode immer zu „Sicherheit“: nur dort steht, wie viele Codes übrig sind,
+    // und das 15-Minuten-Fenster der Code-Anmeldung reicht, um einen verlorenen Passkey zu ersetzen und neue Codes zu
+    // erzeugen. Auf der Übersicht ginge der Hinweis „letzter Code verwendet“ verloren (Sicherheitsprüfung FE-1, B1).
+    nachAnmeldung.current = einrichten ? { to: ADMIN_SICHERHEIT_PATH, state: { einrichten: true } }
+      : nachCode ? { to: ADMIN_SICHERHEIT_PATH, state: hinweisDanach ? { sicherheitsHinweis: hinweisDanach } : undefined }
+      : { to: ziel, state: undefined };
     localStorage.setItem("ce_token", token);
     const angemeldet = await login(token);
-    if (!angemeldet) { setFehler(ADMINBEREICH_NICHT_GELADEN); return false; }
+    if (!angemeldet) { nachAnmeldung.current = null; setFehler(ADMINBEREICH_NICHT_GELADEN); return false; }
     // Schutz in der Tiefe: der Server gibt Nicht-Admins hier kein Token. Sollte die Rolle dennoch abweichen,
     // wird die Sitzung sofort beendet — die Seite öffnet nie einen Adminbereich ohne Adminrolle.
-    if (!isAdmin(angemeldet)) { logout(); setFehler(ADMIN_ANMELDE_FEHLER.ADMIN_ACCESS_REQUIRED); return false; }
+    if (!isAdmin(angemeldet)) { nachAnmeldung.current = null; logout(); setFehler(ADMIN_ANMELDE_FEHLER.ADMIN_ACCESS_REQUIRED); return false; }
     setPasswort(""); setCode(""); setZweiter(null);
-    if (einrichten) navigate(ADMIN_SICHERHEIT_PATH, { replace: true, state: { einrichten: true } });
-    else navigate(ziel, { replace: true, state: hinweisDanach ? { sicherheitsHinweis: hinweisDanach } : undefined });
+    navigate(nachAnmeldung.current.to, { replace: true, state: nachAnmeldung.current.state });
     return true;
   };
 
@@ -224,7 +235,7 @@ export default function AdminAnmeldungPage() {
       if (!r.ok) { zweiterSchrittAbgelehnt(r, d); return; }
       if (!d || typeof d.token !== "string" || d.token === "") { setFehler(LOGIN_SERVERFEHLER); return; }
       const rest = Number.isInteger(d.recoveryCodesRemaining) ? d.recoveryCodesRemaining : null;
-      await abschliessen(d.token, { hinweisDanach: rest === null ? "" : Z.codeVerbraucht(rest) });
+      await abschliessen(d.token, { nachCode: true, hinweisDanach: rest === null ? "" : Z.codeVerbraucht(rest) });
     } catch (err) {
       setFehler(mapAuthThrownError(err));
     } finally {

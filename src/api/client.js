@@ -142,7 +142,9 @@ export async function apiFetch(pathOrUrl, options = {}) {
     if (code === "STEP_UP_REQUIRED" && stepUpHandler) {
       let bestaetigt = false;
       try { bestaetigt = (await stepUpHandler()) === true; } catch { bestaetigt = false; }
-      if (bestaetigt) return apiFetch(pathOrUrl, { ...options, _nachBestaetigung: true });
+      // Wiederholt wird nur mit DEMSELBEN Token: hat sich währenddessen in einem anderen Tab jemand anderes angemeldet,
+      // liefe die Aktion sonst unter dessen Sitzung (Sicherheitsprüfung FE-1, B2). Dann bleibt es bei der 428.
+      if (bestaetigt && token() === gesendetesToken) return apiFetch(pathOrUrl, { ...options, _nachBestaetigung: true });
     } else if (code === "PASSKEY_SETUP_REQUIRED" && passkeySetupHandler) {
       passkeySetupHandler();
     }

@@ -295,3 +295,61 @@ test("6 — Passkey fehlt für eine kritische Aktion (428 PASSKEY_SETUP_REQUIRED
   assert.equal(await page.evaluate(() => localStorage.getItem("ce_token")), "e2e-token", "die Sitzung blieb nicht bestehen");
   await page.close();
 });
+
+test("7 — Anmeldung mit Wiederherstellungscode: auch mit Deep Link landet sie auf „Sicherheit“ und zeigt den Hinweis zum letzten Code", async () => {
+  // Sicherheitsprüfung FE-1, B1: der Hinweis „letzter Code verwendet“ darf nicht auf einer Seite enden, die ihn nicht zeigt.
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const state = { recovery: [] };
+  await page.route("**/api.confidaraexpress.de/**", async (route) => {
+    const req = route.request();
+    const p = new URL(req.url()).pathname;
+    const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
+    if (p.endsWith("/auth/admin-login/recovery")) { state.recovery.push(req.postDataJSON()); return json({ token: "e2e-token-neu", recoveryCodesRemaining: 0 }); }
+    if (p.endsWith("/auth/admin-login")) {
+      return json({ secondFactorRequired: true, loginTicket: "LT-0123456789abcdefghijklmnop", recoveryAvailable: true,
+        passkeyOptions: OPTIONEN.options });
+    }
+    if (p.endsWith("/kundenbereich")) return json({ user: ADMIN });
+    if (p.endsWith("/auth/security")) return json({ ...MIT_PASSKEY, recoveryCodesRemaining: 0 });
+    if (p.endsWith("/auth/sessions")) return json(SITZUNGEN);
+    return json({});
+  });
+  // Ohne Sitzung auf eine Detailseite: der Routenschutz merkt sich das Ziel und schickt zur Anmeldung.
+  await page.goto(`${BASE}/admin/invoices/5521`, { waitUntil: "domcontentloaded" });
+  await page.waitForURL((u) => u.pathname === "/admin/login");
+  await page.getByLabel("E-Mail-Adresse", { exact: true }).fill("anna.admin@confidaraexpress.de");
+  await page.getByLabel("Passwort", { exact: true }).fill("Sicheres-Admin-Passwort-2026");
+  await page.getByRole("button", { name: "Anmelden", exact: true }).click();
+  await page.getByRole("button", { name: "Wiederherstellungscode verwenden" }).click();
+  await page.getByLabel("Wiederherstellungscode", { exact: true }).fill("AAAA-BBBB-CCCC");
+  await page.getByRole("button", { name: "Anmelden", exact: true }).click();
+  await page.waitForURL((u) => u.pathname === "/admin/sicherheit");
+  await page.getByText("Sie haben Ihren letzten Wiederherstellungscode verwendet.", { exact: false }).first().waitFor({ state: "visible" });
+  assert.equal(state.recovery.length, 1);
+  assert.equal(state.recovery[0].loginTicket, "LT-0123456789abcdefghijklmnop");
+  assert.equal(await page.evaluate(() => localStorage.getItem("ce_token")), "e2e-token-neu");
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "kein seitliches Scrollen");
+  await page.close();
+});
+
+test("8 — Pflichtschalter ohne Passkey: die Anmeldung führt auch mit Deep Link zur Einrichtung, nicht zum gemerkten Ziel", async () => {
+  // Gleiche Ursache wie 7: die Weiterleitung beim Rendern nahm immer das gemerkte Ziel und überschrieb „Sicherheit“.
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await page.route("**/api.confidaraexpress.de/**", async (route) => {
+    const p = new URL(route.request().url()).pathname;
+    const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
+    if (p.endsWith("/auth/admin-login")) return json({ token: "e2e-token-pflicht", passkeySetupRequired: true });
+    if (p.endsWith("/kundenbereich")) return json({ user: ADMIN });
+    if (p.endsWith("/auth/security")) return json(OHNE_PASSKEY);
+    if (p.endsWith("/auth/sessions")) return json(SITZUNGEN);
+    return json({});
+  });
+  await page.goto(`${BASE}/admin/invoices/5521`, { waitUntil: "domcontentloaded" });
+  await page.waitForURL((u) => u.pathname === "/admin/login");
+  await page.getByLabel("E-Mail-Adresse", { exact: true }).fill("anna.admin@confidaraexpress.de");
+  await page.getByLabel("Passwort", { exact: true }).fill("Sicheres-Admin-Passwort-2026");
+  await page.getByRole("button", { name: "Anmelden", exact: true }).click();
+  await page.locator(".adm-sicherheit-pflicht").waitFor({ state: "visible" });
+  assert.equal(new URL(page.url()).pathname, "/admin/sicherheit");
+  await page.close();
+});

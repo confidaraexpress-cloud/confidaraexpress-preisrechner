@@ -103,9 +103,12 @@ test("9 — Seite: eigener Eingang, keine Registrierung, kein „Angemeldet blei
   assert.match(seite, /<section className="auth-admin-panel"[^>]*>\s*<span className="auth-admin-glanz" aria-hidden="true" \/>/);
   // Angemeldeter Admin → Adminpanel, außer die Seite kam mit einem Einmallink (Einrichtung bei offener Sitzung eines
   // anderen Kontos): dann der Link-Schritt, und nach dem Speichern endet die offene Sitzung (E2E G2).
-  assert.match(seite, /if \(authed && isAdmin\(user\) && !resetToken\) return <Navigate to=\{ziel\} replace \/>;/);
+  // Bewusste Ankeränderung (Sicherheitsprüfung FE-1, 2026-11-22): die Weiterleitung nimmt das Ziel DIESER Anmeldung
+  // (Einrichtung bzw. „Sicherheit“ nach einem Wiederherstellungscode), ohne eines das gemerkte Ziel — E2E
+  // adminSucheSicherheit 7 und 8. Vorher überschrieb sie mit dem gemerkten Ziel jede andere Navigation.
+  assert.match(seite, /if \(authed && isAdmin\(user\) && !resetToken\) \{\s*const n = nachAnmeldung\.current;\s*return <Navigate to=\{n \? n\.to : ziel\} state=\{n \? n\.state : undefined\} replace \/>;\s*\}/);
   assert.match(seite, /setNeu\(""\); setNeuWdh\(""\);\s*if \(authed\) logout\(\);/, "nach dem Speichern endet eine offene Sitzung");
-  assert.match(seite, /if \(!isAdmin\(angemeldet\)\) \{ logout\(\);/, "Schutz in der Tiefe: Nicht-Admins werden sofort abgemeldet");
+  assert.match(seite, /if \(!isAdmin\(angemeldet\)\) \{ nachAnmeldung\.current = null; logout\(\);/, "Schutz in der Tiefe: Nicht-Admins werden sofort abgemeldet");
   assert.doesNotMatch(seite, /register|Registrieren|rememberMe|Angemeldet bleiben|dangerouslySetInnerHTML/);
   assert.doesNotMatch(seite, /https?:\/\//, "keine externen Ressourcen");
   assert.match(seite, /autoComplete="username"/);

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Icon } from "../ui/Icon";
 import { PasswordField } from "../ui/PasswordField";
@@ -16,6 +16,8 @@ import { postalCodeInputMode } from "../../utils/postalCode.mjs";
 import { VAT_ID_TEXT, VAT_ID_ABSENT_TEXT, LEGAL_FORMS_WITHOUT_VAT_ID } from "../../utils/vatId.mjs";
 // Phase 1 (Canonical v2.117): voraussichtliches monatliches Versandvolumen — acht feste Angaben, eine Quelle.
 import { SHIPMENT_VOLUME_OPTIONS, SHIPMENT_VOLUME_QUESTION, SHIPMENT_VOLUME_TEXT } from "../../utils/shipmentVolume.mjs";
+// Premium UX 4.0 (Betreiberentscheidung A3, 2026-11-22): drei Schritte über DASSELBE Formular.
+import { REG_STEPS, REG_LAST_STEP, REG_STEP_TEXT, regSummary } from "../../utils/registrationSteps.mjs";
 
 // Pflichtfeld-Markierung. Das Sternchen ist rein visuell (aria-hidden) — für
 // Screenreader trägt das jeweilige Eingabefeld required/aria-required.
@@ -55,6 +57,38 @@ function Erklaerung({ id, checked, onToggle, error, children }) {
   );
 }
 
+// Schrittleiste: ein geordneter Ablauf, deshalb Nummern. Erledigte Schritte sind Knöpfe zurück; nach vorn geht es nur
+// über „Weiter“ (mit Prüfung des Schritts). Der aktuelle Schritt trägt aria-current="step".
+function Schrittleiste({ step, onGoToStep }) {
+  return (
+    <ol className="auth-reg-leiste" aria-label={REG_STEP_TEXT.fortschritt}>
+      {REG_STEPS.map((s, i) => {
+        const zustand = i < step ? "erledigt" : i === step ? "aktiv" : "offen";
+        const inhalt = (
+          <>
+            <span className="auth-reg-marke" aria-hidden="true">{i < step ? <Icon n="check" s={14} /> : i + 1}</span>
+            <span className="auth-reg-name">{s.kurz}</span>
+            {/* Derselbe Name nur für Screenreader. Je nach Breite steht genau eine der beiden Fassungen (Stil
+                „Registrierung in drei Schritten“, Abschnitt „Schmal“): breit die sichtbare, schmal diese. */}
+            <span className="sr-only auth-reg-name-sr">{s.kurz}</span>
+          </>
+        );
+        return (
+          <li key={s.id} className={`auth-reg-punkt auth-reg-punkt--${zustand}`} aria-current={i === step ? "step" : undefined}>
+            {i < step ? (
+              <button type="button" className="auth-reg-punkt-ziel" onClick={() => onGoToStep(i)}>
+                {inhalt}<span className="sr-only">, {REG_STEP_TEXT.erledigt}</span>
+              </button>
+            ) : (
+              <span className="auth-reg-punkt-ziel">{inhalt}</span>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 export function RegisterForm({
   form, onChange, onRegister, loading, errors = {}, regValid = true, passwordRepeat = "", onPasswordRepeatChange, onPasswordBlur, onVatBlur,
   // Paket C: Erklärungen (Unternehmer, AGB) und die angezeigte AGB-Fassung (oder null).
@@ -63,6 +97,9 @@ export function RegisterForm({
   declarationsMissingOnly = false,
   // Phase 1: nur noch das Versandvolumen fehlt — derselbe Grund-Hinweis wie bei den Erklärungen.
   volumeMissingOnly = false, onVolumeBlur,
+  // Premium UX 4.0: Schritt (0–2) und Führung. onNext prüft den Schritt im Browser und sendet nichts; focusRequest
+  // ({ ziel: "kopf" | Kennung, n }) bittet um den Fokus — auf die Überschrift des Schritts oder ein fehlerhaftes Feld.
+  step = 0, onNext = () => {}, onBack = () => {}, onGoToStep = () => {}, focusRequest = null,
 }) {
   // Nur die Länder, die ConfidaraExpress heute anbietet — die Liste kommt vom Server
   // (GET /api/shipping/launch-scope), nicht aus einer zweiten Aufzählung im Client.
@@ -88,8 +125,50 @@ export function RegisterForm({
   const agbLink = agb
     ? <a href={`${API}${agb.url}`} target="_blank" rel="noopener noreferrer" onClick={ohneUmschalten}>Allgemeinen Geschäftsbedingungen</a>
     : <Link to="/agb" target="_blank" rel="noopener noreferrer" onClick={ohneUmschalten}>Allgemeinen Geschäftsbedingungen</Link>;
+
+  // Fokusführung: nach einem Schrittwechsel die Überschrift des neuen Schritts (die Leiste rückt ins Bild, falls sie
+  // außerhalb liegt), bei einem Fehler das erste fehlerhafte Feld. Alle Schritte bleiben im Formular (inaktive mit
+  // `hidden`) — Werte, Passwortmanager und Fehler gehören zu EINEM Formular.
+  const leisteRef = useRef(null);
+  const kopfRefs = useRef([]);
+  useEffect(() => {
+    if (!focusRequest) return;
+    if (focusRequest.ziel === "kopf") {
+      const leiste = leisteRef.current;
+      if (leiste) {
+        const r = leiste.getBoundingClientRect();
+        if (r.top < 0 || r.bottom > window.innerHeight) leiste.scrollIntoView({ block: "start" });
+      }
+      kopfRefs.current[step]?.focus({ preventScroll: true });
+      return;
+    }
+    document.getElementById(focusRequest.ziel)?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusRequest]);
+
+  const fehlerId = (feld) => (errors[feld] ? `${feld === "passwordRepeat" ? "reg-password-repeat" : `reg-${feld}`}-error` : undefined);
+  const landName = (code) => launchCountries.find((c) => c.code === code)?.name || code;
+  // Der zweite Klick eines Doppelklicks löst kein zweites Absenden aus (siehe Aktionsleiste).
+  const nurEinKlick = (e) => { if (e.detail > 1) e.preventDefault(); };
+  const kopf = (i) => (
+    <h3 className="auth-reg-titel" id={`reg-schritt-${REG_STEPS[i].id}`} tabIndex={-1} ref={(el) => { kopfRefs.current[i] = el; }}>
+      <span className="sr-only">{REG_STEP_TEXT.schrittVon(i + 1, REG_STEPS.length)}: </span>{REG_STEPS[i].titel}
+    </h3>
+  );
+
   return (
-    <form noValidate onSubmit={(e) => { e.preventDefault(); onRegister(); }}>
+    <form
+      noValidate
+      className="auth-reg"
+      onSubmit={(e) => { e.preventDefault(); if (step < REG_LAST_STEP) onNext(); else onRegister(); }}
+    >
+      <div ref={leisteRef}>
+        <Schrittleiste step={step} onGoToStep={onGoToStep} />
+      </div>
+
+      {/* ── Schritt 1: Ansprechpartner und Zugang ───────────────────────────────────────────────────────── */}
+      <div className="auth-reg-schritt" role="group" aria-labelledby={`reg-schritt-${REG_STEPS[0].id}`} hidden={step !== 0}>
+      {kopf(0)}
       {/* Kein Kontotyp-Schalter: ConfidaraExpress kennt ausschließlich Firmenkonten. */}
       <div className="auth-alert auth-alert-info auth-b2b-notice">
         <strong>{B2B_NOTICE}</strong>
@@ -113,10 +192,11 @@ export function RegisterForm({
               required
               aria-required="true"
               aria-invalid={errors.name ? "true" : undefined}
+              aria-describedby={fehlerId("name")}
               autoFocus
             />
           </div>
-          {errors.name && <span className="auth-field-error">{errors.name}</span>}
+          {errors.name && <span className="auth-field-error" id="reg-name-error">{errors.name}</span>}
         </div>
         <div className="auth-field">
           <div className="auth-field-row">
@@ -136,9 +216,10 @@ export function RegisterForm({
               required
               aria-required="true"
               aria-invalid={errors.email ? "true" : undefined}
+              aria-describedby={fehlerId("email")}
             />
           </div>
-          {errors.email && <span className="auth-field-error">{errors.email}</span>}
+          {errors.email && <span className="auth-field-error" id="reg-email-error">{errors.email}</span>}
         </div>
       </div>
 
@@ -153,20 +234,19 @@ export function RegisterForm({
             id="reg-password"
             value={form.password}
             onChange={(e) => upd("password", e.target.value)}
-            /* Der CTA ist bei zu kurzem Passwort deaktiviert — und Chromium
-               unterdrückt dann auch die implizite Formularabsendung per Enter.
-               Ohne diese Rückmeldung sähe der Kunde einen gesperrten Knopf ganz
-               ohne Begründung (im UAT gemessen). Bewusst beim Verlassen des
-               Feldes, nicht beim Tippen: sonst stünde schon nach dem ersten
-               Zeichen „mindestens 8 Zeichen". */
+            /* Bewusst beim Verlassen des Feldes, nicht beim Tippen: sonst stünde
+               schon nach dem ersten Zeichen „mindestens 8 Zeichen". „Weiter“
+               prüft den Schritt ohnehin und nennt den Grund am Feld. */
             onBlur={() => onPasswordBlur?.()}
             placeholder={`Mind. ${PASSWORD_MIN_LEN} Zeichen`}
             autoComplete="new-password"
             required
             aria-required="true"
+            invalid={Boolean(errors.password)}
+            describedBy={fehlerId("password")}
           />
         </div>
-        {errors.password && <span className="auth-field-error">{errors.password}</span>}
+        {errors.password && <span className="auth-field-error" id="reg-password-error">{errors.password}</span>}
       </div>
 
       <div className="auth-field">
@@ -184,12 +264,17 @@ export function RegisterForm({
             autoComplete="new-password"
             required
             aria-required="true"
+            invalid={Boolean(errors.passwordRepeat)}
+            describedBy={fehlerId("passwordRepeat")}
           />
         </div>
-        {errors.passwordRepeat && <span className="auth-field-error">{errors.passwordRepeat}</span>}
+        {errors.passwordRepeat && <span className="auth-field-error" id="reg-password-repeat-error">{errors.passwordRepeat}</span>}
+      </div>
       </div>
 
-      <span className="auth-section-label">Unternehmen</span>
+      {/* ── Schritt 2: Ihr Unternehmen ──────────────────────────────────────────────────────────────────── */}
+      <div className="auth-reg-schritt" role="group" aria-labelledby={`reg-schritt-${REG_STEPS[1].id}`} hidden={step !== 1}>
+      {kopf(1)}
 
       <div className="field-row field-row-2">
         <div className="auth-field">
@@ -207,9 +292,10 @@ export function RegisterForm({
               required
               aria-required="true"
               aria-invalid={errors.company_name ? "true" : undefined}
+              aria-describedby={errors.company_name ? "reg-company-error" : undefined}
             />
           </div>
-          {errors.company_name && <span className="auth-field-error">{errors.company_name}</span>}
+          {errors.company_name && <span className="auth-field-error" id="reg-company-error">{errors.company_name}</span>}
         </div>
         <div className="auth-field">
           {form.vat_id_absent !== true && (
@@ -232,11 +318,11 @@ export function RegisterForm({
                   required
                   aria-required="true"
                   aria-invalid={errors.vat_id ? "true" : undefined}
-                  aria-describedby="reg-vat-hint"
+                  aria-describedby={errors.vat_id ? "reg-vat-hint reg-vat-error" : "reg-vat-hint"}
                 />
               </div>
               <span className="auth-field-hint" id="reg-vat-hint">{VAT_ID_TEXT.hint}</span>
-              {errors.vat_id && <span className="auth-field-error">{errors.vat_id}</span>}
+              {errors.vat_id && <span className="auth-field-error" id="reg-vat-error">{errors.vat_id}</span>}
             </>
           )}
           {/* Paket D (D2/D3): ausdrücklich ohne USt-IdNr. — Rechtsform statt Nummer, Sitz Deutschland, manuelle
@@ -270,7 +356,7 @@ export function RegisterForm({
                   required
                   aria-required="true"
                   aria-invalid={errors.legal_form ? "true" : undefined}
-                  aria-describedby="reg-vat-absent-hint"
+                  aria-describedby={errors.legal_form ? "reg-vat-absent-hint reg-legal-form-error" : "reg-vat-absent-hint"}
                 >
                   <option value="">{VAT_ID_ABSENT_TEXT.legalFormPlaceholder}</option>
                   {LEGAL_FORMS_WITHOUT_VAT_ID.map((f) => (
@@ -279,7 +365,7 @@ export function RegisterForm({
                 </select>
               </div>
               <span className="auth-field-hint" id="reg-vat-absent-hint">{VAT_ID_ABSENT_TEXT.hint}</span>
-              {errors.legal_form && <span className="auth-field-error">{errors.legal_form}</span>}
+              {errors.legal_form && <span className="auth-field-error" id="reg-legal-form-error">{errors.legal_form}</span>}
             </>
           )}
         </div>
@@ -361,8 +447,9 @@ export function RegisterForm({
           hint={countryFirstHint(form.country) || undefined}
           placeholder="Musterstraße 12"
           invalid={Boolean(errors.street)}
+          describedBy={errors.street ? `${countryFirstHint(form.country) ? "reg-street-hint " : ""}reg-street-error` : undefined}
         />
-        {errors.street && <span className="auth-field-error">{errors.street}</span>}
+        {errors.street && <span className="auth-field-error" id="reg-street-error">{errors.street}</span>}
       </div>
 
       <div className="field-row field-row-2">
@@ -380,9 +467,10 @@ export function RegisterForm({
               placeholder={postalCodePlaceholder(form.country)}
               inputMode={postalCodeInputMode(form.country)}
               aria-invalid={errors.zip ? "true" : undefined}
+              aria-describedby={errors.zip ? "reg-zip-error" : undefined}
             />
           </div>
-          {errors.zip && <span className="auth-field-error">{errors.zip}</span>}
+          {errors.zip && <span className="auth-field-error" id="reg-zip-error">{errors.zip}</span>}
         </div>
         <div className="auth-field">
           <div className="auth-field-row">
@@ -398,9 +486,37 @@ export function RegisterForm({
             suggestions={addressHelp.cityOptions}
             placeholder={cityPlaceholder(form.country)}
             invalid={Boolean(errors.city)}
+            describedBy={errors.city ? "reg-city-error" : undefined}
           />
-          {errors.city && <span className="auth-field-error">{errors.city}</span>}
+          {errors.city && <span className="auth-field-error" id="reg-city-error">{errors.city}</span>}
         </div>
+      </div>
+      </div>
+
+      {/* ── Schritt 3: Prüfen und beantragen ────────────────────────────────────────────────────────────── */}
+      <div className="auth-reg-schritt" role="group" aria-labelledby={`reg-schritt-${REG_STEPS[2].id}`} hidden={step !== 2}>
+      {kopf(2)}
+      <p className="auth-reg-hinweis">{REG_STEP_TEXT.pruefenText}</p>
+      <div className="auth-reg-uebersicht">
+        {regSummary(form, { landName }).map((g) => (
+          <div key={g.schritt} className="auth-reg-gruppe">
+            <div className="auth-reg-gruppe-kopf">
+              <h4 className="auth-reg-gruppe-titel" id={`reg-gruppe-${REG_STEPS[g.schritt].id}`}>{g.titel}</h4>
+              <button type="button" className="auth-reg-aendern" onClick={() => onGoToStep(g.schritt)}
+                aria-describedby={`reg-gruppe-${REG_STEPS[g.schritt].id}`}>
+                {REG_STEP_TEXT.aendern}
+              </button>
+            </div>
+            <dl className="auth-reg-liste">
+              {g.zeilen.map((z) => (
+                <div key={z.feld} className="auth-reg-zeile">
+                  <dt>{z.label}</dt>
+                  <dd>{z.wert || REG_STEP_TEXT.keineAngabe}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ))}
       </div>
 
       {/* Paket C: die Erklärungen stehen VOR dem Absenden und werden mit dem Konto
@@ -431,11 +547,33 @@ export function RegisterForm({
           <p className="auth-declaration-hint" role="status">{SHIPMENT_VOLUME_TEXT.required}</p>
         )}
       </div>
+      </div>
 
-      <button type="submit" className="auth-cta" disabled={loading || !regValid}>
-        <span>{loading ? "Wird erstellt…" : "Konto beantragen"}</span>
-        <span className="auth-cta-arrow"><Icon n="arrowRight" s={18} /></span>
-      </button>
+      {/* Eine Aktionsleiste für alle Schritte: zurück (ohne Prüfung) und genau EIN Absendeknopf — „Weiter“ prüft den
+          Schritt im Browser, „Konto beantragen“ sendet die eine Anfrage. Weil es immer nur einen Absendeknopf gibt,
+          greift Enter stets den sichtbaren, und ein gesperrter Knopf sperrt auch Enter (Chromium).
+          Ein Doppelklick zählt einmal (`detail` > 1 verworfen): „Weiter“ und „Konto beantragen“ stehen an derselben
+          Stelle — sonst könnte der zweite Klick den Antrag senden, bevor die Zusammenfassung gelesen ist (nach einem
+          Rücksprung sind die Erklärungen womöglich schon gesetzt). Tastatur (detail 0) und ein einzelner Klick bleiben. */}
+      <div className="auth-reg-aktionen">
+        {step > 0 && (
+          <button type="button" className="auth-reg-zurueck" onClick={(e) => { if (e.detail <= 1) onBack(); }}>
+            <Icon n="chevronLeft" s={16} />
+            <span>{REG_STEP_TEXT.zurueck}</span>
+          </button>
+        )}
+        {step < REG_LAST_STEP ? (
+          <button key="weiter" type="submit" className="auth-cta auth-reg-weiter" onClick={nurEinKlick}>
+            <span>{REG_STEP_TEXT.weiter}</span>
+            <span className="auth-cta-arrow"><Icon n="arrowRight" s={18} /></span>
+          </button>
+        ) : (
+          <button key="absenden" type="submit" className="auth-cta auth-reg-absenden" disabled={loading || !regValid} onClick={nurEinKlick} aria-busy={loading ? "true" : undefined}>
+            <span>{loading ? REG_STEP_TEXT.absendenLaeuft : REG_STEP_TEXT.absenden}</span>
+            <span className="auth-cta-arrow"><Icon n="arrowRight" s={18} /></span>
+          </button>
+        )}
+      </div>
 
       <p className="auth-form-legal">
         Wie wir Ihre Daten verarbeiten, erklärt unsere{" "}

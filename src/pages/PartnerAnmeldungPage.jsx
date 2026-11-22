@@ -8,17 +8,54 @@ import { passwortVergessen } from "../api/adminAnmeldungApi";
 import { partnerAnmelden } from "../api/partnerAnmeldungApi";
 import { isSalesPartner } from "../utils/roleLanding.mjs";
 import { partnerReturnTarget } from "../utils/loginReturnTarget.mjs";
-import { PARTNER_ANMELDE_TEXT as T, PARTNER_PORTAL_PATH, mapPartnerAnmeldeFehler, PARTNER_ANMELDE_FEHLER } from "../utils/partnerAnmeldung.mjs";
+import { PARTNER_ANMELDE_TEXT as T, PARTNER_BUEHNE_TEXT as B, PARTNER_PORTAL_PATH, mapPartnerAnmeldeFehler, PARTNER_ANMELDE_FEHLER } from "../utils/partnerAnmeldung.mjs";
 import { FORGOT_NEUTRAL_ERFOLG, mapForgotError, mapAuthThrownError, LOGIN_SERVERFEHLER } from "../utils/authErrors.mjs";
 
 /* ── Partner-Anmeldung /partner/login (Betreiberauftrag 2026-11-22, Abschnitt 8) ────────────────────────────────────
    Eigener Eingang der Partner-App, dunkel wie das Partnerportal (styles/partner-nacht.css). Der Server entscheidet:
    nur ein Vertriebspartner erhält ein Token (POST /auth/partner-login). Die Seite zeigt nur dessen Antwort und führt ins
    Portal — auf ein geprüftes Rücksprungziel im Partnerportal (partnerReturnTarget), sonst auf /partner.
-   Passwort vergessen: derselbe neutrale Weg wie überall (POST /auth/forgot-password). */
+   Passwort vergessen: derselbe neutrale Weg wie überall (POST /auth/forgot-password).
+
+   Premium UX 4.0 (Betreiberentscheidungen A1/A4, 2026-11-22): zweispaltige Bühne mit eigenem violetten Charakter — links
+   Marke, Satz und die drei Bereiche des Portals (PARTNER_BUEHNE_TEXT), rechts das Blatt. Bedienung, Kennungen, Fehler-
+   und Ladezustände, „Passwort vergessen“ und der Weg zur Bewerbung sind unverändert; kein Bauteil der Admin-Anmeldung. */
 
 async function jsonOderNull(r) {
   try { return await r.json(); } catch { return null; }
+}
+
+// Drei ruhende Ringe um das Blatt — eigene Kunden, Team Ebene 1, Team Ebene 2 — mit wenigen Lichtpunkten auf der
+// rechten Seite, jeder sichtbar neben oder über dem Blatt (es deckt im Bildraster etwa x 258–742, y 173–827). Kein
+// Markenzeichen als Hintergrund (brandIdentity.test.mjs 18), keine Zahl, keine Bewegung; die Farben kommen aus
+// partner-nacht.css (Abschnitt 11), der Verlauf blendet die Ringe zur Textspalte hin aus.
+const RINGE = [300, 390, 480];
+const PUNKTE = [
+  [785.3, 407.3, 1], [567.7, 115.9, 0], [876.7, 600.9, 1], [798.8, 750.7, 0], [775.3, 106.8, 0], [867.7, 808.5, 0], [972.7, 416.6, 1],
+];
+function PartnerRinge() {
+  return (
+    <svg className="spp-anmeldung-orbit" viewBox="0 0 1000 1000" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="spp-orbit-verlauf" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" className="spp-orbit-stop spp-orbit-stop--aus" />
+          <stop offset="0.45" className="spp-orbit-stop spp-orbit-stop--leise" />
+          <stop offset="1" className="spp-orbit-stop spp-orbit-stop--an" />
+        </linearGradient>
+      </defs>
+      <g className="spp-orbit-ringe" fill="none" stroke="url(#spp-orbit-verlauf)">
+        {RINGE.map((r) => <circle key={r} cx="500" cy="500" r={r} vectorEffect="non-scaling-stroke" />)}
+      </g>
+      <g className="spp-orbit-punkte">
+        {PUNKTE.map(([x, y, hell]) => (
+          <g key={`${x}-${y}`}>
+            <circle className="spp-orbit-schein" cx={x} cy={y} r={hell ? 14 : 10} />
+            <circle className={`spp-orbit-punkt${hell ? " spp-orbit-punkt--hell" : ""}`} cx={x} cy={y} r={hell ? 3.6 : 2.6} />
+          </g>
+        ))}
+      </g>
+    </svg>
+  );
 }
 
 export default function PartnerAnmeldungPage() {
@@ -100,62 +137,83 @@ export default function PartnerAnmeldungPage() {
   return (
     <div className="spp-anmeldung">
       <main className="spp-anmeldung-mitte">
-        <section className="spp-anmeldung-panel" aria-labelledby={`${uid}-titel`}>
-          <BrandLogo variant="lockup" tone="reverse" className="spp-anmeldung-marke"
-            sub={<span className="spp-brand-tag">{T.bereich}</span>} />
-          {schritt === "anmelden" ? (
-            <form className="spp-anmeldung-form" onSubmit={anmelden} noValidate>
-              <h1 className="spp-anmeldung-titel" id={`${uid}-titel`}>{T.titel}</h1>
-              <p className="spp-anmeldung-text">{T.text}</p>
-              {abgelaufen && <p className="spp-anmeldung-hinweis" role="status">{T.sitzungAbgelaufen}</p>}
-              {fehler && <p className="spp-anmeldung-fehler" id={idFehler} role="alert">{fehler}</p>}
-              <label className="spp-anmeldung-label" htmlFor="spp-login-email">{T.email}</label>
-              <input id="spp-login-email" ref={emailRef} className="spp-anmeldung-input" type="email" inputMode="email"
-                autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={254} value={email}
-                onChange={(e) => setEmail(e.target.value)} aria-describedby={fehler ? idFehler : undefined} />
-              <label className="spp-anmeldung-label" htmlFor="spp-login-password">{T.passwort}</label>
-              <input id="spp-login-password" ref={passwortRef} className="spp-anmeldung-input" type="password"
-                autoComplete="current-password" maxLength={128} value={passwort} onChange={(e) => setPasswort(e.target.value)}
-                aria-describedby={fehler ? idFehler : undefined} />
-              <label className="spp-anmeldung-bleiben">
-                <input type="checkbox" checked={bleiben} onChange={(e) => setBleiben(e.target.checked)} aria-describedby={`${uid}-bleiben`} />
-                <span>{T.bleiben}</span>
-              </label>
-              <p className="spp-anmeldung-hilfe" id={`${uid}-bleiben`}>{T.bleibenHilfe}</p>
-              <button type="submit" className="spp-anmeldung-cta" id="spp-login-submit" disabled={laeuft} aria-busy={laeuft ? "true" : undefined}>
-                {laeuft ? T.anmeldenLaeuft : T.anmelden}
-              </button>
-              <button type="button" className="spp-anmeldung-link" onClick={() => { setFehler(""); setGesendet(false); setSchritt("vergessen"); }}>
-                {T.vergessen}
-              </button>
-            </form>
-          ) : (
-            <form className="spp-anmeldung-form" onSubmit={vergessenSenden} noValidate>
-              <h1 className="spp-anmeldung-titel" id={`${uid}-titel`}>{T.vergessenTitel}</h1>
-              {gesendet ? (
-                <p className="spp-anmeldung-hinweis" role="status">{FORGOT_NEUTRAL_ERFOLG}</p>
-              ) : (
-                <>
-                  <p className="spp-anmeldung-text">{T.vergessenText}</p>
+        <div className="spp-anmeldung-buehne">
+          <div className="spp-anmeldung-kopf">
+            <BrandLogo variant="lockup" tone="reverse" className="spp-anmeldung-marke"
+              sub={<span className="spp-brand-tag">{T.bereich}</span>} />
+          </div>
+          <div className="spp-anmeldung-intro">
+            <h1 className="spp-anmeldung-buehnentitel">{B.titel}</h1>
+            <p className="spp-anmeldung-buehnentext">{B.text}</p>
+          </div>
+          <div className="spp-anmeldung-blatt">
+            <PartnerRinge />
+            <section className="spp-anmeldung-panel" aria-labelledby={`${uid}-titel`}>
+              {schritt === "anmelden" ? (
+                <form className="spp-anmeldung-form" onSubmit={anmelden} noValidate>
+                  <h2 className="spp-anmeldung-titel" id={`${uid}-titel`}>{T.titel}</h2>
+                  <p className="spp-anmeldung-text">{T.text}</p>
+                  {abgelaufen && <p className="spp-anmeldung-hinweis" role="status">{T.sitzungAbgelaufen}</p>}
                   {fehler && <p className="spp-anmeldung-fehler" id={idFehler} role="alert">{fehler}</p>}
-                  <label className="spp-anmeldung-label" htmlFor="spp-vergessen-email">{T.email}</label>
-                  <input id="spp-vergessen-email" ref={emailRef} className="spp-anmeldung-input" type="email" inputMode="email"
+                  <label className="spp-anmeldung-label" htmlFor="spp-login-email">{T.email}</label>
+                  <input id="spp-login-email" ref={emailRef} className="spp-anmeldung-input" type="email" inputMode="email"
                     autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={254} value={email}
                     onChange={(e) => setEmail(e.target.value)} aria-describedby={fehler ? idFehler : undefined} />
-                  <button type="submit" className="spp-anmeldung-cta" disabled={laeuft} aria-busy={laeuft ? "true" : undefined}>
-                    {laeuft ? T.vergessenLaeuft : T.vergessenSenden}
+                  <label className="spp-anmeldung-label" htmlFor="spp-login-password">{T.passwort}</label>
+                  <input id="spp-login-password" ref={passwortRef} className="spp-anmeldung-input" type="password"
+                    autoComplete="current-password" maxLength={128} value={passwort} onChange={(e) => setPasswort(e.target.value)}
+                    aria-describedby={fehler ? idFehler : undefined} />
+                  <div className="spp-anmeldung-feldfuss">
+                    <button type="button" className="spp-anmeldung-link" onClick={() => { setFehler(""); setGesendet(false); setSchritt("vergessen"); }}>
+                      {T.vergessen}
+                    </button>
+                  </div>
+                  <label className="spp-anmeldung-bleiben">
+                    <input type="checkbox" checked={bleiben} onChange={(e) => setBleiben(e.target.checked)} aria-describedby={`${uid}-bleiben`} />
+                    <span>{T.bleiben}</span>
+                  </label>
+                  <p className="spp-anmeldung-hilfe" id={`${uid}-bleiben`}>{T.bleibenHilfe}</p>
+                  <button type="submit" className="spp-anmeldung-cta" id="spp-login-submit" disabled={laeuft} aria-busy={laeuft ? "true" : undefined}>
+                    {laeuft ? T.anmeldenLaeuft : T.anmelden}
                   </button>
-                </>
+                </form>
+              ) : (
+                <form className="spp-anmeldung-form" onSubmit={vergessenSenden} noValidate>
+                  <h2 className="spp-anmeldung-titel" id={`${uid}-titel`}>{T.vergessenTitel}</h2>
+                  {gesendet ? (
+                    <p className="spp-anmeldung-hinweis" role="status">{FORGOT_NEUTRAL_ERFOLG}</p>
+                  ) : (
+                    <>
+                      <p className="spp-anmeldung-text">{T.vergessenText}</p>
+                      {fehler && <p className="spp-anmeldung-fehler" id={idFehler} role="alert">{fehler}</p>}
+                      <label className="spp-anmeldung-label" htmlFor="spp-vergessen-email">{T.email}</label>
+                      <input id="spp-vergessen-email" ref={emailRef} className="spp-anmeldung-input" type="email" inputMode="email"
+                        autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={254} value={email}
+                        onChange={(e) => setEmail(e.target.value)} aria-describedby={fehler ? idFehler : undefined} />
+                      <button type="submit" className="spp-anmeldung-cta" disabled={laeuft} aria-busy={laeuft ? "true" : undefined}>
+                        {laeuft ? T.vergessenLaeuft : T.vergessenSenden}
+                      </button>
+                    </>
+                  )}
+                  <button type="button" className="spp-anmeldung-link" onClick={() => { setFehler(""); setSchritt("anmelden"); }}>
+                    {T.zurueck}
+                  </button>
+                </form>
               )}
-              <button type="button" className="spp-anmeldung-link" onClick={() => { setFehler(""); setSchritt("anmelden"); }}>
-                {T.zurueck}
-              </button>
-            </form>
-          )}
-          <p className="spp-anmeldung-fuss">
-            {T.partnerWerden} <KundenbereichLink to="/partner-registrieren">{T.partnerWerdenLink}</KundenbereichLink>
-          </p>
-        </section>
+              <p className="spp-anmeldung-fuss">
+                {T.partnerWerden} <KundenbereichLink to="/partner-registrieren">{T.partnerWerdenLink}</KundenbereichLink>
+              </p>
+            </section>
+          </div>
+          <ul className="spp-anmeldung-vorteile" aria-label={B.vorteileName}>
+            {B.vorteile.map((v) => (
+              <li key={v.titel} className="spp-anmeldung-vorteil">
+                <span className="spp-anmeldung-vorteil-titel">{v.titel}</span>
+                <span className="spp-anmeldung-vorteil-text">{v.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </main>
       <nav className="spp-anmeldung-recht" aria-label="Rechtliches">
         <KundenbereichLink to="/impressum">Impressum</KundenbereichLink>

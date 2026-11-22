@@ -1590,7 +1590,8 @@
    der Inhalt hineinpasst — vorher fielen dort Rechnungs- und Entwurfsspalten zusammen, der Kontotitel lief unter die
    Karte, der Betrag „Offene Rechnungen“ ragte aus seiner Spalte. Rechnungen als Tabelle ab 1200 px Fenster und 55.5rem
    (ihre Spalten stehen schon in rem, Abschnitt 15 in premium-redesign.css; an der Stufe springt der Innenabstand, die
-   Fensterstufe bleibt deshalb); Konto zweispaltig ab 1024 px und 45.5rem; Übersicht 2 : 1 erst ab 51.5625rem (1121 px);
+   Fensterstufe bleibt deshalb); Konto mit dem Kontokopf als Spalte daneben ab 84rem (§19); Übersicht 2 : 1 erst ab
+   51.5625rem (1121 px);
    Sendungsverfolgung mit Schnellwahl daneben ab 64.5rem (1280 px; ihr Container hat keinen Innenabstand). */
 :root[data-ce-bereich="kunde"] .inv-table { display: none; }
 :root[data-ce-bereich="kunde"] .inv-cards { display: flex; }
@@ -1598,12 +1599,6 @@
   @container ce-seite (width >= 55.5rem) {
     :root[data-ce-bereich="kunde"] .inv-table { display: block; }
     :root[data-ce-bereich="kunde"] .inv-cards { display: none; }
-  }
-}
-:root[data-ce-bereich="kunde"] .profile-sections > .profile-card { grid-template-columns: minmax(0, 1fr); row-gap: var(--ce-space-4); }
-@media (min-width: 1024px) {
-  @container ce-seite (width >= 45.5rem) {
-    :root[data-ce-bereich="kunde"] .profile-sections > .profile-card { grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); row-gap: var(--ce-space-3); }
   }
 }
 @container ce-seite (width < 51.5625rem) {
@@ -2193,15 +2188,63 @@
 :root[data-ce-bereich="kunde"] .inv-section-head { border-bottom: 2px solid var(--ce-color-text-primary); }
 
 /* ═══════════ 19 · KONTOEINSTELLUNGEN ══════════════════════════════════════
-   Jeder Abschnitt (Firmendaten, Rechnungsadresse, Logo, Lieferschein, Sicherheit …) bleibt ein Blatt; sein
-   Kopf steht in der Abschnittsstufe über einer Haarlinie. */
-/* Die Abschnitte trennt weiterhin eine Haarlinie (die offene Tabellenregel oben nimmt .table-card den Rahmen). */
-:root[data-ce-bereich="kunde"] .profile-sections > .profile-card + .profile-card { border-top: 1px solid var(--ce-pr-hairline); }
+   Premium UX 4.0 (Betreiberentscheidung A5, 2026-11-22): Jeder Abschnitt (Unternehmensdaten, Ansprechpartner, Logo,
+   Lieferscheine, Zahlungsbedingungen, Abrechnung, Sicherheit, App) ist ein Blatt aus demselben Material wie der
+   Kontokopf — Weiß, Haarlinie, leiser Schatten; die offene Tabellenregel (§7) nimmt .table-card sonst den Rahmen.
+   Sein Kopf steht im Blatt in der Abschnittsstufe über einer Haarlinie, „Bearbeiten“ rechts daneben
+   (dashboard-premium.css). Ab 84rem Seitenbreite (Rahmen 1440/1680 px, also ab 1680 px Fenster) steht der Kontokopf
+   als klebende Spalte rechts neben den Abschnitten: Die Abschnittsspalte bleibt bei höchstens --ce-konto-spalte, die
+   Fläche daneben trägt Firma, Kundennummer und Status, statt leer zu bleiben. Darunter steht der Kontokopf über den
+   Abschnitten, in derselben Breite. */
+:root[data-ce-bereich="kunde"] .profile-sections > .profile-card {
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-radius-panel);
+  box-shadow: var(--ce-pr-shadow-card);
+}
 :root[data-ce-bereich="kunde"] .profile-card-head .table-card-title {
   font-size: var(--ce-text-title-section-size);
   font-weight: var(--ce-text-title-section-weight);
   letter-spacing: -0.02em;
   color: var(--ce-color-text-primary);
+}
+:root[data-ce-bereich="kunde"] .profile-layout { max-width: var(--ce-konto-spalte); }
+/* Kontokopf schmal (Telefon) und in der Seitenspalte: die Firmenmarke über dem Text, damit E-Mail und Kundennummer die
+   ganze Breite haben — daneben brach die E-Mail mitten im Wort um und die Kundennummer rutschte unter ihr Label.
+   `stretch`, nicht `flex-start`: In der Spalte bemisst flex-start den Textblock nach seinem Inhalt, und dessen längstes
+   unteilbares Stück (E-Mail, langer Firmenname) ragte bei großer Browserschrift über den Kopf hinaus. Gestreckt hat der
+   Block die Breite des Kopfs, und `overflow-wrap` bricht um. Die Firmenmarke hat eine feste Breite und bleibt links. */
+@container ce-seite (width < 36rem) {
+  :root[data-ce-bereich="kunde"] .profile-account-identity { flex-direction: column; align-items: stretch; gap: var(--ce-space-3); }
+}
+@container ce-seite (width >= 84rem) {
+  :root[data-ce-bereich="kunde"] .profile-layout {
+    display: grid;
+    grid-template-columns: minmax(0, var(--ce-konto-spalte)) minmax(24rem, 1fr);
+    column-gap: var(--ce-space-7);
+    align-items: start;
+    max-width: none;
+  }
+  /* Feste Plätze: der Speicherhinweis (nur nach dem Speichern) über den Abschnitten, der Kontokopf rechts über beide
+     Zeilen. Ohne Hinweis bleibt dessen Zeile 0 px hoch. */
+  :root[data-ce-bereich="kunde"] .profile-layout > .alert { grid-column: 1; grid-row: 1; }
+  :root[data-ce-bereich="kunde"] .profile-layout > .profile-sections { grid-column: 1; grid-row: 2; }
+  :root[data-ce-bereich="kunde"] .profile-layout > .profile-account-header {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    position: sticky;
+    top: var(--ce-space-6);
+    flex-direction: column;
+    align-items: flex-start;
+    margin: 0;
+  }
+  :root[data-ce-bereich="kunde"] .profile-layout > .profile-account-header > .profile-account-identity {
+    flex: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--ce-space-3);
+    width: 100%;
+  }
 }
 
 /* ═══════════ 20 · SCHMALE KARTENLISTEN UND SONDERZUSTÄNDE ═════════════════

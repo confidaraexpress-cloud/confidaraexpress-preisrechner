@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { API, jsonH } from "../api/client";
 import { LoginForm } from "../components/auth/LoginForm";
@@ -40,6 +40,19 @@ import { PASSWORD_MIN_LEN, PASSWORD_MAX_LEN, passwordLengthError } from "../util
 import { validateRequiredVatId } from "../utils/vatId.mjs";
 // Phase 1 (Canonical v2.117): Prüfung des Versandvolumen-Felds beim Verlassen (dieselbe Regel wie getRegErrors).
 import { validateRegistrationShipmentVolume } from "../utils/shipmentVolume.mjs";
+// Premium UX 4.0 (Betreiberentscheidung A3, 2026-11-22): Registrierung in drei Schritten — nur die Zuordnung Feld →
+// Schritt; geprüft wird mit getRegErrors/getRegDeclarationErrors, gesendet genau einmal am Ende.
+import { REG_LAST_STEP, regStepErrors, regFirstStepWithError, regFirstErrorFieldId } from "../utils/registrationSteps.mjs";
+
+// Leeres Registrierungsformular — Start und Zustand nach einem erfolgreichen Antrag (kein Passwort bleibt stehen).
+const leeresRegFormular = () => ({
+  name: "", email: "", password: "", company_name: "",
+  vat_id: "", street: "", zip: "", city: "", country: "DE",
+  // Paket D: ausdrücklich ohne USt-IdNr. (Rechtsform statt Nummer, Sitz Deutschland, manuelle Prüfung).
+  vat_id_absent: false, legal_form: "",
+  // Phase 1 (Canonical v2.117): voraussichtliches monatliches Versandvolumen — Pflicht, ohne Vorauswahl.
+  monthly_shipment_volume: "",
+});
 
 // Wortlaute des Zurücksetzen-Formulars. Der Kurztext bleibt wortgleich zur
 // bisherigen Meldung; der Langtext fehlte hier vorher vollständig.
@@ -96,16 +109,22 @@ export default function AuthPage() {
   const [newPassword, setNewPassword] = useState("");
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
-  const [regForm, setRegForm] = useState({
-    name: "", email: "", password: "", company_name: "",
-    vat_id: "", street: "", zip: "", city: "", country: "DE",
-    // Paket D: ausdrücklich ohne USt-IdNr. (Rechtsform statt Nummer, Sitz Deutschland, manuelle Prüfung).
-    vat_id_absent: false, legal_form: "",
-    // Phase 1 (Canonical v2.117): voraussichtliches monatliches Versandvolumen — Pflicht, ohne Vorauswahl.
-    monthly_shipment_volume: "",
-  });
+  const [regForm, setRegForm] = useState(leeresRegFormular);
   const [regPasswordRepeat, setRegPasswordRepeat] = useState("");
   const [regErrors, setRegErrors] = useState({});
+  // Premium UX 4.0: aktueller Schritt (0–2) und der Wunsch, wohin der Fokus geht (Überschrift oder fehlerhaftes Feld).
+  const [regStep, setRegStep] = useState(0);
+  const [regFocus, setRegFocus] = useState(null);
+  // Schutz vor doppeltem Absenden zwischen zwei Renderläufen (zwei Enter oder Klicks, bevor `loading` greift).
+  const regInFlight = useRef(false);
+  const regFokusAuf = (ziel) => setRegFocus((p) => ({ ziel, n: (p ? p.n : 0) + 1 }));
+  // Ein Fehler zeigt sich dort, wo sein Feld steht: in den ersten betroffenen Schritt, Fokus auf das erste Feld.
+  const zeigeRegFehler = (fehler) => {
+    const schritt = regFirstStepWithError(fehler);
+    if (schritt < 0) return;
+    setRegStep(schritt);
+    regFokusAuf(regFirstErrorFieldId(schritt, fehler) || "kopf");
+  };
   // Paket C: die beiden Erklärungen und die angezeigte AGB-Fassung (GET /api/legal/current).
   // Die Fassung ist Anzeige und „gesehen"-Token, keine Auswahl — der Server vergleicht.
   const [regDeclarations, setRegDeclarations] = useState(emptyRegistrationDeclarations);
@@ -203,13 +222,31 @@ export default function AuthPage() {
     setLoading(false);
   };
 
+  // „Weiter“: prüft NUR die Felder des aktuellen Schritts im Browser — keine Anfrage, kein Speichern. Fehler stehen am
+  // Feld (Fokus auf das erste), sonst folgt der nächste Schritt mit dem Fokus auf seiner Überschrift.
+  const handleRegNext = () => {
+    const fehler = regStepErrors(regStep, getRegErrors(regForm, regPasswordRepeat));
+    if (Object.keys(fehler).length > 0) {
+      setRegErrors((p) => ({ ...p, ...fehler }));
+      regFokusAuf(regFirstErrorFieldId(regStep, fehler));
+      return;
+    }
+    setRegStep((s) => Math.min(s + 1, REG_LAST_STEP));
+    regFokusAuf("kopf");
+  };
+  const handleRegBack = () => { setRegStep((s) => Math.max(0, s - 1)); regFokusAuf("kopf"); };
+  // Schrittleiste und „Ändern“: nur zurück — nach vorn führt allein „Weiter“ mit seiner Prüfung.
+  const handleRegGoTo = (schritt) => { if (schritt >= 0 && schritt < regStep) { setRegStep(schritt); regFokusAuf("kopf"); } };
+
   const handleRegister = async () => {
     // Doppelklick-/Mehrfachversand-Schutz: der Button ist bereits über `loading`
     // deaktiviert, hier zusätzlich als Guard, falls das Formular per Enter kommt.
     if (loading) return;
+    if (regInFlight.current) return;
     const errs = { ...getRegErrors(regForm, regPasswordRepeat), ...getRegDeclarationErrors(regDeclarations) };
-    if (Object.keys(errs).length > 0) { setRegErrors(errs); return; }
+    if (Object.keys(errs).length > 0) { setRegErrors(errs); zeigeRegFehler(errs); return; }
     setRegErrors({});
+    regInFlight.current = true;
     setError(""); setLoading(true);
     try {
       // Pflichtfelder getrimmt senden — dieselben Feldnamen wie bisher (snake_case).
@@ -240,6 +277,7 @@ export default function AuthPage() {
         const { fieldErrors, generalError } = mapApiRegistrationError(d);
         setRegErrors(fieldErrors);
         setError(generalError);
+        zeigeRegFehler(fieldErrors);
         setLoading(false);
         return;
       }
@@ -252,7 +290,11 @@ export default function AuthPage() {
         setUebernahmeWartet(false);
         setUebernahmeVerworfen(true);
       }
+      // Der Antrag ist gestellt: das Formular steht wieder leer am ersten Schritt — kein Passwort bleibt im Zustand.
+      setRegForm(leeresRegFormular()); setRegPasswordRepeat(""); setRegDeclarations(emptyRegistrationDeclarations());
+      setRegStep(0); setRegFocus(null);
     } catch (e) { setError(mapAuthThrownError(e)); }
+    finally { regInFlight.current = false; }
     setLoading(false);
   };
 
@@ -501,6 +543,11 @@ export default function AuthPage() {
                   declarationsMissingOnly={regFieldsValid && !regDeclarationsOk}
                   volumeMissingOnly={regVolumeMissingOnly}
                   onVolumeBlur={handleRegVolumeBlur}
+                  step={regStep}
+                  onNext={handleRegNext}
+                  onBack={handleRegBack}
+                  onGoToStep={handleRegGoTo}
+                  focusRequest={regFocus}
                 />
               )}
 

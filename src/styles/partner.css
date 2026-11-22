@@ -461,26 +461,102 @@
 .spp-letzte-alle { margin-top: var(--ce-space-3); align-self: flex-start; }
 .spp-letzte { display: flex; flex-direction: column; }
 
-/* ── Anmeldung des Partnerbereichs (/partner/login) ──────────────────────── */
-.spp-anmeldung { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
+/* ── Anmeldung des Partnerbereichs (/partner/login) ────────────────────────
+   Premium UX 4.0 (Betreiberentscheidungen A1/A4, 2026-11-22): zweispaltige Bühne statt eines einzelnen Blatts. Links
+   Marke, Satz, Zeile und die drei Bereiche des Portals; rechts das Blatt mit dem Formular, umgeben von drei ruhenden
+   Ringen (PartnerAnmeldungPage.jsx: eigene Kunden, Team Ebene 1 und 2). Die Bühne ist auf 78rem begrenzt (kein
+   proportionales Mitwachsen) und steht senkrecht mittig. Unter 64em eine Spalte: Marke, Satz, Blatt, dann die drei
+   Bereiche — das Formular beginnt im ersten Bild. Farben, Licht und Ringe: partner-nacht.css, Abschnitt 11. */
+.spp-anmeldung {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: clip;
+}
 .spp-anmeldung-mitte {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--ce-space-8) var(--ce-page-gutter-mobile);
+  padding: clamp(var(--ce-space-7), 6vh, var(--ce-space-10)) var(--ce-page-gutter) clamp(var(--ce-space-6), 4vh, var(--ce-space-8));
+}
+.spp-anmeldung-buehne {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 30rem);
+  grid-template-areas:
+    "kopf     blatt"
+    "intro    blatt"
+    "vorteile blatt";
+  column-gap: clamp(3rem, 7vw, 7.5rem);
+  align-items: start;
+  width: 100%;
+  max-width: 78rem;
+}
+.spp-anmeldung-kopf { grid-area: kopf; margin-bottom: clamp(2rem, 6vh, 3.5rem); }
+.spp-anmeldung-intro { grid-area: intro; max-width: 38rem; }
+/* Das Blatt steht mittig neben der ganzen linken Spalte: bei 1440 × 900 passt die Seite ohne Scrollen. */
+.spp-anmeldung-blatt { grid-area: blatt; align-self: center; position: relative; isolation: isolate; min-width: 0; }
+.spp-anmeldung-vorteile { grid-area: vorteile; }
+.spp-anmeldung-marke { flex-direction: column; align-items: flex-start; gap: 6px; }
+/* Seitenverhältnis des Lockups (viewBox 1176 × 613): die Höhe steht fest, bevor das Bild geladen ist. */
+.spp-anmeldung-marke .ce-brandmark-img { width: 152px; aspect-ratio: 1176 / 613; }
+.spp-anmeldung-buehnentitel {
+  margin: 0;
+  font-size: clamp(2.5rem, 2.2vw + 1.4rem, 3.75rem);
+  font-weight: 500;
+  line-height: 1.06;
+  letter-spacing: -0.024em;
+  text-wrap: balance;
+}
+.spp-anmeldung-buehnentext {
+  max-width: 34rem;
+  margin: var(--ce-space-5) 0 0;
+  font-size: 1.125rem;
+  line-height: 1.6;
+}
+/* Drei gleichrangige Punkte, kein Ablauf: keine Nummern, je eine Haarlinie mit einem kurzen violetten Anfang. */
+.spp-anmeldung-vorteile {
+  display: grid;
+  gap: var(--ce-space-5);
+  max-width: 36rem;
+  margin: clamp(var(--ce-space-7), 5vh, var(--ce-space-9)) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.spp-anmeldung-vorteil {
+  position: relative;
+  display: grid;
+  gap: var(--ce-space-1);
+  padding-top: var(--ce-space-4);
+}
+.spp-anmeldung-vorteil::before,
+.spp-anmeldung-vorteil::after { content: ""; position: absolute; top: 0; left: 0; height: 1px; }
+.spp-anmeldung-vorteil::before { right: 0; }
+.spp-anmeldung-vorteil::after { width: var(--ce-space-7); }
+.spp-anmeldung-vorteil-titel { font-size: var(--ce-text-body-l-size); font-weight: 600; line-height: var(--ce-text-body-l-line); }
+.spp-anmeldung-vorteil-text { font-size: var(--ce-text-body-size); line-height: var(--ce-text-body-line); }
+/* Die Ringe: ein ruhendes Bild hinter dem Blatt, um dessen Mitte gelegt; die Seite schneidet es ab (overflow: clip). */
+.spp-anmeldung-orbit {
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  left: 50%;
+  width: 62rem;
+  height: auto;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 .spp-anmeldung-panel {
   width: 100%;
-  max-width: var(--ce-size-dialog-sm);
   display: flex;
   flex-direction: column;
   gap: var(--ce-space-6);
-  padding: var(--ce-space-7) var(--ce-space-6);
-  border-radius: var(--ce-radius-lg);
+  padding: var(--ce-space-8) var(--ce-space-8) var(--ce-space-7);
+  border-radius: var(--ce-radius-xl);
 }
-.spp-anmeldung-marke { flex-direction: column; align-items: flex-start; gap: 6px; }
-.spp-anmeldung-marke .ce-brandmark-img { width: 168px; }
 .spp-anmeldung-form { display: flex; flex-direction: column; gap: var(--ce-space-2); }
 .spp-anmeldung-titel {
   margin: 0;
@@ -498,12 +574,15 @@
 /* 16 px: kein automatisches Vergrößern beim Antippen (iOS). */
 .spp-anmeldung-input {
   width: 100%;
-  min-height: var(--ce-size-touch-target);
-  padding: 0 var(--ce-space-3);
-  border-radius: var(--ce-radius-sm);
+  min-height: var(--ce-size-control-lg);
+  padding: 0 var(--ce-space-4);
+  border-radius: var(--ce-radius-md);
   font-family: inherit;
   font-size: 16px;
 }
+/* „Passwort vergessen?“ steht unter dem Passwortfeld, rechts — Tabulatorreihenfolge wie die Lesereihenfolge. */
+.spp-anmeldung-feldfuss { display: flex; justify-content: flex-end; margin-top: calc(-1 * var(--ce-space-1)); }
+.spp-anmeldung-feldfuss .spp-anmeldung-link { align-self: auto; margin-right: calc(-1 * var(--ce-space-2)); }
 .spp-anmeldung-input:focus-visible { outline: var(--ce-focus-ring); outline-offset: 1px; }
 .spp-anmeldung-bleiben {
   display: flex;
@@ -515,13 +594,14 @@
   line-height: var(--ce-text-body-s-line);
   cursor: pointer;
 }
+.spp-anmeldung-feldfuss + .spp-anmeldung-bleiben { margin-top: 0; }
 .spp-anmeldung-bleiben input { width: 20px; height: 20px; margin: 0; flex-shrink: 0; }
 .spp-anmeldung-hilfe { margin: 0; font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); }
 .spp-anmeldung-cta {
-  min-height: var(--ce-size-control-lg);
+  min-height: calc(var(--ce-size-control-lg) + var(--ce-space-1));
   margin-top: var(--ce-space-4);
   border: 0;
-  border-radius: var(--ce-radius-sm);
+  border-radius: var(--ce-radius-md);
   font-family: inherit;
   font-size: var(--ce-text-button-size);
   font-weight: var(--ce-text-button-weight);
@@ -553,18 +633,68 @@
   font-size: var(--ce-text-body-s-size);
   line-height: var(--ce-text-body-s-line);
 }
-.spp-anmeldung-fuss { margin: 0; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); text-align: center; }
+/* Wechsel zur Bewerbung am Ende des Blatts, über einer Haarlinie (wie „Noch kein Geschäftskonto?“ der Kunden-Anmeldung). */
+.spp-anmeldung-fuss {
+  margin: 0;
+  padding-top: var(--ce-space-4);
+  border-top: 1px solid transparent;
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+}
 /* Der Verweis bricht als Einheit um und ist am Telefon ein volles Ziel (44 px), nicht nur eine Textzeile. */
 .spp-anmeldung-fuss a { display: inline-flex; align-items: center; min-height: var(--ce-size-touch-target); }
+/* Rechtliches an der linken Kante der Bühne. */
 .spp-anmeldung-recht {
   display: flex;
-  justify-content: center;
-  gap: var(--ce-space-5);
-  padding: var(--ce-space-4) var(--ce-space-4) max(var(--ce-space-4), env(safe-area-inset-bottom, 0px));
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 0 var(--ce-space-5);
+  width: 100%;
+  max-width: calc(78rem + 2 * var(--ce-page-gutter));
+  margin: 0 auto;
+  padding: var(--ce-space-2) var(--ce-page-gutter) max(var(--ce-space-4), env(safe-area-inset-bottom, 0px));
   font-size: var(--ce-text-caption-size);
   line-height: var(--ce-text-caption-line);
 }
 .spp-anmeldung-recht a { display: inline-flex; align-items: center; min-height: var(--ce-size-touch-target); }
+
+/* Große Monitore (ab 2240 px, dieselbe Stufe wie der dritte Inhaltsrahmen in variables.css): die Bühne wächst einmal
+   — Satz, Blatt, Felder und Ringe zusammen —, statt klein in der Mitte eines 2560er Bildschirms zu stehen. */
+@media (min-width: 2240px) {
+  .spp-anmeldung-buehne { grid-template-columns: minmax(0, 1fr) minmax(0, 34rem); column-gap: 8.5rem; max-width: 94rem; }
+  .spp-anmeldung-intro { max-width: 46rem; }
+  .spp-anmeldung-marke .ce-brandmark-img { width: 176px; }
+  .spp-anmeldung-buehnentitel { font-size: clamp(3.75rem, 1.4vw + 2.5rem, 4.5rem); }
+  .spp-anmeldung-buehnentext { max-width: 40rem; }
+  .spp-anmeldung-vorteile { max-width: 42rem; }
+  .spp-anmeldung-orbit { width: 70rem; }
+  .spp-anmeldung-panel { padding: var(--ce-space-9) var(--ce-space-9) var(--ce-space-8); }
+  .spp-anmeldung-input,
+  .spp-anmeldung-cta { min-height: calc(var(--ce-size-control-lg) + var(--ce-space-2)); }
+  .spp-anmeldung-recht { max-width: calc(94rem + 2 * var(--ce-page-gutter)); }
+}
+
+/* Tablet und Telefon: eine Spalte, höchstens 34rem; das Blatt folgt direkt auf den Satz, die drei Bereiche darunter.
+   Die Stufe steht in em: bei großer Browserschrift bleibt es länger einspaltig. */
+@media (max-width: 63.9375em) {
+  .spp-anmeldung-mitte { align-items: flex-start; padding: var(--ce-space-7) var(--ce-page-gutter-mobile) var(--ce-space-6); }
+  .spp-anmeldung-buehne {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "kopf" "intro" "blatt" "vorteile";
+    grid-template-rows: none;
+    row-gap: var(--ce-space-6);
+    max-width: 34rem;
+    margin: 0 auto;
+  }
+  .spp-anmeldung-kopf { margin-bottom: 0; }
+  .spp-anmeldung-marke .ce-brandmark-img { width: 128px; }
+  .spp-anmeldung-buehnentitel { font-size: clamp(2rem, 6.4vw, 2.75rem); line-height: 1.1; }
+  .spp-anmeldung-buehnentext { margin-top: var(--ce-space-3); font-size: var(--ce-text-body-size); line-height: var(--ce-text-body-line); }
+  .spp-anmeldung-vorteile { margin-top: 0; }
+  /* Die Ringe gehören zur Komposition neben dem Blatt; einspaltig lägen sie über dem Satz. Das Licht bleibt. */
+  .spp-anmeldung-orbit { display: none; }
+  .spp-anmeldung-recht { max-width: calc(34rem + 2 * var(--ce-page-gutter-mobile)); padding-inline: var(--ce-page-gutter-mobile); }
+}
 
 @media (max-width: 1199px) {
   .spp-shell { --shell-gutter: var(--ce-page-gutter-tablet); }
@@ -663,8 +793,8 @@
   .spp-kpi-hint { grid-column: 1 / -1; }
   .spp-segmente { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
   .spp-letzte-zeile { align-items: flex-start; }
-  .spp-anmeldung-mitte { align-items: flex-start; padding-top: var(--ce-space-6); }
-  .spp-anmeldung-panel { padding: var(--ce-space-6) var(--ce-space-5); }
+  .spp-anmeldung-mitte { padding-top: var(--ce-space-5); }
+  .spp-anmeldung-panel { padding: var(--ce-space-6) var(--ce-space-5) var(--ce-space-5); }
   .spp-toolbar .field { min-width: 0; width: 100%; }
   .spp-terms-item { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .spp-summary { padding: var(--ce-space-4); }

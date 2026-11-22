@@ -13,6 +13,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import { fuelleZugang, weiter } from "./helpers/registrierung.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -210,6 +211,10 @@ test("SMOKE E — auch die Registrierung bietet nur freigegebene Länder an", as
   try {
     // Das Länderfeld über seine id: seit v2.118 ist auch das Versandvolumen ein Auswahlfeld (select.auth-select).
     await page.goto(`${BASE}/register`, { waitUntil: "domcontentloaded" });
+    // Die Adresse steht seit Premium UX 4.0 (A3) im zweiten Schritt „Ihr Unternehmen“ — „Weiter“ sendet nichts.
+    await page.waitForSelector("#reg-name", { timeout: 20000 });
+    await fuelleZugang(page);
+    await weiter(page);
     await page.waitForSelector("select#reg-country", { timeout: 20000 });
     await page.waitForFunction(
       () => document.querySelectorAll("select#reg-country option").length > 1

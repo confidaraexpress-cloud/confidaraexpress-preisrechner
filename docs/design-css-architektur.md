@@ -169,6 +169,43 @@ Verfeinerung derselben Ebene, keine neue Designfamilie: Farben, Schriften, Anmel
 - **Material:** Arbeitsflächen mit blauem Reflex oben links und Tiefe unter der Kante (`--adm-reflex`, `--adm-karte-tiefe`), Tabellenköpfe in Zweittinte auf einem Kopfband, Zeilen beim Zeigen eisblau mit feiner Lichtmarke links (nur mit Zeiger und ab 901 px). Nicht jede Fläche leuchtet: Licht tragen nur offene Aufgaben, Kennzahlen und gezeigte Karten.
 - **Prüfhelfer korrigiert:** `deklarationen()` in `adminNacht.test.mjs` las bis v2.143 nur Custom Properties (Regex mit Pflicht-Bindestrich); N3 (Schatten, Filter, Glas), N4 (Übergänge) und N6 (Schriften) prüften dadurch nichts. Seit v2.144 liest der Helfer jede Eigenschaft (Gegenprobe mit eingebauten Verstößen: N3, N4, N6 schlagen an).
 
+### Premium UX 4.0 — Anmeldungen, Registrierung in Schritten, Kontoeinstellungen als Abschnittskarten (Betreiberauftrag 2026-11-22, Canonical v2.149)
+
+Darstellung und Bedienung. Anmelde- und Registrierungsverträge, Felder, Prüfungen, Erklärungen, Endpunkte, Rechte und das Adminpanel bleiben unverändert.
+
+- **Partner-Anmeldung (A1/A4, `pages/PartnerAnmeldungPage.jsx`, `partner.css` Abschnitt „Anmeldung des Partnerbereichs“, Licht in `partner-nacht.css` Abschnitt 11):**
+  - Zweispaltige Bühne, höchstens 78rem breit, ab 2240 px 94rem.
+  - Links Marke, Satz und die drei Bereiche des Portals (`PARTNER_BUEHNE_TEXT` in `utils/partnerAnmeldung.mjs`, Namen wie in der Seitenleiste). Keine Provisionshöhe, kein Verdienstversprechen, keine Zusage einer Freischaltung und keine Bestandteile eines Vergütungsmodells: „Verdienst“ nennt nur die Reiter des Portals (Provisionen, Gutschriften), solange das Partnerprogramm nicht aktiviert und die Partnervereinbarung nicht veröffentlicht ist (Canonical 12A). Geprüft in `partnerAnmeldung.test.mjs`.
+  - Rechts das Blatt vor drei ruhenden Ringen: SVG, keine Bewegung, kein Markenzeichen als Hintergrund.
+  - Kennungen, Fehler- und Ladezustände des Blatts bleiben. „Passwort vergessen?“ steht unter dem Passwortfeld, damit die Tabulatorfolge der Lesefolge entspricht.
+  - Unter 64em eine Spalte, höchstens 34rem; das Blatt folgt direkt auf den Satz.
+  - `h1` ist der Bühnensatz, `h2` der Titel des Blatts. Kein Bauteil der Admin-Anmeldung.
+- **Kunden-Anmeldung (A2, `premium-redesign.css` Abschnitt „Maß auf großen Bildschirmen“):**
+  - Ab 64em steht die zweispaltige Bühne senkrecht mittig, solange sie kürzer ist als das Fenster (Flexspalte mit automatischen Rändern). Ist sie höher, beginnt sie oben.
+  - Ab 1680 px und ab 2240 px (die Stufen des Inhaltsrahmens) wächst sie je einmal: Rahmen, Blatt, Satz, Felder und Aktion zusammen; die Nachtkarte erst ab 2240 px.
+  - Seitengerüste und fertige Seite tragen dieselben Klassen.
+  - Die Admin-Anmeldung ist nicht betroffen; sie nutzt eigene Klassen `auth-admin-*`.
+- **Registrierung in drei Schritten (A3, `components/auth/RegisterForm.jsx`, `utils/registrationSteps.mjs`, `pages/AuthPage.jsx`, Stil `premium-redesign.css` „Registrierung in drei Schritten“):**
+  - Zugang → Unternehmen → Prüfen, alles in DEMSELBEN Formular. Inaktive Schritte sind `hidden`; die Werte stehen nur im Zustand der Seite, nichts im Browserspeicher.
+  - Jeder Schritt hat genau einen Absendeknopf. „Weiter“ prüft mit `getRegErrors` nur die Felder des eigenen Schritts und sendet nichts. „Konto beantragen“ sendet wie bisher die eine Anfrage `POST /register`.
+  - Erledigte Schritte sind Knöpfe zurück; nach vorn geht es nur über „Weiter“.
+  - Ein Fehler, auch einer vom Server, führt in den ersten betroffenen Schritt, mit Fokus auf das erste Feld (`aria-invalid`, `aria-describedby` → Fehlertext). Nach einem Schrittwechsel liegt der Fokus auf der Überschrift des Schritts.
+  - Doppelt sendet nichts: Ein Doppelklick zählt einmal (`detail` > 1 wird verworfen), und `regInFlight` sperrt zwischen zwei Renderläufen.
+  - Nach einem erfolgreichen Antrag steht das Formular leer am ersten Schritt.
+  - Unter 30em nennt die Leiste sichtbar nur den aktuellen Schritt. Die Punkte bemessen sich dort nach ihrem Inhalt und teilen sich den Rest, damit ein langer Name („Unternehmen“) nicht über seinen Punkt ragt.
+  - Ist die Leiste schmaler als 16rem (große Browserschrift auf dem Telefon), steht auch der aktuelle Name nur für Screenreader; die Überschrift darunter nennt den Schritt. Gemessen wird die Leiste selbst (Abfragebehälter `reg-leiste`), in rem, damit die Grenze mit der Schrift wächst.
+  - Jeder Name steht zweimal im Markup: sichtbar (`.auth-reg-name`) und als `.sr-only.auth-reg-name-sr`. Angezeigt ist immer genau eine Fassung (`display`), so liest der Screenreader jeden Namen einmal. Die sichtbare Fassung trägt kein `aria-hidden` und bleibt damit im Prüfbereich der Layout-Wächter; die Screenreader-Fassung nehmen die Wächter über `.sr-only` aus (`premiumLayoutGuard`).
+  - Tests: `utils/registrationSteps.test.mjs` und `tests/e2e/registrationSteps.test.mjs` (R1–R7). Die umgestellten Registrierungssuiten nutzen den Helfer `tests/e2e/helpers/registrierung.mjs`.
+- **Kontoeinstellungen als Abschnittskarten (A5, `components/dashboard/ProfileCardHead.jsx` `SettingsSection`, Stil `dashboard-premium.css` „Kontoeinstellungen“, Kunde `premium-editorial.css` §19, Partner `partner-nacht.css` §13):**
+  - Ein Abschnitt ist EINE Karte: Kopf mit Titel, Erklärung und Aktion (rechts, am Telefon darunter), Haarlinie, Inhalt. Keine Titelspalte und keine Karte in der Karte mehr.
+  - Datenzeilen als Raster aus Bezeichnung (14rem) und Wert, am Telefon untereinander.
+  - Bearbeitungsformulare sind höchstens 46rem breit. „Bearbeiten“ ist ein umrandeter Knopf (`btn-outline`, `.profile-card-edit-action`).
+  - Die Spaltenbreite ist ein Token: `--ce-konto-spalte` (75rem, `variables.css`).
+  - Kunde: Kartenmaterial wie der Kontokopf. Ab 84rem Containerbreite (`ce-seite`, etwa ab 1680 px Fensterbreite) steht der Kontokopf als klebende Spalte rechts neben den Abschnitten (`minmax(24rem, 1fr)`); die DOM-Reihenfolge bleibt. Schmal (unter 36rem) und in der Seitenspalte steht die Firmenmarke über dem Text; der Textblock ist dort gestreckt (`align-items: stretch`), damit lange Firmennamen und E-Mails auch bei großer Browserschrift umbrechen, statt herauszuragen.
+  - Partner: Das dunkle Material bleibt. Kopflinien in `--pn-linie`, Gerätekarten mit demselben Kopf, Seitenkopf und Hinweise so breit wie die Spalte.
+  - Den Abstand zwischen den Karten trägt `.profile-sections` (`gap`), nicht mehr ein Rand einzelner Karten (`geraete.css`).
+  - Tests: `styles/kontoKarten.test.mjs` (K1–K9).
+
 ### Getrennte Tokenfamilien — nicht vermischen
 
 | Familie | Gilt für |

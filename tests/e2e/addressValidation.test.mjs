@@ -9,6 +9,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import { fuelleZugang, weiter } from "./helpers/registrierung.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -390,6 +391,10 @@ test("Smoke 11 — Registrierung: öffentliche Vorschläge ohne Anmeldung und oh
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const log = await setupRoutes(page, { angemeldet: false });
   await page.goto(`${BASE}/register`, { waitUntil: "domcontentloaded" });
+  // Die Adresse steht seit Premium UX 4.0 (A3) im zweiten Schritt „Ihr Unternehmen“ — „Weiter“ sendet nichts.
+  await page.waitForSelector("#reg-name", { timeout: 20000 });
+  await fuelleZugang(page);
+  await weiter(page);
   await page.waitForSelector("#reg-street", { timeout: 20000 });
   await page.locator("#reg-street").fill("Schweinheimer Str 187");
   await page.waitForSelector('#reg-street-list [role="option"]', { timeout: 10000 });

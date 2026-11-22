@@ -1,17 +1,17 @@
 import React from "react";
 
-// Gemeinsamer Abschnitt der Kontoeinstellungen (Redesign 2026-10).
+// Gemeinsamer Abschnitt der Kontoeinstellungen.
 //
-// Vorher trug jede Einstellungskarte einen eigenen Kopf mit Iconkachel und
-// stand als gleich gewichtete Karte im Zweispaltenraster. Jetzt folgt die Seite
-// dem ruhigen Settings-Muster: links Titel und Erklärung, rechts die Daten bzw.
-// Bedienelemente in EINER Inhaltsfläche; auf schmalen Breiten untereinander.
-// Abschnitte trennt eine Linie, nicht eine weitere Karte. Keine Symbole.
+// Premium UX 4.0 (Betreiberentscheidung A5, 2026-11-22): Jeder Abschnitt ist EINE Karte mit integriertem Kopf —
+// Titel und Erklärung oben in der Karte, die optionale Aktion („Bearbeiten“) rechts daneben, darunter die Daten bzw.
+// Bedienelemente. Vorher standen Titel und Erklärung in einer eigenen linken Spalte neben der Inhaltsfläche: Der
+// Inhalt begann weit rechts, links blieb eine leere Spalte, und Überschrift und Daten fielen optisch auseinander.
+// Die Kartengrenze ist zugleich die Reichweite der Aktion: „Bearbeiten“ ändert genau die Daten dieser Karte.
+// Keine Symbole.
 //
-// EINE Fassung für Profile.jsx und die ausgelagerten Einstellungsabschnitte
-// (Lieferschein, Abrechnung, Firmenlogo). Die optionale Aktion („Bearbeiten")
-// steht als Textaktion oben rechts in der Inhaltsfläche — nah an den Daten,
-// die sie verändert.
+// EINE Fassung für Profile.jsx, die ausgelagerten Einstellungsabschnitte (Lieferschein, Abrechnung, Firmenlogo) und
+// die Kontoseite des Partnerbereichs. Der Titel bleibt direktes Kind von .profile-card-head (E2E-Vertrag
+// salesPartnerPortal); die Aktion steht im DOM nach Titel und Erklärung, also auch in der Tab-Reihenfolge danach.
 //
 // Sprungziel (Profilmenü, 2026-11-08): Mit `id`, `abschnittRef` und `titelRef`
 // kann ein Abschnitt angesprungen werden — der Titel nimmt dann den Fokus
@@ -22,9 +22,9 @@ export function SettingsSection({ title, subtitle, action, children, className =
       <div className="table-card-header profile-card-head">
         <h2 className="table-card-title" ref={titelRef} tabIndex={titelRef ? -1 : undefined}>{title}</h2>
         {subtitle && <p className="profile-card-sub">{subtitle}</p>}
+        {action && <div className="profile-card-toolbar">{action}</div>}
       </div>
       <div className="profile-card-body">
-        {action && <div className="profile-card-toolbar">{action}</div>}
         {children}
       </div>
     </section>

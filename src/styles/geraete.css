@@ -133,8 +133,8 @@
     padding-left: var(--ce-space-6); border-left: 1px solid var(--ce-color-border-subtle);
   }
 }
-/* Partnerkonto: Abstand zwischen den aufeinanderfolgenden Gerätekarten (Sitzungen, App, Mitteilungen). */
-.profile-sections > .ce-geraete + .ce-geraete { margin-top: var(--ce-space-4); }
+/* Partnerkonto: Den Abstand zwischen den Karten (Abschnitte, Sitzungen, App, Mitteilungen) setzt seit Premium UX 4.0
+   der gemeinsame Abstand der Abschnittsliste (.profile-sections, dashboard-premium.css) — kein eigener Rand mehr. */
 @media (max-width: 900px) {
   .ce-push-art { min-height: var(--ce-size-touch-target); align-items: center; }
   .ce-push-art input { margin-top: 0; width: 22px; height: 22px; }

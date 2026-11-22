@@ -712,6 +712,11 @@
 @media (min-width: 2240px) {
   :root { --ce-size-content: 1680px; --ce-size-content-admin: 1920px; }
 }
+/* Kontoeinstellungen (Premium UX 4.0, Betreiberentscheidung A5, 2026-11-22): Höchstbreite der Abschnittsspalte im
+   Kunden- und Partnerbereich — so breit wie der Rahmen bis 1679 px (1200 px), damit Spalte und Seitenkopf dort
+   bündig enden. Darüber bleiben Bezeichnung und Wert beieinander; die Fläche daneben trägt im Kundenbereich ab 84rem
+   Seitenbreite den Kontokopf (premium-editorial.css §19). */
+:root { --ce-konto-spalte: 75rem; }
 
 /* ── Öffentliche Kundenbereich-Demo (Betreiberentscheidung 2026-10-27) ──────
    Die Demo-Leiste (styles/demo.css) steht auf jeder Seite der Demo, auch in dem

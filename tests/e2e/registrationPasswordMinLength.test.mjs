@@ -4,10 +4,17 @@
 // entsteht zu keinem Zeitpunkt eine echte Registrierung. Der Mock zählt jeden
 // POST /register mit: der entscheidende Nachweis ist nicht der Buttonzustand,
 // sondern dass gar kein Request hinausgeht, solange das Passwort zu kurz ist.
+//
+// Seit Premium UX 4.0 (A3, 2026-11-22) stehen die Passwortfelder im ersten Schritt „Ansprechpartner und Zugang“:
+// „Weiter“ prüft den Schritt im Browser und sendet nichts; erst „Konto beantragen“ im dritten Schritt sendet. Die Suite
+// geht über den gemeinsamen Bedienvertrag (helpers/registrierung.mjs).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import {
+  SCHRITT, absendeKnopf, aktuellerSchritt, erklaerungenAnhaken, fuelleUnternehmen, weiter, weiterKnopf,
+} from "./helpers/registrierung.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -38,18 +45,18 @@ async function setup(page, { onRegister } = {}) {
   return registerCalls;
 }
 
-// Füllt alle Pflichtfelder außer den beiden Passwortfeldern — seit Paket C gehören
-// die beiden Pflichterklärungen (Unternehmer, AGB) dazu.
-async function fillPflichtfelder(page) {
+// Füllt im ersten Schritt Ansprechpartner und E-Mail — die beiden Passwortfelder füllt jeder Fall selbst.
+async function fillZugangOhnePasswort(page) {
   await page.fill("#reg-name", "Max Mustermann");
   await page.fill("#reg-email", "einkauf@muster-logistik.de");
-  await page.fill("#reg-company", "Muster Logistik GmbH");
-  // Auftrag 2 / P10: die USt-IdNr. ist bei jeder Neuregistrierung Pflicht.
-  await page.fill("#reg-vat", "DE123456789");
-  // Phase 1 (Canonical v2.117): das voraussichtliche monatliche Versandvolumen ist Pflicht (eine der acht Angaben).
-  await page.locator("#reg-volume").selectOption("11_50");
-  await page.click("#reg-business .auth-checkbox");
-  await page.click("#reg-terms .auth-checkbox");
+}
+// Vom ersten Schritt bis vor das Absenden: weiter, Unternehmen (Firma, USt-IdNr. — Pflicht seit Auftrag 2 / P10 —,
+// Versandvolumen — Pflicht seit Phase 1), weiter, beide Pflichterklärungen (Unternehmer, AGB; seit Paket C).
+async function bisZumAbsenden(page) {
+  await weiter(page);
+  await fuelleUnternehmen(page);
+  await weiter(page);
+  await erklaerungenAnhaken(page);
 }
 
 const pwFelder = (page) => page.locator('.auth-input[type="password"]');
@@ -58,7 +65,8 @@ async function fillPasswort(page, wert) {
   await pwFelder(page).nth(1).fill(wert);
 }
 
-const cta = (page) => page.locator("button.auth-cta");
+const cta = (page) => absendeKnopf(page);
+const imFokus = (page) => page.evaluate(() => document.activeElement?.id || "");
 
 async function openRegister(page) {
   await page.goto(`${BASE}/register`, { waitUntil: "networkidle" });
@@ -85,19 +93,23 @@ test.after(async () => {
   }
 });
 
-test("1 — 7 Zeichen: CTA gesperrt, kein Request, Feldfehler sichtbar", async () => {
+test("1 — 7 Zeichen: „Weiter“ hält an, kein Request, Feldfehler sichtbar", async () => {
   const page = await browser.newPage();
   const calls = await setup(page);
   await openRegister(page);
-  await fillPflichtfelder(page);
+  await fillZugangOhnePasswort(page);
   await fillPasswort(page, "Abc123!");           // exakt 7 Zeichen
 
-  await assert.doesNotReject(cta(page).waitFor({ state: "visible" }));
-  assert.equal(await cta(page).isDisabled(), true, "Der CTA ist bei 7 Zeichen bedienbar");
+  // „Weiter“ prüft den Schritt: das Formular bleibt im ersten Schritt, der Fokus geht an das Passwortfeld.
+  await weiterKnopf(page).click();
+  await page.waitForTimeout(300);
+  assert.equal(await aktuellerSchritt(page), SCHRITT.zugang, "Mit 7 Zeichen ging es in den nächsten Schritt");
+  assert.equal(await imFokus(page), "reg-password", "Der Fokus steht nicht am Passwortfeld");
 
-  // Absenden per Enter im Formular — das umgeht den deaktivierten Button.
+  // Enter im Formular wirkt wie „Weiter“: wieder kein Schritt weiter und kein Request.
   await page.locator("#reg-name").press("Enter");
   await page.waitForTimeout(400);
+  assert.equal(await aktuellerSchritt(page), SCHRITT.zugang);
   assert.equal(calls.length, 0, "Es ging ein Registrierungsrequest hinaus");
 
   const fehler = await page.locator(".auth-field-error").allInnerTexts();
@@ -109,40 +121,48 @@ test("2 — 8 Zeichen: Formular erreicht den gültigen Zustand", async () => {
   const page = await browser.newPage();
   await setup(page);
   await openRegister(page);
-  await fillPflichtfelder(page);
+  await fillZugangOhnePasswort(page);
   await fillPasswort(page, "Abc123!");
-  assert.equal(await cta(page).isDisabled(), true);
+  await weiterKnopf(page).click();
+  await page.waitForTimeout(300);
+  assert.equal(await aktuellerSchritt(page), SCHRITT.zugang);
 
   await fillPasswort(page, "Abcd1234");          // exakt 8 Zeichen
   await page.waitForTimeout(150);
-  assert.equal(await cta(page).isDisabled(), false, "Der CTA bleibt bei 8 Zeichen gesperrt");
   const fehler = await page.locator(".auth-field-error").allInnerTexts();
   assert.ok(!fehler.some((t) => /mindestens 8 Zeichen/.test(t)), "Längenhinweis steht noch");
+  await bisZumAbsenden(page);
+  assert.equal(await cta(page).isDisabled(), false, "Der CTA bleibt bei 8 Zeichen gesperrt");
   await page.close();
 });
 
-test("3 — abweichende Wiederholung sperrt trotz gültiger Länge", async () => {
+test("3 — abweichende Wiederholung hält trotz gültiger Länge an", async () => {
   const page = await browser.newPage();
   const calls = await setup(page);
   await openRegister(page);
-  await fillPflichtfelder(page);
+  await fillZugangOhnePasswort(page);
   await pwFelder(page).nth(0).fill("Abcd1234");
   await pwFelder(page).nth(1).fill("Abcd9999");
   await page.waitForTimeout(150);
-  assert.equal(await cta(page).isDisabled(), true, "Der CTA ist trotz abweichender Wiederholung bedienbar");
+  await weiterKnopf(page).click();
+  await page.waitForTimeout(300);
+  assert.equal(await aktuellerSchritt(page), SCHRITT.zugang, "Trotz abweichender Wiederholung ging es weiter");
+  assert.equal(await imFokus(page), "reg-password-repeat", "Der Fokus steht nicht an der Wiederholung");
   await page.locator("#reg-name").press("Enter");
   await page.waitForTimeout(300);
   assert.equal(calls.length, 0, "Es ging ein Registrierungsrequest hinaus");
   await page.close();
 });
 
-test("4 — gültige Eingaben senden genau EINEN Request", async () => {
+test("4 — gültige Eingaben senden genau EINEN Request, auch bei Doppelklick", async () => {
   const page = await browser.newPage();
   const calls = await setup(page);
   await openRegister(page);
-  await fillPflichtfelder(page);
+  await fillZugangOhnePasswort(page);
   await fillPasswort(page, "EinSicheresPasswort2026");
-  await cta(page).click();
+  await bisZumAbsenden(page);
+  // Ein Doppelklick auf „Konto beantragen“ sendet den Antrag einmal (keine doppelte Registrierung).
+  await cta(page).dblclick();
   await page.waitForTimeout(500);
   assert.equal(calls.length, 1, `Erwartet 1 Request, gemessen ${calls.length}`);
   await page.close();
@@ -160,11 +180,15 @@ test("5 — ein serverseitiger Passwortfehler landet AM Passwortfeld", async () 
     ),
   });
   await openRegister(page);
-  await fillPflichtfelder(page);
+  await fillZugangOhnePasswort(page);
   await fillPasswort(page, "EinSicheresPasswort2026");
+  await bisZumAbsenden(page);
   await cta(page).click();
+  // Der Fehler führt zurück in den ersten Schritt — an das Passwortfeld.
   await page.waitForSelector(".auth-field-error");
   const fehler = await page.locator(".auth-field-error").allInnerTexts();
   assert.ok(fehler.some((t) => /mindestens 8 Zeichen haben/.test(t)), `Serverfehler nicht am Feld: ${JSON.stringify(fehler)}`);
+  assert.equal(await aktuellerSchritt(page), SCHRITT.zugang, "Der Fehler steht nicht im Schritt des Passworts");
+  assert.equal(await imFokus(page), "reg-password", "Der Fokus steht nicht am Passwortfeld");
   await page.close();
 });

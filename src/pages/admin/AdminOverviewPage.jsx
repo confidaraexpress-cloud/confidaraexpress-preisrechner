@@ -242,16 +242,20 @@ export default function AdminOverviewPage() {
         variant="admin"
         title="Übersicht"
         actions={(
-          <>
-            {/* Suche über alle Kunden, Sendungen und Rechnungen (Admin-App 2026-11-22). */}
-            <Link to="/admin/suche" className="adm-suchfeld-link" id="adm-suche-start">
+          // Suche über alle Kunden, Sendungen und Rechnungen (Admin-App 2026-11-22) und „Aktualisieren“ als eine Gruppe:
+          // am Telefon stehen beide in einer Zeile, „Aktualisieren“ dort als Symbol mit unverändertem Namen (admin.css).
+          <div className="adm-ov-aktionen">
+            {/* Sichtbar wie im Konzept ohne Verb (die Lupe trägt es) — so passt der Text auch neben „Aktualisieren“;
+                der Name enthält den sichtbaren Text vollständig (WCAG 2.5.3). */}
+            <Link to="/admin/suche" className="adm-suchfeld-link" id="adm-suche-start" aria-label="Sendung, Kunde oder Rechnung suchen">
               <Icon n="search" s={ICON_SIZE.md} />
-              <span>Sendung, Kunde oder Rechnung suchen</span>
+              <span>Sendung, Kunde oder Rechnung</span>
             </Link>
-            <button type="button" className="btn btn-outline btn-sm" onClick={loadAll} disabled={laedt}>
-              Aktualisieren
+            <button type="button" className="btn btn-outline btn-sm adm-aktualisieren" onClick={loadAll} disabled={laedt}>
+              <Icon n="refresh" s={ICON_SIZE.md} />
+              <span className="adm-aktualisieren-text">Aktualisieren</span>
             </button>
-          </>
+          </div>
         )}
       />
 
@@ -343,7 +347,7 @@ export default function AdminOverviewPage() {
 
       {/* Sekundäre Bereichslinks als Navigationskarten — dieselben Ziele stehen
           in der Navigation; hier ergänzen sie nur die kurze Beschreibung. */}
-      <section className="adm-section" aria-labelledby="adm-ov-bereiche">
+      <section className="adm-section adm-bereiche" aria-labelledby="adm-ov-bereiche">
         <h2 className="adm-section-title" id="adm-ov-bereiche">Bereiche</h2>
         <ul className="adm-tiles">
           {BEREICHE.map((b) => (

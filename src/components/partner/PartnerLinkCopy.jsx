@@ -1,22 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { COPY_TEXTS, copyToClipboard, selectElementText } from "../../utils/clipboard.mjs";
+import { TEILEN_TEXT, linkTeilen, teilenMoeglich } from "../../utils/teilen.mjs";
 import { Icon } from "../ui/Icon";
-
-export const TEILEN_TEXT = Object.freeze({
-  geteilt: "Link geteilt.",
-  fehler: "Teilen war nicht möglich. Bitte kopieren Sie den Link.",
-});
-
-/** Bietet das Gerät das System-Teilen an — und ist es ein Touch-Gerät? Am Desktop bleibt Kopieren die Hauptaktion. */
-export function teilenMoeglich(umgebung = globalThis) {
-  try {
-    const nav = umgebung && umgebung.navigator;
-    if (!nav || typeof nav.share !== "function") return false;
-    return Boolean(umgebung.matchMedia && umgebung.matchMedia("(pointer: coarse)").matches);
-  } catch {
-    return false;
-  }
-}
 
 /* ── Empfehlungslink mit Kopierknopf (Partnerportal, UX-Paket 3) ─────────────
    Die Aktion steht vorn — ein großer Knopf („Kundenlink kopieren"), mobil in
@@ -61,13 +46,10 @@ export function PartnerLinkCopy({ url, buttonLabel, shareLabel = null, primary =
   };
 
   const share = async () => {
-    try {
-      await navigator.share({ title: "ConfidaraExpress", url });
-      if (mountedRef.current) melden(true, TEILEN_TEXT.geteilt);
-    } catch (e) {
-      if (!mountedRef.current || (e && e.name === "AbortError")) return;
-      melden(false, TEILEN_TEXT.fehler);
-    }
+    const ergebnis = await linkTeilen(url);
+    if (!mountedRef.current || ergebnis === "abgebrochen") return;
+    if (ergebnis === "geteilt") melden(true, TEILEN_TEXT.geteilt);
+    else melden(false, TEILEN_TEXT.fehler);
   };
 
   const fehler = feedback !== null && feedback.ok === false;

@@ -2802,9 +2802,6 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
   .adm-tab { flex: 1 1 auto; min-width: var(--ce-size-touch-target); padding-left: 2px; padding-right: 2px; }
   /* Der Inhalt endet über der Leiste, nicht hinter ihr. */
   .adm-main { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
-  /* Am Telefon steht die Suche in der Kopfleiste — kein zweiter Einstieg im Seitenkopf der Übersicht. Mit dem
-     Seitenkopf davor, weil die Grundregel des Verweises weiter unten steht. */
-  .ce-page-header-actions .adm-suchfeld-link { display: none; }
 }
 /* Sehr schmale Telefone (unter 360 px): die kleinste Stufe der Schriftskala, ohne Seitenabstand — alle fünf
    Beschriftungen bleiben lesbar (gemessen bei 320 px). */
@@ -2832,6 +2829,50 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
 .adm-suchfeld-link:hover { border-color: var(--ce-color-border-interactive-hover); color: var(--ce-color-text-secondary); }
 .adm-suchfeld-link:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 .adm-suchfeld-link span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.adm-ov-aktionen { display: flex; align-items: center; gap: var(--ce-space-2); min-width: 0; max-width: 100%; }
+.adm-aktualisieren { gap: var(--ce-space-2); }
+
+/* Telefon: Startseite gezielt vereinfacht (Auftrag D4; Konzept Variante A, BERICHT Schritt 3).
+   - Suchfeld und „Aktualisieren“ in einer Zeile; „Aktualisieren“ als Symbol, der Name bleibt für Screenreader.
+   - „Zu erledigen“ als kompakte Zeilen statt großer Karten: Name und Hinweis links, die Zahl rechts, alle Wege der
+     Karte darunter (nichts entfällt).
+   - Keine Bereiche-Kacheln: dieselben Ziele stehen in der unteren Leiste und unter „Mehr“. */
+@media (max-width: 600px) {
+  .adm-ov-aktionen { flex: 1 1 100%; }
+  .adm-ov-aktionen .adm-suchfeld-link { flex: 1 1 auto; width: auto; min-width: 0; min-height: var(--ce-size-touch-target); }
+  .adm-ov-aktionen .adm-aktualisieren {
+    flex: none; justify-content: center;
+    width: var(--ce-size-touch-target); min-height: var(--ce-size-touch-target); padding: 0;
+  }
+  .adm-aktualisieren-text {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    border: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+  }
+}
+@media (max-width: 900px) {
+  .adm-todo { grid-template-columns: minmax(0, 1fr); gap: var(--ce-space-2); }
+  .adm-todo .adm-ops-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "name zahl" "hinweis zahl" "aeltester aeltester" "wege wege";
+    gap: 2px var(--ce-space-4);
+    padding: var(--ce-space-3) var(--ce-space-4) var(--ce-space-1);
+  }
+  .adm-todo .adm-ops-label { grid-area: name; }
+  .adm-todo .adm-ops-row { grid-area: zahl; flex-direction: column; align-items: flex-end; justify-content: center; gap: 0; }
+  .adm-todo .adm-ops-count { font-size: var(--ce-text-title-page-size); line-height: 1.15; }
+  .adm-todo .adm-ops-unit { font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); }
+  .adm-todo .adm-ops-hint { grid-area: hinweis; }
+  .adm-todo .adm-ops-oldest { grid-area: aeltester; }
+  .adm-todo .adm-ops-links { grid-area: wege; margin-top: 0; padding-top: 0; }
+  .adm-bereiche { display: none; }
+}
+/* Sehr schmale Telefone: das Suchfeld neben „Aktualisieren“ je einen Rasterschritt enger und eine Schriftstufe kleiner,
+   damit sein Text ganz im Feld steht (gemessen bei 320 px). Nach den Grundregeln, weil sie gleich spezifisch sind. */
+@media (max-width: 359px) {
+  .adm-ov-aktionen { gap: var(--ce-space-1); }
+  .adm-ov-aktionen .adm-suchfeld-link { gap: var(--ce-space-1); padding: 0 var(--ce-space-2); font-size: 13px; }
+}
 
 /* Suche */
 .adm-suche-form {

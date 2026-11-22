@@ -693,3 +693,53 @@ test("17 — Team ohne Platzgrenze (2026-10-13): 1.000 Partner auf Ebene 2 bei 3
   assert.deepEqual(state.kunde, []);
   await page.close();
 });
+
+test("18 — Teilen auf Touchgeräten: „…teilen“ vorn, nur die Adresse, Abbruch ohne Meldung, Fehler nennt Kopieren", async () => {
+  // Touchgerät mit System-Teilen (nachgebildet). Am Desktop ohne groben Zeiger bleibt Kopieren die Hauptaktion (Test 10).
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  await ctx.addInitScript(() => {
+    window.__geteilt = [];
+    window.__teilenAntwort = "ok";
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: (daten) => {
+        window.__geteilt.push(daten);
+        if (window.__teilenAntwort === "abbruch") return Promise.reject(new DOMException("geschlossen", "AbortError"));
+        if (window.__teilenAntwort === "fehler") return Promise.reject(new DOMException("nicht erlaubt", "NotAllowedError"));
+        return Promise.resolve();
+      },
+    });
+  });
+  const page = await ctx.newPage();
+  await setup(page);
+  await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
+  const kunde = page.locator("#spp-link-customer");
+  const teilen = kunde.locator("button.spp-linkcopy-teilen");
+  await teilen.waitFor({ state: "visible" });
+  assert.equal((await teilen.innerText()).trim(), "Kundenlink teilen");
+  // Teilen steht vor Kopieren; Kopieren bleibt als Rückfall daneben.
+  const knoepfe = await kunde.locator(".spp-linkcopy-knoepfe button").allInnerTexts();
+  assert.deepEqual(knoepfe.map((t) => t.trim()), ["Kundenlink teilen", "Kundenlink kopieren"]);
+  const status = kunde.locator('[role="status"]');
+
+  await teilen.click();
+  await page.waitForFunction(() => document.querySelector('#spp-link-customer [role="status"]')?.textContent === "Link geteilt.");
+  assert.deepEqual(await page.evaluate(() => window.__geteilt), [{ title: "ConfidaraExpress", url: OVERVIEW.links.customer }],
+    "geteilt wird genau die Adresse, kein Werbetext");
+
+  // Abbruch: keine Meldung (auch keine Fehlermeldung).
+  await page.waitForFunction(() => document.querySelector('#spp-link-customer [role="status"]')?.textContent === "");
+  await page.evaluate(() => { window.__teilenAntwort = "abbruch"; });
+  await teilen.click();
+  await page.waitForFunction(() => window.__geteilt.length === 2);
+  await page.waitForTimeout(150);
+  assert.equal(await status.innerText(), "");
+
+  // Fehler: die Meldung nennt den Weg über Kopieren; der Partnerlink teilt seine eigene Adresse.
+  await page.evaluate(() => { window.__teilenAntwort = "fehler"; });
+  await page.locator("#spp-link-partner button.spp-linkcopy-teilen").click();
+  await page.waitForFunction(() => /kopieren/i.test(document.querySelector('#spp-link-partner [role="status"]')?.textContent || ""));
+  assert.equal(await page.locator('#spp-link-partner [role="status"]').innerText(), "Teilen war nicht möglich. Bitte kopieren Sie den Link.");
+  assert.equal(await page.evaluate(() => window.__geteilt[2].url), OVERVIEW.links.partner);
+  await ctx.close();
+});

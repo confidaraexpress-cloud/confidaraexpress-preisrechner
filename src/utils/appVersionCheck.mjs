@@ -51,6 +51,9 @@ export function updateNoticeSuppressed({ pathname = "", page = "" } = {}) {
 // Hinweis — maßgeblich bleiben die Fehlerpfade der API-Aufrufe.
 export const APP_NOTICE_TEXT = Object.freeze({
   offline: "Keine Internetverbindung. Aktuelle Preise und Buchungen sind erst wieder verfügbar, wenn die Verbindung besteht.",
+  // Admin- und Partnerbereich (Betreiberauftrag 2026-11-22): was dort ohne Verbindung fehlt.
+  offlineAdmin: "Keine Internetverbindung. Änderungen und Aktionen sind erst wieder möglich, wenn die Verbindung besteht.",
+  offlinePartner: "Keine Internetverbindung. Aktuelle Zahlen, Gutschriften und Links sind erst wieder verfügbar, wenn die Verbindung besteht.",
   update: "Eine neue Version von ConfidaraExpress ist verfügbar.",
   reload: "Neu laden",
 });

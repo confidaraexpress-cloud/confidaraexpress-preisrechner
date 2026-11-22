@@ -65,7 +65,6 @@ test("1 — jeder mobile Menüknopf ist das Hamburger-Symbol mit Namen, Tooltip 
   const faelle = [
     ["DashboardPage", knopf(dashPage, "hamburger-btn"), "Menü – Navigation öffnen", /aria-expanded=\{sidebarOpen\}/, /aria-controls=\{SIDEBAR_NAV_ID\}/],
     ["DashboardLayout", knopf(dashLayout, "hamburger-btn"), "Menü – Navigation öffnen", /aria-expanded=\{sidebarOpen\}/, /aria-controls=\{SIDEBAR_NAV_ID\}/],
-    ["AdminLayout", knopf(adminLayout, "adm-topbar-burger"), "Menü öffnen", /aria-expanded=\{sidebarOpen\}/, /aria-controls=\{ADMIN_NAV_ID\}/],
     ["NavbarLayout", knopf(navbar, "hamburger-btn"), "Menü – Navigation öffnen", /aria-expanded=\{drawerOpen\}/, /aria-controls=\{drawerOpen \? DRAWER_ID : undefined\}/],
   ];
   for (const [name, k, label, expanded, controls] of faelle) {
@@ -76,6 +75,15 @@ test("1 — jeder mobile Menüknopf ist das Hamburger-Symbol mit Namen, Tooltip 
     assert.match(k, controls, `${name}: aria-controls fehlt`);
     assert.doesNotMatch(k, />\s*Menü\s*</, `${name}: der Textknopf „Menü“ ist zurück`);
   }
+  // Bewusste Ankeränderung (Admin-App 2026-11-22, D4): im Adminbereich öffnet „Mehr“ in der unteren Leiste den Drawer —
+  // sichtbarer Text mit Symbol statt des Menüknopfs oben, Zustand und Bezug wie dort.
+  const start = adminLayout.indexOf("adm-tab adm-tab-mehr");
+  assert.ok(start > -1, "AdminLayout: kein „Mehr“");
+  const mehr = adminLayout.slice(adminLayout.lastIndexOf("<button", start), adminLayout.indexOf("</button>", start));
+  assert.match(mehr, /aria-expanded=\{sidebarOpen\}/, "AdminLayout: aria-expanded fehlt");
+  assert.match(mehr, /aria-controls=\{ADMIN_NAV_ID\}/, "AdminLayout: aria-controls fehlt");
+  assert.match(mehr, /<span className="adm-tab-text">Mehr<\/span>/, "AdminLayout: „Mehr“ ohne sichtbaren Text");
+  assert.doesNotMatch(adminLayout, /adm-topbar-burger/, "AdminLayout: der Menüknopf oben ist zurück");
 });
 
 test("2 — aria-controls trifft eine echte Kennung", () => {
@@ -158,7 +166,7 @@ test("7 — die Symbolknöpfe sind quadratische 44-px-Ziele ohne Textpolster", (
     const m = css.match(new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\{([^}]*)\\}"));
     return m ? m[1] : "";
   };
-  for (const [css, sel] of [[premium, ".app-shell .hamburger-btn"], [layoutCss, ".hamburger-btn"], [admin, ".adm-topbar-burger"]]) {
+  for (const [css, sel] of [[premium, ".app-shell .hamburger-btn"], [layoutCss, ".hamburger-btn"], [admin, ".adm-topbar-suche"]]) {
     const b = block(css, sel);
     assert.match(b, /padding: 0;/, `${sel}: Textpolster statt Symbolknopf`);
     assert.doesNotMatch(b, /font-size/, `${sel}: Schriftregeln eines Textknopfs sind übrig`);

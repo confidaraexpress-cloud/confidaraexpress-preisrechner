@@ -1,16 +1,13 @@
-import React, { useRef, useState } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import { EmptyState, ErrorState, ListSkeleton } from "../ui/StateView";
-import { getPartnerCreditNotes, partnerCreditNotePdfPath } from "../../api/partnerApi";
+import { getPartnerCreditNotes } from "../../api/partnerApi";
 import { usePartnerData } from "../../hooks/usePartnerData";
-import { downloadDocument } from "../../utils/downloadDocument";
+import { useGutschriftDownload } from "../../hooks/useGutschriftDownload";
 import { formatCents, partnerTabPath } from "../../utils/salesPartnerView.mjs";
 import {
-  CREDIT_NOTE_DOWNLOAD_TEXT,
   CREDIT_NOTE_TEXTS,
   correctionHints,
-  creditNoteDownloadMessage,
-  creditNoteFallbackFilename,
   creditNoteIssuedOn,
   creditNotePeriod,
   creditNoteStatusMeta,
@@ -76,28 +73,8 @@ export function PartnerCreditNotesPanel() {
   const { loading, error, data, reload } = usePartnerData(
     (opts) => getPartnerCreditNotes(opts), normalisieren, [], CREDIT_NOTE_TEXTS.loadError,
   );
-  const [laedt, setLaedt] = useState(null);
-  const [downloadFehler, setDownloadFehler] = useState("");
-  const inFlight = useRef(false);
-
-  const herunterladen = async (cn) => {
-    if (inFlight.current || cn.id === null) return;
-    inFlight.current = true;
-    setLaedt(cn.id);
-    setDownloadFehler("");
-    try {
-      await downloadDocument(partnerCreditNotePdfPath(cn.id), {
-        fallbackFilename: creditNoteFallbackFilename(cn.number),
-        message: creditNoteDownloadMessage,
-        errorText: CREDIT_NOTE_DOWNLOAD_TEXT,
-      });
-    } catch (e) {
-      setDownloadFehler(e && typeof e.message === "string" && e.message ? e.message : CREDIT_NOTE_DOWNLOAD_TEXT.allgemein);
-    } finally {
-      inFlight.current = false;
-      setLaedt(null);
-    }
-  };
+  // PDF-Abruf: eine Stelle für diesen Bereich und die letzten Gutschriften der Übersicht (hooks/useGutschriftDownload).
+  const { laedt, fehler: downloadFehler, herunterladen } = useGutschriftDownload();
 
   // Tabelle und Karten stehen beide im DOM (die Breite schaltet um) — die
   // stabile Kennung trägt deshalb nur der Knopf der Tabelle.

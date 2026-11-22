@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { PartnerLayout } from "../components/layout/PartnerLayout";
 import { PageHeader } from "../components/ui/PageHeader";
 import { PartnerOverviewPanel } from "../components/partner/PartnerOverviewPanel";
@@ -13,8 +13,10 @@ import { getPartnerOverview, getPartnerTeam } from "../api/partnerApi";
 import { usePartnerData } from "../hooks/usePartnerData";
 import {
   PARTNER_TEXTS,
+  VERDIENST_ANSICHTEN,
   normalizeOverview,
   normalizeTeam,
+  partnerBereichVon,
   partnerStatusMeta,
   partnerTabFromSearch,
   partnerTabSearch,
@@ -24,26 +26,28 @@ import {
 const FEHLER_UEBERSICHT = "Die Übersicht konnte nicht geladen werden.";
 const FEHLER_TEAM = "Ihr Team konnte nicht geladen werden.";
 
-/* ── Partnerportal (/partner) ────────────────────────────────────────────────
-   Nur hinter PartnerRoute erreichbar (Rolle sales_partner). Die Bereiche —
-   Übersicht, Meine Kunden, Provisionen, Gutschriften, Mein Team und Konto —
-   sind keine eigenen Routen: seit UX-Paket 6 steht der gewählte Bereich als
-   `?page=<Kennung>` in der Adresse (Muster des Kunden-Dashboards). Nach dem
-   Neuladen und nach dem Login (Rücksprung über utils/loginReturnTarget.mjs)
-   öffnet so derselbe Bereich. Gelesen wird nur eine Kennung aus PARTNER_TABS
-   (partnerTabFromSearch); alles andere ist die Übersicht, und die Adresse wird
-   auf die gültige Form gebracht. Ein Bereichswechsel ersetzt den
-   Verlaufseintrag — „Zurück" verlässt das Portal wie bisher.
+// Unterzeile je Bereich: was hier steht, in den Worten des Portals.
+const UNTERTITEL = Object.freeze({
+  overview: "Ihr Verdienst, Ihre Empfehlungslinks und Ihr Satz im Überblick.",
+  customers: "Kunden, die Ihnen über Ihren Empfehlungslink zugeordnet sind.",
+  earnings: "Provisionen je Monat und Ihre Gutschriften.",
+  team: "Partner, die Sie geworben haben, und Ihre Teamprovision.",
+  account: "Abrechnungsdaten, Partnervereinbarung, Zugangsdaten und angemeldete Geräte.",
+});
 
-   Die Bereiche rufen /api/sales-partner/me/* auf; „Konto" nutzt zusätzlich
-   genau die für Partner freigegebenen Kontoendpunkte (Passwort, Login-E-Mail)
-   über die Bausteine der Kontoeinstellungen. Kein Kundenlayout, keine andere
-   Kundenroute. Übersicht und Team werden beim Start geladen. „Mein Team" steht
-   immer da (Betreiberentscheidung) — Laden, Fehler und ein noch leeres Team
-   zeigt der Bereich selbst. Kunden, Provisionen und Gutschriften laden erst
-   beim Öffnen; Kunden und Team lesen ihre Monatsnamen aus der Übersicht.
-   Meldet die Übersicht ein Pre-Live-Testkonto (`preliveTest: true`), steht
-   über allen Bereichen dauerhaft der Testhinweis. */
+/* ── Partnerportal (/partner) ────────────────────────────────────────────────
+   Nur hinter PartnerRoute erreichbar (Rolle sales_partner). Seit dem Betreiberauftrag 2026-11-22 (D4) gibt es fünf
+   Bereiche — Übersicht, Kunden, Verdienst, Team, Konto — in der Seitenleiste (Desktop) bzw. der unteren Leiste
+   (Telefon, PartnerLayout). „Verdienst“ fasst die beiden Ansichten Provisionen und Gutschriften zusammen; ein
+   Umschalter wechselt zwischen ihnen. Jede Ansicht behält ihre Adresse `?page=<Kennung>` aus PARTNER_TABS (seit
+   UX-Paket 6): nach dem Neuladen und nach dem Login (Rücksprung über utils/loginReturnTarget.mjs) öffnet dieselbe
+   Ansicht. Gelesen wird nur eine bekannte Kennung (partnerTabFromSearch); alles andere ist die Übersicht, und die
+   Adresse wird auf die gültige Form gebracht. Ein Wechsel ersetzt den Verlaufseintrag — „Zurück“ verlässt das Portal.
+
+   Die Bereiche rufen /api/sales-partner/me/* auf; „Konto“ nutzt zusätzlich genau die für Partner freigegebenen
+   Kontoendpunkte (Passwort, Login-E-Mail, Sitzungen). Kein Kundenlayout, keine Kundenroute. Übersicht und Team laden
+   beim Start; „Mein Team“ steht immer da (Betreiberentscheidung). Meldet die Übersicht ein Pre-Live-Testkonto
+   (`preliveTest: true`), steht über allen Bereichen dauerhaft der Testhinweis. */
 export default function PartnerPortalPage() {
   const { user } = useAuth();
   const location = useLocation();
@@ -54,6 +58,7 @@ export default function PartnerPortalPage() {
   const tabs = visiblePartnerTabs();
   const gewuenscht = partnerTabFromSearch(location.search) || "overview";
   const aktiv = tabs.some((t) => t.id === gewuenscht) ? gewuenscht : "overview";
+  const bereich = partnerBereichVon(aktiv);
 
   // Die Adresse trägt nur die gültige Form: „?page=team" bzw. für die Übersicht
   // nichts. Unbekannte Werte und Zusatzparameter verschwinden (ersetzend).
@@ -62,20 +67,15 @@ export default function PartnerPortalPage() {
     if (location.search !== sauber) navigate({ pathname: location.pathname, search: sauber }, { replace: true });
   }, [location.search, location.pathname, sauber, navigate]);
 
-  const waehlen = (id) => {
-    if (id === aktiv) return;
-    navigate({ pathname: location.pathname, search: partnerTabSearch(id) }, { replace: true });
-  };
-
   // Partnerstatus: aus der Übersicht, sonst aus der Sitzung (/kundenbereich).
   const status = overview.data?.partner.status || user?.salesPartner?.status || null;
   const [statusCls, statusLabel] = partnerStatusMeta(status);
 
   return (
-    <PartnerLayout>
+    <PartnerLayout aktiverBereich={bereich.id}>
       <PageHeader
-        title="Partnerportal"
-        subtitle="Ihre Kunden, Provisionen, Gutschriften und Ihr Team im Überblick."
+        title={bereich.label}
+        subtitle={UNTERTITEL[bereich.id]}
         meta={status ? <span className={`badge ${statusCls}`} id="spp-status">{statusLabel}</span> : null}
       />
 
@@ -88,24 +88,25 @@ export default function PartnerPortalPage() {
         <div className="alert alert-info spp-notice" role="status">{PARTNER_TEXTS.inactive}</div>
       )}
 
-      <div className="ce-tabs spp-tabs" role="tablist" aria-label="Bereich des Partnerportals">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            id={`spp-tab-${t.id}`}
-            aria-selected={aktiv === t.id}
-            aria-controls="spp-tabpanel"
-            className={`ce-tab${aktiv === t.id ? " is-active" : ""}`}
-            onClick={() => waehlen(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {/* Verdienst: zwei Ansichten mit eigener Adresse — Verweise, kein Reiterfeld (Konzept B, BERICHT D.3). */}
+      {bereich.id === "earnings" && (
+        <nav className="spp-segmente" aria-label="Verdienst">
+          {VERDIENST_ANSICHTEN.map((v) => (
+            <Link
+              key={v.id}
+              id={`spp-tab-${v.id}`}
+              to={{ pathname: "/partner", search: partnerTabSearch(v.id) }}
+              replace
+              className={`spp-segment${aktiv === v.id ? " spp-segment-on" : ""}`}
+              aria-current={aktiv === v.id ? "page" : undefined}
+            >
+              {v.label}
+            </Link>
+          ))}
+        </nav>
+      )}
 
-      <div id="spp-tabpanel" role="tabpanel" aria-labelledby={`spp-tab-${aktiv}`}>
+      <div id="spp-tabpanel" className="spp-bereich" data-ansicht={aktiv}>
         {aktiv === "overview" && <PartnerOverviewPanel state={overview} onRetry={overview.reload} />}
         {aktiv === "customers" && <PartnerCustomersPanel overview={overview.data} />}
         {aktiv === "commissions" && (

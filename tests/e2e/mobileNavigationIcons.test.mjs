@@ -143,19 +143,21 @@ test("3 — Glocke: öffnet das Mitteilungsfenster mit aria-controls, Escape sch
   await ctx.close();
 });
 
-test("4 — Admin 390 px: Hamburger mit Zustand, Drawer schließt per Escape und gibt den Fokus zurück", async () => {
+// Bewusste Ankeränderung (Admin-App 2026-11-22, D4): den Drawer öffnet „Mehr“ in der unteren Leiste; oben steht die Suche.
+test("4 — Admin 390 px: „Mehr“ mit Zustand, Drawer schließt per Escape und gibt den Fokus zurück", async () => {
   const { ctx, page, fehler } = await neueSeite("/admin", { user: ADMIN });
-  const menue = page.locator('.adm-topbar button[aria-label="Menü öffnen"]');
+  const menue = page.locator(".adm-tabs button.adm-tab-mehr");
   await menue.waitFor({ state: "visible", timeout: 20000 });
-  assert.equal((await menue.innerText()).trim(), "");
-  assert.equal(await menue.locator("svg").count(), 1, "kein Hamburger-Symbol");
+  assert.equal((await menue.innerText()).trim(), "Mehr");
+  assert.equal(await menue.locator("svg").count(), 1, "kein Symbol");
+  assert.equal(await page.locator(".adm-topbar a.adm-topbar-suche[aria-label]").count(), 1, "keine Suche in der Kopfleiste");
   assert.equal(await menue.getAttribute("aria-controls"), "ce-adminnavigation");
   assert.equal(await sichtbar(page, "#ce-adminnavigation"), false, "die geschlossene Adminsidebar ist sichtbar");
   await menue.click();
   await page.waitForFunction(() => document.getElementById("ce-adminnavigation").contains(document.activeElement), null, { timeout: 3000 });
   assert.equal(await menue.getAttribute("aria-expanded"), "true");
   await page.keyboard.press("Escape");
-  await page.waitForFunction(() => document.activeElement?.classList.contains("adm-topbar-burger"), null, { timeout: 3000 });
+  await page.waitForFunction(() => document.activeElement?.classList.contains("adm-tab-mehr"), null, { timeout: 3000 });
   assert.equal(await menue.getAttribute("aria-expanded"), "false");
   assert.deepEqual(fehler, []);
   await ctx.close();

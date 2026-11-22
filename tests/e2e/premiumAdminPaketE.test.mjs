@@ -324,7 +324,7 @@ test("7 — der mobile Drawer öffnet, schließt und hat 44-px-Ziele", async () 
 
   const drawer = page.locator(".adm-side");
   assert.equal(await drawer.evaluate((el) => el.classList.contains("adm-side-open")), false);
-  await page.locator(".adm-topbar-burger").click();
+  await page.locator(".adm-tabs .adm-tab-mehr").click();
   await page.waitForTimeout(350);
   assert.equal(await drawer.evaluate((el) => el.classList.contains("adm-side-open")), true,
     "der Drawer öffnet nicht");
@@ -347,7 +347,7 @@ test("7b — mobil versteckt die gruppierte Navigation nichts hinter dem Fuß: d
     const page = await browser.newPage({ viewport: { width: breite, height: hoehe } });
     await setupRoutes(page);
     await page.goto(`${BASE}/admin/users`, { waitUntil: "networkidle" });
-    await page.locator(".adm-topbar-burger").click();
+    await page.locator(".adm-tabs .adm-tab-mehr").click();
     await page.waitForTimeout(350);
     const drawer = page.locator(".adm-side");
     // Kein innerer Scrollbereich in der Navigation, der Einträge unsichtbar abschneidet.

@@ -748,7 +748,8 @@ test("45 — die bestehende Kundenliste funktioniert unverändert", () => {
   const body = listSrc.slice(listSrc.indexOf("<tbody>"), listSrc.indexOf("</tbody>"));
   assert.equal((body.match(/<td[\s>]/g) || []).length, headers);
   // Laden, Suche, Pagination und der Blockieren-Ablauf sind unangetastet.
-  assert.match(listSrc, /const r = await listAdminUsers\(\{ page, pageSize: PAGE_SIZE \}\)/);
+  // Bewusste Ankeränderung (2026-11-22): der Statusfilter wirkt serverseitig (GET /admin/users?status=, BE-1).
+  assert.match(listSrc, /const r = await listAdminUsers\(\{ page, pageSize: PAGE_SIZE, status: serverStatus \}\)/);
   assert.match(listSrc, /filterCustomerRows\(rows, filters\)/);
   assert.match(listSrc, /className="adm-pagination"/);
   assert.match(listSrc, /const target = key === "approve" \? "approved" : "blocked";/);

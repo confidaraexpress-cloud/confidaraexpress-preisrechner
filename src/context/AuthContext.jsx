@@ -4,7 +4,8 @@ import { API, apiFetch, setAuthErrorHandler, token as getToken } from "../api/cl
 import { clearShippingFlowStorage } from "../utils/shippingFlowStorage";
 import { clearCompanyLogoCache } from "../api/companyLogoApi";
 import { clearAccountManagerPhotoCache } from "../api/accountManagerApi";
-import { AuthSeite, AdminAnmeldungSeite } from "../pages/authSeite";
+import { AuthSeite, AdminAnmeldungSeite, PartnerAnmeldungSeite } from "../pages/authSeite";
+import { PARTNER_LOGIN_PATH } from "../utils/partnerAnmeldung.mjs";
 import { anmeldeseiteFuer, ohneSitzungsweiterleitung } from "../utils/adminAnmeldung.mjs";
 
 // Die Anmeldeseite vorladen, bevor die Anwendung dorthin wechselt (Abmelden, abgelaufene Sitzung): so rendert sie
@@ -82,6 +83,7 @@ export function AuthProvider({ children }) {
       // Im Adminbereich führt das Sitzungsende auf die Admin-Anmeldung (Canonical v2.130), sonst wie bisher auf /login.
       const ziel = anmeldeseiteFuer(path);
       if (ziel === "/admin/login") AdminAnmeldungSeite.vorladen().catch(() => {});
+      else if (ziel === PARTNER_LOGIN_PATH) PartnerAnmeldungSeite.vorladen().catch(() => {});
       else anmeldungVorladen();
       if (!ohneSitzungsweiterleitung(path)) {
         // Die gerade offene Adresse geht als Rücksprungwunsch mit; die Anmeldeseite

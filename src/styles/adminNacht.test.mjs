@@ -136,9 +136,10 @@ test("N1 — jede Regel hängt am Adminbereich und gilt nur am Bildschirm; die F
   const ausserhalb = REGELN.filter((r) => r.kontext[0] !== "@media screen").map((r) => r.selektor.slice(0, 80));
   assert.deepEqual(ausserhalb, [], `Regeln außerhalb von @media screen:\n  ${ausserhalb.join("\n  ")}`);
   assert.doesNotMatch(NACHT, /@media[^{]*\bprint\b/, "eigene Druckregel");
-  // Der Bereich kommt vom Layout des Adminpanels; die Familie vergibt der Hook nur an Kunde, Partner, Öffentlich.
+  // Der Bereich kommt vom Layout des Adminpanels; die Familie vergibt der Hook nur an Kunde und Öffentlich (das
+  // Partnerportal trägt seit dem Betreiberauftrag 2026-11-22 die Nachtwelt mit eigener Ebene, partner-nacht.css).
   const hook = read("../hooks/useCeBereich.js");
-  assert.match(hook, /BLUE_LIGHT_FAMILIE = Object\.freeze\(\["kunde", "partner", "oeffentlich"\]\)/);
+  assert.match(hook, /BLUE_LIGHT_FAMILIE = Object\.freeze\(\["kunde", "oeffentlich"\]\)/);
   assert.match(read("../components/layout/AdminLayout.jsx"), /useCeBereich\("admin"\)/);
   // Die Ebene der Familie trägt keine Adminregel mehr (sie liefe sonst gegen undefinierte Familientokens).
   assert.doesNotMatch(ohneKommentare(read("./kunde-obsidian.css")), /data-ce-bereich="admin"|\.adm-/);

@@ -255,7 +255,9 @@ test("D — Kennzahlen: alle vier Zahlen exakt in derselben dunklen Navy-Farbe, 
   }
 });
 
-test("E — Anmeldung und Partnerregistrierung ohne die Flächen; öffentliche Seiten und Partnerportal nur mit dem Grund der Familie, Admin auf dem Grund von Leitstand Nacht", async () => {
+// Bewusste Ankeränderung (Betreiberauftrag 2026-11-22, D3): das Partnerportal verlässt die Familie Blue Light und steht
+// wie das Adminpanel auf dem Navy von Leitstand Nacht (partner-nacht.css, Akzent Violett).
+test("E — Anmeldung und Partnerregistrierung ohne die Flächen; öffentliche Seiten nur mit dem Grund der Familie, Admin und Partnerportal auf dem Grund von Leitstand Nacht", async () => {
   // Blue Light (Betreiberauftrag „Final Master Release“, 2026-11-16): Öffentliche Seiten und Partnerportal gehören
   // zur Designfamilie und stehen auf ihrem Grund (Blauweiß #F5F8FF); die beiden Flächen des Kundenbereichs bekommen sie
   // weiterhin nicht. Anmeldung, Registrierung, Partnerregistrierung und das Ende der Demo gehören nicht zur Familie.
@@ -314,7 +316,8 @@ test("E — Anmeldung und Partnerregistrierung ohne die Flächen; öffentliche S
     await ohneFlaeche(oeffentlich, "Ende der Demo");
   } finally { await oeffentlich.close(); }
 
-  for (const [wo, rolle, ziel, warte] of [["Admin", "admin", "/admin", "main.adm-main"], ["Partnerportal", "sales_partner", "/partner", ".spp-tabs"]]) {
+  for (const [wo, rolle, ziel, warte, grundSel] of [["Admin", "admin", "/admin", "main.adm-main", "main.adm-main"],
+    ["Partnerportal", "sales_partner", "/partner", "nav.spp-nav", ".spp-main"]]) {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, locale: "de-DE" });
     try {
       await page.route("**/api.confidaraexpress.de/**", (route) => {
@@ -327,11 +330,9 @@ test("E — Anmeldung und Partnerregistrierung ohne die Flächen; öffentliche S
       await page.waitForURL(new RegExp(`${ziel}$`), { timeout: 30000 });
       await page.waitForSelector(warte, { timeout: 30000 });
       await page.waitForTimeout(500);
-      await ohneFlaeche(page, wo, { familie: wo !== "Admin" });
-      if (wo === "Admin") {
-        const grund = await page.evaluate(() => getComputedStyle(document.querySelector("main.adm-main")).backgroundColor);
-        assert.equal(grund, "rgb(6, 11, 28)", `Admin: Grund ${grund} statt Navy #060B1C (Confidara Leitstand Nacht)`);
-      }
+      await ohneFlaeche(page, wo, { familie: false });
+      const grund = await page.evaluate((sel) => getComputedStyle(document.querySelector(sel)).backgroundColor, grundSel);
+      assert.equal(grund, "rgb(6, 11, 28)", `${wo}: Grund ${grund} statt Navy #060B1C (Confidara Leitstand Nacht)`);
     } finally { await page.close(); }
   }
 });

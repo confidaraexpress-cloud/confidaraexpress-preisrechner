@@ -88,18 +88,21 @@ test("2 — den Bereich setzen genau diese Ansichten; die Familie Blue Light ver
     // AdminLayout setzt den Bereich weiterhin nie (unten).
     "pages/AdminAnmeldungPage.jsx": "auth",
     // Blue Light (Betreiberauftrag „Final Master Release“, 2026-11-16): die Partnerregistrierung steht auf der Bühne der
-    // Anmeldung; Partnerportal und öffentliche Seiten gehören zur Designfamilie (kunde-obsidian.css). Das Adminpanel trägt
-    // seit dem Betreiberauftrag vom 2026-11-17 die eigene dunkle Ebene Confidara Leitstand Nacht (admin-nacht.css).
+    // Anmeldung; öffentliche Seiten gehören zur Designfamilie (kunde-obsidian.css). Das Adminpanel trägt seit dem
+    // Betreiberauftrag vom 2026-11-17 die eigene dunkle Ebene Confidara Leitstand Nacht (admin-nacht.css), das
+    // Partnerportal seit dem Betreiberauftrag 2026-11-22 dieselbe Nachtwelt mit Violett (partner-nacht.css).
     "pages/PartnerRegisterPage.jsx": "auth",
     "components/layout/AdminLayout.jsx": "admin",
     "components/layout/PartnerLayout.jsx": "partner",
+    // Anmeldung des Partnerbereichs (2026-11-22, bewusste Ankeränderung): dieselbe Nachtebene wie das Portal.
+    "pages/PartnerAnmeldungPage.jsx": "partner",
     "components/layout/NavbarLayout.jsx": "oeffentlich",
   });
   // Der Hook räumt nur auf, wenn ihm das Attribut noch gehört — dann beide Attribute.
   const hook = lies(path.join(SRC, "hooks/useCeBereich.js"));
   assert.match(hook, /if \(root\.getAttribute\("data-ce-bereich"\) === bereich\) \{\s*root\.removeAttribute\("data-ce-bereich"\);\s*root\.removeAttribute\("data-ce-familie"\);/);
   // Anmeldung, Admin-Anmeldung, Adminpanel (eigene Ebene) und Preisrechner gehören nicht zur Familie.
-  assert.match(hook, /BLUE_LIGHT_FAMILIE = Object\.freeze\(\["kunde", "partner", "oeffentlich"\]\)/);
+  assert.match(hook, /BLUE_LIGHT_FAMILIE = Object\.freeze\(\["kunde", "oeffentlich"\]\)/);
   // Das Seitengerüst des Preisrechners trägt den Bereich statisch.
   for (const seite of ["preisrechner/index.html", "preisrechner/404.html"]) {
     assert.match(lies(path.join(REPO, seite)), /<html lang="de" data-ce-bereich="preisrechner">/, seite);
@@ -160,9 +163,10 @@ test("6 — die Bereichsebene steht zuletzt im Bündel und die Werte halten zusa
   // Editorial Business Premium (2026-10-28): die Editorial-Ebene folgt direkt auf die Bereichsebene.
   // Confidara Obsidian (Betreiberauftrag 2026-11-15): danach nur noch Schrift- und Gestaltungsebene des
   // Kundenbereichs, die Gestaltungsebene als letzter Import (kundeObsidian.test.mjs).
-  // Confidara Leitstand Nacht (Betreiberauftrag 2026-11-17): ganz zuletzt die Adminebene (adminNacht.test.mjs).
+  // Confidara Leitstand Nacht (Betreiberauftrag 2026-11-17): ganz zuletzt die Adminebene (adminNacht.test.mjs), davor
+  // seit dem Betreiberauftrag 2026-11-22 die Nachtebene des Partnerportals (partnerNacht.test.mjs).
   const importe = [...index.matchAll(/@import '\.\/([\w-]+\.css)';/g)].map((m) => m[1]);
-  assert.deepEqual(importe.slice(-5), ["premium-redesign.css", "premium-editorial.css", "kunde-schriften.css", "kunde-obsidian.css", "admin-nacht.css"],
+  assert.deepEqual(importe.slice(-6), ["premium-redesign.css", "premium-editorial.css", "kunde-schriften.css", "kunde-obsidian.css", "partner-nacht.css", "admin-nacht.css"],
     "Bereichs-, Editorial-, Obsidian- und Adminebene stehen nicht zuletzt");
   assert.ok(index.trim().endsWith("@import './admin-nacht.css';"), "admin-nacht.css ist nicht der letzte Import");
   const werte = lies(path.join(SRC, "components/ui/Werte.jsx"));

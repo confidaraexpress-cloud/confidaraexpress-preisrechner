@@ -50,15 +50,17 @@ test("4 — Ziel nach der Anmeldung: nur geprüfte Adminziele, sonst /admin", ()
   }
 });
 
-test("5 — Sitzungsende: Adminbereich → /admin/login, sonst /login; keine Weiterleitung auf den Anmeldeseiten", () => {
+test("5 — Sitzungsende: Adminbereich → /admin/login, Partnerportal → /partner/login, sonst /login; keine Weiterleitung auf den Anmeldeseiten", () => {
   for (const p of ["/admin", "/admin/users", "/admin/users/5", "/admin/partners/credit-notes", "/vorschau/rechtstexte/agb", "/admin/login"]) {
     assert.equal(anmeldeseiteFuer(p), "/admin/login", p);
   }
-  for (const p of ["/dashboard", "/calculator", "/booking", "/partner", "/administration", "/", undefined]) {
+  // Betreiberauftrag 2026-11-22 (Abschnitt 8): das Partnerportal hat seinen eigenen, rollenbeschränkten Eingang.
+  for (const p of ["/partner", "/partner/login"]) assert.equal(anmeldeseiteFuer(p), "/partner/login", p);
+  for (const p of ["/dashboard", "/calculator", "/booking", "/partner-registrieren", "/partnervereinbarung", "/administration", "/", undefined]) {
     assert.equal(anmeldeseiteFuer(p), "/login", String(p));
   }
-  for (const p of ["/login", "/admin/login", "/confirm-email-change"]) assert.equal(ohneSitzungsweiterleitung(p), true, p);
-  for (const p of ["/admin", "/dashboard", "/register"]) assert.equal(ohneSitzungsweiterleitung(p), false, p);
+  for (const p of ["/login", "/admin/login", "/partner/login", "/confirm-email-change"]) assert.equal(ohneSitzungsweiterleitung(p), true, p);
+  for (const p of ["/admin", "/dashboard", "/register", "/partner"]) assert.equal(ohneSitzungsweiterleitung(p), false, p);
 });
 
 test("6 — Einmallink aus der Adresse: nur die Form eines Tokens", () => {

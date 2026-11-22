@@ -14,7 +14,7 @@ import { NavbarLayout } from "./components/layout/NavbarLayout";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { AdminLayout } from "./components/layout/AdminLayout";
 import { demoAusgangsziel } from "./demo/demoModus.mjs";
-import { AuthSeite, EmailBestaetigungSeite, AdminAnmeldungSeite } from "./pages/authSeite";
+import { AuthSeite, EmailBestaetigungSeite, AdminAnmeldungSeite, PartnerAnmeldungSeite } from "./pages/authSeite";
 import { statischeAuthSeite } from "./utils/kundenAuthPfad.mjs";
 import { istAdminbereichPfad, istKundenbereichPfad } from "./utils/kundenBereichPfad.mjs";
 
@@ -82,6 +82,9 @@ const AdminDispatchEvidencePage     = React.lazy(() => import("./pages/admin/Adm
 const AdminSalesPartnerCreditNotesPage = React.lazy(() => import("./pages/admin/AdminSalesPartnerCreditNotesPage"));
 const AdminSalesPartnerPrelivePage  = React.lazy(() => import("./pages/admin/AdminSalesPartnerPrelivePage"));
 const AdminPublicCalculatorPage     = React.lazy(() => import("./pages/admin/AdminPublicCalculatorPage"));
+// Admin-/Partner-Apps (Betreiberauftrag 2026-11-22): Sicherheit (Passkeys, Codes, Geräte) und Suche über alle Daten.
+const AdminSicherheitPage           = React.lazy(() => import("./pages/admin/AdminSicherheitPage"));
+const AdminSuchePage                = React.lazy(() => import("./pages/admin/AdminSuchePage"));
 const PublicQuoteHandoffPage        = React.lazy(() => import("./pages/PublicQuoteHandoffPage"));
 
 /* Der Auth-Bereich hat als einziger Bereich KEIN Layout — Login, Registrierung
@@ -156,6 +159,9 @@ export default function App() {
           {/* Admin-Anmeldung (Canonical v2.130): öffentlich erreichbar, ausschließlich zum Anmelden — außerhalb von
               AdminRoute und AdminLayout; der Server gibt nur Adminkonten ein Token. */}
           <Route path="/admin/login" element={<AdminAnmeldungSeite />} />
+          {/* Anmeldung des Partnerbereichs (Betreiberauftrag 2026-11-22): öffentlich, nur zum Anmelden; der Server gibt
+              über /auth/partner-login nur Vertriebspartnern ein Token. */}
+          <Route path="/partner/login" element={<PartnerAnmeldungSeite />} />
 
           {/* Öffentliche Bestätigung der Login-E-Mail-Änderung (E-Mail-Token, kein
               Login nötig; eigene Auth-Ästhetik, nicht im Dashboard). */}
@@ -239,6 +245,8 @@ export default function App() {
           <Route path="/admin/partners/:id"               element={<AdminSalesPartnerDetailPage />} />
           <Route path="/admin/public-calculator" element={<AdminPublicCalculatorPage />} />
           <Route path="/admin/audit-logs"   element={<AuditLogPage />} />
+          <Route path="/admin/sicherheit"   element={<AdminSicherheitPage />} />
+          <Route path="/admin/suche"        element={<AdminSuchePage />} />
         </Route>
 
         <Route path="/demo/*" element={<DemoNeuLaden />} />

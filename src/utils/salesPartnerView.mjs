@@ -240,7 +240,7 @@ export function commissionComposition(overview) {
       : gemessen && laufend
         ? `Die Level ergeben sich aus Ihren aktiven Kunden und versendeten Paketen im ${gemessen} und gelten im ${laufend}.`
         : null,
-    team: `Teamprovision: Ebene 1 ${formatPercent(o.rates.level1Percent)} · Ebene 2 ${formatPercent(o.rates.level2Percent)}`,
+    team: `Teamprovision: ${formatPercent(o.rates.level1Percent)} auf Ebene 1 · ${formatPercent(o.rates.level2Percent)} auf Ebene 2`,
     // Nur bei aktivem Konto (der Server liefert das Datum ohnehin nur dann).
     activeSince: o.partner.status === "active" && formatIsoDate(o.partner.activeSince) !== "—"
       ? `Aktiv seit ${formatIsoDate(o.partner.activeSince)}` : null,
@@ -482,7 +482,7 @@ export function teamExplanation(team, overview) {
   const regel = team && team.serverReportsLimit ? TEAM_TEXTS.ruleByMember : TEAM_TEXTS.rule;
   const r = overview && overview.rates ? overview.rates : null;
   const saetze = r && r.level1Percent && r.level2Percent
-    ? ` Ihre Sätze: Ebene 1 ${formatPercent(r.level1Percent)} · Ebene 2 ${formatPercent(r.level2Percent)}.` : "";
+    ? ` Ihre Sätze: ${formatPercent(r.level1Percent)} auf Ebene 1 · ${formatPercent(r.level2Percent)} auf Ebene 2.` : "";
   return `${regel}${saetze}`;
 }
 
@@ -511,6 +511,39 @@ export const PARTNER_TABS = Object.freeze([
 // Bereich an den Einträgen und verschwand bei einem Fehler unbemerkt; Lade-,
 // Fehler- und Leerzustand zeigt jetzt PartnerTeamPanel.
 export const visiblePartnerTabs = () => PARTNER_TABS;
+
+// ── Fünf Bereiche der Partner-App (Betreiberauftrag 2026-11-22, D4) ─────────
+// Seitenleiste am Desktop und untere Leiste am Telefon zeigen dieselben fünf
+// Bereiche: Übersicht, Kunden, Verdienst, Team, Konto. „Verdienst" fasst
+// Provisionen und Gutschriften zusammen — beide bleiben eigene Ansichten mit
+// eigener Adresse (?page=commissions bzw. ?page=credit-notes), ein Umschalter
+// wechselt zwischen ihnen. Die sechs Kennungen aus PARTNER_TABS bleiben damit
+// gültig (Rücksprung nach dem Login, Lesezeichen, Verweise).
+export const PARTNER_BEREICHE = Object.freeze([
+  // label: Seitenleiste und Seitentitel; kurz: untere Leiste am Telefon (fünf Ziele in 360 px).
+  Object.freeze({ id: "overview", label: "Übersicht", kurz: "Übersicht", icon: "dashboard", ansichten: Object.freeze(["overview"]) }),
+  Object.freeze({ id: "customers", label: "Meine Kunden", kurz: "Kunden", icon: "user", ansichten: Object.freeze(["customers"]) }),
+  Object.freeze({ id: "earnings", label: "Verdienst", kurz: "Verdienst", icon: "euro", ansichten: Object.freeze(["commissions", "credit-notes"]) }),
+  Object.freeze({ id: "team", label: "Mein Team", kurz: "Team", icon: "layers", ansichten: Object.freeze(["team"]) }),
+  Object.freeze({ id: "account", label: "Konto", kurz: "Konto", icon: "idcard", ansichten: Object.freeze(["account"]) }),
+]);
+
+/** Bereich einer Ansicht (Kennung aus PARTNER_TABS) — unbekannt → Übersicht. */
+export function partnerBereichVon(ansicht) {
+  return PARTNER_BEREICHE.find((b) => b.ansichten.includes(ansicht)) || PARTNER_BEREICHE[0];
+}
+
+/** Ziel eines Bereichs: seine erste Ansicht (Verdienst öffnet mit den Provisionen). */
+export const partnerBereichSearch = (bereichId) => {
+  const b = PARTNER_BEREICHE.find((x) => x.id === bereichId);
+  return partnerTabSearch(b ? b.ansichten[0] : "overview");
+};
+
+/** Die beiden Ansichten im Bereich „Verdienst" (Umschalter). */
+export const VERDIENST_ANSICHTEN = Object.freeze([
+  Object.freeze({ id: "commissions", label: "Provisionen" }),
+  Object.freeze({ id: "credit-notes", label: "Gutschriften" }),
+]);
 
 // ── Direktlinks (UX-Paket 6) ────────────────────────────────────────────────
 // Der Bereich steht als `?page=<Kennung>` in der Adresse — nach dem Muster des

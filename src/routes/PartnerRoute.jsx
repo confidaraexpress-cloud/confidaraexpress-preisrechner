@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { LoadingScreen } from "../components/common/LoadingScreen";
 import { SessionCheckFailedView } from "./ProtectedRoute";
 import { CUSTOMER_HOME, isSalesPartner } from "../utils/roleLanding.mjs";
+import { PARTNER_LOGIN_PATH } from "../utils/partnerAnmeldung.mjs";
 
 // ── PartnerRoute — UX-Gate des Partnerportals ────────────────────────────────
 // Nach dem Muster von ProtectedRoute, aber umgekehrt: hier darf NUR die Rolle
@@ -31,7 +32,8 @@ export function PartnerRoute({ children }) {
     );
   }
 
-  if (!authed) return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
+  // Ohne Sitzung auf den eigenen Partner-Eingang (Betreiberauftrag 2026-11-22, Abschnitt 8); der Rücksprung bleibt.
+  if (!authed) return <Navigate to={PARTNER_LOGIN_PATH} replace state={{ from: `${location.pathname}${location.search}` }} />;
   if (!isSalesPartner(user)) return <Navigate to={CUSTOMER_HOME} replace />;
   return children;
 }

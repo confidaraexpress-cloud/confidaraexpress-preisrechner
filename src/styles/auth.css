@@ -1144,6 +1144,8 @@
   color: var(--auth-admin-tinte-1); caret-color: var(--auth-admin-strom-blau-hell);
   font: inherit; font-size: 1rem;
 }
+/* Wiederherstellungscode (zweiter Schritt, 2026-11-22): Ziffern und Buchstaben gleich breit, leichter abzugleichen. */
+.auth-admin-input--code { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 .auth-admin-input:-webkit-autofill,
 .auth-admin-input:-webkit-autofill:hover,
 .auth-admin-input:-webkit-autofill:focus {

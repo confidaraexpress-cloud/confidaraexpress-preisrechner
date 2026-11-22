@@ -25,6 +25,8 @@ import {
   SEARCHABLE_FIELDS,
   SELF_ACTION_REASON,
   STATUS_FILTER_OPTIONS,
+  statusAusSuche,
+  sucheMitStatus,
   SUCCESS_MESSAGES,
   accountStatusCopy,
   activeFilterChips,
@@ -140,9 +142,18 @@ test("6 — Suche wirkt lokal auf der geladenen Seite und ist als solche beschri
   assert.match(listSrc, /<label htmlFor="u-search">Diese Seite durchsuchen<\/label>/);
   assert.match(listSrc, /placeholder="Firma, Name, E-Mail oder USt-ID"/);
   assert.match(listSrc, /Durchsucht nur die aktuell angezeigte Seite/);
-  // Es werden keine Backendparameter erfunden — die Liste lädt nur limit/offset.
-  assert.match(listSrc, /listAdminUsers\(\{ page, pageSize: PAGE_SIZE \}\)/);
-  assert.equal(/listAdminUsers\([^)]*(query|search|status)/.test(listSrc), false, "kein erfundener Server-Filter");
+  // Bewusste Ankeränderung (Admin-/Partner-Apps, 2026-11-22): der Status ist ein echter Serverfilter
+  // (GET /admin/users?status=, Backend BE-1) — die Freitextsuche bleibt lokal, kein erfundener Suchparameter.
+  assert.match(listSrc, /listAdminUsers\(\{ page, pageSize: PAGE_SIZE, status: serverStatus \}\)/);
+  assert.equal(/listAdminUsers\([^)]*(query|search)/.test(listSrc), false, "kein erfundener Server-Suchparameter");
+  const apiSrc = readFileSync(new URL("../api/adminApi.js", import.meta.url), "utf8");
+  assert.match(apiSrc, /const USER_PARAMS = \["limit", "offset", "status"\];/);
+  assert.match(apiSrc, /ADMIN_USER_STATUS_FILTER = Object\.freeze\(\["pending", "approved", "blocked", "anonymized"\]\)/);
+  // Der Filter steht in der Adresse (Zurück, Neuladen, Verweis aus der Übersicht).
+  assert.equal(statusAusSuche("?status=pending"), "pending");
+  assert.equal(statusAusSuche("?status=erfunden"), "all");
+  assert.equal(sucheMitStatus("?page=2", "blocked"), "?page=2&status=blocked");
+  assert.equal(sucheMitStatus("?status=blocked", "all"), "");
   // Und die tatsächlich durchsuchten Felder entsprechen dem Platzhalter.
   assert.deepEqual([...SEARCHABLE_FIELDS], ["company", "name", "email", "vatId", "customerNumber"]);
   assert.equal(matchesQuery(ACME, "acme"), true);
@@ -179,7 +190,8 @@ test("8 — aktive Filter sind sichtbar und zurücksetzbar", () => {
   assert.deepEqual(chips.map((c) => c.key), ["query", "status"]);
   assert.equal(chips[1].label, "Status: Blockiert");
   assert.match(listSrc, /Filter zurücksetzen/);
-  assert.match(listSrc, /const resetFilters = \(\) => setFilters\(DEFAULT_FILTERS\);/);
+  // Zurücksetzen räumt auch den Statusfilter der Adresse (2026-11-22: der Status filtert serverseitig).
+  assert.match(listSrc, /const resetFilters = \(\) => \{ statusWaehlen\("all"\); setFilters\(DEFAULT_FILTERS\); \};/);
 });
 
 test("9 — Leerzustände unterscheiden „keine Kunden“ von „keine Treffer“", () => {

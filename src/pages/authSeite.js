@@ -12,3 +12,6 @@ export const EmailBestaetigungSeite = vorladbareSeite(() => import("./EmailChang
 // Die Admin-Anmeldung (/admin/login, Canonical v2.130): vorladbar, damit Abmelden und Sitzungsende im Adminbereich
 // ohne Ladefläche des Seitenwechsels auf ihr landen.
 export const AdminAnmeldungSeite = vorladbareSeite(() => import("./AdminAnmeldungPage"));
+// Die Anmeldung des Partnerbereichs (/partner/login, Admin-/Partner-Apps 2026-11-22): ebenso vorladbar — Abmelden und
+// Sitzungsende im Partnerbereich landen ohne Ladefläche auf ihr.
+export const PartnerAnmeldungSeite = vorladbareSeite(() => import("./PartnerAnmeldungPage"));

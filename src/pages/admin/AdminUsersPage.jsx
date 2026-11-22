@@ -27,6 +27,8 @@ import {
   statusActionNote,
   statusChangeWasNoOp,
   statusSuccessMessage,
+  statusAusSuche,
+  sucheMitStatus,
 } from "../../utils/adminCustomerView.mjs";
 import {
   CODE_CONFIRMATION_REQUIRED,
@@ -139,7 +141,9 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [hasMore, setHasMore] = useState(false);
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState(() => ({ ...DEFAULT_FILTERS, status: statusAusSuche(location.search) }));
+  // Der Status filtert serverseitig über alle Kunden (GET /admin/users?status=); „Alle“ sendet keinen Filter.
+  const serverStatus = filters.status !== "all" ? filters.status : undefined;
   const [confirm, setConfirm] = useState(null);        // { id, target, kind, name, status }
   const [actionBusy, setActionBusy] = useState(false); // Statusänderung läuft
   const [actionMsg, setActionMsg] = useState(null);    // { type, text }
@@ -152,7 +156,7 @@ export default function AdminUsersPage() {
     setLoading(true);
     setError("");
     try {
-      const r = await listAdminUsers({ page, pageSize: PAGE_SIZE });
+      const r = await listAdminUsers({ page, pageSize: PAGE_SIZE, status: serverStatus });
       if (!r.ok) {
         // 401/403 → zentraler Logout/Redirect via apiFetch; hier nichts anzeigen.
         if (r.status !== 401 && r.status !== 403) setError(ERROR_MESSAGES[r.status] || GENERIC_ERROR);
@@ -176,9 +180,20 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, serverStatus]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Statusfilter ↔ Adresse: Zurück/Vorwärts stellen den Filter wieder her (der Status filtert serverseitig).
+  useEffect(() => {
+    const ausAdresse = statusAusSuche(location.search);
+    setFilters((f) => (f.status === ausAdresse ? f : { ...f, status: ausAdresse }));
+  }, [location.search]);
+  const statusWaehlen = (status) => {
+    setFilters((f) => ({ ...f, status }));
+    setPage(1);
+    navigate({ pathname: location.pathname, search: sucheMitStatus(location.search, status) }, { replace: true });
+  };
 
   // Flash nach Redirect (z. B. „Kunde gelöscht" aus dem Detail). Genau einmal
   // anzeigen, dann den Router-State löschen. Kein Storage — reiner In-Memory-State.
@@ -186,7 +201,7 @@ export default function AdminUsersPage() {
     const flash = location.state && location.state.flash;
     if (flash) {
       setActionMsg({ type: "success", text: String(flash) });
-      navigate(location.pathname, { replace: true, state: {} });
+      navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: {} });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
@@ -305,7 +320,7 @@ export default function AdminUsersPage() {
   const chips = activeFilterChips(filters);
   const emptyState = listEmptyState({ loadedCount: rows.length, filteredCount: filtered.length, filters });
   const showPagination = !error && !loading && (rows.length > 0 || page > 1);
-  const resetFilters = () => setFilters(DEFAULT_FILTERS);
+  const resetFilters = () => { statusWaehlen("all"); setFilters(DEFAULT_FILTERS); };
 
   return (
     <div className="adm-page">
@@ -338,7 +353,7 @@ export default function AdminUsersPage() {
           <select
             id="u-status"
             value={filters.status}
-            onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+            onChange={(e) => statusWaehlen(e.target.value)}
           >
             {STATUS_FILTER_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>

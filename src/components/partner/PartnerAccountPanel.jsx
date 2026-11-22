@@ -1,4 +1,8 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { SitzungenKarte } from "../sicherheit/SitzungenKarte";
+import { PARTNER_LOGIN_PATH } from "../../utils/partnerAnmeldung.mjs";
 import { SettingsSection } from "../dashboard/ProfileCardHead";
 import { EmailChangeSection } from "../dashboard/EmailChangeSection";
 import { PasswordChangeSection } from "../dashboard/PasswordChangeSection";
@@ -25,6 +29,8 @@ import { partnerAccountRows, partnerLoginEmailRow } from "../../utils/salesPartn
    /api/sales-partner/me/*-Endpunkte); jede andere Kundenroute antwortet einem
    Partner mit 403 und wird hier nie aufgerufen. */
 export function PartnerAccountPanel({ user }) {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   return (
     <div className="profile-sections" id="spp-account">
       <PartnerBillingDetailsSection />
@@ -48,8 +54,22 @@ export function PartnerAccountPanel({ user }) {
 
         <PasswordChangeSection />
       </SettingsSection>
+
+      {/* Angemeldete Geräte und „Auf allen Geräten abmelden“ (Betreiberauftrag 2026-11-22, D7): dieselbe Karte wie im
+          Adminbereich, mit dem Weg eines Partners bei Verlust — erst Passwort ändern, dann überall abmelden. */}
+      <SitzungenKarte anmeldePfad={PARTNER_LOGIN_PATH} klasse="spp-geraete" verlorenText={VERLOREN_PARTNER} />
+
+      {/* Am Telefon steht „Abmelden“ hier (am Desktop zusätzlich im Fuß der Seitenleiste; partner.css). */}
+      <div className="spp-konto-abmelden">
+        <button type="button" className="btn btn-outline" id="spp-logout-konto"
+          onClick={() => { logout(); navigate(PARTNER_LOGIN_PATH); }}>
+          Abmelden
+        </button>
+      </div>
     </div>
   );
 }
+
+const VERLOREN_PARTNER = "Ändern Sie zuerst oben Ihr Passwort und melden Sie sich danach auf allen Geräten ab.";
 
 export default PartnerAccountPanel;

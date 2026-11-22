@@ -157,16 +157,30 @@ export function AdminSidebar({ open, onClose }) {
             Navigation bekommt den Platz für alle Bereiche. Eine Initialenquelle
             für das ganze Produkt (Paket D). */}
         <div className="adm-side-foot">
-          <div className="adm-identity">
+          {/* Seit den Admin-/Partner-Apps (2026-11-22) führt die Identitätszeile zur Sicherheit des eigenen Kontos
+              (Passkeys, Wiederherstellungscodes, angemeldete Geräte) — ohne zusätzliche Zeile: das Höhenbudget der
+              Seitenleiste bei 1440 × 900 lässt keine weitere zu. */}
+          <NavLink
+            to="/admin/sicherheit"
+            onClick={onClose}
+            className={({ isActive }) => `adm-identity adm-identity-link${isActive ? " adm-identity-on" : ""}`}
+            title="Sicherheit und Geräte"
+          >
             <span className="adm-identity-avatar" aria-hidden="true">{accountInitials(user)}</span>
             <div className="adm-identity-text">
-              <span className="adm-identity-name" title={accountDisplayName(user, "Administrator")}>{accountDisplayName(user, "Administrator")}</span>
-              <span className="sr-only">, Administrator</span>
+              <span className="adm-identity-name">{accountDisplayName(user, "Administrator")}</span>
+              <span className="sr-only">, Administrator — Sicherheit und Geräte</span>
             </div>
-          </div>
+          </NavLink>
           <button type="button" className="adm-foot-btn adm-foot-btn-switch" onClick={goDashboard}>
             <span>Zum Kundenbereich</span>
           </button>
+          {/* Niedrige Desktopfenster (bis 860 px Höhe) blenden die Identitätszeile aus; dort führt dieser kurze Verweis in
+              derselben Zeile wie „Abmelden“ zur Sicherheit. Sonst ist er ausgeblendet (admin.css) — nie zwei sichtbare
+              Wege nebeneinander, keine zusätzliche Zeile im Höhenbudget. */}
+          <NavLink to="/admin/sicherheit" onClick={onClose} className="adm-foot-btn adm-foot-sicherheit">
+            <span>Sicherheit</span>
+          </NavLink>
           <button type="button" className="adm-foot-btn" onClick={handleLogout}>
             <span>Abmelden</span>
           </button>

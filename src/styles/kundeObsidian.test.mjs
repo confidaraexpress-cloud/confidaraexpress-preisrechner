@@ -31,8 +31,9 @@ const BEREICH = ':root[data-ce-bereich="kunde"]';
 const FAMILIE = ':root[data-ce-familie="blue-light"]';
 // Die Bereiche der Familie (hooks/useCeBereich.js, BLUE_LIGHT_FAMILIE) — nur sie tragen eigene Regeln der Ebene.
 // Das Adminpanel gehört seit dem Betreiberauftrag vom 2026-11-17 nicht mehr zur Familie (eigene Ebene admin-nacht.css):
-// Eine Regel am Adminbereich wäre hier ein fremder Selektor.
-const FAMILIENBEREICHE = ["kunde", "partner", "oeffentlich"].map((b) => `:root[data-ce-bereich="${b}"]`);
+// Eine Regel am Adminbereich wäre hier ein fremder Selektor. Bewusste Ankeränderung (Betreiberauftrag 2026-11-22, D3):
+// auch das Partnerportal trägt seither die Nachtwelt (partner-nacht.css) — eine Partnerregel wäre hier ebenso fremd.
+const FAMILIENBEREICHE = ["kunde", "oeffentlich"].map((b) => `:root[data-ce-bereich="${b}"]`);
 
 /** Zerlegt CSS in Regeln { selektor, rumpf, kontext }: @media/@supports werden geöffnet, @keyframes bleibt ganz. */
 function regeln(css, kontext = []) {
@@ -83,7 +84,7 @@ test("O1 — jede Regel hängt an der Familie Blue Light oder einem ihrer Bereic
   assert.equal(STILREGELN.filter((r) => r.selektor === BEREICH).length, 1, "genau ein Tokenblock des Kundenbereichs");
   // Die hook-gesetzten Werte und die der Ebene laufen nicht auseinander.
   const hook = readFileSync(new URL("../hooks/useCeBereich.js", import.meta.url), "utf8");
-  assert.match(hook, /BLUE_LIGHT_FAMILIE = Object\.freeze\(\["kunde", "partner", "oeffentlich"\]\)/);
+  assert.match(hook, /BLUE_LIGHT_FAMILIE = Object\.freeze\(\["kunde", "oeffentlich"\]\)/);
   assert.match(hook, /setAttribute\("data-ce-familie", "blue-light"\)/);
   assert.equal(STILREGELN.at(-1).selektor, ".loading-screen.loading-screen--kunde");
   const fremd = [];
@@ -252,7 +253,7 @@ test("O5 — Schriften: Arbeit in Instrument Sans, dazu zwei OFL-Familien, lokal
 test("O6 — nur das Hauptbündel lädt die Ebene; der öffentliche Preisrechner nicht", () => {
   const index = read("./index.css");
   // Danach nur noch die Adminebene (Confidara Leitstand Nacht, 2026-11-17; adminNacht.test.mjs).
-  assert.match(index, /@import '\.\/kunde-schriften\.css';\s*@import '\.\/kunde-obsidian\.css';\s*(?:\/\*[\s\S]*?\*\/\s*)?@import '\.\/admin-nacht\.css';\s*$/);
+  assert.match(index, /@import '\.\/kunde-schriften\.css';\s*@import '\.\/kunde-obsidian\.css';\s*(?:\/\*[\s\S]*?\*\/\s*)?@import '\.\/partner-nacht\.css';\s*(?:\/\*[\s\S]*?\*\/\s*)?@import '\.\/admin-nacht\.css';\s*$/);
   // Blue Light (2026-11-16): Host Grotesk für die Displayrolle des Rechners kommt aus fonts.css; Instrument Serif und
   // die Gestaltungsebene bleiben draußen (Bündelbudget, E2E publicCalculatorBuild B2).
   assert.doesNotMatch(ohneKommentare(read("./public-calculator.css")), /kunde-(?:obsidian|schriften)\.css|index\.css/);

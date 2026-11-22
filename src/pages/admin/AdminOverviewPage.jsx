@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { PasskeyHinweis } from "../../components/admin/PasskeyHinweis";
+import { Icon, ICON_SIZE } from "../../components/ui/Icon";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { metricsFailureKind, selectListTotal } from "../../utils/adminOverview.mjs";
 import {
@@ -240,11 +242,20 @@ export default function AdminOverviewPage() {
         variant="admin"
         title="Übersicht"
         actions={(
-          <button type="button" className="btn btn-outline btn-sm" onClick={loadAll} disabled={laedt}>
-            Aktualisieren
-          </button>
+          <>
+            {/* Suche über alle Kunden, Sendungen und Rechnungen (Admin-App 2026-11-22). */}
+            <Link to="/admin/suche" className="adm-suchfeld-link" id="adm-suche-start">
+              <Icon n="search" s={ICON_SIZE.md} />
+              <span>Sendung, Kunde oder Rechnung suchen</span>
+            </Link>
+            <button type="button" className="btn btn-outline btn-sm" onClick={loadAll} disabled={laedt}>
+              Aktualisieren
+            </button>
+          </>
         )}
       />
+
+      <PasskeyHinweis />
 
       {/* Der Fehler ersetzt die Zahlen nicht — er steht als schmale Zeile darüber.
           Nur wenn gar kein Wert vorliegt, füllt er die Fläche. */}

@@ -137,10 +137,16 @@ async function setup(page, {
   return state;
 }
 
+// Bewusste Ankeränderung (Betreiberauftrag 2026-11-22, D4): fünf Bereiche als Verweise mit aria-current; Provisionen
+// und Gutschriften sind die zwei Ansichten von „Verdienst“ (Umschalter mit denselben Kennungen #spp-tab-<ansicht>).
 async function zumBereich(page, id) {
   await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
+  if (id === "commissions" || id === "credit-notes") {
+    await page.locator("#spp-tab-earnings").click();
+    await page.locator('#spp-tab-earnings[aria-current="page"]').waitFor();
+  }
   await page.locator(`#spp-tab-${id}`).click();
-  await page.locator(`#spp-tab-${id}[aria-selected="true"]`).waitFor();
+  await page.locator(`#spp-tab-${id}[aria-current="page"]`).waitFor();
 }
 
 test.before(async () => {
@@ -453,7 +459,7 @@ test("10 — Gutschriften → Abrechnungsdaten im Konto; 390 px als Karten mit a
   await page.locator("#spp-cn-billing-link").waitFor({ state: "visible" });
   await page.locator("#spp-cn-billing-link").click();
   await page.waitForURL(`${BASE}/partner?page=account`);
-  await page.locator('#spp-tab-account[aria-selected="true"]').waitFor();
+  await page.locator('#spp-tab-account[aria-current="page"]').waitFor();
   await page.locator("#spp-billing-status").waitFor({ state: "visible" });
   // Die Abrechnungsdaten stehen im Konto zuerst.
   const erste = await page.locator("#spp-account > section").first().locator(".table-card-title").first().innerText();
@@ -462,6 +468,9 @@ test("10 — Gutschriften → Abrechnungsdaten im Konto; 390 px als Karten mit a
 
   // 390 px: Karten statt Tabelle, kein seitliches Scrollen, alle Steuerangaben je Beleg.
   await page.setViewportSize({ width: 390, height: 900 });
+  // 2026-11-22: „Verdienst“ in der unteren Leiste, dann die Ansicht Gutschriften.
+  await page.locator("#spp-tab-earnings").click();
+  await page.locator('#spp-tab-earnings[aria-current="page"]').waitFor();
   await page.locator("#spp-tab-credit-notes").click();
   await page.locator(".ce-list-cards li").first().waitFor({ state: "visible" });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth) <= 390, "die Seite scrollt seitlich");

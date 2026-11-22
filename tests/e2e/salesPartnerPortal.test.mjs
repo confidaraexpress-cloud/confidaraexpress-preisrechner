@@ -133,6 +133,8 @@ async function setup(page, { user = PARTNER, team = TEAM, token = true, password
       return json({});
     }
     if (p.endsWith("/login") && req.method() === "POST") return login ? json(login[1], login[0]) : json({ token: "e2e-partner-token" });
+    // Eigener Eingang des Partnerbereichs (Betreiberauftrag 2026-11-22, POST /auth/partner-login).
+    if (p.endsWith("/auth/partner-login") && req.method() === "POST") return login ? json(login[1], login[0]) : json({ token: "e2e-partner-token" });
     if (p.endsWith("/kundenbereich")) {
       return json({ message: "OK", user, pendingEmailChange: null, companyLogo: null, billingCapabilities: null,
         ...(user.role === "sales_partner" ? { salesPartner: { status: "active" } } : {}) });
@@ -195,14 +197,17 @@ test("1 — Login als Vertriebspartner führt ins Partnerportal, nie in den Kund
   assert.equal(await page.locator("#spp-prelive-banner").count(), 0, "kein Testhinweis für ein echtes Konto");
   assert.deepEqual(state.kunde, [], `Kundenendpunkte aufgerufen: ${state.kunde.join(", ")}`);
 
-  // UX-Paket 3: genau vier Kennzahlen in fester Reihenfolge, jede mit ihrem Monat.
+  // Bewusste Ankeränderung (Betreiberauftrag 2026-11-22, §4: der tatsächliche Verdienst am deutlichsten): der Verdienst
+  // des Monats ist die Hauptzahl oben (vorher die vierte Kennzahl); darunter die drei übrigen Kennzahlen, jede mit Monat.
   assert.deepEqual(await page.locator(".spp-kpi").evaluateAll((els) => els.map((e) => e.dataset.kpi)),
-    ["customers", "packages", "ownRate", "earned"]);
+    ["customers", "packages", "ownRate"]);
   const band = await page.locator(".spp-kpis").innerText();
   for (const t of ["Meine Kunden", "14", "aktuell zugeordnet", "Aktiv im September: 12", "Pakete im September", "1.530",
-    "zählen für Ihr Paket-Level im Oktober", "Meine Provision", "Ihr Satz im Oktober", "Im Oktober verdient", "davon auszahlbar"]) {
+    "zählen für Ihr Paket-Level im Oktober", "Meine Provision", "Ihr Satz im Oktober"]) {
     assert.ok(band.includes(t), `Kennzahlen ohne „${t}“`);
   }
+  const held = await page.locator('#spp-verdienst[data-kpi="earned"]').innerText();
+  for (const t of ["Im Oktober verdient", "davon auszahlbar"]) assert.ok(held.includes(t), `Verdienst ohne „${t}“`);
   // Die Hauptaktion: Kundenlink (primär) und Partnerlink — mit Zusage erst, wenn die Konfiguration sie trägt.
   await page.locator("#spp-link-customer", { hasText: "werden Ihnen zugeordnet" }).waitFor({ state: "visible" });
   assert.equal(await page.locator("#spp-link-customer button.btn-primary", { hasText: "Kundenlink kopieren" }).count(), 1);
@@ -218,10 +223,11 @@ test("1 — Login als Vertriebspartner führt ins Partnerportal, nie in den Kund
   // Geldbegriffe aufklappbar: vier getrennte Stufen.
   await page.locator("#spp-money-terms summary").click();
   assert.deepEqual(await page.locator("#spp-money-terms dt").allInnerTexts(), ["Verdient", "Auszahlbar", "Abgerechnet", "Ausgezahlt"]);
-  // Reihenfolge: erst die Kennzahlen, direkt danach die Links.
-  const [kpiTop, linksTop] = await page.evaluate(() => ["#spp-kpi-section", "#spp-links"]
+  // Reihenfolge (2026-11-22): oben Verdienst und Links nebeneinander, darunter die Kennzahlen.
+  const [heldTop, linksTop, kpiTop] = await page.evaluate(() => ["#spp-verdienst", "#spp-links", "#spp-kpi-section"]
     .map((s) => document.querySelector(s).getBoundingClientRect().top));
-  assert.ok(kpiTop < linksTop, "die Links stehen nicht nach den Kennzahlen");
+  assert.ok(Math.abs(heldTop - linksTop) < 2, "Verdienst und Links stehen nicht nebeneinander oben");
+  assert.ok(linksTop < kpiTop, "die Kennzahlen stehen nicht unter Verdienst und Links");
   await page.close();
 });
 
@@ -243,9 +249,10 @@ test("3 — Bereiche: Kunden, Provisionen mit Monatswechsel, Team; Rücknahme er
   const state = await setup(page);
   await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
 
+  // Bewusste Ankeränderung (2026-11-22, D4): die Bereiche sind Verweise der Seitenleiste mit aria-current (kein Reiterfeld).
   await page.locator("#spp-tab-customers").click();
   await page.locator("text=Acme GmbH").first().waitFor({ state: "visible" });
-  assert.equal(await page.locator("#spp-tab-customers").getAttribute("aria-selected"), "true");
+  assert.equal(await page.locator("#spp-tab-customers").getAttribute("aria-current"), "page");
   // UX-Paket 6: Kundenkonto und Kunden-Level getrennt erklärt — mit den Monaten der Übersicht.
   const erklaerung = await page.locator("#spp-customers-explain").innerText();
   assert.match(erklaerung, /Kundenkonto[\s\S]*freigeschaltet/);
@@ -257,8 +264,10 @@ test("3 — Bereiche: Kunden, Provisionen mit Monatswechsel, Team; Rücknahme er
     assert.ok(kunde.includes(t), `Kundenzeile ohne „${t}“: ${kunde}`);
   }
 
-  await page.locator("#spp-tab-commissions").click();
+  // „Verdienst“ fasst Provisionen und Gutschriften zusammen; geöffnet wird die Ansicht Provisionen.
+  await page.locator("#spp-tab-earnings").click();
   await page.locator("#spp-commission-totals").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#spp-tab-commissions").getAttribute("aria-current"), "page");
   // UX-Paket 6: Monat, verdient und auszahlbar zuerst — dann die Buchungen.
   assert.equal(await page.locator("#spp-commission-title").innerText(), "Verdient im Oktober 2026");
   assert.match(await page.locator("#spp-commission-earned").innerText(), /^50,00\s€$/);
@@ -294,7 +303,7 @@ test("3 — Bereiche: Kunden, Provisionen mit Monatswechsel, Team; Rücknahme er
   assert.doesNotMatch(ebene1, /Rang|Platz|höchstens|von 10|die ersten/);
   assert.match(await page.locator("#spp-team-2").innerText(), /Weitere Partner \(Ebene 2\)[\s\S]*Partner, die Ihre direkt geworbenen Partner geworben haben\./);
   assert.match(await page.locator("#spp-team-explain").innerText(),
-    /^Für Ihre Teamprovision zählen alle berechtigten aktiven Partner auf Ebene 1 und Ebene 2\. Ihre Sätze: Ebene 1 5,00 % · Ebene 2 2,50 %\.$/);
+    /^Für Ihre Teamprovision zählen alle berechtigten aktiven Partner auf Ebene 1 und Ebene 2\. Ihre Sätze: 5,00 % auf Ebene 1 · 2,50 % auf Ebene 2\.$/);
   assert.deepEqual(state.kunde, []);
   await page.close();
 });
@@ -306,9 +315,13 @@ test("4 — „Mein Team“ ist immer da: ohne Einträge mit Leerzustand, bei ei
   await setup(page, { team: TEAM_LEER });
   await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
   await page.locator("#spp-tab-overview").waitFor({ state: "visible" });
-  assert.equal(await page.locator('[role="tab"]').count(), 6, "Übersicht, Kunden, Provisionen, Gutschriften, Team, Konto");
-  assert.equal(await page.locator("#spp-tab-credit-notes").count(), 1);
-  assert.equal(await page.locator("#spp-tab-account").count(), 1);
+  // Bewusste Ankeränderung (2026-11-22, D4): fünf Bereiche — Provisionen und Gutschriften sind die zwei Ansichten von
+  // „Verdienst“ (vorher sechs Reiter).
+  assert.deepEqual(await page.locator(".spp-nav .spp-nitem").evaluateAll((els) => els.map((e) => e.id)),
+    ["spp-tab-overview", "spp-tab-customers", "spp-tab-earnings", "spp-tab-team", "spp-tab-account"]);
+  await page.locator("#spp-tab-earnings").click();
+  await page.locator("#spp-tab-credit-notes").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#spp-tab-commissions").count(), 1);
   await page.locator("#spp-tab-team").click();
   await page.locator("#spp-team-1").waitFor({ state: "visible" });
   assert.match(await page.locator("#spp-tabpanel").innerText(), /Auf dieser Ebene gibt es noch keine Vertriebspartner\./);
@@ -329,8 +342,9 @@ test("5 — Abmelden aus dem Portal führt zur Anmeldung und entfernt das Token"
   const page = await browser.newPage();
   await setup(page);
   await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
+  // Bewusste Ankeränderung (2026-11-22): die eigene Anmeldung des Partnerbereichs (/partner/login).
   await page.locator("#spp-logout").click();
-  await page.waitForURL(`${BASE}/login`);
+  await page.waitForURL(`${BASE}/partner/login`);
   await page.waitForFunction(() => localStorage.getItem("ce_token") === null);
   await page.close();
 });
@@ -399,13 +413,13 @@ test("8 — Pre-Live-Testkonto: dauerhafter Hinweis über allen Bereichen", asyn
   // Der Hinweis steht über den Bereichen und bleibt beim Wechsel stehen.
   const reihenfolge = await page.evaluate(() => {
     const hinweis = document.querySelector("#spp-prelive-banner");
-    const tabs = document.querySelector('[role="tablist"]');
-    return !!(hinweis.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const inhalt = document.querySelector("#spp-tabpanel");
+    return !!(hinweis.compareDocumentPosition(inhalt) & Node.DOCUMENT_POSITION_FOLLOWING);
   });
   assert.equal(reihenfolge, true, "Hinweis vor den Bereichen");
-  for (const bereich of ["customers", "commissions", "account"]) {
+  for (const bereich of ["customers", "earnings", "account"]) {
     await page.locator(`#spp-tab-${bereich}`).click();
-    await page.locator(`#spp-tab-${bereich}[aria-selected="true"]`).waitFor();
+    await page.locator(`#spp-tab-${bereich}[aria-current="page"]`).waitFor();
     assert.equal(await page.locator("#spp-prelive-banner").innerText(), text, `Hinweis fehlt im Bereich ${bereich}`);
   }
   assert.deepEqual(state.kunde, []);
@@ -526,32 +540,40 @@ test("12 — erster Besuch: die Links stehen vorn; ohne Monatsbewertung Striche 
   assert.equal(await wert("customers"), "0");
   assert.equal(await wert("packages"), "—");
   assert.equal(await wert("ownRate"), "—");
-  assert.match(await wert("earned"), /^0,00\s€$/);
+  assert.match(await page.locator('[data-kpi="earned"] #spp-month-amount').innerText(), /^0,00\s€$/);
   assert.match(await page.locator('[data-kpi="packages"]').innerText(), /Noch keine Monatsbewertung/);
   assert.match(await page.locator("#spp-level-basis").innerText(), /^Noch keine Monatsbewertung/);
   await page.close();
 });
 
-test("13 — 390 px: alle sechs Bereiche ohne seitliches Scrollen, Kundenlink früh und in voller Breite (UX-Paket 3)", async () => {
+// Bewusste Ankeränderung (2026-11-22, D4): fünf Bereiche in der festen Leiste unten statt sechs Reitern; die drei
+// Kennzahlen stehen am Telefon als Zeilen untereinander.
+test("13 — 390 px: alle fünf Bereiche ohne seitliches Scrollen, Kundenlink früh und in voller Breite (UX-Paket 3)", async () => {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await setup(page);
   await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
   await page.locator("#spp-link-customer button").waitFor({ state: "visible" });
-  const tabs = await page.locator('[role="tab"]').evaluateAll((els) => els.map((e) => {
+  const tabs = await page.locator(".spp-nav .spp-nitem").evaluateAll((els) => els.map((e) => {
     const r = e.getBoundingClientRect();
-    return { text: e.textContent.trim(), links: r.left, rechts: r.right, hoehe: r.height };
+    return { text: e.textContent.trim(), links: r.left, rechts: r.right, hoehe: r.height, unten: r.bottom };
   }));
-  assert.equal(tabs.length, 6);
+  assert.equal(tabs.length, 5);
+  for (const t of tabs) assert.ok(t.unten <= 844 + 1, `„${t.text}“ liegt nicht in der Leiste unten`);
   for (const t of tabs) {
     assert.ok(t.links >= 0 && t.rechts <= 390, `„${t.text}“ liegt außerhalb des Bildschirms (${t.links}–${t.rechts})`);
     assert.ok(t.hoehe >= 44, `„${t.text}“ ist kleiner als 44 px`);
   }
-  const leiste = await page.locator('[role="tablist"]').evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
-  assert.ok(leiste.scroll <= leiste.client + 1, `die Tabzeile scrollt seitlich (${leiste.scroll} > ${leiste.client})`);
+  const leiste = await page.locator(".spp-nav").evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
+  assert.ok(leiste.scroll <= leiste.client + 1, `die Leiste scrollt seitlich (${leiste.scroll} > ${leiste.client})`);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth) <= 390, "die Seite scrollt seitlich");
-  // Kennzahlen 2 × 2, die Hauptaktion in voller Breite und früh erreichbar.
-  const kpi = await page.locator(".spp-kpi").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
-  assert.equal(kpi[0], kpi[1], "die Kennzahlen stehen nicht zu zweit nebeneinander");
+  // Kennzahlen als Zeilen untereinander, die Hauptaktion in voller Breite und früh erreichbar.
+  const kpi = await page.locator(".spp-kpi").evaluateAll((els) => els.map((e) => {
+    const r = e.getBoundingClientRect();
+    return { oben: Math.round(r.top), links: r.left, rechts: r.right };
+  }));
+  assert.equal(kpi.length, 3);
+  assert.ok(kpi[0].oben < kpi[1].oben && kpi[1].oben < kpi[2].oben, "die Kennzahlen stehen nicht untereinander");
+  for (const k of kpi) assert.ok(k.links >= 0 && k.rechts <= 390, "eine Kennzahl ragt aus dem Bildschirm");
   const knopf = await page.locator("#spp-link-customer button").evaluate((el) => {
     const r = el.getBoundingClientRect();
     const karte = el.closest(".spp-card").getBoundingClientRect();
@@ -569,20 +591,24 @@ test("14 — Direktlinks: Bereich in der Adresse, Neuladen behält ihn, Unbekann
   // Direkt in einen Bereich — ohne Umweg über die Übersicht.
   await page.goto(`${BASE}/partner?page=commissions`, { waitUntil: "networkidle" });
   await page.locator("#spp-commission-totals").waitFor({ state: "visible" });
-  assert.equal(await page.locator("#spp-tab-commissions").getAttribute("aria-selected"), "true");
+  assert.equal(await page.locator("#spp-tab-commissions").getAttribute("aria-current"), "page");
+  assert.equal(await page.locator("#spp-tab-earnings").getAttribute("aria-current"), "page");
   assert.equal(page.url(), `${BASE}/partner?page=commissions`);
 
   // Ein Bereichswechsel schreibt die Adresse — ersetzend, ohne neuen Verlaufseintrag.
   const verlauf = await page.evaluate(() => history.length);
   await page.locator("#spp-tab-team").click();
   await page.waitForURL(`${BASE}/partner?page=team`);
+  // „Verdienst“ öffnet die Provisionen; der Umschalter wechselt zu den Gutschriften.
+  await page.locator("#spp-tab-earnings").click();
+  await page.waitForURL(`${BASE}/partner?page=commissions`);
   await page.locator("#spp-tab-credit-notes").click();
   await page.waitForURL(`${BASE}/partner?page=credit-notes`);
   assert.equal(await page.evaluate(() => history.length), verlauf, "ein Bereichswechsel legt einen Verlaufseintrag an");
 
   // Neuladen: derselbe Bereich.
   await page.reload({ waitUntil: "networkidle" });
-  await page.locator('#spp-tab-credit-notes[aria-selected="true"]').waitFor();
+  await page.locator('#spp-tab-credit-notes[aria-current="page"]').waitFor();
   assert.equal(page.url(), `${BASE}/partner?page=credit-notes`);
 
   // Die Übersicht braucht keinen Parameter.
@@ -598,7 +624,7 @@ test("14 — Direktlinks: Bereich in der Adresse, Neuladen behält ihn, Unbekann
     ["/partner?page=team&next=https://evil.example", "/partner?page=team", "team"],
   ]) {
     await page.goto(`${BASE}${ziel}`, { waitUntil: "networkidle" });
-    await page.locator(`#spp-tab-${tab}[aria-selected="true"]`).waitFor();
+    await page.locator(`#spp-tab-${tab}[aria-current="page"]`).waitFor();
     await page.waitForURL(`${BASE}${erwartet}`);
     assert.equal(page.url(), `${BASE}${erwartet}`, `${ziel} wurde nicht bereinigt`);
   }
@@ -610,14 +636,15 @@ test("14 — Direktlinks: Bereich in der Adresse, Neuladen behält ihn, Unbekann
 test("15 — Login-Rücksprung: Gast auf /partner?page=team landet nach dem Login im Team; Kundenziele nie (UX-Paket 6)", async () => {
   const page = await browser.newPage();
   const state = await setup(page, { token: false });
+  // Bewusste Ankeränderung (2026-11-22): die Schutzroute führt Gäste auf die Anmeldung des Partnerbereichs.
   await page.goto(`${BASE}/partner?page=team`, { waitUntil: "networkidle" });
-  await page.waitForURL(`${BASE}/login`);
-  await page.fill("#auth-email", "petra@partner-vertrieb.de");
-  await page.fill("#auth-password", "EinSicheresPasswort2026");
-  await page.locator("button.auth-cta").click();
+  await page.waitForURL(`${BASE}/partner/login`);
+  await page.fill("#spp-login-email", "petra@partner-vertrieb.de");
+  await page.fill("#spp-login-password", "EinSicheresPasswort2026");
+  await page.locator("#spp-login-submit").click();
   await page.waitForURL(`${BASE}/partner?page=team`);
   await page.locator("#spp-team-1").waitFor({ state: "visible" });
-  assert.equal(await page.locator("#spp-tab-team").getAttribute("aria-selected"), "true");
+  assert.equal(await page.locator("#spp-tab-team").getAttribute("aria-current"), "page");
   assert.deepEqual(state.kunde, []);
   await page.close();
 
@@ -630,7 +657,7 @@ test("15 — Login-Rücksprung: Gast auf /partner?page=team landet nach dem Logi
   await lesezeichen.fill("#auth-password", "EinSicheresPasswort2026");
   await lesezeichen.locator("button.auth-cta").click();
   await lesezeichen.waitForURL(`${BASE}/partner`);
-  await lesezeichen.locator('#spp-tab-overview[aria-selected="true"]').waitFor();
+  await lesezeichen.locator('#spp-tab-overview[aria-current="page"]').waitFor();
   assert.deepEqual(zustand.kunde, [], `Kundenendpunkte aufgerufen: ${zustand.kunde.join(", ")}`);
   await lesezeichen.close();
 });

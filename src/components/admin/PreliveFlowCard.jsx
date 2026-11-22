@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { CopyableNumber } from "../ui/CopyableNumber";
 import { withSection, withTestRun } from "../../utils/adminJumpState.mjs";
+import { kundenportalAdresse } from "../../utils/appHost.mjs";
 import {
   PRELIVE_FLOW_STEPS,
   PRELIVE_FLOW_TEXTS as T,
@@ -14,9 +15,10 @@ import {
 
 const partnerPath = (id) => `/admin/partners/${encodeURIComponent(id)}`;
 
-// Adresse der öffentlichen Registrierung — aus der eigenen Route des Frontends.
+// Adresse der öffentlichen Registrierung — aus der eigenen Route des Frontends, immer im Kundenbereich (auch aus der
+// Admin-App heraus: dort gibt es die Registrierung nicht; utils/appHost.mjs).
 function registrierungsUrl() {
-  return typeof window !== "undefined" && window.location ? `${window.location.origin}${PRELIVE_REGISTRATION_PATH}` : PRELIVE_REGISTRATION_PATH;
+  return kundenportalAdresse(PRELIVE_REGISTRATION_PATH);
 }
 
 /* ── Pre-Live · Testablauf (UX-Paket 5) ──────────────────────────────────────

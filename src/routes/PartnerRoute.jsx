@@ -5,6 +5,11 @@ import { LoadingScreen } from "../components/common/LoadingScreen";
 import { SessionCheckFailedView } from "./ProtectedRoute";
 import { CUSTOMER_HOME, isSalesPartner } from "../utils/roleLanding.mjs";
 import { PARTNER_LOGIN_PATH } from "../utils/partnerAnmeldung.mjs";
+import { aktuelleApp, APP_PARTNER } from "../utils/appHost.mjs";
+import { AppKontoHinweis } from "./AppKontoHinweis";
+
+// Partner-App (partner.confidaraexpress.de, FE-2): der Host ändert sich während einer Seitenladung nicht.
+const IN_PARTNER_APP = aktuelleApp() === APP_PARTNER;
 
 // ── PartnerRoute — UX-Gate des Partnerportals ────────────────────────────────
 // Nach dem Muster von ProtectedRoute, aber umgekehrt: hier darf NUR die Rolle
@@ -34,6 +39,8 @@ export function PartnerRoute({ children }) {
 
   // Ohne Sitzung auf den eigenen Partner-Eingang (Betreiberauftrag 2026-11-22, Abschnitt 8); der Rücksprung bleibt.
   if (!authed) return <Navigate to={PARTNER_LOGIN_PATH} replace state={{ from: `${location.pathname}${location.search}` }} />;
+  // In der Partner-App gibt es keinen Kundenbereich (die Hostweiche brächte das Konto im Kreis hierher zurück).
+  if (!isSalesPartner(user) && IN_PARTNER_APP) return <AppKontoHinweis app={APP_PARTNER} onLogout={logout} />;
   if (!isSalesPartner(user)) return <Navigate to={CUSTOMER_HOME} replace />;
   return children;
 }

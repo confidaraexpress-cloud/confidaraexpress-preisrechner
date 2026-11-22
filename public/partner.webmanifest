@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "ConfidaraExpress Partner",
+  "short_name": "CE Partner",
+  "description": "Partnerbereich von ConfidaraExpress: Kunden, Provisionen und Gutschriften.",
+  "lang": "de",
+  "dir": "ltr",
+  "start_url": "/partner",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#060B1C",
+  "background_color": "#060B1C",
+  "icons": [
+    { "src": "/app-icon-partner-192-v1.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/app-icon-partner-512-v1.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/app-icon-partner-maskable-192-v1.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/app-icon-partner-maskable-512-v1.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

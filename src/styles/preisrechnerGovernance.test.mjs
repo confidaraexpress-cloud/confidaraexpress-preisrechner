@@ -36,8 +36,12 @@ function locationBlock(block, kopf) {
   return block.slice(start, ende);
 }
 
-test("1 — genau zwei server-Blöcke: der bisherige zuerst und als default_server, danach der Preisrechner", () => {
-  assert.equal(BLOECKE.length, 2);
+test("1 — der bisherige server-Block zuerst und als default_server, danach der Preisrechner", () => {
+  // Bewusste Ankeränderung (Admin-/Partner-Apps, FE-2 2026-11-22): danach folgen genau die Blöcke der Admin- und der
+  // Partner-App, je nur über server_name (Prüfung im Einzelnen: src/styles/appPwaGovernance.test.mjs).
+  assert.equal(BLOECKE.length, 4);
+  assert.match(BLOECKE[2], /^\s*server_name admin\.confidaraexpress\.de;$/m);
+  assert.match(BLOECKE[3], /^\s*server_name partner\.confidaraexpress\.de;$/m);
   assert.match(BLOECKE[0], /^\s*listen 80 default_server;$/m);
   assert.match(BLOECKE[0], /^\s*root \/usr\/share\/nginx\/html;$/m);
   assert.doesNotMatch(BLOECKE[0], /server_name/, "der Anwendungsblock bleibt für jeden Host zuständig");

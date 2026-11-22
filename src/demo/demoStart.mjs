@@ -10,11 +10,14 @@ import { demoEinschalten, istDemoPfad } from "./demoModus.mjs";
 import { speicherAbschirmen } from "./demoSpeicher.mjs";
 import { netzSperren } from "./demoNetz.mjs";
 import { setzeDemoTransport } from "../api/client.js";
+import { appVonHost, APP_KUNDE } from "../utils/appHost.mjs";
 
 /** Zustand dieser Seitenladung: läuft sie als Demo, und sind Speicher und Netz abgeschirmt? */
 export const DEMO_ZUSTAND = { aktiv: false, abgeschirmt: false };
 
-if (typeof window !== "undefined" && istDemoPfad(window.location.pathname)) {
+// Nur im Kundenbereich: die Admin- und die Partner-App (eigene Hosts, FE-2) starten nie die Demo — dort führt /demo wie
+// jede fremde Seite auf den Start der App (App.jsx).
+if (typeof window !== "undefined" && istDemoPfad(window.location.pathname) && appVonHost(window.location.hostname) === APP_KUNDE) {
   DEMO_ZUSTAND.aktiv = true;
   DEMO_ZUSTAND.abgeschirmt = speicherAbschirmen(window);
   if (DEMO_ZUSTAND.abgeschirmt) {

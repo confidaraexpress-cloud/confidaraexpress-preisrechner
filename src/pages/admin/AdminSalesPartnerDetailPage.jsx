@@ -18,6 +18,7 @@ import { SalesPartnerCreditNotesCard } from "../../components/admin/SalesPartner
 import { getAdminSalesPartner } from "../../api/adminApi";
 import { agreementDocumentUrl } from "../../api/partnerApi";
 import { referralLinkPath } from "../../utils/referralCapture.mjs";
+import { kundenportalAdresse } from "../../utils/appHost.mjs";
 import { AGREEMENT_TEXTS } from "../../utils/salesPartnerAgreement.mjs";
 import { EXTERNAL_LINK_REL, EXTERNAL_LINK_TARGET } from "../../utils/externalLink.mjs";
 import {
@@ -69,11 +70,11 @@ function KV({ items, id, className = "adm-kv" }) {
 }
 
 // Teilen-Link eines Codes — aus den eigenen Routen des Frontends abgeleitet
-// (utils/referralCapture.mjs), nie aus einer erfundenen Adresse.
+// (utils/referralCapture.mjs), nie aus einer erfundenen Adresse; immer im Kundenbereich, auch aus der Admin-App heraus.
 function linkFuer(kind, code) {
   const pfad = referralLinkPath(kind, code);
   if (!pfad) return null;
-  return typeof window !== "undefined" && window.location ? `${window.location.origin}${pfad}` : pfad;
+  return kundenportalAdresse(pfad);
 }
 
 // Einen Bereich öffnen und dorthin springen (Aktion „Nächster Schritt", Sprunglink).

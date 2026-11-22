@@ -7,6 +7,7 @@ import { BrandLogo } from "../ui/BrandLogo";
 import { ICON_SIZE } from "../ui/Icon";
 import { NavSymbol } from "./NavSymbol";
 import { useNavigationDrawer } from "../../hooks/useNavigationDrawer";
+import { kundenportalZiel } from "../../utils/appHost.mjs";
 
 // Kennung der Adminsidebar — Ziel von aria-controls am Menüknopf der mobilen Topbar
 // (AdminLayout). Darunter ist sie ein Drawer (admin.css, `@media (max-width: 900px)`).
@@ -72,7 +73,16 @@ export function AdminSidebar({ open, onClose }) {
   // Abmelden aus dem Adminpanel führt auf die Admin-Anmeldung (Canonical v2.130); die Sitzung beendet logout()
   // auch serverseitig. Die Seite ist vorgeladen, damit kein Ladebildschirm dazwischen steht.
   const handleLogout = () => { AdminAnmeldungSeite.vorladen().catch(() => {}); logout(); navigate("/admin/login"); };
-  const goDashboard = () => { onClose?.(); navigate("/dashboard"); };
+  // „Zum Kundenbereich“: in der Admin-App (admin.confidaraexpress.de) gibt es ihn nicht — dort öffnet er
+  // confidaraexpress.de in einem eigenen Tab, mit eigener Anmeldung (je Origin ein eigener Speicher, kein geteiltes
+  // Token). Auf der Hauptdomain unverändert ein Seitenwechsel (utils/appHost.mjs).
+  const kundenbereich = kundenportalZiel("/dashboard");
+  const kundenbereichExtern = kundenbereich !== "/dashboard";
+  const goDashboard = () => {
+    onClose?.();
+    if (kundenbereichExtern) window.open(kundenbereich, "_blank", "noopener,noreferrer");
+    else navigate(kundenbereich);
+  };
 
   // Geöffneter Drawer (unter 900 px) wie ein Dialog: Fokus hinein, Tab bleibt im Drawer, Escape
   // schließt, danach Fokus zurück auf den Menüknopf; wird das Fenster breiter als die Schwelle,
@@ -172,8 +182,10 @@ export function AdminSidebar({ open, onClose }) {
               <span className="sr-only">, Administrator — Sicherheit und Geräte</span>
             </div>
           </NavLink>
-          <button type="button" className="adm-foot-btn adm-foot-btn-switch" onClick={goDashboard}>
+          <button type="button" className="adm-foot-btn adm-foot-btn-switch" onClick={goDashboard}
+            title={kundenbereichExtern ? "Öffnet confidaraexpress.de in einem neuen Tab, mit eigener Anmeldung" : undefined}>
             <span>Zum Kundenbereich</span>
+            {kundenbereichExtern && <span className="sr-only">, öffnet confidaraexpress.de in einem neuen Tab</span>}
           </button>
           {/* Niedrige Desktopfenster (bis 860 px Höhe) blenden die Identitätszeile aus; dort führt dieser kurze Verweis in
               derselben Zeile wie „Abmelden“ zur Sicherheit. Sonst ist er ausgeblendet (admin.css) — nie zwei sichtbare

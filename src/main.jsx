@@ -15,7 +15,7 @@ import { captureHandoffFromLocation } from "./utils/publicQuoteHandoffStore.mjs"
 import { loadSalesPartnerPublicConfig } from "./api/partnerApi";
 import App from "./App";
 import { LoadingScreen } from "./components/common/LoadingScreen";
-import { AuthSeite, EmailBestaetigungSeite, AdminAnmeldungSeite } from "./pages/authSeite";
+import { AuthSeite, EmailBestaetigungSeite, AdminAnmeldungSeite, PartnerAnmeldungSeite } from "./pages/authSeite";
 import { ADMIN_LOGIN_PATH } from "./utils/roleLanding.mjs";
 import { istKundenAuthPfad } from "./utils/kundenAuthPfad.mjs";
 import { istKundenbereichPfad, ohneDemoBasis } from "./utils/kundenBereichPfad.mjs";
@@ -106,6 +106,9 @@ if (!DEMO_ZUSTAND.aktiv && istKundenAuthPfad(pfad)) {
   // Admin-Anmeldung (Canonical v2.130): dasselbe Vorladen — das dunkle Gerüst (admin-login.html) geht ohne helle
   // Ladefläche des Seitenwechsels in die Seite über.
   AdminAnmeldungSeite.vorladen().then(starten, starten);
+} else if (!DEMO_ZUSTAND.aktiv && (pfad === "/partner/login" || pfad === "/partner/login/")) {
+  // Anmeldung des Partnerbereichs (2026-11-22): ebenso vorladen, damit kein Zwischenbild entsteht.
+  PartnerAnmeldungSeite.vorladen().then(starten, starten);
 } else {
   starten();
 }

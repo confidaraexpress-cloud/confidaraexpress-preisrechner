@@ -7,8 +7,13 @@ import { BrandLogo } from "../components/ui/BrandLogo";
 import { Icon } from "../components/ui/Icon";
 import { AdminLeitstand } from "../components/auth/AdminLeitstand";
 import { AdminHologramm } from "../components/auth/AdminHologramm";
-import { adminAnmelden, passwortVergessen, resetLinkPruefen, passwortSetzen } from "../api/adminAnmeldungApi";
+import {
+  adminAnmelden, adminPasskeyAnmelden, adminCodeAnmelden, passwortVergessen, resetLinkPruefen, passwortSetzen,
+} from "../api/adminAnmeldungApi";
 import { isAdmin } from "../utils/roleLanding.mjs";
+import { ZWEITER_SCHRITT_TEXT as Z, zweiterSchrittAus, zweiterSchrittFehler, codeEingabe } from "../utils/adminZweiterSchritt.mjs";
+import { passkeyBestaetigen, passkeyFehlertext } from "../utils/webauthn.mjs";
+import { ADMIN_SICHERHEIT_PATH } from "../utils/adminSicherheit.mjs";
 import {
   ADMIN_ANMELDUNG_TEXT as T, ADMIN_ANMELDE_FEHLER, ADMIN_VERGESSEN_ERFOLG, ADMIN_LOGIN_PATH,
   mapAdminAnmeldeFehler, mapAdminVergessenFehler, adminZielNachAnmeldung, resetTokenAus,
@@ -93,6 +98,9 @@ export default function AdminAnmeldungPage() {
 
   // Rücksprungziel und Einmallink werden EINMAL beim Öffnen gelesen und sofort geprüft.
   const [ziel] = useState(() => adminZielNachAnmeldung(location.state?.from));
+  // Ziel DIESER Anmeldung ({ to, state }), festgelegt vor login(): sobald das Konto gesetzt ist, leitet die Seite beim
+  // Rendern selbst weiter (unten) — mit genau diesem Ziel statt `ziel`, sonst überschriebe sie „Sicherheit“.
+  const nachAnmeldung = useRef(null);
   const [resetToken] = useState(() => resetTokenAus(location.search));
   const [schritt, setSchritt] = useState(() => (resetToken ? "reset" : "anmelden"));
 
@@ -109,6 +117,12 @@ export default function AdminAnmeldungPage() {
   const [linkZustand, setLinkZustand] = useState(resetToken ? "pruefen" : "keiner"); // pruefen | gueltig | netzfehler
   const [neu, setNeu] = useState("");
   const [neuWdh, setNeuWdh] = useState("");
+
+  // Zweiter Schritt (Passkey oder Wiederherstellungscode): das Ticket lebt nur im Arbeitsspeicher dieser Seite.
+  const [zweiter, setZweiter] = useState(null); // { loginTicket, passkeyOptions, recoveryAvailable }
+  const [code, setCode] = useState("");
+  const codeRef = useRef(null);
+  const passkeyKnopfRef = useRef(null);
 
   const inFlight = useRef(false);
   const emailRef = useRef(null);
@@ -147,16 +161,87 @@ export default function AdminAnmeldungPage() {
     const erstes = ersterFokus.current;
     ersterFokus.current = false;
     if (erstes && typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches) return;
-    const feld = schritt === "anmelden" ? emailRef.current : schritt === "vergessen" ? vergessenRef.current : neuRef.current;
+    const feld = schritt === "anmelden" ? emailRef.current : schritt === "vergessen" ? vergessenRef.current
+      : schritt === "passkey" ? passkeyKnopfRef.current : schritt === "code" ? codeRef.current : neuRef.current;
     (feld || titelRef.current)?.focus?.();
   }, [schritt, linkZustand]);
 
   // Ein angemeldeter Admin landet im Adminpanel — außer die Seite wurde mit einem Einmallink geöffnet: der gehört
   // womöglich zu einem anderen Konto (Einrichtung: der gemeinsame Zugang ist in diesem Browser noch angemeldet, Patrick
   // öffnet seinen eigenen Link). Dann bleibt es beim Link-Schritt; nach dem Speichern endet die offene Sitzung.
-  if (authed && isAdmin(user) && !resetToken) return <Navigate to={ziel} replace />;
+  if (authed && isAdmin(user) && !resetToken) {
+    const n = nachAnmeldung.current;
+    return <Navigate to={n ? n.to : ziel} state={n ? n.state : undefined} replace />;
+  }
 
-  const zurAnmeldung = () => { setSchritt("anmelden"); setFehler(""); setVergessenGesendet(false); };
+  const zurAnmeldung = () => { setSchritt("anmelden"); setFehler(""); setVergessenGesendet(false); setZweiter(null); setCode(""); };
+
+  // Gemeinsamer Abschluss: Token übernehmen, Konto laden, nur mit Adminrolle weiter. Ist der Pflichtschalter an und hat
+  // das Konto noch keinen Passkey, geht es direkt zur Einrichtung unter „Sicherheit“.
+  const abschliessen = async (token, { einrichten = false, nachCode = false, hinweisDanach = "" } = {}) => {
+    // Nach einer Anmeldung mit Wiederherstellungscode immer zu „Sicherheit“: nur dort steht, wie viele Codes übrig sind,
+    // und das 15-Minuten-Fenster der Code-Anmeldung reicht, um einen verlorenen Passkey zu ersetzen und neue Codes zu
+    // erzeugen. Auf der Übersicht ginge der Hinweis „letzter Code verwendet“ verloren (Sicherheitsprüfung FE-1, B1).
+    nachAnmeldung.current = einrichten ? { to: ADMIN_SICHERHEIT_PATH, state: { einrichten: true } }
+      : nachCode ? { to: ADMIN_SICHERHEIT_PATH, state: hinweisDanach ? { sicherheitsHinweis: hinweisDanach } : undefined }
+      : { to: ziel, state: undefined };
+    localStorage.setItem("ce_token", token);
+    const angemeldet = await login(token);
+    if (!angemeldet) { nachAnmeldung.current = null; setFehler(ADMINBEREICH_NICHT_GELADEN); return false; }
+    // Schutz in der Tiefe: der Server gibt Nicht-Admins hier kein Token. Sollte die Rolle dennoch abweichen,
+    // wird die Sitzung sofort beendet — die Seite öffnet nie einen Adminbereich ohne Adminrolle.
+    if (!isAdmin(angemeldet)) { nachAnmeldung.current = null; logout(); setFehler(ADMIN_ANMELDE_FEHLER.ADMIN_ACCESS_REQUIRED); return false; }
+    setPasswort(""); setCode(""); setZweiter(null);
+    navigate(nachAnmeldung.current.to, { replace: true, state: nachAnmeldung.current.state });
+    return true;
+  };
+
+  const zweiterSchrittAbgelehnt = (r, d) => {
+    const f = zweiterSchrittFehler(r.status, d);
+    setFehler(f.text);
+    if (f.neuAnmelden) { setZweiter(null); setCode(""); setSchritt("anmelden"); }
+  };
+
+  // Der Passkey wird per Klick angefordert: Safari verlangt dafür eine Nutzergeste.
+  const passkeyAnmelden = async () => {
+    if (inFlight.current || !zweiter) return;
+    setFehler("");
+    inFlight.current = true; setLaeuft(true);
+    try {
+      let antwort;
+      try { antwort = await passkeyBestaetigen(zweiter.passkeyOptions); } catch (err) { setFehler(passkeyFehlertext(err)); return; }
+      const r = await adminPasskeyAnmelden({ loginTicket: zweiter.loginTicket, response: antwort });
+      const d = await jsonOderNull(r);
+      if (!r.ok) { zweiterSchrittAbgelehnt(r, d); return; }
+      if (!d || typeof d.token !== "string" || d.token === "") { setFehler(LOGIN_SERVERFEHLER); return; }
+      await abschliessen(d.token);
+    } catch (err) {
+      setFehler(mapAuthThrownError(err));
+    } finally {
+      inFlight.current = false; setLaeuft(false);
+    }
+  };
+
+  const codeAnmelden = async (e) => {
+    e.preventDefault();
+    if (inFlight.current || !zweiter) return;
+    setFehler("");
+    const eingabe = codeEingabe(code);
+    if (!eingabe) { setFehler(Z.codeFehlt); codeRef.current?.focus(); return; }
+    inFlight.current = true; setLaeuft(true);
+    try {
+      const r = await adminCodeAnmelden({ loginTicket: zweiter.loginTicket, code: eingabe });
+      const d = await jsonOderNull(r);
+      if (!r.ok) { zweiterSchrittAbgelehnt(r, d); return; }
+      if (!d || typeof d.token !== "string" || d.token === "") { setFehler(LOGIN_SERVERFEHLER); return; }
+      const rest = Number.isInteger(d.recoveryCodesRemaining) ? d.recoveryCodesRemaining : null;
+      await abschliessen(d.token, { nachCode: true, hinweisDanach: rest === null ? "" : Z.codeVerbraucht(rest) });
+    } catch (err) {
+      setFehler(mapAuthThrownError(err));
+    } finally {
+      inFlight.current = false; setLaeuft(false);
+    }
+  };
 
   const anmelden = async (e) => {
     e.preventDefault();
@@ -173,15 +258,11 @@ export default function AdminAnmeldungPage() {
       const r = await adminAnmelden({ email: adresse, password: passwort });
       const d = await jsonOderNull(r);
       if (!r.ok) { setFehler(mapAdminAnmeldeFehler(r.status, d)); return; }
+      // Konto mit Passkey: das Passwort stimmt, die Anmeldung braucht aber noch den zweiten Schritt (kein Token).
+      const naechster = zweiterSchrittAus(d);
+      if (naechster) { setPasswort(""); setZweiter(naechster); setSchritt("passkey"); return; }
       if (!d || typeof d.token !== "string" || d.token === "") { setFehler(LOGIN_SERVERFEHLER); return; }
-      localStorage.setItem("ce_token", d.token);
-      const angemeldet = await login(d.token);
-      if (!angemeldet) { setFehler(ADMINBEREICH_NICHT_GELADEN); return; }
-      // Schutz in der Tiefe: der Server gibt Nicht-Admins hier kein Token. Sollte die Rolle dennoch abweichen,
-      // wird die Sitzung sofort beendet — die Seite öffnet nie einen Adminbereich ohne Adminrolle.
-      if (!isAdmin(angemeldet)) { logout(); setFehler(ADMIN_ANMELDE_FEHLER.ADMIN_ACCESS_REQUIRED); return; }
-      setPasswort("");
-      navigate(ziel, { replace: true });
+      await abschliessen(d.token, { einrichten: d.passkeySetupRequired === true });
     } catch (err) {
       setFehler(mapAuthThrownError(err));
     } finally {
@@ -290,6 +371,67 @@ export default function AdminAnmeldungPage() {
                 </div>
               </div>
               {knopf(T.anmelden, T.anmeldenLaeuft)}
+            </form>
+          )}
+
+          {schritt === "passkey" && zweiter && (
+            <div className="auth-admin-formular" id={`${uid}-zweiter`}>
+              <h2 className="auth-admin-schritt">{Z.passkeyTitel}</h2>
+              <p className="auth-admin-text">{Z.passkeyText}</p>
+              <Meldung art="fehler" id={idFehler}>{fehler}</Meldung>
+              <button type="button" ref={passkeyKnopfRef} className="auth-admin-cta" onClick={passkeyAnmelden}
+                disabled={laeuft} aria-busy={laeuft ? "true" : undefined} aria-describedby={fehler ? idFehler : undefined}>
+                {laeuft && <span className="auth-admin-cta-lauf" aria-hidden="true" />}
+                <span>{laeuft ? Z.passkeyLaeuft : Z.passkeyKnopf}</span>
+              </button>
+              {zweiter.recoveryAvailable && (
+                <div className="auth-admin-vergessen">
+                  <button type="button" className="auth-admin-link" onClick={() => { setFehler(""); setSchritt("code"); }}>
+                    {Z.codeWechsel}
+                  </button>
+                </div>
+              )}
+              <button type="button" className="auth-admin-zurueck" onClick={zurAnmeldung}>
+                <Icon n="chevronLeft" s={16} />
+                <span>{T.zurueck}</span>
+              </button>
+            </div>
+          )}
+
+          {schritt === "code" && zweiter && (
+            <form className="auth-admin-formular" onSubmit={codeAnmelden} noValidate>
+              <h2 className="auth-admin-schritt">{Z.codeTitel}</h2>
+              <p className="auth-admin-text" id={`${uid}-code-hilfe`}>{Z.codeText}</p>
+              <Meldung art="fehler" id={idFehler}>{fehler}</Meldung>
+              <div className="auth-admin-feld">
+                <label className="auth-admin-label" htmlFor={`${uid}-code`}>{Z.codeLabel}</label>
+                <div className="auth-admin-eingabe">
+                  <span className="auth-admin-eingabe-ico"><Icon n="shieldCheck" s={18} /></span>
+                  <input
+                    id={`${uid}-code`}
+                    ref={codeRef}
+                    className="auth-admin-input auth-admin-input--code"
+                    type="text"
+                    autoComplete="one-time-code"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                    maxLength={40}
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    aria-describedby={`${uid}-code-hilfe${fehler ? ` ${idFehler}` : ""}`}
+                  />
+                </div>
+              </div>
+              {knopf(Z.codeKnopf, Z.codeLaeuft)}
+              <div className="auth-admin-vergessen">
+                <button type="button" className="auth-admin-link" onClick={() => { setFehler(""); setSchritt("passkey"); }}>
+                  {Z.passkeyWechsel}
+                </button>
+              </div>
+              <button type="button" className="auth-admin-zurueck" onClick={zurAnmeldung}>
+                <Icon n="chevronLeft" s={16} />
+                <span>{T.zurueck}</span>
+              </button>
             </form>
           )}
 

@@ -57,11 +57,13 @@ test("3 — ProtectedRoute leitet Partner vor jedem Kundenbaustein ins Portal", 
   assert.ok(kinder > partner, "die Partnerweiche muss VOR dem Rendern der Kinder greifen");
 });
 
-test("4 — PartnerRoute: nur sales_partner; andere Angemeldete → /dashboard, Gäste → /login", () => {
+// Bewusste Ankeränderung (2026-11-22): Gäste landen auf der Anmeldung des Partnerbereichs (/partner/login).
+test("4 — PartnerRoute: nur sales_partner; andere Angemeldete → /dashboard, Gäste → /partner/login", () => {
   const route = ohneKommentare(read("routes/PartnerRoute.jsx"));
   assert.match(route, /if \(loadingUser\) return <LoadingScreen \/>;/);
   assert.match(route, /if \(sessionCheckFailed\) \{/, "sessionCheckFailed muss berücksichtigt sein");
-  assert.match(route, /if \(!authed\) return <Navigate to="\/login" replace state=\{\{ from: `\$\{location\.pathname\}\$\{location\.search\}` \}\} \/>;/);
+  assert.match(route, /if \(!authed\) return <Navigate to=\{PARTNER_LOGIN_PATH\} replace state=\{\{ from: `\$\{location\.pathname\}\$\{location\.search\}` \}\} \/>;/);
+  assert.match(route, /import \{ PARTNER_LOGIN_PATH \} from "\.\.\/utils\/partnerAnmeldung\.mjs";/);
   assert.match(route, /if \(!isSalesPartner\(user\)\) return <Navigate to=\{CUSTOMER_HOME\} replace \/>;/);
 });
 

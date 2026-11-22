@@ -86,9 +86,18 @@ for (const [breite, hoehe] of [[1440, 900], [390, 844]]) {
     const { page, fehler } = await neueSeite({ width: breite, height: hoehe });
     const p = await setup(page);
     await page.goto(`${BASE}/admin`, { waitUntil: "domcontentloaded" });
-    const kachel = page.locator('a.adm-tile[href="/admin/public-calculator"]');
-    await kachel.waitFor({ state: "visible", timeout: 30000 });
-    await kachel.click();
+    if (breite > 900) {
+      const kachel = page.locator('a.adm-tile[href="/admin/public-calculator"]');
+      await kachel.waitFor({ state: "visible", timeout: 30000 });
+      await kachel.click();
+    } else {
+      // Bewusste Ankeränderung (Admin-App 2026-11-22): am Telefon zeigt die Übersicht keine Bereiche-Kacheln mehr
+      // (sie doppelten die Navigation) — der Preisrechner liegt wie alle Verwaltungsbereiche unter „Mehr“.
+      await page.locator(".adm-tabs .adm-tab-mehr").click({ timeout: 30000 });
+      const eintrag = page.locator('.adm-side.adm-side-open a[href="/admin/public-calculator"]');
+      await eintrag.waitFor({ state: "visible" });
+      await eintrag.click();
+    }
     await page.waitForSelector("#adm-pc-markup-value", { timeout: 20000 });
     assert.equal(norm(await page.locator("#adm-pc-markup-value").innerText()), "25,00 %");
     assert.equal(norm(await page.locator("#adm-pc-status").innerText()), "Ausgeschaltet");

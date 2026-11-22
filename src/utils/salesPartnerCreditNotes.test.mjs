@@ -178,10 +178,17 @@ test("7 — „Gutschriften“ steht zwischen Provisionen und Team; das Portal r
 
 test("8 — PDF nur als authentifizierter Blob-Abruf über den Partnerpfad, nie als Link mit Token", () => {
   const bereich = ohneKommentare(read("components/partner/PartnerCreditNotesPanel.jsx"));
-  assert.match(bereich, /downloadDocument\(partnerCreditNotePdfPath\(cn\.id\), \{/);
-  assert.match(bereich, /message: creditNoteDownloadMessage,/);
-  assert.doesNotMatch(bereich, /href=|token|ce_token|window\.open|apiFetch|\bfetch\(/,
-    "kein Link, kein Token in einer Adresse, kein eigener Abruf");
+  // Bewusste Ankeränderung (2026-11-22): der Abruf steht in einem gemeinsamen Hook — der Bereich Verdienst und die
+  // letzten Gutschriften der Startseite nutzen dieselbe Stelle.
+  const hook = ohneKommentare(read("hooks/useGutschriftDownload.js"));
+  assert.match(hook, /downloadDocument\(partnerCreditNotePdfPath\(cn\.id\), \{/);
+  assert.match(hook, /message: creditNoteDownloadMessage,/);
+  assert.match(bereich, /useGutschriftDownload\(\)/);
+  const letzte = ohneKommentare(read("components/partner/PartnerLetzteGutschriften.jsx"));
+  for (const [name, src] of [["Bereich", bereich], ["Hook", hook], ["Startseite", letzte]]) {
+    assert.doesNotMatch(src, /href=|token|ce_token|window\.open|apiFetch|\bfetch\(/,
+      `${name}: kein Link, kein Token in einer Adresse, kein eigener Abruf`);
+  }
   // Gezeigt werden nur Partnerfelder — keine Adminangaben, keine Steuer- oder Bankdaten.
   assert.doesNotMatch(bereich, /issuedByName|paidReference|cancellationReason|notifiedAt|iban/i);
 

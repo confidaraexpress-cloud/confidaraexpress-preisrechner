@@ -381,9 +381,11 @@ test("16 — die Kundensuche bleibt ehrlich beschriftet", () => {
   assert.match(src, /Durchsucht nur die aktuell angezeigte Seite/);
   // Und sie wurde nicht heimlich zu einer Serverabfrage erweitert.
   assert.match(src, /const filtered = useMemo\(\(\) => filterCustomerRows\(rows, filters\), \[rows, filters\]\);/);
+  // Bewusste Ankeränderung (2026-11-22): einzig der Status filtert serverseitig (BE-1); ein Suchparameter kam nicht dazu
+  // — die Suche über alle Kunden ist die eigene Seite /admin/suche.
   const api = read("../api/adminApi.js");
-  assert.match(api, /const USER_PARAMS = \["limit", "offset"\];/,
-    "GET /admin/users hat neue Query-Parameter bekommen");
+  assert.match(api, /const USER_PARAMS = \["limit", "offset", "status"\];/,
+    "GET /admin/users hat andere Query-Parameter bekommen");
 });
 
 /* ══════════ 17 — Adminübersicht ═════════════════════════════════════════ */
@@ -478,7 +480,8 @@ test("20 — die Admin-Dichte bleibt, die Touch-Ziele wachsen nur mobil", () => 
   // Mobil: 44 px für alles Bedienbare, im Drawer-Media-Block.
   const mobil = admin.slice(admin.indexOf("@media (max-width: 900px) {", admin.indexOf(".adm-shell")));
   const block = mobil.slice(mobil.indexOf(".adm-side {"), mobil.indexOf("@media (max-width: 560px)"));
-  for (const sel of [".adm-nitem", ".adm-foot-btn", ".adm-side-close", ".adm-topbar-burger",
+  // Admin-App 2026-11-22: statt des Menüknopfs oben die Suche oben und die Einträge der unteren Leiste.
+  for (const sel of [".adm-nitem", ".adm-foot-btn", ".adm-side-close", ".adm-topbar-suche", ".adm-tab",
                      ".adm-page .btn", ".adm-filter-field input", ".adm-filter-field select"]) {
     assert.ok(block.includes(sel), `${sel} bekommt mobil kein 44-px-Ziel`);
   }

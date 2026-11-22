@@ -201,20 +201,31 @@ export function retryAdminShipmentEmailDelivery(shipmentId, deliveryId) {
   );
 }
 
-// Erlaubte Query-Parameter für GET /admin/users. Das Backend bietet aktuell
-// KEINE Server-Filter — nur Pagination über limit/offset. Bewusst allowlisted.
-const USER_PARAMS = ["limit", "offset"];
+// Erlaubte Query-Parameter für GET /admin/users: Pagination über limit/offset und
+// seit den Admin-/Partner-Apps (2026-11-22, Backend routes/admin/users.js) der
+// Statusfilter — nur die Werte, die der Server kennt. Bewusst allowlisted.
+const USER_PARAMS = ["limit", "offset", "status"];
+export const ADMIN_USER_STATUS_FILTER = Object.freeze(["pending", "approved", "blocked", "anonymized"]);
 
 // GET /admin/users — read-only Kundenliste. UI arbeitet mit page/pageSize; hier
-// zentral auf limit/offset gemappt (page=1→offset=0, page=2→offset=25). Keine
-// Server-Filter, keine erfundenen Felder, kein Cache. Rohe Response zurück; der
+// zentral auf limit/offset gemappt (page=1→offset=0, page=2→offset=25). Der
+// Statusfilter wirkt serverseitig über alle Kunden; ein unbekannter Wert wird
+// nicht gesendet. Keine erfundenen Felder, kein Cache. Rohe Response zurück; der
 // Aufrufer selektiert defensiv nur erlaubte Felder (nie password/hash/token).
 export function listAdminUsers(params = {}) {
-  const { page = 1, pageSize = 25 } = params || {};
+  const { page = 1, pageSize = 25, status } = params || {};
   const size = Number(pageSize) > 0 ? Math.floor(Number(pageSize)) : 25;
   const p = Number(page) >= 1 ? Math.floor(Number(page)) : 1;
   const query = { limit: size, offset: (p - 1) * size };
+  if (ADMIN_USER_STATUS_FILTER.includes(status)) query.status = status;
   return apiFetch(`/admin/users${buildQuery(query, USER_PARAMS)}`, { auth: true });
+}
+
+// GET /admin/search — Suche über alle Kunden, Sendungen und Rechnungen (Admin-App, 2026-11-22). Begriff 2–100
+// Zeichen (der Server prüft), types optional (customers, shipments, invoices). Rohe Response zurück.
+const SEARCH_PARAMS = ["q", "types"];
+export function searchAdmin({ q, types = null } = {}, { signal } = {}) {
+  return apiFetch(`/admin/search${buildQuery({ q, types }, SEARCH_PARAMS)}`, { auth: true, signal });
 }
 
 // GET /admin/metrics/customer-accounts — Kennzahl „Kunden" der Adminübersicht (Betreiberentscheidung

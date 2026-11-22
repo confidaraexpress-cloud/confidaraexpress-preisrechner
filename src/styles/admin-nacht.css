@@ -462,6 +462,7 @@
 :root[data-ce-bereich="admin"] .adm-side-foot { border-top-color: var(--adm-linie); }
 :root[data-ce-bereich="admin"] :is(.adm-foot-btn-switch, .adm-foot-btn-switch:hover) { color: var(--adm-signal-tinte); }
 :root[data-ce-bereich="admin"] .adm-foot-btn-switch:hover { color: var(--adm-signal-tinte-zeigen); }
+:root[data-ce-bereich="admin"] .adm-foot-sicherheit[aria-current="page"] { color: var(--adm-signal-tinte); }
 :root[data-ce-bereich="admin"] .adm-identity-avatar {
   background: linear-gradient(140deg, rgba(47, 107, 255, 0.42), rgba(124, 77, 255, 0.36));
   color: #ffffff;
@@ -620,8 +621,20 @@
   backdrop-filter: var(--adm-glas-weichzeichnung);
   border-bottom-color: var(--adm-linie);
 }
-:root[data-ce-bereich="admin"] .adm-topbar-burger { color: var(--adm-tinte); }
-:root[data-ce-bereich="admin"] .adm-topbar-burger:hover { background: var(--adm-seite-zeigen); }
+:root[data-ce-bereich="admin"] .adm-topbar-suche { color: var(--adm-tinte); }
+:root[data-ce-bereich="admin"] .adm-topbar-suche:hover { background: var(--adm-seite-zeigen); }
+:root[data-ce-bereich="admin"] .adm-topbar-suche[aria-current="page"] { color: var(--adm-signal-tinte); background: var(--adm-signal-ton); }
+/* Untere Leiste (Admin-App 2026-11-22): dasselbe Glas wie die Kopfleiste; ihre Kinder sind nicht fest positioniert. */
+:root[data-ce-bereich="admin"] .adm-tabs {
+  background: var(--adm-glas);
+  -webkit-backdrop-filter: var(--adm-glas-weichzeichnung);
+  backdrop-filter: var(--adm-glas-weichzeichnung);
+  border-top-color: var(--adm-linie);
+}
+:root[data-ce-bereich="admin"] .adm-tab { color: var(--adm-seite-text); }
+:root[data-ce-bereich="admin"] .adm-tab:hover { color: var(--adm-tinte); }
+:root[data-ce-bereich="admin"] .adm-tab-on { color: var(--adm-signal-tinte); }
+:root[data-ce-bereich="admin"] .adm-tab-on::before { background: var(--adm-signal-kante); }
 :root[data-ce-bereich="admin"] .adm-topbar-title { font-family: var(--adm-schrift-titel); font-weight: 500; letter-spacing: -0.01em; }
 
 /* ═══════════ 6 · SEITENKOPF ════════════════════════════════════════════════════════════════════════════════════════

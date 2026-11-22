@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { ErrorState, LoadingState } from "../ui/StateView";
 import { PartnerLinkCopy } from "./PartnerLinkCopy";
+import { PartnerLetzteGutschriften } from "./PartnerLetzteGutschriften";
 import { loadSalesPartnerPublicConfig } from "../../api/partnerApi";
 import {
   MONEY_TERMS,
@@ -9,28 +11,29 @@ import {
   commissionComposition,
   isFirstVisit,
   overviewKpis,
+  partnerTabSearch,
 } from "../../utils/salesPartnerView.mjs";
 import { LINK_TEXTS, partnerLinkStates } from "../../utils/salesPartnerLinks.mjs";
 
 /* ── Partnerportal · Übersicht (Startseite) ──────────────────────────────────
-   UX-Paket 3: vier Kennzahlen, jede mit ihrem Zeitraum (Kunden heute, Pakete im
-   Messmonat, Satz und Verdienst im laufenden Monat), direkt danach die beiden
-   Empfehlungslinks als Hauptaktion, dann die Zusammensetzung der Provision.
-   Beim ersten Besuch (noch keine Kunden, kein Verdienst) stehen die Links vorn.
+   Rangfolge seit dem Betreiberauftrag 2026-11-22 (BERICHT D.3/D.4): zuerst der Verdienst des laufenden Monats als ein
+   großes Element (mit „davon auszahlbar“), daneben bzw. darunter „Kunden und Partner werben“ mit Teilen und
+   Kopieren, dann die übrigen Kennzahlen (Kunden heute, Pakete im Messmonat, Satz), dann Zusammensetzung des Satzes
+   und die letzten Gutschriften mit PDF. Beim ersten Besuch (noch keine Kunden, kein Verdienst) stehen die Links vorn.
 
    Jeder Wert kommt aus GET /api/sales-partner/me/overview — die Oberfläche
    rechnet nichts nach; fehlende Werte stehen als „—", nie als 0. Ob ein Link
    wirkt, sagt zusätzlich die öffentliche Konfiguration des Programms
    (GET /api/sales-partner/public-config, fail-closed, pro Seite einmal). */
 
-function LinkEintrag({ id, titel, zustand, knopf, primary = false }) {
+function LinkEintrag({ id, titel, zustand, knopf, teilen = null, primary = false }) {
   return (
     <li className="spp-link" id={id}>
       <span className="spp-link-label">{titel}</span>
       {zustand && zustand.ready ? (
         <>
           {zustand.hint && <span className="spp-link-purpose">{zustand.hint}</span>}
-          <PartnerLinkCopy url={zustand.url} buttonLabel={knopf} primary={primary} />
+          <PartnerLinkCopy url={zustand.url} buttonLabel={knopf} shareLabel={teilen} primary={primary} />
         </>
       ) : (
         <span className="spp-hint spp-link-notice">{zustand ? zustand.notice : ""}</span>
@@ -68,19 +71,17 @@ export function PartnerOverviewPanel({ state, onRetry }) {
   const links = partnerLinkStates(o, publicConfig);
   const erstbesuch = isFirstVisit(o);
 
-  const kennzahlen = (
-    <section aria-labelledby="spp-kpi-title" id="spp-kpi-section">
-      <h2 id="spp-kpi-title" className="spp-section-title">Auf einen Blick</h2>
-      <ul className="spp-kpis">
-        {overviewKpis(o).map((k) => (
-          <li key={k.key} className="ce-card spp-kpi" data-kpi={k.key}>
-            <span className="spp-kpi-label">{k.label}</span>
-            <span className="spp-kpi-value" id={k.key === "earned" ? "spp-month-amount" : undefined}>{k.value}</span>
-            {k.hint && <span className="spp-kpi-hint" id={k.key === "earned" ? "spp-month-payable" : undefined}>{k.hint}</span>}
-            {k.detail && <span className="spp-kpi-hint spp-kpi-detail">{k.detail}</span>}
-          </li>
-        ))}
-      </ul>
+  const alleKennzahlen = overviewKpis(o);
+  const verdient = alleKennzahlen.find((k) => k.key === "earned");
+  const uebrige = alleKennzahlen.filter((k) => k.key !== "earned");
+
+  // Der Verdienst des laufenden Monats: Wert und „davon auszahlbar“ kommen unverändert aus der Übersicht.
+  const held = (
+    <section className="ce-card spp-held" aria-labelledby="spp-held-titel" id="spp-verdienst" data-kpi="earned">
+      <h2 className="spp-held-label" id="spp-held-titel">{verdient.label}</h2>
+      <p className="spp-held-zahl" id="spp-month-amount">{verdient.value}</p>
+      <span className="spp-held-band" aria-hidden="true" />
+      {verdient.hint && <p className="spp-held-zeile" id="spp-month-payable">{verdient.hint}</p>}
       <p className="spp-hint" id="spp-payable-note">{PARTNER_TEXTS.payableNote}</p>
       {/* Die vier Stufen des Geldes — nie zusammengelegt (UX-Paket 3). */}
       <details className="spp-terms" id="spp-money-terms">
@@ -91,11 +92,31 @@ export function PartnerOverviewPanel({ state, onRetry }) {
           ))}
         </dl>
       </details>
+      <Link className="btn btn-outline spp-held-aktion" id="spp-held-provisionen"
+        to={{ pathname: "/partner", search: partnerTabSearch("commissions") }} replace>
+        Provisionen ansehen
+      </Link>
+    </section>
+  );
+
+  const kennzahlen = (
+    <section aria-labelledby="spp-kpi-title" id="spp-kpi-section" className="spp-kennzahlen">
+      <h2 id="spp-kpi-title" className="spp-section-title">Auf einen Blick</h2>
+      <ul className="spp-kpis">
+        {uebrige.map((k) => (
+          <li key={k.key} className="ce-card spp-kpi" data-kpi={k.key}>
+            <span className="spp-kpi-label">{k.label}</span>
+            <span className="spp-kpi-value">{k.value}</span>
+            {k.hint && <span className="spp-kpi-hint">{k.hint}</span>}
+            {k.detail && <span className="spp-kpi-hint spp-kpi-detail">{k.detail}</span>}
+          </li>
+        ))}
+      </ul>
     </section>
   );
 
   const werben = (
-    <section className="ce-card spp-card" aria-labelledby="spp-links-title" id="spp-links">
+    <section className="ce-card spp-card spp-werben" aria-labelledby="spp-links-title" id="spp-links">
       <h2 id="spp-links-title" className="spp-card-title">{LINK_TEXTS.title}</h2>
       {erstbesuch && links.customer && links.customer.ready && (
         <p className="spp-start" id="spp-start-hint">{LINK_TEXTS.firstVisit}</p>
@@ -105,9 +126,9 @@ export function PartnerOverviewPanel({ state, onRetry }) {
       ) : (
         <ul className="spp-links">
           <LinkEintrag id="spp-link-customer" titel={LINK_TEXTS.customerTitle} zustand={links.customer}
-            knopf={LINK_TEXTS.customerButton} primary />
+            knopf={LINK_TEXTS.customerButton} teilen={LINK_TEXTS.customerShare} primary />
           <LinkEintrag id="spp-link-partner" titel={LINK_TEXTS.partnerTitle} zustand={links.partner}
-            knopf={LINK_TEXTS.partnerButton} />
+            knopf={LINK_TEXTS.partnerButton} teilen={LINK_TEXTS.partnerShare} />
         </ul>
       )}
     </section>
@@ -132,22 +153,15 @@ export function PartnerOverviewPanel({ state, onRetry }) {
   );
 
   return (
-    <div className="spp-panel">
-      {erstbesuch ? (
-        <>
-          {werben}
-          {kennzahlen}
-          {provision}
-        </>
-      ) : (
-        <>
-          {kennzahlen}
-          <div className="spp-grid">
-            {werben}
-            {provision}
-          </div>
-        </>
-      )}
+    <div className="spp-panel spp-startseite">
+      <div className={erstbesuch ? "spp-startseite-oben spp-startseite-oben--erstbesuch" : "spp-startseite-oben"}>
+        {erstbesuch ? <>{werben}{held}</> : <>{held}{werben}</>}
+      </div>
+      {kennzahlen}
+      <div className="spp-grid">
+        {provision}
+        <PartnerLetzteGutschriften />
+      </div>
     </div>
   );
 }

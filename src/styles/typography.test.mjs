@@ -472,7 +472,8 @@ test("9 — Textfarben kommen aus den Foundation-Rollen, nicht aus Literalen", (
         const name = wert.match(/^var\(--([\w-]+)/)[1];
         // Bereichseigene Rollen (Sidebar, KPI, Bento, Netz …) sind eigene,
         // getestete Familien und bleiben zulässig.
-        if (name.startsWith("ce-") || FARB_ALIASE.has(name) || /^(mc|kc|inv-|adm-|auth-)/.test(name)) continue;
+        // Die Nachtebene des Partnerbereichs (pn-, Betreiberauftrag 2026-11-22) ist eine solche Familie (partnerNacht.test.mjs).
+        if (name.startsWith("ce-") || FARB_ALIASE.has(name) || /^(mc|kc|inv-|adm-|auth-|pn-)/.test(name)) continue;
         if (["accent-blue", "blue", "blue2", "blue3", "accent", "success", "warn", "danger"].includes(name)) continue;
         treffer.push(`${datei}:${zeile} ${wert}`);
         continue;
@@ -563,7 +564,9 @@ test("12 — Phase 2.5 fasst nur Typografie an", () => {
     // Tokenblock :root[data-ce-bereich="admin"] (adminNacht.test.mjs prüft: ein Block, keine Layout-Tokens).
     const pruefText = datei === "kunde-obsidian.css"
       ? text.replace(/:root\[data-ce-(?:bereich="kunde"|familie="blue-light")\]\s*\{[^{}]*\}/g, "")
-      : datei === "admin-nacht.css" ? text.replace(/:root\[data-ce-bereich="admin"\]\s*\{[^{}]*\}/g, "") : text;
+      : datei === "admin-nacht.css" ? text.replace(/:root\[data-ce-bereich="admin"\]\s*\{[^{}]*\}/g, "")
+      // Partnerportal (Betreiberauftrag 2026-11-22): ebenso nur im Tokenblock :root[data-ce-bereich="partner"].
+      : datei === "partner-nacht.css" ? text.replace(/:root\[data-ce-bereich="partner"\]\s*\{[^{}]*\}/g, "") : text;
     const fremd = [...pruefText.matchAll(/--(ce-(?:space|radius|elevation|z|bp|size|color)-[\w-]+):/g)]
       .map((m) => m[1]);
     assert.deepEqual(fremd, [], `${datei} darf keine Foundation-Tokens umdefinieren: ${fremd.join(", ")}`);
@@ -620,8 +623,10 @@ test("12 — Phase 2.5 fasst nur Typografie an", () => {
   // /admin/billing-mode-requests am bestehenden Adminrahmen, nur über Übersichtskachel und „Zu erledigen“ erreichbar.
   // Admin-Anmeldung (Canonical v2.130, dokumentierte Ankeränderung): +1 — /admin/login im Auth-Bereich, außerhalb von
   // AdminRoute und AdminLayout; keine neue Layoutroute.
-  assert.equal(mitPfad + indexRt, 49,
-    "49 Routen einschliesslich der Admin-Rechtstextvorschau, der Seitenvorschau, des öffentlichen Preisrechners, des Rechnungseditors, der Demo, der Sammelrechnungsanträge und der Admin-Anmeldung");
+  // Admin-/Partner-Apps (Betreiberauftrag 2026-11-22, dokumentierte Ankeränderung): +3 — /partner/login im Auth-Rahmen,
+  // /admin/sicherheit und /admin/suche am bestehenden Adminrahmen; keine neue Layoutroute.
+  assert.equal(mitPfad + indexRt, 52,
+    "52 Routen einschliesslich der Admin-Rechtstextvorschau, der Seitenvorschau, des öffentlichen Preisrechners, des Rechnungseditors, der Demo, der Sammelrechnungsanträge, der Admin-Anmeldung, der Partner-Anmeldung, der Sicherheit und der Suche");
   assert.equal(pfadlos, 4,
     "die Zahl der pfadlosen Layoutrouten ist unverändert (4: Dashboard, öffentlich, Admin, Auth)");
 });

@@ -213,9 +213,10 @@ test("12 — Partnerportal (UX-Paket 6): Bereich aus der Allowlist, Rücksprung 
     assert.equal(partnerReturnTarget(`/partner?page=${id}`), `/partner?page=${id}`);
   }
 
-  // Die Schutzroute gibt die Adresse samt Bereich mit; AuthPage prüft sie für Partner nur so.
+  // Die Schutzroute gibt die Adresse samt Bereich mit; AuthPage prüft sie für Partner nur so. Bewusste Ankeränderung
+  // (2026-11-22): Gäste landen auf der eigenen Anmeldung des Partnerbereichs (/partner/login), dieselbe Rücksprungadresse.
   const route = ohneKommentare(read("routes/PartnerRoute.jsx"));
-  assert.match(route, /<Navigate to="\/login" replace state=\{\{ from: `\$\{location\.pathname\}\$\{location\.search\}` \}\} \/>/);
+  assert.match(route, /<Navigate to=\{PARTNER_LOGIN_PATH\} replace state=\{\{ from: `\$\{location\.pathname\}\$\{location\.search\}` \}\} \/>/);
   const page = ohneKommentare(read("pages/AuthPage.jsx"));
   assert.match(page, /navigate\(partnerReturnTarget\(returnTarget\) \|\| landingPathFor\(ok\)\)/);
   assert.equal((page.match(/partnerReturnTarget\(/g) || []).length, 1, "genau ein Aufruf");

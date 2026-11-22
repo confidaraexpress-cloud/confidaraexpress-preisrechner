@@ -189,6 +189,8 @@ test("4 — es gibt genau einen Overlay-Grundton", () => {
       // Confidara Leitstand Nacht (Betreiberauftrag 2026-11-17): dieselbe Regel für das Adminpanel — Kopfleiste und Menüs
       // auf Glas über genau ein Token, nie ein Schleier oder Dialog.
       if (f === "admin-nacht.css" && m[1].trim() === "var(--adm-glas-weichzeichnung)" && !/overlay|dialog|modal/i.test(selektor)) continue;
+      // Partnerportal (Betreiberauftrag 2026-11-22, D3): dieselbe Regel für die Leiste unten (partnerNacht.test.mjs).
+      if (f === "partner-nacht.css" && m[1].trim() === "var(--pn-glas-weichzeichnung)" && !/overlay|dialog|modal/i.test(selektor)) continue;
       assert.equal(m[1].trim(), "none", `${f}: backdrop-filter ${m[1]}`);
     }
   }
@@ -379,9 +381,9 @@ test("11 — Tokens, Primitives und Typografie bleiben eingehalten", () => {
   // Confidara Obsidian (Betreiberauftrag 2026-11-15): Schrift- und Gestaltungsebene des Kundenbereichs folgen als
   // letzte — ebenfalls nur am Kundenbereich (kundeObsidian.test.mjs).
   // Confidara Leitstand Nacht (Betreiberauftrag 2026-11-17): ganz zuletzt die Adminebene, nur am Adminbereich
-  // (adminNacht.test.mjs).
-  assert.deepEqual(reihenfolge.slice(-6),
-    ["patterns.css", "premium-redesign.css", "premium-editorial.css", "kunde-schriften.css", "kunde-obsidian.css", "admin-nacht.css"],
+  // (adminNacht.test.mjs); davor seit 2026-11-22 die Nachtebene des Partnerportals (partnerNacht.test.mjs).
+  assert.deepEqual(reihenfolge.slice(-7),
+    ["patterns.css", "premium-redesign.css", "premium-editorial.css", "kunde-schriften.css", "kunde-obsidian.css", "partner-nacht.css", "admin-nacht.css"],
     "die Musterebene steht zuletzt vor der Bereichs-, der Editorial- und der Obsidian-Ebene des Redesigns");
   assert.equal(reihenfolge.filter((f) => f === "patterns.css").length, 1);
 
@@ -444,8 +446,10 @@ test("12 — Phase 3 fasst weder Routing noch API noch Businesslogik an", () => 
   // /admin/billing-mode-requests am bestehenden Adminrahmen, nur über Übersichtskachel und „Zu erledigen“ erreichbar.
   // Admin-Anmeldung (Canonical v2.130, Betreiberentscheidung 2026-11-11, dokumentierte Ankeränderung): +1 —
   // /admin/login, die öffentliche Anmeldeseite des Adminbereichs am bestehenden Auth-Rahmen; keine neue Layoutroute.
-  assert.equal(mitPfad + indexRt, 49,
-    "49 Routen einschliesslich der Admin-Rechtstextvorschau, der Seitenvorschau, des öffentlichen Preisrechners, des Rechnungseditors, der Demo, der Sammelrechnungsanträge und der Admin-Anmeldung");
+  // Admin-/Partner-Apps (Betreiberauftrag 2026-11-22, dokumentierte Ankeränderung): +3 — /partner/login im Auth-Rahmen,
+  // /admin/sicherheit und /admin/suche am bestehenden Adminrahmen; keine neue Layoutroute.
+  assert.equal(mitPfad + indexRt, 52,
+    "52 Routen einschliesslich der Admin-Rechtstextvorschau, der Seitenvorschau, des öffentlichen Preisrechners, des Rechnungseditors, der Demo, der Sammelrechnungsanträge, der Admin-Anmeldung, der Partner-Anmeldung, der Sicherheit und der Suche");
   assert.equal(pfadlos, 4,
     "die Zahl der pfadlosen Layoutrouten ist unverändert (4: Dashboard, öffentlich, Admin, Auth)");
 

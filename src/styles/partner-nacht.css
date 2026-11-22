@@ -1,0 +1,759 @@
+/* ═══════════════════════════════════════════════════════════
+   Confidara Leitstand Nacht · Partnerportal (Betreiberauftrag 2026-11-22, D3 „Confidara Leitstand Nacht“ für Admin und
+   das gesamte Partner-Dashboard; Rollenakzent Partner: Violett)
+   ───────────────────────────────────────────────────────────
+   Dieselbe Nachtwelt wie das Adminpanel (admin-nacht.css): tiefes Navy, Licht statt Schatten, Haarlinien, die
+   Hauptaktion als helle Fläche. Der Partnerbereich bleibt als Partnerbereich erkennbar: Violett statt Signalblau für
+   Fokus, Verweise, aktive Navigation und Lichtband, eine eigene Seitenleiste mit fünf Bereichen und eine Startseite,
+   deren größtes Element der Verdienst des Monats ist.
+
+   Herkunft: Tokenblock, Grund, Typografie, Seitenkopf, Bediensystem und Flächen sind aus admin-nacht.css übernommen
+   (Werte gleich, Namensraum --pn-*, Akzent umgestellt) — Kontraste dort belegt; die geänderten Akzente gegen
+   --pn-flaeche-1 (#0b1328): #b9a2ff 8,8:1 (Text), #9b7dff 6,0:1 (Fokus, Kante), Weiß auf #6a3df0 5,9:1 (Fläche).
+   Neue --ce-*-Tokens der Adminebene gehören auch hierher (partnerNacht.test.mjs prüft die Gleichheit der Schlüssel).
+
+   Grenzen (src/styles/partnerNacht.test.mjs): jede Regel hängt an :root[data-ce-bereich="partner"] und gilt nur am
+   Bildschirm (@media screen); ein Tokenblock am Anfang; Tiefe und Unschärfe nur über Token; Bewegung nur ohne Wunsch nach
+   reduzierter Bewegung (diese Ebene bewegt nichts); keine externe Quelle, kein @import. Gerüst und Maße stehen in
+   partner.css (Tokens der Foundation), hier nur die Nacht.
+   ═══════════════════════════════════════════════════════════ */
+@media screen {
+
+/* ═══════════ 1 · TOKENS ═══════════════════════════════════════════════════ */
+:root[data-ce-bereich="partner"] {
+
+  --pn-grund: #060b1c;
+  --pn-grund-tief: #040814;
+  --pn-flaeche-1: #0b1328;
+  --pn-flaeche-2: #0f1932;
+  --pn-flaeche-3: #15213f;
+  --pn-flaeche-4: #1d2b52;
+  --pn-glas: rgba(13, 21, 44, 0.82);
+  --pn-glas-blur: 22px;
+  --pn-glas-weichzeichnung: blur(var(--pn-glas-blur)) saturate(150%);
+
+  --pn-tinte: #f3f6ff;
+  --pn-tinte-2: #b9c3dd;
+  --pn-tinte-3: #98a4c3;
+  --pn-tinte-4: #7b88aa;
+  --pn-tinte-aus: #5c6788;
+  --pn-tinte-invers: #06112d;
+
+  --pn-linie: rgba(184, 204, 255, 0.08);
+  --pn-kante: rgba(184, 204, 255, 0.12);
+  --pn-kante-stark: rgba(184, 204, 255, 0.2);
+  --pn-kante-feld: #5a6a90;
+  --pn-kante-feld-zeigen: #6e7ea6;
+  --pn-lichtkante: inset 0 1px 0 rgba(214, 226, 255, 0.055);
+  --pn-lichtkante-zeigen: inset 0 1px 0 rgba(214, 226, 255, 0.09);
+  --pn-flaechenverlauf: linear-gradient(180deg, rgba(196, 214, 255, 0.035) 0%, rgba(196, 214, 255, 0.008) 100%);
+  --pn-kantenverlauf: linear-gradient(180deg, rgba(196, 214, 255, 0.16) 0%, rgba(196, 214, 255, 0.05) 100%);
+
+  --pn-lichtband: linear-gradient(90deg, rgba(185, 162, 255, 0.85) 0%, rgba(160, 140, 255, 0.55) 45%, rgba(139, 92, 255, 0) 100%);
+
+  --pn-eis: #e9e2ff;
+  --pn-signal: #6a3df0;
+  --pn-signal-zeigen: #7a52f5;
+  --pn-signal-kante: #9b7dff;
+  --pn-signal-tinte: #b9a2ff;
+  --pn-signal-tinte-zeigen: #d6caff;
+  --pn-signal-ton: rgba(124, 77, 255, 0.16);
+  --pn-signal-ton-zeigen: rgba(124, 77, 255, 0.26);
+  --pn-violett: #8b5cff;
+  --pn-violett-hell: #b9a2ff;
+  --pn-violett-ton: rgba(139, 92, 255, 0.12);
+
+  --pn-seite-verlauf:
+    radial-gradient(130% 34% at 0% 0%, rgba(124, 77, 255, 0.14), transparent 62%),
+    radial-gradient(90% 26% at 100% 100%, rgba(124, 77, 255, 0.08), transparent 70%),
+    linear-gradient(180deg, #0a1226 0%, #070d1e 46%, #040814 100%);
+  --pn-seite-text: #a9b4d1;
+  --pn-seite-text-leise: #8a96b6;
+  --pn-seite-symbol: #8390b2;
+  --pn-seite-zeigen: rgba(184, 204, 255, 0.06);
+  --pn-seite-aktiv: linear-gradient(90deg, rgba(124, 77, 255, 0.24) 0%, rgba(124, 77, 255, 0.11) 100%);
+  --pn-seite-aktiv-kante: inset 2px 0 0 0 var(--pn-signal-tinte), inset 0 0 0 1px rgba(185, 162, 255, 0.14), inset 0 1px 0 rgba(214, 226, 255, 0.08);
+  --pn-seite-gruppe: #a593ec;
+  --pn-seite-gruppe-flaeche: rgba(139, 92, 255, 0.09);
+  --pn-seite-scroll: rgba(184, 204, 255, 0.14);
+
+  --pn-ring-violett: inset 0 0 0 1px rgba(185, 162, 255, 0.22);
+  --pn-ring-violett-stark: inset 0 0 0 1px rgba(185, 162, 255, 0.32);
+  --pn-symbol-leuchten: drop-shadow(0 0 5px rgba(185, 162, 255, 0.75));
+  --pn-feld-fokuslicht: 0 0 22px -6px rgba(124, 77, 255, 0.5);
+  --pn-reiter-aktiv: inset 0 -2px 0 var(--pn-signal-tinte), 0 10px 18px -14px rgba(185, 162, 255, 0.9);
+  --pn-kennzahl-zeigen: inset 0 1px 0 rgba(214, 226, 255, 0.1);
+
+  --pn-reflex: radial-gradient(120% 70% at 0% 0%, rgba(155, 125, 255, 0.075) 0%, rgba(155, 125, 255, 0) 62%);
+  --pn-reflex-stark: radial-gradient(110% 90% at 0% 0%, rgba(155, 125, 255, 0.15) 0%, rgba(124, 77, 255, 0.05) 46%, rgba(124, 77, 255, 0) 72%);
+  --pn-karte-tiefe: inset 0 1px 0 rgba(214, 226, 255, 0.06), 0 1px 0 rgba(1, 3, 10, 0.45), 0 22px 44px -30px rgba(1, 3, 10, 0.95);
+  --pn-karte-zeigen: inset 0 1px 0 rgba(214, 226, 255, 0.1), 0 0 0 1px rgba(185, 162, 255, 0.14), 0 22px 48px -26px rgba(124, 77, 255, 0.5);
+  --pn-kopfband: linear-gradient(180deg, rgba(184, 204, 255, 0.05) 0%, rgba(184, 204, 255, 0.02) 100%);
+  --pn-zeile-zeigen: rgba(185, 162, 255, 0.055);
+  --pn-zeile-marke: inset 2px 0 0 rgba(185, 162, 255, 0.6);
+
+  --pn-offen-licht: linear-gradient(90deg, rgba(255, 202, 22, 0.8) 0%, rgba(255, 202, 22, 0.22) 36%, rgba(255, 202, 22, 0) 70%);
+  --pn-zahl-schein: 0 0 28px rgba(185, 162, 255, 0.32);
+  --pn-punkt-ruhig: 0 0 0 3px rgba(61, 214, 140, 0.16);
+
+
+  --pn-gruen: #3dd68c;    --pn-gruen-ton: rgba(34, 255, 153, 0.1);    --pn-gruen-kante: rgba(61, 214, 140, 0.28);
+  --pn-bernstein: #ffca16; --pn-bernstein-ton: rgba(250, 150, 0, 0.13); --pn-bernstein-kante: rgba(255, 202, 22, 0.26);
+  --pn-rot: #ff9592;      --pn-rot-ton: rgba(255, 23, 63, 0.15);      --pn-rot-kante: rgba(255, 149, 146, 0.28);
+  --pn-blau: #70b8ff;     --pn-blau-ton: rgba(0, 119, 255, 0.18);     --pn-blau-kante: rgba(112, 184, 255, 0.28);
+  --pn-grau: #c5cde3;     --pn-grau-ton: rgba(184, 204, 255, 0.07);   --pn-grau-kante: rgba(184, 204, 255, 0.14);
+
+
+  --pn-kurve: cubic-bezier(0.16, 1, 0.3, 1);
+  --pn-dauer: 180ms;
+  --pn-dauer-lang: 280ms;
+
+  --pn-schrift-text: var(--ce-font-sans);
+  --pn-schrift-titel: 'Host Grotesk', var(--ce-font-sans);
+
+  --ce-text-title-page-size: 28px;
+  --ce-text-title-page-size-mobile: 24px;
+  --ce-text-title-page-line: 1.1429;
+  --ce-text-title-page-line-mobile: 1.25;
+  --ce-text-title-section-size: 20px;
+  --ce-text-title-section-size-mobile: 20px;
+  --ce-text-title-section-line: 1.4;
+  --ce-text-title-card-size: 17px;
+  --ce-text-title-card-size-mobile: 17px;
+  --ce-text-title-card-line: 1.4118;
+  --ce-text-micro-size: 14px;
+  --ce-text-micro-size-mobile: 14px;
+  --ce-text-micro-line: 1.4286;
+  --ce-text-button-sm-size: 14px;
+  --ce-text-numeric-display-size: 40px;
+  --ce-text-numeric-display-size-mobile: 40px;
+  --ce-text-numeric-display-line: 1.125;
+  --ce-font-display: var(--pn-schrift-titel);
+  --ce-pr-font-display: var(--pn-schrift-titel);
+  --ce-pr-display-stretch: 100%;
+  --ce-pr-ed-headline-stretch: 100%;
+  --ce-weight-text: 450;
+  --ce-weight-medium: 520;
+  --ce-text-label-weight: 550;
+  --ce-text-badge-weight: 550;
+  --ce-text-button-weight: 560;
+  --ce-text-nav-weight-active: 560;
+  --ce-text-title-page-weight: 500;
+  --ce-text-title-section-weight: 500;
+  --ce-text-title-card-weight: 520;
+  --ce-text-display-xl-weight: 500;
+  --ce-text-display-l-weight: 500;
+  --ce-text-numeric-display-weight: 400;
+  --ce-text-title-page-tracking: -0.03em;
+  --ce-text-title-section-tracking: -0.018em;
+  --ce-text-title-card-tracking: -0.01em;
+  --ce-text-label-tracking: 0;
+  --ce-text-micro-tracking: 0;
+  --ce-pr-ed-headline-tracking: -0.032em;
+
+  --ce-color-brand: var(--pn-signal);
+  --ce-color-brand-hover: var(--pn-signal-zeigen);
+  --ce-color-brand-active: #5a2fe0;
+  --ce-color-brand-ink: var(--pn-signal-tinte);
+  --ce-color-brand-soft: var(--pn-signal-ton);
+  --ce-color-brand-soft-hover: var(--pn-signal-ton-zeigen);
+  --ce-color-brand-border: rgba(155, 125, 255, 0.42);
+  --ce-color-brand-border-soft: rgba(155, 125, 255, 0.24);
+  --ce-color-brand-violet: var(--pn-violett);
+  --ce-color-brand-violet-ink: var(--pn-violett-hell);
+  --ce-color-border-focus: var(--pn-signal-kante);
+  --ce-color-focus-ring: rgba(155, 125, 255, 0.36);
+  --ce-pr-signal: var(--pn-signal-kante);
+  --ce-pr-signal-hover: #c6b3ff;
+  --ce-pr-signal-ink: var(--pn-signal-tinte);
+  --ce-pr-signal-soft: var(--pn-signal-ton);
+  --ce-pr-signal-soft-hover: var(--pn-signal-ton-zeigen);
+  --ce-pr-signal-on-navy: var(--pn-signal-tinte);
+
+  --ce-pr-navy-950: var(--pn-grund);
+  --ce-pr-navy-900: var(--pn-flaeche-1);
+  --ce-pr-navy-850: var(--pn-flaeche-2);
+  --ce-pr-navy-800: var(--pn-tinte);
+  --ce-pr-navy-700: #e3e9fb;
+  --ce-pr-navy-600: #cfd8f0;
+  --ce-pr-paper: var(--pn-tinte);
+
+  --ce-color-text-primary: var(--pn-tinte);
+  --ce-color-text-secondary: var(--pn-tinte-2);
+  --ce-color-text-muted: var(--pn-tinte-3);
+  --ce-color-text-placeholder: var(--pn-tinte-4);
+  --ce-color-text-disabled: var(--pn-tinte-aus);
+  --ce-color-text-inverse: #ffffff;
+  --ce-color-text-inverse-soft: rgba(255, 255, 255, 0.74);
+  --navy: var(--pn-tinte);
+  --gray50: var(--pn-flaeche-2);
+  --gray100: var(--pn-flaeche-3);
+  --gray400: var(--pn-tinte-4);
+
+  --ce-color-bg-canvas-top: var(--pn-grund);
+  --ce-color-bg-canvas-mid: var(--pn-grund);
+  --ce-color-bg-canvas-bottom: var(--pn-grund);
+  --ce-color-bg-light-brand: rgba(124, 77, 255, 0.1);
+  --ce-color-bg-light-violet: var(--pn-seite-gruppe-flaeche);
+  --ce-color-bg-atmosphere: none;
+  --ce-app-bg: none;
+  --ce-pr-papier: var(--pn-grund);
+  --ce-app-bg-mid: var(--pn-grund);
+  --ce-app-bg-bottom: var(--pn-grund);
+  --ce-app-divider: var(--pn-linie);
+  --ce-color-surface: var(--pn-flaeche-1);
+  --ce-color-surface-subtle: #0d162d;
+  --ce-color-surface-muted: var(--pn-flaeche-2);
+  --ce-color-surface-hover: var(--pn-flaeche-2);
+  --ce-color-surface-pressed: var(--pn-flaeche-3);
+  --ce-color-surface-raised: var(--pn-flaechenverlauf), var(--pn-flaeche-1);
+  --ce-color-surface-inverse: linear-gradient(180deg, #14224c 0%, #0a1431 100%);
+  --ce-color-surface-inverse-edge: rgba(185, 162, 255, 0.2);
+  --ce-color-border-subtle: var(--pn-linie);
+  --ce-color-border-default: var(--pn-kante);
+  --ce-color-border-strong: var(--pn-kante-stark);
+  --ce-color-border-interactive: var(--pn-kante-feld);
+  --ce-color-border-interactive-hover: var(--pn-kante-feld-zeigen);
+  --border-hairline: var(--pn-linie);
+  --ce-pr-inset: var(--pn-flaeche-2);
+  --ce-pr-hairline: var(--pn-linie);
+  --ce-color-overlay: rgba(2, 5, 14, 0.74);
+  --ce-color-overlay-drawer: rgba(2, 5, 14, 0.74);
+
+  --ce-color-status-neutral-surface: var(--pn-grau-ton);       --ce-color-status-neutral-fg: var(--pn-grau);        --ce-color-status-neutral-border: var(--pn-grau-kante);
+  --ce-color-status-info-surface: var(--pn-blau-ton);          --ce-color-status-info-fg: var(--pn-blau);           --ce-color-status-info-border: var(--pn-blau-kante);
+  --ce-color-status-progress-surface: var(--pn-signal-ton);    --ce-color-status-progress-fg: var(--pn-signal-tinte); --ce-color-status-progress-border: rgba(185, 162, 255, 0.28);
+  --ce-color-status-success-surface: var(--pn-gruen-ton);      --ce-color-status-success-fg: var(--pn-gruen);       --ce-color-status-success-border: var(--pn-gruen-kante);
+  --ce-color-status-warning-surface: var(--pn-bernstein-ton);  --ce-color-status-warning-fg: var(--pn-bernstein);   --ce-color-status-warning-border: var(--pn-bernstein-kante);
+  --ce-color-status-overdue-surface: var(--pn-rot-ton);        --ce-color-status-overdue-fg: var(--pn-rot);         --ce-color-status-overdue-border: var(--pn-rot-kante);
+  --ce-color-status-error-surface: var(--pn-rot-ton);          --ce-color-status-error-fg: var(--pn-rot);           --ce-color-status-error-border: var(--pn-rot-kante);
+  --ce-color-status-blocked-surface: var(--pn-grau-ton);       --ce-color-status-blocked-fg: var(--pn-tinte-2);     --ce-color-status-blocked-border: var(--pn-grau-kante);
+  --ce-color-status-cancelled-surface: var(--pn-grau-ton);     --ce-color-status-cancelled-fg: var(--pn-tinte-3);   --ce-color-status-cancelled-border: var(--pn-grau-kante);
+  --ce-color-status-archived-surface: var(--pn-grau-ton);      --ce-color-status-archived-fg: var(--pn-tinte-3);    --ce-color-status-archived-border: var(--pn-grau-kante);
+  --ce-color-danger-solid: #ce2c31;
+  --ce-color-danger-hover: #b5242a;
+  --ce-color-danger-active: #9e1f24;
+  --ce-color-success-solid: #17834f;
+  --ce-color-success-ring: rgba(61, 214, 140, 0.32);
+
+  --ce-elevation-1: var(--pn-lichtkante);
+  --ce-elevation-2: inset 0 1px 0 rgba(214, 226, 255, 0.07), 0 12px 32px -16px rgba(1, 3, 10, 0.9);
+  --ce-elevation-3: 0 0 0 1px rgba(184, 204, 255, 0.06), 0 28px 64px -18px rgba(1, 3, 10, 0.95), inset 0 1px 0 rgba(214, 226, 255, 0.08);
+  --ce-elevation-dropdown: 0 0 0 1px rgba(184, 204, 255, 0.05), 0 20px 44px -14px rgba(1, 3, 10, 0.95);
+  --ce-elevation-inset: inset 0 1px 2px rgba(1, 3, 10, 0.55);
+  --ce-pr-shadow-card: var(--pn-lichtkante);
+  --ce-pr-shadow-card-hover: inset 0 1px 0 rgba(214, 226, 255, 0.08), 0 16px 40px -20px rgba(1, 3, 10, 0.9);
+  --ce-pr-shadow-sheet: 0 0 0 1px rgba(184, 204, 255, 0.06), 0 30px 80px -24px rgba(1, 3, 10, 0.95);
+  --ce-pr-btn-shadow: none;
+  --ce-pr-btn-shadow-hover: none;
+  --ce-pr-btn-shadow-secondary: none;
+  --ce-pr-btn-disabled-bg: rgba(184, 204, 255, 0.05);
+  --ce-pr-btn-disabled-fg: #8591b1;
+
+  --ce-sidebar-bg: var(--pn-grund-tief);
+  --ce-sidebar-bg-top: var(--pn-grund);
+  --ce-sidebar-bg-mid: var(--pn-grund);
+  --ce-sidebar-bg-bottom: var(--pn-grund-tief);
+  --ce-sidebar-light: transparent;
+  --ce-sidebar-depth: transparent;
+
+  --ce-titel-relief-fuellung: linear-gradient(180deg, #ffffff 22%, #ddd3ff 100%);
+  --ce-titel-relief-praegung: none;
+  --ce-titel-relief-kante-oben: #ffffff;
+  --ce-titel-relief-kante-unten: #ddd3ff;
+  --ce-titel-signatur-fuellung: linear-gradient(180deg, #ffffff 22%, #ddd3ff 100%);
+  --ce-titel-signatur-praegung: none;
+  --ce-titel-signatur-kante-oben: #ffffff;
+  --ce-titel-signatur-kante-unten: #ddd3ff;
+  --ce-titel-auswahl-text: var(--pn-tinte-invers);
+  --ce-titel-auswahl-grund: var(--pn-signal-tinte);
+
+  --ce-pr-bs-kontur: var(--pn-kante-feld);
+  --ce-pr-bs-kontur-zeigen: var(--pn-kante-feld-zeigen);
+  --ce-pr-bs-flaeche-zeigen: rgba(184, 204, 255, 0.08);
+  --ce-pr-bs-wahl-flaeche: rgba(124, 77, 255, 0.16);
+  --ce-pr-bs-wahl-flaeche-zeigen: rgba(124, 77, 255, 0.26);
+  --ce-pr-bs-wahl-kante: var(--pn-signal-kante);
+  --ce-pr-bs-gefahr-flaeche: var(--pn-rot-ton);
+  --ce-pr-bs-schalter-aus: var(--pn-flaeche-4);
+  --ce-pr-bs-schalter-aus-kante: var(--pn-kante-feld);
+  --ce-pr-bs-schatten-primaer: inset 0 -1px 0 rgba(6, 17, 45, 0.16), 0 1px 2px rgba(1, 3, 10, 0.6);
+
+  --ce-pr-bs-schatten-primaer-zeigen: inset 0 -1px 0 rgba(6, 17, 45, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.3),
+    0 8px 26px -10px rgba(185, 162, 255, 0.55), 0 14px 34px -18px rgba(124, 77, 255, 0.7);
+  --ce-pr-bs-schatten-gedrueckt: inset 0 1px 3px rgba(1, 3, 10, 0.4);
+  --ce-pr-bs-schatten-sekundaer: var(--pn-lichtkante);
+  --ce-pr-bs-schatten-sekundaer-zeigen: inset 0 1px 0 rgba(214, 226, 255, 0.1);
+  --ce-pr-bs-schatten-gefahr: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 1px 2px rgba(1, 3, 10, 0.6);
+  --ce-pr-bs-schatten-menue: 0 0 0 1px rgba(184, 204, 255, 0.05), 0 24px 48px -16px rgba(1, 3, 10, 0.95);
+  --ce-pr-bs-schatten-wahl: none;
+  --ce-pr-bs-schatten-wahl-zeigen: none;
+  --ce-pr-bs-schatten-wahl-gewaehlt: inset 0 1px 0 rgba(214, 226, 255, 0.07);
+  --ce-pr-bs-schatten-schalterknopf: 0 1px 3px rgba(1, 3, 10, 0.6);
+
+  --ce-pr-ed-shadow-flaeche: var(--pn-lichtkante);
+  --ce-pr-ed-kennzahl-zahl: var(--pn-tinte);
+  --ce-pr-ed-kennzahl-tinte: var(--pn-tinte-2);
+  --ce-pr-ed-kante-licht: var(--pn-kantenverlauf);
+  --ce-pr-ed-karte-licht: var(--pn-flaechenverlauf);
+  --ce-pr-ed-shadow-kennzahl: var(--pn-lichtkante);
+  --ce-pr-ed-shadow-kennzahl-klein: var(--pn-lichtkante);
+  --ce-pr-ed-kante-signal: rgba(185, 162, 255, 0.5);
+  --ce-pr-ed-shadow-kennzahl-hover: inset 0 1px 0 rgba(214, 226, 255, 0.1);
+  --ce-pr-ed-ton-signal: rgba(124, 77, 255, 0.08);
+  --ce-pr-ed-filter-kante: rgba(185, 162, 255, 0.3);
+  --ce-pr-ed-shadow-fenster: var(--ce-elevation-3);
+  --ce-pr-ed-shadow-sheet: 0 -1px 0 rgba(184, 204, 255, 0.08), 0 -24px 56px -24px rgba(1, 3, 10, 0.9);
+  --ce-pr-ed-schleier: rgba(2, 5, 14, 0.6);
+  --ce-pr-ed-zeile-offen: rgba(124, 77, 255, 0.08);
+  --ce-pr-ed-griff: rgba(214, 226, 255, 0.24);
+  --ce-pr-ed-row-mark: var(--pn-signal-kante);
+  --ce-pr-on-navy: var(--pn-tinte);
+  --ce-pr-on-navy-2: var(--pn-tinte-2);
+  --ce-pr-on-navy-3: var(--pn-tinte-3);
+  --ce-pr-on-navy-line: var(--pn-kante);
+  --ce-kpi-border: var(--pn-kante);
+  --ce-kpi-label: var(--pn-tinte-2);
+  --ce-kpi-context: var(--pn-tinte-3);
+  --ce-pr-stage: none;
+
+  --pn-held-licht: radial-gradient(120% 95% at 0% 0%, rgba(139, 92, 255, 0.24) 0%, rgba(139, 92, 255, 0.07) 48%, rgba(139, 92, 255, 0) 74%);
+  --pn-held-kante: rgba(185, 162, 255, 0.24);
+  --pn-held-zahl-schein: 0 0 30px rgba(185, 162, 255, 0.34);
+  --pn-leiste: rgba(8, 13, 30, 0.94);
+  --pn-leiste-kante: inset 0 1px 0 rgba(185, 162, 255, 0.16), 0 -18px 36px -24px rgba(1, 3, 10, 0.95);
+  --pn-leiste-aktiv: inset 0 2px 0 var(--pn-signal-tinte);
+  --pn-segment-flaeche: rgba(185, 162, 255, 0.07);
+  --pn-segment-aktiv: linear-gradient(180deg, rgba(139, 92, 255, 0.3) 0%, rgba(124, 77, 255, 0.18) 100%);
+  --pn-anmeldung-licht:
+    radial-gradient(60rem 30rem at 85% -12rem, rgba(124, 77, 255, 0.2), transparent 70%),
+    radial-gradient(48rem 26rem at 10% 110%, rgba(124, 77, 255, 0.1), transparent 72%);
+  --pn-linkfeld: rgba(185, 162, 255, 0.06);
+  --pn-avatar: linear-gradient(140deg, rgba(124, 77, 255, 0.46), rgba(155, 125, 255, 0.3)); /* Initialen in der Seitenleiste */
+}
+
+:root[data-ce-bereich="partner"],
+:root[data-ce-bereich="partner"] :is(body, .spp-shell) {
+  background: var(--pn-grund);
+  color: var(--pn-tinte);
+
+  color-scheme: dark;
+}
+:root[data-ce-bereich="partner"] body {
+  font-family: var(--pn-schrift-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+:root[data-ce-bereich="partner"] .spp-main {
+  background-color: var(--pn-grund);
+  background-image:
+    radial-gradient(56rem 24rem at 86% -11rem, rgba(124, 77, 255, 0.15), transparent 70%),
+    radial-gradient(52rem 22rem at 24% -13rem, rgba(124, 77, 255, 0.13), transparent 72%),
+    radial-gradient(36rem 12rem at 60% -6rem, rgba(214, 226, 255, 0.045), transparent 70%);
+  background-repeat: no-repeat;
+}
+@media (max-width: 900px) {
+  :root[data-ce-bereich="partner"] .spp-main {
+    background-image:
+      radial-gradient(30rem 16rem at 92% -7rem, rgba(124, 77, 255, 0.15), transparent 70%),
+      radial-gradient(28rem 14rem at 10% -8rem, rgba(124, 77, 255, 0.13), transparent 72%);
+  }
+}
+:root[data-ce-bereich="partner"] ::selection { background: rgba(155, 125, 255, 0.42); color: #ffffff; }
+:root[data-ce-bereich="partner"] * { scrollbar-color: var(--pn-seite-scroll) transparent; }
+
+:root[data-ce-bereich="partner"] :is(h1, h2, h3, h4) { font-family: var(--pn-schrift-titel); }
+:root[data-ce-bereich="partner"] :is(h2, h3) { letter-spacing: -0.015em; }
+:root[data-ce-bereich="partner"] :is(button, input, select, textarea) { font-family: inherit; }
+:root[data-ce-bereich="partner"] :is(a:not(.btn), .btn-link) { text-underline-offset: 3px; }
+
+:root[data-ce-bereich="partner"] .ce-page-header-main { position: relative; border-bottom: 1px solid var(--pn-linie); }
+:root[data-ce-bereich="partner"] .ce-page-header-main::after {
+  content: "";
+  position: absolute; left: 0; bottom: -1px; top: auto; right: auto;
+  width: min(220px, 42%); height: 1px;
+  border: 0; border-radius: 0;
+  background: var(--pn-lichtband);
+  pointer-events: none;
+}
+:root[data-ce-bereich="partner"] .ce-page-header-title {
+  font-family: var(--pn-schrift-titel);
+  font-weight: 500;
+  letter-spacing: var(--ce-pr-ed-headline-tracking);
+  color: var(--pn-tinte);
+
+  --titel-malrand: 0.2em;
+}
+:root[data-ce-bereich="partner"] .ce-page-header-sub {
+  color: var(--pn-tinte-2);
+  font-size: var(--ce-text-body-size);
+  line-height: 1.55;
+}
+:root[data-ce-bereich="partner"] .ce-page-header-meta { color: var(--pn-tinte-3); }
+
+:root[data-ce-bereich="partner"] .btn {
+  font-family: var(--pn-schrift-text);
+  font-weight: 560;
+  letter-spacing: -0.006em;
+  transition:
+    background-color var(--pn-dauer) var(--pn-kurve),
+    border-color var(--pn-dauer) var(--pn-kurve),
+    color var(--pn-dauer) var(--pn-kurve),
+    box-shadow var(--pn-dauer) var(--pn-kurve),
+    transform var(--pn-dauer) var(--pn-kurve);
+}
+:root[data-ce-bereich="partner"] .btn-primary {
+  border: 1px solid #f4f7ff;
+  background: linear-gradient(180deg, #ffffff 0%, #e2e9fd 100%);
+  color: var(--pn-tinte-invers);
+  box-shadow: var(--ce-pr-bs-schatten-primaer);
+}
+:root[data-ce-bereich="partner"] .btn-primary:hover:not(:disabled) {
+  border-color: #ffffff;
+  background: linear-gradient(180deg, #ffffff 0%, #eef3ff 100%);
+  color: var(--pn-tinte-invers);
+  box-shadow: var(--ce-pr-bs-schatten-primaer-zeigen);
+}
+:root[data-ce-bereich="partner"] .btn-primary:active:not(:disabled) {
+  background: linear-gradient(180deg, #dbe3f8 0%, #cfd9f2 100%);
+  box-shadow: var(--ce-pr-bs-schatten-gedrueckt);
+  transform: translateY(1px);
+}
+
+:root[data-ce-bereich="partner"] .btn-primary .spinner:not(.spinner-dark) { border-color: rgba(6, 17, 45, 0.22); border-top-color: var(--pn-tinte-invers); }
+:root[data-ce-bereich="partner"] .spinner-dark { border-color: rgba(184, 204, 255, 0.22); border-top-color: var(--pn-signal-tinte); }
+:root[data-ce-bereich="partner"] :is(.btn-outline, .btn-secondary) {
+  border: 1px solid var(--pn-kante-feld);
+  background: linear-gradient(180deg, rgba(196, 214, 255, 0.075) 0%, rgba(196, 214, 255, 0.035) 100%);
+  color: var(--pn-tinte);
+  box-shadow: var(--pn-lichtkante);
+}
+:root[data-ce-bereich="partner"] :is(.btn-outline, .btn-secondary):hover:not(:disabled) {
+  border-color: var(--pn-kante-feld-zeigen);
+  background: linear-gradient(180deg, rgba(196, 214, 255, 0.13) 0%, rgba(196, 214, 255, 0.07) 100%);
+  color: #ffffff;
+  box-shadow: var(--ce-pr-bs-schatten-sekundaer-zeigen);
+}
+:root[data-ce-bereich="partner"] :is(.btn-outline, .btn-secondary):active:not(:disabled) {
+  background: rgba(196, 214, 255, 0.05);
+  box-shadow: var(--ce-pr-bs-schatten-gedrueckt);
+}
+:root[data-ce-bereich="partner"] .btn-ghost { color: var(--pn-tinte-2); background: transparent; }
+:root[data-ce-bereich="partner"] .btn-ghost:hover:not(:disabled) { color: var(--pn-tinte); background: rgba(196, 214, 255, 0.07); }
+:root[data-ce-bereich="partner"] .btn-link { color: var(--pn-signal-tinte); }
+:root[data-ce-bereich="partner"] .btn-link:hover:not(:disabled) { color: var(--pn-signal-tinte-zeigen); background: transparent; }
+:root[data-ce-bereich="partner"] .btn-danger {
+  border: 1px solid var(--ce-color-danger-solid);
+  background: linear-gradient(180deg, #d93a3f 0%, var(--ce-color-danger-solid) 100%);
+  color: #ffffff;
+  box-shadow: var(--ce-pr-bs-schatten-gefahr);
+}
+:root[data-ce-bereich="partner"] .btn-danger:hover:not(:disabled) {
+  border-color: var(--ce-color-danger-hover);
+  background: linear-gradient(180deg, #c8333a 0%, var(--ce-color-danger-hover) 100%);
+}
+:root[data-ce-bereich="partner"] :is(.btn-primary, .btn-danger, .btn-outline, .btn-secondary):disabled {
+  border-color: rgba(184, 204, 255, 0.1);
+  background: var(--ce-pr-btn-disabled-bg);
+  color: var(--ce-pr-btn-disabled-fg);
+  box-shadow: none;
+}
+
+:root[data-ce-bereich="partner"] :is(.btn, a, button, [role="button"], [role="tab"], [role="option"], [role="menuitem"], summary):focus-visible {
+  outline: 2px solid var(--pn-signal-kante);
+  outline-offset: 2px;
+}
+
+:root[data-ce-bereich="partner"] :is(.field-input, .field-select, .field-textarea) {
+  background-color: rgba(3, 7, 19, 0.5);
+}
+
+:root[data-ce-bereich="partner"] :is(.field-input, .field-select, .field-textarea):focus {
+  background-color: rgba(3, 7, 19, 0.66);
+  box-shadow: var(--pn-feld-fokuslicht);
+}
+:root[data-ce-bereich="partner"] :is(.field-input, .field-select, .field-textarea):disabled {
+  background-color: rgba(184, 204, 255, 0.04);
+}
+:root[data-ce-bereich="partner"] :is(input, textarea)::placeholder { color: var(--pn-tinte-4); }
+:root[data-ce-bereich="partner"] select option { background: var(--pn-flaeche-2); color: var(--pn-tinte); }
+:root[data-ce-bereich="partner"] :is(input[type="checkbox"], input[type="radio"]) { accent-color: var(--pn-signal-kante); }
+:root[data-ce-bereich="partner"] :is(.field-label) { color: var(--pn-tinte-2); }
+:root[data-ce-bereich="partner"] :is(.field-error, .field-input-error ~ .field-error) { color: var(--pn-rot); }
+
+:root[data-ce-bereich="partner"] :is(.ce-auswahl-liste, .ce-pm-liste, .ce-suche-treffer, [role="listbox"], [role="menu"]) {
+  background: var(--pn-glas);
+  -webkit-backdrop-filter: var(--pn-glas-weichzeichnung);
+  backdrop-filter: var(--pn-glas-weichzeichnung);
+  border-color: var(--pn-kante-stark);
+  box-shadow: var(--ce-pr-bs-schatten-menue);
+}
+
+:root[data-ce-bereich="partner"] .ce-tabs { border-bottom-color: var(--pn-linie); }
+:root[data-ce-bereich="partner"] .ce-tab { color: var(--pn-tinte-3); transition: color var(--pn-dauer) var(--pn-kurve); }
+:root[data-ce-bereich="partner"] .ce-tab:hover { color: var(--pn-tinte); }
+:root[data-ce-bereich="partner"] :is(.ce-tab.active, .ce-tab[aria-selected="true"]) {
+  color: #ffffff;
+  border-bottom-color: var(--pn-signal-tinte);
+  box-shadow: var(--pn-reiter-aktiv);
+}
+
+:root[data-ce-bereich="partner"] .ce-switch-knob { background: var(--pn-tinte-2); }
+:root[data-ce-bereich="partner"] .ce-switch-input:checked ~ .ce-switch-track { border-color: var(--pn-signal); background: var(--pn-signal); }
+:root[data-ce-bereich="partner"] .ce-switch-input:checked ~ .ce-switch-track .ce-switch-knob { background: #ffffff; }
+:root[data-ce-bereich="partner"] .ce-switch-input:checked ~ .ce-switch-track .ce-switch-knob::after { border-color: var(--pn-signal); }
+:root[data-ce-bereich="partner"] .ce-switch-input:disabled ~ .ce-switch-track .ce-switch-knob { background: var(--pn-tinte-aus); }
+@media (hover: hover) {
+  :root[data-ce-bereich="partner"] .ce-switch:hover .ce-switch-input:not(:checked, :disabled) ~ .ce-switch-track { border-color: var(--pn-kante-feld-zeigen); }
+  :root[data-ce-bereich="partner"] .ce-switch:hover .ce-switch-input:checked:not(:disabled) ~ .ce-switch-track {
+    border-color: var(--pn-signal-zeigen);
+    background: var(--pn-signal-zeigen);
+  }
+}
+
+:root[data-ce-bereich="partner"] :is(.ce-card, .card, .table-card, .ce-table-container, .ce-list-card, .tile) {
+  background-color: var(--pn-flaeche-1);
+  background-image: var(--pn-reflex), var(--pn-flaechenverlauf);
+  border-color: var(--pn-kante);
+  box-shadow: var(--pn-karte-tiefe);
+}
+:root[data-ce-bereich="partner"] .ce-card-inverse { background: var(--ce-color-surface-inverse); border-color: var(--ce-color-surface-inverse-edge); }
+
+:root[data-ce-bereich="partner"] table { border-color: var(--pn-linie); }
+:root[data-ce-bereich="partner"] th {
+  color: var(--pn-tinte-2);
+  font-family: var(--pn-schrift-text);
+  font-weight: 550;
+  letter-spacing: 0;
+  text-transform: none;
+  background-color: transparent;
+  border-bottom-color: var(--pn-kante);
+}
+:root[data-ce-bereich="partner"] :is(.table-card, .ce-table-container) thead th {
+  border-bottom: 1px solid var(--pn-kante-stark);
+  background-image: var(--pn-kopfband);
+}
+:root[data-ce-bereich="partner"] td { border-bottom-color: var(--pn-linie); }
+:root[data-ce-bereich="partner"] tbody tr { transition: background-color var(--pn-dauer) var(--pn-kurve); }
+:root[data-ce-bereich="partner"] tbody td:first-child { transition: box-shadow var(--pn-dauer) var(--pn-kurve); }
+:root[data-ce-bereich="partner"] tbody tr:hover { background-color: var(--pn-zeile-zeigen); }
+@media (hover: hover) and (min-width: 901px) {
+  :root[data-ce-bereich="partner"] :is(.table-card, .ce-table-container) tbody tr:hover > td:first-child { box-shadow: var(--pn-zeile-marke); }
+}
+
+:root[data-ce-bereich="partner"] .badge {
+  font-family: var(--pn-schrift-text);
+  font-weight: 550;
+  letter-spacing: 0;
+}
+
+:root[data-ce-bereich="partner"] :is(.ce-skeleton, .ce-skeleton-line) {
+  background: linear-gradient(90deg, rgba(184, 204, 255, 0.04) 0%, rgba(184, 204, 255, 0.1) 50%, rgba(184, 204, 255, 0.04) 100%);
+  background-size: 200% 100%;
+}
+:root[data-ce-bereich="partner"] :is(.ce-state-title, .empty-title) { font-family: var(--pn-schrift-titel); font-weight: 500; color: var(--pn-tinte); }
+:root[data-ce-bereich="partner"] :is(.ce-state-text, .empty-text) { color: var(--pn-tinte-2); }
+
+:root[data-ce-bereich="partner"] :is(.ce-dialog) {
+  background: linear-gradient(180deg, rgba(196, 214, 255, 0.06) 0%, rgba(196, 214, 255, 0.015) 100%), #0c1429;
+  border: 1px solid var(--pn-kante-stark);
+  box-shadow: var(--ce-elevation-3);
+}
+:root[data-ce-bereich="partner"] .ce-drawer {
+  background: var(--pn-flaeche-1);
+  border-left: 1px solid var(--pn-kante);
+  box-shadow: var(--ce-elevation-3);
+}
+:root[data-ce-bereich="partner"] :is(.ce-dialog-title) { font-family: var(--pn-schrift-titel); font-weight: 500; letter-spacing: -0.015em; }
+
+
+/* ═══════════ 9 · HÜLLE UND SEITENLEISTE ════════════════════════════════════════════════════════════════════════════
+   Dieselbe Spalte wie im Leitstand — Navy, Haarlinie zum Inhalt —, mit Violett als Rollenakzent: die aktive Seite liegt
+   auf einer violetten Glasfläche mit heller Lichtkante links, mehrfach codiert (Fläche, Kante, Schrift, Symbol,
+   aria-current). Am Telefon trägt die Leiste unten dieselben fünf Bereiche; die aktive Stelle zeigt eine Lichtkante
+   oben. Kein Glas auf .spp-seite (Bezugsrahmen der festen Leiste, partner.css). */
+:root[data-ce-bereich="partner"] .spp-seite {
+  background: var(--pn-seite-verlauf);
+  border-right-color: var(--pn-linie);
+}
+:root[data-ce-bereich="partner"] .spp-seite * { scrollbar-color: var(--pn-seite-scroll) transparent; }
+:root[data-ce-bereich="partner"] .spp-brand-tag {
+  background: var(--pn-violett-ton);
+  color: var(--pn-violett-hell);
+  box-shadow: var(--pn-ring-violett);
+}
+:root[data-ce-bereich="partner"] :is(.spp-nitem, .spp-foot-btn) {
+  color: var(--pn-seite-text);
+  transition:
+    background-color var(--pn-dauer) var(--pn-kurve),
+    color var(--pn-dauer) var(--pn-kurve),
+    box-shadow var(--pn-dauer) var(--pn-kurve);
+}
+:root[data-ce-bereich="partner"] :is(.spp-nitem, .spp-foot-btn):hover {
+  background: var(--pn-seite-zeigen);
+  color: var(--pn-tinte);
+}
+:root[data-ce-bereich="partner"] .spp-nitem-icon { color: var(--pn-seite-symbol); transition: color var(--pn-dauer) var(--pn-kurve); }
+:root[data-ce-bereich="partner"] .spp-nitem:hover .spp-nitem-icon { color: var(--pn-eis); }
+:root[data-ce-bereich="partner"] :is(.spp-nitem-on, .spp-nitem-on:hover) {
+  background: var(--pn-seite-aktiv);
+  color: var(--pn-tinte);
+  box-shadow: var(--pn-seite-aktiv-kante);
+}
+:root[data-ce-bereich="partner"] .spp-nitem-on .spp-nitem-icon {
+  color: var(--pn-eis);
+  filter: var(--pn-symbol-leuchten);
+}
+:root[data-ce-bereich="partner"] .spp-seite-fuss { border-top-color: var(--pn-linie); }
+:root[data-ce-bereich="partner"] .spp-identity-avatar {
+  background: var(--pn-avatar);
+  color: var(--pn-tinte);
+  box-shadow: var(--pn-ring-violett-stark);
+}
+:root[data-ce-bereich="partner"] .spp-identity-name { color: var(--pn-tinte); }
+:root[data-ce-bereich="partner"] .spp-identity-role { color: var(--pn-seite-text-leise); }
+:root[data-ce-bereich="partner"] .spp-seite :is(a, button):focus-visible { outline-color: var(--pn-signal-tinte); }
+@media (max-width: 900px) {
+  /* Glas der Kopfzeile auf einer eigenen Ebene: ohne Weichzeichner lief Schrift als scharfer Schatten unter der Marke
+     durch (Sichtprüfung 2026-11-22); ein Weichzeichner an .spp-seite selbst machte sie aber zum Bezugsrahmen der festen
+     Leiste. Das Pseudoelement ist kein Vorfahre der Leiste — sie bleibt am Bildschirmrand. */
+  :root[data-ce-bereich="partner"] .spp-seite {
+    background: transparent;
+    border-bottom-color: var(--pn-linie);
+  }
+  :root[data-ce-bereich="partner"] .spp-seite::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--pn-leiste);
+    -webkit-backdrop-filter: var(--pn-glas-weichzeichnung);
+    backdrop-filter: var(--pn-glas-weichzeichnung);
+    pointer-events: none;
+  }
+  :root[data-ce-bereich="partner"] .spp-nav {
+    background: var(--pn-leiste);
+    -webkit-backdrop-filter: var(--pn-glas-weichzeichnung);
+    backdrop-filter: var(--pn-glas-weichzeichnung);
+    box-shadow: var(--pn-leiste-kante);
+  }
+  :root[data-ce-bereich="partner"] :is(.spp-nitem-on, .spp-nitem-on:hover) {
+    background: var(--pn-segment-flaeche);
+    box-shadow: var(--pn-leiste-aktiv);
+  }
+}
+
+/* ═══════════ 10 · STARTSEITE ═══════════════════════════════════════════════════════════════════════════════════════
+   Der Verdienst des Monats ist das hellste und größte Element: violettes Licht von links oben, die Zahl in Host
+   Grotesk mit leisem Schein, darunter das Lichtband des Leitstands. Kennzahlen und Karten bleiben ruhig. */
+:root[data-ce-bereich="partner"] .spp-held {
+  background: var(--pn-held-licht), var(--pn-flaechenverlauf), var(--pn-flaeche-1);
+  border-color: var(--pn-held-kante);
+}
+:root[data-ce-bereich="partner"] .spp-held-label { color: var(--pn-violett-hell); }
+:root[data-ce-bereich="partner"] .spp-held-zahl {
+  font-family: var(--pn-schrift-titel);
+  font-weight: 500;
+  color: var(--pn-tinte);
+  text-shadow: var(--pn-held-zahl-schein);
+}
+:root[data-ce-bereich="partner"] .spp-held-band { background: var(--pn-lichtband); }
+:root[data-ce-bereich="partner"] .spp-held-zeile { color: var(--pn-tinte-2); }
+:root[data-ce-bereich="partner"] :is(.spp-section-title, .spp-card-title) {
+  font-family: var(--pn-schrift-titel);
+  font-weight: 500;
+  color: var(--pn-tinte);
+}
+:root[data-ce-bereich="partner"] .spp-kpi-label { color: var(--pn-tinte-3); }
+:root[data-ce-bereich="partner"] .spp-kpi-value {
+  font-family: var(--pn-schrift-titel);
+  font-weight: 500;
+  color: var(--pn-tinte);
+}
+:root[data-ce-bereich="partner"] .spp-linkcopy-url { color: var(--pn-tinte-3); }
+:root[data-ce-bereich="partner"] .spp-letzte-zeile { border-bottom-color: var(--pn-linie); }
+
+/* Verdienst: Provisionen | Gutschriften als zwei Segmente einer Ansicht. */
+:root[data-ce-bereich="partner"] .spp-segmente {
+  background: var(--pn-segment-flaeche);
+  box-shadow: var(--pn-ring-violett);
+}
+:root[data-ce-bereich="partner"] .spp-segment {
+  color: var(--pn-tinte-2);
+  transition:
+    background-color var(--pn-dauer) var(--pn-kurve),
+    color var(--pn-dauer) var(--pn-kurve),
+    box-shadow var(--pn-dauer) var(--pn-kurve);
+}
+:root[data-ce-bereich="partner"] .spp-segment:hover { background: var(--pn-seite-zeigen); color: var(--pn-tinte); }
+:root[data-ce-bereich="partner"] :is(.spp-segment-on, .spp-segment-on:hover) {
+  background: var(--pn-segment-aktiv);
+  color: var(--pn-tinte);
+  box-shadow: var(--pn-ring-violett-stark);
+}
+
+/* ═══════════ 11 · ANMELDUNG ════════════════════════════════════════════════════════════════════════════════════════
+   Ein Blatt auf der Nacht, violettes Licht oben rechts; die Hauptaktion als helle Fläche wie im Leitstand. */
+:root[data-ce-bereich="partner"] .spp-anmeldung {
+  background-color: var(--pn-grund);
+  background-image: var(--pn-anmeldung-licht);
+  background-repeat: no-repeat;
+}
+:root[data-ce-bereich="partner"] .spp-anmeldung-panel {
+  background: var(--pn-flaechenverlauf), var(--pn-flaeche-1);
+  border: 1px solid var(--pn-kante);
+  box-shadow: var(--pn-karte-tiefe);
+}
+:root[data-ce-bereich="partner"] .spp-anmeldung-titel { font-family: var(--pn-schrift-titel); color: var(--pn-tinte); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-text { color: var(--pn-tinte-2); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-label { color: var(--pn-tinte); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-input {
+  background: var(--pn-flaeche-2);
+  color: var(--pn-tinte);
+  border: 1px solid var(--pn-kante-feld);
+  transition: border-color var(--pn-dauer) var(--pn-kurve), box-shadow var(--pn-dauer) var(--pn-kurve);
+}
+:root[data-ce-bereich="partner"] .spp-anmeldung-input:hover { border-color: var(--pn-kante-feld-zeigen); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-input:focus { border-color: var(--pn-signal-kante); box-shadow: var(--pn-feld-fokuslicht); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-bleiben { color: var(--pn-tinte-2); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-bleiben input { accent-color: var(--pn-signal); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-hilfe { color: var(--pn-tinte-3); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-cta {
+  background: var(--pn-tinte);
+  color: var(--pn-tinte-invers);
+  transition: background-color var(--pn-dauer) var(--pn-kurve);
+}
+:root[data-ce-bereich="partner"] .spp-anmeldung-cta:hover:not(:disabled) { background: var(--pn-eis); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-cta:disabled { background: var(--pn-flaeche-4); color: var(--pn-tinte-3); }
+:root[data-ce-bereich="partner"] :is(.spp-anmeldung-link, .spp-anmeldung-fuss a) { color: var(--pn-signal-tinte); }
+:root[data-ce-bereich="partner"] :is(.spp-anmeldung-link, .spp-anmeldung-fuss a):hover { color: var(--pn-signal-tinte-zeigen); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-fehler { background: var(--pn-rot-ton); color: var(--pn-rot); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-hinweis { background: var(--pn-signal-ton); color: var(--pn-signal-tinte); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-fuss { color: var(--pn-tinte-3); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-recht a { color: var(--pn-tinte-3); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-recht a:hover { color: var(--pn-tinte); }
+
+/* ═══════════ 12 · BEWEGUNG UND KONTRAST ════════════════════════════════════════════════════════════════════════════
+   Diese Ebene bewegt nichts von selbst; Übergänge nur auf Farbe und Schatten, bei reduzierter Bewegung keine. */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ce-bereich="partner"] :is(.btn, .spp-nitem, .spp-nitem-icon, .spp-foot-btn, .spp-segment, .spp-anmeldung-input, .spp-anmeldung-cta, .ce-tab, tbody tr, tbody td) { transition: none; }
+}
+@media (prefers-contrast: more) {
+  :root[data-ce-bereich="partner"] {
+    --pn-kante: rgba(184, 204, 255, 0.34);
+    --pn-linie: rgba(184, 204, 255, 0.24);
+    --pn-tinte-2: #dfe5f5;
+    --pn-tinte-3: #cdd5ea;
+    --pn-seite-text: #dfe5f5;
+  }
+}
+@media (forced-colors: active) {
+  :root[data-ce-bereich="partner"] .ce-page-header-main::after { content: none; }
+  :root[data-ce-bereich="partner"] .spp-nitem-on .spp-nitem-icon { filter: none; }
+  :root[data-ce-bereich="partner"] .spp-held-zahl { text-shadow: none; }
+  :root[data-ce-bereich="partner"] .spp-held-band { display: none; }
+  /* Flächen entfallen in erzwungenen Farben: die aktive Stelle bekommt eine Kontur in Systemfarbe. */
+  :root[data-ce-bereich="partner"] :is(.spp-nitem-on, .spp-segment-on) { outline: 2px solid CanvasText; outline-offset: -2px; }
+}
+
+}

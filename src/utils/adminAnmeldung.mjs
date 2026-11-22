@@ -12,6 +12,7 @@
 import { ADMIN_HOME, ADMIN_LOGIN_PATH } from "./roleLanding.mjs";
 import { adminReturnTarget } from "./loginReturnTarget.mjs";
 import { LOGIN_SERVERFEHLER, AUTH_GENERISCH } from "./authErrors.mjs";
+import { PARTNER_LOGIN_PATH, istPartnerPortalPfad } from "./partnerAnmeldung.mjs";
 
 export const ADMIN_ANMELDUNG_TEXT = Object.freeze({
   titel: "Adminbereich",
@@ -79,18 +80,20 @@ export function adminZielNachAnmeldung(rueckspruchRoh) {
 }
 
 /** Welche Anmeldeseite ein Sitzungsende (401/403 im zentralen Handler) oder eine Schutzroute ansteuert:
- *  Adressen des Adminbereichs (und die Admin-Vorschau der Rechtstexte) führen nach /admin/login, alles andere
- *  bleibt bei /login. */
+ *  Adressen des Adminbereichs (und die Admin-Vorschau der Rechtstexte) führen nach /admin/login, das Partnerportal
+ *  seit dem Betreiberauftrag 2026-11-22 auf die eigene Partner-Anmeldung (/partner/login), alles andere bleibt bei
+ *  /login. */
 export function anmeldeseiteFuer(pathname) {
   if (typeof pathname !== "string") return "/login";
   if (pathname === ADMIN_LOGIN_PATH) return ADMIN_LOGIN_PATH;
   if (pathname === ADMIN_HOME || pathname.startsWith(`${ADMIN_HOME}/`) || pathname.startsWith("/vorschau/")) return ADMIN_LOGIN_PATH;
+  if (istPartnerPortalPfad(pathname)) return PARTNER_LOGIN_PATH;
   return "/login";
 }
 
 /** Auf diesen Seiten leitet ein Sitzungsende nicht weiter (man ist schon dort bzw. die Seite arbeitet ohne Sitzung). */
 export function ohneSitzungsweiterleitung(pathname) {
-  return pathname === "/login" || pathname === ADMIN_LOGIN_PATH || pathname === "/confirm-email-change";
+  return pathname === "/login" || pathname === ADMIN_LOGIN_PATH || pathname === PARTNER_LOGIN_PATH || pathname === "/confirm-email-change";
 }
 
 /** Einmallink aus der Adresse (…?reset=<token>): nur die Form eines Tokens, sonst null. Ob er gilt, prüft der Server. */

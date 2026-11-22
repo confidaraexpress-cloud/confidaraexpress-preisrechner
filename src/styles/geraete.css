@@ -1,0 +1,70 @@
+/* ===========================================================================
+   Angemeldete Geräte — gemeinsame Karte für Admin- und Partnerbereich
+   (components/sicherheit/SitzungenKarte.jsx, Betreiberauftrag 2026-11-22, D7)
+   ---------------------------------------------------------------------------
+   Eine Zeile je Sitzung: Symbol, Bezeichnung (nur, was technisch erfasst wird —
+   Browser/System aus dem User-Agent, Anmeldezeit, letzte Aktivität), „Dieses
+   Gerät“ und „Abmelden“. Darunter „Auf allen Geräten abmelden“ mit Rückfrage.
+   Alles aus Foundation-Tokens; die dunklen Ebenen (admin-nacht.css,
+   partner-nacht.css) setzen sie in ihrem Bereich um.
+   =========================================================================== */
+.ce-geraete { display: flex; flex-direction: column; gap: var(--ce-space-4); padding: var(--ce-space-5) var(--ce-space-6); }
+.ce-geraete-kopf { display: flex; flex-direction: column; gap: var(--ce-space-1); }
+.ce-geraete-titel {
+  margin: 0;
+  font-size: var(--ce-text-title-card-size); line-height: var(--ce-text-title-card-line); font-weight: var(--ce-text-title-card-weight);
+  color: var(--ce-color-text-primary);
+}
+.ce-geraete-text { margin: 0; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); }
+.ce-geraete-fehler { margin: 0; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-status-error-fg); }
+.ce-geraete-fehlerblock { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-3); }
+.ce-geraete-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ce-space-2); }
+.ce-geraet {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--ce-space-3);
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-md);
+}
+.ce-geraet--aktuell { border-color: var(--ce-color-brand-border-soft); background: var(--ce-color-surface-subtle); }
+.ce-geraet-symbol {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-surface-muted);
+  color: var(--ce-color-text-secondary);
+}
+.ce-geraet--aktuell .ce-geraet-symbol { background: var(--ce-color-brand-soft); color: var(--ce-color-brand-ink); }
+.ce-geraet-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ce-geraet-name {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2);
+  font-size: var(--ce-text-body-size); line-height: var(--ce-text-body-line); font-weight: 600;
+  color: var(--ce-color-text-primary); overflow-wrap: break-word;
+}
+.ce-geraet-marke {
+  display: inline-flex; align-items: center;
+  padding: 0 var(--ce-space-2);
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-brand-soft);
+  color: var(--ce-color-brand-ink);
+  font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); font-weight: 600;
+}
+.ce-geraet-meta { font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); overflow-wrap: break-word; }
+.ce-geraete-fuss {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--ce-space-3);
+  padding-top: var(--ce-space-4);
+  border-top: 1px solid var(--ce-color-border-subtle);
+}
+.ce-geraete-frage { display: flex; flex-direction: column; gap: var(--ce-space-2); }
+.ce-geraete-knoepfe { display: flex; flex-wrap: wrap; gap: var(--ce-space-2); }
+.ce-geraete-gefahr { background: var(--ce-color-danger-solid); border: 1px solid var(--ce-color-danger-solid); color: var(--ce-color-text-inverse); }
+.ce-geraete-gefahr:hover:not(:disabled) { background: var(--ce-color-danger-hover); border-color: var(--ce-color-danger-hover); }
+.ce-geraete-gefahr:active:not(:disabled) { background: var(--ce-color-danger-active); border-color: var(--ce-color-danger-active); }
+.ce-geraete-hinweis { margin: 0; font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
+@media (max-width: 900px) {
+  .ce-geraete { padding: var(--ce-space-4); }
+  .ce-geraete .btn { min-height: var(--ce-size-touch-target); }
+}
+@media (max-width: 560px) {
+  .ce-geraet { grid-template-columns: auto minmax(0, 1fr); }
+  .ce-geraet-aktion { grid-column: 1 / -1; width: 100%; }
+}

@@ -9,6 +9,16 @@ export function adminAnmelden({ email, password }) {
   return apiFetch("/auth/admin-login", { method: "POST", headers: jsonH, body: JSON.stringify({ email, password }) });
 }
 
+/** POST /auth/admin-login/passkey — zweiter Schritt mit Passkey: { loginTicket, response } → { token } */
+export function adminPasskeyAnmelden({ loginTicket, response }) {
+  return apiFetch("/auth/admin-login/passkey", { method: "POST", headers: jsonH, body: JSON.stringify({ loginTicket, response }) });
+}
+
+/** POST /auth/admin-login/recovery — zweiter Schritt mit Wiederherstellungscode: { loginTicket, code } → { token, recoveryCodesRemaining } */
+export function adminCodeAnmelden({ loginTicket, code }) {
+  return apiFetch("/auth/admin-login/recovery", { method: "POST", headers: jsonH, body: JSON.stringify({ loginTicket, code }) });
+}
+
 /** POST /auth/forgot-password — immer neutrale Antwort. */
 export function passwortVergessen(email) {
   return apiFetch("/auth/forgot-password", { method: "POST", headers: jsonH, body: JSON.stringify({ email }) });

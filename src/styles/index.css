@@ -31,6 +31,8 @@
 @import './cancellation.css';
 /* Verifizierte Login-E-Mail-Änderung — isoliert (email-change- Prefix). */
 @import './email-change.css';
+/* Angemeldete Geräte — gemeinsame Karte für Admin- und Partnerbereich (ce-geraet- Prefix, 2026-11-22). */
+@import './geraete.css';
 /* Übersicht — reine Inhaltsschicht (.pp-main, KPI-Karten, Sektionen). Kein
    eigener Theme-Scope mehr: Hintergrund und Sidebar kommen für alle
    eingeloggten Seiten aus dashboard-premium.css. */
@@ -113,13 +115,17 @@
 @import './premium-editorial.css';
 
 /* Confidara Premium Blue Light (aus „Confidara Obsidian“, 2026-11-15; freigegeben und systemweit übertragen mit
-   „Final Master Release“, 2026-11-16): Schriften und Gestaltungsebene der Designfamilie — Kundenbereich,
-   Partnerportal, öffentliche Seiten. Beide Dateien gehören NUR zu diesem Bündel; der öffentliche Preisrechner
+   „Final Master Release“, 2026-11-16): Schriften und Gestaltungsebene der Designfamilie — Kundenbereich und
+   öffentliche Seiten. Beide Dateien gehören NUR zu diesem Bündel; der öffentliche Preisrechner
    (public-calculator.css) lädt keine von ihnen — die Titelschrift Host Grotesk kommt dort wie hier aus fonts.css.
    Jede Regel hängt an :root[data-ce-familie="blue-light"] oder an
    einem Bereich der Familie; als letzte Ebene gewinnt sie bei gleicher Spezifität gegen premium-editorial.css. */
 @import './kunde-schriften.css';
 @import './kunde-obsidian.css';
+/* Confidara Leitstand Nacht · Partnerportal (Betreiberauftrag 2026-11-22, D3): dieselbe Nachtwelt mit Violett als
+   Rollenakzent. Jede Regel hängt an :root[data-ce-bereich="partner"]; der öffentliche Preisrechner lädt sie nicht.
+   Grenzen: partnerNacht.test.mjs. */
+@import './partner-nacht.css';
 /* Confidara Leitstand Nacht (Betreiberauftrag „Adminpanel-Redesign im Resend-Stil“, 2026-11-17): die dunkle
    Gestaltungsebene des Adminpanels. Jede Regel hängt an :root[data-ce-bereich="admin"] — das Adminpanel gehört nicht
    mehr zur Familie Blue Light. Als letzte Ebene gewinnt sie bei gleicher Spezifität; der öffentliche Preisrechner lädt

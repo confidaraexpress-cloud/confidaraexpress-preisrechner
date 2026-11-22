@@ -176,6 +176,8 @@ test("4 — kein freier Schatten und kein farbiger Glow außerhalb des Auth-Bere
     for (const m of css[f].matchAll(/backdrop-filter:\s*([^;}]+)/g)) {
       if (obsidian && m[1].trim() === "var(--ce-ob-glas-weichzeichnung)") continue;
       if (f === "admin-nacht.css" && m[1].trim() === "var(--adm-glas-weichzeichnung)") continue;
+      // Partnerportal (Betreiberauftrag 2026-11-22): ebenso genau EIN Token (--pn-glas-weichzeichnung), partnerNacht.test.mjs.
+      if (f === "partner-nacht.css" && m[1].trim() === "var(--pn-glas-weichzeichnung)") continue;
       assert.equal(m[1].trim(), "none", `${f}: backdrop-filter ${m[1]}`);
     }
     const ohneBegruessung = obsidian ? css[f].replace(/@keyframes ce-ob-gruss \{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/, "") : css[f];
@@ -372,7 +374,8 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
   assert.match(client, /export const API = import\.meta\.env\.VITE_API_URL/);
   assert.match(client, /localStorage\.getItem\("ce_token"\)/);
   // Adminverträge unberührt.
-  assert.match(api, /const USER_PARAMS = \["limit", "offset"\];/);
+  // Bewusste Ankeränderung (Admin-/Partner-Apps 2026-11-22): GET /admin/users filtert serverseitig nach Status (BE-1).
+  assert.match(api, /const USER_PARAMS = \["limit", "offset", "status"\];/);
   assert.match(api, /const SETTABLE_USER_STATUS = \["pending", "approved", "blocked"\];/);
   assert.match(api, /const ANONYMIZE_CONFIRM = "ANONYMIZE_USER";/);
   // Routenbestand vollständig — und zwar GENAU dieser. Der Vergleich läuft in
@@ -439,6 +442,9 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
                   // Admin-Anmeldung (Canonical v2.130, bewusste Ankeränderung, +1): öffentlich erreichbar, nur zum
                   // Anmelden; im Auth-Bereich, außerhalb von AdminRoute und AdminLayout.
                   "/admin/login",
+                  // Admin-/Partner-Apps (Betreiberauftrag 2026-11-22, bewusste Ankeränderung, +3): die Anmeldung des
+                  // Partnerbereichs (öffentlich, Auth-Rahmen) sowie Sicherheit und Suche am bestehenden Adminrahmen.
+                  "/partner/login", "/admin/sicherheit", "/admin/suche",
                   "*"];
   const gefunden = [...app.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(gefunden.sort(), [...ROUTEN].sort(), "der Routenbestand hat sich verändert");

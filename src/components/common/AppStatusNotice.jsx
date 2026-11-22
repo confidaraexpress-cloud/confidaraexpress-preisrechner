@@ -14,7 +14,9 @@ import { APP_NOTICE_TEXT } from "../../utils/appVersionCheck.mjs";
 
    Neu geladen wird AUSSCHLIESSLICH auf Klick. Seit dem Redesign (2026-10)
    ohne Symbol: der Satz trägt die Aussage, die Fläche den Ton. */
-export function AppStatusNotice({ suppressUpdate = false }) {
+// `offlineText` (seit 2026-11-22): Admin- und Partnerbereich nennen, was dort ohne Verbindung fehlt — der Satz des
+// Kundenbereichs spricht von Preisen und Buchungen.
+export function AppStatusNotice({ suppressUpdate = false, offlineText = APP_NOTICE_TEXT.offline }) {
   const online = useOnlineStatus();
   const neueVersion = useAppUpdateAvailable();
 
@@ -22,7 +24,7 @@ export function AppStatusNotice({ suppressUpdate = false }) {
     return (
       <div className="alert-wrapper">
         <div className="alert pwa-notice pwa-notice--offline" role="status">
-          <span className="pwa-notice-text">{APP_NOTICE_TEXT.offline}</span>
+          <span className="pwa-notice-text">{offlineText}</span>
         </div>
       </div>
     );

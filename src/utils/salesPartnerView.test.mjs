@@ -210,7 +210,8 @@ test("6b — „So setzt sich Ihre Provision zusammen“: drei Bestandteile und 
   assert.deepEqual(c.total, { label: "Ihr Satz im Oktober", value: "27,50 %" });
   assert.match(c.capNote, /Obergrenze/);
   assert.equal(c.basis, "Die Level ergeben sich aus Ihren aktiven Kunden und versendeten Paketen im September und gelten im Oktober.");
-  assert.equal(c.team, "Teamprovision: Ebene 1 5,00 % · Ebene 2 2,50 %");
+  // Satz vor der Ebene: „Ebene 1 5,00 %“ las sich in der Sichtprüfung wie „Ebene 15,00 %“ (2026-11-22).
+  assert.equal(c.team, "Teamprovision: 5,00 % auf Ebene 1 · 2,50 % auf Ebene 2");
   assert.equal(c.activeSince, "Aktiv seit 01.03.2026");
   // Ein inaktives Konto ist nicht „aktiv seit“ — auch wenn ein Datum mitkäme.
   assert.equal(commissionComposition(normalizeOverview({ ...OVERVIEW, partner: { ...OVERVIEW.partner, status: "inactive" } })).activeSince, null);
@@ -428,13 +429,13 @@ test("10a — Team: zwei Ebenen mit Namen, Belegung ohne Obergrenze, „alle zä
 
   const uebersicht = normalizeOverview(OVERVIEW);
   assert.equal(teamExplanation(team, uebersicht),
-    "Für Ihre Teamprovision zählen alle berechtigten aktiven Partner auf Ebene 1 und Ebene 2. Ihre Sätze: Ebene 1 5,00 % · Ebene 2 2,50 %.");
+    "Für Ihre Teamprovision zählen alle berechtigten aktiven Partner auf Ebene 1 und Ebene 2. Ihre Sätze: 5,00 % auf Ebene 1 · 2,50 % auf Ebene 2.");
   assert.equal(teamExplanation(normalizeTeam(null), null), TEAM_TEXTS.rule);
   // Übergang Backend vor Frontend: ein Server, der noch eine Platzgrenze meldet, entscheidet auch nach
   // ihr — die Erklärung behauptet dann keine unbegrenzte Teamprovision und nennt keine Zahl.
   const altServer = normalizeTeam({ limits: { level1: 10, level2: 10 }, level1: [mitglied(1, true)], level2: [] });
   assert.equal(teamExplanation(altServer, uebersicht),
-    "Ob ein Partner für Ihre Teamprovision zählt, steht bei jedem Partner. Ihre Sätze: Ebene 1 5,00 % · Ebene 2 2,50 %.");
+    "Ob ein Partner für Ihre Teamprovision zählt, steht bei jedem Partner. Ihre Sätze: 5,00 % auf Ebene 1 · 2,50 % auf Ebene 2.");
   for (const text of [teamExplanation(altServer, uebersicht), teamLevelSummary(1, altServer), teamExplanation(team, uebersicht), teamLevelSummary(2, team)]) {
     assert.ok(!/Platz|höchstens|die ersten|Reihenfolge/.test(text), text);
   }
@@ -492,12 +493,17 @@ test("11 — das Portal ruft nur Partnerendpunkte auf und nutzt kein Kundenlayou
   assert.match(seite, /<PartnerLayout\b/);
   assert.match(seite, /const tabs = visiblePartnerTabs\(\);/, "alle Bereiche — auch „Mein Team“ — stehen immer da");
   assert.doesNotMatch(seite, /visiblePartnerTabs\(team/, "der Teambereich hängt nicht mehr an den Einträgen");
-  assert.match(seite, /role="tablist"/);
+  // Bewusste Ankeränderung (2026-11-22, D4): die fünf Bereiche stehen als Verweise in PartnerLayout (Seitenleiste bzw.
+  // untere Leiste), „Verdienst“ wechselt seine zwei Ansichten über Verweise mit aria-current — kein Reiterfeld mehr.
+  assert.doesNotMatch(seite, /role="tablist"|role="tab"/);
+  assert.match(seite, /<nav className="spp-segmente" aria-label="Verdienst">/);
+  assert.match(seite, /aria-current=\{aktiv === v\.id \? "page" : undefined\}/);
   assert.match(seite, /\{aktiv === "account" && <PartnerAccountPanel user=\{user\} \/>\}/);
   // UX-Paket 6: der Bereich steht in der Adresse (?page=…), gelesen nur über die
   // Allowlist, gewechselt ersetzend — kein Bereich im eigenen Seitenzustand mehr.
   assert.match(seite, /const gewuenscht = partnerTabFromSearch\(location\.search\) \|\| "overview";/);
-  assert.match(seite, /navigate\(\{ pathname: location\.pathname, search: partnerTabSearch\(id\) \}, \{ replace: true \}\);/);
+  assert.match(seite, /to=\{\{ pathname: "\/partner", search: partnerTabSearch\(v\.id\) \}\}\s*replace/);
+  assert.match(seite, /navigate\(\{ pathname: location\.pathname, search: sauber \}, \{ replace: true \}\);/);
   assert.match(seite, /if \(location\.search !== sauber\) navigate\(\{ pathname: location\.pathname, search: sauber \}, \{ replace: true \}\);/);
   assert.doesNotMatch(seite, /useState\("overview"\)/, "der Bereich lebt in der Adresse, nicht im Seitenzustand");
   assert.doesNotMatch(seite, /searchParams\.get\("page"\)|location\.state\?\.page/, "kein zweiter, ungeprüfter Leseweg");
@@ -554,6 +560,8 @@ test("Pre-Live — Übersicht: Testkonto nur bei exakt true; Hinweistext", () =>
   // Der Hinweis steht dauerhaft über den Bereichen der Portalseite, nicht in einem Bereich.
   const seite = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "pages", "PartnerPortalPage.jsx"), "utf8");
   const hinweis = seite.indexOf('id="spp-prelive-banner"');
-  assert.ok(hinweis > 0 && hinweis < seite.indexOf('role="tablist"'), "Hinweis vor den Bereichen");
+  // Bewusste Ankeränderung (2026-11-22): vor dem Umschalter von „Verdienst“ und vor dem Bereichsinhalt.
+  assert.ok(hinweis > 0 && hinweis < seite.indexOf('className="spp-segmente"') && hinweis < seite.indexOf('id="spp-tabpanel"'),
+    "Hinweis vor den Bereichen");
   assert.match(seite, /overview\.data\?\.preliveTest === true/);
 });

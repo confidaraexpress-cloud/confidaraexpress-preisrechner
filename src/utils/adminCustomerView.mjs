@@ -90,11 +90,24 @@ export const STATUS_FILTER_OPTIONS = Object.freeze([
 // Paket F (2026-10-23): + `frame` — Buchungsrahmen „alle | ausgeschöpft | verfügbar" (creditLimitView.mjs).
 export const DEFAULT_FILTERS = Object.freeze({ query: "", status: "all", frame: "all" });
 
+// Statusfilter in der Adresse (?status=, Admin-/Partner-Apps 2026-11-22): Zurück und Neuladen behalten ihn, und die
+// Übersicht kann direkt auf „Ausstehend“ verweisen. Unbekannte Werte gelten als „Alle“.
+export function statusAusSuche(search) {
+  const wert = new URLSearchParams(typeof search === "string" ? search : "").get("status");
+  return STATUS_FILTER_OPTIONS.some((o) => o.value === wert && wert !== "all") ? wert : "all";
+}
+export function sucheMitStatus(search, status) {
+  const p = new URLSearchParams(typeof search === "string" ? search : "");
+  if (status && status !== "all") p.set("status", status); else p.delete("status");
+  const s = p.toString();
+  return s ? `?${s}` : "";
+}
+
 // ── Lokale Suche und Filter ─────────────────────────────────────────────────
-// Das Backend bietet für GET /admin/users KEINE Server-Filter (nur limit/offset).
-// Gesucht und gefiltert wird deshalb ausschließlich auf der aktuell geladenen
-// Seite — die Oberfläche sagt das ausdrücklich. Es werden KEINE Backendparameter
-// erfunden.
+// Die Freitextsuche wirkt ausschließlich auf der aktuell geladenen Seite — die
+// Oberfläche sagt das ausdrücklich. Der Status filtert seit 2026-11-22 zusätzlich
+// serverseitig (GET /admin/users?status=); die Suche über alle Kunden bietet
+// /admin/suche. Es werden KEINE weiteren Backendparameter erfunden.
 export const SEARCHABLE_FIELDS = Object.freeze(["company", "name", "email", "vatId", "customerNumber"]);
 
 export function matchesQuery(user, query) {

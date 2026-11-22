@@ -23,6 +23,29 @@ export const setAuthErrorHandler = (fn) => { authErrorHandler = fn; };
 // Invalidierung sein kann).
 export const triggerAuthError = () => { if (authErrorHandler) authErrorHandler(); };
 
+// ── Sicherheitsbestätigung und Passkey-Pflicht im Adminbereich (Betreiberauftrag 2026-11-22, D7) ────────────────────
+// Der Server antwortet bei gültiger Sitzung mit 428, nie mit 401/403 (die hießen hier „Sitzung beendet“):
+//   • STEP_UP_REQUIRED — eine kritische Adminaktion braucht eine frische Passkey-Bestätigung. requireAdmin lehnt sie
+//     VOR dem Routenhandler ab: die Aktion ist nicht gelaufen. Der Adminrahmen registriert einen Handler, der den
+//     Bestätigungsdialog zeigt und true liefert, wenn der Passkey bestätigt hat — erst dann wird GENAU DIESE Anfrage
+//     genau einmal wiederholt (die einzige Wiederholung in apiFetch; sie kann keine Aktion doppelt auslösen, weil die
+//     erste nachweislich nicht ausgeführt wurde). Abbruch: die 428-Antwort geht unverändert an den Aufrufer.
+//   • PASSKEY_SETUP_REQUIRED — der Pflichtschalter ist an und die Sitzung hat keinen zweiten Faktor: der Handler führt
+//     auf die Sicherheitsseite. Keine Abmeldung.
+let stepUpHandler = null;
+export const setStepUpHandler = (fn) => { stepUpHandler = typeof fn === "function" ? fn : null; };
+let passkeySetupHandler = null;
+export const setPasskeySetupHandler = (fn) => { passkeySetupHandler = typeof fn === "function" ? fn : null; };
+
+async function codeDerAntwort(res) {
+  try {
+    const d = await res.clone().json();
+    return d && typeof d.code === "string" ? d.code : null;
+  } catch {
+    return null;
+  }
+}
+
 // ── Zeitüberschreitung (Phase 1 Betriebsreife, F5) ───────────────────────────
 // Bis zu diesem Paket hatte KEIN Request ein Zeitlimit: ein hängender Server
 // (Verbindung angenommen, nie geantwortet) ließ jeden Lade-Spinner unbegrenzt
@@ -79,8 +102,10 @@ export const setzeDemoTransport = (fn) => { demoTransport = typeof fn === "funct
 //     Ein Aufrufer-Signal bleibt voll wirksam (beides bricht denselben fetch ab).
 export async function apiFetch(pathOrUrl, options = {}) {
   if (demoTransport) return demoTransport(pathOrUrl, options);
-  const { auth = false, headers, timeoutMs = DEFAULT_TIMEOUT_MS, signal, ...rest } = options;
+  const { auth = false, headers, timeoutMs = DEFAULT_TIMEOUT_MS, signal, _nachBestaetigung = false, ...rest } = options;
   const url = /^https?:\/\//.test(pathOrUrl) ? pathOrUrl : `${API}${pathOrUrl}`;
+  // Das Token, mit dem DIESE Anfrage läuft (für die Abmeldeentscheidung unten).
+  const gesendetesToken = auth ? token() : null;
   // FormData (Multipart-Upload): der Browser MUSS den Content-Type inklusive
   // Boundary selbst setzen. Daher bei auth:true nur den Bearer-Header, KEINEN
   // JSON-Content-Type. Rückwärtskompatibel — greift ausschließlich für FormData.
@@ -112,9 +137,28 @@ export async function apiFetch(pathOrUrl, options = {}) {
     if (timer) clearTimeout(timer);
     if (signal) signal.removeEventListener("abort", onCallerAbort);
   }
+  if (auth && res.status === 428 && !_nachBestaetigung) {
+    const code = await codeDerAntwort(res);
+    if (code === "STEP_UP_REQUIRED" && stepUpHandler) {
+      let bestaetigt = false;
+      try { bestaetigt = (await stepUpHandler()) === true; } catch { bestaetigt = false; }
+      // Wiederholt wird nur mit DEMSELBEN Token: hat sich währenddessen in einem anderen Tab jemand anderes angemeldet,
+      // liefe die Aktion sonst unter dessen Sitzung (Sicherheitsprüfung FE-1, B2). Dann bleibt es bei der 428.
+      if (bestaetigt && token() === gesendetesToken) return apiFetch(pathOrUrl, { ...options, _nachBestaetigung: true });
+    } else if (code === "PASSKEY_SETUP_REQUIRED" && passkeySetupHandler) {
+      passkeySetupHandler();
+    }
+    return res;
+  }
   if (auth && (res.status === 401 || res.status === 403)) {
-    localStorage.removeItem("ce_token");
-    if (authErrorHandler) authErrorHandler();
+    // Wurde das Token inzwischen durch ein NEUES ersetzt (erster Passkey: der Server tauscht die Sitzung aus; neue
+    // Anmeldung in einem anderen Tab), betrifft diese Ablehnung nur das alte Token — die neue Sitzung bleibt.
+    const aktuell = token();
+    const ersetzt = Boolean(aktuell && gesendetesToken && aktuell !== gesendetesToken);
+    if (!ersetzt) {
+      localStorage.removeItem("ce_token");
+      if (authErrorHandler) authErrorHandler();
+    }
   }
   return res;
 }

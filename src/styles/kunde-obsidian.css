@@ -15,12 +15,12 @@
    und Dokumentation brauchen keine Umbenennung. Die dunkle Fassung liegt unverändert auf ihrem eigenen Branch.
 
    Architektur:
-   • Diese Datei ist die EINE Gestaltungsebene der Familie Blue Light: Kundenbereich, Partnerportal und öffentliche
+   • Diese Datei ist die EINE Gestaltungsebene der Familie Blue Light: Kundenbereich und öffentliche
      Seiten (hooks/useCeBereich.js setzt dort data-ce-familie="blue-light"). Sie steht im Bündel (styles/index.css)
      hinter premium-editorial.css, gefolgt nur von der Adminebene admin-nacht.css; jede Regel hängt an
      :root[data-ce-familie="blue-light"] (gemeinsame Grundlage) oder an einem Bereich der Familie
-     (:root[data-ce-bereich="kunde" | "partner" | "oeffentlich"]). Anmeldung („auth“), Admin-Anmeldung, Adminpanel
-     (eigene Ebene), Partnerregistrierung und der öffentliche Preisrechner (eigenes Bündel) lesen sie nie.
+     (:root[data-ce-bereich="kunde" | "oeffentlich"]). Anmeldung („auth“), Admin-Anmeldung, Adminpanel und
+     Partnerportal (je eigene Nachtebene), Partnerregistrierung und der öffentliche Preisrechner lesen sie nie.
    • Abschnitt 1 ordnet die vorhandenen Tokens in zwei Blöcken um — Familie: Flächen, Tinte, Kanten, Status,
      Seitenleiste, Bediensystem, Titelmaterial, Tiefe; Kundenbereich: Zeilenhöhen, Editorial, Paketbühne, Kennzahlen,
      Demo. Weil die Bereichs-Stylesheets keine Farbliterale tragen, wechselt damit fast die ganze
@@ -401,7 +401,7 @@
 }
 /* Je Bereich seine eigene Hauptfläche; .page-with-navbar nur auf den öffentlichen Seiten — im Kundenbereich ist sie ein
    innerer Rahmen und läge als zweites Band über dem der .main-content. */
-:root[data-ce-familie="blue-light"] :is(.main-content, .spp-main),
+:root[data-ce-familie="blue-light"] .main-content,
 :root[data-ce-bereich="oeffentlich"] .page-with-navbar {
   background-color: var(--ce-ob-grund);
   background-image:
@@ -411,7 +411,7 @@
   background-repeat: no-repeat;
 }
 @media (max-width: 1023px) {
-  :root[data-ce-familie="blue-light"] :is(.main-content, .spp-main),
+  :root[data-ce-familie="blue-light"] .main-content,
   :root[data-ce-bereich="oeffentlich"] .page-with-navbar {
     background-image:
       linear-gradient(180deg, var(--ce-ob-eisband) 0, rgba(232, 240, 255, 0) 14rem),
@@ -985,20 +985,8 @@
    nicht mehr zur Familie: Es trägt die eigene dunkle Ebene Confidara Leitstand Nacht (admin-nacht.css). */
 
 /* ═══════════ 13 · VERTRIEBSPARTNERPORTAL ════════════════════════════════════
-   Eigene Navigation (Kopfleiste und Reiter), Kennzahlen und Provisionsanzeigen bleiben (7.6); Farben aus der Familie,
-   Überschriften und Kennzahlen in Host Grotesk wie im Kundenbereich. */
-:root[data-ce-bereich="partner"] :is(.spp-section-title, .spp-card-title) {
-  font-family: var(--ce-ob-schrift-titel);
-  font-weight: 500;
-  letter-spacing: var(--ce-text-title-section-tracking);
-}
-:root[data-ce-bereich="partner"] .spp-kpi-value {
-  font-family: var(--ce-ob-schrift-titel);
-  font-weight: 400;
-  letter-spacing: -0.035em;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
-}
+   Seit dem Betreiberauftrag 2026-11-22 (D3) nicht mehr Teil der Familie: das Partnerportal trägt die Nachtwelt des
+   Leitstands mit Violett als Rollenakzent (partner-nacht.css). */
 
 /* ═══════════ 14 · ÖFFENTLICHE SEITEN ════════════════════════════════════════
    Sendungsverfolgung, Rechtstexte, Versicherungsinformationen, Partnervereinbarung und Preisrechner-Übernahme (7.2,

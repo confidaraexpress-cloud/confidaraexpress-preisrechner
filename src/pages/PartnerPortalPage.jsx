@@ -114,7 +114,7 @@ export default function PartnerPortalPage() {
         )}
         {aktiv === "credit-notes" && <PartnerCreditNotesPanel />}
         {aktiv === "team" && <PartnerTeamPanel state={team} onRetry={team.reload} overview={overview.data} />}
-        {aktiv === "account" && <PartnerAccountPanel user={user} />}
+        {aktiv === "account" && <PartnerAccountPanel user={user} partnerStatus={status} />}
       </div>
     </PartnerLayout>
   );

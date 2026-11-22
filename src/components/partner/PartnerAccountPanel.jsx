@@ -2,7 +2,10 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { SitzungenKarte } from "../sicherheit/SitzungenKarte";
+import { AppKarten } from "../sicherheit/AppKarten";
 import { PARTNER_LOGIN_PATH } from "../../utils/partnerAnmeldung.mjs";
+import { APP_PARTNER } from "../../utils/appHost.mjs";
+import { PUSH_TEXT } from "../../utils/pushMitteilungen.mjs";
 import { SettingsSection } from "../dashboard/ProfileCardHead";
 import { EmailChangeSection } from "../dashboard/EmailChangeSection";
 import { PasswordChangeSection } from "../dashboard/PasswordChangeSection";
@@ -28,7 +31,7 @@ import { partnerAccountRows, partnerLoginEmailRow } from "../../utils/salesPartn
    (PATCH /kunde/password, E-Mail-Änderung, GET /kundenbereich und die
    /api/sales-partner/me/*-Endpunkte); jede andere Kundenroute antwortet einem
    Partner mit 403 und wird hier nie aufgerufen. */
-export function PartnerAccountPanel({ user }) {
+export function PartnerAccountPanel({ user, partnerStatus = null }) {
   const { logout } = useAuth();
   const navigate = useNavigate();
   return (
@@ -58,6 +61,11 @@ export function PartnerAccountPanel({ user }) {
       {/* Angemeldete Geräte und „Auf allen Geräten abmelden“ (Betreiberauftrag 2026-11-22, D7): dieselbe Karte wie im
           Adminbereich, mit dem Weg eines Partners bei Verlust — erst Passwort ändern, dann überall abmelden. */}
       <SitzungenKarte anmeldePfad={PARTNER_LOGIN_PATH} klasse="spp-geraete" verlorenText={VERLOREN_PARTNER} />
+
+      {/* Partner-App (FE-2): Installation und Mitteilungen, nur auf dem App-Host (Hauptdomain unverändert). Mitteilungen
+          nur für aktive Partner — der Server antwortet sonst mit 403, und apiFetch wertet 403 als Sitzungsende. */}
+      <AppKarten app={APP_PARTNER} gesperrt={partnerStatus !== "active"}
+        gesperrtText={partnerStatus == null ? PUSH_TEXT.laedt : PUSH_TEXT.partnerInaktiv} />
 
       {/* Am Telefon steht „Abmelden“ hier (am Desktop zusätzlich im Fuß der Seitenleiste; partner.css). */}
       <div className="spp-konto-abmelden">

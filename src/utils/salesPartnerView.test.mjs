@@ -498,7 +498,10 @@ test("11 — das Portal ruft nur Partnerendpunkte auf und nutzt kein Kundenlayou
   assert.doesNotMatch(seite, /role="tablist"|role="tab"/);
   assert.match(seite, /<nav className="spp-segmente" aria-label="Verdienst">/);
   assert.match(seite, /aria-current=\{aktiv === v\.id \? "page" : undefined\}/);
-  assert.match(seite, /\{aktiv === "account" && <PartnerAccountPanel user=\{user\} \/>\}/);
+  // Bewusste Ankeränderung (2026-11-22, FE-2): „Konto“ bekommt zusätzlich den Partnerstatus derselben Quelle wie das
+  // Statusabzeichen — die Mitteilungskarte ruft die Push-Routen nur für aktive Partner auf (sonst 403 = Abmeldung).
+  assert.match(seite, /\{aktiv === "account" && <PartnerAccountPanel user=\{user\} partnerStatus=\{status\} \/>\}/);
+  assert.match(seite, /const status = overview\.data\?\.partner\.status \|\| user\?\.salesPartner\?\.status \|\| null;/);
   // UX-Paket 6: der Bereich steht in der Adresse (?page=…), gelesen nur über die
   // Allowlist, gewechselt ersetzend — kein Bereich im eigenen Seitenzustand mehr.
   assert.match(seite, /const gewuenscht = partnerTabFromSearch\(location\.search\) \|\| "overview";/);

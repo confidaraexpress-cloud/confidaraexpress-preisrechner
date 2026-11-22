@@ -19,6 +19,7 @@ import { AuthSeite, EmailBestaetigungSeite, AdminAnmeldungSeite, PartnerAnmeldun
 import { ADMIN_LOGIN_PATH } from "./utils/roleLanding.mjs";
 import { istKundenAuthPfad } from "./utils/kundenAuthPfad.mjs";
 import { istKundenbereichPfad, ohneDemoBasis } from "./utils/kundenBereichPfad.mjs";
+import { aktuelleApp, APP_KUNDE } from "./utils/appHost.mjs";
 
 // Die Demo lädt ihren eigenen Teil nur unter /demo (eigener Chunk, keine Last für den Kundenbereich).
 const DemoApp = React.lazy(() => import("./demo/DemoApp.jsx"));
@@ -59,13 +60,16 @@ registerServiceWorker();
    bei abgelaufenem Token) verliert. Der Parameter verschwindet sofort aus der
    Adresse; gespeichert wird erst nach ausdrücklicher Freigabe durch die
    öffentliche Konfiguration (utils/referralCapture.mjs). */
-if (!DEMO_ZUSTAND.aktiv) startReferralCapture({ loadConfig: loadSalesPartnerPublicConfig });
+// Admin-/Partner-App (FE-2): Partnerregistrierung und Preisrechner-Übernahme gibt es nur im Kundenbereich — auf den
+// App-Hosts wird dafür nichts gelesen und nichts gespeichert.
+const IM_KUNDENBEREICH = aktuelleApp() === APP_KUNDE;
+if (!DEMO_ZUSTAND.aktiv && IM_KUNDENBEREICH) startReferralCapture({ loadConfig: loadSalesPartnerPublicConfig });
 
 /* Öffentlicher Preisrechner: die Tarifwahl kommt als Übergabetoken im Fragment von
    /preisrechner-uebernahme. Es wird HIER gelesen — vor dem ersten Rendern, damit es weder der
    Router noch die Anmeldung verliert —, verschwindet sofort aus der Adresse und liegt danach
    nur im Modulspeicher (utils/publicQuoteHandoffStore.mjs), nie im Storage. */
-if (!DEMO_ZUSTAND.aktiv) captureHandoffFromLocation();
+if (!DEMO_ZUSTAND.aktiv && IM_KUNDENBEREICH) captureHandoffFromLocation();
 
 /* Die äußerste Fehlergrenze. Sie liegt bewusst ÜBER Router und AuthProvider:
    die Bereichsgrenzen weiter innen hängen selbst am Router und können einen

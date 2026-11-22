@@ -4,6 +4,7 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { ErrorState, LoadingState } from "../../components/ui/StateView";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import { SitzungenKarte } from "../../components/sicherheit/SitzungenKarte";
+import { AppKarten } from "../../components/sicherheit/AppKarten";
 import { useAuth } from "../../context/AuthContext";
 import {
   sicherheitLaden, passkeyOptionen, passkeyRegistrieren, passkeyUmbenennen, passkeyEntfernen, codesErneuern,
@@ -14,6 +15,7 @@ import {
 import { passkeyErstellen, passkeyFehlertext, passkeysVerfuegbar, PASSKEY_TEXTE } from "../../utils/webauthn.mjs";
 import { copyToClipboard } from "../../utils/clipboard.mjs";
 import { ADMIN_LOGIN_PATH } from "../../utils/adminAnmeldung.mjs";
+import { APP_ADMIN } from "../../utils/appHost.mjs";
 
 /* ── Adminbereich · Sicherheit (/admin/sicherheit, Betreiberauftrag 2026-11-22, D7) ─────────────────────────────────
    Passkeys einrichten und verwalten, Wiederherstellungscodes, angemeldete Geräte. Erreichbar auch bei eingeschaltetem
@@ -329,6 +331,10 @@ export default function AdminSicherheitPage() {
           )}
 
           <SitzungenKarte anmeldePfad={ADMIN_LOGIN_PATH} klasse="adm-sicherheit-karte" />
+
+          {/* Admin-App (FE-2): Installation und Mitteilungen, nur auf dem App-Host (Hauptdomain unverändert). Nicht,
+              solange ein Pflicht-Passkey fehlt — die Push-Routen antworten dann mit 428 PASSKEY_SETUP_REQUIRED. */}
+          {!pflichtHinweis && <AppKarten app={APP_ADMIN} />}
         </div>
       )}
 

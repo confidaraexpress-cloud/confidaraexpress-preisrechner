@@ -17,6 +17,11 @@ import { demoAusgangsziel } from "./demo/demoModus.mjs";
 import { AuthSeite, EmailBestaetigungSeite, AdminAnmeldungSeite, PartnerAnmeldungSeite } from "./pages/authSeite";
 import { statischeAuthSeite } from "./utils/kundenAuthPfad.mjs";
 import { istAdminbereichPfad, istKundenbereichPfad } from "./utils/kundenBereichPfad.mjs";
+import { aktuelleApp, appStartPfad, APP_KUNDE, pfadGehoertZurApp } from "./utils/appHost.mjs";
+
+// Admin- und Partner-App (admin./partner.confidaraexpress.de, FE-2): welche App diese Seitenladung ist, steht mit dem
+// Host fest und ändert sich nicht. Auf der Hauptdomain ist es der Kundenbereich — dort bleibt alles wie bisher.
+const APP = aktuelleApp();
 
 // Die Kunden-Anmeldung: eigener Codeabschnitt wie jede Seite, aber vorladbar (pages/authSeite.js) — main.jsx lädt
 // sie vor dem ersten Rendern, damit sie das statische Seitengerüst ohne Ladefläche ersetzt (Abschnitt 5, 2026-10-27).
@@ -124,6 +129,11 @@ function DemoNeuLaden() {
 export default function App() {
   const { authed, loadingUser, user } = useAuth();
   const { pathname } = useLocation();
+  // Hostweiche der Apps: eine App zeigt nur ihre eigenen Seiten (utils/appHost.mjs). Alles andere — Kundenbereich,
+  // Registrierung, Demo, Startseite — führt auf ihren Start, noch vor der Sitzungsprüfung: so baut die Admin-App nie
+  // eine Seite des Kundenbereichs in ihrem eigenen Speicher auf. nginx liefert auf den App-Hosts ohnehin nur das
+  // Startdokument der App; diese Weiche ist die zweite, unabhängige Schicht.
+  if (APP !== APP_KUNDE && !pfadGehoertZurApp(APP, pathname)) return <Navigate to={appStartPfad(APP)} replace />;
   // Die Sitzungsprüfung eines gespeicherten Tokens hält die Anwendung an — auf jedem Pfad, wie bisher: liefe die
   // Anmeldung daneben, überschriebe eine verspätete Antwort eine neue Anmeldung oder die E-Mail-Bestätigung. Ohne
   // Token gibt es keine Prüfung und keinen Ladebildschirm (AuthContext, Audit B.1). Auf den Seiten mit statischem

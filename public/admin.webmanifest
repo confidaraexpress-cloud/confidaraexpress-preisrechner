@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "ConfidaraExpress Admin",
+  "short_name": "CE Admin",
+  "description": "Adminbereich von ConfidaraExpress: Kunden, Sendungen, Rechnungen, Klärungen und Support.",
+  "lang": "de",
+  "dir": "ltr",
+  "start_url": "/admin",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#060B1C",
+  "background_color": "#060B1C",
+  "icons": [
+    { "src": "/app-icon-admin-192-v1.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/app-icon-admin-512-v1.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/app-icon-admin-maskable-192-v1.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/app-icon-admin-maskable-512-v1.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

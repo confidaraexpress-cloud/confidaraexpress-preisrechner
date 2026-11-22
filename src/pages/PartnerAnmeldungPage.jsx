@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from "react";
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { KundenbereichLink } from "../components/common/KundenbereichLink";
 import { useAuth } from "../context/AuthContext";
 import { useCeBereich } from "../hooks/useCeBereich";
 import { BrandLogo } from "../components/ui/BrandLogo";
@@ -152,13 +153,13 @@ export default function PartnerAnmeldungPage() {
             </form>
           )}
           <p className="spp-anmeldung-fuss">
-            {T.partnerWerden} <Link to="/partner-registrieren">{T.partnerWerdenLink}</Link>
+            {T.partnerWerden} <KundenbereichLink to="/partner-registrieren">{T.partnerWerdenLink}</KundenbereichLink>
           </p>
         </section>
       </main>
       <nav className="spp-anmeldung-recht" aria-label="Rechtliches">
-        <Link to="/impressum">Impressum</Link>
-        <Link to="/datenschutz">Datenschutz</Link>
+        <KundenbereichLink to="/impressum">Impressum</KundenbereichLink>
+        <KundenbereichLink to="/datenschutz">Datenschutz</KundenbereichLink>
       </nav>
     </div>
   );

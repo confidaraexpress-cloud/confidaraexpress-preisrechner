@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { KundenbereichLink } from "../components/common/KundenbereichLink";
 import { useAuth } from "../context/AuthContext";
 import { useCeBereich } from "../hooks/useCeBereich";
 import { useLeitstandZeiger } from "../hooks/useLeitstandZeiger";
@@ -509,8 +510,8 @@ export default function AdminAnmeldungPage() {
         </section>
       </main>
       <nav className="auth-admin-recht" aria-label={T.recht}>
-        <Link to="/impressum" target="_blank" rel="noopener noreferrer">Impressum</Link>
-        <Link to="/datenschutz" target="_blank" rel="noopener noreferrer">Datenschutz</Link>
+        <KundenbereichLink to="/impressum" target="_blank" rel="noopener noreferrer">Impressum</KundenbereichLink>
+        <KundenbereichLink to="/datenschutz" target="_blank" rel="noopener noreferrer">Datenschutz</KundenbereichLink>
       </nav>
     </div>
   );

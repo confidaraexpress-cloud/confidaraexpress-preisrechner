@@ -2,6 +2,11 @@ import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { LoadingScreen } from "../components/common/LoadingScreen";
+import { aktuelleApp, APP_ADMIN } from "../utils/appHost.mjs";
+import { AppKontoHinweis } from "./AppKontoHinweis";
+
+// Admin-App (admin.confidaraexpress.de, FE-2): der Host ändert sich während einer Seitenladung nicht.
+const IN_ADMIN_APP = aktuelleApp() === APP_ADMIN;
 
 // ── AdminRoute — reines UX-Gate ──────────────────────────────────────────────
 // Versteckt den Adminbereich vor Nicht-Admins. Dies ist AUSDRÜCKLICH KEIN
@@ -14,7 +19,7 @@ import { LoadingScreen } from "../components/common/LoadingScreen";
 // kein clientseitiges JWT-Decoding, kein zusätzlicher Request. Kein Logging von
 // Nutzerdaten.
 export function AdminRoute({ children }) {
-  const { authed, loadingUser, user } = useAuth();
+  const { authed, loadingUser, user, logout } = useAuth();
   const location = useLocation();
 
   // Während der initiale /kundenbereich-Check läuft: neutraler Ladezustand —
@@ -27,7 +32,10 @@ export function AdminRoute({ children }) {
   if (!authed) return <Navigate to="/admin/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
 
   // Eingeloggt, aber keine Admin-Rolle → zurück in den Kundenbereich. Bewusst
-  // ohne Hinweis, dass /admin existiert (keine Informationspreisgabe).
+  // ohne Hinweis, dass /admin existiert (keine Informationspreisgabe). In der Admin-App gibt es keinen Kundenbereich
+  // (die Hostweiche brächte das Konto im Kreis hierher zurück) — dort ein Hinweis mit Abmelden; der Host selbst nennt
+  // die App ohnehin.
+  if (user?.role !== "admin" && IN_ADMIN_APP) return <AppKontoHinweis app={APP_ADMIN} onLogout={logout} />;
   if (user?.role !== "admin") return <Navigate to="/dashboard" replace />;
 
   return children;

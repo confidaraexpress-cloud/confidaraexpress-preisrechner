@@ -128,6 +128,9 @@ const KNOWN_FORM_FIELDS = new Set([
   "name", "email", "password", "company_name", "vat_id", "vat_id_absent", "legal_form", "street", "zip", "city", "country",
   "businessCustomerConfirmed", "termsAcknowledged", "monthly_shipment_volume",
 ]);
+// Lesend für die Schrittführung (registrationSteps.mjs, Premium UX 4.0): jedes Feld, das der Server nennen darf, gehört
+// zu genau einem Schritt — der Test dort prüft es gegen diese Liste statt gegen eine zweite Aufzählung.
+export const REG_KNOWN_FIELDS = Object.freeze([...KNOWN_FORM_FIELDS]);
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Erklärungen bei der Registrierung (Go-Live Paket C) — ADDITIV. Die Regeln oben

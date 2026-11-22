@@ -46,11 +46,14 @@ test("4 — Formular: „USt-IdNr.“ mit Pflichtstern, required, Hinweis und Fe
   assert.match(form, /htmlFor="reg-vat">\{VAT_ID_TEXT\.label\} <Req \/><\/label>/);
   const feld = form.slice(form.indexOf('id="reg-vat"'), form.indexOf("{errors.vat_id &&"));
   for (const muster of [/required/, /aria-required="true"/, /aria-invalid=\{errors\.vat_id \? "true" : undefined\}/,
-                        /aria-describedby="reg-vat-hint"/, /autoComplete="off"/]) {
+                        // Premium UX 4.0 (A3, 2026-11-22): liegt ein Fehler vor, nennt das Feld Hinweis UND Fehler.
+                        /aria-describedby=\{errors\.vat_id \? "reg-vat-hint reg-vat-error" : "reg-vat-hint"\}/,
+                        /autoComplete="off"/]) {
     assert.match(feld, muster);
   }
   assert.ok(!/placeholder=/.test(feld), "ein Musterwert steht im Pflichtfeld");
   assert.match(form, /<span className="auth-field-hint" id="reg-vat-hint">\{VAT_ID_TEXT\.hint\}<\/span>/);
+  assert.match(form, /\{errors\.vat_id && <span className="auth-field-error" id="reg-vat-error">\{errors\.vat_id\}<\/span>\}/);
   assert.ok(!/USt-ID <span className="auth-optional">\(optional\)<\/span>/.test(form), "das Feld heißt noch optional");
   // Keine Behauptung einer behördlichen Prüfung.
   assert.match(VAT_ID_TEXT.hint, /keine behördliche Bestätigung/);

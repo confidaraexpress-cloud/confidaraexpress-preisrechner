@@ -1752,6 +1752,205 @@
 [data-ce-bereich="auth"] .email-change-confirm-secondary:hover { color: var(--ce-pr-signal-hover); background: var(--ce-pr-signal-soft); }
 [data-ce-bereich="auth"] .email-change-confirm-secondary:focus-visible { outline: 2px solid var(--ce-pr-signal); outline-offset: 2px; }
 
+/* Registrierung in drei Schritten (Premium UX 4.0, Betreiberentscheidung A3, 2026-11-22): Schrittleiste, Überschrift
+   des Schritts, Zusammenfassung vor dem Absenden und eine Aktionsleiste. Nummern, weil die Schritte eine Folge sind;
+   ein Häkchen zeigt einen erledigten Schritt, der aktuelle steht im Signalblau. Inaktive Schritte tragen `hidden` —
+   keine Regel überschreibt das. Ab 1680 px wachsen Zurück, Weiter und Felder mit (Abschnitt unten). */
+[data-ce-bereich="auth"] .auth-reg-schritt[hidden] { display: none !important; }
+[data-ce-bereich="auth"] .auth-reg-leiste {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -4px 0 2px;
+  padding: 0;
+  list-style: none;
+  /* Abfragebehälter für die eigene Breite (Abschnitt „Schmal“ unten). */
+  container: reg-leiste / inline-size;
+}
+[data-ce-bereich="auth"] .auth-reg-punkt { display: flex; flex: 1 1 0; align-items: center; gap: 8px; min-width: 0; }
+[data-ce-bereich="auth"] .auth-reg-punkt:last-child { flex: 0 0 auto; }
+[data-ce-bereich="auth"] .auth-reg-punkt:not(:last-child)::after {
+  content: "";
+  flex: 1 1 auto;
+  min-width: 12px;
+  height: 1px;
+  background: var(--ce-pr-hairline);
+}
+[data-ce-bereich="auth"] .auth-reg-punkt--erledigt::after { background: var(--ce-pr-signal-ink); }
+[data-ce-bereich="auth"] .auth-reg-punkt-ziel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ce-color-text-secondary);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+[data-ce-bereich="auth"] button.auth-reg-punkt-ziel { border-radius: 6px; cursor: pointer; }
+[data-ce-bereich="auth"] button.auth-reg-punkt-ziel:hover .auth-reg-name { text-decoration: underline; text-underline-offset: 3px; }
+[data-ce-bereich="auth"] button.auth-reg-punkt-ziel:focus-visible { outline: 2px solid var(--ce-pr-signal); outline-offset: 2px; }
+[data-ce-bereich="auth"] .auth-reg-marke {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--ce-color-border-interactive);
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-surface);
+  color: var(--ce-color-text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1;
+}
+[data-ce-bereich="auth"] :is(.auth-reg-punkt--aktiv, .auth-reg-punkt--erledigt) .auth-reg-punkt-ziel { color: var(--ce-color-text-primary); }
+[data-ce-bereich="auth"] .auth-reg-punkt--aktiv .auth-reg-marke { border-color: var(--ce-pr-signal); background: var(--ce-pr-signal); color: var(--ce-color-text-inverse); }
+[data-ce-bereich="auth"] .auth-reg-punkt--erledigt .auth-reg-marke { border-color: transparent; background: var(--ce-pr-signal-soft); color: var(--ce-pr-signal-ink); }
+[data-ce-bereich="auth"] .auth-reg-titel {
+  margin: 14px 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--ce-color-text-primary);
+}
+[data-ce-bereich="auth"] .auth-reg-titel:focus { outline: none; }
+[data-ce-bereich="auth"] .auth-reg-titel:focus-visible { outline: 2px solid var(--ce-pr-signal); outline-offset: 4px; border-radius: 4px; }
+[data-ce-bereich="auth"] .auth-reg-hinweis { margin: -4px 0 16px; font-size: 0.9375rem; line-height: 1.5; color: var(--ce-color-text-secondary); }
+[data-ce-bereich="auth"] .auth-reg-uebersicht { display: grid; gap: 12px; }
+[data-ce-bereich="auth"] .auth-reg-gruppe {
+  padding: 10px 16px 14px;
+  border: 1px solid var(--ce-pr-hairline);
+  border-radius: var(--ce-pr-radius-control-lg);
+  background: var(--ce-color-surface-muted);
+}
+[data-ce-bereich="auth"] .auth-reg-gruppe-kopf { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+[data-ce-bereich="auth"] .auth-reg-gruppe-titel { margin: 0; font-size: 0.9375rem; font-weight: 600; line-height: 1.4; color: var(--ce-color-text-primary); }
+[data-ce-bereich="auth"] .auth-reg-aendern {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin-right: -8px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ce-pr-signal-ink);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+[data-ce-bereich="auth"] .auth-reg-aendern:hover { text-decoration: underline; text-underline-offset: 3px; }
+[data-ce-bereich="auth"] .auth-reg-aendern:focus-visible { outline: 2px solid var(--ce-pr-signal); outline-offset: 1px; }
+[data-ce-bereich="auth"] .auth-reg-liste { display: grid; gap: 6px; margin: 4px 0 0; }
+[data-ce-bereich="auth"] .auth-reg-zeile { display: grid; grid-template-columns: minmax(0, 10.5rem) minmax(0, 1fr); gap: 2px 16px; }
+[data-ce-bereich="auth"] .auth-reg-zeile dt { font-size: 0.875rem; line-height: 1.45; color: var(--ce-color-text-secondary); }
+[data-ce-bereich="auth"] .auth-reg-zeile dd { margin: 0; font-size: 0.9375rem; line-height: 1.45; color: var(--ce-color-text-primary); overflow-wrap: break-word; }
+/* Eine Leiste: links zurück (ohne Prüfung), rechts der eine Absendeknopf des Schritts über die übrige Breite. */
+[data-ce-bereich="auth"] .auth-reg-aktionen { display: flex; align-items: stretch; gap: 12px; margin-top: 22px; }
+[data-ce-bereich="auth"] .auth-reg-aktionen .auth-cta { flex: 1 1 auto; width: auto; }
+[data-ce-bereich="auth"] .auth-reg-zurueck {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 0 18px 0 14px;
+  border: 1px solid var(--ce-color-border-interactive);
+  border-radius: var(--ce-pr-radius-control-lg);
+  background: var(--ce-color-surface);
+  color: var(--ce-color-text-primary);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color var(--ce-motion-fast) var(--ce-motion-ease-standard),
+    border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+[data-ce-bereich="auth"] .auth-reg-zurueck:hover { border-color: var(--ce-color-border-strong); background: var(--ce-color-surface-muted); }
+[data-ce-bereich="auth"] .auth-reg-zurueck:focus-visible { outline: 2px solid var(--ce-pr-signal); outline-offset: 2px; }
+@media (pointer: coarse) {
+  [data-ce-bereich="auth"] .auth-reg-aendern { min-height: 44px; }
+}
+/* Jeder Name steht zweimal im Markup: sichtbar (.auth-reg-name) und nur für Screenreader (.sr-only.auth-reg-name-sr).
+   Angezeigt wird immer genau eine Fassung, so liest der Screenreader jeden Namen einmal. Breit ist das die sichtbare.
+   Die Screenreader-Fassung trägt die Klasse sr-only, damit die Layout-Wächter sie nicht als abgeschnittenen Text melden;
+   die sichtbare bleibt ohne aria-hidden in ihrem Prüfbereich. */
+[data-ce-bereich="auth"] .auth-reg-name-sr { display: none; }
+/* Schmal: die Leiste nennt sichtbar nur den aktuellen Schritt; die übrigen Namen bleiben für Screenreader lesbar. Die
+   Punkte bemessen sich nach ihrem Inhalt und teilen sich den Rest (gleich lange Linien): Mit gleichen Anteilen bekam der
+   aktuelle Punkt nur ein Drittel der Leiste, und ein langer Name („Unternehmen“) ragte über seinen Punkt hinaus. Die
+   Zusammenfassung stellt Bezeichnung und Wert untereinander. */
+@media (max-width: 30em) {
+  [data-ce-bereich="auth"] .auth-reg-punkt { flex: 1 1 auto; min-width: auto; }
+  [data-ce-bereich="auth"] .auth-reg-punkt:not(.auth-reg-punkt--aktiv) .auth-reg-name { display: none; }
+  [data-ce-bereich="auth"] .auth-reg-punkt:not(.auth-reg-punkt--aktiv) .auth-reg-name-sr { display: inline; }
+  [data-ce-bereich="auth"] .auth-reg-zeile { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}
+/* Sehr eng (große Browserschrift auf dem Telefon): Ist die Leiste schmaler als 16rem, passen drei Marken und der längste
+   Name nicht mehr in eine Zeile. Dann bleibt auch der aktuelle Name nur für Screenreader; die Überschrift direkt darunter
+   nennt den Schritt sichtbar. Gemessen wird die Leiste selbst, in rem, damit die Grenze mit der Schriftgröße mitwächst. */
+@container reg-leiste (width < 16rem) {
+  [data-ce-bereich="auth"] .auth-reg-punkt--aktiv .auth-reg-name { display: none; }
+  [data-ce-bereich="auth"] .auth-reg-punkt--aktiv .auth-reg-name-sr { display: inline; }
+}
+@media (forced-colors: active) {
+  [data-ce-bereich="auth"] .auth-reg-punkt--aktiv .auth-reg-marke { border: 2px solid CanvasText; }
+  [data-ce-bereich="auth"] .auth-reg-punkt:not(:last-child)::after { background: CanvasText; }
+}
+
+/* Premium UX 4.0 (Betreiberentscheidung A2, 2026-11-22): Maß auf großen Bildschirmen. Zweispaltig steht die Bühne
+   senkrecht mittig, sobald sie kürzer ist als das Fenster: Die Seite wird zur Flexspalte, die Bühne verliert ihre
+   Mindesthöhe und hält sich mit automatischen Rändern in der Mitte — ist sie höher als das Fenster, beginnt sie oben
+   wie bisher (kein Überlauf nach oben). Die Reihe „rest“ nimmt weiter ein langes Blatt auf, das Blatt bleibt oben
+   bündig mit dem Satz: Ein eingeblendeter Fehler verschiebt nichts. Gerüst und fertige Seite tragen dieselben Klassen.
+   Ab 1680 und ab 2240 px (die Stufen des Inhaltsrahmens, variables.css) wächst die Bühne je einmal — Rahmen, Blatt,
+   Satz, Nachtkarte, Felder und Aktion zusammen; kein proportionales Mitwachsen. */
+@media (min-width: 64em) {
+  [data-ce-bereich="auth"] .auth-page:has(> .auth-shell > .auth-kopf) { display: flex; flex-direction: column; }
+  [data-ce-bereich="auth"] .auth-shell:has(> .auth-kopf) { min-height: 0; margin-block: auto; }
+}
+/* Die erste Stufe hält die Höhe: 1920 × 1080 und 1680 × 1050 zeigen die ganze Bühne ohne Scrollen, die Nachtkarte
+   behält ihr Maß. Erst ab 2240 px (QHD und größer) wächst auch sie. */
+@media (min-width: 1680px) {
+  [data-ce-bereich="auth"] .auth-shell:has(> .auth-kopf) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 480px);
+    column-gap: 96px;
+    max-width: 86rem;
+  }
+  [data-ce-bereich="auth"] .auth-shell:has(> .auth-kopf):has(.auth-card--register) { grid-template-columns: minmax(0, 1fr) minmax(0, 640px); }
+  [data-ce-bereich="auth"] .auth-brand .ce-brandmark-img { width: 148px; }
+  [data-ce-bereich="auth"] .auth-hero { max-width: 740px; }
+  [data-ce-bereich="auth"] .auth-title { font-size: clamp(3.75rem, 1.2vw + 2.5rem, 4rem); }
+  [data-ce-bereich="auth"] .auth-sub-2 { font-size: 1.125rem; }
+  [data-ce-bereich="auth"] .auth-card { padding: 32px 36px 34px; }
+  [data-ce-bereich="auth"] :is(.auth-input, .auth-cta, .auth-reg-zurueck) { min-height: 52px; }
+}
+@media (min-width: 2240px) {
+  [data-ce-bereich="auth"] .auth-shell:has(> .auth-kopf) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 536px);
+    column-gap: 128px;
+    max-width: 100rem;
+    padding: 56px 56px 36px;
+  }
+  [data-ce-bereich="auth"] .auth-shell:has(> .auth-kopf):has(.auth-card--register) { grid-template-columns: minmax(0, 1fr) minmax(0, 704px); }
+  [data-ce-bereich="auth"] .auth-brand .ce-brandmark-img { width: 168px; }
+  [data-ce-bereich="auth"] .auth-hero { max-width: 880px; }
+  [data-ce-bereich="auth"] .auth-title { font-size: clamp(4.25rem, 1.4vw + 2.5rem, 4.75rem); }
+  [data-ce-bereich="auth"] .auth-map { margin-top: 36px; }
+  [data-ce-bereich="auth"] .auth-map-frame { width: min(100%, 680px); }
+  [data-ce-bereich="auth"] .auth-card { padding: 42px 46px 44px; }
+  [data-ce-bereich="auth"] :is(.auth-input, .auth-cta, .auth-reg-zurueck) { min-height: 56px; }
+}
+
 /* Statisches Seitengerüst (login.html, register.html): dieselben Bausteine, nicht bedienbar (inert, aria-hidden),
    ohne Kennungen — React ersetzt es beim ersten Rendern. Die Platzhalter der Felder sind leere Felder. */
 [data-ce-bereich="auth"] .auth-geruest-feld { pointer-events: none; }

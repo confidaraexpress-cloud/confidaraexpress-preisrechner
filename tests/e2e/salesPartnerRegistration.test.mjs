@@ -22,6 +22,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import { registrierungAbsenden } from "./helpers/registrierung.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -83,22 +84,12 @@ const speicher = (page) => page.evaluate(() => ({
   token: localStorage.getItem("ce_token"),
 }));
 
+// Die Kundenregistrierung in drei Schritten (Premium UX 4.0, A3): Zugang, Unternehmen (Firma, USt-IdNr. — Pflicht seit
+// Auftrag 2 / P10 —, Versandvolumen — Pflicht seit Phase 1), Prüfen mit beiden Pflichterklärungen (Unternehmer, AGB),
+// dann „Konto beantragen“ — über den gemeinsamen Bedienvertrag.
 async function kundenformularAbsenden(page) {
   await page.waitForSelector("#reg-name");
-  await page.fill("#reg-name", "Max Mustermann");
-  await page.fill("#reg-email", "einkauf@muster-logistik.de");
-  await page.fill("#reg-company", "Muster Logistik GmbH");
-  // Auftrag 2 / P10: die USt-IdNr. ist bei jeder Neuregistrierung Pflicht.
-  await page.fill("#reg-vat", "DE123456789");
-  // Phase 1 (Canonical v2.117): das voraussichtliche monatliche Versandvolumen ist bei jeder Neuregistrierung Pflicht.
-  await page.locator("#reg-volume").selectOption("11_50");
-  const pw = page.locator('.auth-input[type="password"]');
-  await pw.nth(0).fill("EinSicheresPasswort2026");
-  await pw.nth(1).fill("EinSicheresPasswort2026");
-  // Seit der Pflichterklärung bei der Registrierung (Unternehmer, AGB) gehören beide Häkchen dazu.
-  await page.click("#reg-business .auth-checkbox");
-  await page.click("#reg-terms .auth-checkbox");
-  await page.locator("button.auth-cta").click();
+  await registrierungAbsenden(page);
 }
 
 test.before(async () => {

@@ -222,13 +222,13 @@ export function Profile({ user, utility }) {
   // ── Render-Helfer ──────────────────────────────────────────────────────────
   // Der gemeinsame Abschnitt (SettingsSection) kommt aus ProfileCardHead.jsx —
   // dieselbe Fassung nutzen auch die drei ausgelagerten Einstellungsabschnitte.
-  // „Bearbeiten" ist eine Textaktion oben rechts in der Inhaltsfläche; der
+  // „Bearbeiten" steht als umrandeter Knopf rechts im Kopf der Karte (Premium UX 4.0, A5); der
   // zugängliche Name nennt zusätzlich den Bereich und enthält das sichtbare Wort.
   const editButton = (card, ref, onClick, label) => (
     <button
       type="button"
       ref={ref}
-      className="btn btn-ghost btn-sm profile-card-edit-action"
+      className="btn btn-outline btn-sm profile-card-edit-action"
       onClick={onClick}
       disabled={isEditActionDisabled(editCard, card)}
       aria-label={label}
@@ -524,6 +524,10 @@ export function Profile({ user, utility }) {
           className="profile-page-head"
         />
 
+        {/* Premium UX 4.0 (A5): EIN Rahmen für Kontokopf, Speicherhinweis und Abschnitte. Auf breiten Flächen steht
+            der Kontokopf als klebende Spalte rechts neben den Abschnitten, sonst darüber (premium-editorial.css §19).
+            Die DOM-Reihenfolge bleibt: erst der Kopf, dann die Abschnitte. */}
+        <div className="profile-layout">
         {/* Kompakter Identitätskopf: Firmenmarke (Initiale aus derselben Quelle
             wie Benutzerchip), Firmenname, Login-E-Mail, Kundennummer und der
             Kontostatus — genau EINMAL. Zahlungsziel und Zahlungsweise stehen im
@@ -558,8 +562,9 @@ export function Profile({ user, utility }) {
 
         {/* Einspaltige Abschnitte in der Reihenfolge der Kontopflege:
             Unternehmensdaten → Ansprechpartner → Logo → Versanddokumente →
-            Abrechnung → Sicherheit → App. Jeder Abschnitt: links Titel und
-            Erklärung, rechts Daten bzw. Bedienelemente. */}
+            Abrechnung → Sicherheit → App. Jeder Abschnitt ist eine Karte mit
+            integriertem Kopf (Titel, Erklärung, Aktion), darunter Daten bzw.
+            Bedienelemente (ProfileCardHead.jsx). */}
         <div className="profile-sections">
           {renderCompanyCard()}
           {renderContactCard()}
@@ -573,6 +578,7 @@ export function Profile({ user, utility }) {
           {/* „ConfidaraExpress als App" — der dauerhafte Ort für die
               Installation, direkt nach „Sicherheit" (dieses Gerät). */}
           <AppInstallCard />
+        </div>
         </div>
     </div>
   );

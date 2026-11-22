@@ -325,9 +325,13 @@
   --pn-leiste-aktiv: inset 0 2px 0 var(--pn-signal-tinte);
   --pn-segment-flaeche: rgba(185, 162, 255, 0.07);
   --pn-segment-aktiv: linear-gradient(180deg, rgba(139, 92, 255, 0.3) 0%, rgba(124, 77, 255, 0.18) 100%);
+  /* Anmeldung (Premium UX 4.0): violettes Licht hinter dem Blatt, ein schwaches Gegenlicht unten links. */
   --pn-anmeldung-licht:
-    radial-gradient(60rem 30rem at 85% -12rem, rgba(124, 77, 255, 0.2), transparent 70%),
-    radial-gradient(48rem 26rem at 10% 110%, rgba(124, 77, 255, 0.1), transparent 72%);
+    radial-gradient(54rem 42rem at 76% 48%, rgba(124, 77, 255, 0.17), transparent 70%),
+    radial-gradient(60rem 30rem at 85% -12rem, rgba(124, 77, 255, 0.12), transparent 70%),
+    radial-gradient(48rem 26rem at 6% 112%, rgba(124, 77, 255, 0.09), transparent 72%);
+  --pn-anmeldung-ring: #b9a2ff;
+  --pn-anmeldung-punkt-schein: rgba(139, 92, 255, 0.2);
   --pn-linkfeld: rgba(185, 162, 255, 0.06);
   --pn-avatar: linear-gradient(140deg, rgba(124, 77, 255, 0.46), rgba(155, 125, 255, 0.3)); /* Initialen in der Seitenleiste */
 }
@@ -693,17 +697,33 @@
 }
 
 /* ═══════════ 11 · ANMELDUNG ════════════════════════════════════════════════════════════════════════════════════════
-   Ein Blatt auf der Nacht, violettes Licht oben rechts; die Hauptaktion als helle Fläche wie im Leitstand. */
+   Premium UX 4.0: eine Bühne auf der Nacht — Satz und die drei Bereiche links, das Blatt rechts in violettem Licht und in
+   drei ruhenden Ringen; die Hauptaktion als helle Fläche wie im Leitstand. Nichts bewegt sich. */
 :root[data-ce-bereich="partner"] .spp-anmeldung {
   background-color: var(--pn-grund);
   background-image: var(--pn-anmeldung-licht);
   background-repeat: no-repeat;
 }
+:root[data-ce-bereich="partner"] .spp-anmeldung-buehnentitel { font-family: var(--pn-schrift-titel); color: var(--pn-tinte); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-buehnentext { color: var(--pn-tinte-2); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-vorteil::before { background: var(--pn-kante); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-vorteil::after { background: var(--pn-signal-tinte); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-vorteil-titel { color: var(--pn-tinte); }
+:root[data-ce-bereich="partner"] .spp-anmeldung-vorteil-text { color: var(--pn-tinte-2); }
+:root[data-ce-bereich="partner"] .spp-orbit-ringe { stroke-width: 1; }
+:root[data-ce-bereich="partner"] .spp-orbit-stop { stop-color: var(--pn-anmeldung-ring); }
+:root[data-ce-bereich="partner"] .spp-orbit-stop--aus { stop-opacity: 0; }
+:root[data-ce-bereich="partner"] .spp-orbit-stop--leise { stop-opacity: 0.1; }
+:root[data-ce-bereich="partner"] .spp-orbit-stop--an { stop-opacity: 0.36; }
+:root[data-ce-bereich="partner"] .spp-orbit-schein { fill: var(--pn-anmeldung-punkt-schein); }
+:root[data-ce-bereich="partner"] .spp-orbit-punkt { fill: var(--pn-violett-hell); }
+:root[data-ce-bereich="partner"] .spp-orbit-punkt--hell { fill: var(--pn-tinte); }
 :root[data-ce-bereich="partner"] .spp-anmeldung-panel {
-  background: var(--pn-flaechenverlauf), var(--pn-flaeche-1);
-  border: 1px solid var(--pn-kante);
+  background: var(--pn-reflex-stark), var(--pn-flaechenverlauf), var(--pn-flaeche-1);
+  border: 1px solid var(--pn-kante-stark);
   box-shadow: var(--pn-karte-tiefe);
 }
+:root[data-ce-bereich="partner"] .spp-anmeldung-fuss { border-top-color: var(--pn-linie); }
 :root[data-ce-bereich="partner"] .spp-anmeldung-titel { font-family: var(--pn-schrift-titel); color: var(--pn-tinte); }
 :root[data-ce-bereich="partner"] .spp-anmeldung-text { color: var(--pn-tinte-2); }
 :root[data-ce-bereich="partner"] .spp-anmeldung-label { color: var(--pn-tinte); }
@@ -752,8 +772,40 @@
   :root[data-ce-bereich="partner"] .spp-nitem-on .spp-nitem-icon { filter: none; }
   :root[data-ce-bereich="partner"] .spp-held-zahl { text-shadow: none; }
   :root[data-ce-bereich="partner"] .spp-held-band { display: none; }
+  :root[data-ce-bereich="partner"] .spp-anmeldung-orbit { display: none; }
   /* Flächen entfallen in erzwungenen Farben: die aktive Stelle bekommt eine Kontur in Systemfarbe. */
   :root[data-ce-bereich="partner"] :is(.spp-nitem-on, .spp-segment-on) { outline: 2px solid CanvasText; outline-offset: -2px; }
+}
+
+/* ═══════════ 13 · KONTO ═══════════════════════════════════════════════════
+   Premium UX 4.0 (Betreiberentscheidung A5, 2026-11-22): Die Kontoseite folgt den Abschnittskarten der
+   Kontoeinstellungen (dashboard-premium.css): Jeder Abschnitt ist EINE Karte aus dem Flächenmaterial des Bereichs
+   (.table-card, Abschnitt 8); Titel, Erklärung und „Bearbeiten“ stehen in der Karte über einer Linie. Vorher trug
+   der ganze Abschnitt — Titelspalte und Inhalt — die Fläche und die Inhaltsfläche darin eine zweite: ein Band mit
+   einer Karte in der Karte. Die Gerätekarten darunter (Sitzungen, App) bekommen hier denselben Kopf mit Linie und
+   dieselben Innenabstände; die gemeinsame Karte im Adminbereich bleibt unverändert. Violett bleibt Akzent
+   (Lichtband, Fokus, Zeigen), keine Fläche. Steht wie alle Abschnitte innerhalb von @media screen (Dateianfang). */
+/* Seitenkopf und Hinweise so breit wie die Abschnittsspalte: Linie und Karten enden bündig. */
+:root[data-ce-bereich="partner"] .page-body:has(#spp-account) > :is(.ce-page-header, .spp-notice) { max-width: var(--ce-konto-spalte); }
+:root[data-ce-bereich="partner"] #spp-account .profile-card-head { border-bottom-color: var(--pn-linie); }
+:root[data-ce-bereich="partner"] #spp-account :is(.profile-card-head .table-card-title, .ce-geraete-titel) {
+  font-family: var(--pn-schrift-titel);
+  font-weight: 500;
+  color: var(--pn-tinte);
+}
+:root[data-ce-bereich="partner"] #spp-account .profile-card-sub { color: var(--pn-tinte-2); }
+:root[data-ce-bereich="partner"] #spp-account > .ce-geraete { gap: var(--ce-space-4); padding: 0 var(--ce-space-6) var(--ce-space-6); }
+:root[data-ce-bereich="partner"] #spp-account > .ce-geraete > .ce-geraete-kopf {
+  margin: 0 calc(-1 * var(--ce-space-6));
+  padding: var(--ce-space-5) var(--ce-space-6);
+  border-bottom: 1px solid var(--pn-linie);
+}
+@media (max-width: 600px) {
+  :root[data-ce-bereich="partner"] #spp-account > .ce-geraete { padding: 0 var(--ce-space-5) var(--ce-space-5); }
+  :root[data-ce-bereich="partner"] #spp-account > .ce-geraete > .ce-geraete-kopf {
+    margin: 0 calc(-1 * var(--ce-space-5));
+    padding: var(--ce-space-4) var(--ce-space-5);
+  }
 }
 
 }

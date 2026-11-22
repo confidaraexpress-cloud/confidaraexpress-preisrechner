@@ -35,7 +35,9 @@
   flex: 1 1 220px;
   min-width: 0;
   max-width: 72ch; /* Gesamtauftrag D: Lesemaß — auf breiten Bildschirmen sonst über 140 Zeichen je Zeile */
-  margin: 0;
+  /* Rechts ein automatischer Rand: in der breiten Abschnittskarte (Premium UX 4.0) bleibt der Text am Signet, statt
+     durch space-between an den rechten Rand zu rücken; eine Aktion steht weiterhin ganz rechts. */
+  margin: 0 auto 0 0;
   font-size: var(--ce-text-body-s-size);
   line-height: var(--ce-text-body-s-line);
   color: var(--ce-color-text-secondary);

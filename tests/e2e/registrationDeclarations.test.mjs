@@ -4,7 +4,10 @@
 // Zeitpunkt eine echte Registrierung. Vom Request-Body werden nur die Erklärungsfelder geprüft;
 // das Passwort wird weder protokolliert noch verglichen.
 //
-//   A — ohne Erklärungen: CTA gesperrt, kein Request, Fehler an beiden Checkboxen
+//   A — ohne Erklärungen: CTA gesperrt, kein Request, Fehler an beiden Checkboxen; Enter in Schritt 2 führt nur weiter
+//
+// Seit Premium UX 4.0 (A3, 2026-11-22) stehen die Erklärungen im dritten Schritt „Prüfen“; die Suiten gehen über den
+// gemeinsamen Bedienvertrag (helpers/registrierung.mjs) dorthin.
 //   B — mit Fassung: AGB-Link auf die versionierte PDF, Stand im Text, Payload mit Setschlüssel
 //   C — ohne abrufbare Fassung: Link auf /agb, Payload ohne Setschlüssel (Server speichert ohne Fassung)
 //   D — 409 LEGAL_SET_CHANGED: Meldung, AGB-Bestätigung zurückgesetzt, neue Fassung geladen, KEIN Auto-Retry
@@ -13,6 +16,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import {
+  SCHRITT, absendeKnopf, bisPruefen, erklaerungenAnhaken, fuelleUnternehmen, fuelleZugang, warteAufSchritt, weiter,
+} from "./helpers/registrierung.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -68,19 +74,9 @@ async function oeffnen(page) {
   await page.goto(`${BASE}/register`, { waitUntil: "networkidle" });
   await page.waitForSelector("#reg-name");
 }
-async function fuelleFelder(page) {
-  await page.fill("#reg-name", "Max Mustermann");
-  await page.fill("#reg-email", "einkauf@muster-logistik.de");
-  await page.fill("#reg-company", "Muster Logistik GmbH");
-  // Auftrag 2 / P10: die USt-IdNr. ist bei jeder Neuregistrierung Pflicht.
-  await page.fill("#reg-vat", "DE123456789");
-  // Phase 1 (Canonical v2.117): das voraussichtliche monatliche Versandvolumen ist Pflicht (eine der acht Angaben).
-  await page.locator("#reg-volume").selectOption("11_50");
-  const pw = page.locator('.auth-input[type="password"]');
-  await pw.nth(0).fill("EinSicheresPasswort2026");
-  await pw.nth(1).fill("EinSicheresPasswort2026");
-}
-const cta = (page) => page.locator("button.auth-cta");
+// Alle Pflichtfelder (Zugang und Unternehmen, samt USt-IdNr. und Versandvolumen) bis zum Schritt „Prüfen“.
+const fuelleFelder = (page) => bisPruefen(page);
+const cta = (page) => absendeKnopf(page);
 // Die Erklärungen sind native Checkboxen (<input type="checkbox"> im Container #reg-…, AUD-012).
 const angehakt = (page, sel) => page.locator(`${sel} input[type="checkbox"]`).isChecked();
 
@@ -108,17 +104,28 @@ test("A — ohne Erklärungen: CTA gesperrt mit sichtbarem Grund, kein Request",
   await oeffnen(page);
   // Solange noch andere Felder fehlen, steht der Erklärungshinweis nicht da (keine Fehlerwand).
   assert.equal(await page.locator(".auth-declaration-hint").count(), 0);
-  await fuelleFelder(page);
+  await fuelleZugang(page);
+  await weiter(page);
+  await fuelleUnternehmen(page);
+  // Enter in einem Feld des zweiten Schritts: der einzige Absendeknopf ist „Weiter“ — es geht in den Schritt „Prüfen“,
+  // eine Anfrage entsteht dabei nicht.
+  await page.locator("#reg-company").press("Enter");
+  await warteAufSchritt(page, SCHRITT.pruefen);
+  await page.waitForTimeout(300);
+  assert.equal(state.bodies.length, 0, "Enter im zweiten Schritt hat eine Anfrage ausgelöst");
   assert.equal(await cta(page).isDisabled(), true, "ohne Erklärungen absendbar");
   // Der gesperrte Knopf hat eine sichtbare Begründung direkt unter den Erklärungen.
   assert.match(await page.locator(".auth-declaration-hint").innerText(), /beiden Erklärungen/);
-  // Enter im Formular: Chromium unterdrückt die Absendung bei gesperrtem Knopf — kein Request.
-  await page.locator("#reg-name").press("Enter");
+  // Absenden am gesperrten Knopf vorbei (requestSubmit, wie Enter ohne Sperre): die Prüfung hält an — kein Request,
+  // die Fehler stehen an beiden Erklärungen.
+  await page.locator("form.auth-reg").evaluate((f) => f.requestSubmit());
+  await page.locator("#reg-business-error").waitFor({ timeout: 5000 });
+  assert.equal(await page.locator("#reg-terms-error").count(), 1, "kein Fehler an der AGB-Bestätigung");
   await page.waitForTimeout(400);
   assert.equal(state.bodies.length, 0, "es ging ein Registrierungsrequest hinaus");
-  // Nach beiden Häkchen verschwindet der Hinweis, der Knopf wird bedienbar.
-  await page.click("#reg-business .auth-checkbox");
-  await page.click("#reg-terms .auth-checkbox");
+  // Nach beiden Häkchen verschwinden Hinweis und Fehler, der Knopf wird bedienbar.
+  await erklaerungenAnhaken(page);
+  assert.equal(await page.locator("#reg-business-error, #reg-terms-error").count(), 0, "ein Erklärungsfehler bleibt stehen");
   assert.equal(await page.locator(".auth-declaration-hint").count(), 0);
   assert.equal(await cta(page).isDisabled(), false);
   // Keine Einwilligungsbox für den Datenschutz, und der frühere Satz nach dem Knopf ist weg.
@@ -128,7 +135,10 @@ test("A — ohne Erklärungen: CTA gesperrt mit sichtbarem Grund, kein Request",
   // gezählt werden deshalb nur die Erklärungen im Erklärungsblock (keine Einwilligungsbox für den Datenschutz).
   // Seit AUD-012 sind die Erklärungen native Checkboxen (implizite Rolle), deshalb getByRole statt [role=…].
   assert.equal(await page.locator(".auth-declarations").getByRole("checkbox").count(), 2, "nicht genau zwei Erklärungen");
-  assert.equal(await page.getByRole("checkbox").count(), 3, "Erklärungen plus USt-IdNr.-Option");
+  // Im ganzen Formular genau drei Kästchen: die beiden Erklärungen und die USt-IdNr.-Option. Die Option steht im zweiten
+  // Schritt, der jetzt verborgen ist — gezählt wird deshalb mit includeHidden.
+  assert.equal(await page.getByRole("checkbox", { includeHidden: true }).count(), 3, "Erklärungen plus USt-IdNr.-Option");
+  assert.equal(await page.getByRole("checkbox").count(), 2, "im Schritt „Prüfen“ sind nur die Erklärungen bedienbar");
   // Jede Erklärung ist eine echte Checkbox mit zugeordneter Beschriftung (klickbarer Text, Screenreader-Name).
   for (const id of ["reg-business", "reg-terms"]) {
     assert.equal(await page.locator(`#${id} input[type="checkbox"]`).count(), 1, `${id}: keine native Checkbox`);
@@ -145,8 +155,7 @@ test("B — mit Fassung: versionierter AGB-Link, Stand im Text, Payload mit Sets
   const href = await page.locator("#reg-terms a").getAttribute("href");
   assert.ok(String(href).endsWith("/api/legal/terms/2026-08"), `AGB-Link zeigt auf ${href}`);
   await fuelleFelder(page);
-  await page.click("#reg-business .auth-checkbox");
-  await page.click("#reg-terms .auth-checkbox");
+  await erklaerungenAnhaken(page);
   assert.equal(await cta(page).isDisabled(), false);
   await cta(page).click();
   await page.waitForTimeout(600);
@@ -164,8 +173,7 @@ test("C — ohne abrufbare Fassung: Link auf /agb, kein Setschlüssel im Payload
   assert.equal(href, "/agb");
   assert.ok(!/Stand/.test(await page.locator("#reg-terms").innerText()), "eine Fassung wird angezeigt, die nicht geladen ist");
   await fuelleFelder(page);
-  await page.click("#reg-business .auth-checkbox");
-  await page.click("#reg-terms .auth-checkbox");
+  await erklaerungenAnhaken(page);
   await cta(page).click();
   await page.waitForTimeout(600);
   assert.equal(state.bodies.length, 1);
@@ -179,8 +187,7 @@ test("D — 409 LEGAL_SET_CHANGED: Meldung, AGB-Bestätigung zurückgesetzt, neu
   await oeffnen(page);
   await page.waitForFunction(() => document.querySelector("#reg-terms")?.innerText.includes("Stand 2026-08"));
   await fuelleFelder(page);
-  await page.click("#reg-business .auth-checkbox");
-  await page.click("#reg-terms .auth-checkbox");
+  await erklaerungenAnhaken(page);
   const vorher = state.legalCalls;
   await cta(page).click();
   await page.waitForFunction(() => document.querySelector("#reg-terms")?.innerText.includes("Stand 2026-11"), undefined, { timeout: 15000 });
@@ -199,6 +206,7 @@ test("E — Link schaltet nicht um, Leertaste schon; mobil ohne Überlauf", asyn
   await setup(page);
   await oeffnen(page);
   await page.waitForFunction(() => document.querySelector("#reg-terms")?.innerText.includes("Stand 2026-08"));
+  await fuelleFelder(page);
   // Der Link öffnet ein neues Fenster — das wird hier abgefangen; die Checkbox bleibt unberührt.
   const [neu] = await Promise.all([ctx.waitForEvent("page"), page.click("#reg-terms a")]);
   await neu.close();

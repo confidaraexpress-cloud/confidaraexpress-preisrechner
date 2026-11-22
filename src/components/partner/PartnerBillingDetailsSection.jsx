@@ -163,7 +163,7 @@ export function PartnerBillingDetailsSection() {
   const statusText = billingStatusText(data?.status);
 
   const bearbeiten = data && !offen && details ? (
-    <button type="button" ref={ausloeserRef} className="btn btn-ghost btn-sm profile-card-edit-action"
+    <button type="button" ref={ausloeserRef} className="btn btn-outline btn-sm profile-card-edit-action"
       id="spp-billing-edit" onClick={oeffnen} aria-label="Abrechnungsdaten bearbeiten">
       Bearbeiten
     </button>

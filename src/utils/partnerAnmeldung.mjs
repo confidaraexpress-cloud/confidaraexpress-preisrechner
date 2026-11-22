@@ -31,6 +31,24 @@ export const PARTNER_ANMELDE_TEXT = Object.freeze({
   nichtGeladen: "Die Anmeldung war erfolgreich, das Partnerportal konnte aber nicht geladen werden. Bitte versuchen Sie es erneut.",
 });
 
+/* Bühne der Anmeldung (Premium UX 4.0, Betreiberentscheidung A4, 2026-11-22): ein Satz, eine Zeile und drei Punkte, die
+   nur beschreiben, was der Partnerbereich zeigt — die drei Punkte tragen die Namen der Seitenleiste des Portals
+   (PARTNER_BEREICHE in salesPartnerView.mjs). Keine Provisionshöhe, kein Verdienstversprechen, keine Zusage einer
+   Freischaltung und keine Bestandteile eines Vergütungsmodells (Partnerprogramm 12A: Bewerbung, Schalter aus,
+   Partnervereinbarung nicht veröffentlicht) — „Verdienst“ nennt nur die Reiter des Portals (Provisionen, Gutschriften);
+   partnerAnmeldung.test.mjs hält das fest.
+   Vor dem Gedankenstrich ein geschütztes Leerzeichen: am Telefon begann sonst eine Zeile mit dem Strich. */
+export const PARTNER_BUEHNE_TEXT = Object.freeze({
+  titel: "Ihre Kunden, Ihr Team, Ihr Verdienst\u00a0– an einem Ort.",
+  text: "Im Partnerbereich sehen Sie, was aus Ihren Empfehlungen wird – übersichtlich, Monat für Monat.",
+  vorteileName: "Was der Partnerbereich zeigt",
+  vorteile: Object.freeze([
+    Object.freeze({ titel: "Meine Kunden", text: "Welche Kunden Ihnen zugeordnet sind und wie viele Sendungen und Pakete sie versenden." }),
+    Object.freeze({ titel: "Verdienst", text: "Ihre Provisionen und Gutschriften im Überblick." }),
+    Object.freeze({ titel: "Mein Team", text: "Wer zu Ihrem Team gehört." }),
+  ]),
+});
+
 export const PARTNER_ANMELDE_FEHLER = Object.freeze({
   PARTNER_ACCESS_REQUIRED: "Für dieses Konto besteht kein Zugang zum Partnerbereich.",
   ADMIN_LOGIN_REQUIRED: "Administratoren melden sich über die Admin-Anmeldung an.",

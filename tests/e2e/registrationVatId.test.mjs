@@ -2,18 +2,27 @@
 // Echter Dev-Server, echtes Chromium, GEMOCKTES Backend — es entsteht keine echte Registrierung. Vom Request-Body wird
 // nur die USt-IdNr. festgehalten, nie das Passwort. Die verbindliche Prüfung misst Backend register-vat-id-pg.
 //
+// Seit Premium UX 4.0 (A3, 2026-11-22) steht die USt-IdNr. im zweiten Schritt „Ihr Unternehmen“; „Weiter“ prüft den
+// Schritt im Browser und sendet nichts, erst „Konto beantragen“ im dritten Schritt sendet. Die Suiten gehen über den
+// gemeinsamen Bedienvertrag (helpers/registrierung.mjs).
+//
 //   A  Feld „USt-IdNr.“ mit Pflichtstern, required, Hinweis — ohne Musterwert
-//   B  leer verlassen: verständlicher Fehler am Feld, Registrierung gesperrt, keine Anfrage
-//   C  falsches Format: Formatfehler am Feld; Korrektur nimmt ihn weg
-//   D  der Server lehnt ab (VAT_ID_INVALID mit Feld): Meldung direkt am Feld, kein Banner
+//   B  leer verlassen: verständlicher Fehler am Feld; „Weiter“ hält an (Fokus am Feld), keine Anfrage
+//   C  falsches Format: Formatfehler am Feld; Korrektur nimmt ihn weg, danach geht es weiter
+//   D  der Server lehnt ab (VAT_ID_INVALID mit Feld): zurück in den Schritt, Meldung direkt am Feld, kein Banner
 //   E  zulässige Nummer mit Leerzeichen: Anfrage mit normalisierter Nummer, Registrierung erfolgreich
 //   F  nach Auswahl eines öffentlichen Versandangebots: Registrierung mit USt-IdNr. funktioniert; danach der bestehende
 //      Hinweis, dass die Auswahl nach der Freischaltung neu berechnet wird
 //   G  390 px: Feld, Hinweis und Fehler innerhalb des Formulars, kein horizontaler Überlauf
+//   H  Paket D: ohne USt-IdNr. — Option, Rechtsform statt Nummer; „Weiter“ hält ohne Rechtsform an; die Zusammenfassung
+//      nennt Option und Rechtsform; der Server erhält Kennzeichen und Rechtsform
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { DEV_SERVER_SPAWN, stopDevServer } from "./helpers/devServer.mjs";
+import {
+  SCHRITT, absendeKnopf, aktuellerSchritt, erklaerungenAnhaken, fuelleUnternehmen, fuelleZugang, weiter, weiterKnopf,
+} from "./helpers/registrierung.mjs";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -54,24 +63,29 @@ async function seite({ serverLehntAb = false, viewport = { width: 1440, height: 
   return { page, zustand, fehler };
 }
 
-async function fuelle(page, ustId) {
-  await page.fill("#reg-name", "Anna Berger");
-  await page.fill("#reg-email", "einkauf@musterkunde.example");
-  await page.fill("#reg-company", "Musterkunde GmbH");
-  // Phase 1 (Canonical v2.117): das voraussichtliche monatliche Versandvolumen ist Pflicht (eine der acht Angaben).
-  // Es wird VOR der USt-IdNr. gewählt: eine ungültige Nummer zeigt ihren Fehler beim Verlassen des Felds und
-  // verschiebt die Gruppe darunter genau zwischen Maus-Down und Maus-Up.
-  await page.locator("#reg-volume").selectOption("11_50");
-  if (ustId !== undefined) await page.fill("#reg-vat", ustId);
-  const pw = page.locator('.auth-input[type="password"]');
-  await pw.nth(0).fill("EinSicheresPasswort2026");
-  await pw.nth(1).fill("EinSicheresPasswort2026");
-  await page.locator("#reg-business").click();
-  await page.locator("#reg-terms").click();
+async function oeffnen(page) {
+  await page.goto(`${BASE}/register`, { waitUntil: "networkidle" });
+  await page.waitForSelector("#reg-name");
 }
-const cta = (page) => page.locator("button.auth-cta");
+
+// Bis in den Schritt „Ihr Unternehmen“: Zugang füllen, weiter; dort Firma, Versandvolumen und — falls angegeben — die
+// Nummer. Das Versandvolumen wird VOR der USt-IdNr. gewählt: eine ungültige Nummer zeigt ihren Fehler beim Verlassen des
+// Felds und verschiebt die Gruppe darunter genau zwischen Maus-Down und Maus-Up.
+async function fuelle(page, ustId) {
+  await fuelleZugang(page, { name: "Anna Berger", email: "einkauf@musterkunde.example" });
+  await weiter(page);
+  await fuelleUnternehmen(page, { firma: "Musterkunde GmbH", ustId: ustId === undefined ? null : ustId });
+}
+// Vom Schritt „Ihr Unternehmen“ bis zum Absenden: weiter, beide Erklärungen, „Konto beantragen“.
+async function absenden(page) {
+  await weiter(page);
+  await erklaerungenAnhaken(page);
+  await absendeKnopf(page).click();
+}
+const cta = (page) => absendeKnopf(page);
 const feldFehler = (page) => page.locator("#reg-vat").locator("xpath=ancestor::div[contains(@class,'auth-field')][1]").locator(".auth-field-error");
 const norm = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
+const imFokus = (page) => page.evaluate(() => document.activeElement?.id || "");
 
 test.before(async () => {
   server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { ...DEV_SERVER_SPAWN, stdio: "ignore" });
@@ -91,7 +105,9 @@ test.after(async () => {
 
 test("A — Feld „USt-IdNr.“: Pflichtstern, required, Hinweis, kein Musterwert", async () => {
   const { page, fehler } = await seite();
-  await page.goto(`${BASE}/register`, { waitUntil: "networkidle" });
+  await oeffnen(page);
+  await fuelleZugang(page, { name: "Anna Berger", email: "einkauf@musterkunde.example" });
+  await weiter(page);
   await page.waitForSelector("#reg-vat");
   assert.equal(norm(await page.locator('label[for="reg-vat"]').innerText()), "USt-IdNr. *");
   assert.equal(await page.locator("#reg-vat").getAttribute("required"), "");
@@ -102,29 +118,38 @@ test("A — Feld „USt-IdNr.“: Pflichtstern, required, Hinweis, kein Musterwe
   await page.close();
 });
 
-test("B — leer verlassen: Fehler am Feld, Registrierung gesperrt, keine Anfrage", async () => {
+test("B — leer verlassen: Fehler am Feld, „Weiter“ hält an, keine Anfrage", async () => {
   const { page, zustand } = await seite();
-  await page.goto(`${BASE}/register`, { waitUntil: "networkidle" });
+  await oeffnen(page);
   await fuelle(page);
   await page.locator("#reg-vat").focus();
   await page.locator("#reg-company").focus();
   assert.equal(norm(await feldFehler(page).innerText()), "Bitte geben Sie die USt-IdNr. Ihres Unternehmens an.");
   assert.equal(await page.locator("#reg-vat").getAttribute("aria-invalid"), "true");
-  assert.equal(await cta(page).isDisabled(), true, "ohne USt-IdNr. absendbar");
+  assert.match(await page.locator("#reg-vat").getAttribute("aria-describedby"), /reg-vat-error/, "der Fehler ist nicht mit dem Feld verbunden");
+  // „Weiter“ prüft den Schritt: ohne USt-IdNr. bleibt das Formular im Schritt „Ihr Unternehmen“, der Fokus geht ans Feld.
+  await weiterKnopf(page).click();
+  await page.waitForTimeout(300);
+  assert.equal(await aktuellerSchritt(page), SCHRITT.unternehmen, "ohne USt-IdNr. ging es weiter");
+  assert.equal(await imFokus(page), "reg-vat", "der Fokus steht nicht am fehlerhaften Feld");
   assert.equal(zustand.ustIds.length, 0);
   await page.close();
 });
 
 test("C — falsches Format: Formatfehler am Feld, Korrektur nimmt ihn weg", async () => {
   const { page, zustand } = await seite();
-  await page.goto(`${BASE}/register`, { waitUntil: "networkidle" });
+  await oeffnen(page);
   await fuelle(page, "DE12345");
   await page.locator("#reg-vat").focus();
   await page.locator("#reg-company").focus();
   assert.match(norm(await feldFehler(page).innerText()), /kein gültiges Format/);
-  assert.equal(await cta(page).isDisabled(), true);
+  await weiterKnopf(page).click();
+  await page.waitForTimeout(300);
+  assert.equal(await aktuellerSchritt(page), SCHRITT.unternehmen, "mit falschem Format ging es weiter");
   await page.fill("#reg-vat", "DE123456789");
   assert.equal(await feldFehler(page).count(), 0, "der Fehler bleibt nach der Korrektur stehen");
+  await weiter(page);
+  await erklaerungenAnhaken(page);
   assert.equal(await cta(page).isDisabled(), false);
   assert.equal(zustand.ustIds.length, 0);
   await page.close();
@@ -132,11 +157,14 @@ test("C — falsches Format: Formatfehler am Feld, Korrektur nimmt ihn weg", asy
 
 test("D — Ablehnung durch den Server: Meldung direkt am Feld, kein Banner", async () => {
   const { page, zustand } = await seite({ serverLehntAb: true });
-  await page.goto(`${BASE}/register`, { waitUntil: "networkidle" });
+  await oeffnen(page);
   await fuelle(page, "DE123456789");
-  await cta(page).click();
+  await absenden(page);
+  // Die Meldung des Servers führt zurück in den Schritt des Felds — an das Feld, nicht in ein Banner.
   await feldFehler(page).waitFor({ timeout: 10000 });
   assert.match(norm(await feldFehler(page).innerText()), /kein gültiges Format/);
+  assert.equal(await aktuellerSchritt(page), SCHRITT.unternehmen, "der Fehler steht nicht im Schritt des Felds");
+  assert.equal(await imFokus(page), "reg-vat", "der Fokus steht nicht am abgelehnten Feld");
   assert.equal(await page.locator(".auth-alert-error").count(), 0, "die Feldmeldung steht als Banner");
   assert.deepEqual(zustand.ustIds, ["DE123456789"]);
   await page.close();
@@ -144,9 +172,9 @@ test("D — Ablehnung durch den Server: Meldung direkt am Feld, kein Banner", as
 
 test("E — zulässige Nummer mit Leerzeichen: normalisiert gesendet, Registrierung erfolgreich", async () => {
   const { page, zustand, fehler } = await seite();
-  await page.goto(`${BASE}/register`, { waitUntil: "networkidle" });
+  await oeffnen(page);
   await fuelle(page, " de 123 456 789 ");
-  await cta(page).click();
+  await absenden(page);
   await page.locator(".auth-alert-success").first().waitFor({ timeout: 10000 });
   assert.deepEqual(zustand.ustIds, ["DE123456789"]);
   assert.deepEqual(fehler, []);
@@ -159,7 +187,7 @@ test("F — nach Auswahl eines öffentlichen Versandangebots: Registrierung mit 
   await page.waitForURL(/\/register$/, { timeout: 30000 });
   await page.waitForSelector("#auth-handoff-pending", { timeout: 10000 });
   await fuelle(page, "ATU12345678");
-  await cta(page).click();
+  await absenden(page);
   await page.locator(".auth-alert-success").first().waitFor({ timeout: 10000 });
   assert.deepEqual(zustand.ustIds, ["ATU12345678"]);
   // Bestehender Vertrag (Preisrechner-Go-Live): das neue Konto wartet auf die Freischaltung, die Übernahme entfällt mit
@@ -171,7 +199,8 @@ test("F — nach Auswahl eines öffentlichen Versandangebots: Registrierung mit 
 
 test("G — 390 px: Feld, Hinweis und Fehler innerhalb des Formulars, kein Überlauf", async () => {
   const { page } = await seite({ viewport: { width: 390, height: 900 } });
-  await page.goto(`${BASE}/register`, { waitUntil: "networkidle" });
+  await oeffnen(page);
+  await fuelle(page);
   await page.locator("#reg-vat").focus();
   await page.locator("#reg-company").focus();
   for (const sel of ["#reg-vat", "#reg-vat-hint"]) {
@@ -194,7 +223,7 @@ test("H — Paket D: ohne USt-IdNr. — Option, Rechtsform statt Nummer, Sitz De
     koerper.push(JSON.parse(req.postData() || "{}"));
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ message: "Registrierung erfolgreich" }) });
   });
-  await page.goto(`${BASE}/register`, { waitUntil: "networkidle" });
+  await oeffnen(page);
   await fuelle(page);
   // Die Option sitzt direkt unter dem USt-Feld; sie blendet das Nummernfeld aus und zeigt die Rechtsform.
   assert.equal(await page.locator("#reg-vat").count(), 1);
@@ -203,7 +232,10 @@ test("H — Paket D: ohne USt-IdNr. — Option, Rechtsform statt Nummer, Sitz De
   await page.waitForSelector("#reg-legal-form");
   assert.equal(norm(await page.locator("#reg-vat-absent").innerText()), "Keine USt-IdNr. vorhanden");
   assert.match(norm(await page.locator("#reg-vat-absent-hint").innerText()), /Sitz in Deutschland.*manuell/);
-  assert.equal(await cta(page).isDisabled(), true, "ohne Rechtsform absendbar");
+  // Ohne Rechtsform hält „Weiter“ im Schritt an; der Grund steht an der Rechtsform.
+  await weiterKnopf(page).click();
+  await page.locator("#reg-legal-form-error").waitFor({ timeout: 5000 });
+  assert.equal(await aktuellerSchritt(page), SCHRITT.unternehmen, "ohne Rechtsform ging es weiter");
   // Zurück zur Nummer: Option abwählen (Tastatur) — das Nummernfeld kehrt zurück, die Rechtsform verschwindet.
   await page.locator("#reg-vat-absent").focus();
   await page.keyboard.press("Space");
@@ -212,6 +244,12 @@ test("H — Paket D: ohne USt-IdNr. — Option, Rechtsform statt Nummer, Sitz De
   await page.locator("#reg-vat-absent").click();
   await page.waitForSelector("#reg-legal-form");
   await page.selectOption("#reg-legal-form", "gbr");
+  await weiter(page);
+  // Die Zusammenfassung nennt die Option und die Rechtsform — keine Nummer.
+  const uebersicht = norm(await page.locator(".auth-reg-uebersicht").innerText());
+  assert.ok(uebersicht.includes("Keine USt-IdNr. vorhanden"), uebersicht);
+  assert.ok(uebersicht.includes("Gesellschaft bürgerlichen Rechts (GbR)"), uebersicht);
+  await erklaerungenAnhaken(page);
   assert.equal(await cta(page).isDisabled(), false, "mit Rechtsform gesperrt");
   await cta(page).click();
   // Nach dem Absenden ersetzt die Erfolgsmeldung das Formular — danach gibt es nichts mehr zu klicken.

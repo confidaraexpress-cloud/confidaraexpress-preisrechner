@@ -631,6 +631,12 @@
   .spp-konto-abmelden .btn { width: 100%; min-height: var(--ce-size-touch-target); }
 }
 
+/* Niedrige Fenster (Telefon quer, 200 % Zoom): die Markenzeile scrollt mit, statt mit der Leiste ein Drittel der Höhe
+   zu belegen. Die Leiste unten bleibt fest — eine relativ positionierte Ebene ist kein Bezugsrahmen für sie. */
+@media (max-width: 900px) and (max-height: 520px) {
+  .spp-seite { position: relative; }
+}
+
 @media (max-width: 860px) {
   .spp-grid { grid-template-columns: minmax(0, 1fr); }
   .spp-kpi-value,

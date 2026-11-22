@@ -2773,6 +2773,10 @@ a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px
 }
 .adm-tab-text { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .adm-tab-icon { display: inline-flex; }
+/* Lieferwagen (NavSymbol als <span> um das SVG) ohne Grundlinienlücke — wie in der Seitenleiste; sonst stand
+   „Sendungen“ 3 px tiefer als die übrigen Beschriftungen. */
+.adm-tab-icon .nav-sym,
+.adm-tab-icon .nav-sym > svg { display: block; }
 .adm-tab:hover { color: var(--ce-color-text-primary); }
 .adm-tab:focus-visible { outline: var(--ce-focus-ring); outline-offset: -4px; border-radius: var(--ce-radius-sm); }
 /* Aktiv mehrfach codiert: Farbe, Schnitt, Kante oben und aria-current — nie allein über Farbe. */

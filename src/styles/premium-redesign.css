@@ -1347,6 +1347,50 @@
   text-align: left;
 }
 [data-ce-bereich="auth"] .auth-kopf { margin: 0 0 clamp(28px, 5vh, 52px); }
+/* Startklar (Konzept K4, Betreiberentscheidung 2026-11-23): neben der Marke zwei Wege für neue Besucher — leise „Demo
+   ansehen“, gerahmt „Versandpreise berechnen“. Beide 44 px hoch und damit niedriger als die Marke: die Kopfzeile behält
+   ihre Höhe, das Blatt steht, wo es stand. Schmal siehe unten (Abschnitt „Tablet und Telefon“). */
+[data-ce-bereich="auth"] .auth-kopf { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; }
+[data-ce-bereich="auth"] .auth-wege { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; margin-left: auto; }
+[data-ce-bereich="auth"] .auth-weg {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--ce-pr-radius-control);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+[data-ce-bereich="auth"] .auth-weg--leise { color: var(--ce-pr-on-navy-2); }
+[data-ce-bereich="auth"] .auth-weg--rand { border-color: var(--ce-pr-on-navy-line); color: var(--ce-pr-on-navy); }
+@media (hover: hover) and (pointer: fine) {
+  [data-ce-bereich="auth"] .auth-weg--leise:hover { color: var(--ce-pr-on-navy); }
+  [data-ce-bereich="auth"] .auth-weg--rand:hover { border-color: var(--ce-pr-signal-on-navy); background: var(--ce-pr-on-navy-hover); }
+}
+[data-ce-bereich="auth"] :is(.auth-weg, .auth-weg-zeile):focus-visible { outline: 2px solid var(--ce-pr-signal-on-navy); outline-offset: 2px; }
+/* Unter dem Blatt stehen die Wege nur schmal (unter 34em, siehe dort); breiter trägt sie der Kopf. */
+[data-ce-bereich="auth"] .auth-wege-unten { display: none; }
+[data-ce-bereich="auth"] .auth-wege-frage { margin: 0; color: var(--ce-pr-on-navy-2); font-size: 0.9375rem; line-height: 1.5; }
+[data-ce-bereich="auth"] .auth-weg-zeile {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--ce-pr-signal-on-navy);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+@media (hover: hover) {
+  [data-ce-bereich="auth"] .auth-weg-zeile:hover { text-decoration: underline; text-underline-offset: 3px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-ce-bereich="auth"] .auth-weg { transition: none; }
+}
 [data-ce-bereich="auth"] .auth-brand { align-items: flex-start; margin: 0; }
 /* Seitenverhältnis des Lockups (viewBox 1176 × 613): die Höhe steht fest, bevor das Bild geladen ist (kein CLS). */
 [data-ce-bereich="auth"] .auth-brand .ce-brandmark-img { width: 136px; height: auto; aspect-ratio: 1176 / 613; }
@@ -1983,6 +2027,36 @@
 @media (max-width: 560px) {
   [data-ce-bereich="auth"] .auth-title { font-size: clamp(2rem, 8.6vw, 2.5rem); line-height: 1.08; }
   [data-ce-bereich="auth"] .auth-card { padding: 22px 18px 24px; }
+}
+/* Startklar (K4): Der Kopf bricht nie um — eine zweite Zeile zöge Satz und Blatt um 56 px nach unten (gemessen), das
+   Formular soll beginnen, wo es begann (Audit D2). Die Stufen folgen den gemessenen Breiten bei 16 px Grundschrift
+   (Marke 116 px, „Demo ansehen“ 141 px, „Versandpreise berechnen“ 216 px, Lücken 16 und 6 px, Rand 2 × 20 px); in em
+   wachsen sie mit einer größeren Browserschrift mit, die Marke nicht — die Stufen liegen dann sicher.
+     • ab 34em (544 px): beide Wege im Kopf.
+     • darunter: nur „Versandpreise berechnen“ im Kopf (14 px), „Demo ansehen“ tritt zurück; beide Wege stehen zusätzlich
+       unter dem Blatt, vor dem Kontakt.
+     • unter 24em (384 px): der Weg im Kopf rückt enger (13 px, Lücke 12 px) — so passt er bei 360 px mit 12 px Luft.
+     • unter 22.5em (360 px): kein Weg im Kopf, beide stehen unten.
+   Die Reihe „wege“ gibt es nur, wo der Abschnitt steht (nicht in der Bestätigung einer neuen E-Mail-Adresse, die
+   denselben Kopf trägt). */
+@media (max-width: 33.9375em) {
+  [data-ce-bereich="auth"] .auth-shell:has(> .auth-kopf):has(> .auth-wege-unten),
+  [data-ce-bereich="auth"] .auth-shell:has(> .auth-kopf):has(> .auth-wege-unten):has(.auth-card--register) {
+    grid-template-areas: "kopf" "hero" "karte" "card" "wege" "kontakt" "legal";
+  }
+  /* Frage oben, beide Wege nebeneinander in einer Zeile (gleicher Abstand zur Frage); reicht die Breite nicht,
+     rückt der zweite Weg darunter. */
+  [data-ce-bereich="auth"] .auth-shell:has(> .auth-kopf) > .auth-wege-unten { display: flex; flex-wrap: wrap; align-items: center; column-gap: 24px; grid-area: wege; }
+  [data-ce-bereich="auth"] .auth-wege-unten > .auth-wege-frage { flex-basis: 100%; }
+  [data-ce-bereich="auth"] .auth-weg--leise { display: none; }
+  [data-ce-bereich="auth"] .auth-weg--rand { padding: 0 12px; font-size: 0.875rem; }
+}
+@media (max-width: 23.9375em) {
+  [data-ce-bereich="auth"] .auth-kopf { column-gap: 12px; }
+  [data-ce-bereich="auth"] .auth-weg--rand { padding: 0 10px; font-size: 0.8125rem; }
+}
+@media (max-width: 22.4375em) {
+  [data-ce-bereich="auth"] .auth-wege { display: none; }
 }
 /* Sehr schmal im Verhältnis zur Schrift (unter 20em, etwa 320 px mit 24 px Browserschrift): Die beiden Reiter stehen
    untereinander, die Marke gleitet senkrecht; der Satz wird so groß, wie die Breite trägt; die E-Mail-Adresse im

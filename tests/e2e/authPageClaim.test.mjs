@@ -3,7 +3,9 @@
 // Überschrift „Versand- und Logistikmanagement für Unternehmen.“ — wortgleich mit dem öffentlichen Preisrechner
 // (utils/authSeitenText.mjs) — und darunter der Satz, was der Kundenbereich kann. Geprüft werden Wortlaut,
 // Umbrüche und Lesbarkeit auf Smartphone und Desktop, der Kontakt (nur E-Mail und Telefon, seit 2026-11-06 ohne Namen),
-// dass es keinen Preisrechner-Knopf gibt (Audit D2) — und dass Anmeldung und Registrierung unverändert erreichbar sind.
+// die Wege für neue Besucher (Startklar 2026-11-23: „Demo ansehen“ und „Versandpreise berechnen“ — sie lösen „kein
+// Preisrechner-Knopf“ aus Audit D2 ab; das Formular beginnt weiter, wo es begann) — und dass Anmeldung und
+// Registrierung unverändert erreichbar sind.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -75,7 +77,26 @@ for (const [name, viewport, touch] of [["390 px", { width: 390, height: 844 }, t
       const b = e.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.width), Math.round(b.height)]; }));
     assert.equal(flaechen.length, 2);
     assert.deepEqual(flaechen[0], flaechen[1], "die Symbolflächen fluchten nicht oder sind verschieden groß");
-    assert.equal(await page.getByRole("link", { name: /Preisrechner/ }).count(), 0, "auf der Anmeldung gibt es keinen Preisrechner-Knopf");
+    // Startklar (K4): Wege für neue Besucher — am Desktop beide im Kopf; schmal der Preisrechner im Kopf und beide unter
+    // dem Blatt (320 px: nur unten). Ziele sind die bestehende Demo und der bestehende Preisrechner, im selben Tab.
+    const wegeSichtbar = await page.locator(".auth-wege a, .auth-wege-unten a").evaluateAll((as) => as
+      .filter((a) => a.getClientRects().length > 0)
+      .map((a) => `${a.closest(".auth-wege") ? "Kopf" : "unten"}: ${a.textContent.trim()} → ${a.getAttribute("href")}${a.target ? ` (${a.target})` : ""}`));
+    const DEMO = "Demo ansehen → /demo", PREISE = "Versandpreise berechnen → https://preisrechner.confidaraexpress.de/";
+    const erwartet = viewport.width >= 544 ? [`Kopf: ${DEMO}`, `Kopf: ${PREISE}`]
+      : viewport.width >= 360 ? [`Kopf: ${PREISE}`, `unten: ${PREISE}`, `unten: ${DEMO}`]
+        : [`unten: ${PREISE}`, `unten: ${DEMO}`];
+    assert.deepEqual(wegeSichtbar, erwartet);
+    assert.equal(await page.getByRole("link", { name: /Preisrechner/ }).count(), 0, "kein weiterer Preisrechner-Knopf");
+    for (const a of await page.locator(".auth-wege a, .auth-wege-unten a").all()) {
+      if (!(await a.isVisible())) continue;
+      const b = await a.boundingBox();
+      assert.ok(b.height >= 44, `Weg „${await a.innerText()}“ nur ${b.height} px hoch`);
+    }
+    // Der Kopf bleibt eine Zeile: Marke und Wege stehen nebeneinander.
+    const kopf = await page.locator(".auth-kopf").boundingBox();
+    const marke = await page.locator(".auth-brand").boundingBox();
+    assert.ok(kopf.height <= marke.height + 1, `der Kopf bricht um (${kopf.height} px bei ${marke.height} px Marke)`);
 
     const mass = await page.evaluate(() => {
       const zeilen = (el) => {

@@ -3,15 +3,16 @@
 // Person wird geladen.
 //
 //   A  Großer Desktop (1920/1536/1440/1280 × 800): genau ein Dock, fest unten rechts, 24rem, Foto 80 px, E-Mail in
-//      einer Zeile, Beschriftung, Links, Foto authentifiziert; nichts in der Seitenleiste. Kleiner Desktop (1366 × 768,
-//      1280 × 720): kompakt zuerst, „Abmelden“ bei 1366 × 768 ohne Scrollen
+//      einer Zeile, Beschriftung, Handlungen „Anrufen“, „E-Mail schreiben“ und „Rückruf anfragen“ (Startklar
+//      2026-11-23), Foto authentifiziert; nichts in der Seitenleiste. Kleiner Desktop (1366 × 768, 1280 × 720):
+//      kompakt zuerst, „Abmelden“ bei 1366 × 768 ohne Scrollen
 //   B  Scrollen und Seitenwechsel: dieselbe Position, auf jeder Shell genau eine Karte
 //   C  Puls: dauerhaft, Pause und Fortsetzen, Vorliebe überlebt das Neuladen; nur in der offenen Karte
 //   D  reduzierte Bewegung: kein Puls, kein Schalter, keine Öffnungsbewegung
 //   E  Einklappen (G3): Foto 56 px, Fokus folgt, Vorliebe je Gerät, Öffnen über das Foto
-//   F  ohne Zuordnung (G4): Kundenservice im selben Dock, ohne Person, Links und Fotoabruf
+//   F  ohne Zuordnung (G4): Kundenservice im selben Dock, ohne Person, Links und Fotoabruf — nur „Rückruf anfragen“
 //   G  Foto nicht ladbar: Initialen der richtigen Person in Karte und Foto
-//   H  Tastatur: Punkt, Einklappen, Telefon, E-Mail — nach dem Seiteninhalt, mit sichtbarem Fokus
+//   H  Tastatur: Punkt, Einklappen, Anrufen, E-Mail schreiben, Rückruf — nach dem Seiteninhalt, mit sichtbarem Fokus
 //   I  Telefon 390 und 360 px (Touch): kompakt, Öffnen über dem Foto (ohne zweites Foto, E-Mail in einer Zeile),
 //      Escape und Klick daneben schließen, 44 px
 //   J  200 % Zoom und 24 px Browserschrift: kompakt, geöffnet vollständig im Fenster, kein Querüberlauf
@@ -123,8 +124,9 @@ async function dock(page) {
       fenster: { w: document.documentElement.clientWidth, h: window.innerHeight },
       text: sichtbar(karte) ? karte.innerText.replace(/\s+/g, " ").trim() : null,
       klasse: karte.className,
-      tel: karte.querySelector(".pp-ansprech-tel")?.getAttribute("href") ?? null,
-      mail: karte.querySelector(".pp-ansprech-mail")?.getAttribute("href") ?? null,
+      tel: karte.querySelector('a.pp-ansprech-aktion[href^="tel:"]')?.getAttribute("href") ?? null,
+      mail: karte.querySelector('a.pp-ansprech-aktion[href^="mailto:"]')?.getAttribute("href") ?? null,
+      rueckruf: Boolean(karte.querySelector("button.pp-ansprech-aktion--rueckruf")),
       img: (() => { const i = karte.querySelector("img.pp-ansprech-foto"); return i ? { blob: (i.getAttribute("src") || "").startsWith("blob:"), geladen: i.complete && i.naturalWidth > 0, alt: i.getAttribute("alt") } : null; })(),
       initialen: [...d.querySelectorAll(".pp-ansprech-initialen")].map((e) => e.textContent),
       puls: puls ? { daten: puls.getAttribute("data-puls"), name: puls.getAttribute("aria-label") } : null,
@@ -158,7 +160,7 @@ async function mailZeilen(page) {
   await page.evaluate(() => document.fonts.ready);
   return page.evaluate(() => {
     const r = document.createRange();
-    return [...document.querySelector(".pp-ansprech-mail > span").childNodes]
+    return [...document.querySelector(".pp-ansprech-mail").childNodes]
       .filter((k) => k.nodeType === Node.TEXT_NODE)
       .map((k) => { r.selectNodeContents(k); return Math.round(r.getBoundingClientRect().top); });
   });
@@ -202,8 +204,21 @@ test("A — großer Desktop voll, kleiner Desktop kompakt: genau ein Dock fest u
     const [lokal, domain] = await mailZeilen(page);
     assert.equal(domain, lokal, `${w}×${h}: die E-Mail-Adresse steht neben dem Foto in einer Zeile`);
     assert.equal(m.foto, null, "kein zweites Foto neben der offenen Karte");
-    assert.equal(m.text, "Ihr persönlicher Ansprechpartner Patrick Werner Anrufen: 0175 4167701 E-Mail an p.werner@confidaraexpress.de");
-    assert.deepEqual([m.tel, m.mail], ["tel:+491754167701", "mailto:p.werner@confidaraexpress.de"]);
+    // Startklar: Telefon und E-Mail lesbar im Kopf (Vorsatz nur vorgelesen), darunter die Handlungen.
+    assert.equal(m.text, "Ihr persönlicher Ansprechpartner Patrick Werner Telefon: 0175 4167701 E-Mail: p.werner@confidaraexpress.de "
+      + "Anrufen 0175 4167701 E-Mail schreiben an p.werner@confidaraexpress.de Rückruf anfragen");
+    assert.deepEqual([m.tel, m.mail, m.rueckruf], ["tel:+491754167701", "mailto:p.werner@confidaraexpress.de", true]);
+    // Zugängliche Namen: sichtbarer Text vorn (WCAG 2.5.3), Nummer und Adresse dahinter.
+    assert.equal(await page.getByRole("link", { name: "Anrufen 0175 4167701", exact: true }).count(), 1);
+    assert.equal(await page.getByRole("link", { name: "E-Mail schreiben an p.werner@confidaraexpress.de", exact: true }).count(), 1);
+    assert.equal(await page.getByRole("button", { name: "Rückruf anfragen", exact: true }).count(), 1);
+    // Die Handlungen stehen in der Karte: zwei nebeneinander, der Rückruf darunter über die ganze Breite.
+    const knoepfe = await page.locator(".pp-ansprech-aktion").evaluateAll((es) => es.map((e) => {
+      const r = e.getBoundingClientRect(); return { l: Math.round(r.left), t: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }; }));
+    assert.equal(knoepfe.length, 3);
+    assert.equal(knoepfe[0].t, knoepfe[1].t, "Anrufen und E-Mail schreiben stehen nebeneinander");
+    assert.ok(knoepfe[2].t > knoepfe[0].t && knoepfe[2].w > knoepfe[0].w * 1.9, `Rückruf darunter in voller Breite ${JSON.stringify(knoepfe)}`);
+    assert.ok(knoepfe.every((k) => k.h >= 40 && k.l >= m.karte.l && k.l + k.w <= m.karte.r + 0.5), JSON.stringify(knoepfe));
     assert.deepEqual([m.img.blob, m.img.geladen, m.img.alt], [true, true, ""]);
     assert.deepEqual(zustand.fotoAbrufe, ["Bearer e2e-token"], "genau ein Abruf mit Anmeldung");
     assert.equal(m.bereich, "Ihr persönlicher Ansprechpartner");
@@ -300,14 +315,16 @@ test("E — Einklappen: Foto 56 px, Fokus folgt der Handlung, Vorliebe je Gerät
   await context.close();
 });
 
-test("F — ohne Zuordnung: Kundenservice im selben Dock, ohne Person, Links und Fotoabruf", async () => {
+test("F — ohne Zuordnung: Kundenservice im selben Dock, ohne Person, Links und Fotoabruf — nur „Rückruf anfragen“", async () => {
   const { context, page, zustand } = await seite({ am: null });
   const m = await dock(page);
   assert.match(m.klasse, /pp-ansprech--service/);
-  assert.equal(m.text, "Kundenservice ConfidaraExpress");
+  // Startklar: der Rückruf ist kein Kontaktdatum (G4 bleibt) — er läuft als Supportvorgang über das Konto.
+  assert.equal(m.text, "Kundenservice ConfidaraExpress Rückruf anfragen");
   assert.equal(m.bereich, "ConfidaraExpress Kundenservice");
-  assert.deepEqual([m.tel, m.mail, m.img, m.puls], [null, null, null, null]);
+  assert.deepEqual([m.tel, m.mail, m.img, m.puls, m.rueckruf], [null, null, null, null, true]);
   assert.equal(await page.locator(".pp-ansprech-dock a").count(), 0, "kein Link, auch nicht ins Supportpostfach");
+  assert.equal(await page.getByRole("button", { name: "Rückruf anfragen", exact: true }).count(), 1);
   assert.deepEqual(zustand.fotoAbrufe, []);
   await page.getByRole("button", { name: "Karte einklappen" }).click();
   assert.equal((await dock(page)).fotoKnopf.name, "ConfidaraExpress Kundenservice");
@@ -323,25 +340,28 @@ test("G — Foto nicht ladbar: Initialen der richtigen Person in Karte und Foto"
   await context.close();
 });
 
-test("H — Tastatur: Punkt, Einklappen, Telefon, E-Mail — nach dem Seiteninhalt, mit sichtbarem Fokus", async () => {
+test("H — Tastatur: Punkt, Einklappen, Anrufen, E-Mail schreiben, Rückruf — nach dem Seiteninhalt, mit sichtbarem Fokus", async () => {
   const { context, page } = await seite();
-  // Die Karte steht am Ende von <body>: nach ihr kommt kein Bedienelement des Inhalts mehr.
+  // Die Karte steht am Ende von <body>: nach ihr kommt kein Bedienelement des Inhalts mehr. Kennung: Schema des
+  // Verweises (tel/mailto) oder die letzte Klasse.
+  const ERWARTET = ["pp-ansprech-puls", "pp-ansprech-einklappen", "tel", "mailto", "pp-ansprech-aktion--rueckruf"];
   const reihenfolge = await page.evaluate(() => {
     const alle = [...document.querySelectorAll("a[href], button, input, select, textarea")].filter((e) => e.getClientRects().length > 0 && !e.disabled);
-    return alle.slice(-4).map((e) => e.className.split(" ").pop());
+    return alle.slice(-5).map((e) => (e.getAttribute("href") ? e.getAttribute("href").split(":")[0] : e.className.split(" ").pop()));
   });
-  assert.deepEqual(reihenfolge, ["pp-ansprech-puls", "pp-ansprech-einklappen", "pp-ansprech-tel", "pp-ansprech-mail"]);
+  assert.deepEqual(reihenfolge, ERWARTET);
   await page.locator(".pp-ansprech-puls").focus();
   const reihe = [];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < ERWARTET.length; i++) {
     reihe.push(await page.evaluate(() => {
       const e = document.activeElement;
       const st = getComputedStyle(e);
-      return { klasse: e.className.split(" ").pop(), umriss: st.outlineStyle !== "none" && parseFloat(st.outlineWidth) >= 2 };
+      const klasse = e.getAttribute("href") ? e.getAttribute("href").split(":")[0] : e.className.split(" ").pop();
+      return { klasse, umriss: st.outlineStyle !== "none" && parseFloat(st.outlineWidth) >= 2 };
     }));
     await page.keyboard.press("Tab");
   }
-  assert.deepEqual(reihe.map((r) => r.klasse), ["pp-ansprech-puls", "pp-ansprech-einklappen", "pp-ansprech-tel", "pp-ansprech-mail"]);
+  assert.deepEqual(reihe.map((r) => r.klasse), ERWARTET);
   assert.ok(reihe.every((r) => r.umriss), JSON.stringify(reihe));
   await context.close();
 });
@@ -361,8 +381,18 @@ test("I — Telefon 390 und 360 px mit Touch: kompakt, Öffnen über dem Foto, E
     assert.equal(domain, lokal, `${viewport.width} px: die E-Mail-Adresse steht in einer Zeile`);
     assert.equal(m.hoeheVar, "56px", "kompakt geöffnet bleibt der Freiraum beim Foto");
     assert.ok(m.ueberlauf <= 0);
-    const ziele = await page.evaluate(() => [".pp-ansprech-tel", ".pp-ansprech-mail", ".pp-ansprech-foto-knopf"].map((s) => document.querySelector(s).getBoundingClientRect().height));
+    // Touch-Ziele: die drei Handlungen der Karte (Startklar) und das Foto.
+    const ziele = await page.evaluate(() => [...document.querySelectorAll(".pp-ansprech-aktion, .pp-ansprech-foto-knopf")].map((e) => e.getBoundingClientRect().height));
+    assert.equal(ziele.length, 4);
     assert.ok(ziele.every((hh) => hh >= 44), `Touch-Ziele ${ziele}`);
+    // Sichtprüfung Startklar: keine Beschriftung bricht mitten im Knopf um (vorher „E-Mail / schreiben“ bei 390 und
+    // 360 px) — beide passen nebeneinander, jede in einer Zeile, keiner ragt aus der Karte.
+    const knoepfe = await page.locator(".pp-ansprech-aktion").evaluateAll((es) => es.map((e) => {
+      const r = e.getBoundingClientRect(); const s = e.querySelector(":scope > span");
+      return { t: Math.round(r.top), l: r.left, r: r.right, zeilen: Math.round(s.getBoundingClientRect().height / parseFloat(getComputedStyle(s).lineHeight)) }; }));
+    assert.deepEqual(knoepfe.map((k) => k.zeilen), [1, 1, 1], `${viewport.width} px: einzeilig ${JSON.stringify(knoepfe)}`);
+    assert.equal(knoepfe[0].t, knoepfe[1].t, `${viewport.width} px: Anrufen und E-Mail schreiben nebeneinander`);
+    assert.ok(knoepfe.every((k) => k.l >= m.karte.l - 0.5 && k.r <= m.karte.r + 0.5), JSON.stringify(knoepfe));
     await page.keyboard.press("Escape");
     m = await dock(page);
     assert.equal(m.offen, "nein", "Escape schließt");
@@ -402,7 +432,7 @@ test("K — lange E-Mail-Adresse: Umbruch vor dem „@“, kein Überlauf", asyn
   const lang = { ...PATRICK, email: "patrick.werner.kundenbetreuung@confidaraexpress.de" };
   const { context, page } = await seite({ am: lang });
   const zeilen = await page.evaluate(() => {
-    const span = document.querySelector(".pp-ansprech-mail > span");
+    const span = document.querySelector(".pp-ansprech-mail");
     const r = document.createRange();
     const ergebnis = [];
     for (const knoten of span.childNodes) {
@@ -474,7 +504,7 @@ test("M — Ebenen: Dialog und Schublade liegen über der Karte — der Dialog a
 
 test("N — Adminwechsel und öffentliche Demo (über der Demo-Leiste, keine Person, kein Fotoabruf)", async () => {
   let { context, page, zustand } = await seite({ am: MIGUEL });
-  assert.match((await dock(page)).text, /Miguel Vance Anrufen: 0160 92717124/);
+  assert.match((await dock(page)).text, /Miguel Vance Telefon: 0160 92717124 E-Mail: m\.vance@confidaraexpress\.de Anrufen 0160 92717124/);
   zustand.am = PATRICK;
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => document.querySelector(".pp-ansprech")?.innerText.includes("Patrick Werner"));
@@ -485,6 +515,8 @@ test("N — Adminwechsel und öffentliche Demo (über der Demo-Leiste, keine Per
     await page.locator(".demo-leiste").waitFor();
     const m = await dock(page);
     assert.match(m.klasse, /pp-ansprech--service/);
+    // Die Demo hat kein Konto: kein Rückrufwunsch (Startklar).
+    assert.equal(m.rueckruf, false, "die Demo bietet keinen Rückruf an");
     const leiste = await page.locator(".demo-leiste").boundingBox();
     const unten = (m.karte || m.foto).b;
     assert.ok(unten <= leiste.y - 8, `${JSON.stringify(viewport)}: Karte (${unten}) über der Demo-Leiste (${leiste.y})`);

@@ -12,4 +12,12 @@ export const AUTH_TEXT = Object.freeze({
   // Vorsätze der Kontaktlinks nur für Screenreader (sichtbar sind Symbol und Wert): „E-Mail an support@…“, „Anrufen: 0160…“.
   kontaktMail: "E-Mail an ",
   kontaktTelefon: "Anrufen: ",
+  // Startklar (Betreiberentscheidung 2026-11-23, Konzept K4 der Master-Vollanalyse): zwei Wege für neue Besucher — die
+  // öffentliche Demo (/demo) und der öffentliche Preisrechner. Nur Verweise auf das Bestehende: keine zweite Demo, kein
+  // zweiter Rechner. Am Desktop stehen beide im Kopf; schmal steht der Preisrechner im Kopf neben der Marke und beide
+  // Wege unter dem Blatt — das Formular beginnt dort, wo es vorher begann (Audit D2).
+  wegeBereich: "Ohne Anmeldung umsehen",
+  demo: "Demo ansehen",
+  preise: "Versandpreise berechnen",
+  wegeFrage: "Erst einmal umsehen?",
 });

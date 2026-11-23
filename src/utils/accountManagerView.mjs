@@ -13,9 +13,14 @@ export const ANSPRECH_TEXT = Object.freeze({
   // Name des Bereichs (Orientierungspunkt) — mit Person bzw. ohne Zuordnung.
   bereichPerson: "Ihr persönlicher Ansprechpartner",
   bereichService: "ConfidaraExpress Kundenservice",
-  // Vorgelesener Teil der Links: der sichtbare Text bleibt im Namen (WCAG 2.5.3), davor die Handlung.
-  anrufen: "Anrufen: ",
-  mailen: "E-Mail an ",
+  // Startklar (2026-11-23): Telefon und E-Mail stehen lesbar im Kopf, die Handlungen darunter als eigene Knöpfe. Die
+  // Kontaktzeilen tragen ihre Art nur vorgelesen; die Knöpfe nennen sichtbar die Handlung, vorgelesen folgt das Ziel
+  // (der sichtbare Text steht am Anfang des Namens, WCAG 2.5.3).
+  telefon: "Telefon: ",
+  email: "E-Mail: ",
+  anrufen: "Anrufen",
+  mailen: "E-Mail schreiben",
+  rueckruf: "Rückruf anfragen",
   // Schalter des Pulsierens (WCAG 2.2.2): benennt die Handlung, nie einen Zustand der Person.
   pulsAnhalten: "Pulsieren des Punkts anhalten",
   pulsFortsetzen: "Pulsieren des Punkts fortsetzen",

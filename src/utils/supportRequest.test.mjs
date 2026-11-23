@@ -385,3 +385,9 @@ test("Kategorie-Anzeige: beide Kundenansichten nutzen sie (kein Rückfall auf ro
     assert.ok(!/\|\| (row|req)\.category/.test(code), `${name}: fällt weiterhin auf den Rohwert zurück`);
   }
 });
+
+// ── Startklar (2026-11-23): Rückrufwunsch ────────────────────────────────────
+test("Kategorie-Anzeige: „Rückrufwunsch“ wird benannt, ist im Supportformular aber nicht wählbar", () => {
+  assert.deepEqual(supportCategoryDisplay("callback"), ["Rückrufwunsch", null]);
+  assert.ok(!SUPPORT_CATEGORIES.some((c) => c.value === "callback"), "der Rückruf entsteht nur über die Ansprechpartnerkarte");
+});

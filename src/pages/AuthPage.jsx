@@ -18,7 +18,10 @@ import { useCeBereich } from "../hooks/useCeBereich";
 import { isSalesPartner, landingPathFor } from "../utils/roleLanding.mjs";
 import { clearReferral, referralCodeFor } from "../utils/referralCapture.mjs";
 import { HANDOFF_PATH, clearPendingHandoff, hasPendingHandoff } from "../utils/publicQuoteHandoffStore.mjs";
-import { HANDOFF_AUTH_TEXT } from "../utils/publicQuoteHandoffView.mjs";
+import { HANDOFF_AUTH_TEXT, PUBLIC_CALCULATOR_URL } from "../utils/publicQuoteHandoffView.mjs";
+// Die öffentliche Demo läuft als eigene Seitenladung (main.jsx erkennt den Pfad vor dem ersten Rendern) — deshalb ein
+// gewöhnlicher Link, kein Router-Link.
+import { DEMO_BASIS } from "../demo/demoModus.mjs";
 
 // Validierung, B2B-Wording und Feldfehler-Mapping liegen in einem reinen Modul,
 // damit sie ohne React-Render-Infrastruktur mit `node --test` prüfbar sind.
@@ -413,6 +416,12 @@ export default function AuthPage() {
             Kopfzeile über beiden Spalten: das Blatt steht bündig neben dem Satz. */}
         <header className="auth-kopf">
           <BrandLogo variant="lockup" tone="reverse" className="auth-brand" />
+          {/* Startklar (Konzept K4): Wege für neue Besucher — Demo und Preisrechner, beide bestehend. Das Gerüst
+              (login.html, register.html) trägt denselben Kopf; schmal tritt die Demo hier zurück (Abschnitt unten). */}
+          <nav className="auth-wege" aria-label={AUTH_TEXT.wegeBereich}>
+            <a className="auth-weg auth-weg--leise" href={DEMO_BASIS}>{AUTH_TEXT.demo}</a>
+            <a className="auth-weg auth-weg--rand" href={PUBLIC_CALCULATOR_URL}>{AUTH_TEXT.preise}</a>
+          </nav>
         </header>
         <div className="auth-hero">
           {/* Wortlaut: Betreiberentscheidung G1 (2026-10-27) — dieselbe Botschaft wie der öffentliche Preisrechner.
@@ -565,6 +574,14 @@ export default function AuthPage() {
 
           </>
         )}
+        </div>
+
+        {/* Schmal (unter 34em) stehen beide Wege zusätzlich unter dem Blatt — dort, wo ein neuer Besucher nach dem
+            Formular weiterliest. Breiter ist dieser Abschnitt ausgeblendet; der Kopf trägt beide. */}
+        <div className="auth-wege-unten">
+          <p className="auth-wege-frage">{AUTH_TEXT.wegeFrage}</p>
+          <a className="auth-weg-zeile" href={PUBLIC_CALCULATOR_URL}>{AUTH_TEXT.preise}</a>
+          <a className="auth-weg-zeile" href={DEMO_BASIS}>{AUTH_TEXT.demo}</a>
         </div>
 
         {/* Kontakt (Betreiberentscheidung 2026-11-06): E-Mail und Telefon als zwei Zeilen mit Symbol — kein Name, keine

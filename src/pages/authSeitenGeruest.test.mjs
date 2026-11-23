@@ -8,6 +8,8 @@
 //   • die Pfade — utils/kundenAuthPfad.mjs, gespiegelt in nginx.conf (mit vollständigem Sicherheitsheaderblock) und
 //     in der Entwicklungs-/Vorschauweiche samt Builder-Eingängen (vite.config.js)
 //   • das Blatt im Gerüst ist nicht bedienbar: aria-hidden, inert, keine ids, keine Namen, nichts im Tabulatorweg.
+//   • die Wege für neue Besucher (Startklar, 2026-11-23) — Demo (demo/demoModus.mjs) und öffentlicher Preisrechner
+//     (utils/publicQuoteHandoffView.mjs), Wortlaut aus utils/authSeitenText.mjs
 // Die Deckungsgleichheit im Browser misst tests/e2e/authSeitengeruest.test.mjs.
 //
 // Run: node --test src/pages/authSeitenGeruest.test.mjs
@@ -19,6 +21,8 @@ import { fileURLToPath } from "node:url";
 import { AUTH_TEXT } from "../utils/authSeitenText.mjs";
 import { KUNDEN_AUTH_PFADE, STATISCHE_AUTH_SEITEN, istKundenAuthPfad, statischeAuthSeite } from "../utils/kundenAuthPfad.mjs";
 import { COMPANY_PROFILE } from "../config/companyProfile.js";
+import { DEMO_BASIS } from "../demo/demoModus.mjs";
+import { PUBLIC_CALCULATOR_URL } from "../utils/publicQuoteHandoffView.mjs";
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const WURZEL = path.join(HIER, "..", "..");
@@ -73,8 +77,8 @@ test("2 — Kontakt: nur E-Mail und Telefon aus companyProfile, Symbole aus dem 
     for (const ziel of ["impressum", "datenschutz", "agb", "widerruf"]) {
       assert.ok(html.includes(`<a href="/${ziel}" target="_blank" rel="noopener noreferrer">`), `${datei}: Link /${ziel}`);
     }
-    // Kein Preisrechner-Knopf auf der Anmeldung (Audit D2), keine Vertrauensleiste ohne Beleg.
-    assert.doesNotMatch(html, /preisrechner\.confidaraexpress\.de|Ihre Daten in besten Händen|auth-trust/);
+    // Keine Vertrauensleiste ohne Beleg. Der Preisrechner steht seit Startklar nur als Weg für neue Besucher da (Test 2b).
+    assert.doesNotMatch(html, /Ihre Daten in besten Händen|auth-trust/);
   }
   const seite = lies("src/pages/AuthPage.jsx");
   const code = seite.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
@@ -84,12 +88,44 @@ test("2 — Kontakt: nur E-Mail und Telefon aus companyProfile, Symbole aus dem 
   assert.doesNotMatch(seite, new RegExp(`${contactPerson}|${email.replace(/\./g, "\\.")}|${phone}`), "AuthPage schreibt Kontaktdaten selbst");
 });
 
+test("2b — Wege für neue Besucher (Startklar, Konzept K4): Demo und Preisrechner im Kopf und unter dem Blatt", () => {
+  // Betreiberentscheidung 2026-11-23 löst „kein Preisrechner-Knopf auf der Anmeldung“ (Audit D2) ab. Das Ziel von D2
+  // bleibt: das Formular beginnt, wo es begann — die Wege stehen im Kopf neben der Marke und schmal unter dem Blatt.
+  // Nur Verweise auf das Bestehende: dieselbe Demo, derselbe Rechner.
+  assert.equal(DEMO_BASIS, "/demo");
+  assert.equal(PUBLIC_CALCULATOR_URL, "https://preisrechner.confidaraexpress.de/");
+  assert.deepEqual([AUTH_TEXT.wegeBereich, AUTH_TEXT.demo, AUTH_TEXT.preise, AUTH_TEXT.wegeFrage],
+    ["Ohne Anmeldung umsehen", "Demo ansehen", "Versandpreise berechnen", "Erst einmal umsehen?"]);
+  const kopf = `<nav class="auth-wege" aria-label="${AUTH_TEXT.wegeBereich}"><a class="auth-weg auth-weg--leise" href="${DEMO_BASIS}">${AUTH_TEXT.demo}</a><a class="auth-weg auth-weg--rand" href="${PUBLIC_CALCULATOR_URL}">${AUTH_TEXT.preise}</a></nav>`;
+  const unten = `<div class="auth-wege-unten"><p class="auth-wege-frage">${AUTH_TEXT.wegeFrage}</p><a class="auth-weg-zeile" href="${PUBLIC_CALCULATOR_URL}">${AUTH_TEXT.preise}</a><a class="auth-weg-zeile" href="${DEMO_BASIS}">${AUTH_TEXT.demo}</a></div>`;
+  for (const datei of Object.keys(GERUESTE)) {
+    const html = ohneKommentare(lies(datei));
+    const kopfBereich = html.slice(html.indexOf('<header class="auth-kopf">'), html.indexOf("</header>"));
+    assert.ok(kopfBereich.includes(kopf), `${datei}: die Wege im Kopf weichen ab`);
+    const blattEnde = html.indexOf('<div class="auth-wege-unten">');
+    assert.ok(blattEnde > html.indexOf('<div class="auth-card-bereich"'), `${datei}: die Wege unten fehlen oder stehen vor dem Blatt`);
+    assert.ok(html.slice(blattEnde, html.indexOf('<div class="auth-kontakt">')).trim() === unten, `${datei}: die Wege unten weichen ab`);
+    // Genau diese beiden Stellen: kein weiterer Preisrechner-Knopf, keine zweite Demo.
+    assert.equal(html.split(PUBLIC_CALCULATOR_URL).length - 1, 2, `${datei}: Preisrechner nicht genau zweimal`);
+    assert.equal(html.split(`href="${DEMO_BASIS}"`).length - 1, 2, `${datei}: Demo nicht genau zweimal`);
+  }
+  const seite = lies("src/pages/AuthPage.jsx");
+  const code = seite.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+  assert.match(code, /<header className="auth-kopf">\s*<BrandLogo variant="lockup" tone="reverse" className="auth-brand" \/>\s*<nav className="auth-wege" aria-label=\{AUTH_TEXT\.wegeBereich\}>\s*<a className="auth-weg auth-weg--leise" href=\{DEMO_BASIS\}>\{AUTH_TEXT\.demo\}<\/a>\s*<a className="auth-weg auth-weg--rand" href=\{PUBLIC_CALCULATOR_URL\}>\{AUTH_TEXT\.preise\}<\/a>\s*<\/nav>\s*<\/header>/);
+  assert.match(code, /<div className="auth-wege-unten">\s*<p className="auth-wege-frage">\{AUTH_TEXT\.wegeFrage\}<\/p>\s*<a className="auth-weg-zeile" href=\{PUBLIC_CALCULATOR_URL\}>\{AUTH_TEXT\.preise\}<\/a>\s*<a className="auth-weg-zeile" href=\{DEMO_BASIS\}>\{AUTH_TEXT\.demo\}<\/a>\s*<\/div>\s*<div className="auth-kontakt">/);
+  // Die Demo ist eine eigene Seitenladung (main.jsx schirmt Speicher und Netz vor dem ersten Rendern ab): ein
+  // gewöhnlicher Link, kein Router-Link. Ziele nur aus den Quellmodulen, nie abgetippt.
+  assert.doesNotMatch(code, /<Link[^>]*DEMO_BASIS|preisrechner\.confidaraexpress\.de|href="\/demo"/);
+});
+
 test("3 — das Blatt im Gerüst ist nicht bedienbar und trägt die Gestalt des Formulars", () => {
   for (const [datei, art] of Object.entries(GERUESTE)) {
     const html = ohneKommentare(lies(datei));
     const start = html.indexOf('<div class="auth-card-bereich" aria-hidden="true" inert>');
     assert.ok(start > 0, `${datei}: das Blatt ist nicht aria-hidden und inert`);
-    const ende = html.indexOf('<div class="auth-kontakt">', start);
+    // Das Blatt endet vor den Wegen für neue Besucher (Startklar) — die sind bedienbar wie Kontakt und Rechtliches.
+    const ende = html.indexOf('<div class="auth-wege-unten">', start);
+    assert.ok(ende > start, `${datei}: die Wege unter dem Blatt fehlen`);
     const blatt = html.slice(start, ende);
     assert.match(blatt, new RegExp(`<div class="auth-card auth-card--${art} auth-geruest">`), `${datei}: falsche Blattvariante`);
     assert.doesNotMatch(blatt, /\sid="|\sname="|<form[^>]*action|type="submit"|autofocus/, `${datei}: das Gerüst ist bedienbar oder trägt ids`);

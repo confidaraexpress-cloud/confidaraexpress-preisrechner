@@ -78,7 +78,8 @@ const lage = (page) => page.evaluate(() => {
     const r = el.getBoundingClientRect();
     return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width) };
   };
-  return { titel: box(".auth-title"), karte: box(".auth-map-img"), blatt: box(".auth-card") };
+  // Startklar: auch die Wege im Kopf (Demo, Preisrechner) stehen ab dem ersten Bild an ihrer Stelle.
+  return { titel: box(".auth-title"), karte: box(".auth-map-img"), blatt: box(".auth-card"), wege: box(".auth-wege") };
 });
 
 for (const [pfad, feld] of [["/login", "#auth-email"], ["/register", "#reg-name"]]) {
@@ -101,7 +102,7 @@ for (const [pfad, feld] of [["/login", "#auth-email"], ["/register", "#reg-name"
       await p2.waitForSelector(feld, { timeout: 20000 });
       assert.equal(await p2.locator(".auth-geruest").count(), 0, "React hat das Gerüst nicht ersetzt");
       const fertig = await lage(p2);
-      for (const teil of ["titel", "karte", "blatt"]) {
+      for (const teil of ["titel", "karte", "blatt", "wege"]) {
         const a = gerueest[teil], b = fertig[teil];
         assert.ok(a && b, `${teil} fehlt (${JSON.stringify({ a, b })})`);
         for (const k of ["x", "y", "w"]) {

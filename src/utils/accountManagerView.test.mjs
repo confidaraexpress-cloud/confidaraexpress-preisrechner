@@ -105,9 +105,20 @@ test("8 — Karte: Punkt Schmuck, Schalter benennt die Handlung, reduzierte Bewe
   assert.match(karte, /klasse="pp-ansprech-bild--karte" groesse=\{80\}/);
   assert.match(karte, /klasse="pp-ansprech-bild--foto" groesse=\{56\}/);
   assert.match(karte, /<span className="pp-ansprech-initialen" aria-hidden="true">\{ansicht\.initialen\}<\/span>/);
-  // Sichtbarer Text im zugänglichen Namen (WCAG 2.5.3), die Handlung davor nur vorgelesen; Umbruch vor dem @.
-  assert.match(karte, /<span className="sr-only">\{ANSPRECH_TEXT\.anrufen\}<\/span>\{ansicht\.telefon\.anzeige\}/);
-  assert.match(karte, /<span className="sr-only">\{ANSPRECH_TEXT\.mailen\}<\/span>\{ansicht\.email\.lokal\}<wbr \/>\{ansicht\.email\.domain\}/);
+  // Startklar (2026-11-23): Telefon und E-Mail stehen lesbar im Kopf — der Vorsatz nur vorgelesen, Umbruch vor dem @ —,
+  // die Handlungen „Anrufen“ und „E-Mail schreiben“ darunter. Der sichtbare Text steht am Anfang des zugänglichen
+  // Namens (WCAG 2.5.3), Nummer und Adresse folgen nur vorgelesen — mit Leerzeichen statt Satzzeichen davor: der
+  // versteckte Teil ist ein eigener Block, ein „:“ am Anfang ergäbe den Namen „Anrufen : 0175 …“.
+  assert.match(karte, /<span className="sr-only">\{ANSPRECH_TEXT\.telefon\}<\/span>\{ansicht\.telefon\.anzeige\}/);
+  assert.match(karte, /<span className="sr-only">\{ANSPRECH_TEXT\.email\}<\/span>\{ansicht\.email\.lokal\}<wbr \/>\{ansicht\.email\.domain\}/);
+  assert.match(karte, /<a className="pp-ansprech-aktion" href=\{ansicht\.telefon\.href\}>\s*<Icon n="phone" s=\{ICON_SIZE\.sm\} \/>\s*<span>\{ANSPRECH_TEXT\.anrufen\}<span className="sr-only">\{` \$\{ansicht\.telefon\.anzeige\}`\}<\/span><\/span>/);
+  assert.match(karte, /<a className="pp-ansprech-aktion" href=\{ansicht\.email\.href\}>\s*<Icon n="mail" s=\{ICON_SIZE\.sm\} \/>\s*<span>\{ANSPRECH_TEXT\.mailen\}<span className="sr-only">\{` an \$\{ansicht\.email\.adresse\}`\}<\/span><\/span>/);
+  assert.deepEqual([ANSPRECH_TEXT.telefon, ANSPRECH_TEXT.email, ANSPRECH_TEXT.anrufen, ANSPRECH_TEXT.mailen, ANSPRECH_TEXT.rueckruf],
+    ["Telefon: ", "E-Mail: ", "Anrufen", "E-Mail schreiben", "Rückruf anfragen"]);
+  // Anrufen und Schreiben nur mit zugeordneter Person — der Kundenservice ohne Zuordnung nennt keine Kontaktdaten (G4).
+  const aktionen = karte.slice(karte.indexOf('<div className="pp-ansprech-aktionen">'), karte.indexOf("</KartenTag>"));
+  assert.match(aktionen, /^<div className="pp-ansprech-aktionen">\s*\{person && \(\s*<>\s*<a className="pp-ansprech-aktion" href=\{ansicht\.telefon\.href\}>/);
+  assert.match(karte, /\{\(person \|\| rueckruf\) && \(\s*<div className="pp-ansprech-aktionen">/);
   assert.match(karte, /const KartenTag = person \? "address" : "div";/);
   assert.match(karte, /className=\{`pp-ansprech pp-ansprech--\$\{person \? "person" : "service"\}`\}/);
   assert.match(karte, /<BrandLogo variant="signet" tone="reverse" alt="" \/>/);
@@ -188,7 +199,9 @@ test("12 — Dock: Formen, Fokus folgt der Handlung, Escape und Klick daneben nu
   assert.match(karte, /hidden=\{platz && offen\}/, "Foto neben der offenen vollen Karte ausgeblendet");
   assert.match(karte, /aria-expanded=\{offen \? "true" : "false"\} aria-controls=\{KARTE_ID\}/);
   assert.match(karte, /if \(e\.key === "Escape" && !platz && kurzGeoeffnet\)/);
-  assert.match(karte, /if \(platz \|\| !kurzGeoeffnet\) return undefined;/);
+  // Ein Klick in den offenen Rückrufdialog ist kein Klick daneben: solange er offen ist, bleibt die kompakte Karte offen.
+  assert.match(karte, /if \(platz \|\| !kurzGeoeffnet \|\| rueckrufOffen\) return undefined;/);
+  assert.match(karte, /\}, \[platz, kurzGeoeffnet, rueckrufOffen\]\);/);
   assert.match(karte, /wurzel\.style\.setProperty\("--ce-ansprech-hoehe"/);
   assert.match(karte, /wurzel\.style\.removeProperty\("--ce-ansprech-hoehe"\)/);
   assert.match(karte, /if \(ziel === "karte" && einklappenRef\.current\) einklappenRef\.current\.focus\(\);/);
@@ -198,6 +211,17 @@ test("12 — Dock: Formen, Fokus folgt der Handlung, Escape und Klick daneben nu
   assert.doesNotMatch(knopf, /aria-label/);
   assert.match(knopf, /<span className="sr-only">/);
   assert.doesNotMatch(karte, /getDerivedStateFromError|componentDidCatch/, "keine zweite Fehlergrenze (errorBoundaryCoverage 1)");
+});
+
+test("12b — Rückruf (Startklar): nur für Kunden außerhalb der Demo, Dialog neben dem Dock, Fokus zurück zum Auslöser", () => {
+  const karte = ohneKommentare(lies("components/layout/AccountManagerCard.jsx"));
+  assert.match(karte, /const rueckruf = rueckrufAnbieten\(user, istDemo\(\)\);/);
+  assert.match(karte, /\{rueckruf && \(\s*<button ref=\{rueckrufRef\} type="button" className="pp-ansprech-aktion pp-ansprech-aktion--rueckruf"\s+aria-haspopup="dialog" onClick=\{\(\) => setRueckrufOffen\(true\)\}>/);
+  // Der Dialog ist Geschwister des Docks, nicht sein Kind: weder Escape noch der Klick daneben des Docks erreichen ihn,
+  // und er liegt in der Dialogebene über dem Dock. Beim Schließen kehrt der Fokus zum Knopf zurück.
+  const nachDock = karte.slice(karte.indexOf("</aside>"));
+  assert.match(nachDock, /^<\/aside>\s*\{rueckrufOffen && \(\s*<CallbackRequestDialog user=\{user\} onClose=\{\(\) => setRueckrufOffen\(false\)\} returnFocusTo=\{rueckrufRef\} \/>\s*\)\}\s*<\/>/);
+  assert.equal((karte.match(/<CallbackRequestDialog\b/g) || []).length, 1);
 });
 
 test("13 — Stile: fest unten rechts, Ebene unter Popovern, Freiraum und scroll-padding, Demo-Leiste, Druck, Kontrast", () => {

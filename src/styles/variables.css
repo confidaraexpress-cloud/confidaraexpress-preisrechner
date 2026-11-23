@@ -915,6 +915,8 @@
   --ce-pr-on-navy-2: #aab6d8;           /* 8,80:1 */
   --ce-pr-on-navy-3: #8a97bd;           /* 6,13:1 */
   --ce-pr-on-navy-line: rgba(143, 176, 255, 0.30);
+  /* Heller Schleier unter dem Zeiger auf Navy (gerahmter Weg im Kopf der Anmeldung, Startklar 2026-11-23). */
+  --ce-pr-on-navy-hover: rgba(238, 242, 255, 0.08);
   --ce-pr-shadow-sheet: 0 1px 2px rgba(2, 8, 30, 0.30), 0 30px 80px -24px rgba(2, 8, 30, 0.60);
   /* Dunkle Flächen in Navy statt Indigo und Violett (Preisrechner-Band und -Fuß, .ce-card-inverse). */
   --ce-color-surface-inverse: linear-gradient(180deg, #0a1636 0%, #081230 100%);
@@ -1100,6 +1102,10 @@
   --ce-pr-ed-ansprech-punkt-ring: rgba(92, 212, 154, 0.32);
   --ce-pr-ed-ansprech-puls-dauer: 2800ms;
   --ce-pr-ed-ansprech-puls-kurve: cubic-bezier(0.22, 0.61, 0.36, 1);
+  /* Startklar (2026-11-23): die Lichtkante um das Porträt (Signalblau auf Navy, mit Abstand gesetzt) und die Fläche der
+     Handlungsknöpfe beim Zeigen. */
+  --ce-pr-ed-ansprech-ring: rgba(143, 176, 255, 0.55);
+  --ce-pr-ed-ansprech-aktion-hover: rgba(255, 255, 255, 0.13);
 
   /* ── Bediensystem (Premium Control System, Betreiberentscheidungen D1–D7, 2026-11-14) ──
      Eine Familie für Knöpfe, Auswahlfelder, Aktionsmenüs, Auswahlkarten, Schalter und Reiter des Kundenbereichs

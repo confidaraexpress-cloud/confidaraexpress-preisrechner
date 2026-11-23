@@ -1,4 +1,5 @@
 import { statusFallback } from "./statusFallback.mjs";
+import { parsePhoneNumber } from "./phoneNumber.mjs";
 // Gemeinsame, reine Logik für die Admin-Supportanfragen (Liste + Detail + Kundenprofil):
 // kanonische Response-Normalisierung, Anzeige-Meta, erlaubte Statusübergänge, getrennte
 // Dirty-Erkennung und der PATCH-Body. Kein JSX, kein State, kein Fetch — testbar unter
@@ -25,6 +26,9 @@ const CATEGORY_LABELS = Object.assign(Object.create(null), {
   cancellation: "Stornierung",
   account: "Konto und Unternehmen",
   technical: "Technisches Problem",
+  // Startklar (2026-11-23): „Rückruf anfragen“ der Ansprechpartnerkarte — ein regulärer Vorgang, filterbar wie jede
+  // Kategorie. Vor „Sonstiges“, das die Auswahl abschließt.
+  callback: "Rückrufwunsch",
   other: "Sonstiges",
 });
 export const SUPPORT_CATEGORY_ORDER = Object.freeze(Object.keys(CATEGORY_LABELS));
@@ -117,6 +121,25 @@ function normalizeCustomer(raw, root) {
   };
 }
 
+/**
+ * Rückrufwunsch (Startklar, 2026-11-23): Name und Telefonnummer, wie der Kunde sie angegeben hat — der Server liefert
+ * sie nur im Detail und nur bei der Kategorie `callback` (sonst null). Das tel:-Ziel entsteht nach dem zentralen
+ * Telefonvertrag (Kern plus Durchwahl, ohne „(0)“); ist die Angabe nicht wählbar, steht sie ohne Link.
+ */
+export function normalizeCallback(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const name = typeof raw.name === "string" && raw.name.trim() !== "" ? raw.name.trim() : null;
+  const phone = typeof raw.phone === "string" && raw.phone.trim() !== "" ? raw.phone.trim() : null;
+  if (!name && !phone) return null;
+  let telHref = null;
+  if (phone) {
+    const p = parsePhoneNumber(phone);
+    const durchwahl = p.ok && typeof p.extension === "string" ? p.extension.replace(/\D/g, "") : "";
+    if (p.ok && /^\+?\d{6,15}$/.test(p.core)) telHref = `tel:${p.core}${durchwahl}`;
+  }
+  return { name, phone, telHref };
+}
+
 export function normalizeSupportRequest(raw) {
   if (!raw || typeof raw !== "object") return null;
 
@@ -159,6 +182,8 @@ export function normalizeSupportRequest(raw) {
     invoiceId: raw.invoiceId ?? raw.invoice_id ?? null,
     handledBy: raw.handledBy ?? raw.handled_by ?? null,
     customer: normalizeCustomer(raw.customer ?? raw.user, raw),
+    // Rückrufwunsch: Name und Telefonnummer (nur Detail, nur Kategorie callback) — sonst null.
+    callback: normalizeCallback(raw.callback),
     // Die Liste liefert zwei Booleans, das Detail zwei vollständige Objekte. Beide werden auf
     // dieselbe kanonische Form gebracht, damit die Komponenten nur EINE Struktur kennen.
     // Getrennt zu halten ist der Kern: ein Fehler der einen Mail sagt nichts über die andere.

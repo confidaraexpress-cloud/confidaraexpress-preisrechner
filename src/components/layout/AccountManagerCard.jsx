@@ -3,10 +3,13 @@ import { useAuth } from "../../context/AuthContext";
 import { BrandLogo } from "../ui/BrandLogo";
 import { Icon, ICON_SIZE } from "../ui/Icon";
 import { getAccountManagerPhotoUrl } from "../../api/accountManagerApi";
+import { CallbackRequestDialog } from "../support/CallbackRequestDialog";
+import { istDemo } from "../../demo/demoModus.mjs";
 import {
   ANSPRECH_TEXT, PLATZ_FUER_KARTE, ansprechpartnerAnsicht, karteEingeklappt, karteMerken, karteOffen,
   pulsAngehalten, pulsMerken,
 } from "../../utils/accountManagerView.mjs";
+import { rueckrufAnbieten } from "../../utils/callbackRequest.mjs";
 
 /* Der persönliche ConfidaraExpress-Ansprechpartner als schwebende Karte unten rechts im Fenster
    (Betreiberentscheidungen 2026-10-30, Canonical 1A, v2.90 und v2.91 G3–G5).
@@ -29,7 +32,14 @@ import {
 
    Nichts bleibt dauerhaft verdeckt: die gemessene Höhe des Docks steht als --ce-ansprech-hoehe am Wurzelelement;
    premium-editorial.css (Abschnitt 25) gibt dem Seiteninhalt unten genau so viel Platz und dem Dokument das
-   scroll-padding für Fokus und Sprungziele (WCAG 2.4.11). Menüs, Popover, Schublade und Dialoge liegen darüber. */
+   scroll-padding für Fokus und Sprungziele (WCAG 2.4.11). Menüs, Popover, Schublade und Dialoge liegen darüber.
+
+   Startklar (Betreiberentscheidung 2026-11-23): Telefon und E-Mail stehen lesbar im Kopf neben dem Foto, darunter die
+   Handlungen „Anrufen“ und „E-Mail schreiben“ als Knöpfe und — nur für ein angemeldetes Kundenkonto, nicht für Admin
+   und Demo — „Rückruf anfragen“ (auch ohne Zuordnung beim Kundenservice: das ist keine Kontaktangabe, G4 bleibt). Der
+   Dialog steht neben dem Dock, nicht darin: er liegt so in der Dialogebene über allem, und weder Escape noch ein Klick
+   im Dialog schließt die kompakte Karte. Schließt er, kehrt der Fokus auf „Rückruf anfragen“ zurück; Form, Zustand und
+   Speicher der Karte bleiben unberührt. */
 
 const BEWEGUNG_REDUZIERT = "(prefers-reduced-motion: reduce)";
 const KARTE_ID = "ce-ansprechpartner-karte";
@@ -137,10 +147,13 @@ function Dock() {
   const [durchHandlung, setDurchHandlung] = useState(false);
   const offen = karteOffen({ platz, eingeklappt, kurzGeoeffnet });
   const [fotoUrl, fotoFehler] = useFoto(ansicht.fotoVersion);
+  const rueckruf = rueckrufAnbieten(user, istDemo());
+  const [rueckrufOffen, setRueckrufOffen] = useState(false);
 
   const dockRef = useRef(null);
   const einklappenRef = useRef(null);
   const fotoRef = useRef(null);
+  const rueckrufRef = useRef(null);
   const fokusNach = useRef(null);
 
   // Wechselt der Platz (Fenster, Zoom, Schrift), beginnt die kompakte Form wieder als Foto.
@@ -166,15 +179,16 @@ function Dock() {
     if (ziel === "foto" && fotoRef.current) fotoRef.current.focus();
   }, [offen]);
 
-  // Kompakt geöffnet: ein Klick daneben schließt die Karte, der Fokus bleibt, wo geklickt wurde.
+  // Kompakt geöffnet: ein Klick daneben schließt die Karte, der Fokus bleibt, wo geklickt wurde. Solange der
+  // Rückrufdialog offen ist, gilt kein Klick als „daneben“ — die Karte wartet unter dem Dialog auf die Fokusrückgabe.
   useEffect(() => {
-    if (platz || !kurzGeoeffnet) return undefined;
+    if (platz || !kurzGeoeffnet || rueckrufOffen) return undefined;
     const daneben = (e) => {
       if (dockRef.current && !dockRef.current.contains(e.target)) setKurzGeoeffnet(false);
     };
     document.addEventListener("pointerdown", daneben);
     return () => document.removeEventListener("pointerdown", daneben);
-  }, [platz, kurzGeoeffnet]);
+  }, [platz, kurzGeoeffnet, rueckrufOffen]);
 
   // Belegte Höhe am Wurzelelement: daraus entstehen Freiraum unter dem Inhalt und scroll-padding (CSS Abschnitt 25).
   // Kompakt geöffnet liegt die Karte ÜBER dem Foto (absolut) — gemessen wird dann weiter nur das Foto.
@@ -197,6 +211,7 @@ function Dock() {
   const KartenTag = person ? "address" : "div";
 
   return (
+    <>
     <aside ref={dockRef} className="pp-ansprech-dock" aria-label={bereich} onKeyDown={tastatur}
       data-form={platz ? "voll" : "kompakt"} data-offen={offen ? "ja" : "nein"}
       data-bewegung={durchHandlung ? "ja" : undefined} data-ansprechpartner={person ? ansicht.key : undefined}>
@@ -217,18 +232,39 @@ function Dock() {
             <p className="pp-ansprech-name">{ansicht.name}</p>
             {person && (
               <p className="pp-ansprech-wege">
-                <a className="pp-ansprech-link pp-ansprech-tel" href={ansicht.telefon.href}>
-                  <Icon n="phone" s={ICON_SIZE.sm} />
-                  <span><span className="sr-only">{ANSPRECH_TEXT.anrufen}</span>{ansicht.telefon.anzeige}</span>
-                </a>
-                <a className="pp-ansprech-link pp-ansprech-mail" href={ansicht.email.href}>
-                  <Icon n="mail" s={ICON_SIZE.sm} />
-                  <span><span className="sr-only">{ANSPRECH_TEXT.mailen}</span>{ansicht.email.lokal}<wbr />{ansicht.email.domain}</span>
-                </a>
+                <span className="pp-ansprech-wert pp-ansprech-tel">
+                  <span className="sr-only">{ANSPRECH_TEXT.telefon}</span>{ansicht.telefon.anzeige}
+                </span>
+                <span className="pp-ansprech-wert pp-ansprech-mail">
+                  <span className="sr-only">{ANSPRECH_TEXT.email}</span>{ansicht.email.lokal}<wbr />{ansicht.email.domain}
+                </span>
               </p>
             )}
           </div>
         </div>
+        {(person || rueckruf) && (
+          <div className="pp-ansprech-aktionen">
+            {person && (
+              <>
+                <a className="pp-ansprech-aktion" href={ansicht.telefon.href}>
+                  <Icon n="phone" s={ICON_SIZE.sm} />
+                  <span>{ANSPRECH_TEXT.anrufen}<span className="sr-only">{` ${ansicht.telefon.anzeige}`}</span></span>
+                </a>
+                <a className="pp-ansprech-aktion" href={ansicht.email.href}>
+                  <Icon n="mail" s={ICON_SIZE.sm} />
+                  <span>{ANSPRECH_TEXT.mailen}<span className="sr-only">{` an ${ansicht.email.adresse}`}</span></span>
+                </a>
+              </>
+            )}
+            {rueckruf && (
+              <button ref={rueckrufRef} type="button" className="pp-ansprech-aktion pp-ansprech-aktion--rueckruf"
+                aria-haspopup="dialog" onClick={() => setRueckrufOffen(true)}>
+                <Icon n="phoneIncoming" s={ICON_SIZE.sm} />
+                <span>{ANSPRECH_TEXT.rueckruf}</span>
+              </button>
+            )}
+          </div>
+        )}
       </KartenTag>
       {/* Name aus dem Inhalt (sr-only), kein aria-label: das Foto zeigt sonst Initialen, die als sichtbarer Text
           zählen (axe label-content-name-mismatch). Der Zustand steht in aria-expanded, die Handlung im Tooltip. */}
@@ -240,6 +276,10 @@ function Dock() {
         <span className="sr-only">{person ? `${ANSPRECH_TEXT.bereichPerson}: ${ansicht.name}` : ANSPRECH_TEXT.bereichService}</span>
       </button>
     </aside>
+    {rueckrufOffen && (
+      <CallbackRequestDialog user={user} onClose={() => setRueckrufOffen(false)} returnFocusTo={rueckrufRef} />
+    )}
+    </>
   );
 }
 

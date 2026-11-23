@@ -2801,10 +2801,15 @@
   border-radius: var(--ce-radius-full);
   color: var(--ce-sidebar-text-strong);
 }
+/* Das Porträt (Startklar): volle 80 px Bild, gefasst von einer feinen Lichtkante mit Abstand — der Rahmen liegt außen
+   (outline folgt der Rundung), der Spalt zeigt die Kartenfläche. Ohne Foto tragen die Initialen eine ruhige Fläche. */
 :root[data-ce-bereich="kunde"] .pp-ansprech-bild--karte {
   width: var(--ce-pr-ed-ansprech-bild);
   height: var(--ce-pr-ed-ansprech-bild);
-  border: 2px solid var(--ce-pr-on-navy-line);
+  margin: 0.25rem;
+  background: var(--ce-sidebar-hover);
+  outline: 1px solid var(--ce-pr-ed-ansprech-ring);
+  outline-offset: 3px;
 }
 :root[data-ce-bereich="kunde"] .pp-ansprech-dock[data-form="kompakt"] .pp-ansprech-bild--karte { display: none; }
 :root[data-ce-bereich="kunde"] .pp-ansprech-foto {
@@ -2817,6 +2822,14 @@
   font-size: 1.5rem;
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+/* Die Marke steht mittig im Kreis: BrandLogo legt das Bild in eine Hülle (span.ce-brand), die als Rasterelement die
+   volle Kreisbreite einnimmt — ohne eigene Zentrierung säße das Signet links darin (Startklar, Sichtprüfung). */
+:root[data-ce-bereich="kunde"] .pp-ansprech-bild--marke > .ce-brand {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
 }
 :root[data-ce-bereich="kunde"] .pp-ansprech-bild--marke .ce-brandmark-img {
   display: block;
@@ -2903,45 +2916,79 @@
   }
 }
 
-/* Telefon und E-Mail: je eine Zeile mit kleinem Symbol, mindestens 28 px hoch (mit grobem Zeiger 44 px). */
+/* Telefon und E-Mail (Startklar, 2026-11-23): lesbar im Kopf neben dem Foto, nicht verlinkt — die Handlungen stehen
+   darunter als eigene Knöpfe. Die Telefonnummer bricht nie; passt die Adresse nicht in die Zeile (große Schrift),
+   bricht sie vor dem „@“ (<wbr>), notfalls an beliebiger Stelle. */
 :root[data-ce-bereich="kunde"] .pp-ansprech-wege {
   display: grid;
   justify-items: start;
-  gap: 0;
+  gap: 0.125rem;
   margin: 0;
 }
-:root[data-ce-bereich="kunde"] .pp-ansprech-link {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ce-space-2);
+:root[data-ce-bereich="kunde"] .pp-ansprech-wert {
   max-width: 100%;
-  min-height: 1.75rem;
-  border-radius: var(--ce-radius-xs);
-  color: var(--ce-pr-signal-on-navy);
+  color: var(--ce-pr-on-navy);
   font-size: 0.875rem;
-  font-weight: 600;
-  line-height: 1.4;
-  text-decoration: none;
+  font-weight: var(--ce-weight-medium);
+  line-height: 1.45;
 }
-:root[data-ce-bereich="kunde"] .pp-ansprech-link > svg { flex: none; opacity: 0.8; }
-:root[data-ce-bereich="kunde"] .pp-ansprech-link > span { min-width: 0; }
 :root[data-ce-bereich="kunde"] .pp-ansprech-tel {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
-/* Passt die Adresse nicht in die Zeile (große Schrift), bricht sie vor dem „@“ (<wbr>), notfalls an beliebiger
-   Stelle — die Telefonnummer bricht nie. */
-:root[data-ce-bereich="kunde"] .pp-ansprech-mail > span { overflow-wrap: break-word; }
-@media (hover: hover) {
-  :root[data-ce-bereich="kunde"] .pp-ansprech-link:hover > span { text-decoration: underline; text-underline-offset: 3px; }
+:root[data-ce-bereich="kunde"] .pp-ansprech-mail { min-width: 0; overflow-wrap: break-word; }
+
+/* Handlungen: „Anrufen“ und „E-Mail schreiben“ nebeneinander, darunter über die volle Breite „Rückruf anfragen“ (ohne
+   Zuordnung die einzige Handlung). Ruhige Flächen auf Navy in einer Sprache — das Foto bleibt das eine starke Element
+   der Karte. Mindestens 40 px hoch, mit grobem Zeiger 44 px.
+   Eine Beschriftung bricht nie mitten im Knopf um, solange sie in eine Zeile der Karte passt: Jeder Knopf ist mindestens
+   so breit wie seine Beschriftung (fit-content); reicht die Zeile für beide nicht (schmale Telefone, große Schrift),
+   steht jeder Knopf in eigener Zeile. Erst wenn eine Beschriftung breiter ist als die ganze Karte (200 % Schrift),
+   bricht sie um — nie abgeschnitten, nie über den Rand. Passen beide, teilen sie sich die Zeile gleich breit. */
+:root[data-ce-bereich="kunde"] .pp-ansprech-aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ce-space-2);
+  margin-top: var(--ce-space-4);
 }
-:root[data-ce-bereich="kunde"] .pp-ansprech-link:focus-visible {
+:root[data-ce-bereich="kunde"] .pp-ansprech-aktion {
+  display: inline-flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-width: fit-content;
+  min-height: 2.5rem;
+  padding: var(--ce-space-2) var(--ce-space-3);
+  border: 1px solid var(--ce-sidebar-border);
+  border-radius: var(--ce-pr-radius-control);
+  background: var(--ce-sidebar-hover);
+  color: var(--ce-sidebar-text-strong);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-aktion > svg { flex: none; color: var(--ce-pr-signal-on-navy); }
+:root[data-ce-bereich="kunde"] .pp-ansprech-aktion > span { min-width: 0; }
+:root[data-ce-bereich="kunde"] .pp-ansprech-aktion--rueckruf { flex-basis: 100%; }
+@media (hover: hover) and (pointer: fine) {
+  :root[data-ce-bereich="kunde"] .pp-ansprech-aktion:hover {
+    border-color: var(--ce-pr-on-navy-line);
+    background: var(--ce-pr-ed-ansprech-aktion-hover);
+  }
+}
+:root[data-ce-bereich="kunde"] .pp-ansprech-aktion:focus-visible {
   outline: 2px solid var(--ce-pr-signal-on-navy);
   outline-offset: 2px;
 }
 @media (pointer: coarse) {
-  :root[data-ce-bereich="kunde"] .pp-ansprech-link { min-height: var(--ce-size-touch-target); }
+  :root[data-ce-bereich="kunde"] .pp-ansprech-aktion { min-height: var(--ce-size-touch-target); }
 }
 
 /* ── Rundes Foto (eingeklappt, kompakt) ── Weißer Ring in feiner Navy-Kante, damit es auf jeder Fläche steht. */
@@ -2979,6 +3026,8 @@
 
 @media (forced-colors: active) {
   :root[data-ce-bereich="kunde"] :is(.pp-ansprech, .pp-ansprech-foto-knopf) { border-color: CanvasText; }
+  :root[data-ce-bereich="kunde"] .pp-ansprech-aktion { border-color: ButtonText; }
+  :root[data-ce-bereich="kunde"] .pp-ansprech-bild--karte { outline-color: CanvasText; }
 }
 @media print {
   :root[data-ce-bereich="kunde"] .pp-ansprech-dock { display: none; }

@@ -55,6 +55,13 @@
 /* Die Fehlermeldung ist eine FormAlert — hier steht nur ihr Abstand. */
 .sup-dialog-error { margin-top: var(--ce-space-3); }
 
+/* „Rückruf anfragen“ (Startklar, 2026-11-23): dieselbe Dialogsprache. Der Grund ist freiwillig und kurz — sein Feld
+   startet niedriger als die Nachricht der Supportanfrage. Die Bestätigung nimmt nach dem Absenden den Fokus, damit die
+   Vorgangsnummer sofort vorgelesen wird; sie ist kein Bedienelement und trägt deshalb keinen Fokusring. */
+.sup-dialog-optional { font-weight: var(--ce-weight-regular, 400); color: var(--ce-color-text-muted); }
+.sup-dialog-textarea--kurz { min-height: 88px; }
+.sup-dialog-success:focus { outline: none; }
+
 /* Der Footer folgt dem gemeinsamen Dialogmuster (patterns.css): Aktionen
    rechts, bestätigende Aktion rechts außen; unter 480 px stapelt das Muster
    sie global. */

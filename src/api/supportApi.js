@@ -1,5 +1,6 @@
 import { apiFetch } from "./client";
 import { buildSupportRequestBody } from "../utils/supportRequest.mjs";
+import { buildCallbackRequestBody } from "../utils/callbackRequest.mjs";
 import { idempotencyHeader } from "../utils/idempotencyKey.mjs";
 
 // ── Supportanfrage (Kunde) ───────────────────────────────────────────────────
@@ -23,6 +24,20 @@ export function createSupportRequest({ category, subject, message, shipmentId })
     method: "POST",
     auth: true,
     body: JSON.stringify(buildSupportRequestBody({ category, subject, message, shipmentId })),
+  });
+}
+
+// Rückrufwunsch (Startklar, 2026-11-23): ein regulärer Supportvorgang der Kategorie `callback` über DIESELBE Route —
+// keine zweite Ticketstrecke. Body ausschließlich aus buildCallbackRequestBody (Name, Telefon, optional der Grund).
+// Der Idempotenzschlüssel identifiziert die Absendeaktion des Dialogs: eine Dialogsitzung → ein Schlüssel, jede
+// Wiederholung (etwa nach einem Netzwerkfehler) schickt denselben. Der Server legt höchstens EINEN Vorgang an und
+// beantwortet die Wiederholung mit demselben Vorgang (200) — auch die interne Meldung entsteht nur einmal.
+export function createCallbackRequest(fields, idempotencyKey) {
+  return apiFetch(`/kunde/support-requests`, {
+    method: "POST",
+    auth: true,
+    headers: idempotencyHeader(idempotencyKey),
+    body: JSON.stringify(buildCallbackRequestBody(fields)),
   });
 }
 

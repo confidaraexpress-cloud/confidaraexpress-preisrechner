@@ -299,7 +299,13 @@ test("N1 — gültige Anfrage: Overlay sofort, Hintergrund gesperrt, danach alle
 
   // Hintergrund: inert + aria-busy, die Maus trifft das Overlay statt des Formulars.
   assert.deepEqual(await sperre(page), { inert: true, busy: "true" });
+  // Erst das Gewichtsfeld ins Bild holen. Der Klick auf den Angebotsknopf rollt ihn über die schwebende
+  // Ansprechpartnerkarte (scroll-padding aus --ce-ansprech-hoehe, WCAG 2.4.11); je nach Kartenhöhe lag die Feldmitte
+  // danach über dem oberen Fensterrand, und elementFromPoint prüfte einen Punkt außerhalb des Fensters (Startklar
+  // 2026-11-23: offen 270 statt 167 px). Programmatisches Rollen ist trotz inert möglich; das Overlay bleibt fixiert.
+  await page.locator("#ns-weight").evaluate((el) => el.scrollIntoView({ block: "center", behavior: "instant" }));
   const feld = await page.locator("#ns-weight").boundingBox();
+  assert.ok(feld.y >= 0 && feld.y + feld.height <= 900, `das Gewichtsfeld liegt nicht im Fenster (y ${Math.round(feld.y)})`);
   const getroffen = await page.evaluate(([x, y]) => !!document.elementFromPoint(x, y)?.closest(".cmp-loading-overlay"),
     [feld.x + feld.width / 2, feld.y + feld.height / 2]);
   assert.ok(getroffen, "die Maus erreicht das Formular unter dem Overlay");

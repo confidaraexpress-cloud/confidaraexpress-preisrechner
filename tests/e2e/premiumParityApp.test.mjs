@@ -2,7 +2,8 @@
 // Browser. Die Demo braucht kein Backend: sie darf den Server nie erreichen, jede Anfrage dorthin lässt den Test
 // scheitern. Keine Buchung, keine E-Mail.
 //
-//   V4  Anmeldung: Lichter auf der Karte, gleitende Reitermarke, kein Weg zum Preisrechner auf der Seite.
+//   V4  Anmeldung: Lichter auf der Karte, gleitende Reitermarke; zum Preisrechner nur der Weg „Versandpreise
+//       berechnen“ (Startklar 2026-11-23), kein Knopf oder Link „Preisrechner“.
 //   D1  Demo ohne Anmeldung: Übersicht, jeder Menüpunkt mit eigener Überschrift, Paketbühne in „Neue Sendung“,
 //       keine einzige Anfrage an den Server, das echte Token dieses Browsers bleibt unsichtbar und unverändert.
 //   D2  Demo: simulierte Buchung bis zur Bestätigung — eindeutig als Simulation gekennzeichnet, SIM-Nummern.
@@ -65,7 +66,7 @@ const lichter = (page, auswahl) => page.$$eval(auswahl, (els) => els.map((e) => 
   return { animation: s.animationName, opacity: Number(s.opacity) };
 }));
 
-test("V4 — Anmeldung: Lichter auf der Karte, gleitende Reitermarke, kein Weg zum Preisrechner", async () => {
+test("V4 — Anmeldung: Lichter auf der Karte, gleitende Reitermarke, Preisrechner nur über „Versandpreise berechnen“", async () => {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: "de-DE" });
   await ctx.route(`${API}/**`, (route) => route.fulfill({ status: 200, contentType: "application/json", body: "{}" }));
   const page = await ctx.newPage();
@@ -95,6 +96,11 @@ test("V4 — Anmeldung: Lichter auf der Karte, gleitende Reitermarke, kein Weg z
     assert.ok(rechts > links + 20, "die Marke gleitet zum gewählten Reiter");
     assert.equal(await page.getByRole("link", { name: /Preisrechner/i }).count(), 0);
     assert.equal(await page.getByRole("button", { name: /Preisrechner/i }).count(), 0);
+    // Startklar (Betreiberentscheidung E, 2026-11-23): der eine Weg zum öffentlichen Preisrechner heißt „Versandpreise
+    // berechnen“ und steht bei 1440 px im Kopf; ein Knopf oder Link „Preisrechner“ bleibt ausgeschlossen (Audit D2).
+    const weg = page.getByRole("link", { name: "Versandpreise berechnen" });
+    assert.equal(await weg.count(), 1, "der Weg „Versandpreise berechnen“ fehlt im Kopf");
+    assert.match(await weg.getAttribute("href"), /^https:\/\/preisrechner\.confidaraexpress\.de\/?$/);
     assert.deepEqual(fehler, []);
   } finally { await ctx.close(); }
 });

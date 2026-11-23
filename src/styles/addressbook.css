@@ -376,9 +376,16 @@
 }
 /* Drei Zeilen je Treffer: Bezeichnung/Firma · Person · Anschrift. Sie stehen
    UNTEREINANDER, damit zwei Einträge derselben Firma an derselben Adresse mit
-   unterschiedlichen Ansprechpartnern sichtbar verschieden sind. */
+   unterschiedlichen Ansprechpartnern sichtbar verschieden sind.
+
+   flex: none (Startklar, 2026-11-23): Die Liste ist eine Flex-Spalte mit fester
+   Höchsthöhe. Das ausdrückliche min-height ersetzte das automatische Minimum
+   (Inhaltshöhe) — reichte der Platz nicht (ab etwa vier Einträgen), schrumpfte
+   jeder Eintrag auf 40 bzw. 44 px, und die Zeilen liefen übereinander. Ohne
+   Schrumpfen behält jeder Eintrag seine volle Höhe, und die Liste scrollt. */
 .abk-pick-item {
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  flex: none;
   width: 100%; min-height: 40px; text-align: left;
   padding: var(--ce-space-2) var(--ce-space-3);
   border: 1px solid transparent; border-radius: var(--ce-radius-sm);

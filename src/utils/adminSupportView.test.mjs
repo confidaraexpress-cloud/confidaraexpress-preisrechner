@@ -29,6 +29,7 @@ import {
   isSupportNoteDirty,
   isSupportStatusDirty,
   isSupportStatusEditable,
+  normalizeCallback,
   normalizeSupportNote,
   normalizeSupportQuery,
   normalizeSupportRequest,
@@ -482,9 +483,11 @@ test("31i — die Liste bietet Status-, Kategorie- und Suchfilter mit Default qu
   assert.match(listPage, /Ticketnummer oder Betreff/, "Beschriftung des Suchfelds weicht ab");
   assert.match(listPage, /sort: SUPPORT_SORT_DEFAULT/, "Default-Sortierung wird nicht gesendet");
   assert.equal(SUPPORT_CATEGORY_FILTER_OPTIONS[0].label, "Alle");
-  // „Alle" + acht Kategorien (seit Go-Live Paket G mit „Schaden oder Verlust").
-  assert.equal(SUPPORT_CATEGORY_FILTER_OPTIONS.length, 9);
+  // „Alle" + neun Kategorien (seit Go-Live Paket G mit „Schaden oder Verlust", seit Startklar mit „Rückrufwunsch" —
+  // das Backend nimmt den Wert als Filter an, SUPPORT_CATEGORIES in lib/support.js).
+  assert.equal(SUPPORT_CATEGORY_FILTER_OPTIONS.length, 10);
   assert.ok(SUPPORT_CATEGORY_FILTER_OPTIONS.some((o) => o.value === "damage" && o.label === "Schaden oder Verlust"));
+  assert.ok(SUPPORT_CATEGORY_FILTER_OPTIONS.some((o) => o.value === "callback" && o.label === "Rückrufwunsch"));
 });
 
 test("31j — die Suche wird NICHT bei jedem Tastendruck gesendet", () => {
@@ -545,4 +548,28 @@ test("35 — der Adminbereich benennt ausdrücklich, dass nichts an den Kunden g
     "der Hinweis zur fehlenden Kundenbenachrichtigung fehlt");
   assert.match(listPage, /verschickt keine Nachricht an den Kunden/,
     "der Hinweis fehlt in der Liste");
+});
+
+/* ── Rückrufwunsch (Startklar, 2026-11-23) ───────────────────────────────── */
+
+test("40 — Rückruf: Kategorie mit Beschriftung, Name und Nummer aus dem Serverfeld, wählbar nur bei gültiger Nummer", () => {
+  assert.equal(supportCategoryLabel("callback"), "Rückrufwunsch");
+  assert.deepEqual(normalizeCallback({ name: " Erika Muster ", phone: "+49 711 123456-78" }),
+    { name: "Erika Muster", phone: "+49 711 123456-78", telHref: "tel:+4971112345678" });
+  assert.deepEqual(normalizeCallback({ name: "Erika Muster", phone: "0711 123456" }),
+    { name: "Erika Muster", phone: "0711 123456", telHref: "tel:0711123456" });
+  // Eine nicht erkennbare Nummer steht da, wie sie gespeichert ist — ohne Wählverweis.
+  assert.deepEqual(normalizeCallback({ name: "Erika Muster", phone: "abc" }), { name: "Erika Muster", phone: "abc", telHref: null });
+  assert.deepEqual(normalizeCallback({ name: null, phone: "0711 123456" }), { name: null, phone: "0711 123456", telHref: "tel:0711123456" });
+  for (const leer of [null, undefined, "x", 42, {}, { name: " ", phone: "" }]) assert.equal(normalizeCallback(leer), null);
+  // Die Liste liest das Feld mit; eine gewöhnliche Anfrage hat keins.
+  assert.equal(normalizeSupportRequest({ id: 1 }).callback, null);
+  assert.deepEqual(normalizeSupportRequest({ id: 1, category: "callback", callback: { name: "E. M.", phone: "0711 123456" } }).callback,
+    { name: "E. M.", phone: "0711 123456", telHref: "tel:0711123456" });
+});
+
+test("41 — Rückruf in der Detailansicht: „Rückruf an“ und „Telefon“ zuerst, Nummer als Text, Wählverweis nur geprüft", () => {
+  const code = detailPage.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/^\s*\/\/.*$/gm, "");
+  assert.match(code, /\.\.\.\(req\.callback\s*\?\s*\[\s*\["Rückruf an", req\.callback\.name \|\| "—"\],\s*\["Telefon", req\.callback\.telHref\s*\?\s*<a href=\{req\.callback\.telHref\}>\{req\.callback\.phone\}<\/a>\s*:\s*\(req\.callback\.phone \|\| "—"\)\],?\s*\]\s*:\s*\[\]\)/);
+  assert.doesNotMatch(code, /dangerouslySetInnerHTML/);
 });

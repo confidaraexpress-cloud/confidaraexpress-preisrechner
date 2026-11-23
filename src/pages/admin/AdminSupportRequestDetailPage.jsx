@@ -537,6 +537,16 @@ export default function AdminSupportRequestDetailPage() {
           <h2 className="adm-card-title">Details</h2>
           <div className="adm-card-body">
             <KV items={[
+              // Rückrufwunsch (Startklar, 2026-11-23): wen der Support unter welcher Nummer zurückruft — nur bei der
+              // Kategorie callback. Die Nummer steht, wie der Kunde sie angegeben hat; wählbar, wenn sie es ist.
+              ...(req.callback
+                ? [
+                    ["Rückruf an", req.callback.name || "—"],
+                    ["Telefon", req.callback.telHref
+                      ? <a href={req.callback.telHref}>{req.callback.phone}</a>
+                      : (req.callback.phone || "—")],
+                  ]
+                : []),
               ["Eingegangen", fmtDateTime(req.createdAt)],
               ["Zuletzt geändert", fmtDateTime(req.updatedAt)],
               ["Zuletzt bearbeitet von", handlerName],

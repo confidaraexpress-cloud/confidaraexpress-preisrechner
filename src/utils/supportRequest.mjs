@@ -36,8 +36,14 @@ export function supportCategoryLabel(value) {
 // Rückgabe: [sichtbarerText, rohwertOderNull] — der Rohwert gehört höchstens
 // in ein title-Attribut, damit der Support ihn nachschlagen kann.
 export const SUPPORT_CATEGORY_UNKNOWN = "Ohne Kategorie";
+// Kategorien, die nur ANGEZEIGT, nie im Formular gewählt werden: der Rückrufwunsch entsteht ausschließlich über
+// „Rückruf anfragen“ der Ansprechpartnerkarte, mit eigenem Eingabevertrag (Startklar, 2026-11-23; Backend
+// lib/supportCallback.js). In der Liste und im Verlauf der Supportanfragen steht er mit seinem Namen.
+export const SUPPORT_DISPLAY_ONLY_CATEGORIES = Object.freeze({ callback: "Rückrufwunsch" });
 export function supportCategoryDisplay(value) {
-  const label = supportCategoryLabel(value);
+  const label = supportCategoryLabel(value)
+    ?? (typeof value === "string" && Object.prototype.hasOwnProperty.call(SUPPORT_DISPLAY_ONLY_CATEGORIES, value)
+      ? SUPPORT_DISPLAY_ONLY_CATEGORIES[value] : null);
   if (label) return [label, null];
   const roh = typeof value === "string" && value.trim() ? value.trim() : null;
   return [SUPPORT_CATEGORY_UNKNOWN, roh];

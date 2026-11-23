@@ -1102,6 +1102,10 @@
   --ce-pr-ed-ansprech-punkt-ring: rgba(92, 212, 154, 0.32);
   --ce-pr-ed-ansprech-puls-dauer: 2800ms;
   --ce-pr-ed-ansprech-puls-kurve: cubic-bezier(0.22, 0.61, 0.36, 1);
+  /* Startklar (2026-11-23): die Lichtkante um das Porträt (Signalblau auf Navy, mit Abstand gesetzt) und die Fläche der
+     Handlungsknöpfe beim Zeigen. */
+  --ce-pr-ed-ansprech-ring: rgba(143, 176, 255, 0.55);
+  --ce-pr-ed-ansprech-aktion-hover: rgba(255, 255, 255, 0.13);
 
   /* ── Bediensystem (Premium Control System, Betreiberentscheidungen D1–D7, 2026-11-14) ──
      Eine Familie für Knöpfe, Auswahlfelder, Aktionsmenüs, Auswahlkarten, Schalter und Reiter des Kundenbereichs

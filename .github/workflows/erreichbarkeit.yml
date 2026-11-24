@@ -1,0 +1,97 @@
+name: Erreichbarkeit
+
+# ─── Warum es diese Datei gibt ──────────────────────────────────────────────────
+# Die Betriebssicht der API (Backend, docs/BACKEND_ARCHITECTURE.md §12.5) meldet, was der laufende Prozess sehen
+# kann. Einen Ausfall des Servers, des Prozesses oder der Datenbank selbst kann sie nicht melden — dann läuft
+# niemand mehr, der eine Mail schreiben könnte. Dafür braucht es einen Wächter VON AUSSEN (Lastanalyse 2026-11-23,
+# Befund B-02; Betreiberentscheidung vom 24.11.2026: unabhängiger externer Wächter, vorhandene Infrastruktur,
+# kein neuer kostenpflichtiger Dienst).
+#
+# Dieser Lauf ist dieser Wächter. Er läuft bei GitHub — also nicht auf dem Produktionsserver und nicht über den
+# Mailanbieter der Anwendung — und fragt alle fünf Minuten zwei öffentliche Adressen ab:
+#
+#   • https://api.confidaraexpress.de/health   prüft Prozess UND Datenbank (`SELECT 1`), 200 oder 503
+#   • https://confidaraexpress.de/             die Website
+#
+# Schlägt eine Adresse dreimal hintereinander fehl (je 15 s Frist, 20 s Abstand), endet der Lauf rot. GitHub
+# benachrichtigt bei einem fehlgeschlagenen geplanten Lauf per E-Mail das Konto, das den Zeitplan dieser Datei
+# zuletzt geändert hat (Einstellung „Actions → Send notifications for failed workflows only“ des GitHub-Kontos).
+#
+# ─── Warum hier und nicht im Backend-Repository ────────────────────────────────
+# Dieses Repository ist öffentlich; geplante Läufe kosten hier keine Rechenminuten. Im privaten Backend-Repository
+# verbrauchte ein Fünf-Minuten-Takt das monatliche Kontingent.
+#
+# ─── Was hier NICHT passiert ───────────────────────────────────────────────────
+#   • kein Checkout, kein Zugriff auf den Quelltext, keine Secrets, keine Schreibrechte (`permissions: {}`)
+#   • keine Anmeldung, keine Buchung, keine Last: zwei einzelne GET-Abrufe öffentlicher Adressen
+#   • das Protokoll ist öffentlich lesbar — es enthält nur die beiden Adressen und Statuscodes
+#
+# ─── Grenzen ───────────────────────────────────────────────────────────────────
+#   • GitHub startet geplante Läufe nach bestem Bemühen: sie können sich um Minuten verspäten oder ausfallen.
+#     Der Wächter erkennt einen Ausfall deshalb typischerweise nach 5–15 Minuten, nicht sekundengenau.
+#   • Solange der Ausfall anhält, ist JEDER Lauf rot (eine Mail je Lauf). Das ist gewollt: ein grüner Lauf
+#     während eines Ausfalls wäre die falsche Aussage.
+#   • GitHub schaltet geplante Läufe ab, wenn ein Repository 60 Tage lang keine Aktivität hatte.
+#
+# ─── Abnahme ───────────────────────────────────────────────────────────────────
+# „Run workflow“ (workflow_dispatch) mit einer absichtlich nicht erreichbaren Adresse im Feld `api_url`,
+# zum Beispiel https://api.confidaraexpress.invalid/health — der Lauf muss rot enden und die Mail auslösen.
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "Nur für die Abnahme: abweichende API-Adresse (z. B. eine absichtlich nicht erreichbare)"
+        required: false
+        default: ""
+
+permissions: {}
+
+concurrency:
+  group: erreichbarkeit
+  cancel-in-progress: false
+
+jobs:
+  pruefen:
+    name: API und Website erreichbar
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Abrufen
+        env:
+          # Die Eingabe kommt als Umgebungsvariable in das Skript — nie als Text in die Befehlszeile.
+          API_URL_EINGABE: ${{ inputs.api_url }}
+        run: |
+          set -u
+          API_URL="${API_URL_EINGABE:-}"
+          if [ -z "$API_URL" ]; then API_URL="https://api.confidaraexpress.de/health"; fi
+          case "$API_URL" in
+            https://*) ;;
+            *) echo "::error::api_url muss mit https:// beginnen"; exit 2 ;;
+          esac
+
+          # Drei Versuche je Adresse: ein einzelner Aussetzer (Auslieferung einer neuen Version, kurzer Netzfehler)
+          # ist kein Ausfall.
+          pruefe() {
+            name="$1"; url="$2"
+            for versuch in 1 2 3; do
+              code="$(curl --silent --output /dev/null --max-time 15 --write-out '%{http_code}' -- "$url" 2>/dev/null || true)"
+              [ -n "$code" ] || code="000"
+              if [ "$code" = "200" ]; then
+                echo "$name: 200 (Versuch $versuch)"
+                return 0
+              fi
+              echo "$name: $code (Versuch $versuch)"
+              [ "$versuch" = "3" ] || sleep 20
+            done
+            echo "::error::$name ist nicht erreichbar (zuletzt $code): $url"
+            return 1
+          }
+
+          fehler=0
+          pruefe "API /health" "$API_URL" || fehler=1
+          pruefe "Website" "https://confidaraexpress.de/" || fehler=1
+          if [ "$fehler" = "0" ]; then echo "Alles erreichbar."; fi
+          exit "$fehler"

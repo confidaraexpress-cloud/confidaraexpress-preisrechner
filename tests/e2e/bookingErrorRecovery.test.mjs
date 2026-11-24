@@ -7,6 +7,8 @@
 //   E3  400 PRICE_INPUTS_MISSING (Art der Lieferadresse) bei einem Angebot mit Adressart: zurück an die Auswahl,
 //       Optionen neu geladen, keine Adressfehlerfläche
 //   E4  400 PRICE_INPUTS_MISSING (andere Angabe): Neuberechnung mit benannter Ursache, keine Adressfehlerfläche
+//   E5b 503 BOOKING_CAPACITY_REACHED (Zulassungsgrenze des Servers): „Gerade sehr viele Buchungen", nichts beauftragt,
+//       Bestellknopf bleibt bedienbar, kein automatischer zweiter Versuch.
 //   E5  503 LEGAL_DOCUMENTS_NOT_CONFIGURED: „Buchung derzeit nicht möglich", nichts beauftragt, Bestellknopf bleibt,
 //       keine Klärung, kein automatisches Wiederholen — für beide Angebotsarten
 //   E6  Gegenprobe: 503 OHNE Code bleibt ein offener Ausgang („Buchungsstatus wird geprüft", „Zu meinen Sendungen")
@@ -152,8 +154,8 @@ const karteVon = (page, t) => page.locator(`.offer-card:has(button[aria-controls
 const knopf = (page, name) => page.getByRole("button", { name, exact: true });
 const buchenKnopf = (page) => page.getByRole("button", { name: "Kostenpflichtig buchen" });
 
-async function neueSeite() {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+async function neueSeite(viewport = { width: 1440, height: 1000 }) {
+  const page = await browser.newPage({ viewport });
   const fehler = [];
   page.on("pageerror", (e) => fehler.push(String(e)));
   return { page, fehler };
@@ -331,6 +333,41 @@ for (const [kennzeichen, tarif] of [["direkt buchbares Angebot", JM], ["Angebot 
     assert.ok(inhalt.includes("Es wurde nichts beauftragt und nichts berechnet."), inhalt);
     assert.equal(await buchenKnopf(page).count(), 1, "der Bestellknopf fehlt");
     await keinOffenerAusgangKeinZweiterVersuch(page, p);
+    assert.deepEqual(fehler, []);
+    await page.close();
+  });
+}
+
+for (const [geraet, viewport] of [["Desktop", { width: 1440, height: 1000 }], ["Smartphone", { width: 390, height: 844 }]]) {
+  test(`E5b — 503 BOOKING_CAPACITY_REACHED (Zulassungsgrenze, ${geraet}): nichts beauftragt, Knopf bleibt bedienbar, kein automatischer zweiter Versuch`, async () => {
+    const { page, fehler } = await neueSeite(viewport);
+    const p = await setup(page, { buchung: () => ({ status: 503, body: {
+      error: "Im Moment werden sehr viele Buchungen gleichzeitig verarbeitet. Ihre Sendung wurde nicht gebucht. Bitte versuchen Sie es in wenigen Sekunden erneut.",
+      code: "BOOKING_CAPACITY_REACHED", retryAfterSeconds: 5,
+    } }) });
+    await zurBuchungsseite(page, JM);
+    await bucheEinmal(page, p);
+    const banner = page.locator(".alert.alert-error[role=alert]:not(.form-alert)");
+    await banner.waitFor({ state: "visible", timeout: 10000 });
+    const inhalt = norm(await banner.textContent());
+    assert.ok(inhalt.startsWith("Gerade sehr viele Buchungen"), inhalt);
+    assert.ok(inhalt.includes("Es wurde nichts beauftragt und nichts berechnet."), inhalt);
+    assert.ok(inhalt.includes("in wenigen Sekunden erneut"), inhalt);
+    assert.equal(await buchenKnopf(page).count(), 1, "der Bestellknopf fehlt");
+    assert.equal(await buchenKnopf(page).isEnabled(), true, "der Bestellknopf ist nicht bedienbar");
+    assert.equal(await knopf(page, "Angebote neu berechnen").count(), 0, "das Angebot ist unverbraucht — keine Neuberechnung nötig");
+    // Der Hinweis passt in die Breite: kein horizontaler Überlauf der Seite, der Kasten liegt im Sichtfeld.
+    const masse = await page.evaluate(() => {
+      const b = document.querySelector(".alert.alert-error[role=alert]:not(.form-alert)").getBoundingClientRect();
+      return { seite: document.documentElement.scrollWidth, fenster: document.documentElement.clientWidth, links: b.left, rechts: b.right };
+    });
+    assert.ok(masse.seite <= masse.fenster + 1, `horizontaler Überlauf: ${masse.seite} > ${masse.fenster}`);
+    assert.ok(masse.links >= 0 && masse.rechts <= masse.fenster + 1, `der Hinweis ragt aus dem Sichtfeld: ${masse.links}–${masse.rechts}`);
+    await keinOffenerAusgangKeinZweiterVersuch(page, p);
+    if (process.env.CE_E2E_SCREENSHOT_DIR) {
+      await banner.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: path.join(process.env.CE_E2E_SCREENSHOT_DIR, `buchung-auslastung-${viewport.width}.png`) });
+    }
     assert.deepEqual(fehler, []);
     await page.close();
   });

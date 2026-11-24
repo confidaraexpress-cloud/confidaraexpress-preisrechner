@@ -116,7 +116,29 @@ test("R1 — 503 LEGAL_DOCUMENTS_NOT_CONFIGURED: später erneut, nichts beauftra
   assert.doesNotMatch(f.message, /LEGAL_/);
 });
 
+test("R1b — 503 BOOKING_CAPACITY_REACHED (Zulassungsgrenze): gleich erneut, nichts beauftragt, kein offener Ausgang", () => {
+  // Der Server weist die Buchung ab, BEVOR etwas geschieht (keine Sperre, kein Buchungsversuch, kein Anbieter).
+  // Ohne diese Zuordnung liefe der 503 als offener Ausgang: „Buchungsstatus wird geprüft … NICHT erneut absenden“ —
+  // für einen Vorgang, den es nie gab; die Sendung bliebe für den Kunden scheinbar blockiert.
+  const body = {
+    error: "Im Moment werden sehr viele Buchungen gleichzeitig verarbeitet. Ihre Sendung wurde nicht gebucht. Bitte versuchen Sie es in wenigen Sekunden erneut.",
+    code: "BOOKING_CAPACITY_REACHED", retryAfterSeconds: 5,
+  };
+  const f = mapBookRestError(503, body);
+  assert.equal(f, BOOK_FEHLER.BUCHUNG_AUSLASTUNG);
+  assert.equal(f.retryable, true);
+  assert.equal(istUnklarerAusgang(f), false);
+  assert.equal(istOffenerAusgang(503, body), false);
+  assert.equal(erlaubtSpaeterenVersuch(body), true, "der Bestellknopf bleibt stehen");
+  assert.equal(fordertNeuberechnung(body), false, "das Angebot ist unverbraucht — eine Neuberechnung ist nicht nötig");
+  assert.match(f.message, /Es wurde nichts beauftragt und nichts berechnet/);
+  assert.match(f.message, /in wenigen Sekunden erneut/);
+  assert.doesNotMatch(f.message, /geprüft|NICHT erneut|Adresse|neu berechnen/i);
+  assert.doesNotMatch(`${f.title} ${f.message}`, /BOOKING_|jumingo|transglobal|Anbieter|[0-9]/i, "kein Code, kein Anbieter, keine Zahl im Kundentext");
+});
+
 test("R2 — die Zuordnung gilt nur für DIESEN Code: 503 ohne oder mit anderem Code bleibt beim bisherigen Vertrag", () => {
+  assert.equal(mapBookRestError(503, { error: "x", code: "BOOKING_CAPACITY" }), BOOK_FEHLER.PRUEFUNG_LAEUFT);
   assert.equal(mapBookRestError(503, null), BOOK_FEHLER.PRUEFUNG_LAEUFT);
   assert.equal(mapBookRestError(503, {}), BOOK_FEHLER.PRUEFUNG_LAEUFT);
   assert.equal(mapBookRestError(503, { error: "x", code: "LEGAL_SOMETHING_ELSE" }), BOOK_FEHLER.PRUEFUNG_LAEUFT);

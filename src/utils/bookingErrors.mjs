@@ -185,6 +185,17 @@ export const BOOK_FEHLER = {
   // Neuberechnung repariert ihn nicht, ein späterer Versuch derselben Buchung schon; der Bestellknopf bleibt,
   // und nichts wird automatisch wiederholt. Gilt ausschließlich für DIESEN Code — ein 503 ohne Code bleibt ein
   // offener Ausgang.
+  // ─── Zulassungsgrenze (Lastanalyse 2026-11-23, B-05): `503 BOOKING_CAPACITY_REACHED` ───────────────
+  // Der Server nimmt nur eine begrenzte Zahl gleichzeitiger Buchungen an. Ist die Grenze erreicht, weist er die
+  // Anfrage SOFORT ab — vor Buchungsbudget, Sperre, Buchungsversuch und jedem Anbieterkontakt. Es ist also
+  // nachweislich nichts beauftragt; dieselbe Buchung trägt wenige Sekunden später. Der Bestellknopf bleibt, und
+  // nichts wird automatisch wiederholt — der zweite Versuch ist ein bewusster Klick. Gilt ausschließlich für
+  // DIESEN Code: ein 503 ohne Code bleibt ein offener Ausgang.
+  BUCHUNG_AUSLASTUNG: {
+    title: "Gerade sehr viele Buchungen",
+    message: "Im Moment werden sehr viele Buchungen gleichzeitig verarbeitet. Es wurde nichts beauftragt und nichts berechnet. Bitte versuchen Sie es in wenigen Sekunden erneut.",
+    retryable: true,
+  },
   BUCHUNG_DERZEIT_NICHT_MOEGLICH: {
     title: "Buchung derzeit nicht möglich",
     message: "Die Vertragsunterlagen sind derzeit nicht abrufbar, deshalb ist die Buchung gerade nicht möglich. Es wurde nichts beauftragt und nichts berechnet. Bitte versuchen Sie es später erneut.",
@@ -272,6 +283,7 @@ const SAME_DAY_FEHLER_JE_ART = Object.freeze({
 //
 // ─── TG-Abschluss (2026-10-12): drei weitere „nichts beauftragt"-Antworten ───────────
 //   LEGAL_DOCUMENTS_NOT_CONFIGURED  503     nichts beauftragt          später erneut (diese Tabelle)
+//   BOOKING_CAPACITY_REACHED        503     nichts beauftragt          gleich erneut (Zulassungsgrenze, 2026-11-24)
 //   INSUFFICIENT_STOCK u. a.        409     nichts beauftragt (Lager)  Bestand/Auftrag prüfen, neu berechnen
 //                                                                      (`lagerkonfliktBeimBuchen`)
 //   PRICE_INPUTS_MISSING            400     nichts beauftragt          Art der Lieferadresse neu wählen oder
@@ -311,6 +323,8 @@ const BOOK_CODE_FEHLER = {
   [SAME_DAY_COLLECTION_UNAVAILABLE_CODE]: "ABHOLUNG_HEUTE_NICHT_PRUEFBAR",
   // 503, nichts beauftragt (Legal-Prüfung vor jedem Providerkontakt) — später erneut, kein offener Ausgang.
   LEGAL_DOCUMENTS_NOT_CONFIGURED: "BUCHUNG_DERZEIT_NICHT_MOEGLICH",
+  // 503, nichts beauftragt (Zulassungsgrenze VOR jedem Seiteneffekt) — gleich erneut, kein offener Ausgang.
+  BOOKING_CAPACITY_REACHED:       "BUCHUNG_AUSLASTUNG",
 };
 
 // Die Fehlerklasse einer Antwort: über den Code — bei einer nicht verfügbaren Abholung heute über deren Art.
@@ -329,7 +343,7 @@ const NEUBERECHNUNG_KLASSEN = Object.freeze([
 // Die Handlungsklassen „nichts beauftragt, dieselbe Buchung trägt später wieder" — kein Konflikt, keine
 // Neuberechnung: der Bestellknopf bleibt.
 const SPAETER_KLASSEN = Object.freeze([
-  "ZOLL_DERZEIT_NICHT_BUCHBAR", "ZOLL_NOCH_NICHT_BEREIT", "BUCHUNG_DERZEIT_NICHT_MOEGLICH",
+  "ZOLL_DERZEIT_NICHT_BUCHBAR", "ZOLL_NOCH_NICHT_BEREIT", "BUCHUNG_DERZEIT_NICHT_MOEGLICH", "BUCHUNG_AUSLASTUNG",
 ]);
 
 // Trägt diese Antwort einen Ausgang, bei dem NICHTS beauftragt wurde und dieselbe

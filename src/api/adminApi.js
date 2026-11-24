@@ -644,6 +644,22 @@ export function getAdminOperationsQueues() {
   return apiFetch("/admin/operations/queues", { auth: true });
 }
 
+// GET /admin/operations/runtime — Betriebssicht der API: Messzeilen je Minute, offene Auffälligkeiten und der Stand
+// der Warnmail. Reines Lesen; die Antwort trägt Zähler, Zeitpunkte und feste Texte, keine Personen- oder Anbieterdaten.
+export function getAdminOperationsRuntime() {
+  return apiFetch("/admin/operations/runtime", { auth: true });
+}
+
+// POST /admin/operations/alert-test — sendet genau EINE als Test markierte Warnmail an die feste Betreiberadresse.
+// Kein Empfänger und kein Inhalt aus der Anfrage; serverseitig eng begrenzt (429). 409 OPS_ALERT_DISABLED, wenn der
+// Mailversand der Warnungen auf der Instanz abgeschaltet ist.
+// Die Frist liegt ÜBER der Versandfrist des Servers: bräche der Browser zuerst ab, bliebe der Ausgang unbekannt —
+// die Mail kann trotzdem hinausgehen (Regel in src/api/client.js).
+export const ALERT_TEST_TIMEOUT_MS = 45000;
+export function sendAdminOperationsAlertTest() {
+  return apiFetch("/admin/operations/alert-test", { method: "POST", auth: true, timeoutMs: ALERT_TEST_TIMEOUT_MS });
+}
+
 // ── Supportanfragen (Admin) ─────────────────────────────────────────────────
 // Erlaubte Query-Parameter laut Backendvertrag. `userId` filtert auf einen Kunden
 // (Supportspalte im Kundenprofil) — dieselbe Liste, kein zweiter Endpunkt.

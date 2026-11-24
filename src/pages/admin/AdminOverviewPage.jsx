@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { PasskeyHinweis } from "../../components/admin/PasskeyHinweis";
+import { RuntimePanel } from "../../components/admin/RuntimePanel";
 import { Icon, ICON_SIZE } from "../../components/ui/Icon";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { metricsFailureKind, selectListTotal } from "../../utils/adminOverview.mjs";
@@ -372,6 +373,9 @@ export default function AdminOverviewPage() {
           {diagnosen.map((v) => <TaskCard key={v.key} view={v} loading={v.state === "loading"} />)}
         </ul>
       </details>
+
+      {/* Betriebssicht der API: Messwerte, Auffälligkeiten, Testwarnung — lädt erst beim Öffnen. */}
+      <RuntimePanel />
     </div>
   );
 }
